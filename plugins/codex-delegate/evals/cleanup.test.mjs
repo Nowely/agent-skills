@@ -2,10 +2,11 @@
 // The suite for scripts/cleanup.mjs — the script behind /codex-delegate:cleanup.
 //
 // The script inventories what this plugin leaves behind, says which of it can go, and removes only the
-// rows the user picks BY NUMBER against the snapshot `--list --json` wrote. Four kinds can be removed —
-// an orchestrate run, a seat's scratch, the eval suites' scratch, a saved test conversation — and four
-// are reported and never removed: a managed worktree, a lock, the shared Codex home, another data
-// directory of this plugin. A row is `removable` or `kept`, and there is no third value. These cases pin
+// rows the user picks BY NUMBER against the snapshot `--list --json` wrote. Five kinds can be removed —
+// an orchestrate run, a standalone report run, a seat's scratch, the eval suites' scratch, a saved test
+// conversation — and five are reported and never removed: saved answers, a managed worktree, a lock,
+// the shared Codex home, another data directory of this plugin. A row is `removable` or `kept`, and
+// there is no third value. These cases pin
 // that contract, one case per rule a wrong implementation could break.
 //
 //   node evals/cleanup.test.mjs
@@ -24,14 +25,16 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { EXIT, PINNED_CODEX, SCRIPTS, registry, runCases, skip, spawnNode, summarize,
+import { EXIT, PINNED_CODEX, ROOT, SCRIPTS, registry, runCases, skip, spawnNode, summarize,
          tempDir } from "./lib/harness.mjs";
 // A NAMESPACE import, not named bindings: the liveness helpers are the driver's, and a named import of
 // one it stops exporting would fail at load and report nothing at all rather than failing case by case.
 import * as driver from "../skills/seat/scripts/driver.mjs";
 
 const CLEANUP = path.join(SCRIPTS, "cleanup.mjs");
+const CLEANUP_PAGE = path.join(ROOT, "skills", "cleanup", "SKILL.md");
 // The ladder the contract names: 0 everything went, 10 something was refused and untouched, 1 a removal
 // was attempted and failed, 2 bad arguments or no state directory.
 const REFUSED = EXIT.BUSY, FAILED = EXIT.TURN_NOT_COMPLETED, USAGE = EXIT.USAGE;
@@ -39,6 +42,17 @@ const REFUSED = EXIT.BUSY, FAILED = EXIT.TURN_NOT_COMPLETED, USAGE = EXIT.USAGE;
 const DEAD_PID = 2147483646;
 const DEAD_IDENTITY = "lstart:Thu Jan  1 00:00:00 1970";
 const processIdentity = typeof driver.processIdentity === "function" ? driver.processIdentity : () => null;
+
+// Both recipe commands must use the same quoted script expression. Resolve it the way Node resolves
+// its entry argument: lexically first, then through whatever sibling link the install supplied.
+function cleanupRecipePath(skillDir) {
+  const page = fs.readFileSync(CLEANUP_PAGE, "utf8");
+  const expressions = [...page.matchAll(/\bnode "(\$\{CLAUDE_SKILL_DIR\}\/[^\"]*cleanup\.mjs)"/g)]
+    .map((m) => m[1]);
+  if (expressions.length !== 2 || expressions[0] !== expressions[1])
+    throw new Error(`the cleanup page does not carry one script expression twice: ${JSON.stringify(expressions)}`);
+  return path.resolve(expressions[0].replace("${CLAUDE_SKILL_DIR}", skillDir));
+}
 
 // One tree for every world. Canonicalised once, so a fixture path and the path the script prints are
 // the same string on a machine where /var is a link to /private/var.
@@ -148,7 +162,7 @@ const rowAt = (j, p) => (j.rows ?? []).find((row) => (row.paths ?? []).includes(
 // A line a case prints beside its verdict: what the platform did, where the platform is the thing
 // under measurement and a pass alone would not say which way it went.
 const note = (line) => console.log(`      ${line}`);
-// For the four kinds that are only ever reported, whose row may reasonably name the record, the
+// For the kinds that are only ever reported, whose row may reasonably name the record, the
 // directory holding it or the tree it describes: any of the three answers the question this suite asks
 // of them, which is that they are shown and never offered.
 const rowNear = (j, p) => (j.rows ?? []).find((row) => (row.paths ?? []).some(
@@ -199,6 +213,13 @@ function plantRun(w, slug, run, seats) {
   return d;
 }
 const reportPathIn = (runDir, seat) => path.join(runDir, seat, "report.json");
+function plantStandaloneReport(w, run = "run-standalone", { published = true } = {}) {
+  const d = path.join(w.state, "reports", run);
+  fs.mkdirSync(d, { recursive: true });
+  if (published)
+    fs.writeFileSync(path.join(d, "report.json"), JSON.stringify(report(w.project), null, 2) + "\n");
+  return d;
+}
 function plantSeat(w, dirname, { pid, identity, reportPath, line } = {}) {
   const d = path.join(w.tmp, dirname);
   fs.mkdirSync(d, { recursive: true });
@@ -261,7 +282,8 @@ function plantReported(w, { dataId = "codex-delegate-other" } = {}) {
                      started: "2026-09-01T00:00:00.000Z", endedAt: "2026-09-01T00:01:00.000Z", exitCode: 0 }));
   return { lock, ledger, tree, home, datadir };
 }
-// The driver's own subdirectories, which are never listed and never removed.
+// The driver's private subdirectories, which are never listed and never removed. Answers have their
+// own kept inventory row because their lazy retention policy is relevant to a cleanup caller.
 function plantDriverState(w) {
   const made = {};
   for (const name of ["answers", "jobs", "tmp", "pasted"]) {
@@ -321,7 +343,36 @@ test("the script this suite measures exists where the recipe names it",
   "every other case throws on a missing cleanup.mjs, which reads as a wall of failures; this one says the single fact behind them in one line",
   async () => (fs.existsSync(CLEANUP) ? true : `${CLEANUP} does not exist`));
 
-test("1 · a seat's line parses whole: running it is kept, gone it is suggested",
+test("1 · the cleanup recipe resolves through clone-style sibling skill links",
+  "Node normalises the recipe's parent step before opening its entry file, so the clone install works because cleanup and seat are linked beside one another, not because the cleanup link redirects that parent step into the checkout",
+  async () => {
+    const w = makeWorld("recipe-with-sibling");
+    const skills = path.join(w.root, "linked-skills");
+    fs.mkdirSync(skills, { recursive: true });
+    const cleanupLink = path.join(skills, "cleanup");
+    fs.symlinkSync(path.join(ROOT, "skills", "cleanup"), cleanupLink);
+    fs.symlinkSync(path.join(ROOT, "skills", "seat"), path.join(skills, "seat"));
+    const resolved = cleanupRecipePath(cleanupLink);
+    const m = misses();
+    m.ok(fs.existsSync(resolved), `the recipe did not find cleanup.mjs with both skill links: ${resolved}`);
+    if (fs.existsSync(resolved)) m.eq(fs.realpathSync(resolved), fs.realpathSync(CLEANUP), "the script the recipe found");
+    return m.done();
+  });
+
+test("2 · the cleanup recipe documents its missing-sibling failure",
+  "a clone layout that links cleanup alone has no seat entry at the lexical sibling path, so this case pins the page's stated install coupling instead of implying that the cleanup symlink itself is enough",
+  async () => {
+    const w = makeWorld("recipe-without-sibling");
+    const skills = path.join(w.root, "linked-skills");
+    fs.mkdirSync(skills, { recursive: true });
+    const cleanupLink = path.join(skills, "cleanup");
+    fs.symlinkSync(path.join(ROOT, "skills", "cleanup"), cleanupLink);
+    const resolved = cleanupRecipePath(cleanupLink);
+    return fs.existsSync(resolved)
+      ? `the recipe unexpectedly found cleanup.mjs without the sibling seat link: ${resolved}` : true;
+  });
+
+test("3 · a seat's line parses whole: running it is kept, gone it is suggested",
   "the identity holds spaces on macOS and a run name may hold them too; a parser that splits the line on whitespace loses the report path and with it the project, and the scratch of a RUNNING seat then reads as something to suggest",
   async () => {
     const w = makeWorld("live-seat");
@@ -356,7 +407,7 @@ test("1 · a seat's line parses whole: running it is kept, gone it is suggested"
     return m.done();
   });
 
-test("2 · a recycled pid is not that seat: a live pid whose recorded identity differs is gone",
+test("4 · a recycled pid is not that seat: a live pid whose recorded identity differs is gone",
   "pids are recycled; liveness that asks only kill(pid, 0) keeps a dead seat's scratch for as long as some unrelated process holds the number",
   async () => {
     const w = makeWorld("recycled-pid");
@@ -376,7 +427,7 @@ test("2 · a recycled pid is not that seat: a live pid whose recorded identity d
     return m.done();
   });
 
-test("3 · a run with a seat that has not reported is kept; a finished one is offered by number, never suggested",
+test("5 · a run with a seat that has not reported is kept; a finished one is offered by number, never suggested",
   "the driver makes a seat's directory at admission, so a seat with no report is one that has not returned yet, and the seats finishing is not the orchestration finishing: a coordinator can resume into the same directory between batches",
   async () => {
     const w = makeWorld("run-lifecycle");
@@ -415,7 +466,94 @@ test("3 · a run with a seat that has not reported is kept; a finished one is of
     return m.done();
   });
 
-test("4 · every seat naming a run is examined: one published report does not hide a live seat writing to the same path",
+test("6 · standalone reports are selectable evidence, never suggestions; answers are listed and kept",
+  "standalone reports have no project slug, so cleanup may inventory and remove one only when the user names its number; answers already have the driver's lazy pruner, so cleanup shows their cost without racing that retention policy",
+  async () => {
+    const w = makeWorld("standalone-report-and-answers");
+    const reportDir = plantStandaloneReport(w, "standalone-2026-09-12");
+    plantSeat(w, "codex-seat.RRRRRRRR", { pid: DEAD_PID, identity: DEAD_IDENTITY,
+      reportPath: path.join(reportDir, "report.json") });
+    const answer = path.join(w.state, "answers", "th-answer.json");
+    fs.mkdirSync(path.dirname(answer), { recursive: true });
+    fs.writeFileSync(answer, "{\"answer\":\"kept\"}\n");
+    const m = misses();
+    const s = await snapshot(w);
+    const bad = need(w, s); if (bad) return bad;
+    const reportRow = rowAt(s.j, reportDir), answerRow = rowNear(s.j, answer);
+    m.ok(reportRow, `the standalone report run has no row: ${shown(s.j)}`);
+    if (reportRow) {
+      m.eq(reportRow.kind, "report", "the standalone report row's kind");
+      m.eq(reportRow.status, "removable", "the finished standalone report");
+      m.eq(reportRow.selectable, true, "the standalone report is not selectable by number");
+      m.eq(reportRow.proposed, false, "the standalone report was proposed without its number");
+      m.ok(reportRow.bytes > 0 && reportRow.mtimeMs > 0, "the standalone report carries no size or last-change time");
+    }
+    m.ok(answerRow, `the saved answer has no row: ${shown(s.j)}`);
+    if (answerRow) {
+      m.eq(answerRow.kind, "answers", "the saved answers row's kind");
+      m.eq(answerRow.status, "kept", "the saved answers row");
+      m.eq(answerRow.selectable, false, "the driver's saved answers are selectable");
+      m.eq(answerRow.proposed, false, "the driver's saved answers are proposed");
+      m.has(answerRow.reason, "driver prunes", "the saved answers reason");
+    }
+    m.eq(s.j.notCovered?.state?.reports?.covered, true, "the reports coverage hand-off");
+    m.eq(s.j.notCovered?.state?.answers?.covered, true, "the answers coverage hand-off");
+    if (reportRow) {
+      const d = await pick(w, s.file, [reportRow.n]);
+      m.eq(d.code, EXIT.OK, `deleting the report by its number exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+      m.ok(!fs.existsSync(reportDir), "the selected standalone report run directory survived");
+      m.has(d.out, `I deleted ${reportRow.name}.`, "the deletion outcome for the standalone report");
+      m.ok(fs.existsSync(answer), "deleting a standalone report also removed a saved answer");
+    }
+    return m.done();
+  });
+
+test("7 · an unpublished standalone report and the live seat publishing it are both guards",
+  "the driver makes the report directory before it publishes report.json, and its real seat scratch record then supplies a second guard while the process is alive; losing either fact can make live evidence selectable",
+  async () => {
+    const w = makeWorld("live-standalone-report");
+    const c = liveChild();
+    const identity = processIdentity(c.pid) ?? "unknown";
+    const reportDir = plantStandaloneReport(w, "run-live", { published: false });
+    const reportPath = path.join(reportDir, "report.json");
+    plantSeat(w, "codex-seat.LIVELIVE", { pid: c.pid, identity, reportPath });
+    const m = misses();
+    let s = await snapshot(w);
+    let bad = need(w, s); if (bad) { await stopChild(c); return bad; }
+    let row = rowAt(s.j, reportDir);
+    m.ok(row, `the unpublished standalone report has no row: ${shown(s.j)}`);
+    if (row) {
+      m.eq(row.status, "kept", "an unpublished standalone report");
+      m.eq(row.selectable, false, "an unpublished standalone report is selectable");
+      m.has(row.reason, "has not published", "the unpublished report's reason");
+    }
+    fs.writeFileSync(reportPath, JSON.stringify(report(w.project), null, 2) + "\n");
+    s = await snapshot(w);
+    bad = need(w, s); if (bad) { await stopChild(c); return bad; }
+    row = rowAt(s.j, reportDir);
+    m.ok(row, `the published report held by the live seat has no row: ${shown(s.j)}`);
+    if (row) {
+      m.eq(row.status, "kept", "a published report held by its live seat");
+      m.eq(row.selectable, false, "a published report held by its live seat is selectable");
+      m.has(row.reason, "still writing", "the live seat's reason");
+      const d = await pick(w, s.file, [row.n]);
+      m.eq(d.code, REFUSED, `picking the live seat's report exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+      m.ok(fs.existsSync(reportPath), "the report held by its live seat was removed");
+    }
+    await stopChild(c);
+    s = await snapshot(w);
+    bad = need(w, s); if (bad) return bad;
+    row = rowAt(s.j, reportDir);
+    m.ok(row, `the report vanished after its seat stopped: ${shown(s.j)}`);
+    if (row) {
+      m.eq(row.status, "removable", "the published report after its seat stopped");
+      m.eq(row.selectable, true, "the published report after its seat stopped");
+      m.eq(row.proposed, false, "the published report after its seat stopped was proposed");
+    }
+    return m.done();
+  });
+
+test("8 · every seat naming a run is examined: one published report does not hide a live seat writing to the same path",
   "two seat directories can name one report path — the seat that died and the seat that replaced it — so taking the first match makes the run's whole verdict depend on which one readdir returned first",
   async () => {
     const m = misses();
@@ -448,7 +586,7 @@ test("4 · every seat naming a run is examined: one published report does not hi
     return m.done();
   });
 
-test("5 · a slug is not ownership: two projects share one slug, and cleaning one never offers the other's",
+test("9 · a slug is not ownership: two projects share one slug, and cleaning one never offers the other's",
   "`a-b` and `a_b` slug to the same string, so a cleanup that reads ownership off the slug offers the neighbouring project's runs by number and calls them this project's; ownership comes from a path a record actually carries",
   async () => {
     const w = makeWorld("shared-slug");
@@ -477,7 +615,7 @@ test("5 · a slug is not ownership: two projects share one slug, and cleaning on
     return m.done();
   });
 
-test("6 · what cannot be fully read is kept, and says so",
+test("10 · what cannot be fully read is kept, and says so",
   "unreadable is not a third status, it is a reason to keep: a malformed record, a record permissions refuse and a walk that could not finish each mean the tool does not know what is under the item, and deleting on that is deleting what it never read",
   async () => {
     const m = misses();
@@ -525,7 +663,7 @@ test("6 · what cannot be fully read is kept, and says so",
     return m.done();
   });
 
-test("7 · an unreadable finding does not cancel the liveness checks that come after it",
+test("11 · an unreadable finding does not cancel the liveness checks that come after it",
   "the defect is an early return: the first thing that cannot be read ends the item's inspection, so the record naming the running process is never reached and the run it is writing to reads as finished",
   async () => {
     const w = makeWorld("unreadable-then-live");
@@ -564,7 +702,7 @@ test("7 · an unreadable finding does not cancel the liveness checks that come a
     return m.done();
   });
 
-test("8 · a job record naming an item keeps it, and a record with no identity is alive",
+test("12 · a job record naming an item keeps it, and a record with no identity is alive",
   "a record whose identity could not be read proves nothing about whose pid that is, so it is honoured, not reclaimed; the driver's own holderAlive says so, and a cleanup that reimplements liveness disagrees with it",
   async () => {
     const w = makeWorld("job-record");
@@ -595,7 +733,7 @@ test("8 · a job record naming an item keeps it, and a record with no identity i
     return m.done();
   });
 
-test("9 · the eval scratch: an empty listing is an answer, a running suite is not, and a failed listing keeps every row",
+test("13 · the eval scratch: an empty listing is an answer, a running suite is not, and a failed listing keeps every row",
   "the harness removes its own scratch on exit, so a survivor is a run that never reached its cleanup — unless a suite is running right now, and a process listing that could not be taken is not evidence that nothing is",
   async () => {
     const w = makeWorld("eval-scratch");
@@ -632,7 +770,7 @@ test("9 · the eval scratch: an empty listing is an answer, a running suite is n
     return m.done();
   });
 
-test("10 · the tests' saved conversations are offered by number and never suggested; a real one is never listed",
+test("14 · the tests' saved conversations are offered by number and never suggested; a real one is never listed",
   "these directories are conversations, and the only ones this cleanup may name are the ones the suites made under $TMPDIR; a rule that reads the directory name loosely reaches the transcripts of the user's own work, and one that asks whether the scratch is still there hides the only conversations worth removing — the suites delete their scratch when they end",
   async () => {
     const w = makeWorld("sessions");
@@ -679,7 +817,7 @@ test("10 · the tests' saved conversations are offered by number and never sugge
     return m.done();
   });
 
-test("11 · one name, one row: the member that keeps it may be the last or the middle one",
+test("15 · one name, one row: the member that keeps it may be the last or the middle one",
   "identically named items are shown as one row, so one verdict now speaks for several directories; a row whose status comes from its first member deletes the rest on that member's evidence — so the member in use is planted LAST here, and the unreadable one in the MIDDLE of the second row",
   async () => {
     const w = makeWorld("collapsed");
@@ -737,7 +875,7 @@ test("11 · one name, one row: the member that keeps it may be the last or the m
     return m.done();
   });
 
-test("12 · the snapshot binds every field it carries, one field at a time",
+test("16 · the snapshot binds every field it carries, one field at a time",
   "a re-verification that compares any ONE of the fields passes a case that changed several of them at once, so each part here changes exactly one thing the user was shown — and asserts, before it picks anything, that nothing else moved with it",
   async () => {
     const m = misses();
@@ -776,7 +914,7 @@ test("12 · the snapshot binds every field it carries, one field at a time",
         // A freed inode is handed straight back to the next create on ext4: measured 2026-09-10, both
         // Linux jobs rebuilt this tree with the SAME dev:ino, `differing` returned [] and the case
         // measured nothing it claimed. Allocating the replacement while the original still holds its
-        // inode is what makes the two different on every filesystem; case 35 pins the platform fact
+        // inode is what makes the two different on every filesystem; case 39 pins the platform fact
         // this one must not depend on.
         mutate: (w, dir) => {
           const f = path.join(dir, "case-state", "0", "scratch.txt");
@@ -818,7 +956,7 @@ test("12 · the snapshot binds every field it carries, one field at a time",
     return m.done();
   });
 
-test("13 · a number that is not selectable is refused, and a refusal touches nothing",
+test("17 · a number that is not selectable is refused, and a refusal touches nothing",
   "the two sets are the whole of the consent: a number outside them is the coordinator sending something other than what was shown, and the answer is a refusal with nothing removed",
   async () => {
     const w = makeWorld("not-selectable");
@@ -845,7 +983,7 @@ test("13 · a number that is not selectable is refused, and a refusal touches no
     return m.done();
   });
 
-test("14 · a symlink on the way in keeps the item; one inside a removed item is unlinked, its target untouched",
+test("18 · a symlink on the way in keeps the item; one inside a removed item is unlinked, its target untouched",
   "a link on the path from a root down points the removal outside the state directory — the driver's own home links auth.json and sessions back into ~/.codex — while a link INSIDE something being removed must go with it and take nothing else",
   async () => {
     const m = misses();
@@ -914,8 +1052,8 @@ test("14 · a symlink on the way in keeps the item; one inside a removed item is
     return m.done();
   });
 
-test("15 · what a yes covers, what a number covers, and what neither can reach",
-  "the coordinator maps a bare yes onto the suggested numbers, so anything suggested is deleted on a word that never named it: a run, a saved conversation, another project's leftovers and the four reported kinds must be outside that set, and the driver's own directories outside the listing altogether",
+test("19 · what a yes covers, what a number covers, and what neither can reach",
+  "the coordinator maps a bare yes onto the suggested numbers, so anything suggested is deleted on a word that never named it: a run, a saved conversation, another project's leftovers and the five reported kinds must be outside that set, and the driver's other private directories outside the listing altogether",
   async () => {
     const w = makeWorld("the-two-sets");
     const seat = plantSeat(w, "codex-seat.GGGGGGGG", { pid: DEAD_PID, identity: DEAD_IDENTITY,
@@ -940,7 +1078,7 @@ test("15 · what a yes covers, what a number covers, and what neither can reach"
       `the numbers a user may say are not the suggested rows plus this project's run and the saved conversation: ${shown(r.j)}`);
     for (const [what, p] of [["another project's run", theirs], ["a lock", reported.lock],
                              ["the shared home", reported.home], ["another data directory", reported.datadir],
-                             ["a managed worktree", reported.tree]]) {
+                             ["a managed worktree", reported.tree], ["the driver's saved answers", own.answers]]) {
       const row = rowNear(r.j, p);
       m.ok(row, `${what} is not listed at all: ${shown(r.j)}`);
       // Not their status, which asks only whether they are in use and readable, but the two sets: these
@@ -960,6 +1098,7 @@ test("15 · what a yes covers, what a number covers, and what neither can reach"
     }
     m.ok(dd, "the other data directory has no row of its own beside its manual command");
     for (const [name, f] of Object.entries(own)) {
+      if (name === "answers") continue;
       m.ok(!r.j.rows.some((row) => (row.paths ?? []).some((p) => p === path.dirname(f) || f.startsWith(p + path.sep))),
         `the driver's own <state>/${name} is in the listing: ${shown(r.j)}`);
     }
@@ -969,7 +1108,7 @@ test("15 · what a yes covers, what a number covers, and what neither can reach"
     return m.done();
   });
 
-test("16 · the listing is three lines a person reads, and --json carries the same bytes",
+test("20 · the listing is three lines a person reads, and --json carries the same bytes",
   "the coordinator shows this block unchanged and maps the user's words onto its numbers, so a listing rendered from one inventory and numbers taken from another are two snapshots nobody reconciled — and an identifier in the prose is a path or a pid the user was never meant to have to read",
   async () => {
     const w = makeWorld("the-listing");
@@ -1031,7 +1170,7 @@ test("16 · the listing is three lines a person reads, and --json carries the sa
     return m.done();
   });
 
-test("17 · the roots it must have, and the arguments it refuses",
+test("21 · the roots it must have, and the arguments it refuses",
   "a root that can still be refused after the work is done is a root that should have refused at the start; and every argument the page never sends is one the script must not guess at",
   async () => {
     const w = makeWorld("roots-and-args");
@@ -1051,8 +1190,48 @@ test("17 · the roots it must have, and the arguments it refuses",
     if (bad) m.ok(false, `with only CLAUDE_PLUGIN_DATA set: ${bad}`);
     else m.ok(rowAt(viaPluginData.j, path.join(alt, "orchestrate", w.slug, "run-1")),
       `the run under CLAUDE_PLUGIN_DATA is not listed: ${shown(viaPluginData.j)}`);
-    const noTmp = await runCleanup(w, ["--list"], { unsetEnv: ["TMPDIR"] });
-    m.eq(noTmp.code, USAGE, `--list with TMPDIR unset exited ${noTmp.code}`);
+    const fallbackReport = plantStandaloneReport(w, "fallback-run", { published: false });
+    const fallbackAnswer = path.join(w.state, "answers", "fallback.json");
+    fs.mkdirSync(path.dirname(fallbackAnswer), { recursive: true });
+    fs.writeFileSync(fallbackAnswer, "{}\n");
+    const savedTmp = process.env.TMPDIR;
+    let fallbackTmp;
+    try { delete process.env.TMPDIR; fallbackTmp = os.tmpdir(); }
+    finally {
+      if (savedTmp === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = savedTmp;
+    }
+    const noTmp = await runCleanup(w, ["--list", "--json"], { unsetEnv: ["TMPDIR"] });
+    m.eq(noTmp.code, EXIT.OK, `--list --json with TMPDIR unset exited ${noTmp.code}: ${noTmp.err.trim().slice(0, 200)}`);
+    const noTmpJson = parse(noTmp.out);
+    m.ok(noTmpJson, `--list --json with TMPDIR unset did not print JSON: ${noTmp.out.trim().slice(0, 200)}`);
+    if (noTmpJson) {
+      m.eq(noTmpJson.roots?.tmp, fallbackTmp, "the fallback temporary root");
+      m.eq(noTmpJson.roots?.tmpSource, "os.tmpdir() (TMPDIR unset)", "the fallback temporary root's source");
+      const fallbackRow = rowAt(noTmpJson, fallbackReport);
+      m.ok(fallbackRow, `the fallback listing omitted the standalone report: ${shown(noTmpJson)}`);
+      if (fallbackRow) {
+        m.eq(fallbackRow.status, "kept", "the unpublished report under a fallback seat scan");
+        m.eq(fallbackRow.selectable, false, "the unpublished report under a fallback seat scan is selectable");
+        m.has(fallbackRow.reason, "has not published", "the unpublished report's fallback reason");
+      }
+      m.ok(rowNear(noTmpJson, fallbackAnswer), `the fallback listing omitted the saved answer: ${shown(noTmpJson)}`);
+      m.has(noTmpJson.text, "TMPDIR was unset", "the human-readable fallback warning");
+      m.has(noTmpJson.text, "seat scratch elsewhere may not have been seen", "the fallback warning's limit");
+    }
+    const emptyTmp = await runCleanup(w, ["--list", "--json"], { env: { TMPDIR: "" } });
+    m.eq(emptyTmp.code, EXIT.OK, `--list --json with empty TMPDIR exited ${emptyTmp.code}: ${emptyTmp.err.trim().slice(0, 200)}`);
+    const emptyTmpJson = parse(emptyTmp.out);
+    m.ok(emptyTmpJson, `--list --json with empty TMPDIR did not print JSON: ${emptyTmp.out.trim().slice(0, 200)}`);
+    if (emptyTmpJson) {
+      m.eq(emptyTmpJson.roots?.tmp, fallbackTmp, "the empty-TMPDIR fallback root");
+      m.eq(emptyTmpJson.roots?.tmpSource, "os.tmpdir() (TMPDIR empty)", "the empty-TMPDIR fallback source");
+      m.has(emptyTmpJson.text, "TMPDIR was empty", "the human-readable empty-TMPDIR warning");
+    }
+    const relativeTmp = await runCleanup(w, ["--list", "--json"], { env: { TMPDIR: "relative/tmp" } });
+    m.eq(relativeTmp.code, USAGE, `--list --json with relative TMPDIR exited ${relativeTmp.code}`);
+    m.eq(relativeTmp.out, "", "relative TMPDIR wrote to stdout");
+    m.has(relativeTmp.err, "Nothing was deleted", "the relative TMPDIR refusal");
     const s = await snapshot(w);
     for (const [what, args] of [
       ["an unknown flag", ["--list", "--wat"]],
@@ -1072,7 +1251,7 @@ test("17 · the roots it must have, and the arguments it refuses",
     return m.done();
   });
 
-test("18 · the ladder: a refusal outranks a failed removal, which outranks success",
+test("22 · the ladder: a refusal outranks a failed removal, which outranks success",
   "the page reads the code to decide what to tell the user, so a run that refused one number and removed another must not report the removal; and a removal that could not finish must not report that it did",
   async () => {
     const w = makeWorld("the-ladder");
@@ -1106,7 +1285,7 @@ test("18 · the ladder: a refusal outranks a failed removal, which outranks succ
     return m.done();
   });
 
-test("19 · it never runs git, never removes a root, and never touches the driver's own directories",
+test("23 · it never runs git, never removes a root, and never touches the driver's own directories",
   "`git status` rewrites the index even when its output is empty, so a listing that runs git is not the dry run the page promises; and a removal that walks up out of its item takes the state directory the driver is using right now",
   async () => {
     const w = makeWorld("no-git");
@@ -1143,7 +1322,7 @@ test("19 · it never runs git, never removes a root, and never touches the drive
     return m.done();
   });
 
-test("20 · the snapshot's paths are compared, and a forged one never reaches a root",
+test("24 · the snapshot's paths are compared, and a forged one never reaches a root",
   "the snapshot is a file the coordinator hands back, so it is untrusted input: an implementation that removes the paths the FILE names, rather than the paths the fresh inventory names for that number, removes whatever the file says — and what it says here is the state directory",
   async () => {
     const w = makeWorld("forged-snapshot");
@@ -1175,7 +1354,7 @@ test("20 · the snapshot's paths are compared, and a forged one never reaches a 
     return m.done();
   });
 
-test("21 · a symlink that appears after the listing refuses the removal, wherever on the path it is",
+test("25 · a symlink that appears after the listing refuses the removal, wherever on the path it is",
   "the listing's own symlink check cannot save a path that becomes a link AFTER the user was shown it; the walk from the canonical root down, one lstat per component, is the only thing between a yes and a directory that has been moved out of the state directory since",
   async () => {
     const m = misses();
@@ -1238,7 +1417,7 @@ test("21 · a symlink that appears after the listing refuses the removal, wherev
     return m.done();
   });
 
-test("22 · a file a read refuses and a pipe where a file belongs keep the item, and neither is ever deleted",
+test("26 · a file a read refuses and a pipe where a file belongs keep the item, and neither is ever deleted",
   "these are the two shapes of `I could not read this`, and both must survive the word yes: an item whose contents the tool never saw is an item it cannot say is finished with",
   async () => {
     const w = makeWorld("unreadable-in-suggested");
@@ -1277,7 +1456,7 @@ test("22 · a file a read refuses and a pipe where a file belongs keep the item,
     return m.done();
   });
 
-test("23 · a seat a live job record protects keeps the run it is writing to",
+test("27 · a seat a live job record protects keeps the run it is writing to",
   "a seat's own line names the pid of a process that may already be gone while the job record names the live one; a run whose liveness reads only the seat's line deletes the directory that seat is still writing into",
   async () => {
     const w = makeWorld("job-protected-seat");
@@ -1307,7 +1486,7 @@ test("23 · a seat a live job record protects keeps the run it is writing to",
     return m.done();
   });
 
-test("24 · a name that only looks like a suite's is not a suite's",
+test("28 · a name that only looks like a suite's is not a suite's",
   "the conversations this cleanup may name are the ones a suite itself writes, recognised by the SHAPE of the name under the temp root; a rule that matches on a word reaches a directory the user named for their own reasons, and a rule with no boundary reaches one that is not under the temp root at all — both are somebody's transcripts",
   async () => {
     const w = makeWorld("name-shape");
@@ -1346,7 +1525,7 @@ test("24 · a name that only looks like a suite's is not a suite's",
     return m.done();
   });
 
-test("25 · a member admitted after the listing is never carried off by the old number",
+test("29 · a member admitted after the listing is never carried off by the old number",
   "a row's number is consent for the members the user was shown; an implementation that removes whatever the fresh inventory collects under that name now deletes the scratch of a seat admitted a second later, which is a delegation that has just started",
   async () => {
     const w = makeWorld("late-member");
@@ -1370,7 +1549,7 @@ test("25 · a member admitted after the listing is never carried off by the old 
     return m.done();
   });
 
-test("26 · the command the user is handed is safe to paste",
+test("30 · the command the user is handed is safe to paste",
   "a reported data directory carries a ready `rm -rf` for the user to run themselves, and its name is not the plugin's to choose: one name holding a substitution, a backquote, a space, both quotes and a semicolon must reach the shell as a single word, or the listing is an injection into the user's own terminal",
   async () => {
     const w = makeWorld("manual-command");
@@ -1406,7 +1585,7 @@ test("26 · the command the user is handed is safe to paste",
     return m.done();
   });
 
-test("27 · a member that becomes busy between the listing and the yes keeps the whole row",
+test("31 · a member that becomes busy between the listing and the yes keeps the whole row",
   "the members of a collapsed row are removed one after another, and the world does not hold still while they are: a check made once, before the first of them goes, consents to a directory that a suite or a job took up in the meantime",
   async () => {
     const m = misses();
@@ -1445,7 +1624,7 @@ test("27 · a member that becomes busy between the listing and the yes keeps the
     return m.done();
   });
 
-test("28 · the parent that was checked is renamed and another takes its place",
+test("32 · the parent that was checked is renamed and another takes its place",
   "the walk down from the root and the removal are two moments, and between them a component can be swapped for another of the same name; what the walk pinned is what may go, and when it is no longer there the call says so rather than removing what is",
   async () => {
     const w = makeWorld("parent-swapped");
@@ -1471,7 +1650,7 @@ test("28 · the parent that was checked is renamed and another takes its place",
     return m.done();
   });
 
-test("29 · two numbers in one call come out the same in either order",
+test("33 · two numbers in one call come out the same in either order",
   "a run and the seat that wrote into it are one thing to the user and two rows to the tool; if the order the numbers arrive in changes what survives, the same yes means two different things",
   async () => {
     const m = misses();
@@ -1495,7 +1674,7 @@ test("29 · two numbers in one call come out the same in either order",
     return m.done();
   });
 
-test("30 · a pipe where a seat's startup line belongs does not stop the listing",
+test("34 · a pipe where a seat's startup line belongs does not stop the listing",
   "reading a named pipe with no writer blocks for as long as the machine is up; a listing that opens what it finds, rather than checking what it is first, never returns and the page never gets its block",
   async () => {
     const w = makeWorld("pipe-seat");
@@ -1519,7 +1698,7 @@ test("30 · a pipe where a seat's startup line belongs does not stop the listing
     return m.done();
   });
 
-test("31 · a job record whose read is refused keeps everything it could have protected",
+test("35 · a job record whose read is refused keeps everything it could have protected",
   "the record that says which directories are in use is the one thing that cannot be skipped: a permission error there is not an empty list of jobs, it is no answer at all, and every item that record might have named stays",
   async () => {
     const w = makeWorld("job-unreadable");
@@ -1548,7 +1727,7 @@ test("31 · a job record whose read is refused keeps everything it could have pr
     return m.done();
   });
 
-test("32 · a conversation whose name resolves to nothing is not listed and never offered",
+test("36 · a conversation whose name resolves to nothing is not listed and never offered",
   "the name of a conversation directory is a path with its separators replaced; one that decodes to no path at all names no project, and a rule that answers `not a real project, therefore a test's` deletes somebody's transcripts",
   async () => {
     const w = makeWorld("nameless-conversation");
@@ -1571,7 +1750,7 @@ test("32 · a conversation whose name resolves to nothing is not listed and neve
     return m.done();
   });
 
-test("33 · a file where a conversation directory would be leaves the real ones listed and the count true",
+test("37 · a file where a conversation directory would be leaves the real ones listed and the count true",
   "the conversations are directories, and something that is not one is not a conversation; a scan that stats what it finds and gives up, or counts it anyway, either loses the real ones or tells the user a number that is not so",
   async () => {
     const w = makeWorld("file-among-conversations");
@@ -1597,7 +1776,7 @@ test("33 · a file where a conversation directory would be leaves the real ones 
     return m.done();
   });
 
-test("34 · a run's sentence names the project it found, and invents none",
+test("38 · a run's sentence names the project it found, and invents none",
   "the name a row carries is the user's whole basis for saying its number; a run whose records name no directory belongs to nobody the tool can see, and a sentence that fills that in with the project the user happens to be standing in invites a yes for somebody else's work",
   async () => {
     const w = makeWorld("unnamed-project");
@@ -1623,7 +1802,7 @@ test("34 · a run's sentence names the project it found, and invents none",
     return m.done();
   });
 
-test("35 · identity is `dev:ino`, and a filesystem that recycles one is the whole of its limit",
+test("39 · identity is `dev:ino`, and a filesystem that recycles one is the whole of its limit",
   "the snapshot's last discriminator is the identity, and the code beside it asserted that a replacement of the same size at the same second is a different inode. On ext4 it is not: measured 2026-09-10, both Linux jobs handed the freed inode straight back, while macOS gave a new one. The rule the tool states is the same on both — a number consents to the identity the listing measured — so the case asserts THAT against whichever identity the platform hands back, and prints which way it went. It also prints what the creation time did, which is the evidence for deciding later whether the identity should carry more than `dev:ino`",
   async () => {
     const w = makeWorld("inode-recycled");

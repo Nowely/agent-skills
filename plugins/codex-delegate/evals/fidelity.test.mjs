@@ -127,6 +127,7 @@ function shapeOf(r, limits) {
     writableRoots: [...(sb.writableRoots ?? [])].sort(),
     networkAccess: Boolean(sb.networkAccess),
     excludeSlashTmp: sb.excludeSlashTmp ?? null,
+    excludeTmpdirEnvVar: sb.excludeTmpdirEnvVar ?? null,
     workspaceRoots: (r?.runtimeWorkspaceRoots ?? []).map(canon).sort(),
     profileId: r?.activePermissionProfile?.id ?? null,
     approvalPolicy: r?.approvalPolicy ?? null,
@@ -374,6 +375,8 @@ function misspellConfig(request, key, misspelling) {
 }
 
 const WRITE_ROOTS = "sandbox_workspace_write.writable_roots";
+const SLASH_TMP = "sandbox_workspace_write.exclude_slash_tmp";
+const TMPDIR_ENV = "sandbox_workspace_write.exclude_tmpdir_env_var";
 
 // Every request starts with a real driver capture. Three cases then alter one captured config value to
 // probe server boundary rules the driver normally pre-normalises: alias subtraction, exact deduplication,
@@ -457,6 +460,19 @@ const CASES = [
     why: "the same typo one field over: the id and the $TMPDIR grant both read back correctly while the egress the seat was told it has is gone",
     build: () => ({ level: "read", cwd: freshDir("nettypo"),
       mutate: (r) => misspellConfig(r, `permissions.${READ_PROFILE}.network`, `permissions.${READ_PROFILE}.netwerk`) }) },
+
+  // The two implicit temp grants. Every case above already compares them at the values the driver
+  // sends; these two send the OPPOSITE value, which is the only way to tell a server that honours the
+  // key from a fixture that hardcodes the field — the shape the fixture carried before 0.14.0.
+  { name: "write level, the /tmp exclusion dropped",
+    why: "excludeSlashTmp mirrors its own key: sent false, the server reports /tmp writable again, which is the response assertWriteSandbox refuses",
+    build: () => ({ level: "write", cwd: freshDir("wrslashtmp"),
+      mutate: (r) => replaceConfig(r, SLASH_TMP, "false") }) },
+
+  { name: "write level, TMPDIR excluded by key",
+    why: "and the field one over: sent true, $TMPDIR leaves the grant, which is the narrowing the same assertion refuses — heredocs and test runners have nowhere to write",
+    build: () => ({ level: "write", cwd: freshDir("wrtmpdirenv"),
+      mutate: (r) => replaceConfig(r, TMPDIR_ENV, "true") }) },
 ];
 
 // ---------------------------------------------------------------- the live turn

@@ -1,6 +1,6 @@
 ---
 name: codex-seat
-description: Runs one Codex seat for the codex-delegate skill. Launches the driver command it is given as a background task, waits in the foreground until the seat's report file exists, and returns four lines. Spawned only by a coordinator that has loaded codex-delegate:seat and has written the seat prompt itself; the message carries the exact commands and the coordinator reads the report. Never answers the seat's task and never edits a prompt.
+description: Runs one Codex seat for the codex-delegate skill. Launches the driver command it is given as a background task, waits in the foreground until the driver's exit status is written, and returns seven lines. Spawned only by a coordinator that has loaded codex-delegate:seat and has written the seat prompt itself; the message carries the exact commands and the coordinator reads the report. Never answers the seat's task and never edits a prompt.
 model: haiku
 tools: Bash
 ---

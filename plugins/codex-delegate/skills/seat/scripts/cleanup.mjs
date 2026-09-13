@@ -5,11 +5,11 @@
 //   node cleanup.mjs --list [--json]
 //   node cleanup.mjs --delete --from <listing.json> <number>...
 //
-// Four kinds of artifact can be removed here: an orchestrate run directory, a seat's scratch
-// directory, the suites' scratch directories and the saved conversations the suites leave behind.
-// Four more are REPORTED and never touched — managed worktrees, write locks, the shared Codex home
-// and another copy's data directory — because the driver reconciles the first two itself, the third
-// is shared, and the fourth is the user's own to remove. Nothing here runs git.
+// Five kinds of artifact can be removed here: an orchestrate run directory, a standalone report run
+// directory, a seat's scratch directory, the suites' scratch directories and the saved conversations
+// the suites leave behind. Five more are REPORTED and never touched — the driver's saved answers,
+// managed worktrees, write locks, the shared Codex home and another copy's data directory — because
+// another owner or retention policy is responsible for each of them. Nothing here runs git.
 //
 // Three rules decide the rest.
 //   * Evidence, never age. An item is removable only when nothing THIS PLUGIN RECORDS under it is in
@@ -79,18 +79,20 @@ numbers the user chose and the file --list --json wrote, and removes a number on
 finds now is the row the listing showed — same kind, name, status, paths, identities, size and
 last-change times. Everything else is refused untouched, and the fresh listing follows.
 
-It removes orchestrate run directories and seat scratch directories of THIS project, the suites'
-scratch directories, and the saved conversations the suites leave behind; it only REPORTS managed
-worktrees and their ledger, write locks, the shared Codex home, and another copy's data directory.
-It never runs git, and never removes anything it could not fully read.
+It removes orchestrate run directories and seat scratch directories of THIS project, published
+standalone report run directories, the suites' scratch directories, and the saved conversations the
+suites leave behind; it only REPORTS the driver's saved answers, managed worktrees and their ledger,
+write locks, the shared Codex home, and another copy's data directory. It never runs git, and never
+removes anything it could not fully read.
 
 An item is in use when a live pid is recorded under it or names it: a seat's startup line, a run's
-seat directory with no report, a job record under the state directory, or a running test suite. That
-is the whole of what it can see — a process with none of those behind it is invisible to it.
+seat directory with no report, a standalone report run with no published report.json, a job record
+under the state directory, or a running test suite. That is the whole of what it can see — a process
+with none of those behind it is invisible to it.
 
 Environment: CODEX_DELEGATE_STATE_DIR, else CLAUDE_PLUGIN_DATA (absolute; no default of its own);
-TMPDIR; CLAUDE_CONFIG_DIR or ~/.claude. \`ps\` decides whether a test suite is running, with a
-${SPAWN_TIMEOUT_MS / 1000}s bound; without it every test row is kept.
+non-empty TMPDIR, else Node's os.tmpdir(); CLAUDE_CONFIG_DIR or ~/.claude. \`ps\` decides whether a
+test suite is running, with a ${SPAWN_TIMEOUT_MS / 1000}s bound; without it every test row is kept.
 
 Exit codes: 0 everything asked for was removed; ${EXIT_FAILED} a removal was attempted and failed;
 ${EXIT.USAGE} bad arguments, an unreadable or stale snapshot, or no state directory; ${EXIT.BUSY} something
@@ -224,9 +226,12 @@ function resolveRoots() {
   const state = process.env[named];
   if (!path.isAbsolute(state))
     die(`${named} must be an absolute path, and it is ${JSON.stringify(state)}. Nothing was deleted.`);
-  const tmp = process.env.TMPDIR;
-  if (!tmp || !path.isAbsolute(tmp))
-    die("TMPDIR is not set to an absolute path, and the seat and test files live under it. "
+  const tmpFallback = process.env.TMPDIR === undefined ? "unset"
+    : process.env.TMPDIR === "" ? "empty" : null;
+  const tmpFromEnv = tmpFallback === null;
+  const tmp = tmpFromEnv ? process.env.TMPDIR : os.tmpdir();
+  if (!path.isAbsolute(tmp))
+    die(`TMPDIR must be an absolute path when set, and it is ${JSON.stringify(tmp)}. `
       + "Nothing was deleted.");
   let home = null;
   try { home = os.homedir(); } catch { home = null; }
@@ -234,7 +239,8 @@ function resolveRoots() {
   const cwd = path.resolve(process.cwd());
   const project = canonPath(cwd) ?? cwd;
   const r = {
-    state, tmp, config, project,
+    state, tmp, tmpSource: tmpFromEnv ? "TMPDIR" : `os.tmpdir() (TMPDIR ${tmpFallback})`,
+    tmpFallback, config, project,
     projectName: path.basename(project) || project,
     projectSlug: slug(project),
     projectsDir: config === null ? null : path.join(config, "projects"),
@@ -459,6 +465,47 @@ function listRuns(roots, seats) {
   return rows;
 }
 
+// Standalone seats write one report.json directly below `<state>/reports/<run>`. These directories
+// carry no project slug or cwd that can establish ownership, so a finished one is available only by
+// its number and is never suggested. A live seat whose startup line names it protects it exactly as
+// it protects an orchestrate run; an opaque live seat conservatively protects every report directory.
+function seatHolds(seats, itemPath) {
+  return seats.some((s) => {
+    if (!s.inUse) return false;
+    if (s.opaque && !s.absent) return true;
+    const rp = s.reportPath === null ? null : canonLoose(s.reportPath);
+    return rp !== null && under(rp, itemPath);
+  });
+}
+
+function reportPublication(reportDir) {
+  const st = statAt(path.join(reportDir, "report.json"));
+  return { readable: st.ok,
+           published: st.ok && st.value !== null && st.value.isFile() && !st.value.isSymbolicLink() };
+}
+
+function listReports(roots, seats) {
+  const dir = path.join(roots.state, "reports");
+  const names = entriesAt(dir);
+  if (!names.ok) return { rows: [], complete: false };
+  if (names.value === null) return { rows: [], complete: true };
+  const rows = [];
+  for (const runName of names.value.sort()) {
+    const row = scratchRow("report", roots.S, ["reports", runName], path.join(dir, runName),
+      { run: runName });
+    rows.push(row);
+    if (!row.chainOk) continue;
+    const publication = reportPublication(row.path);
+    if (!publication.readable) { row.readable = false; row.cond = "unreadable"; }
+    else if (!publication.published) { row.inUse = true; if (row.readable) row.cond = "unreported"; }
+    if (seatHolds(seats, row.path)) {
+      row.inUse = true;
+      if (row.readable && publication.published) row.cond = "live";
+    }
+  }
+  return { rows, complete: true };
+}
+
 function listEvals(roots, ps) {
   const rows = [];
   for (const name of namesIn(roots.tmp).sort()) {
@@ -505,6 +552,16 @@ function listSessions(roots) {
 const reported = (kind, key, p, bytes, mtimeMs, extra = {}) =>
   ({ kind, key, path: p, ident: identAt(p), bytes, mtimeMs, inUse: true, readable: true,
      cond: "reported", ours: false, base: null, parts: [], alsoPaths: [], ...extra });
+
+function listAnswers(roots) {
+  const p = path.join(roots.state, "answers");
+  const st = statAt(p);
+  if (!st.ok) return { rows: [], complete: false };
+  if (st.value === null) return { rows: [], complete: true };
+  const w = walk(p);
+  return { rows: [reported("answers", "answers", p, w.bytes, w.mtimeMs,
+    { readable: w.complete, cond: w.complete ? "reported" : "unreadable" })], complete: true };
+}
 
 // One row per worktree, not one per artifact: a tree and the ledger entry that tracks it are two
 // files describing ONE worktree, and counting rows counted it twice.
@@ -664,6 +721,8 @@ const dateInName = (s) => {
 function nameRow(roots, row) {
   const many = (f) => { row.nameMany = f; };
   switch (row.kind) {
+    case "report":
+      return `the standalone report from run ${JSON.stringify(row.run)}`;
     case "run": {
       // Three answers, and the third is the honest one: a slug that matches proves nothing, so a run
       // no report names is not called another project's either.
@@ -688,6 +747,9 @@ function nameRow(roots, row) {
     case "session":
       many((n) => `${n} saved conversations from ${row.sessionKind}`);
       return `the saved conversation from ${row.sessionKind}`;
+    case "answers":
+      many((n) => `${n} collections of answers saved by the driver`);
+      return "the answers saved by the driver";
     case "worktree": {
       const where = row.where ? ` in ${row.where}` : "";
       many((n) => `${n} saved worktrees${where}`);
@@ -728,6 +790,10 @@ function reasonRow(row, many) {
     default: break;
   }
   switch (row.kind) {
+    case "report":
+      if (row.cond === "unreported") return "A seat has not published this report yet.";
+      if (row.cond === "live") return "A seat is still writing this standalone report.";
+      return "The coordinator decides how long to keep this report, so it is removed only by its number.";
     case "run":
       if (row.cond === "live")
         return row.liveSeat && !row.liveSeatItem
@@ -756,6 +822,7 @@ function reasonRow(row, many) {
     case "session":
       return many ? "The tests leave these saved conversations behind."
                   : "The tests leave this saved conversation behind.";
+    case "answers": return "The driver prunes these answers itself, so this cleanup never removes them.";
     case "worktree": return "The driver reconciles and removes these itself on its next worktree run.";
     case "lock": return "The driver reclaims a lock it finds abandoned when it next needs that directory.";
     case "home": return "Every seat of this plugin shares these Codex files, so this cleanup never removes them.";
@@ -789,7 +856,7 @@ function collapse(rows) {
     // matches the name, the paths, the count, the size and BOTH ends of the time span answers to the
     // old snapshot (measured on ext4, 2026-09-10; macOS gives a new inode). The times are what makes
     // that improbable outside a test, since a replacement made in the ordinary way carries the current
-    // one. This is consent, not a security boundary. evals case 35 pins it on whichever platform runs.
+    // one. This is consent, not a security boundary. evals case 39 pins it on whichever platform runs.
     const pairs = m.flatMap((x) => [[x.path, x.ident],
                                     ...(x.alsoPaths ?? []).map((p) => [p, identAt(p)])])
       .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
@@ -824,6 +891,8 @@ function inventory(roots) {
       s.inUse = true; s.cond = s.readable ? (jobs.complete ? "job" : "records") : s.cond;
     }
   const runs = listRuns(roots, seats);
+  const reports = listReports(roots, seats);
+  const answers = listAnswers(roots);
   // Where a seat belongs: the run its report path names, else the job record naming the same pid,
   // else nobody. A seat of unknown ownership is kept, never proposed.
   for (const s of seats) {
@@ -843,7 +912,8 @@ function inventory(roots) {
     s.owner = j.paths[0];
     s.ours = j.paths.every((p) => under(p, roots.project));
   }
-  const rows = [...runs, ...seats, ...listEvals(roots, ps), ...listSessions(roots),
+  const rows = [...runs, ...reports.rows, ...seats, ...listEvals(roots, ps), ...listSessions(roots),
+                ...answers.rows,
                 ...listWorktrees(roots), ...listLocks(roots), ...listHome(roots), ...listDataDirs(roots)];
   for (const row of rows) {
     if (row.base !== null && !row.inUse) {
@@ -862,11 +932,13 @@ function inventory(roots) {
     row.removable = !row.inUse && row.readable && row.base !== null && !row.holdsRoot;
     row.proposed = row.removable && ((row.kind === "seat" && row.ours) || row.kind === "eval");
     row.selectable = row.proposed
-      || (row.removable && ((row.kind === "run" && row.ours) || row.kind === "session"));
+      || (row.removable && ((row.kind === "run" && row.ours) || row.kind === "report"
+        || row.kind === "session"));
     row.reason = reasonRow(row, row.count > 1);
   }
   listed.forEach((row, i) => { row.n = i + 1; });
-  return { roots, rows: listed, notCovered: notCovered(roots), ps };
+  return { roots, rows: listed,
+           notCovered: notCovered(roots, { reports: reports.complete, answers: answers.complete }), ps };
 }
 
 // ---------------------------------------------------------------- what this cleanup does not cover
@@ -875,7 +947,7 @@ const OUTSIDE_FIND = (tmp) => `find ${shq(tmp)} -maxdepth 1 -name 'codex-*'`
   + ` ! -name 'codex-seat.*' ! -name 'codex-delegate-test-*' ! -name 'codex-lock-*'`
   + ` ! -name 'codex-worktree-*' ! -name 'codex-clipboard-*'`;
 
-function notCovered(roots) {
+function notCovered(roots, covered) {
   const skip = [SEAT_RE, /^codex-delegate-test-/, /^codex-lock-/, /^codex-worktree-/, /^codex-clipboard-/];
   const names = entriesAt(roots.tmp);
   // A count this could not take is `null`, never 0: the sentence then says the directory could not
@@ -883,8 +955,16 @@ function notCovered(roots) {
   const count = names.ok && names.value !== null
     ? names.value.filter((n) => n.startsWith("codex-") && !skip.some((re) => re.test(n))).length
     : null;
-  return { count, listCommand: `${OUTSIDE_FIND(roots.tmp)} -print`,
-           removeCommand: `${OUTSIDE_FIND(roots.tmp)} -exec rm -rf {} +` };
+  return { count, scope: "coordinator temporary directory",
+           listCommand: `${OUTSIDE_FIND(roots.tmp)} -print`,
+           removeCommand: `${OUTSIDE_FIND(roots.tmp)} -exec rm -rf {} +`,
+           state: {
+             reports: { covered: covered.reports,
+                        disposition: "listed; published runs are selectable by number, unpublished runs "
+                          + "are kept; never proposed" },
+             answers: { covered: covered.answers,
+                        disposition: "listed and kept; the driver prunes these itself" },
+           } };
 }
 
 // ---------------------------------------------------------------- the listing
@@ -898,6 +978,9 @@ const members = (rows) => rows.reduce((n, r) => n + r.count, 0);
 function formA(inv) {
   const width = columns();
   const out = [`The current project is ${inv.roots.projectName}.`, ""];
+  if (inv.roots.tmpFallback !== null)
+    out.push(...wrap(`TMPDIR was ${inv.roots.tmpFallback}, so the seat scan used Node's fallback `
+      + "temporary directory; seat scratch elsewhere may not have been seen.", width, ""), "");
   if (inv.rows.length === 0) out.push("Nothing this cleanup covers is on this machine.", "");
   const numWidth = Math.max(2, String(inv.rows.length).length);
   for (const row of inv.rows) {
@@ -925,13 +1008,15 @@ function formA(inv) {
   const extra = inv.rows.filter((r) => r.selectable && !r.proposed);
   if (extra.length) {
     const runs = members(extra.filter((r) => r.kind === "run"));
+    const reports = members(extra.filter((r) => r.kind === "report"));
     const talks = members(extra.filter((r) => r.kind === "session"));
     const parts = [];
     if (runs) parts.push(`${countWord(runs)} finished run${runs === 1 ? "" : "s"} of this project`);
+    if (reports) parts.push(`${countWord(reports)} standalone report${reports === 1 ? "" : "s"}`);
     if (talks) parts.push(`${countWord(talks)} saved conversation${talks === 1 ? "" : "s"} from the tests`);
     // The verb follows the things; the imperative follows the NUMBERS, and where one number stands
     // for several directories the sentence says so rather than mixing the two.
-    const things = runs + talks, oneRow = extra.length === 1;
+    const things = runs + reports + talks, oneRow = extra.length === 1;
     out.push(...wrap(`${cap(parts.join(" and "))} ${things === 1 ? "is" : "are"} listed above`
       + `${oneRow && things > 1 ? " as one row" : ""}; say ${oneRow ? "its number" : "their numbers"} `
       + `to delete ${things === 1 ? "it" : "them"}.`, width, ""));
@@ -942,6 +1027,10 @@ function formA(inv) {
     : n === 0 ? "Nothing else in the temporary directory is outside this cleanup."
     : `${cap(countWord(n))} other temporary entr${n === 1 ? "y needs" : "ies need"} a separate review; `
       + "they are outside this cleanup.", width, ""));
+  const unknownState = Object.entries(inv.notCovered.state).filter(([, v]) => !v.covered).map(([k]) => k);
+  if (unknownState.length)
+    out.push(...wrap(`The state ${unknownState.join(" and ")} director${unknownState.length === 1 ? "y" : "ies"} `
+      + "could not be inspected, so artifacts there may also be outside this listing.", width, ""));
   return `${out.join("\n")}\n`;
 }
 
@@ -957,7 +1046,8 @@ const rowJson = (row) => ({
 
 const listJson = (inv, text) => ({
   version: VERSION,
-  roots: { state: inv.roots.state, tmp: inv.roots.tmp, config: inv.roots.config,
+  roots: { state: inv.roots.state, tmp: inv.roots.tmp, tmpSource: inv.roots.tmpSource,
+           config: inv.roots.config,
            project: inv.roots.project, projectName: inv.roots.projectName,
            projectSlug: inv.roots.projectSlug },
   text,
@@ -1048,6 +1138,10 @@ function stillFree(roots, m) {
   // seats before the run is judged — the same order the listing itself uses.
   const seats = listSeats(roots);
   for (const s of seats) if (!s.inUse && s.chainOk && jobHolds(jobs, s.path)) s.inUse = true;
+  if (m.kind === "report") {
+    const publication = reportPublication(m.path);
+    return publication.readable && publication.published && !seatHolds(seats, m.path);
+  }
   const live = runLiveness(m.path, seats);
   return !live.inUse && live.readable;
 }

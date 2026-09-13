@@ -17,9 +17,13 @@
 //   * Server-to-client requests are not all approvals. Attestation, ChatGPT token refresh and MCP
 //     elicitation share the same channel and take different responses.
 //
-// Escalation policy: an escalation request means the sandbox was sized wrong for the task, so it is
-// surfaced loudly rather than silently waved through or silently refused. Widen the sandbox with
-// --writable, or drop the --no-network the seat was given, instead of trying to approve your way out.
+// Escalation policy: every inbound approval request is DECLINED — granting one would step outside the
+// sandbox the caller chose, which is the caller's call and not this driver's — and each declined request
+// is recorded in `escalations`, whichever thread asked. An entry says that a request was made and
+// refused, and no more than that: a command the sandbox denied outright need not raise one, `detail` is
+// at most 200 characters and can be empty, and exit 6 sits below timeout and the other higher-priority
+// outcomes, so a cut run can carry entries and still report 3. It is not a finding that the rights were
+// sized wrong, and not evidence that work was lost.
 
 import { spawn, spawnSync } from "node:child_process";
 import crypto from "node:crypto";
@@ -36,7 +40,7 @@ const READ_PROFILE = "codex_delegate_read";
 const PINNED_CODEX = "0.153.4";
 // This plugin's version, printed by --help and carried as driverVersion, must agree with
 // every place evals/package.test.mjs compares.
-const VERSION = "0.14.0";
+const VERSION = "0.15.0";
 let codexVersion = null;   // what the server reported this run, parsed out of InitializeResponse.userAgent
 // The union of the model catalogue's supported_reasoning_levels and the server's accepted efforts.
 // `none` and `minimal` appear in the server's rejection list; `ultra` is absent there but completes live turns.
@@ -299,7 +303,8 @@ const HELP = [
     text: `  --level read       the default: read anything, write only $TMPDIR; no lock is
                      taken, so read seats run in parallel over one directory. An
                      unset $TMPDIR is not an error — see --help-all
-  --level write      workspace-write over --cwd; takes a per-directory lock
+  --level write      write under --cwd, each --writable root and $TMPDIR, and
+                     nothing else — /tmp is excluded; takes a per-directory lock
   --cwd DIR          where the turn runs. Required at --level write: the writable
                      root is a grant, and a defaulted grant is one nobody made
   --worktree REPO    create a detached worktree under REPO/.claude/worktrees, run
@@ -318,12 +323,13 @@ const HELP = [
                      allowlist — name the hosts in the prompt
   every write-level root — --cwd and --writable — refuses ~/.codex and
   <state>, which hold the receipts and this driver's own state`,
-    more: `  $TMPDIR IS the read-level grant. An explicit one is honoured and takes the
-  same protected-root guard every writable root takes; where the caller exported
-  none the driver makes a private 0700 one at <state>/tmp/<runId> and reports it
-  as tmpDir. It is exported for the turn AND the verifier, and it OUTLIVES the
-  run, because
-  --brief tells the seat to leave long output in a file there. It is pruned on
+    more: `  $TMPDIR is writable at BOTH levels: the whole grant at read level, beside
+  --cwd at write level; /tmp is not, at either. An explicit one is honoured and
+  takes the same protected-root guard every writable root takes; where the caller
+  exported none the driver makes a private 0700 one at <state>/tmp/<runId> and
+  reports it as tmpDir. It is exported for the turn AND the verifier, and it
+  OUTLIVES the run, because --brief tells the seat to leave long output in a file
+  there. It is pruned on
   the run-directory bounds (${LIMITS.PRUNE_DAYS} days or ${LIMITS.PRUNE_MAX_ENTRIES} directories, never one still running).
   A worktree turn that did not complete, or a harvest
   that failed, PRESERVES the tree and the report says why and how to remove it; a
@@ -469,7 +475,11 @@ const HELP = [
   effort came from a fresh probe of your config, a stale last-known-good, or
   nothing; commandsPipedToPager, commands whose output the seat cut with
   head/tail/less; fileChanges, one {path, kind, move} per completed write, where
-  filesTouched keeps only the path a rename ends at.
+  filesTouched keeps only the path a rename ends at; escalations, one entry per approval
+  request this driver declined, whichever thread asked (detail is the server's wording
+  clipped to 200 characters, empty where it sent none; a command the sandbox denied need
+  not raise one; exit 6 sits below timeout, so a cut run carries entries and exits 3);
+  interactions, the requests that needed a human and no sandbox change could answer.
   tokenUsage is the server's own accounting for the root thread,
   cumulative across --resume; cut is {kind, limit, observed, completedInGrace};
   timing is {wallMs, setupMs, commandMs, modelMs}, commandMs being the server's
@@ -520,15 +530,29 @@ ${stateSubdirHelp()}
   CODEX_DELEGATE_VERIFY_FLOOR_MS  how little of the --timeout budget is too
                                 little to start --verify in (default ${LIMITS.VERIFY_FLOOR_MS}).
                                 Also a test seam: the branch is otherwise
-                                reachable only by landing inside a ${LIMITS.VERIFY_FLOOR_MS} ms window` },
+                                reachable only by landing inside a ${LIMITS.VERIFY_FLOOR_MS} ms window
+  CODEX_DELEGATE_LOCK_SEAM_MS   a test seam: how long to pause between the
+                                lock's ownership check and the act it guards,
+                                touching <lock>.seam while it pauses. The lock
+                                suite sets it to put a peer's lock in a window a
+                                real peer reaches only by timing, and nothing
+                                else in this plugin sets it; setting it yourself
+                                slows this run's startup and teardown by that
+                                much and protects nothing` },
 
   { s: "Exit codes. Raised the moment they happen, before any turn could run:",
     text: `  2  bad arguments
   3  a stalled probe or stdin under a short --timeout, or a prompt that never
-     arrives on stdin within the silence budget; like a 2 it then prints no report
+     arrives on stdin within the silence budget; like a 2, it lands before a turn
   4  transport, and every sandbox / approval assertion
   10 another run holds the lock on this directory, or a resumed thread still
      has a turn open
+
+  A report has two delivery surfaces, stdout and --report-file. Before a turn
+  stdout carries no report; the file carries the refusal as {ok:false, exitCode,
+  turnStatus:null, error}. Where this run could not publish there — the path was
+  not absolute, its parent unusable, an entry was already there (a symlink
+  counts), or another run published first — stderr says so, and says why.
 
   Decided after the turn, first match wins, in this order:
 ${ladderHelp()}
@@ -536,7 +560,7 @@ ${ladderHelp()}
   and 4 once more at the very end, if the report could not reach stdout — a closed
   pipe, or a consumer that never drained it within what was left of --timeout (at
   least ${LIMITS.STDOUT_DRAIN_MIN_MS / 1000} s, and exactly ${LIMITS.STDOUT_DRAIN_MIN_MS / 1000} s where no wall clock was set). So 2 means either, and
-  the report tells them apart: an argument error prints none.
+  turnStatus tells them apart: null is the refusal that came before a turn.
   Codes decided after the turn can all carry executed work. 4 too, when the server
   died mid-turn: turnStatus is then failed, never null.` },
 ];
@@ -956,7 +980,7 @@ function publishReport(text) {
     // EEXIST here is a second run that named this path and published first, which the pre-spawn check
     // could not have seen. Its report stays; this one says where to find its own.
     const why = e.code === "EEXIST"
-      ? "a report is already there (another run named the same path); this run's report is on stdout only"
+      ? "a report is already there (another run named the same path); this run's report went to stdout alone, which before a turn carries nothing"
       : e.message;
     process.stderr.write(`codex-delegate: the report could not be published at ${reportFilePath}: ${why}\n`);
   } finally {
@@ -967,10 +991,18 @@ function publishReport(text) {
 // A refusal reached before there is a turn to report is still an answer to whoever is waiting on the
 // file. The same shape as a report, so one reader parses both, and no receipt, answer or turn status is
 // invented for a run that produced none.
+//
+// A managed worktree is disposed of HERE, before the report is written, rather than being left to the
+// exit handler that runs after it: the tree's disposition is decided either way, and a caller reading
+// only the report could not discover a PRESERVED one — the stderr line naming it was the only copy — so
+// it could neither harvest the tree nor remove it. Same rule, same names and types as the post-turn
+// report (`worktreePath`, and `worktreePreserved` as the reason or null), and decided once: whichever
+// of the two paths runs first sets `disposed`, and the other finds nothing to do.
 function preTurnReport(code, msg) {
   if (reportFilePath === null || reportFileWritten) return;
+  const wt = worktreeLastResort();
   publishReport(`${JSON.stringify({ ok: false, exitCode: code, threadId: rootThreadId,
-    turnStatus: null, answer: "", error: msg, reportPath: reportFilePath }, null, 2)}\n`);
+    turnStatus: null, answer: "", error: msg, reportPath: reportFilePath, ...(wt ?? {}) }, null, 2)}\n`);
 }
 
 // Resolved LAZILY, never at module scope: os.userInfo() THROWS for a uid with no passwd entry (a
@@ -1129,11 +1161,11 @@ function managedWebSearchModes() {
   return modes.length ? modes : undefined;   // an empty list permits nothing, which is not "unrestricted"
 }
 
-// A $TMPDIR of this run's own, made only when the caller exported none, 0700 so no other user can read
-// what the seat writes there. It lives under the driver's own state and OUTLIVES the run: --brief tells
-// the seat to leave long output in a file there, so a directory removed at exit takes with it every path
-// the answer names. PRUNE_DAYS and PRUNE_MAX_ENTRIES bound retention without removing a live run
-// and reap the directories a SIGKILL leaves behind.
+// A $TMPDIR of this run's own, made at EITHER level whenever the caller exported none, 0700 so no other
+// user can read what the seat writes there. It lives under the driver's own state and OUTLIVES the run:
+// --brief tells the seat to leave long output in a file there, so a directory removed at exit takes with
+// it every path the answer names. PRUNE_DAYS and PRUNE_MAX_ENTRIES bound retention without removing a
+// live run and reap the directories a SIGKILL leaves behind.
 let privateTmp = null;
 const TMP_OWNER = "owner.json";
 function privateTmpDir() {
@@ -1416,7 +1448,10 @@ function acquireLock(dir) {
   catch (e) { fail(EXIT.USAGE, `cannot create the lock directory ${LOCK_DIR}: ${e.message}`); }
   // The file name is a hash, so the contents have to say what it locks — for the message below and for a
   // human who finds a stale one.
-  const body = JSON.stringify({ pid: process.pid, identity: processIdentity(process.pid), cwd: dir,
+  // selfIdentity(), not a second processIdentity() call: what is written here is what lockIsOurs()
+  // compares the file against later, and two reads of `ps` are two answers that can differ — one of
+  // them a transient failure, which would leave this run unable to update or release its own lock.
+  const body = JSON.stringify({ pid: process.pid, identity: selfIdentity(), cwd: dir,
                                 started: new Date().toISOString() });
   // Publish a fully written private temp file with link(2), which fails EEXIST if a peer won.
   // Creating an empty lock before writing its body would expose it as abandoned and admit another writer.
@@ -1463,24 +1498,78 @@ function acquireLock(dir) {
   }
   fail(EXIT.BUSY, `${dir} is contended: the lock at ${p} changed hands ${LIMITS.LOCK_ATTEMPTS} times without settling`);
 }
+// A test seam and nothing else: pause between an ownership check and the act it guards, so a suite can
+// land a peer's lock in a window a real peer reaches only by timing. It announces itself by touching
+// <lock>.seam for as long as it sleeps, because a suite that merely slept alongside would be racing the
+// very window it is trying to enter. Nothing in this repository sets it outside the two cases that
+// measure those windows; unset it is zero, and neither the file nor the pause exists.
+function lockSeam(p) {
+  const ms = Number(process.env.CODEX_DELEGATE_LOCK_SEAM_MS);
+  if (!(ms > 0)) return;
+  const mark = `${p}.seam`;
+  try { fs.writeFileSync(mark, String(process.pid)); } catch {}
+  sleepSync(ms);
+  try { fs.rmSync(mark, { force: true }); } catch {}
+}
+// Is the body now at the lock path still OURS? The pid alone does not say so: a lock file outlives the
+// run that wrote it, and a recycled pid — or a peer in another pid namespace over one mounted state
+// directory, which acquireLock's temp naming already reasons about — carries this run's number without
+// being this run. So the start-time identity beside it is compared too, by the rule holderAlive uses,
+// and the three answers are:
+//   pid differs                        -> not ours, whatever the identities say;
+//   both identities present, differing -> not ours; this is the only positive proof of a stranger;
+//   either identity missing            -> OURS, on the pid alone.
+// That last line is deliberate and it is the only one that can be wrong in our favour. It is what a body
+// written by an older driver, one whose `ps` failed at acquisition, and one read by a run whose own `ps`
+// fails at exit all look like — and a rule that refused there would leave those runs unable to update or
+// release the lock they hold, wedging the directory until the next run reclaims it as stale. A missing
+// identity proves nothing in either direction, so it may not be read as proof of a stranger.
+function lockIsOurs(held) {
+  if (Number(held?.pid) !== process.pid) return false;
+  const mine = selfIdentity();
+  return !(typeof held?.identity === "string" && typeof mine === "string" && held.identity !== mine);
+}
 // The lock body gains what could not be known when it was taken: the app-server's process group exists
 // only after the spawn. Replaced by rename, so a reader sees one whole body or the other; only ever our
 // own lock, and never fatal — a lock that cannot be updated is still a lock.
+//
+// Both acts below address the PATH while the check addresses the body that was READ, so between the two
+// a peer that reclaimed this lock and put its own there loses it — to a rename it never saw, or to an
+// unlink by a run that owns nothing any more. POSIX has no conditional rename and no conditional
+// unlink, so the window is NARROWED and never closed: asking again immediately before acting, and never
+// acting on a body read earlier, leaves the gap between that last check and the one syscall that acts,
+// and a peer whose lock lands in THAT gap is still clobbered or deleted.
 function updateLock(fields) {
   if (!lockPath) return;
   try {
     const cur = readJson(lockPath);
-    if (cur?.pid !== process.pid) return;
+    if (!lockIsOurs(cur)) return;
     const tmp = `${lockPath}.${crypto.randomBytes(8).toString("hex")}.tmp`;
     try {
+      // The body is built first so the re-read is the LAST thing before the rename, not the second to
+      // last: a writeFileSync between them is a window of its own.
       fs.writeFileSync(tmp, JSON.stringify({ ...cur, ...fields }));
+      lockSeam(lockPath);
+      // A body that cannot be read here reads as not-ours and the update is dropped, which is the right
+      // way to be wrong: what is left behind is our own lock WITHOUT appServerPgid, so a later reclaimer
+      // asks only about this driver's pid and not about the codex group it started — a lock held too
+      // long, never a peer's lock destroyed.
+      if (!lockIsOurs(readJson(lockPath))) return;
       fs.renameSync(tmp, lockPath);
     } finally { fs.rmSync(tmp, { force: true }); }
   } catch {}
 }
 function releaseLock() {
   if (!lockPath) return;
-  try { if (readJson(lockPath)?.pid === process.pid) fs.rmSync(lockPath, { force: true }); } catch {}
+  try {
+    if (lockIsOurs(readJson(lockPath))) {
+      lockSeam(lockPath);
+      // Same rule, same direction: a read that fails leaves the file where it is, and the directory is
+      // then held by a lock whose run has exited — which the next run reclaims as stale once it finds
+      // this pid and its app-server group gone, without anyone's help.
+      if (lockIsOurs(readJson(lockPath))) fs.rmSync(lockPath, { force: true });
+    }
+  } catch {}
   lockPath = null;
 }
 
@@ -1502,12 +1591,23 @@ function git(dir, args, extra = {}) {
   return spawnSync("git", [...GIT_SAFE, "-C", dir, ...args],
     { encoding: "utf8", timeout: LIMITS.SPAWN_TIMEOUT_MS, killSignal: "SIGKILL", ...extra });
 }
+// The head of what git said about a command that did not work, for a report a human reads: one line,
+// bounded, and never empty — a git the bound above killed, or one that never started, has no stderr at
+// all and only its signal or its code to give.
+const gitSaid = (r) => (String(r.stderr ?? "").trim().split("\n")[0] || r.error?.message
+  || (r.status === null ? `killed by ${r.signal}` : `exit ${r.status}`)).slice(0, 160);
 
 // ---------------------------------------------------------------- worktree
 // Run in a uniquely named detached worktree, then harvest a completed turn's work before removing it;
 // incomplete turns and failed harvests preserve the tree.
 // Write the ledger before creation so a crashed run leaves a trace reconciliation can find.
 let worktreeInfo = null;
+// What a report should say about a managed tree, recorded by whichever path disposed of it before a
+// turn existed. disposeWorktree() has a richer answer of its own and writes the post-turn report
+// directly, so it does not set this; the paths that end early — a failed `worktree add`, a rebuild that
+// cannot finish, a crash — have only the pre-turn report, and a caller reading it must still learn
+// whether the tree it was promised is gone or still on disk.
+let worktreeDisposition = null;
 const answersDir = () => path.join(stateDir(), "answers");
 
 // One JSON record per run, keyed by threadId, under the state directory's jobs/ — the registry that lets a
@@ -1713,13 +1813,23 @@ function createWorktree(repo, prior = null) {
   if (ledger === null)
     fail(EXIT.USAGE, `the worktree ledger under ${ledgerDir()} could not be written, so a tree created now could not be named ` +
       `after a crash and would be orphaned; fix that directory, or run with --level write --cwd on a tree you manage yourself`);
+  // Assigned BEFORE the add rather than after it: `git worktree add` can fail with the destination
+  // already created, and a run that ends there must still be able to NAME the tree — the report is the
+  // only surface a coordinator reads, and a directory nothing names is one nobody goes looking for. The
+  // assignment is undone below on a failure that created nothing, so no report names a path that is not
+  // there. baseSha is filled in once the tree exists; nothing reads it before that.
+  worktreeInfo = { repo, dir, ledger, baseSha: null, name, restored: null, disposed: false };
   // --resume rebuilds the tree its thread ran in, so it starts where that tree started, not at today's
   // HEAD; a fresh seat starts at HEAD.
   const at = prior?.baseSha ? [prior.baseSha] : [];
   const add = git(repo, ["worktree", "add", "--detach", dir, ...at]);
   if (add.status !== 0) {
-    // Only when nothing was created: an add that died mid-checkout leaves the tree this entry exists to name.
-    if (ledger && !fs.existsSync(dir)) { try { fs.rmSync(ledger, { force: true }); } catch {} }
+    // Only when nothing was created: an add that died mid-checkout leaves the tree this entry exists to
+    // name, and the disposition rule below is what decides what happens to it.
+    if (!fs.existsSync(dir)) {
+      if (ledger) { try { fs.rmSync(ledger, { force: true }); } catch {} }
+      worktreeInfo = null;
+    }
     fail(EXIT.USAGE, `git worktree add failed: ${String(add.stderr).trim().slice(0, 200)}`);
   }
   // The commit the tree started at. The harvest diffs against THIS, not against HEAD: a seat that
@@ -1728,9 +1838,9 @@ function createWorktree(repo, prior = null) {
   // no way to ask what the base was.
   const base = git(dir, ["rev-parse", "HEAD"]);
   const baseSha = base.status === 0 ? base.stdout.trim() : null;
-  worktreeInfo = { repo, dir, ledger, baseSha, name, restored: null, disposed: false };
-  // Assigned above first, so the refusal below still disposes of the tree it is refusing over. Without a
-  // base every later question about this tree is unanswerable: the harvest cannot diff against it, and
+  worktreeInfo.baseSha = baseSha;
+  // worktreeInfo exists already, so the refusal below still disposes of the tree it is refusing over.
+  // Without a base every later question about this tree is unanswerable: the harvest cannot diff against it, and
   // "did the seat commit?" reads as no — so the seat's own commits would be dropped silently. Refused
   // here, before a single token is spent.
   if (!baseSha)
@@ -1754,9 +1864,16 @@ function restorePriorWork(dir, prior) {
   // Every refusal below leaves a tree that reproduces nothing the answer log does not still hold, and
   // keeping it would have every later reconciler announce it as work someone must harvest.
   const abandon = () => {
-    git(worktreeInfo.repo, ["worktree", "remove", "--force", dir]);
-    if (worktreeInfo.ledger) { try { fs.rmSync(worktreeInfo.ledger, { force: true }); } catch {} }
+    const rm = git(worktreeInfo.repo, ["worktree", "remove", "--force", dir]);
+    // The ledger goes only with the tree: a removal git refused leaves a directory on disk, and dropping
+    // its entry would leave the one thing that still names it to the report alone.
+    if (rm.status === 0 && worktreeInfo.ledger) { try { fs.rmSync(worktreeInfo.ledger, { force: true }); } catch {} }
     worktreeInfo.disposed = true;
+    // Recorded here because the flag above has just disabled worktreeLastResort: every refusal below is a
+    // pre-turn one, and its report is where a caller learns that the tree it was promised is gone.
+    worktreeDisposition = { worktreePath: dir,
+      worktreePreserved: rm.status === 0 ? null
+        : `--resume could not rebuild this tree and git worktree remove refused: ${String(rm.stderr).trim().slice(0, 160)}` };
   };
   const gone = (what, p) => (abandon(), fail(EXIT.USAGE, `--resume: the ${what} of that thread is no longer at ${p} ` +
     `(the answer log is pruned after ${LIMITS.PRUNE_DAYS} days), so its tree cannot be rebuilt; resume it with --level write --cwd on a tree you restore yourself`));
@@ -1916,23 +2033,55 @@ function disposeWorktree(turnDone) {
 // The synchronous last resort, for runs that end without reaching finish() — a usage error after the
 // tree was created, a Bail, a crash. A tree whose turn never started cannot hold work and is removed;
 // anything else is preserved out loud.
+//
+// Returns what a report should say about it, in the post-turn report's own names and types, so the
+// pre-turn report can carry the disposition instead of leaving it to stderr; null when there is no
+// managed tree, and the recorded disposition when the decision was already made. Idempotent through
+// `disposed`: the pre-turn report calls it before publishing and the exit handler calls it for every
+// path that never reached one, and a tree is neither removed twice nor announced twice.
 function worktreeLastResort() {
-  if (!worktreeInfo || worktreeInfo.disposed) return;
+  // A decision already made is answered from the record rather than made again — restorePriorWork
+  // disposes of its own tree and writes one — so the pre-turn report says the same thing whichever
+  // path got there first.
+  if (!worktreeInfo || worktreeInfo.disposed) return worktreeDisposition;
   worktreeInfo.disposed = true;
   const { repo, dir, ledger } = worktreeInfo;
   let removed = false;
+  // WHY a tree with no codex in it was kept: three different results decide it — git could not read the
+  // status, the status reported work, or the removal was refused — and they send a reader to three
+  // different places. One sentence naming all of them at once sent whoever read it looking for work in
+  // a tree git had not even managed to look at.
+  let kept = null;
   if (!child) {
     const st = git(dir, ["status", "--porcelain"]);
-    if (st.status === 0 && st.stdout.trim() === "")
-      removed = git(repo, ["worktree", "remove", dir]).status === 0;
+    const work = String(st.stdout ?? "").split("\n").filter((l) => l.trim() !== "");
+    if (st.status !== 0) kept = `git could not read its status (${gitSaid(st)})`;
+    else if (work.length)
+      kept = `git found work in it (${work.length} path${work.length === 1 ? "" : "s"}, the first ${work[0].trim().slice(0, 120)})`;
+    else {
+      const rm = git(repo, ["worktree", "remove", dir]);
+      removed = rm.status === 0;
+      if (!removed) kept = `git refused to remove it (${gitSaid(rm)})`;
+    }
   }
   if (removed) { if (ledger) { try { fs.rmSync(ledger, { force: true }); } catch {} } }
   else process.stderr.write(`codex-delegate: worktree PRESERVED at ${dir} (run ended before disposition); ` +
     `harvest it, then: git -C ${repo} worktree remove --force ${dir}\n`);
+  // The EXISTENCE of a child is what forbids removal — a codex that started may have written, and
+  // nothing here can prove it did not. Its LIVENESS only picks the wording: a report that says a process
+  // is running when it has already exited sends its reader looking for something to wait for.
+  const exited = child && (child.exitCode !== null || child.signalCode !== null)
+    ? (child.signalCode ? `signal ${child.signalCode}` : `code ${child.exitCode}`) : null;
+  return (worktreeDisposition = { worktreePath: dir,
+    worktreePreserved: removed ? null
+      : !child ? `the run ended before disposition and the tree was not removed: ${kept}; harvest it, then remove it`
+        : exited ? `the run ended before disposition; a codex was started in the tree and has exited (${exited}), so the tree may hold what it wrote; harvest it, then remove it`
+          : "the run ended before disposition with a codex still running in the tree; harvest it, then remove it" });
 }
 
-// The read level's whole safety argument is "$TMPDIR is writable and nothing else is", so that is what
-// gets checked — the EFFECT the server reports, not the NAME of the profile meant to produce it. A
+// The read level's whole safety argument is "$TMPDIR is writable and nothing else is" — /tmp included,
+// which is a field of its own rather than an entry in the root list — so that is what gets checked: the
+// EFFECT the server reports, not the NAME of the profile meant to produce it. A
 // misspelt field inside permissions.<id> makes the grant vanish (sandbox flips to readOnly,
 // writableRoots disappears) while activePermissionProfile still reads back the correct id, and
 // --strict-config does not catch it either.
@@ -1979,6 +2128,14 @@ function assertWriteSandbox(thread) {
   const sb = thread.sandbox ?? null;
   if (sb?.type !== "workspaceWrite") refuse(`sandbox type is ${JSON.stringify(sb?.type ?? null)}`);
   assertEgress(sb, refuse);
+  // The two implicit temp grants, which setup() sends as -c keys and which writableRoots never shows.
+  // A NARROWER sandbox is refused as loudly as a wider one, exactly as the egress check above refuses
+  // both directions: a seat whose $TMPDIR is unwritable cannot run a heredoc or a test runner, and
+  // would report those failures as findings about the task.
+  if (sb.excludeSlashTmp !== true)
+    refuse("excludeSlashTmp is false: /tmp is writable, and this seat was granted --cwd, --writable and $TMPDIR only");
+  if (sb.excludeTmpdirEnvVar !== false)
+    refuse("excludeTmpdirEnvVar is true: $TMPDIR is not writable, and heredocs and test runners need it");
   const want = [...roots].map(canonPath).sort();
   const got = (sb.writableRoots ?? []).map(canonPath).sort();
   if (want.length !== got.length || want.some((r, i) => r !== got[i]))
@@ -1998,6 +2155,13 @@ function assertReadSandbox(thread) {
   // the id still reads back correctly — the same silent failure the $TMPDIR grant has. The server says
   // which way it went right here, in the object this guard already holds.
   assertEgress(sb, refuse);
+  // /tmp is the one grant the explicit root list cannot reveal: with $TMPDIR outside /tmp, a response
+  // whose writableRoots hold exactly $TMPDIR still carries all of /tmp when this flag is false.
+  // excludeTmpdirEnvVar is deliberately NOT asserted here: false names the same directory the explicit
+  // root already names, and true is what the profile reports with TMPDIR unset — which the refusal
+  // below catches first, and by its own cause.
+  if (sb.excludeSlashTmp !== true)
+    refuse("excludeSlashTmp is false, so /tmp is writable beside the $TMPDIR this level grants");
   // Check that setup() supplied TMPDIR before resolving it: path.resolve("") would substitute the cwd
   // and misidentify the expected writable root.
   const tmp = process.env.TMPDIR;
@@ -2082,7 +2246,8 @@ async function setup() {
   //         and /tmp all stay unwritable; the temp dir is what tools need to start at all. Without it a
   //         reader cannot run the test suite, which Claude's own read-only subagent can — that gap is the
   //         whole reason the profile is here rather than a plain sandbox: "read-only".
-  // write : workspace-write with cwd as the writable root, plus --writable.
+  // write : workspace-write with cwd as the writable root, plus --writable and $TMPDIR; /tmp is
+  //         excluded.
   //
   // The level says what may be WRITTEN, and egress crosses it: both levels reach the network unless the
   // caller denied it, which is what Claude's own subagents do. A reader that must ask for it is a rule
@@ -2108,18 +2273,23 @@ async function setup() {
   // After the cwd exists, because "last" means the last seat HERE.
   if (opts.resume === "last") { opts.resume = resolveResumeLast(cwd); refuseLiveResume(opts.resume); }
 
-  // $TMPDIR IS the read level's whole grant; a private directory of the run's own is narrower than /tmp.
+  // $TMPDIR is a grant at BOTH levels — the whole of it at read level, beside --cwd at write level — and
+  // a private directory of the run's own is narrower than /tmp. Made whenever the caller exported none,
+  // at either level: /tmp is excluded from the write sandbox too, and where no TMPDIR is exported
+  // os.tmpdir() and zsh's TMPPREFIX both fall back to /tmp — so a write seat without this would have no
+  // temp root at all, and every heredoc, mkdtemp and test runner would die.
   // Set on process.env because the codex spawn and `codex sandbox :tmpdir` read it.
-  const ownTmp = !process.env.TMPDIR && (opts.level === "read" || opts.verifySandboxed);
+  const ownTmp = !process.env.TMPDIR;
   if (ownTmp) process.env.TMPDIR = privateTmpDir();
-  // $TMPDIR IS the read level's writable root, so a CALLER's takes the same checkRoot guard every other
-  // writable root takes: without it `TMPDIR=~/.codex/x --level read` grants write access inside the
-  // directory holding the rollout receipts, from the level whose promise is that it writes nothing of
-  // yours. Here rather than in assertReadSandbox: a protected TMPDIR is knowable before anything is
+  // $TMPDIR is a writable root at BOTH levels, so a CALLER's takes the same checkRoot guard every other
+  // writable root takes: without it `TMPDIR=~/.codex/x` grants write access inside the directory holding
+  // the rollout receipts — at read level, whose promise is that it writes nothing of yours, and at write
+  // level, where exclude_tmpdir_env_var=false makes that directory an acknowledged part of the grant.
+  // Here rather than in the sandbox assertions: a protected TMPDIR is knowable before anything is
   // spawned, so it costs a usage error rather than a thread and exit 4.
   // The driver's OWN <state>/tmp/<runId> is exempt: it is one leaf directory of this run's own, which
   // grants nothing beside it, and checkRoot refuses everything inside the state directory by design.
-  if (opts.level === "read" && process.env.TMPDIR && !ownTmp) {
+  if (process.env.TMPDIR && !ownTmp) {
     const t = canonPath(process.env.TMPDIR);
     if (t) checkRoot(t);
   }
@@ -2170,7 +2340,16 @@ async function setup() {
     // the sandbox must depend only on the declared flags, which assertWriteSandbox checks against the response.
     ...(opts.level === "write" ? [
       ["sandbox_workspace_write.network_access", String(opts.network)],
-      ["sandbox_workspace_write.writable_roots", `[${roots.map((r) => JSON.stringify(r)).join(",")}]`]
+      ["sandbox_workspace_write.writable_roots", `[${roots.map((r) => JSON.stringify(r)).join(",")}]`],
+      // The two implicit temp grants a workspace-write sandbox carries unless it is told otherwise.
+      // Measured on 0.153.4: with neither key sent, thread/start answers writableRoots [],
+      // excludeSlashTmp false and excludeTmpdirEnvVar false — so a seat given one --cwd could also
+      // write all of /tmp, which no caller named. /tmp is excluded; $TMPDIR is kept, because heredocs,
+      // mkdtemp and every test runner need a temp root and $TMPDIR is the one the caller (or the
+      // private directory above) chose. Sent unconditionally, like the two keys above, and
+      // assertWriteSandbox refuses a response that differs either way.
+      ["sandbox_workspace_write.exclude_slash_tmp", "true"],
+      ["sandbox_workspace_write.exclude_tmpdir_env_var", "false"]
     ] : [])
   ];
   spawnArgs = ["--strict-config", ...config.flatMap(([k, v]) => ["-c", `${k}=${v}`]), "app-server"];
@@ -2428,7 +2607,7 @@ let rootThreadId = null, rootTurnId = null;
 const commands = [];        // root-thread commandExecution items only
 const messages = [];        // root-thread agentMessage items only
 const fileChanges = [];     // root-thread fileChange items: what the turn actually wrote
-const escalations = [];     // refused permission requests — the sandbox was sized too small
+const escalations = [];     // approval requests this driver declined, the root thread's and its subagents'
 const interactions = [];    // requests that needed a human: no sandbox change can answer them
 const reasoningSummaries = [];  // root-thread reasoning item summaries — the inspectable thinking a Claude subagent's transcript has
 const otherItemCounts = {}; // root-thread item types the evidence gates ignore (mcpToolCall, webSearch, plan, …), counted so the report does not silently drop them
@@ -2545,12 +2724,15 @@ function handleServerRequest(msg) {
   const refusal = REFUSALS[msg.method];
   if (refusal) {
     // Granting here would let Codex step outside the sandbox the caller chose — that is the caller's
-    // call, not this driver's. Always refuse; count it against OUR sandbox unless the request proves it
+    // call, not this driver's. Always refuse; record it against THIS run unless the request proves it
     // belongs to another thread, so a request carrying no ids at all still fails closed.
     // Recorded whichever thread asked. The root-only filter elsewhere exists so a CHILD's command cannot
-    // satisfy the gate — that is evidence of success, and evidence of success must be strict. An
-    // escalation is evidence of FAILURE, and that must be inclusive: the refusal below is sent
+    // satisfy the gate — that is evidence of success, and evidence of success must be strict. A declined
+    // request is evidence of FAILURE, and that must be inclusive: the refusal below is sent
     // unconditionally, so a subagent really was blocked, and reporting a clean run would hide it.
+    // `detail` is the server's own wording for whichever of the three fields it sent, clipped to 200
+    // characters, and "" where it sent none of them — so an entry can name no command at all, and its
+    // absence is not evidence that nothing was attempted.
     const detail = String(msg.params?.command ?? msg.params?.reason ?? msg.params?.message ?? "").slice(0, 200);
     escalations.push({ method: msg.method, detail, thread: owner, subagent: foreign });
     send(refusal);
@@ -3397,8 +3579,9 @@ function writeReport(ev, verifySkipped, codeOverride) {
     // assertWriteSandbox refuses any difference. `network` is the effective grant, not a flag someone
     // passed: it is on unless the seat denied it, and sandbox.networkAccess is asserted to agree.
     writableRootsRequested: roots, network: opts.network,
-    // The run's own $TMPDIR when the driver made one, so a path the answer names can still be opened
-    // after the run; null when the caller exported a TMPDIR of his own.
+    // The run's own $TMPDIR when the driver made one — at either level, whenever the caller exported
+    // none — so a path the answer names can still be opened after the run; null when the caller
+    // exported a TMPDIR of his own.
     tmpDir,
     // Report which thread was continued after resolving "last", so the caller can identify the conversation.
     resumedFrom: opts.resume ?? null,

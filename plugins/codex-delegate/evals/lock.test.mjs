@@ -14,8 +14,8 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { DRIVER, EXIT, FAKE, codexShim, lockKey, registry, runCases, skip, spawnNode, summarize,
-         tempDir } from "./lib/harness.mjs";
+import { DRIVER, EXIT, FAKE, codexShim, lockKey, readJson, registry, runCases, skip, spawnNode,
+         summarize, tempDir } from "./lib/harness.mjs";
 
 // Use a private state directory so planted locks, inherited config and pruning cannot affect real
 // delegations. The moving-HOME case still detects a driver that ignores this override.
@@ -109,29 +109,138 @@ test("lock is released when the run ends",
     return true;
   });
 
+// One poll for every case that has to act while a run is live — the lock appearing, the driver's own
+// update landing in the body, the seam opening a window. False on the deadline, so the caller says what
+// it was waiting for instead of hanging the suite.
+async function waitUntil(fn, ms = 8000) {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    if (fn()) return true;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  return false;
+}
+// The file lockSeam() touches for as long as it pauses; its existence IS the window being open.
+const seamMark = (p) => `${p}.seam`;
+// Replace, rather than overwrite, the driver's lock: the pathname now belongs to a peer.
+function plantPeer(p, dir, body) {
+  const peer = JSON.stringify({ cwd: fs.realpathSync(dir), started: "peer", ...body });
+  fs.rmSync(p, { force: true });
+  fs.writeFileSync(p, peer);
+  return peer;
+}
+// What the peer's lock looks like after the run that no longer owns it has exited.
+function peerVerdict(p, peer) {
+  let after = null;
+  try { after = fs.readFileSync(p, "utf8"); } catch {}
+  fs.rmSync(p, { force: true });
+  if (after === peer) return true;
+  return after === null ? "the peer's lock was REMOVED by a run that no longer owned the path"
+    : `the peer's lock was OVERWRITTEN by a run that no longer owned the path: ${after.slice(0, 160)}`;
+}
+
 test("a run releases only the lock it owns",
   "a peer can replace the lock after this run loses ownership; unconditional cleanup then deletes the peer's live lock and admits a second writer",
   async () => {
     const d = freshDir("release-owner");
     const p = lockFor(d);
     const pending = run(d, { scenario: "slow-turn" });
-    const deadline = Date.now() + 5000;
-    while (!fs.existsSync(p) && Date.now() < deadline)
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    if (!fs.existsSync(p)) {
+    // Not the moment the lock APPEARS. The driver's own updateLock lands just after the app-server
+    // spawn, so a swap timed to acquisition can land in THAT window instead of the release's, and this
+    // case then reports a defect it was not built to measure — which is what it did once in about twelve
+    // runs on 2026-09-12. `appServerPgid` in the body is that update having happened; from here on what
+    // is measured is releaseLock's ownership check alone.
+    if (!await waitUntil(() => readJson(p)?.appServerPgid)) {
       const { code, err } = await pending;
-      return "the run never acquired " + p + " (exit " + code + ": " + err.trim().slice(0, 120) + ")";
+      return "the run never recorded its app-server group in " + p + " (exit " + code + ": " + err.trim().slice(0, 120) + ")";
     }
-    // Replace, rather than overwrite, the driver's lock: the pathname now belongs to a peer.
-    fs.rmSync(p);
-    const peer = JSON.stringify({ pid: process.pid, cwd: fs.realpathSync(d), started: "peer" });
-    fs.writeFileSync(p, peer);
+    const peer = plantPeer(p, d, { pid: process.pid });
     const { code, err } = await pending;
-    let after = null;
-    try { after = fs.readFileSync(p, "utf8"); } catch {}
-    fs.rmSync(p, { force: true });
+    const verdict = peerVerdict(p, peer);
     if (code !== EXIT.OK) return "the original run exited " + code + ": " + err.trim().slice(0, 120);
-    return after === peer ? true : "releaseLock removed or changed the peer's replacement lock";
+    return verdict;
+  });
+
+test("a lock naming this run's own pid, written by something else, is not released",
+  "a pid is not an identity: a lock file outlives the run that wrote it, and a peer in another pid namespace over a shared state directory — or a recycled pid — writes a body carrying this run's number. Acquisition already asks for the start-time identity beside the pid before honouring or reclaiming a lock; a release that asks only for the number deletes that peer's live lock",
+  async () => {
+    const d = freshDir("release-identity");
+    const p = lockFor(d);
+    const pending = run(d, { scenario: "slow-turn" });
+    if (!await waitUntil(() => readJson(p)?.appServerPgid)) {
+      const { code, err } = await pending;
+      return "the run never recorded its app-server group in " + p + " (exit " + code + ": " + err.trim().slice(0, 120) + ")";
+    }
+    const mine = readJson(p);
+    if (typeof mine.identity !== "string") {
+      await pending;
+      return skip("this machine records no process identity in the lock body, so there is no second identity to check");
+    }
+    // This run's pid, with an identity that is NOT the one it recorded: exactly what a lock written by
+    // another process carrying that number looks like from here.
+    const peer = plantPeer(p, d, { pid: mine.pid, identity: "lstart:Thu Jan  1 00:00:00 1970" });
+    const { code, err } = await pending;
+    const verdict = peerVerdict(p, peer);
+    if (code !== EXIT.OK) return "the original run exited " + code + ": " + err.trim().slice(0, 120);
+    return verdict === true ? true : verdict + " — the pid matched and the identity did not";
+  });
+
+test("a lock naming this run's pid with NO identity in it is still released",
+  "the other side of the same rule, and the one that can only be wrong in our favour: a body carrying no identity is what an older driver wrote, and what a driver whose `ps` failed at acquisition wrote. A release that demanded the second identity would leave every one of those runs unable to release the lock it holds, wedging its directory until the next run reclaims it as stale — so a missing identity decides on the pid alone",
+  async () => {
+    const d = freshDir("release-no-identity");
+    const p = lockFor(d);
+    const pending = run(d, { scenario: "slow-turn" });
+    if (!await waitUntil(() => readJson(p)?.appServerPgid)) {
+      const { code, err } = await pending;
+      return "the run never recorded its app-server group in " + p + " (exit " + code + ": " + err.trim().slice(0, 120) + ")";
+    }
+    const mine = readJson(p);
+    // The run's own pid and nothing else: plantPeer's body has no identity field at all.
+    plantPeer(p, d, { pid: mine.pid });
+    const { code, err } = await pending;
+    const left = fs.existsSync(p);
+    fs.rmSync(p, { force: true });
+    if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 120);
+    return left ? "a lock carrying this run's own pid and no identity outlived the run that owned it" : true;
+  });
+
+test("a peer that replaces the lock inside the UPDATE's window keeps it",
+  "updateLock reads the body, writes a temp file and renames it over the PATH, not over the file it read. A peer that replaced that path in between loses its lock to a rename it never saw, and the directory ends up with a lock naming a run that has stopped guarding it. CODEX_DELEGATE_LOCK_SEAM_MS holds the window open so the collision is landed rather than waited for",
+  async () => {
+    const d = freshDir("update-window");
+    const p = lockFor(d);
+    const pending = run(d, { scenario: "slow-turn", env: { CODEX_DELEGATE_LOCK_SEAM_MS: "1500" } });
+    if (!await waitUntil(() => fs.existsSync(seamMark(p)), 20000)) {
+      const { code, err } = await pending;
+      return "the update's window never opened (exit " + code + ": " + err.trim().slice(0, 160) + ")";
+    }
+    const peer = plantPeer(p, d, { pid: process.pid });
+    const { code, err } = await pending;
+    const verdict = peerVerdict(p, peer);
+    if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 160);
+    return verdict;
+  });
+
+test("a peer that replaces the lock inside the RELEASE's window keeps it",
+  "releaseLock reads the body and then unlinks the PATH. A peer that replaced that path in between has its live lock deleted by a run that owns nothing any more, and the next run walks into a directory that peer is writing. Same seam, the second window it opens",
+  async () => {
+    const d = freshDir("release-window");
+    const p = lockFor(d);
+    const pending = run(d, { scenario: "slow-turn", env: { CODEX_DELEGATE_LOCK_SEAM_MS: "1500" } });
+    // The update's window comes first and belongs to the case above: wait it out, then take the next one.
+    const reached = await waitUntil(() => fs.existsSync(seamMark(p)), 20000)
+      && await waitUntil(() => !fs.existsSync(seamMark(p)), 20000)
+      && await waitUntil(() => fs.existsSync(seamMark(p)), 20000);
+    if (!reached) {
+      const { code, err } = await pending;
+      return "the release's window never opened (exit " + code + ": " + err.trim().slice(0, 160) + ")";
+    }
+    const peer = plantPeer(p, d, { pid: process.pid });
+    const { code, err } = await pending;
+    const verdict = peerVerdict(p, peer);
+    if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 160);
+    return verdict;
   });
 
 test("a second run in the same directory is refused",

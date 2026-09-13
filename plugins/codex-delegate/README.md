@@ -26,20 +26,25 @@ verbose step onto Claude and Codex seats; it is prompt only, adds no flag or fie
 this skill ([skills/orchestrate/SKILL.md](skills/orchestrate/SKILL.md)).
 
 A third, `/codex-delegate:cleanup`, is the cleanup: it lists what the plugin has left on this machine and
-removes only what you pick by number ([skills/cleanup/SKILL.md](skills/cleanup/SKILL.md)). It removes four
-kinds — this project's orchestrate run directories and seat scratch, the test suites' scratch
-directories and the saved conversations they leave behind — and only ever reports the other four:
-managed worktrees and their ledger, write locks, the shared Codex home, and the data of another copy of
-the plugin, which is yours to remove with the shell-quoted command the listing hands you. It suggests
-nothing that is running or that it could not fully read, never another project's, never a run or a saved
-conversation without your number, and never on age. It runs no git. "Running" means what this plugin
-records — a seat's startup line, a run's unreported seat, a job record, a live test suite — so a process
-holding one of these open with none of that behind it is not something it can see.
+removes only what you pick by number ([skills/cleanup/SKILL.md](skills/cleanup/SKILL.md)). It
+removes five kinds — this project's orchestrate run directories and seat scratch, standalone report
+runs, the test suites' scratch directories and the saved conversations they leave behind. Five more
+it only ever reports: the driver's saved answers, managed worktrees and their ledger, write locks,
+the shared Codex home, and another copy of the plugin's data, which is yours to remove with the
+shell-quoted command the listing hands you. A report is never suggested: once the seat has written
+it you can delete it by number, and until then it is kept. It suggests nothing that is running or
+that it could not fully read, never another project's, never a run or a saved conversation without
+your number, and never on age. It runs no git. "Running" means what this plugin records — a seat's
+startup line, a run's unreported seat, a job record, a live test suite — so a process holding one of
+these open with none of that behind it is not something it can see. With `TMPDIR` unset or empty,
+the listing scans Node's fallback temporary directory and says that seat scratch elsewhere may not
+have been seen.
 
 ## Prerequisites
 
-- **`codex` CLI, installed and authenticated.** `codex` must be on `PATH` and signed in — check with
-  `codex login status`. Runs reuse your credentials: `auth.json` is symlinked from your real `~/.codex`.
+- **`codex` CLI, installed and authenticated.** `codex` must be on `PATH`, and the `~/.codex` in your
+  home directory must be signed in — a seat borrows that sign-in whatever `CODEX_HOME` says. Check it
+  with `CODEX_HOME=~/.codex codex login status`.
 - **The codex-cli build the driver pins.** Every report names it as `codexVersionPinned`, and the
   `schema-<version>/` directory at the repository root is that build's protocol reference. After
   upgrading codex, run the fidelity suite (below) before trusting a run.
@@ -47,13 +52,14 @@ holding one of these open with none of that behind it is not something it can se
   release, Linux and macOS. No dependencies: the driver is one file importing only `node:` builtins.
 - **macOS and Linux are both measured.** CI runs every suite that needs no `codex` binary on both;
   the macOS-only call (the managed-preferences plist) is guarded. A stock Linux shell leaves `TMPDIR`
-  unset, and at `--level read` it *is* the grant: the driver then makes a private one and names it in
-  the report as `tmpDir` ([Environment](skills/seat/references/environment-and-internals.md#environment)).
-  Export your own to put the seat's scratch files elsewhere.
-- **Your `~/.codex/config.toml` is the default policy.** Model, reasoning effort and the other keys
-  the driver inherits ([the isolated home](skills/seat/references/environment-and-internals.md#the-isolated-home))
-  come from it unless overridden per call (`--model`, `--effort`); the driver deliberately sets no
-  defaults of its own.
+  unset: at either level the driver then makes a private one and names it in the report as `tmpDir`
+  ([Environment](skills/seat/references/environment-and-internals.md#environment)). At read level it is
+  the only place a seat may write; at write level it sits beside the directories you chose. Export your own to put
+  the seat's scratch files elsewhere.
+- **Your `~/.codex/config.toml` is the default policy** — or the one in the home `CODEX_HOME` names.
+  Model, reasoning effort and the other keys the driver inherits come from it unless a call overrides
+  them (`--model`, `--effort`); the driver sets no defaults of its own
+  ([the isolated home](skills/seat/references/environment-and-internals.md#the-isolated-home)).
 
 ## Install
 
@@ -82,7 +88,7 @@ symlink is only needed for the orchestrator mode):
 
 ```bash
 git clone https://github.com/Nowely/agent-skills.git
-cd codex-delegate
+cd agent-skills/plugins/codex-delegate
 mkdir -p ~/.claude/skills                           # absent on a machine that has never run Claude Code
 ln -s "$PWD/skills/seat" ~/.claude/skills/seat
 ln -s "$PWD/skills/orchestrate" ~/.claude/skills/orchestrate
@@ -94,24 +100,25 @@ ln -s "$PWD/agents/codex-seat.md" ~/.claude/agents/codex-seat.md
 On this clone-and-symlink route the skill is `seat`, the modes are `/orchestrate` and `/cleanup`, and
 the wrapper every seat runs inside is the agent `codex-seat`; on the plugin route they are
 `codex-delegate:seat`, `/codex-delegate:orchestrate`, `/codex-delegate:cleanup` and
-`codex-delegate:codex-seat`. Agents are read when Claude Code starts, so a link made during a session
-is seen by the next one.
+`codex-delegate:codex-seat`. Agents are read when Claude Code starts, so a link made during a session is
+seen by the next one. Cleanup's command reaches its sibling seat script through the `seat` link beside
+it: Node resolves the command's `..` lexically, so keep those two links together.
 
 The `mkdir -p` is not decoration: without it every `ln -s` call fails with `No such file or directory`
 on a fresh account, which is exactly the account this route is written for.
 
 **Where the driver's state lives.** `${CLAUDE_PLUGIN_DATA}`, the plugin's own data directory, which
 Claude Code substitutes into the skill's recipes and which this install resolves to
-`~/.claude/plugins/data/codex-delegate-nowely/` (the plugin's name, then the marketplace's). The
-answers and the isolated Codex home, the
-write locks, the worktree ledger and the orchestrator mode's run directories are all there. It survives
-plugin updates; an uninstall deletes it unless you pass `claude plugin uninstall --keep-data`, and
-`/codex-delegate:cleanup` lists what is in it and removes what you choose. The driver
-keeps no default of its own: with neither that variable nor `CODEX_DELEGATE_STATE_DIR` it exits 2. In
-every permission mode but auto and bypass, a write outside the working directory prompts, so add that
-directory to `permissions.additionalDirectories` once — this plugin adds no rules on your behalf. On the
-clone-and-symlink route nothing substitutes the placeholder, so export an absolute path of your own
-instead, in your shell profile:
+`~/.claude/plugins/data/codex-delegate-nowely/` (the plugin's name, then the marketplace's). The answers
+and the isolated Codex home, the write locks, the worktree ledger and the orchestrator mode's run
+directories are all there. It survives plugin updates; an uninstall deletes it unless you pass
+`claude plugin uninstall --keep-data`, and
+`/codex-delegate:cleanup` lists what is there and removes only the items you pick by number.
+The driver keeps no default of its own: with neither that variable nor `CODEX_DELEGATE_STATE_DIR` it
+exits 2. In every permission mode but auto and bypass, a write outside the working directory prompts, so
+add that directory to `permissions.additionalDirectories` once — this plugin adds no rules on your
+behalf. On the clone-and-symlink route nothing substitutes the placeholder, so export an absolute path
+of your own instead, in your shell profile:
 
 ```bash
 export CODEX_DELEGATE_STATE_DIR="$HOME/.local/state/codex-delegate"
@@ -172,7 +179,7 @@ never success.
 | --- | --- |
 | `--level read` (the default; `--cwd DIR` is optional and defaults to the current directory) | read any readable path, reach the network, run commands, write only `$TMPDIR` — enough to run tests |
 | `--worktree REPO` | write level in a managed detached tree the driver creates, harvests and removes; what it starts from and lacks is in [parity.md](skills/seat/references/parity.md#read-and-isolated-write) |
-| `--level write --cwd DIR` | write anywhere under a directory you chose |
+| `--level write --cwd DIR` | write anywhere under a directory you chose, plus `$TMPDIR`; `/tmp` is excluded |
 | `+ --writable DIR` / `--no-network` | an extra root, an explicit opt-in; or a sandbox that reaches nothing |
 
 Egress is on at both levels, as it is for a native subagent, and no host list narrows it; `--no-network`
@@ -201,8 +208,9 @@ interrupted, the report it had earned is written anyway, and the codex process g
   `--expect-command <regex>` demands the work matched a declared signature;
   `--output-schema <file>` demands a JSON answer matching a schema. Semantics, and how each gate can
   be fooled: the driver's `--help` and [references/result-gates.md](skills/seat/references/result-gates.md).
-- **Sandbox asserted, not assumed.** The rights the server reports are compared against the rights that
-  were asked for, and a mismatch refuses the run instead of proceeding under an unknown sandbox.
+- **Sandbox asserted, not assumed.** The sandbox the server reports — its type, the network, every
+  writable directory, `/tmp` included — is compared with what was asked for, and a mismatch refuses
+  the run.
 - **A receipt per run.** `receiptPath`/`receiptOk` locate the rollout and check it names this thread;
   what that does and does not prove is in
   [the internals reference](skills/seat/references/environment-and-internals.md#receipt-validation-and-reporting).

@@ -1,0 +1,282 @@
+[
+ {
+  "id": "L01",
+  "entry": "C1",
+  "kind": "tree",
+  "claim": "The cleanup skill invokes the cleanup script through the plugin-root placeholder, which a clone-and-symlink install does not substitute.",
+  "file": "plugins/codex-delegate/skills/cleanup/SKILL.md",
+  "at": "29 and 59"
+ },
+ {
+  "id": "L02",
+  "entry": "C1",
+  "kind": "tree",
+  "claim": "The seat skill's own launch recipe uses the skill-directory placeholder, not the plugin-root one.",
+  "file": "plugins/codex-delegate/skills/seat/SKILL.md",
+  "at": "80"
+ },
+ {
+  "id": "L03",
+  "entry": "C1",
+  "kind": "tree",
+  "claim": "The seat page states that a clone-and-symlink install substitutes nothing for the forwarded data-directory placeholder, so its value is empty there.",
+  "file": "plugins/codex-delegate/skills/seat/SKILL.md",
+  "at": "114"
+ },
+ {
+  "id": "L04",
+  "entry": "C2",
+  "kind": "tree",
+  "claim": "The cleanup script builds its listing rows from orchestrate runs, seat scratch, evals, test sessions, worktrees, locks, home and data — and never from an answers or a reports directory.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/cleanup.mjs",
+  "at": "846-847"
+ },
+ {
+  "id": "L05",
+  "entry": "C2",
+  "kind": "tree",
+  "claim": "The cleanup script names answers only as a guard, not as a row it lists.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/cleanup.mjs",
+  "at": "256"
+ },
+ {
+  "id": "L06",
+  "entry": "C2",
+  "kind": "tree",
+  "claim": "The seat page tells every run to write its report under a reports directory inside the state directory.",
+  "file": "plugins/codex-delegate/skills/seat/SKILL.md",
+  "at": "99-101"
+ },
+ {
+  "id": "L07",
+  "entry": "C2",
+  "kind": "tree",
+  "claim": "The environment reference says nothing prunes what the report-file flag creates.",
+  "file": "plugins/codex-delegate/skills/seat/references/environment-and-internals.md",
+  "at": "132-135"
+ },
+ {
+  "id": "L08",
+  "entry": "C3",
+  "kind": "tree",
+  "claim": "The seat page says a read seat may write only the temporary directory, naming it by the variable and not by any path the driver might substitute.",
+  "file": "plugins/codex-delegate/skills/seat/SKILL.md",
+  "at": "99 and 140"
+ },
+ {
+  "id": "L09",
+  "entry": "C3",
+  "kind": "tree",
+  "claim": "When the caller exports no temporary-directory variable, the driver substitutes one of its own inside the state directory, and that is the root the sandbox is asserted against.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "2113-2114 and 1139-1146"
+ },
+ {
+  "id": "L11a",
+  "entry": "C3",
+  "kind": "tree",
+  "claim": "The driver documents that substitution somewhere in its help output.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "around 321"
+ },
+ {
+  "id": "L11b",
+  "entry": "C3",
+  "kind": "tree",
+  "claim": "That passage sits in the extended help printed only under the all-flags switch, not in the short help.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "around 299 and 560"
+ },
+ {
+  "id": "L14",
+  "entry": "C5",
+  "kind": "tree",
+  "claim": "The read-level sandbox assertion checks the profile id, the sandbox type, egress, the workspace root and the writable roots — and reads neither exclusion field.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "1991-2017"
+ },
+ {
+  "id": "L15",
+  "entry": "C5",
+  "kind": "tree",
+  "claim": "The pinned protocol schema carries both exclusion fields.",
+  "file": "plugins/codex-delegate/schema-0.153.4/v2/ThreadStartResponse.json",
+  "at": "1086 and 1090"
+ },
+ {
+  "id": "L16",
+  "entry": "C5",
+  "kind": "tree",
+  "claim": "Searching the whole driver for either exclusion field name returns nothing.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "whole file"
+ },
+ {
+  "id": "L18",
+  "entry": "C6",
+  "kind": "tree",
+  "claim": "The cleanup script refuses to run when the temporary-directory variable is not an absolute path, and says nothing was deleted.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/cleanup.mjs",
+  "at": "227-230"
+ },
+ {
+  "id": "L19",
+  "entry": "C7",
+  "kind": "tree",
+  "claim": "The isolated-home helper links the credentials file and the sessions directory from the passwd home rather than from the configured codex home.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "1218-1228"
+ },
+ {
+  "id": "L20",
+  "entry": "C7",
+  "kind": "tree",
+  "claim": "The configuration probe inherits the caller's codex-home variable.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "1055-1058"
+ },
+ {
+  "id": "L21",
+  "entry": "C8",
+  "kind": "tree",
+  "claim": "The seat page tells the coordinator that a preserved worktree is reported in a named report field.",
+  "file": "plugins/codex-delegate/skills/seat/SKILL.md",
+  "at": "200"
+ },
+ {
+  "id": "L22",
+  "entry": "C8",
+  "kind": "tree",
+  "claim": "The report published when a run ends before a turn is built from seven fields only, and no worktree field is among them.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "970-973"
+ },
+ {
+  "id": "L28",
+  "entry": "R3",
+  "kind": "tree",
+  "claim": "The seat-file parser exempts the writable-root field, and only that field, from its duplicate-field refusal.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "around 612"
+ },
+ {
+  "id": "L10",
+  "entry": "C3",
+  "kind": "tree",
+  "claim": "The substituted temporary path is built in a named helper the driver calls for that purpose.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "1139-1146"
+ },
+ {
+  "id": "L12",
+  "entry": "C4",
+  "kind": "live",
+  "claim": "The comparison table gives the codex exec route \"per-call approval / sandbox: no — forces never\", while that route does offer a per-call sandbox flag and lacks only a per-call approval policy that survives the managed clamp.",
+  "file": "plugins/codex-delegate/skills/seat/references/why-not-the-plugin.md",
+  "at": "69"
+ },
+ {
+  "id": "L13",
+  "entry": "C4",
+  "kind": "live",
+  "claim": "The same page calls this plugin the only surface with both per-call rights and a machine-checkable execution signal.",
+  "file": "plugins/codex-delegate/skills/seat/references/why-not-the-plugin.md",
+  "at": "74"
+ },
+ {
+  "id": "L17",
+  "entry": "C5",
+  "kind": "tree",
+  "claim": "The ledger attributes to the README a sentence saying the run stops if the server grants anything else. Establish whether any such sentence exists in the README or anywhere in the plugin, at this version or at the 0.13.0 tag.",
+  "file": "plugins/codex-delegate/README.md",
+  "at": "whole file, both versions"
+ },
+ {
+  "id": "L23",
+  "entry": "C8",
+  "kind": "tree",
+  "claim": "The last-resort worktree helper preserves the tree only while a child exists or the tree is dirty, removing a clean one, and announces a preserved tree on standard error.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "1919-1932"
+ },
+ {
+  "id": "L24",
+  "entry": "C9",
+  "kind": "tag",
+  "claim": "The driver help says an argument error prints no report.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "539"
+ },
+ {
+  "id": "L25",
+  "entry": "C9",
+  "kind": "tree",
+  "claim": "A refusal that finds no state directory nevertheless publishes a pre-turn report; trace the chain from the failure site to the report writer.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "1002, 156-160, 970"
+ },
+ {
+  "id": "L26",
+  "entry": "R1",
+  "kind": "tree",
+  "claim": "The write-level rights row promises writing under the live directory and calls that the blast radius.",
+  "file": "plugins/codex-delegate/skills/seat/SKILL.md",
+  "at": "the rights table"
+ },
+ {
+  "id": "L27",
+  "entry": "R1",
+  "kind": "tree",
+  "claim": "A reference page states that workspace-write opens the temporary directory and slash-tmp as a side effect.",
+  "file": "plugins/codex-delegate/skills/seat/references/why-not-the-plugin.md",
+  "at": "around 47"
+ },
+ {
+  "id": "L33",
+  "entry": "R1",
+  "kind": "tree",
+  "claim": "The write level sends the server only the egress and writable-roots settings, with no exclusion field, and a comment in the driver says the write boundary is escapable the same way.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "2171-2174 and around 3810"
+ },
+ {
+  "id": "L34",
+  "entry": "R2",
+  "kind": "tree",
+  "claim": "A private temporary directory is made only when the caller exported none, so concurrent read seats launched by one coordinator share its temporary directory; and the seat page documents that sharing as a caveat.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs and skills/seat/SKILL.md",
+  "at": "2113 and 154-157"
+ },
+ {
+  "id": "L29",
+  "entry": "R5",
+  "kind": "tag",
+  "claim": "At the 0.13.0 tag the seat page said exit two is always a refusal before the turn. Establish what that section says at 0.13.0 and what it says now, and whether the change was made deliberately.",
+  "file": "plugins/codex-delegate/skills/seat/SKILL.md",
+  "at": "0.13.0 at 147, now around 219"
+ },
+ {
+  "id": "L30",
+  "entry": "R5",
+  "kind": "tree",
+  "claim": "The exit ladder has a rung returning exit two keyed on a turn status that is not completed.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "around 239"
+ },
+ {
+  "id": "L31",
+  "entry": "R4",
+  "kind": "tree",
+  "claim": "The escalations field is named in no coordinator-facing page of the plugin. Say which surfaces you counted as coordinator-facing, including the help output.",
+  "file": "the whole plugin",
+  "at": "whole files"
+ },
+ {
+  "id": "L32",
+  "entry": "R4",
+  "kind": "tag",
+  "claim": "At the 0.13.0 tag the escalation rung's help text named one cause, the sandbox being sized too small. Establish what it says at 0.13.0 and what it says now, and whether any older wording survives elsewhere in the driver.",
+  "file": "plugins/codex-delegate/skills/seat/scripts/driver.mjs",
+  "at": "247, and comments"
+ }
+]

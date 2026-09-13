@@ -10,7 +10,7 @@ description: >-
   mixes ("one of them codex", "half codex", "only codex") and refusals ("no codex", "just you"). Skip
   trivia and mechanical fact-gathering.
 metadata:
-  version: "0.14.0"
+  version: "0.15.0"
 license: MIT
 ---
 
@@ -67,31 +67,35 @@ in its own file, so its context is half a `general-purpose` subagent's (measured
 file. A clone-and-symlink install links that file into `~/.claude/agents/` ([README](../../README.md#install)),
 where its type is the bare `codex-seat`.
 
-The wrapper's message is the block below with its four placeholders filled in and nothing added or
+The wrapper's message is the block below with its three placeholders filled in and nothing added or
 removed; it never sees the seat's prompt. Inside it the driver runs as a background task,
-`run_in_background: true` and no `&` of your own, and the wait after it is a foreground command the
-wrapper repeats until the report is there, so the card stays working for as long as the seat does
-(measured: an eleven-minute seat took two waits) and Stop on it reaches the driver: the harness ends the
-wrapper's tasks with it, the driver takes the `SIGTERM`, cuts the turn, sweeps its codex and publishes
-the report as `turnStatus: interrupted`, exit 1, nothing left running.
+`run_in_background: true` and no `&` of your own, and its exit status lands in a file of its own beside
+the two output files; the wait after it is a foreground command the wrapper repeats until that status is
+there, so the card stays working for as long as the seat does (measured: an eleven-minute seat took two
+waits). That wait only reads and sleeps: this harness moves a wait that reaches the tool's ten-minute
+ceiling into the background instead of ending it (measured 2026-09-12), so that one and the next run
+together, and neither modifies a file. The driver prints its pid on the first line of `<DIR>/err.txt`
+once it has accepted the report path, and a refusal before that point prints none. A `SIGTERM` to that
+pid cuts the turn, sweeps its codex and publishes the report as `turnStatus: interrupted`, exit 1,
+nothing left running.
 
     1. Run this exact command with the Bash tool, with run_in_background: true, and description "<DESCRIPTION>":
 
-    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --seat-file "<DIR>/prompt.txt" --report-file "<REPORT>" > "<DIR>/out.json" 2> "<DIR>/err.txt"
+    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --seat-file "<DIR>/prompt.txt" --report-file "<REPORT>" > "<DIR>/out.json" 2> "<DIR>/err.txt"; echo $? > "<DIR>/exit"
 
     2. Then run this exact command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>, waiting":
 
-    R="<REPORT>"; E="<DIR>/err.txt"; while [ ! -f "$R" ]; do P=$(sed -n 's/^codex-delegate: pid=\([0-9]*\).*/\1/p' "$E" 2>/dev/null | head -1); if [ -n "$P" ] && ! kill -0 "$P" 2>/dev/null; then break; fi; sleep 5; done; test -f "$R" && echo WAIT_DONE=report || echo WAIT_DONE=driver-gone
+    while [ ! -s "<DIR>/exit" ]; do sleep 5; done; echo WAIT_DONE=exit
 
-    If that command ends without printing a WAIT_DONE line (the tool stopped it at its timeout), run the
-    very same command again, as many times as needed, until a WAIT_DONE line is printed. Never end your
-    turn before a WAIT_DONE line is printed.
+    If that command ends without printing a WAIT_DONE line, run the very same command again, as many
+    times as needed, until a WAIT_DONE line is printed. Never end your turn before a WAIT_DONE line is
+    printed.
 
     3. Then run this one command in the foreground:
 
-    node -e 'try{const r=require("<REPORT>");console.log("EXIT="+r.exitCode);console.log("FIRST="+String(r.answer||"").split("\n")[0])}catch(e){console.log("EXIT=unknown");console.log("FIRST=")}'; test -f "<REPORT>" && echo FILE=exists || echo FILE=missing
+    D=unknown; test -s "<DIR>/exit" && D=$(cat "<DIR>/exit"); echo "DRIVER_EXIT=$D"; P=none; grep -qF "reportPath=<REPORT>" "<DIR>/err.txt" 2>/dev/null && P=own; grep -Eq 'already exists, or is a symbolic link|could not be published at' "<DIR>/err.txt" 2>/dev/null && P=taken; echo "PATH=$P"; node -e 'try{const r=require("<REPORT>");console.log("EXIT="+r.exitCode);console.log("FIRST="+String(r.answer||"").split("\n")[0])}catch(e){console.log("EXIT=unknown");console.log("FIRST=")}'; test -f "<REPORT>" && echo FILE=exists || echo FILE=missing
 
-    4. Your final message is exactly the WAIT_DONE line, the three lines step 3 printed, then one line
+    4. Your final message is exactly the WAIT_DONE line, the five lines step 3 printed, then one line
        REPORT=<REPORT>. Nothing else.
 
 `<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-seat.XXXXXXXX"` per seat: Write and Read expand nothing,
@@ -101,10 +105,10 @@ and then sits where you would read it as the seat's own report. Put it under the
 `<state>/reports/<run>/report.json` with `<run>` unique, or, under the orchestrate mode, `<run>/<seat>/report.json`
 in the run directory that page names, one directory per seat; the driver makes every directory that path
 needs, at 0700, so it may name a root your own Write and `mkdir` are refused.
-The wrapper's completion notification is the seat's completion, and `<REPORT>` is what to read then: the
-wrapper's own lines say whether the file exists and what the first line of the answer is, nothing more. To
-continue a seat, write a second prompt file with `RESUME: <threadId>` and send the wrapper one more command
-of the same shape; it runs it the same way and notifies again (measured 2026-09-12). A session with no
+The wrapper's completion notification is the seat's completion: read the wrapper's own lines first —
+what the driver exited with, whose run the file at `<REPORT>` belongs to, whether it is there, the first
+line of its answer — and read the file itself after a `PATH=own`. To continue a seat, write a second
+prompt file with `RESUME: <threadId>` and send the wrapper one more command of the same shape; it runs it the same way and notifies again (measured 2026-09-12). A session with no
 message tool, headless `-p` among them, continues the thread with a second wrapper given the same file,
 at the cost of a second card (measured: the thread held both ways).
 
@@ -137,9 +141,12 @@ Choose the smallest `SEAT` that can complete and check the work:
 
 | Prompt header | Codex may | Settle first? |
 | --- | --- | --- |
-| `SEAT: read [<dir>]` or no header | read any readable path, reach the network, run commands, write only `$TMPDIR`; a write elsewhere asks an approval nobody is there to give, and the run exits 6 | no |
+| `SEAT: read [<dir>]` or no header | read any readable path, reach the network, run commands, write only `$TMPDIR`; the sandbox refuses a write anywhere else, and an approval request in its place is declined and recorded in `escalations` | no |
 | `SEAT: worktree <repo>` | write in a driver-managed detached tree | say that a worktree will be made |
 | `SEAT: write <dir>` | write under the live directory | yes; this chooses the blast radius |
+
+`$TMPDIR` is granted at every level and `/tmp` at none; a write seat adds each settled `WRITABLE:` root
+to what its row names. The driver refuses a server whose sandbox answers differently.
 
 Every level reaches the network, as a native subagent does, and `NETWORK: no` denies the sandbox that —
 not the provider's web search, which is `WEB_SEARCH:`'s own channel. Egress moves nothing on disk:
@@ -198,6 +205,11 @@ write its own would be grading itself. Declare gates on the command line instead
   a widening to settle first.
 - After a successful harvest the driver removes the worktree.
 - When the turn failed or harvest failed, the driver preserves it and reports `worktreePreserved`.
+- A worktree run cut or refused before its turn reports those same two fields: `worktreePath` is the
+  path the run named, and `worktreePreserved` the reason it was left there, or `null` where it was
+  removed. A `git worktree add` that failed over a destination already on disk names that destination,
+  which is not a tree this run made; a `--resume` rebuild that could not finish tries to remove its
+  half-restored tree and reports `null` where it did, or the refusal where git kept it.
 - A preserved tree is not a harvest: `worktreeDiffPath`, `worktreeUntrackedPath` and `worktreeCommitsRef`
   can all be null, so the landing recipe has nothing to apply. The tree itself is the artifact, at
   `worktreePath`; read it, take what is worth keeping, then remove it with
@@ -205,15 +217,25 @@ write its own would be grading itself. Declare gates on the command line instead
 
 ## Reading the result
 
-- `<REPORT>` is the report, the same JSON the run also wrote to `<DIR>/out.json`. Read the file:
-  it is written whole or not at all, and a missing one means unknown, never success. A file that IS there is
-  the driver's own only when it published one: the driver never overwrites what it finds, and says so on
-  stderr when it could not publish. Read that line before trusting a report you did not see it write.
+- `<REPORT>` is the report, the same JSON the run also wrote to `<DIR>/out.json` once a turn ran. Read
+  the file: it is written whole or not at all, and a missing one means unknown, never success.
+- `PATH=own` says the driver accepted `<REPORT>` and published there; `PATH=taken` says an entry was
+  already there or another run published first, so the file is an earlier run's, whatever the numbers
+  beside it say; `PATH=none` says the path was never accepted and no file of this run's exists.
+  `DRIVER_EXIT` is what this invocation's driver exited with, `EXIT` the code inside the file.
+- A refused path — not absolute, an unusable parent, an entry already there, a symlink included — makes
+  no report for this run; an entry already there is left as it was, and `<DIR>/err.txt` names the
+  refusal. Once the path is accepted, a refusal before the turn does reach the file, as
+  `{ok: false, exitCode, turnStatus: null, error}`, while `out.json` stays empty.
+- `FILE=missing` beside a `DRIVER_EXIT` is a run that ended without a report of its own: read
+  `<DIR>/err.txt` for the reason and `<DIR>/out.json` for the report a turn wrote where publication
+  failed; otherwise treat the result as unknown, and relaunch under a fresh report path where the work
+  still needs doing.
 - `exitCode: 0` means the completed turn passed its declared evidence gates. `answer` is the seat's text;
   with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed.
 - `exitCode: 3` is a cut; read the retained answer or partial and the `RESUME:` hint. Give the continuation a
-  report path of its own: the driver refuses one already taken and exits before it announces its pid, so a
-  retry at the last path cannot start.
+  report path of its own: the driver refuses one already taken and exits 2 without publishing, which
+  reaches you as `PATH=taken` over the earlier run's file.
 - `exitCode: 10` is a held lock or a busy resumed thread: the report says `ok: false` and carries the
   refusal in `error`, and `<DIR>/err.txt` has it in full.
 - Exit 2 has two shapes, and the report tells them apart. With `turnStatus: null` no turn ran: the reason
@@ -225,6 +247,11 @@ write its own would be grading itself. Declare gates on the command line instead
   it means the thread had started and its rollout is the only record. With any other `turnStatus` — the
   server died mid-turn, or the report could not be published — the report is complete: read it like any
   post-turn code (commands, `answer`, `answerPath`, receipt).
+- `escalations` is one entry per approval request the driver declined, whichever thread asked, and
+  `exitCode: 6` is its rung — below timeout and the other cuts, so a cut run carries its entries and
+  exits 3. An entry says a request was made and refused and no more: `detail` is the server's own wording
+  clipped to 200 characters and is empty where it sent none, a command the sandbox denied outright need
+  not raise one, and an entry is neither evidence that work was lost nor a reason to widen the rights.
 - Any other non-zero is a gate verdict on the run; read the answer before deciding what to do.
 - `receiptOk: false` on a run that claims success is a red flag; what the receipt proves and does not
   prove is in
