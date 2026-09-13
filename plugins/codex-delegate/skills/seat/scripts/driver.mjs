@@ -299,7 +299,8 @@ const HELP = [
     text: `  --level read       the default: read anything, write only $TMPDIR; no lock is
                      taken, so read seats run in parallel over one directory. An
                      unset $TMPDIR is not an error — see --help-all
-  --level write      workspace-write over --cwd; takes a per-directory lock
+  --level write      write under --cwd, each --writable root and $TMPDIR, and
+                     nothing else — /tmp is excluded; takes a per-directory lock
   --cwd DIR          where the turn runs. Required at --level write: the writable
                      root is a grant, and a defaulted grant is one nobody made
   --worktree REPO    create a detached worktree under REPO/.claude/worktrees, run
@@ -318,12 +319,13 @@ const HELP = [
                      allowlist — name the hosts in the prompt
   every write-level root — --cwd and --writable — refuses ~/.codex and
   <state>, which hold the receipts and this driver's own state`,
-    more: `  $TMPDIR IS the read-level grant. An explicit one is honoured and takes the
-  same protected-root guard every writable root takes; where the caller exported
-  none the driver makes a private 0700 one at <state>/tmp/<runId> and reports it
-  as tmpDir. It is exported for the turn AND the verifier, and it OUTLIVES the
-  run, because
-  --brief tells the seat to leave long output in a file there. It is pruned on
+    more: `  $TMPDIR is writable at BOTH levels: the whole grant at read level, beside
+  --cwd at write level; /tmp is not, at either. An explicit one is honoured and
+  takes the same protected-root guard every writable root takes; where the caller
+  exported none the driver makes a private 0700 one at <state>/tmp/<runId> and
+  reports it as tmpDir. It is exported for the turn AND the verifier, and it
+  OUTLIVES the run, because --brief tells the seat to leave long output in a file
+  there. It is pruned on
   the run-directory bounds (${LIMITS.PRUNE_DAYS} days or ${LIMITS.PRUNE_MAX_ENTRIES} directories, never one still running).
   A worktree turn that did not complete, or a harvest
   that failed, PRESERVES the tree and the report says why and how to remove it; a
@@ -1129,11 +1131,11 @@ function managedWebSearchModes() {
   return modes.length ? modes : undefined;   // an empty list permits nothing, which is not "unrestricted"
 }
 
-// A $TMPDIR of this run's own, made only when the caller exported none, 0700 so no other user can read
-// what the seat writes there. It lives under the driver's own state and OUTLIVES the run: --brief tells
-// the seat to leave long output in a file there, so a directory removed at exit takes with it every path
-// the answer names. PRUNE_DAYS and PRUNE_MAX_ENTRIES bound retention without removing a live run
-// and reap the directories a SIGKILL leaves behind.
+// A $TMPDIR of this run's own, made at EITHER level whenever the caller exported none, 0700 so no other
+// user can read what the seat writes there. It lives under the driver's own state and OUTLIVES the run:
+// --brief tells the seat to leave long output in a file there, so a directory removed at exit takes with
+// it every path the answer names. PRUNE_DAYS and PRUNE_MAX_ENTRIES bound retention without removing a
+// live run and reap the directories a SIGKILL leaves behind.
 let privateTmp = null;
 const TMP_OWNER = "owner.json";
 function privateTmpDir() {
@@ -1931,8 +1933,9 @@ function worktreeLastResort() {
     `harvest it, then: git -C ${repo} worktree remove --force ${dir}\n`);
 }
 
-// The read level's whole safety argument is "$TMPDIR is writable and nothing else is", so that is what
-// gets checked — the EFFECT the server reports, not the NAME of the profile meant to produce it. A
+// The read level's whole safety argument is "$TMPDIR is writable and nothing else is" — /tmp included,
+// which is a field of its own rather than an entry in the root list — so that is what gets checked: the
+// EFFECT the server reports, not the NAME of the profile meant to produce it. A
 // misspelt field inside permissions.<id> makes the grant vanish (sandbox flips to readOnly,
 // writableRoots disappears) while activePermissionProfile still reads back the correct id, and
 // --strict-config does not catch it either.
@@ -1979,6 +1982,14 @@ function assertWriteSandbox(thread) {
   const sb = thread.sandbox ?? null;
   if (sb?.type !== "workspaceWrite") refuse(`sandbox type is ${JSON.stringify(sb?.type ?? null)}`);
   assertEgress(sb, refuse);
+  // The two implicit temp grants, which setup() sends as -c keys and which writableRoots never shows.
+  // A NARROWER sandbox is refused as loudly as a wider one, exactly as the egress check above refuses
+  // both directions: a seat whose $TMPDIR is unwritable cannot run a heredoc or a test runner, and
+  // would report those failures as findings about the task.
+  if (sb.excludeSlashTmp !== true)
+    refuse("excludeSlashTmp is false: /tmp is writable, and this seat was granted --cwd, --writable and $TMPDIR only");
+  if (sb.excludeTmpdirEnvVar !== false)
+    refuse("excludeTmpdirEnvVar is true: $TMPDIR is not writable, and heredocs and test runners need it");
   const want = [...roots].map(canonPath).sort();
   const got = (sb.writableRoots ?? []).map(canonPath).sort();
   if (want.length !== got.length || want.some((r, i) => r !== got[i]))
@@ -1998,6 +2009,13 @@ function assertReadSandbox(thread) {
   // the id still reads back correctly — the same silent failure the $TMPDIR grant has. The server says
   // which way it went right here, in the object this guard already holds.
   assertEgress(sb, refuse);
+  // /tmp is the one grant the explicit root list cannot reveal: with $TMPDIR outside /tmp, a response
+  // whose writableRoots hold exactly $TMPDIR still carries all of /tmp when this flag is false.
+  // excludeTmpdirEnvVar is deliberately NOT asserted here: false names the same directory the explicit
+  // root already names, and true is what the profile reports with TMPDIR unset — which the refusal
+  // below catches first, and by its own cause.
+  if (sb.excludeSlashTmp !== true)
+    refuse("excludeSlashTmp is false, so /tmp is writable beside the $TMPDIR this level grants");
   // Check that setup() supplied TMPDIR before resolving it: path.resolve("") would substitute the cwd
   // and misidentify the expected writable root.
   const tmp = process.env.TMPDIR;
@@ -2082,7 +2100,8 @@ async function setup() {
   //         and /tmp all stay unwritable; the temp dir is what tools need to start at all. Without it a
   //         reader cannot run the test suite, which Claude's own read-only subagent can — that gap is the
   //         whole reason the profile is here rather than a plain sandbox: "read-only".
-  // write : workspace-write with cwd as the writable root, plus --writable.
+  // write : workspace-write with cwd as the writable root, plus --writable and $TMPDIR; /tmp is
+  //         excluded.
   //
   // The level says what may be WRITTEN, and egress crosses it: both levels reach the network unless the
   // caller denied it, which is what Claude's own subagents do. A reader that must ask for it is a rule
@@ -2108,18 +2127,23 @@ async function setup() {
   // After the cwd exists, because "last" means the last seat HERE.
   if (opts.resume === "last") { opts.resume = resolveResumeLast(cwd); refuseLiveResume(opts.resume); }
 
-  // $TMPDIR IS the read level's whole grant; a private directory of the run's own is narrower than /tmp.
+  // $TMPDIR is a grant at BOTH levels — the whole of it at read level, beside --cwd at write level — and
+  // a private directory of the run's own is narrower than /tmp. Made whenever the caller exported none,
+  // at either level: /tmp is excluded from the write sandbox too, and where no TMPDIR is exported
+  // os.tmpdir() and zsh's TMPPREFIX both fall back to /tmp — so a write seat without this would have no
+  // temp root at all, and every heredoc, mkdtemp and test runner would die.
   // Set on process.env because the codex spawn and `codex sandbox :tmpdir` read it.
-  const ownTmp = !process.env.TMPDIR && (opts.level === "read" || opts.verifySandboxed);
+  const ownTmp = !process.env.TMPDIR;
   if (ownTmp) process.env.TMPDIR = privateTmpDir();
-  // $TMPDIR IS the read level's writable root, so a CALLER's takes the same checkRoot guard every other
-  // writable root takes: without it `TMPDIR=~/.codex/x --level read` grants write access inside the
-  // directory holding the rollout receipts, from the level whose promise is that it writes nothing of
-  // yours. Here rather than in assertReadSandbox: a protected TMPDIR is knowable before anything is
+  // $TMPDIR is a writable root at BOTH levels, so a CALLER's takes the same checkRoot guard every other
+  // writable root takes: without it `TMPDIR=~/.codex/x` grants write access inside the directory holding
+  // the rollout receipts — at read level, whose promise is that it writes nothing of yours, and at write
+  // level, where exclude_tmpdir_env_var=false makes that directory an acknowledged part of the grant.
+  // Here rather than in the sandbox assertions: a protected TMPDIR is knowable before anything is
   // spawned, so it costs a usage error rather than a thread and exit 4.
   // The driver's OWN <state>/tmp/<runId> is exempt: it is one leaf directory of this run's own, which
   // grants nothing beside it, and checkRoot refuses everything inside the state directory by design.
-  if (opts.level === "read" && process.env.TMPDIR && !ownTmp) {
+  if (process.env.TMPDIR && !ownTmp) {
     const t = canonPath(process.env.TMPDIR);
     if (t) checkRoot(t);
   }
@@ -2170,7 +2194,16 @@ async function setup() {
     // the sandbox must depend only on the declared flags, which assertWriteSandbox checks against the response.
     ...(opts.level === "write" ? [
       ["sandbox_workspace_write.network_access", String(opts.network)],
-      ["sandbox_workspace_write.writable_roots", `[${roots.map((r) => JSON.stringify(r)).join(",")}]`]
+      ["sandbox_workspace_write.writable_roots", `[${roots.map((r) => JSON.stringify(r)).join(",")}]`],
+      // The two implicit temp grants a workspace-write sandbox carries unless it is told otherwise.
+      // Measured on 0.153.4: with neither key sent, thread/start answers writableRoots [],
+      // excludeSlashTmp false and excludeTmpdirEnvVar false — so a seat given one --cwd could also
+      // write all of /tmp, which no caller named. /tmp is excluded; $TMPDIR is kept, because heredocs,
+      // mkdtemp and every test runner need a temp root and $TMPDIR is the one the caller (or the
+      // private directory above) chose. Sent unconditionally, like the two keys above, and
+      // assertWriteSandbox refuses a response that differs either way.
+      ["sandbox_workspace_write.exclude_slash_tmp", "true"],
+      ["sandbox_workspace_write.exclude_tmpdir_env_var", "false"]
     ] : [])
   ];
   spawnArgs = ["--strict-config", ...config.flatMap(([k, v]) => ["-c", `${k}=${v}`]), "app-server"];
@@ -3397,8 +3430,9 @@ function writeReport(ev, verifySkipped, codeOverride) {
     // assertWriteSandbox refuses any difference. `network` is the effective grant, not a flag someone
     // passed: it is on unless the seat denied it, and sandbox.networkAccess is asserted to agree.
     writableRootsRequested: roots, network: opts.network,
-    // The run's own $TMPDIR when the driver made one, so a path the answer names can still be opened
-    // after the run; null when the caller exported a TMPDIR of his own.
+    // The run's own $TMPDIR when the driver made one — at either level, whenever the caller exported
+    // none — so a path the answer names can still be opened after the run; null when the caller
+    // exported a TMPDIR of his own.
     tmpDir,
     // Report which thread was continued after resolving "last", so the caller can identify the conversation.
     resumedFrom: opts.resume ?? null,

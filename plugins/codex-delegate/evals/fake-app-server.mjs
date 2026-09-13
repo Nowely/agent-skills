@@ -56,6 +56,9 @@ export const SCENARIOS = {
   // The last message arrives WITHOUT its trailing newline and the stream then ends.
   "no-trailing-newline": {},
   "write-root-widened": {}, "write-full-access": {},
+  // The implicit temp grants the sandbox object reports and writableRoots never shows: /tmp left open
+  // at either level, and a $TMPDIR the server excluded when the driver asked for it.
+  "write-slash-tmp-open": {}, "write-tmpdir-excluded": {}, "profile-slash-tmp-open": {},
   // Decided at thread/start, so the turn/start switch never sees them.
   "profile-missing": {}, "profile-wrong": {}, "profile-effect-dropped": {}, "profile-widened": {},
   "profile-networked": {}, "profile-network-dropped": {}, "write-networked": {},
@@ -453,19 +456,30 @@ function onLine(line) {
     // on the granted one.
     const readNetwork = defined && /enabled\s*=\s*true/.test(CFG[`permissions.${wantId}.network`] ?? "");
 
+    // The two implicit temp grants. At write level each field MIRRORS its own -c key — measured on
+    // 0.153.4, with TMPDIR exported and without it — and an unsent key reads back false, which is what
+    // makes a driver that stopped sending them visible here instead of hidden behind a fixture literal.
+    // At read level the profile ignores those keys: /tmp is always excluded, and excludeTmpdirEnvVar
+    // answers whether there was a $TMPDIR to grant at all (measured: with TMPDIR unset the read profile
+    // reports writableRoots [] and this flag true).
     let sb = writeLevel
       ? { type: "workspaceWrite", writableRoots: writeRoots,
           networkAccess: CFG["sandbox_workspace_write.network_access"] === "true",
-          excludeTmpdirEnvVar: false, excludeSlashTmp: false }
+          excludeTmpdirEnvVar: CFG["sandbox_workspace_write.exclude_tmpdir_env_var"] === "true",
+          excludeSlashTmp: CFG["sandbox_workspace_write.exclude_slash_tmp"] === "true" }
       : granted
         ? { type: "workspaceWrite", writableRoots: readRoots,
-            networkAccess: readNetwork, excludeTmpdirEnvVar: false, excludeSlashTmp: true }
+            networkAccess: readNetwork, excludeTmpdirEnvVar: !process.env.TMPDIR, excludeSlashTmp: true }
         // No filesystem grant means a plain read-only sandbox with no roots at all.
         : { type: "readOnly", networkAccess: readNetwork };
     // Deliberate server misbehaviours, each overriding the derived value so the override is obvious.
     if (SCENARIO === "profile-effect-dropped") sb = { type: "readOnly", networkAccess: false };
     if (SCENARIO === "profile-widened") sb = { ...sb, writableRoots: [...(sb.writableRoots ?? []), process.cwd()] };
     if (SCENARIO === "profile-networked" || SCENARIO === "write-networked") sb = { ...sb, networkAccess: true };
+    // A server that answered the temp keys differently from what was asked. Overrides rather than
+    // config, because the whole point is a response that does not match the request the driver sent.
+    if (SCENARIO === "write-slash-tmp-open" || SCENARIO === "profile-slash-tmp-open") sb = { ...sb, excludeSlashTmp: false };
+    if (SCENARIO === "write-tmpdir-excluded") sb = { ...sb, excludeTmpdirEnvVar: true };
     if (SCENARIO === "profile-network-dropped") sb = { ...sb, networkAccess: false };
     // The widened root is derived from the requested cwd, rather than a fixture-only literal that could
     // accidentally agree with a driver bug. Its parent exists and is strictly broader than the cwd.
@@ -605,6 +619,13 @@ function onLine(line) {
       // Write-level sandbox guards must stop the turn before any of this otherwise-valid work runs.
       case "write-root-widened":
       case "write-full-access":
+      case "write-slash-tmp-open":
+      // Refused at read level too, by the /tmp check that level now carries.
+      case "profile-slash-tmp-open":
+      // The one of the three the READ assertion deliberately lets through — excludeTmpdirEnvVar names
+      // the directory the explicit root already names — so at read level this runs a healthy turn and
+      // only --level write refuses it.
+      case "write-tmpdir-excluded":
         w(R, cmd(TURN, m.params.threadId), msg(TURN, m.params.threadId, "the answer"), done(TURN, m.params.threadId));
         break;
 

@@ -3,6 +3,47 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- A write seat DECLARES the two implicit grants a `workspace-write` sandbox otherwise carries, so the
+  rights it asks for are `--cwd`, each `--writable` root and `$TMPDIR`:
+  `sandbox_workspace_write.exclude_slash_tmp=true` takes `/tmp` out of the grant, and
+  `exclude_tmpdir_env_var=false` keeps the temp directory the caller — or this driver — chose. What was
+  measured, on codex-cli 0.153.4, 2026-09-12: a `thread/start` carrying neither key answers
+  `writableRoots []`, `excludeSlashTmp false` and `excludeTmpdirEnvVar false`, so the directory a caller
+  picked as the blast radius was never all the sandbox allowed and no report field said so; each field
+  mirrors its own key, on the running server and in the test fixture alike, pinned by two differential
+  cases that send the opposite value; and the write-level assertion refuses a response that differs
+  either way, since deleting either check, or the key it checks, turns suite cases red. What this change
+  did NOT measure: a write into `/tmp` attempted from inside a live turn. A narrower sandbox is refused
+  as loudly as a wider one, because a seat whose `$TMPDIR` is unwritable cannot run a here-document and
+  reports that failure as a finding about the task.
+- The private 0700 `$TMPDIR` the driver makes when the caller exported none is made at BOTH levels, not
+  at read alone. With `/tmp` now excluded from the write sandbox and no `TMPDIR` in the environment,
+  `os.tmpdir()` and zsh's `TMPPREFIX` both fall back to `/tmp`. That a `TMPPREFIX` outside the grant
+  costs a seat its here-documents is not a new claim: it was measured failing every `<<EOF` with "can't
+  create temp file for here document" across 15 rollouts between 2026-08-31 and 2026-09-08, which is why
+  this driver sets the variable at all. What the new case measures is the precondition — a write run
+  whose caller exported no `TMPDIR` now reports a private `tmpDir` and hands the seat a `TMPPREFIX`
+  inside it, where the same run before this change handed over `/tmp/zsh` and reported no `tmpDir`.
+  A caller's own `$TMPDIR` takes the protected-root guard at
+  write level too, as it already did at read — `exclude_tmpdir_env_var=false` makes that directory an
+  acknowledged part of the grant, so `TMPDIR=~/.codex/x --level write` is refused like any other root
+  inside the receipt store. The report's `tmpDir` is therefore non-null on a write run whose caller
+  exported no temp directory.
+
+### Fixed
+
+- The read level's sandbox assertion inspects the implicit `/tmp` grant. It checked the profile, the
+  sandbox type, egress, the workspace and the explicit writable roots, and `excludeSlashTmp` was among
+  none of them — so with `$TMPDIR` outside `/tmp` a response that granted all of `/tmp` beside it passed,
+  against that level's own promise that `$TMPDIR` is writable and nothing else is. `excludeTmpdirEnvVar`
+  is deliberately not asserted there: `false` names the same directory the explicit root already names,
+  and `true` is what the profile reports with `TMPDIR` unset, which the existing refusal catches first
+  and by its own cause.
+
 ## 0.14.0 — 2026-09-12
 
 ### Changed

@@ -222,6 +222,18 @@ const CASES = [
   { scenario: "write-full-access", expect: EXIT.TRANSPORT, args: ["--level", "write"],
     why: "write level must reject dangerFullAccess before an otherwise healthy turn can run",
     assertStderr: (t) => /sandbox type/.test(t) || `stderr did not name the sandbox type: ${JSON.stringify(t)}` },
+  // The two implicit temp grants of a workspace-write sandbox. Neither appears in writableRoots, so
+  // every other write-level case stays green while the grant the caller reasoned about is not the one
+  // that applied.
+  { scenario: "write-slash-tmp-open", expect: EXIT.TRANSPORT, args: ["--level", "write"],
+    why: "a write seat is told it may write --cwd, --writable and $TMPDIR; with /tmp left open it may write all of /tmp too, and no root list reveals it",
+    assertStderr: (t) => /excludeSlashTmp/.test(t) || `the refusal did not name the field that differed: ${JSON.stringify(t.trim().slice(0, 160))}` },
+  { scenario: "write-tmpdir-excluded", expect: EXIT.TRANSPORT, args: ["--level", "write"],
+    why: "a NARROWER sandbox is refused as loudly as a wider one: with $TMPDIR withheld every heredoc, mkdtemp and test runner dies, and the seat reports those failures as findings about the task",
+    assertStderr: (t) => /excludeTmpdirEnvVar/.test(t) || `the refusal did not name the field that differed: ${JSON.stringify(t.trim().slice(0, 160))}` },
+  { scenario: "profile-slash-tmp-open", expect: EXIT.TRANSPORT,
+    why: "the read level's promise is that $TMPDIR is writable and nothing else is; with $TMPDIR outside /tmp the explicit root list reads back correct while all of /tmp is writable beside it",
+    assertStderr: (t) => /excludeSlashTmp/.test(t) || `the refusal did not name the field that differed: ${JSON.stringify(t.trim().slice(0, 160))}` },
   { scenario: "failed-null-exit", expect: EXIT.OK,
     why: "the schema permits a FAILED command with exitCode null; failure classification must not depend on a numeric exit code",
     assert: (r) => r.commandsFailed === 1 || `the failed command was not counted: failed=${r.commandsFailed} blocked=${r.commandsBlocked}` },
@@ -347,6 +359,17 @@ const CASES = [
       const got = /TMPPREFIX=(\S+)/.exec(String(r.answer))?.[1];
       if (!got) return `the fixture did not report TMPPREFIX: ${String(r.answer).slice(0, 160)}`;
       if (r.tmpDir === null) return "a private temp directory was not named in the report";
+      return got === path.join(r.tmpDir, "zsh") || `TMPPREFIX is not under the run's TMPDIR: ${JSON.stringify({ got, tmpDir: r.tmpDir })}`;
+    } },
+  // The same question at WRITE level, which now excludes /tmp: a caller who exported no TMPDIR would
+  // otherwise have os.tmpdir() and TMPPREFIX both pointing into a directory the sandbox refuses, and
+  // every heredoc and mkdtemp in the turn would fail with nothing in the report saying why.
+  { scenario: "env-tmpprefix",    expect: EXIT.OK, unsetEnv: ["TMPDIR", "TMPPREFIX"], args: ["--level", "write"],
+    why: "the private $TMPDIR is not a read-level convenience: with /tmp excluded from the write sandbox, a write seat whose caller exported no TMPDIR has no writable temp root at all unless the driver makes one",
+    assert: (r) => {
+      const got = /TMPPREFIX=(\S+)/.exec(String(r.answer))?.[1];
+      if (!got) return `the fixture did not report TMPPREFIX: ${String(r.answer).slice(0, 160)}`;
+      if (r.tmpDir === null) return "a write run with no caller TMPDIR did not make a private one";
       return got === path.join(r.tmpDir, "zsh") || `TMPPREFIX is not under the run's TMPDIR: ${JSON.stringify({ got, tmpDir: r.tmpDir })}`;
     } },
 
