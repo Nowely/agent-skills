@@ -90,7 +90,14 @@ forensics remain in the repository references and release notes.
   exits 2 with a report naming it and saying it was kept; and a `--resume` whose rebuild cannot finish
   removes its tree and says so in the same two fields instead of publishing none. Where a codex was
   started in the tree the reason now says whether it is still running or has exited, and with what code,
-  rather than calling a dead process live. The stderr line stays, and the exit handler stays as the
+  rather than calling a dead process live. Where none was, it names which of the three results kept the
+  tree instead of listing them: `git found work in it (1 path, the first ?? seat-scratch.txt)`, `git
+  could not read its status (…)` or `git refused to remove it (…)`, the last two quoting the head of
+  what git said — three different things for its reader to do, where one sentence sent the reader of a
+  half-made tree looking for work that was never in it. Measured 2026-09-13, one case each: a file
+  planted in the tree the moment `worktree add` returns, a `status --porcelain` that exits 128 for that
+  tree alone, and the half-made tree of the failed-add case above, which git will not remove because it
+  never registered it. What is removed and what is preserved is unchanged. The stderr line stays, and the exit handler stays as the
   fallback for paths that never reach a report: a `disposed` flag on the tree makes the second caller a
   no-op, so the decision is taken once; the report carries it, and stderr announces a preserved tree.
 - The exit-code help no longer says of `--report-file` what is only true of stdout. "an argument error

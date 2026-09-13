@@ -1587,6 +1587,11 @@ function git(dir, args, extra = {}) {
   return spawnSync("git", [...GIT_SAFE, "-C", dir, ...args],
     { encoding: "utf8", timeout: LIMITS.SPAWN_TIMEOUT_MS, killSignal: "SIGKILL", ...extra });
 }
+// The head of what git said about a command that did not work, for a report a human reads: one line,
+// bounded, and never empty — a git the bound above killed, or one that never started, has no stderr at
+// all and only its signal or its code to give.
+const gitSaid = (r) => (String(r.stderr ?? "").trim().split("\n")[0] || r.error?.message
+  || (r.status === null ? `killed by ${r.signal}` : `exit ${r.status}`)).slice(0, 160);
 
 // ---------------------------------------------------------------- worktree
 // Run in a uniquely named detached worktree, then harvest a completed turn's work before removing it;
@@ -2038,10 +2043,22 @@ function worktreeLastResort() {
   worktreeInfo.disposed = true;
   const { repo, dir, ledger } = worktreeInfo;
   let removed = false;
+  // WHY a tree with no codex in it was kept: three different results decide it — git could not read the
+  // status, the status reported work, or the removal was refused — and they send a reader to three
+  // different places. One sentence naming all of them at once sent whoever read it looking for work in
+  // a tree git had not even managed to look at.
+  let kept = null;
   if (!child) {
     const st = git(dir, ["status", "--porcelain"]);
-    if (st.status === 0 && st.stdout.trim() === "")
-      removed = git(repo, ["worktree", "remove", dir]).status === 0;
+    const work = String(st.stdout ?? "").split("\n").filter((l) => l.trim() !== "");
+    if (st.status !== 0) kept = `git could not read its status (${gitSaid(st)})`;
+    else if (work.length)
+      kept = `git found work in it (${work.length} path${work.length === 1 ? "" : "s"}, the first ${work[0].trim().slice(0, 120)})`;
+    else {
+      const rm = git(repo, ["worktree", "remove", dir]);
+      removed = rm.status === 0;
+      if (!removed) kept = `git refused to remove it (${gitSaid(rm)})`;
+    }
   }
   if (removed) { if (ledger) { try { fs.rmSync(ledger, { force: true }); } catch {} } }
   else process.stderr.write(`codex-delegate: worktree PRESERVED at ${dir} (run ended before disposition); ` +
@@ -2053,7 +2070,7 @@ function worktreeLastResort() {
     ? (child.signalCode ? `signal ${child.signalCode}` : `code ${child.exitCode}`) : null;
   return (worktreeDisposition = { worktreePath: dir,
     worktreePreserved: removed ? null
-      : !child ? "the run ended before disposition and the tree was not removed: git found work in it, or refused to remove it; harvest it, then remove it"
+      : !child ? `the run ended before disposition and the tree was not removed: ${kept}; harvest it, then remove it`
         : exited ? `the run ended before disposition; a codex was started in the tree and has exited (${exited}), so the tree may hold what it wrote; harvest it, then remove it`
           : "the run ended before disposition with a codex still running in the tree; harvest it, then remove it" });
 }

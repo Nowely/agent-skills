@@ -373,11 +373,82 @@ test("a `worktree add` that failed with the directory already there is named in 
         return `the report says the tree was removed and it is still on disk: ${r.worktreePath}`;
       if (!onDisk && r.worktreePreserved !== null)
         return `the report preserves a tree that is not there: ${JSON.stringify(r.worktreePreserved)}`;
+      // A half-made tree holds no work and git will not remove what it never registered, so this is the
+      // third of the three reasons a tree with no codex in it is kept — and the one a reader would
+      // misread as "harvest it" if the report merely said work might be in there.
+      if (onDisk && !/git refused to remove it \(.+\)/.test(r.worktreePreserved))
+        return `the reason does not say the removal was refused, or does not quote git: ${JSON.stringify(r.worktreePreserved)}`;
       return true;
     } finally {
       if (r?.worktreePath) { try { fs.rmSync(r.worktreePath, { recursive: true, force: true }); } catch {} }
       for (const n of (fs.existsSync(ledgerDir) ? fs.readdirSync(ledgerDir) : []))
         if (!before.has(n)) { try { fs.rmSync(path.join(ledgerDir, n), { force: true }); } catch {} }
+    }
+  });
+
+// The three results that decide whether a tree no codex ever ran in is kept are three different things
+// to do about it: harvest the work git named, look at a tree git could not read, or remove by hand what
+// git would not remove. The case above measures the third; these two measure the other two.
+test("a preserved tree whose status showed work names the work",
+  "\"git found work in it, or refused to remove it\" was one sentence for three states: a reader of a half-made tree was told to harvest work that was never there, and a reader of a dirty one got no hint of what was in it",
+  async () => {
+    const repo = freshRepo("wt-pre-dirty");
+    if (!repo) return "git setup failed";
+    const bin = freshDir("wt-pre-dirty-bin");
+    // A real `worktree add`, with a file planted in the tree the moment it exists: the state a seat's
+    // own writing leaves behind, reached without a seat, since the refusal below comes before any codex.
+    fs.writeFileSync(path.join(bin, "git"),
+      `#!/bin/sh\ncase "$*" in *"worktree add"*) for a in "$@"; do last=$a; done; ` +
+      `${REAL_GIT} "$@" || exit $?; echo planted > "$last/seat-scratch.txt"; exit 0 ;; esac\n` +
+      `exec ${REAL_GIT} "$@"\n`, { mode: 0o755 });
+    const reportFile = path.join(freshDir("wt-pre-dirty-rf"), "report.json");
+    const { code, err } = await run(null,
+      { args: ["--worktree", repo, "--writable", "/nonexistent/no-such-root", "--report-file", reportFile],
+        env: { PATH: `${bin}:${shimDir}:${process.env.PATH}` } });
+    let r = null; try { r = JSON.parse(fs.readFileSync(reportFile, "utf8")); } catch {}
+    try {
+      if (code !== EXIT.USAGE) return `expected exit 2, got ${code}: ${err.trim().slice(0, 200)}`;
+      if (!r) return `no report was published at ${reportFile}`;
+      if (typeof r.worktreePreserved !== "string")
+        return `a tree with work in it was not preserved: ${JSON.stringify(r.worktreePreserved)}`;
+      if (!fs.existsSync(r.worktreePath)) return `the report preserves a tree that is not there: ${r.worktreePath}`;
+      if (!/git found work in it \(1 path, /.test(r.worktreePreserved) || !/seat-scratch\.txt/.test(r.worktreePreserved))
+        return `the reason does not say what git found, or does not name it: ${JSON.stringify(r.worktreePreserved)}`;
+      return true;
+    } finally {
+      if (r?.worktreePath) spawnSync("git", ["-C", repo, "worktree", "remove", "--force", r.worktreePath]);
+    }
+  });
+
+test("a preserved tree whose status could not be read says so, and quotes git",
+  "a status that failed is not work found: the tree may be empty, and telling its reader to harvest it hides the only fact there is — that git could not look",
+  async () => {
+    const repo = freshRepo("wt-pre-unreadable");
+    if (!repo) return "git setup failed";
+    const bin = freshDir("wt-pre-unreadable-bin");
+    // Only the status of a tree under THIS repo's worktrees: the ledger is shared with every other case
+    // here, and a shim that failed every status would answer for their trees too. The driver resolves
+    // --worktree before it builds that path, so the pattern has to be the RESOLVED repo — under
+    // /var/folders on macOS the two spellings share no prefix at all.
+    fs.writeFileSync(path.join(bin, "git"),
+      `#!/bin/sh\ncase "$*" in *"-C ${fs.realpathSync(repo)}/.claude/worktrees/"*"status --porcelain"*) ` +
+      `echo "fatal: planted status failure" >&2; exit 128 ;; esac\nexec ${REAL_GIT} "$@"\n`, { mode: 0o755 });
+    const reportFile = path.join(freshDir("wt-pre-unreadable-rf"), "report.json");
+    const { code, err } = await run(null,
+      { args: ["--worktree", repo, "--writable", "/nonexistent/no-such-root", "--report-file", reportFile],
+        env: { PATH: `${bin}:${shimDir}:${process.env.PATH}` } });
+    let r = null; try { r = JSON.parse(fs.readFileSync(reportFile, "utf8")); } catch {}
+    try {
+      if (code !== EXIT.USAGE) return `expected exit 2, got ${code}: ${err.trim().slice(0, 200)}`;
+      if (!r) return `no report was published at ${reportFile}`;
+      if (typeof r.worktreePreserved !== "string")
+        return `a tree whose status could not be read was not preserved: ${JSON.stringify(r.worktreePreserved)}`;
+      if (!fs.existsSync(r.worktreePath)) return `the report preserves a tree that is not there: ${r.worktreePath}`;
+      if (!/git could not read its status \(fatal: planted status failure\)/.test(r.worktreePreserved))
+        return `the reason does not say the status was unreadable, or does not quote git: ${JSON.stringify(r.worktreePreserved)}`;
+      return true;
+    } finally {
+      if (r?.worktreePath) spawnSync("git", ["-C", repo, "worktree", "remove", "--force", r.worktreePath]);
     }
   });
 
