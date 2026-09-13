@@ -57,6 +57,16 @@ forensics remain in the repository references and release notes.
   rather than calling a dead process live. The stderr line stays, and the exit handler stays as the
   fallback for paths that never reach a report: a `disposed` flag on the tree makes the second caller a
   no-op, so the decision is taken once; the report carries it, and stderr announces a preserved tree.
+- The exit-code help no longer says of `--report-file` what is only true of stdout. "an argument error
+  prints none" and "like a 2 it then prints no report" described stdout alone: the report file is opened
+  before argument parsing, and a pre-turn refusal is deliberately published there, so a caller waiting on
+  the file is answered even where stdout is empty. Measured 2026-09-12: a missing state directory and a
+  plain `--bogus` flag each exited 2 with empty stdout and a fresh report file carrying `turnStatus:
+  null` and the refusal. The help now names the two delivery surfaces, says that stdout carries no report
+  before a turn while the file carries the refusal as `{ok:false, exitCode, turnStatus:null, error}` once
+  its path was accepted and no other run published there first, and that a REFUSED report path — not
+  absolute, an unusable parent, or an entry already there, a symlink included — leaves no file anywhere
+  and puts the reason on stderr.
 - The read level's sandbox assertion inspects the implicit `/tmp` grant. It checked the profile, the
   sandbox type, egress, the workspace and the explicit writable roots, and `excludeSlashTmp` was among
   none of them — so with `$TMPDIR` outside `/tmp` a response that granted all of `/tmp` beside it passed,

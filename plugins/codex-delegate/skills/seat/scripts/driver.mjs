@@ -527,10 +527,16 @@ ${stateSubdirHelp()}
   { s: "Exit codes. Raised the moment they happen, before any turn could run:",
     text: `  2  bad arguments
   3  a stalled probe or stdin under a short --timeout, or a prompt that never
-     arrives on stdin within the silence budget; like a 2 it then prints no report
+     arrives on stdin within the silence budget; like a 2, it lands before a turn
   4  transport, and every sandbox / approval assertion
   10 another run holds the lock on this directory, or a resumed thread still
      has a turn open
+
+  A report has two delivery surfaces, stdout and --report-file. Before a turn
+  stdout carries no report; the file carries the refusal as {ok:false, exitCode,
+  turnStatus:null, error}. Where this run could not publish there — the path was
+  not absolute, its parent unusable, an entry was already there (a symlink
+  counts), or another run published first — stderr says so, and says why.
 
   Decided after the turn, first match wins, in this order:
 ${ladderHelp()}
@@ -538,7 +544,7 @@ ${ladderHelp()}
   and 4 once more at the very end, if the report could not reach stdout — a closed
   pipe, or a consumer that never drained it within what was left of --timeout (at
   least ${LIMITS.STDOUT_DRAIN_MIN_MS / 1000} s, and exactly ${LIMITS.STDOUT_DRAIN_MIN_MS / 1000} s where no wall clock was set). So 2 means either, and
-  the report tells them apart: an argument error prints none.
+  turnStatus tells them apart: null is the refusal that came before a turn.
   Codes decided after the turn can all carry executed work. 4 too, when the server
   died mid-turn: turnStatus is then failed, never null.` },
 ];
@@ -958,7 +964,7 @@ function publishReport(text) {
     // EEXIST here is a second run that named this path and published first, which the pre-spawn check
     // could not have seen. Its report stays; this one says where to find its own.
     const why = e.code === "EEXIST"
-      ? "a report is already there (another run named the same path); this run's report is on stdout only"
+      ? "a report is already there (another run named the same path); this run's report went to stdout alone, which before a turn carries nothing"
       : e.message;
     process.stderr.write(`codex-delegate: the report could not be published at ${reportFilePath}: ${why}\n`);
   } finally {
