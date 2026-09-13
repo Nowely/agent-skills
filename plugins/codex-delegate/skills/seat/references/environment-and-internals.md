@@ -25,6 +25,12 @@ threads are not included. `total` is thread-cumulative across `--resume`, and `l
 **API request**, not the whole turn — measured on a rollout, one turn emitted `last: 13584 / total: 13584`
 then `last: 14273 / total: 27857`. So `total` is what a single turn cost and `last` is only its tail.
 
+The report's `escalations` array has one `{method, detail, thread, subagent}` entry per approval request
+the driver declined, whichever thread asked. `detail` is the server's wording clipped to 200 characters
+and may be empty; a sandbox-denied command need not raise a request, so an empty array does not prove
+that no command was denied. An entry does not diagnose rights that were too narrow. Exit 6 means this
+rung won the ordered ladder; a cut run can carry entries and still exit 3.
+
 Codex delegates to subagent threads of its own whenever the model chooses to, at any effort. Measured on
 0.153.4 a child never sends `thread/started` to the client: the ROOT announces it as a `subAgentActivity`
 item carrying the child's `agentThreadId` and `agentPath`, before the child's first turn (one idle
@@ -53,12 +59,12 @@ checked before the turn, so a typo costs nothing.
 
 ## What is protected, and what is not
 
-Every write-level root — `--cwd`, `--writable`, and the destination a `--worktree` lands in — and the
-read level's `$TMPDIR` refuse `~/.codex` and the resolved state directory, and anything inside them, by
-inode identity: the first holds the receipts a seat is verified by, the second this driver's locks and
-answer log. The private `<state>/tmp/<runId>` created by the driver is the narrow exception: its owner
-record binds it to that run. The driver also refuses your home directory itself and every
-ancestor of it, up to `/`.
+At write level every root the seat may write — `--cwd`, each `--writable`, and the tree a `--worktree`
+lands in — refuses `~/.codex` and the resolved state directory, and anything inside them, by inode
+identity; `$TMPDIR` takes the same guard at either level. The first holds the receipts a seat is
+verified by, the second this driver's locks and answer log. The private `<state>/tmp/<runId>` created by
+the driver is the narrow exception: its owner record binds it to that run. The driver also refuses your
+home directory itself and every ancestor of it, up to `/`.
 
 **Only those are protected.** `~/.ssh`, `~/.aws`, `~/.claude`, `~/Library` and the rest of your home
 are legitimate write roots as far as the driver is concerned. It stops you handing over *everything*;
@@ -71,14 +77,18 @@ directory shared by every run on the machine, not a fresh one per turn, because 
 databases codex keeps there are what make an isolated run faster than a host-home one. The caller's
 plugins, skills and MCP servers stay out of the turn, and no trust records are written back.
 
-`auth.json` and `sessions` are symlinked to the real `~/.codex`, so credentials keep working and the
-rollout receipt lands where `receiptPath` points. `model`, `model_reasoning_effort`, `personality`, and
-`service_tier` are carried in through `config/read`, not by parsing TOML. A failed probe warns, retries
-once, and keeps the last known good config. A probe cancelled by a signal also fails, and an ending run
-writes nothing there. `configInherited` reports `probe`, `last-known-good`, or `none`, with carried keys;
-the report also carries `codexVersion` beside `codexVersionPinned`. No MCP server of the caller's is
-carried into it: a seat that needs them runs `--host-home` and accepts the rest of the host
-configuration with them.
+For an isolated run, `auth.json` and `sessions` are symlinked from the `~/.codex` in your home
+directory, whatever `CODEX_HOME` says; the rollout receipt lands there too, at `receiptPath`. Check that
+account with `CODEX_HOME=~/.codex codex login status`.
+
+Configuration is separate: it comes from `config.toml` in the home `CODEX_HOME` names, or from
+`~/.codex/config.toml` when the variable is unset. The driver carries `model`,
+`model_reasoning_effort`, `personality`, and `service_tier` into the private home through
+`config/read` rather than parsing TOML. A failed probe warns, retries once, and keeps the last known
+good config. A probe cancelled by a signal also fails, and an ending run writes nothing there.
+`configInherited` reports `probe`, `last-known-good`, or `none`, with carried keys; the report also
+carries `codexVersion` beside `codexVersionPinned`. No MCP server of the caller's is carried into it: a
+seat that needs them runs `--host-home` and accepts the rest of the host configuration with them.
 
 Because that file is shared, isolate test harness state with `CODEX_DELEGATE_STATE_DIR`; concurrent
 writers use atomic rename.
@@ -131,11 +141,13 @@ line, because verification runs an unsandboxed `/bin/sh` with the coordinator's 
 - The bounds are command-line-only because their defaults let a seat run with no sizing header at all.
 - `--report-file` is validated off the raw command line before the seat file is expanded and before
   anything is spawned: an absolute path, a writable parent — created at 0700, all the way down, when it
-  is absent — and a name that does not exist yet. Nothing prunes the directories or the files it makes;
-  the caller that named the path owns them.
+  is absent — and a name that does not exist yet. Cleanup lists the standalone recipe's
+  `<state>/reports/<run>` directories: a published run is selectable by number but never proposed, and
+  an unpublished run or one held by a live seat is kept. Any other destination remains the caller's.
 - A second signal escalates teardown, while `SIGKILL` of the driver can strand descendants. In the
   sub-second window before a turn id exists there is nothing to interrupt: the run exits 4, and the
-  pre-turn refusal still reaches `--report-file`.
+  pre-turn refusal still reaches `--report-file`. When a worktree was already made, that report also
+  carries `worktreePath` and `worktreePreserved`: the reason it was kept, or `null` where it was removed.
 - The job record's `endedAt` is written only after the report has landed. Before then a live recorded
   pid means running and a dead one means crashed.
 
@@ -297,13 +309,15 @@ grant, while the profile still applies under its correct id:
 -c 'permissions.pY.filesysten={":tmpdir"="write"}' -P pY  ->  TMPDIR_DENIED
 ```
 
-This is why the driver's read-level assert checks the **effect** as well as the name: sandbox type
-`workspaceWrite`, the network access that was asked for, the cwd present in `runtimeWorkspaceRoots`, and `writableRoots`
-equal to exactly `[$TMPDIR]` — or exactly empty when `--cwd` IS `$TMPDIR`, where the server moves it to
-`runtimeWorkspaceRoots` instead — canonicalised on both sides. The profile id is asserted first, but a
-name-only check passes in both cases above; verified live, introducing exactly this typo now exits 4
-before any model turn. ($TMPDIR itself also goes through the protected-root guard before the turn, so
-`TMPDIR=~/.codex/x --level read` is a usage error rather than something this assert has to catch.) Check a profile the same way yourself:
+This is why the driver's read-level assert checks the **effect** as well as the name. It requires
+sandbox type `workspaceWrite`, the network access that was asked for, `excludeSlashTmp` true so `/tmp`
+is not writable beside `$TMPDIR`, and the cwd present in `runtimeWorkspaceRoots`. It also requires
+`writableRoots` equal to exactly `[$TMPDIR]` — or exactly empty when `--cwd` is `$TMPDIR`, where the
+server moves it to `runtimeWorkspaceRoots` instead — with paths canonicalised on both sides. The
+profile id is asserted first, but a name-only check passes in both cases above; verified live,
+introducing exactly this typo now exits 4 before any model turn. ($TMPDIR itself also goes through the
+protected-root guard at both levels before the turn, so `TMPDIR=~/.codex/x` is a usage error rather than
+something either assert has to catch.) Check a profile the same way yourself:
 
 ```bash
 codex sandbox -c 'permissions.codex_delegate_read.extends=":read-only"' \

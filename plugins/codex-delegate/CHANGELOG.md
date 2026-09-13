@@ -163,6 +163,23 @@ forensics remain in the repository references and release notes.
   `worktreePreserved`, a refused report path makes no report for that run while an entry already there
   is left as it was, and `escalations` is documented with its truncation, its rung and what it does not
   prove.
+- The source-install recipe enters `agent-skills/plugins/codex-delegate`, not the retired top-level
+  `codex-delegate`. After the repository URL moved, a fresh clone was named `agent-skills` and the old
+  `cd` failed before every `$PWD`-based link (measured 2026-09-13: exit 1 on a fresh clone); the page says
+  so now, and says that cleanup reaches its seat script through the sibling `seat` link, because Node
+  resolves `..` lexically (without the link the command throws, with it it runs).
+- The `codex exec` comparison separates approval from sandbox. It said exec had neither because it
+  forces `never`; codex-cli 0.153.4 does offer `-s, --sandbox <read-only|workspace-write|danger-full-access>`,
+  and only `--approve-for-me` where a per-call approval policy would be; what it lacks is a policy that
+  survives the managed clamp. The row now says which right is absent, the `never` measurement is dated to
+  0.150.1 rather than repeated, and `app-server` remains the only surface with both per-call rights and
+  a machine-checkable execution signal.
+- The sign-in prerequisite names the account an isolated seat actually uses. A plain `codex login
+  status` can follow a custom `CODEX_HOME`, while the driver links `auth.json` and `sessions` from the
+  `~/.codex` in the home directory and reads the custom home for its configuration probe alone
+  (measured 2026-09-12: a status check under an empty custom `CODEX_HOME` answered "Not logged in"
+  while the same check against `~/.codex` answered "Logged in using ChatGPT"); the README and the
+  internals now give the one account-check command and keep configuration apart from credentials.
 
 ## 0.14.0 — 2026-09-12
 

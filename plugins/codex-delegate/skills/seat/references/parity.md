@@ -25,7 +25,7 @@ and one qualification.
 | a schema-validated return | `--output-schema <file>` | spends one corrective turn before exit 13; see `--help` |
 | a short return plus transcript | `--brief` | full generated text remains at `answerPath`; see `--help` |
 | a review pass | [adversarial-review.md](adversarial-review.md) plus [`review-output.schema.json`](../schemas/review-output.schema.json) | one prompt seat under a strict schema, grounded ship/no-ship |
-| a permission prompt | none — refused, recorded, exit 6 | widen only what the user settled: an extra writable root, or a `NETWORK: no` taken back out |
+| a permission prompt | none — the request is declined and recorded; exit 6 only when that rung wins | inspect `escalations` and the answer before judging completeness; a denied command need not have requested approval |
 
 Settle rights through [SKILL.md's rights rules](../SKILL.md#rights).
 
