@@ -36,6 +36,27 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- A pre-turn report names the worktree the run made and says what became of it. A run refused or cut
+  before the turn published seven fields — `ok`, `exitCode`, `threadId`, `turnStatus`, `answer`,
+  `error`, `reportPath` — while the tree's disposition was decided by the exit handler AFTER the report
+  was out, and a PRESERVED tree was announced on stderr alone: a coordinator reading only the report,
+  which is what every recipe tells it to do, could neither harvest that tree nor remove it. The
+  disposition is now decided before the report is published, under the rule the exit handler already
+  used in the last resort — removed only where no codex was ever started, `git status --porcelain`
+  succeeds and is clean, and `git worktree remove` succeeds; a `--resume` rebuild that cannot finish
+  removes its half-restored tree with `--force` — and the report carries `worktreePath` and
+  `worktreePreserved` under the post-turn report's own names and types: the reason the tree was kept,
+  or `null` where it was removed. Four paths that named nothing now name the tree, each measured as a case: an invalid
+  `--writable` root, refused after the tree exists and before any codex does, exits 2 with a report
+  naming a tree that is gone from disk; an app-server that never answers `thread/start`, cut at
+  `--timeout 2`, exits 3 with a report naming a preserved tree that is still there; a `git worktree add`
+  that fails with its destination already created — a directory previously known only to the ledger —
+  exits 2 with a report naming it and saying it was kept; and a `--resume` whose rebuild cannot finish
+  removes its tree and says so in the same two fields instead of publishing none. Where a codex was
+  started in the tree the reason now says whether it is still running or has exited, and with what code,
+  rather than calling a dead process live. The stderr line stays, and the exit handler stays as the
+  fallback for paths that never reach a report: a `disposed` flag on the tree makes the second caller a
+  no-op, so the decision is taken once; the report carries it, and stderr announces a preserved tree.
 - The read level's sandbox assertion inspects the implicit `/tmp` grant. It checked the profile, the
   sandbox type, egress, the workspace and the explicit writable roots, and `excludeSlashTmp` was among
   none of them — so with `$TMPDIR` outside `/tmp` a response that granted all of `/tmp` beside it passed,

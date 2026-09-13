@@ -286,6 +286,158 @@ test("--worktree preserves the tree on a timeout",
     return true;
   });
 
+// A run that never reaches finish() reports through preTurnReport, whose seven fields named no tree at
+// all: the disposition was decided by the exit handler AFTER the report was out, and a preserved tree
+// was announced on stderr alone. A coordinator that reads only the report — which is what every recipe
+// tells it to do — could then neither harvest the tree nor remove it. Both branches of that decision
+// are measured here, because "removed" and "preserved" are the same silence in the old report.
+test("a pre-turn refusal names a REMOVED tree in the report",
+  "a report-only caller must be able to tell a tree that was disposed of from one still on disk; the seven-field pre-turn report said nothing either way",
+  async () => {
+    const repo = freshRepo("wt-pre-removed");
+    if (!repo) return "git setup failed";
+    const reportFile = path.join(freshDir("wt-pre-removed-rf"), "report.json");
+    // Refused after `git worktree add` and before any codex exists: the tree is provably clean, so the
+    // driver's own rule removes it.
+    const { code, err } = await run(null,
+      { args: ["--worktree", repo, "--writable", "/nonexistent/no-such-root", "--report-file", reportFile] });
+    if (code !== EXIT.USAGE) return `expected exit 2, got ${code}: ${err.trim().slice(0, 200)}`;
+    let r = null; try { r = JSON.parse(fs.readFileSync(reportFile, "utf8")); } catch {}
+    if (!r) return `no report was published at ${reportFile}`;
+    if (r.ok !== false || r.turnStatus !== null)
+      return `the pre-turn shape changed: ${JSON.stringify({ ok: r.ok, turnStatus: r.turnStatus })}`;
+    if (typeof r.worktreePath !== "string" || !r.worktreePath)
+      return `the report does not name the tree it made: ${JSON.stringify(r.worktreePath)}`;
+    if (r.worktreePreserved !== null)
+      return `a removed tree was reported as preserved: ${JSON.stringify(r.worktreePreserved)}`;
+    if (fs.existsSync(r.worktreePath)) return `the report says removed and the tree is still there: ${r.worktreePath}`;
+    const left = worktreesUnder(repo);
+    if (left.length) return `worktree directories left behind: ${JSON.stringify(left)}`;
+    return true;
+  });
+
+test("a cut before the thread names the PRESERVED tree in the report",
+  "the tree holds whatever a live codex was writing and only stderr ever named it; a caller reading the report could not find it to harvest or remove",
+  async () => {
+    const repo = freshRepo("wt-pre-preserved");
+    if (!repo) return "git setup failed";
+    const reportFile = path.join(freshDir("wt-pre-preserved-rf"), "report.json");
+    // thread/start is never answered, so the wall clock cuts a run that has a codex and no thread:
+    // abort() reports through preTurnReport, and a tree with a child in it is never removed.
+    const { code, err } = await run(null,
+      { scenario: "no-thread", timeout: 2, args: ["--worktree", repo, "--report-file", reportFile] });
+    let r = null; try { r = JSON.parse(fs.readFileSync(reportFile, "utf8")); } catch {}
+    try {
+      if (code !== EXIT.TIMEOUT) return `expected exit 3, got ${code}: ${err.trim().slice(0, 200)}`;
+      if (!r) return `no report was published at ${reportFile}`;
+      if (r.turnStatus !== null) return `a run with no thread reported a turn status: ${JSON.stringify(r.turnStatus)}`;
+      if (typeof r.worktreePreserved !== "string" || !r.worktreePreserved)
+        return `a preserved tree was not reported as such: ${JSON.stringify(r.worktreePreserved)}`;
+      if (typeof r.worktreePath !== "string" || !fs.existsSync(r.worktreePath))
+        return `the report names no tree on disk: ${JSON.stringify(r.worktreePath)}`;
+      if (!/worktree PRESERVED at/.test(err)) return `the stderr announcement was dropped: ${err.trim().slice(0, 200)}`;
+      return true;
+    } finally {
+      if (r?.worktreePath) spawnSync("git", ["-C", repo, "worktree", "remove", "--force", r.worktreePath]);
+    }
+  });
+
+test("a `worktree add` that failed with the directory already there is named in the report",
+  "the half-made tree is on disk and only the ledger knew it: worktreeInfo was assigned after the add, so the pre-turn report named no path and a report-only caller had nothing to go looking for",
+  async () => {
+    const repo = freshRepo("wt-pre-partial");
+    if (!repo) return "git setup failed";
+    const bin = freshDir("wt-pre-partial-bin");
+    // The destination is the last argument of `worktree add --detach <dir>`; create it and fail, exactly
+    // as an add killed mid-checkout leaves it.
+    fs.writeFileSync(path.join(bin, "git"),
+      `#!/bin/sh\ncase "$*" in *"worktree add"*) for a in "$@"; do last=$a; done; mkdir -p "$last"; ` +
+      `echo "planted" >&2; exit 1 ;; esac\nexec ${REAL_GIT} "$@"\n`, { mode: 0o755 });
+    const reportFile = path.join(freshDir("wt-pre-partial-rf"), "report.json");
+    // The ledger is shared with every other case here, and this one leaves an entry behind by design, so
+    // what it planted is identified by difference rather than by a repo path the driver has canonicalised.
+    const ledgerDir = path.join(STATE_DIR, "worktrees");
+    const before = new Set(fs.existsSync(ledgerDir) ? fs.readdirSync(ledgerDir) : []);
+    const { code, err } = await run(null, { args: ["--worktree", repo, "--report-file", reportFile],
+      env: { PATH: `${bin}:${shimDir}:${process.env.PATH}` } });
+    let r = null; try { r = JSON.parse(fs.readFileSync(reportFile, "utf8")); } catch {}
+    try {
+      if (code !== EXIT.USAGE) return `a failed worktree add exited ${code}, expected 2: ${err.trim().slice(0, 200)}`;
+      if (!r) return `no report was published at ${reportFile}`;
+      if (typeof r.worktreePath !== "string" || !r.worktreePath)
+        return `the report names no tree, so a directory on disk is undiscoverable from it: ${JSON.stringify(r.worktreePath)}`;
+      // Whichever way the disposition rule went, the report and the disk have to agree — that is the
+      // whole value of the field to a caller that cannot see the directory.
+      const onDisk = fs.existsSync(r.worktreePath);
+      if (onDisk && r.worktreePreserved === null)
+        return `the report says the tree was removed and it is still on disk: ${r.worktreePath}`;
+      if (!onDisk && r.worktreePreserved !== null)
+        return `the report preserves a tree that is not there: ${JSON.stringify(r.worktreePreserved)}`;
+      return true;
+    } finally {
+      if (r?.worktreePath) { try { fs.rmSync(r.worktreePath, { recursive: true, force: true }); } catch {} }
+      for (const n of (fs.existsSync(ledgerDir) ? fs.readdirSync(ledgerDir) : []))
+        if (!before.has(n)) { try { fs.rmSync(path.join(ledgerDir, n), { force: true }); } catch {} }
+    }
+  });
+
+test("a rebuild that cannot finish names the tree it removed in the report",
+  "restorePriorWork marks the tree disposed before its refusal is reported, so the pre-turn report carried no disposition at all and a caller could not tell a removed tree from one left behind",
+  async () => {
+    const repo = freshRepo("wt-pre-restore");
+    if (!repo) return "git setup failed";
+    const first = await run(null, { args: ["--worktree", repo, "--verify",
+      "printf 'seat-line\\n' >> seed && printf 'scratch\\n' > scratch.txt"] });
+    if (first.code !== EXIT.OK) return `the first seat exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
+    let r1 = null; try { r1 = JSON.parse(first.out); } catch { return "no JSON report from the first seat"; }
+    if (!r1.worktreeUntrackedPath) return "the first seat saved no untracked archive, so there is nothing to corrupt";
+    fs.writeFileSync(r1.worktreeUntrackedPath, "not a gzip stream at all\n");
+    const reportFile = path.join(freshDir("wt-pre-restore-rf"), "report.json");
+    const { code, err } = await run(null,
+      { args: ["--worktree", repo, "--resume", "last", "--report-file", reportFile] });
+    let r = null; try { r = JSON.parse(fs.readFileSync(reportFile, "utf8")); } catch {}
+    try {
+      if (code !== EXIT.USAGE) return `a rebuild that cannot finish exited ${code}, expected 2: ${err.trim().slice(0, 200)}`;
+      if (!r) return `no report was published at ${reportFile}`;
+      if (typeof r.worktreePath !== "string" || !r.worktreePath)
+        return `the report names no tree: ${JSON.stringify(r.worktreePath)}`;
+      if (r.worktreePreserved !== null)
+        return `the tree the rebuild removed was reported as preserved: ${JSON.stringify(r.worktreePreserved)}`;
+      if (fs.existsSync(r.worktreePath)) return `the report says removed and the tree is still there: ${r.worktreePath}`;
+      return true;
+    } finally {
+      for (const p of [r1?.worktreeDiffPath, r1?.worktreeUntrackedPath]) if (p) fs.rmSync(p, { force: true });
+    }
+  });
+
+test("a preserved tree says whether the codex is still running or has already exited",
+  "the child object is what forbids removal, but reporting a process as running when it has exited sends the reader waiting for something that is gone",
+  async () => {
+    const repo = freshRepo("wt-pre-dead");
+    if (!repo) return "git setup failed";
+    const bin = freshDir("wt-pre-dead-bin");
+    // An app-server that exits at once: the child object exists and already carries a code by the time
+    // the tree is disposed of. Nothing else in the suite produces a DEAD child before a thread exists.
+    fs.writeFileSync(path.join(bin, "codex"), "#!/bin/sh\nexit 23\n", { mode: 0o755 });
+    const reportFile = path.join(freshDir("wt-pre-dead-rf"), "report.json");
+    const { code, err } = await run(null, { args: ["--worktree", repo, "--report-file", reportFile],
+      env: { PATH: `${bin}:${process.env.PATH}` } });
+    let r = null; try { r = JSON.parse(fs.readFileSync(reportFile, "utf8")); } catch {}
+    try {
+      if (code !== EXIT.TRANSPORT) return `a server that exits at once gave ${code}, expected 4: ${err.trim().slice(0, 200)}`;
+      if (!r) return `no report was published at ${reportFile}`;
+      if (typeof r.worktreePreserved !== "string")
+        return `a tree a codex was started in was not preserved: ${JSON.stringify(r.worktreePreserved)}`;
+      if (/still running/.test(r.worktreePreserved))
+        return `a codex that had exited was reported as running: ${r.worktreePreserved}`;
+      if (!/has exited \(code 23\)/.test(r.worktreePreserved))
+        return `the report does not say the codex exited, or with what: ${r.worktreePreserved}`;
+      return true;
+    } finally {
+      if (r?.worktreePath) spawnSync("git", ["-C", repo, "worktree", "remove", "--force", r.worktreePath]);
+    }
+  });
+
 test("--worktree refuses a destination that a symlink puts outside the checked repository",
   "checkRoot(repo) guards the source repository, but a symlinked .claude can redirect the worktree destination; that destination must be checked before git creates files or runs hooks",
   async () => {

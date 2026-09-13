@@ -969,10 +969,18 @@ function publishReport(text) {
 // A refusal reached before there is a turn to report is still an answer to whoever is waiting on the
 // file. The same shape as a report, so one reader parses both, and no receipt, answer or turn status is
 // invented for a run that produced none.
+//
+// A managed worktree is disposed of HERE, before the report is written, rather than being left to the
+// exit handler that runs after it: the tree's disposition is decided either way, and a caller reading
+// only the report could not discover a PRESERVED one — the stderr line naming it was the only copy — so
+// it could neither harvest the tree nor remove it. Same rule, same names and types as the post-turn
+// report (`worktreePath`, and `worktreePreserved` as the reason or null), and decided once: whichever
+// of the two paths runs first sets `disposed`, and the other finds nothing to do.
 function preTurnReport(code, msg) {
   if (reportFilePath === null || reportFileWritten) return;
+  const wt = worktreeLastResort();
   publishReport(`${JSON.stringify({ ok: false, exitCode: code, threadId: rootThreadId,
-    turnStatus: null, answer: "", error: msg, reportPath: reportFilePath }, null, 2)}\n`);
+    turnStatus: null, answer: "", error: msg, reportPath: reportFilePath, ...(wt ?? {}) }, null, 2)}\n`);
 }
 
 // Resolved LAZILY, never at module scope: os.userInfo() THROWS for a uid with no passwd entry (a
@@ -1510,6 +1518,12 @@ function git(dir, args, extra = {}) {
 // incomplete turns and failed harvests preserve the tree.
 // Write the ledger before creation so a crashed run leaves a trace reconciliation can find.
 let worktreeInfo = null;
+// What a report should say about a managed tree, recorded by whichever path disposed of it before a
+// turn existed. disposeWorktree() has a richer answer of its own and writes the post-turn report
+// directly, so it does not set this; the paths that end early — a failed `worktree add`, a rebuild that
+// cannot finish, a crash — have only the pre-turn report, and a caller reading it must still learn
+// whether the tree it was promised is gone or still on disk.
+let worktreeDisposition = null;
 const answersDir = () => path.join(stateDir(), "answers");
 
 // One JSON record per run, keyed by threadId, under the state directory's jobs/ — the registry that lets a
@@ -1715,13 +1729,23 @@ function createWorktree(repo, prior = null) {
   if (ledger === null)
     fail(EXIT.USAGE, `the worktree ledger under ${ledgerDir()} could not be written, so a tree created now could not be named ` +
       `after a crash and would be orphaned; fix that directory, or run with --level write --cwd on a tree you manage yourself`);
+  // Assigned BEFORE the add rather than after it: `git worktree add` can fail with the destination
+  // already created, and a run that ends there must still be able to NAME the tree — the report is the
+  // only surface a coordinator reads, and a directory nothing names is one nobody goes looking for. The
+  // assignment is undone below on a failure that created nothing, so no report names a path that is not
+  // there. baseSha is filled in once the tree exists; nothing reads it before that.
+  worktreeInfo = { repo, dir, ledger, baseSha: null, name, restored: null, disposed: false };
   // --resume rebuilds the tree its thread ran in, so it starts where that tree started, not at today's
   // HEAD; a fresh seat starts at HEAD.
   const at = prior?.baseSha ? [prior.baseSha] : [];
   const add = git(repo, ["worktree", "add", "--detach", dir, ...at]);
   if (add.status !== 0) {
-    // Only when nothing was created: an add that died mid-checkout leaves the tree this entry exists to name.
-    if (ledger && !fs.existsSync(dir)) { try { fs.rmSync(ledger, { force: true }); } catch {} }
+    // Only when nothing was created: an add that died mid-checkout leaves the tree this entry exists to
+    // name, and the disposition rule below is what decides what happens to it.
+    if (!fs.existsSync(dir)) {
+      if (ledger) { try { fs.rmSync(ledger, { force: true }); } catch {} }
+      worktreeInfo = null;
+    }
     fail(EXIT.USAGE, `git worktree add failed: ${String(add.stderr).trim().slice(0, 200)}`);
   }
   // The commit the tree started at. The harvest diffs against THIS, not against HEAD: a seat that
@@ -1730,9 +1754,9 @@ function createWorktree(repo, prior = null) {
   // no way to ask what the base was.
   const base = git(dir, ["rev-parse", "HEAD"]);
   const baseSha = base.status === 0 ? base.stdout.trim() : null;
-  worktreeInfo = { repo, dir, ledger, baseSha, name, restored: null, disposed: false };
-  // Assigned above first, so the refusal below still disposes of the tree it is refusing over. Without a
-  // base every later question about this tree is unanswerable: the harvest cannot diff against it, and
+  worktreeInfo.baseSha = baseSha;
+  // worktreeInfo exists already, so the refusal below still disposes of the tree it is refusing over.
+  // Without a base every later question about this tree is unanswerable: the harvest cannot diff against it, and
   // "did the seat commit?" reads as no — so the seat's own commits would be dropped silently. Refused
   // here, before a single token is spent.
   if (!baseSha)
@@ -1756,9 +1780,16 @@ function restorePriorWork(dir, prior) {
   // Every refusal below leaves a tree that reproduces nothing the answer log does not still hold, and
   // keeping it would have every later reconciler announce it as work someone must harvest.
   const abandon = () => {
-    git(worktreeInfo.repo, ["worktree", "remove", "--force", dir]);
-    if (worktreeInfo.ledger) { try { fs.rmSync(worktreeInfo.ledger, { force: true }); } catch {} }
+    const rm = git(worktreeInfo.repo, ["worktree", "remove", "--force", dir]);
+    // The ledger goes only with the tree: a removal git refused leaves a directory on disk, and dropping
+    // its entry would leave the one thing that still names it to the report alone.
+    if (rm.status === 0 && worktreeInfo.ledger) { try { fs.rmSync(worktreeInfo.ledger, { force: true }); } catch {} }
     worktreeInfo.disposed = true;
+    // Recorded here because the flag above has just disabled worktreeLastResort: every refusal below is a
+    // pre-turn one, and its report is where a caller learns that the tree it was promised is gone.
+    worktreeDisposition = { worktreePath: dir,
+      worktreePreserved: rm.status === 0 ? null
+        : `--resume could not rebuild this tree and git worktree remove refused: ${String(rm.stderr).trim().slice(0, 160)}` };
   };
   const gone = (what, p) => (abandon(), fail(EXIT.USAGE, `--resume: the ${what} of that thread is no longer at ${p} ` +
     `(the answer log is pruned after ${LIMITS.PRUNE_DAYS} days), so its tree cannot be rebuilt; resume it with --level write --cwd on a tree you restore yourself`));
@@ -1918,8 +1949,17 @@ function disposeWorktree(turnDone) {
 // The synchronous last resort, for runs that end without reaching finish() — a usage error after the
 // tree was created, a Bail, a crash. A tree whose turn never started cannot hold work and is removed;
 // anything else is preserved out loud.
+//
+// Returns what a report should say about it, in the post-turn report's own names and types, so the
+// pre-turn report can carry the disposition instead of leaving it to stderr; null when there is no
+// managed tree, and the recorded disposition when the decision was already made. Idempotent through
+// `disposed`: the pre-turn report calls it before publishing and the exit handler calls it for every
+// path that never reached one, and a tree is neither removed twice nor announced twice.
 function worktreeLastResort() {
-  if (!worktreeInfo || worktreeInfo.disposed) return;
+  // A decision already made is answered from the record rather than made again — restorePriorWork
+  // disposes of its own tree and writes one — so the pre-turn report says the same thing whichever
+  // path got there first.
+  if (!worktreeInfo || worktreeInfo.disposed) return worktreeDisposition;
   worktreeInfo.disposed = true;
   const { repo, dir, ledger } = worktreeInfo;
   let removed = false;
@@ -1931,6 +1971,16 @@ function worktreeLastResort() {
   if (removed) { if (ledger) { try { fs.rmSync(ledger, { force: true }); } catch {} } }
   else process.stderr.write(`codex-delegate: worktree PRESERVED at ${dir} (run ended before disposition); ` +
     `harvest it, then: git -C ${repo} worktree remove --force ${dir}\n`);
+  // The EXISTENCE of a child is what forbids removal — a codex that started may have written, and
+  // nothing here can prove it did not. Its LIVENESS only picks the wording: a report that says a process
+  // is running when it has already exited sends its reader looking for something to wait for.
+  const exited = child && (child.exitCode !== null || child.signalCode !== null)
+    ? (child.signalCode ? `signal ${child.signalCode}` : `code ${child.exitCode}`) : null;
+  return (worktreeDisposition = { worktreePath: dir,
+    worktreePreserved: removed ? null
+      : !child ? "the run ended before disposition and the tree was not removed: git found work in it, or refused to remove it; harvest it, then remove it"
+        : exited ? `the run ended before disposition; a codex was started in the tree and has exited (${exited}), so the tree may hold what it wrote; harvest it, then remove it`
+          : "the run ended before disposition with a codex still running in the tree; harvest it, then remove it" });
 }
 
 // The read level's whole safety argument is "$TMPDIR is writable and nothing else is" — /tmp included,
