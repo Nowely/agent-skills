@@ -141,6 +141,28 @@ forensics remain in the repository references and release notes.
   instructions and never closed, and a peer that replaces the lock inside it still loses the file.
   `node evals/lock.test.mjs` on this machine, 2026-09-13: six sequential runs and three concurrent ones
   green after the fix, and three more once the last case was added — all 58 passed.
+- The wrapper's report is correlated to the invocation that produced it. Its wait ends on the driver's
+  own exit status, written to `<DIR>/exit`, and step 3 prints `DRIVER_EXIT` and a `PATH=` line beside
+  the report's `EXIT` and `FILE`: `own` where the driver's pid line names the path and nothing failed to
+  publish, `taken` where stderr carries the refusal of an entry already there or the failure to publish
+  behind another run, `none` where the path was never accepted. A retry that reused a report path was
+  read as its own result — the driver refuses the taken path before it records it and before it prints
+  its pid, so the old loop saw the previous file at once (measured 2026-09-13: `DRIVER_EXIT=2` against
+  `EXIT=0`, `FIRST=PREVIOUS RUN ANSWER`) — and the numbers alone do not settle it: a previous report
+  whose own `exitCode` was 2 prints `DRIVER_EXIT=2` beside `EXIT=2`, and `PATH=taken` tells them apart
+  (measured 2026-09-13). The three strings the line greps are the driver's own, pinned by a case that
+  reads them off the page and finds them in the driver.
+- A startup failure that leaves neither report nor pid now ends the wait. A report path under an
+  unwritable parent exits 2 with EACCES before any pid line; the old loop had no terminal branch and
+  the instructions said to repeat it. Measured 2026-09-13: the new loop returned at once with
+  `DRIVER_EXIT=2`, `PATH=none`, `FILE=missing`, the reason in `<DIR>/err.txt`; the wait tests the marker
+  for content rather than existence, because `echo $? >` creates the file before it writes the byte.
+- The seat page reads back what this release measured: `$TMPDIR` is granted at every level and `/tmp`
+  at none (a live 0.153.4 read handshake on 2026-09-13 reported `writableRoots` of `$TMPDIR` alone with
+  `excludeSlashTmp: true`), a worktree run cut or refused before its turn reports `worktreePath` and
+  `worktreePreserved`, a refused report path makes no report for that run while an entry already there
+  is left as it was, and `escalations` is documented with its truncation, its rung and what it does not
+  prove.
 
 ## 0.14.0 — 2026-09-12
 
