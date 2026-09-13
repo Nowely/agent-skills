@@ -17,9 +17,13 @@
 //   * Server-to-client requests are not all approvals. Attestation, ChatGPT token refresh and MCP
 //     elicitation share the same channel and take different responses.
 //
-// Escalation policy: an escalation request means the sandbox was sized wrong for the task, so it is
-// surfaced loudly rather than silently waved through or silently refused. Widen the sandbox with
-// --writable, or drop the --no-network the seat was given, instead of trying to approve your way out.
+// Escalation policy: every inbound approval request is DECLINED — granting one would step outside the
+// sandbox the caller chose, which is the caller's call and not this driver's — and each declined request
+// is recorded in `escalations`, whichever thread asked. An entry says that a request was made and
+// refused, and no more than that: a command the sandbox denied outright need not raise one, `detail` is
+// at most 200 characters and can be empty, and exit 6 sits below timeout and the other higher-priority
+// outcomes, so a cut run can carry entries and still report 3. It is not a finding that the rights were
+// sized wrong, and not evidence that work was lost.
 
 import { spawn, spawnSync } from "node:child_process";
 import crypto from "node:crypto";
@@ -2517,7 +2521,7 @@ let rootThreadId = null, rootTurnId = null;
 const commands = [];        // root-thread commandExecution items only
 const messages = [];        // root-thread agentMessage items only
 const fileChanges = [];     // root-thread fileChange items: what the turn actually wrote
-const escalations = [];     // refused permission requests — the sandbox was sized too small
+const escalations = [];     // approval requests this driver declined, the root thread's and its subagents'
 const interactions = [];    // requests that needed a human: no sandbox change can answer them
 const reasoningSummaries = [];  // root-thread reasoning item summaries — the inspectable thinking a Claude subagent's transcript has
 const otherItemCounts = {}; // root-thread item types the evidence gates ignore (mcpToolCall, webSearch, plan, …), counted so the report does not silently drop them
@@ -2634,12 +2638,15 @@ function handleServerRequest(msg) {
   const refusal = REFUSALS[msg.method];
   if (refusal) {
     // Granting here would let Codex step outside the sandbox the caller chose — that is the caller's
-    // call, not this driver's. Always refuse; count it against OUR sandbox unless the request proves it
+    // call, not this driver's. Always refuse; record it against THIS run unless the request proves it
     // belongs to another thread, so a request carrying no ids at all still fails closed.
     // Recorded whichever thread asked. The root-only filter elsewhere exists so a CHILD's command cannot
-    // satisfy the gate — that is evidence of success, and evidence of success must be strict. An
-    // escalation is evidence of FAILURE, and that must be inclusive: the refusal below is sent
+    // satisfy the gate — that is evidence of success, and evidence of success must be strict. A declined
+    // request is evidence of FAILURE, and that must be inclusive: the refusal below is sent
     // unconditionally, so a subagent really was blocked, and reporting a clean run would hide it.
+    // `detail` is the server's own wording for whichever of the three fields it sent, clipped to 200
+    // characters, and "" where it sent none of them — so an entry can name no command at all, and its
+    // absence is not evidence that nothing was attempted.
     const detail = String(msg.params?.command ?? msg.params?.reason ?? msg.params?.message ?? "").slice(0, 200);
     escalations.push({ method: msg.method, detail, thread: owner, subagent: foreign });
     send(refusal);

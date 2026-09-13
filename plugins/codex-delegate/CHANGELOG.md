@@ -33,6 +33,16 @@ forensics remain in the repository references and release notes.
   acknowledged part of the grant, so `TMPDIR=~/.codex/x --level write` is refused like any other root
   inside the receipt store. The report's `tmpDir` is therefore non-null on a write run whose caller
   exported no temp directory.
+- The comments explaining `escalations` say what the code does. Two of them still carried the diagnosis
+  0.14.0 had already corrected at the exit-6 rung itself — "an escalation request means the sandbox was
+  sized wrong for the task" and "refused permission requests — the sandbox was sized too small". An
+  entry is an approval request this driver DECLINED, recorded whichever thread asked; a command the
+  sandbox denied outright need not raise one; `detail` is the server's own wording clipped to 200
+  characters and is empty where the request carried none; and exit 6 sits below timeout and the other
+  higher-priority outcomes, so a cut run can carry entries and still report 3. Widening the rights is
+  not the implied remedy. Comments only: the generated help is unchanged, and the exit-6 rung still
+  reads "an approval request was declined; inspect the report, if delivered, before judging task
+  completeness", byte for byte as 0.14.0 shipped it.
 
 ### Fixed
 
