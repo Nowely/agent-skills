@@ -3,7 +3,7 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.15.0 — 2026-09-13
 
 ### Changed
 
@@ -15,6 +15,179 @@ forensics remain in the repository references and release notes.
   path in their prompt with the same verdict word. A unanimous fan-out is read as evidence about the
   prompt first, one return whole before the tally. The page's line budget in
   `evals/orchestrate.test.mjs` moves from 150 to 155 for a page of 152 lines.
+- Cleanup lists what it never listed. Its rows came from orchestrate runs, seat scratch, the suites'
+  scratch, saved conversations, worktrees, locks, the shared home and other copies' data, never from
+  `<state>/reports/`, where the standalone recipe sends every report, nor from `<state>/answers/`: so
+  `--list --json` answered `rows: []` and "Nothing this cleanup covers is on this machine" one minute
+  after a report had been written there (measured 2026-09-12). Each standalone report run is now a row of
+  its own — size, last change, selectable by its number, never proposed, since a report carries no
+  project slug and may be evidence the coordinator still wants — and it is kept while a live seat names
+  it or while its `report.json` is absent: the driver publishes that file whole or not at all, so a run
+  directory without one is a run still in flight, refused at the listing and again at deletion. The
+  answers store is one kept row, never selectable, because the driver prunes it itself. Neutering the
+  live-seat guard or the unpublished-run guard turns a case red. The README's count of what cleanup
+  removes and reports moves with it.
+- A write seat DECLARES the two implicit grants a `workspace-write` sandbox otherwise carries, so the
+  rights it asks for are `--cwd`, each `--writable` root and `$TMPDIR`:
+  `sandbox_workspace_write.exclude_slash_tmp=true` takes `/tmp` out of the grant, and
+  `exclude_tmpdir_env_var=false` keeps the temp directory the caller — or this driver — chose. What was
+  measured, on codex-cli 0.153.4, 2026-09-12: a `thread/start` carrying neither key answers
+  `writableRoots []`, `excludeSlashTmp false` and `excludeTmpdirEnvVar false`, so the directory a caller
+  picked as the blast radius was never all the sandbox allowed and no report field said so; each field
+  mirrors its own key, on the running server and in the test fixture alike, pinned by two differential
+  cases that send the opposite value; and the write-level assertion refuses a response that differs
+  either way, since deleting either check, or the key it checks, turns suite cases red. What this change
+  did NOT measure: a write into `/tmp` attempted from inside a live turn. A narrower sandbox is refused
+  as loudly as a wider one, because a seat whose `$TMPDIR` is unwritable cannot run a here-document and
+  reports that failure as a finding about the task.
+- The private 0700 `$TMPDIR` the driver makes when the caller exported none is made at BOTH levels, not
+  at read alone. With `/tmp` now excluded from the write sandbox and no `TMPDIR` in the environment,
+  `os.tmpdir()` and zsh's `TMPPREFIX` both fall back to `/tmp`. That a `TMPPREFIX` outside the grant
+  costs a seat its here-documents is not a new claim: it was measured failing every `<<EOF` with "can't
+  create temp file for here document" across 15 rollouts between 2026-08-31 and 2026-09-08, which is why
+  this driver sets the variable at all. What the new case measures is the precondition — a write run
+  whose caller exported no `TMPDIR` now reports a private `tmpDir` and hands the seat a `TMPPREFIX`
+  inside it, where the same run before this change handed over `/tmp/zsh` and reported no `tmpDir`.
+  A caller's own `$TMPDIR` takes the protected-root guard at
+  write level too, as it already did at read — `exclude_tmpdir_env_var=false` makes that directory an
+  acknowledged part of the grant, so `TMPDIR=~/.codex/x --level write` is refused like any other root
+  inside the receipt store. The report's `tmpDir` is therefore non-null on a write run whose caller
+  exported no temp directory.
+- The comments explaining `escalations` say what the code does. Two of them still carried the diagnosis
+  0.14.0 had already corrected at the exit-6 rung itself — "an escalation request means the sandbox was
+  sized wrong for the task" and "refused permission requests — the sandbox was sized too small". An
+  entry is an approval request this driver DECLINED, recorded whichever thread asked; a command the
+  sandbox denied outright need not raise one; `detail` is the server's own wording clipped to 200
+  characters and is empty where the request carried none; and exit 6 sits below timeout and the other
+  higher-priority outcomes, so a cut run can carry entries and still report 3. Widening the rights is
+  not the implied remedy. Comments only: the generated help is unchanged, and the exit-6 rung still
+  reads "an approval request was declined; inspect the report, if delivered, before judging task
+  completeness", byte for byte as 0.14.0 shipped it.
+
+### Fixed
+
+- The cleanup page's two commands run `${CLAUDE_SKILL_DIR}/../seat/scripts/cleanup.mjs`. They ran
+  `${CLAUDE_PLUGIN_ROOT}/skills/seat/scripts/cleanup.mjs`, and that placeholder is substituted for an
+  installed plugin alone: on the clone-and-symlink route it was empty and the command resolved to
+  `/skills/seat/scripts/cleanup.mjs`. `${CLAUDE_SKILL_DIR}` is substituted on both routes. Node
+  normalises the `..` lexically, so on the clone route the command reaches the seat skill only through
+  the link the install recipe makes beside the cleanup one; the page says so now, and two cases pin it
+  by resolving the page's own expression through a layout with both links and through one with the
+  cleanup link alone (measured 2026-09-12: the first resolves, the second does not).
+- Cleanup runs with `TMPDIR` unset or empty. It exited 2 with "TMPDIR is not set to an absolute path …
+  Nothing was deleted" (measured 2026-09-12 with `env -u TMPDIR`), while the driver tolerates the same
+  environment by making a private directory, and the coordinator's seat scratch is made by
+  `mktemp -d "${TMPDIR:-/tmp}/…"`, which puts it under `/tmp` then, exactly what `os.tmpdir()`
+  answers. The scan now falls back to `os.tmpdir()`, the listing's text and `roots.tmpSource` say that
+  it did, and a `TMPDIR` that is set, non-empty and relative is still refused with nothing deleted. The
+  page says which seats that scan cannot see: one started under another temporary root leaves no row,
+  while its report is kept until `report.json` is there.
+- A pre-turn report names the worktree the run made and says what became of it. A run refused or cut
+  before the turn published seven fields — `ok`, `exitCode`, `threadId`, `turnStatus`, `answer`,
+  `error`, `reportPath` — while the tree's disposition was decided by the exit handler AFTER the report
+  was out, and a PRESERVED tree was announced on stderr alone: a coordinator reading only the report,
+  which is what every recipe tells it to do, could neither harvest that tree nor remove it. The
+  disposition is now decided before the report is published, under the rule the exit handler already
+  used in the last resort — removed only where no codex was ever started, `git status --porcelain`
+  succeeds and is clean, and `git worktree remove` succeeds; a `--resume` rebuild that cannot finish
+  removes its half-restored tree with `--force` — and the report carries `worktreePath` and
+  `worktreePreserved` under the post-turn report's own names and types: the reason the tree was kept,
+  or `null` where it was removed. Four paths that named nothing now name the tree, each measured as a case: an invalid
+  `--writable` root, refused after the tree exists and before any codex does, exits 2 with a report
+  naming a tree that is gone from disk; an app-server that never answers `thread/start`, cut at
+  `--timeout 2`, exits 3 with a report naming a preserved tree that is still there; a `git worktree add`
+  that fails with its destination already created — a directory previously known only to the ledger —
+  exits 2 with a report naming it and saying it was kept; and a `--resume` whose rebuild cannot finish
+  removes its tree and says so in the same two fields instead of publishing none. Where a codex was
+  started in the tree the reason now says whether it is still running or has exited, and with what code,
+  rather than calling a dead process live. Where none was, it names which of the three results kept the
+  tree instead of listing them: `git found work in it (1 path, the first ?? seat-scratch.txt)`, `git
+  could not read its status (…)` or `git refused to remove it (…)`, the last two quoting the head of
+  what git said — three different things for its reader to do, where one sentence sent the reader of a
+  half-made tree looking for work that was never in it. Measured 2026-09-13, one case each: a file
+  planted in the tree the moment `worktree add` returns, a `status --porcelain` that exits 128 for that
+  tree alone, and the half-made tree of the failed-add case above, which git will not remove because it
+  never registered it. What is removed and what is preserved is unchanged. The stderr line stays, and the exit handler stays as the
+  fallback for paths that never reach a report: a `disposed` flag on the tree makes the second caller a
+  no-op, so the decision is taken once; the report carries it, and stderr announces a preserved tree.
+- The exit-code help no longer says of `--report-file` what is only true of stdout. "an argument error
+  prints none" and "like a 2 it then prints no report" described stdout alone: the report file is opened
+  before argument parsing, and a pre-turn refusal is deliberately published there, so a caller waiting on
+  the file is answered even where stdout is empty. Measured 2026-09-12: a missing state directory and a
+  plain `--bogus` flag each exited 2 with empty stdout and a fresh report file carrying `turnStatus:
+  null` and the refusal. The help now names the two delivery surfaces, says that stdout carries no report
+  before a turn while the file carries the refusal as `{ok:false, exitCode, turnStatus:null, error}` once
+  its path was accepted and no other run published there first, and that a REFUSED report path — not
+  absolute, an unusable parent, or an entry already there, a symlink included — leaves no file anywhere
+  and puts the reason on stderr.
+- The read level's sandbox assertion inspects the implicit `/tmp` grant. It checked the profile, the
+  sandbox type, egress, the workspace and the explicit writable roots, and `excludeSlashTmp` was among
+  none of them — so with `$TMPDIR` outside `/tmp` a response that granted all of `/tmp` beside it passed,
+  against that level's own promise that `$TMPDIR` is writable and nothing else is. `excludeTmpdirEnvVar`
+  is deliberately not asserted there: `false` names the same directory the explicit root already names,
+  and `true` is what the profile reports with `TMPDIR` unset, which the existing refusal catches first
+  and by its own cause.
+- The lock's ownership question is asked again immediately before the act, and about the second identity
+  as well as the pid. `updateLock` read the body and then renamed a temp file over the PATH;
+  `releaseLock` read the body and then unlinked the PATH — and between a read and its act, a peer that
+  had reclaimed the lock and put its own file there lost it, to a rename it never saw or to an unlink by
+  a run that owned nothing any more. It surfaced as a flake: the case "a run releases only the lock it
+  owns" failed once in about twelve runs under concurrent load on 2026-09-12 and passed every time alone
+  afterwards. Two cases now LAND that collision instead of waiting for it: `CODEX_DELEGATE_LOCK_SEAM_MS`
+  — a test seam, documented in `--help-all`, which the driver reads and nothing in this repository sets
+  outside those two cases — holds each window open and touches `<lock>.seam` while it does, so a case
+  enters the window rather than racing it. Measured 2026-09-13 against the driver before the fix: a peer
+  planted inside the update's window and one planted inside the release's window were both deleted; after
+  it, both keep their file. Two further cases need no seam and pin the identity rule on its own: a lock
+  carrying this run's own pid with a DIFFERENT start-time identity is left alone, where the pid-only
+  check deleted it, and one carrying this run's pid and NO identity is still released, because a body
+  without one is what an older driver and a failed `ps` both write and refusing there would leave those
+  runs unable to release the lock they hold. The flaking case no longer swaps at acquisition — it waits
+  for `appServerPgid` to appear in the body, which is this run's own update having happened, so what it
+  measures is the release. What the fix cannot do: POSIX has no conditional rename and no conditional
+  unlink, so the window between the last check and the syscall that acts is NARROWED to those two
+  instructions and never closed, and a peer that replaces the lock inside it still loses the file.
+  `node evals/lock.test.mjs` on this machine, 2026-09-13: six sequential runs and three concurrent ones
+  green after the fix, and three more once the last case was added — all 58 passed.
+- The wrapper's report is correlated to the invocation that produced it. Its wait ends on the driver's
+  own exit status, written to `<DIR>/exit`, and step 3 prints `DRIVER_EXIT` and a `PATH=` line beside
+  the report's `EXIT` and `FILE`: `own` where the driver's pid line names the path and nothing failed to
+  publish, `taken` where stderr carries the refusal of an entry already there or the failure to publish
+  behind another run, `none` where the path was never accepted. A retry that reused a report path was
+  read as its own result — the driver refuses the taken path before it records it and before it prints
+  its pid, so the old loop saw the previous file at once (measured 2026-09-13: `DRIVER_EXIT=2` against
+  `EXIT=0`, `FIRST=PREVIOUS RUN ANSWER`) — and the numbers alone do not settle it: a previous report
+  whose own `exitCode` was 2 prints `DRIVER_EXIT=2` beside `EXIT=2`, and `PATH=taken` tells them apart
+  (measured 2026-09-13). The three strings the line greps are the driver's own, pinned by a case that
+  reads them off the page and finds them in the driver.
+- A startup failure that leaves neither report nor pid now ends the wait. A report path under an
+  unwritable parent exits 2 with EACCES before any pid line; the old loop had no terminal branch and
+  the instructions said to repeat it. Measured 2026-09-13: the new loop returned at once with
+  `DRIVER_EXIT=2`, `PATH=none`, `FILE=missing`, the reason in `<DIR>/err.txt`; the wait tests the marker
+  for content rather than existence, because `echo $? >` creates the file before it writes the byte.
+- The seat page reads back what this release measured: `$TMPDIR` is granted at every level and `/tmp`
+  at none (a live 0.153.4 read handshake on 2026-09-13 reported `writableRoots` of `$TMPDIR` alone with
+  `excludeSlashTmp: true`), a worktree run cut or refused before its turn reports `worktreePath` and
+  `worktreePreserved`, a refused report path makes no report for that run while an entry already there
+  is left as it was, and `escalations` is documented with its truncation, its rung and what it does not
+  prove.
+- The source-install recipe enters `agent-skills/plugins/codex-delegate`, not the retired top-level
+  `codex-delegate`. After the repository URL moved, a fresh clone was named `agent-skills` and the old
+  `cd` failed before every `$PWD`-based link (measured 2026-09-13: exit 1 on a fresh clone); the page says
+  so now, and says that cleanup reaches its seat script through the sibling `seat` link, because Node
+  resolves `..` lexically (without the link the command throws, with it it runs).
+- The `codex exec` comparison separates approval from sandbox. It said exec had neither because it
+  forces `never`; codex-cli 0.153.4 does offer `-s, --sandbox <read-only|workspace-write|danger-full-access>`,
+  and only `--approve-for-me` where a per-call approval policy would be; what it lacks is a policy that
+  survives the managed clamp. The row now says which right is absent, the `never` measurement is dated to
+  0.150.1 rather than repeated, and `app-server` remains the only surface with both per-call rights and
+  a machine-checkable execution signal.
+- The sign-in prerequisite names the account an isolated seat actually uses. A plain `codex login
+  status` can follow a custom `CODEX_HOME`, while the driver links `auth.json` and `sessions` from the
+  `~/.codex` in the home directory and reads the custom home for its configuration probe alone
+  (measured 2026-09-12: a status check under an empty custom `CODEX_HOME` answered "Not logged in"
+  while the same check against `~/.codex` answered "Logged in using ChatGPT"); the README and the
+  internals now give the one account-check command and keep configuration apart from credentials.
 
 ## 0.14.0 — 2026-09-12
 

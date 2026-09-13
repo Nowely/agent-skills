@@ -292,4 +292,17 @@ test("the shipped wrapper is the agent the page names: Bash alone, a pinned mode
     return problems.length === 0 || problems.join("; ");
   });
 
+test("the wrapper's PATH line greps the driver's own words, so the two move together",
+  "step 3 sorts the report by three strings the driver prints — the pid line's reportPath=, the refusal of an entry already there, and the failure to publish — and a rewording of any of them in the driver would silently turn every report into PATH=own",
+  () => {
+    const step = skill.split("\n").find((l) => l.includes('echo "PATH=$P"'));
+    if (!step) return "the page's step 3 no longer prints a PATH line";
+    const problems = [];
+    for (const needle of ["reportPath=", "already exists, or is a symbolic link", "could not be published at"]) {
+      if (!step.includes(needle)) problems.push(`step 3 no longer greps ${JSON.stringify(needle)}`);
+      if (!driver.includes(needle)) problems.push(`the driver no longer prints ${JSON.stringify(needle)}`);
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
 process.exit(summarize(await runCases(CASES), CASES.length));

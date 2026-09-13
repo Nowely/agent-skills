@@ -34,19 +34,21 @@ every `thread/start` — `sandbox: request.write ? "workspace-write" : "read-onl
 permission profile, the only mechanism that can add `$TMPDIR` to a read-only sandbox. Measured three
 ways with a raw probe: omit the parameter and a configured profile applies
 (`writableRoots: ["$TMPDIR"]`); send `"read-only"` and `activePermissionProfile` comes back `null` with
-no writable roots at all; send `"workspace-write"` and the profile is suppressed too, but `$TMPDIR` and
-`/tmp` are open. So a review seat launched through the plugin cannot create a temp directory, and
-therefore cannot run a test suite, a build, or anything that stages a file — on ANY machine, MDM or
-not (upstream #482 reports the same mechanism from an unmanaged machine). Observed:
+no writable roots at all; send `"workspace-write"` and the profile is suppressed too, but its default
+grant opens `$TMPDIR` and `/tmp`. So a review seat launched through the plugin cannot create a temp
+directory, and therefore cannot run a test suite, a build, or anything that stages a file — on ANY
+machine, MDM or not (upstream #482 reports the same mechanism from an unmanaged machine). Observed:
 `EPERM: operation not permitted, mkdtemp`, and the seat reviewed the code by reading it while the
 Claude seats beside it ran the suites — a decorrelated opinion bought and a crippled one delivered.
 No flag reaches this: the plugin's surface is
 `[--background] [--write] [--resume-last|--resume|--fresh] [--model] [--effort]`.
 
 **Scope this honestly.** On an unmanaged machine the plugin's `--write` path is serviceable for
-in-repo tasks (`workspace-write` opens `$TMPDIR` and `/tmp` as a side effect). It is the read/review
-seats that are structurally unable to run tests everywhere, and the failure is silent where it counts:
-a review comes back with a confident verdict having run nothing.
+in-repo tasks (`workspace-write` opens `$TMPDIR` and `/tmp` as a side effect). This driver's write level
+instead keeps `$TMPDIR`, excludes `/tmp`, and asserts both fields the server returns; the live 0.153.4
+handshake established the default grant, and differential suite cases establish the declaration and
+refusal. It is the read/review seats that are structurally unable to run tests everywhere, and the
+failure is silent where it counts: a review comes back with a confident verdict having run nothing.
 
 **Reading the plugin's logs.** `(exit ?)` in
 `~/.claude/plugins/data/codex-openai-codex/state/*/jobs/*.log` marks a command whose `exitCode` came
@@ -58,16 +60,19 @@ thing to notice. An earlier version of this analysis read it backwards.
 
 Every surveyed Claude-to-Codex delegation skill drives `codex exec`: `skills-directory/skill-codex`
 (~1400 stars), `eddiearc/codex-delegator`, `wywwzjj/cc-skill-codex`, `veithly/codex-skill`, and the MCP
-wrappers around it. `codex exec` forces `approval_policy=Never` internally, after config is loaded, so
-it hits the same clamp on managed machines — no `-c` override reaches it (three spellings tried, all
-`approval: untrusted`). OpenAI's own automation recommendation, `@openai/codex-sdk`, builds
-`["exec", "--experimental-json"]` and inherits the same wall.
+wrappers around it. Measured on 0.150.1: `codex exec` forces `approval_policy=Never` internally, after config is loaded, and
+no `-c` override reached it — three spellings, all `approval: untrusted`. Not re-measured on 0.153.4,
+whose `codex exec --help` offers `-s, --sandbox`, `--approve-for-me` (automatic review under
+`workspace-write`) and `--dangerously-bypass-approvals-and-sandbox`, and no `-a`/`--ask-for-approval` or
+other per-call approval policy that survives the managed clamp. OpenAI's own automation recommendation,
+`@openai/codex-sdk`, builds `["exec", "--experimental-json"]` and inherits the same wall on the build
+that was measured.
 
 | | `codex exec` | `codex mcp-server` | `codex app-server` |
 | --- | --- | --- | --- |
 | status | stable | stable, surface measured 2026-09-01 | `[experimental]` per `codex --help` |
-| per-call approval / sandbox | no — forces `never` | yes, as tool parameters | yes |
-| works under the managed profile | no | yes | yes |
+| per-call approval / sandbox | automatic review or bypass flags, but no per-call approval policy that survives the managed clamp; sandbox: yes (`--sandbox`) | yes, as tool parameters | yes |
+| works under the managed profile | 0.150.1: no; 0.153.4: unmeasured | yes | yes |
 | proof a command really ran | `--json` | not exposed | `exitCode` + `status` |
 | structured output | `--output-schema` | no | `outputSchema` |
 
@@ -83,9 +88,10 @@ call with typed arguments: `tools/list` returns `codex` (`prompt`, `cwd`, `model
 need. It returns prose, so nothing carries the evidence the exit ladder is derived from: no per-command
 status, no receipt, no place for `--verify` or `--expect-command`, no worktree lifecycle or cwd lock.
 Its `prompt` is a string, so pasted images cannot travel through it. And its approvals arrive at the
-CLIENT as elicitations, which makes the coordinator the approver — the opposite of "an escalation means
-the sandbox was sized wrong, and the report says so". Adopting it would trade every guarantee here for
-call ergonomics.
+CLIENT as elicitations, which makes the coordinator the approver — the opposite of this driver's fixed
+rule: an approval request is declined and recorded, without diagnosing the rights as too narrow or
+implying that widening them is the remedy. Adopting it would trade every guarantee here for call
+ergonomics.
 
 ## Shared skeleton, divergent rights layer
 

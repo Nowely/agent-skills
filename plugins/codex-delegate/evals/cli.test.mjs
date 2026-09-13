@@ -32,6 +32,14 @@ fs.mkdirSync(decoyHome, { recursive: true });
 // let one row match the other's invocation and both settings would look present whichever was sent.
 const sandboxNetLog = path.join(shimDir, "sandbox-verify-net.log");
 const sandboxNoNetLog = path.join(shimDir, "sandbox-verify-nonet.log");
+// One log per level for the `cfg:` lines the fixture writes for every -c it was spawned with. The two
+// implicit temp grants ride the spawn args and appear in NO report field — sandbox.writableRoots never
+// shows them — so a key the driver stopped sending leaves every other sandbox row green.
+const writeCfgLog = path.join(shimDir, "cfg-write.log");
+const readCfgLog = path.join(shimDir, "cfg-read.log");
+const cfgKeys = (log) => (fs.existsSync(log) ? fs.readFileSync(log, "utf8") : "")
+  .split("\n").filter((l) => l.startsWith("cfg:")).map((l) => l.slice("cfg:".length));
+const TMP_KEYS = ["sandbox_workspace_write.exclude_slash_tmp", "sandbox_workspace_write.exclude_tmpdir_env_var"];
 // The argv the driver built for `codex sandbox`, read back out of the fixture's log. The verifier's own
 // rights appear in no report field, so a -c the driver stopped sending leaves every other verifier case
 // green: the exit code still passes through, the profile is still applied, and nothing measures the
@@ -303,6 +311,11 @@ const CASES = [
     why: "$TMPDIR is the read-level write grant and must pass the protected-root guard so it cannot expose the receipt store",
     assertStderr: (e) => /refusing to grant write access/.test(e)
       || `a protected $TMPDIR was granted at read level: ${e.slice(0, 200)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, args: ["--level", "write"],
+    env: { CODEX_DELEGATE_STATE_DIR: protectedState, TMPDIR: protectedTmp },
+    why: "the write sandbox keeps $TMPDIR writable by declaration, which makes a caller's own one a grant like any other: it takes the same protected-root guard --cwd and --writable take, or `TMPDIR=~/.codex/x --level write` opens the receipt store",
+    assertStderr: (e) => /refusing to grant write access/.test(e)
+      || `a protected $TMPDIR was granted at write level: ${e.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.OK, unsetEnv: ["TMPDIR"],
     why: "when TMPDIR is unset, a private directory permits scratch writes without granting all of /tmp; it lives under driver state so retention pruning reaches it",
     assert: (r, _ms, stateRoot) => {
@@ -315,6 +328,31 @@ const CASES = [
       if (fs.realpathSync(r.tmpDir) !== roots[0]) return `the grant is not the reported directory: ${JSON.stringify({ tmpDir: r.tmpDir, root: roots[0] })}`;
       if ((fs.statSync(r.tmpDir).mode & 0o777) !== 0o700) return `the private temp directory is not 0700: ${(fs.statSync(r.tmpDir).mode & 0o777).toString(8)}`;
       return fs.existsSync(r.tmpDir) || `the run's private temp directory was removed at exit: ${r.tmpDir}`;
+    } },
+  { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"], env: { FAKE_RPC_LOG: writeCfgLog },
+    why: "the write sandbox's two temp exclusions are sent as -c keys and reported in no field of the driver's own: without them a seat granted one --cwd also writes all of /tmp and its own $TMPDIR is a grant nobody declared",
+    assert: () => {
+      const keys = cfgKeys(writeCfgLog);
+      if (!keys.length) return `the fixture recorded no -c keys at all: ${writeCfgLog}`;
+      const missing = TMP_KEYS.filter((k) => !keys.includes(k));
+      return missing.length === 0 || `the write level did not send ${missing.join(", ")}: ${JSON.stringify(keys)}`;
+    } },
+  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_RPC_LOG: readCfgLog },
+    why: "and the read level must not send them: the :read-only profile ignores both keys, so sending them would be a declaration nothing reads while the level's real grant is its filesystem entry",
+    assert: () => {
+      const keys = cfgKeys(readCfgLog);
+      if (!keys.length) return `the fixture recorded no -c keys at all: ${readCfgLog}`;
+      const sent = TMP_KEYS.filter((k) => keys.includes(k));
+      return sent.length === 0 || `the read level sent write-level sandbox keys: ${JSON.stringify(sent)}`;
+    } },
+  { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"], env: { TMPDIR: null },
+    why: "--cwd and $TMPDIR being the same directory is the one shape where the write grant's two halves collapse into one: the server reports no extra root, the caller's own TMPDIR is not this run's to prune, and both temp exclusions must still read back as sent",
+    assert: (r) => {
+      const roots = r.sandbox?.writableRoots ?? [];
+      if (roots.length) return `the cwd was echoed back as an extra writable root: ${JSON.stringify(roots)}`;
+      if (r.tmpDir !== null) return `a caller's own TMPDIR was reported as this run's to remove: ${JSON.stringify(r.tmpDir)}`;
+      return (r.sandbox?.excludeSlashTmp === true && r.sandbox?.excludeTmpdirEnvVar === false)
+        || `the temp exclusions are not what was sent: ${JSON.stringify({ slash: r.sandbox?.excludeSlashTmp, env: r.sandbox?.excludeTmpdirEnvVar })}`;
     } },
   { scenario: "happy",            expect: EXIT.OK, env: { TMPDIR: explicitTmp },
     why: "an explicit TMPDIR is honoured unchanged — the private directory is a fallback for an unset variable, never a substitution for the caller's own choice",
