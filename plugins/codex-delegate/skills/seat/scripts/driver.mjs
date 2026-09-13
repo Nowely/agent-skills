@@ -475,7 +475,11 @@ const HELP = [
   effort came from a fresh probe of your config, a stale last-known-good, or
   nothing; commandsPipedToPager, commands whose output the seat cut with
   head/tail/less; fileChanges, one {path, kind, move} per completed write, where
-  filesTouched keeps only the path a rename ends at.
+  filesTouched keeps only the path a rename ends at; escalations, one entry per approval
+  request this driver declined, whichever thread asked (detail is the server's wording
+  clipped to 200 characters, empty where it sent none; a command the sandbox denied need
+  not raise one; exit 6 sits below timeout, so a cut run carries entries and exits 3);
+  interactions, the requests that needed a human and no sandbox change could answer.
   tokenUsage is the server's own accounting for the root thread,
   cumulative across --resume; cut is {kind, limit, observed, completedInGrace};
   timing is {wallMs, setupMs, commandMs, modelMs}, commandMs being the server's
