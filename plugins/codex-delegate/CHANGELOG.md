@@ -71,7 +71,9 @@ forensics remain in the repository references and release notes.
   environment by making a private directory, and the coordinator's seat scratch is made by
   `mktemp -d "${TMPDIR:-/tmp}/…"`, which puts it under `/tmp` then, exactly what `os.tmpdir()`
   answers. The scan now falls back to `os.tmpdir()`, the listing's text and `roots.tmpSource` say that
-  it did, and a `TMPDIR` that is set, non-empty and relative is still refused with nothing deleted.
+  it did, and a `TMPDIR` that is set, non-empty and relative is still refused with nothing deleted. The
+  page says which seats that scan cannot see: one started under another temporary root leaves no row,
+  while its report is kept until `report.json` is there.
 - A pre-turn report names the worktree the run made and says what became of it. A run refused or cut
   before the turn published seven fields — `ok`, `exitCode`, `threadId`, `turnStatus`, `answer`,
   `error`, `reportPath` — while the tree's disposition was decided by the exit handler AFTER the report

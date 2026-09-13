@@ -102,7 +102,9 @@ how, say "This command removes it." and show that row's `command` from
 `manual` in its own block. The `notCovered` commands apply only to other
 entries in the coordinator's temporary directory. Say "To list those entries
 without removing them, run this command." and show `notCovered.listCommand`;
-for removal, `notCovered.removeCommand`. The driver's private `<state>/tmp`
+for removal, `notCovered.removeCommand`. A seat started under another
+temporary root is outside the seat scan; its report is kept while
+`report.json` is absent. The driver's private `<state>/tmp`
 directories are guarded and not listed: the driver owns them, and this cleanup
 never makes them removable.
 
