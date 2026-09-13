@@ -26,7 +26,7 @@ exactly as the command printed it.
    codex-delegate."
 
        F="$(mktemp "${TMPDIR:-/tmp}/codex-delegate-cleanup.XXXXXXXX")"
-       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_PLUGIN_ROOT}/skills/seat/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
+       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../seat/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
 
    `mktemp` gives each listing its own file. A name built from the shell's
    `$$` does not: two listings in one shell would share it, and a number from
@@ -56,7 +56,7 @@ exactly as the command printed it.
    leave it out. Then run, with the description "Delete the cleanup items the
    user selected.":
 
-       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_PLUGIN_ROOT}/skills/seat/scripts/cleanup.mjs" --delete --from "<SNAPSHOT>" <numbers>
+       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../seat/scripts/cleanup.mjs" --delete --from "<SNAPSHOT>" <numbers>
 
    Do not run the listing again between the user's word and this call: the
    snapshot is what binds each number to what was shown, and an item that

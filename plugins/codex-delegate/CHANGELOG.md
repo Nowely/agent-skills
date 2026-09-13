@@ -46,6 +46,14 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- The cleanup page's two commands run `${CLAUDE_SKILL_DIR}/../seat/scripts/cleanup.mjs`. They ran
+  `${CLAUDE_PLUGIN_ROOT}/skills/seat/scripts/cleanup.mjs`, and that placeholder is substituted for an
+  installed plugin alone: on the clone-and-symlink route it was empty and the command resolved to
+  `/skills/seat/scripts/cleanup.mjs`. `${CLAUDE_SKILL_DIR}` is substituted on both routes. Node
+  normalises the `..` lexically, so on the clone route the command reaches the seat skill only through
+  the link the install recipe makes beside the cleanup one; the page says so now, and two cases pin it
+  by resolving the page's own expression through a layout with both links and through one with the
+  cleanup link alone (measured 2026-09-12: the first resolves, the second does not).
 - A pre-turn report names the worktree the run made and says what became of it. A run refused or cut
   before the turn published seven fields — `ok`, `exitCode`, `threadId`, `turnStatus`, `answer`,
   `error`, `reportPath` — while the tree's disposition was decided by the exit handler AFTER the report
