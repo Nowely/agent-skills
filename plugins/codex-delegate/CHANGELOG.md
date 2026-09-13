@@ -7,6 +7,18 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- Cleanup lists what it never listed. Its rows came from orchestrate runs, seat scratch, the suites'
+  scratch, saved conversations, worktrees, locks, the shared home and other copies' data, never from
+  `<state>/reports/`, where the standalone recipe sends every report, nor from `<state>/answers/`: so
+  `--list --json` answered `rows: []` and "Nothing this cleanup covers is on this machine" one minute
+  after a report had been written there (measured 2026-09-12). Each standalone report run is now a row of
+  its own — size, last change, selectable by its number, never proposed, since a report carries no
+  project slug and may be evidence the coordinator still wants — and it is kept while a live seat names
+  it or while its `report.json` is absent: the driver publishes that file whole or not at all, so a run
+  directory without one is a run still in flight, refused at the listing and again at deletion. The
+  answers store is one kept row, never selectable, because the driver prunes it itself. Neutering the
+  live-seat guard or the unpublished-run guard turns a case red. The README's count of what cleanup
+  removes and reports moves with it.
 - A write seat DECLARES the two implicit grants a `workspace-write` sandbox otherwise carries, so the
   rights it asks for are `--cwd`, each `--writable` root and `$TMPDIR`:
   `sandbox_workspace_write.exclude_slash_tmp=true` takes `/tmp` out of the grant, and
@@ -54,6 +66,12 @@ forensics remain in the repository references and release notes.
   the link the install recipe makes beside the cleanup one; the page says so now, and two cases pin it
   by resolving the page's own expression through a layout with both links and through one with the
   cleanup link alone (measured 2026-09-12: the first resolves, the second does not).
+- Cleanup runs with `TMPDIR` unset or empty. It exited 2 with "TMPDIR is not set to an absolute path …
+  Nothing was deleted" (measured 2026-09-12 with `env -u TMPDIR`), while the driver tolerates the same
+  environment by making a private directory, and the coordinator's seat scratch is made by
+  `mktemp -d "${TMPDIR:-/tmp}/…"`, which puts it under `/tmp` then, exactly what `os.tmpdir()`
+  answers. The scan now falls back to `os.tmpdir()`, the listing's text and `roots.tmpSource` say that
+  it did, and a `TMPDIR` that is set, non-empty and relative is still refused with nothing deleted.
 - A pre-turn report names the worktree the run made and says what became of it. A run refused or cut
   before the turn published seven fields — `ok`, `exitCode`, `threadId`, `turnStatus`, `answer`,
   `error`, `reportPath` — while the tree's disposition was decided by the exit handler AFTER the report
