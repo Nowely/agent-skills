@@ -110,6 +110,28 @@ forensics remain in the repository references and release notes.
   is deliberately not asserted there: `false` names the same directory the explicit root already names,
   and `true` is what the profile reports with `TMPDIR` unset, which the existing refusal catches first
   and by its own cause.
+- The lock's ownership question is asked again immediately before the act, and about the second identity
+  as well as the pid. `updateLock` read the body and then renamed a temp file over the PATH;
+  `releaseLock` read the body and then unlinked the PATH — and between a read and its act, a peer that
+  had reclaimed the lock and put its own file there lost it, to a rename it never saw or to an unlink by
+  a run that owned nothing any more. It surfaced as a flake: the case "a run releases only the lock it
+  owns" failed once in about twelve runs under concurrent load on 2026-09-12 and passed every time alone
+  afterwards. Two cases now LAND that collision instead of waiting for it: `CODEX_DELEGATE_LOCK_SEAM_MS`
+  — a test seam, documented in `--help-all`, which the driver reads and nothing in this repository sets
+  outside those two cases — holds each window open and touches `<lock>.seam` while it does, so a case
+  enters the window rather than racing it. Measured 2026-09-13 against the driver before the fix: a peer
+  planted inside the update's window and one planted inside the release's window were both deleted; after
+  it, both keep their file. Two further cases need no seam and pin the identity rule on its own: a lock
+  carrying this run's own pid with a DIFFERENT start-time identity is left alone, where the pid-only
+  check deleted it, and one carrying this run's pid and NO identity is still released, because a body
+  without one is what an older driver and a failed `ps` both write and refusing there would leave those
+  runs unable to release the lock they hold. The flaking case no longer swaps at acquisition — it waits
+  for `appServerPgid` to appear in the body, which is this run's own update having happened, so what it
+  measures is the release. What the fix cannot do: POSIX has no conditional rename and no conditional
+  unlink, so the window between the last check and the syscall that acts is NARROWED to those two
+  instructions and never closed, and a peer that replaces the lock inside it still loses the file.
+  `node evals/lock.test.mjs` on this machine, 2026-09-13: six sequential runs and three concurrent ones
+  green after the fix, and three more once the last case was added — all 58 passed.
 
 ## 0.14.0 — 2026-09-12
 

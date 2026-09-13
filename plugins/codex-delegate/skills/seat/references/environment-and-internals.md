@@ -200,6 +200,13 @@ That marker is abandoned when its **owner** is gone: liveness, not a clock, ends
 backstop survives for the case where the pid is more likely recycled than stalled. The driver's comment
 at that code carries the two ways a deadline got it wrong.
 
+The driver asks that question again immediately before it acts on the lock — before it records the
+app-server's process group, and before it releases — so a peer that reclaimed the lock and put its own
+there keeps it: by pid and by the second identity beside it, and where either side has no identity the
+pid alone decides, so an older driver's lock stays releasable by its owner. It cannot make that question
+and that act one operation: POSIX has no conditional rename and no conditional unlink, so a peer whose
+lock lands between the last check and the system call is still clobbered or deleted.
+
 The lock covers the whole run, not just the turn: the job record is written and read inside it. The
 isolated Codex home is written
 **before** the lock: its config probe is a second process, and holding a write lock across it made an idle

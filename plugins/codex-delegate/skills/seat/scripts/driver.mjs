@@ -526,7 +526,15 @@ ${stateSubdirHelp()}
   CODEX_DELEGATE_VERIFY_FLOOR_MS  how little of the --timeout budget is too
                                 little to start --verify in (default ${LIMITS.VERIFY_FLOOR_MS}).
                                 Also a test seam: the branch is otherwise
-                                reachable only by landing inside a ${LIMITS.VERIFY_FLOOR_MS} ms window` },
+                                reachable only by landing inside a ${LIMITS.VERIFY_FLOOR_MS} ms window
+  CODEX_DELEGATE_LOCK_SEAM_MS   a test seam: how long to pause between the
+                                lock's ownership check and the act it guards,
+                                touching <lock>.seam while it pauses. The lock
+                                suite sets it to put a peer's lock in a window a
+                                real peer reaches only by timing, and nothing
+                                else in this plugin sets it; setting it yourself
+                                slows this run's startup and teardown by that
+                                much and protects nothing` },
 
   { s: "Exit codes. Raised the moment they happen, before any turn could run:",
     text: `  2  bad arguments
@@ -1436,7 +1444,10 @@ function acquireLock(dir) {
   catch (e) { fail(EXIT.USAGE, `cannot create the lock directory ${LOCK_DIR}: ${e.message}`); }
   // The file name is a hash, so the contents have to say what it locks — for the message below and for a
   // human who finds a stale one.
-  const body = JSON.stringify({ pid: process.pid, identity: processIdentity(process.pid), cwd: dir,
+  // selfIdentity(), not a second processIdentity() call: what is written here is what lockIsOurs()
+  // compares the file against later, and two reads of `ps` are two answers that can differ — one of
+  // them a transient failure, which would leave this run unable to update or release its own lock.
+  const body = JSON.stringify({ pid: process.pid, identity: selfIdentity(), cwd: dir,
                                 started: new Date().toISOString() });
   // Publish a fully written private temp file with link(2), which fails EEXIST if a peer won.
   // Creating an empty lock before writing its body would expose it as abandoned and admit another writer.
@@ -1483,24 +1494,78 @@ function acquireLock(dir) {
   }
   fail(EXIT.BUSY, `${dir} is contended: the lock at ${p} changed hands ${LIMITS.LOCK_ATTEMPTS} times without settling`);
 }
+// A test seam and nothing else: pause between an ownership check and the act it guards, so a suite can
+// land a peer's lock in a window a real peer reaches only by timing. It announces itself by touching
+// <lock>.seam for as long as it sleeps, because a suite that merely slept alongside would be racing the
+// very window it is trying to enter. Nothing in this repository sets it outside the two cases that
+// measure those windows; unset it is zero, and neither the file nor the pause exists.
+function lockSeam(p) {
+  const ms = Number(process.env.CODEX_DELEGATE_LOCK_SEAM_MS);
+  if (!(ms > 0)) return;
+  const mark = `${p}.seam`;
+  try { fs.writeFileSync(mark, String(process.pid)); } catch {}
+  sleepSync(ms);
+  try { fs.rmSync(mark, { force: true }); } catch {}
+}
+// Is the body now at the lock path still OURS? The pid alone does not say so: a lock file outlives the
+// run that wrote it, and a recycled pid — or a peer in another pid namespace over one mounted state
+// directory, which acquireLock's temp naming already reasons about — carries this run's number without
+// being this run. So the start-time identity beside it is compared too, by the rule holderAlive uses,
+// and the three answers are:
+//   pid differs                        -> not ours, whatever the identities say;
+//   both identities present, differing -> not ours; this is the only positive proof of a stranger;
+//   either identity missing            -> OURS, on the pid alone.
+// That last line is deliberate and it is the only one that can be wrong in our favour. It is what a body
+// written by an older driver, one whose `ps` failed at acquisition, and one read by a run whose own `ps`
+// fails at exit all look like — and a rule that refused there would leave those runs unable to update or
+// release the lock they hold, wedging the directory until the next run reclaims it as stale. A missing
+// identity proves nothing in either direction, so it may not be read as proof of a stranger.
+function lockIsOurs(held) {
+  if (Number(held?.pid) !== process.pid) return false;
+  const mine = selfIdentity();
+  return !(typeof held?.identity === "string" && typeof mine === "string" && held.identity !== mine);
+}
 // The lock body gains what could not be known when it was taken: the app-server's process group exists
 // only after the spawn. Replaced by rename, so a reader sees one whole body or the other; only ever our
 // own lock, and never fatal — a lock that cannot be updated is still a lock.
+//
+// Both acts below address the PATH while the check addresses the body that was READ, so between the two
+// a peer that reclaimed this lock and put its own there loses it — to a rename it never saw, or to an
+// unlink by a run that owns nothing any more. POSIX has no conditional rename and no conditional
+// unlink, so the window is NARROWED and never closed: asking again immediately before acting, and never
+// acting on a body read earlier, leaves the gap between that last check and the one syscall that acts,
+// and a peer whose lock lands in THAT gap is still clobbered or deleted.
 function updateLock(fields) {
   if (!lockPath) return;
   try {
     const cur = readJson(lockPath);
-    if (cur?.pid !== process.pid) return;
+    if (!lockIsOurs(cur)) return;
     const tmp = `${lockPath}.${crypto.randomBytes(8).toString("hex")}.tmp`;
     try {
+      // The body is built first so the re-read is the LAST thing before the rename, not the second to
+      // last: a writeFileSync between them is a window of its own.
       fs.writeFileSync(tmp, JSON.stringify({ ...cur, ...fields }));
+      lockSeam(lockPath);
+      // A body that cannot be read here reads as not-ours and the update is dropped, which is the right
+      // way to be wrong: what is left behind is our own lock WITHOUT appServerPgid, so a later reclaimer
+      // asks only about this driver's pid and not about the codex group it started — a lock held too
+      // long, never a peer's lock destroyed.
+      if (!lockIsOurs(readJson(lockPath))) return;
       fs.renameSync(tmp, lockPath);
     } finally { fs.rmSync(tmp, { force: true }); }
   } catch {}
 }
 function releaseLock() {
   if (!lockPath) return;
-  try { if (readJson(lockPath)?.pid === process.pid) fs.rmSync(lockPath, { force: true }); } catch {}
+  try {
+    if (lockIsOurs(readJson(lockPath))) {
+      lockSeam(lockPath);
+      // Same rule, same direction: a read that fails leaves the file where it is, and the directory is
+      // then held by a lock whose run has exited — which the next run reclaims as stale once it finds
+      // this pid and its app-server group gone, without anyone's help.
+      if (lockIsOurs(readJson(lockPath))) fs.rmSync(lockPath, { force: true });
+    }
+  } catch {}
   lockPath = null;
 }
 
