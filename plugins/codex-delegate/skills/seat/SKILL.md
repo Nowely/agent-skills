@@ -93,7 +93,7 @@ nothing left running.
 
     3. Then run this one command in the foreground:
 
-    D=unknown; test -s "<DIR>/exit" && D=$(cat "<DIR>/exit"); echo "DRIVER_EXIT=$D"; P=none; grep -qF "reportPath=<REPORT>" "<DIR>/err.txt" 2>/dev/null && P=own; grep -Eq 'already exists, or is a symbolic link|could not be published at' "<DIR>/err.txt" 2>/dev/null && P=taken; echo "PATH=$P"; node -e 'try{const r=require("<REPORT>");console.log("EXIT="+r.exitCode);console.log("FIRST="+String(r.answer||"").split("\n")[0])}catch(e){console.log("EXIT=unknown");console.log("FIRST=")}'; test -f "<REPORT>" && echo FILE=exists || echo FILE=missing
+    D=unknown; test -s "<DIR>/exit" && D=$(cat "<DIR>/exit"); echo "DRIVER_EXIT=$D"; P=none; grep -qF "reportPath=<REPORT>" "<DIR>/err.txt" 2>/dev/null && P=own; grep -Eq 'already exists, or is a symbolic link|could not be published at' "<DIR>/err.txt" 2>/dev/null && P=taken; echo "PATH=$P"; node -e 'try{const r=require("<REPORT>");console.log("EXIT="+r.exitCode);const a=r.answerJson&&typeof r.answerJson.result==="string"?r.answerJson.result:r.answer;console.log("FIRST="+String(a||"").split("\n")[0].slice(0,300))}catch(e){console.log("EXIT=unknown");console.log("FIRST=")}'; test -f "<REPORT>" && echo FILE=exists || echo FILE=missing
 
     4. Your final message is exactly the WAIT_DONE line, the five lines step 3 printed, then one line
        REPORT=<REPORT>. Nothing else.
