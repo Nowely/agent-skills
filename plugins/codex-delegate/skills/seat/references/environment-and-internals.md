@@ -46,7 +46,9 @@ root thread; N subagent thread(s) ran (<agentPath list>, <n> commands): liveness
 
 ## The answer log, and what --brief does not deliver
 
-The full answer of every run is written to `<state>/answers/<threadId>.md`, pruned on the same age and
+Saved answers are `<state>/answers/<threadId>-<startedAtMs>.md`, `startedAtMs` the run's start in epoch
+milliseconds, so a `--resume` leaves the earlier turn's file in place; the turn diff and the worktree
+harvest stay named for the thread. They are pruned on the same age and
 count bounds as the rest of the state directory (14 days, 400 entries); `--brief` clips the inline copy at the driver's `BRIEF_LINES` and
 `BRIEF_BYTES` limits, 20 lines and 4000 bytes, **including** the "clipped" marker. `answerPath` is null
 when there was no answer or the write failed, and `answerTruncated: true` beside `answerPath: null`

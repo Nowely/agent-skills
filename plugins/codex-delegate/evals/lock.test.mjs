@@ -1141,17 +1141,28 @@ test("the answer reaches the answer log before the turn ends, so a SIGKILL canno
   "a delivered answer must be persisted before turn completion so it survives a SIGKILL that leaves no report",
   async () => {
     const d = freshDir("eager-answer");
-    const answerFile = path.join(STATE_DIR, "answers", "thr_root.md");
-    // Every happy case in this suite writes the same path (one fixture thread id), so the file must be
-    // gone before the run or its mere existence proves nothing.
-    fs.rmSync(answerFile, { force: true });
+    const answers = path.join(STATE_DIR, "answers");
+    // The answer file is named for the RUN, so this case cannot know its name in advance — it matches the
+    // fixture thread id and the run's start. Every happy case in this suite answers on that one thread, so
+    // the whole directory goes before the run: a file an earlier case left would prove nothing about this
+    // one, and matching the pattern would find it.
+    fs.rmSync(answers, { recursive: true, force: true });
+    const answerFileNow = () => {
+      let names = [];
+      try { names = fs.readdirSync(answers); } catch { return null; }
+      const n = names.find((f) => /^thr_root-\d+\.md$/.test(f));
+      return n ? path.join(answers, n) : null;
+    };
     // The turn stalls with the answer already delivered; --timeout 60 keeps the deadline far away, so
     // the only thing that can have written the file is the item's own arrival.
     const { p, done } = spawnRun(d, { scenario: "answer-then-stall", shim: shimDir, args: ["--timeout", "60"] });
-    const landed = await waitFor(() => fs.existsSync(answerFile), 15000);
+    const landed = await waitFor(() => answerFileNow() !== null, 15000);
     p.kill("SIGKILL");
     const { code } = await done;
     if (!landed) return "the answer never reached the answer log while the run was still alive";
+    // Re-resolved after the kill: the point of the case is that the file outlives the process.
+    const answerFile = answerFileNow();
+    if (!answerFile) return "the answer log entry disappeared with the killed process";
     let text = "";
     try { text = fs.readFileSync(answerFile, "utf8"); } catch (e) { return `the answer log is unreadable after the kill: ${e.message}`; }
     if (!text.includes("persisted before the kill")) return `the answer log does not hold the answer: ${JSON.stringify(text.slice(0, 80))}`;

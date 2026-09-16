@@ -358,7 +358,8 @@ const HELP = [
                      schema only — see --help-all
   --brief            ask for a summary, not a working note, and cap what comes
                      back inline. The full answer is at answerPath either way:
-                     <state>/answers/<threadId>.md
+                     <state>/answers/<threadId>-<startedAtMs>.md, startedAtMs the
+                     run's start in epoch milliseconds
   --model NAME       omit to use whatever config.toml chose
   --effort ${[...EFFORTS].join("|")}
   --resume THREAD    continue a thread; "--resume last" continues the run most
@@ -492,6 +493,9 @@ const HELP = [
   commentaryPath is where a turn that produced no answer at all had its messages
   written; rateLimits is the setup-time account snapshot; and turnDiffPath is the
   last streamed turn diff at <state>/answers/<threadId>.diff.
+  saved answers are <state>/answers/<threadId>-<startedAtMs>.md, startedAtMs the
+  run's start in epoch milliseconds, so a --resume leaves the earlier turn's file
+  in place; the turn diff and the worktree harvest stay named for the thread.
   On a signal, either way, the child process group is waited out before the lock is
   released.` },
 
@@ -3163,11 +3167,13 @@ function findRollout(threadId) {
 // `suffix` names the artefact rather than the run: "" is the answer, ".commentary" the messages of a turn
 // that produced no answer, ".partial" the deltas of an answer the interrupt discarded. One writer, so
 // all three share the log's retention and its best-effort contract.
+// Named for the run, not the thread: a --resume continues the same thread, and a thread-named file left
+// the first turn's report pointing at the second turn's answer.
 function persistAnswer(text, suffix = "") {
   if (!text) return null;
   try {
     const dir = answersDir();
-    const name = `${rootThreadId ?? `no-thread-${process.pid}`}${suffix}.md`;
+    const name = `${rootThreadId ?? `no-thread-${process.pid}`}-${startedAtMs}${suffix}.md`;
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     fs.writeFileSync(path.join(dir, name), text, { mode: 0o600 });
     pruneDir(dir);

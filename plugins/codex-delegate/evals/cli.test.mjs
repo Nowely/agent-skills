@@ -753,6 +753,30 @@ flow("a resumed seat writes a report file of its own",
     return readJson(first)?.resumedFrom === null || "the refused resume rewrote the first report anyway";
   });
 
+flow("a resumed turn writes an answer file of its own, and the first turn's still says what it said",
+  "--resume continues the SAME thread, so an answer file named for the thread alone left the first report's answerPath pointing at the SECOND turn's answer: a coordinator opening it would read the follow-up and have no way to tell",
+  async () => {
+    const state = flowState();
+    const a = await run({ scenario: "happy", env: { CODEX_DELEGATE_STATE_DIR: state } });
+    if (a.code !== EXIT.OK) return `the first turn exited ${a.code}: ${a.err.trim().slice(-160)}`;
+    // A different scenario for the resumed turn, so the two answers differ: with one text in both, a file
+    // the resume overwrote reads exactly like one it never touched.
+    const b = await run({ scenario: "null-phase", args: ["--resume", "thr_root"],
+      env: { CODEX_DELEGATE_STATE_DIR: state } });
+    if (b.code !== EXIT.OK) return `the resumed turn exited ${b.code}: ${b.err.trim().slice(-160)}`;
+    let r1 = null, r2 = null;
+    try { r1 = JSON.parse(a.out); r2 = JSON.parse(b.out); } catch { return "one of the two turns printed no report"; }
+    if (r1.threadId !== r2.threadId) return `the two turns did not share a thread: ${r1.threadId} / ${r2.threadId}`;
+    if (r2.resumedFrom !== "thr_root") return `the second turn did not resume the first: ${JSON.stringify(r2.resumedFrom)}`;
+    if (r1.answer === r2.answer) return `both turns answered the same thing, so an overwrite would be invisible: ${JSON.stringify(r1.answer)}`;
+    if (r1.answerPath === r2.answerPath) return `both turns claim one answer file: ${r1.answerPath}`;
+    for (const [which, r] of [["first", r1], ["second", r2]])
+      if (!fs.existsSync(r.answerPath)) return `the ${which} turn's answer file is not on disk: ${r.answerPath}`;
+    const kept = fs.readFileSync(r1.answerPath, "utf8");
+    return kept === r1.answer
+      || `the resumed turn rewrote the first turn's answer: ${JSON.stringify(kept)} where the first report said ${JSON.stringify(r1.answer)}`;
+  });
+
 // --- the seat file, which is the whole of what a caller hands the driver ---
 
 flow("a seat file supplies the rights line a coordinator's prompt does not have, and a SEAT below another field is still refused",
