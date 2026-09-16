@@ -336,11 +336,13 @@ test("F5 the wrapper's description names the agent by its model",
   "a Codex seat surfaces as the wrapper's card, so without a description the user reads a generic agent where a Claude seat shows its task; the two sides stop looking like one run, which is the whole point of naming it there, and the model is the name a person can use, where the word this page calls it by is one they cannot",
   () => says("The Agent call carries a `description` of the form \"Codex <short name> <id>: <task in a few words>\", so the card the user sees names the agent, its vendor and its task, not the command line."));
 
-test("F6 a background seat is waited on with TaskOutput, and no turn ends with one alive",
-  "a background task does not keep a headless session alive: when the coordinator ends its turn Claude Code exits and kills the task, which is how the live gate lost a seat mid-turn (measured 2026-09-08); TaskOutput blocking is the native wait, and without the timeout named the coordinator cannot know one call covers ten minutes and no more",
+test("F6 a Codex seat is waited on by a poll of its exit marker, a Claude seat by its Agent task, and no turn ends with a seat alive",
+  "ending the coordinator's turn kills its background agents in a headless session (measured 2026-09-08); a blocking TaskOutput on a running wrapper returned 32 KB of its transcript at the timeout, seven of seven (2026-09-15/16), where a poll on the driver's exit marker returned one line, so the Codex wait goes on the poll task, the Claude wait stays on the Agent task, and the timeout stays named",
   () => says(
-    "Wait on every seat you launch in the background, Claude or Codex, with `TaskOutput(<task_id>, block: true, timeout: 600000)`, again while the task still runs",
-    "never end your turn with a seat alive: a headless session ends with the turn and the task is killed with it",
+    "Wait on every seat you launch in the background, Claude or Codex, and never end your turn with a seat alive: a headless session ends with the turn and the task is killed with it",
+    "until [ -s \"<DIR>/exit\" ]; do sleep 5; done; echo DONE=<id>",
+    "call `TaskOutput(<poll_task_id>, block: true, timeout: 600000)` on that task, again while it runs; then read the wrapper's own lines at its completion notification",
+    "For a Claude seat, call the same `TaskOutput` on its Agent task, again while it runs, and read its return when it finishes",
   ));
 
 // ------------------------------------------------------------------ G: the seat's return, the run directory
