@@ -3,6 +3,42 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Fixed
+
+- A `--resume` turn no longer overwrites the earlier turn's answer file. The answer log named its file for
+  the thread, so after a second turn the first report's `answerPath` held the second turn's answer
+  (measured 2026-09-15 on a resumed review: a 4,501-byte second answer where the first turn's was 6,734
+  chars). Every answer file is now named for the run, `<threadId>-<startedAtMs>`, `.partial` and
+  `.commentary` with it; the turn diff and the worktree harvest stay thread-named, because the harvest is
+  rebuilt per turn and `disposeWorktree` guards on that one path. A flow in `evals/cli.test.mjs` runs two
+  turns on one thread and reads the first file back; reverting the name turns it red.
+- `commandsDeclined` is a report field of its own, and `commandsFailed` counts only commands that ran and
+  failed. The one count held both and overlapped `escalations`, and no help text said so (2026-09-14: a
+  seat reported `commandsFailed: 10` over 8 failed and 2 declined). The exit ladder reads neither count and
+  is unchanged; `--help-all` and `references/result-gates.md` say the two are disjoint and that
+  `commandsDeclined` counts commands where `escalations` counts approval requests. A case in
+  `evals/protocol.test.mjs` pins the split at the same exit 6.
+- `tokenUsage.total` is documented as the current turn's cost, not thread-cumulative across `--resume`:
+  `--help-all`, the driver's comment and `references/environment-and-internals.md` said cumulative, while
+  the same reference paragraph two lines down said a single turn (measured 2026-09-15 on codex 0.153.4: a
+  resumed turn reported 658,350 on a thread whose first turn had reported 3,722,152). To cost a thread, sum
+  one report per turn.
+- The wrapper's `FIRST=` line reads the first line of `answerJson.result` when the seat ran under an
+  `OUTPUT_SCHEMA:`, capped at 300 characters. It read `answer`, which under a schema is the JSON text, so
+  the line was `{` or the whole answer on one line in seven of seven orchestrated runs (2026-09-14/15) and
+  never the sentence the seat page promises.
+
+### Changed
+
+- The orchestrate page waits on a Codex seat by its driver's exit marker, through a quiet background Bash
+  task and `TaskOutput` on that task, instead of a blocking `TaskOutput` on the running wrapper: the
+  blocking call returned about 32 KB of the wrapper's transcript at the ten-minute timeout, seven of seven
+  (measured 2026-09-15/16 in three sessions, and twice more on 2026-09-16 under extension 2.1.272), where a
+  poll on the marker returned one line, seven of seven. A Claude seat has no marker and is waited on by its
+  Agent task as before. Case F6 in `evals/orchestrate.test.mjs` pins the new sentences.
+
 ## 0.15.0 — 2026-09-13
 
 ### Changed
