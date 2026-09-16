@@ -485,8 +485,10 @@ const HELP = [
   clipped to 200 characters, empty where it sent none; a command the sandbox denied need
   not raise one; exit 6 sits below timeout, so a cut run carries entries and exits 3);
   interactions, the requests that needed a human and no sandbox change could answer.
-  tokenUsage is the server's own accounting for the root thread,
-  cumulative across --resume; cut is {kind, limit, observed, completedInGrace};
+  tokenUsage is the server's own accounting: total is the root thread's token use
+  for the current turn, per turn as of codex 0.153.4 (measured 2026-09-15); to cost
+  a thread, sum one report per turn. last is the most recent API request within it.
+  cut is {kind, limit, observed, completedInGrace};
   timing is {wallMs, setupMs, commandMs, modelMs}, commandMs being the server's
   own per-command durations and modelMs the ARITHMETIC REMAINDER, wallMs minus
   setup minus commands: residual time, never a measurement of thinking;
@@ -2917,8 +2919,9 @@ function handleMessage(msg, bytes = 0) {
   if (msg.method === "turn/diff/updated" && isRoot(p)) persistTurnDiff(p);
 
   // Best-effort accounting: what this seat cost, straight from the server. Only the root thread's
-  // usage counts — a subagent thread's tokens are its own. `total` is THREAD-cumulative: on --resume
-  // it includes every earlier invocation's turns; `last` is the most recent turn alone.
+  // usage counts — a subagent thread's tokens are its own. `total` is the root thread's token use for the
+  // current turn, per turn as of codex 0.153.4 (measured 2026-09-15); to cost a thread, sum one report per
+  // turn. `last` is the most recent API request within it.
   if (msg.method === "thread/tokenUsage/updated" && rootThreadId !== null && (p?.threadId ?? null) === rootThreadId)
     tokenUsage = p?.tokenUsage ?? null;
 

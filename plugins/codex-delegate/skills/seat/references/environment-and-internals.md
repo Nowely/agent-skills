@@ -21,9 +21,10 @@ which no grant covers ([incidents](incidents.md#here-documents-under-the-grant))
 lock, a sandbox assertion) prints none, because there is none.
 
 The report's `tokenUsage` carries the server's own accounting for the ROOT thread; Codex's own subagent
-threads are not included. `total` is thread-cumulative across `--resume`, and `last` is the most recent
+threads are not included. `total` is the root thread's token use for the current turn, per turn as of
+codex 0.153.4 (measured 2026-09-15); to cost a thread, sum one report per turn. `last` is the most recent
 **API request**, not the whole turn — measured on a rollout, one turn emitted `last: 13584 / total: 13584`
-then `last: 14273 / total: 27857`. So `total` is what a single turn cost and `last` is only its tail.
+then `last: 14273 / total: 27857`, so `last` is only the turn's tail.
 
 The report's `escalations` array has one `{method, detail, thread, subagent}` entry per approval request
 the driver declined, whichever thread asked. `detail` is the server's wording clipped to 200 characters
