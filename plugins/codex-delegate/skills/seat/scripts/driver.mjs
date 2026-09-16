@@ -416,9 +416,13 @@ const HELP = [
   last ${LIMITS.VERIFY_BUFFER_CHARS} characters are kept in memory. Most build and test runners write, so most fail
   under --verify-sandboxed; it passes the exit code through,
   and is a usage error where this codex has no \`sandbox\` subcommand.
-  commandsFailed, commandsBlocked (a command that reached the client with no verdict
-  at all, neither failed nor declined), fileChangesFailed and commandsProbeNegative
-  are report fields and no exit code: read them before acting on the answer.` },
+  commandsFailed, commandsDeclined, commandsBlocked (a command that reached the
+  client with no verdict at all, neither failed nor declined), fileChangesFailed
+  and commandsProbeNegative are report fields and no exit code: read them before
+  acting on the answer. commandsDeclined counts commands an approval refusal
+  stopped before they ran, commandsFailed commands that ran and failed, and
+  escalations the refused approval requests themselves, so the first and the third
+  can differ.` },
 
   { s: "Bounds",
     text: `  --timeout SECONDS  none by default (0): the turn runs as long as the work takes,
@@ -3317,6 +3321,8 @@ function classifyEvidence() {
   const probeNegatives = commands.filter(probeNegative);
   // Keep failed commands visible so the report can expose an answer that claims a failed suite passed.
   const failedCmds = commands.filter((c) => !probeNegative(c) && (verdictFailed(c) || (typeof c.exitCode === "number" && c.exitCode !== 0)));
+  // Reported apart from the failures: a declined command never ran.
+  const declinedCmds = commands.filter((c) => c.status === "declined");
   // Count failed and declined patches so the exit ladder can report them alongside failed commands.
   const failedPatches = fileChanges.filter(verdictFailed);
   // Events can only show that SOMETHING succeeded, never that the right thing did — Codex opens most
@@ -3357,7 +3363,7 @@ function classifyEvidence() {
   const commentaryPath = commentaryOnly
     ? persistAnswer(messages.map((m) => `## ${m.phase ?? "unphased"}\n\n${m.text}`).join("\n\n"), ".commentary")
     : null;
-  return { ran, commandsRan, blocked, probeNegatives, failedCmds, failedPatches, expected, pipedToPager, final,
+  return { ran, commandsRan, blocked, probeNegatives, failedCmds, declinedCmds, failedPatches, expected, pipedToPager, final,
            fullAnswer, schemaErrs, answerPath, answer, commentaryOnly, commentaryPath,
            answerPartial, answerPartialPath: answerPartial ? answerPartialPath : null };
 }
@@ -3563,7 +3569,7 @@ function writeReport(ev, verifySkipped, codeOverride) {
   const receipt = findRollout(rootThreadId);
   const receiptPath = receipt?.path ?? null;
   const code = codeOverride ?? decideExitCode(ev, verifySkipped);
-  const { ran, blocked, probeNegatives, failedCmds, failedPatches, expected, pipedToPager, final,
+  const { ran, blocked, probeNegatives, failedCmds, declinedCmds, failedPatches, expected, pipedToPager, final,
           fullAnswer, schemaErrs, answerPath, answer, commentaryOnly, commentaryPath,
           answerPartial, answerPartialPath } = ev;
   // Where the wall clock went. commandMs is the server's own per-command measurement, so modelMs is the
@@ -3608,7 +3614,11 @@ function writeReport(ev, verifySkipped, codeOverride) {
         // during generation. Null means the whole schema was within the checked subset.
         schemaKeywordsUnchecked: opts.schemaUnchecked } : {}),
     commandsSucceeded: ran.length, commandsMatchingExpectation: expected.length,
-    commandsFailed: failedCmds.length, commandsBlocked: blocked.length,
+    // commandsFailed excludes the commands counted in commandsDeclined.
+    // commandsDeclined counts commands and escalations counts approval requests; the exit ladder reads
+    // neither count.
+    commandsFailed: failedCmds.filter((c) => c.status !== "declined").length,
+    commandsDeclined: declinedCmds.length, commandsBlocked: blocked.length,
     // Probes that answered "no" (a no-match grep, a false test) — not failures, not successes.
     commandsProbeNegative: probeNegatives.length,
     // Commands whose last stage was head/tail/less/more: the seat read a slice of its own evidence.

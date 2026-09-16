@@ -145,9 +145,18 @@ const CASES = [
     assert: (r) => (r.commandsFailed === 1 && r.commandsProbeNegative === 0)
       || `a pipeline was laundered into a probe: failed=${r.commandsFailed} probes=${r.commandsProbeNegative}` },
   { scenario: "escalated",        expect: EXIT.ESCALATED,
-    why: "a refused approval completes its item as DECLINED with no exit code: that is a failure whatever the code says, never an unresolved command, and never a probe answering 'no' however grep-shaped its text",
-    assert: (r) => (r.commandsFailed === 2 && r.commandsBlocked === 0 && r.commandsProbeNegative === 0)
-      || `a declined command was misclassified: ${JSON.stringify({ f: r.commandsFailed, b: r.commandsBlocked, p: r.commandsProbeNegative })}` },
+    why: "a refused approval completes its item as DECLINED with no exit code: never an unresolved command, and never a probe answering 'no' however grep-shaped its text — it is counted as declined, because a command an approval stopped never ran and so never failed",
+    assert: (r) => (r.commandsDeclined === 2 && r.commandsFailed === 0 && r.commandsBlocked === 0 && r.commandsProbeNegative === 0)
+      || `a declined command was misclassified: ${JSON.stringify({ d: r.commandsDeclined, f: r.commandsFailed, b: r.commandsBlocked, p: r.commandsProbeNegative })}` },
+  { scenario: "escalated",        expect: EXIT.ESCALATED,
+    why: "commandsFailed and commandsDeclined are disjoint, and neither is escalations: here ONE approval request was refused and TWO commands were declined by it, so a caller adding the counts, or reading one as the other, counts one refusal three times — and the split is a report change only, the exit still 6",
+    assert: (r) => {
+      const declined = (r.commands ?? []).filter((c) => c.status === "declined");
+      if (declined.length !== 2)
+        return `the fixture stopped declining commands, so this case no longer tests anything: ${JSON.stringify((r.commands ?? []).map((c) => c.status))}`;
+      return (r.commandsDeclined === declined.length && r.commandsFailed === 0 && r.escalations?.length === 1)
+        || `the declined commands were not split off the failures: ${JSON.stringify({ d: r.commandsDeclined, f: r.commandsFailed, esc: r.escalations?.length })}`;
+    } },
   { scenario: "blocked-command",  expect: EXIT.OK,
     why: "a command with no numeric exit code that is neither failed nor declined has no verdict; that is a report field and no exit code, so a caller reads commandsBlocked instead of being told the run failed",
     assert: (r) => (r.commandsBlocked === 1 && r.commandsFailed === 0 && r.commandsSucceeded === 1)

@@ -30,8 +30,11 @@ The report counts sliced evidence as `commandsPipedToPager`, with `pipedToPagerH
 A completed turn that produced an answer exits 0 however many of its commands failed: whether the
 failures are the finding — a crashing environment probe, an intentionally broken build, a bisection
 seat's red step — or a defect, the exit code cannot tell, so it does not try. What ran and how it ended
-is in the report: `commandsFailed`, `commandsBlocked`, `commandsProbeNegative`, `fileChangesFailed`,
-`commandsPipedToPager`. Read them before acting on the answer, and where an end state can be measured
+is in the report: `commandsFailed`, `commandsDeclined`, `commandsBlocked`, `commandsProbeNegative`,
+`fileChangesFailed`, `commandsPipedToPager`. `commandsDeclined` counts commands an approval refusal
+stopped before they ran, `commandsFailed` commands that ran and failed, and `escalations` the refused
+approval requests themselves, so the first and the third can differ.
+Read them before acting on the answer, and where an end state can be measured
 declare `--verify`, which asserts something rather than merely declining to assert its opposite.
 
 `--expect-command` still decides exit 5 and `--verify` decides 9 or 12. Exit code 11 is retired, not
