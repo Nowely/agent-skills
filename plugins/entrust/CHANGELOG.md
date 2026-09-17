@@ -3,6 +3,80 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- The orchestrate page gains eight rules from the 2026-09-17 research round
+  (`research/2026-09-17-orchestration-practices/`: 185 survey claims mapped to the two pages and 54
+  coordinator incidents from the local record; the T1 ids below are that round's, and `426:973` is a
+  line of the session transcript T1 cites). Each rule and the defect that paid for it:
+  - A decisive check runs before any panel is commissioned; dependent execution stays in one agent and
+    its verification stays independent. Why: two naming rounds put sixteen agents on proposals, reviews
+    and a verdict before the check that decided had run, and the second round's winner fell to a
+    collision check after the verdict (T1-45; 426:973, 426:1208), while the two tasks the coordinator
+    kept in its own hands landed with critics only (T1-19, T1-48); the controlled comparisons say the
+    same of sequential and tool-heavy work (S2-02, S2-03). The rule orders the check; the fresh verifier
+    of "you never grade your own work" stays, and a new eval case fails if the page ever says otherwise.
+  - A judge's verdict that lacks its decisive check is `unknown` in `result`, the missing check named in
+    `open`; a Codex judge's check goes under the sibling's `EXPECT:` rule. Why: judge Astra J3's
+    `proofbound` was disqualified by a collision check no agent had run (426:1208); judge J2's "keep"
+    was reaffirmed on new evidence (426:1005) and then set aside by the owner's rule that the plugin
+    name carries no vendor (426:1018) — one verdict of six fell to a check, not the two that T1 §2.4
+    counts; T1-37's own row says the conclusion held.
+  - Between selection rounds the coordinator records what was rejected, what was learned and what
+    still blocks; two rounds on the same blocker are a stall and become a new plan for the word. Repair
+    rounds keep their ladder: two rounds, the top row, then the user. Why: the naming rounds each ended
+    on the same blocker and the two-round rule, which counts fix rounds, never tripped (T1-45).
+  - Before the plan is shown, each agent's required commands are checked against its planned rights and
+    environment; uncertain prerequisites are probed cheaply and unmet ones go into the plan. Why: a Sol
+    review turn spent 2,649,693 tokens and left its collision check unrun because SSL failed in its
+    sandbox, and the coordinator redid it (T1-44; 426:1005); ten of thirteen agents in one run ended at
+    exit 6 on declined requests (T1-51). Nothing is reassigned after a refusal: the sibling's rule
+    against widening rights on a refusal stands.
+  - One assembled brief is opened whole before any fan-out, its input paths checked in the agent's
+    planned tree, its item count and each quoted claim against its source. Why: the split critic reads
+    the decomposition, not the file the generator wrote, and three generator defects each reached every
+    agent — a join that paired all twelve reports with the wrong paragraph (T1-05, 2026-09-11, the one
+    outcome-blocked incident of the coordinator's own), a doubled path segment in all twenty prompts
+    (T1-09, 2026-09-12) and a quoting slip that gave each of three agents one set of four (T1-39,
+    2026-09-17); a path check alone would have caught only the second.
+  - A refuter's finding is one that changes correctness or a stated requirement; the rest goes to
+    `open`. A verifier's brief names its target and whole scope, and its return separates what it
+    checked from what it did not. Why: round 08 of the markup round made twenty-seven edits against a
+    wave's eighty-seven findings and five owner decisions and brought ten regressions of its own (T1-50;
+    `research/2026-09-11-markup-round-0/rounds.md`); the coordinator once bounded a report clipped at
+    50,000 characters to the parts it had read (T1-30; 426:33), where three earlier claims from partial
+    evidence were cut by agents (T1-08, T1-12, T1-49).
+  - Every alternative in the plan is numbered with its cost, the recommendation marked, and the plan
+    says what "go" selects. Why: a bare "го" was read as assent over forks the plan had left open three
+    times (T1-23; 30a:204 on 2026-09-12, 30a:848 on 2026-09-13, 426:92 on 2026-09-16; no objection
+    followed) and a wait was offered as free that was not (T1-38; 426:1214, 2026-09-17).
+  - The bulk row's count is derived from the units and the plan says why that many; the plan states
+    expected tokens by tier and role from comparable runs, `unknown` where unmeasured. Why: eighty
+    agents were launched on the word "bigger" against a page that already said six alive, and twelve
+    findings survived (T1-01, T1-03); the user stopped a wave of fifty-one for its cost before any cap
+    existed (T1-53); an Astra ran at 1 % quota with the only reproduction path on it (T1-07). No
+    number sits on the page: the record's pooled medians mix roles and task shapes (Luna 13.6 k for a
+    recognition read, 742 k for a tree verification; Astra 585,186 over six agents under the
+    conventional median, where T1 §2.4's 903,705 is the upper-middle value), and Claude agents' tokens
+    are unrecorded (T1-U3).
+  - The completeness critic is one fresh strong-row reader chosen by the agreed composition and named
+    in the plan, given the whole publication and its evidence once, before it goes out, never per
+    return. Why: no run of seven had spawned one (T1 §4) and a research README published an inference
+    from absence unchecked (T1-49).
+- "Prefer Luna to Haiku in the bulk row" drops "and smarter, and four times cheaper". Why: no Haiku token count exists
+  anywhere in the record (T1-U3), so the price half was a claim, not a measurement, and nothing in the record measures "smarter". The preference
+  stays as the owner's: four of fifty Haiku returns were lost to the schema and, of about thirty-six
+  candidate findings from sixty-six cheap extractors, twenty-four were refuted (T1-02, T1-03); twenty
+  of twenty Luna located the file under a broken path (T1 §2.3a) and thirteen of thirteen agreed with
+  a judge who read the tree (T1-26). Two unmatched cohorts, not a comparison; the matched one is
+  phase 3's.
+- The page's line budget in `evals/orchestrate.test.mjs` moves from 155 to 156 for a page of 156
+  lines; ten cases pin the new rules by the words that carry them (B7, C9–C11, D9, D10, E7, F7, F8,
+  G7), the three verification bullets that changed carry their new text in F2, and B7 fails if the
+  page ever tells the orchestrator to grade its own work.
+
 ## 0.19.0 — 2026-09-18
 
 ### Changed

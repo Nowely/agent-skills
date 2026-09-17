@@ -34,13 +34,13 @@ run directory: its artifact is its report, and a brief that asks a Codex read ag
 
 ## The plan
 
-1. Load the sibling skill with the Skill tool if it is not loaded yet, scout, then decide the composition and the agents.
+1. Load the sibling skill with the Skill tool if it is not loaded yet, scout, then decide the composition and the agents. For each agent, check the required commands against its planned rights and environment. Probe uncertain prerequisites cheaply; put unmet prerequisites in the plan.
 2. Show the plan and stop, in the user's own language and in ordinary words: what will be done, who does each part by model name, what each may write, that the agents reach the network and any you are keeping off it, and that
    reports and artifacts land outside the repository, except a worktree agent's own tree, which the driver makes and removes inside the repository under its `.claude` directory. Name no path and no header field. A worktree agent is named as such, because a worktree will be made. Browser and end-to-end runs go to a Claude agent, or to a write agent with the grants parity.md's
    [Browser-mode sandbox](../codex/references/parity.md#browser-mode-sandbox) section names; a read agent cannot, because that section's Chromium override is a file in the tree it may not write.
-   Announce the composition here, and the caps beside it in a sentence: your own model, one Fable and one `gpt-6-astra` at a time, six alive. A cap the user overrides in words ("two Fable")
+   Announce the composition here, and the caps beside it in a sentence: your own model, one Fable and one `gpt-6-astra` at a time, six alive. State expected tokens by tier and role in the plan; name the comparable runs behind each estimate and mark unmeasured roles `unknown`. A cap the user overrides in words ("two Fable")
    replaces the default for this run; composition words ("only codex", "no codex") follow the sibling's table. One plan when there is one; when several approaches are viable, show them all with a
-   recommendation and let the user pick.
+   recommendation and let the user pick. Number each alternative, show its cost and mark the recommendation; state in the plan what "go" selects.
 3. The user's "go" covers only what the plan listed. After it, live-tree implementers write in the live working directory and an
    agent the plan put in a worktree stays there; no commit to the live tree without a separate word from the user.
 4. A new thread's worktree is cut at `HEAD`, so a worktree agent suits only work that starts there: competing implementations, a suite on
@@ -65,8 +65,8 @@ run directory: its artifact is its report, and a brief that asks a Codex read ag
 Your own model is in your system prompt ("You are powered by the model named ..."); nothing else carries it. You are outside the
 pool, and the pool is the same whatever you are: at most one Fable agent and one `gpt-6-astra` agent alive at a time, each taking
 the top-row roles in turn, architect for one task and judge for the next, and the strong and cheap agents the alive cap admits.
-**Prefer Luna to Haiku in the bulk row**: measured better and smarter, and four times cheaper. The bulk row does not
-count against the alive cap and never takes a top-row role; announce its count before spawning, like any other fan-out.
+**Prefer Luna to Haiku in the bulk row**: measured better. The bulk row does not
+count against the alive cap and never takes a top-row role; announce its count before spawning, like any other fan-out, a count derived from the units with the plan saying why that many.
 The unit of a bulk fan-out is one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief: whether an address moved or was wrong is a judgement about your own input, and it stays out of the set (measured 2026-09-12: a broken path in every brief drew the same verdict from nineteen of twenty agents).
 
 - Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable` only for the one Fable agent;
@@ -100,7 +100,7 @@ cross-review agent is a prompt agent with the diff's path in `TASK:` and the tem
 | Fable agents, `gpt-6-astra` agents | 1 each, alive at a time |
 | Codex write agents per directory | 1: a second on the same directory exits 10 at once, before its turn runs |
 
-Allocate inside those bounds by judgement, not to fill a band. Several writers at once is how a task goes faster: split by file ownership, as Claude agents on one live tree or as Codex agents in separate worktrees, never two Codex write agents on one directory. Disjoint filenames do not make work independent, so settle the contract between the owners before they start; when their work collides anyway, stop the writers, restate the contract, let each owner repair only its own files, then have an agent that wrote neither verify the combined tree. While another writer holds part of a checkout, nobody changes what they share: no stash, branch switch, reset, clean or rebase, and that binds you too when you run a check of your own. A writer may run the suite while it iterates, but the evidence that decides comes from an agent that did not write the code, or from you under the redirect rule.
+Allocate inside those bounds by judgement, not to fill a band. Run a decisive check before commissioning a panel. Keep dependent execution in one agent; keep its verification independent. Several writers at once is how a task goes faster: split by file ownership, as Claude agents on one live tree or as Codex agents in separate worktrees, never two Codex write agents on one directory. Disjoint filenames do not make work independent, so settle the contract between the owners before they start; when their work collides anyway, stop the writers, restate the contract, let each owner repair only its own files, then have an agent that wrote neither verify the combined tree. While another writer holds part of a checkout, nobody changes what they share: no stash, branch switch, reset, clean or rebase, and that binds you too when you run a check of your own. A writer may run the suite while it iterates, but the evidence that decides comes from an agent that did not write the code, or from you under the redirect rule.
 
 ## Mechanism
 
@@ -116,15 +116,16 @@ in the brief.
 
 - Scout inline first: the work-list is yours, before any fan-out.
 - Critique the split before the fan-out: a top-row agent reads the decomposition, not the subject, for what the cut lost, what the wording added, which items are two and which the fan-out's rights cannot decide; twenty agents on a bad split agree and are all wrong (measured 2026-09-12: it caught two claims true at one release and false at the next, and they never reached the fan-out).
-- Adversarial verify: a refuter defaults to `refuted` when it is uncertain.
+- Open one assembled brief whole before the fan-out; check its input paths in the agent's planned tree, its item count and each quoted claim against its source.
+- Adversarial verify: a refuter defaults to `refuted` when it is uncertain, and a finding is one that changes correctness or a stated requirement, the rest its `open`.
 - Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters.
 - Read a unanimous fan-out as evidence about the prompt first: open one return whole before you trust the tally (measured 2026-09-12: nineteen of twenty verdicts answered one broken path in every prompt).
-- Judge panel for a design task.
-- Completeness critic at the end: what is missing, unverified, unread.
+- Judge panel for a design task: a verdict missing its decisive check is `unknown` in `result`; name the missing check in `open`. Use the sibling's `EXPECT:` rule for a Codex check.
+- Completeness critic at the end: what is missing, unverified, unread; one fresh strong-row reader chosen by the agreed composition and named in the plan, given the whole publication (a README, a changelog, a synthesis) and its evidence once, before it goes out, never per return.
 - No silent caps: name every agent, check or item you dropped.
 
 Fix, then cross-review, at most two rounds; then escalate to the Fable agent or the `gpt-6-astra` agent, and to the user only when
-that round fails too.
+that round fails too. Between selection rounds, record the candidates rejected, the evidence gained and the remaining blocker. Two rounds repeating the same blocker are a stall: show a new plan and wait for the word.
 
 | Result | What to do |
 | --- | --- |
@@ -139,7 +140,7 @@ that round fails too.
 
 ## The agent's return
 
-Ask every prompt agent, Claude and Codex alike, for exactly these five fields, and send no `BRIEF:` line: the template is the bound, and `BRIEF:` would clip the answer at 20 lines. The first line of `result` is one sentence a
+Ask every prompt agent, Claude and Codex alike, for exactly these five fields, and send no `BRIEF:` line: the template is the bound, and `BRIEF:` would clip the answer at 20 lines. A verifier's brief names its target and the whole scope it must cover; its return says what it checked and, in `open`, what it did not. The first line of `result` is one sentence a
 reader can take on its own: the agent's model and id, its status and what it did ("Sonnet W5: done, four flaky width checks replaced by threshold checks"); the rest of the fields follow unchanged, and all five are yours to read, never to forward.
 
     status:    done | partial | blocked
