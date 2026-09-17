@@ -70,19 +70,23 @@ where its type is the bare `codex-agent`.
 
 The wrapper's message is the block below with its three placeholders filled in and nothing added or
 removed; it never sees the agent's prompt. Inside it the driver runs as a background task,
-`run_in_background: true` and no `&` of your own, and its exit status lands in a file of its own beside
-the two output files; the wait after it is a foreground command the wrapper repeats until that status is
+`run_in_background: true` and no `&` of your own, through the launcher `scripts/agent-run.mjs`, which
+opens `prompt.txt` only as the driver's argument, passes the driver `--prompt-file` and `--report-file`
+and its own environment untouched, and puts the driver's exit status in a file of its own beside the two
+output files, last; the wait after it is a foreground command the wrapper repeats until that status is
 there, so the card stays working for as long as the agent does (measured: an eleven-minute agent took two
 waits). That wait only reads and sleeps: this harness moves a wait that reaches the tool's ten-minute
 ceiling into the background instead of ending it (measured 2026-09-12), so that one and the next run
 together, and neither modifies a file. The driver prints its pid on the first line of `<DIR>/err.txt`
-once it has accepted the report path, and a refusal before that point prints none. A `SIGTERM` to that
+once it has accepted the report path, and a refusal before that point prints none; a launch the launcher
+itself refused (no `prompt.txt`, a relative report path, an `exit` marker already there) puts its reason
+there instead, with an exit of 2 and `PATH=none`. A `SIGTERM` to that
 pid cuts the turn, sweeps its codex and publishes the report as `turnStatus: interrupted`, exit 1,
 nothing left running.
 
     1. Run this exact command with the Bash tool, with run_in_background: true, and description "<DESCRIPTION>":
 
-    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --prompt-file "<DIR>/prompt.txt" --report-file "<REPORT>" > "<DIR>/out.json" 2> "<DIR>/err.txt"; echo $? > "<DIR>/exit"
+    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --dir "<DIR>" --report-file "<REPORT>"
 
     2. Then run this exact command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>, waiting":
 
@@ -94,14 +98,15 @@ nothing left running.
 
     3. Then run this one command in the foreground:
 
-    D=unknown; test -s "<DIR>/exit" && D=$(cat "<DIR>/exit"); echo "DRIVER_EXIT=$D"; P=none; grep -qF "reportPath=<REPORT>" "<DIR>/err.txt" 2>/dev/null && P=own; grep -Eq 'already exists, or is a symbolic link|could not be published at' "<DIR>/err.txt" 2>/dev/null && P=taken; echo "PATH=$P"; node -e 'try{const r=require("<REPORT>");console.log("EXIT="+r.exitCode);const a=r.answerJson&&typeof r.answerJson.result==="string"?r.answerJson.result:r.answer;const s=String(a||"");console.log("FIRST="+s.split("\n")[0].slice(0,300));console.log("ANSWER="+(s.length<=600?s.replace(/\s*\n\s*/g," / "):"(long: "+s.length+" chars, read the report)"));const t=r.turnError;const e=r.error||(t&&(typeof t==="string"?t:(t.message||t.codexErrorInfo||JSON.stringify(t))))||"";console.log("ERROR="+String(e).replace(/\s*\n\s*/g," ").slice(0,300));console.log("RECEIPT=turnStatus="+r.turnStatus+" receiptOk="+r.receiptOk+" model="+r.model)}catch(e){console.log("EXIT=unknown");console.log("FIRST=");console.log("ANSWER=");console.log("ERROR=");console.log("RECEIPT=")}'; test -f "<REPORT>" && echo FILE=exists || echo FILE=missing
+    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --status --dir "<DIR>" --report-file "<REPORT>"
 
-    4. Your final message is exactly the WAIT_DONE line, the eight lines step 3 printed, then one line
-       REPORT=<REPORT>. Nothing else. If the harness then asks you for a visible response, answer with
-       exactly one line, "<DESCRIPTION>: report delivered", and nothing else.
+    4. Your final message is exactly the WAIT_DONE line and the nine lines step 3 printed. Nothing else.
+       If the harness then asks you for a visible response, answer with exactly one line,
+       "<DESCRIPTION>: report delivered", and nothing else.
 
-`<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per launch, a relaunch included: step 1's
-redirects overwrite `err.txt` and `out.json`, so a reused directory loses the earlier run's record (measured 2026-09-17). Write and Read expand nothing,
+`<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per launch, a relaunch included: the launcher refuses a
+directory whose `exit` marker already exists, because a second run there would overwrite the first run's record (measured
+2026-09-17 on the earlier shape, where it did). Write and Read expand nothing,
 so they need the absolute path it prints. `<REPORT>` is an absolute path of this agent's own and never under `<DIR>`:
 `<DIR>` sits in `$TMPDIR`, the one root a read agent may write, and a file the agent leaves at that name blocks publication
 and then sits where you would read it as the agent's own report. Put it under the driver's state directory,
@@ -118,8 +123,9 @@ prompt file with `RESUME: <threadId>` and send the wrapper one more command of t
 message tool, headless `-p` among them, continues the thread with a second wrapper given the same file,
 at the cost of a second card (measured: the thread held both ways).
 
-Every driver call forwards that variable under its own name — the plugin's own data directory, where the
-driver's state and every Codex artifact the report names (`answerPath`, a worktree harvest) live. The
+Every launch forwards that variable under its own name — the plugin's own data directory, where the
+driver's state and every Codex artifact the report names (`answerPath`, a worktree harvest) live — and
+the launcher hands its environment to the driver as it found it. The
 driver reads `ENTRUST_STATE_DIR` first and that variable second, and with neither it exits 2; only
 `--help` needs none. A clone-and-symlink install substitutes nothing for the placeholder, so the forwarded
 value is empty there and the `ENTRUST_STATE_DIR` the user exports decides ([README](../../README.md)
@@ -306,6 +312,7 @@ what an agent may write, and where, in ordinary words, because that is what the 
 ## References
 
 - `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help` is the canonical inventory of the flags a coordinator sets; `--help-all` adds the rarely needed ones, the `ENTRUST_*` variables and the internals.
+- `node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --help` is what the wrapper's two commands do: the launch, its refusals and the nine status lines.
 - Flags, fields, delivery, bounds, environment, receipts, and worktree internals:
   [environment-and-internals.md](references/environment-and-internals.md).
 - Evidence gates and verifier semantics: [result-gates.md](references/result-gates.md).

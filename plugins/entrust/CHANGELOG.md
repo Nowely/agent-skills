@@ -3,6 +3,21 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- The wrapper's two commands are `scripts/agent-run.mjs`: a launch that takes the directory and the report path
+  and runs the driver with the same two flags, the same environment, the same four files and the exit marker
+  written last, and a status read that prints the nine hand-back lines. The block a coordinator fills in
+  shrinks from about 2700 characters to about 1400, the directory named four times instead of nine. The launcher
+  never opens `prompt.txt` except as the driver's argument, refuses a directory whose exit marker exists, and
+  forwards a signal to the driver; `evals/agent-run.test.mjs` measures each of those against the fake server.
+  Why: the coordinator typed the block for 14 to 16 seconds of every launch (measured 2026-09-17), a fifth of a
+  one-line task's wall clock.
+- The status read names the model by its short name (`model=Terra`), the slug staying in the report. Why: two
+  coordinators retold the slug they had just read to the user (measured 2026-09-17), against the page's rule.
+
 ## 0.17.0 — 2026-09-17
 
 ### Changed
