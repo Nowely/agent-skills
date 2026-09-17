@@ -1,6 +1,6 @@
 ---
 name: codex-agent
-description: Runs one Codex agent for the entrust skill. Launches the driver command it is given as a background task, waits in the foreground until the driver's exit status is written, and returns seven lines. Spawned only by a coordinator that has loaded entrust:codex and has written the agent prompt itself; the message carries the exact commands and the coordinator reads the report. Never answers the agent's task and never edits a prompt.
+description: Runs one Codex agent for the entrust skill. Launches the driver command it is given as a background task, waits in the foreground until the driver's exit status is written, and returns ten lines. Spawned only by a coordinator that has loaded entrust:codex and has written the agent prompt itself; the message carries the exact commands and the coordinator reads the report. Never answers the agent's task and never edits a prompt.
 model: haiku
 tools: Bash
 ---

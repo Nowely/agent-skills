@@ -5,7 +5,7 @@ description: >-
   step (tests, tree-wide greps, source files, diffs, logs) onto Claude and Codex agents so the main context stays small.
 disable-model-invocation: true
 metadata:
-  version: "0.16.0"
+  version: "0.17.0"
 license: MIT
 ---
 
@@ -75,7 +75,10 @@ The unit of a bulk fan-out is one claim, one address, a verbatim quote, and a ve
   own file, so pass that Agent call no `model`; one written there, or an `effort`, is spent on the wrapper alone and never reaches Codex.
 - Subagents may spawn subagents, but a Fable agent never spawns Fable: it tags its own Agent calls `opus` or `sonnet`; only you launch
   the pool's Fable agent.
-- Send no `EFFORT:` line; the user's configured Codex effort is inherited by every `MODEL:`. In a Workflow, `effort: 'low'` is
+- Every Codex agent carries an `EFFORT:` line chosen for its work, as it carries its `MODEL:` line: `low` for the bulk row
+  and for mechanical work, `medium` for review, refutation and judgement in the strong and cheap rows; only a top-row agent
+  goes without one and inherits the configured effort. Measured 2026-09-17: two Luna read agents at an inherited `xhigh`
+  took 480 and 557 seconds and 1.2M and 2.3M tokens for a ledger and a grep task. In a Workflow, `effort: 'low'` is
   for mechanical Claude Sonnet stages only.
 
 ## Composition and bounds

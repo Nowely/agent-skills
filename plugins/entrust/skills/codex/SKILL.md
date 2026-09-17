@@ -6,11 +6,12 @@ description: >-
   when a panel, refuters, or competing designs need an agent that does not share Claude's bias;
   when fanning out reviewers or adversarial verifiers; after two hypotheses fail;
   when a second independent implementation is wanted; or when the user names Codex, GPT, or "the other
-  model" (через codex, через gpt, вторая имплементация, панель ревьюеров). It also governs requested
+  model" (через codex, через gpt, вторая имплементация, панель ревьюеров), or names a Codex model by its
+  short name (Astra, Sol, Terra, Luna; астра, сол, терра, луна). It also governs requested
   mixes ("one of them codex", "half codex", "only codex") and refusals ("no codex", "just you"). Skip
   trivia and mechanical fact-gathering.
 metadata:
-  version: "0.16.0"
+  version: "0.17.0"
 license: MIT
 ---
 
@@ -93,12 +94,14 @@ nothing left running.
 
     3. Then run this one command in the foreground:
 
-    D=unknown; test -s "<DIR>/exit" && D=$(cat "<DIR>/exit"); echo "DRIVER_EXIT=$D"; P=none; grep -qF "reportPath=<REPORT>" "<DIR>/err.txt" 2>/dev/null && P=own; grep -Eq 'already exists, or is a symbolic link|could not be published at' "<DIR>/err.txt" 2>/dev/null && P=taken; echo "PATH=$P"; node -e 'try{const r=require("<REPORT>");console.log("EXIT="+r.exitCode);const a=r.answerJson&&typeof r.answerJson.result==="string"?r.answerJson.result:r.answer;console.log("FIRST="+String(a||"").split("\n")[0].slice(0,300))}catch(e){console.log("EXIT=unknown");console.log("FIRST=")}'; test -f "<REPORT>" && echo FILE=exists || echo FILE=missing
+    D=unknown; test -s "<DIR>/exit" && D=$(cat "<DIR>/exit"); echo "DRIVER_EXIT=$D"; P=none; grep -qF "reportPath=<REPORT>" "<DIR>/err.txt" 2>/dev/null && P=own; grep -Eq 'already exists, or is a symbolic link|could not be published at' "<DIR>/err.txt" 2>/dev/null && P=taken; echo "PATH=$P"; node -e 'try{const r=require("<REPORT>");console.log("EXIT="+r.exitCode);const a=r.answerJson&&typeof r.answerJson.result==="string"?r.answerJson.result:r.answer;const s=String(a||"");console.log("FIRST="+s.split("\n")[0].slice(0,300));console.log("ANSWER="+(s.length<=600?s.replace(/\s*\n\s*/g," / "):"(long: "+s.length+" chars, read the report)"));const t=r.turnError;const e=r.error||(t&&(typeof t==="string"?t:(t.message||t.codexErrorInfo||JSON.stringify(t))))||"";console.log("ERROR="+String(e).replace(/\s*\n\s*/g," ").slice(0,300));console.log("RECEIPT=turnStatus="+r.turnStatus+" receiptOk="+r.receiptOk+" model="+r.model)}catch(e){console.log("EXIT=unknown");console.log("FIRST=");console.log("ANSWER=");console.log("ERROR=");console.log("RECEIPT=")}'; test -f "<REPORT>" && echo FILE=exists || echo FILE=missing
 
-    4. Your final message is exactly the WAIT_DONE line, the five lines step 3 printed, then one line
-       REPORT=<REPORT>. Nothing else.
+    4. Your final message is exactly the WAIT_DONE line, the eight lines step 3 printed, then one line
+       REPORT=<REPORT>. Nothing else. If the harness then asks you for a visible response, answer with
+       exactly one line, "<DESCRIPTION>: report delivered", and nothing else.
 
-`<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per agent: Write and Read expand nothing,
+`<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per launch, a relaunch included: step 1's
+redirects overwrite `err.txt` and `out.json`, so a reused directory loses the earlier run's record (measured 2026-09-17). Write and Read expand nothing,
 so they need the absolute path it prints. `<REPORT>` is an absolute path of this agent's own and never under `<DIR>`:
 `<DIR>` sits in `$TMPDIR`, the one root a read agent may write, and a file the agent leaves at that name blocks publication
 and then sits where you would read it as the agent's own report. Put it under the driver's state directory,
@@ -106,8 +109,11 @@ and then sits where you would read it as the agent's own report. Put it under th
 in the run directory that page names, one directory per agent; the driver makes every directory that path
 needs, at 0700, so it may name a root your own Write and `mkdir` are refused.
 The wrapper's completion notification is the agent's completion: read the wrapper's own lines first —
-what the driver exited with, whose run the file at `<REPORT>` belongs to, whether it is there, the first
-line of its answer — and read the file itself after a `PATH=own`. To continue an agent, write a second
+what the driver exited with, whose run the file at `<REPORT>` belongs to, whether it is there, the answer
+where it is short and its first line where it is not, the refusal where no turn ran, and the receipt — and
+read the file itself after a `PATH=own` when those lines leave a question (measured 2026-09-17: on a one-line
+task and on a pre-turn refusal, a hand-back without the answer and the refusal cost the coordinator one more
+turn each). To continue an agent, write a second
 prompt file with `RESUME: <threadId>` and send the wrapper one more command of the same shape; it runs it the same way and notifies again (measured 2026-09-12). A session with no
 message tool, headless `-p` among them, continues the thread with a second wrapper given the same file,
 at the cost of a second card (measured: the thread held both ways).
@@ -181,7 +187,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | `EXPECT:` | `<regex>` | the answer is only evidence if a command matching it ran AND succeeded; a matching command that exited non-zero does not count, and none matching is exit 5. Do not point it at a check whose failure IS the finding |
 | `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>` | the answer must parse as one JSON object |
 | `MODEL:` | `<slug>`: `gpt-6-astra` (Astra), `gpt-5.6-sol` (Sol), `gpt-5.6-terra` (Terra), `gpt-5.6-luna` (Luna) | this agent needs a model other than the configured default; the short name is for prose, the slug for this line |
-| `EFFORT:` | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra` | the task is worth more or less thinking |
+| `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`; `ultra` on Astra, Sol and Terra (the catalogue of 2026-09-17: `none` and `minimal` are on no model and exit 2 before the turn); no line inherits `~/.codex/config.toml` | the task is worth more or less thinking than the configured default; `low` for a one-line task |
 | `WEB_SEARCH:` | `cached`, `indexed`, `live` | the agent needs sources it cannot read locally |
 | `BRIEF:` | `yes` | a short answer is enough; omit it beside an output schema — it clips only the inline `answer` (`answerJson` is parsed from the whole one) yet still asks the model for 20 lines |
 | `ALLOW_NO_COMMANDS:` | `yes` | the agent is recall-only and will run nothing |
