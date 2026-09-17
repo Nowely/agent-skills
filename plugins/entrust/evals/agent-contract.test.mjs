@@ -4,8 +4,8 @@
 //   node evals/agent-contract.test.mjs
 //
 // The shipped agent, agents/codex-agent.md, is a mechanical wrapper: the coordinator writes the prompt and
-// hands the wrapper the exact commands, which run the driver through scripts/agent-run.mjs as a background
-// Bash task, so the ONE call
+// hands the wrapper the one command, which runs the driver through scripts/agent-run.mjs in one foreground
+// Bash call, so the ONE call
 // and the field table are both SKILL.md's and the agent file carries only the relay's standing rules. This suite compares
 // that page, and the orchestrate page that re-cuts it, with the driver they describe.
 
@@ -101,28 +101,27 @@ test("SKILL.md's table names every field the driver accepts, and the driver acce
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the ONE call launches agent-run.mjs with --dir and --report-file in a background task, the launcher runs the driver with --prompt-file and --report-file, and every shell the page hands over parses",
-  "these lines are copied verbatim into Bash calls: a stray quote is an agent that never runs, a launch that named the driver directly would carry the redirects and the exit marker again, an `&` of its own detaches the run from the task that is supposed to own it, and a launcher that read the prompt could rewrite it",
+test("the ONE call is agent-run.mjs --run with --dir and --report-file in one foreground call, the launcher runs the driver with --prompt-file and --report-file, and every shell the page hands over parses",
+  "the line is copied verbatim into a Bash call: a stray quote is an agent that never runs, a launch that named the driver directly would carry the redirects and the exit marker again, an `&` of its own detaches the run from the task that is supposed to own it, a second command would be a second card a native subagent does not show, and a launcher that read the prompt could rewrite it",
   () => {
     const scripts = [...commands, ...inlineShell];
-    if (scripts.length < 3) return `expected the mktemp pre-step, the launch and the status read, found ${scripts.length} shell snippets`;
+    if (scripts.length < 2) return `expected the mktemp pre-step and the run, found ${scripts.length} shell snippets`;
     const problems = [];
     for (const src of scripts) {
       const r = spawnSync("bash", ["-n"], { input: src, encoding: "utf8" });
       if (r.status !== 0) problems.push(`bash -n rejected ${JSON.stringify(src.slice(0, 60))}: ${String(r.stderr).trim()}`);
     }
-    const call = commands.find((c) => c.includes("agent-run.mjs") && !c.includes("--status")) ?? "";
-    if (!call) problems.push("no indented launch line naming agent-run.mjs is on the page at all");
-    for (const part of ['--dir "<DIR>"', '--report-file "<REPORT>"'])
-      if (!call.includes(part)) problems.push(`the launch does not carry ${part}: ${JSON.stringify(call)}`);
-    if (call.includes("driver.mjs")) problems.push("the launch names the driver directly again");
-    if (/(^|[^&])&\s*$/.test(call)) problems.push("the launch ends in an `&` of its own, which hides the run from the task");
-    const status = commands.find((c) => c.includes("agent-run.mjs") && c.includes("--status")) ?? "";
-    if (!status) problems.push("no indented status line naming agent-run.mjs --status is on the page");
-    for (const part of ['--dir "<DIR>"', '--report-file "<REPORT>"'])
-      if (!status.includes(part)) problems.push(`the status read does not carry ${part}: ${JSON.stringify(status)}`);
-    if (!/`run_in_background: true` and no `&` of your own/.test(flat))
-      problems.push("the page does not say the call is a background task with no `&` of its own");
+    const calls = commands.filter((c) => c.includes("agent-run.mjs"));
+    if (calls.length !== 1) problems.push(`expected exactly one indented agent-run.mjs line on the page, found ${calls.length}`);
+    const call = calls[0] ?? "";
+    for (const part of ["--run", '--dir "<DIR>"', '--report-file "<REPORT>"'])
+      if (!call.includes(part)) problems.push(`the run does not carry ${part}: ${JSON.stringify(call)}`);
+    if (call.includes("driver.mjs")) problems.push("the run names the driver directly again");
+    if (/(^|[^&])&\s*$/.test(call)) problems.push("the run ends in an `&` of its own, which hides the run from the task");
+    if (!/in the foreground, with timeout 600000/.test(flat))
+      problems.push("the page does not say the call runs in the foreground with the ten-minute timeout");
+    if (!/one foreground call and no `&` of your own/.test(flat))
+      problems.push("the page does not say the launcher is one foreground call with no `&` of its own");
     // The launcher's own spawn: exactly the two driver flags, prompt.txt as an argument only, the
     // environment untouched. agent-run.test.mjs runs it; this reads the promise off the source.
     const launcher = fs.readFileSync(path.join(SCRIPTS, "agent-run.mjs"), "utf8");
@@ -216,7 +215,7 @@ test("the bounds, the transport and the injection fields are refused, and no tab
   });
 
 test("the report file is what the coordinator reads, and a missing one is unknown rather than success",
-  "the pipe is not held while a background task runs, so the file IS the delivery: a page that told the coordinator to read the task's output would lose a report whose stdout broke, and one that read a missing file as 'nothing went wrong' would report an agent killed mid-turn as a clean run",
+  "the launcher's lines are triage and the file is the delivery: a report whose stdout broke, or a run the harness moved into the background at its ceiling, still lands whole at <REPORT>, and a page that read a missing file as 'nothing went wrong' would report an agent killed mid-turn as a clean run",
   () => {
     const problems = [];
     for (const phrase of [
@@ -304,7 +303,14 @@ test("the shipped wrapper is the agent the page names: Bash alone, a pinned mode
     if (!/^name: codex-agent$/m.test(head)) problems.push("the agent is not named codex-agent");
     if (!/^tools: Bash$/m.test(head)) problems.push("the agent's tools are not exactly Bash");
     if (!/^model: (sonnet|haiku|opus)$/m.test(head)) problems.push("the agent pins no model");
-    for (const phrase of ["Do not answer the task yourself", "Do not create or edit files", "Do not change any flag, path, or environment variable"])
+    for (const phrase of ["Do not answer the task yourself", "Do not create or edit files", "Do not change any flag, path, or environment variable",
+                          // The procedure the page no longer spells out per message: one foreground call with the
+                          // ten-minute timeout, the same command again while no REPORT= line, the hand-back with the
+                          // lines alone, and the one visible line after it.
+                          "in the foreground, with timeout 600000", "Write no text before it",
+                          "If its result has no REPORT= line", "run the very same command again",
+                          "Call SubagentHandback with exactly the lines that result printed",
+                          "After the hand-back result", ": report delivered"])
       if (!body.replace(/\s+/g, " ").includes(phrase)) problems.push(`the agent body no longer says: ${JSON.stringify(phrase)}`);
     for (const phrase of ["`subagent_type: entrust:codex-agent`", "A clone-and-symlink install links that file into `~/.claude/agents/`", "Pass it no `model`"])
       if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);

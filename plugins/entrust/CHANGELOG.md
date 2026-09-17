@@ -3,6 +3,23 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.18.1 — 2026-09-17
+
+### Changed
+
+- **The wrapper runs one command.** `scripts/agent-run.mjs --run` launches the driver, waits for it and prints
+  the nine status lines in one foreground call, and the wrapper hands those lines back; its procedure — run,
+  run again while the result has no `REPORT=` line, hand back, one closing line — lives in `agents/codex-agent.md`
+  and the message carries only the command and the description. The call is idempotent: a second call on a
+  directory whose driver is running waits for it, on one that ran prints, so the tool's ten-minute ceiling costs a
+  long agent one more identical call, and the wrapper's file forbids anything between the two (measured
+  2026-09-17: an eighteen-minute agent, one driver, one report; the first wording drew a text line and two
+  improvised reads before the rerun, the shipped wording is unmeasured). Why: a Codex agent's card showed three Bash steps and their
+  thinking rows where a native subagent that runs one command shows one Bash and its return; parity with native
+  subagents is the plugin's fitness test, and the three steps were the ceiling's price, not the task's.
+- The composition line for a read agent names no rights, since nothing is being approved. Why: «только чтение,
+  ничего не пишет, команд не запускает» was retold to the user for a greeting (measured 2026-09-17).
+
 ## 0.18.0 — 2026-09-17
 
 ### Changed

@@ -45,7 +45,7 @@ test("--help names both modes and exits 0",
   async () => {
     const { code, out } = await spawnNode([LAUNCHER, "--help"], { killAfterMs: 10000 }).done;
     if (code !== 0) return `--help exited ${code}`;
-    for (const s of ["--dir DIR --report-file REPORT", "--status", ...STATUS_LINES]) if (!out.includes(s)) return `--help does not mention ${s}`;
+    for (const s of ["--run --dir DIR --report-file REPORT", "--status", ...STATUS_LINES]) if (!out.includes(s)) return `--help does not mention ${s}`;
     return true;
   });
 
@@ -225,6 +225,105 @@ test("the launcher never opens prompt.txt except as the driver's argument, and h
     if (/(readFileSync|openSync|createReadStream|readFile)\([^)]*prompt/i.test(LAUNCHER_SRC)) problems.push("the launcher reads prompt.txt");
     if (!/\[DRIVER, "--prompt-file", promptPath, "--report-file", report\]/.test(LAUNCHER_SRC)) problems.push("the driver is not spawned with exactly --prompt-file and --report-file");
     if (!/env: process\.env/.test(LAUNCHER_SRC)) problems.push("the driver does not get the launcher's environment untouched");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--run on a fresh directory launches, waits and prints the nine lines, exit 0",
+  "the one foreground call is the whole wrapper: a native subagent that runs one command shows one Bash card and its return, and this is that card",
+  async () => {
+    const { dir, state, report } = fresh();
+    const { code, out, err } = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 60000 }).done;
+    const problems = [];
+    if (code !== 0) problems.push(`--run exited ${code}: ${err.slice(0, 200)}`);
+    const lines = out.split("\n").filter(Boolean);
+    if (lines.length !== STATUS_LINES.length) problems.push(`${lines.length} lines, not ${STATUS_LINES.length}: ${JSON.stringify(lines)}`);
+    STATUS_LINES.forEach((name, i) => { if (!(lines[i] ?? "").startsWith(`${name}=`)) problems.push(`line ${i + 1} is ${JSON.stringify(lines[i])}`); });
+    for (const want of ["DRIVER_EXIT=0", "PATH=own", "EXIT=0", "FILE=exists"]) if (!lines.includes(want)) problems.push(`missing ${want}`);
+    if ((read(path.join(dir, "exit")) ?? "").trim() !== "0") problems.push("no exit marker of 0");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--run on a directory that already ran prints without launching, and on one whose driver is still running waits for it",
+  "the harness moves a foreground call into the background at its ten-minute ceiling and the wrapper runs the same command again; a second launch would be a second paid turn and a PATH=taken, so the call has to be idempotent",
+  async () => {
+    const problems = [];
+    // Already ran.
+    let { dir, state, report } = fresh();
+    await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 60000 }).done;
+    const before = { err: read(path.join(dir, "err.txt")), out: read(path.join(dir, "out.json")) };
+    const again = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 20000 }).done;
+    if (again.code !== 0 || !again.out.includes("PATH=own")) problems.push(`a second --run on a finished directory: exit ${again.code}, ${again.out.slice(0, 80)}`);
+    if (read(path.join(dir, "err.txt")) !== before.err || read(path.join(dir, "out.json")) !== before.out) problems.push("a second --run changed the finished run's files");
+    if (again.ms > 5000) problems.push(`a second --run on a finished directory took ${again.ms} ms`);
+    // Still running: a slow first run, and a second --run started while it is in flight.
+    ({ dir, state, report } = fresh());
+    const first = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state, "slow-turn"), killAfterMs: 60000 });
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline && !/^entrust: pid=/.test((read(path.join(dir, "err.txt")) ?? "").split("\n")[0])) await sleep(100);
+    const second = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state, "slow-turn"), killAfterMs: 60000 });
+    const [a, b] = await Promise.all([first.done, second.done]);
+    if (a.code !== 0 || b.code !== 0) problems.push(`concurrent --run exited ${a.code} and ${b.code}`);
+    if (a.out !== b.out) problems.push(`the two --run calls printed different lines: ${JSON.stringify([a.out, b.out])}`);
+    const pidLines = (read(path.join(dir, "err.txt")) ?? "").split("\n").filter((l) => l.startsWith("entrust: pid=")).length;
+    if (pidLines !== 1) problems.push(`${pidLines} pid lines in err.txt: the second --run launched a second driver`);
+    if (!b.out.includes("PATH=own") || !b.out.includes("EXIT=0")) problems.push(`the waiting --run did not read the finished run: ${b.out.slice(0, 120)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--run on a refused launch still prints the nine lines, with the refusal on ERROR=, and exits 0",
+  "the wrapper hands back whatever the one call printed; a refusal that printed nothing would be a hand-back with nothing in it",
+  async () => {
+    const { dir, state, report } = fresh();
+    fs.rmSync(path.join(dir, "prompt.txt"));
+    const { code, out } = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 20000 }).done;
+    const lines = out.split("\n").filter(Boolean);
+    const problems = [];
+    if (code !== 0) problems.push(`exited ${code}`);
+    if (lines.length !== STATUS_LINES.length) problems.push(`${lines.length} lines`);
+    if (!lines.includes("DRIVER_EXIT=2") || !lines.includes("PATH=none") || !lines.includes("FILE=missing")) problems.push(`lines: ${JSON.stringify(lines)}`);
+    const error = lines.find((l) => l.startsWith("ERROR=")) ?? "";
+    if (!error.includes("prompt.txt is not a regular file")) problems.push(`the refusal is not on the ERROR line: ${error}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--run refuses a directory that ran for another report path, prints the nine lines on a missing directory, and forwards SIGTERM to a driver it only waits for",
+  "the same command again must read the run it started and nothing else: a reused directory would print an earlier run's success as this run's; a refusal that printed no REPORT= line would send the wrapper into an endless rerun; and a Stop on the card after the ceiling reaches a launcher that did not start the driver",
+  async () => {
+    const problems = [];
+    // Another report path in a directory that already ran.
+    let { dir, state, report } = fresh();
+    await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 60000 }).done;
+    const other = path.join(path.dirname(report), "other.json");
+    const r = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", other], { env: env(state), killAfterMs: 20000 }).done;
+    const lines = r.out.split("\n").filter(Boolean);
+    if (r.code !== 0 || lines.length !== STATUS_LINES.length) problems.push(`a foreign report path: exit ${r.code}, ${lines.length} lines`);
+    if (!lines.includes("PATH=none") || !lines.includes("FILE=missing")) problems.push(`a foreign report path read as ${JSON.stringify(lines.slice(0, 2))}`);
+    if (!(lines.find((l) => l.startsWith("ERROR=")) ?? "").includes("another report path")) problems.push("the refusal is not on the ERROR line");
+    if (fs.existsSync(other)) problems.push("a foreign report path launched a run");
+    if ((read(path.join(dir, "err.txt")) ?? "").split("\n").filter((l) => l.startsWith("entrust: pid=")).length !== 1) problems.push("a second driver was started");
+    // A directory that does not exist.
+    const missing = await spawnNode([LAUNCHER, "--run", "--dir", path.join(dir, "nowhere"), "--report-file", report], { env: env(state), killAfterMs: 20000 }).done;
+    const mlines = missing.out.split("\n").filter(Boolean);
+    if (missing.code !== 0 || mlines.length !== STATUS_LINES.length || !mlines.some((l) => l.startsWith("REPORT="))) problems.push(`a missing directory: exit ${missing.code}, ${JSON.stringify(mlines)}`);
+    if (!(mlines.find((l) => l.startsWith("ERROR=")) ?? "").includes("not a directory")) problems.push("a missing directory's refusal is not on the ERROR line");
+    // SIGTERM to the waiting call.
+    ({ dir, state, report } = fresh());
+    const first = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state, "slow-turn"), killAfterMs: 60000 });
+    const deadline = Date.now() + 15000;
+    let pid = null;
+    while (Date.now() < deadline && pid === null) { const m = /^entrust: pid=(\d+) /.exec((read(path.join(dir, "err.txt")) ?? "").split("\n")[0]); if (m) pid = Number(m[1]); else await sleep(100); }
+    if (pid === null) return "the driver never printed its pid line";
+    await sleep(500);
+    const second = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state, "slow-turn"), killAfterMs: 60000 });
+    await sleep(700);
+    second.child.kill("SIGTERM");
+    const [a, b] = await Promise.all([first.done, second.done]);
+    if (!a.out.includes("DRIVER_EXIT=1") || !b.out.includes("DRIVER_EXIT=1")) problems.push(`after SIGTERM to the waiting call the lines say ${JSON.stringify([a.out.split("\n")[0], b.out.split("\n")[0]])}`);
+    let rep = null; try { rep = JSON.parse(read(report) ?? ""); } catch {}
+    if (!rep || rep.turnStatus !== "interrupted") problems.push(`the driver did not report an interrupted turn: ${rep && rep.turnStatus}`);
+    await sleep(300);
+    let aliveStill = false; try { process.kill(pid, 0); aliveStill = true; } catch {}
+    if (aliveStill) { problems.push(`the driver (pid ${pid}) is still alive`); try { process.kill(pid, "SIGKILL"); } catch {} }
     return problems.length === 0 || problems.join("; ");
   });
 
