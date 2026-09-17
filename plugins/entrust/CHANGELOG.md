@@ -15,6 +15,8 @@ forensics remain in the repository references and release notes.
   long agent one more identical call and nothing else. Why: a Codex agent's card showed three Bash steps and their
   thinking rows where a native subagent that runs one command shows one Bash and its return; parity with native
   subagents is the plugin's fitness test, and the three steps were the ceiling's price, not the task's.
+- The composition line for a read agent names no rights, since nothing is being approved. Why: «только чтение,
+  ничего не пишет, команд не запускает» was retold to the user for a greeting (measured 2026-09-17).
 
 ## 0.18.0 — 2026-09-17
 

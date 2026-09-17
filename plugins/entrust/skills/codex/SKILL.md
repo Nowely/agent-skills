@@ -27,7 +27,8 @@ language: name the agent, say what it did, and say in ordinary words what it may
 
 Apply all five rules:
 
-1. Announce the composition **before** starting any Codex run, naming the count and which agents are Codex.
+1. Announce the composition **before** starting any Codex run, naming the count and which agents are Codex; a
+   read agent's rights need no sentence, since nothing is being approved.
 2. Treat refusal as composition: for “no codex” or “just you”, run zero Codex agents and say the resulting
    panel is all-Claude and shares one model bias.
 3. Attribute every finding; if a Codex agent failed or returned nothing, say so and never backfill it with
