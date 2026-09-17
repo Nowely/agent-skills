@@ -221,17 +221,17 @@ test("D7 a Fable agent never spawns Fable, and only the orchestrator launches th
   "a top agent that may spawn its own top agent makes the cap of one unenforceable one level down, where nothing is counting; stated without \"agent\" the rule also read as forbidding a Fable orchestrator the one Fable agent the pool promises it",
   () => says("a Fable agent never spawns Fable", "only you launch the pool's Fable agent"));
 
-test("D8 no EFFORT line, and low effort only for mechanical Sonnet stages",
-  "the user's configured effort is the default every agent inherits; measured on codex-cli 0.153.4, gpt-6-astra delegates to its own subagent threads at xhigh as readily as at ultra when invited, so no effort line buys the evidence guarantee an exception once claimed",
+test("D8 effort is chosen per agent below the top row, and low effort only for mechanical Sonnet stages in a Workflow",
+  "measured 2026-09-17: two Luna read agents at an inherited xhigh took 480 and 557 s and 1.2M and 2.3M tokens for a ledger and a grep task. The earlier rule inherited the user's effort everywhere because, measured on codex-cli 0.153.4, no effort level bought the evidence guarantee an exception once claimed; this rule claims cost, not evidence",
   () => {
     const prose = says(
-      "Send no `EFFORT:` line",
+      "Every Codex agent carries an `EFFORT:` line chosen for its work",
+      "`low` for the bulk row",
+      "only a top-row agent goes without one and inherits the configured effort",
       "In a Workflow, `effort: 'low'` is for mechanical Claude Sonnet stages only.",
     );
-    // The negative half: an exception that names an effort value for some agent is exactly what a later
-    // edit would add back, and every positive pin would still pass beside it.
-    const exception = /EFFORT:\s*(none|minimal|low|medium|high|xhigh|max|ultra)\b/.exec(text);
-    if (exception) return `the page names an effort value again: ${JSON.stringify(exception[0])}`;
+    // The negative half: the old rule, which a later edit could restore beside the new sentences.
+    if (/Send no `EFFORT:` line/.test(text)) return "the page tells the orchestrator to send no EFFORT line again";
     return prose;
   });
 

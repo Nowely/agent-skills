@@ -3,6 +3,34 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.17.0 — 2026-09-17
+
+### Changed
+
+- The codex page's `EFFORT:` row lists what the catalogue advertises and says that no line inherits
+  `~/.codex/config.toml`; the driver's `--help` says the same, and its comment beside the set records that no
+  model on codex 0.153.4 advertises `none` or `minimal`. The set itself is unchanged: those two still reach
+  model/list and are refused there, exit 2 before a turn. Why: a coordinator picked `minimal` for a one-line task
+  straight from the table and paid a wrapper launch for the refusal (measured 2026-09-17), and a driver that
+  clamped instead would re-create the silent downgrade incidents.md records.
+- The wrapper's hand-back carries ten lines: the answer where it is short, the refusal where no turn ran, and the
+  receipt (`ANSWER=`, `ERROR=`, `RECEIPT=` beside the earlier five and `WAIT_DONE`/`REPORT=`). Why: on a one-line
+  task and on a pre-turn refusal, the five-line hand-back sent the coordinator back to the report file for one
+  more turn each (measured 2026-09-17: 327 and 220 output tokens, 9.4 and 5.1 seconds). `PATH=` stays: it is the
+  only line that tells an earlier run's file at the same path from this run's.
+- The wrapper answers the harness's request for a visible response after its hand-back with one constant line,
+  the agent's own description and "report delivered". Why: the harness asks every subagent that ends on an empty
+  message after its hand-back for a visible response, native ones included (measured 2026-09-17 on a Haiku
+  baseline), and the wrapper answered it with an English paragraph that narrated its bash steps, named an absolute
+  path and used the word the 0.16.0 release banned.
+- The codex skill triggers on a Codex model's short name (Astra, Sol, Terra, Luna, and the Russian forms). Why:
+  «отправь хай терре» did not load the skill; the coordinator read the name as an addressee and asked.
+- `<DIR>` is one per launch, a relaunch included. Why: step 1's redirects overwrite `err.txt` and `out.json`, and a
+  relaunch in the same directory lost the refused run's stderr (measured 2026-09-17).
+- The orchestrate page has every Codex agent below the top row carry an `EFFORT:` line chosen for its work instead
+  of inheriting the configured one. Why: two Luna read agents at an inherited `xhigh` took 480 and 557 seconds and
+  1.2M and 2.3M tokens for a ledger and a grep task (measured 2026-09-17).
+
 ## 0.16.0 — 2026-09-17
 
 ### Changed

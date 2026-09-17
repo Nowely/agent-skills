@@ -40,10 +40,12 @@ const READ_PROFILE = "entrust_read";
 const PINNED_CODEX = "0.153.4";
 // This plugin's version, printed by --help and carried as driverVersion, must agree with
 // every place evals/package.test.mjs compares.
-const VERSION = "0.16.0";
+const VERSION = "0.17.0";
 let codexVersion = null;   // what the server reported this run, parsed out of InitializeResponse.userAgent
 // The union of the model catalogue's supported_reasoning_levels and the server's accepted efforts.
 // `none` and `minimal` appear in the server's rejection list; `ultra` is absent there but completes live turns.
+// On codex 0.153.4 (model/list, 2026-09-17) no model advertises `none` or `minimal`: they pass this set and
+// preflightModel() refuses them against the catalogue, exit 2 before a turn (evals/protocol.test.mjs pins it).
 const EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"]);
 // The server's accepted web-search modes, learned from its rejection message.
 // Search stays disabled by default because it makes repository work depend on today's index.
@@ -361,7 +363,10 @@ const HELP = [
                      <state>/answers/<threadId>-<startedAtMs>.md, startedAtMs the
                      run's start in epoch milliseconds
   --model NAME       omit to use whatever config.toml chose
-  --effort ${[...EFFORTS].join("|")}
+  --effort LEVEL     low|medium|high|xhigh|max, and ultra where the model
+                     advertises it; checked against model/list before the turn
+                     (none and minimal are on no current model); omit to
+                     inherit config.toml
   --resume THREAD    continue a thread; "--resume last" continues the run most
                      recently STARTED for this --cwd or, with --worktree, this
                      repository — not the one most recently active, so a long
