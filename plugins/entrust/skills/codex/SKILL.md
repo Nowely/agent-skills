@@ -51,7 +51,7 @@ task while the coordinator orchestrates and checks it.
 
 ## One call
 
-One background Agent call per agent: a native subagent, the **wrapper**, that launches the driver, waits for
+One Agent call per agent: a native subagent, the **wrapper**, that launches the driver, waits for
 it and returns when the run has ended. Only a subagent is a subagent to Claude Code: a Bash task, whatever
 its description says, is not on the agent map, is not stopped from it and is not continued by a message
 (measured 2026-09-12 against the VS Code extension 2.1.269, whose map lists `local_agent` tasks alone). The
@@ -59,7 +59,10 @@ wrapper is what makes a Codex agent read like a Claude agent: one card under its
 card, one completion notification, and a message to continue it.
 
 Write the prompt to a file with the Write tool, then spawn the wrapper with the Agent tool:
-`subagent_type: entrust:codex-agent`, `run_in_background: true`, and a `description` of
+`subagent_type: entrust:codex-agent`, `run_in_background: false` for the one agent you wait for and `true`
+for agents that run side by side or while you work (measured 2026-09-17: a foreground call returns the
+hand-back as its own result, one message to the user and no notification after it, and an eleven-minute
+call ended normally, so the call has no ceiling of its own), and a `description` of
 `Codex <short name> <id>: <task in a few words>` — `Astra` for `gpt-6-astra`, `Sol` for `gpt-5.6-sol`,
 `Terra` for `gpt-5.6-terra`, `Luna` for `gpt-5.6-luna` — so the card the user sees names the agent, its
 vendor and its task, and not the command line. That type is the agent this plugin ships,

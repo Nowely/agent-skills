@@ -3,6 +3,18 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- **One agent, one turn, one message.** The Agent call for the one agent the coordinator waits for is a
+  foreground call: the hand-back arrives as the call's own result, the user reads one message, and no
+  notification follows; agents that run side by side stay background calls. Why: with a background call the
+  harness delivers one completion as two events, a hand-back message and a task notification, and the
+  coordinator answered each with text («Готово.»), while the wrapper's forced closing line landed as a block of
+  its own after the answer; measured 2026-09-17 on a native subagent and on the wrapper, and a foreground call
+  ran eleven minutes with no ceiling of its own.
+
 ## 0.18.1 — 2026-09-17
 
 ### Changed

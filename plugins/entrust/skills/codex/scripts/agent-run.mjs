@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // Runs one Codex agent's driver for the entrust wrapper in one foreground call, and reads its status back.
 //
-//   node agent-run.mjs --run --dir DIR --report-file REPORT      launch, wait, print the status lines
-//   node agent-run.mjs --dir DIR --report-file REPORT            launch only (the exit status is the driver's)
-//   node agent-run.mjs --status --dir DIR --report-file REPORT   the status lines of a run, whatever its state
+//   node agent-run.mjs --new --report-file REPORT  < prompt      make the agent's directory beside REPORT, prompt from stdin
+//   node agent-run.mjs --run --report-file REPORT                launch, wait, print the status lines
+//   node agent-run.mjs --status --report-file REPORT             the status lines of a run, whatever its state
+//   node agent-run.mjs --report-file REPORT                      launch only (the exit status is the driver's)
+//   --dir DIR names the agent's directory explicitly; without it, it is `agent/` beside REPORT
 //   node agent-run.mjs --help
 //
 // Why one call: the wrapper is what makes a Codex agent read like a native subagent, and a native
@@ -19,9 +21,11 @@
 // What it keeps: it NEVER opens prompt.txt except as the driver's --prompt-file argument, because a
 // relay that reads a prompt can rewrite it (incidents.md, "A relay on a small model"); it passes the
 // driver exactly the two flags the page used to and the environment as it found it, CLAUDE_PLUGIN_DATA
-// included; the driver's own stderr, its pid line first, is what lands in DIR/err.txt. DIR holds
-// prompt.txt on entry and out.json, err.txt and exit on the way out, the four names both pages
-// promise; exit is written last, after both output files are closed. One launch per DIR: a second
+// included; the driver's own stderr, its pid line first, is what lands in DIR/err.txt. DIR is `agent/`
+// beside the report, made by --new at 0700 with the prompt it read on stdin at 0600, so one run's four
+// files (prompt.txt on entry, out.json, err.txt and exit on the way out) sit next to its report and
+// nothing is left in $TMPDIR; exit is written last, after both output files are closed. A coordinator
+// may issue --new and the Agent call in one turn: --run waits a few seconds for the prompt to appear. One launch per DIR: a second
 // launch into a directory that already ran is refused, because it would overwrite the first run's record
 // (measured 2026-09-17 on the earlier shape); under --run a directory that ran for THIS report path is a
 // status read, which the ceiling's second call needs, and one that ran for another path is refused.
@@ -50,11 +54,20 @@ export const FIRST_MAX = 300, ANSWER_MAX = 600, ERROR_MAX = 300;
 // The status read prints these names, in this order, whatever it found.
 export const STATUS_LINES = ["DRIVER_EXIT", "PATH", "EXIT", "FIRST", "ANSWER", "ERROR", "RECEIPT", "FILE", "REPORT"];
 const POLL_MS = 500;
+// How long --run waits for a prompt that a --new issued in the same turn has not written yet.
+export const PROMPT_WAIT_MS = 10000;
+export const agentDirOf = (report) => path.join(path.dirname(report), "agent");
 
-const USAGE = `agent-run — run one Codex agent's driver for the wrapper, or read its status.
+const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
 
-  node agent-run.mjs --run --dir DIR --report-file REPORT
-      One foreground call, idempotent. A fresh DIR: runs driver.mjs --prompt-file DIR/prompt.txt
+  node agent-run.mjs --new --report-file REPORT  < prompt
+      Makes the agent's directory, agent/ beside REPORT, at 0700, and writes the prompt read on stdin
+      to its prompt.txt at 0600. Refuses (exit 2) a REPORT that is not absolute, an empty prompt, and a
+      directory that already holds a prompt: a relaunch gets a fresh report path.
+  node agent-run.mjs --run --report-file REPORT
+      One foreground call, idempotent; DIR is agent/ beside REPORT unless --dir names it, and a prompt
+      not there yet is waited for up to ${PROMPT_WAIT_MS / 1000} s (a --new issued in the same turn).
+      A fresh DIR: runs driver.mjs --prompt-file DIR/prompt.txt
       --report-file REPORT with stdout in DIR/out.json and stderr in DIR/err.txt, writes the driver's
       exit status to DIR/exit last, then prints the status lines. A DIR whose driver is still running
       (the harness moved the first call into the background at its ceiling and the wrapper ran the same
@@ -63,13 +76,13 @@ const USAGE = `agent-run — run one Codex agent's driver for the wrapper, or re
       lines are printed, a missing DIR included; the driver's own status is the DRIVER_EXIT line. A
       signal it receives (SIGTERM, SIGINT, SIGHUP) goes to the driver, its own or the one it waits for,
       which cuts the turn and publishes.
-  node agent-run.mjs --dir DIR --report-file REPORT
+  node agent-run.mjs --report-file REPORT [--dir DIR]
       Launch only: the same run without the wait's printing, exiting with the driver's status. Refuses,
       exit 2 with the reason in DIR/err.txt and DIR/exit where DIR is a directory: a DIR that is not
       one, a prompt.txt that is not a regular file, a REPORT that is not absolute, and a DIR whose exit
       marker already exists (that refusal leaves the earlier run's files as they were and appends its
       reason to err.txt).
-  node agent-run.mjs --status --dir DIR --report-file REPORT
+  node agent-run.mjs --status --report-file REPORT [--dir DIR]
       Prints nine lines: ${STATUS_LINES.join(", ")}. PATH is own where the
       driver's pid line names REPORT, taken where the driver refused a path already there or could not
       publish, none otherwise or where the launch was refused. ANSWER is the whole answer on one line
@@ -80,11 +93,12 @@ const USAGE = `agent-run — run one Codex agent's driver for the wrapper, or re
 `;
 
 function parse(argv) {
-  const o = { run: false, status: false, dir: null, report: null, help: false };
+  const o = { run: false, status: false, isNew: false, dir: null, report: null, help: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--help" || a === "-h") o.help = true;
     else if (a === "--run") o.run = true;
+    else if (a === "--new") o.isNew = true;
     else if (a === "--status") o.status = true;
     else if (a === "--dir") o.dir = argv[++i];
     else if (a === "--report-file") o.report = argv[++i];
@@ -171,13 +185,42 @@ export function statusLines(dir, report) {
   return lines;
 }
 
+// --new: the agent's directory beside the report, the prompt from stdin. The prompt travels coordinator →
+// stdin → file, never through the wrapper's model and never through this script's own reading of it as
+// text: it is copied byte for byte.
+function newAgent(report) {
+  const refuse = (why) => { process.stderr.write(`${REFUSED}: ${why}\n`); process.exit(2); };
+  if (!report || !path.isAbsolute(report)) refuse(`--report-file ${JSON.stringify(report ?? "")} is not an absolute path`);
+  const dir = agentDirOf(report);
+  const promptPath = path.join(dir, "prompt.txt");
+  if (fs.existsSync(promptPath)) refuse(`${promptPath} already exists: one prompt per report path, a relaunch gets a fresh one`);
+  let body;
+  try { body = fs.readFileSync(0); } catch (e) { refuse(`could not read the prompt on stdin: ${e.message}`); }
+  if (!body || body.length === 0) refuse("the prompt on stdin is empty");
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  fs.writeFileSync(promptPath, body, { mode: 0o600 });
+  process.stdout.write(`PROMPT=${promptPath}\n`);
+  process.exit(0);
+}
+
+// A prompt a --new in the same turn has not written yet: wait for it, bounded, before deciding.
+function waitForPrompt(dir, cb) {
+  const promptPath = path.join(dir, "prompt.txt");
+  const deadline = Date.now() + PROMPT_WAIT_MS;
+  const tick = () => {
+    if (isRegularFile(promptPath) || fs.existsSync(path.join(dir, "err.txt")) || Date.now() > deadline) return cb();
+    setTimeout(tick, 200);
+  };
+  tick();
+}
+
 // The one foreground call. Ends, on every path, by printing the status lines and exiting 0: the wrapper
 // runs the command again while a result has no REPORT= line, so a refusal that printed none would be an
 // endless retry.
 function run(dir, report) {
   const finish = () => { process.stdout.write(`${statusLines(dir, report).join("\n")}\n`); process.exit(0); };
-  if (!dir || !isDirectory(dir)) {
-    const why = `${REFUSED}: --dir ${JSON.stringify(dir ?? "")} is not a directory`;
+  if (!isDirectory(dir)) {
+    const why = `${REFUSED}: ${JSON.stringify(dir)} is not a directory`;
     process.stderr.write(`${why}\n`);
     const lines = ["DRIVER_EXIT=unknown", "PATH=none", "EXIT=unknown", "FIRST=", "ANSWER=", `ERROR=${why.slice(0, ERROR_MAX)}`, "RECEIPT=",
       `FILE=${report && fs.existsSync(report) ? "exists" : "missing"}`, `REPORT=${report ?? ""}`];
@@ -216,11 +259,11 @@ if (isMain) {
   const o = parse(process.argv.slice(2));
   if (o.error) { process.stderr.write(`agent-run: ${o.error}\n${USAGE}`); process.exit(2); }
   if (o.help) { process.stdout.write(USAGE); process.exit(0); }
-  if (o.status || o.run) {
-    if (!o.dir || !o.report) { process.stderr.write(`agent-run: ${o.run ? "--run" : "--status"} needs --dir and --report-file\n`); process.exit(2); }
-    if (o.status) { process.stdout.write(`${statusLines(o.dir, o.report).join("\n")}\n`); process.exit(0); }
-    run(o.dir, o.report);
-  } else {
-    launch(o.dir, o.report, { onExit: (status) => process.exit(status), onRefuse: () => process.exit(2) });
-  }
+  if (!o.report) { process.stderr.write(`agent-run: --report-file is required\n${USAGE}`); process.exit(2); }
+  if (o.isNew) newAgent(o.report);
+  const dir = o.dir ?? (path.isAbsolute(o.report) ? agentDirOf(o.report) : null);
+  if (dir === null) { process.stderr.write(`${REFUSED}: --report-file ${JSON.stringify(o.report)} is not an absolute path\n`); process.exit(2); }
+  if (o.status) { process.stdout.write(`${statusLines(dir, o.report).join("\n")}\n`); process.exit(0); }
+  if (o.run) waitForPrompt(dir, () => run(dir, o.report));
+  else launch(dir, o.report, { onExit: (status) => process.exit(status), onRefuse: () => process.exit(2) });
 }

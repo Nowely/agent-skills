@@ -289,7 +289,7 @@ test("F1 a Codex agent is a background Agent call of the shipped codex-agent typ
     const prose = says(
       "authorises Workflow",
       "A Codex agent is one background Agent call, the sibling's `One call` verbatim",
-      "`<DIR>` is the sibling's own `mktemp -d`, holding `prompt.txt`, `out.json`, `err.txt` and the driver's `exit` marker, and `<REPORT>` is `<run>/<agent>/report.json` under the run directory above, which the driver creates",
+      "`<DIR>` is the agent's directory the launcher makes beside the report, `agent/` next to `<REPORT>`, holding `prompt.txt`, `out.json`, `err.txt` and the driver's `exit` marker, and `<REPORT>` is `<run>/<agent>/report.json` under the run directory above, which the launcher and the driver create",
       "The wrapper's completion notification is when you read its status lines, and the report after a `PATH=own`",
       "The wrapper is an `agentType` of its own, `entrust:codex-agent`",
       "Launch independent Claude agents as background Agent calls, one notification each",
