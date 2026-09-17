@@ -100,7 +100,8 @@ nothing left running.
        REPORT=<REPORT>. Nothing else. If the harness then asks you for a visible response, answer with
        exactly one line, "<DESCRIPTION>: report delivered", and nothing else.
 
-`<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per agent: Write and Read expand nothing,
+`<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per launch, a relaunch included: step 1's
+redirects overwrite `err.txt` and `out.json`, so a reused directory loses the earlier run's record (measured 2026-09-17). Write and Read expand nothing,
 so they need the absolute path it prints. `<REPORT>` is an absolute path of this agent's own and never under `<DIR>`:
 `<DIR>` sits in `$TMPDIR`, the one root a read agent may write, and a file the agent leaves at that name blocks publication
 and then sits where you would read it as the agent's own report. Put it under the driver's state directory,

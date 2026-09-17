@@ -25,6 +25,8 @@ forensics remain in the repository references and release notes.
   path and used the word the 0.16.0 release banned.
 - The codex skill triggers on a Codex model's short name (Astra, Sol, Terra, Luna, and the Russian forms). Why:
   «отправь хай терре» did not load the skill; the coordinator read the name as an addressee and asked.
+- `<DIR>` is one per launch, a relaunch included. Why: step 1's redirects overwrite `err.txt` and `out.json`, and a
+  relaunch in the same directory lost the refused run's stderr (measured 2026-09-17).
 
 ## 0.16.0 — 2026-09-17
 
