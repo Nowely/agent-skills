@@ -73,10 +73,10 @@ One run, on 2026-09-10, on one README in one repository. Read the size of it bef
 - A reader's own sense of clarity ran against the truth. Two who reported no confusion answered wrong;
   the one who called a section scattered and confusing answered right. Neither skill asks a reader
   whether the text was clear.
-- Five published writing standards were put against two unguided controls across ten seats, models
+- Five published writing standards were put against two unguided controls across ten agents, models
   hidden from the judges. Both controls beat both entries of both standards. On the first 116 words,
-  seven of ten seats proposed nothing and the only seat that shortened the passage was a control. **Ten
-  seats, one run, one passage** — one observation per cell, not a rate.
+  seven of ten agents proposed nothing and the only agent that shortened the passage was a control. **Ten
+  agents, one run, one passage** — one observation per cell, not a rate.
 
 Not measured: which of the four passes produced the gain, and whether a bake-off beats one careful pass.
 Also not measured, and worth knowing before you trust any of the above: there was no arm that ran the

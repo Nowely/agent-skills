@@ -4,12 +4,13 @@ Every brief ends the same way: **every finding carries a reproducible check — 
 or a file and line — and a finding without one is discarded.** No praise, no summary of what reads well,
 no rewrites unless the lens is the water lens. Fill `<DOC>`, `<CODE>` and the paths; send nothing else.
 
-A Codex seat is one background Bash call with a prompt file whose header names the seat, as the
-`codex-delegate` plugin's `seat` skill describes under *One call* (`plugins/codex-delegate/skills/seat/SKILL.md`
-in the marketplace checkout, or the installed plugin's `skills/seat/SKILL.md`):
+A Codex agent is one background Agent call of the `entrust:codex-agent` wrapper with a prompt file
+whose header names the rights, as the `entrust` plugin's `codex` skill describes under *One call*
+(`plugins/entrust/skills/codex/SKILL.md` in the marketplace checkout, or the installed plugin's
+`skills/codex/SKILL.md`):
 
 ```
-SEAT: read <repository>
+RIGHTS: read <repository>
 MODEL: gpt-6-astra | gpt-5.6-sol | gpt-5.6-luna
 EFFORT: high | medium
 ```

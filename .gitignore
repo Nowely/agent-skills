@@ -1,7 +1,7 @@
 # The cwd lock an older version of this driver wrote into the directory it protected. It lives under
 # the driver's state directory now, but a stale copy would otherwise be committed by a `git add -A`
 # turn — which is the exact failure that moved it out.
-.codex-delegate.lock
+.entrust.lock
 
 .DS_Store
 
