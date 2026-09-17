@@ -231,6 +231,12 @@ write its own would be grading itself. Declare gates on the command line instead
 
 - `<REPORT>` is the report, the same JSON the run also wrote to `<DIR>/out.json` once a turn ran. Read
   the file: it is written whole or not at all, and a missing one means unknown, never success.
+- The hand-back message and the task notification that follows it are one completion: read the first, and
+  answer the second with nothing (measured 2026-09-17: a coordinator told the user that the notification
+  duplicated the answer).
+- On `EXIT=0` what reaches the user is the agent's name and its answer; the other lines are yours and stay with
+  you (measured 2026-09-17: two coordinators retold `RECEIPT=` and the report's model field, slug included, as
+  prose, so the status line now carries the short name).
 - `PATH=own` says the driver accepted `<REPORT>` and published there; `PATH=taken` says an entry was
   already there or another run published first, so the file is an earlier run's, whatever the numbers
   beside it say; `PATH=none` says the path was never accepted and no file of this run's exists.
@@ -280,10 +286,13 @@ Write a concrete, checkable body:
     CHECK:  the ground truth, preferably something the agent cannot guess
     RETURN: exactly what to hand back
 
-Give one deliverable per agent. Split a return that asks for unrelated artifacts or decisions. Whatever `RETURN:`
-asks for, its first line is one sentence a reader can take on its own, the agent's model and id, its status and
-what it did; it is what the coordinator retells, and not itself a message to the user; the rest is the return's
-own shape.
+Give one deliverable per agent. Split a return that asks for unrelated artifacts or decisions. Write `TASK:` in the
+user's language: the agent answers in the language it is asked in (measured 2026-09-17: a task written in English
+about a Russian «хай» came back in English). Whatever `RETURN:`
+asks for, its first line is one sentence a reader can take on its own: the name you gave the agent in the prompt
+("you are Codex Terra T1"), its status and what it did. Give the name; the model does not know its short name and
+answers with whatever it calls itself (measured 2026-09-17: «GPT-5 Codex, id T1»). That line is what the coordinator
+retells, and not itself a message to the user; the rest is the return's own shape.
 
 The standing rules are already on the thread — unattended, its egress and its web search each named
 whichever way they went, a one-line record for a step that cannot run (the command, whether it started, its

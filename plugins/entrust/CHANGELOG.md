@@ -17,6 +17,10 @@ forensics remain in the repository references and release notes.
   one-line task's wall clock.
 - The status read names the model by its short name (`model=Terra`), the slug staying in the report. Why: two
   coordinators retold the slug they had just read to the user (measured 2026-09-17), against the page's rule.
+- The codex page says where the final message's shape is decided: on a clean run the user gets the agent's name
+  and its answer and nothing about the run; the notification after a hand-back is answered with nothing; the
+  task is written in the user's language; and the agent's name is given in the prompt, since the model does not
+  know its short name (measured 2026-09-17: «GPT-5 Codex, id T1», and an English answer to a Russian greeting).
 
 ## 0.17.0 — 2026-09-17
 
