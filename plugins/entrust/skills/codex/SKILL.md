@@ -11,7 +11,7 @@ description: >-
   mixes ("one of them codex", "half codex", "only codex") and refusals ("no codex", "just you"). Skip
   trivia and mechanical fact-gathering.
 metadata:
-  version: "0.18.0"
+  version: "0.18.1"
 license: MIT
 ---
 
