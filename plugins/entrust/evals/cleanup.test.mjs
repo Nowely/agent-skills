@@ -1843,6 +1843,39 @@ test("39 · identity is `dev:ino`, and a filesystem that recycles one is the who
     return m.done();
   });
 
+test("41 · an agent directory with no report is decided by the launcher's record beside it: an exit marker or a prompt nobody ran ends the guard, a live driver keeps it",
+  "the launcher makes the agent's directory before any driver runs, so a directory with no report is no longer the driver's admission marker alone; without this reading an abandoned --new or a refused launch would keep its run forever",
+  async () => {
+    const w = makeWorld("launcher-record");
+    const ended = plantRun(w, w.slug, "run-ended", { A: null });
+    fs.mkdirSync(path.join(ended, "A", "agent"), { recursive: true });
+    fs.writeFileSync(path.join(ended, "A", "agent", "prompt.txt"), "prompt\n");
+    fs.writeFileSync(path.join(ended, "A", "agent", "exit"), "2\n");
+    const never = plantRun(w, w.slug, "run-never", { B: null });
+    fs.mkdirSync(path.join(never, "B", "agent"), { recursive: true });
+    fs.writeFileSync(path.join(never, "B", "agent", "prompt.txt"), "prompt\n");
+    const c = liveChild();
+    const identity = processIdentity(c.pid) ?? "unknown";
+    const live = plantRun(w, w.slug, "run-live", { C: null });
+    fs.mkdirSync(path.join(live, "C", "agent"), { recursive: true });
+    fs.writeFileSync(path.join(live, "C", "agent", "prompt.txt"), "prompt\n");
+    fs.writeFileSync(path.join(live, "C", "agent", "err.txt"), `entrust: pid=${c.pid} identity=${identity} reportPath=${reportPathIn(live, "C")}\n`);
+    const bare = plantRun(w, w.slug, "run-bare", { D: null });
+    const m = misses();
+    let s = await snapshot(w);
+    let bad = need(w, s); if (bad) { await stopChild(c); return bad; }
+    const status = (dir) => (rowAt(s.j, dir) ?? {}).status;
+    m.eq(status(ended), "removable", "a run whose agent's launcher record says the run ended");
+    m.eq(status(never), "removable", "a run whose agent's prompt was never run");
+    m.eq(status(live), "kept", "a run whose agent's launcher record names a live driver");
+    m.eq(status(bare), "kept", "a run with the driver's bare admission marker");
+    await stopChild(c);
+    s = await snapshot(w);
+    bad = need(w, s); if (bad) return bad;
+    m.eq(status(live), "removable", "the same run once its driver is gone");
+    return m.done();
+  });
+
 test("40 · the data directory left by this plugin's previous name is offered by number; another copy's is not",
   "the rename left one data directory behind that nothing writes to any more. It is this plugin's own, so it is named as such and removed on a number, while the data of a copy that is not this plugin stays what it was: listed, kept, and a command the user runs by hand",
   async () => {
