@@ -23,7 +23,7 @@ selects. Read a narrow win on length as a tie.
 
 The critics of the loop that follows are a different pool, one agent per lens, in `SKILL.md` step 4.
 
-Claude agents by default. When the `codex-delegate` plugin is installed, give one writer and one
+Claude agents by default. When the `entrust` plugin is installed, give one writer and one
 judge to Codex: a panel that does not share a single model's blind spots is worth more than a larger
 panel that does. The full form the author uses is three judges — Fable, Codex gpt-6-astra, and Opus —
 and two are usually enough.

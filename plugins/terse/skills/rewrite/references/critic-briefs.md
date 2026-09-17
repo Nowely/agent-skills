@@ -4,9 +4,9 @@ Every brief ends the same way: **every finding carries a reproducible check — 
 or a file and line — and a finding without one is discarded.** No praise, no summary of what reads well,
 no rewrites unless the lens is the water lens. Fill `<DOC>`, `<CODE>` and the paths; send nothing else.
 
-A Codex agent is one background Agent call of the `codex-delegate:codex-agent` wrapper with a prompt file
-whose header names the rights, as the `codex-delegate` plugin's `codex` skill describes under *One call*
-(`plugins/codex-delegate/skills/codex/SKILL.md` in the marketplace checkout, or the installed plugin's
+A Codex agent is one background Agent call of the `entrust:codex-agent` wrapper with a prompt file
+whose header names the rights, as the `entrust` plugin's `codex` skill describes under *One call*
+(`plugins/entrust/skills/codex/SKILL.md` in the marketplace checkout, or the installed plugin's
 `skills/codex/SKILL.md`):
 
 ```

@@ -105,7 +105,7 @@ your shell rules forbid `cd`.
    the user's word; the user may size any lens to zero, and the least that still counts as a round is
    lenses 1 and 2. Then **launch the critics**, one agent per lens, with the briefs in
    [critic-briefs.md](references/critic-briefs.md), and the dedup agent over their reports; everything
-   they return is kept verbatim under `reviews/NN/`. The Codex lenses need the `codex-delegate` plugin;
+   they return is kept verbatim under `reviews/NN/`. The Codex lenses need the `entrust` plugin;
    without it, run those lenses on Claude agents and say so.
 6. **Verify every finding yourself** from the check it carries — a finding without one is discarded —
    and route each by the table in [loop.md](references/loop.md#where-a-finding-goes): a sentence to the
