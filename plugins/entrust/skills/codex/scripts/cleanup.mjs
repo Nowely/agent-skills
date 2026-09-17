@@ -401,6 +401,27 @@ function listAgents(roots) {
   return rows;
 }
 
+// The launcher's record beside a report: `agent/` under the agent's directory, holding prompt.txt and,
+// once a run started, err.txt and exit. An agent directory with no report.json used to be the driver's
+// admission marker alone, so it meant "not returned yet"; since the launcher makes that directory before
+// any driver runs, the marker's meaning is read from these files. An exit marker is a run that ended
+// without publishing (a refusal, or a cut before the report); an err.txt names the driver, whose liveness
+// decides; a prompt with neither is a --new nobody ran; no `agent/` at all is the driver's own marker.
+function launcherRecord(agentDir) {
+  const dir = path.join(agentDir, "agent");
+  const st = statAt(dir);
+  if (!st.ok) return { known: true, readable: false, inUse: true };
+  if (st.value === null || !st.value.isDirectory()) return { known: false, readable: true, inUse: true };
+  const ex = statAt(path.join(dir, "exit"));
+  if (!ex.ok) return { known: true, readable: false, inUse: true };
+  if (ex.value !== null) return { known: true, readable: true, inUse: false };
+  const et = statAt(path.join(dir, "err.txt"));
+  if (!et.ok) return { known: true, readable: false, inUse: true };
+  if (et.value === null) return { known: true, readable: true, inUse: false };
+  const rec = agentRecord(dir);
+  return { known: true, readable: !rec.opaque, inUse: rec.inUse };
+}
+
 // A run's own liveness, taken from the run directory and from the agent items that name it. Separate
 // from the row so a removal can take it again immediately before it acts.
 function runLiveness(runPath, agents) {
@@ -416,9 +437,14 @@ function runLiveness(runPath, agents) {
     const rp = path.join(runPath, s, "report.json");
     const rst = statAt(rp);
     if (!rst.ok) { out.readable = false; continue; }
-    // The driver makes the agent directory at admission, so an agent directory with no report is an
-    // unfinished marker, not an absence of evidence.
-    if (rst.value === null || !rst.value.isFile()) { out.inUse = true; out.liveAgent = out.liveAgent ?? s; continue; }
+    // An agent directory with no report is an unfinished marker unless the launcher's own record beside
+    // it says the run ended or never started; a record that cannot be read keeps the run.
+    if (rst.value === null || !rst.value.isFile()) {
+      const lr = launcherRecord(path.join(runPath, s));
+      if (!lr.readable) out.readable = false;
+      if (!lr.readable || lr.inUse) { out.inUse = true; out.liveAgent = out.liveAgent ?? s; }
+      continue;
+    }
     const rec = jsonAt(rp).value;
     // A report that will not parse keeps this run, and the loop goes on: what cannot be read must
     // never end the inspection before the records that say something is still running.
@@ -500,7 +526,12 @@ function listReports(roots, agents) {
     if (!row.chainOk) continue;
     const publication = reportPublication(row.path);
     if (!publication.readable) { row.readable = false; row.cond = "unreadable"; }
-    else if (!publication.published) { row.inUse = true; if (row.readable) row.cond = "unreported"; }
+    else if (!publication.published) {
+      // The launcher's record beside the report decides whether an unpublished run is still being written.
+      const lr = launcherRecord(row.path);
+      if (!lr.readable) { row.readable = false; row.cond = "unreadable"; }
+      else if (lr.inUse) { row.inUse = true; row.cond = "unreported"; }
+    }
     if (agentHolds(agents, row.path)) {
       row.inUse = true;
       if (row.readable && publication.published) row.cond = "live";

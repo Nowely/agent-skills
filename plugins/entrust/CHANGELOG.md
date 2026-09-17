@@ -8,8 +8,8 @@ forensics remain in the repository references and release notes.
 ### Changed
 
 - **One agent, one turn, one message.** The Agent call for the one agent the coordinator waits for is a
-  foreground call: the hand-back arrives as the call's own result, the user reads one message, and no
-  notification follows; agents that run side by side stay background calls. Why: with a background call the
+  foreground call: the hand-back message arrives inside the same turn and no notification follows, so the
+  coordinator answers once; agents that run side by side stay background calls. Why: with a background call the
   harness delivers one completion as two events, a hand-back message and a task notification, and the
   coordinator answered each with text («Готово.»), while the wrapper's forced closing line landed as a block of
   its own after the answer; measured 2026-09-17 on a native subagent and on the wrapper, and a foreground call
@@ -17,8 +17,10 @@ forensics remain in the repository references and release notes.
 - **The prompt goes in with one call.** `agent-run.mjs --new --report-file R` takes the prompt on stdin and
   makes the agent's directory beside the report, `agent/` at 0700 with the prompt at 0600; `--run` and `--status`
   find that directory from the report path, so `--dir` is optional and `mktemp` is gone from the page. A `--new`
-  and the Agent call may go in one turn: `--run` waits ten seconds for the prompt. Nothing is left in `$TMPDIR`;
-  a run's four files sit next to its report. Why: the coordinator spent two tool calls and eight seconds making a
+  and the Agent call may go in one turn: `--run` waits ten seconds for the prompt. None of the launcher's files
+  is left in `$TMPDIR`; a run's four files sit next to its report, and `/entrust:cleanup` reads them: an agent
+  directory with no report is no longer "still running" forever when its `exit` marker says the run ended or
+  its prompt was never run. Why: the coordinator spent two tool calls and eight seconds making a
   directory and writing a file before every agent (measured 2026-09-17).
 - **The wrapper's four steps are back in the message.** The page's block carries them and the agent file repeats
   them. Why: with the steps in the file alone, Haiku kept them in one run of three and paraphrased the nine

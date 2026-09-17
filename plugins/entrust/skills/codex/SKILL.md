@@ -61,9 +61,10 @@ card, one completion notification, and a message to continue it.
 Write the prompt with one Bash call, the launcher's `--new`, which makes the agent's directory beside the
 report and takes the prompt on stdin; then spawn the wrapper with the Agent tool:
 `subagent_type: entrust:codex-agent`, `run_in_background: false` for the one agent you wait for and `true`
-for agents that run side by side or while you work (measured 2026-09-17: a foreground call returns the
-hand-back as its own result, one message to the user and no notification after it, and an eleven-minute
-call ended normally, so the call has no ceiling of its own), and a `description` of
+for agents that run side by side or while you work (measured 2026-09-17: a foreground call brings the
+hand-back message inside the same turn and no task notification after it, so you answer once — the owner's
+native foreground subagent showed one message after the hand-back frame — and an eleven-minute call ended
+normally, so the call has no ceiling of its own), and a `description` of
 `Codex <short name> <id>: <task in a few words>` — `Astra` for `gpt-6-astra`, `Sol` for `gpt-5.6-sol`,
 `Terra` for `gpt-5.6-terra`, `Luna` for `gpt-5.6-luna` — so the card the user sees names the agent, its
 vendor and its task, and not the command line. That type is the agent this plugin ships,
@@ -119,7 +120,7 @@ Both calls may go in one turn: the launcher waits ten seconds for a prompt a `--
 relaunch gets a fresh report path and the earlier run's four files stay where they were (the launcher refuses a
 directory that ran for another report; measured 2026-09-17 on the earlier shape, a reused one lost its record),
 while the same command run again for the same report reads the run it started, which is what the ceiling's
-second call is. Nothing is left in `$TMPDIR`. `<REPORT>` is an absolute path of this agent's own: put it under
+second call is. None of the launcher's files is left in `$TMPDIR`; a read agent's own writable root stays there. `<REPORT>` is an absolute path of this agent's own: put it under
 the driver's state directory, `<state>/reports/<run>/report.json` with `<run>` unique, or, under the orchestrate
 mode, `<run>/<agent>/report.json` in the run directory that page names, one directory per agent; the launcher and
 the driver make every directory those paths need, at 0700, so they may name a root your own Write and `mkdir`
@@ -242,9 +243,10 @@ write its own would be grading itself. Declare gates on the command line instead
 
 - `<REPORT>` is the report, the same JSON the run also wrote to `<DIR>/out.json` once a turn ran. Read
   the file: it is written whole or not at all, and a missing one means unknown, never success.
-- The hand-back message and the task notification that follows it are one completion: read the first, and
-  answer the second with nothing (measured 2026-09-17: a coordinator told the user that the notification
-  duplicated the answer).
+- Under a background call, the hand-back message and the task notification that follows it are one
+  completion: read the first, and give the second the shortest reply the harness accepts (measured
+  2026-09-17: a coordinator told the user that the notification duplicated the answer). A foreground call
+  has no notification.
 - On `EXIT=0` what reaches the user is the agent's name and its answer; the other lines are yours and stay with
   you (measured 2026-09-17: two coordinators retold `RECEIPT=` and the report's model field, slug included, as
   prose, so the status line now carries the short name).

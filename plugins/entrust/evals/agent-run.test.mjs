@@ -352,6 +352,11 @@ test("--new makes agent/ beside the report at 0700 with the prompt from stdin at
     if (empty.code !== 2 || !/empty/.test(empty.err)) problems.push(`an empty prompt: exit ${empty.code}, ${empty.err.slice(0, 80)}`);
     const rel = await newAgent("reports/report.json");
     if (rel.code !== 2 || !/absolute/.test(rel.err)) problems.push(`a relative report path: exit ${rel.code}, ${rel.err.slice(0, 80)}`);
+    const elsewhere = tempDir("agent-run-newdir.");
+    const withDir = spawnNode([LAUNCHER, "--new", "--dir", elsewhere, "--report-file", path.join(tempDir("agent-run-new."), "run", "report.json")], { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 20000 });
+    withDir.child.stdin.end(PROMPT);
+    const wd = await withDir.done;
+    if (wd.code !== 0 || read(path.join(elsewhere, "prompt.txt")) !== PROMPT) problems.push(`--new --dir: exit ${wd.code}, prompt ${read(path.join(elsewhere, "prompt.txt")) === PROMPT ? "there" : "MISSING"}`);
     return problems.length === 0 || problems.join("; ");
   });
 

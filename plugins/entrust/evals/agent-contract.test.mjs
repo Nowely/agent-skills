@@ -13,7 +13,7 @@ import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { DRIVER, FIELDS, ROOT, PROMPT_FIELDS, SCRIPTS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
-import { ACCEPTED, TAKEN } from "../skills/codex/scripts/agent-run.mjs";
+import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../skills/codex/scripts/agent-run.mjs";
 
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "orchestrate", "SKILL.md");
@@ -147,6 +147,10 @@ test("the prompt goes in through --new on stdin, into a directory beside the rep
     if (promptCalls.length !== 1) problems.push(`expected exactly one --new heredoc call on the page, found ${promptCalls.length}`);
     if (!/--new --report-file "<REPORT>" <<'PROMPT'/.test(skill)) problems.push("the --new call is gone or its heredoc is not quoted");
     if (/mktemp/.test(skill)) problems.push("the page still sends the coordinator to mktemp");
+    if (!flat.includes("the launcher waits ten seconds for a prompt a `--new` has not written yet") || PROMPT_WAIT_MS !== 10000)
+      problems.push(`the page's ten-second wait and PROMPT_WAIT_MS=${PROMPT_WAIT_MS} disagree`);
+    if (!flat.includes("`run_in_background: false` for the one agent you wait for and `true` for agents that run side by side"))
+      problems.push("the page no longer says which Agent calls are foreground and which background");
     if (/\$TMPDIR\/(prompt|agent|task|report|stderr)/.test(skill)) problems.push("a scratch path is written as $TMPDIR/..., which the Write and Read tools cannot expand");
     if (!helpFlat.includes("an ABSOLUTE path that does not exist yet"))
       problems.push("--help no longer promises that --report-file is absolute and unclaimed");
@@ -311,9 +315,9 @@ test("the shipped wrapper is the agent the page names: Bash alone, a pinned mode
     if (!/^tools: Bash$/m.test(head)) problems.push("the agent's tools are not exactly Bash");
     if (!/^model: (sonnet|haiku|opus)$/m.test(head)) problems.push("the agent pins no model");
     for (const phrase of ["Do not answer the task yourself", "Do not create or edit files", "Do not change any flag, path, or environment variable",
-                          // The procedure the page no longer spells out per message: one foreground call with the
-                          // ten-minute timeout, the same command again while no REPORT= line, the hand-back with the
-                          // lines alone, and the one visible line after it.
+                          // The procedure the page's message carries and this file repeats: one foreground call with
+                          // the ten-minute timeout, the same command again while no REPORT= line, the hand-back with
+                          // the lines alone, and the one visible line after it.
                           "in the foreground, with timeout 600000", "Write no text before it",
                           "If its result has no REPORT= line", "run the very same command again",
                           "Call SubagentHandback with exactly the lines that result printed",

@@ -61,7 +61,7 @@ export const agentDirOf = (report) => path.join(path.dirname(report), "agent");
 const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
 
   node agent-run.mjs --new --report-file REPORT  < prompt
-      Makes the agent's directory, agent/ beside REPORT, at 0700, and writes the prompt read on stdin
+      Makes the agent's directory, agent/ beside REPORT (or --dir DIR), at 0700, and writes the prompt read on stdin
       to its prompt.txt at 0600. Refuses (exit 2) a REPORT that is not absolute, an empty prompt, and a
       directory that already holds a prompt: a relaunch gets a fresh report path.
   node agent-run.mjs --run --report-file REPORT
@@ -188,10 +188,11 @@ export function statusLines(dir, report) {
 // --new: the agent's directory beside the report, the prompt from stdin. The prompt travels coordinator →
 // stdin → file, never through the wrapper's model and never through this script's own reading of it as
 // text: it is copied byte for byte.
-function newAgent(report) {
+function newAgent(report, dirOverride) {
   const refuse = (why) => { process.stderr.write(`${REFUSED}: ${why}\n`); process.exit(2); };
   if (!report || !path.isAbsolute(report)) refuse(`--report-file ${JSON.stringify(report ?? "")} is not an absolute path`);
-  const dir = agentDirOf(report);
+  if (dirOverride !== null && dirOverride !== undefined && !path.isAbsolute(dirOverride)) refuse(`--dir ${JSON.stringify(dirOverride)} is not an absolute path`);
+  const dir = dirOverride ?? agentDirOf(report);
   const promptPath = path.join(dir, "prompt.txt");
   if (fs.existsSync(promptPath)) refuse(`${promptPath} already exists: one prompt per report path, a relaunch gets a fresh one`);
   let body;
@@ -260,7 +261,7 @@ if (isMain) {
   if (o.error) { process.stderr.write(`agent-run: ${o.error}\n${USAGE}`); process.exit(2); }
   if (o.help) { process.stdout.write(USAGE); process.exit(0); }
   if (!o.report) { process.stderr.write(`agent-run: --report-file is required\n${USAGE}`); process.exit(2); }
-  if (o.isNew) newAgent(o.report);
+  if (o.isNew) newAgent(o.report, o.dir);
   const dir = o.dir ?? (path.isAbsolute(o.report) ? agentDirOf(o.report) : null);
   if (dir === null) { process.stderr.write(`${REFUSED}: --report-file ${JSON.stringify(o.report)} is not an absolute path\n`); process.exit(2); }
   if (o.status) { process.stdout.write(`${statusLines(dir, o.report).join("\n")}\n`); process.exit(0); }

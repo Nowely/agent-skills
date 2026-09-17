@@ -969,7 +969,8 @@ function openReportFile(p) {
   // A missing parent is MADE here, at 0700 and all the way down, rather than refused. A headless
   // coordinator's own Write and mkdir under the plugin's data directory are denied as a sensitive path,
   // with no prompt anyone can answer, while this process handed the same path as an argument is not
-  // (measured 2026-09-08) — so the driver is what creates a run's directory. mkdir -p over a directory
+  // (measured 2026-09-08) — so a subprocess, the launcher's --new or this driver, is what creates a run's
+  // directory. mkdir -p over a directory
   // already there changes nothing, and a file in the way is EEXIST or ENOTDIR, refused like any parent.
   try { fs.mkdirSync(dir, { recursive: true, mode: 0o700 }); }
   catch (e) { fail(EXIT.USAGE, `--report-file cannot use ${dir}: ${e.message}`); }
