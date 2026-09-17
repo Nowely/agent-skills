@@ -111,7 +111,7 @@ test("every file the plugin needs to run is in the payload",
       "LICENSE", "README.md",
       ...skillPages,
       ...under(path.relative(ROOT, SCRIPTS)),
-      ...under("skills/experiment/scripts"),
+      ...under("skills/experiment/scripts"), ...under("skills/swarm/scripts"),
       ...under(path.relative(ROOT, EVALS)), ...under(path.relative(ROOT, path.join(EVALS, "lib"))),
     ];
     const have = new Set(tracked ?? []);

@@ -504,7 +504,7 @@ test("E8 the roles reference is linked from the bounds paragraph",
   "the role set was the tier table's four rows in practice; the reference is where the coordinator's variety lives, and a page without the link never sends anyone there",
   () => shows(/\[roles\.md\]\(references\/roles\.md\)/));
 
-test("E9 the roles reference exists with its seven columns, at least fifteen roles, the six the page relies on, and no write right on a bulk verifier",
+test("E9 the roles reference exists with its seven columns, at least fifteen roles, the six the page relies on, and no write right on a bulk verifier, a swarm reducer or a standing advisor",
   "the page sends the coordinator to references/roles.md for what a role may write and return; a missing file, a table without those columns, a gutted table or a bulk row granted a tree is a reference that misleads",
   () => {
     const roles = read("skills/orchestrate/references/roles.md");
@@ -513,8 +513,11 @@ test("E9 the roles reference exists with its seven columns, at least fifteen rol
     const rows = roles.split("\n").filter((l) => /^\| [a-z]/.test(l));
     if (rows.length < 15) problems.push(`only ${rows.length} role rows`);
     for (const r of ["area scout", "split critic", "refuter", "bulk verifier", "judge", "completeness critic"]) if (!rows.some((l) => l.startsWith(`| ${r} |`))) problems.push(`no row for ${r}`);
-    const bulk = rows.find((l) => l.startsWith("| bulk verifier |"));
-    if (bulk && bulk.split("|")[3].trim() !== "nothing") problems.push("the bulk verifier row grants a write right");
+    for (const r of ["bulk verifier", "swarm reducer", "advisor, standing"]) {
+      const row = rows.find((l) => l.startsWith(`| ${r} |`));
+      if (!row) problems.push(`no row for ${r}`);
+      else if (/repository|run directory|live tree|worktree|state directory|data directory|owned files/i.test(row.split("|")[3])) problems.push(`the ${r} row grants a write right on a tree or the data directory`);
+    }
     if (!/No role is a phase of one piece of work/.test(roles)) problems.push("the phase-pipeline sentence is gone");
     return problems.length === 0 || problems.join("; ");
   });

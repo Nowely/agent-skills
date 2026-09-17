@@ -28,6 +28,32 @@ forensics remain in the repository references and release notes.
   a scratch state directory. Why: the 2026-09-17 research round produced fifteen hypotheses and a rule
   that only matched runs with an independent judge measure improvement; without a vehicle they stay opinions.
 
+- A fifth skill, `/entrust:advisor`, prompt only: one standing top-row advisor of the other model family
+  for one run, named in the plan with its turns, asked one question at each decision point (the split,
+  the composition, a verdict about to be adopted, a stall) with the coordinator's own decision in the
+  question; it returns a recommendation with reasons, one alternative and what would change its mind,
+  never implements, never judges its own advice, holds a slot only while a turn of its runs, and every
+  decision point is written down before and after in a notes file the synthesis names. The page states
+  no benefit until protocol E3 has run. Pinned by `evals/advisor.test.mjs`, including a case against any
+  sentence that would hand the advisor a role it must never take. Why: the owner asked for a standing
+  advisor by a separate command to test its effectiveness; the 2026-09-17 research found no source that
+  had measured one.
+- A sixth skill, `/entrust:swarm`: up to fifty bulk agents over a file of units, each made and run by
+  `skills/swarm/scripts/swarm.mjs` through the sibling launcher as agent `<id>` at `<run>/<id>/report.json`
+  with its `agent/` beside it, the layout the cleanup lists as a run; at most `--concurrency` at once,
+  fifty enforced by the script; a summary written outside the run, in an agent-scratch directory, from the
+  launcher's status lines, so a stale report under a taken path is never this run's outcome; a signal
+  stops further launches and reaches every running agent. A Terra swarm counts as the bulk row does,
+  against the swarm's own cap, stated on the page as this mode's one override; every brief is a read agent
+  on Luna or Terra at the effort the orchestrate page sets. Sharing nothing is the default; shared state
+  (a queue claimed by `mkdir`) and free messaging are protocol E4's arms, and peer messaging as
+  verification stays on the research's do-not-adopt list. Pinned by `evals/swarm.test.mjs`: page cases
+  by the words that carry each rule, a case that no strong or top model is admitted, and swarms against
+  the fake app server for the layout, the dollar-quote substitution, serial concurrency, a stale report
+  and a signal. The roles reference gains the standing advisor and the swarm reducer, and the orchestrate
+  suite's roles case pins that neither may write on a tree. Why: the owner asked for a swarm mode that
+  offloads the orchestrator's launches and waits, and for both coordination shapes to be tried as
+  experiments rather than decreed.
 ### Changed
 
 - The caps count turns in progress: separate advisor, critic and architect threads may take turns within

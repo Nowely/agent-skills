@@ -11,7 +11,7 @@ npm test                      # every suite, cheapest first, stopping at the fir
 node evals/cli.test.mjs       # one suite, when it is the thing being worked on
 ```
 
-`run-all.mjs` lists the fourteen, cheapest first: orchestrate, package, agent-contract, agent-run, attach-pasted, experiment, cleanup, worktree, cli, conformance, lock, protocol, fidelity, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
+`run-all.mjs` lists the sixteen, cheapest first: orchestrate, advisor, package, agent-contract, agent-run, swarm, attach-pasted, experiment, cleanup, worktree, cli, conformance, lock, protocol, fidelity, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
 listed cannot go unrun. A suite killed by a signal is a failure, not a pass: a killed child reports
 `code` null and `process.exit(null)` exits 0. A suite that skipped or never ran is deducted from the
 green count and named in the last line, which is the line to read.
