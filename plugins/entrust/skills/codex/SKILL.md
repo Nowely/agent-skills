@@ -97,7 +97,8 @@ nothing left running.
     D=unknown; test -s "<DIR>/exit" && D=$(cat "<DIR>/exit"); echo "DRIVER_EXIT=$D"; P=none; grep -qF "reportPath=<REPORT>" "<DIR>/err.txt" 2>/dev/null && P=own; grep -Eq 'already exists, or is a symbolic link|could not be published at' "<DIR>/err.txt" 2>/dev/null && P=taken; echo "PATH=$P"; node -e 'try{const r=require("<REPORT>");console.log("EXIT="+r.exitCode);const a=r.answerJson&&typeof r.answerJson.result==="string"?r.answerJson.result:r.answer;const s=String(a||"");console.log("FIRST="+s.split("\n")[0].slice(0,300));console.log("ANSWER="+(s.length<=600?s.replace(/\s*\n\s*/g," / "):"(long: "+s.length+" chars, read the report)"));const t=r.turnError;const e=r.error||(t&&(typeof t==="string"?t:(t.message||t.codexErrorInfo||JSON.stringify(t))))||"";console.log("ERROR="+String(e).replace(/\s*\n\s*/g," ").slice(0,300));console.log("RECEIPT=turnStatus="+r.turnStatus+" receiptOk="+r.receiptOk+" model="+r.model)}catch(e){console.log("EXIT=unknown");console.log("FIRST=");console.log("ANSWER=");console.log("ERROR=");console.log("RECEIPT=")}'; test -f "<REPORT>" && echo FILE=exists || echo FILE=missing
 
     4. Your final message is exactly the WAIT_DONE line, the eight lines step 3 printed, then one line
-       REPORT=<REPORT>. Nothing else.
+       REPORT=<REPORT>. Nothing else. If the harness then asks you for a visible response, answer with
+       exactly one line, "<DESCRIPTION>: report delivered", and nothing else.
 
 `<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per agent: Write and Read expand nothing,
 so they need the absolute path it prints. `<REPORT>` is an absolute path of this agent's own and never under `<DIR>`:

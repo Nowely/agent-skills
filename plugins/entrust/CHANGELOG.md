@@ -18,6 +18,11 @@ forensics remain in the repository references and release notes.
   task and on a pre-turn refusal, the five-line hand-back sent the coordinator back to the report file for one
   more turn each (measured 2026-09-17: 327 and 220 output tokens, 9.4 and 5.1 seconds). `PATH=` stays: it is the
   only line that tells an earlier run's file at the same path from this run's.
+- The wrapper answers the harness's request for a visible response after its hand-back with one constant line,
+  the agent's own description and "report delivered". Why: the harness asks every subagent that ends on an empty
+  message after its hand-back for a visible response, native ones included (measured 2026-09-17 on a Haiku
+  baseline), and the wrapper answered it with an English paragraph that narrated its bash steps, named an absolute
+  path and used the word the 0.16.0 release banned.
 - The codex skill triggers on a Codex model's short name (Astra, Sol, Terra, Luna, and the Russian forms). Why:
   «отправь хай терре» did not load the skill; the coordinator read the name as an addressee and asked.
 
