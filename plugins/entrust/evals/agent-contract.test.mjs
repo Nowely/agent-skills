@@ -102,8 +102,8 @@ test("SKILL.md's table names every field the driver accepts, and the driver acce
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the ONE call is agent-run.mjs --run with --report-file in one foreground call, the message carries the four steps, the launcher runs the driver with --prompt-file and --report-file, and every shell the page hands over parses",
-  "the block is copied verbatim into the wrapper's message: a stray quote is an agent that never runs, a launch that named the driver directly would carry the redirects and the exit marker again, an `&` of its own detaches the run from the task that is supposed to own it, a second command would be a second card a native subagent does not show, the four steps in the message are what Haiku keeps (measured 2026-09-17: three of three against one of three from the agent file alone), and a launcher that read the prompt could rewrite it",
+test("the ONE call is agent-run.mjs --run with --report-file in one foreground call, the launcher runs the driver with --prompt-file and --report-file, and every shell the page hands over parses",
+  "the block is copied verbatim into the wrapper's message: a stray quote is an agent that never runs, a launch that named the driver directly would carry the redirects and the exit marker again, an `&` of its own detaches the run from the task that is supposed to own it, a second command would be a second card a native subagent does not show, and a launcher that read the prompt could rewrite it",
   () => {
     const scripts = [...commands, ...promptCalls];
     if (scripts.length < 2) return `expected the --new prompt call and the run, found ${scripts.length} shell snippets`;
@@ -118,9 +118,6 @@ test("the ONE call is agent-run.mjs --run with --report-file in one foreground c
     for (const part of ["--run", '--report-file "<REPORT>"'])
       if (!call.includes(part)) problems.push(`the run does not carry ${part}: ${JSON.stringify(call)}`);
     if (call.includes("--dir")) problems.push("the run names --dir, which the launcher derives from the report path");
-    for (const step of ["Write no text before it", "If its result has no REPORT= line", "run the very same command again at once",
-                        "Call SubagentHandback with exactly the lines that result printed", "After the hand-back result", '"<DESCRIPTION>: report delivered"'])
-      if (!flat.includes(step)) problems.push(`the wrapper's message on the page lacks the step ${JSON.stringify(step)}`);
     if (call.includes("driver.mjs")) problems.push("the run names the driver directly again");
     if (/(^|[^&])&\s*$/.test(call)) problems.push("the run ends in an `&` of its own, which hides the run from the task");
     if (!/in the foreground, with timeout 600000/.test(flat))

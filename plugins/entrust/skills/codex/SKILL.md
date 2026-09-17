@@ -58,7 +58,8 @@ its description says, is not on the agent map, is not stopped from it and is not
 wrapper is what makes a Codex agent read like a Claude agent: one card under its description, Stop on the
 card, one completion notification, and a message to continue it.
 
-Write the prompt to a file with the Write tool, then spawn the wrapper with the Agent tool:
+Write the prompt with one Bash call, the launcher's `--new`, which makes the agent's directory beside the
+report and takes the prompt on stdin; then spawn the wrapper with the Agent tool:
 `subagent_type: entrust:codex-agent`, `run_in_background: false` for the one agent you wait for and `true`
 for agents that run side by side or while you work (measured 2026-09-17: a foreground call returns the
 hand-back as its own result, one message to the user and no notification after it, and an eleven-minute
@@ -72,7 +73,7 @@ in its own file, so its context is half a `general-purpose` subagent's (measured
 file. A clone-and-symlink install links that file into `~/.claude/agents/` ([README](../../README.md#install)),
 where its type is the bare `codex-agent`.
 
-The wrapper's message is the two lines below with their three placeholders filled in and nothing added or
+The wrapper's message is the two lines below with their two placeholders filled in and nothing added or
 removed; it never sees the agent's prompt, and its procedure — run the command in the foreground, run it
 again while its result has no `REPORT=` line, hand the lines back — is its own file's. The command is the
 launcher `scripts/agent-run.mjs`, one foreground call and no `&` of your own: it opens `prompt.txt` only
@@ -89,20 +90,32 @@ there instead, with an exit of 2 and `PATH=none`. A `SIGTERM` to that
 pid cuts the turn, sweeps its codex and publishes the report as `turnStatus: interrupted`, exit 1,
 nothing left running.
 
+The prompt, one Bash call, the heredoc quoted so nothing in it expands:
+
+    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --new --report-file "<REPORT>" <<'PROMPT'
+    MODEL: gpt-5.6-terra
+    TASK: …
+    CHECK: …
+    RETURN: …
+    PROMPT
+
+The Agent call, its message these two lines:
+
     Run this command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>":
 
-    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --dir "<DIR>" --report-file "<REPORT>"
+    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --report-file "<REPORT>"
 
-`<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per launch, a relaunch included: the launcher refuses a
-directory that already ran for another report path, because a second run there would overwrite the first run's record
-(measured 2026-09-17 on the earlier shape, where it did); the same command run again for the same report path reads the run
-it started, which is what the ceiling's second call is. Write and Read expand nothing,
-so they need the absolute path it prints. `<REPORT>` is an absolute path of this agent's own and never under `<DIR>`:
-`<DIR>` sits in `$TMPDIR`, the one root a read agent may write, and a file the agent leaves at that name blocks publication
-and then sits where you would read it as the agent's own report. Put it under the driver's state directory,
-`<state>/reports/<run>/report.json` with `<run>` unique, or, under the orchestrate mode, `<run>/<agent>/report.json`
-in the run directory that page names, one directory per agent; the driver makes every directory that path
-needs, at 0700, so it may name a root your own Write and `mkdir` are refused.
+Both calls may go in one turn: the launcher waits ten seconds for a prompt a `--new` has not written yet.
+`<DESCRIPTION>` is the Agent call's own description. `<DIR>`, where this page names it, is the agent's directory,
+`agent/` beside `<REPORT>`, which `--new` makes at 0700 with the prompt at 0600: one per report path, so a
+relaunch gets a fresh report path and the earlier run's four files stay where they were (the launcher refuses a
+directory that ran for another report; measured 2026-09-17 on the earlier shape, a reused one lost its record),
+while the same command run again for the same report reads the run it started, which is what the ceiling's
+second call is. Nothing is left in `$TMPDIR`. `<REPORT>` is an absolute path of this agent's own: put it under
+the driver's state directory, `<state>/reports/<run>/report.json` with `<run>` unique, or, under the orchestrate
+mode, `<run>/<agent>/report.json` in the run directory that page names, one directory per agent; the launcher and
+the driver make every directory those paths need, at 0700, so they may name a root your own Write and `mkdir`
+are refused.
 The wrapper's completion notification is the agent's completion: read the wrapper's own lines first —
 what the driver exited with, whose run the file at `<REPORT>` belongs to, whether it is there, the answer
 where it is short and its first line where it is not, the refusal where no turn ran, and the receipt — and

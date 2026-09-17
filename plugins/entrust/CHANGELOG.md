@@ -14,6 +14,12 @@ forensics remain in the repository references and release notes.
   coordinator answered each with text («Готово.»), while the wrapper's forced closing line landed as a block of
   its own after the answer; measured 2026-09-17 on a native subagent and on the wrapper, and a foreground call
   ran eleven minutes with no ceiling of its own.
+- **The prompt goes in with one call.** `agent-run.mjs --new --report-file R` takes the prompt on stdin and
+  makes the agent's directory beside the report, `agent/` at 0700 with the prompt at 0600; `--run` and `--status`
+  find that directory from the report path, so `--dir` is optional and `mktemp` is gone from the page. A `--new`
+  and the Agent call may go in one turn: `--run` waits ten seconds for the prompt. Nothing is left in `$TMPDIR`;
+  a run's four files sit next to its report. Why: the coordinator spent two tool calls and eight seconds making a
+  directory and writing a file before every agent (measured 2026-09-17).
 
 ## 0.18.1 — 2026-09-17
 
