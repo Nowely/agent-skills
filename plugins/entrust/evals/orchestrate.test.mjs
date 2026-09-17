@@ -170,7 +170,7 @@ test("C6 the plan states the pool and the user overrides it in words",
   "the caps are settings the user owns: a plan that launched under the page's defaults without showing them gave the user nothing to overrule, and \"two Fable\" or \"only codex\" said after the first agent is a word too late",
   () => says(
     "Announce the composition here, and the caps beside it in a sentence: your own model, one Fable and one `gpt-6-astra` at a time, six alive.",
-    "A cap the user overrides in words (\"two Fable\") replaces the default for this run; composition words (\"only codex\", \"no codex\") follow the sibling's table.",
+    "A cap the user sets in words (\"two Fable\"), or agrees to when the plan proposes one with its reason, replaces the default for this run; composition words (\"only codex\", \"no codex\") follow the sibling's table.",
   ));
 
 test("C7 every agent's return is retold to the user in one short paragraph, the same shape for both sides",
@@ -194,10 +194,10 @@ test("D2 the orchestrator's own model is read out of the system prompt",
   "the plan states it beside the pool and an untagged subagent inherits it, and nothing else in the session says which it is: a coordinator that guesses announces the wrong model and cannot tell an inherited tier from a chosen one",
   () => says("Your own model is in your system prompt (\"You are powered by the model named ...\"); nothing else carries it."));
 
-test("D3 every Claude Agent call is tagged, fable only for the one Fable agent, and a Codex agent's model is its own header line",
+test("D3 every Claude Agent call is tagged, fable only for Fable agents within the cap, and a Codex agent's model is its own header line",
   "an untagged subagent silently inherits the session model, so a fan-out meant to be cheap runs at the top tier; and a Codex agent runs inside the shipped wrapper, whose model is pinned in its file, so a model or effort written as a tool option is spent on the wrapper while the agent runs on its `MODEL:` line",
   () => says(
-    "Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable` only for the one Fable agent",
+    "Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable` only for Fable agents within the agreed cap",
     "every Codex agent carries one with a slug from the table, never the config default",
     "is spent on the wrapper alone and never reaches Codex",
   ));
@@ -217,9 +217,9 @@ test("D5 the pool does not depend on the orchestrator's model, and the top pair 
     return prose === true && row === true || [prose, row].filter((r) => r !== true).join("; ");
   });
 
-test("D7 a Fable agent never spawns Fable, and only the orchestrator launches the pool's Fable agent",
+test("D7 a Fable agent never spawns Fable, and only the orchestrator launches Fable agents",
   "a top agent that may spawn its own top agent makes the cap of one unenforceable one level down, where nothing is counting; stated without \"agent\" the rule also read as forbidding a Fable orchestrator the one Fable agent the pool promises it",
-  () => says("a Fable agent never spawns Fable", "only you launch the pool's Fable agent"));
+  () => says("a Fable agent never spawns Fable", "only you launch Fable agents"));
 
 test("D8 effort is chosen per agent below the top row, and low effort only for mechanical Sonnet stages in a Workflow",
   "measured 2026-09-17: two Luna read agents at an inherited xhigh took 480 and 557 s and 1.2M and 2.3M tokens for a ledger and a grep task. The earlier rule inherited the user's effort everywhere because, measured on codex-cli 0.153.4, no effort level bought the evidence guarantee an exception once claimed; this rule claims cost, not evidence",
@@ -311,7 +311,7 @@ test("F2 the six verification bullets, one line each",
     /^- Adversarial verify: a refuter defaults to `refuted` when it is uncertain, and a finding is (one|what) that changes correctness or a stated requirement, the rest (its|in) `open`\.$/m,
     /^- Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters\.$/m,
     /^- Judge panel for a design task: a verdict (missing|without|lacking) its decisive check is `unknown` in `result`; name the missing check in `open`\. Use the sibling's `EXPECT:` rule for a Codex check\.$/m,
-    /^- Completeness critic at the end: what is missing, unverified, unread; one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the whole publication \(a README, a changelog, a synthesis\) and its evidence once, before it goes out, never per return\.$/m,
+    /^- Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
     /^- No silent caps: name every agent, check or item you dropped\.$/m,
   ));
 
@@ -477,6 +477,47 @@ test("G7 a verifier's brief names its target and whole scope, and its return sep
     /A verifier's brief (names|states) its target and the (whole|full) scope it must cover/,
     /its return says what it checked and, in `open`, what it did not/,
   ));
+
+test("D11 the caps count turns in progress, and a thread waiting for another message uses no slot",
+  "the pool caps parallel turns at a moment, not the threads that exist: a design of 2026-09-17 counted an idle advisor thread against the top-row cap, and the owner corrected it the same day",
+  () => shows(
+    /The caps count turns in progress/,
+    /(a|any) threads? (waiting|that waits) for another message (uses|takes|holds) no slot/,
+  ));
+
+test("C12 the completeness critic reads the request, the answer and the evidence before every final answer, and returns a verdict",
+  "the owner's corrections at the synthesis stage were 8 of 27 in the record and a README once published an inference from absence unchecked (T1-49, 2026-09-17); the critic is the one agent that reads the task whole, and a one-agent run is not exempt",
+  () => {
+    const prose = says(
+      "given the user's request, the final answer and its evidence once, before the answer goes out, never per return",
+      "returns done, partial or not done with what is missing",
+      "A one-agent task has no judgement agent beyond the completeness critic",
+    );
+    if (prose !== true) return prose;
+    const bullet = lines.find((l) => l.startsWith("- Completeness critic"));
+    if (!bullet) return "the completeness critic bullet is gone";
+    if (/\b(except|unless|skip|skipped|waived|optional)\b/.test(bullet)) return "the critic bullet exempts some run";
+    return true;
+  });
+
+test("E8 the roles reference is linked from the bounds paragraph",
+  "the role set was the tier table's four rows in practice; the reference is where the coordinator's variety lives, and a page without the link never sends anyone there",
+  () => shows(/\[roles\.md\]\(references\/roles\.md\)/));
+
+test("E9 the roles reference exists with its seven columns, at least fifteen roles, the six the page relies on, and no write right on a bulk verifier",
+  "the page sends the coordinator to references/roles.md for what a role may write and return; a missing file, a table without those columns, a gutted table or a bulk row granted a tree is a reference that misleads",
+  () => {
+    const roles = read("skills/orchestrate/references/roles.md");
+    const problems = [];
+    if (!/^\| Role \| What it does \| May write \| Returns \| Spawn it when \| Tier \| Record \|$/m.test(roles)) problems.push("the seven-column header is missing");
+    const rows = roles.split("\n").filter((l) => /^\| [a-z]/.test(l));
+    if (rows.length < 15) problems.push(`only ${rows.length} role rows`);
+    for (const r of ["area scout", "split critic", "refuter", "bulk verifier", "judge", "completeness critic"]) if (!rows.some((l) => l.startsWith(`| ${r} |`))) problems.push(`no row for ${r}`);
+    const bulk = rows.find((l) => l.startsWith("| bulk verifier |"));
+    if (bulk && bulk.split("|")[3].trim() !== "nothing") problems.push("the bulk verifier row grants a write right");
+    if (!/No role is a phase of one piece of work/.test(roles)) problems.push("the phase-pipeline sentence is gone");
+    return problems.length === 0 || problems.join("; ");
+  });
 
 // ------------------------------------------------------------------ the schema, and the links
 

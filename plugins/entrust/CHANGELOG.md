@@ -7,6 +7,20 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- The caps count turns in progress: separate advisor, critic and architect threads may take turns within
+  them, and a thread waiting for another message uses no slot; `fable` is for Fable agents within the agreed
+  cap. A plan may propose a cap of its own with its reason, and the user's word sets it for the run. Why: the
+  owner's reading of the pool on 2026-09-17, after a design that counted idle threads against the cap.
+- The completeness critic reads the user's request, the final answer and its evidence before every final
+  answer of an orchestrated run, one fresh strong-row reader named in the plan, and returns done, partial or
+  not done with what is missing, unverified or unread; a publication is read the same way; a one-agent task
+  has no judgement agent beyond it. Why: the owner's corrections at the synthesis stage were 8 of 27 in the
+  record, and a README once published an inference from absence unchecked (T1-49).
+- A roles reference, `skills/orchestrate/references/roles.md`, linked from the bounds paragraph: 19 roles
+  with what each does, may write and returns, when it is spawned, its tier and the runs that used it; no role
+  is a phase of one piece of work. Why: the role set was in practice the tier table's four rows; the
+  2026-09-17 survey found role catalogues in ten of thirteen frameworks and the record twelve roles assigned
+  without a table.
 - The orchestrate page gains eight rules from the 2026-09-17 research round
   (`research/2026-09-17-orchestration-practices/`: 185 survey claims mapped to the two pages and 54
   coordinator incidents from the local record; the T1 ids below are that round's, and `426:973` is a
