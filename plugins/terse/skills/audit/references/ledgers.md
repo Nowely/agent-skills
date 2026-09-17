@@ -50,7 +50,7 @@ can be diffed against this one.
 
 Claim: the installer requires Node at or above the version package.json declares.
 
-Sources: package.json:1-9 (engines.node is ">=22"); skills/seat/scripts/driver.mjs:24-29.
+Sources: package.json:1-9 (engines.node is ">=22"); skills/codex/scripts/driver.mjs:24-29.
 
 Level: 2. Verdict: confirmed.
 Position: misplaced — sends the reader to look the number up instead of stating it.

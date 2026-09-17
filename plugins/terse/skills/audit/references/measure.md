@@ -77,7 +77,7 @@ seen. Two benchmarks that ran this arm found the gap large — one scored betwee
 closed-book on tasks built to require documentation, and treats a high closed-book score as contamination. A third of
 our questions could plausibly sit there, which is more than the whole effect we have ever measured.
 
-It doubles the reader seats, so it runs at the baseline only. A re-measurement after a rewrite reuses the
+It doubles the reader agents, so it runs at the baseline only. A re-measurement after a rewrite reuses the
 same no-document score; the questions have not changed, and neither has what the reader already knew.
 
 ## Scoring

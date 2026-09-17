@@ -11,7 +11,7 @@ Then install what you need:
 
 | Plugin | Install | What it does |
 | --- | --- | --- |
-| [codex-delegate](plugins/codex-delegate/) | `/plugin install codex-delegate@nowely` | Runs OpenAI Codex as a subagent beside Claude's own agents. Each call declares what Codex may write; the report says what actually ran. |
+| [entrust](plugins/entrust/) | `/plugin install entrust@nowely` | Runs OpenAI Codex as a subagent beside Claude's own agents. Each call declares what Codex may write; the report says what actually ran. |
 | [terse](plugins/terse/) | `/plugin install terse@nowely` | Measures whether documentation gives readers the right answer — fresh readers per question, every behavioural claim checked against the code — and repairs what it measured. |
 
 ## Layout
@@ -27,4 +27,4 @@ catalogue at the root is the repository's, not any one plugin's.
 ## Releases
 
 One tag namespace serves every plugin, so a tag names the plugin it releases:
-`codex-delegate@0.13.0`. A plugin's own `RELEASING.md` is the procedure for cutting it.
+`entrust@0.16.0`. A plugin's own `RELEASING.md` is the procedure for cutting it.
