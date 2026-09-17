@@ -165,9 +165,10 @@ say what that does and does not prove).
 
 Inside Claude Code you rarely type this yourself: the skill's `SKILL.md` is the operating manual the
 agent reads mid-task, including when to give a panel agent to Codex at all. With the plugin installed it
-is `codex-delegate:codex` (the clone-and-symlink spellings are under Install). An agent is one
-background Bash call of that same driver: the prompt in a file named by `--prompt-file`, the report at
-`--report-file`; add `RIGHTS: worktree <repo>` above `TASK:` for a managed writer. The
+is `codex-delegate:codex` (the clone-and-symlink spellings are under Install). An agent is the
+`codex-agent` wrapper, a background Agent call that runs that same driver as a background Bash task: the
+prompt in a file named by `--prompt-file`, the report at `--report-file`; add `RIGHTS: worktree <repo>`
+above `TASK:` for a managed writer. The
 driver parses that header, launches one agent, waits as long as the work takes, makes the directories the
 report path needs at 0700, and publishes the report there by hard link, never over an existing entry: the
 coordinator reads the file when the call's exit notification arrives, and a missing file means unknown,

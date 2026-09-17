@@ -26,6 +26,9 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- The README and parity.md no longer say an agent is a background Bash call of the driver: since 0.14.0 it
+  is the `codex-agent` wrapper, an Agent call with a card on the agent map, whose own Bash task runs the
+  driver; the One call block said so and the two sentences contradicted it.
 - A `--resume` turn no longer overwrites the earlier turn's answer file. The answer log named its file for
   the thread, so after a second turn the first report's `answerPath` held the second turn's answer
   (measured 2026-09-15 on a resumed review: a 4,501-byte second answer where the first turn's was 6,734
