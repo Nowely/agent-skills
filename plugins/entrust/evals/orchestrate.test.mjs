@@ -289,7 +289,7 @@ test("F1 a Codex agent is a background Agent call of the shipped codex-agent typ
     const prose = says(
       "authorises Workflow",
       "A Codex agent is one background Agent call, the sibling's `One call` verbatim",
-      "`<DIR>` is the sibling's own `mktemp -d`, holding `prompt.txt`, `out.json`, `err.txt` and the driver's `exit` marker, and `<REPORT>` is `<run>/<agent>/report.json` under the run directory above, which the driver creates",
+      "`<DIR>` is the agent's directory the launcher makes beside the report, `agent/` next to `<REPORT>`, holding `prompt.txt`, `out.json`, `err.txt` and the driver's `exit` marker, and `<REPORT>` is `<run>/<agent>/report.json` under the run directory above, which the launcher and the driver create",
       "The wrapper's completion notification is when you read its status lines, and the report after a `PATH=own`",
       "The wrapper is an `agentType` of its own, `entrust:codex-agent`",
       "Launch independent Claude agents as background Agent calls, one notification each",
@@ -391,10 +391,10 @@ test("G5 a read agent is never asked to write: its artifact is its report",
     "costs a refused write and exit 6 (measured 2026-09-08)",
   ));
 
-test("G6 the driver makes the run directory, the coordinator writes nothing there, and a Claude agent's artifact is its text",
+test("G6 the launcher and the driver make the run directory, the coordinator writes nothing there, and a Claude agent's artifact is its text",
   "a headless session refuses a Write, a `mkdir` and a redirect under the plugin's data directory as a sensitive file, with no prompt anyone can answer, so a coordinator told to create the directory itself stops at the first agent; the driver, handed the path as an argument, is not refused (measured 2026-09-08), and a Claude agent pointed at that directory hits the same wall the coordinator did",
   () => says(
-    "The driver creates it, through `--report-file`, and it is what those report files make of it: nothing else is written there",
+    "The launcher and the driver create it, through `--report-file`, and it is what they make of it: a report per agent and, beside it, the launcher's `agent/` with the four files of the run; nothing else is written there",
     "Never run `mkdir`, Write or a shell redirect under that data directory yourself, because a headless session refuses each of them as a sensitive file with no prompt anyone can answer, while a subprocess handed the same path as an argument writes it unopposed (measured 2026-09-08)",
     "A Claude agent's artifact is its returned text, and a file it must leave goes under `$TMPDIR` with the path in that text",
   ));

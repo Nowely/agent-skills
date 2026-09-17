@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { EXIT, FAKE, SCRIPTS, codexShim, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
-import { ACCEPTED, REFUSED, SHORT_NAMES, STATUS_LINES, TAKEN } from "../skills/codex/scripts/agent-run.mjs";
+import { ACCEPTED, REFUSED, SHORT_NAMES, STATUS_LINES, TAKEN, agentDirOf } from "../skills/codex/scripts/agent-run.mjs";
 
 const LAUNCHER = path.join(SCRIPTS, "agent-run.mjs");
 const DRIVER_SRC = fs.readFileSync(path.join(SCRIPTS, "driver.mjs"), "utf8");
@@ -45,7 +45,7 @@ test("--help names both modes and exits 0",
   async () => {
     const { code, out } = await spawnNode([LAUNCHER, "--help"], { killAfterMs: 10000 }).done;
     if (code !== 0) return `--help exited ${code}`;
-    for (const s of ["--run --dir DIR --report-file REPORT", "--status", ...STATUS_LINES]) if (!out.includes(s)) return `--help does not mention ${s}`;
+    for (const s of ["--new --report-file REPORT", "--run --report-file REPORT", "--status", ...STATUS_LINES]) if (!out.includes(s)) return `--help does not mention ${s}`;
     return true;
   });
 
@@ -324,6 +324,63 @@ test("--run refuses a directory that ran for another report path, prints the nin
     await sleep(300);
     let aliveStill = false; try { process.kill(pid, 0); aliveStill = true; } catch {}
     if (aliveStill) { problems.push(`the driver (pid ${pid}) is still alive`); try { process.kill(pid, "SIGKILL"); } catch {} }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+const PROMPT = `RIGHTS: read ${shimDir}\nTASK: irrelevant, the server is scripted\n`;
+const newAgent = (report, body = PROMPT) => {
+  const h = spawnNode([LAUNCHER, "--new", "--report-file", report], { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 20000 });
+  h.child.stdin.end(body);
+  return h.done;
+};
+
+test("--new makes agent/ beside the report at 0700 with the prompt from stdin at 0600, and refuses a second prompt, an empty one and a relative report path",
+  "the coordinator cannot expand $TMPDIR and cannot Write under the data directory; the launcher, handed the report path, is what makes the directory, and the prompt arrives byte for byte through stdin",
+  async () => {
+    const problems = [];
+    const report = path.join(tempDir("agent-run-new."), "run", "report.json");
+    const r = await newAgent(report);
+    const dir = agentDirOf(report);
+    if (r.code !== 0) problems.push(`--new exited ${r.code}: ${r.err.slice(0, 120)}`);
+    if (!r.out.includes(`PROMPT=${path.join(dir, "prompt.txt")}`)) problems.push(`--new did not print the prompt path: ${r.out}`);
+    if (read(path.join(dir, "prompt.txt")) !== PROMPT) problems.push("the prompt on disk is not the stdin bytes");
+    if ((fs.statSync(dir).mode & 0o777) !== 0o700) problems.push(`agent/ mode is ${(fs.statSync(dir).mode & 0o777).toString(8)}`);
+    if ((fs.statSync(path.join(dir, "prompt.txt")).mode & 0o777) !== 0o600) problems.push(`prompt.txt mode is ${(fs.statSync(path.join(dir, "prompt.txt")).mode & 0o777).toString(8)}`);
+    const again = await newAgent(report, "TASK: other\n");
+    if (again.code !== 2 || read(path.join(dir, "prompt.txt")) !== PROMPT) problems.push(`a second --new: exit ${again.code}, prompt ${read(path.join(dir, "prompt.txt")) === PROMPT ? "kept" : "REPLACED"}`);
+    const empty = await newAgent(path.join(tempDir("agent-run-new."), "run", "report.json"), "");
+    if (empty.code !== 2 || !/empty/.test(empty.err)) problems.push(`an empty prompt: exit ${empty.code}, ${empty.err.slice(0, 80)}`);
+    const rel = await newAgent("reports/report.json");
+    if (rel.code !== 2 || !/absolute/.test(rel.err)) problems.push(`a relative report path: exit ${rel.code}, ${rel.err.slice(0, 80)}`);
+    const elsewhere = tempDir("agent-run-newdir.");
+    const withDir = spawnNode([LAUNCHER, "--new", "--dir", elsewhere, "--report-file", path.join(tempDir("agent-run-new."), "run", "report.json")], { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 20000 });
+    withDir.child.stdin.end(PROMPT);
+    const wd = await withDir.done;
+    if (wd.code !== 0 || read(path.join(elsewhere, "prompt.txt")) !== PROMPT) problems.push(`--new --dir: exit ${wd.code}, prompt ${read(path.join(elsewhere, "prompt.txt")) === PROMPT ? "there" : "MISSING"}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--run and --status without --dir use agent/ beside the report, and a --run issued before its --new waits for the prompt",
+  "the wrapper's command names only the report path, so the launcher has to find the directory itself; and a coordinator may issue --new and the Agent call in one turn, so the run must not refuse a prompt that is a second away",
+  async () => {
+    const problems = [];
+    const state = tempDir("agent-run-state.");
+    let report = path.join(tempDir("agent-run-derived."), "run", "report.json");
+    await newAgent(report);
+    const r = await spawnNode([LAUNCHER, "--run", "--report-file", report], { env: env(state), killAfterMs: 60000 }).done;
+    const lines = r.out.split("\n").filter(Boolean);
+    if (r.code !== 0 || !lines.includes("PATH=own") || !lines.includes("EXIT=0")) problems.push(`--run without --dir: exit ${r.code}, ${JSON.stringify(lines.slice(0, 3))}`);
+    if (!fs.existsSync(path.join(agentDirOf(report), "exit"))) problems.push("the exit marker is not in agent/ beside the report");
+    const s = await spawnNode([LAUNCHER, "--status", "--report-file", report], { killAfterMs: 20000 }).done;
+    if (s.code !== 0 || !s.out.includes("PATH=own")) problems.push(`--status without --dir: ${s.out.slice(0, 60)}`);
+    // The race: --run first, --new one second later.
+    report = path.join(tempDir("agent-run-race."), "run", "report.json");
+    const early = spawnNode([LAUNCHER, "--run", "--report-file", report], { env: env(state), killAfterMs: 60000 });
+    await sleep(1000);
+    await newAgent(report);
+    const e = await early.done;
+    const elines = e.out.split("\n").filter(Boolean);
+    if (e.code !== 0 || !elines.includes("PATH=own") || !elines.includes("EXIT=0")) problems.push(`a --run one second ahead of its --new: exit ${e.code}, ${JSON.stringify(elines.slice(0, 6))}`);
     return problems.length === 0 || problems.join("; ");
   });
 

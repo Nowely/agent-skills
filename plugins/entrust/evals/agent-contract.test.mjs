@@ -13,7 +13,7 @@ import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { DRIVER, FIELDS, ROOT, PROMPT_FIELDS, SCRIPTS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
-import { ACCEPTED, TAKEN } from "../skills/codex/scripts/agent-run.mjs";
+import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../skills/codex/scripts/agent-run.mjs";
 
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "orchestrate", "SKILL.md");
@@ -32,8 +32,9 @@ const table = skill.split(/^## /m).find((s) => s.startsWith("Header fields")) ??
 const flat = skill.replace(/\s+/g, " ");
 // A leading VAR="..." assignment is part of the line a coordinator copies: the state directory rides in
 // on one, so a pattern that only matched `node "` would read the recipe as absent.
-const commands = [...skill.matchAll(/^ {4}((?:[A-Z_]+="[^"\n]*" )*node "[^\n]+)$/gm)].map((m) => m[1]);
-const inlineShell = [...skill.matchAll(/`(mktemp -d [^`]*)`/g)].map((m) => m[1]);
+const commands = [...skill.matchAll(/^ {4}((?:[A-Z_]+="[^"\n]*" )*node "[^\n]+)$/gm)].map((m) => m[1]).filter((c) => !c.includes("<<'PROMPT'"));
+// The prompt call is a heredoc block, indented like the commands and ended by its own terminator line.
+const promptCalls = [...skill.matchAll(/^ {4}(node "[^\n]*--new[^\n]*<<'PROMPT'\n(?:.*\n)*? {4}PROMPT)$/gm)].map((m) => m[1].replace(/^ {4}/gm, ""));
 
 const { cases: CASES, test } = registry();
 
@@ -101,21 +102,25 @@ test("SKILL.md's table names every field the driver accepts, and the driver acce
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the ONE call is agent-run.mjs --run with --dir and --report-file in one foreground call, the launcher runs the driver with --prompt-file and --report-file, and every shell the page hands over parses",
-  "the line is copied verbatim into a Bash call: a stray quote is an agent that never runs, a launch that named the driver directly would carry the redirects and the exit marker again, an `&` of its own detaches the run from the task that is supposed to own it, a second command would be a second card a native subagent does not show, and a launcher that read the prompt could rewrite it",
+test("the ONE call is agent-run.mjs --run with --report-file in one foreground call, the message carries the four steps, the launcher runs the driver with --prompt-file and --report-file, and every shell the page hands over parses",
+  "the block is copied verbatim into the wrapper's message: a stray quote is an agent that never runs, a launch that named the driver directly would carry the redirects and the exit marker again, an `&` of its own detaches the run from the task that is supposed to own it, a second command would be a second card a native subagent does not show, the four steps in the message are what Haiku keeps (measured 2026-09-17: three of three against one of three from the agent file alone), and a launcher that read the prompt could rewrite it",
   () => {
-    const scripts = [...commands, ...inlineShell];
-    if (scripts.length < 2) return `expected the mktemp pre-step and the run, found ${scripts.length} shell snippets`;
+    const scripts = [...commands, ...promptCalls];
+    if (scripts.length < 2) return `expected the --new prompt call and the run, found ${scripts.length} shell snippets`;
     const problems = [];
     for (const src of scripts) {
       const r = spawnSync("bash", ["-n"], { input: src, encoding: "utf8" });
       if (r.status !== 0) problems.push(`bash -n rejected ${JSON.stringify(src.slice(0, 60))}: ${String(r.stderr).trim()}`);
     }
     const calls = commands.filter((c) => c.includes("agent-run.mjs"));
-    if (calls.length !== 1) problems.push(`expected exactly one indented agent-run.mjs line on the page, found ${calls.length}`);
+    if (calls.length !== 1) problems.push(`expected exactly one indented agent-run.mjs run line on the page, found ${calls.length}`);
     const call = calls[0] ?? "";
-    for (const part of ["--run", '--dir "<DIR>"', '--report-file "<REPORT>"'])
+    for (const part of ["--run", '--report-file "<REPORT>"'])
       if (!call.includes(part)) problems.push(`the run does not carry ${part}: ${JSON.stringify(call)}`);
+    if (call.includes("--dir")) problems.push("the run names --dir, which the launcher derives from the report path");
+    for (const step of ["Write no text before it", "If its result has no REPORT= line", "run the very same command again at once",
+                        "Call SubagentHandback with exactly the lines that result printed", "After the hand-back result", '"<DESCRIPTION>: report delivered"'])
+      if (!flat.includes(step)) problems.push(`the wrapper's message on the page lacks the step ${JSON.stringify(step)}`);
     if (call.includes("driver.mjs")) problems.push("the run names the driver directly again");
     if (/(^|[^&])&\s*$/.test(call)) problems.push("the run ends in an `&` of its own, which hides the run from the task");
     if (!/in the foreground, with timeout 600000/.test(flat))
@@ -135,11 +140,17 @@ test("the ONE call is agent-run.mjs --run with --dir and --report-file in one fo
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the scratch directory comes from one mktemp call, not from an unexpandable $TMPDIR path",
-  "Write and Read take literal absolute paths and expand nothing, so a coordinator needs a resolved private directory to avoid colliding or world-readable files — and --report-file refuses a relative path outright",
+test("the prompt goes in through --new on stdin, into a directory beside the report, and no path on the page is a $TMPDIR one",
+  "a coordinator cannot expand $TMPDIR and cannot Write under the data directory, so the launcher, a subprocess handed the report path, is what makes the agent's directory; a quoted heredoc is what keeps the prompt from passing through the shell's expansion; and --report-file refuses a relative path outright",
   () => {
     const problems = [];
-    if (!/mktemp -d "\$\{TMPDIR:-\/tmp\}\/codex-agent\.XXXXXXXX"/.test(skill)) problems.push("the mktemp -d pre-step is gone or reworded");
+    if (promptCalls.length !== 1) problems.push(`expected exactly one --new heredoc call on the page, found ${promptCalls.length}`);
+    if (!/--new --report-file "<REPORT>" <<'PROMPT'/.test(skill)) problems.push("the --new call is gone or its heredoc is not quoted");
+    if (/mktemp/.test(skill)) problems.push("the page still sends the coordinator to mktemp");
+    if (!flat.includes("the launcher waits ten seconds for a prompt a `--new` has not written yet") || PROMPT_WAIT_MS !== 10000)
+      problems.push(`the page's ten-second wait and PROMPT_WAIT_MS=${PROMPT_WAIT_MS} disagree`);
+    if (!flat.includes("`run_in_background: false` for the one agent you wait for and `true` for agents that run side by side"))
+      problems.push("the page no longer says which Agent calls are foreground and which background");
     if (/\$TMPDIR\/(prompt|agent|task|report|stderr)/.test(skill)) problems.push("a scratch path is written as $TMPDIR/..., which the Write and Read tools cannot expand");
     if (!helpFlat.includes("an ABSOLUTE path that does not exist yet"))
       problems.push("--help no longer promises that --report-file is absolute and unclaimed");
@@ -220,7 +231,7 @@ test("the report file is what the coordinator reads, and a missing one is unknow
     const problems = [];
     for (const phrase of [
       "The wrapper's completion notification is the agent's completion",
-      "`<REPORT>` is an absolute path of this agent's own and never under `<DIR>`",
+      "`<REPORT>` is an absolute path of this agent's own",
       "`<REPORT>` is the report, the same JSON the run also wrote to `<DIR>/out.json`",
       "it is written whole or not at all, and a missing one means unknown, never success",
       "with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed",
@@ -304,9 +315,9 @@ test("the shipped wrapper is the agent the page names: Bash alone, a pinned mode
     if (!/^tools: Bash$/m.test(head)) problems.push("the agent's tools are not exactly Bash");
     if (!/^model: (sonnet|haiku|opus)$/m.test(head)) problems.push("the agent pins no model");
     for (const phrase of ["Do not answer the task yourself", "Do not create or edit files", "Do not change any flag, path, or environment variable",
-                          // The procedure the page no longer spells out per message: one foreground call with the
-                          // ten-minute timeout, the same command again while no REPORT= line, the hand-back with the
-                          // lines alone, and the one visible line after it.
+                          // The procedure the page's message carries and this file repeats: one foreground call with
+                          // the ten-minute timeout, the same command again while no REPORT= line, the hand-back with
+                          // the lines alone, and the one visible line after it.
                           "in the foreground, with timeout 600000", "Write no text before it",
                           "If its result has no REPORT= line", "run the very same command again",
                           "Call SubagentHandback with exactly the lines that result printed",

@@ -14,7 +14,7 @@ and one qualification.
 | `Explore` (read-only) | `--cwd <repo>` | reads and runs node tests with constraints; see `--help` |
 | agent with `isolation: "worktree"` | `--worktree <repo>` | writes in a tree of its own, not the live one; see [Worktree lifecycle](../SKILL.md#worktree-lifecycle) |
 | the same, committing | none | an agent's sandbox ends at its own tree; the work returns as a diff ([Git-directory grant](environment-and-internals.md#git-directory-grant)) |
-| one-call wrapped subagent | one background Agent call, a Sonnet wrapper around one driver run, `--prompt-file` in and `--report-file` out | the wrapper is the agent's lifetime, its card is the agent's on the agent map, and the file is the delivery; see `--help` |
+| one-call wrapped subagent | one Agent call, foreground for the one agent the coordinator waits for and background for those that run side by side, a Haiku wrapper around one launcher run, the prompt through `--new` and the report at `--report-file` | the wrapper is the agent's lifetime, its card is the agent's on the agent map, and the file is the delivery; see `--help` |
 | fan-out of many agents | concurrent driver invocations | memory-bound rather than throttled; see [Fan-out and reporting](#fan-out-and-reporting) |
 | stopping a running agent | `SIGTERM` to the announced pid, or stopping its task | the turn is interrupted and the report it earned is still written; see `--help` |
 | continuing an agent's context | `--resume <threadId\|last>` | rights are declared again per call; see `--help` |
@@ -113,9 +113,10 @@ Measured median memory was about 181 MB per isolated agent (four processes) and 
 SIGTERM rather than degrading gracefully. Count every in-flight delegation, drain waves, and give each
 concurrent writer its own cwd; read agents take no lock and may share one.
 
-From the main conversation an agent is the `codex-agent` wrapper, a background Agent call whose own
-foreground Bash call runs the driver through the launcher; the wrapper has one card on the agent map, no call cap,
-and notifies on completion (measured 2026-09-12).
+From the main conversation an agent is the `codex-agent` wrapper, an Agent call — foreground for the one
+agent the coordinator waits for, background for those that run side by side — whose own foreground Bash call
+runs the driver through the launcher; the wrapper has one card on the agent map, no call cap, and a background
+one notifies on completion (measured 2026-09-12 and 2026-09-17).
 
 | Launch shape | Notification behaviour | Use when |
 | --- | --- | --- |

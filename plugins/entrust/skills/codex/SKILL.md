@@ -11,7 +11,7 @@ description: >-
   mixes ("one of them codex", "half codex", "only codex") and refusals ("no codex", "just you"). Skip
   trivia and mechanical fact-gathering.
 metadata:
-  version: "0.18.1"
+  version: "0.19.0"
 license: MIT
 ---
 
@@ -51,15 +51,20 @@ task while the coordinator orchestrates and checks it.
 
 ## One call
 
-One background Agent call per agent: a native subagent, the **wrapper**, that launches the driver, waits for
+One Agent call per agent: a native subagent, the **wrapper**, that launches the driver, waits for
 it and returns when the run has ended. Only a subagent is a subagent to Claude Code: a Bash task, whatever
 its description says, is not on the agent map, is not stopped from it and is not continued by a message
 (measured 2026-09-12 against the VS Code extension 2.1.269, whose map lists `local_agent` tasks alone). The
 wrapper is what makes a Codex agent read like a Claude agent: one card under its description, Stop on the
 card, one completion notification, and a message to continue it.
 
-Write the prompt to a file with the Write tool, then spawn the wrapper with the Agent tool:
-`subagent_type: entrust:codex-agent`, `run_in_background: true`, and a `description` of
+Write the prompt with one Bash call, the launcher's `--new`, which makes the agent's directory beside the
+report and takes the prompt on stdin; then spawn the wrapper with the Agent tool:
+`subagent_type: entrust:codex-agent`, `run_in_background: false` for the one agent you wait for and `true`
+for agents that run side by side or while you work (measured 2026-09-17: a foreground call brings the
+hand-back message inside the same turn and no task notification after it, so you answer once — the owner's
+native foreground subagent showed one message after the hand-back frame — and an eleven-minute call ended
+normally, so the call has no ceiling of its own), and a `description` of
 `Codex <short name> <id>: <task in a few words>` — `Astra` for `gpt-6-astra`, `Sol` for `gpt-5.6-sol`,
 `Terra` for `gpt-5.6-terra`, `Luna` for `gpt-5.6-luna` — so the card the user sees names the agent, its
 vendor and its task, and not the command line. That type is the agent this plugin ships,
@@ -69,9 +74,11 @@ in its own file, so its context is half a `general-purpose` subagent's (measured
 file. A clone-and-symlink install links that file into `~/.claude/agents/` ([README](../../README.md#install)),
 where its type is the bare `codex-agent`.
 
-The wrapper's message is the two lines below with their three placeholders filled in and nothing added or
-removed; it never sees the agent's prompt, and its procedure — run the command in the foreground, run it
-again while its result has no `REPORT=` line, hand the lines back — is its own file's. The command is the
+The wrapper's message is the block below with its two placeholders filled in and nothing added or
+removed: the command and the four steps, which the wrapper's own file repeats (measured 2026-09-17: with the
+steps in the file alone, Haiku kept them in one run of three and paraphrased the lines, narrated, and read
+the output file in the other two; with them in the message, three of three). It never sees the agent's
+prompt. The command is the
 launcher `scripts/agent-run.mjs`, one foreground call and no `&` of your own: it opens `prompt.txt` only
 as the driver's argument, passes the driver `--prompt-file` and `--report-file` and its own environment
 untouched, writes the driver's exit status to a file of its own beside the two output files, last, and
@@ -86,20 +93,38 @@ there instead, with an exit of 2 and `PATH=none`. A `SIGTERM` to that
 pid cuts the turn, sweeps its codex and publishes the report as `turnStatus: interrupted`, exit 1,
 nothing left running.
 
-    Run this command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>":
+The prompt, one Bash call, the heredoc quoted so nothing in it expands:
 
-    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --dir "<DIR>" --report-file "<REPORT>"
+    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --new --report-file "<REPORT>" <<'PROMPT'
+    MODEL: gpt-5.6-terra
+    TASK: …
+    CHECK: …
+    RETURN: …
+    PROMPT
 
-`<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per launch, a relaunch included: the launcher refuses a
-directory that already ran for another report path, because a second run there would overwrite the first run's record
-(measured 2026-09-17 on the earlier shape, where it did); the same command run again for the same report path reads the run
-it started, which is what the ceiling's second call is. Write and Read expand nothing,
-so they need the absolute path it prints. `<REPORT>` is an absolute path of this agent's own and never under `<DIR>`:
-`<DIR>` sits in `$TMPDIR`, the one root a read agent may write, and a file the agent leaves at that name blocks publication
-and then sits where you would read it as the agent's own report. Put it under the driver's state directory,
-`<state>/reports/<run>/report.json` with `<run>` unique, or, under the orchestrate mode, `<run>/<agent>/report.json`
-in the run directory that page names, one directory per agent; the driver makes every directory that path
-needs, at 0700, so it may name a root your own Write and `mkdir` are refused.
+The Agent call, its message this block:
+
+    1. Run this command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>". Write no text before it.
+
+    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --report-file "<REPORT>"
+
+    2. If its result has no REPORT= line — the harness moved the command into the background at its ceiling, or it was cut — run the very same command again at once, as many times as needed, until a result has one. Each run is safe: the command waits for the run it already started. Do not open, tail or wait on the output file the harness's notice names, and write nothing in between.
+
+    3. Call SubagentHandback with exactly the lines that result printed, nothing added, nothing removed.
+
+    4. After the hand-back result, and whenever the harness asks you for a visible response, write exactly one line, "<DESCRIPTION>: report delivered", and nothing else.
+
+Both calls may go in one turn: the launcher waits ten seconds for a prompt a `--new` has not written yet.
+`<DESCRIPTION>` is the Agent call's own description. `<DIR>`, where this page names it, is the agent's directory,
+`agent/` beside `<REPORT>`, which `--new` makes at 0700 with the prompt at 0600: one per report path, so a
+relaunch gets a fresh report path and the earlier run's four files stay where they were (the launcher refuses a
+directory that ran for another report; measured 2026-09-17 on the earlier shape, a reused one lost its record),
+while the same command run again for the same report reads the run it started, which is what the ceiling's
+second call is. None of the launcher's files is left in `$TMPDIR`; a read agent's own writable root stays there. `<REPORT>` is an absolute path of this agent's own: put it under
+the driver's state directory, `<state>/reports/<run>/report.json` with `<run>` unique, or, under the orchestrate
+mode, `<run>/<agent>/report.json` in the run directory that page names, one directory per agent; the launcher and
+the driver make every directory those paths need, at 0700, so they may name a root your own Write and `mkdir`
+are refused.
 The wrapper's completion notification is the agent's completion: read the wrapper's own lines first —
 what the driver exited with, whose run the file at `<REPORT>` belongs to, whether it is there, the answer
 where it is short and its first line where it is not, the refusal where no turn ran, and the receipt — and
@@ -218,9 +243,10 @@ write its own would be grading itself. Declare gates on the command line instead
 
 - `<REPORT>` is the report, the same JSON the run also wrote to `<DIR>/out.json` once a turn ran. Read
   the file: it is written whole or not at all, and a missing one means unknown, never success.
-- The hand-back message and the task notification that follows it are one completion: read the first, and
-  answer the second with nothing (measured 2026-09-17: a coordinator told the user that the notification
-  duplicated the answer).
+- Under a background call, the hand-back message and the task notification that follows it are one
+  completion: read the first, and give the second the shortest reply the harness accepts (measured
+  2026-09-17: a coordinator told the user that the notification duplicated the answer). A foreground call
+  has no notification.
 - On `EXIT=0` what reaches the user is the agent's name and its answer; the other lines are yours and stay with
   you (measured 2026-09-17: two coordinators retold `RECEIPT=` and the report's model field, slug included, as
   prose, so the status line now carries the short name).
