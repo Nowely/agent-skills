@@ -6,7 +6,7 @@ description: >-
   the list of what broke. It never proposes wording; `rewrite` does that.
 disable-model-invocation: true
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
 license: MIT
 ---
 

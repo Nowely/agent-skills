@@ -6,7 +6,7 @@ description: >-
   the writing is `rewrite`'s. Use when a document's shape is wrong, or when starting one.
 disable-model-invocation: true
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
 license: MIT
 ---
 
