@@ -101,28 +101,27 @@ test("SKILL.md's table names every field the driver accepts, and the driver acce
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the ONE call launches agent-run.mjs with --dir and --report-file in a background task, the launcher runs the driver with --prompt-file and --report-file, and every shell the page hands over parses",
-  "these lines are copied verbatim into Bash calls: a stray quote is an agent that never runs, a launch that named the driver directly would carry the redirects and the exit marker again, an `&` of its own detaches the run from the task that is supposed to own it, and a launcher that read the prompt could rewrite it",
+test("the ONE call is agent-run.mjs --run with --dir and --report-file in one foreground call, the launcher runs the driver with --prompt-file and --report-file, and every shell the page hands over parses",
+  "the line is copied verbatim into a Bash call: a stray quote is an agent that never runs, a launch that named the driver directly would carry the redirects and the exit marker again, an `&` of its own detaches the run from the task that is supposed to own it, a second command would be a second card a native subagent does not show, and a launcher that read the prompt could rewrite it",
   () => {
     const scripts = [...commands, ...inlineShell];
-    if (scripts.length < 3) return `expected the mktemp pre-step, the launch and the status read, found ${scripts.length} shell snippets`;
+    if (scripts.length < 2) return `expected the mktemp pre-step and the run, found ${scripts.length} shell snippets`;
     const problems = [];
     for (const src of scripts) {
       const r = spawnSync("bash", ["-n"], { input: src, encoding: "utf8" });
       if (r.status !== 0) problems.push(`bash -n rejected ${JSON.stringify(src.slice(0, 60))}: ${String(r.stderr).trim()}`);
     }
-    const call = commands.find((c) => c.includes("agent-run.mjs") && !c.includes("--status")) ?? "";
-    if (!call) problems.push("no indented launch line naming agent-run.mjs is on the page at all");
-    for (const part of ['--dir "<DIR>"', '--report-file "<REPORT>"'])
-      if (!call.includes(part)) problems.push(`the launch does not carry ${part}: ${JSON.stringify(call)}`);
-    if (call.includes("driver.mjs")) problems.push("the launch names the driver directly again");
-    if (/(^|[^&])&\s*$/.test(call)) problems.push("the launch ends in an `&` of its own, which hides the run from the task");
-    const status = commands.find((c) => c.includes("agent-run.mjs") && c.includes("--status")) ?? "";
-    if (!status) problems.push("no indented status line naming agent-run.mjs --status is on the page");
-    for (const part of ['--dir "<DIR>"', '--report-file "<REPORT>"'])
-      if (!status.includes(part)) problems.push(`the status read does not carry ${part}: ${JSON.stringify(status)}`);
-    if (!/`run_in_background: true` and no `&` of your own/.test(flat))
-      problems.push("the page does not say the call is a background task with no `&` of its own");
+    const calls = commands.filter((c) => c.includes("agent-run.mjs"));
+    if (calls.length !== 1) problems.push(`expected exactly one indented agent-run.mjs line on the page, found ${calls.length}`);
+    const call = calls[0] ?? "";
+    for (const part of ["--run", '--dir "<DIR>"', '--report-file "<REPORT>"'])
+      if (!call.includes(part)) problems.push(`the run does not carry ${part}: ${JSON.stringify(call)}`);
+    if (call.includes("driver.mjs")) problems.push("the run names the driver directly again");
+    if (/(^|[^&])&\s*$/.test(call)) problems.push("the run ends in an `&` of its own, which hides the run from the task");
+    if (!/in the foreground, with timeout 600000/.test(flat))
+      problems.push("the page does not say the call runs in the foreground with the ten-minute timeout");
+    if (!/one foreground call and no `&` of your own/.test(flat))
+      problems.push("the page does not say the launcher is one foreground call with no `&` of its own");
     // The launcher's own spawn: exactly the two driver flags, prompt.txt as an argument only, the
     // environment untouched. agent-run.test.mjs runs it; this reads the promise off the source.
     const launcher = fs.readFileSync(path.join(SCRIPTS, "agent-run.mjs"), "utf8");

@@ -68,41 +68,26 @@ in its own file, so its context is half a `general-purpose` subagent's (measured
 file. A clone-and-symlink install links that file into `~/.claude/agents/` ([README](../../README.md#install)),
 where its type is the bare `codex-agent`.
 
-The wrapper's message is the block below with its three placeholders filled in and nothing added or
-removed; it never sees the agent's prompt. Inside it the driver runs as a background task,
-`run_in_background: true` and no `&` of your own, through the launcher `scripts/agent-run.mjs`, which
-opens `prompt.txt` only as the driver's argument, passes the driver `--prompt-file` and `--report-file`
-and its own environment untouched, and puts the driver's exit status in a file of its own beside the two
-output files, last; the wait after it is a foreground command the wrapper repeats until that status is
-there, so the card stays working for as long as the agent does (measured: an eleven-minute agent took two
-waits). That wait only reads and sleeps: this harness moves a wait that reaches the tool's ten-minute
-ceiling into the background instead of ending it (measured 2026-09-12), so that one and the next run
-together, and neither modifies a file. The driver prints its pid on the first line of `<DIR>/err.txt`
+The wrapper's message is the two lines below with their three placeholders filled in and nothing added or
+removed; it never sees the agent's prompt, and its procedure — run the command in the foreground, run it
+again while its result has no `REPORT=` line, hand the lines back — is its own file's. The command is the
+launcher `scripts/agent-run.mjs`, one foreground call and no `&` of your own: it opens `prompt.txt` only
+as the driver's argument, passes the driver `--prompt-file` and `--report-file` and its own environment
+untouched, writes the driver's exit status to a file of its own beside the two output files, last, and
+prints the nine status lines, which are what the wrapper hands back, so a Codex agent's card shows one Bash
+and its return, as a native subagent's does. The launcher is idempotent, which is what the tool's ten-minute
+ceiling needs: this harness moves a foreground command that reaches it into the background instead of ending
+it (measured 2026-09-12 on a wait loop), the wrapper runs the same command again, and the second call finds
+the driver its directory already started and waits for it. The driver prints its pid on the first line of `<DIR>/err.txt`
 once it has accepted the report path, and a refusal before that point prints none; a launch the launcher
 itself refused (no `prompt.txt`, a relative report path, an `exit` marker already there) puts its reason
 there instead, with an exit of 2 and `PATH=none`. A `SIGTERM` to that
 pid cuts the turn, sweeps its codex and publishes the report as `turnStatus: interrupted`, exit 1,
 nothing left running.
 
-    1. Run this exact command with the Bash tool, with run_in_background: true, and description "<DESCRIPTION>":
+    Run this command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>":
 
-    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --dir "<DIR>" --report-file "<REPORT>"
-
-    2. Then run this exact command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>, waiting":
-
-    while [ ! -s "<DIR>/exit" ]; do sleep 5; done; echo WAIT_DONE=exit
-
-    If that command ends without printing a WAIT_DONE line, run the very same command again, as many
-    times as needed, until a WAIT_DONE line is printed. Never end your turn before a WAIT_DONE line is
-    printed.
-
-    3. Then run this one command in the foreground:
-
-    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --status --dir "<DIR>" --report-file "<REPORT>"
-
-    4. Your final message is exactly the WAIT_DONE line and the nine lines step 3 printed. Nothing else.
-       If the harness then asks you for a visible response, answer with exactly one line,
-       "<DESCRIPTION>: report delivered", and nothing else.
+    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --dir "<DIR>" --report-file "<REPORT>"
 
 `<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per launch, a relaunch included: the launcher refuses a
 directory whose `exit` marker already exists, because a second run there would overwrite the first run's record (measured
@@ -321,7 +306,7 @@ what an agent may write, and where, in ordinary words, because that is what the 
 ## References
 
 - `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help` is the canonical inventory of the flags a coordinator sets; `--help-all` adds the rarely needed ones, the `ENTRUST_*` variables and the internals.
-- `node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --help` is what the wrapper's two commands do: the launch, its refusals and the nine status lines.
+- `node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --help` is what the wrapper's one command does: the run, its refusals and the nine status lines.
 - Flags, fields, delivery, bounds, environment, receipts, and worktree internals:
   [environment-and-internals.md](references/environment-and-internals.md).
 - Evidence gates and verifier semantics: [result-gates.md](references/result-gates.md).

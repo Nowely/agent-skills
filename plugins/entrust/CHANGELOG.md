@@ -3,6 +3,19 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- **The wrapper runs one command.** `scripts/agent-run.mjs --run` launches the driver, waits for it and prints
+  the nine status lines in one foreground call, and the wrapper hands those lines back; its procedure — run,
+  run again while the result has no `REPORT=` line, hand back, one closing line — lives in `agents/codex-agent.md`
+  and the message carries only the command and the description. The call is idempotent: a second call on a
+  directory whose driver is running waits for it, on one that ran prints, so the tool's ten-minute ceiling costs a
+  long agent one more identical call and nothing else. Why: a Codex agent's card showed three Bash steps and their
+  thinking rows where a native subagent that runs one command shows one Bash and its return; parity with native
+  subagents is the plugin's fitness test, and the three steps were the ceiling's price, not the task's.
+
 ## 0.18.0 — 2026-09-17
 
 ### Changed

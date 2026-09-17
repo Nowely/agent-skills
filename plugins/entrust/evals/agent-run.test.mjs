@@ -45,7 +45,7 @@ test("--help names both modes and exits 0",
   async () => {
     const { code, out } = await spawnNode([LAUNCHER, "--help"], { killAfterMs: 10000 }).done;
     if (code !== 0) return `--help exited ${code}`;
-    for (const s of ["--dir DIR --report-file REPORT", "--status", ...STATUS_LINES]) if (!out.includes(s)) return `--help does not mention ${s}`;
+    for (const s of ["--run --dir DIR --report-file REPORT", "--status", ...STATUS_LINES]) if (!out.includes(s)) return `--help does not mention ${s}`;
     return true;
   });
 
@@ -225,6 +225,64 @@ test("the launcher never opens prompt.txt except as the driver's argument, and h
     if (/(readFileSync|openSync|createReadStream|readFile)\([^)]*prompt/i.test(LAUNCHER_SRC)) problems.push("the launcher reads prompt.txt");
     if (!/\[DRIVER, "--prompt-file", promptPath, "--report-file", report\]/.test(LAUNCHER_SRC)) problems.push("the driver is not spawned with exactly --prompt-file and --report-file");
     if (!/env: process\.env/.test(LAUNCHER_SRC)) problems.push("the driver does not get the launcher's environment untouched");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--run on a fresh directory launches, waits and prints the nine lines, exit 0",
+  "the one foreground call is the whole wrapper: a native subagent that runs one command shows one Bash card and its return, and this is that card",
+  async () => {
+    const { dir, state, report } = fresh();
+    const { code, out, err } = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 60000 }).done;
+    const problems = [];
+    if (code !== 0) problems.push(`--run exited ${code}: ${err.slice(0, 200)}`);
+    const lines = out.split("\n").filter(Boolean);
+    if (lines.length !== STATUS_LINES.length) problems.push(`${lines.length} lines, not ${STATUS_LINES.length}: ${JSON.stringify(lines)}`);
+    STATUS_LINES.forEach((name, i) => { if (!(lines[i] ?? "").startsWith(`${name}=`)) problems.push(`line ${i + 1} is ${JSON.stringify(lines[i])}`); });
+    for (const want of ["DRIVER_EXIT=0", "PATH=own", "EXIT=0", "FILE=exists"]) if (!lines.includes(want)) problems.push(`missing ${want}`);
+    if ((read(path.join(dir, "exit")) ?? "").trim() !== "0") problems.push("no exit marker of 0");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--run on a directory that already ran prints without launching, and on one whose driver is still running waits for it",
+  "the harness moves a foreground call into the background at its ten-minute ceiling and the wrapper runs the same command again; a second launch would be a second paid turn and a PATH=taken, so the call has to be idempotent",
+  async () => {
+    const problems = [];
+    // Already ran.
+    let { dir, state, report } = fresh();
+    await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 60000 }).done;
+    const before = { err: read(path.join(dir, "err.txt")), out: read(path.join(dir, "out.json")) };
+    const again = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 20000 }).done;
+    if (again.code !== 0 || !again.out.includes("PATH=own")) problems.push(`a second --run on a finished directory: exit ${again.code}, ${again.out.slice(0, 80)}`);
+    if (read(path.join(dir, "err.txt")) !== before.err || read(path.join(dir, "out.json")) !== before.out) problems.push("a second --run changed the finished run's files");
+    if (again.ms > 5000) problems.push(`a second --run on a finished directory took ${again.ms} ms`);
+    // Still running: a slow first run, and a second --run started while it is in flight.
+    ({ dir, state, report } = fresh());
+    const first = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state, "slow-turn"), killAfterMs: 60000 });
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline && !/^entrust: pid=/.test((read(path.join(dir, "err.txt")) ?? "").split("\n")[0])) await sleep(100);
+    const second = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state, "slow-turn"), killAfterMs: 60000 });
+    const [a, b] = await Promise.all([first.done, second.done]);
+    if (a.code !== 0 || b.code !== 0) problems.push(`concurrent --run exited ${a.code} and ${b.code}`);
+    if (a.out !== b.out) problems.push(`the two --run calls printed different lines: ${JSON.stringify([a.out, b.out])}`);
+    const pidLines = (read(path.join(dir, "err.txt")) ?? "").split("\n").filter((l) => l.startsWith("entrust: pid=")).length;
+    if (pidLines !== 1) problems.push(`${pidLines} pid lines in err.txt: the second --run launched a second driver`);
+    if (!b.out.includes("PATH=own") || !b.out.includes("EXIT=0")) problems.push(`the waiting --run did not read the finished run: ${b.out.slice(0, 120)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--run on a refused launch still prints the nine lines, with the refusal on ERROR=, and exits 0",
+  "the wrapper hands back whatever the one call printed; a refusal that printed nothing would be a hand-back with nothing in it",
+  async () => {
+    const { dir, state, report } = fresh();
+    fs.rmSync(path.join(dir, "prompt.txt"));
+    const { code, out } = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 20000 }).done;
+    const lines = out.split("\n").filter(Boolean);
+    const problems = [];
+    if (code !== 0) problems.push(`exited ${code}`);
+    if (lines.length !== STATUS_LINES.length) problems.push(`${lines.length} lines`);
+    if (!lines.includes("DRIVER_EXIT=2") || !lines.includes("PATH=none") || !lines.includes("FILE=missing")) problems.push(`lines: ${JSON.stringify(lines)}`);
+    const error = lines.find((l) => l.startsWith("ERROR=")) ?? "";
+    if (!error.includes("prompt.txt is not a regular file")) problems.push(`the refusal is not on the ERROR line: ${error}`);
     return problems.length === 0 || problems.join("; ");
   });
 
