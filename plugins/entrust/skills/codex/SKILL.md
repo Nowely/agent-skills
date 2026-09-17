@@ -6,7 +6,8 @@ description: >-
   when a panel, refuters, or competing designs need an agent that does not share Claude's bias;
   when fanning out reviewers or adversarial verifiers; after two hypotheses fail;
   when a second independent implementation is wanted; or when the user names Codex, GPT, or "the other
-  model" (через codex, через gpt, вторая имплементация, панель ревьюеров). It also governs requested
+  model" (через codex, через gpt, вторая имплементация, панель ревьюеров), or names a Codex model by its
+  short name (Astra, Sol, Terra, Luna; астра, сол, терра, луна). It also governs requested
   mixes ("one of them codex", "half codex", "only codex") and refusals ("no codex", "just you"). Skip
   trivia and mechanical fact-gathering.
 metadata:

@@ -13,6 +13,8 @@ forensics remain in the repository references and release notes.
   model/list and are refused there, exit 2 before a turn. Why: a coordinator picked `minimal` for a one-line task
   straight from the table and paid a wrapper launch for the refusal (measured 2026-09-17), and a driver that
   clamped instead would re-create the silent downgrade incidents.md records.
+- The codex skill triggers on a Codex model's short name (Astra, Sol, Terra, Luna, and the Russian forms). Why:
+  «отправь хай терре» did not load the skill; the coordinator read the name as an addressee and asked.
 
 ## 0.16.0 — 2026-09-17
 
