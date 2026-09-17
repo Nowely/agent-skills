@@ -3,6 +3,15 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- The critic briefs follow codex-delegate's rename: a Codex critic is an agent of the `codex-delegate:codex-agent`
+  wrapper, its prompt file starts with `RIGHTS: read <repository>` where it started with `SEAT:`, and the
+  `codex` skill page is where `seat` was. Without this, every critic fan-out would exit 2 on the first header
+  line against codex-delegate 0.16.0. The audit ledger example and the rethink worked example name the new paths.
+
 ## 0.1.0 — 2026-09-12
 
 First release. Three user-invoked skills; none starts on its own, and nothing is written into your

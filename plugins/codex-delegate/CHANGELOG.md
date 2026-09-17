@@ -5,6 +5,25 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Changed
+
+- **Breaking: the word "seat" is gone.** The concept is an agent, the main skill is `codex`
+  (`/codex-delegate:codex`, directory `skills/codex/`), the wrapper is `codex-delegate:codex-agent`, the
+  prompt-file rights line is `RIGHTS: read | worktree <repo> | write <dir>`, and the driver flags are
+  `--prompt-file` and `--allow-prompt-verify`. No alias: a prompt file that still starts with `SEAT:` exits 2
+  naming the field, and the old flags are unknown arguments. The report field `seatFileFields` is
+  `promptFileFields`; the cleanup listing's row kind `seat` is `agent`. Why: a coordinator writing to a
+  Russian-speaking owner translated the page's noun word for word into the one that means a chair
+  (measured 2026-09-09 on 0.11.1, and again in a session on 0.15.0 reported 2026-09-16), and the
+  "What the user reads" section that shipped after the first time had not named the word it was banning.
+  The name form in prose is unchanged: "Codex Sol R1", never "Codex agent Sol R1".
+- The codex page says what shape the sentence about an agent has: the agent by name is the subject and what
+  it does or did is the verb, whatever runs beside it and how long follows in the user's own words for the
+  tools, and the model slug, `wrapper` and `driver` are machinery like a field name. Measured on
+  2026-09-16 with three Sonnet readers given the same Russian situation before and after: the name form
+  "Codex Sol R1" appeared verbatim in none of three before and all three after, the model slug leaked in one
+  before and none after, "seat" in none either way; one run each, not a rate.
+
 ### Fixed
 
 - A `--resume` turn no longer overwrites the earlier turn's answer file. The answer log named its file for
