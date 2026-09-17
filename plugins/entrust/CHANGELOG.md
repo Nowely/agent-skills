@@ -27,6 +27,9 @@ forensics remain in the repository references and release notes.
   «отправь хай терре» did not load the skill; the coordinator read the name as an addressee and asked.
 - `<DIR>` is one per launch, a relaunch included. Why: step 1's redirects overwrite `err.txt` and `out.json`, and a
   relaunch in the same directory lost the refused run's stderr (measured 2026-09-17).
+- The orchestrate page has every Codex agent below the top row carry an `EFFORT:` line chosen for its work instead
+  of inheriting the configured one. Why: two Luna read agents at an inherited `xhigh` took 480 and 557 seconds and
+  1.2M and 2.3M tokens for a ledger and a grep task (measured 2026-09-17).
 
 ## 0.16.0 — 2026-09-17
 
