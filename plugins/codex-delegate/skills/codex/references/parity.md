@@ -13,8 +13,8 @@ and one qualification.
 | --- | --- | --- |
 | `Explore` (read-only) | `--cwd <repo>` | reads and runs node tests with constraints; see `--help` |
 | agent with `isolation: "worktree"` | `--worktree <repo>` | writes in a tree of its own, not the live one; see [Worktree lifecycle](../SKILL.md#worktree-lifecycle) |
-| the same, committing | none | a seat's sandbox ends at its own tree; the work returns as a diff ([Git-directory grant](environment-and-internals.md#git-directory-grant)) |
-| one-call wrapped subagent | one background Agent call, a Sonnet wrapper around one driver run, `--seat-file` in and `--report-file` out | the wrapper is the seat's lifetime, its card is the seat's on the agent map, and the file is the delivery; see `--help` |
+| the same, committing | none | an agent's sandbox ends at its own tree; the work returns as a diff ([Git-directory grant](environment-and-internals.md#git-directory-grant)) |
+| one-call wrapped subagent | one background Agent call, a Sonnet wrapper around one driver run, `--prompt-file` in and `--report-file` out | the wrapper is the agent's lifetime, its card is the agent's on the agent map, and the file is the delivery; see `--help` |
 | fan-out of many agents | concurrent driver invocations | memory-bound rather than throttled; see [Fan-out and reporting](#fan-out-and-reporting) |
 | stopping a running agent | `SIGTERM` to the announced pid, or stopping its task | the turn is interrupted and the report it earned is still written; see `--help` |
 | continuing an agent's context | `--resume <threadId\|last>` | rights are declared again per call; see `--help` |
@@ -24,7 +24,7 @@ and one qualification.
 | an image the user pasted | `scripts/attach-pasted.mjs` | decodes transcript images before delegation; see `--help` |
 | a schema-validated return | `--output-schema <file>` | spends one corrective turn before exit 13; see `--help` |
 | a short return plus transcript | `--brief` | full generated text remains at `answerPath`; see `--help` |
-| a review pass | [adversarial-review.md](adversarial-review.md) plus [`review-output.schema.json`](../schemas/review-output.schema.json) | one prompt seat under a strict schema, grounded ship/no-ship |
+| a review pass | [adversarial-review.md](adversarial-review.md) plus [`review-output.schema.json`](../schemas/review-output.schema.json) | one prompt agent under a strict schema, grounded ship/no-ship |
 | a permission prompt | none — the request is declined and recorded; exit 6 only when that rung wins | inspect `escalations` and the answer before judging completeness; a denied command need not have requested approval |
 
 Settle rights through [SKILL.md's rights rules](../SKILL.md#rights).
@@ -33,7 +33,7 @@ Settle rights through [SKILL.md's rights rules](../SKILL.md#rights).
 
 ### Read and isolated write
 
-A read seat matches native reading, grep, git, node, lint, and node-environment vitest when vitest uses
+A read agent matches native reading, grep, git, node, lint, and node-environment vitest when vitest uses
 `--configLoader runner`. Browser-mode vitest cannot run because Chromium needs the override
 [Browser-mode sandbox](#browser-mode-sandbox) puts at the tree root, and a composite-project
 `tsc --noEmit` fails when it writes `tsbuildinfo`: both are writes outside `$TMPDIR`.
@@ -42,14 +42,14 @@ A read seat matches native reading, grep, git, node, lint, and node-environment 
 recorded base: commit relevant WIP first, since a stash does not reach either, or use
 `--level write --cwd <repo>` after settling that blast radius with the user. Dependencies and ignored
 files are absent; a verifier that needs them fails (exit 9) or measures nothing (exit 12) unless they are
-installed in the seat's tree.
+installed in the agent's tree.
 Browser tests need the serial Chromium override in
 [Browser-mode sandbox](#browser-mode-sandbox) and no file parallelism. Egress is not what makes an install
 work: the caches live under `$HOME`, which no level grants, so `npm install --cache "$PWD/.npm-cache"`
 keeps its cache in the tree, while `pnpm install --frozen-lockfile` works against a warm store.
 
-A seat cannot commit under the grant a `SEAT:` line makes, so `worktreeCommitsRef` carries commits only
-where the caller's own `--verify` made them; a completed seat retains them even when the tree is
+An agent cannot commit under the grant a `RIGHTS:` line makes, so `worktreeCommitsRef` carries commits only
+where the caller's own `--verify` made them; a completed agent retains them even when the tree is
 otherwise clean. `WRITABLE: <repo>/.git` re-grants the common dir a commit needs and is a widening to
 settle first ([Git-directory grant](environment-and-internals.md#git-directory-grant)).
 
@@ -59,14 +59,14 @@ Isolation is described in [environment-and-internals.md](environment-and-interna
 what matters for parity is that the private home carries none of the caller's MCP servers, and that
 `--host-home` restores the whole host configuration, its servers and its nondeterminism together.
 
-A seat reaches the network at both levels, which is what a native subagent has, and no host list narrows
+An agent reaches the network at both levels, which is what a native subagent has, and no host list narrows
 it; `NETWORK: no` is the whole of the opposite, and the applied sandbox is asserted either way. Nothing
-about files moves with it — a read seat still writes only `$TMPDIR` — and whatever a seat can read it
+about files moves with it — a read agent still writes only `$TMPDIR` — and whatever an agent can read it
 can send.
 
 Supplying a model or effort triggers `model/list` validation before the thread starts. The driver also
 reads `account/rateLimits/read` once: an exhausted primary window is refused, while an unavailable
-snapshot is reported on stderr and does not block the seat.
+snapshot is reported on stderr and does not block the agent.
 
 Web search is disabled unless a mode is requested. A managed device may allow only some modes; the
 driver refuses a forbidden mode with exit 2 instead of accepting a silent substitution.
@@ -83,7 +83,7 @@ driver refuses a forbidden mode with exit 2 instead of accepting a silent substi
 ### Attachments and pasted images
 
 `--attach` emits protocol `localImage` or `localAudio` items before the prompt and validates every file
-before starting a turn. It is unavailable in seat files because an injected field could upload an
+before starting a turn. It is unavailable in prompt files because an injected field could upload an
 unapproved file. Formats and limits are canonical in `--help` and `--help-all`; ordering details are in
 [environment-and-internals.md](environment-and-internals.md).
 
@@ -108,17 +108,17 @@ path is explained in [environment-and-internals.md](environment-and-internals.md
 ## Fan-out and reporting
 
 Each delegation has its own app-server and, under `--host-home`, its own MCP-server load.
-Measured median memory was about 181 MB per isolated seat (four processes) and 471 MB with `--host-home`
+Measured median memory was about 181 MB per isolated agent (four processes) and 471 MB with `--host-home`
 (seven); turn overhead was 7–12 seconds and dominated by provider round-trips. Exceeding the machine budget ends runs with
 SIGTERM rather than degrading gracefully. Count every in-flight delegation, drain waves, and give each
-concurrent writer its own cwd; read seats take no lock and may share one.
+concurrent writer its own cwd; read agents take no lock and may share one.
 
-From the main conversation a seat is the blocking driver in a `run_in_background: true` Bash call, which
+From the main conversation an agent is the blocking driver in a `run_in_background: true` Bash call, which
 has no call cap and notifies on completion (measured).
 
 | Launch shape | Notification behaviour | Use when |
 | --- | --- | --- |
-| one wrapper Agent call per seat | each reports as its wrapper ends | normal fan-out |
+| one wrapper Agent call per agent | each reports as its wrapper ends | normal fan-out |
 | Workflow agents | each reports by phase | verification and synthesis are staged |
 | one shell that ends in `wait` | reports after the slowest child | the next step requires all results |
 
@@ -194,8 +194,8 @@ each image — turn, timestamp, the turn's text, index, stored dimensions, size,
 out loud that it goes to the model provider.
 
 The destination is deliberately not `$TMPDIR`: that is the read level's one writable root, so the very
-seat being shown the images could edit them. Two facts before asking for pixel coordinates: Claude Code
+agent being shown the images could edit them. Two facts before asking for pixel coordinates: Claude Code
 **downscales** a paste to at most ~2000 px before storing it (its own meta records say "Multiply
-coordinates by 1.73 to map to the original"), so the receipt's `WxH` is the space the seat answers in;
+coordinates by 1.73 to map to the original"), so the receipt's `WxH` is the space the agent answers in;
 and the images carry no names, so a prompt that says "the first screenshot" must number them itself —
 the driver adds no sentence of its own to a prompt you wrote.

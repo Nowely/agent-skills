@@ -3,7 +3,7 @@
 //
 // The script inventories what this plugin leaves behind, says which of it can go, and removes only the
 // rows the user picks BY NUMBER against the snapshot `--list --json` wrote. Five kinds can be removed —
-// an orchestrate run, a standalone report run, a seat's scratch, the eval suites' scratch, a saved test
+// an orchestrate run, a standalone report run, an agent's scratch, the eval suites' scratch, a saved test
 // conversation — and five are reported and never removed: saved answers, a managed worktree, a lock,
 // the shared Codex home, another data directory of this plugin. A row is `removable` or `kept`, and
 // there is no third value. These cases pin
@@ -16,7 +16,7 @@
 // CLAUDE_PLUGIN_DATA so no fallback can reach ~/.claude/plugins/data, and takes its process listing from
 // the CODEX_DELEGATE_CLEANUP_PS seam rather than the machine's process table. need() then asserts, on EVERY
 // listing, that each root the script resolved and each path it printed lies inside that world — so a
-// script that reached the real ~/.claude/projects, $TMPDIR/codex-seat.* or ~/.codex fails the case that
+// script that reached the real ~/.claude/projects, $TMPDIR/codex-agent.* or ~/.codex fails the case that
 // saw it rather than quietly deleting the owner's work.
 //
 // A case that needs a DEAD process kills its child and awaits the child's `exit` event: between kill(2)
@@ -31,7 +31,7 @@ import { EXIT, PINNED_CODEX, ROOT, SCRIPTS, registry, runCases, skip, spawnNode,
          tempDir } from "./lib/harness.mjs";
 // A NAMESPACE import, not named bindings: the liveness helpers are the driver's, and a named import of
 // one it stops exporting would fail at load and report nothing at all rather than failing case by case.
-import * as driver from "../skills/seat/scripts/driver.mjs";
+import * as driver from "../skills/codex/scripts/driver.mjs";
 
 const CLEANUP = path.join(SCRIPTS, "cleanup.mjs");
 const CLEANUP_PAGE = path.join(ROOT, "skills", "cleanup", "SKILL.md");
@@ -201,18 +201,18 @@ function misses() {
 // Fixtures.
 const report = (cwd) => ({ ok: true, exitCode: 0, threadId: "th-1", turnStatus: "completed",
                            answer: "done", cwd, driverVersion: "0.11.1", codexVersionPinned: PINNED_CODEX });
-function plantRun(w, slug, run, seats) {
+function plantRun(w, slug, run, agents) {
   const d = path.join(w.state, "orchestrate", slug, run);
   fs.mkdirSync(d, { recursive: true });
-  for (const [seat, body] of Object.entries(seats)) {
-    fs.mkdirSync(path.join(d, seat), { recursive: true });
-    // A seat directory with no report.json is the driver's admission marker: the run is unfinished.
-    if (body) fs.writeFileSync(path.join(d, seat, "report.json"),
+  for (const [agent, body] of Object.entries(agents)) {
+    fs.mkdirSync(path.join(d, agent), { recursive: true });
+    // An agent directory with no report.json is the driver's admission marker: the run is unfinished.
+    if (body) fs.writeFileSync(path.join(d, agent, "report.json"),
       typeof body === "string" ? body : JSON.stringify(body, null, 2) + "\n");
   }
   return d;
 }
-const reportPathIn = (runDir, seat) => path.join(runDir, seat, "report.json");
+const reportPathIn = (runDir, agent) => path.join(runDir, agent, "report.json");
 function plantStandaloneReport(w, run = "run-standalone", { published = true } = {}) {
   const d = path.join(w.state, "reports", run);
   fs.mkdirSync(d, { recursive: true });
@@ -220,7 +220,7 @@ function plantStandaloneReport(w, run = "run-standalone", { published = true } =
     fs.writeFileSync(path.join(d, "report.json"), JSON.stringify(report(w.project), null, 2) + "\n");
   return d;
 }
-function plantSeat(w, dirname, { pid, identity, reportPath, line } = {}) {
+function plantAgent(w, dirname, { pid, identity, reportPath, line } = {}) {
   const d = path.join(w.tmp, dirname);
   fs.mkdirSync(d, { recursive: true });
   fs.writeFileSync(path.join(d, "prompt.txt"), "prompt\n");
@@ -344,14 +344,14 @@ test("the script this suite measures exists where the recipe names it",
   async () => (fs.existsSync(CLEANUP) ? true : `${CLEANUP} does not exist`));
 
 test("1 · the cleanup recipe resolves through clone-style sibling skill links",
-  "Node normalises the recipe's parent step before opening its entry file, so the clone install works because cleanup and seat are linked beside one another, not because the cleanup link redirects that parent step into the checkout",
+  "Node normalises the recipe's parent step before opening its entry file, so the clone install works because cleanup and agent are linked beside one another, not because the cleanup link redirects that parent step into the checkout",
   async () => {
     const w = makeWorld("recipe-with-sibling");
     const skills = path.join(w.root, "linked-skills");
     fs.mkdirSync(skills, { recursive: true });
     const cleanupLink = path.join(skills, "cleanup");
     fs.symlinkSync(path.join(ROOT, "skills", "cleanup"), cleanupLink);
-    fs.symlinkSync(path.join(ROOT, "skills", "seat"), path.join(skills, "seat"));
+    fs.symlinkSync(path.join(ROOT, "skills", "codex"), path.join(skills, "codex"));
     const resolved = cleanupRecipePath(cleanupLink);
     const m = misses();
     m.ok(fs.existsSync(resolved), `the recipe did not find cleanup.mjs with both skill links: ${resolved}`);
@@ -360,7 +360,7 @@ test("1 · the cleanup recipe resolves through clone-style sibling skill links",
   });
 
 test("2 · the cleanup recipe documents its missing-sibling failure",
-  "a clone layout that links cleanup alone has no seat entry at the lexical sibling path, so this case pins the page's stated install coupling instead of implying that the cleanup symlink itself is enough",
+  "a clone layout that links cleanup alone has no agent entry at the lexical sibling path, so this case pins the page's stated install coupling instead of implying that the cleanup symlink itself is enough",
   async () => {
     const w = makeWorld("recipe-without-sibling");
     const skills = path.join(w.root, "linked-skills");
@@ -369,66 +369,66 @@ test("2 · the cleanup recipe documents its missing-sibling failure",
     fs.symlinkSync(path.join(ROOT, "skills", "cleanup"), cleanupLink);
     const resolved = cleanupRecipePath(cleanupLink);
     return fs.existsSync(resolved)
-      ? `the recipe unexpectedly found cleanup.mjs without the sibling seat link: ${resolved}` : true;
+      ? `the recipe unexpectedly found cleanup.mjs without the sibling codex link: ${resolved}` : true;
   });
 
-test("3 · a seat's line parses whole: running it is kept, gone it is suggested",
-  "the identity holds spaces on macOS and a run name may hold them too; a parser that splits the line on whitespace loses the report path and with it the project, and the scratch of a RUNNING seat then reads as something to suggest",
+test("3 · an agent's line parses whole: running it is kept, gone it is suggested",
+  "the identity holds spaces on macOS and a run name may hold them too; a parser that splits the line on whitespace loses the report path and with it the project, and the scratch of a RUNNING agent then reads as something to suggest",
   async () => {
-    const w = makeWorld("live-seat");
+    const w = makeWorld("live-agent");
     const c = liveChild();
     const identity = processIdentity(c.pid);
     if (identity === null) { await stopChild(c); return skip("this machine does not report a process identity"); }
     if (!/\s/.test(identity)) { await stopChild(c); return skip(`the identity here holds no space: ${identity}`); }
     const run = plantRun(w, w.slug, "a run with spaces", { "u1-astra": report(w.project) });
-    const seat = plantSeat(w, "codex-seat.AAAAAAAA",
+    const agent = plantAgent(w, "codex-agent.AAAAAAAA",
       { pid: c.pid, identity, reportPath: reportPathIn(run, "u1-astra") });
     const m = misses();
     let r = await list(w);
     let bad = need(w, r); if (bad) { await stopChild(c); return bad; }
-    let row = rowAt(r.j, seat);
-    m.ok(row, `no row names the seat directory: ${shown(r.j)}`);
+    let row = rowAt(r.j, agent);
+    m.ok(row, `no row names the agent directory: ${shown(r.j)}`);
     if (row) {
-      m.eq(row.kind, "seat", "kind");
-      m.eq(row.status, "kept", "the status of a seat whose process is running");
+      m.eq(row.kind, "agent", "kind");
+      m.eq(row.status, "kept", "the status of an agent whose process is running");
       m.eq(row.proposed, false, "proposed while its process runs");
-      m.has(row.name, "u1-astra", "the seat's name, which comes from the report path its line carries");
-      m.has(row.name, path.basename(w.project), "the seat's name does not name its project");
+      m.has(row.name, "u1-astra", "the agent's name, which comes from the report path its line carries");
+      m.has(row.name, path.basename(w.project), "the agent's name does not name its project");
     }
     await stopChild(c);
     r = await list(w);
     bad = need(w, r); if (bad) return bad;
-    row = rowAt(r.j, seat);
-    m.ok(row, `the seat row vanished once its process exited: ${shown(r.j)}`);
+    row = rowAt(r.j, agent);
+    m.ok(row, `the agent row vanished once its process exited: ${shown(r.j)}`);
     if (row) {
-      m.eq(row.status, "removable", "the status of a seat whose process has gone");
-      m.eq(row.proposed, true, "a finished seat of this project is suggested");
+      m.eq(row.status, "removable", "the status of an agent whose process has gone");
+      m.eq(row.proposed, true, "a finished agent of this project is suggested");
     }
     return m.done();
   });
 
-test("4 · a recycled pid is not that seat: a live pid whose recorded identity differs is gone",
-  "pids are recycled; liveness that asks only kill(pid, 0) keeps a dead seat's scratch for as long as some unrelated process holds the number",
+test("4 · a recycled pid is not that agent: a live pid whose recorded identity differs is gone",
+  "pids are recycled; liveness that asks only kill(pid, 0) keeps a dead agent's scratch for as long as some unrelated process holds the number",
   async () => {
     const w = makeWorld("recycled-pid");
     if (processIdentity(process.pid) === null) return skip("this machine does not report a process identity");
     const run = plantRun(w, w.slug, "run-1", { A: report(w.project) });
-    const seat = plantSeat(w, "codex-seat.BBBBBBBB",
+    const agent = plantAgent(w, "codex-agent.BBBBBBBB",
       { pid: process.pid, identity: DEAD_IDENTITY, reportPath: reportPathIn(run, "A") });
     const r = await list(w);
     const bad = need(w, r); if (bad) return bad;
     const m = misses();
-    const row = rowAt(r.j, seat);
-    m.ok(row, `no row names the seat directory: ${shown(r.j)}`);
+    const row = rowAt(r.j, agent);
+    m.ok(row, `no row names the agent directory: ${shown(r.j)}`);
     if (row) {
-      m.eq(row.status, "removable", "the status of a seat whose pid is live but whose identity is another process's");
+      m.eq(row.status, "removable", "the status of an agent whose pid is live but whose identity is another process's");
       m.eq(row.proposed, true, "proposed");
     }
     return m.done();
   });
 
-test("5 · a run with a seat that has not reported is kept; a finished one is offered by number, never suggested",
-  "the driver makes a seat's directory at admission, so a seat with no report is one that has not returned yet, and the seats finishing is not the orchestration finishing: a coordinator can resume into the same directory between batches",
+test("5 · a run with an agent that has not reported is kept; a finished one is offered by number, never suggested",
+  "the driver makes an agent's directory at admission, so an agent with no report is one that has not returned yet, and the agents finishing is not the orchestration finishing: a coordinator can resume into the same directory between batches",
   async () => {
     const w = makeWorld("run-lifecycle");
     const run = plantRun(w, w.slug, "review-2026-09-08", { A: null, B: report(w.project) });
@@ -441,8 +441,8 @@ test("5 · a run with a seat that has not reported is kept; a finished one is of
     m.ok(row, `no row names the run: ${shown(r.j)}`);
     if (row) {
       m.eq(row.kind, "run", "kind");
-      m.eq(row.status, "kept", "a run one of whose seats has not returned a report");
-      m.eq(row.selectable, false, "selectable while a seat has not returned");
+      m.eq(row.status, "kept", "a run one of whose agents has not returned a report");
+      m.eq(row.selectable, false, "selectable while an agent has not returned");
     }
     fs.writeFileSync(reportPathIn(run, "A"), JSON.stringify(report(w.project), null, 2) + "\n");
     const s = await snapshot(w);
@@ -450,7 +450,7 @@ test("5 · a run with a seat that has not reported is kept; a finished one is of
     row = rowAt(s.j, run);
     m.ok(row, `no row names the finished run: ${shown(s.j)}`);
     if (!row) return m.done();
-    m.eq(row.status, "removable", "a run whose every seat reported");
+    m.eq(row.status, "removable", "a run whose every agent reported");
     m.eq(row.selectable, true, "a finished run of this project is selectable");
     m.eq(row.proposed, false, "a run must never be suggested: only the user's own number deletes one");
     m.has(row.name, path.basename(w.project), "the run's name does not name its project");
@@ -471,7 +471,7 @@ test("6 · standalone reports are selectable evidence, never suggestions; answer
   async () => {
     const w = makeWorld("standalone-report-and-answers");
     const reportDir = plantStandaloneReport(w, "standalone-2026-09-12");
-    plantSeat(w, "codex-seat.RRRRRRRR", { pid: DEAD_PID, identity: DEAD_IDENTITY,
+    plantAgent(w, "codex-agent.RRRRRRRR", { pid: DEAD_PID, identity: DEAD_IDENTITY,
       reportPath: path.join(reportDir, "report.json") });
     const answer = path.join(w.state, "answers", "th-answer.json");
     fs.mkdirSync(path.dirname(answer), { recursive: true });
@@ -508,15 +508,15 @@ test("6 · standalone reports are selectable evidence, never suggestions; answer
     return m.done();
   });
 
-test("7 · an unpublished standalone report and the live seat publishing it are both guards",
-  "the driver makes the report directory before it publishes report.json, and its real seat scratch record then supplies a second guard while the process is alive; losing either fact can make live evidence selectable",
+test("7 · an unpublished standalone report and the live agent publishing it are both guards",
+  "the driver makes the report directory before it publishes report.json, and its real agent scratch record then supplies a second guard while the process is alive; losing either fact can make live evidence selectable",
   async () => {
     const w = makeWorld("live-standalone-report");
     const c = liveChild();
     const identity = processIdentity(c.pid) ?? "unknown";
     const reportDir = plantStandaloneReport(w, "run-live", { published: false });
     const reportPath = path.join(reportDir, "report.json");
-    plantSeat(w, "codex-seat.LIVELIVE", { pid: c.pid, identity, reportPath });
+    plantAgent(w, "codex-agent.LIVELIVE", { pid: c.pid, identity, reportPath });
     const m = misses();
     let s = await snapshot(w);
     let bad = need(w, s); if (bad) { await stopChild(c); return bad; }
@@ -531,43 +531,43 @@ test("7 · an unpublished standalone report and the live seat publishing it are 
     s = await snapshot(w);
     bad = need(w, s); if (bad) { await stopChild(c); return bad; }
     row = rowAt(s.j, reportDir);
-    m.ok(row, `the published report held by the live seat has no row: ${shown(s.j)}`);
+    m.ok(row, `the published report held by the live agent has no row: ${shown(s.j)}`);
     if (row) {
-      m.eq(row.status, "kept", "a published report held by its live seat");
-      m.eq(row.selectable, false, "a published report held by its live seat is selectable");
-      m.has(row.reason, "still writing", "the live seat's reason");
+      m.eq(row.status, "kept", "a published report held by its live agent");
+      m.eq(row.selectable, false, "a published report held by its live agent is selectable");
+      m.has(row.reason, "still writing", "the live agent's reason");
       const d = await pick(w, s.file, [row.n]);
-      m.eq(d.code, REFUSED, `picking the live seat's report exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
-      m.ok(fs.existsSync(reportPath), "the report held by its live seat was removed");
+      m.eq(d.code, REFUSED, `picking the live agent's report exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+      m.ok(fs.existsSync(reportPath), "the report held by its live agent was removed");
     }
     await stopChild(c);
     s = await snapshot(w);
     bad = need(w, s); if (bad) return bad;
     row = rowAt(s.j, reportDir);
-    m.ok(row, `the report vanished after its seat stopped: ${shown(s.j)}`);
+    m.ok(row, `the report vanished after its agent stopped: ${shown(s.j)}`);
     if (row) {
-      m.eq(row.status, "removable", "the published report after its seat stopped");
-      m.eq(row.selectable, true, "the published report after its seat stopped");
-      m.eq(row.proposed, false, "the published report after its seat stopped was proposed");
+      m.eq(row.status, "removable", "the published report after its agent stopped");
+      m.eq(row.selectable, true, "the published report after its agent stopped");
+      m.eq(row.proposed, false, "the published report after its agent stopped was proposed");
     }
     return m.done();
   });
 
-test("8 · every seat naming a run is examined: one published report does not hide a live seat writing to the same path",
-  "two seat directories can name one report path — the seat that died and the seat that replaced it — so taking the first match makes the run's whole verdict depend on which one readdir returned first",
+test("8 · every agent naming a run is examined: one published report does not hide a live agent writing to the same path",
+  "two agent directories can name one report path — the agent that died and the agent that replaced it — so taking the first match makes the run's whole verdict depend on which one readdir returned first",
   async () => {
     const m = misses();
     // Both orders, so the case does not rest on the order the file system happens to return.
     for (const deadFirst of [true, false]) {
-      const w = makeWorld(`two-seats-${deadFirst ? "dead-first" : "live-first"}`);
+      const w = makeWorld(`two-agents-${deadFirst ? "dead-first" : "live-first"}`);
       const c = liveChild();
       const identity = processIdentity(c.pid);
       if (identity === null) { await stopChild(c); return skip("this machine does not report a process identity"); }
       const run = plantRun(w, w.slug, "run-1", { A: report(w.project) });
       const rp = reportPathIn(run, "A");
-      plantSeat(w, deadFirst ? "codex-seat.AAAAAAAA" : "codex-seat.BBBBBBBB",
+      plantAgent(w, deadFirst ? "codex-agent.AAAAAAAA" : "codex-agent.BBBBBBBB",
         { pid: DEAD_PID, identity: DEAD_IDENTITY, reportPath: rp });
-      plantSeat(w, deadFirst ? "codex-seat.BBBBBBBB" : "codex-seat.AAAAAAAA",
+      plantAgent(w, deadFirst ? "codex-agent.BBBBBBBB" : "codex-agent.AAAAAAAA",
         { pid: c.pid, identity, reportPath: rp });
       const s = await snapshot(w);
       const bad = need(w, s); if (bad) { await stopChild(c); return bad; }
@@ -575,11 +575,11 @@ test("8 · every seat naming a run is examined: one published report does not hi
       const row = rowAt(s.j, run);
       m.ok(row, `${where}: no row names the run: ${shown(s.j)}`);
       if (row) {
-        m.eq(row.status, "kept", `${where}: a run a running seat is still writing to`);
+        m.eq(row.status, "kept", `${where}: a run a running agent is still writing to`);
         m.eq(row.selectable, false, `${where}: selectable`);
         const d = await pick(w, s.file, [row.n]);
-        m.eq(d.code, REFUSED, `${where}: picking the number of a run with a running seat exited ${d.code}`);
-        m.ok(fs.existsSync(rp), `${where}: the report a running seat writes to was removed`);
+        m.eq(d.code, REFUSED, `${where}: picking the number of a run with a running agent exited ${d.code}`);
+        m.ok(fs.existsSync(rp), `${where}: the report a running agent writes to was removed`);
       }
       await stopChild(c);
     }
@@ -596,22 +596,22 @@ test("9 · a slug is not ownership: two projects share one slug, and cleaning on
     const slug = slugOf(dash);
     const theirs = plantRun(w, slug, "run-theirs", { A: report(dash) });
     const mine = plantRun(w, slug, "run-mine", { A: report(score) });
-    const seat = plantSeat(w, "codex-seat.CCCCCCCC",
+    const agent = plantAgent(w, "codex-agent.CCCCCCCC",
       { pid: DEAD_PID, identity: DEAD_IDENTITY, reportPath: reportPathIn(theirs, "A") });
     const r = await list(w, { cwd: score });
     const bad = need(w, r); if (bad) return bad;
     const m = misses();
-    const theirRow = rowAt(r.j, theirs), myRow = rowAt(r.j, mine), seatRow = rowAt(r.j, seat);
+    const theirRow = rowAt(r.j, theirs), myRow = rowAt(r.j, mine), agentRow = rowAt(r.j, agent);
     m.ok(theirRow, `no row names the neighbouring project's run: ${shown(r.j)}`);
     m.ok(myRow, `no row names this project's run: ${shown(r.j)}`);
-    m.ok(seatRow, `no row names the seat of the neighbouring project's run: ${shown(r.j)}`);
+    m.ok(agentRow, `no row names the agent of the neighbouring project's run: ${shown(r.j)}`);
     if (theirRow) {
       m.eq(theirRow.selectable, false, "the run of the project whose report says `a-b`, listed from `a_b`");
       m.eq(theirRow.proposed, false, "proposed");
       m.re(theirRow.name, /another project/, "the name of another project's run");
     }
     if (myRow) m.eq(myRow.selectable, true, "this project's own finished run");
-    if (seatRow) m.eq(seatRow.proposed, false, "a seat of the neighbouring project's run is suggested here");
+    if (agentRow) m.eq(agentRow.proposed, false, "an agent of the neighbouring project's run is suggested here");
     return m.done();
   });
 
@@ -620,7 +620,7 @@ test("10 · what cannot be fully read is kept, and says so",
   async () => {
     const m = misses();
     // One world per shape. A fixture in the same world can be a second, true reason to keep the same
-    // item — an unreadable seat keeps every run — and the case would then pass without measuring its own.
+    // item — an unreadable agent keeps every run — and the case would then pass without measuring its own.
     const shapes = [
       { what: "a malformed report",
         plant: (w) => plantRun(w, w.slug, "run-malformed", { A: "{ truncated" }) },
@@ -634,9 +634,9 @@ test("10 · what cannot be fully read is kept, and says so",
         },
         wall: (run) => path.join(run, "A", "deep") },
       { what: "a record permissions refuse",
-        plant: (w) => plantSeat(w, "codex-seat.DDDDDDDD", { pid: DEAD_PID, identity: DEAD_IDENTITY,
+        plant: (w) => plantAgent(w, "codex-agent.DDDDDDDD", { pid: DEAD_PID, identity: DEAD_IDENTITY,
           reportPath: reportPathIn(plantRun(w, w.slug, "run-1", { A: report(w.project) }), "A") }),
-        wall: (seat) => path.join(seat, "err.txt") },
+        wall: (agent) => path.join(agent, "err.txt") },
     ];
     for (const [i, shape] of shapes.entries()) {
       const w = makeWorld(`unreadable-${i}`);
@@ -674,10 +674,10 @@ test("11 · an unreadable finding does not cancel the liveness checks that come 
     // A second run nothing names: it stays removable, so a listing that keeps EVERYTHING because one
     // file could not be read cannot pass this case by accident.
     const quiet = plantRun(w, w.slug, "run-quiet", { A: report(w.project) });
-    const seat = plantSeat(w, "codex-seat.EEEEEEEE",
+    const agent = plantAgent(w, "codex-agent.EEEEEEEE",
       { pid: c.pid, identity, reportPath: reportPathIn(busy, "A") });
     // Sorts before err.txt, so a walk in name order meets it first.
-    const wall = path.join(seat, "attachments");
+    const wall = path.join(agent, "attachments");
     fs.mkdirSync(wall, { recursive: true });
     fs.writeFileSync(path.join(wall, "shot.png"), "not really a png");
     const m = misses();
@@ -685,16 +685,16 @@ test("11 · an unreadable finding does not cancel the liveness checks that come 
       if (!denied(wall)) { await stopChild(c); return skip("permissions are not enforced for this user"); }
       const r = await list(w);
       const bad = need(w, r); if (bad) { await stopChild(c); return bad; }
-      const busyRow = rowAt(r.j, busy), quietRow = rowAt(r.j, quiet), seatRow = rowAt(r.j, seat);
-      m.ok(busyRow, `no row names the run the live seat is writing to: ${shown(r.j)}`);
+      const busyRow = rowAt(r.j, busy), quietRow = rowAt(r.j, quiet), agentRow = rowAt(r.j, agent);
+      m.ok(busyRow, `no row names the run the live agent is writing to: ${shown(r.j)}`);
       m.ok(quietRow, `no row names the untouched run: ${shown(r.j)}`);
       if (busyRow) {
-        m.eq(busyRow.status, "kept", "the run named by the running seat whose directory also holds something unreadable");
+        m.eq(busyRow.status, "kept", "the run named by the running agent whose directory also holds something unreadable");
         m.eq(busyRow.selectable, false, "selectable");
       }
       if (quietRow) m.eq(quietRow.status, "removable",
         "the run nothing names, in a listing where one unreadable directory was met");
-      if (seatRow) m.eq(seatRow.status, "kept", "the seat holding the unreadable directory");
+      if (agentRow) m.eq(agentRow.status, "kept", "the agent holding the unreadable directory");
     } finally {
       try { fs.chmodSync(wall, 0o700); } catch { /* never opened */ }
       await stopChild(c);
@@ -993,15 +993,15 @@ test("18 · a symlink on the way in keeps the item; one inside a removed item is
       const target = path.join(w.outside, "dir");
       fs.mkdirSync(target, { recursive: true });
       fs.writeFileSync(path.join(target, "keep"), "kept\n");
-      const seat = path.join(w.tmp, "codex-seat.FFFFFFFF");
-      fs.symlinkSync(target, seat);
+      const agent = path.join(w.tmp, "codex-agent.FFFFFFFF");
+      fs.symlinkSync(target, agent);
       plantEval(w, "codex-lock-AAAA");
       const s = await snapshot(w);
       const bad = need(w, s); if (bad) return bad;
-      const row = rowAt(s.j, seat);
-      m.ok(row, `no row names the symlinked seat directory: ${shown(s.j)}`);
+      const row = rowAt(s.j, agent);
+      m.ok(row, `no row names the symlinked agent directory: ${shown(s.j)}`);
       if (row) {
-        m.eq(row.status, "kept", "a symbolic link where a seat directory is expected");
+        m.eq(row.status, "kept", "a symbolic link where an agent directory is expected");
         m.eq(row.selectable, false, "selectable");
         const d = await pick(w, s.file, [row.n]);
         m.eq(d.code, REFUSED, `picking it exited ${d.code}`);
@@ -1056,7 +1056,7 @@ test("19 · what a yes covers, what a number covers, and what neither can reach"
   "the coordinator maps a bare yes onto the suggested numbers, so anything suggested is deleted on a word that never named it: a run, a saved conversation, another project's leftovers and the five reported kinds must be outside that set, and the driver's other private directories outside the listing altogether",
   async () => {
     const w = makeWorld("the-two-sets");
-    const seat = plantSeat(w, "codex-seat.GGGGGGGG", { pid: DEAD_PID, identity: DEAD_IDENTITY,
+    const agent = plantAgent(w, "codex-agent.GGGGGGGG", { pid: DEAD_PID, identity: DEAD_IDENTITY,
       reportPath: reportPathIn(plantRun(w, w.slug, "run-mine", { A: report(w.project) }), "A") });
     const mineRun = path.join(w.state, "orchestrate", w.slug, "run-mine");
     const theirs = plantRun(w, slugOf(path.join(w.root, "elsewhere")), "run-theirs",
@@ -1069,10 +1069,10 @@ test("19 · what a yes covers, what a number covers, and what neither can reach"
     const r = await list(w);
     const bad = need(w, r); if (bad) return bad;
     const numbers = (ps) => ps.map((p) => rowAt(r.j, p)?.n).filter((n) => n !== undefined);
-    const suggested = numbers([seat, scratch]);
-    m.eq(suggested.length, 2, `the seat and the scratch are not both listed: ${shown(r.j)}`);
+    const suggested = numbers([agent, scratch]);
+    m.eq(suggested.length, 2, `the agent and the scratch are not both listed: ${shown(r.j)}`);
     m.eq(JSON.stringify([...(r.j.proposed ?? [])].sort((a, b) => a - b)), JSON.stringify(suggested.sort((a, b) => a - b)),
-      `a yes covers something other than this project's finished seat and the eval scratch: ${shown(r.j)}`);
+      `a yes covers something other than this project's finished agent and the eval scratch: ${shown(r.j)}`);
     const selectable = [...suggested, ...numbers([mineRun, session])].sort((a, b) => a - b);
     m.eq(JSON.stringify([...(r.j.selectable ?? [])].sort((a, b) => a - b)), JSON.stringify(selectable),
       `the numbers a user may say are not the suggested rows plus this project's run and the saved conversation: ${shown(r.j)}`);
@@ -1112,7 +1112,7 @@ test("20 · the listing is three lines a person reads, and --json carries the sa
   "the coordinator shows this block unchanged and maps the user's words onto its numbers, so a listing rendered from one inventory and numbers taken from another are two snapshots nobody reconciled — and an identifier in the prose is a path or a pid the user was never meant to have to read",
   async () => {
     const w = makeWorld("the-listing");
-    plantSeat(w, "codex-seat.HHHHHHHH", { pid: DEAD_PID, identity: DEAD_IDENTITY,
+    plantAgent(w, "codex-agent.HHHHHHHH", { pid: DEAD_PID, identity: DEAD_IDENTITY,
       reportPath: reportPathIn(plantRun(w, w.slug, "review-2026-09-08", { A: report(w.project), B: report(w.project) }), "A") });
     // Two of one family, so the listing has a row that stands for more than one directory and has to
     // say how many.
@@ -1152,7 +1152,7 @@ test("20 · the listing is three lines a person reads, and --json carries the sa
     }
     for (const l of lines) {
       if (l.length > 76) m.ok(false, `a line is ${l.length} columns: ${JSON.stringify(l)}`);
-      if (l.includes(BASE) || l.includes(w.slug) || /codex-seat\.|\.json\b/.test(l))
+      if (l.includes(BASE) || l.includes(w.slug) || /codex-agent\.|\.json\b/.test(l))
         m.ok(false, `a line carries an identifier: ${JSON.stringify(l)}`);
     }
     // Everything after the last row, its reason's wrapped continuation included: the closing lines.
@@ -1211,13 +1211,13 @@ test("21 · the roots it must have, and the arguments it refuses",
       const fallbackRow = rowAt(noTmpJson, fallbackReport);
       m.ok(fallbackRow, `the fallback listing omitted the standalone report: ${shown(noTmpJson)}`);
       if (fallbackRow) {
-        m.eq(fallbackRow.status, "kept", "the unpublished report under a fallback seat scan");
-        m.eq(fallbackRow.selectable, false, "the unpublished report under a fallback seat scan is selectable");
+        m.eq(fallbackRow.status, "kept", "the unpublished report under a fallback agent scan");
+        m.eq(fallbackRow.selectable, false, "the unpublished report under a fallback agent scan is selectable");
         m.has(fallbackRow.reason, "has not published", "the unpublished report's fallback reason");
       }
       m.ok(rowNear(noTmpJson, fallbackAnswer), `the fallback listing omitted the saved answer: ${shown(noTmpJson)}`);
       m.has(noTmpJson.text, "TMPDIR was unset", "the human-readable fallback warning");
-      m.has(noTmpJson.text, "seat scratch elsewhere may not have been seen", "the fallback warning's limit");
+      m.has(noTmpJson.text, "agent scratch elsewhere may not have been seen", "the fallback warning's limit");
     }
     const emptyTmp = await runCleanup(w, ["--list", "--json"], { env: { TMPDIR: "" } });
     m.eq(emptyTmp.code, EXIT.OK, `--list --json with empty TMPDIR exited ${emptyTmp.code}: ${emptyTmp.err.trim().slice(0, 200)}`);
@@ -1266,7 +1266,7 @@ test("22 · the ladder: a refusal outranks a failed removal, which outranks succ
     const aloneRow = rowAt(s.j, alone), besideRow = rowAt(s.j, beside), keptRow = rowAt(s.j, kept);
     m.ok(aloneRow && besideRow && keptRow, `the fixture is not three rows: ${shown(s.j)}`);
     if (!aloneRow || !besideRow || !keptRow) return m.done();
-    m.eq(keptRow.selectable, false, "the run with a seat that has not reported");
+    m.eq(keptRow.selectable, false, "the run with an agent that has not reported");
     try {
       // A parent directory that refuses the unlink: the removal is attempted and cannot finish.
       fs.chmodSync(w.tmp, 0o500);
@@ -1295,7 +1295,7 @@ test("23 · it never runs git, never removes a root, and never touches the drive
     fs.writeFileSync(path.join(shim, "git"), `#!/bin/sh\necho "$@" >> ${JSON.stringify(marker)}\nexit 1\n`, { mode: 0o755 });
     const own = plantDriverState(w);
     const reported = plantReported(w);
-    plantSeat(w, "codex-seat.IIIIIIII", { pid: DEAD_PID, identity: DEAD_IDENTITY,
+    plantAgent(w, "codex-agent.IIIIIIII", { pid: DEAD_PID, identity: DEAD_IDENTITY,
       reportPath: reportPathIn(plantRun(w, w.slug, "run-1", { A: report(w.project) }), "A") });
     plantEval(w, "codex-delegate-test-GIT");
     // Two traps: a name this cleanup owns, in a place it may remove from, pointing at a directory it
@@ -1456,31 +1456,31 @@ test("26 · a file a read refuses and a pipe where a file belongs keep the item,
     return m.done();
   });
 
-test("27 · a seat a live job record protects keeps the run it is writing to",
-  "a seat's own line names the pid of a process that may already be gone while the job record names the live one; a run whose liveness reads only the seat's line deletes the directory that seat is still writing into",
+test("27 · an agent a live job record protects keeps the run it is writing to",
+  "an agent's own line names the pid of a process that may already be gone while the job record names the live one; a run whose liveness reads only the agent's line deletes the directory that agent is still writing into",
   async () => {
-    const w = makeWorld("job-protected-seat");
+    const w = makeWorld("job-protected-agent");
     const c = liveChild();
     const run = plantRun(w, w.slug, "run-1", { A: report(w.project) });
-    const seat = plantSeat(w, "codex-seat.JJJJJJJJ",
+    const agent = plantAgent(w, "codex-agent.JJJJJJJJ",
       { pid: DEAD_PID, identity: DEAD_IDENTITY, reportPath: reportPathIn(run, "A") });
-    plantJob(w, { pid: c.pid, identity: null, cwd: seat });
+    plantJob(w, { pid: c.pid, identity: null, cwd: agent });
     const m = misses();
     const s = await snapshot(w);
     const bad = need(w, s); if (bad) { await stopChild(c); return bad; }
-    const seatRow = rowAt(s.j, seat), runRow = rowAt(s.j, run);
-    m.ok(seatRow, `no row names the seat: ${shown(s.j)}`);
+    const agentRow = rowAt(s.j, agent), runRow = rowAt(s.j, run);
+    m.ok(agentRow, `no row names the agent: ${shown(s.j)}`);
     m.ok(runRow, `no row names the run: ${shown(s.j)}`);
-    if (seatRow) {
-      m.eq(seatRow.status, "kept", "a seat a live job record's cwd is inside");
-      m.eq(seatRow.proposed, false, "proposed");
+    if (agentRow) {
+      m.eq(agentRow.status, "kept", "an agent a live job record's cwd is inside");
+      m.eq(agentRow.proposed, false, "proposed");
     }
     if (runRow) {
-      m.eq(runRow.status, "kept", "the run that protected seat is writing to");
+      m.eq(runRow.status, "kept", "the run that protected agent is writing to");
       m.eq(runRow.selectable, false, "selectable");
       const d = await pick(w, s.file, [runRow.n]);
       m.eq(d.code, REFUSED, `picking it exited ${d.code}`);
-      m.ok(fs.existsSync(run), "the run a protected seat is writing to was removed");
+      m.ok(fs.existsSync(run), "the run a protected agent is writing to was removed");
     }
     await stopChild(c);
     return m.done();
@@ -1526,7 +1526,7 @@ test("28 · a name that only looks like a suite's is not a suite's",
   });
 
 test("29 · a member admitted after the listing is never carried off by the old number",
-  "a row's number is consent for the members the user was shown; an implementation that removes whatever the fresh inventory collects under that name now deletes the scratch of a seat admitted a second later, which is a delegation that has just started",
+  "a row's number is consent for the members the user was shown; an implementation that removes whatever the fresh inventory collects under that name now deletes the scratch of an agent admitted a second later, which is a delegation that has just started",
   async () => {
     const w = makeWorld("late-member");
     const one = plantEval(w, "codex-lock-one"), two = plantEval(w, "codex-lock-two");
@@ -1651,50 +1651,50 @@ test("32 · the parent that was checked is renamed and another takes its place",
   });
 
 test("33 · two numbers in one call come out the same in either order",
-  "a run and the seat that wrote into it are one thing to the user and two rows to the tool; if the order the numbers arrive in changes what survives, the same yes means two different things",
+  "a run and the agent that wrote into it are one thing to the user and two rows to the tool; if the order the numbers arrive in changes what survives, the same yes means two different things",
   async () => {
     const m = misses();
     const outcomes = [];
-    for (const order of ["the run first", "the seat first"]) {
-      const w = makeWorld(`order-${order.includes("run") ? "run" : "seat"}`);
+    for (const order of ["the run first", "the agent first"]) {
+      const w = makeWorld(`order-${order.includes("run") ? "run" : "agent"}`);
       const run = plantRun(w, w.slug, "run-1", { A: report(w.project) });
-      const seat = plantSeat(w, "codex-seat.OOOOOOOO",
+      const agent = plantAgent(w, "codex-agent.OOOOOOOO",
         { pid: DEAD_PID, identity: DEAD_IDENTITY, reportPath: reportPathIn(run, "A") });
       const s = await snapshot(w);
       const bad = need(w, s); if (bad) return `${order}: ${bad}`;
-      const runRow = rowAt(s.j, run), seatRow = rowAt(s.j, seat);
-      m.ok(runRow && seatRow, `${order}: the fixture is not two rows: ${shown(s.j)}`);
-      if (!runRow || !seatRow) return m.done();
-      const numbers = order === "the run first" ? [runRow.n, seatRow.n] : [seatRow.n, runRow.n];
+      const runRow = rowAt(s.j, run), agentRow = rowAt(s.j, agent);
+      m.ok(runRow && agentRow, `${order}: the fixture is not two rows: ${shown(s.j)}`);
+      if (!runRow || !agentRow) return m.done();
+      const numbers = order === "the run first" ? [runRow.n, agentRow.n] : [agentRow.n, runRow.n];
       const d = await pick(w, s.file, numbers);
-      outcomes.push({ code: d.code, run: fs.existsSync(run), seat: fs.existsSync(seat) });
+      outcomes.push({ code: d.code, run: fs.existsSync(run), agent: fs.existsSync(agent) });
     }
     m.eq(JSON.stringify(outcomes[0]), JSON.stringify(outcomes[1]),
       `the same two numbers in the other order gave ${JSON.stringify(outcomes[1])} instead of ${JSON.stringify(outcomes[0])}`);
     return m.done();
   });
 
-test("34 · a pipe where a seat's startup line belongs does not stop the listing",
+test("34 · a pipe where an agent's startup line belongs does not stop the listing",
   "reading a named pipe with no writer blocks for as long as the machine is up; a listing that opens what it finds, rather than checking what it is first, never returns and the page never gets its block",
   async () => {
-    const w = makeWorld("pipe-seat");
-    const seat = path.join(w.tmp, "codex-seat.PIPEPIPE");
-    fs.mkdirSync(seat, { recursive: true });
-    fs.writeFileSync(path.join(seat, "prompt.txt"), "prompt\n");
-    if (!mkfifo(path.join(seat, "err.txt"))) return skip("mkfifo is not available here");
+    const w = makeWorld("pipe-agent");
+    const agent = path.join(w.tmp, "codex-agent.PIPEPIPE");
+    fs.mkdirSync(agent, { recursive: true });
+    fs.writeFileSync(path.join(agent, "prompt.txt"), "prompt\n");
+    if (!mkfifo(path.join(agent, "err.txt"))) return skip("mkfifo is not available here");
     const m = misses();
     const r = await list(w, { killAfterMs: 25_000 });
     m.ok(r.signal !== "SIGKILL", `the listing hung on the pipe and had to be killed after ${r.ms} ms`);
     if (r.signal === "SIGKILL") return m.done();
     m.ok(r.ms < 20_000, `the listing took ${r.ms} ms`);
     const bad = need(w, r); if (bad) return bad;
-    const row = rowAt(r.j, seat);
-    m.ok(row, `no row names the seat holding a pipe: ${shown(r.j)}`);
+    const row = rowAt(r.j, agent);
+    m.ok(row, `no row names the agent holding a pipe: ${shown(r.j)}`);
     if (row) {
-      m.eq(row.status, "kept", "a seat whose startup line is a pipe");
+      m.eq(row.status, "kept", "an agent whose startup line is a pipe");
       m.eq(row.proposed, false, "proposed");
     }
-    m.ok(fs.existsSync(path.join(seat, "err.txt")), "the pipe was removed");
+    m.ok(fs.existsSync(path.join(agent, "err.txt")), "the pipe was removed");
     return m.done();
   });
 
@@ -1703,7 +1703,7 @@ test("35 · a job record whose read is refused keeps everything it could have pr
   async () => {
     const w = makeWorld("job-unreadable");
     const run = plantRun(w, w.slug, "run-1", { A: report(w.project) });
-    const seat = plantSeat(w, "codex-seat.KKKKKKKK",
+    const agent = plantAgent(w, "codex-agent.KKKKKKKK",
       { pid: DEAD_PID, identity: DEAD_IDENTITY, reportPath: reportPathIn(run, "A") });
     const scratch = plantEval(w, "codex-lock-JOBS");
     const job = plantJob(w, { pid: DEAD_PID, identity: DEAD_IDENTITY, cwd: w.project });
@@ -1713,7 +1713,7 @@ test("35 · a job record whose read is refused keeps everything it could have pr
       const s = await snapshot(w);
       const bad = need(w, s); if (bad) return bad;
       m.eq(JSON.stringify(s.j.proposed), "[]", `something is suggested while a job record cannot be read: ${shown(s.j)}`);
-      for (const [what, item] of [["the run", run], ["the seat", seat], ["the eval scratch", scratch]]) {
+      for (const [what, item] of [["the run", run], ["the agent", agent], ["the eval scratch", scratch]]) {
         const row = rowAt(s.j, item);
         m.ok(row, `${what}: no row names it: ${shown(s.j)}`);
         if (!row) continue;
@@ -1759,7 +1759,7 @@ test("37 · a file where a conversation directory would be leaves the real ones 
     // Two suggested rows standing for three directories, so the closing sentence's two numbers differ.
     plantEval(w, "codex-lock-aaa");
     plantEval(w, "codex-lock-zzz");
-    plantSeat(w, "codex-seat.MMMMMMMM", { pid: DEAD_PID, identity: DEAD_IDENTITY,
+    plantAgent(w, "codex-agent.MMMMMMMM", { pid: DEAD_PID, identity: DEAD_IDENTITY,
       reportPath: reportPathIn(plantRun(w, w.slug, "run-1", { A: report(w.project) }), "A") });
     const m = misses();
     const r = await list(w);

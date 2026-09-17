@@ -26,7 +26,7 @@ exactly as the command printed it.
    codex-delegate."
 
        F="$(mktemp "${TMPDIR:-/tmp}/codex-delegate-cleanup.XXXXXXXX")"
-       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../seat/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
+       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../codex/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
 
    `mktemp` gives each listing its own file. A name built from the shell's
    `$$` does not: two listings in one shell would share it, and a number from
@@ -35,8 +35,8 @@ exactly as the command printed it.
    field to the user in one code block, unchanged. It is the listing: numbered
    items, their sizes, when they last changed, whether each is suggested,
    selectable by its number or kept, and why. Say nothing about the items
-   yourself. When it says the seat scan used Node's fallback temporary
-   directory, keep that warning in the block so the user sees that seat scratch
+   yourself. When it says the agent scan used Node's fallback temporary
+   directory, keep that warning in the block so the user sees that agent scratch
    elsewhere may not have been found. An empty inventory is "I found no items
    covered by this cleanup."
 2. Propose in one sentence exactly what `proposed` holds, by those rows' names
@@ -61,7 +61,7 @@ exactly as the command printed it.
    leave it out. Then run, with the description "Delete the cleanup items the
    user selected.":
 
-       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../seat/scripts/cleanup.mjs" --delete --from "<SNAPSHOT>" <numbers>
+       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../codex/scripts/cleanup.mjs" --delete --from "<SNAPSHOT>" <numbers>
 
    Do not run the listing again between the user's word and this call: the
    snapshot is what binds each number to what was shown, and an item that
@@ -96,20 +96,20 @@ Use the listing's names; omit outcomes that did not occur.
 
 Answers, managed worktrees and their ledger, write locks and the shared Codex
 home are listed and never removed: the driver prunes answers and reconciles
-the next two itself, and the last is shared by every seat. The data directory
+the next two itself, and the last is shared by every agent. The data directory
 of another copy of this plugin is the user's own to remove — when they ask
 how, say "This command removes it." and show that row's `command` from
 `manual` in its own block. The `notCovered` commands apply only to other
 entries in the coordinator's temporary directory. Say "To list those entries
 without removing them, run this command." and show `notCovered.listCommand`;
-for removal, `notCovered.removeCommand`. A seat started under another
-temporary root is outside the seat scan; its report is kept while
+for removal, `notCovered.removeCommand`. An agent started under another
+temporary root is outside the agent scan; its report is kept while
 `report.json` is absent. The driver's private `<state>/tmp`
 directories are guarded and not listed: the driver owns them, and this cleanup
 never makes them removable.
 
 Forward `CLAUDE_PLUGIN_DATA` as shown. The script uses
 `CODEX_DELEGATE_STATE_DIR` first, then `CLAUDE_PLUGIN_DATA`; setup follows the
-sibling's [One call](../seat/SKILL.md#one-call). On the clone route both
-commands need the seat skill linked beside this one; the installation
+sibling's [One call](../codex/SKILL.md#one-call). On the clone route both
+commands need the codex skill linked beside this one; the installation
 recipe links the two together.

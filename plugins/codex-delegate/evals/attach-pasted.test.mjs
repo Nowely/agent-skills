@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tests for scripts/attach-pasted.mjs — the front-end that hands a user's PASTED images to a seat.
+// Tests for scripts/attach-pasted.mjs — the front-end that hands a user's PASTED images to an agent.
 //
 //   node evals/attach-pasted.test.mjs
 //
@@ -180,7 +180,7 @@ test("a block whose bytes are not what its media_type claims is refused before a
   });
 
 test("the extracted images are 0600 under the state dir, and are removed when the run ends",
-  "$TMPDIR is the read level's one writable root — the seat being shown the images could edit them — and a retention cache would turn a one-turn upload into a corpus every later seat can read",
+  "$TMPDIR is the read level's one writable root — the agent being shown the images could edit them — and a retention cache would turn a one-turn upload into a corpus every later agent can read",
   () => {
     const t = transcript("hygiene", [humanTurn([img(PNG_1x1), txt("x")], 10)]);
     const probe = path.join(shimDir, "probe.mjs");

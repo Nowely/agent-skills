@@ -9,8 +9,8 @@ explains environment, state, wrappers, operational bounds, and lifecycle details
 ## Environment
 
 The variables, the subdirectories of the state directory `<state>` stands for below, the order the driver
-resolves it in, and what `TMPDIR` grants a read seat are all under `--help-all`. There is no default: the
-intended value is the plugin's own data directory, which the skill recipes pass on every call. What it does not carry: the seat's shell also receives `TMPPREFIX` under
+resolves it in, and what `TMPDIR` grants a read agent are all under `--help-all`. There is no default: the
+intended value is the plugin's own data directory, which the skill recipes pass on every call. What it does not carry: the agent's shell also receives `TMPPREFIX` under
 the run's `$TMPDIR`, because zsh keeps here-document temp files at `$TMPPREFIX*`, default `/tmp/zsh`,
 which no grant covers ([incidents](incidents.md#here-documents-under-the-grant)).
 
@@ -62,9 +62,9 @@ checked before the turn, so a typo costs nothing.
 
 ## What is protected, and what is not
 
-At write level every root the seat may write — `--cwd`, each `--writable`, and the tree a `--worktree`
+At write level every root the agent may write — `--cwd`, each `--writable`, and the tree a `--worktree`
 lands in — refuses `~/.codex` and the resolved state directory, and anything inside them, by inode
-identity; `$TMPDIR` takes the same guard at either level. The first holds the receipts a seat is
+identity; `$TMPDIR` takes the same guard at either level. The first holds the receipts an agent is
 verified by, the second this driver's locks and answer log. The private `<state>/tmp/<runId>` created by
 the driver is the narrow exception: its owner record binds it to that run. The driver also refuses your
 home directory itself and every ancestor of it, up to `/`.
@@ -90,15 +90,15 @@ Configuration is separate: it comes from `config.toml` in the home `CODEX_HOME` 
 `config/read` rather than parsing TOML. A failed probe warns, retries once, and keeps the last known
 good config. A probe cancelled by a signal also fails, and an ending run writes nothing there.
 `configInherited` reports `probe`, `last-known-good`, or `none`, with carried keys; the report also
-carries `codexVersion` beside `codexVersionPinned`. No MCP server of the caller's is carried into it: a
-seat that needs them runs `--host-home` and accepts the rest of the host configuration with them.
+carries `codexVersion` beside `codexVersionPinned`. No MCP server of the caller's is carried into it: an
+agent that needs them runs `--host-home` and accepts the rest of the host configuration with them.
 
 Because that file is shared, isolate test harness state with `CODEX_DELEGATE_STATE_DIR`; concurrent
 writers use atomic rename.
 
-## Seat files and wrappers
+## Prompt files and wrappers
 
-A seat is one driver process, launched by the coordinator itself. A wrapper is useful only when it adds
+An agent is one driver process, launched by the coordinator itself. A wrapper is useful only when it adds
 orchestration; whatever it is, it hands the prompt over unchanged, never answers the task itself, and
 reports a failure as the failure it is.
 
@@ -107,9 +107,9 @@ size and exits 2 past it, naming the byte count. The header grammar — where it
 body, what an unknown name costs — is in `--help`; everything below the header is the body, verbatim, even
 when a later line looks like a field.
 
-`SEAT`, where it appears, must be first; a header that declares none — with or without other fields — is
-a read seat in the current directory. A file with no body leaves the prompt to stdin or `--prompt`;
-providing both is exit 2. Explicit command-line flags override file fields, and `seatFileFields` reports
+`RIGHTS`, where it appears, must be first; a header that declares none — with or without other fields — is
+a read agent in the current directory. A file with no body leaves the prompt to stdin or `--prompt`;
+providing both is exit 2. Explicit command-line flags override file fields, and `promptFileFields` reports
 the declared fields in their original order. The complete field list is in `--help`.
 
 The format avoids constructing a shell command from relayed values: an injected quote stays literal
@@ -125,28 +125,28 @@ shorter way to write it.
 
 ### The injection limit
 
-A newline is a field separator. Require `SEAT` first and refuse `VERIFY` unless the harness explicitly
-passes command-line `--allow-seat-verify`; a wrapper cannot distinguish an injected field from an
+A newline is a field separator. Require `RIGHTS` first and refuse `VERIFY` unless the harness explicitly
+passes command-line `--allow-prompt-verify`; a wrapper cannot distinguish an injected field from an
 intended one. The measured failure is recorded in
-[incidents.md](incidents.md#seat-file-newline-injection).
+[incidents.md](incidents.md#prompt-file-newline-injection).
 
-`VERIFY` is refused from a seat file unless the harness supplies `--allow-seat-verify` on the command
+`VERIFY` is refused from a prompt file unless the harness supplies `--allow-prompt-verify` on the command
 line, because verification runs an unsandboxed `/bin/sh` with the coordinator's rights. Prefer passing
 `--verify` explicitly rather than allowing a relayed value to introduce it.
 
-## Bounding or stopping a seat
+## Bounding or stopping an agent
 
 `--timeout`, `--idle-timeout` and `--max-commands`, their defaults and what each cut looks like are in
 `--help` under Bounds; the report file and the signal contract are under Run. What help does not say:
 
 - There is no token budget. `tokenUsage` in the report is the server's own accounting, not a bound, and
   `--brief` controls answer size and context consumption without stopping a turn.
-- The bounds are command-line-only because their defaults let a seat run with no sizing header at all.
-- `--report-file` is validated off the raw command line before the seat file is expanded and before
+- The bounds are command-line-only because their defaults let an agent run with no sizing header at all.
+- `--report-file` is validated off the raw command line before the prompt file is expanded and before
   anything is spawned: an absolute path, a writable parent — created at 0700, all the way down, when it
   is absent — and a name that does not exist yet. Cleanup lists the standalone recipe's
   `<state>/reports/<run>` directories: a published run is selectable by number but never proposed, and
-  an unpublished run or one held by a live seat is kept. Any other destination remains the caller's.
+  an unpublished run or one held by a live agent is kept. Any other destination remains the caller's.
 - A second signal escalates teardown, while `SIGKILL` of the driver can strand descendants. In the
   sub-second window before a turn id exists there is nothing to interrupt: the run exits 4, and the
   pre-turn refusal still reaches `--report-file`. When a worktree was already made, that report also
@@ -156,7 +156,7 @@ line, because verification runs an unsandboxed `/bin/sh` with the coordinator's 
 
 ## Receipt validation and reporting
 
-Demand `threadId`, `exitCode`, and receipt state from every wrapper: a seat that did nothing is otherwise
+Demand `threadId`, `exitCode`, and receipt state from every wrapper: an agent that did nothing is otherwise
 indistinguishable from one that found nothing. The driver searches `~/.codex/sessions`, opens the rollout,
 and verifies that its opening `session_meta` record names the reported thread. Thus `receiptOk: true`
 proves that a session record exists for that id, not merely that a filename contains it.
@@ -167,7 +167,7 @@ fabricate the whole report can fabricate these fields too, so inspect the rollou
 answer warrants stronger assurance.
 
 These fields are coordinator instruments, not normal user-facing narration. Return the attributed answer
-and mention ids, codes, or receipt state only when the seat failed or returned nothing, a claimed-success
+and mention ids, codes, or receipt state only when the agent failed or returned nothing, a claimed-success
 receipt is false, the delegation machinery itself is under audit, or the user needs an id for `--resume`.
 
 ## Worktree ledger and destination
@@ -241,15 +241,15 @@ from under a run by other work on the machine; give every concurrent run its own
 
 ## Git-directory grant
 
-There is none by default, so a seat cannot commit under the grant a `SEAT:` line makes: committing needs
+There is none by default, so an agent cannot commit under the grant a `RIGHTS:` line makes: committing needs
 the main clone's common dir. Measured in a linked worktree whose main `.git` was read-only, `git commit`
-fails at `Unable to create '.../worktrees/<name>/index.lock': Permission denied`. A seat's work comes
+fails at `Unable to create '.../worktrees/<name>/index.lock': Permission denied`. An agent's work comes
 back as `worktreeDiffPath` and its untracked archive; `worktreeCommitsRef` is populated only where the
 caller's own `--verify`, which runs unsandboxed, committed.
 
 `WRITABLE: <repo>/.git` re-grants the common dir — it is the grant the retired `--commit` made, and
 `checkRoot` accepts it — so it is a widening to settle with the user like any other, because it hands the
-seat config, hooks and every ref. That a commit then succeeds is unmeasured on the 0.153.4 pin: 0.10.0
+agent config, hooks and every ref. That a commit then succeeds is unmeasured on the 0.153.4 pin: 0.10.0
 measured it under `--commit`, and nothing since.
 
 A narrower grant was measured and **rejected** before that, so do not reach for one. Whitelisting
@@ -263,12 +263,12 @@ breaks any pre-commit hook that stashes (lint-staged runs `git stash`, which nee
 said with writable roots at all: it needs a permissions profile. Land a diff instead, or point
 `--level write --cwd` at a worktree of a throwaway clone and settle that blast radius with the user.
 
-The driver's own git is not exposed to what a seat writes in the tree it was given. Every git it
+The driver's own git is not exposed to what an agent writes in the tree it was given. Every git it
 spawns carries
 `-c core.fsmonitor=false -c core.hooksPath=/dev/null -c diff.external=`, every diff adds
 `--no-ext-diff --no-textconv`, and each call has a bounded timeout with `SIGKILL`. Without that,
-harvest, worktree removal, and the next checkout ran the seat's hooks, fsmonitor, and external diff with
-the caller's rights before anyone read the report. This does not protect the seat's own commands or
+harvest, worktree removal, and the next checkout ran the agent's hooks, fsmonitor, and external diff with
+the caller's rights before anyone read the report. This does not protect the agent's own commands or
 `--verify`, which run with the rights granted to them.
 
 ## Configuration key oracle
@@ -332,5 +332,5 @@ codex sandbox -c 'permissions.codex_delegate_read.extends=":read-only"' \
 # expect TMPDIR_OK, no SLASHTMP_LEAK, and NET_200.
 # TMPDIR_DENIED -> the grant stopped applying; read-level vitest is broken again.
 # SLASHTMP_LEAK -> ":read-only" widened upstream; re-check what else the profile now grants.
-# NET_DENIED   -> the `network` table stopped applying, and every read seat is silently offline.
+# NET_DENIED   -> the `network` table stopped applying, and every read agent is silently offline.
 ```

@@ -6,8 +6,8 @@
 //
 // orchestrate.test.mjs pins the page's TEXT: every decision the user agreed to is a string in a file, and
 // a rewrite that drops one turns a case red. It cannot tell whether a coordinator that READS the page does
-// any of it, and every claim the mode makes is behavioural: it stops at a plan, it names a Codex seat from
-// the tier table, it tags every Claude seat, it touches nothing before "go", it writes one run directory.
+// any of it, and every claim the mode makes is behavioural: it stops at a plan, it names a Codex agent from
+// the tier table, it tags every Claude agent, it touches nothing before "go", it writes one run directory.
 // Those are the release gate here, and nothing short of a live session measures them.
 //
 // It spends real model calls, so it is gated exactly like the fidelity suite's live turn: without
@@ -25,10 +25,10 @@
 //   - the init line's tool list names the subagent tool `Task` while the tool_use blocks in the same
 //     build's stream carry `Agent`, so both spellings count and neither alone is safe;
 //   - the last line is {type:"result"} and its `result` is the final text;
-//   - --plugin-dir loaded codex-delegate:seat and codex-delegate:orchestrate. There is no
-//     codex-seat agent: a Codex seat is a general-purpose wrapper (an Agent call) whose prompt runs the
-//     driver as a background Bash task, so a seat is counted here as an Agent/Task tool_use whose prompt
-//     names driver.mjs and --seat-file;
+//   - --plugin-dir loaded codex-delegate:codex and codex-delegate:orchestrate. There is no
+//     codex-agent agent: a Codex agent is a general-purpose wrapper (an Agent call) whose prompt runs the
+//     driver as a background Bash task, so an agent is counted here as an Agent/Task tool_use whose prompt
+//     names driver.mjs and --prompt-file;
 //   - this machine's managed settings set disableBypassPermissionsMode: "disable", so
 //     --dangerously-skip-permissions is accepted and then ignored, and in -p mode there is no prompt to
 //     answer: every write and every non-trivial Bash is auto-denied. --permission-mode acceptEdits with an
@@ -47,10 +47,10 @@
 //     to a SUBPROCESS as an argument is not refused (probe: `node -e "fs.mkdirSync(argv[1],{recursive:
 //     true})" <plugin-data path>` created the directory, and the driver itself wrote jobs/ and home/
 //     under the data directory during the gate). So the run directory is the DRIVER's to create, through
-//     --report-file, and case 5 expects one holding seat directories with a report.json each and nothing
+//     --report-file, and case 5 expects one holding agent directories with a report.json each and nothing
 //     else: no .gitignore, no prompt file, no out.json — those are under $TMPDIR now;
 //   - a background Bash task does not keep a headless session alive: when the coordinator ends its turn
-//     Claude Code exits and SIGTERMs the task, and the first full run's seat was interrupted at the
+//     Claude Code exits and SIGTERMs the task, and the first full run's agent was interrupted at the
 //     second the session ended. TaskOutput(task_id, block: true, timeout: 600000) blocks the turn until
 //     the task ends, ten minutes per call and repeated while it still runs, so it is in --allowedTools
 //     below; in an interactive session the notification arrives first and the call returns at once.
@@ -60,12 +60,12 @@
 // failure message names; a passing case removes it, so the artifact directory holds the plan, the session
 // output, the reports and the stderr rather than a clone of this repository per case.
 //
-// Case 4 measures the seat, not the effort. Measured on codex-cli 0.153.4: invited to delegate,
+// Case 4 measures the agent, not the effort. Measured on codex-cli 0.153.4: invited to delegate,
 // gpt-6-astra opened its own subagent threads at xhigh exactly as at ultra (otherItemCounts
 // {subAgentActivity: 6, collabAgentToolCall: 2}, no command on the root thread, exit 5 with the right
 // answer), so delegation is the model's choice and no effort buys the guarantee an EFFORT line once
 // claimed. The case asks for the work on this thread and checks that it arrived there; the inviting
-// prompt survives as a probe behind CODEX_DELEGATE_LIVE_ORCHESTRATE_DELEGATE=1. Whether the seat
+// prompt survives as a probe behind CODEX_DELEGATE_LIVE_ORCHESTRATE_DELEGATE=1. Whether the agent
 // delegates at all is still the model's business, and the probe is what re-measures that after a codex
 // upgrade; when it does, the probe CHECKS what the driver made of it: every child announced as a
 // subAgentActivity item registered in subagentThreads with its agentPath, its status and the commands it
@@ -106,12 +106,12 @@ const note = (line) => console.log(`      ${line}`);
 // --------------------------------------------------------------- the vocabulary the page owns
 
 const CODEX_MODELS = ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra"];
-const SIBLING_SKILLS = ["codex-delegate:seat", "seat"];
-// A Codex seat is one Agent call whose prompt carries the driver, a seat file and a report file. Both
+const SIBLING_SKILLS = ["codex-delegate:codex", "codex"];
+// A Codex agent is one Agent call whose prompt carries the driver, a prompt file and a report file. Both
 // flags, because a prompt that merely mentions the driver is a probe or the coordinator reading a report.
-const seatCommand = (u) => (u.name === "Agent" || u.name === "Task" ? String(u.input.prompt ?? "") : "");
-const isSeatCall = (u) => /driver\.mjs/.test(seatCommand(u)) && /--seat-file/.test(seatCommand(u));
-const seatCalls = (toolUses) => toolUses.filter(isSeatCall);
+const codexCommand = (u) => (u.name === "Agent" || u.name === "Task" ? String(u.input.prompt ?? "") : "");
+const isCodexCall = (u) => /driver\.mjs/.test(codexCommand(u)) && /--prompt-file/.test(codexCommand(u));
+const codexCalls = (toolUses) => toolUses.filter(isCodexCall);
 // Both, because one build answers with both: `Task` in the init line's tool list, `Agent` in the tool_use
 // blocks. A rename must not silently empty the checks that count subagent calls.
 const AGENT_TOOLS = new Set(["Task", "Agent"]);
@@ -121,7 +121,7 @@ const AGENT_TOOLS = new Set(["Task", "Agent"]);
 function runProc(cmd, args, { cwd, timeoutMs, env, input } = {}) {
   return new Promise((resolve) => {
     // detached puts the child in a process group of its own so the bell can kill the GROUP: a session
-    // spawns seats, and a seat is a `node driver.mjs` that outlives a SIGKILL aimed at its parent alone.
+    // spawns agents, and an agent is a `node driver.mjs` that outlives a SIGKILL aimed at its parent alone.
     const stdin = input === undefined ? "ignore" : "pipe";
     const child = spawn(cmd, args, { cwd, env: env ?? process.env, stdio: [stdin, "pipe", "pipe"], detached: true });
     // A prompt on stdin, because --allowedTools is variadic and eats a trailing positional as a rule. The
@@ -137,7 +137,7 @@ function runProc(cmd, args, { cwd, timeoutMs, env, input } = {}) {
     child.stderr.setEncoding("utf8");
     child.stdout.on("data", (d) => { out += d; });
     child.stderr.on("data", (d) => { err += d; });
-    // TERM before KILL, and to the GROUP: a driver in it is a seat, and its handler is what interrupts
+    // TERM before KILL, and to the GROUP: a driver in it is an agent, and its handler is what interrupts
     // the turn, writes the report the run had earned and sweeps the codex process group it started —
     // which SIGKILL cannot do and which nothing else would then reap. The grace covers the driver's own
     // 1 s interrupt plus its 2 s + 1 s teardown; whatever is still alive after it is killed outright.
@@ -186,8 +186,8 @@ function scratchClone(dir) {
 // Not --dangerously-skip-permissions: managed settings disable that mode on this machine, and a -p
 // session that inherits the denial writes nothing and runs no command. The rules are the tools the page's
 // coordinator uses, both spellings of the subagent tool among them, and TaskOutput, which is how a
-// coordinator waits on a background seat without ending the turn that owns it; acceptEdits is what lets a
-// seat write without a prompt no headless run could answer.
+// coordinator waits on a background agent without ending the turn that owns it; acceptEdits is what lets a
+// agent write without a prompt no headless run could answer.
 const CLAUDE_FLAGS = ["--plugin-dir", ROOT, "--output-format", "stream-json", "--verbose",
                       "--permission-mode", "acceptEdits",
                       "--allowedTools", "Bash,Write,Edit,Read,Glob,Grep,Skill,Agent,Task,TaskOutput,Workflow"];
@@ -266,7 +266,7 @@ function untaggedAgentCalls(text) {
     // The script arrives as source when the field is named and as JSON when it is not, so the escaped
     // quotes of the fallback are undone before the pattern reads it.
     const flat = call.replace(/\\(["'])/g, "$1");
-    // Every agent() in a script is a CLAUDE seat — a Codex seat is a wrapper Agent call and no agentType — so
+    // Every agent() in a script is a CLAUDE agent — a Codex agent is a wrapper Agent call and no agentType — so
     // tagged means one of exactly three model names. `model: undefined` and a fourth spelling are untagged.
     if (!/["']?model["']?\s*:\s*["'](opus|sonnet|fable)["']/.test(flat)) found.push(call.slice(0, 100));
   }
@@ -296,10 +296,10 @@ const runDirs = (scratch) => {
   return out;
 };
 
-// What the page now promises a run directory is: seat directories, one report.json in each, and nothing
+// What the page now promises a run directory is: agent directories, one report.json in each, and nothing
 // else — the driver publishes those files and the coordinator writes there at all. Every deviation is
 // named rather than counted, because each has a different cause: a file at the run level is a
-// coordinator that wrote where its own tools are refused, a seat directory with no report.json is a seat
+// coordinator that wrote where its own tools are refused, an agent directory with no report.json is an agent
 // that never published, and a file beside a report is a redirect the page sends to $TMPDIR.
 function runDirProblems(dirs) {
   const problems = [];
@@ -307,10 +307,10 @@ function runDirProblems(dirs) {
     let entries = [];
     try { entries = fs.readdirSync(run, { withFileTypes: true }); } catch (e) { problems.push(`${run} cannot be read: ${e.message}`); continue; }
     const stray = entries.filter((e) => !e.isDirectory()).map((e) => e.name);
-    if (stray.length) problems.push(`${path.basename(run)} holds ${stray.join(", ")} beside its seat directories, and only the driver writes there`);
-    const seats = entries.filter((e) => e.isDirectory());
-    if (!seats.length && !stray.length) problems.push(`${path.basename(run)} is empty`);
-    for (const s of seats) {
+    if (stray.length) problems.push(`${path.basename(run)} holds ${stray.join(", ")} beside its agent directories, and only the driver writes there`);
+    const agents = entries.filter((e) => e.isDirectory());
+    if (!agents.length && !stray.length) problems.push(`${path.basename(run)} is empty`);
+    for (const s of agents) {
       let inner = [];
       try { inner = fs.readdirSync(path.join(run, s.name)); } catch (e) { problems.push(`${path.basename(run)}/${s.name} cannot be read: ${e.message}`); continue; }
       if (!inner.includes("report.json")) problems.push(`${path.basename(run)}/${s.name} has no report.json: ${inner.join(", ") || "empty"}`);
@@ -321,9 +321,9 @@ function runDirProblems(dirs) {
   return problems;
 }
 
-// Every `<seat>/report.json` the driver published, whatever the seat calls said: a call whose
+// Every `<agent>/report.json` the driver published, whatever the agent calls said: a call whose
 // --report-file this could not parse still leaves its report where the run directory can be scanned for
-// it, and a report with no call behind it is a seat this suite would otherwise never see.
+// it, and a report with no call behind it is an agent this suite would otherwise never see.
 const runDirReports = (dirs) => dirs.flatMap((run) => {
   let entries = [];
   try { entries = fs.readdirSync(run, { withFileTypes: true }); } catch { return []; }
@@ -331,20 +331,20 @@ const runDirReports = (dirs) => dirs.flatMap((run) => {
     .filter((p) => fs.existsSync(p));
 });
 
-// A seat is a background task of the session's, and a task can outlive the SIGKILL aimed at the session's
+// An agent is a background task of the session's, and a task can outlive the SIGKILL aimed at the session's
 // group. Nothing under the run directory names a pid any more — the driver publishes a report there and
-// nothing else — so a seat is found two ways, in this order:
-//   1. the driver's own job records. Every seat writes `<state>/jobs/<threadId>.json` with its pid, the
-//      process identity that says the pid was not recycled, and the `cwd` (a worktree seat: the `repo`)
-//      it ran in. The state is the plugin data directory the seat was handed, so the scan is jobs/ under
-//      every id, and a record naming this case's scratch whose pid is still alive is this case's seat.
-//   2. the stderr file the seat call redirected to, which is under $TMPDIR now: `pid=` is the driver's
-//      first line there. This is what answers for a seat killed before its thread existed, since
+// nothing else — so an agent is found two ways, in this order:
+//   1. the driver's own job records. Every agent writes `<state>/jobs/<threadId>.json` with its pid, the
+//      process identity that says the pid was not recycled, and the `cwd` (a worktree agent: the `repo`)
+//      it ran in. The state is the plugin data directory the agent was handed, so the scan is jobs/ under
+//      every id, and a record naming this case's scratch whose pid is still alive is this case's agent.
+//   2. the stderr file the agent call redirected to, which is under $TMPDIR now: `pid=` is the driver's
+//      first line there. This is what answers for an agent killed before its thread existed, since
 //      writeJob returns without a threadId and no record was ever written.
 // SIGTERM, never SIGKILL: the driver's own handler is what interrupts the turn, writes the report the run
-// had earned and sweeps the codex process group it started. Best-effort by construction — a seat neither
+// had earned and sweeps the codex process group it started. Best-effort by construction — an agent neither
 // route can see is left to its own bounds, which is what --idle-timeout is for.
-function stopSeats(scratch, dir, toolUses = []) {
+function stopAgents(scratch, dir, toolUses = []) {
   const stopped = [];
   const seen = new Set();
   const roots = new Set([scratch]);
@@ -368,10 +368,10 @@ function stopSeats(scratch, dir, toolUses = []) {
       stop(`job ${n}`, Number(rec?.pid));
     }
   }
-  // The paths the seat calls named, not a directory listing: the stderr file is outside the run
+  // The paths the agent calls named, not a directory listing: the stderr file is outside the run
   // directory now, and only the command line says where it went.
-  for (const u of seatCalls(toolUses)) {
-    const f = /2>\s*"?([^"\s]+)"?/.exec(seatCommand(u))?.[1];
+  for (const u of codexCalls(toolUses)) {
+    const f = /2>\s*"?([^"\s]+)"?/.exec(codexCommand(u))?.[1];
     if (!f) continue;
     let head = "";
     try { head = fs.readFileSync(path.isAbsolute(f) ? f : path.join(scratch, f), "utf8").slice(0, 8192); } catch { continue; }
@@ -388,10 +388,10 @@ function stopSeats(scratch, dir, toolUses = []) {
 // once: nothing was delegated, nothing was written, no run directory exists yet.
 function stoppedAtPlan(toolUses, scratch, head0) {
   const problems = [];
-  // A Codex seat is a wrapper Agent call, counted twice here (as an Agent call and as a seat call) so a
+  // A Codex agent is a wrapper Agent call, counted twice here (as an Agent call and as a Codex call) so a
   // plan turn that launched one reads as not stopped whichever list a reader checks.
-  const fanned = [...agentCalls(toolUses), ...workflowCalls(toolUses), ...seatCalls(toolUses)];
-  if (fanned.length) problems.push(`the plan did not stop: ${fanned.map((u) => (isSeatCall(u) ? "Bash(seat)" : u.name)).join(", ")} ran before "go"`);
+  const fanned = [...agentCalls(toolUses), ...workflowCalls(toolUses), ...codexCalls(toolUses)];
+  if (fanned.length) problems.push(`the plan did not stop: ${fanned.map((u) => (isCodexCall(u) ? "Bash(codex)" : u.name)).join(", ")} ran before "go"`);
   const dirty = git(scratch, "status", "--porcelain").trim();
   if (dirty) problems.push(`the scratch was written to: ${dirty.split("\n").slice(0, 5).join(" | ")}`);
   // A clean tree is also what a commit leaves behind, so HEAD is compared as well as the porcelain.
@@ -406,8 +406,8 @@ const quote = (line) => JSON.stringify(line.trim().slice(0, 140));
 const lines = (text) => text.split("\n").filter((l) => l.trim());
 
 // The top pair is capped in every session, since the pool is the same whatever the coordinator's model:
-// at most one Fable and one gpt-6-astra seat per wave. The page states a cap, not a duty: measured, a Fable
-// coordinator planned a four-seat comparison on strong-tier seats and reserved the top pair for a tie-break,
+// at most one Fable and one gpt-6-astra agent per wave. The page states a cap, not a duty: measured, a Fable
+// coordinator planned a four-agent comparison on strong-tier agents and reserved the top pair for a tie-break,
 // which the page allows. Case 1 and case 2 differ only in their session model and their task.
 //
 // Everything below the tool checks is a heuristic over free text, and reads as one: a plan can satisfy
@@ -426,54 +426,54 @@ function planProblems({ text, toolUses, scratch, head0 }) {
   if (text.includes(".orchestrate/"))
     problems.push("the plan puts the run directory back inside the repository as `.orchestrate/`");
   // The tier table pairs each slug with the short name the page's user-facing template uses ("Codex
-  // Terra T1"), so a plan written for the user names the seat either way; measured, three Opus plans for
-  // one task wrote "Terra, `gpt-5.6-terra`", "Codex Terra (cheap tier)" and "One Codex seat — Terra —".
+  // Terra T1"), so a plan written for the user names the agent either way; measured, three Opus plans for
+  // one task wrote "Terra, `gpt-5.6-terra`", "Codex Terra (cheap tier)" and "One Codex agent — Terra —".
   // The word Codex itself is required a few lines below, so the name alone is what is read here.
   if (!CODEX_MODELS.some((m) => text.includes(m)) && !/\b(Astra|Sol|Terra|Luna)\b/.test(text))
-    problems.push(`no seat carries a Codex model from the tier table (${CODEX_MODELS.join(", ")} or its short name)`);
-  // Where the plan has a seat table, the rows ARE the seats and everything else is commentary about them:
-  // measured, a plan that listed one Fable seat in a row and then wrote "one Fable seat, one gpt-6-astra
-  // seat, caps respected" in a bullet counted its own summary as a second seat. A plan with no table is
+    problems.push(`no agent carries a Codex model from the tier table (${CODEX_MODELS.join(", ")} or its short name)`);
+  // Where the plan has an agent table, the rows ARE the agents and everything else is commentary about them:
+  // measured, a plan that listed one Fable agent in a row and then wrote "one Fable agent, one gpt-6-astra
+  // agent, caps respected" in a bullet counted its own summary as a second agent. A plan with no table is
   // judged on every line, as before.
   const rows = lines(text).filter((l) => l.trim().startsWith("|"));
-  const seatLines = rows.length ? rows : lines(text);
-  // No Claude-seat requirement: the page lets the coordinator take a quick targeted edit itself, and
+  const agentLines = rows.length ? rows : lines(text);
+  // No Claude-agent requirement: the page lets the coordinator take a quick targeted edit itself, and
   // measured, an Opus plan for the slug task did exactly that with one Codex verifier beside it. Whether
   // every Claude Agent call that does run carries a tag is judged after "go", on the calls themselves.
   if (!/\bCodex\b/.test(text)
       || !/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/i.test(text))
     problems.push("the plan announces no composition: the word Codex and a count or \"zero\"");
-  // A Fable session describing itself is not a seat tagged fable: counting those sentences made the cap
+  // A Fable session describing itself is not an agent tagged fable: counting those sentences made the cap
   // unmeetable in case 2.
-  // The cap is on seats ALIVE at once. Measured three plans in a row honour it three different ways: two
-  // rows with "runs after P1" beside the second; a "Wave" column with one Fable and one astra seat per
-  // wave; a single top seat. So the count is taken per wave when the table has a wave/stage/phase/step
+  // The cap is on agents ALIVE at once. Measured three plans in a row honour it three different ways: two
+  // rows with "runs after P1" beside the second; a "Wave" column with one Fable and one astra agent per
+  // wave; a single top agent. So the count is taken per wave when the table has a wave/stage/phase/step
   // column, else per plan, and a stated sequencing exempts a plan-level count. A self-description is not a
-  // seat: "you are Fable" and "under Fable" are excluded before counting.
+  // agent: "you are Fable" and "under Fable" are excluded before counting.
   // The plan is written in the user's language now, so every heuristic below that reads English words
   // reads nothing at all on a Russian plan and silently changes its own verdict. Measured: "Я сам работаю
-  // на Fable как координатор." was not excluded here and counted as a second Fable seat, failing a cap the
+  // на Fable как координатор." was not excluded here and counted as a second Fable agent, failing a cap the
   // plan honoured. Each alternation therefore carries the stems of the languages this plugin is used in.
-  const isSeat = (l) => !/under fable|fable session|orchestrator|coordinator|powered by|you are|координ|оркестр|под fable|сам работаю|эта сессия|текущая сессия|я на fable|вне пула/i.test(l);
+  const isAgent = (l) => !/under fable|fable session|orchestrator|coordinator|powered by|you are|координ|оркестр|под fable|сам работаю|эта сессия|текущая сессия|я на fable|вне пула/i.test(l);
   const header = rows[0] ? rows[0].split("|").map((c) => c.trim().toLowerCase()) : [];
   const waveCol = header.findIndex((c) => /^(wave|stage|phase|step|order|round|batch|when|волна|этап|фаза|шаг|порядок|очередь|раунд|когда)$/.test(c));
   const groupOf = (l) => (waveCol >= 0 ? (l.split("|")[waveCol] ?? "").trim() : "");
   const capMax = (re) => {
     const per = new Map();
-    for (const l of seatLines.filter(isSeat)) {
+    for (const l of agentLines.filter(isAgent)) {
       const n = [...l.matchAll(re)].length;
       if (n) per.set(groupOf(l), (per.get(groupOf(l)) ?? 0) + n);
     }
     return Math.max(0, ...per.values());
   };
-  const tagged = seatLines.filter((l) => /\bfable\b/i.test(l) && isSeat(l));
+  const tagged = agentLines.filter((l) => /\bfable\b/i.test(l) && isAgent(l));
   const count = tagged.reduce((n, l) => n + [...l.matchAll(/\bfable\b/gi)].length, 0);
   const sequenced = /alive at a time|one at a time|one after the other|sequential|runs after|then the (second|other)|по очереди|последовательн|не одновременно|друг за другом|после (перв|первого)|сначала .{0,40}(затем|потом)/i.test(text);
   for (const [name, re] of [["fable", /\bfable\b/gi], ["gpt-6-astra", /gpt-6-astra/g]]) {
     const max = capMax(re);
     if (max > 1 && !sequenced)
-      problems.push(`${max} ${name} seats in one wave with no sequencing stated, and the cap is one alive at a time: ${seatLines.filter((l) => re.test(l) && isSeat(l)).slice(0, 3).map(quote).join(" ")}`);
-    else note(`${name} seats in the plan: ${count && name === "fable" ? count : capMax(re)}${waveCol >= 0 ? `, at most ${max} per ${header[waveCol]}` : sequenced && max > 1 ? ", sequenced by the plan's own words" : ""}`);
+      problems.push(`${max} ${name} agents in one wave with no sequencing stated, and the cap is one alive at a time: ${agentLines.filter((l) => re.test(l) && isAgent(l)).slice(0, 3).map(quote).join(" ")}`);
+    else note(`${name} agents in the plan: ${count && name === "fable" ? count : capMax(re)}${waveCol >= 0 ? `, at most ${max} per ${header[waveCol]}` : sequenced && max > 1 ? ", sequenced by the plan's own words" : ""}`);
   }
   return problems;
 }
@@ -490,19 +490,19 @@ const settle = (dir, problems) => {
 
 // --------------------------------------------------------------- the prompts
 
-// The CHECK names a Codex seat on purpose: the page lets a one-seat task run with no Codex seat at all
+// The CHECK names a Codex agent on purpose: the page lets a one-agent task run with no Codex agent at all
 // (measured, an Opus plan took a Sonnet implementer and verified under the redirect rule), and the gate
 // must exercise the Codex path, so the task states the allocation, which the page's composition rules
 // then hold unchanged.
 const SLUG_TASK =
   "/codex-delegate:orchestrate TASK: add a slug(title) helper to lib/slug.mjs that lowercases, trims and "
   + "joins words with hyphens, with a test in test/slug.test.mjs. CHECK: node --test passes, run by a Codex "
-  + "seat that did not write the code. RETURN: the files and the test count.";
+  + "agent that did not write the code. RETURN: the files and the test count.";
 
 const DESIGN_TASK =
   "/codex-delegate:orchestrate TASK: compare two ways to give this repository's driver a --dry-run flag "
   + "(parse only versus a fake server turn) and recommend one; do not implement. CHECK: each way is judged "
-  + "by a seat that did not propose it. RETURN: the recommendation and the seats' verdicts.";
+  + "by an agent that did not propose it. RETURN: the recommendation and the agents' verdicts.";
 
 const TAG_TASK =
   "Use the Agent tool twice, in parallel: one call with model sonnet, one with model opus; each subagent "
@@ -529,16 +529,16 @@ const DRIVER_TIMEOUT = 15 * 60_000;
 // --------------------------------------------------------------- 1
 
 test("plan only under Opus: the first attempt stops at a plan",
-  "the mode's one gate is that \"go\" comes before any seat and any write; a coordinator that scouts and then implements has spent the user's approval before offering it, and nothing in the transcript would say so afterwards",
+  "the mode's one gate is that \"go\" comes before any agent and any write; a coordinator that scouts and then implements has spent the user's approval before offering it, and nothing in the transcript would say so afterwards",
   async () => {
     const dir = caseDir(1, "plan-opus");
     const scratch = scratchClone(dir);
     const head0 = git(scratch, "rev-parse", "HEAD").trim();
     const r = await session({ model: "opus", maxTurns: 60, prompt: SLUG_TASK }, { cwd: scratch, timeoutMs: PLAN_TIMEOUT });
     const s = parseStream(r.out);
-    // Parsed before the kill sweep: the stderr paths the seat calls named are the fallback route to a
-    // seat's pid, and they are only on the command lines this parse recovers.
-    if (r.killed) stopSeats(scratch, dir, s.toolUses);
+    // Parsed before the kill sweep: the stderr paths the agent calls named are the fallback route to a
+    // agent's pid, and they are only on the command lines this parse recovers.
+    if (r.killed) stopAgents(scratch, dir, s.toolUses);
     save(dir, "session.jsonl", r.out);
     save(dir, "stderr.txt", r.err);
     save(dir, "plan.txt", s.planText);
@@ -555,14 +555,14 @@ test("plan only under Opus: the first attempt stops at a plan",
 // --------------------------------------------------------------- 2
 
 test("plan only under Fable: the top pair is capped",
-  "the pool is the same in every session and a design task is where its caps bite: at most one Fable seat and one gpt-6-astra seat alive at a time, the only thing between a design fan-out and a batch of top-tier seats, and the astra seat named at all only proves the session read the tier table",
+  "the pool is the same in every session and a design task is where its caps bite: at most one Fable agent and one gpt-6-astra agent alive at a time, the only thing between a design fan-out and a batch of top-tier agents, and the astra agent named at all only proves the session read the tier table",
   async () => {
     const dir = caseDir(2, "plan-fable");
     const scratch = scratchClone(dir);
     const head0 = git(scratch, "rev-parse", "HEAD").trim();
     const r = await session({ model: "fable", maxTurns: 60, prompt: DESIGN_TASK }, { cwd: scratch, timeoutMs: PLAN_TIMEOUT });
     const s = parseStream(r.out);
-    if (r.killed) stopSeats(scratch, dir, s.toolUses);
+    if (r.killed) stopAgents(scratch, dir, s.toolUses);
     save(dir, "session.jsonl", r.out);
     save(dir, "stderr.txt", r.err);
     save(dir, "plan.txt", s.planText);
@@ -586,10 +586,10 @@ test("plan only under Fable: the top pair is capped",
     if (r.killed) problems.push("the session was killed at the timeout");
     if (!s.planText) problems.push(`the session produced no text (result subtype ${JSON.stringify(s.result?.subtype ?? null)})`);
     problems.push(...planProblems({ text: s.planText, toolUses: s.toolUses, scratch, head0 }));
-    // The top Codex seat by name, not by tier table membership: planProblems accepts any of the three
+    // The top Codex agent by name, not by tier table membership: planProblems accepts any of the three
     // slugs, and for a design task the top row is the whole claim.
     if (!lines(s.planText).some((l) => l.includes("gpt-6-astra") || /\bAstra\b/.test(l)))
-      problems.push("the plan names no gpt-6-astra seat");
+      problems.push("the plan names no gpt-6-astra agent");
     return settle(dir, problems);
   });
 
@@ -615,7 +615,7 @@ test("the model tag under Opus reaches the subagent",
     const answer = jsonObject(s.resultText);
     if (!answer) problems.push(`the session returned no JSON object: ${JSON.stringify(s.resultText.slice(0, 200))}`);
     // Case-insensitively, because a subagent's own system prompt does not settle on one spelling: measured
-    // in one run, the sonnet seat answered "claude-sonnet-4-6" and the opus seat "Opus 4.8". Which tier
+    // in one run, the sonnet agent answered "claude-sonnet-4-6" and the opus agent "Opus 4.8". Which tier
     // answered is the question, and both spellings answer it.
     else for (const tag of ["sonnet", "opus"])
       if (!String(answer[tag] ?? "").toLowerCase().includes(tag))
@@ -632,20 +632,20 @@ function jsonObject(text) {
 // --------------------------------------------------------------- 4
 
 test("gpt-6-astra answers on its own thread when not invited to delegate",
-  "a Codex seat's evidence is the commands its report lists, and the report describes the thread the driver started: invited to delegate, the top model ran nothing on that thread and answered out of children the report cannot show, so what the page rests on is that a seat asked to do the work itself does it here",
+  "a Codex agent's evidence is the commands its report lists, and the report describes the thread the driver started: invited to delegate, the top model ran nothing on that thread and answered out of children the report cannot show, so what the page rests on is that an agent asked to do the work itself does it here",
   async () => {
     const dir = caseDir(4, "astra-own-thread");
     const scratch = scratchClone(dir);
     const files = ["README.md", "CHANGELOG.md", "RELEASING.md"];
     const expected = Object.fromEntries(files.map((f) => [f, wcL(path.join(scratch, f))]));
-    // No --effort: the page sends no EFFORT: line, so the seat inherits the configured effort and this is
-    // the seat the page describes. What the server selected is noted beside the case, never asserted.
+    // No --effort: the page sends no EFFORT: line, so the agent inherits the configured effort and this is
+    // the agent the page describes. What the server selected is noted beside the case, never asserted.
     const base = ["--level", "read", "--cwd", scratch, "--model", "gpt-6-astra"];
     // A release gate leaves no job record on the machine it runs on: --help-all documents
     // CODEX_DELEGATE_STATE_DIR as where everything the driver owns lives, and it must be absolute.
     const env = { ...process.env, CODEX_DELEGATE_STATE_DIR: path.join(dir, "state") };
 
-    // No stopSeats here: this seat IS the child runProc started, so the bell's own SIGTERM reaches its
+    // No stopAgents here: this agent IS the child runProc started, so the bell's own SIGTERM reaches its
     // handler and the driver sweeps its codex group itself.
     const r = await runProc(process.execPath, [DRIVER, ...base, "--prompt", COUNT_TASK], { timeoutMs: DRIVER_TIMEOUT, env });
     save(dir, "report.json", r.out);
@@ -657,16 +657,16 @@ test("gpt-6-astra answers on its own thread when not invited to delegate",
     // Exit 0 is the driver's own verdict that the turn completed and passed its gates. Exit 5, "no command
     // ran", is what the delegating turn came back with, answer and all, and it is this case's failure.
     if (r.code !== 0) problems.push(`the driver exited ${r.code} (turnStatus ${JSON.stringify(report.turnStatus ?? null)}): ${r.err.trim().slice(-200)}`);
-    // Which seat answered, before anything is concluded about it: a run that fell back to the config
+    // Which agent answered, before anything is concluded about it: a run that fell back to the config
     // default would answer this prompt just as well, at another model.
     if (report.model !== "gpt-6-astra") problems.push(`the report's model is ${JSON.stringify(report.model)}, not gpt-6-astra`);
     const commands = Array.isArray(report.commands) ? report.commands : [];
     if (!commands.length) problems.push("the report lists no command, so nothing ran on the thread that answered");
-    // The counters beside subagentThreads: a delegating seat shows both, and the counters are the signal
+    // The counters beside subagentThreads: a delegating agent shows both, and the counters are the signal
     // the first measurement saw ({subAgentActivity: 6, collabAgentToolCall: 2}) before children registered.
     const others = report.otherItemCounts ?? {};
     for (const k of ["subAgentActivity", "collabAgentToolCall"])
-      if (others[k]) problems.push(`the seat delegated: otherItemCounts.${k} is ${JSON.stringify(others[k])}`);
+      if (others[k]) problems.push(`the agent delegated: otherItemCounts.${k} is ${JSON.stringify(others[k])}`);
     // The prompt asks for "file: count", so each count is checked against the line that names its file:
     // three bare numbers somewhere in the answer would also match three wrong attributions.
     const answer = String(report.answer ?? "");
@@ -695,7 +695,7 @@ test("gpt-6-astra answers on its own thread when not invited to delegate",
         // completed announcements of each, so it is no count of children; the list itself is.
         const subs = Array.isArray(pr.subagentThreads) ? pr.subagentThreads : [];
         if (!subs.length)
-          problems.push(`the invited seat's children reached no subagentThreads entry (otherItemCounts ${JSON.stringify(pr.otherItemCounts ?? null)})`);
+          problems.push(`the invited agent's children reached no subagentThreads entry (otherItemCounts ${JSON.stringify(pr.otherItemCounts ?? null)})`);
         for (const t of subs) {
           if (!t.agentPath) problems.push(`a registered child carries no agentPath: ${JSON.stringify(t)}`);
           if (t.status !== "completed") problems.push(`a registered child's status is ${JSON.stringify(t.status ?? null)}, not completed: ${JSON.stringify(t)}`);
@@ -741,7 +741,7 @@ function tinyProject(dir) {
 }
 
 test("the full run under Opus: plan, go, run",
-  "everything above stops before the seats, and the promises that cost money are all on the other side of \"go\": the run directory that ignores itself, a Codex seat that actually ran, every Claude seat tagged, and a live tree that gains files but not a commit",
+  "everything above stops before the agents, and the promises that cost money are all on the other side of \"go\": the run directory that ignores itself, a Codex agent that actually ran, every Claude agent tagged, and a live tree that gains files but not a commit",
   async () => {
     const dir = caseDir(5, "full-run");
     const scratch = tinyProject(dir);
@@ -755,7 +755,7 @@ test("the full run under Opus: plan, go, run",
     const t1 = await session({ model: "opus", maxTurns: 60, prompt: SLUG_TASK, sessionId, resumable: true },
       { cwd: scratch, timeoutMs: PLAN_TIMEOUT });
     const s1 = parseStream(t1.out);
-    if (t1.killed) stopSeats(scratch, dir, s1.toolUses);
+    if (t1.killed) stopAgents(scratch, dir, s1.toolUses);
     save(dir, "turn1.jsonl", t1.out);
     save(dir, "turn1.stderr.txt", t1.err);
     save(dir, "plan.txt", s1.planText);
@@ -765,7 +765,7 @@ test("the full run under Opus: plan, go, run",
     if (wrong) problems.push(wrong);
     if (t1.killed) problems.push("turn 1 was killed at the timeout");
     // The whole plan, not only the stop: this is the turn whose plan the run then executes, and a plan
-    // that named no seat would make everything measured after "go" a measurement of something else.
+    // that named no agent would make everything measured after "go" a measurement of something else.
     problems.push(...planProblems({ text: s1.planText, toolUses: s1.toolUses, scratch, head0 })
       .map((p) => `turn 1: ${p}`));
     if (problems.length) return settle(dir, problems);
@@ -773,7 +773,7 @@ test("the full run under Opus: plan, go, run",
     const t2 = await session({ model: "opus", maxTurns: 400, prompt: "go", resume: sessionId, resumable: true },
       { cwd: scratch, timeoutMs: FULL_TIMEOUT });
     const s2 = parseStream(t2.out);
-    if (t2.killed) { stopSeats(scratch, dir, s2.toolUses); problems.push("turn 2 was killed at the timeout"); }
+    if (t2.killed) { stopAgents(scratch, dir, s2.toolUses); problems.push("turn 2 was killed at the timeout"); }
     save(dir, "turn2.jsonl", t2.out);
     save(dir, "turn2.stderr.txt", t2.err);
     save(dir, "report.txt", s2.planText);
@@ -798,7 +798,7 @@ test("the full run under Opus: plan, go, run",
 
     // Two files existing is not the CHECK line the prompt carried. The count separates a suite that grew
     // a case from one whose new file was never picked up, and the import answers for the one behaviour
-    // the prompt named, against a test the seat did not write.
+    // the prompt named, against a test the agent did not write.
     // The tap reporter by name, not by default: measured on Node 24.11, a piped `node --test` still gets
     // the spec reporter, whose summary reads `pass 2` behind a glyph. `# pass N` is the line parsed here.
     const nodeTest = await runProc(process.execPath, ["--test", "--test-reporter=tap"], { cwd: scratch, timeoutMs: 2 * 60_000 });
@@ -817,40 +817,40 @@ test("the full run under Opus: plan, go, run",
     } catch (e) { problems.push(`lib/slug.mjs does not import: ${e.message}`); }
 
     // Every Claude Agent call is tagged. The one exemption is the shipped Codex wrapper, whose model is
-    // pinned in agents/codex-seat.md and which the page tells the coordinator to pass no model to.
+    // pinned in agents/codex-agent.md and which the page tells the coordinator to pass no model to.
     const untagged = agentCalls(s2.toolUses)
-      .filter((u) => !/codex-seat$/.test(String(u.input.subagent_type ?? "")))
+      .filter((u) => !/codex-agent$/.test(String(u.input.subagent_type ?? "")))
       .filter((u) => !["opus", "sonnet", "fable"].includes(String(u.input.model ?? "")));
     if (untagged.length)
       problems.push(`${untagged.length} Claude Agent call(s) carry no opus/sonnet/fable tag: ${untagged.map((u) => `${u.input.subagent_type ?? "?"}=${JSON.stringify(u.input.model ?? null)}`).join(", ")}`);
 
-    // A Workflow spawns its seats from inside its script, and those calls are never re-emitted as Agent
+    // A Workflow spawns its agents from inside its script, and those calls are never re-emitted as Agent
     // blocks: the check above sees a run whose whole fan-out is one Workflow as fully tagged.
     const inScript = workflowCalls(s2.toolUses).flatMap((u) => untaggedAgentCalls(scriptSource(u)));
     if (inScript.length)
       problems.push(`${inScript.length} agent() call(s) in a Workflow script carry no opus/sonnet/fable model: ${inScript.join(" | ")}`);
 
-    // A Codex seat is one wrapper call whose prompt carries the driver, a seat file and a report file. The report file
+    // A Codex agent is one wrapper call whose prompt carries the driver, a prompt file and a report file. The report file
     // is also the only place the run's own evidence is: there is no registry to ask, so the calls name
     // where to look and the files answer for what ran.
-    const seatCallsRan = seatCalls(s2.toolUses);
-    if (!seatCallsRan.length)
-      problems.push(`no Codex seat ran: ${agentCalls(s2.toolUses).length} Agent call(s), none whose prompt names driver.mjs with --seat-file`);
-    const noBackground = seatCallsRan.filter((u) => u.input.run_in_background !== true);
+    const codexCallsRan = codexCalls(s2.toolUses);
+    if (!codexCallsRan.length)
+      problems.push(`no Codex agent ran: ${agentCalls(s2.toolUses).length} Agent call(s), none whose prompt names driver.mjs with --prompt-file`);
+    const noBackground = codexCallsRan.filter((u) => u.input.run_in_background !== true);
     if (noBackground.length)
-      problems.push(`${noBackground.length} seat wrapper(s) ran in the foreground, so the coordinator waited on the call instead of the notification`);
-    const noReportFlag = seatCallsRan.filter((u) => !/--report-file/.test(seatCommand(u)));
+      problems.push(`${noBackground.length} agent wrapper(s) ran in the foreground, so the coordinator waited on the call instead of the notification`);
+    const noReportFlag = codexCallsRan.filter((u) => !/--report-file/.test(codexCommand(u)));
     if (noReportFlag.length)
-      problems.push(`${noReportFlag.length} seat call(s) name no --report-file, so their report is only in a task's output`);
-    save(dir, "seat-calls.txt", seatCallsRan.map((u) => seatCommand(u)).join("\n\n"));
+      problems.push(`${noReportFlag.length} agent call(s) name no --report-file, so their report is only in a task's output`);
+    save(dir, "codex-calls.txt", codexCallsRan.map((u) => codexCommand(u)).join("\n\n"));
 
-    // Every report file the seats named, read where the calls said it would be, AND every one the run
-    // directories hold: a call this cannot parse, or a seat launched from inside a Workflow script rather
-    // than as a tool_use of the session's, still published its report where the driver put it. A seat
+    // Every report file the agents named, read where the calls said it would be, AND every one the run
+    // directories hold: a call this cannot parse, or an agent launched from inside a Workflow script rather
+    // than as a tool_use of the session's, still published its report where the driver put it. An agent
     // that RAN is a tier model and a completed turn; the exit code may be a gate verdict, so it is
     // recorded, not required.
-    const reportPaths = [...new Set([...seatCallsRan
-      .map((u) => /--report-file\s+"?([^"\s]+)"?/.exec(seatCommand(u))?.[1])
+    const reportPaths = [...new Set([...codexCallsRan
+      .map((u) => /--report-file\s+"?([^"\s]+)"?/.exec(codexCommand(u))?.[1])
       .filter(Boolean)
       .map((f) => (path.isAbsolute(f) ? f : path.join(scratch, f))),
       ...runDirReports(dirs)])];
@@ -862,9 +862,9 @@ test("the full run under Opus: plan, go, run",
         if (CODEX_MODELS.includes(rep.model) && rep.turnStatus === "completed") ran.push(rep.model);
       } catch { seen.push(`${path.basename(f)}: unreadable`); }
     }
-    save(dir, "seat-reports.txt", `${seen.join("\n")}\n`);
+    save(dir, "agent-reports.txt", `${seen.join("\n")}\n`);
     if (!ran.length)
-      problems.push(`${reportPaths.length} report file(s) named by the seat calls or found in the run directories, none a completed turn on a tier model (model:turnStatus:exitCode): ${JSON.stringify(seen)}`);
+      problems.push(`${reportPaths.length} report file(s) named by the agent calls or found in the run directories, none a completed turn on a tier model (model:turnStatus:exitCode): ${JSON.stringify(seen)}`);
 
     if (!/\bCodex\b/.test(s2.planText)) problems.push("the final report never names the composition that ran");
     return settle(dir, problems);

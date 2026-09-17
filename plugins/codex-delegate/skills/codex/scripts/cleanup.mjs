@@ -6,7 +6,7 @@
 //   node cleanup.mjs --delete --from <listing.json> <number>...
 //
 // Five kinds of artifact can be removed here: an orchestrate run directory, a standalone report run
-// directory, a seat's scratch directory, the suites' scratch directories and the saved conversations
+// directory, an agent's scratch directory, the suites' scratch directories and the saved conversations
 // the suites leave behind. Five more are REPORTED and never touched — the driver's saved answers,
 // managed worktrees, write locks, the shared Codex home and another copy's data directory — because
 // another owner or retention policy is responsible for each of them. Nothing here runs git.
@@ -14,7 +14,7 @@
 // Three rules decide the rest.
 //   * Evidence, never age. An item is removable only when nothing THIS PLUGIN RECORDS under it is in
 //     use and everything under it could be read. The claim is exactly as wide as the records named
-//     under "in use": a process holding a directory open with no seat, job record or suite name
+//     under "in use": a process holding a directory open with no agent, job record or suite name
 //     behind it is invisible here, and so is a record in another copy's data directory.
 //   * A failure to read is never an absence. Every read goes through one helper that answers with a
 //     value or with the reason it could not be had, and a reason keeps the item. ENOENT is the only
@@ -37,7 +37,7 @@ const EXIT_FAILED = 1;
 const SPAWN_TIMEOUT_MS = 120_000;
 
 const PLUGIN_NAME = "codex-delegate";
-const SEAT_RE = /^codex-seat\.[A-Za-z0-9]{8}$/;            // SKILL.md's mktemp template
+const RIGHTS_RE = /^codex-agent\.[A-Za-z0-9]{8}$/;            // SKILL.md's mktemp template
 const WT_RE = /^codex-[0-9a-z]+-[0-9a-f]{8}$/;             // driver.mjs's worktree names
 const EVAL_KINDS = [["codex-delegate-test-", "the delegation tests"],
                     ["codex-lock-", "the lock tests"],
@@ -79,14 +79,14 @@ numbers the user chose and the file --list --json wrote, and removes a number on
 finds now is the row the listing showed — same kind, name, status, paths, identities, size and
 last-change times. Everything else is refused untouched, and the fresh listing follows.
 
-It removes orchestrate run directories and seat scratch directories of THIS project, published
+It removes orchestrate run directories and agent scratch directories of THIS project, published
 standalone report run directories, the suites' scratch directories, and the saved conversations the
 suites leave behind; it only REPORTS the driver's saved answers, managed worktrees and their ledger,
 write locks, the shared Codex home, and another copy's data directory. It never runs git, and never
 removes anything it could not fully read.
 
-An item is in use when a live pid is recorded under it or names it: a seat's startup line, a run's
-seat directory with no report, a standalone report run with no published report.json, a job record
+An item is in use when a live pid is recorded under it or names it: an agent's startup line, a run's
+agent directory with no report, a standalone report run with no published report.json, a job record
 under the state directory, or a running test suite. That is the whole of what it can see — a process
 with none of those behind it is invisible to it.
 
@@ -148,8 +148,8 @@ const identAt = (p) => { const s = statAt(p); return s.ok ? identOf(s.value) : n
 // data; nothing this tool prints may execute when it is pasted.
 const shq = (s) => `'${String(s).replace(/'/g, "'\\''")}'`;
 
-// The nearest existing ancestor, canonicalised, with the missing tail appended lexically. A seat's
-// recorded report path may name a file the seat never wrote, and canPath answers null for it; that
+// The nearest existing ancestor, canonicalised, with the missing tail appended lexically. An agent's
+// recorded report path may name a file the agent never wrote, and canPath answers null for it; that
 // must still resolve under the run it names rather than becoming nobody's.
 function canonLoose(p) {
   const direct = canonPath(p);
@@ -354,22 +354,22 @@ function scratchRow(kind, base, parts, fallback, extra = {}) {
   return row;
 }
 
-// The seat's first stderr line, split at the FIRST " reportPath=": the identity holds spaces on
+// The agent's first stderr line, split at the FIRST " reportPath=": the identity holds spaces on
 // macOS (`lstart:Wed Sep  9 11:42:35 2026`) and a report path may hold them too, so neither part can
 // be matched with \S+.
-const SEAT_LINE = /^codex-delegate: pid=(\d+) identity=([\s\S]*)$/;
+const RIGHTS_LINE = /^codex-delegate: pid=(\d+) identity=([\s\S]*)$/;
 const REPORT_MARK = " reportPath=";
 
 // Read WHATEVER the walk found. An unreadable file deep inside decides only whether this directory
-// may go; it must never cancel the record that says a seat — and the run it is writing into — is
+// may go; it must never cancel the record that says an agent — and the run it is writing into — is
 // still alive.
-function seatRecord(dirPath) {
+function agentRecord(dirPath) {
   const t = textAt(path.join(dirPath, "err.txt"));
   // The record is there and cannot be read — refused, or a named pipe where a file belongs. A record
   // you cannot read means in use, not absent, and this cannot tell WHICH run it names, so every run
   // is kept while it stands.
   if (!t.ok) return { inUse: true, opaque: true, reportPath: null };
-  const m = SEAT_LINE.exec((t.value ?? "").split("\n")[0]);
+  const m = RIGHTS_LINE.exec((t.value ?? "").split("\n")[0]);
   if (m === null) return { inUse: true, opaque: true, reportPath: null, absent: true };
   const rest = m[2];
   const i = rest.indexOf(REPORT_MARK);
@@ -380,14 +380,14 @@ function seatRecord(dirPath) {
            reportPath: i < 0 ? null : rest.slice(i + REPORT_MARK.length) };
 }
 
-function listSeats(roots) {
+function listAgents(roots) {
   const rows = [];
-  for (const name of namesIn(roots.tmp).filter((n) => SEAT_RE.test(n)).sort()) {
-    const row = scratchRow("seat", roots.T, [name], path.join(roots.tmp, name),
-      { reportPath: null, seatName: null, pid: null, identity: null, owner: null, opaque: false });
+  for (const name of namesIn(roots.tmp).filter((n) => RIGHTS_RE.test(n)).sort()) {
+    const row = scratchRow("agent", roots.T, [name], path.join(roots.tmp, name),
+      { reportPath: null, agentName: null, pid: null, identity: null, owner: null, opaque: false });
     rows.push(row);
     if (!row.chainOk) continue;         // nothing behind a link or a non-directory is ours to read
-    const rec = seatRecord(row.path);
+    const rec = agentRecord(row.path);
     Object.assign(row, { inUse: rec.inUse, opaque: rec.opaque, reportPath: rec.reportPath,
                          pid: rec.pid ?? null, identity: rec.identity ?? null });
     if (rec.opaque && !rec.absent) row.readable = false;
@@ -398,24 +398,24 @@ function listSeats(roots) {
   return rows;
 }
 
-// A run's own liveness, taken from the run directory and from the seat items that name it. Separate
+// A run's own liveness, taken from the run directory and from the agent items that name it. Separate
 // from the row so a removal can take it again immediately before it acts.
-function runLiveness(runPath, seats) {
-  const out = { inUse: false, readable: true, seats: 0, reports: 0, liveSeat: null,
-                liveSeatItem: false, cwds: [] };
+function runLiveness(runPath, agents) {
+  const out = { inUse: false, readable: true, agents: 0, reports: 0, liveAgent: null,
+                liveAgentItem: false, cwds: [] };
   const kids = entriesAt(runPath);
   if (!kids.ok || kids.value === null) out.readable = false;
   else for (const s of kids.value.sort()) {
     const sst = statAt(path.join(runPath, s));
     if (!sst.ok) { out.readable = false; continue; }
     if (sst.value === null || !sst.value.isDirectory() || sst.value.isSymbolicLink()) continue;
-    out.seats++;
+    out.agents++;
     const rp = path.join(runPath, s, "report.json");
     const rst = statAt(rp);
     if (!rst.ok) { out.readable = false; continue; }
-    // The driver makes the seat directory at admission, so a seat directory with no report is an
+    // The driver makes the agent directory at admission, so an agent directory with no report is an
     // unfinished marker, not an absence of evidence.
-    if (rst.value === null || !rst.value.isFile()) { out.inUse = true; out.liveSeat = out.liveSeat ?? s; continue; }
+    if (rst.value === null || !rst.value.isFile()) { out.inUse = true; out.liveAgent = out.liveAgent ?? s; continue; }
     const rec = jsonAt(rp).value;
     // A report that will not parse keeps this run, and the loop goes on: what cannot be read must
     // never end the inspection before the records that say something is still running.
@@ -423,35 +423,35 @@ function runLiveness(runPath, seats) {
     out.reports++;
     if (typeof rec.cwd === "string" && rec.cwd !== "") out.cwds.push(rec.cwd);
   }
-  // EVERY seat item that names this run, never the first: a retried seat leaves an older directory
-  // behind, and taking the first match reported a run finished while the live seat writing the same
-  // report was still going. A seat whose own record cannot be read names no run this can see, so it
+  // EVERY agent item that names this run, never the first: a retried agent leaves an older directory
+  // behind, and taking the first match reported a run finished while the live agent writing the same
+  // report was still going. An agent whose own record cannot be read names no run this can see, so it
   // keeps all of them.
-  for (const s of seats) {
-    if (s.inUse && s.opaque && !s.absent) { out.inUse = true; out.liveSeatItem = true; continue; }
+  for (const s of agents) {
+    if (s.inUse && s.opaque && !s.absent) { out.inUse = true; out.liveAgentItem = true; continue; }
     if (s.reportPath === null || !s.inUse) continue;
     const rp = canonLoose(s.reportPath);
     if (rp === null || !under(rp, runPath)) continue;
-    out.inUse = true; out.liveSeatItem = true;
+    out.inUse = true; out.liveAgentItem = true;
   }
   return out;
 }
 
-function listRuns(roots, seats) {
+function listRuns(roots, agents) {
   const rows = [];
   if (roots.ORCH === null) return rows;
   for (const slugName of namesIn(roots.ORCH).sort()) {
     for (const runName of namesIn(path.join(roots.ORCH, slugName)).sort()) {
       const row = scratchRow("run", roots.S, ["orchestrate", slugName, runName],
         path.join(roots.ORCH, slugName, runName),
-        { key: `${slugName}/${runName}`, run: runName, named: false, seats: 0, reports: 0,
-          liveSeat: null, liveSeatItem: false });
+        { key: `${slugName}/${runName}`, run: runName, named: false, agents: 0, reports: 0,
+          liveAgent: null, liveAgentItem: false });
       rows.push(row);
       if (!row.chainOk) continue;
-      const live = runLiveness(row.path, seats);
+      const live = runLiveness(row.path, agents);
       Object.assign(row, { inUse: live.inUse, readable: row.readable && live.readable,
-                           seats: live.seats, reports: live.reports, liveSeat: live.liveSeat,
-                           liveSeatItem: live.liveSeatItem });
+                           agents: live.agents, reports: live.reports, liveAgent: live.liveAgent,
+                           liveAgentItem: live.liveAgentItem });
       // The slug says which project the coordinator ran in, and a slug is never proof: `a-b` and
       // `a_b` share one. A cwd a report actually carries is the proof, and every one of them must
       // resolve under this project.
@@ -465,12 +465,12 @@ function listRuns(roots, seats) {
   return rows;
 }
 
-// Standalone seats write one report.json directly below `<state>/reports/<run>`. These directories
+// Standalone agents write one report.json directly below `<state>/reports/<run>`. These directories
 // carry no project slug or cwd that can establish ownership, so a finished one is available only by
-// its number and is never suggested. A live seat whose startup line names it protects it exactly as
-// it protects an orchestrate run; an opaque live seat conservatively protects every report directory.
-function seatHolds(seats, itemPath) {
-  return seats.some((s) => {
+// its number and is never suggested. A live agent whose startup line names it protects it exactly as
+// it protects an orchestrate run; an opaque live agent conservatively protects every report directory.
+function agentHolds(agents, itemPath) {
+  return agents.some((s) => {
     if (!s.inUse) return false;
     if (s.opaque && !s.absent) return true;
     const rp = s.reportPath === null ? null : canonLoose(s.reportPath);
@@ -484,7 +484,7 @@ function reportPublication(reportDir) {
            published: st.ok && st.value !== null && st.value.isFile() && !st.value.isSymbolicLink() };
 }
 
-function listReports(roots, seats) {
+function listReports(roots, agents) {
   const dir = path.join(roots.state, "reports");
   const names = entriesAt(dir);
   if (!names.ok) return { rows: [], complete: false };
@@ -498,7 +498,7 @@ function listReports(roots, seats) {
     const publication = reportPublication(row.path);
     if (!publication.readable) { row.readable = false; row.cond = "unreadable"; }
     else if (!publication.published) { row.inUse = true; if (row.readable) row.cond = "unreported"; }
-    if (seatHolds(seats, row.path)) {
+    if (agentHolds(agents, row.path)) {
       row.inUse = true;
       if (row.readable && publication.published) row.cond = "live";
     }
@@ -516,7 +516,7 @@ function listEvals(roots, ps) {
     rows.push(row);
     if (!row.chainOk) continue;
     // A process listing that failed or was refused keeps every one of these: it is not a listing
-    // with no suites in it. Asked whatever the walk found, for the reason seatRecord gives.
+    // with no suites in it. Asked whatever the walk found, for the reason agentRecord gives.
     if (!ps.ok) { row.inUse = true; if (row.readable) row.cond = "no-ps"; }
     else if (ps.suites.length) { row.inUse = true; if (row.readable) row.cond = "suite"; }
   }
@@ -735,9 +735,9 @@ function nameRow(roots, row) {
       many((n) => `${n} run directories called the ${what} in ${where}`);
       return `the ${what} in ${where}`;
     }
-    case "seat": {
+    case "agent": {
       const where = row.ours ? ` in ${roots.projectName}` : row.owner ? " in another project" : "";
-      const who = row.seatName ? `seat ${row.seatName}` : "a seat";
+      const who = row.agentName ? `agent ${row.agentName}` : "an agent";
       many((n) => `${n} sets of temporary files for ${who}${where}`);
       return `the temporary files for ${who}${where}`;
     }
@@ -791,30 +791,30 @@ function reasonRow(row, many) {
   }
   switch (row.kind) {
     case "report":
-      if (row.cond === "unreported") return "A seat has not published this report yet.";
-      if (row.cond === "live") return "A seat is still writing this standalone report.";
+      if (row.cond === "unreported") return "An agent has not published this report yet.";
+      if (row.cond === "live") return "An agent is still writing this standalone report.";
       return "The coordinator decides how long to keep this report, so it is removed only by its number.";
     case "run":
       if (row.cond === "live")
-        return row.liveSeat && !row.liveSeatItem
-          ? `Seat ${row.liveSeat} has not returned a report, so this run is being kept.`
-          : "A seat of this run is still running.";
-      // Said of what this reads and of nothing else: a run's own notes may name seats this layout
-      // does not, so the sentence speaks of seat directories and reports, never of all its contents.
-      return (row.seats === 0 ? "No seat directory sits in it; only its own files remain"
-        : row.reports === 1 ? "The one seat returned its report"
-        : row.reports === 2 ? "Both seats returned reports"
-        : `All ${countWord(row.reports)} seats returned reports`)
-        + (row.ours ? "." : row.named ? ", and its seat reports name another project."
-                                      : ", and no seat report in it names a project.");
-    case "seat":
-      if (row.cond === "live") return many ? "The seats using these files are still running."
-                                           : "The seat using these files is still running.";
-      if (row.cond === "no-record") return many ? "Nothing shows whether seats are still using these files."
-                                                : "Nothing here shows whether a seat is still using these files.";
-      if (row.ours) return many ? "Their seats' drivers have stopped." : "The seat's driver has stopped.";
-      return row.owner ? "The seat belongs to another project."
-                       : "These temporary seat files remain; their seat and project could not be identified.";
+        return row.liveAgent && !row.liveAgentItem
+          ? `Agent ${row.liveAgent} has not returned a report, so this run is being kept.`
+          : "An agent of this run is still running.";
+      // Said of what this reads and of nothing else: a run's own notes may name agents this layout
+      // does not, so the sentence speaks of agent directories and reports, never of all its contents.
+      return (row.agents === 0 ? "No agent directory sits in it; only its own files remain"
+        : row.reports === 1 ? "The one agent returned its report"
+        : row.reports === 2 ? "Both agents returned reports"
+        : `All ${countWord(row.reports)} agents returned reports`)
+        + (row.ours ? "." : row.named ? ", and its agent reports name another project."
+                                      : ", and no agent report in it names a project.");
+    case "agent":
+      if (row.cond === "live") return many ? "The agents using these files are still running."
+                                           : "The agent using these files is still running.";
+      if (row.cond === "no-record") return many ? "Nothing shows whether agents are still using these files."
+                                                : "Nothing here shows whether an agent is still using these files.";
+      if (row.ours) return many ? "Their agents' drivers have stopped." : "The agent's driver has stopped.";
+      return row.owner ? "The agent belongs to another project."
+                       : "These temporary prompt files remain; their agent and project could not be identified.";
     case "eval":
       if (row.cond === "no-ps") return "The running processes could not be listed, so these need your review.";
       if (row.cond === "suite") return `${cap(row.evalKind)} are running, so these are being kept.`;
@@ -825,7 +825,7 @@ function reasonRow(row, many) {
     case "answers": return "The driver prunes these answers itself, so this cleanup never removes them.";
     case "worktree": return "The driver reconciles and removes these itself on its next worktree run.";
     case "lock": return "The driver reclaims a lock it finds abandoned when it next needs that directory.";
-    case "home": return "Every seat of this plugin shares these Codex files, so this cleanup never removes them.";
+    case "home": return "Every agent of this plugin shares these Codex files, so this cleanup never removes them.";
     default:
       return row.installed === true
         ? `This data belongs to an installed copy of ${PLUGIN_NAME}; removing it is that copy's uninstall.`
@@ -882,27 +882,27 @@ function inventory(roots) {
   const ps = suiteScan();
   const jobs = readJobs(roots.state);
   // Every liveness fact FIRST, then classification: a run was once judged before the job records
-  // that protect its seats were consulted, so a seat a live task held was kept while the run it
+  // that protect its agents were consulted, so an agent a live task held was kept while the run it
   // writes into was deleted. Protection now travels one way — from any live evidence outward to
   // everything that contains it.
-  const seats = listSeats(roots);
-  for (const s of seats)
+  const agents = listAgents(roots);
+  for (const s of agents)
     if (!s.inUse && s.chainOk && (jobHolds(jobs, s.path) || !jobs.complete)) {
       s.inUse = true; s.cond = s.readable ? (jobs.complete ? "job" : "records") : s.cond;
     }
-  const runs = listRuns(roots, seats);
-  const reports = listReports(roots, seats);
+  const runs = listRuns(roots, agents);
+  const reports = listReports(roots, agents);
   const answers = listAnswers(roots);
-  // Where a seat belongs: the run its report path names, else the job record naming the same pid,
-  // else nobody. A seat of unknown ownership is kept, never proposed.
-  for (const s of seats) {
+  // Where an agent belongs: the run its report path names, else the job record naming the same pid,
+  // else nobody. An agent of unknown ownership is kept, never proposed.
+  for (const s of agents) {
     const rp = s.reportPath === null ? null : canonLoose(s.reportPath);
     const run = rp === null ? undefined : runs.find((r) => r.chainOk !== false && under(rp, r.path));
     if (run !== undefined) {
       s.owner = run.path;
       s.ours = run.ours;
       const rel = path.relative(run.path, rp).split(path.sep);
-      if (rel.length === 2 && rel[1] === "report.json") s.seatName = rel[0];
+      if (rel.length === 2 && rel[1] === "report.json") s.agentName = rel[0];
       continue;
     }
     if (s.pid === null) continue;
@@ -912,7 +912,7 @@ function inventory(roots) {
     s.owner = j.paths[0];
     s.ours = j.paths.every((p) => under(p, roots.project));
   }
-  const rows = [...runs, ...reports.rows, ...seats, ...listEvals(roots, ps), ...listSessions(roots),
+  const rows = [...runs, ...reports.rows, ...agents, ...listEvals(roots, ps), ...listSessions(roots),
                 ...answers.rows,
                 ...listWorktrees(roots), ...listLocks(roots), ...listHome(roots), ...listDataDirs(roots)];
   for (const row of rows) {
@@ -930,7 +930,7 @@ function inventory(roots) {
   const listed = collapse(rows);
   for (const row of listed) {
     row.removable = !row.inUse && row.readable && row.base !== null && !row.holdsRoot;
-    row.proposed = row.removable && ((row.kind === "seat" && row.ours) || row.kind === "eval");
+    row.proposed = row.removable && ((row.kind === "agent" && row.ours) || row.kind === "eval");
     row.selectable = row.proposed
       || (row.removable && ((row.kind === "run" && row.ours) || row.kind === "report"
         || row.kind === "session"));
@@ -944,11 +944,11 @@ function inventory(roots) {
 // ---------------------------------------------------------------- what this cleanup does not cover
 
 const OUTSIDE_FIND = (tmp) => `find ${shq(tmp)} -maxdepth 1 -name 'codex-*'`
-  + ` ! -name 'codex-seat.*' ! -name 'codex-delegate-test-*' ! -name 'codex-lock-*'`
+  + ` ! -name 'codex-agent.*' ! -name 'codex-delegate-test-*' ! -name 'codex-lock-*'`
   + ` ! -name 'codex-worktree-*' ! -name 'codex-clipboard-*'`;
 
 function notCovered(roots, covered) {
-  const skip = [SEAT_RE, /^codex-delegate-test-/, /^codex-lock-/, /^codex-worktree-/, /^codex-clipboard-/];
+  const skip = [RIGHTS_RE, /^codex-delegate-test-/, /^codex-lock-/, /^codex-worktree-/, /^codex-clipboard-/];
   const names = entriesAt(roots.tmp);
   // A count this could not take is `null`, never 0: the sentence then says the directory could not
   // be listed instead of claiming there is nothing outside.
@@ -979,8 +979,8 @@ function formA(inv) {
   const width = columns();
   const out = [`The current project is ${inv.roots.projectName}.`, ""];
   if (inv.roots.tmpFallback !== null)
-    out.push(...wrap(`TMPDIR was ${inv.roots.tmpFallback}, so the seat scan used Node's fallback `
-      + "temporary directory; seat scratch elsewhere may not have been seen.", width, ""), "");
+    out.push(...wrap(`TMPDIR was ${inv.roots.tmpFallback}, so the agent scan used Node's fallback `
+      + "temporary directory; agent scratch elsewhere may not have been seen.", width, ""), "");
   if (inv.rows.length === 0) out.push("Nothing this cleanup covers is on this machine.", "");
   const numWidth = Math.max(2, String(inv.rows.length).length);
   for (const row of inv.rows) {
@@ -1086,7 +1086,7 @@ function removeOne(roots, m) {
   // recycles inode numbers is not always (see the identity note above).
   if (m.ident !== null && identOf(chk.st) !== m.ident)
     return { refused: "it changed since it was listed" };
-  // Taken again here, immediately before this member and not once for its row: a seat admitted, a
+  // Taken again here, immediately before this member and not once for its row: an agent admitted, a
   // job record written or a suite started since the batch began must still protect what it names.
   if (!stillFree(roots, { ...m, path: chk.path }))
     return { refused: "something started using it since it was listed" };
@@ -1130,19 +1130,19 @@ function stillFree(roots, m) {
   // The process listing too, and per member: a suite that started while an earlier member of the
   // same row was being removed protects every member that has not gone yet.
   if (m.kind === "eval") { const ps = suiteScan(); return ps.ok && ps.suites.length === 0; }
-  if (m.kind === "seat") {
-    const rec = seatRecord(m.path);
+  if (m.kind === "agent") {
+    const rec = agentRecord(m.path);
     return !rec.inUse && !rec.opaque;
   }
-  // A run is protected by a seat, and a seat by a job record, so the job records have to reach the
-  // seats before the run is judged — the same order the listing itself uses.
-  const seats = listSeats(roots);
-  for (const s of seats) if (!s.inUse && s.chainOk && jobHolds(jobs, s.path)) s.inUse = true;
+  // A run is protected by an agent, and an agent by a job record, so the job records have to reach the
+  // agents before the run is judged — the same order the listing itself uses.
+  const agents = listAgents(roots);
+  for (const s of agents) if (!s.inUse && s.chainOk && jobHolds(jobs, s.path)) s.inUse = true;
   if (m.kind === "report") {
     const publication = reportPublication(m.path);
-    return publication.readable && publication.published && !seatHolds(seats, m.path);
+    return publication.readable && publication.published && !agentHolds(agents, m.path);
   }
-  const live = runLiveness(m.path, seats);
+  const live = runLiveness(m.path, agents);
   return !live.inUse && live.readable;
 }
 
@@ -1190,8 +1190,8 @@ function runDelete(roots, snapPath, numbers) {
   const snap = readSnapshot(roots, snapPath);
   const said = [];
   // ONE inventory, and every number answered from it before anything is removed. Taking a fresh one
-  // per number made the ORDER the user typed decide the outcome: removing a run renamed the seat that
-  // pointed into it, and the seat's own number was then refused as changed. Freshness is not what an
+  // per number made the ORDER the user typed decide the outcome: removing a run renamed the agent that
+  // pointed into it, and the agent's own number was then refused as changed. Freshness is not what an
   // inventory is for — stillFree() re-takes every liveness fact immediately before each member.
   const inv = inventory(roots);
   const plan = [];
@@ -1296,7 +1296,7 @@ const RUN_AS_MAIN = (() => {
   try { return import.meta.url === pathToFileURL(fs.realpathSync(entry)).href; } catch { return false; }
 })();
 
-export { EVAL_KINDS, PLUGIN_NAME, SEAT_RE, SESSION_MARKS, WIDTH_MAX, WIDTH_MIN };
+export { EVAL_KINDS, PLUGIN_NAME, RIGHTS_RE, SESSION_MARKS, WIDTH_MAX, WIDTH_MIN };
 
 if (RUN_AS_MAIN) {
   try { process.exitCode = main(process.argv.slice(2)); }

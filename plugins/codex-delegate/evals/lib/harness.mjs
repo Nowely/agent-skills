@@ -11,15 +11,15 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Straight out of the driver, never restated: a suite holding its own copy of EXIT, of the seat-file
+// Straight out of the driver, never restated: a suite holding its own copy of EXIT, of the prompt-file
 // vocabulary or of the lock's key has a copy that can disagree with the thing it is testing. Importing
 // is safe because driver.mjs runs main() only as an entry point.
-export { EXIT, FIELDS, LADDER, PINNED_CODEX, SEAT_FIELDS, VERSION, lockKey }
-  from "../../skills/seat/scripts/driver.mjs";
+export { EXIT, FIELDS, LADDER, PINNED_CODEX, PROMPT_FIELDS, VERSION, lockKey }
+  from "../../skills/codex/scripts/driver.mjs";
 
 export const EVALS = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const ROOT = path.dirname(EVALS);
-export const SCRIPTS = path.join(ROOT, "skills", "seat", "scripts");
+export const SCRIPTS = path.join(ROOT, "skills", "codex", "scripts");
 export const DRIVER = path.join(SCRIPTS, "driver.mjs");
 export const FAKE = path.join(EVALS, "fake-app-server.mjs");
 

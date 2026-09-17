@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Hands the images a user PASTED into Claude Code to a Codex seat.
+// Hands the images a user PASTED into Claude Code to a Codex agent.
 //
 //   node attach-pasted.mjs [selection] -- <driver.mjs flags…>
 //   node attach-pasted.mjs --list
 //
 // Claude Code keeps a pasted image nowhere but the session transcript: the record carries
 // {type:"image", source:{type:"base64", media_type, data}} and no filename, no path, no index — the
-// position in the content array is the image's only identity. So the only way to give one to a seat is
+// position in the content array is the image's only identity. So the only way to give one to an agent is
 // to decode it here, write it, and pass the path to `driver.mjs --attach`, which is also how a native
 // subagent gets an image at all (a tool result that read a PATH; the Agent tool's prompt is a string
 // and carries none).
@@ -14,7 +14,7 @@
 // This is a SEPARATE front-end, not a driver flag, on purpose. The driver owns rights, locks,
 // worktrees and sandbox assertions; it must not also parse another product's private, version-drifting
 // JSONL. And its standing rule — a file that leaves this machine is named on the command line, never
-// in a seat file a coordinator copied — stays true when the names come from here.
+// in a prompt file a coordinator copied — stays true when the names come from here.
 //
 // It spawns the driver rather than exec-ing it, so the extracted files can be removed when the run
 // ends. Exit code and terminating signal are forwarded.
@@ -35,7 +35,7 @@ const LIST_TURNS = 10;
 const SCAVENGE_AGE_MS = 3600_000;
 const MAX_IMAGES = 20, MAX_BYTES_EACH = 10 * 1024 * 1024, MAX_BYTES_TOTAL = 25 * 1024 * 1024;
 
-const USAGE = `attach-pasted — give a Codex seat the image(s) the user pasted into this session.
+const USAGE = `attach-pasted — give a Codex agent the image(s) the user pasted into this session.
 
   node attach-pasted.mjs [selection] -- <driver.mjs flags…>
   node attach-pasted.mjs --list
@@ -286,7 +286,7 @@ async function main() {
   if (total > MAX_BYTES_TOTAL) die(`${total} bytes selected; the cap is ${MAX_BYTES_TOTAL}`);
 
   // Under the driver's own state directory, which every write-level root refuses by identity — not
-  // $TMPDIR, which is the read level's ONE writable root and therefore reachable by the very seat
+  // $TMPDIR, which is the read level's ONE writable root and therefore reachable by the very agent
   // being shown the images. Resolved as the driver resolves it, and refused on the same terms: the
   // staged images have to land where the driver's own guard already protects them.
   const stateVar = process.env.CODEX_DELEGATE_STATE_DIR ? "CODEX_DELEGATE_STATE_DIR"

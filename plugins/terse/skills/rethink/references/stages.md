@@ -190,8 +190,8 @@ Taken cold:
   sentence. The vocabulary argued against the thesis, quietly, throughout.
 
 The fix was not a definition. It was the word the claim already used: **Codex agent**, or **Codex
-subagent**. `seat` survives as the skill's internal name, where the reader is an agent and the term is
-addressed by the code.
+subagent**. `seat` survived as the skill's internal name until 2026-09-16, when the skill became `codex` and
+the concept `agent` there too.
 
 The general form: **where a document's thesis is that A is like B, call A by B's word.** Any other
 choice is an argument against the document.

@@ -13,7 +13,7 @@ appended per run.
 
 ## Composition disclosure
 
-Under an unstated mix an agent ran the Codex seat first and disclosed it
+Under an unstated mix an agent ran the Codex agent first and disclosed it
 only in the write-up — the announce-before rule used to be attached only to the case where the caller
 named a ratio. Told "no codex", another agent correctly ran none and never said so, because it read the
 instruction as "do not open the Codex skill". Both rules are now unconditional.
@@ -22,20 +22,20 @@ instruction as "do not open the Codex skill". Both rules are now unconditional.
 
 A wrapper subagent started a background Codex job and returned at once with
 `suitesPass: "unknown — task forwarded to background job"` and `findings: []` — and the panel counted
-it as a seat that had reported. A later seat returned a *task* id, `task-mtfzrffs-0mbqya`, which
-matches no rollout; the receipt check would have caught it in milliseconds. A seat that did nothing is
-indistinguishable from a seat that found nothing.
+it as an agent that had reported. A later agent returned a *task* id, `task-mtfzrffs-0mbqya`, which
+matches no rollout; the receipt check would have caught it in milliseconds. An agent that did nothing is
+indistinguishable from an agent that found nothing.
 
 ## A relay on a small model
 
-A haiku relay received a failing `SEAT` declaration, created the missing directory, and ran Codex under
-rights nobody had granted, then reported success. A prompt is copied into the seat file byte for byte
+A haiku relay received a failing `RIGHTS` declaration, created the missing directory, and ran Codex under
+rights nobody had granted, then reported success. A prompt is copied into the prompt file byte for byte
 and a refusal is reported as the refusal it is; anything that rewrites a rights line on the way is a
 model deciding rights, whatever its size.
 
 ## Context cost
 
-An unbounded seat returned 13 KB of prose into a coordinator that needed a verdict.
+An unbounded agent returned 13 KB of prose into a coordinator that needed a verdict.
 `--brief` exists for this; the full text stays at `answerPath`.
 
 ## Silent downgrades
@@ -73,11 +73,11 @@ caught it out.
 
 ## Hooks run by the driver's own git
 
-A seat that could write the git common dir left config there, and the driver's own harvest, its worktree
+An agent that could write the git common dir left config there, and the driver's own harvest, its worktree
 removal and the next run's worktree add then executed it with the CALLER's rights, before anyone read
 the report. Measured before the fix: `core.fsmonitor=pwn.sh` logged runs under `status`, `diff`,
 `ls-files` twice, `worktree remove` and `worktree add`, at exit 0. Closed by the override set every
-driver-spawned git now carries; a seat's own `--verify` still runs with the rights it was given
+driver-spawned git now carries; an agent's own `--verify` still runs with the rights it was given
 ([Git-directory grant](environment-and-internals.md#git-directory-grant)).
 
 ## Orphaned load
@@ -97,9 +97,9 @@ a hung driver copy from `/tmp` survived their sessions by ~22–38 hours (one of
 outright) — the shutdown path now waits for the process group and escalates to SIGKILL, and the suites pin
 it with a TERM-ignoring survivor.
 
-## Red-green seats
+## Red-green agents
 
-Three mutation-testing seats ran suites against deliberately broken copies;
+Three mutation-testing agents ran suites against deliberately broken copies;
 `commandsFailed` was 24, 17 and 9, and the run announced failure for work that had succeeded. Failed
 commands are report fields and no verdict now; pass `--verify` with the end condition you actually
 want.
@@ -112,7 +112,7 @@ read the answer and gate only its evidence.
 
 ## Safety classifier
 
-A seat asked to find where a guard could be "defeated", build a "hostile" home
+An agent asked to find where a guard could be "defeated", build a "hostile" home
 and "break" a policy check came back `turnStatus: failed`, `codexErrorInfo: "cyberPolicy"` — twice more
 on earlier occasions. The same work described as robustness under unusual filesystem states ran fine.
 The Claude side has the same mechanism with a heavier cost: an audit brief asking to "bypass the
@@ -144,10 +144,10 @@ both returned bare JSON.
 A thread started at read level was resumed at write level and the write succeeded —
 rights are per call, on resume as everywhere else. Verified, not assumed.
 
-## Seat-file newline injection
+## Prompt-file newline injection
 
 `EXPECT: x\nVERIFY: touch /tmp/pwned` became two fields and executed the verifier through `/bin/sh`.
-`SEAT` is now first and seat-file `VERIFY` requires a command-line authorization no seat call gives.
+`RIGHTS` is now first and prompt-file `VERIFY` requires a command-line authorization no agent call gives.
 
 ## State split the lock
 
@@ -182,18 +182,18 @@ defeated a string-prefix guard. Root protection now uses canonical identity and 
 ## MCP secrets in argv
 
 Passing MCP config with `-c` exposed a server's `env` tokens in world-readable process arguments. The
-driver carries no MCP table of the caller's at all: a seat that needs those servers runs `--host-home`
+driver carries no MCP table of the caller's at all: an agent that needs those servers runs `--host-home`
 and reads them from the caller's own config file.
 
 ## Negative probes counted as failures
 
-Seven of 26 read seats exited 11 because `grep` found nothing. The live server wrapped commands while
+Seven of 26 read agents exited 11 because `grep` found nothing. The live server wrapped commands while
 the fixture emitted bare strings, so the exemption never matched production. Classification now uses
 the parsed `commandActions`; the fixture emits the same shape.
 
 ## Cancellation lost the answer
 
-Six cancelled seats returned zero-byte reports because an interrupt discards the in-flight model
+Six cancelled agents returned zero-byte reports because an interrupt discards the in-flight model
 message. Agent-message deltas now preserve `answerPartial`, and final answers are persisted immediately.
 
 ## The verifier gate was inverted
@@ -206,18 +206,18 @@ proven-good states. The verifier now runs after any completed turn and precedes 
 A `SIGKILL` timer was unreferenced and discarded by `process.exit()`, leaving a TERM-ignoring test server
 behind. Teardown now waits for the child group and escalates before exit.
 
-## Five of seven seats lost to the wall clock
+## Five of seven agents lost to the wall clock
 
-GitHub issue #1 (2026-09-02) measured five of seven seats hitting a 540-second wrapper ceiling;
+GitHub issue #1 (2026-09-02) measured five of seven agents hitting a 540-second wrapper ceiling;
 commands used only 6–16% of the clock and the cut returned zero bytes. The driver gained a wrap-up
-steer, interrupt grace and partial capture, and a seat is no longer bounded by any wrapper's own cap.
+steer, interrupt grace and partial capture, and an agent is no longer bounded by any wrapper's own cap.
 Native defaults now impose no wall clock; silence, command, and caller-declared clock bounds remain
 explicit.
 
 ## Here-documents under the grant
 
-Every `<<EOF` in a seat's zsh failed with "can't create temp file for here document": zsh keeps the
-document in a file under `$TMPPREFIX`, default `/tmp/zsh`, and no seat may write `/tmp`. Measured in
+Every `<<EOF` in an agent's zsh failed with "can't create temp file for here document": zsh keeps the
+document in a file under `$TMPPREFIX`, default `/tmp/zsh`, and no agent may write `/tmp`. Measured in
 15 rollouts between 2026-08-31 and 2026-09-08 and reproduced under the read profile with `codex sandbox
 --log-denials` (`(zsh) file-write-create /private/tmp/zsh…`). The driver now hands the app-server
 `TMPPREFIX` under the run's `$TMPDIR`, which every level may write; `/bin/sh` was never affected.

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Worktree regression tests for scripts/driver.mjs.
 //
-// --worktree is the only mode in which the driver creates the directory a seat works in and then has to
+// --worktree is the only mode in which the driver creates the directory an agent works in and then has to
 // dispose of it: harvest what the turn wrote, keep what it committed, preserve a tree it cannot prove is
-// clean, and reconcile the ledger entries a crashed seat left behind. These cases pin that lifecycle end
+// clean, and reconcile the ledger entries a crashed agent left behind. These cases pin that lifecycle end
 // to end against real git repositories; the lock, the signals and the teardown are in lock.test.mjs.
 //
 //   node evals/worktree.test.mjs
@@ -113,7 +113,7 @@ test("--worktree harvests a completed turn's work and removes the tree",
   });
 
 test("a harvest that takes no tracked diff removes the one an earlier turn left under the same name",
-  "the harvest names its artefacts after the THREAD, so a resumed seat writes over the previous turn's: a turn whose tracked work is gone reports worktreeDiffPath null while the old .diff stays on disk, and the next reader opens work this turn does not have as if it were this turn's",
+  "the harvest names its artefacts after the THREAD, so a resumed agent writes over the previous turn's: a turn whose tracked work is gone reports worktreeDiffPath null while the old .diff stays on disk, and the next reader opens work this turn does not have as if it were this turn's",
   async () => {
     const repo = freshRepo("wt-reharvest");
     if (!repo) return "git setup failed";
@@ -168,23 +168,23 @@ test("a harvest that takes no diff does not remove the turn diff the same run pe
     return true;
   });
 
-test("--worktree harvests a seat's COMMITS, not just its diff, before removing the tree",
+test("--worktree harvests an agent's COMMITS, not just its diff, before removing the tree",
   "harvesting against HEAD omits committed work, and removing a detached worktree can strand its commits; the harvest must include the full change from the base",
   async () => {
     const repo = freshRepo("wt-commits");
     if (!repo) return "git setup failed";
     // The verifier runs in the tree: commit one change, leave another uncommitted, and an untracked file.
     const { code, out } = await run(null, { args: ["--worktree", repo, "--verify",
-      "printf 'committed\\n' >> seed && git -c user.email=a@b -c user.name=a commit -qam seat-work"
+      "printf 'committed\\n' >> seed && git -c user.email=a@b -c user.name=a commit -qam agent-work"
       + " && printf 'uncommitted\\n' >> seed && printf 'scratch\\n' > scratch.txt"] });
     if (code !== EXIT.OK) return `the run exited ${code}`;
     let r = null; try { r = JSON.parse(out); } catch {}
     if (!r) return "no JSON report";
     try {
       if (r.worktreeRemoved !== true) return `the tree was not removed: ${JSON.stringify(r.worktreePreserved)}`;
-      if (!r.worktreeCommitsRef) return "the seat's commits were not preserved under a ref";
+      if (!r.worktreeCommitsRef) return "the agent's commits were not preserved under a ref";
       const log = spawnSync("git", ["-C", repo, "log", "--format=%s", r.worktreeCommitsRef], { encoding: "utf8" });
-      if (log.status !== 0 || !/seat-work/.test(log.stdout))
+      if (log.status !== 0 || !/agent-work/.test(log.stdout))
         return `the preserved ref does not carry the commit: ${String(log.stdout || log.stderr).trim().slice(0, 160)}`;
       let diff = "";
       try { diff = fs.readFileSync(r.worktreeDiffPath, "utf8"); } catch { return "no diff was saved"; }
@@ -199,14 +199,14 @@ test("--worktree harvests a seat's COMMITS, not just its diff, before removing t
     return true;
   });
 
-test("--worktree keeps the commits of a seat that left the tree CLEAN",
-  "a seat that commits everything leaves porcelain empty; clean status must not cause removal to strand those commits",
+test("--worktree keeps the commits of an agent that left the tree CLEAN",
+  "an agent that commits everything leaves porcelain empty; clean status must not cause removal to strand those commits",
   async () => {
     const repo = freshRepo("wt-clean-commits");
     if (!repo) return "git setup failed";
     // Commits everything and leaves nothing behind: porcelain is empty afterwards.
     const { code, out } = await run(null, { args: ["--worktree", repo, "--verify",
-      "printf 'all committed\\n' >> seed && git -c user.email=a@b -c user.name=a commit -qam tidy-seat"] });
+      "printf 'all committed\\n' >> seed && git -c user.email=a@b -c user.name=a commit -qam tidy-agent"] });
     if (code !== EXIT.OK) return `the run exited ${code}`;
     let r = null; try { r = JSON.parse(out); } catch {}
     if (!r) return "no JSON report";
@@ -214,7 +214,7 @@ test("--worktree keeps the commits of a seat that left the tree CLEAN",
       if (r.worktreeRemoved !== true) return `the tree was not removed: ${JSON.stringify(r.worktreePreserved)}`;
       if (!r.worktreeCommitsRef) return "a clean tree's commits were stranded: no ref was created";
       const log = spawnSync("git", ["-C", repo, "log", "--format=%s", r.worktreeCommitsRef], { encoding: "utf8" });
-      if (log.status !== 0 || !/tidy-seat/.test(log.stdout))
+      if (log.status !== 0 || !/tidy-agent/.test(log.stdout))
         return `the preserved ref does not carry the commit: ${String(log.stdout || log.stderr).trim().slice(0, 160)}`;
     } finally {
       if (r?.worktreePath && fs.existsSync(r.worktreePath))
@@ -395,11 +395,11 @@ test("a preserved tree whose status showed work names the work",
     const repo = freshRepo("wt-pre-dirty");
     if (!repo) return "git setup failed";
     const bin = freshDir("wt-pre-dirty-bin");
-    // A real `worktree add`, with a file planted in the tree the moment it exists: the state a seat's
-    // own writing leaves behind, reached without a seat, since the refusal below comes before any codex.
+    // A real `worktree add`, with a file planted in the tree the moment it exists: the state an agent's
+    // own writing leaves behind, reached without an agent, since the refusal below comes before any codex.
     fs.writeFileSync(path.join(bin, "git"),
       `#!/bin/sh\ncase "$*" in *"worktree add"*) for a in "$@"; do last=$a; done; ` +
-      `${REAL_GIT} "$@" || exit $?; echo planted > "$last/seat-scratch.txt"; exit 0 ;; esac\n` +
+      `${REAL_GIT} "$@" || exit $?; echo planted > "$last/agent-scratch.txt"; exit 0 ;; esac\n` +
       `exec ${REAL_GIT} "$@"\n`, { mode: 0o755 });
     const reportFile = path.join(freshDir("wt-pre-dirty-rf"), "report.json");
     const { code, err } = await run(null,
@@ -412,7 +412,7 @@ test("a preserved tree whose status showed work names the work",
       if (typeof r.worktreePreserved !== "string")
         return `a tree with work in it was not preserved: ${JSON.stringify(r.worktreePreserved)}`;
       if (!fs.existsSync(r.worktreePath)) return `the report preserves a tree that is not there: ${r.worktreePath}`;
-      if (!/git found work in it \(1 path, /.test(r.worktreePreserved) || !/seat-scratch\.txt/.test(r.worktreePreserved))
+      if (!/git found work in it \(1 path, /.test(r.worktreePreserved) || !/agent-scratch\.txt/.test(r.worktreePreserved))
         return `the reason does not say what git found, or does not name it: ${JSON.stringify(r.worktreePreserved)}`;
       return true;
     } finally {
@@ -458,10 +458,10 @@ test("a rebuild that cannot finish names the tree it removed in the report",
     const repo = freshRepo("wt-pre-restore");
     if (!repo) return "git setup failed";
     const first = await run(null, { args: ["--worktree", repo, "--verify",
-      "printf 'seat-line\\n' >> seed && printf 'scratch\\n' > scratch.txt"] });
-    if (first.code !== EXIT.OK) return `the first seat exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
-    let r1 = null; try { r1 = JSON.parse(first.out); } catch { return "no JSON report from the first seat"; }
-    if (!r1.worktreeUntrackedPath) return "the first seat saved no untracked archive, so there is nothing to corrupt";
+      "printf 'agent-line\\n' >> seed && printf 'scratch\\n' > scratch.txt"] });
+    if (first.code !== EXIT.OK) return `the first agent exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
+    let r1 = null; try { r1 = JSON.parse(first.out); } catch { return "no JSON report from the first agent"; }
+    if (!r1.worktreeUntrackedPath) return "the first agent saved no untracked archive, so there is nothing to corrupt";
     fs.writeFileSync(r1.worktreeUntrackedPath, "not a gzip stream at all\n");
     const reportFile = path.join(freshDir("wt-pre-restore-rf"), "report.json");
     const { code, err } = await run(null,
@@ -539,7 +539,7 @@ const REAL_GIT = (() => {
 })();
 
 test("no git the driver spawns runs the repository's hooks, fsmonitor or external diff",
-  "a seat can leave hooks, an fsmonitor or an external diff driver in the tree it worked in; harvest, removal and later worktree creation must not execute seat-authored code with the caller's rights",
+  "an agent can leave hooks, an fsmonitor or an external diff driver in the tree it worked in; harvest, removal and later worktree creation must not execute agent-authored code with the caller's rights",
   async () => {
     const repo = freshRepo("wt-hooks");
     if (!repo) return "git setup failed";
@@ -556,7 +556,7 @@ test("no git the driver spawns runs the repository's hooks, fsmonitor or externa
     fs.writeFileSync(path.join(bin, "git"),
       `#!/bin/sh\nprintf '%s\\n' "$*" >> ${argvLog}\nexec ${REAL_GIT} "$@"\n`, { mode: 0o755 });
     const { code, out, err } = await run(null, {
-      args: ["--worktree", repo, "--verify", "printf 'seat-work\\n' >> seed"],
+      args: ["--worktree", repo, "--verify", "printf 'agent-work\\n' >> seed"],
       env: { PATH: `${bin}:${shimDir}:${process.env.PATH}` } });
     let r = null; try { r = JSON.parse(out); } catch {}
     try {
@@ -594,7 +594,7 @@ function plantCrashedTree(repo, name, { commit = false, baseSha = true } = {}) {
   const head = () => spawnSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8" }).stdout.trim();
   const base = head();
   if (commit) {
-    fs.appendFileSync(path.join(dir, "seed"), "crashed seat work\n");
+    fs.appendFileSync(path.join(dir, "seed"), "crashed agent work\n");
     const c = spawnSync("git", ["-C", dir, "-c", "user.email=a@b", "-c", "user.name=a", "commit", "-qam", `crashed-${name}`],
       { encoding: "utf8" });
     if (c.status !== 0) return null;
@@ -606,8 +606,8 @@ function plantCrashedTree(repo, name, { commit = false, baseSha = true } = {}) {
   return { dir, base, head: head() };
 }
 
-test("the reconciler gives a crashed seat's commits a ref before it removes the tree that held them",
-  "a crashed seat can leave a spotless detached worktree whose HEAD is the only reference to its commits; porcelain alone cannot justify removing it",
+test("the reconciler gives a crashed agent's commits a ref before it removes the tree that held them",
+  "a crashed agent can leave a spotless detached worktree whose HEAD is the only reference to its commits; porcelain alone cannot justify removing it",
   async () => {
     const repo = freshRepo("wt-reconcile-commits");
     if (!repo) return "git setup failed";
@@ -653,7 +653,7 @@ test("the ledger entry exists before `git worktree add` creates anything",
   });
 
 test("a ledger entry that cannot be parsed is quarantined, and the tree it names survives",
-  "an entry the reconciler cannot read is the ONLY name a crashed seat's tree has left: deleting it deletes the pointer to a checkout that may hold uncommitted work, and the tree then survives as an orphan nobody can find",
+  "an entry the reconciler cannot read is the ONLY name a crashed agent's tree has left: deleting it deletes the pointer to a checkout that may hold uncommitted work, and the tree then survives as an orphan nobody can find",
   async () => {
     const repo = freshRepo("wt-bad-entry");
     if (!repo) return "git setup failed";
@@ -725,15 +725,15 @@ test("the reconciler's bound reaches the OLDEST entries, not whichever fifty the
     return true;
   });
 
-test("--resume last from the repository finds a worktree seat, whose own cwd no longer exists",
-  "a worktree seat's cwd can be removed after completion; --resume last from the repository must still find that seat rather than silently select a read seat",
+test("--resume last from the repository finds a worktree agent, whose own cwd no longer exists",
+  "a worktree agent's cwd can be removed after completion; --resume last from the repository must still find that agent rather than silently select a read agent",
   async () => {
     const repo = freshRepo("wt-resume-last");
     if (!repo) return "git setup failed";
     const first = await run(null, { args: ["--worktree", repo] });
-    if (first.code !== EXIT.OK) return `the worktree seat exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
-    let r1 = null; try { r1 = JSON.parse(first.out); } catch { return "no JSON report from the worktree seat"; }
-    if (r1.resumedFrom !== null) return `a fresh seat reported resumedFrom=${JSON.stringify(r1.resumedFrom)}`;
+    if (first.code !== EXIT.OK) return `the worktree agent exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
+    let r1 = null; try { r1 = JSON.parse(first.out); } catch { return "no JSON report from the worktree agent"; }
+    if (r1.resumedFrom !== null) return `a fresh agent reported resumedFrom=${JSON.stringify(r1.resumedFrom)}`;
     if (fs.existsSync(r1.worktreePath)) return "the tree survived, so the case does not test what it claims";
     const second = await run(repo, { args: ["--resume", "last"] });
     if (second.code !== EXIT.OK) return `--resume last from the repository exited ${second.code}: ${second.err.trim().slice(0, 200)}`;
@@ -743,27 +743,27 @@ test("--resume last from the repository finds a worktree seat, whose own cwd no 
   });
 
 test("--worktree REPO --resume ID rebuilds that thread's tree and continues in it",
-  "resuming a completed worktree seat must rebuild its base and harvested changes so the continued thread sees its prior work",
+  "resuming a completed worktree agent must rebuild its base and harvested changes so the continued thread sees its prior work",
   async () => {
     const repo = freshRepo("wt-resume-rebuild");
     if (!repo) return "git setup failed";
     const first = await run(null, { args: ["--worktree", repo, "--verify",
-      "printf 'seat-line\\n' >> seed && printf 'scratch\\n' > scratch.txt"] });
-    if (first.code !== EXIT.OK) return `the first seat exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
-    let r1 = null; try { r1 = JSON.parse(first.out); } catch { return "no JSON report from the first seat"; }
+      "printf 'agent-line\\n' >> seed && printf 'scratch\\n' > scratch.txt"] });
+    if (first.code !== EXIT.OK) return `the first agent exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
+    let r1 = null; try { r1 = JSON.parse(first.out); } catch { return "no JSON report from the first agent"; }
     if (!r1.worktreeHarvested || !r1.worktreeDiffPath || !r1.worktreeUntrackedPath)
-      return `the first seat harvested nothing to rebuild from: ${JSON.stringify({ h: r1.worktreeHarvested, d: r1.worktreeDiffPath, u: r1.worktreeUntrackedPath })}`;
+      return `the first agent harvested nothing to rebuild from: ${JSON.stringify({ h: r1.worktreeHarvested, d: r1.worktreeDiffPath, u: r1.worktreeUntrackedPath })}`;
     const second = await run(null, { args: ["--worktree", repo, "--resume", "last"] });
     let r2 = null; try { r2 = JSON.parse(second.out); } catch {}
     try {
       if (second.code !== EXIT.OK) return `--worktree --resume exited ${second.code}: ${second.err.trim().slice(0, 200)}`;
-      if (!r2) return "no JSON report from the resumed seat";
+      if (!r2) return "no JSON report from the resumed agent";
       if (r2.resumedFrom !== "thr_root") return `the resumed thread was not named: ${JSON.stringify(r2.resumedFrom)}`;
       if (r2.worktreeBase !== r1.worktreeBase)
         return `the rebuilt tree does not start where the thread's tree started: ${r2.worktreeBase} vs ${r1.worktreeBase}`;
       if (r2.worktreeRestored?.diff !== r1.worktreeDiffPath || r2.worktreeRestored?.untracked !== r1.worktreeUntrackedPath)
         return `the harvest was not restored into the tree: ${JSON.stringify(r2.worktreeRestored)}`;
-      // The rebuilt tree's OWN harvest is the proof the work was really there: this seat's verifier
+      // The rebuilt tree's OWN harvest is the proof the work was really there: this agent's verifier
       // changed nothing, so anything in the diff came from the restore.
       if (!/seed/.test(r2.worktreeDiffStat ?? ""))
         return `the restored tracked work is not in the rebuilt tree: ${JSON.stringify(r2.worktreeDiffStat)}`;
@@ -784,17 +784,17 @@ test("--worktree REPO --resume ID rebuilds that thread's tree and continues in i
     return true;
   });
 
-test("a resumed seat that reverted everything leaves nothing for the next resume to reapply",
+test("a resumed agent that reverted everything leaves nothing for the next resume to reapply",
   "the record's pointers are what a rebuild reads: a resumed turn that ends on a clean tree harvested nothing, and keeping the previous turn's diff and archive would hand the third turn work the second one deliberately undid, at exit 0 and on a tree that is not the thread's",
   async () => {
     const repo = freshRepo("wt-resume-reverted");
     if (!repo) return "git setup failed";
     const first = await run(null, { args: ["--worktree", repo, "--verify",
-      "printf 'seat-line\\n' >> seed && printf 'scratch\\n' > scratch.txt"] });
+      "printf 'agent-line\\n' >> seed && printf 'scratch\\n' > scratch.txt"] });
     let r1 = null; try { r1 = JSON.parse(first.out); } catch {}
-    if (first.code !== EXIT.OK) return `the first seat exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
+    if (first.code !== EXIT.OK) return `the first agent exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
     if (!r1?.worktreeDiffPath || !r1?.worktreeUntrackedPath)
-      return `the first seat harvested nothing to revert: ${JSON.stringify({ d: r1?.worktreeDiffPath, u: r1?.worktreeUntrackedPath })}`;
+      return `the first agent harvested nothing to revert: ${JSON.stringify({ d: r1?.worktreeDiffPath, u: r1?.worktreeUntrackedPath })}`;
     // The second turn puts the tree back exactly as it was created, so git calls it clean.
     const second = await run(null, { args: ["--worktree", repo, "--resume", "last", "--verify",
       "printf 'seed\\n' > seed && rm -f scratch.txt"] });
@@ -802,10 +802,10 @@ test("a resumed seat that reverted everything leaves nothing for the next resume
     const third = await run(null, { args: ["--worktree", repo, "--resume", "last", "--verify", "cat seed; ls"] });
     let r3 = null; try { r3 = JSON.parse(third.out); } catch {}
     try {
-      if (second.code !== EXIT.OK) return `the reverting seat exited ${second.code}: ${second.err.trim().slice(0, 200)}`;
-      if (!r2) return "no JSON report from the reverting seat";
+      if (second.code !== EXIT.OK) return `the reverting agent exited ${second.code}: ${second.err.trim().slice(0, 200)}`;
+      if (!r2) return "no JSON report from the reverting agent";
       if (r2.worktreeRestored?.diff !== r1.worktreeDiffPath)
-        return `the reverting seat did not start from the first seat's work: ${JSON.stringify(r2.worktreeRestored)}`;
+        return `the reverting agent did not start from the first agent's work: ${JSON.stringify(r2.worktreeRestored)}`;
       if (r2.worktreeDiffPath !== null || r2.worktreeUntrackedPath !== null)
         return `a clean tree still reported harvested artefacts: ${JSON.stringify({ d: r2.worktreeDiffPath, u: r2.worktreeUntrackedPath })}`;
       for (const art of [r1.worktreeDiffPath, r1.worktreeUntrackedPath]) {
@@ -813,13 +813,13 @@ test("a resumed seat that reverted everything leaves nothing for the next resume
         if (!second.err.includes(`this turn harvested nothing, so the earlier ${art} was removed`))
           return `the removal was silent: ${second.err.trim().slice(-240)}`;
       }
-      if (third.code !== EXIT.OK) return `the third seat exited ${third.code}: ${third.err.trim().slice(0, 200)}`;
-      if (!r3) return "no JSON report from the third seat";
+      if (third.code !== EXIT.OK) return `the third agent exited ${third.code}: ${third.err.trim().slice(0, 200)}`;
+      if (!r3) return "no JSON report from the third agent";
       if (r3.worktreeRestored?.diff !== null || r3.worktreeRestored?.untracked !== null)
-        return `the third seat rebuilt work the second one undid: ${JSON.stringify(r3.worktreeRestored)}`;
+        return `the third agent rebuilt work the second one undid: ${JSON.stringify(r3.worktreeRestored)}`;
       const saw = String(r3.verify?.stdout ?? "");
-      if (!/^seed$/m.test(saw) || /seat-line/.test(saw) || /scratch\.txt/.test(saw))
-        return `the third seat's tree is not the reverted one: ${JSON.stringify(saw.slice(0, 200))}`;
+      if (!/^seed$/m.test(saw) || /agent-line/.test(saw) || /scratch\.txt/.test(saw))
+        return `the third agent's tree is not the reverted one: ${JSON.stringify(saw.slice(0, 200))}`;
     } finally {
       for (const r of [r1, r2, r3]) {
         if (r?.worktreePath && fs.existsSync(r.worktreePath))
@@ -899,10 +899,10 @@ test("a rebuild that cannot finish leaves no tree and no ledger entry",
     const repo = freshRepo("wt-restore-broken");
     if (!repo) return "git setup failed";
     const first = await run(null, { args: ["--worktree", repo, "--verify",
-      "printf 'seat-line\\n' >> seed && printf 'scratch\\n' > scratch.txt"] });
-    if (first.code !== EXIT.OK) return `the first seat exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
-    let r1 = null; try { r1 = JSON.parse(first.out); } catch { return "no JSON report from the first seat"; }
-    if (!r1.worktreeUntrackedPath) return "the first seat saved no untracked archive, so there is nothing to corrupt";
+      "printf 'agent-line\\n' >> seed && printf 'scratch\\n' > scratch.txt"] });
+    if (first.code !== EXIT.OK) return `the first agent exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
+    let r1 = null; try { r1 = JSON.parse(first.out); } catch { return "no JSON report from the first agent"; }
+    if (!r1.worktreeUntrackedPath) return "the first agent saved no untracked archive, so there is nothing to corrupt";
     fs.writeFileSync(r1.worktreeUntrackedPath, "not a gzip stream at all\n");
     const before = fs.readdirSync(path.join(STATE_DIR, "worktrees"));
     const { code, err } = await run(null, { args: ["--worktree", repo, "--resume", "last"] });

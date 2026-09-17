@@ -30,7 +30,7 @@ import { sampleItems } from "./fake-app-server.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FAKE = path.join(HERE, "fake-app-server.mjs");
-const DRIVER = path.join(HERE, "..", "skills", "seat", "scripts", "driver.mjs");
+const DRIVER = path.join(HERE, "..", "skills", "codex", "scripts", "driver.mjs");
 const READ_PROFILE = "codex_delegate_read";
 
 const canon = (p) => { try { return fs.realpathSync(p); } catch { return p ?? null; } };
@@ -457,7 +457,7 @@ const CASES = [
       mutate: (r) => misspellConfig(r, `permissions.${READ_PROFILE}.filesystem`, `permissions.${READ_PROFILE}.filesysten`) }) },
 
   { name: "read level, the network table misspelled",
-    why: "the same typo one field over: the id and the $TMPDIR grant both read back correctly while the egress the seat was told it has is gone",
+    why: "the same typo one field over: the id and the $TMPDIR grant both read back correctly while the egress the agent was told it has is gone",
     build: () => ({ level: "read", cwd: freshDir("nettypo"),
       mutate: (r) => misspellConfig(r, `permissions.${READ_PROFILE}.network`, `permissions.${READ_PROFILE}.netwerk`) }) },
 

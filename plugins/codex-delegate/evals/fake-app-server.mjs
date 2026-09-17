@@ -35,9 +35,9 @@ export const SCENARIOS = {
   "probe-negative": {}, "probe-error": {}, "probe-compound": {}, "probe-multiline": {},
   "probe-piped": {}, "probe-quoted": {}, "hidden-failure": {}, "slow-turn": {}, "spawn-survivor": {}, "long-answer": {},
   "rich-items": {}, "echo-input": {}, "null-phase": {},
-  // A seat that leaves work in $TMPDIR and names the path in its answer — the shape --brief asks for.
+  // An agent that leaves work in $TMPDIR and names the path in its answer — the shape --brief asks for.
   "tmp-write": {},
-  // The environment the driver hands the app-server, as the seat's shell sees it: zsh's here-document
+  // The environment the driver hands the app-server, as the agent's shell sees it: zsh's here-document
   // prefix must sit under the run's TMPDIR or every <<EOF fails (driver.mjs, the spawn).
   "env-tmpprefix": {},
   // The app-server process DIES mid-turn, after the thread and one command exist.
@@ -51,7 +51,7 @@ export const SCENARIOS = {
   // read "probe, then the real work" as a probe answering no.
   "probe-laundered": {},
   // The thread's developerInstructions, handed back as the answer: the only way a case can read what
-  // the driver told the seat to do.
+  // the driver told the agent to do.
   "echo-instructions": {},
   // The last message arrives WITHOUT its trailing newline and the stream then ends.
   "no-trailing-newline": {},
@@ -650,12 +650,12 @@ function onLine(line) {
           agentDelta(TURN, THREAD, "item_a1", ", and this much more"));
         break;
 
-      // The seat writes into $TMPDIR and names the file in its answer, which is what --brief tells it to
-      // do with anything long. No command really runs here, so the fixture performs the write the seat's
+      // The agent writes into $TMPDIR and names the file in its answer, which is what --brief tells it to
+      // do with anything long. No command really runs here, so the fixture performs the write the agent's
       // command would: what is under test is whether the driver's teardown takes that file with it.
       case "tmp-write": {
-        const f = path.join(process.env.TMPDIR ?? os.tmpdir(), "seat-note.txt");
-        try { fs.writeFileSync(f, "the seat's long output\n"); } catch {}
+        const f = path.join(process.env.TMPDIR ?? os.tmpdir(), "agent-note.txt");
+        try { fs.writeFileSync(f, "the agent's long output\n"); } catch {}
         w(R, cmd(TURN, THREAD), msg(TURN, THREAD, `full notes at ${f}`), done(TURN, THREAD));
         break;
       }

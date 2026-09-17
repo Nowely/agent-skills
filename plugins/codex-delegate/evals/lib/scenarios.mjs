@@ -11,7 +11,7 @@ import path from "node:path";
 import { SCENARIOS } from "../fake-app-server.mjs";
 import { DRIVER, ROOT, codexShim, readJson, spawnNode, tempDir } from "./harness.mjs";
 
-const REVIEW_SCHEMA = path.join(ROOT, "skills", "seat", "schemas", "review-output.schema.json");
+const REVIEW_SCHEMA = path.join(ROOT, "skills", "codex", "schemas", "review-output.schema.json");
 
 const shimDir = tempDir("codex-delegate-test-");
 // Use a unique name per run to avoid collisions in the shared $TMPDIR.
@@ -85,7 +85,7 @@ const protectedState = path.join(shimDir, "state");
 const protectedTmp = path.join(protectedState, "tmp");
 fs.mkdirSync(protectedTmp, { recursive: true });
 
-// A directory name with consecutive spaces checks that seat-file parsing preserves the literal path.
+// A directory name with consecutive spaces checks that prompt-file parsing preserves the literal path.
 const spacedDir = path.join(shimDir, "two  spaces");
 fs.mkdirSync(spacedDir);
 
@@ -120,24 +120,24 @@ export function assertKnownScenarios(cases) {
   }
 }
 
-let seatSeq = 0;
+let agentSeq = 0;
 // One state root per table case: a shared root made every case's config probe, job record and answer
 // log an input to the next case's, and the fixture reports the same thread id for all of them.
 let caseSeq = 0;
 function run(c) {
   return new Promise((resolve) => {
     const stateRoot = path.join(shimDir, "case-state", String(caseSeq++));
-    // A seat-file case writes its declaration to disk and passes only --seat-file, exactly as a
+    // A prompt-file case writes its declaration to disk and passes only --prompt-file, exactly as a
     // coordinator does — the point being that no value ever passes through a shell.
-    let seatArgs = [];
-    if (c.seat) {
-      const f = path.join(shimDir, `seat-${seatSeq++}.txt`);
-      fs.writeFileSync(f, c.seat.replaceAll("<CWD>", shimDir).replaceAll("<CWDSP>", spacedDir));
-      seatArgs = ["--seat-file", f];
+    let agentArgs = [];
+    if (c.agent) {
+      const f = path.join(shimDir, `agent-${agentSeq++}.txt`);
+      fs.writeFileSync(f, c.agent.replaceAll("<CWD>", shimDir).replaceAll("<CWDSP>", spacedDir));
+      agentArgs = ["--prompt-file", f];
     }
     const { child: p, done } = spawnNode(
       // Give cases a wall clock to bound hung fixtures; noTimeout opts out to measure the default.
-      [DRIVER, ...(c.seat ? seatArgs : c.noCwd ? [] : ["--level", "read", "--cwd", shimDir]),
+      [DRIVER, ...(c.agent ? agentArgs : c.noCwd ? [] : ["--level", "read", "--cwd", shimDir]),
        ...(c.noTimeout ? [] : ["--timeout", "20"]),
        ...(c.noPrompt ? [] : ["--prompt", "irrelevant, the server is scripted"]), ...(c.args ?? [])],
       // Use private state so fixture config, locks and answer logs cannot affect real delegations.

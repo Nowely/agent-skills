@@ -35,7 +35,7 @@ is the one result that reads as evidence and is not.
 
 `evals/lib/harness.mjs` holds what every suite needs a copy of otherwise — the temp directories, the
 `codex` shim, one spawn helper, the case registrar, the pass/fail loop and that sentinel — and
-re-exports the driver's own constants — exit codes, the seat-field table, the exit ladder, the pinned
+re-exports the driver's own constants — exit codes, the agent-field table, the exit ladder, the pinned
 codex version, the lock key — rather than letting a suite restate them. `evals/lib/scenarios.mjs` holds
 what `cli.test.mjs` and `protocol.test.mjs` share: the shim, every file a case points the driver at, and
 the runner that gives each case its own state root. `driver.mjs` runs `main()` only when it IS the entry
@@ -51,24 +51,24 @@ pre-release run passes `--require-live` (or sets `REQUIRE_LIVE_CODEX=1`) and the
 `orchestrate-live.test.mjs` is the second local gate: it drives the real headless `claude` binary against
 `skills/orchestrate/SKILL.md`, spending real sessions, the subagents they spawn and one `gpt-6-astra`
 Codex turn, a second one when `CODEX_DELEGATE_LIVE_ORCHESTRATE_DELEGATE=1` adds the delegation probe,
-which checks the `subagentThreads` of a seat that took the invitation. Without
+which checks the `subagentThreads` of an agent that took the invitation. Without
 `CODEX_DELEGATE_LIVE_ORCHESTRATE=1` it prints one NOT RUN line and exits 0.
 
 ## Why the trigger cases exist
 
 A delegation skill fails in two directions, and both are quiet. If it never fires, work that wanted a
 second, decorrelated opinion silently gets one Claude's opinion instead. If it fires on everything, every
-trivial question pays a whole seat's turn overhead and memory (the figures are in
-[parity.md](../skills/seat/references/parity.md#fan-out-and-reporting)). Neither shows up as an error.
+trivial question pays a whole agent's turn overhead and memory (the figures are in
+[parity.md](../skills/codex/references/parity.md#fan-out-and-reporting)). Neither shows up as an error.
 
 The negative cases matter as much as the positive ones. Case 9 is the sharp one: `codex` appearing as part
 of a filename must not pull in the whole skill.
 
 Cases 16–19 cover composition rather than triggering — that the stated mix is honoured exactly, that an
 explicit "no codex" overrides the panel default, that "only codex" applies to single-agent work and not
-just to panels, and that the mix is announced before the seats run rather than reported afterwards. The
+just to panels, and that the mix is announced before the agents run rather than reported afterwards. The
 failure they exist to catch is the quiet one: announcing "three Claude and one Codex" and then backfilling
-the Codex seat with a Claude when it returns nothing, which leaves the reader believing the panel was
+the Codex agent with a Claude when it returns nothing, which leaves the reader believing the panel was
 decorrelated when it was not.
 
 ## Running the trigger cases
@@ -83,10 +83,10 @@ it is a test, then read its transcript rather than its self-report:
 ```bash
 # after running a case, count actual Skill tool calls in the agent transcript
 grep -o '"name":"Skill"' <transcript>.jsonl | wc -l
-grep -oE '"skill":"(codex-delegate:)?seat"' <transcript>.jsonl | wc -l   # plugin input is codex-delegate:seat
+grep -oE '"skill":"(codex-delegate:)?codex"' <transcript>.jsonl | wc -l   # plugin input is codex-delegate:codex
 ```
 
-The count is the verdict. Match the whole `"skill":"…"` value, never the bare word `seat`: it appears in
+The count is the verdict. Match the whole `"skill":"…"` value, never the bare word `codex`: it appears in
 every transcript as part of the available-skills listing in the system prompt, and again throughout this
 repository's own prose, so a skill that never fired still matches.
 
@@ -94,7 +94,7 @@ Ask the agent to self-report as well, but treat that as a cross-check only. An a
 tools it used is exactly the kind of claim this skill exists to distrust.
 
 Three lessons cost real runs. Give the subject agent the Task tool, or a case about composition cannot be
-scored — one agent made all four seats Codex because Claude seats were physically unavailable to it, which
+scored — one agent made all four agents Codex because Claude agents were physically unavailable to it, which
 measures the harness, not the skill. Never hand a subject a prompt with a blank in it: a template asking it
 to relay a counter-argument it was never given tests nothing, and refusing to invent one is the correct
 behaviour. And expect the safety classifier to block a case whose natural response is an unscoped
@@ -106,7 +106,7 @@ passed while nothing actually ran, because those files are loaded automatically.
 to be fetched — a branch name that contradicts the documented default, a hash of a file you just wrote.
 
 Run the machine, not the memory. Memory is the binding constraint: an isolated delegation costs a fraction
-of a `--host-home` one (figures in [parity.md](../skills/seat/references/parity.md#fan-out-and-reporting))
+of a `--host-home` one (figures in [parity.md](../skills/codex/references/parity.md#fan-out-and-reporting))
 — the difference being a private copy of every MCP server in `~/.codex/config.toml`. Run these in waves
 rather than all at once. A case killed by the OS reports as a trigger failure and is not one.
 
@@ -234,11 +234,11 @@ helpers. Assume more of that.
 Struck by being attacked: the verify-exit-126 branch (covered), the `budget-exhausted` branch
 (covered, via an overridable floor because the timing window is a coin flip), the receipt locator
 (covered, positively and with a mismatch), signals (`SIGINT`/`SIGTERM`/`SIGHUP` each covered), the
-lock-release ordering (covered as a differential), the seat file's rights-injection surface (covered),
+lock-release ordering (covered as a differential), the prompt file's rights-injection surface (covered),
 `$TMPDIR` as a writable root (covered), the worktree destination (covered).
 
 Struck since: resume (the protocol suite pins resume-busy, resumed-thread attribution and a resumed
-seat's budget; the lock suite pins `--resume last`), the stdout drain path (a closed pipe and a paused
+agent's budget; the lock suite pins `--resume last`), the stdout drain path (a closed pipe and a paused
 one, both during a large report, and the report file that survives both), `--host-home` (a TERM-ignoring
 descendant swept, the lock released, the report written, under a temporary home), the exit ladder (one
 case per rung, each rung a pure function of its context), and Linux — unmeasured until CI, now a matrix

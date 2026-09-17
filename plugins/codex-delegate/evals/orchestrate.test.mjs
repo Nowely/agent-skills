@@ -5,7 +5,7 @@
 //
 // The orchestrate mode is prompt only, so these cases pin its decisions as sentences, rows and template
 // lines. Prose is whitespace-collapsed to allow rewrapping; rows and templates are anchored to preserve
-// the layout a seat copies.
+// the layout an agent copies.
 //
 // The page is the approved text. A pin that disagrees with it is a wrong pin.
 
@@ -71,7 +71,7 @@ test("the tier table pairs all eight model names, one tier per row",
   "the pairing IS the table: a coordinator reads across a row to turn its own tier into a Codex `MODEL:` line, and a half-updated rename leaves it sending a name the driver rejects",
   () => shows(
     /^\| top \| Fable \| `gpt-6-astra` \| Astra \| design, mentoring, final review and verdict, decomposition you cannot do, a case stuck after two failed attempts\. Never implementation \|$/m,
-    /^\| strong \| Opus \| `gpt-5\.6-sol` \| Sol \| write seats, non-trivial analysis \|$/m,
+    /^\| strong \| Opus \| `gpt-5\.6-sol` \| Sol \| write agents, non-trivial analysis \|$/m,
     /^\| cheap \| Sonnet \| `gpt-5\.6-terra` \| Terra \| mechanical, hard-to-get-wrong work \|$/m,
     /^\| bulk \| Haiku \| `gpt-5\.6-luna` \| Luna \| \*\*outside the pool, with a pool of its own\*\*: up to 50 alive at once\. .* \|$/m,
   ));
@@ -80,18 +80,18 @@ test("the tier table pairs all eight model names, one tier per row",
 
 test("A1 the mode is prompt only",
   "the mode adds no mechanism to maintain; asking for a new header field or driver flag would change its scope",
-  () => says("The mode is prompt only: no driver change, no new header field or flag, the seat's own prompt file and the driver's state directory unchanged."));
+  () => says("The mode is prompt only: no driver change, no new header field or flag, the agent's own prompt file and the driver's state directory unchanged."));
 
 test("A3 the sibling is loaded first and this page re-cuts only what the mode changes",
   "rights, header fields, the worktree lifecycle and the exit ladder have exactly one home; a copy here is a second copy to drift, so the page has to send the reader there and say what it does not restate",
   () => {
     const problems = [];
-    const raw = shows(/\[seat\]\(\.\.\/seat\/SKILL\.md\)/);
+    const raw = shows(/\[codex\]\(\.\.\/codex\/SKILL\.md\)/);
     if (raw !== true) problems.push(raw);
     const prose = says(
-      "(Skill tool, `codex-delegate:seat`; bare `seat` on a clone-and-symlink install)",
+      "(Skill tool, `codex-delegate:codex`; bare `codex` on a clone-and-symlink install)",
       "this page re-cuts only what the mode changes",
-      "1. Load the sibling skill with the Skill tool if it is not loaded yet, scout, then decide the composition and the seats.",
+      "1. Load the sibling skill with the Skill tool if it is not loaded yet, scout, then decide the composition and the agents.",
     );
     if (prose !== true) problems.push(prose);
     return problems.length === 0 || problems.join("; ");
@@ -100,18 +100,18 @@ test("A3 the sibling is loaded first and this page re-cuts only what the mode ch
 // ------------------------------------------------------------------ B: the orchestrator's own hands
 
 test("B1 scouting is the only exploration the orchestrator does",
-  "the mode's one economy is that the big reads happen in a seat's context; an orchestrator that keeps exploring after the scout has spent the context the fan-out was meant to save",
+  "the mode's one economy is that the big reads happen in an agent's context; an orchestrator that keeps exploring after the scout has spent the context the fan-out was meant to save",
   () => says(
     "scout the work-list with cheap commands (`ls`, `git status`, targeted `grep`) before any fan-out",
     "Scouting is the only repository exploration you do, and targeted bounded checks stay allowed inline after it",
   ));
 
-test("B2 the verbose work is a seat's",
-  "this list is the operational content of the mode: without it \"push the verbose step onto a seat\" is a slogan and every coordinator draws the line somewhere else",
+test("B2 the verbose work is an agent's",
+  "this list is the operational content of the mode: without it \"push the verbose step onto an agent\" is a slogan and every coordinator draws the line somewhere else",
   () => says("test output, greps over the tree, reading source files, diffs, logs"));
 
 test("B3 a quick targeted edit stays in the orchestrator's hands",
-  "the counterweight to B1: without it the mode fans out a one-line fix and pays a seat's latency for something already known",
+  "the counterweight to B1: without it the mode fans out a one-line fix and pays an agent's latency for something already known",
   () => says("a quick targeted edit that needs no exploration"));
 
 test("B4 a check run inline is redirected and read back as a 5-line tail",
@@ -119,14 +119,14 @@ test("B4 a check run inline is redirected and read back as a 5-line tail",
   () => says("read back only a 5-line tail with the counts"));
 
 test("B5 the orchestrator never grades its own work",
-  "self-review is the failure the whole composition is built against, and the orchestrator is the one seat with no one above it",
-  () => says("verify: you never grade your own work, a fresh seat does"));
+  "self-review is the failure the whole composition is built against, and the orchestrator is the one agent with no one above it",
+  () => says("verify: you never grade your own work, a fresh agent does"));
 
-test("B6 a failed seat is reported, never backfilled, and every finding keeps its author",
-  "a silently reissued seat turns a measured composition into a claim, and an unattributed finding cannot be weighed against the seat that made it",
+test("B6 a failed agent is reported, never backfilled, and every finding keeps its author",
+  "a silently reissued agent turns a measured composition into a claim, and an unattributed finding cannot be weighed against the agent that made it",
   () => says(
-    "report a failed seat and never backfill it",
-    "attributing every finding to the seat that produced it",
+    "report a failed agent and never backfill it",
+    "attributing every finding to the agent that produced it",
   ));
 
 // ------------------------------------------------------------------ C: the plan and the worktree
@@ -135,12 +135,12 @@ test("C1 one plan, or all of them",
   "picking silently between viable approaches is the choice the user came to make; the plan step is where that choice is offered or lost",
   () => says("One plan when there is one; when several approaches are viable, show them all with a recommendation and let the user pick"));
 
-test("C2 the plan is shown and the run stops, with every right a seat needs, in words and not as field names",
-  "rights declared per call are the sibling's guarantee, and they are worth nothing if the user first sees them in the transcript of a seat that already wrote; but a plan that recites `SEAT: write` and a run directory path at a person is machinery pointed at the one reader who cannot act on it (the owner read one and called it uninformative, 2026-09-09), so the rights have to survive in ordinary words and the field names have to go",
+test("C2 the plan is shown and the run stops, with every right an agent needs, in words and not as field names",
+  "rights declared per call are the sibling's guarantee, and they are worth nothing if the user first sees them in the transcript of an agent that already wrote; but a plan that recites `RIGHTS: write` and a run directory path at a person is machinery pointed at the one reader who cannot act on it (the owner read one and called it uninformative, 2026-09-09), so the rights have to survive in ordinary words and the field names have to go",
   () => says(
     "Show the plan and stop",
-    "what each may write, that the seats reach the network and any you are keeping off it",
-    "reports and artifacts land outside the repository, except a worktree seat's own tree",
+    "what each may write, that the agents reach the network and any you are keeping off it",
+    "reports and artifacts land outside the repository, except a worktree agent's own tree",
     "Name no path and no header field",
   ));
 
@@ -152,39 +152,39 @@ test("C3 \"go\" covers the plan and nothing else, and never a live-tree commit",
   ));
 
 test("C4 a worktree is cut at HEAD and never used to test uncommitted live edits",
-  "this is the trap that passes: the seat runs the suite against untouched code, reports green, and the coordinator reads it as evidence about edits the worktree never saw",
+  "this is the trap that passes: the agent runs the suite against untouched code, reports green, and the coordinator reads it as evidence about edits the worktree never saw",
   () => says(
     "A new thread's worktree is cut at `HEAD`",
     "Never use one to test uncommitted live edits",
     "dependencies installable inside it under the planned rights (the live checkout's are absent), no daemon or socket",
-    "A Codex worktree seat cannot commit under the rights a `SEAT:` line makes: its sandbox ends at the tree, so its work comes back as a diff",
+    "A Codex worktree agent cannot commit under the rights a `RIGHTS:` line makes: its sandbox ends at the tree, so its work comes back as a diff",
   ));
 
 test("C5 the harvest is landed by proposal, naming the three envelope handles",
-  "the seat's work reaches the live tree through fields the envelope already carries; without their names the coordinator invents a merge and lands something nobody looked at",
+  "the agent's work reaches the live tree through fields the envelope already carries; without their names the coordinator invents a merge and lands something nobody looked at",
   () => says(
-    "Land the harvest by proposal: apply `worktreeDiffPath` and restore `worktreeUntrackedPath`, or merge or cherry-pick `worktreeCommitsRef` when the seat committed; show it, then wait, unless the plan said \"land the winner\"",
+    "Land the harvest by proposal: apply `worktreeDiffPath` and restore `worktreeUntrackedPath`, or merge or cherry-pick `worktreeCommitsRef` when the agent committed; show it, then wait, unless the plan said \"land the winner\"",
   ));
 
 test("C6 the plan states the pool and the user overrides it in words",
-  "the caps are settings the user owns: a plan that launched under the page's defaults without showing them gave the user nothing to overrule, and \"two Fable\" or \"only codex\" said after the first seat is a word too late",
+  "the caps are settings the user owns: a plan that launched under the page's defaults without showing them gave the user nothing to overrule, and \"two Fable\" or \"only codex\" said after the first agent is a word too late",
   () => says(
     "Announce the composition here, and the caps beside it in a sentence: your own model, one Fable and one `gpt-6-astra` at a time, six alive.",
     "A cap the user overrides in words (\"two Fable\") replaces the default for this run; composition words (\"only codex\", \"no codex\") follow the sibling's table.",
   ));
 
-test("C7 every seat's return is retold to the user in one short paragraph, the same shape for both sides",
-  "the five fields are the orchestrator's input, not the user's: pasted whole they read in the transcript as the coordinator's own words (observed on 0.10.0, and again on 0.11.1 after this rule shipped), and a Codex seat, whose only visible row is a Bash call and an exit code, otherwise reaches the user having said nothing at all; the retelling is written, not forwarded, which is why the ban names the field names and the paths that rode in with the block",
-  () => says("After any seat returns, Claude or Codex, write one short paragraph of your own, in the user's language and naming the agent by its model, in the same shape for both sides; the five fields are your own input, so never paste a five-field block, a header field name or a path into user-facing text."));
+test("C7 every agent's return is retold to the user in one short paragraph, the same shape for both sides",
+  "the five fields are the orchestrator's input, not the user's: pasted whole they read in the transcript as the coordinator's own words (observed on 0.10.0, and again on 0.11.1 after this rule shipped), and a Codex agent, whose only visible row is a Bash call and an exit code, otherwise reaches the user having said nothing at all; the retelling is written, not forwarded, which is why the ban names the field names and the paths that rode in with the block",
+  () => says("After any agent returns, Claude or Codex, write one short paragraph of your own, in the user's language and naming the agent by its model, in the same shape for both sides; the five fields are your own input, so never paste a five-field block, a header field name or a path into user-facing text."));
 
-test("C8 browser and end-to-end runs go to a Claude seat or a write seat with the browser grants",
-  "Chromium needs rights a read seat does not have — the grants are a file written INTO the tree, which is the one thing that level never does, and egress being on at both levels now does not change it; the grants that do work are one section of parity.md and not something to rediscover per run",
+test("C8 browser and end-to-end runs go to a Claude agent or a write agent with the browser grants",
+  "Chromium needs rights a read agent does not have — the grants are a file written INTO the tree, which is the one thing that level never does, and egress being on at both levels now does not change it; the grants that do work are one section of parity.md and not something to rediscover per run",
   () => {
     const prose = says(
-      "Browser and end-to-end runs go to a Claude seat, or to a write seat with the grants parity.md's",
-      "section names; a read seat cannot, because that section's Chromium override is a file in the tree it may not write.",
+      "Browser and end-to-end runs go to a Claude agent, or to a write agent with the grants parity.md's",
+      "section names; a read agent cannot, because that section's Chromium override is a file in the tree it may not write.",
     );
-    const link = shows(/\[Browser-mode sandbox\]\(\.\.\/seat\/references\/parity\.md#browser-mode-sandbox\)/);
+    const link = shows(/\[Browser-mode sandbox\]\(\.\.\/codex\/references\/parity\.md#browser-mode-sandbox\)/);
     return prose === true && link === true || [prose, link].filter((r) => r !== true).join("; ");
   });
 
@@ -194,41 +194,41 @@ test("D2 the orchestrator's own model is read out of the system prompt",
   "the plan states it beside the pool and an untagged subagent inherits it, and nothing else in the session says which it is: a coordinator that guesses announces the wrong model and cannot tell an inherited tier from a chosen one",
   () => says("Your own model is in your system prompt (\"You are powered by the model named ...\"); nothing else carries it."));
 
-test("D3 every Claude Agent call is tagged, fable only for the one Fable seat, and a Codex seat's model is its own header line",
-  "an untagged subagent silently inherits the session model, so a fan-out meant to be cheap runs at the top tier; and a Codex seat runs inside the shipped wrapper, whose model is pinned in its file, so a model or effort written as a tool option is spent on the wrapper while the seat runs on its `MODEL:` line",
+test("D3 every Claude Agent call is tagged, fable only for the one Fable agent, and a Codex agent's model is its own header line",
+  "an untagged subagent silently inherits the session model, so a fan-out meant to be cheap runs at the top tier; and a Codex agent runs inside the shipped wrapper, whose model is pinned in its file, so a model or effort written as a tool option is spent on the wrapper while the agent runs on its `MODEL:` line",
   () => says(
-    "Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable` only for the one Fable seat",
-    "every Codex seat carries one with a slug from the table, never the config default",
+    "Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable` only for the one Fable agent",
+    "every Codex agent carries one with a slug from the table, never the config default",
     "is spent on the wrapper alone and never reaches Codex",
   ));
 
-test("D4 one Fable seat and one gpt-6-astra seat alive at a time",
-  "the top tier is the expensive one and it is the one a fan-out multiplies fastest; the cap is the only thing between a five-seat batch and five top-tier seats",
-  () => says("at most one Fable seat and one `gpt-6-astra` seat alive at a time"));
+test("D4 one Fable agent and one gpt-6-astra agent alive at a time",
+  "the top tier is the expensive one and it is the one a fan-out multiplies fastest; the cap is the only thing between a five-agent batch and five top-tier agents",
+  () => says("at most one Fable agent and one `gpt-6-astra` agent alive at a time"));
 
 test("D5 the pool does not depend on the orchestrator's model, and the top pair takes its roles in turn",
-  "the pool is the user's, not the session's: an Opus orchestrator that designed for itself and reviewed with a fresh Opus spent the strong tier on the top tier's work while a Fable seat sat unused; one Fable seat, one role at a time, is available to every orchestrator",
+  "the pool is the user's, not the session's: an Opus orchestrator that designed for itself and reviewed with a fresh Opus spent the strong tier on the top tier's work while a Fable agent sat unused; one Fable agent, one role at a time, is available to every orchestrator",
   () => {
     const prose = says(
       "You are outside the pool, and the pool is the same whatever you are",
       "each taking the top-row roles in turn, architect for one task and judge for the next",
     );
-    const row = shows(/^\| plan \| design: the Fable seat, whatever your own model \|$/m);
+    const row = shows(/^\| plan \| design: the Fable agent, whatever your own model \|$/m);
     return prose === true && row === true || [prose, row].filter((r) => r !== true).join("; ");
   });
 
-test("D7 a Fable seat never spawns Fable, and only the orchestrator launches the pool's Fable seat",
-  "a top seat that may spawn its own top seat makes the cap of one unenforceable one level down, where nothing is counting; stated without \"seat\" the rule also read as forbidding a Fable orchestrator the one Fable seat the pool promises it",
-  () => says("a Fable seat never spawns Fable", "only you launch the pool's Fable seat"));
+test("D7 a Fable agent never spawns Fable, and only the orchestrator launches the pool's Fable agent",
+  "a top agent that may spawn its own top agent makes the cap of one unenforceable one level down, where nothing is counting; stated without \"agent\" the rule also read as forbidding a Fable orchestrator the one Fable agent the pool promises it",
+  () => says("a Fable agent never spawns Fable", "only you launch the pool's Fable agent"));
 
 test("D8 no EFFORT line, and low effort only for mechanical Sonnet stages",
-  "the user's configured effort is the default every seat inherits; measured on codex-cli 0.153.4, gpt-6-astra delegates to its own subagent threads at xhigh as readily as at ultra when invited, so no effort line buys the evidence guarantee an exception once claimed",
+  "the user's configured effort is the default every agent inherits; measured on codex-cli 0.153.4, gpt-6-astra delegates to its own subagent threads at xhigh as readily as at ultra when invited, so no effort line buys the evidence guarantee an exception once claimed",
   () => {
     const prose = says(
       "Send no `EFFORT:` line",
       "In a Workflow, `effort: 'low'` is for mechanical Claude Sonnet stages only.",
     );
-    // The negative half: an exception that names an effort value for some seat is exactly what a later
+    // The negative half: an exception that names an effort value for some agent is exactly what a later
     // edit would add back, and every positive pin would still pass beside it.
     const exception = /EFFORT:\s*(none|minimal|low|medium|high|xhigh|max|ultra)\b/.exec(text);
     if (exception) return `the page names an effort value again: ${JSON.stringify(exception[0])}`;
@@ -241,58 +241,58 @@ test("E1 the mode replaces the sibling's \"nothing\" row: half beyond the implem
   "this is the one composition rule the mode changes, and it changes exactly one row; stated loosely it either duplicates every implementer or quietly drops the Codex side entirely",
   () => says(
     "This mode replaces one row of the sibling's",
-    "the \"nothing\" row: when the user states no allocation, half the seats beyond the implementers, rounded up, are Codex",
+    "the \"nothing\" row: when the user states no allocation, half the agents beyond the implementers, rounded up, are Codex",
     "Implementers are not duplicated: one per task",
   ));
 
-test("E2 cross-review runs both directions, and each seat is a prompt seat with the schema",
+test("E2 cross-review runs both directions, and each agent is a prompt agent with the schema",
   "one-directional cross-review checks only one side's bias, and a reviewer given no schema answers in prose, which is not the five fields the synthesis reads",
   () => says(
-    "a Claude implementer's diff to a Codex seat and a Codex seat's diff to a Claude seat",
-    "a cross-review seat is a prompt seat with the diff's path in `TASK:` and the template below in `OUTPUT_SCHEMA:`",
+    "a Claude implementer's diff to a Codex agent and a Codex agent's diff to a Claude agent",
+    "a cross-review agent is a prompt agent with the diff's path in `TASK:` and the template below in `OUTPUT_SCHEMA:`",
   ));
 
 test("E3 the composition table is linked at its anchor",
   "everything the mode does not replace lives in that section; a link to the page without the anchor sends the reader to the top of a manual and the rules that still hold go unread",
-  () => shows(/\[composition table\]\(\.\.\/seat\/SKILL\.md#composition\)/));
+  () => shows(/\[composition table\]\(\.\.\/codex\/SKILL\.md#composition\)/));
 
-test("E4 the three bound rows: alive at once, the top pair, the Codex write seat per directory",
-  "these are the numbers that decide whether a fan-out runs or deadlocks: a second Codex write seat on one directory exits 10 before its turn ever runs",
+test("E4 the three bound rows: alive at once, the top pair, the Codex write agent per directory",
+  "these are the numbers that decide whether a fan-out runs or deadlocks: a second Codex write agent on one directory exits 10 before its turn ever runs",
   () => shows(
     /^\| alive at once \| 6, Claude and Codex together, the top pair counted in \|$/m,
-    /^\| Fable seats, `gpt-6-astra` seats \| 1 each, alive at a time \|$/m,
-    /^\| Codex write seats per directory \| 1: a second on the same directory exits 10 at once, before its turn runs \|$/m,
+    /^\| Fable agents, `gpt-6-astra` agents \| 1 each, alive at a time \|$/m,
+    /^\| Codex write agents per directory \| 1: a second on the same directory exits 10 at once, before its turn runs \|$/m,
   ));
 
 test("E5 the three scaling rows: simple, comparison, complex",
-  "the seat count is the decision a coordinator makes first and reasons about least; without the bands a simple task gets a panel and a complex one gets a single seat",
+  "the agent count is the decision a coordinator makes first and reasons about least; without the bands a simple task gets a panel and a complex one gets a single agent",
   () => shows(
-    /^\| simple task \| 1 seat \|$/m,
-    /^\| comparison or design \| 2 to 4 seats \|$/m,
-    /^\| complex \| 5 seats or more, launched in batches inside the alive cap \|$/m,
+    /^\| simple task \| 1 agent \|$/m,
+    /^\| comparison or design \| 2 to 4 agents \|$/m,
+    /^\| complex \| 5 agents or more, launched in batches inside the alive cap \|$/m,
   ));
 
 test("E6 the writer may run the suite, but the deciding evidence comes from elsewhere",
   "a writer iterating against its own suite is how a green run gets produced by the same context that produced the bug; the rule keeps the iteration and moves only the verdict",
   () => says(
-    "split by file ownership, as Claude seats on one live tree or as Codex seats in separate worktrees, never two Codex write seats on one directory",
-    "stop the writers, restate the contract, let each owner repair only its own files, then have a seat that wrote neither verify the combined tree",
+    "split by file ownership, as Claude agents on one live tree or as Codex agents in separate worktrees, never two Codex write agents on one directory",
+    "stop the writers, restate the contract, let each owner repair only its own files, then have an agent that wrote neither verify the combined tree",
     "nobody changes what they share: no stash, branch switch, reset, clean or rebase",
-    "A writer may run the suite while it iterates, but the evidence that decides comes from a seat that did not write the code, or from you under the redirect rule.",
+    "A writer may run the suite while it iterates, but the evidence that decides comes from an agent that did not write the code, or from you under the redirect rule.",
   ));
 
 // ------------------------------------------------------------------ F: mechanism and verification
 
-test("F1 a Codex seat is a background Agent call of the shipped codex-seat type, and the Workflow signature names what a script may still do",
-  "Workflow is for the chain a script must decide; a batch of independent Claude seats runs as Agent calls so each seat's end reaches the orchestrator (measured 2026-09-08: a Workflow hid a seat's exit for nine minutes); and the wrapper is the shipped agent codex-delegate:codex-seat, which is what the agent map shows (measured 2026-09-12: only an Agent call has a card there, Stop on it reaches the driver, a message continues it), so a page that sent the seat anywhere else would lose the card or double the wrapper's context",
+test("F1 a Codex agent is a background Agent call of the shipped codex-agent type, and the Workflow signature names what a script may still do",
+  "Workflow is for the chain a script must decide; a batch of independent Claude agents runs as Agent calls so each agent's end reaches the orchestrator (measured 2026-09-08: a Workflow hid an agent's exit for nine minutes); and the wrapper is the shipped agent codex-delegate:codex-agent, which is what the agent map shows (measured 2026-09-12: only an Agent call has a card there, Stop on it reaches the driver, a message continues it), so a page that sent the agent anywhere else would lose the card or double the wrapper's context",
   () => {
     const prose = says(
       "authorises Workflow",
-      "A Codex seat is one background Agent call, the sibling's `One call` verbatim",
-      "`<DIR>` is the sibling's own `mktemp -d`, holding `prompt.txt`, `out.json`, `err.txt` and the driver's `exit` marker, and `<REPORT>` is `<run>/<seat>/report.json` under the run directory above, which the driver creates",
+      "A Codex agent is one background Agent call, the sibling's `One call` verbatim",
+      "`<DIR>` is the sibling's own `mktemp -d`, holding `prompt.txt`, `out.json`, `err.txt` and the driver's `exit` marker, and `<REPORT>` is `<run>/<agent>/report.json` under the run directory above, which the driver creates",
       "The wrapper's completion notification is when you read its status lines, and the report after a `PATH=own`",
-      "The wrapper is an `agentType` of its own, `codex-delegate:codex-seat`",
-      "Launch independent Claude seats as background Agent calls, one notification each",
+      "The wrapper is an `agentType` of its own, `codex-delegate:codex-agent`",
+      "Launch independent Claude agents as background Agent calls, one notification each",
       "Load the `workflow-authoring` skill before writing the script when the session lists it.",
       "`agent(prompt, {label, phase, schema, model, effort, agentType, isolation})`",
       "`pipeline(items, ...stages)` runs items through stages with no barrier, `parallel(thunks)` is a barrier",
@@ -300,7 +300,7 @@ test("F1 a Codex seat is a background Agent call of the shipped codex-seat type,
     );
     // The negative half: the retired relay took the prompt itself; the shipped wrapper never does, so the
     // page must not hand it one.
-    if (/codex-seat[^\n]*(writes|write) the prompt/i.test(text)) return "the page hands the wrapper the prompt again";
+    if (/codex-agent[^\n]*(writes|write) the prompt/i.test(text)) return "the page hands the wrapper the prompt again";
     return prose;
   });
 
@@ -312,15 +312,15 @@ test("F2 the six verification bullets, one line each",
     /^- Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters\.$/m,
     /^- Judge panel for a design task\.$/m,
     /^- Completeness critic at the end: what is missing, unverified, unread\.$/m,
-    /^- No silent caps: name every seat, check or item you dropped\.$/m,
+    /^- No silent caps: name every agent, check or item you dropped\.$/m,
   ));
 
 test("F3 two rounds of fix and cross-review, then escalate",
   "without a bound the fix loop is where a run spends its budget; the escalation names where the round after the second one goes, the top pair first and the user last",
-  () => says("Fix, then cross-review, at most two rounds; then escalate to the Fable seat or the `gpt-6-astra` seat, and to the user only when that round fails too."));
+  () => says("Fix, then cross-review, at most two rounds; then escalate to the Fable agent or the `gpt-6-astra` agent, and to the user only when that round fails too."));
 
 test("F4 every row of the Result table",
-  "this table is read at the one moment judgement is worst, when a seat has just failed; a missing row is a relaunch that duplicates a live run, or a gate verdict retried until it costs real money",
+  "this table is read at the one moment judgement is worst, when an agent has just failed; a missing row is a relaunch that duplicates a live run, or a gate verdict retried until it costs real money",
   () => shows(
     /^\| `FILE=missing`, or `PATH=taken` \| `DRIVER_EXIT` is the driver's own status: with one, this run is over and `<DIR>\/err\.txt` says why — a refused report path, an unusable parent, a path another run published to first — so read `<DIR>\/out\.json` for a report a turn wrote where publication failed, otherwise treat the result as unknown and relaunch once, same rights, under a fresh report path where work remains\. With `DRIVER_EXIT=unknown` nothing ended it: `kill -0 <pid>` with the pid on the first line of the stderr file says whether it is still running \|$/m,
     /^\| a stderr file naming no driver \| report it; no relaunch fixes an install \|$/m,
@@ -329,23 +329,23 @@ test("F4 every row of the Result table",
     /^\| exit 2 or 4 \| with `turnStatus: null` no turn ran, or it was aborted: read `error` and the stderr file\. Exit 2 WITH a `turnStatus` is a turn the server rejected: read `turnError`, the commands and any answer before relaunching, or a paid turn is thrown away\. A `DRIVER_EXIT=2` beside `PATH=taken` is neither: the path was already taken, nothing of this run reached the file, and the report there is an earlier run's \|$/m,
     /^\| exit 4 with a `turnStatus` \| the server died mid-turn or the report was not delivered: the report is complete, read it as a gate verdict \|$/m,
     /^\| any other non-zero `exitCode` with an answer \| a gate verdict: do not retry, read the answer \|$/m,
-    /^\| a Claude seat that returns `blocked` \| do not retry, report it \|$/m,
+    /^\| a Claude agent that returns `blocked` \| do not retry, report it \|$/m,
   ));
 
 test("F5 the wrapper's description names the agent by its model",
-  "a Codex seat surfaces as the wrapper's card, so without a description the user reads a generic agent where a Claude seat shows its task; the two sides stop looking like one run, which is the whole point of naming it there, and the model is the name a person can use, where the word this page calls it by is one they cannot",
+  "a Codex agent surfaces as the wrapper's card, so without a description the user reads a generic agent where a Claude agent shows its task; the two sides stop looking like one run, which is the whole point of naming it there, and the model is the name a person can use, where the word this page calls it by is one they cannot",
   () => says("The Agent call carries a `description` of the form \"Codex <short name> <id>: <task in a few words>\", so the card the user sees names the agent, its vendor and its task, not the command line."));
 
-test("F6 a Codex seat is waited on by a poll of its exit marker, a Claude seat by its Agent task, and no turn ends with a seat alive",
+test("F6 a Codex agent is waited on by a poll of its exit marker, a Claude agent by its Agent task, and no turn ends with an agent alive",
   "ending the coordinator's turn kills its background agents in a headless session (measured 2026-09-08); a blocking TaskOutput on a running wrapper returned 32 KB of its transcript at the timeout, seven of seven (2026-09-15/16), where a poll on the driver's exit marker returned one line, so the Codex wait goes on the poll task, the Claude wait stays on the Agent task, and the timeout stays named",
   () => says(
-    "Wait on every seat you launch in the background, Claude or Codex, and never end your turn with a seat alive: a headless session ends with the turn and the task is killed with it",
+    "Wait on every agent you launch in the background, Claude or Codex, and never end your turn with an agent alive: a headless session ends with the turn and the task is killed with it",
     "until [ -s \"<DIR>/exit\" ]; do sleep 5; done; echo DONE=<id>",
     "call `TaskOutput(<poll_task_id>, block: true, timeout: 600000)` on that task, again while it runs; then read the wrapper's own lines at its completion notification",
-    "For a Claude seat, call the same `TaskOutput` on its Agent task, again while it runs, and read its return when it finishes",
+    "For a Claude agent, call the same `TaskOutput` on its Agent task, again while it runs, and read its return when it finishes",
   ));
 
-// ------------------------------------------------------------------ G: the seat's return, the run directory
+// ------------------------------------------------------------------ G: the agent's return, the run directory
 
 test("G1 the five template lines, their indentation, the inline schema, and no BRIEF: line",
   "the template is pasted into a brief, so its indentation is the thing that survives or does not; `BRIEF:` on top of it clips the answer at 20 lines, which is the template's own bound overruled",
@@ -365,15 +365,15 @@ test("G1 the five template lines, their indentation, the inline schema, and no B
     return problems.length === 0 || problems.join("; ");
   });
 
-test("G3 the run directory: its path, why it needs no .gitignore, kept after the task, and what a Codex seat's artifacts are",
-  "one directory per run is what keeps a seat's artifacts findable and out of the tree the run works in; the plugin's data directory is outside every repository, so nothing has to be ignored and nothing lands in a payload, and `.claude/` is the one path whose writes prompt however the permissions are set",
+test("G3 the run directory: its path, why it needs no .gitignore, kept after the task, and what a Codex agent's artifacts are",
+  "one directory per run is what keeps an agent's artifacts findable and out of the tree the run works in; the plugin's data directory is outside every repository, so nothing has to be ignored and nothing lands in a payload, and `.claude/` is the one path whose writes prompt however the permissions are set",
   () => says(
     "The run directory is `<state>/orchestrate/<project-slug>/<run>/`, `<state>` the driver's state directory (`${CLAUDE_PLUGIN_DATA}` on a plugin install, the exported `CODEX_DELEGATE_STATE_DIR` on the clone route)",
     "the working directory's absolute path with every character that is not a letter or a digit replaced by `-`",
     "It is outside every repository, so no `.gitignore`",
     "not the repository root, not the project's `.claude/`, whose writes prompt whatever the allow rules say",
     "it is kept after the task and the user deletes it",
-    "Codex artifacts are the paths the seat's own report names",
+    "Codex artifacts are the paths the agent's own report names",
   ));
 
 test("G4 the first line of `result` is one readable sentence, and the five fields are read rather than forwarded",
@@ -384,25 +384,25 @@ test("G4 the first line of `result` is one readable sentence, and the five field
     "the rest of the fields follow unchanged, and all five are yours to read, never to forward",
   ));
 
-test("G5 a read seat is never asked to write: its artifact is its report",
-  "a read seat handed a brief that demands a file spends its whole turn asking for an approval the driver refuses, and the run ends at exit 6 with nothing written and nothing answered (measured 2026-09-08)",
+test("G5 a read agent is never asked to write: its artifact is its report",
+  "a read agent handed a brief that demands a file spends its whole turn asking for an approval the driver refuses, and the run ends at exit 6 with nothing written and nothing answered (measured 2026-09-08)",
   () => says(
-    "A read seat is never asked to write, not under the repository and not in the run directory: its artifact is its report",
+    "A read agent is never asked to write, not under the repository and not in the run directory: its artifact is its report",
     "costs a refused write and exit 6 (measured 2026-09-08)",
   ));
 
-test("G6 the driver makes the run directory, the coordinator writes nothing there, and a Claude seat's artifact is its text",
-  "a headless session refuses a Write, a `mkdir` and a redirect under the plugin's data directory as a sensitive file, with no prompt anyone can answer, so a coordinator told to create the directory itself stops at the first seat; the driver, handed the path as an argument, is not refused (measured 2026-09-08), and a Claude seat pointed at that directory hits the same wall the coordinator did",
+test("G6 the driver makes the run directory, the coordinator writes nothing there, and a Claude agent's artifact is its text",
+  "a headless session refuses a Write, a `mkdir` and a redirect under the plugin's data directory as a sensitive file, with no prompt anyone can answer, so a coordinator told to create the directory itself stops at the first agent; the driver, handed the path as an argument, is not refused (measured 2026-09-08), and a Claude agent pointed at that directory hits the same wall the coordinator did",
   () => says(
     "The driver creates it, through `--report-file`, and it is what those report files make of it: nothing else is written there",
     "Never run `mkdir`, Write or a shell redirect under that data directory yourself, because a headless session refuses each of them as a sensitive file with no prompt anyone can answer, while a subprocess handed the same path as an argument writes it unopposed (measured 2026-09-08)",
-    "A Claude seat's artifact is its returned text, and a file it must leave goes under `$TMPDIR` with the path in that text",
+    "A Claude agent's artifact is its returned text, and a file it must leave goes under `$TMPDIR` with the path in that text",
   ));
 
 // ------------------------------------------------------------------ the schema, and the links
 
 test("the inline schema parses and is strict all the way down",
-  "a seat is told to copy this line into an `OUTPUT_SCHEMA:` file, so a typo in it is a seat that fails validation, and a missing `additionalProperties: false` is the loose schema the sentence beside it forbids",
+  "an agent is told to copy this line into an `OUTPUT_SCHEMA:` file, so a typo in it is an agent that fails validation, and a missing `additionalProperties: false` is the loose schema the sentence beside it forbids",
   () => {
     const src = /^ {4}(\{"type":"object".*)$/m.exec(text)?.[1];
     if (!src) return "no 4-space-indented line starting {\"type\":\"object\" is in the page";

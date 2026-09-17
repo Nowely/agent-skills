@@ -2,7 +2,7 @@
 
 The evidence behind the one-paragraph verdict in README.md. Code claims re-verified 2026-08-31 against
 the locally cached plugin source (`~/.claude/plugins/cache/openai-codex/codex/1.0.6/`, the same v1.0.6
-/ commit db52e28 the line references below pin), independently by a Claude seat and a Codex seat; the
+/ commit db52e28 the line references below pin), independently by a Claude agent and a Codex agent; the
 sandbox behaviour was reproduced live with a raw JSON-RPC probe against codex-cli 0.150.1.
 
 ## The two defects, and which machines they bite
@@ -35,11 +35,11 @@ permission profile, the only mechanism that can add `$TMPDIR` to a read-only san
 ways with a raw probe: omit the parameter and a configured profile applies
 (`writableRoots: ["$TMPDIR"]`); send `"read-only"` and `activePermissionProfile` comes back `null` with
 no writable roots at all; send `"workspace-write"` and the profile is suppressed too, but its default
-grant opens `$TMPDIR` and `/tmp`. So a review seat launched through the plugin cannot create a temp
+grant opens `$TMPDIR` and `/tmp`. So a review agent launched through the plugin cannot create a temp
 directory, and therefore cannot run a test suite, a build, or anything that stages a file — on ANY
 machine, MDM or not (upstream #482 reports the same mechanism from an unmanaged machine). Observed:
-`EPERM: operation not permitted, mkdtemp`, and the seat reviewed the code by reading it while the
-Claude seats beside it ran the suites — a decorrelated opinion bought and a crippled one delivered.
+`EPERM: operation not permitted, mkdtemp`, and the agent reviewed the code by reading it while the
+Claude agents beside it ran the suites — a decorrelated opinion bought and a crippled one delivered.
 No flag reaches this: the plugin's surface is
 `[--background] [--write] [--resume-last|--resume|--fresh] [--model] [--effort]`.
 
@@ -47,7 +47,7 @@ No flag reaches this: the plugin's surface is
 in-repo tasks (`workspace-write` opens `$TMPDIR` and `/tmp` as a side effect). This driver's write level
 instead keeps `$TMPDIR`, excludes `/tmp`, and asserts both fields the server returns; the live 0.153.4
 handshake established the default grant, and differential suite cases establish the declaration and
-refusal. It is the read/review seats that are structurally unable to run tests everywhere, and the
+refusal. It is the read/review agents that are structurally unable to run tests everywhere, and the
 failure is silent where it counts: a review comes back with a confident verdict having run nothing.
 
 **Reading the plugin's logs.** `(exit ?)` in
@@ -80,7 +80,7 @@ that was measured.
 and it is what the official plugin itself uses, so it is the de facto integration path despite the
 label.
 
-**`codex mcp-server` measured.** It exists and is the one surface that would make a seat a native tool
+**`codex mcp-server` measured.** It exists and is the one surface that would make an agent a native tool
 call with typed arguments: `tools/list` returns `codex` (`prompt`, `cwd`, `model`, `sandbox`,
 `approval-policy`, `base-instructions`, `developer-instructions`, `compact-prompt`, `config`) and
 `codex-reply` (`threadId`, `conversationId`, `prompt`). It is still not a substitute. It takes a
@@ -123,8 +123,8 @@ cancel (`lib/state.mjs`, `tracked-jobs.mjs`, `job-control.mjs`); a stop-time rev
 Stop hook (`hooks/hooks.json`, `stop-review-gate-hook.mjs`); native `review/start` with target
 resolution and a review output schema; `turn/interrupt` through a shared broker; Claude-session import
 via `externalAgentConfig`. What this driver takes from that list is `turn/interrupt`, which is what a
-signal sends. The rest it declines: a seat's lifetime is the caller's own task rather than a job index,
-and a review is a prompt seat under [`review-output.schema.json`](../schemas/review-output.schema.json),
+signal sends. The rest it declines: an agent's lifetime is the caller's own task rather than a job index,
+and a review is a prompt agent under [`review-output.schema.json`](../schemas/review-output.schema.json),
 validated here rather than trusted from the server.
 
 Nothing here modifies the plugin. Patching `?? "never"` in the plugin cache works and was measured —

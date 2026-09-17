@@ -29,7 +29,7 @@ The report counts sliced evidence as `commandsPipedToPager`, with `pipedToPagerH
 
 A completed turn that produced an answer exits 0 however many of its commands failed: whether the
 failures are the finding — a crashing environment probe, an intentionally broken build, a bisection
-seat's red step — or a defect, the exit code cannot tell, so it does not try. What ran and how it ended
+agent's red step — or a defect, the exit code cannot tell, so it does not try. What ran and how it ended
 is in the report: `commandsFailed`, `commandsDeclined`, `commandsBlocked`, `commandsProbeNegative`,
 `fileChangesFailed`, `commandsPipedToPager`. `commandsDeclined` counts commands an approval refusal
 stopped before they ran, `commandsFailed` commands that ran and failed, and `escalations` the refused
@@ -50,12 +50,12 @@ turns it into a verdict.
 ## What `--verify` can and cannot measure
 
 The verifier runs under `/bin/sh` in its own process group, with the coordinator's own rights, env and
-network whatever the seat's egress was. It gets the cap `--help` states for `--verify` unless a
+network whatever the agent's egress was. It gets the cap `--help` states for `--verify` unless a
 `--timeout` you set leaves less (`verify.budgetMs`); at the deadline the group is killed with `SIGKILL` and
 `verify.timedOut` says so. Output streams while a bounded tail is retained, so a verifier that prints
 hundreds of megabytes and exits 0 passes. `--verify-sandboxed` runs it through `codex sandbox` under the
 read profile: the tree is readable, `$TMPDIR` is writable, a tree-writing verifier fails, and it reaches
-the network exactly as the seat did — a seat that was denied egress cannot have its work vouched for by
+the network exactly as the agent did — an agent that was denied egress cannot have its work vouched for by
 a verifier that fetches. `verify.sandboxed` records the mode.
 
 `verify.measured` splits "your verifier broke" from "the work is not there", because those call for

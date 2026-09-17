@@ -545,7 +545,7 @@ test("a write sandbox that grants more than was asked for is refused",
   async () => {
     const d = freshDir("write-widened");
     // The denial is what the widening is measured against: egress is granted unless the caller refuses
-    // it, so a fixture that hands back networkAccess:true to a seat that asked for it is agreement.
+    // it, so a fixture that hands back networkAccess:true to an agent that asked for it is agreement.
     const { code, err } = await run(d, { scenario: "write-networked", args: ["--no-network"] });
     if (code !== EXIT.TRANSPORT) return `expected 4 for a sandbox granting refused egress, got ${code}`;
     if (!/networkAccess/.test(err)) return `the refusal must name what differed; got: ${err.trim().slice(0, 140)}`;
@@ -613,7 +613,7 @@ test("--writable refuses ~/.codex and the state directory in use, which hold the
   });
 
 test("a failed config probe keeps the last known good inherited config",
-  "a failed probe must preserve the shared isolated config so a transient failure cannot move concurrent seats onto account defaults",
+  "a failed probe must preserve the shared isolated config so a transient failure cannot move concurrent agents onto account defaults",
   async () => {
     const cfg = path.join(STATE_DIR, "home", "config.toml");
     const healthy = await run(freshDir("lkg-healthy"), {});
@@ -644,7 +644,7 @@ test("every run is recorded in the job registry, and --resume last finds the new
     if (rec.exitCode !== 0 || rec.turnStatus !== "completed" || !rec.started || !rec.endedAt)
       return `the job record is incomplete: ${JSON.stringify(rec)}`;
     // Scoped to the cwd: the registry is machine-wide, and in a fan-out the newest record is routinely
-    // another repository's seat. Resuming that one would answer a follow-up about this directory from
+    // another repository's agent. Resuming that one would answer a follow-up about this directory from
     // a conversation about a different one, and no sandbox assert can catch it — the resumed thread is
     // simply handed the cwd it was asked for.
     // (Every fixture run reports the same thread id, so the registry holds ONE record whose cwd is the
@@ -666,7 +666,7 @@ test("every run is recorded in the job registry, and --resume last finds the new
   });
 
 test("`--resume last` names the run started most recently, not the one most recently written to",
-  "a long seat rewrites its own record on every mid-flight heartbeat, so ordering the registry by mtime made a run started hours ago outrank a shorter one begun after it and already finished: `--resume last` then continued the WRONG conversation, and nothing in the report said so",
+  "a long agent rewrites its own record on every mid-flight heartbeat, so ordering the registry by mtime made a run started hours ago outrank a shorter one begun after it and already finished: `--resume last` then continued the WRONG conversation, and nothing in the report said so",
   async () => {
     const dir = freshDir("resume-order");
     const jobs = path.join(STATE_DIR, "jobs");
@@ -678,7 +678,7 @@ test("`--resume last` names the run started most recently, not the one most rece
       return p;
     };
     // B is written FIRST and A second, so A is the mtime-newest record while B is the newest by start:
-    // exactly the shape a running seat's heartbeat produces.
+    // exactly the shape a running agent's heartbeat produces.
     const bPath = plant("thr_b_finished", { started: at(60000), endedAt: at(30000), exitCode: 0, pid: 2147483646 });
     // A is older, still open, and its pid is this suite's own process, which is certainly alive.
     const aPath = plant("thr_a_running", { started: at(600000), pid: process.pid });
@@ -819,13 +819,13 @@ for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"]) {
   test(`${sig} reports the turn to its --report-file, sweeps the group and releases the lock`,
     sig === "SIGHUP"
       ? "SIGHUP is the signal from a closing terminal; it must preserve the report, reap descendants and release the lock like other cancellation signals"
-      : "cancellation must return the incomplete-turn verdict and preserve the commands, files and answer already collected — and stopping a seat IS signalling it, so the report has to reach the file the caller was told to read rather than a pipe nobody held",
+      : "cancellation must return the incomplete-turn verdict and preserve the commands, files and answer already collected — and stopping an agent IS signalling it, so the report has to reach the file the caller was told to read rather than a pipe nobody held",
     async () => {
       reapSurvivors();
       const d = freshDir(`sig-${sig}`);
       const rpcLog = path.join(d, `rpc-${sig}.log`);
       // The path a caller signalling this run would read afterwards: written by the signal handler's own
-      // report, or a stopped seat leaves nothing behind but its stderr.
+      // report, or a stopped agent leaves nothing behind but its stderr.
       const reportFile = path.join(tempDir(`codex-lock-report-${sig}-`), "report.json");
       const { p, done, stderrSoFar } = spawnRun(d, { args: ["--report-file", reportFile], env: { FAKE_RPC_LOG: rpcLog } });
       if (!await waitFor(() => fs.existsSync(lockFor(d)))) { p.kill("SIGKILL"); reapSurvivors(); return "the run never took its lock"; }
@@ -860,7 +860,7 @@ const childPids = (pid) => String(spawnSync("pgrep", ["-P", String(pid)], { enco
   .split("\n").map((l) => Number(l.trim())).filter((n) => Number.isInteger(n) && n > 0);
 
 test("SIGTERM to the driver and then to its server, inside the grace, reports the turn as interrupted and not as a crash",
-  "a harness that stops a seat signals the whole process tree, so codex takes the SIGTERM beside the driver and dies before the grace ends; measured 2026-09-12 from the agent map's Stop: the report said failed/4 for a cancellation, and its reader could not tell a stop from a server death",
+  "a harness that stops an agent signals the whole process tree, so codex takes the SIGTERM beside the driver and dies before the grace ends; measured 2026-09-12 from the agent map's Stop: the report said failed/4 for a cancellation, and its reader could not tell a stop from a server death",
   async () => {
     reapSurvivors();
     const d = freshDir("sig-tree");
@@ -891,7 +891,7 @@ test("SIGTERM to the driver and then to its server, inside the grace, reports th
   });
 
 test("a run signalled before its thread exists writes the pre-turn report to its file",
-  "a seat stopped during setup is the case a caller cannot tell from a seat still starting: the notification fires either way, so the same file has to carry the refusal — with no turn status and no answer invented for a turn that never ran",
+  "an agent stopped during setup is the case a caller cannot tell from an agent still starting: the notification fires either way, so the same file has to carry the refusal — with no turn status and no answer invented for a turn that never ran",
   async () => {
     const d = freshDir("sig-pre-thread");
     const reportFile = path.join(tempDir("codex-lock-report-pre-"), "report.json");
@@ -944,13 +944,13 @@ test("the lock is released only after the process group is dead",
       : `a TERM-ignoring descendant cost the run only ${extra}ms over the control (${control.ms}ms -> ${withSurvivor.ms}ms) — the group was not waited out before the lock was released`;
   });
 
-test("a second --seat-file is a usage error, not a silently ignored one",
-  "a second --seat-file is a contradictory declaration and must be refused rather than silently ignored",
+test("a second --prompt-file is a usage error, not a silently ignored one",
+  "a second --prompt-file is a contradictory declaration and must be refused rather than silently ignored",
   async () => {
     const a = path.join(shimDir, "dup-a.txt"), b = path.join(shimDir, "dup-b.txt");
-    fs.writeFileSync(a, `SEAT: read ${shimDir}\n`);
-    fs.writeFileSync(b, `SEAT: write ${shimDir}\n`);
-    const p = spawn(process.execPath, [DRIVER, "--seat-file", a, "--seat-file", b, "--prompt", "x"],
+    fs.writeFileSync(a, `RIGHTS: read ${shimDir}\n`);
+    fs.writeFileSync(b, `RIGHTS: write ${shimDir}\n`);
+    const p = spawn(process.execPath, [DRIVER, "--prompt-file", a, "--prompt-file", b, "--prompt", "x"],
       { env: { ...process.env, PATH: `${shimDir}:${process.env.PATH}`, CODEX_DELEGATE_STATE_DIR: STATE_DIR },
         stdio: ["ignore", "pipe", "pipe"] });
     let err = "";
@@ -978,7 +978,7 @@ const selfIdentity = () => {
 };
 
 test("a lock whose pid was recycled by an unrelated live process is not honoured",
-  "kill(pid,0) cannot tell the holder from whoever later inherited its number, and lock files outlive reboots and SIGKILLs — so once the pid is reused every write seat on that cwd exits 10 until a human deletes the file",
+  "kill(pid,0) cannot tell the holder from whoever later inherited its number, and lock files outlive reboots and SIGKILLs — so once the pid is reused every write agent on that cwd exits 10 until a human deletes the file",
   async () => {
     const d = freshDir("recycled-pid");
     fs.mkdirSync(LOCK_DIR, { recursive: true, mode: 0o700 });
@@ -1044,7 +1044,7 @@ test("concurrent first runs against a fresh state directory do not race on the s
     for (let r = 0; r < rounds; r++) {
       // Fresh every round: the race exists only on the FIRST run against a state directory.
       const state = path.join(STATE_DIR, `home-race-${r}`);
-      const seats = Array.from({ length: width }, () => new Promise((res) => {
+      const agents = Array.from({ length: width }, () => new Promise((res) => {
         const p = spawn(process.execPath,
           [DRIVER, "--level", "read", "--cwd", d, "--timeout", "30",
            "--prompt", "irrelevant, the server is scripted"],
@@ -1057,7 +1057,7 @@ test("concurrent first runs against a fresh state directory do not race on the s
       }));
       // The WHOLE last line: a 110-character slice of these refusals stops inside the path, so a failure
       // here could not say which of the two link refusals fired, and the finding could not be chased.
-      for (const { code, err } of await Promise.all(seats))
+      for (const { code, err } of await Promise.all(agents))
         if (code !== EXIT.OK) bad.push(`exit ${code}: ${err.trim().split("\n").pop()}`);
     }
     return bad.length
@@ -1171,7 +1171,7 @@ test("the answer reaches the answer log before the turn ends, so a SIGKILL canno
   });
 
 test("a lock is reclaimed only when the driver AND its app-server group are both gone",
-  "a SIGKILLed driver leaves codex still writing the tree: reclaiming on the driver's pid alone lets a second run in beside it, and two seats editing one checkout is the failure the lock exists for",
+  "a SIGKILLed driver leaves codex still writing the tree: reclaiming on the driver's pid alone lets a second run in beside it, and two agents editing one checkout is the failure the lock exists for",
   async () => {
     const d = freshDir("pgid-reclaim");
     fs.mkdirSync(LOCK_DIR, { recursive: true, mode: 0o700 });
@@ -1207,7 +1207,7 @@ test("a lock is reclaimed only when the driver AND its app-server group are both
   });
 
 test("a lock whose app-server group was recycled by an unrelated process refuses the run",
-  "the pgid half of the reclaim rule cannot tell a live codex group from a stranger the OS handed the same number, and the safe answer to that ambiguity is BUSY: guessing the other way admits a second writer into a directory a live seat may be editing",
+  "the pgid half of the reclaim rule cannot tell a live codex group from a stranger the OS handed the same number, and the safe answer to that ambiguity is BUSY: guessing the other way admits a second writer into a directory a live agent may be editing",
   async () => {
     const d = freshDir("pgid-recycled");
     fs.mkdirSync(LOCK_DIR, { recursive: true, mode: 0o700 });

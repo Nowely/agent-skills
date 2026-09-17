@@ -23,7 +23,7 @@ const shimDir = SHIM;
 // The prompt the stalled-reader row echoes back, sized past what a paused pipe holds: the pipe itself
 // (64 KB by default), the reader's own buffer and the chunks libuv has in flight when pause() lands,
 // which together absorbed 200 KB on Linux under one Node version. Under that much a report reaches even
-// a consumer that never reads, and the drain watchdog is never armed. Bounded above by the seat-file
+// a consumer that never reads, and the drain watchdog is never armed. Bounded above by the prompt-file
 // prompt cap of 512 KB, so 480 KB: 2.5 times the largest absorption measured.
 const STALLED_READER_BODY = "y".repeat(480000);
 const CASES = [
@@ -111,7 +111,7 @@ const CASES = [
         && r.subagentThreads[0].agentPath === null && r.subagentThreads[0].status === null)
       || `visibility fields wrong: ${JSON.stringify({ reasoning: r.reasoningSummary, other: r.otherItemCounts, items: r.otherItems, sub: r.subagentThreads, cmds: r.commandsSucceeded })}` },
   { scenario: "echo-input",       expect: EXIT.OK, args: ["--attach", attachFile, "--attach", attachFile2],
-    why: "--attach maps local images into the turn input as localImage items, IMAGES FIRST and in the order given — the layout every one of the 29 image-carrying user turns on this machine has, so a seat asked about 'the first screenshot' sees what its coordinator saw",
+    why: "--attach maps local images into the turn input as localImage items, IMAGES FIRST and in the order given — the layout every one of the 29 image-carrying user turns on this machine has, so an agent asked about 'the first screenshot' sees what its coordinator saw",
     assert: (r) => {
       let inp = null;
       try { inp = JSON.parse(r.answer); } catch { return `the fixture did not echo the input: ${String(r.answer).slice(0, 80)}`; }
@@ -122,7 +122,7 @@ const CASES = [
         || `input items wrong (expected image, image, text): ${JSON.stringify(inp.map((x) => x.type))}`;
     } },
   { scenario: "stalled-turn",     expect: EXIT.TIMEOUT, args: ["--timeout", "0.5"], env: { FAKE_RPC_LOG: interruptLog },
-    why: "a timed-out turn is asked to END, not just killed: turn/interrupt marks the turn in the rollout and leaves the thread idle, so --resume on a cancelled seat is not a gamble",
+    why: "a timed-out turn is asked to END, not just killed: turn/interrupt marks the turn in the rollout and leaves the thread idle, so --resume on a cancelled agent is not a gamble",
     assert: () => {
       let log = "";
       try { log = fs.readFileSync(interruptLog, "utf8"); } catch {}
@@ -137,7 +137,7 @@ const CASES = [
         || `probe verdicts miscounted: failed=${r.commandsFailed} probes=${r.commandsProbeNegative}`;
     } },
   { scenario: "probe-quoted",     expect: EXIT.OK,
-    why: "the server wraps a script carrying a double quote in double quotes and escapes the inner ones — measured live — so the bare command survives only in commandActions; unwrapping the text by hand cannot recover it, and the probe exemption dies again for exactly the seats that use quoted patterns",
+    why: "the server wraps a script carrying a double quote in double quotes and escapes the inner ones — measured live — so the bare command survives only in commandActions; unwrapping the text by hand cannot recover it, and the probe exemption dies again for exactly the agents that use quoted patterns",
     assert: (r) => (r.commandsFailed === 0 && r.commandsProbeNegative === 1)
       || `a quoted probe was not recovered from the server's own parse: failed=${r.commandsFailed} probes=${r.commandsProbeNegative}` },
   { scenario: "probe-piped",      expect: EXIT.OK,
@@ -220,10 +220,10 @@ const CASES = [
   // turn/start handler for either name. The stderr assertion is what tells that refusal from a fixture
   // that died in its own default branch, which is TRANSPORT too and would read as a pass.
   { scenario: "profile-networked", expect: EXIT.TRANSPORT, args: ["--no-network"],
-    why: "a seat that denied egress and was given it anyway is under a sandbox nobody reasoned about; the profile's own network table is the field the guard holds, and it is the only evidence the denial took effect",
+    why: "an agent that denied egress and was given it anyway is under a sandbox nobody reasoned about; the profile's own network table is the field the guard holds, and it is the only evidence the denial took effect",
     assertStderr: (t) => /networkAccess/.test(t) || `the refusal must name what differed: ${t.trim().slice(0, 160)}` },
   { scenario: "profile-network-dropped", expect: EXIT.TRANSPORT,
-    why: "the mirror of the widening, and the one the default makes reachable: the profile id reads back correctly while its network table was dropped, so a seat whose task was written around egress would run the whole turn without it and report the failures as findings",
+    why: "the mirror of the widening, and the one the default makes reachable: the profile id reads back correctly while its network table was dropped, so an agent whose task was written around egress would run the whole turn without it and report the failures as findings",
     assertStderr: (t) => /networkAccess/.test(t) || `the refusal must name what differed: ${t.trim().slice(0, 160)}` },
   { scenario: "write-root-widened", expect: EXIT.TRANSPORT, args: ["--level", "write"],
     why: "write level must reject a writable root the driver never sent, even when every other sandbox field matches",
@@ -235,10 +235,10 @@ const CASES = [
   // every other write-level case stays green while the grant the caller reasoned about is not the one
   // that applied.
   { scenario: "write-slash-tmp-open", expect: EXIT.TRANSPORT, args: ["--level", "write"],
-    why: "a write seat is told it may write --cwd, --writable and $TMPDIR; with /tmp left open it may write all of /tmp too, and no root list reveals it",
+    why: "a write agent is told it may write --cwd, --writable and $TMPDIR; with /tmp left open it may write all of /tmp too, and no root list reveals it",
     assertStderr: (t) => /excludeSlashTmp/.test(t) || `the refusal did not name the field that differed: ${JSON.stringify(t.trim().slice(0, 160))}` },
   { scenario: "write-tmpdir-excluded", expect: EXIT.TRANSPORT, args: ["--level", "write"],
-    why: "a NARROWER sandbox is refused as loudly as a wider one: with $TMPDIR withheld every heredoc, mkdtemp and test runner dies, and the seat reports those failures as findings about the task",
+    why: "a NARROWER sandbox is refused as loudly as a wider one: with $TMPDIR withheld every heredoc, mkdtemp and test runner dies, and the agent reports those failures as findings about the task",
     assertStderr: (t) => /excludeTmpdirEnvVar/.test(t) || `the refusal did not name the field that differed: ${JSON.stringify(t.trim().slice(0, 160))}` },
   { scenario: "profile-slash-tmp-open", expect: EXIT.TRANSPORT,
     why: "the read level's promise is that $TMPDIR is writable and nothing else is; with $TMPDIR outside /tmp the explicit root list reads back correct while all of /tmp is writable beside it",
@@ -353,17 +353,17 @@ const CASES = [
       return /full answer at/.test(String(r.answer)) || "the clip marker lost its forwarding address";
     } },
   { scenario: "tmp-write",        expect: EXIT.OK, unsetEnv: ["TMPDIR"],
-    why: "the private directory is the read seat's only writable root and may hold files named by --brief; it must outlive the run so those answer paths remain usable",
+    why: "the private directory is the read agent's only writable root and may hold files named by --brief; it must outlive the run so those answer paths remain usable",
     assert: (r) => {
       const named = /full notes at (\S+)/.exec(String(r.answer))?.[1];
-      if (!named) return `the seat did not name the file it wrote: ${String(r.answer).slice(0, 160)}`;
+      if (!named) return `the agent did not name the file it wrote: ${String(r.answer).slice(0, 160)}`;
       if (!fs.existsSync(named)) return `the path the answer names was removed with the run: ${named}`;
       if (r.tmpDir === null) return "a kept private temp directory was not named in the report";
       if (path.dirname(named) !== r.tmpDir) return `the report's tmpDir is not the directory the file is in: ${JSON.stringify({ tmpDir: r.tmpDir, named })}`;
       return true;
     } },
   { scenario: "env-tmpprefix",    expect: EXIT.OK, unsetEnv: ["TMPDIR", "TMPPREFIX"],
-    why: "zsh keeps every here-document in a file under TMPPREFIX, default /tmp/zsh, which no grant covers: the seat's shell must see it under the run's TMPDIR or every <<EOF fails (measured, 15 rollouts)",
+    why: "zsh keeps every here-document in a file under TMPPREFIX, default /tmp/zsh, which no grant covers: the agent's shell must see it under the run's TMPDIR or every <<EOF fails (measured, 15 rollouts)",
     assert: (r) => {
       const got = /TMPPREFIX=(\S+)/.exec(String(r.answer))?.[1];
       if (!got) return `the fixture did not report TMPPREFIX: ${String(r.answer).slice(0, 160)}`;
@@ -374,7 +374,7 @@ const CASES = [
   // otherwise have os.tmpdir() and TMPPREFIX both pointing into a directory the sandbox refuses, and
   // every heredoc and mkdtemp in the turn would fail with nothing in the report saying why.
   { scenario: "env-tmpprefix",    expect: EXIT.OK, unsetEnv: ["TMPDIR", "TMPPREFIX"], args: ["--level", "write"],
-    why: "the private $TMPDIR is not a read-level convenience: with /tmp excluded from the write sandbox, a write seat whose caller exported no TMPDIR has no writable temp root at all unless the driver makes one",
+    why: "the private $TMPDIR is not a read-level convenience: with /tmp excluded from the write sandbox, a write agent whose caller exported no TMPDIR has no writable temp root at all unless the driver makes one",
     assert: (r) => {
       const got = /TMPPREFIX=(\S+)/.exec(String(r.answer))?.[1];
       if (!got) return `the fixture did not report TMPPREFIX: ${String(r.answer).slice(0, 160)}`;
@@ -419,12 +419,12 @@ const CASES = [
     assert: (r) => (typeof r.answer === "string" && r.answer.length > 60000)
       || `the report was truncated for a consumer that paused: ${String(r.answer ?? "").length} bytes of answer` },
   { scenario: "echo-input",       expect: EXIT.TRANSPORT, stallStdout: true, args: ["--timeout", "3"],
-    noPrompt: true, seat: `SEAT: read <CWD>\n${STALLED_READER_BODY}\n`,
+    noPrompt: true, agent: `RIGHTS: read <CWD>\n${STALLED_READER_BODY}\n`,
     why: "a reader that pauses and never resumes is the only thing the drain watchdog answers for, and nothing had ever fired it: every path that writes stdout now leaves through the one funnel, so the bound that funnel carries is the bound of them all",
     assertStderr: (e) => /stdout did not drain within \d+ms/.test(e)
       || `a reader that never resumed was not bounded by the drain watchdog: ${e.slice(0, 200)}` },
   { scenario: "probe-piped",      expect: EXIT.OK,
-    why: "the report must name commands piped to a pager because a seat can mistake a slice of its evidence for the whole result",
+    why: "the report must name commands piped to a pager because an agent can mistake a slice of its evidence for the whole result",
     assert: (r) => (r.commandsPipedToPager === 1 && /head\/tail\/less/.test(String(r.pipedToPagerHint ?? "")))
       || `a command ending in a pager was not counted: ${JSON.stringify({ n: r.commandsPipedToPager, hint: r.pipedToPagerHint })}` },
 
@@ -436,19 +436,19 @@ const CASES = [
 
   // --- the standing rules the driver puts on the thread ---
   { scenario: "echo-instructions", expect: EXIT.OK,
-    why: "a seat holding egress and told to use the local shell and filesystem only does not use it: the standing rules are what the turn plans against, so a grant they do not name is a grant that was paid for and left unspent",
+    why: "an agent holding egress and told to use the local shell and filesystem only does not use it: the standing rules are what the turn plans against, so a grant they do not name is a grant that was paid for and left unspent",
     assert: (r) => (/network/i.test(String(r.answer)) && !/no network access/i.test(String(r.answer)))
-      || `the default seat was not told it has egress: ${String(r.answer).slice(0, 300)}` },
+      || `the default agent was not told it has egress: ${String(r.answer).slice(0, 300)}` },
   { scenario: "echo-instructions", expect: EXIT.OK, args: ["--no-network"],
-    why: "the denied seat has to be told too, or it spends the turn on fetches the sandbox refuses and reports the refusals as findings",
+    why: "the denied agent has to be told too, or it spends the turn on fetches the sandbox refuses and reports the refusals as findings",
     assert: (r) => /no network access/i.test(String(r.answer))
-      || `a seat with egress denied was not told: ${String(r.answer).slice(0, 300)}` },
+      || `an agent with egress denied was not told: ${String(r.answer).slice(0, 300)}` },
   { scenario: "echo-instructions", expect: EXIT.OK, args: ["--brief"],
     why: "--brief's second sentence is what keeps a capped answer from losing its detail; it must still be sent when it is not contradicted",
     assert: (r) => /Put anything longer/.test(String(r.answer))
       || `--brief lost its forwarding instruction: ${String(r.answer).slice(0, 200)}` },
   { scenario: "echo-instructions", expect: EXIT.OK, args: ["--brief", "--answer-json"],
-    why: "under --answer-json the seat has just been told to answer with ONE JSON object and nothing else; telling it in the same breath to put the rest in a file is a contradiction the seat has to resolve on its own",
+    why: "under --answer-json the agent has just been told to answer with ONE JSON object and nothing else; telling it in the same breath to put the rest in a file is a contradiction the agent has to resolve on its own",
     assert: (r) => (!/Put anything longer/.test(String(r.answer)) && /ONE JSON object/.test(String(r.answer)))
       || `the contradictory pair was still sent: ${String(r.answer).slice(0, 300)}` },
 
@@ -497,11 +497,11 @@ const CASES = [
     why: "the model has no clock unless it runs `date`, so a wall-clock budget it is never told about is one it cannot plan against — the sentence is the whole of P1 and it costs nothing",
     assert: (r) => {
       const n = Number(/You have about (\d+) seconds of wall clock/.exec(String(r.answer))?.[1]);
-      if (!Number.isFinite(n)) return `the budget never reached the seat: ${String(r.answer).slice(0, 200)}`;
-      return (n > 0 && n <= 20) || `the seat was told ${n}s of a 20 s budget`;
+      if (!Number.isFinite(n)) return `the budget never reached the agent: ${String(r.answer).slice(0, 200)}`;
+      return (n > 0 && n <= 20) || `the agent was told ${n}s of a 20 s budget`;
     } },
   { scenario: "echo-instructions", expect: EXIT.OK, args: ["--resume", "thr_root"],
-    why: "developerInstructions are per-request, not per-thread: a resumed turn that did not carry the budget sentence would be the only turn running blind, and --resume is exactly where a long seat continues",
+    why: "developerInstructions are per-request, not per-thread: a resumed turn that did not carry the budget sentence would be the only turn running blind, and --resume is exactly where a long agent continues",
     assert: (r) => (/You have about \d+ seconds of wall clock/.test(String(r.answer)) && r.resumedFrom === "thr_root")
       || `a resumed turn lost the budget sentence: ${JSON.stringify({ a: String(r.answer).slice(0, 160), from: r.resumedFrom })}` },
 
@@ -568,12 +568,12 @@ const CASES = [
     why: "the model has no clock, so what it is TOLD is the whole of what it can plan against: told 'about N seconds' when nothing is counting, it rushes work it had time for",
     assert: (r) => {
       const a = String(r.answer);
-      if (/seconds of wall clock/.test(a)) return `the default run still promised the seat a wall clock: ${a.slice(0, 160)}`;
+      if (/seconds of wall clock/.test(a)) return `the default run still promised the agent a wall clock: ${a.slice(0, 160)}`;
       return /There is no wall-clock limit on this turn; it is cut only after 900 seconds of silence or by the coordinator\./.test(a)
-        || `the no-wall-clock sentence is not the one the seat was given: ${a.slice(0, 200)}`;
+        || `the no-wall-clock sentence is not the one the agent was given: ${a.slice(0, 200)}`;
     } },
   { scenario: "idle-silence",     expect: EXIT.TIMEOUT, noTimeout: true, args: ["--idle-timeout", "1"],
-    why: "with no wall clock the silence guard is what ends a hung seat, and it must end it on its own budget rather than waiting for a clock that was never set",
+    why: "with no wall clock the silence guard is what ends a hung agent, and it must end it on its own budget rather than waiting for a clock that was never set",
     assert: (r, ms) => (r.cut?.kind === "idle" && r.cut.limit === 1 && ms < 20000)
       || `the silent turn was not cut on the idle budget alone: ${JSON.stringify({ cut: r.cut, ms })}` },
   { scenario: "stalled-turn",     expect: EXIT.TIMEOUT, noTimeout: true, args: ["--timeout", "1"],
@@ -602,27 +602,27 @@ const CASES = [
     assert: (r) => (r.cut === null && r.commandsSucceeded === 6)
       || `the default command cap bit an ordinary turn: ${JSON.stringify({ cut: r.cut, cmds: r.commandsSucceeded })}` },
   { scenario: "many-commands",    expect: EXIT.TIMEOUT, noTimeout: true,
-    seat: "SEAT: read <CWD>\n", args: ["--max-commands", "2"],
-    why: "the cap still reaches a SEAT-FILE run — the flag is appended after the file's own argv, which is the route a coordinator bounding a seat it did not author has to take",
-    assert: (r) => ((r.seatFileFields ?? []).join(",") === "SEAT" && r.cut?.kind === "commands" && r.cut.limit === 2)
-      || `the flag did not bound a seat-file run: ${JSON.stringify({ fields: r.seatFileFields, cut: r.cut })}` },
+    agent: "RIGHTS: read <CWD>\n", args: ["--max-commands", "2"],
+    why: "the cap still reaches a PROMPT-FILE run — the flag is appended after the file's own argv, which is the route a coordinator bounding an agent it did not author has to take",
+    assert: (r) => ((r.promptFileFields ?? []).join(",") === "RIGHTS" && r.cut?.kind === "commands" && r.cut.limit === 2)
+      || `the flag did not bound a prompt-file run: ${JSON.stringify({ fields: r.promptFileFields, cut: r.cut })}` },
 
   // --- one file, both halves: the header is the leading FIELD: lines and the rest is the prompt ---
   { scenario: "echo-input", expect: EXIT.OK, noPrompt: true,
-    seat: "SEAT: read <CWD>\nEXPECT: echo\nTASK: count the files\nand say how many\n",
+    agent: "RIGHTS: read <CWD>\nEXPECT: echo\nTASK: count the files\nand say how many\n",
     why: "the caller writes one file; the driver preserves everything from the first non-header line as the body, including its label",
     assert: (r) => {
       const answer = String(r.answer);
       if (!/TASK: count the files\\nand say how many/.test(answer)) return `the body did not reach the turn verbatim: ${answer.slice(0, 200)}`;
-      return (r.seatFileFields ?? []).join(",") === "SEAT,EXPECT"
-        || `a body line was read as a header field: ${JSON.stringify(r.seatFileFields)}` } },
+      return (r.promptFileFields ?? []).join(",") === "RIGHTS,EXPECT"
+        || `a body line was read as a header field: ${JSON.stringify(r.promptFileFields)}` } },
   { scenario: "echo-input", expect: EXIT.OK, noPrompt: true,
-    seat: "SEAT: read <CWD>\nEXPECT: echo\nTASK: do it\nNETWORK: no\nMODEL: gpt-5\n",
-    why: "below the body's first line nothing is a header however field-like it looks — otherwise a task that quotes a header, or a copied value carrying a newline, silently re-declares the seat's rights. The line is a NEGATIVE because an ignored positive lands on the default and proves nothing",
-    assert: (r) => (r.network === true && r.model !== "gpt-5" && (r.seatFileFields ?? []).join(",") === "SEAT,EXPECT")
-      || `a line below TASK: was read as a field: ${JSON.stringify({ net: r.network, model: r.model, fields: r.seatFileFields })}` },
+    agent: "RIGHTS: read <CWD>\nEXPECT: echo\nTASK: do it\nNETWORK: no\nMODEL: gpt-5\n",
+    why: "below the body's first line nothing is a header however field-like it looks — otherwise a task that quotes a header, or a copied value carrying a newline, silently re-declares the agent's rights. The line is a NEGATIVE because an ignored positive lands on the default and proves nothing",
+    assert: (r) => (r.network === true && r.model !== "gpt-5" && (r.promptFileFields ?? []).join(",") === "RIGHTS,EXPECT")
+      || `a line below TASK: was read as a field: ${JSON.stringify({ net: r.network, model: r.model, fields: r.promptFileFields })}` },
   { scenario: "resume-active", expect: EXIT.BUSY, noPrompt: true,
-    seat: "SEAT: read <CWD>\nRESUME: thr_root\nTASK: continue the thread\n",
+    agent: "RIGHTS: read <CWD>\nRESUME: thr_root\nTASK: continue the thread\n",
     why: "a resumed thread whose turn is still open is exit 10 with no report at all, like a held write lock: the caller reads the reason on stderr, and a coordinator that treated 10 as 'still starting' would wait on a run that already refused",
     assertStderr: (e) => /still has a turn running/.test(e)
       || `the refusal does not say the thread is busy: ${e.slice(0, 200)}`,
@@ -679,7 +679,7 @@ flow("endedAt is written only once the report has actually landed",
   });
 
 flow("the job record is private resume metadata, and a record from an older release loses the rest of it",
-  "the record is not a second report: with a run's gates, progress and transport in it, whoever found the record first read a second, staler answer about the same seat — and a record written by a release that kept them has to lose them rather than outlive the interfaces that filled it",
+  "the record is not a second report: with a run's gates, progress and transport in it, whoever found the record first read a second, staler answer about the same agent — and a record written by a release that kept them has to lose them rather than outlive the interfaces that filled it",
   async () => {
     const state = flowState();
     const jobs = path.join(state, "jobs");
@@ -757,7 +757,7 @@ const rungHit = (ctx) => LADDER.findIndex((r) => r.when(ctx));
 const RUNGS = [
   { at: 0, code: EXIT.TIMEOUT, ctx: { turnStatus: "timedOut" },
     what: "a turn cut on a declared budget",
-    why: "a budget the caller set is the caller's to raise; folded into any rung below it, the report would blame the seat for work that did not fit" },
+    why: "a budget the caller set is the caller's to raise; folded into any rung below it, the report would blame the agent for work that did not fit" },
   { at: 1, code: EXIT.USAGE, ctx: { turnStatus: "failed", turnError: { codexErrorInfo: "badRequest" } },
     what: "a request the server refused",
     why: "the set of efforts and models is per-model and knowable only at runtime; reported as a transport failure the caller retries it forever instead of fixing the parameter" },
@@ -775,7 +775,7 @@ const RUNGS = [
     why: "a declared check that never ran leaves verifyResult null, which every gate below reads as 'nothing to complain about' — the run would reach 0 with its verifier unrun" },
   { at: 5, code: EXIT.VERIFY_UNMEASURABLE, ctx: { verifyResult: { ok: false, measured: false }, verifyFailed: true },
     what: "a --verify that ran and measured nothing",
-    why: "'the check could not be measured' and 'the check said no' are different findings, and the unmeasurable one must not be reported as a failure the seat caused" },
+    why: "'the check could not be measured' and 'the check said no' are different findings, and the unmeasurable one must not be reported as a failure the agent caused" },
   { at: 6, code: EXIT.VERIFY_FAILED, ctx: { verifyResult: { ok: false, measured: true }, verifyFailed: true },
     what: "a --verify that ran and failed",
     why: "the verifier is the gate this repository prefers over every command-shaped proxy below it; a failing one reaching exit 0 makes --verify decorative" },

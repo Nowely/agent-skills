@@ -18,7 +18,7 @@ tag namespace serves every plugin in it, so the plugin's name is part of the tag
    every suite:
 
    ```bash
-   for f in skills/seat/scripts/*.mjs evals/*.mjs evals/lib/*.mjs; do node --check "$f"; done
+   for f in skills/codex/scripts/*.mjs evals/*.mjs evals/lib/*.mjs; do node --check "$f"; done
    npm test
    ```
 
@@ -44,7 +44,7 @@ tag namespace serves every plugin in it, so the plugin's name is part of the tag
    ```
 
    Add `CODEX_DELEGATE_LIVE_ORCHESTRATE_DELEGATE=1` after a codex upgrade: it spends a second Codex turn
-   on a probe that invites the seat to delegate. Whether the seat delegates is the model's choice, but
+   on a probe that invites the agent to delegate. Whether the agent delegates is the model's choice, but
    when it does the probe checks what the driver made of it: every announced child in `subagentThreads`
    with an `agentPath`, `status: "completed"` and at least one command, and exit 5 whose cause names
    them. Its line beside the case prints the list.
@@ -55,7 +55,7 @@ tag namespace serves every plugin in it, so the plugin's name is part of the tag
    - What the cases prove as they now stand: self-detection reads the right tier out of the system
      prompt in both plan-only sessions, one under Opus and one under Fable; an explicit `model` tag is
      obeyed, read back out of each subagent's own system prompt (the model-tag case) and over the whole
-     fan-out of a real run (the full-run case); and a `gpt-6-astra` seat answers on its own thread when
+     fan-out of a real run (the full-run case); and a `gpt-6-astra` agent answers on its own thread when
      it is not invited to delegate, with the commands in its report (the case of that name). Delegation
      is the model's choice, not effort-gated, so no case asserts that it happens; the probe behind
      `CODEX_DELEGATE_LIVE_ORCHESTRATE_DELEGATE=1` is what checks `subagentThreads` when it does.

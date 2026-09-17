@@ -52,11 +52,11 @@ const WEB_SEARCH = new Set(["cached", "indexed", "live"]);
 // were scattered over the file beside whichever line first needed one, so "what does this bound, and
 // why that value" was a question only a full read could answer.
 const LIMITS = {
-  // --brief is about the coordinator's context, not the seat's thoroughness: the full answer is always
+  // --brief is about the coordinator's context, not the agent's thoroughness: the full answer is always
   // written to disk, so capping what comes back inline costs nothing but a second read when it matters.
   BRIEF_LINES: 20,
   BRIEF_BYTES: 4000,
-  // The prompt cap, over --prompt, over stdin and over the whole seat file including its header.
+  // The prompt cap, over --prompt, over stdin and over the whole prompt file including its header.
   MAX_PROMPT_BYTES: 512 * 1024,
   // The bound on an unterminated line, per connection: a turn's item can carry a whole test run, while
   // an oversized reply with no newline is not a config.
@@ -66,7 +66,7 @@ const LIMITS = {
   RPC_ERROR_CHARS: 120,
   // The config probe's stderr tail: a diagnostic quotes its last line and nothing reads more.
   PROBE_STDERR_KEEP: 8192,
-  // What bounds a seat whose caller sized nothing: silence, then volume. Neither is a wall clock.
+  // What bounds an agent whose caller sized nothing: silence, then volume. Neither is a wall clock.
   DEFAULT_IDLE_TIMEOUT_S: 900,
   DEFAULT_MAX_COMMANDS: 1000,
   // Caps a DECLARED wall clock only; the default, 0, is no wall clock at all.
@@ -81,7 +81,7 @@ const LIMITS = {
   // overrides it, which is also the only way to reach that branch without racing the clock.
   VERIFY_FLOOR_MS: 100,
   // Retention for the directories this driver keeps: age first, then count, never the newest entry and
-  // never a directory a live seat still owns.
+  // never a directory a live agent still owns.
   PRUNE_DAYS: 14,
   PRUNE_MAX_ENTRIES: 400,
   // What a report gets to drain in where no wall clock was set, and the floor where one was.
@@ -160,7 +160,7 @@ const initializeParams = () => ({
 function fail(code, msg) {
   process.stderr.write(`codex-delegate: ${msg}\n`);
   // A caller waiting on the report file is waiting on it for refusals too: an empty path reads as
-  // "unknown", and a refusal that left nothing behind is indistinguishable from a seat still starting.
+  // "unknown", and a refusal that left nothing behind is indistinguishable from an agent still starting.
   preTurnReport(code, msg);
   process.exitCode = code;
   // Settle a refusal before shutdown() SIGTERMs the child, so its exit handler cannot
@@ -170,24 +170,24 @@ function fail(code, msg) {
 }
 class Bail extends Error {}
 
-// The seat-file vocabulary, ONE table: what a header may name, what each name becomes on the command
+// The prompt-file vocabulary, ONE table: what a header may name, what each name becomes on the command
 // line, and which names are refused as fields. It lives above --help because the help interpolates it,
 // and every list below derives from it, so a name cannot be in one and missing from another — which
 // once reached the parser as `unknown argument: undefined`.
 //
-// The kinds are trust boundaries rather than a rendering hint. `seat` is the rights declaration, and the
+// The kinds are trust boundaries rather than a rendering hint. `rights` is the rights declaration, and the
 // only field that expands to more than one flag. `bool` and `value` are what a header may set. A
 // `cli-only` name is accepted on the command line and refused as a field: each bounds or transports the
-// run rather than declaring its rights, and each has a default a seat launched with nothing configured
-// can live with, so a header able to set one is a knob every wrapped seat would have to size.
+// run rather than declaring its rights, and each has a default an agent launched with nothing configured
+// can live with, so a header able to set one is a knob every wrapped agent would have to size.
 //
 // A bool carrying `off` is granted by default, so its negative has a flag of its own: without one, "no"
 // would be indistinguishable from an absent line and would grant exactly what it was written to refuse.
 //
-// SEAT is first because the parser refuses a header that does not open with it, and because --help
+// RIGHTS is first because the parser refuses a header that does not open with it, and because --help
 // prints this order.
 const FIELDS = [
-  { name: "SEAT", kind: "seat", flag: null },
+  { name: "RIGHTS", kind: "rights", flag: null },
   { name: "EFFORT", kind: "value", flag: "--effort" },
   { name: "EXPECT", kind: "value", flag: "--expect-command" },
   { name: "VERIFY", kind: "value", flag: "--verify" },
@@ -205,9 +205,9 @@ const FIELDS = [
   { name: "REPORT_FILE", kind: "cli-only", flag: "--report-file" },
 ];
 const flagsOfKind = (k) => Object.fromEntries(FIELDS.filter((f) => f.kind === k).map((f) => [f.name, f.flag]));
-const SEAT_FIELDS = new Set(FIELDS.filter((f) => f.kind !== "cli-only").map((f) => f.name));
+const PROMPT_FIELDS = new Set(FIELDS.filter((f) => f.kind !== "cli-only").map((f) => f.name));
 const CLI_ONLY_FIELDS = flagsOfKind("cli-only");
-// Hoisted out of argvFromSeatFile's per-line loop, where they were rebuilt for every header line.
+// Hoisted out of argvFromPromptFile's per-line loop, where they were rebuilt for every header line.
 const BOOLS = flagsOfKind("bool");
 const OFF_FLAGS = Object.fromEntries(FIELDS.filter((f) => f.off).map((f) => [f.name, f.off]));
 const FLAGS = flagsOfKind("value");
@@ -301,7 +301,7 @@ function wrapJoined(items, sep, indent, width = 79) {
 const HELP = [
   { s: "Rights",
     text: `  --level read       the default: read anything, write only $TMPDIR; no lock is
-                     taken, so read seats run in parallel over one directory. An
+                     taken, so read agents run in parallel over one directory. An
                      unset $TMPDIR is not an error — see --help-all
   --level write      write under --cwd, each --writable root and $TMPDIR, and
                      nothing else — /tmp is excluded; takes a per-directory lock
@@ -312,9 +312,9 @@ const HELP = [
                      <state>/answers/ (paths in the report) and remove
                      the tree. A new thread's is cut at HEAD — the LAST COMMIT —
                      and a resumed one at its recorded base, so uncommitted
-                     changes, untracked and ignored files and
-                     installed dependencies are NOT in it: a seat asked about work
-                     in progress finds an empty diff and reports success. A stash
+                     changes, untracked and ignored files and installed
+                     dependencies are NOT in it: an agent asked about work in
+                     progress finds an empty diff and reports success. A stash
                      reaches neither. Commit first, or run on the live tree with
                      --level write --cwd REPO
   --writable DIR     grant one more root (write level only, repeatable)
@@ -328,7 +328,7 @@ const HELP = [
   takes the same protected-root guard every writable root takes; where the caller
   exported none the driver makes a private 0700 one at <state>/tmp/<runId> and
   reports it as tmpDir. It is exported for the turn AND the verifier, and it
-  OUTLIVES the run, because --brief tells the seat to leave long output in a file
+  OUTLIVES the run, because --brief tells the agent to leave long output in a file
   there. It is pruned on
   the run-directory bounds (${LIMITS.PRUNE_DAYS} days or ${LIMITS.PRUNE_MAX_ENTRIES} directories, never one still running).
   A worktree turn that did not complete, or a harvest
@@ -341,12 +341,12 @@ const HELP = [
 
   { s: "Turn",
     text: `  --prompt TEXT      the task; omit to read it from stdin
-  --seat-file F      read the seat from F: a HEADER of "FIELD: value" lines, each
+  --prompt-file F    read the agent from F: a HEADER of "FIELD: value" lines, each
                      value literal to end of line, then the BODY — the prompt —
-                     from the first line that is not one. SEAT, where present,
-                     must come FIRST; a file with none is a read seat in the
+                     from the first line that is not one. RIGHTS, where present,
+                     must come FIRST; a file with none is a read agent in the
                      current directory. Explicit flags override the file. Fields:
-                     ${wrapJoined([...SEAT_FIELDS], "/", 21)}
+                     ${wrapJoined([...PROMPT_FIELDS], "/", 21)}
   --attach FILE      attach a local image (${attachExts("localImage").join("/")}) or audio
                      file (${attachExts("localAudio").join("/")}) to the prompt; repeatable
   --answer-json      demand one bare JSON object as the answer; the report then
@@ -364,32 +364,32 @@ const HELP = [
   --effort ${[...EFFORTS].join("|")}
   --resume THREAD    continue a thread; "--resume last" continues the run most
                      recently STARTED for this --cwd or, with --worktree, this
-                     repository — not the one most recently active, so a long seat
-                     still running does not outrank a shorter one begun after it
-                     and already finished; that thread still refuses a resume with
-                     exit 10 while its turn is open.
+                     repository — not the one most recently active, so a long
+                     agent still running does not outrank a shorter one begun
+                     after it and already finished; that thread still refuses a
+                     resume with exit 10 while its turn is open.
                      The report names it as resumedFrom — check it after "last"`,
     more: `  --output-schema: the server takes a STRICT schema only — every object must
   carry "additionalProperties": false and list every one of its properties in
   "required" (use "type": ["string","null"] where you wanted optional). Both are
   checked here, before the turn, because the server rejects them after it.
-  A seat file's header lines are NAME: at column 0, upper-case; a blank, a # or
+  A prompt file's header lines are NAME: at column 0, upper-case; a blank, a # or
   any other line ends the header, and what follows is body even if it looks like
   a field. A TASK:, CHECK: or RETURN: line always opens the body. An ALL-CAPS
   name above the body that is not a field is exit 2 naming its line, never a
   silently ignored one. A file with no body leaves the prompt to stdin or
   --prompt; both at once is exit 2. --attach is NOT a field: an injected line
   would upload a file nobody named. Neither are the bounds and the transport,
-  whose defaults are chosen so a seat needs no header to size them, and naming
+  whose defaults are chosen so an agent needs no header to size them, and naming
   one is exit 2:
                      ${wrapJoined(Object.keys(CLI_ONLY_FIELDS), "/", 21)}
   A NEWLINE inside a value ends that value and starts a new field — a wrapper
   handed caller-supplied text cannot prevent that. For a wrapper: write the
   values, do not build a command line out of them.` },
   { s: "Turn", all: true,
-    text: `  --allow-seat-verify  permit VERIFY in a seat file. Without it VERIFY there is
-                     refused, because --verify runs an unsandboxed shell with
-                     your own rights and a value copied into a seat file must
+    text: `  --allow-prompt-verify  permit VERIFY in a prompt file. Without it VERIFY there
+                     is refused, because --verify runs an unsandboxed shell with
+                     your own rights and a value copied into a prompt file must
                      not be able to introduce one. Pass --verify on the command
                      line instead
   --web-search ${[...WEB_SEARCH].join("|")}
@@ -400,7 +400,7 @@ const HELP = [
     text: `  --expect-command RE   a command matching RE must have run. RE is matched
                      against the command the SERVER parsed as well as the wrapper
                      string it reports (\`/bin/zsh -lc '...'\`), so \`^pnpm\` works
-  --verify CMD       run CMD after the turn, in the seat's tree; its exit code
+  --verify CMD       run CMD after the turn, in the agent's tree; its exit code
                      decides. CMD is a shell command with YOUR rights, env and
                      network, bounded by what is left of --timeout, at most ${LIMITS.VERIFY_TIMEOUT_S} s
   --verify-sandboxed run --verify through \`codex sandbox\` under the read-only
@@ -410,10 +410,11 @@ const HELP = [
                      no rung at all: the report counts it, and --expect-command
                      (exit 5) or --verify (exit 9) is what judges the work`,
     more: `  --verify: prefer a command that does not execute anything out of the tree the
-  seat just wrote (\`npm test\` runs the seat's own package.json script). The report
-  carries verify.budgetMs, verify.timedOut and verify.sandboxed, and the last ${LIMITS.VERIFY_TAIL_CHARS}
-  characters of each stream; the output is streamed, never buffered whole, and the
-  last ${LIMITS.VERIFY_BUFFER_CHARS} characters are kept in memory. Most build and test runners write, so most fail
+  agent just wrote (\`npm test\` runs the agent's own package.json script). The
+  report carries verify.budgetMs, verify.timedOut and verify.sandboxed, and the
+  last ${LIMITS.VERIFY_TAIL_CHARS} characters of each stream; the output is streamed, never buffered
+  whole, and the last ${LIMITS.VERIFY_BUFFER_CHARS} characters are kept in memory. Most build and test
+  runners write, so most fail
   under --verify-sandboxed; it passes the exit code through,
   and is a usage error where this codex has no \`sandbox\` subcommand.
   commandsFailed, commandsDeclined, commandsBlocked (a command that reached the
@@ -455,10 +456,10 @@ const HELP = [
                      reached before the turn is written there too, as an object
                      with ok false and the error in it, so a MISSING file means
                      "unknown", never "success"`,
-    more: `  A seat is stopped by SIGTERM to this process: its pid is on stderr from the
+    more: `  An agent is stopped by SIGTERM to this process: its pid is on stderr from the
   first line, the handler asks the server to end the turn, and the report the
   turn had earned is written anyway, at exit 1. There is no run registry and no
-  collector — the caller that started the seat owns its lifetime — and
+  collector — the caller that started the agent owns its lifetime — and
   <state>/jobs/ keeps only what \`--resume last\` and a worktree rebuild need.` },
 
   { s: "Report",
@@ -478,7 +479,7 @@ const HELP = [
   merely matched by name); codexVersion, what the server reported, beside the
   version this plugin was measured against; configInherited, whether model and
   effort came from a fresh probe of your config, a stale last-known-good, or
-  nothing; commandsPipedToPager, commands whose output the seat cut with
+  nothing; commandsPipedToPager, commands whose output the agent cut with
   head/tail/less; fileChanges, one {path, kind, move} per completed write, where
   filesTouched keeps only the path a rename ends at; escalations, one entry per approval
   request this driver declined, whichever thread asked (detail is the server's wording
@@ -599,68 +600,68 @@ function helpText(full) {
 
 // ---------------------------------------------------------------- arguments
 
-// --seat-file exists so a WRAPPER never builds a shell command line out of values it was handed: it
+// --prompt-file exists so a WRAPPER never builds a shell command line out of values it was handed: it
 // writes them verbatim into a file and the driver parses them itself, so there is no shell between the
 // header and the flags. One `FIELD: value` per line, value literal to end of line. Unknown fields,
-// repeats and anything the flags reject are usage errors — a malformed seat file must never silently
-// become a different seat.
+// repeats and anything the flags reject are usage errors — a malformed prompt file must never silently
+// become a different agent.
 //
 // That holds for a value with no NEWLINE in it and fails for one with: a newline IS the field separator,
 // so a copied value carrying one ends its own field and opens another, and the wrapper cannot tell an
 // injected line from one it meant to write. Two structural answers, both here rather than in the
 // wrapper, which is the component that cannot know which of its values came from somewhere else:
-//   * SEAT must be the FIRST field, so an injected SEAT is always a duplicate and already a usage error.
-//   * VERIFY runs an unsandboxed /bin/sh with the caller's own rights, so from a seat file it needs
-//     --allow-seat-verify on the COMMAND LINE — the one place no copied value can reach.
+//   * RIGHTS must be the FIRST field, so an injected RIGHTS is always a duplicate and already a usage error.
+//   * VERIFY runs an unsandboxed /bin/sh with the caller's own rights, so from a prompt file it needs
+//     --allow-prompt-verify on the COMMAND LINE — the one place no copied value can reach.
 // Two flags are deliberately NOT fields, each because an injected line would be a grant nobody made:
 // ATTACH uploads a local file, and --report-file would let a copied line choose where another run's
-// report lands. VERIFY is a field only behind --allow-seat-verify, because it executes a shell. CLI_ONLY_FIELDS above are refused for a different reason: they are bounds and transport, not
-// rights, and the driver's own defaults are what let a seat run with nothing configured.
-let seatFileFields = null;   // what the file actually declared, for the report
-let seatFileBody = null;     // the prompt the file carried under its header, or null when it carried none
+// report lands. VERIFY is a field only behind --allow-prompt-verify, because it executes a shell. CLI_ONLY_FIELDS above are refused for a different reason: they are bounds and transport, not
+// rights, and the driver's own defaults are what let an agent run with nothing configured.
+let promptFileFields = null;   // what the file actually declared, for the report
+let promptFileBody = null;     // the prompt the file carried under its header, or null when it carried none
 // A header line, and the three labels that OPEN the body instead of being fields of it. One file holds
 // both halves so a caller writes ONE file and never decides where a prompt ends: the header is the run
 // of leading FIELD: lines, and everything from the first line that is not one is the prompt, verbatim.
-const SEAT_HEADER_RE = /^([A-Z][A-Z_]*):/;
+const RIGHTS_HEADER_RE = /^([A-Z][A-Z_]*):/;
 const BODY_LABELS = new Set(["TASK", "CHECK", "RETURN"]);
-function argvFromSeatFile(file, allowSeatVerify) {
+function argvFromPromptFile(file, allowPromptVerify) {
   let raw;
   try { raw = fs.readFileSync(file, "utf8"); }
-  catch (e) { fail(EXIT.USAGE, `--seat-file cannot read ${file}: ${e.message}`); }
-  // MAX_PROMPT_BYTES bounds the whole seat file, including its prompt and header.
+  catch (e) { fail(EXIT.USAGE, `--prompt-file cannot read ${file}: ${e.message}`); }
+  // MAX_PROMPT_BYTES bounds the whole prompt file, including its prompt and header.
   if (Buffer.byteLength(raw) > LIMITS.MAX_PROMPT_BYTES)
-    fail(EXIT.USAGE, `--seat-file exceeds ${LIMITS.MAX_PROMPT_BYTES} bytes, the prompt cap: the file carries the body as well as the header`);
+    fail(EXIT.USAGE, `--prompt-file exceeds ${LIMITS.MAX_PROMPT_BYTES} bytes, the prompt cap: the file carries the body as well as the header`);
   const out = [], seen = new Set(), declared = [];
   const lines = raw.split("\n");
   let bodyAt = 0;
   for (; bodyAt < lines.length; bodyAt++) {
     const line = lines[bodyAt];
-    const m = SEAT_HEADER_RE.exec(line);
+    const m = RIGHTS_HEADER_RE.exec(line);
     // The header ends at the first line that is not FIELD:, and at a TASK:/CHECK:/RETURN: label
     // whichever comes first. That line is the body's, not the header's.
     if (!m || BODY_LABELS.has(m[1])) break;
     const field = m[1];
     const value = line.slice(m[0].length).trim();
     if (Object.hasOwn(CLI_ONLY_FIELDS, field))
-      fail(EXIT.USAGE, `--seat-file: ${field} is command-line-only; pass ${CLI_ONLY_FIELDS[field]} instead. It bounds or transports the run rather than declaring its rights, and its default is chosen so a seat needs none`);
-    if (!SEAT_FIELDS.has(field))
-      fail(EXIT.USAGE, `unknown seat field ${field} at line ${bodyAt + 1} of ${file} — a typo, or a command-line-only flag; the body starts at the first TASK: line`);
-    if (field !== "WRITABLE" && seen.has(field)) fail(EXIT.USAGE, `--seat-file: ${field} appears more than once`);
-    if (field === "VERIFY" && !allowSeatVerify)
-      fail(EXIT.USAGE, "--seat-file: VERIFY runs an unsandboxed shell with your own rights, so it is refused from a seat file unless --allow-seat-verify is given on the command line; pass --verify there instead");
+      fail(EXIT.USAGE, `--prompt-file: ${field} is command-line-only; pass ${CLI_ONLY_FIELDS[field]} instead. It bounds or transports the run rather than declaring its rights, and its default is chosen so an agent needs none`);
+    if (!PROMPT_FIELDS.has(field))
+      fail(EXIT.USAGE, `unknown header field ${field} at line ${bodyAt + 1} of ${file} — a typo, or a command-line-only flag; the body starts at the first TASK: line`);
+    if (field !== "WRITABLE" && seen.has(field)) fail(EXIT.USAGE, `--prompt-file: ${field} appears more than once`);
+    if (field === "VERIFY" && !allowPromptVerify)
+      fail(EXIT.USAGE, "--prompt-file: VERIFY runs an unsandboxed shell with your own rights, so it is refused from a prompt file unless --allow-prompt-verify is given on the command line; pass --verify there instead");
     seen.add(field);
     declared.push(field);
-    // SEAT is the rights declaration and the only field that expands to more than one flag.
-    if (field === "SEAT") {
+    // RIGHTS is the rights declaration and the only field that expands to more than one flag.
+    if (field === "RIGHTS") {
       // Split at the FIRST whitespace run only to preserve interior whitespace in the declared path:
       // rewriting it could grant write access to a different directory.
       const sp = value.search(/\s/);
       const kind = sp < 0 ? value : value.slice(0, sp);
       const arg = sp < 0 ? "" : value.slice(sp).trim();
       if (kind === "read") { out.push("--level", "read", ...(arg ? ["--cwd", arg] : [])); }
-      else if (kind === "worktree") { if (!arg) fail(EXIT.USAGE, "--seat-file: SEAT worktree needs a repository path"); out.push("--worktree", arg); }
-      else if (kind === "write") { if (!arg) fail(EXIT.USAGE, "--seat-file: SEAT write needs a directory"); out.push("--level", "write", "--cwd", arg); }
-      else fail(EXIT.USAGE, `--seat-file: SEAT must be read | worktree <repo> | write <dir>, got ${JSON.stringify(value)}`);
+      else if (kind === "worktree") { if (!arg) fail(EXIT.USAGE, "--prompt-file: RIGHTS worktree needs a repository path"); out.push("--worktree", arg); }
+      else if (kind === "write") { if (!arg) fail(EXIT.USAGE, "--prompt-file: RIGHTS write needs a directory"); out.push("--level", "write", "--cwd", arg); }
+      else fail(EXIT.USAGE, `--prompt-file: RIGHTS must be read | worktree <repo> | write <dir>, got ${JSON.stringify(value)}`);
       continue;
     }
     if (BOOLS[field]) {
@@ -668,29 +669,29 @@ function argvFromSeatFile(file, allowSeatVerify) {
       // is granted by default, where omitting it is what GRANTS the thing the line refused: there the
       // negative has a flag of its own and must be sent.
       if (/^(no|false|0)$/i.test(value)) { if (OFF_FLAGS[field]) out.push(OFF_FLAGS[field]); continue; }
-      if (!/^(yes|true|1)$/i.test(value)) fail(EXIT.USAGE, `--seat-file: ${field} must be yes|true|1, no|false|0, or omitted, got ${JSON.stringify(value)}`);
+      if (!/^(yes|true|1)$/i.test(value)) fail(EXIT.USAGE, `--prompt-file: ${field} must be yes|true|1, no|false|0, or omitted, got ${JSON.stringify(value)}`);
       out.push(BOOLS[field]);
       continue;
     }
-    if (!value) fail(EXIT.USAGE, `--seat-file: ${field} has an empty value`);
+    if (!value) fail(EXIT.USAGE, `--prompt-file: ${field} has an empty value`);
     out.push(FLAGS[field], value);
   }
   // A header-only file leaves the prompt to stdin or --prompt.
   const body = lines.slice(bodyAt).join("\n");
-  seatFileBody = body.trim() ? body : null;
-  // After the scan, not inside it: SEAT may be absent altogether, and only a finished header can tell
+  promptFileBody = body.trim() ? body : null;
+  // After the scan, not inside it: RIGHTS may be absent altogether, and only a finished header can tell
   // "no rights declared" from "declared somewhere other than first".
-  if (seen.has("SEAT") && declared[0] !== "SEAT")
-    fail(EXIT.USAGE, `--seat-file: the first field must be SEAT, not ${declared[0]} — a seat file that does not open with its rights declaration lets a later line supply them`);
+  if (seen.has("RIGHTS") && declared[0] !== "RIGHTS")
+    fail(EXIT.USAGE, `--prompt-file: the first field must be RIGHTS, not ${declared[0]} — a prompt file that does not open with its rights declaration lets a later line supply them`);
   // A file carrying a coordinator's prompt as it was written may have no header at all, and nothing may
   // be added to that prompt, not even a rights line. The default it stands in for is the narrowest level
   // there is — read, in the current directory, with no writable root beyond $TMPDIR; egress it carries
-  // because every seat does, header or none. The header is only the LEADING run of fields, so a later
-  // SEAT: line is body. A file that DOES declare rights still declares them first, refused above.
-  if (!seen.has("SEAT")) out.push("--level", "read");
-  // In the report, so a coordinator reading a wrapped seat can see what the FILE declared rather than
+  // because every agent does, header or none. The header is only the LEADING run of fields, so a later
+  // RIGHTS: line is body. A file that DOES declare rights still declares them first, refused above.
+  if (!seen.has("RIGHTS")) out.push("--level", "read");
+  // In the report, so a coordinator reading a wrapped agent can see what the FILE declared rather than
   // inferring it from the flags the run ended up with.
-  seatFileFields = declared;
+  promptFileFields = declared;
   return out;
 }
 
@@ -699,7 +700,7 @@ function parseArgs(argv) {
   // No wall clock by default: --idle-timeout bounds silence and --max-commands bounds volume;
   // --timeout is a budget the caller opts into.
   // Egress at both levels by default, because Claude's own subagents hold web tools and run on the
-  // coordinator's network: a seat that has to be asked for it is a rule a caller must know to succeed.
+  // coordinator's network: an agent that has to be asked for it is a rule a caller must know to succeed.
   // It is a definite boolean from here on, so every reader downstream states the effective grant rather
   // than an option nobody set. --no-network is the whole of the opt-out; there is no host allowlist,
   // because the hosts a task may reach are the task's to name.
@@ -712,11 +713,11 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     switch (a) {
-      case "--seat-file": o.seatFile = need(++i, a); break;
-      // Validated in readOpts, off the raw command line, so a refusal the seat file causes reaches it too.
+      case "--prompt-file": o.promptFile = need(++i, a); break;
+      // Validated in readOpts, off the raw command line, so a refusal the prompt file causes reaches it too.
       case "--report-file": o.reportFile = need(++i, a); break;
-      // Only ever read off the command line, never out of a seat file — that is the whole of its value.
-      case "--allow-seat-verify": o.allowSeatVerify = true; break;
+      // Only ever read off the command line, never out of a prompt file — that is the whole of its value.
+      case "--allow-prompt-verify": o.allowPromptVerify = true; break;
       case "--level": o.level = need(++i, a); o.levelExplicit = true; break;
       case "--cwd": o.cwd = need(++i, a); break;
       case "--worktree": o.worktree = need(++i, a); break;
@@ -764,7 +765,7 @@ function parseArgs(argv) {
   // 0 is the documented "off", so the floor is 0 rather than a positive number.
   if (!Number.isFinite(o.idleTimeout) || o.idleTimeout < 0)
     fail(EXIT.USAGE, "--idle-timeout must be a number of seconds, 0 to disable");
-  // MAX_PROMPT_BYTES caps --prompt, stdin and the seat file before the server sees them.
+  // MAX_PROMPT_BYTES caps --prompt, stdin and the prompt file before the server sees them.
   if (o.prompt !== undefined && Buffer.byteLength(o.prompt) > LIMITS.MAX_PROMPT_BYTES)
     fail(EXIT.USAGE, `--prompt exceeds ${LIMITS.MAX_PROMPT_BYTES} bytes; pipe a long prompt on stdin instead`);
   // --attach maps a local file into the turn's input as the protocol's own item kind — the parity a
@@ -935,7 +936,7 @@ function checkRoot(dir) {
 // both proceed.
 //
 // So the anchor is the PASSWD entry, not $HOME and not the protected directory itself. Inside the
-// directory, a seat's `git add -A` stages the lock. Under $TMPDIR, that is a mutable variable AND the one
+// directory, an agent's `git add -A` stages the lock. Under $TMPDIR, that is a mutable variable AND the one
 // place --level read may write. Through os.homedir(), which prefers $HOME, two HOME values are two homes,
 // and HOME="" makes the path RELATIVE to the invocation directory. os.userInfo() reads passwd and ignores
 // the environment.
@@ -948,13 +949,13 @@ function checkRoot(dir) {
 // counts and stdout is the copy: a stdout that broke neither loses the report nor changes its verdict.
 //
 // The path is the caller's, whole and absolute, and it must not exist yet: a report published over
-// another run's report is two seats' evidence in one file, with nothing saying which one it is. It is
+// another run's report is two agents' evidence in one file, with nothing saying which one it is. It is
 // published by hard link at 0600, so a reader finds either the whole report or no file at all, and the
 // no-clobber rule survives the whole run: link(2) refuses every existing entry, symlinks included, while
-// rename(2) replaces one — and the pre-spawn check cannot see a second seat that starts after it.
+// rename(2) replaces one — and the pre-spawn check cannot see a second agent that starts after it.
 let reportFilePath = null;
 let reportFileWritten = false;
-// Checked BEFORE the seat file is expanded, so a refusal the seat file itself causes still reaches the
+// Checked BEFORE the prompt file is expanded, so a refusal the prompt file itself causes still reaches the
 // caller waiting on the report. Every failure here is a usage error, decided before anything is spawned.
 function openReportFile(p) {
   if (!path.isAbsolute(p))
@@ -1057,7 +1058,7 @@ const lockDir = () => path.join(stateDir(), "locks");
 //
 // Two things are linked back rather than isolated: auth.json, so a token refresh lands in the real file,
 // and sessions, so the rollout receipt lands where the published verification recipe looks — a caller who
-// cannot find the rollout cannot tell a real seat from a wrapper that fabricated success.
+// cannot find the rollout cannot tell a real agent from a wrapper that fabricated success.
 //
 // Isolating the ENVIRONMENT must not isolate the ACCOUNT: the INHERITED keys choose which model
 // answers and how it is spoken to. Everything that pulls in outside behaviour — plugins, skills,
@@ -1172,8 +1173,8 @@ function managedWebSearchModes() {
 }
 
 // A $TMPDIR of this run's own, made at EITHER level whenever the caller exported none, 0700 so no other
-// user can read what the seat writes there. It lives under the driver's own state and OUTLIVES the run:
-// --brief tells the seat to leave long output in a file there, so a directory removed at exit takes with
+// user can read what the agent writes there. It lives under the driver's own state and OUTLIVES the run:
+// --brief tells the agent to leave long output in a file there, so a directory removed at exit takes with
 // it every path the answer names. PRUNE_DAYS and PRUNE_MAX_ENTRIES bound retention without removing a
 // live run and reap the directories a SIGKILL leaves behind.
 let privateTmp = null;
@@ -1186,7 +1187,7 @@ function privateTmpDir() {
     fs.mkdirSync(base, { recursive: true, mode: 0o700 });
     pruneDir(base, true);
     fs.mkdirSync(dir, { mode: 0o700 });
-    // Whose it is, so the pruner never removes a live seat's scratch directory. A seat may delete this
+    // Whose it is, so the pruner never removes a live agent's scratch directory. An agent may delete this
     // file — it owns the tree — and the age bound is what decides then.
     fs.writeFileSync(path.join(dir, TMP_OWNER),
       JSON.stringify({ pid: process.pid, identity: processIdentity(process.pid), startedAt: new Date().toISOString() }),
@@ -1197,15 +1198,15 @@ function privateTmpDir() {
   privateTmp = dir;
   return dir;
 }
-// Named in the report whenever the driver made one, because it is where the seat's own file paths
+// Named in the report whenever the driver made one, because it is where the agent's own file paths
 // resolve and it is still there when the coordinator reads the answer. null means the caller's TMPDIR.
 const keptTmpDir = () => privateTmp;
-// Did the seat actually leave anything of its own? The owner record is the driver's, not the seat's.
-const tmpHasSeatFiles = () => {
+// Did the agent actually leave anything of its own? The owner record is the driver's, not the agent's.
+const tmpHasAgentFiles = () => {
   if (!privateTmp) return false;
   try { return fs.readdirSync(privateTmp).some((n) => n !== TMP_OWNER); } catch { return false; }
 };
-// Record the source of the seat's model and effort so a fresh probe, stale config and account defaults
+// Record the source of the agent's model and effort so a fresh probe, stale config and account defaults
 // remain distinguishable.
 let configInherited = null;
 const keysInConfig = (cfg) => {
@@ -1281,7 +1282,7 @@ async function isolatedHome() {
       fail(EXIT.USAGE, `${link} exists but is not a symbolic link (${current.code}); move it aside or pass --host-home`);
     if (current.target === target) continue;
     // Created under a random name and RENAMED over the link: rename(2) is atomic, while unlink-then-
-    // symlink is a window two fresh seats lose against each other — both read ENOENT, both symlink, and
+    // symlink is a window two fresh agents lose against each other — both read ENOENT, both symlink, and
     // the loser fails EEXIST on a link the winner has just made correctly. An EEXIST that still gets
     // through is only a peer having won, so re-read and accept an equal target.
     const tmpLink = `${link}.${crypto.randomBytes(8).toString("hex")}.tmp`;
@@ -1320,7 +1321,7 @@ async function isolatedHome() {
   try {
     const body = probe.entries.map(([k, v]) => `${k} = ${v}\n`).join("");
     fs.writeFileSync(tmp, body, { mode: 0o600, flag: "wx" });
-    fs.renameSync(tmp, cfg);    // atomic, so a concurrent seat never reads a half-written file
+    fs.renameSync(tmp, cfg);    // atomic, so a concurrent agent never reads a half-written file
   } catch (e) {
     try { fs.unlinkSync(tmp); } catch {}
     fail(EXIT.USAGE, `cannot write the isolated config ${cfg}: ${e.message}`);
@@ -1584,7 +1585,7 @@ function releaseLock() {
 }
 
 // ---------------------------------------------------------------- git
-// Every git this driver spawns runs with the CALLER's rights over a tree a seat may have written, where
+// Every git this driver spawns runs with the CALLER's rights over a tree an agent may have written, where
 // config, hooks and external diff drivers are all code that the harvest, the removal and the NEXT run's
 // `worktree add` would execute before anyone reads the report. A command-line -c outranks every config
 // file, so the three execution paths are disarmed in one place that no call site can forget, and a hook
@@ -1645,18 +1646,18 @@ function writeJob(fields) {
     pruneDir(dir);
   } catch {}
 }
-// Does a job record belong to the directory being asked about? Matched by IDENTITY, and by the seat's
+// Does a job record belong to the directory being asked about? Matched by IDENTITY, and by the agent's
 // surviving repository as well as its cwd, which a removed worktree no longer has. Empty fields never
 // match: path.resolve("") would otherwise substitute the driver's own cwd.
 const recordIsIn = (rec, forCwd) =>
   [rec?.cwd, rec?.repo].some((v) => typeof v === "string" && v !== "" && canonPath(v) === forCwd);
 
 // `--resume last`: the record FOR THIS CWD that was STARTED most recently, ended or not — a
-// still-running seat's thread refuses the resume anyway (exit 10), which is the honest answer for "the
-// last seat is still working". Ordered by the record's own `started`, never by mtime: a long seat
+// still-running agent's thread refuses the resume anyway (exit 10), which is the honest answer for "the
+// last agent is still working". Ordered by the record's own `started`, never by mtime: a long agent
 // rewrites its record on every mid-flight heartbeat, so mtime made a run started hours ago outrank a
 // shorter one started after it and already finished. Scoped by cwd because the registry is machine-wide
-// and a fan-out is the headline use: with seats in two repositories the newest record is routinely the
+// and a fan-out is the headline use: with agents in two repositories the newest record is routinely the
 // other repository's, and resuming it would answer a follow-up about repo2 from a conversation entirely
 // about repo1 — a mix-up no sandbox assert can catch, since the resumed thread is handed the cwd it was
 // asked for.
@@ -1686,7 +1687,7 @@ const jobRecordPath = (id) => path.join(canonPath(jobsDir()) ?? jobsDir(), `${id
 function refuseLiveResume(id) {
   const rec = readJson(jobRecordPath(id));
   if (!rec || rec.endedAt || !holderAlive(rec)) return;
-  fail(EXIT.BUSY, `thread ${id} is still running (pid ${rec.pid}); wait for that seat to finish, or stop it with SIGTERM to that pid`);
+  fail(EXIT.BUSY, `thread ${id} is still running (pid ${rec.pid}); wait for that agent to finish, or stop it with SIGTERM to that pid`);
 }
 
 const ledgerDir = () => path.join(stateDir(), "worktrees");
@@ -1713,14 +1714,14 @@ function updateLedger(name, fields) {
 }
 
 // Nothing else names this commit, so removing the tree that holds it loses it. An answer git could not
-// give counts as unreachable: a redundant ref costs a ref, a missing one costs the seat's history.
+// give counts as unreachable: a redundant ref costs a ref, a missing one costs the agent's history.
 function reachableFromAnyRef(repo, sha) {
   const r = git(repo, ["for-each-ref", "--contains", sha, "--count=1", "--format=%(refname)"]);
   return r.status === 0 && r.stdout.trim() !== "";
 }
 
-// The record of the seat a `--worktree REPO --resume ID` continues. A record that cannot say where the
-// tree started is a refusal rather than a silent fresh tree at HEAD: a seat handed a tree that is not
+// The record of the agent a `--worktree REPO --resume ID` continues. A record that cannot say where the
+// tree started is a refusal rather than a silent fresh tree at HEAD: an agent handed a tree that is not
 // the one its thread worked in reviews the wrong files and exits 0.
 function priorWorktreeJob(id, repo) {
   const rec = readJson(path.join(jobsDir(), `${id}.json`));
@@ -1762,7 +1763,7 @@ function reconcileWorktreeLedgers() {
         process.stderr.write(`codex-delegate: ${how} work at ${e.path}; harvest it, then: git -C ${repo} worktree remove --force ${e.path}\n`);
         continue;
       }
-      // Preserve a crashed seat's commits before removing even a spotless detached tree.
+      // Preserve a crashed agent's commits before removing even a spotless detached tree.
       // Compare HEAD with its recorded base, or check reachability when that field is absent; install the ref first.
       const head = git(e.path, ["rev-parse", "HEAD"]);
       const headSha = head.status === 0 ? head.stdout.trim() : null;
@@ -1830,7 +1831,7 @@ function createWorktree(repo, prior = null) {
   // there. baseSha is filled in once the tree exists; nothing reads it before that.
   worktreeInfo = { repo, dir, ledger, baseSha: null, name, restored: null, disposed: false };
   // --resume rebuilds the tree its thread ran in, so it starts where that tree started, not at today's
-  // HEAD; a fresh seat starts at HEAD.
+  // HEAD; a fresh agent starts at HEAD.
   const at = prior?.baseSha ? [prior.baseSha] : [];
   const add = git(repo, ["worktree", "add", "--detach", dir, ...at]);
   if (add.status !== 0) {
@@ -1842,7 +1843,7 @@ function createWorktree(repo, prior = null) {
     }
     fail(EXIT.USAGE, `git worktree add failed: ${String(add.stderr).trim().slice(0, 200)}`);
   }
-  // The commit the tree started at. The harvest diffs against THIS, not against HEAD: a seat that
+  // The commit the tree started at. The harvest diffs against THIS, not against HEAD: an agent that
   // committed moves HEAD, and `git diff HEAD` then reports nothing while the work sits in commits that
   // a detached worktree's removal makes unreachable. Recorded at creation because afterwards there is
   // no way to ask what the base was.
@@ -1851,11 +1852,11 @@ function createWorktree(repo, prior = null) {
   worktreeInfo.baseSha = baseSha;
   // worktreeInfo exists already, so the refusal below still disposes of the tree it is refusing over.
   // Without a base every later question about this tree is unanswerable: the harvest cannot diff against it, and
-  // "did the seat commit?" reads as no — so the seat's own commits would be dropped silently. Refused
+  // "did the agent commit?" reads as no — so the agent's own commits would be dropped silently. Refused
   // here, before a single token is spent.
   if (!baseSha)
     fail(EXIT.USAGE, `cannot read HEAD in the new worktree ${dir} (${String(base.stderr).trim().slice(0, 160) || "git rev-parse failed"}); ` +
-      `without the base commit the seat's work cannot be harvested, so the turn is not started`);
+      `without the base commit the agent's work cannot be harvested, so the turn is not started`);
   ledger = writeLedger(name, { path: dir, repo, ...owner, baseSha }) ?? ledger;
   worktreeInfo.ledger = ledger;
   process.stderr.write(`codex-delegate: created worktree ${dir}${prior?.baseSha ? ` at ${baseSha} (rebuilding the tree of thread ${prior.threadId ?? "?"})` : ""}\n`);
@@ -1863,11 +1864,11 @@ function createWorktree(repo, prior = null) {
   return dir;
 }
 
-// A --worktree seat is continued by rebuilding the tree its thread ran in: the same base commit, then
-// the patch and the untracked archive that seat's harvest saved. Content, not history — the patch was
-// taken against the base and already carries whatever the seat committed, so a tree built on the
+// A --worktree agent is continued by rebuilding the tree its thread ran in: the same base commit, then
+// the patch and the untracked archive that agent's harvest saved. Content, not history — the patch was
+// taken against the base and already carries whatever the agent committed, so a tree built on the
 // commits ref would apply it twice; those commits stay reachable at worktreeCommitsRef.
-// Every failure here is fatal: a seat handed a tree that is not the one its thread worked in reports on
+// Every failure here is fatal: an agent handed a tree that is not the one its thread worked in reports on
 // the wrong files and exits 0.
 function restorePriorWork(dir, prior) {
   const restored = { diff: null, untracked: null, commitsRef: prior.worktreeCommitsRef ?? null };
@@ -1919,7 +1920,7 @@ function restorePriorWork(dir, prior) {
 // (staged and unstaged, --binary so a binary edit survives `git apply`) and an archive of the
 // untracked files, both under the answers dir — and only then is the tree removed, --force included,
 // because the harvest now holds every byte the force could destroy. That is the parity a native
-// worktree subagent has: the routine outcome of a write seat asks nothing of the operator. A turn
+// worktree subagent has: the routine outcome of a write agent asks nothing of the operator. A turn
 // that did NOT complete, a failing git, or a failed harvest preserves the tree — fail-safe, out loud.
 function disposeWorktree(turnDone) {
   if (!worktreeInfo || worktreeInfo.disposed) return null;
@@ -1931,7 +1932,7 @@ function disposeWorktree(turnDone) {
                 worktreeIgnoredDropped: null, worktreeCommitsRef: null, worktreeFleet: null };
   const st = git(dir, ["status", "--porcelain"]);
   const clean = st.status === 0 && st.stdout.trim() === "";
-  // Harvest when the tree is dirty OR HEAD moved: a spotless seat that committed still has commits to preserve.
+  // Harvest when the tree is dirty OR HEAD moved: a spotless agent that committed still has commits to preserve.
   const headNow = git(dir, ["rev-parse", "HEAD"]);
   const headSha = headNow.status === 0 ? headNow.stdout.trim() : null;
   const committed = Boolean(baseSha && headSha && headSha !== baseSha);
@@ -1939,7 +1940,7 @@ function disposeWorktree(turnDone) {
   // left. Two consequences, both handled here: the write must be whole-or-nothing, and a turn that
   // takes NOTHING from the tree must not leave the previous turn's file behind — the record's pointer
   // goes null while the file stays, and the next reader opens work this turn reverted. That covers the
-  // clean branch below as well as an empty harvest: a resumed seat that reverted everything ends on a
+  // clean branch below as well as an empty harvest: a resumed agent that reverted everything ends on a
   // tree git calls clean, and the earlier artefacts are exactly what it undid.
   // Except the file the SERVER's turn/diff/updated landed in: persistTurnDiff names it
   // `<threadId>.diff` too, so on a run that received one, `${base}.diff` is this turn's own artefact
@@ -1956,7 +1957,7 @@ function disposeWorktree(turnDone) {
   else if (st.status !== 0) res.worktreePreserved = "git status failed in the worktree";
   else if (!clean || committed) {
     // Diffed against the commit the tree STARTED at, not against HEAD. Dirtiness is decided by
-    // `status --porcelain`, which sees staged changes, so the harvest must see them too — and a seat
+    // `status --porcelain`, which sees staged changes, so the harvest must see them too — and an agent
     // that committed moves HEAD, where `git diff HEAD` reports nothing at all while the work sits in
     // commits that removing a detached worktree makes unreachable. Against the base, one patch carries
     // committed, staged and unstaged work alike. HEAD and the bare form remain as fallbacks.
@@ -1998,12 +1999,12 @@ function disposeWorktree(turnDone) {
         const names = String(ign.stdout).split("\0").filter(Boolean);
         res.worktreeIgnoredDropped = { count: names.length, sample: names.slice(0, 10) };
       }
-      // A patch reproduces content, not history; give the seat's commits a permanent, reported ref
+      // A patch reproduces content, not history; give the agent's commits a permanent, reported ref
       // before removing the detached worktree that otherwise holds their only reference.
       if (committed) {
         const ref = `refs/codex-delegate/${name}`;
         const upd = git(repo, ["update-ref", ref, headSha]);
-        if (upd.status !== 0) return `the seat's commits could not be preserved (${String(upd.stderr).trim().slice(0, 120)})`;
+        if (upd.status !== 0) return `the agent's commits could not be preserved (${String(upd.stderr).trim().slice(0, 120)})`;
         res.worktreeCommitsRef = ref;
       }
       return null;
@@ -2113,7 +2114,7 @@ function assertSandbox(thread) {
 const refuseSandbox = (level, why) => fail(EXIT.TRANSPORT,
   `the ${level} sandbox is not what was asked for (${why}); refusing to continue rather than run under an unknown sandbox`);
 // The cwd is the primary grant and the one the caller reasoned about, so it is checked at BOTH levels:
-// it decides where a write seat writes and which repository a read seat reads. The writable-root sets
+// it decides where a write agent writes and which repository a read agent reads. The writable-root sets
 // differ between the levels, which is why only these two checks are shared.
 function assertWorkspaceRoot(thread, refuse) {
   const workspace = (thread.runtimeWorkspaceRoots ?? []).map(canonPath);
@@ -2126,7 +2127,7 @@ function assertWorkspaceRoot(thread, refuse) {
 // granted where the caller refused it, or withheld from a task written around having it.
 function assertEgress(sb, refuse) {
   if (Boolean(sb.networkAccess) !== opts.network)
-    refuse(`networkAccess is ${Boolean(sb.networkAccess)}, and this seat was started with egress ${opts.network ? "granted" : "denied"}`);
+    refuse(`networkAccess is ${Boolean(sb.networkAccess)}, and this agent was started with egress ${opts.network ? "granted" : "denied"}`);
 }
 
 // At write level the server reports the grant differently, measured against the live binary: the cwd is
@@ -2140,10 +2141,10 @@ function assertWriteSandbox(thread) {
   assertEgress(sb, refuse);
   // The two implicit temp grants, which setup() sends as -c keys and which writableRoots never shows.
   // A NARROWER sandbox is refused as loudly as a wider one, exactly as the egress check above refuses
-  // both directions: a seat whose $TMPDIR is unwritable cannot run a heredoc or a test runner, and
+  // both directions: an agent whose $TMPDIR is unwritable cannot run a heredoc or a test runner, and
   // would report those failures as findings about the task.
   if (sb.excludeSlashTmp !== true)
-    refuse("excludeSlashTmp is false: /tmp is writable, and this seat was granted --cwd, --writable and $TMPDIR only");
+    refuse("excludeSlashTmp is false: /tmp is writable, and this agent was granted --cwd, --writable and $TMPDIR only");
   if (sb.excludeTmpdirEnvVar !== false)
     refuse("excludeTmpdirEnvVar is true: $TMPDIR is not writable, and heredocs and test runners need it");
   const want = [...roots].map(canonPath).sort();
@@ -2200,38 +2201,38 @@ let roots = [];
 // Everything the argument layer decides, on its own: --help and every refusal reachable from the
 // command line need `opts` and none of them needs a codex, a lock or a directory.
 function readOpts() {
-  // A seat file is expanded into ordinary argv and re-parsed, so every flag guard, every mutual
+  // A prompt file is expanded into ordinary argv and re-parsed, so every flag guard, every mutual
   // exclusion and every value check applies to it unchanged — a second parser would be a second set of
   // rules to keep in sync, which is how a wrapper's rights quietly stop matching the CLI's.
   // Command-line flags are appended after the file's, so an explicit flag still wins where the two
-  // disagree (--timeout is the common case: the harness bounding a seat it did not author).
+  // disagree (--timeout is the common case: the harness bounding an agent it did not author).
   // Scanned for the flag alone, not parsed: a full parse first would reject the command line for
-  // missing exactly what the seat file is about to supply (--cwd).
+  // missing exactly what the prompt file is about to supply (--cwd).
   const argv = process.argv.slice(2);
   // Opened FIRST, before any other refusal this function can raise, and off the raw command line: the
-  // file the caller waits on has to exist for every refusal, including the ones the --seat-file checks
-  // below raise and the ones the seat file itself causes. A missing or flag-like value is left to
+  // file the caller waits on has to exist for every refusal, including the ones the --prompt-file checks
+  // below raise and the ones the prompt file itself causes. A missing or flag-like value is left to
   // need() below, which is the one place that message is written.
   const rf = argv.lastIndexOf("--report-file");
   if (rf >= 0 && argv[rf + 1] !== undefined && !argv[rf + 1].startsWith("--")) openReportFile(argv[rf + 1]);
-  const at = argv.indexOf("--seat-file");
-  // Refuse multiple seat files rather than silently choosing which declaration supplies the run.
-  if (at >= 0 && argv.indexOf("--seat-file", at + 2) >= 0)
-    fail(EXIT.USAGE, "--seat-file given more than once; only one seat file defines a seat");
+  const at = argv.indexOf("--prompt-file");
+  // Refuse multiple prompt files rather than silently choosing which declaration supplies the run.
+  if (at >= 0 && argv.indexOf("--prompt-file", at + 2) >= 0)
+    fail(EXIT.USAGE, "--prompt-file given more than once; only one prompt file defines an agent");
   if (at >= 0 && (argv[at + 1] === undefined || argv[at + 1].startsWith("--")))
-    fail(EXIT.USAGE, "--seat-file requires a non-empty value");
-  // Scanned off the raw command line on purpose: a seat file must not be able to authorise itself.
-  const allowSeatVerify = argv.includes("--allow-seat-verify");
+    fail(EXIT.USAGE, "--prompt-file requires a non-empty value");
+  // Scanned off the raw command line on purpose: a prompt file must not be able to authorise itself.
+  const allowPromptVerify = argv.includes("--allow-prompt-verify");
   const o = at >= 0
-    ? parseArgs([...argvFromSeatFile(argv[at + 1], allowSeatVerify),
+    ? parseArgs([...argvFromPromptFile(argv[at + 1], allowPromptVerify),
                  ...argv.filter((_, i) => i !== at && i !== at + 1)])
     : parseArgs(argv);
-  if (seatFileBody !== null) {
+  if (promptFileBody !== null) {
     // Two prompts and no rule saying which one ran is worse than a refusal: the body is the file's own
     // and --prompt is the command line's, and neither is obviously the caller's intent.
     if (o.prompt !== undefined)
-      fail(EXIT.USAGE, "the seat file carries a body below its header and --prompt was given too; pass one prompt, not two");
-    o.prompt = seatFileBody;
+      fail(EXIT.USAGE, "the prompt file carries a body below its header and --prompt was given too; pass one prompt, not two");
+    o.prompt = promptFileBody;
   }
   // The one place the state root is resolved. Here rather than at each use, so a root this driver cannot
   // work with is refused at parse time rather than halfway through the run that needs it.
@@ -2270,7 +2271,7 @@ async function setup() {
 
   if (opts.worktree) {
     const repo = resolveDir(opts.worktree, "--worktree");
-    // Resolved against the REPOSITORY, before the tree exists: "the last seat here" for a worktree seat
+    // Resolved against the REPOSITORY, before the tree exists: "the last agent here" for a worktree agent
     // cannot mean its own cwd, which was removed when it finished.
     if (opts.resume === "last") { opts.resume = resolveResumeLast(repo); refuseLiveResume(opts.resume); }
     opts.cwd = createWorktree(repo, opts.resume ? priorWorktreeJob(opts.resume, repo) : null);
@@ -2280,13 +2281,13 @@ async function setup() {
   cwd = resolveDir(opts.cwd, "--cwd");
   if (opts.level !== "read") checkRoot(cwd);
 
-  // After the cwd exists, because "last" means the last seat HERE.
+  // After the cwd exists, because "last" means the last agent HERE.
   if (opts.resume === "last") { opts.resume = resolveResumeLast(cwd); refuseLiveResume(opts.resume); }
 
   // $TMPDIR is a grant at BOTH levels — the whole of it at read level, beside --cwd at write level — and
   // a private directory of the run's own is narrower than /tmp. Made whenever the caller exported none,
   // at either level: /tmp is excluded from the write sandbox too, and where no TMPDIR is exported
-  // os.tmpdir() and zsh's TMPPREFIX both fall back to /tmp — so a write seat without this would have no
+  // os.tmpdir() and zsh's TMPPREFIX both fall back to /tmp — so a write agent without this would have no
   // temp root at all, and every heredoc, mkdtemp and test runner would die.
   // Set on process.env because the codex spawn and `codex sandbox :tmpdir` read it.
   const ownTmp = !process.env.TMPDIR;
@@ -2353,7 +2354,7 @@ async function setup() {
       ["sandbox_workspace_write.writable_roots", `[${roots.map((r) => JSON.stringify(r)).join(",")}]`],
       // The two implicit temp grants a workspace-write sandbox carries unless it is told otherwise.
       // Measured on 0.153.4: with neither key sent, thread/start answers writableRoots [],
-      // excludeSlashTmp false and excludeTmpdirEnvVar false — so a seat given one --cwd could also
+      // excludeSlashTmp false and excludeTmpdirEnvVar false — so an agent given one --cwd could also
       // write all of /tmp, which no caller named. /tmp is excluded; $TMPDIR is kept, because heredocs,
       // mkdtemp and every test runner need a temp root and $TMPDIR is the one the caller (or the
       // private directory above) chose. Sent unconditionally, like the two keys above, and
@@ -2629,7 +2630,7 @@ let selectedModel = null;   // what the server resolved, which may not be what w
 let selectedEffort = null;  // likewise: with no --effort this is whatever config.toml chose
 let effectiveSandbox = null;   // the sandbox the SERVER applied, not the one we asked for
 let verifyResult = null;    // the caller-run check, the one piece of evidence the model cannot author
-let tokenUsage = null;      // the latest thread/tokenUsage/updated payload: what this seat cost
+let tokenUsage = null;      // the latest thread/tokenUsage/updated payload: what this agent cost
 let rateLimits = null;      // the account snapshot read once before any thread is started
 let turnDiffPath = null;    // where the last turn/diff/updated payload was persisted, or null when it could not be written
 let outputAttempts = 0;     // turns STARTED under --output-schema; at most one corrective retry
@@ -2918,7 +2919,7 @@ function handleMessage(msg, bytes = 0) {
 
   if (msg.method === "turn/diff/updated" && isRoot(p)) persistTurnDiff(p);
 
-  // Best-effort accounting: what this seat cost, straight from the server. Only the root thread's
+  // Best-effort accounting: what this agent cost, straight from the server. Only the root thread's
   // usage counts — a subagent thread's tokens are its own. `total` is the root thread's token use for the
   // current turn, per turn as of codex 0.153.4 (measured 2026-09-15); to cost a thread, sum one report per
   // turn. `last` is the most recent API request within it.
@@ -3114,7 +3115,7 @@ function parseAnswerJson(text) {
 // is `session_meta` and carries the session id, the originator and the model provider, so verification
 // costs one bounded read and turns receiptOk from "a file with this name exists" into "a session record
 // claiming this thread exists".
-// Those three values are surfaced too: a coordinator checking a seat wants to see `"Claude Code"` and
+// Those three values are surfaced too: a coordinator checking an agent wants to see `"Claude Code"` and
 // `"openai"`, not to be told that a path was found.
 //
 // $CODEX_DELEGATE_SESSIONS_DIR moves the search root, and exists so this can be TESTED positively. It
@@ -3203,7 +3204,7 @@ function persistTurnDiff(payload) {
 // Prune by PRUNE_DAYS and PRUNE_MAX_ENTRIES, always keeping the newest entry. Named for the directory
 // rather than for the answers: the job records and the private $TMPDIR trees are pruned by it too.
 // A recursive prune is over the private $TMPDIR tree, where a directory whose owner record names a live
-// process is kept whatever its age: it is a running seat's scratch space.
+// process is kept whatever its age: it is a running agent's scratch space.
 function pruneDir(dir, recursive = false) {
   try {
     const now = Date.now();
@@ -3375,7 +3376,7 @@ function classifyEvidence() {
 // its GROUP. A synchronous spawn is unreachable by construction, and ignores every signal until it ends.
 let verifyChild = null;
 const killVerifier = () => { if (verifyChild) killGroupOf(verifyChild, "SIGKILL"); };
-// The verifier is the caller's command, run in the seat's tree. --verify-sandboxed puts it behind the
+// The verifier is the caller's command, run in the agent's tree. --verify-sandboxed puts it behind the
 // same read profile the read level uses (`codex sandbox -P <profile> -C <cwd>`): exit codes pass
 // through, the tree is readable, $TMPDIR is writable and nothing else is — measured on codex 0.150.1.
 // The same profile means the same egress, including the caller's denial of it: a verifier that can reach
@@ -3495,7 +3496,7 @@ async function runVerifier() {
 
 // Why a delegating turn exits 5: the root ran nothing and the children did the work. Naming them keeps
 // "no command ran" from reading as a dead turn, and says in the same breath that their commands are not
-// this seat's evidence. The path list is capped: a wide fan-out must not turn the cause into a page.
+// this agent's evidence. The path list is capped: a wide fan-out must not turn the cause into a page.
 function subagentCause() {
   const ts = [...subagentThreads.values()];
   const paths = ts.map((t) => t.agentPath).filter(Boolean);
@@ -3585,14 +3586,14 @@ function writeReport(ev, verifySkipped, codeOverride) {
   // Said on stderr as well as in the report: the directory outlives the run, and it is the only place
   // the answer's own file paths resolve.
   const tmpDir = keptTmpDir();
-  if (tmpDir && tmpHasSeatFiles())
-    process.stderr.write(`codex-delegate: the seat left files in its private $TMPDIR ${tmpDir}; it outlives the run and is pruned with the run directories\n`);
+  if (tmpDir && tmpHasAgentFiles())
+    process.stderr.write(`codex-delegate: the agent left files in its private $TMPDIR ${tmpDir}; it outlives the run and is pruned with the run directories\n`);
 
   const report = {
     ok: code === EXIT.OK, exitCode: code, level: opts.level, sandbox: effectiveSandbox, cwd,
     // Report requested roots separately from sandbox.writableRoots, which is the grant the server applied;
     // assertWriteSandbox refuses any difference. `network` is the effective grant, not a flag someone
-    // passed: it is on unless the seat denied it, and sandbox.networkAccess is asserted to agree.
+    // passed: it is on unless the agent denied it, and sandbox.networkAccess is asserted to agree.
     writableRootsRequested: roots, network: opts.network,
     // The run's own $TMPDIR when the driver made one — at either level, whenever the caller exported
     // none — so a path the answer names can still be opened after the run; null when the caller
@@ -3609,7 +3610,7 @@ function writeReport(ev, verifySkipped, codeOverride) {
     // server actually selected, which is the one worth reading back.
     effort: opts.effort ?? null, reasoningEffort: selectedEffort,
     model: selectedModel, turnStatus, turnError, threadId: rootThreadId,
-    // What the seat cost, straight from the server's own accounting; null when no usage event arrived.
+    // What the agent cost, straight from the server's own accounting; null when no usage event arrived.
     tokenUsage, rateLimits, turnDiffPath,
     ...(opts.outputSchema ? { outputAttempts, outputSchemaOk: schemaErrs.length === 0,
         schemaErrors: schemaErrs.length ? schemaErrs.slice(0, 12) : null,
@@ -3624,10 +3625,10 @@ function writeReport(ev, verifySkipped, codeOverride) {
     commandsDeclined: declinedCmds.length, commandsBlocked: blocked.length,
     // Probes that answered "no" (a no-match grep, a false test) — not failures, not successes.
     commandsProbeNegative: probeNegatives.length,
-    // Commands whose last stage was head/tail/less/more: the seat read a slice of its own evidence.
+    // Commands whose last stage was head/tail/less/more: the agent read a slice of its own evidence.
     commandsPipedToPager: pipedToPager.length,
     ...(pipedToPager.length ? { pipedToPagerHint:
-      "a command ending in | head/tail/less/more shows the seat only that slice; re-read the file or re-run without the pager before trusting a conclusion drawn from it" } : {}),
+      "a command ending in | head/tail/less/more shows the agent only that slice; re-read the file or re-run without the pager before trusting a conclusion drawn from it" } : {}),
     // For a rename the file that EXISTS afterwards is the destination; report that, not the source.
     filesTouched: fileChanges.filter((f) => f.status === "completed").map((f) => f.move ?? f.path),
     // What each completed change DID, beside where it landed: the kind and a rename's source, both of
@@ -3646,17 +3647,17 @@ function writeReport(ev, verifySkipped, codeOverride) {
     otherItemCounts: Object.keys(otherItemCounts).length ? otherItemCounts : null,
     otherItems: otherItems.length ? otherItems : null,
     subagentThreads: [...subagentThreads.entries()].map(([threadId, t]) => ({ threadId, ...t })),
-    // What a seat FILE declared, in order, when one was used. A wrapped seat is otherwise indistinguishable
+    // What an agent FILE declared, in order, when one was used. A wrapped agent is otherwise indistinguishable
     // from a hand-typed one in the report, and the fields the file declared are exactly what a
     // coordinator needs to see when a script wrote them.
-    ...(seatFileFields ? { seatFileFields } : {}),
+    ...(promptFileFields ? { promptFileFields } : {}),
     // null only when no --expect-command was given, so a caller can tell "not asked" from "asked and missed".
     expectationOk: opts.expectRe ? expected.length > 0 : null,
     // receiptOk reports whether a matching session_meta was verified within RECEIPT_LOOKBACK_DAYS date directories.
     // A missing receipt can reflect an older thread or nonstandard layout; receiptWhy explains the result.
     receiptPath, receiptOk: receipt?.verified === true, receiptWhy: receipt?.why ?? (receiptPath ? null : `no rollout naming this thread in the last ${LIMITS.RECEIPT_LOOKBACK_DAYS} days`),
     // Straight out of the verified record. A wrapper that forwarded the work has no thread whose
-    // session_meta says this, and a coordinator auditing a seat reads these rather than a path.
+    // session_meta says this, and a coordinator auditing an agent reads these rather than a path.
     receiptOriginator: receipt?.originator ?? null, receiptModelProvider: receipt?.modelProvider ?? null,
     receiptCwd: receipt?.cwd ?? null,
     ...(worktree ?? {}),
@@ -3670,15 +3671,15 @@ function writeReport(ev, verifySkipped, codeOverride) {
     // named first because the thread is still there; the caveat is real, not hedging — a thread whose turn
     // is still closing refuses with exit 10.
     // The raise names the budget that actually ran out. An idle cut is a HANG, not work that did not
-    // fit, so it names neither the effort nor the split — the thing to look at is what the seat was
+    // fit, so it names neither the effort nor the split — the thing to look at is what the agent was
     // waiting on.
     ...(code === EXIT.TIMEOUT && rootThreadId
-      ? { hint: `the turn was cut at its budget; continue it with --resume ${rootThreadId} (RESUME: ${rootThreadId} in a seat file), which may be refused with exit 10 while the turn is still closing — ` + (
+      ? { hint: `the turn was cut at its budget; continue it with --resume ${rootThreadId} (RESUME: ${rootThreadId} in a prompt file), which may be refused with exit 10 while the turn is still closing — ` + (
           pendingCut?.kind === "idle"
             ? "or re-run with a longer --idle-timeout after checking what the last command was waiting on"
             : pendingCut?.kind === "commands"
               ? "or split the task or raise --max-commands"
-            : "or re-run with a lower --effort, a longer --timeout, or the task split into smaller seats") } : {}),
+            : "or re-run with a lower --effort, a longer --timeout, or the task split into smaller agents") } : {}),
     // Which declared budget ended the turn, and whether the server closed it inside the grace. null on a
     // run that ended on its own, and on a signal: a signal is not a budget.
     cut: pendingCut?.kind
@@ -3705,7 +3706,7 @@ function writeReport(ev, verifySkipped, codeOverride) {
   // gates here would be a second answer about one run for whoever found it first.
   closingFields = { turnStatus, answerPath,
     // A tree DISPOSED of normally — harvested, or clean and removed — updates the rebuild pointers, null
-    // included: a resumed seat that reverted everything harvests nothing, and leaving the previous turn's
+    // included: a resumed agent that reverted everything harvests nothing, and leaving the previous turn's
     // pointers in place would rebuild the next resume's tree out of the work this turn undid. A PRESERVED
     // tree keeps them: the work is still in the tree, and null would throw away the last state that CAN
     // be rebuilt. The commits ref is kept when this turn made none — the earlier ref still names that
@@ -3777,7 +3778,7 @@ function developerInstructions() {
         + `; it is cut only ${opts.idleTimeout ? `after ${opts.idleTimeout} seconds of silence or ` : ""}by the coordinator. `
         + `Take the time the work needs, keep working visibly rather than pausing, and say what you did not get to if you are cut.`,
     // Two grants, so two sentences: web search is the server's own tool and egress is the sandbox's, and
-    // a seat can hold either without the other. Both are named whichever way they went, because a grant
+    // an agent can hold either without the other. Both are named whichever way they went, because a grant
     // the standing rules do not mention is one the turn does not spend, and a denial they do not mention
     // is a turn spent on fetches the sandbox refuses.
     opts.webSearch
@@ -3798,7 +3799,7 @@ function developerInstructions() {
     ...(opts.brief
       ? [`Answer in at most ${LIMITS.BRIEF_LINES} lines: the conclusion, then only what changes what the reader does next.`,
          // Withheld under --answer-json, which has just demanded ONE JSON object and nothing else: the
-         // two sentences together tell the seat to answer in JSON and to put the rest beside it.
+         // two sentences together tell the agent to answer in JSON and to put the rest beside it.
          ...(opts.answerJson ? []
            : ["Put anything longer — diffs, transcripts, tables, evidence — in a file under $TMPDIR and give its absolute path."])]
       : [])
@@ -3826,7 +3827,7 @@ function armWallClock() {
   const reserveMs = Math.min(LIMITS.WALL_RESERVE_MAX_MS, Math.max(LIMITS.WALL_RESERVE_MIN_MS, opts.timeout * 250));
   const graceMs = Math.min(LIMITS.CUT_GRACE_MAX_MS, Math.max(LIMITS.CUT_GRACE_MIN_MS, opts.timeout * 250));
   if (!(opts.timeout > 0)) return;
-  // Armed only where the reserve actually fits inside what is left: on a short seat there is nothing to
+  // Armed only where the reserve actually fits inside what is left: on a short agent there is nothing to
   // reserve, and a wrap-up steer that fires immediately would be an interruption, not a warning.
   if (endAtMs - reserveMs > Date.now() + 1000) armAt(endAtMs - reserveMs, () => {
     if (settled) return;
@@ -3834,9 +3835,9 @@ function armWallClock() {
     const sent = steerOnce(`About ${left} seconds of wall clock remain. Stop investigating now; write your final answer `
       + `with what you have and say what you did not get to.`,
       { onRejected: (e) => process.stderr.write(`codex-delegate: the wrap-up steer was rejected (${e.message})\n`) });
-    // Announced because it changes what the turn does: a coordinator reading stderr should know the seat
+    // Announced because it changes what the turn does: a coordinator reading stderr should know the agent
     // was told to stop investigating, and when.
-    if (sent) process.stderr.write(`codex-delegate: wrap-up: about ${left}s of the budget remain; asked the seat for its final answer now\n`);
+    if (sent) process.stderr.write(`codex-delegate: wrap-up: about ${left}s of the budget remain; asked the agent for its final answer now\n`);
   });
   // Once a child exists, a timeout hands back the partial result rather than discarding it; before that
   // there is nothing to interrupt, so this rung has nothing to do and T below does the aborting.
@@ -3887,7 +3888,7 @@ async function readPrompt() {
 // report rather than a hang. The order is the contract — a pgid recorded after the first event, or a
 // connection attached after the handlers, is a window in which a crash has nowhere to go.
 function spawnServer() {
-  // The seat's shell is zsh, which keeps every here-document in a file under $TMPPREFIX, default
+  // The agent's shell is zsh, which keeps every here-document in a file under $TMPPREFIX, default
   // /tmp/zsh: outside the grant, so every `<<EOF` failed ("can't create temp file for here document",
   // measured in 15 rollouts, 2026-08-31 to 2026-09-08). Under $TMPDIR it is inside the grant at every
   // level; where TMPDIR is unset the fallback equals zsh's own default, so nothing changes.
@@ -3934,10 +3935,10 @@ function spawnServer() {
     if (rootThreadId) {
       process.stderr.write(`codex-delegate: ${e.message}\n`);
       // A server that dies while this driver is already cutting the turn is not a crash: a harness that
-      // stops a seat signals the whole process tree, so codex takes the SIGTERM beside the driver and
+      // stops an agent signals the whole process tree, so codex takes the SIGTERM beside the driver and
       // is gone before the grace ends. The cut is the verdict — interrupted, or the budget that fired —
       // and the report reads as it would had the server closed the turn itself. Measured 2026-09-12:
-      // a seat stopped from the agent map reported `failed`/4, and its reader could not tell the
+      // an agent stopped from the agent map reported `failed`/4, and its reader could not tell the
       // cancellation from a server death.
       if (pendingCut) { if (cutGraceTimer) clearTimeout(cutGraceTimer); finish(pendingCut.reason); return; }
       turnError = turnError ?? { codexErrorInfo: "crashed", message: e.message, crashed: signal ?? code };
@@ -3950,8 +3951,8 @@ function spawnServer() {
 
 async function main() {
   opts = readOpts();
-  // The pid a caller signals to stop this seat, and the identity that says the pid is still this run
-  // rather than whatever the OS recycled it into. Before setup(), because a seat killed during its
+  // The pid a caller signals to stop this agent, and the identity that says the pid is still this run
+  // rather than whatever the OS recycled it into. Before setup(), because an agent killed during its
   // config probe has to be identifiable too, and this line is all its caller has until the thread exists.
   process.stderr.write(`codex-delegate: pid=${process.pid} identity=${selfIdentity() ?? "unknown"}`
     + `${reportFilePath === null ? "" : ` reportPath=${reportFilePath}`}\n`);
@@ -3975,7 +3976,7 @@ async function main() {
 
   // An older server, or a managed device, answers this method with a JSON-RPC error. That is a missing
   // snapshot, not a reason to abort a run that has not started its thread yet: the report then carries
-  // rateLimits null and the seat runs.
+  // rateLimits null and the agent runs.
   let limits = null;
   try { limits = await conn.request("account/rateLimits/read", null); }
   catch (e) { process.stderr.write(`codex-delegate: account/rateLimits/read unavailable (${e.message}); continuing without a snapshot\n`); }
@@ -4033,7 +4034,7 @@ async function main() {
   if (resuming && st && st !== "idle") fail(EXIT.TRANSPORT, `thread ${opts.resume} is ${st} and cannot be resumed`);
 
   // Announced BEFORE the turn, not in the report: a delegation runs for minutes, and the thread id is
-  // the key to tailing its live rollout under ~/.codex/sessions — a coordinator watching a long seat
+  // the key to tailing its live rollout under ~/.codex/sessions — a coordinator watching a long agent
   // should not have to wait for the end to learn which run it is.
   process.stderr.write(`codex-delegate: threadId=${rootThreadId} (live rollout: ~/.codex/sessions/YYYY/MM/DD/rollout-*-${rootThreadId}.jsonl)\n`);
   // The measured failure shape: a high-effort turn spends minutes thinking before it writes anything, so
@@ -4051,11 +4052,11 @@ async function main() {
     cwd, started: new Date().toISOString(),
     // A resumed thread rewrites the record of the run that ended, and every closing field in it belongs
     // to THAT run. Left in place, `endedAt` says this thread is finished while its new turn is running,
-    // and the resume guard — which returns the moment it sees one — would wave a second seat onto a live
+    // and the resume guard — which returns the moment it sees one — would wave a second agent onto a live
     // thread. undefined rather than null: JSON.stringify drops the key, so the record has no field at
     // all until closeJobRecord writes this run's.
     endedAt: undefined, exitCode: undefined, turnStatus: undefined, answerPath: undefined,
-    // A worktree seat's cwd is removed when the seat finishes, so the repository it was cut from and the
+    // A worktree agent's cwd is removed when the agent finishes, so the repository it was cut from and the
     // commit it started at are what a later --resume can still name.
     ...(worktreeInfo ? { repo: worktreeInfo.repo, baseSha: worktreeInfo.baseSha } : {}) });
   // Armed here, where the thread exists and there is something to cut: before it, a silent server is
@@ -4067,7 +4068,7 @@ async function main() {
     threadId: rootThreadId,
     // Attachments FIRST, then the text — the layout the user's own turn has. Measured across every
     // image-carrying turn in this machine's transcripts: 29 of 29 are [image…, text], never text-first.
-    // A seat asked about "the first screenshot" should be looking at the same arrangement its
+    // An agent asked about "the first screenshot" should be looking at the same arrangement its
     // coordinator saw.
     input: [...(opts.attachments ?? []), { type: "text", text: prompt, text_elements: [] }],
     model: opts.model ?? null, effort: null,
@@ -4104,7 +4105,7 @@ const RUN_AS_MAIN = (() => {
 // and a second copy of "is this pid still the holder" is a second answer that can disagree with the
 // lock it is about. Every name here is already a module-scope binding, so exporting them changes no
 // behaviour, and RUN_AS_MAIN above keeps an import from starting a turn, a handler or a state directory.
-export { EXIT, FIELDS, LADDER, PINNED_CODEX, SEAT_FIELDS, VERSION, canonPath, holderAlive, lockKey,
+export { EXIT, FIELDS, LADDER, PINNED_CODEX, PROMPT_FIELDS, VERSION, canonPath, holderAlive, lockKey,
          processIdentity, reclaimable };
 
 if (RUN_AS_MAIN) {

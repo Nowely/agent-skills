@@ -1,9 +1,9 @@
 ---
-name: seat
+name: codex
 description: >-
   Delegates tasks to Codex as a subagent with per-call rights: analysis that writes nothing of yours, or
   writing and tests in a managed git worktree, each reaching the network unless the call denies it. Use
-  when a panel, refuters, or competing designs need a seat that does not share Claude's bias;
+  when a panel, refuters, or competing designs need an agent that does not share Claude's bias;
   when fanning out reviewers or adversarial verifiers; after two hypotheses fail;
   when a second independent implementation is wanted; or when the user names Codex, GPT, or "the other
   model" (через codex, через gpt, вторая имплементация, панель ревьюеров). It also governs requested
@@ -17,7 +17,7 @@ license: MIT
 # Delegating to Codex
 
 The **user** requests the work; the **coordinator** chooses and synthesises the composition; one Codex
-**seat** performs one deliverable under rights declared in its prompt.
+**agent** performs one deliverable under rights declared in its prompt.
 
 Everything below is addressed to the coordinator. What reaches the user is prose you write in their own
 language: name the agent, say what it did, and say in ordinary words what it may write and where.
@@ -26,52 +26,52 @@ language: name the agent, say what it did, and say in ordinary words what it may
 
 Apply all five rules:
 
-1. Announce the composition **before** starting any Codex run, naming the count and which seats are Codex.
-2. Treat refusal as composition: for “no codex” or “just you”, run zero Codex seats and say the resulting
+1. Announce the composition **before** starting any Codex run, naming the count and which agents are Codex.
+2. Treat refusal as composition: for “no codex” or “just you”, run zero Codex agents and say the resulting
    panel is all-Claude and shares one model bias.
-3. Attribute every finding; if a Codex seat failed or returned nothing, say so and never backfill it with
+3. Attribute every finding; if a Codex agent failed or returned nothing, say so and never backfill it with
    a Claude answer.
 4. Knowing the answer is not a reason to skip a requested second opinion.
 5. Never add allow-rules on the user's behalf.
 
 | What the user says | Composition |
 | --- | --- |
-| “no codex”, “just you” | zero Codex seats |
-| nothing | panels, refutation, competing designs: one dissenting Codex seat; mechanical fan-out or one ordinary task: zero |
-| “a codex seat”, “one of them codex” | exactly one |
-| “half codex” | half the seats, rounded up |
-| “mostly codex” | every seat except the coordinator |
-| “only codex”, “all codex” | every seat, including a one-agent task |
+| “no codex”, “just you” | zero Codex agents |
+| nothing | panels, refutation, competing designs: one dissenting Codex agent; mechanical fan-out or one ordinary task: zero |
+| “a codex agent”, “one of them codex” | exactly one |
+| “half codex” | half the agents, rounded up |
+| “mostly codex” | every agent except the coordinator |
+| “only codex”, “all codex” | every agent, including a one-agent task |
 | “two of five codex” | exactly as stated |
 
-A dissenting seat pays for decorrelation; mechanical fan-out does not. “Only codex” means Codex does the
+A dissenting agent pays for decorrelation; mechanical fan-out does not. “Only codex” means Codex does the
 task while the coordinator orchestrates and checks it.
 
 ## One call
 
-One background Agent call per seat: a native subagent, the **wrapper**, that launches the driver, waits for
+One background Agent call per agent: a native subagent, the **wrapper**, that launches the driver, waits for
 it and returns when the report exists. Only a subagent is a subagent to Claude Code: a Bash task, whatever
 its description says, is not on the agent map, is not stopped from it and is not continued by a message
 (measured 2026-09-12 against the VS Code extension 2.1.269, whose map lists `local_agent` tasks alone). The
-wrapper is what makes a Codex seat read like a Claude seat: one card under its description, Stop on the
+wrapper is what makes a Codex agent read like a Claude agent: one card under its description, Stop on the
 card, one completion notification, and a message to continue it.
 
 Write the prompt to a file with the Write tool, then spawn the wrapper with the Agent tool:
-`subagent_type: codex-delegate:codex-seat`, `run_in_background: true`, and a `description` of
+`subagent_type: codex-delegate:codex-agent`, `run_in_background: true`, and a `description` of
 `Codex <short name> <id>: <task in a few words>` — `Astra` for `gpt-6-astra`, `Sol` for `gpt-5.6-sol`,
 `Terra` for `gpt-5.6-terra`, `Luna` for `gpt-5.6-luna` — so the card the user sees names the agent, its
 vendor and its task, and not the command line. That type is the agent this plugin ships,
-[agents/codex-seat.md](../../agents/codex-seat.md): a relay with the Bash tool alone and its model pinned
+[agents/codex-agent.md](../../agents/codex-agent.md): a relay with the Bash tool alone and its model pinned
 in its own file, so its context is half a `general-purpose` subagent's (measured 2026-09-12: 8.2k against
-15.4k tokens on the same seat). Pass it no `model`; the seat's model is the `MODEL:` line in its prompt
+15.4k tokens on the same agent). Pass it no `model`; the agent's model is the `MODEL:` line in its prompt
 file. A clone-and-symlink install links that file into `~/.claude/agents/` ([README](../../README.md#install)),
-where its type is the bare `codex-seat`.
+where its type is the bare `codex-agent`.
 
 The wrapper's message is the block below with its three placeholders filled in and nothing added or
-removed; it never sees the seat's prompt. Inside it the driver runs as a background task,
+removed; it never sees the agent's prompt. Inside it the driver runs as a background task,
 `run_in_background: true` and no `&` of your own, and its exit status lands in a file of its own beside
 the two output files; the wait after it is a foreground command the wrapper repeats until that status is
-there, so the card stays working for as long as the seat does (measured: an eleven-minute seat took two
+there, so the card stays working for as long as the agent does (measured: an eleven-minute agent took two
 waits). That wait only reads and sleeps: this harness moves a wait that reaches the tool's ten-minute
 ceiling into the background instead of ending it (measured 2026-09-12), so that one and the next run
 together, and neither modifies a file. The driver prints its pid on the first line of `<DIR>/err.txt`
@@ -81,7 +81,7 @@ nothing left running.
 
     1. Run this exact command with the Bash tool, with run_in_background: true, and description "<DESCRIPTION>":
 
-    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --seat-file "<DIR>/prompt.txt" --report-file "<REPORT>" > "<DIR>/out.json" 2> "<DIR>/err.txt"; echo $? > "<DIR>/exit"
+    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --prompt-file "<DIR>/prompt.txt" --report-file "<REPORT>" > "<DIR>/out.json" 2> "<DIR>/err.txt"; echo $? > "<DIR>/exit"
 
     2. Then run this exact command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>, waiting":
 
@@ -98,16 +98,16 @@ nothing left running.
     4. Your final message is exactly the WAIT_DONE line, the five lines step 3 printed, then one line
        REPORT=<REPORT>. Nothing else.
 
-`<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-seat.XXXXXXXX"` per seat: Write and Read expand nothing,
-so they need the absolute path it prints. `<REPORT>` is an absolute path of this seat's own and never under `<DIR>`:
-`<DIR>` sits in `$TMPDIR`, the one root a read seat may write, and a file the seat leaves at that name blocks publication
-and then sits where you would read it as the seat's own report. Put it under the driver's state directory,
-`<state>/reports/<run>/report.json` with `<run>` unique, or, under the orchestrate mode, `<run>/<seat>/report.json`
-in the run directory that page names, one directory per seat; the driver makes every directory that path
+`<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per agent: Write and Read expand nothing,
+so they need the absolute path it prints. `<REPORT>` is an absolute path of this agent's own and never under `<DIR>`:
+`<DIR>` sits in `$TMPDIR`, the one root a read agent may write, and a file the agent leaves at that name blocks publication
+and then sits where you would read it as the agent's own report. Put it under the driver's state directory,
+`<state>/reports/<run>/report.json` with `<run>` unique, or, under the orchestrate mode, `<run>/<agent>/report.json`
+in the run directory that page names, one directory per agent; the driver makes every directory that path
 needs, at 0700, so it may name a root your own Write and `mkdir` are refused.
-The wrapper's completion notification is the seat's completion: read the wrapper's own lines first —
+The wrapper's completion notification is the agent's completion: read the wrapper's own lines first —
 what the driver exited with, whose run the file at `<REPORT>` belongs to, whether it is there, the first
-line of its answer — and read the file itself after a `PATH=own`. To continue a seat, write a second
+line of its answer — and read the file itself after a `PATH=own`. To continue an agent, write a second
 prompt file with `RESUME: <threadId>` and send the wrapper one more command of the same shape; it runs it the same way and notifies again (measured 2026-09-12). A session with no
 message tool, headless `-p` among them, continues the thread with a second wrapper given the same file,
 at the cost of a second card (measured: the thread held both ways).
@@ -119,7 +119,7 @@ driver reads `CODEX_DELEGATE_STATE_DIR` first and that variable second, and with
 value is empty there and the `CODEX_DELEGATE_STATE_DIR` the user exports decides ([README](../../README.md)
 says where).
 
-A read seat's prompt needs no header at all:
+A read agent's prompt needs no header at all:
 
     TASK: …
     CHECK: …
@@ -128,43 +128,43 @@ A read seat's prompt needs no header at all:
 For an isolated writer, one rights line above it (see
 [Worktree lifecycle](#worktree-lifecycle) for what it contains):
 
-    SEAT: worktree <repo>
+    RIGHTS: worktree <repo>
 
 Write a prompt you were handed VERBATIM: not a quote, not a `$`, not a header line it has, and add
-nothing. A prompt with no `SEAT:` line is a read seat in the current directory; the driver decides that,
-not you. Never create a directory, change a level or re-run with different flags to make a refused seat
+nothing. A prompt with no `RIGHTS:` line is a read agent in the current directory; the driver decides that,
+not you. Never create a directory, change a level or re-run with different flags to make a refused agent
 succeed: measured, a wrapper that created the missing directory ran Codex with rights nobody granted.
 
 ## Rights
 
-Choose the smallest `SEAT` that can complete and check the work:
+Choose the smallest `RIGHTS` that can complete and check the work:
 
 | Prompt header | Codex may | Settle first? |
 | --- | --- | --- |
-| `SEAT: read [<dir>]` or no header | read any readable path, reach the network, run commands, write only `$TMPDIR`; the sandbox refuses a write anywhere else, and an approval request in its place is declined and recorded in `escalations` | no |
-| `SEAT: worktree <repo>` | write in a driver-managed detached tree | say that a worktree will be made |
-| `SEAT: write <dir>` | write under the live directory | yes; this chooses the blast radius |
+| `RIGHTS: read [<dir>]` or no header | read any readable path, reach the network, run commands, write only `$TMPDIR`; the sandbox refuses a write anywhere else, and an approval request in its place is declined and recorded in `escalations` | no |
+| `RIGHTS: worktree <repo>` | write in a driver-managed detached tree | say that a worktree will be made |
+| `RIGHTS: write <dir>` | write under the live directory | yes; this chooses the blast radius |
 
-`$TMPDIR` is granted at every level and `/tmp` at none; a write seat adds each settled `WRITABLE:` root
+`$TMPDIR` is granted at every level and `/tmp` at none; a write agent adds each settled `WRITABLE:` root
 to what its row names. The driver refuses a server whose sandbox answers differently.
 
 Every level reaches the network, as a native subagent does, and `NETWORK: no` denies the sandbox that —
 not the provider's web search, which is `WEB_SEARCH:`'s own channel. Egress moves nothing on disk:
-whatever a seat can read it can send, which at read level is every readable path. Each `WRITABLE: <dir>`
-widens a write seat, as does removing a `NETWORK: no` the user settled: settle each with the user before
+whatever an agent can read it can send, which at read level is every readable path. Each `WRITABLE: <dir>`
+widens a write agent, as does removing a `NETWORK: no` the user settled: settle each with the user before
 adding it, and never translate a refusal into broader rights. Every field is in
 [Header fields](#header-fields) below; model, effort, gates, continuation and answer-shape choices
-belong in that header, and the seat's rights in its `SEAT:` line, which is why the prompt is copied
+belong in that header, and the agent's rights in its `RIGHTS:` line, which is why the prompt is copied
 into the file rather than rewritten: measured, a wrapper that rewrote one widened malformed rights and
 reported false success
 ([A relay on a small model](references/incidents.md#a-relay-on-a-small-model)).
 
-Read seats may share one cwd, but a repository whose tooling keeps a daemon, a socket, or a pid/state
-file needs a distinct cwd or its own `TMPDIR` per concurrent seat; the failure is a native crash, not a
+Read agents may share one cwd, but a repository whose tooling keeps a daemon, a socket, or a pid/state
+file needs a distinct cwd or its own `TMPDIR` per concurrent agent; the failure is a native crash, not a
 sandbox refusal.
 
-A write seat sharing a live tree must not change what the tree shares: no stash, branch switch, reset,
-clean or rebase while another writer holds part of it. Those move or discard work the other seat is
+A write agent sharing a live tree must not change what the tree shares: no stash, branch switch, reset,
+clean or rebase while another writer holds part of it. Those move or discard work the other agent is
 still editing, and no sandbox refuses them.
 
 ## Header fields
@@ -174,20 +174,20 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 
 | Field | Value (booleans: `yes`, `true` or `1`; no line means off, and for `NETWORK:` means on) | A coordinator sets it when |
 | --- | --- | --- |
-| `SEAT:` | `read [<dir>]`, `worktree <repo>`, `write <dir>` | first, or not at all: no header is a read seat in the current directory |
-| `NETWORK:` | `no` | this seat's own commands must not reach the network; no line leaves it the egress every level has, and `WEB_SEARCH:` is untouched either way |
-| `WRITABLE:` | `<dir>`, repeatable | a write seat needs one more root than the directory it was given |
-| `RESUME:` | `<threadId>`, `last` | this seat continues an earlier thread instead of opening one |
+| `RIGHTS:` | `read [<dir>]`, `worktree <repo>`, `write <dir>` | first, or not at all: no header is a read agent in the current directory |
+| `NETWORK:` | `no` | this agent's own commands must not reach the network; no line leaves it the egress every level has, and `WEB_SEARCH:` is untouched either way |
+| `WRITABLE:` | `<dir>`, repeatable | a write agent needs one more root than the directory it was given |
+| `RESUME:` | `<threadId>`, `last` | this agent continues an earlier thread instead of opening one |
 | `EXPECT:` | `<regex>` | the answer is only evidence if a command matching it ran AND succeeded; a matching command that exited non-zero does not count, and none matching is exit 5. Do not point it at a check whose failure IS the finding |
 | `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>` | the answer must parse as one JSON object |
-| `MODEL:` | `<slug>`: `gpt-6-astra` (Astra), `gpt-5.6-sol` (Sol), `gpt-5.6-terra` (Terra), `gpt-5.6-luna` (Luna) | this seat needs a model other than the configured default; the short name is for prose, the slug for this line |
+| `MODEL:` | `<slug>`: `gpt-6-astra` (Astra), `gpt-5.6-sol` (Sol), `gpt-5.6-terra` (Terra), `gpt-5.6-luna` (Luna) | this agent needs a model other than the configured default; the short name is for prose, the slug for this line |
 | `EFFORT:` | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra` | the task is worth more or less thinking |
-| `WEB_SEARCH:` | `cached`, `indexed`, `live` | the seat needs sources it cannot read locally |
+| `WEB_SEARCH:` | `cached`, `indexed`, `live` | the agent needs sources it cannot read locally |
 | `BRIEF:` | `yes` | a short answer is enough; omit it beside an output schema — it clips only the inline `answer` (`answerJson` is parsed from the whole one) yet still asks the model for 20 lines |
-| `ALLOW_NO_COMMANDS:` | `yes` | the seat is recall-only and will run nothing |
+| `ALLOW_NO_COMMANDS:` | `yes` | the agent is recall-only and will run nothing |
 
-One field is missing from that table on purpose. `VERIFY` is refused in a seat file without `--allow-seat-verify`,
-a flag the one call above does not pass: it runs a caller-declared command after the turn, so a seat that could
+One field is missing from that table on purpose. `VERIFY` is refused in a prompt file without `--allow-prompt-verify`,
+a flag the one call above does not pass: it runs a caller-declared command after the turn, so an agent that could
 write its own would be grading itself. Declare gates on the command line instead
 ([result-gates.md](references/result-gates.md)).
 
@@ -201,7 +201,7 @@ write its own would be grading itself. Declare gates on the command line instead
   successful harvest.
 - A completed turn harvests tracked work to `worktreeDiffPath`.
 - It archives non-ignored untracked files at `worktreeUntrackedPath`; `worktreeCommitsRef` is populated
-  only where the caller's own `--verify` committed — a seat cannot commit without `WRITABLE: <repo>/.git`,
+  only where the caller's own `--verify` committed — an agent cannot commit without `WRITABLE: <repo>/.git`,
   a widening to settle first.
 - After a successful harvest the driver removes the worktree.
 - When the turn failed or harvest failed, the driver preserves it and reports `worktreePreserved`.
@@ -231,7 +231,7 @@ write its own would be grading itself. Declare gates on the command line instead
   `<DIR>/err.txt` for the reason and `<DIR>/out.json` for the report a turn wrote where publication
   failed; otherwise treat the result as unknown, and relaunch under a fresh report path where the work
   still needs doing.
-- `exitCode: 0` means the completed turn passed its declared evidence gates. `answer` is the seat's text;
+- `exitCode: 0` means the completed turn passed its declared evidence gates. `answer` is the agent's text;
   with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed.
 - `exitCode: 3` is a cut; read the retained answer or partial and the `RESUME:` hint. Give the continuation a
   report path of its own: the driver refuses one already taken and exits 2 without publishing, which
@@ -257,7 +257,7 @@ write its own would be grading itself. Declare gates on the command line instead
   prove is in
   [environment-and-internals.md](references/environment-and-internals.md#receipt-validation-and-reporting).
 - Evidence of success is root-thread-only: a Codex subagent thread's commands are liveness, not evidence.
-- To stop a seat, stop its wrapper — Stop on the agent map or `TaskStop` — or send `SIGTERM` to the pid on the first line of `<DIR>/err.txt`:
+- To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or send `SIGTERM` to the pid on the first line of `<DIR>/err.txt`:
   the driver interrupts the turn, writes the report it had earned and sweeps the codex process group.
 
 ## Prompt shape
@@ -265,10 +265,10 @@ write its own would be grading itself. Declare gates on the command line instead
 Write a concrete, checkable body:
 
     TASK:   what to do
-    CHECK:  the ground truth, preferably something the seat cannot guess
+    CHECK:  the ground truth, preferably something the agent cannot guess
     RETURN: exactly what to hand back
 
-Give one deliverable per seat. Split a return that asks for unrelated artifacts or decisions. Whatever `RETURN:`
+Give one deliverable per agent. Split a return that asks for unrelated artifacts or decisions. Whatever `RETURN:`
 asks for, its first line is one sentence a reader can take on its own, the agent's model and id, its status and
 what it did; it is what the coordinator retells, and not itself a message to the user; the rest is the return's
 own shape.
@@ -281,10 +281,10 @@ command line).
 
 ## What the user reads
 
-Every word on this page is addressed to the coordinator, and a seat's return is too. What reaches the user is
+Every word on this page is addressed to the coordinator, and an agent's return is too. What reaches the user is
 prose the coordinator writes: in the user's own language, naming an agent by its model and id and saying what it
 did ("Sonnet W5 replaced four flaky width checks", "Codex Astra A6 reviewed the retry instructions") and not by
-this page's own vocabulary. Keep `Codex` on a Codex seat: it is the only word in the name that says whose model ran. A header field name, a status block, an internal
+this page's own vocabulary. Keep `Codex` on a Codex agent: it is the only word in the name that says whose model ran. A header field name, a status block, an internal
 table's row name and an absolute path are machinery; they belong in a prompt or a report, and putting them in
 front of a person says nothing they can act on. Rights are the one thing that must survive the translation: say
 what an agent may write, and where, in ordinary words, because that is what the user is being asked to approve.

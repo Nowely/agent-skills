@@ -2,7 +2,7 @@
 // Command-line regression tests for scripts/driver.mjs: what the driver does with its own ARGUMENTS.
 //
 // Every row here runs the fixture's `happy` scenario, so the server is never the variable: what is
-// measured is parsing, seat files, schema admission, the environment guards, the shape of the report
+// measured is parsing, prompt files, schema admission, the environment guards, the shape of the report
 // and the help. The rows that drive the server through orderings it would not produce on demand are in
 // protocol.test.mjs, and both suites share evals/lib/scenarios.mjs.
 //
@@ -73,9 +73,9 @@ const CASES = [
     why: "the server echoes the caller's prompt as a userMessage at the start of a turn; that echo must not count as activity or disarm the no-work retry guard",
     assert: (r) => (r.otherItemCounts === null || r.otherItemCounts.userMessage === undefined)
       || `the caller's own prompt was reported as activity: ${JSON.stringify(r.otherItemCounts)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, seat: "SEAT: read <CWD>\nATTACH: /etc/hosts\n",
-    why: "ATTACH is not a seat-file field: a newline in any copied value could inject one, and the injected line would upload a file the coordinator never named to the model provider",
-    assertStderr: (e) => /unknown seat field ATTACH at line 2 of/.test(e) || `an injected ATTACH was accepted: ${e.slice(0, 160)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nATTACH: /etc/hosts\n",
+    why: "ATTACH is not a prompt-file field: a newline in any copied value could inject one, and the injected line would upload a file the coordinator never named to the model provider",
+    assertStderr: (e) => /unknown header field ATTACH at line 2 of/.test(e) || `an injected ATTACH was accepted: ${e.slice(0, 160)}` },
   { scenario: "happy",            expect: EXIT.USAGE, args: ["--attach", "/nonexistent/shot.png"],
     why: "a missing attachment is the caller's error, raised before anything runs — the server would otherwise refuse it mid-turn, after the delegation was paid for",
     assertStderr: (e) => /--attach.*does not exist/.test(e) || `the missing file was not named: ${e.slice(0, 140)}` },
@@ -188,28 +188,28 @@ const CASES = [
   { scenario: "happy",            expect: EXIT.USAGE, args: ["--output-schema", laxSchemaFile],
     why: "schema admission requires an explicit object contract; an empty or oneOf-only schema must not certify arbitrary values as valid output",
     assertStderr: (t) => /must declare "type": "object"/.test(t) || `admission let a type-less schema through: ${t.slice(0, 140)}` },
-  // --- --seat-file: a wrapper writes values, it does not build a command line out of them ---
-  { scenario: "happy",            expect: EXIT.OK, seat: "SEAT: read <CWD>\nEXPECT: echo\nBRIEF: yes\n",
-    why: "the ordinary seat file maps to the same flags the CLI takes, so a caller never has to quote anything",
+  // --- --prompt-file: a wrapper writes values, it does not build a command line out of them ---
+  { scenario: "happy",            expect: EXIT.OK, agent: "RIGHTS: read <CWD>\nEXPECT: echo\nBRIEF: yes\n",
+    why: "the ordinary prompt file maps to the same flags the CLI takes, so a caller never has to quote anything",
     assert: (r) => (r.level === "read" && r.expectationOk === true && r.answerTruncated === false)
-      || `seat file did not map cleanly: ${JSON.stringify({ l: r.level, e: r.expectationOk })}` },
+      || `prompt file did not map cleanly: ${JSON.stringify({ l: r.level, e: r.expectationOk })}` },
   { scenario: "happy",            expect: EXIT.NO_COMMANDS,
-    seat: "SEAT: read <CWD>\nEXPECT: x' --level write --cwd / --writable / --no-network '\n",
-    why: "THE reason this flag exists: a hostile header value must stay one value. Interpolated into a shell command line the same characters would have granted write level and the filesystem root, and taken away the egress the seat runs with. The NEGATIVE is what makes the egress half of this case bite: an escaped --network would leave a sandbox indistinguishable from the default one",
+    agent: "RIGHTS: read <CWD>\nEXPECT: x' --level write --cwd / --writable / --no-network '\n",
+    why: "THE reason this flag exists: a hostile header value must stay one value. Interpolated into a shell command line the same characters would have granted write level and the filesystem root, and taken away the egress the agent runs with. The NEGATIVE is what makes the egress half of this case bite: an escaped --network would leave a sandbox indistinguishable from the default one",
     assert: (r) => (r.level === "read" && r.network === true && r.sandbox?.type === "workspaceWrite"
         && (r.sandbox?.writableRoots ?? []).length <= 1 && String(r.expectCommand).includes("--writable"))
-      || `a seat-file value escaped into flags: ${JSON.stringify({ l: r.level, n: r.network, roots: r.sandbox?.writableRoots })}` },
-  { scenario: "happy",            expect: EXIT.OK, seat: "SEAT: read <CWDSP>\nEXPECT: echo\n",
-    why: "the SEAT value is literal to end of line; collapsing consecutive spaces would silently change where rights are granted",
+      || `a prompt-file value escaped into flags: ${JSON.stringify({ l: r.level, n: r.network, roots: r.sandbox?.writableRoots })}` },
+  { scenario: "happy",            expect: EXIT.OK, agent: "RIGHTS: read <CWDSP>\nEXPECT: echo\n",
+    why: "the RIGHTS value is literal to end of line; collapsing consecutive spaces would silently change where rights are granted",
     assert: (r) => String(r.cwd).endsWith("two  spaces") || `the spaced path was rewritten: ${JSON.stringify(r.cwd)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, seat: "SEAT: read <CWD>\nBOGUS: x\n",
-    why: "an unknown field is a malformed seat, not a field to ignore — a typo must never silently become a different seat",
-    assertStderr: (t) => /unknown seat field BOGUS at line 2 of/.test(t) || `stderr did not name the field: ${t.slice(0, 120)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, seat: "SEAT: read <CWD>\nSEAT: write /tmp\n",
-    why: "a repeated SEAT is a contradiction about rights; last-wins would let an appended line quietly upgrade the seat",
-    assertStderr: (t) => /SEAT appears more than once/.test(t) || `stderr did not reject the duplicate: ${t.slice(0, 120)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, seat: "SEAT: read <CWD>\nWRITABLE: /tmp\n",
-    why: "the file goes through the same flag guards as the CLI, so a read seat asking for a second writable root fails exactly as --level read --writable does",
+  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nBOGUS: x\n",
+    why: "an unknown field is a malformed agent, not a field to ignore — a typo must never silently become a different agent",
+    assertStderr: (t) => /unknown header field BOGUS at line 2 of/.test(t) || `stderr did not name the field: ${t.slice(0, 120)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nRIGHTS: write /tmp\n",
+    why: "a repeated RIGHTS is a contradiction about rights; last-wins would let an appended line quietly upgrade the agent",
+    assertStderr: (t) => /RIGHTS appears more than once/.test(t) || `stderr did not reject the duplicate: ${t.slice(0, 120)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nWRITABLE: /tmp\n",
+    why: "the file goes through the same flag guards as the CLI, so a read agent asking for a second writable root fails exactly as --level read --writable does",
     assertStderr: (t) => /--writable belongs to --level write/.test(t) || `the level guard did not fire: ${t.slice(0, 120)}` },
 
   // --- egress: on at both levels, off only where the caller says so ---
@@ -217,33 +217,33 @@ const CASES = [
     why: "--writable grants a second root to WRITE in, and read level has none; the flag egress used to be paired with is now a default, and this half of the rule is untouched by that",
     assertStderr: (t) => /--writable belongs to --level write/.test(t) || `the level guard did not fire: ${t.slice(0, 140)}` },
   { scenario: "happy",            expect: EXIT.OK,
-    why: "a seat that names no network gets one, as a Claude subagent does: a grant the coordinator has to know to ask for is a rule to be told, and the whole claim of this level is that there is none",
+    why: "an agent that names no network gets one, as a Claude subagent does: a grant the coordinator has to know to ask for is a rule to be told, and the whole claim of this level is that there is none",
     assert: (r) => (r.network === true && r.sandbox?.networkAccess === true)
-      || `a read seat that named nothing got no egress: ${JSON.stringify({ n: r.network, sb: r.sandbox })}` },
+      || `a read agent that named nothing got no egress: ${JSON.stringify({ n: r.network, sb: r.sandbox })}` },
   { scenario: "happy",            expect: EXIT.OK, args: ["--no-network"],
     why: "the negative is the whole of the opt-out, so it has to reach the permission profile the read level runs under and not only the report field",
     assert: (r) => (r.network === false && r.sandbox?.networkAccess === false)
       || `--no-network did not reach the read sandbox: ${JSON.stringify({ n: r.network, sb: r.sandbox })}` },
-  { scenario: "happy",            expect: EXIT.OK, seat: "SEAT: read <CWD>\nNETWORK: yes\n",
-    why: "egress is not a level any more, so a read seat may declare it out loud; what it gets is the sandbox it would have got by saying nothing",
+  { scenario: "happy",            expect: EXIT.OK, agent: "RIGHTS: read <CWD>\nNETWORK: yes\n",
+    why: "egress is not a level any more, so a read agent may declare it out loud; what it gets is the sandbox it would have got by saying nothing",
     assert: (r) => (r.level === "read" && r.network === true && r.sandbox?.networkAccess === true)
-      || `an explicit positive did not reach a read seat: ${JSON.stringify({ l: r.level, n: r.network, sb: r.sandbox })}` },
-  { scenario: "happy",            expect: EXIT.OK, seat: "SEAT: read <CWD>\nNETWORK: no\n", args: ["--network"],
+      || `an explicit positive did not reach a read agent: ${JSON.stringify({ l: r.level, n: r.network, sb: r.sandbox })}` },
+  { scenario: "happy",            expect: EXIT.OK, agent: "RIGHTS: read <CWD>\nNETWORK: no\n", args: ["--network"],
     why: "an explicit flag still outranks the file's field, and with a two-sided grant that promise is testable in both directions rather than only in the one the default already occupies",
     assert: (r) => (r.network === true && r.sandbox?.networkAccess === true)
       || `the header's negative outranked the command line: ${JSON.stringify({ n: r.network, sb: r.sandbox })}` },
   // The write level asks for egress through a different key — a sandbox setting rather than the read
   // profile's `network` table — so every one of the three shapes above is a separate question there.
   { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"],
-    why: "the level decides what may be WRITTEN, not what may be reached; a fresh tree that has to install its own dependencies would otherwise need a flag whose absence looks like a working seat until the install fails",
+    why: "the level decides what may be WRITTEN, not what may be reached; a fresh tree that has to install its own dependencies would otherwise need a flag whose absence looks like a working agent until the install fails",
     assert: (r) => (r.level === "write" && r.network === true && r.sandbox?.networkAccess === true)
-      || `a write seat that named nothing got no egress: ${JSON.stringify({ l: r.level, n: r.network, sb: r.sandbox })}` },
+      || `a write agent that named nothing got no egress: ${JSON.stringify({ l: r.level, n: r.network, sb: r.sandbox })}` },
   { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write", "--no-network"],
     why: "the negative has to reach sandbox_workspace_write.network_access, at the level where that key is the only thing standing between the turn and the internet",
     assert: (r) => (r.level === "write" && r.network === false && r.sandbox?.networkAccess === false)
       || `--no-network did not reach the write sandbox: ${JSON.stringify({ l: r.level, n: r.network, sb: r.sandbox })}` },
-  { scenario: "happy",            expect: EXIT.OK, seat: "SEAT: write <CWD>\nNETWORK: no\n",
-    why: "the seat file is how a coordinator declares a seat, and the level is part of that declaration: a negative honoured at read level and dropped at write would leave the one level whose turn can also WRITE reaching the network it was told to stay off",
+  { scenario: "happy",            expect: EXIT.OK, agent: "RIGHTS: write <CWD>\nNETWORK: no\n",
+    why: "the prompt file is how a coordinator declares an agent, and the level is part of that declaration: a negative honoured at read level and dropped at write would leave the one level whose turn can also WRITE reaching the network it was told to stay off",
     assert: (r) => (r.level === "write" && r.network === false && r.sandbox?.networkAccess === false)
       || `the header's negative did not reach the write sandbox: ${JSON.stringify({ l: r.level, n: r.network, sb: r.sandbox })}` },
 
@@ -279,25 +279,25 @@ const CASES = [
     why: "a strict schema permits no optional property: `required` must list every key in `properties`, or the server refuses the request",
     assertStderr: (e) => /required.*every key|Missing|"note"/.test(e) || `an optional property was admitted: ${e.slice(0, 200)}` },
 
-  // --- the seat file: what a wrapper hands over must not be able to become rights ---
-  { scenario: "happy", seat: "EXPECT: foo\nSEAT: read <CWD>\n", expect: EXIT.USAGE,
-    why: "SEAT must come FIRST. A file whose first field is anything else left the rights slot open, and an injected `SEAT: write ...` line then defined them",
-    assertStderr: (e) => /first field must be SEAT/.test(e) || `a seat file without a leading SEAT was accepted: ${e.slice(0, 160)}` },
-  { scenario: "happy", noPrompt: true, seat: "# a header that declares nothing\n\nTASK: do it\n", expect: EXIT.OK,
-    why: "a seat file with no SEAT at all is a coordinator's prompt copied verbatim, which is what the direct route hands over; the default it falls back to is the narrowest seat there is, and it is REPORTED as undeclared so nobody reads it as a grant somebody made",
-    assert: (r) => (r.level === "read" && !(r.seatFileFields ?? []).includes("SEAT"))
-      || `a header-less file did not default to a read seat: ${JSON.stringify({ level: r.level, fields: r.seatFileFields })}` },
-  { scenario: "happy", seat: "SEAT: read <CWD>\nVERIFY: touch <CWD>/seat-verify-must-not-run\n", expect: EXIT.USAGE,
-    why: "VERIFY runs an unsandboxed shell with the caller's rights, so a newline-injected header must not enable it; seat-file use requires --allow-seat-verify on the command line",
-    assertStderr: (e) => /allow-seat-verify/.test(e) || `a seat file supplied a verifier unasked: ${e.slice(0, 200)}` },
-  { scenario: "happy", seat: "SEAT: read <CWD>\nEXPECT: echo\nVERIFY: true\n", expect: EXIT.OK, args: ["--allow-seat-verify"],
-    why: "the escape hatch works and is explicit: with --allow-seat-verify on the command line the same file runs its verifier",
-    assert: (r) => (r.verify?.ok === true && r.seatFileFields?.includes("VERIFY"))
-      || `the permitted seat verifier did not run: ${JSON.stringify({ v: r.verify, f: r.seatFileFields })}` },
-  { scenario: "happy", seat: "SEAT: read <CWD>\nEXPECT: echo\n", expect: EXIT.OK,
-    why: "the report names what the FILE declared, so a wrapped seat is not indistinguishable from a hand-typed one",
-    assert: (r) => (Array.isArray(r.seatFileFields) && r.seatFileFields.join(",") === "SEAT,EXPECT")
-      || `seatFileFields wrong: ${JSON.stringify(r.seatFileFields)}` },
+  // --- the prompt file: what a wrapper hands over must not be able to become rights ---
+  { scenario: "happy", agent: "EXPECT: foo\nRIGHTS: read <CWD>\n", expect: EXIT.USAGE,
+    why: "RIGHTS must come FIRST. A file whose first field is anything else left the rights slot open, and an injected `RIGHTS: write ...` line then defined them",
+    assertStderr: (e) => /first field must be RIGHTS/.test(e) || `a prompt file without a leading RIGHTS was accepted: ${e.slice(0, 160)}` },
+  { scenario: "happy", noPrompt: true, agent: "# a header that declares nothing\n\nTASK: do it\n", expect: EXIT.OK,
+    why: "a prompt file with no RIGHTS at all is a coordinator's prompt copied verbatim, which is what the direct route hands over; the default it falls back to is the narrowest rights there are, and it is REPORTED as undeclared so nobody reads it as a grant somebody made",
+    assert: (r) => (r.level === "read" && !(r.promptFileFields ?? []).includes("RIGHTS"))
+      || `a header-less file did not default to a read agent: ${JSON.stringify({ level: r.level, fields: r.promptFileFields })}` },
+  { scenario: "happy", agent: "RIGHTS: read <CWD>\nVERIFY: touch <CWD>/agent-verify-must-not-run\n", expect: EXIT.USAGE,
+    why: "VERIFY runs an unsandboxed shell with the caller's rights, so a newline-injected header must not enable it; prompt-file use requires --allow-prompt-verify on the command line",
+    assertStderr: (e) => /allow-prompt-verify/.test(e) || `a prompt file supplied a verifier unasked: ${e.slice(0, 200)}` },
+  { scenario: "happy", agent: "RIGHTS: read <CWD>\nEXPECT: echo\nVERIFY: true\n", expect: EXIT.OK, args: ["--allow-prompt-verify"],
+    why: "the escape hatch works and is explicit: with --allow-prompt-verify on the command line the same file runs its verifier",
+    assert: (r) => (r.verify?.ok === true && r.promptFileFields?.includes("VERIFY"))
+      || `the permitted agent verifier did not run: ${JSON.stringify({ v: r.verify, f: r.promptFileFields })}` },
+  { scenario: "happy", agent: "RIGHTS: read <CWD>\nEXPECT: echo\n", expect: EXIT.OK,
+    why: "the report names what the FILE declared, so a wrapped agent is not indistinguishable from a hand-typed one",
+    assert: (r) => (Array.isArray(r.promptFileFields) && r.promptFileFields.join(",") === "RIGHTS,EXPECT")
+      || `promptFileFields wrong: ${JSON.stringify(r.promptFileFields)}` },
 
   { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURABLE, args: ["--verify", "true"],
     env: { CODEX_DELEGATE_VERIFY_FLOOR_MS: "600000" },
@@ -330,7 +330,7 @@ const CASES = [
       return fs.existsSync(r.tmpDir) || `the run's private temp directory was removed at exit: ${r.tmpDir}`;
     } },
   { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"], env: { FAKE_RPC_LOG: writeCfgLog },
-    why: "the write sandbox's two temp exclusions are sent as -c keys and reported in no field of the driver's own: without them a seat granted one --cwd also writes all of /tmp and its own $TMPDIR is a grant nobody declared",
+    why: "the write sandbox's two temp exclusions are sent as -c keys and reported in no field of the driver's own: without them an agent granted one --cwd also writes all of /tmp and its own $TMPDIR is a grant nobody declared",
     assert: () => {
       const keys = cfgKeys(writeCfgLog);
       if (!keys.length) return `the fixture recorded no -c keys at all: ${writeCfgLog}`;
@@ -397,12 +397,12 @@ const CASES = [
     assert: (r) => (r.expectationOk === true && r.commandsMatchingExpectation === 1)
       || `an anchored pattern did not match the parsed command: ${JSON.stringify({ ok: r.expectationOk, n: r.commandsMatchingExpectation })}` },
 
-  // --- the seat file is written by a program, so it must take the shapes a program writes ---
-  { scenario: "happy", seat: "SEAT: read <CWD>\nEXPECT: echo\nNETWORK: no\nALLOW_NO_COMMANDS: false\nBRIEF: 0\n", expect: EXIT.OK,
+  // --- the prompt file is written by a program, so it must take the shapes a program writes ---
+  { scenario: "happy", agent: "RIGHTS: read <CWD>\nEXPECT: echo\nNETWORK: no\nALLOW_NO_COMMANDS: false\nBRIEF: 0\n", expect: EXIT.OK,
     why: "NETWORK/ALLOW_NO_COMMANDS/BRIEF must accept explicit false values in a header template: for the two whose default is off that is a flag not added, and for NETWORK, whose default is on, it is egress actually denied — reading it as omission is the one shape that grants what the template said to withhold",
     assert: (r) => (r.network === false && r.sandbox?.networkAccess === false
-        && r.seatFileFields?.join(",") === "SEAT,EXPECT,NETWORK,ALLOW_NO_COMMANDS,BRIEF")
-      || `a negated boolean was mishandled: ${JSON.stringify({ net: r.network, sb: r.sandbox?.networkAccess, fields: r.seatFileFields })}` },
+        && r.promptFileFields?.join(",") === "RIGHTS,EXPECT,NETWORK,ALLOW_NO_COMMANDS,BRIEF")
+      || `a negated boolean was mishandled: ${JSON.stringify({ net: r.network, sb: r.sandbox?.networkAccess, fields: r.promptFileFields })}` },
 
   // --- --verify: the budget that killed it, and the sandbox that is opt-in ---
   { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURABLE, args: ["--timeout", "3", "--verify", "sleep 20"],
@@ -423,15 +423,15 @@ const CASES = [
       || `the sandboxed verifier's exit code was not passed through: ${JSON.stringify(r.verify)}` },
   { scenario: "happy",            expect: EXIT.OK, env: { FAKE_SANDBOX: "1", FAKE_RPC_LOG: sandboxNetLog },
     args: ["--verify", "true", "--verify-sandboxed"],
-    why: "the sandboxed verifier runs under the profile the READ level runs under, so it has to be handed the seat's egress and not a fixed setting: a verifier that reaches what the turn could not is measuring the work under rights the turn never held",
+    why: "the sandboxed verifier runs under the profile the READ level runs under, so it has to be handed the agent's egress and not a fixed setting: a verifier that reaches what the turn could not is measuring the work under rights the turn never held",
     assert: () => sandboxArgvHas(sandboxNetLog, "permissions.codex_delegate_read.network={enabled=true}") },
   { scenario: "happy",            expect: EXIT.OK, env: { FAKE_SANDBOX: "1", FAKE_RPC_LOG: sandboxNoNetLog },
     args: ["--no-network", "--verify", "true", "--verify-sandboxed"],
-    why: "and the denial has to travel with it, which is the direction a fixed `{enabled=true}` would pass: the caller who took egress away from the seat did not hand it to the check that judges the seat",
+    why: "and the denial has to travel with it, which is the direction a fixed `{enabled=true}` would pass: the caller who took egress away from the agent did not hand it to the check that judges the agent",
     assert: () => sandboxArgvHas(sandboxNoNetLog, "permissions.codex_delegate_read.network={enabled=false}") },
   { scenario: "happy",            expect: EXIT.OK,
-    why: "and it must not fire where the reserve does not fit: on a 20 s seat a wrap-up steer would land in the first tick, which is an interruption rather than a warning — the rung is armed only when it leaves the model real time to write",
-    assertStderr: (e) => !/wrap-up:/.test(e) || `a short seat was steered anyway: ${e.slice(0, 200)}` },
+    why: "and it must not fire where the reserve does not fit: on a 20 s agent a wrap-up steer would land in the first tick, which is an interruption rather than a warning — the rung is armed only when it leaves the model real time to write",
+    assertStderr: (e) => !/wrap-up:/.test(e) || `a short agent was steered anyway: ${e.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.OK,
     why: "durationMs on commandExecution items distinguishes time spent running commands from time spent in the model",
     assert: (r) => {
@@ -450,30 +450,30 @@ const CASES = [
     assertStderr: (e) => !/measured failure shape/.test(e) || `the effort warning fired for low effort: ${e.slice(0, 200)}` },
 
   // --- the token accounting the SERVER does, which is not a bound the driver enforces ---
-  { scenario: "happy",            expect: EXIT.USAGE, seat: "SEAT: read <CWD>\nBUDGET_TOKENS: 100000\n",
+  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nBUDGET_TOKENS: 100000\n",
     why: "the driver has no token-budget knob; a header naming one must fail loudly rather than imply an unenforced bound",
-    assertStderr: (e) => /unknown seat field BUDGET_TOKENS at line 2 of/.test(e)
+    assertStderr: (e) => /unknown header field BUDGET_TOKENS at line 2 of/.test(e)
       || `BUDGET_TOKENS was still understood: ${e.slice(0, 200)}` },
 
-  // --- the bounds and the transport are flags: a seat file naming one is exit 2 ---
-  { scenario: "happy",            expect: EXIT.USAGE, seat: "SEAT: read <CWD>\nTIMEOUT: 30\n",
-    why: "the wall clock is the configuration the default exists to remove: a header that carries a TIMEOUT reintroduces exactly the bound every seat would otherwise have to size, so the field is refused and the flag stays for the caller who really wants one",
+  // --- the bounds and the transport are flags: a prompt file naming one is exit 2 ---
+  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nTIMEOUT: 30\n",
+    why: "the wall clock is the configuration the default exists to remove: a header that carries a TIMEOUT reintroduces exactly the bound every agent would otherwise have to size, so the field is refused and the flag stays for the caller who really wants one",
     assertStderr: (e) => /TIMEOUT is command-line-only; pass --timeout/.test(e)
-      || `a seat file still set the wall clock: ${e.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, seat: "SEAT: read <CWD>\nIDLE_TIMEOUT: 300\n",
+      || `a prompt file still set the wall clock: ${e.slice(0, 200)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nIDLE_TIMEOUT: 300\n",
     why: "the default idle guard and command cap belong to the driver; a copied header must not widen or disable these hang guards",
     assertStderr: (e) => /IDLE_TIMEOUT is command-line-only; pass --idle-timeout/.test(e)
-      || `a seat file still set the silence guard: ${e.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, seat: "SEAT: read <CWD>\nMAX_COMMANDS: 2\n",
+      || `a prompt file still set the silence guard: ${e.slice(0, 200)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nMAX_COMMANDS: 2\n",
     assertStderr: (e) => /MAX_COMMANDS is command-line-only; pass --max-commands/.test(e)
-      || `a seat file still set the command cap: ${e.slice(0, 200)}`,
+      || `a prompt file still set the command cap: ${e.slice(0, 200)}`,
     why: "the volume cap is the maxTurns a native subagent has; the driver owns it" },
-  { scenario: "happy",            expect: EXIT.USAGE, seat: "SEAT: read <CWD>\nREPORT_FILE: /tmp/elsewhere.json\n",
-    why: "the delivery is the caller's, not the header's: the report file is where the run's whole evidence lands, so a line inside the prompt that redirects it is a seat writing its own answer somewhere its coordinator never looks",
+  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nREPORT_FILE: /tmp/elsewhere.json\n",
+    why: "the delivery is the caller's, not the header's: the report file is where the run's whole evidence lands, so a line inside the prompt that redirects it is an agent writing its own answer somewhere its coordinator never looks",
     assertStderr: (e) => /REPORT_FILE is command-line-only; pass --report-file/.test(e)
-      || `a seat file still chose where the report lands: ${e.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, seat: "SEAT: read <CWD>\nTIMEOUT: 30\n", args: ["--timeout", "5"],
-    why: "and the refusal is not waived by passing the flag too: a seat file that names a bound is a caller who believes the file decides it, and running the flag's value silently would leave that belief in place",
+      || `a prompt file still chose where the report lands: ${e.slice(0, 200)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nTIMEOUT: 30\n", args: ["--timeout", "5"],
+    why: "and the refusal is not waived by passing the flag too: a prompt file that names a bound is a caller who believes the file decides it, and running the flag's value silently would leave that belief in place",
     assertStderr: (e) => /TIMEOUT is command-line-only/.test(e)
       || `an explicit --timeout beside the field made the field acceptable: ${e.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.OK, noTimeout: true, args: ["--effort", "high"],
@@ -482,25 +482,25 @@ const CASES = [
       || `the effort warning fired with no wall clock: ${e.slice(0, 200)}` },
 
   // --- the read level's cwd: a grant only where it grants something ---
-  { scenario: "happy",            expect: EXIT.OK, seat: "SEAT: read\nEXPECT: echo\n",
-    why: "SEAT: read without a directory means the current tree and grants no additional write rights",
-    assert: (r) => (r.cwd === (fs.realpathSync(process.cwd())) && (r.seatFileFields ?? []).join(",") === "SEAT,EXPECT")
-      || `a bare SEAT: read did not default to the current directory: ${JSON.stringify({ cwd: r.cwd, fields: r.seatFileFields })}` },
-  { scenario: "happy",            expect: EXIT.USAGE, seat: "SEAT: write\n",
+  { scenario: "happy",            expect: EXIT.OK, agent: "RIGHTS: read\nEXPECT: echo\n",
+    why: "RIGHTS: read without a directory means the current tree and grants no additional write rights",
+    assert: (r) => (r.cwd === (fs.realpathSync(process.cwd())) && (r.promptFileFields ?? []).join(",") === "RIGHTS,EXPECT")
+      || `a bare RIGHTS: read did not default to the current directory: ${JSON.stringify({ cwd: r.cwd, fields: r.promptFileFields })}` },
+  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: write\n",
     why: "and NOT at write level: there the cwd is the writable root itself, and a defaulted grant is one nobody made — the driver would hand the turn whatever directory the caller happened to be standing in",
-    assertStderr: (e) => /SEAT write needs a directory/.test(e)
-      || `a bare SEAT: write defaulted its writable root: ${e.slice(0, 200)}` },
+    assertStderr: (e) => /RIGHTS write needs a directory/.test(e)
+      || `a bare RIGHTS: write defaulted its writable root: ${e.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.USAGE, noCwd: true, args: ["--level", "write"],
     why: "the command line applies the same cwd rule: read can use the current directory, while write requires an explicit grant",
     assertStderr: (e) => /--cwd is required at --level write/.test(e)
       || `--level write ran without a writable root: ${e.slice(0, 200)}` },
   { scenario: "happy", expect: EXIT.USAGE, noPrompt: true,
-    seat: "SEAT: read <CWD>\nEXPECT: echo\nNOTE: not a field\nTASK: do it\n",
+    agent: "RIGHTS: read <CWD>\nEXPECT: echo\nNOTE: not a field\nTASK: do it\n",
     why: "an unknown ALL-CAPS name above the body is a typo or flag; silently treating it as prompt text would leave a believed setting unapplied",
-    assertStderr: (e) => (/unknown seat field NOTE at line 3 of/.test(e) && /the body starts at the first TASK: line/.test(e))
+    assertStderr: (e) => (/unknown header field NOTE at line 3 of/.test(e) && /the body starts at the first TASK: line/.test(e))
       || `the unknown field did not name its line and the way out: ${e.slice(0, 240)}` },
   { scenario: "happy", expect: EXIT.USAGE,
-    seat: "SEAT: read <CWD>\nEXPECT: echo\nTASK: the file's own body\n",
+    agent: "RIGHTS: read <CWD>\nEXPECT: echo\nTASK: the file's own body\n",
     why: "the file's body and --prompt are two prompts, and no rule says which one ran; the harness passes --prompt to every case that does not opt out, so this is also what proves the body route is the one being measured above",
     assertStderr: (e) => /carries a body below its header and --prompt was given too/.test(e)
       || `two prompts were accepted: ${e.slice(0, 200)}` },
@@ -542,7 +542,7 @@ flow("with no wall clock, a prompt that never arrives on stdin is ended by the s
 const reportPath = (state, name = "report.json") => path.join(state, name);
 
 flow("--report-file publishes the whole report at 0600, byte for byte what stdout carried",
-  "the caller reads the file after the task's exit notification, not the pipe: a file that differs from stdout by one escape, or that a second seat can read, is a second report format and a leak of the seat's answer",
+  "the caller reads the file after the task's exit notification, not the pipe: a file that differs from stdout by one escape, or that a second agent can read, is a second report format and a leak of the agent's answer",
   async () => {
     const problems = [];
     // A long report and one carrying non-ASCII and escapes: the file is the same bytes either way, or
@@ -555,7 +555,7 @@ flow("--report-file publishes the whole report at 0600, byte for byte what stdou
       const { code, out, err } = await run({ scenario, args: [...args, "--report-file", p],
         ...(prompt === undefined ? {} : { noPrompt: true }),
         env: { CODEX_DELEGATE_STATE_DIR: state },
-        ...(prompt === undefined ? {} : { seat: `SEAT: read <CWD>\n${prompt}\n` }) });
+        ...(prompt === undefined ? {} : { agent: `RIGHTS: read <CWD>\n${prompt}\n` }) });
       if (code !== EXIT.OK) { problems.push(`${scenario} exited ${code}: ${err.trim().slice(-160)}`); continue; }
       if (!fs.existsSync(p)) { problems.push(`${scenario}: no report at ${p}`); continue; }
       const mode = fs.statSync(p).mode & 0o777;
@@ -574,8 +574,8 @@ flow("--report-file makes the directories its path needs, at 0700, however many 
   "the coordinator that names the path cannot make it: in a headless session a Write or a mkdir under the plugin's data directory is denied as a sensitive path with no prompt anyone can answer, while this process handed the same path as an argument is not — so a run directory only the driver ever creates is what the orchestrate page can promise",
   async () => {
     const problems = [];
-    for (const [label, ...parts] of [["one level", "run", "seat", "report.json"],
-                                     ["two levels", "orchestrate", "slug", "run", "seat", "report.json"]]) {
+    for (const [label, ...parts] of [["one level", "run", "agent", "report.json"],
+                                     ["two levels", "orchestrate", "slug", "run", "agent", "report.json"]]) {
       const state = flowState();
       const p = path.join(state, ...parts);
       const { code, out, err } = await run({ scenario: "happy", args: ["--report-file", p],
@@ -594,7 +594,7 @@ flow("--report-file makes the directories its path needs, at 0700, however many 
   });
 
 flow("--report-file refuses a path it would overwrite, a symbolic link, a relative one and a directory it cannot write, before anything is spawned",
-  "the report file is the run's whole delivery: a path already holding one is two seats' evidence in one file, a link is a path whose destination someone else chooses, and every one of these is knowable before a token is spent — refused after the turn it would cost the delegation",
+  "the report file is the run's whole delivery: a path already holding one is two agents' evidence in one file, a link is a path whose destination someone else chooses, and every one of these is knowable before a token is spent — refused after the turn it would cost the delegation",
   async () => {
     const state = flowState();
     const marker = path.join(state, "codex-ran");
@@ -645,18 +645,18 @@ flow("a report that could not reach stdout is complete in --report-file, under t
     return true;
   });
 
-flow("two seats naming one --report-file: the first to publish keeps the file, the second exits 4 and says so",
-  "the pre-spawn check cannot see a run that starts after it, so the publication itself has to hold the no-clobber rule: a report written over a delivered one is two seats' evidence in one file with nothing saying whose, and the loser's own verdict must still reach it on stdout",
+flow("two agents naming one --report-file: the first to publish keeps the file, the second exits 4 and says so",
+  "the pre-spawn check cannot see a run that starts after it, so the publication itself has to hold the no-clobber rule: a report written over a delivered one is two agents' evidence in one file with nothing saying whose, and the loser's own verdict must still reach it on stdout",
   async () => {
     const slowState = flowState(), fastState = flowState();
     const p = reportPath(slowState);
-    // The slow seat opens the path first and publishes last, so its refusal is the race and not the
+    // The slow agent opens the path first and publishes last, so its refusal is the race and not the
     // pre-spawn check — which the two exit codes tell apart, 4 against 2.
     const slow = run({ scenario: "slow-turn", args: ["--report-file", p],
       env: { CODEX_DELEGATE_STATE_DIR: slowState } });
     // Its state directory stays empty until readOpts returns, and openReportFile runs inside readOpts.
     if (!await until(() => fs.readdirSync(slowState).some((n) => n !== "report.json")))
-      return "the slow seat never reached its state directory";
+      return "the slow agent never reached its state directory";
     const fast = await run({ scenario: "happy", args: ["--report-file", p],
       env: { CODEX_DELEGATE_STATE_DIR: fastState } });
     const late = await slow;
@@ -695,14 +695,14 @@ flow("a server that dies mid-turn publishes the collected report, not a pre-turn
   });
 
 flow("a refusal reached before the thread is written to --report-file, as a report saying so",
-  "the caller is woken by the task's exit and reads one path: a refusal that left the file empty is indistinguishable from a seat that is still starting, and inventing a receipt or a turn status for it would be worse",
+  "the caller is woken by the task's exit and reads one path: a refusal that left the file empty is indistinguishable from an agent that is still starting, and inventing a receipt or a turn status for it would be worse",
   async () => {
     const state = flowState();
     const p = reportPath(state);
     const { code, out } = await run({ scenario: "happy", noPrompt: true,
-      seat: "SEAT: read /nonexistent/report/dir\nTASK: do it\n",
+      agent: "RIGHTS: read /nonexistent/report/dir\nTASK: do it\n",
       args: ["--report-file", p], env: { CODEX_DELEGATE_STATE_DIR: state } });
-    if (code !== EXIT.USAGE) return `a seat that could not start exited ${code}`;
+    if (code !== EXIT.USAGE) return `an agent that could not start exited ${code}`;
     if (out.trim()) return `a usage error printed ${out.length} bytes on stdout`;
     const r = readJson(p);
     if (!r) return `no parseable report at ${p}`;
@@ -711,14 +711,14 @@ flow("a refusal reached before the thread is written to --report-file, as a repo
     if (r.threadId !== null) return `a thread that never existed was named: ${JSON.stringify(r.threadId)}`;
     if (!/--cwd does not exist/.test(String(r.error))) return `the refusal does not carry the reason: ${JSON.stringify(r.error)}`;
     if (r.reportPath !== p) return `the report does not name itself: ${JSON.stringify(r.reportPath)}`;
-    // The two refusals the argument scan raises before it has a seat file at all: they used to be
+    // The two refusals the argument scan raises before it has a prompt file at all: they used to be
     // decided above the line that opens the report, so the caller was woken by a path that was empty.
     const problems = [];
-    const seatFile = path.join(state, "seat.txt");
-    fs.writeFileSync(seatFile, `SEAT: read ${shimDir}\nTASK: do it\n`);
+    const promptFile = path.join(state, "agent.txt");
+    fs.writeFileSync(promptFile, `RIGHTS: read ${shimDir}\nTASK: do it\n`);
     for (const [name, file, extra] of [
-      ["a valueless --seat-file", "valueless.json", ["--seat-file"]],
-      ["--seat-file twice", "twice.json", ["--seat-file", seatFile, "--seat-file", seatFile]]]) {
+      ["a valueless --prompt-file", "valueless.json", ["--prompt-file"]],
+      ["--prompt-file twice", "twice.json", ["--prompt-file", promptFile, "--prompt-file", promptFile]]]) {
       const q = reportPath(state, file);
       const res = await run({ scenario: "happy", noPrompt: true,
         args: ["--report-file", q, ...extra], env: { CODEX_DELEGATE_STATE_DIR: state } });
@@ -726,12 +726,12 @@ flow("a refusal reached before the thread is written to --report-file, as a repo
       const rq = readJson(q);
       if (!rq) { problems.push(`${name}: no parseable report at ${q}`); continue; }
       if (rq.ok !== false || rq.exitCode !== EXIT.USAGE) problems.push(`${name}: the refusal does not carry its own verdict: ${JSON.stringify(rq)}`);
-      if (!/--seat-file/.test(String(rq.error))) problems.push(`${name}: the refusal does not name the flag: ${JSON.stringify(rq.error)}`);
+      if (!/--prompt-file/.test(String(rq.error))) problems.push(`${name}: the refusal does not name the flag: ${JSON.stringify(rq.error)}`);
     }
     return problems.length === 0 || problems.join("; ");
   });
 
-flow("a resumed seat writes a report file of its own",
+flow("a resumed agent writes a report file of its own",
   "a follow-up turn is a second delivery, not an amendment: written over the first it would leave the thread's earlier evidence unreadable, and the no-clobber rule is what makes the caller name a new path",
   async () => {
     const state = flowState();
@@ -749,7 +749,7 @@ flow("a resumed seat writes a report file of its own",
     const again = await run({ scenario: "happy", args: ["--resume", "thr_root", "--report-file", first],
       env: { CODEX_DELEGATE_STATE_DIR: state } });
     if (again.code !== EXIT.USAGE || !/already exists/.test(again.err))
-      return `a resumed seat overwrote the earlier report: exit ${again.code} ${again.err.trim().slice(0, 160)}`;
+      return `a resumed agent overwrote the earlier report: exit ${again.code} ${again.err.trim().slice(0, 160)}`;
     return readJson(first)?.resumedFrom === null || "the refused resume rewrote the first report anyway";
   });
 
@@ -777,39 +777,39 @@ flow("a resumed turn writes an answer file of its own, and the first turn's stil
       || `the resumed turn rewrote the first turn's answer: ${JSON.stringify(kept)} where the first report said ${JSON.stringify(r1.answer)}`;
   });
 
-// --- the seat file, which is the whole of what a caller hands the driver ---
+// --- the prompt file, which is the whole of what a caller hands the driver ---
 
-flow("a seat file supplies the rights line a coordinator's prompt does not have, and a SEAT below another field is still refused",
-  "the caller writes the prompt it was given, unchanged, and a prompt is not obliged to open with a header at all: the default it falls back to widens nothing (read level, this directory), while a SEAT anywhere but first is the injection that would",
+flow("a prompt file supplies the rights line a coordinator's prompt does not have, and a RIGHTS below another field is still refused",
+  "the caller writes the prompt it was given, unchanged, and a prompt is not obliged to open with a header at all: the default it falls back to widens nothing (read level, this directory), while a RIGHTS anywhere but first is the injection that would",
   async () => {
     const here = fs.realpathSync(process.cwd());
     const parse = (o) => { try { return JSON.parse(o); } catch { return null; } };
     // A prompt exactly as a coordinator wrote it: no header at all.
     const bare = await run({ scenario: "happy", noPrompt: true,
-      seat: "Count the exit codes in the driver and say how many.\n",
+      agent: "Count the exit codes in the driver and say how many.\n",
       env: { CODEX_DELEGATE_STATE_DIR: flowState() } });
     if (bare.code !== EXIT.OK) return `a header-less prompt exited ${bare.code}: ${bare.err.trim().slice(-200)}`;
     const r1 = parse(bare.out);
     if (!r1) return `the run printed no report: ${bare.out.slice(0, 160)}`;
     if (r1.level !== "read" || r1.cwd !== here)
       return `the default is not read level in the current directory: ${JSON.stringify({ level: r1.level, cwd: r1.cwd })}`;
-    if ((r1.seatFileFields ?? []).includes("SEAT"))
-      return `a SEAT the file never carried was reported as declared: ${JSON.stringify(r1.seatFileFields)}`;
+    if ((r1.promptFileFields ?? []).includes("RIGHTS"))
+      return `a RIGHTS the file never carried was reported as declared: ${JSON.stringify(r1.promptFileFields)}`;
     // A header that declares something else and still no rights: the fields apply, the default stands.
-    const noSeat = await run({ scenario: "happy", noPrompt: true,
-      seat: "EFFORT: high\n\nDo the work and report.\n", env: { CODEX_DELEGATE_STATE_DIR: flowState() } });
-    if (noSeat.code !== EXIT.OK) return `a SEAT-less header exited ${noSeat.code}: ${noSeat.err.trim().slice(-200)}`;
-    const r2 = parse(noSeat.out);
+    const noAgent = await run({ scenario: "happy", noPrompt: true,
+      agent: "EFFORT: high\n\nDo the work and report.\n", env: { CODEX_DELEGATE_STATE_DIR: flowState() } });
+    if (noAgent.code !== EXIT.OK) return `a RIGHTS-less header exited ${noAgent.code}: ${noAgent.err.trim().slice(-200)}`;
+    const r2 = parse(noAgent.out);
     if (!r2) return "the second run printed no report";
     if (r2.level !== "read" || r2.cwd !== here)
-      return `a SEAT-less header did not default to read in the current directory: ${JSON.stringify({ level: r2.level, cwd: r2.cwd })}`;
-    if (r2.effort !== "high" || (r2.seatFileFields ?? []).join(",") !== "EFFORT")
-      return `the fields beside the missing SEAT were dropped: ${JSON.stringify({ effort: r2.effort, fields: r2.seatFileFields })}`;
-    // And a SEAT that IS there but not first is the injection refusal.
+      return `a RIGHTS-less header did not default to read in the current directory: ${JSON.stringify({ level: r2.level, cwd: r2.cwd })}`;
+    if (r2.effort !== "high" || (r2.promptFileFields ?? []).join(",") !== "EFFORT")
+      return `the fields beside the missing RIGHTS were dropped: ${JSON.stringify({ effort: r2.effort, fields: r2.promptFileFields })}`;
+    // And a RIGHTS that IS there but not first is the injection refusal.
     const late = await run({ scenario: "happy", noPrompt: true,
-      seat: "EFFORT: high\nSEAT: read <CWD>\nTASK: do it\n", env: { CODEX_DELEGATE_STATE_DIR: flowState() } });
-    return (late.code === EXIT.USAGE && /first field must be SEAT, not EFFORT/.test(late.err))
-      || `a SEAT below another field was accepted: exit ${late.code} ${late.err.trim().slice(0, 200)}`;
+      agent: "EFFORT: high\nRIGHTS: read <CWD>\nTASK: do it\n", env: { CODEX_DELEGATE_STATE_DIR: flowState() } });
+    return (late.code === EXIT.USAGE && /first field must be RIGHTS, not EFFORT/.test(late.err))
+      || `a RIGHTS below another field was accepted: exit ${late.code} ${late.err.trim().slice(0, 200)}`;
   });
 
 flow("a private $TMPDIR outlives its run and is reaped on the answer log's bounds",
@@ -826,7 +826,7 @@ flow("a private $TMPDIR outlives its run and is reaped on the answer log's bound
     fs.mkdirSync(leak, { recursive: true });
     fs.writeFileSync(path.join(leak, "junk.txt"), "x");
     // And a live one, whose owner record names a process that certainly exists: this one.
-    const live = path.join(state, "tmp", "a-live-seat");
+    const live = path.join(state, "tmp", "a-live-agent");
     fs.mkdirSync(live, { recursive: true });
     fs.writeFileSync(path.join(live, "owner.json"), JSON.stringify({ pid: process.pid, identity: null }));
     const old = (Date.now() - 15 * 86400000) / 1000;
@@ -834,7 +834,7 @@ flow("a private $TMPDIR outlives its run and is reaped on the answer log's bound
     const second = await run({ scenario: "happy", unsetEnv: ["TMPDIR"], env: { CODEX_DELEGATE_STATE_DIR: state } });
     if (second.code !== EXIT.OK) return `the second run exited ${second.code}: ${second.err.trim().slice(-200)}`;
     if (fs.existsSync(leak)) return `the directory a SIGKILLed run left behind was not reaped: ${leak}`;
-    if (!fs.existsSync(live)) return `a live seat's scratch directory was reaped under it: ${live}`;
+    if (!fs.existsSync(live)) return `a live agent's scratch directory was reaped under it: ${live}`;
     return fs.existsSync(dir) || `an earlier run's kept $TMPDIR was reaped inside the bounds: ${dir}`;
   });
 

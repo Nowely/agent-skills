@@ -107,7 +107,7 @@ test("every file the plugin needs to run is in the payload",
     const under = (rel) => fs.readdirSync(path.join(ROOT, rel)).filter((f) => f.endsWith(".mjs")).map((f) => `${rel}/${f}`);
     const required = [
       ".claude-plugin/plugin.json",
-      "skills/seat/schemas/review-output.schema.json",
+      "skills/codex/schemas/review-output.schema.json",
       "LICENSE", "README.md",
       ...skillPages,
       ...under(path.relative(ROOT, SCRIPTS)),
