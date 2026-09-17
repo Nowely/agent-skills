@@ -11,6 +11,9 @@ forensics remain in the repository references and release notes.
   wrapper, its prompt file starts with `RIGHTS: read <repository>` where it started with `SEAT:`, and the
   `codex` skill page is where `seat` was. Without this, every critic fan-out would exit 2 on the first header
   line against codex-delegate 0.16.0. The audit ledger example and the rethink worked example name the new paths.
+- The instructions and the README call a delegated model an agent, a critic or a reader, never a seat, the
+  word codex-delegate dropped the same day; the measurement narratives under references/ and the two
+  frozen files keep their text, and the rethink worked example is about the word itself.
 
 ## 0.1.0 — 2026-09-12
 

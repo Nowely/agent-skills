@@ -46,7 +46,7 @@ skeleton route parts 2 and 5 do not exist; say so in the report rather than inve
    [truth-pass.md](../audit/references/truth-pass.md#three-levels-of-evidence). A claim about a lifecycle
    (what stays, what is removed, what a continued or retried run sees) at level 2 is a guess: run it.
 
-Copy the fixed parts; do not paraphrase them. The wording a seat receives is in
+Copy the fixed parts; do not paraphrase them. The wording a critic receives is in
 [bake-off.md](references/bake-off.md); do not write a third.
 
 ## Step 3. The first candidate
@@ -86,7 +86,7 @@ your shell rules forbid `cd`.
    - `tasks.json` — two starting states and goals for lens 4, from the workflow the document most wants
      a reader to perform; `questions.json` — the questions a reader arrives with, from the audit's key
      when there is one, otherwise from the skeleton's purpose per section, one line each.
-   On a resumed run reuse all four; the readers are new seats and stay fresh even where the questions
+   On a resumed run reuse all four; the readers are new agents and stay fresh even where the questions
    repeat. `ledger.json` starts empty and grows from the rounds.
 2. **Write `edits/NN.json`**: for each edit the exact `old` text, which must occur once; the `new` text;
    `claims` it introduces and `retire` phrasings it removes as false; and `check` — `{"level": 1|2|3,
@@ -103,8 +103,8 @@ your shell rules forbid `cd`.
    edits, not a block. A round is frozen the moment its critics launch, not before.
 5. **Announce the wave** — the lenses, their sizes from the table, the models, the cost — and wait for
    the user's word; the user may size any lens to zero, and the least that still counts as a round is
-   lenses 1 and 2. Then **launch the critics**, one seat per lens, with the briefs in
-   [critic-briefs.md](references/critic-briefs.md), and the dedup seat over their reports; everything
+   lenses 1 and 2. Then **launch the critics**, one agent per lens, with the briefs in
+   [critic-briefs.md](references/critic-briefs.md), and the dedup agent over their reports; everything
    they return is kept verbatim under `reviews/NN/`. The Codex lenses need the `codex-delegate` plugin;
    without it, run those lenses on Claude agents and say so.
 6. **Verify every finding yourself** from the check it carries — a finding without one is discarded —
@@ -175,7 +175,7 @@ keeps its date and its numbers.
 - The measurements behind every rule here, dated: [measurements.md](references/measurements.md).
 - The three decisions before any sentence: [stages.md](../rethink/references/stages.md).
 - Writer briefs and judging sheets, both routes: [bake-off.md](references/bake-off.md).
-- Critic briefs, one per lens, and the seat header: [critic-briefs.md](references/critic-briefs.md).
+- Critic briefs, one per lens, and the rights header: [critic-briefs.md](references/critic-briefs.md).
 - The checks as scripts with a planted-violation self-test: [scripts/](scripts/).
 - The rules, fixed: [writing-rules.md](references/writing-rules.md); the third pass, fixed:
   [curse-of-knowledge.md](references/curse-of-knowledge.md).

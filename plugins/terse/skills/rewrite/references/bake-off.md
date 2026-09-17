@@ -4,7 +4,7 @@ One writer produces one text and has no way to know whether a better one was ava
 and a judge produce a comparison. The cost is real, so the pool stays small and the user agrees to it
 before anything is spawned.
 
-**Measured:** a bake-off of this shape — ten seats, models hidden from the judges — is how the writing
+**Measured:** a bake-off of this shape — ten agents, models hidden from the judges — is how the writing
 standards in this plugin were chosen, and it overturned the expected result. **Not measured:** that a
 bake-off beats a single careful pass at repairing a document. The single chained pass is what produced
 3/6 → 6/6, in one run whose result does not survive a significance test. Treat the comparison as
@@ -16,15 +16,15 @@ selects. Read a narrow win on length as a tie.
 
 ## The pool
 
-| Seats | Default | Notes |
+| Agents | Default | Notes |
 |---|---|---|
 | writers | 3 | one whole candidate each, same brief, different angle |
 | judges | 2 | a third only when the two split |
 
-The critics of the loop that follows are a different pool, one seat per lens, in `SKILL.md` step 4.
+The critics of the loop that follows are a different pool, one agent per lens, in `SKILL.md` step 4.
 
-Claude agents by default. When the `codex-delegate` plugin is installed, give one writer seat and one
-judge seat to Codex: a panel that does not share a single model's blind spots is worth more than a larger
+Claude agents by default. When the `codex-delegate` plugin is installed, give one writer and one
+judge to Codex: a panel that does not share a single model's blind spots is worth more than a larger
 panel that does. The full form the author uses is three judges — Fable, Codex gpt-6-astra, and Opus —
 and two are usually enough.
 

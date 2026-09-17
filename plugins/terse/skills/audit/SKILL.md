@@ -91,7 +91,7 @@ documentation to find out.
 model, no files. Its score is what a reader already knew, and the number this audit reports is the
 difference between the two. A raw score without that arm cannot tell a document that teaches from a
 document that is merely about something the reader has seen before; the two published benchmarks that ran
-this arm found the effect large enough to swallow a result our size. It doubles the reader seats, so it
+this arm found the effect large enough to swallow a result our size. It doubles the reader agents, so it
 runs once, at the baseline. A re-measurement after a rewrite reuses the same no-document score and does
 not pay again.
 
