@@ -5,6 +5,29 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Added
+
+- A fourth skill, `/entrust:experiment`: one registered experiment on the orchestrator's own rules. A
+  protocol before any agent (a hypothesis that can be false, arms with the comparator the question calls
+  for and one "go" for all of them, material frozen with its ground truth before any arm sees it, the
+  research ruler's metrics counted per outcome with n and an interval, a judge that reads the returns with
+  their first line removed and the arms lettered, a stop rule and budget), each arm an orchestrated run
+  with its own directory and the same brief, a failed arm never re-run to a better number, the
+  orchestrator's conclusion that states no cause the design cannot carry, then the user's verdict that
+  decides, and neither rewritten afterwards. The record is `experiments/<date>-<slug>/` under the state
+  directory, beside the orchestrate runs, written only by `skills/experiment/scripts/experiment.mjs`
+  (`init`, `arm`, `add`, `export`, `list`; every write create-only, the record closed by its verdict, a
+  records root that is a symbolic link refused, an export destination under the state directory refused),
+  because a coordinator's own write there is refused as a sensitive file (measured 2026-09-08) while a
+  script handed the path is not; `export` copies a record unchanged into a checkout as
+  `research/<date>-<slug>/`, the layout the repository already keeps. Cleanup neither lists nor removes a
+  record. Five protocols are registered in `references/protocols.md`: E1 one Sol against thirty-four Luna,
+  E2 the cheap-first cascade, E3 the standing advisor against per-call advice, E4 swarm coordination, E5 a
+  mixed team on one deep task. Pinned by `evals/experiment.test.mjs`: page cases by the words that carry
+  each rule, a negative case against a sentence that would let a record change, and nine script cases in
+  a scratch state directory. Why: the 2026-09-17 research round produced fifteen hypotheses and a rule
+  that only matched runs with an independent judge measure improvement; without a vehicle they stay opinions.
+
 ### Changed
 
 - The caps count turns in progress: separate advisor, critic and architect threads may take turns within
