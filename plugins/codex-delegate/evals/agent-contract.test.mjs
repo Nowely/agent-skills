@@ -256,6 +256,8 @@ test("what the user reads is prose the coordinator writes, in the user's languag
       "What reaches the user is prose the coordinator writes",
       "in the user's own language",
       "naming an agent by its model and id",
+      "the agent by name is the subject and what it does or did is the verb (\"Codex Sol R1 reads the diff\")",
+      "the name is `Codex Sol R1`, never `gpt-5.6-sol`",
       "A header field name, a status block, an internal table's row name and an absolute path are machinery",
       "say what an agent may write, and where, in ordinary words",
     ]) if (!sectionFlat.includes(phrase)) problems.push(`the section no longer says: ${JSON.stringify(phrase)}`);

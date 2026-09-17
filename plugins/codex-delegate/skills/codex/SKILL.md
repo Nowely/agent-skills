@@ -284,7 +284,7 @@ command line).
 Every word on this page is addressed to the coordinator, and an agent's return is too. What reaches the user is
 prose the coordinator writes: in the user's own language, naming an agent by its model and id and saying what it
 did ("Sonnet W5 replaced four flaky width checks", "Codex Astra A6 reviewed the retry instructions") and not by
-this page's own vocabulary. Keep `Codex` on a Codex agent: it is the only word in the name that says whose model ran. A header field name, a status block, an internal
+this page's own vocabulary. Keep `Codex` on a Codex agent: it is the only word in the name that says whose model ran. The sentence about an agent has one shape: the agent by name is the subject and what it does or did is the verb ("Codex Sol R1 reads the diff"); whatever runs beside it, and how long, follows in the user's own words for the tools. The model slug is machinery too, and so are `wrapper` and `driver`: the name is `Codex Sol R1`, never `gpt-5.6-sol`. A header field name, a status block, an internal
 table's row name and an absolute path are machinery; they belong in a prompt or a report, and putting them in
 front of a person says nothing they can act on. Rights are the one thing that must survive the translation: say
 what an agent may write, and where, in ordinary words, because that is what the user is being asked to approve.

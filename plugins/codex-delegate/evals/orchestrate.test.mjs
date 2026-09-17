@@ -175,7 +175,7 @@ test("C6 the plan states the pool and the user overrides it in words",
 
 test("C7 every agent's return is retold to the user in one short paragraph, the same shape for both sides",
   "the five fields are the orchestrator's input, not the user's: pasted whole they read in the transcript as the coordinator's own words (observed on 0.10.0, and again on 0.11.1 after this rule shipped), and a Codex agent, whose only visible row is a Bash call and an exit code, otherwise reaches the user having said nothing at all; the retelling is written, not forwarded, which is why the ban names the field names and the paths that rode in with the block",
-  () => says("After any agent returns, Claude or Codex, write one short paragraph of your own, in the user's language and naming the agent by its model, in the same shape for both sides; the five fields are your own input, so never paste a five-field block, a header field name or a path into user-facing text."));
+  () => says("After any agent returns, Claude or Codex, write one short paragraph of your own, in the user's language and naming the agent by its model, in the same shape for both sides, the agent by name as the subject and what it did as the verb; the five fields are your own input, so never paste a five-field block, a header field name or a path into user-facing text."));
 
 test("C8 browser and end-to-end runs go to a Claude agent or a write agent with the browser grants",
   "Chromium needs rights a read agent does not have — the grants are a file written INTO the tree, which is the one thing that level never does, and egress being on at both levels now does not change it; the grants that do work are one section of parity.md and not something to rediscover per run",

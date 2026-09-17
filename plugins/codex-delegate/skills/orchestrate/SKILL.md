@@ -51,7 +51,7 @@ run directory: its artifact is its report, and a brief that asks a Codex read ag
    commit under the rights a `RIGHTS:` line makes: its sandbox ends at the tree, so its work comes back as a diff. Land the harvest by proposal: apply `worktreeDiffPath` and
    restore `worktreeUntrackedPath`, or merge or cherry-pick `worktreeCommitsRef` when the agent committed; show it, then wait,
    unless the plan said "land the winner". A preserved tree is not a harvest: check each of the three pointers first, and when they are null, propose from `worktreePath` instead.
-5. Fan out, verify, cross-review, then synthesise; name the composition that actually ran and what you dropped. After any agent returns, Claude or Codex, write one short paragraph of your own, in the user's language and naming the agent by its model, in the same shape for both sides; the five fields are your own input, so never paste a five-field block, a header field name or a path into user-facing text.
+5. Fan out, verify, cross-review, then synthesise; name the composition that actually ran and what you dropped. After any agent returns, Claude or Codex, write one short paragraph of your own, in the user's language and naming the agent by its model, in the same shape for both sides, the agent by name as the subject and what it did as the verb; the five fields are your own input, so never paste a five-field block, a header field name or a path into user-facing text.
 
 ## Model tiers
 
