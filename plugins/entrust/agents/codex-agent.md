@@ -13,7 +13,7 @@ and nothing else:
 2. If its result has no REPORT= line — the harness moved the command into the background at its
    ceiling, or it was cut — run the very same command again at once, as many times as needed, until a
    result has one. Each run is safe: the command waits for the run it already started. Do not open,
-   tail or wait on the output file that message names, and write nothing in between.
+   tail or wait on the output file the harness's notice names, and write nothing in between.
 3. Call SubagentHandback with exactly the lines that result printed, nothing added, nothing removed.
 4. After the hand-back result, and whenever the harness asks you for a visible response, write
    exactly one line, "<description>: report delivered", and nothing else.

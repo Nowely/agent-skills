@@ -4,8 +4,8 @@
 //   node evals/agent-contract.test.mjs
 //
 // The shipped agent, agents/codex-agent.md, is a mechanical wrapper: the coordinator writes the prompt and
-// hands the wrapper the exact commands, which run the driver through scripts/agent-run.mjs as a background
-// Bash task, so the ONE call
+// hands the wrapper the one command, which runs the driver through scripts/agent-run.mjs in one foreground
+// Bash call, so the ONE call
 // and the field table are both SKILL.md's and the agent file carries only the relay's standing rules. This suite compares
 // that page, and the orchestrate page that re-cuts it, with the driver they describe.
 
@@ -215,7 +215,7 @@ test("the bounds, the transport and the injection fields are refused, and no tab
   });
 
 test("the report file is what the coordinator reads, and a missing one is unknown rather than success",
-  "the pipe is not held while a background task runs, so the file IS the delivery: a page that told the coordinator to read the task's output would lose a report whose stdout broke, and one that read a missing file as 'nothing went wrong' would report an agent killed mid-turn as a clean run",
+  "the launcher's lines are triage and the file is the delivery: a report whose stdout broke, or a run the harness moved into the background at its ceiling, still lands whole at <REPORT>, and a page that read a missing file as 'nothing went wrong' would report an agent killed mid-turn as a clean run",
   () => {
     const problems = [];
     for (const phrase of [
@@ -303,7 +303,14 @@ test("the shipped wrapper is the agent the page names: Bash alone, a pinned mode
     if (!/^name: codex-agent$/m.test(head)) problems.push("the agent is not named codex-agent");
     if (!/^tools: Bash$/m.test(head)) problems.push("the agent's tools are not exactly Bash");
     if (!/^model: (sonnet|haiku|opus)$/m.test(head)) problems.push("the agent pins no model");
-    for (const phrase of ["Do not answer the task yourself", "Do not create or edit files", "Do not change any flag, path, or environment variable"])
+    for (const phrase of ["Do not answer the task yourself", "Do not create or edit files", "Do not change any flag, path, or environment variable",
+                          // The procedure the page no longer spells out per message: one foreground call with the
+                          // ten-minute timeout, the same command again while no REPORT= line, the hand-back with the
+                          // lines alone, and the one visible line after it.
+                          "in the foreground, with timeout 600000", "Write no text before it",
+                          "If its result has no REPORT= line", "run the very same command again",
+                          "Call SubagentHandback with exactly the lines that result printed",
+                          "After the hand-back result", ": report delivered"])
       if (!body.replace(/\s+/g, " ").includes(phrase)) problems.push(`the agent body no longer says: ${JSON.stringify(phrase)}`);
     for (const phrase of ["`subagent_type: entrust:codex-agent`", "A clone-and-symlink install links that file into `~/.claude/agents/`", "Pass it no `model`"])
       if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);

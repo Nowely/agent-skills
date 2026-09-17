@@ -12,7 +12,9 @@ forensics remain in the repository references and release notes.
   run again while the result has no `REPORT=` line, hand back, one closing line — lives in `agents/codex-agent.md`
   and the message carries only the command and the description. The call is idempotent: a second call on a
   directory whose driver is running waits for it, on one that ran prints, so the tool's ten-minute ceiling costs a
-  long agent one more identical call and nothing else. Why: a Codex agent's card showed three Bash steps and their
+  long agent one more identical call, and the wrapper's file forbids anything between the two (measured
+  2026-09-17: an eighteen-minute agent, one driver, one report; the first wording drew a text line and two
+  improvised reads before the rerun, the shipped wording is unmeasured). Why: a Codex agent's card showed three Bash steps and their
   thinking rows where a native subagent that runs one command shows one Bash and its return; parity with native
   subagents is the plugin's fitness test, and the three steps were the ceiling's price, not the task's.
 - The composition line for a read agent names no rights, since nothing is being approved. Why: «только чтение,

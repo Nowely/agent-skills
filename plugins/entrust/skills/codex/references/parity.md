@@ -114,7 +114,7 @@ SIGTERM rather than degrading gracefully. Count every in-flight delegation, drai
 concurrent writer its own cwd; read agents take no lock and may share one.
 
 From the main conversation an agent is the `codex-agent` wrapper, a background Agent call whose own
-`run_in_background: true` Bash task runs the driver; the wrapper has one card on the agent map, no call cap,
+foreground Bash call runs the driver through the launcher; the wrapper has one card on the agent map, no call cap,
 and notifies on completion (measured 2026-09-12).
 
 | Launch shape | Notification behaviour | Use when |

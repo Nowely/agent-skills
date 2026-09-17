@@ -23,7 +23,8 @@
 // prompt.txt on entry and out.json, err.txt and exit on the way out, the four names both pages
 // promise; exit is written last, after both output files are closed. One launch per DIR: a second
 // launch into a directory that already ran is refused, because it would overwrite the first run's record
-// (measured 2026-09-17 on the earlier shape); under --run that case is a status read, not a refusal.
+// (measured 2026-09-17 on the earlier shape); under --run a directory that ran for THIS report path is a
+// status read, which the ceiling's second call needs, and one that ran for another path is refused.
 
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -57,9 +58,11 @@ const USAGE = `agent-run — run one Codex agent's driver for the wrapper, or re
       --report-file REPORT with stdout in DIR/out.json and stderr in DIR/err.txt, writes the driver's
       exit status to DIR/exit last, then prints the status lines. A DIR whose driver is still running
       (the harness moved the first call into the background at its ceiling and the wrapper ran the same
-      command again): waits for the marker, then prints. A DIR that already ran: prints. Always exits 0
-      once the lines are printed; the driver's own status is the DRIVER_EXIT line. A signal it receives
-      (SIGTERM, SIGINT, SIGHUP) goes to the driver it started, which cuts the turn and publishes.
+      command again): waits for the marker, then prints. A DIR that already ran for this REPORT: prints.
+      A DIR that ran for another report path is refused and the lines say so. Always exits 0 once the
+      lines are printed, a missing DIR included; the driver's own status is the DRIVER_EXIT line. A
+      signal it receives (SIGTERM, SIGINT, SIGHUP) goes to the driver, its own or the one it waits for,
+      which cuts the turn and publishes.
   node agent-run.mjs --dir DIR --report-file REPORT
       Launch only: the same run without the wait's printing, exiting with the driver's status. Refuses,
       exit 2 with the reason in DIR/err.txt and DIR/exit where DIR is a directory: a DIR that is not
@@ -168,16 +171,35 @@ export function statusLines(dir, report) {
   return lines;
 }
 
-// The one foreground call. Ends, on every path, by printing the status lines and exiting 0.
+// The one foreground call. Ends, on every path, by printing the status lines and exiting 0: the wrapper
+// runs the command again while a result has no REPORT= line, so a refusal that printed none would be an
+// endless retry.
 function run(dir, report) {
   const finish = () => { process.stdout.write(`${statusLines(dir, report).join("\n")}\n`); process.exit(0); };
-  if (!dir || !isDirectory(dir)) { process.stderr.write(`${REFUSED}: --dir ${JSON.stringify(dir ?? "")} is not a directory\n`); process.exit(2); }
+  if (!dir || !isDirectory(dir)) {
+    const why = `${REFUSED}: --dir ${JSON.stringify(dir ?? "")} is not a directory`;
+    process.stderr.write(`${why}\n`);
+    const lines = ["DRIVER_EXIT=unknown", "PATH=none", "EXIT=unknown", "FIRST=", "ANSWER=", `ERROR=${why.slice(0, ERROR_MAX)}`, "RECEIPT=",
+      `FILE=${report && fs.existsSync(report) ? "exists" : "missing"}`, `REPORT=${report ?? ""}`];
+    process.stdout.write(`${lines.join("\n")}\n`);
+    process.exit(0);
+  }
+  const err = read(path.join(dir, "err.txt")) ?? "";
+  const started = /^entrust: pid=/.test(err.split("\n")[0]);
+  // A directory that already started a run for ANOTHER report path is a reused directory, which is the
+  // one launch this script refuses: reading it would print the earlier run's lines as this run's.
+  if (started && !err.includes(ACCEPTED + report) && !err.includes(REFUSED)) {
+    try { fs.appendFileSync(path.join(dir, "err.txt"), `${REFUSED}: this directory already ran for another report path; a relaunch gets a fresh one\n`); } catch {}
+    return finish();
+  }
   if (markerOf(dir)) return finish();
   const pid = pidOf(dir);
   if (pid !== null) {
     // A driver this directory already started: the first call was moved into the background at the
     // tool's ceiling and this is the wrapper running the same command again. Wait for its marker; a
-    // driver that died without one ends the wait too, and the lines then say DRIVER_EXIT=unknown.
+    // driver that died without one ends the wait too, and the lines then say DRIVER_EXIT=unknown. A
+    // signal to this call is a Stop on the card, and it has to reach the driver it did not start.
+    for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"]) process.on(sig, () => { try { process.kill(pid, sig); } catch {} });
     let gone = 0;
     const tick = () => {
       if (markerOf(dir)) return finish();

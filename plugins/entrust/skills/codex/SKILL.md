@@ -52,7 +52,7 @@ task while the coordinator orchestrates and checks it.
 ## One call
 
 One background Agent call per agent: a native subagent, the **wrapper**, that launches the driver, waits for
-it and returns when the report exists. Only a subagent is a subagent to Claude Code: a Bash task, whatever
+it and returns when the run has ended. Only a subagent is a subagent to Claude Code: a Bash task, whatever
 its description says, is not on the agent map, is not stopped from it and is not continued by a message
 (measured 2026-09-12 against the VS Code extension 2.1.269, whose map lists `local_agent` tasks alone). The
 wrapper is what makes a Codex agent read like a Claude agent: one card under its description, Stop on the
@@ -78,8 +78,8 @@ untouched, writes the driver's exit status to a file of its own beside the two o
 prints the nine status lines, which are what the wrapper hands back, so a Codex agent's card shows one Bash
 and its return, as a native subagent's does. The launcher is idempotent, which is what the tool's ten-minute
 ceiling needs: this harness moves a foreground command that reaches it into the background instead of ending
-it (measured 2026-09-12 on a wait loop), the wrapper runs the same command again, and the second call finds
-the driver its directory already started and waits for it. The driver prints its pid on the first line of `<DIR>/err.txt`
+it, the wrapper runs the same command again, and the second call finds the driver its directory already started
+and waits for it (measured 2026-09-17: an eighteen-minute agent took two calls, one driver, one report). The driver prints its pid on the first line of `<DIR>/err.txt`
 once it has accepted the report path, and a refusal before that point prints none; a launch the launcher
 itself refused (no `prompt.txt`, a relative report path, an `exit` marker already there) puts its reason
 there instead, with an exit of 2 and `PATH=none`. A `SIGTERM` to that
@@ -91,8 +91,9 @@ nothing left running.
     CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --dir "<DIR>" --report-file "<REPORT>"
 
 `<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per launch, a relaunch included: the launcher refuses a
-directory whose `exit` marker already exists, because a second run there would overwrite the first run's record (measured
-2026-09-17 on the earlier shape, where it did). Write and Read expand nothing,
+directory that already ran for another report path, because a second run there would overwrite the first run's record
+(measured 2026-09-17 on the earlier shape, where it did); the same command run again for the same report path reads the run
+it started, which is what the ceiling's second call is. Write and Read expand nothing,
 so they need the absolute path it prints. `<REPORT>` is an absolute path of this agent's own and never under `<DIR>`:
 `<DIR>` sits in `$TMPDIR`, the one root a read agent may write, and a file the agent leaves at that name blocks publication
 and then sits where you would read it as the agent's own report. Put it under the driver's state directory,

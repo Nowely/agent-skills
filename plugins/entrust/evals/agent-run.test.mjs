@@ -286,4 +286,45 @@ test("--run on a refused launch still prints the nine lines, with the refusal on
     return problems.length === 0 || problems.join("; ");
   });
 
+test("--run refuses a directory that ran for another report path, prints the nine lines on a missing directory, and forwards SIGTERM to a driver it only waits for",
+  "the same command again must read the run it started and nothing else: a reused directory would print an earlier run's success as this run's; a refusal that printed no REPORT= line would send the wrapper into an endless rerun; and a Stop on the card after the ceiling reaches a launcher that did not start the driver",
+  async () => {
+    const problems = [];
+    // Another report path in a directory that already ran.
+    let { dir, state, report } = fresh();
+    await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 60000 }).done;
+    const other = path.join(path.dirname(report), "other.json");
+    const r = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", other], { env: env(state), killAfterMs: 20000 }).done;
+    const lines = r.out.split("\n").filter(Boolean);
+    if (r.code !== 0 || lines.length !== STATUS_LINES.length) problems.push(`a foreign report path: exit ${r.code}, ${lines.length} lines`);
+    if (!lines.includes("PATH=none") || !lines.includes("FILE=missing")) problems.push(`a foreign report path read as ${JSON.stringify(lines.slice(0, 2))}`);
+    if (!(lines.find((l) => l.startsWith("ERROR=")) ?? "").includes("another report path")) problems.push("the refusal is not on the ERROR line");
+    if (fs.existsSync(other)) problems.push("a foreign report path launched a run");
+    if ((read(path.join(dir, "err.txt")) ?? "").split("\n").filter((l) => l.startsWith("entrust: pid=")).length !== 1) problems.push("a second driver was started");
+    // A directory that does not exist.
+    const missing = await spawnNode([LAUNCHER, "--run", "--dir", path.join(dir, "nowhere"), "--report-file", report], { env: env(state), killAfterMs: 20000 }).done;
+    const mlines = missing.out.split("\n").filter(Boolean);
+    if (missing.code !== 0 || mlines.length !== STATUS_LINES.length || !mlines.some((l) => l.startsWith("REPORT="))) problems.push(`a missing directory: exit ${missing.code}, ${JSON.stringify(mlines)}`);
+    if (!(mlines.find((l) => l.startsWith("ERROR=")) ?? "").includes("not a directory")) problems.push("a missing directory's refusal is not on the ERROR line");
+    // SIGTERM to the waiting call.
+    ({ dir, state, report } = fresh());
+    const first = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state, "slow-turn"), killAfterMs: 60000 });
+    const deadline = Date.now() + 15000;
+    let pid = null;
+    while (Date.now() < deadline && pid === null) { const m = /^entrust: pid=(\d+) /.exec((read(path.join(dir, "err.txt")) ?? "").split("\n")[0]); if (m) pid = Number(m[1]); else await sleep(100); }
+    if (pid === null) return "the driver never printed its pid line";
+    await sleep(500);
+    const second = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state, "slow-turn"), killAfterMs: 60000 });
+    await sleep(700);
+    second.child.kill("SIGTERM");
+    const [a, b] = await Promise.all([first.done, second.done]);
+    if (!a.out.includes("DRIVER_EXIT=1") || !b.out.includes("DRIVER_EXIT=1")) problems.push(`after SIGTERM to the waiting call the lines say ${JSON.stringify([a.out.split("\n")[0], b.out.split("\n")[0]])}`);
+    let rep = null; try { rep = JSON.parse(read(report) ?? ""); } catch {}
+    if (!rep || rep.turnStatus !== "interrupted") problems.push(`the driver did not report an interrupted turn: ${rep && rep.turnStatus}`);
+    await sleep(300);
+    let aliveStill = false; try { process.kill(pid, 0); aliveStill = true; } catch {}
+    if (aliveStill) { problems.push(`the driver (pid ${pid}) is still alive`); try { process.kill(pid, "SIGKILL"); } catch {} }
+    return problems.length === 0 || problems.join("; ");
+  });
+
 process.exit(summarize(await runCases(CASES), CASES.length));
