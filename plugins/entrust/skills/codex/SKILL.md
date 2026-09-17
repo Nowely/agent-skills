@@ -94,9 +94,9 @@ nothing left running.
 
     3. Then run this one command in the foreground:
 
-    D=unknown; test -s "<DIR>/exit" && D=$(cat "<DIR>/exit"); echo "DRIVER_EXIT=$D"; P=none; grep -qF "reportPath=<REPORT>" "<DIR>/err.txt" 2>/dev/null && P=own; grep -Eq 'already exists, or is a symbolic link|could not be published at' "<DIR>/err.txt" 2>/dev/null && P=taken; echo "PATH=$P"; node -e 'try{const r=require("<REPORT>");console.log("EXIT="+r.exitCode);const a=r.answerJson&&typeof r.answerJson.result==="string"?r.answerJson.result:r.answer;console.log("FIRST="+String(a||"").split("\n")[0].slice(0,300))}catch(e){console.log("EXIT=unknown");console.log("FIRST=")}'; test -f "<REPORT>" && echo FILE=exists || echo FILE=missing
+    D=unknown; test -s "<DIR>/exit" && D=$(cat "<DIR>/exit"); echo "DRIVER_EXIT=$D"; P=none; grep -qF "reportPath=<REPORT>" "<DIR>/err.txt" 2>/dev/null && P=own; grep -Eq 'already exists, or is a symbolic link|could not be published at' "<DIR>/err.txt" 2>/dev/null && P=taken; echo "PATH=$P"; node -e 'try{const r=require("<REPORT>");console.log("EXIT="+r.exitCode);const a=r.answerJson&&typeof r.answerJson.result==="string"?r.answerJson.result:r.answer;const s=String(a||"");console.log("FIRST="+s.split("\n")[0].slice(0,300));console.log("ANSWER="+(s.length<=600?s.replace(/\s*\n\s*/g," / "):"(long: "+s.length+" chars, read the report)"));const t=r.turnError;const e=r.error||(t&&(typeof t==="string"?t:(t.message||t.codexErrorInfo||JSON.stringify(t))))||"";console.log("ERROR="+String(e).replace(/\s*\n\s*/g," ").slice(0,300));console.log("RECEIPT=turnStatus="+r.turnStatus+" receiptOk="+r.receiptOk+" model="+r.model)}catch(e){console.log("EXIT=unknown");console.log("FIRST=");console.log("ANSWER=");console.log("ERROR=");console.log("RECEIPT=")}'; test -f "<REPORT>" && echo FILE=exists || echo FILE=missing
 
-    4. Your final message is exactly the WAIT_DONE line, the five lines step 3 printed, then one line
+    4. Your final message is exactly the WAIT_DONE line, the eight lines step 3 printed, then one line
        REPORT=<REPORT>. Nothing else.
 
 `<DESCRIPTION>` is the Agent call's own description. `<DIR>` is one `mktemp -d "${TMPDIR:-/tmp}/codex-agent.XXXXXXXX"` per agent: Write and Read expand nothing,
@@ -107,8 +107,11 @@ and then sits where you would read it as the agent's own report. Put it under th
 in the run directory that page names, one directory per agent; the driver makes every directory that path
 needs, at 0700, so it may name a root your own Write and `mkdir` are refused.
 The wrapper's completion notification is the agent's completion: read the wrapper's own lines first —
-what the driver exited with, whose run the file at `<REPORT>` belongs to, whether it is there, the first
-line of its answer — and read the file itself after a `PATH=own`. To continue an agent, write a second
+what the driver exited with, whose run the file at `<REPORT>` belongs to, whether it is there, the answer
+where it is short and its first line where it is not, the refusal where no turn ran, and the receipt — and
+read the file itself after a `PATH=own` when those lines leave a question (measured 2026-09-17: on a one-line
+task and on a pre-turn refusal, a hand-back without the answer and the refusal cost the coordinator one more
+turn each). To continue an agent, write a second
 prompt file with `RESUME: <threadId>` and send the wrapper one more command of the same shape; it runs it the same way and notifies again (measured 2026-09-12). A session with no
 message tool, headless `-p` among them, continues the thread with a second wrapper given the same file,
 at the cost of a second card (measured: the thread held both ways).
