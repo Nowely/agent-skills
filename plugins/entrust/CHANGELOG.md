@@ -3,6 +3,27 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.18.0 — 2026-09-17
+
+### Changed
+
+- The wrapper's two commands are `scripts/agent-run.mjs`: a launch that takes the directory and the report path
+  and runs the driver with the same two flags, the same environment, the same four files and the exit marker
+  written last, and a status read that prints the nine hand-back lines. The block a coordinator fills in
+  shrinks from about 2700 characters to about 1400, the directory named four times instead of nine. The launcher
+  never opens `prompt.txt` except as the driver's argument, refuses a directory whose exit marker exists, and
+  forwards a signal to the driver; `evals/agent-run.test.mjs` measures each of those against the fake server.
+  Why: the coordinator typed the block for 14 to 16 seconds of every launch (measured 2026-09-17), a fifth of a
+  one-line task's wall clock.
+- The status read names the model by its short name (`model=Terra`), the slug staying in the report. Why: two
+  coordinators retold the slug they had just read to the user (measured 2026-09-17), against the page's rule.
+- The codex page says where the final message's shape is decided: on a clean run the user gets the agent's name
+  and its answer and nothing about the run; the notification after a hand-back is answered with nothing; the
+  task is written in the user's language; and the agent's name is given in the prompt, since the model does not
+  know its short name (measured 2026-09-17: «GPT-5 Codex, id T1», and an English answer to a Russian greeting).
+- The wrapper writes no text before or between its steps. Why: a wrapper opened with an English sentence about
+  what it was about to do (measured 2026-09-17).
+
 ## 0.17.0 — 2026-09-17
 
 ### Changed
