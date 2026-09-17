@@ -20,6 +20,10 @@ forensics remain in the repository references and release notes.
   and the Agent call may go in one turn: `--run` waits ten seconds for the prompt. Nothing is left in `$TMPDIR`;
   a run's four files sit next to its report. Why: the coordinator spent two tool calls and eight seconds making a
   directory and writing a file before every agent (measured 2026-09-17).
+- **The wrapper's four steps are back in the message.** The page's block carries them and the agent file repeats
+  them. Why: with the steps in the file alone, Haiku kept them in one run of three and paraphrased the nine
+  lines, narrated after the hand-back and read the output file in the other two; with them in the message, three
+  of three (measured 2026-09-17).
 
 ## 0.18.1 — 2026-09-17
 

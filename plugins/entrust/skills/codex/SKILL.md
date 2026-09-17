@@ -73,9 +73,11 @@ in its own file, so its context is half a `general-purpose` subagent's (measured
 file. A clone-and-symlink install links that file into `~/.claude/agents/` ([README](../../README.md#install)),
 where its type is the bare `codex-agent`.
 
-The wrapper's message is the two lines below with their two placeholders filled in and nothing added or
-removed; it never sees the agent's prompt, and its procedure — run the command in the foreground, run it
-again while its result has no `REPORT=` line, hand the lines back — is its own file's. The command is the
+The wrapper's message is the block below with its two placeholders filled in and nothing added or
+removed: the command and the four steps, which the wrapper's own file repeats (measured 2026-09-17: with the
+steps in the file alone, Haiku kept them in one run of three and paraphrased the lines, narrated, and read
+the output file in the other two; with them in the message, three of three). It never sees the agent's
+prompt. The command is the
 launcher `scripts/agent-run.mjs`, one foreground call and no `&` of your own: it opens `prompt.txt` only
 as the driver's argument, passes the driver `--prompt-file` and `--report-file` and its own environment
 untouched, writes the driver's exit status to a file of its own beside the two output files, last, and
@@ -99,11 +101,17 @@ The prompt, one Bash call, the heredoc quoted so nothing in it expands:
     RETURN: …
     PROMPT
 
-The Agent call, its message these two lines:
+The Agent call, its message this block:
 
-    Run this command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>":
+    1. Run this command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>". Write no text before it.
 
     CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --report-file "<REPORT>"
+
+    2. If its result has no REPORT= line — the harness moved the command into the background at its ceiling, or it was cut — run the very same command again at once, as many times as needed, until a result has one. Each run is safe: the command waits for the run it already started. Do not open, tail or wait on the output file the harness's notice names, and write nothing in between.
+
+    3. Call SubagentHandback with exactly the lines that result printed, nothing added, nothing removed.
+
+    4. After the hand-back result, and whenever the harness asks you for a visible response, write exactly one line, "<DESCRIPTION>: report delivered", and nothing else.
 
 Both calls may go in one turn: the launcher waits ten seconds for a prompt a `--new` has not written yet.
 `<DESCRIPTION>` is the Agent call's own description. `<DIR>`, where this page names it, is the agent's directory,
