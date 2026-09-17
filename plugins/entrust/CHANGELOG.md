@@ -21,6 +21,8 @@ forensics remain in the repository references and release notes.
   and its answer and nothing about the run; the notification after a hand-back is answered with nothing; the
   task is written in the user's language; and the agent's name is given in the prompt, since the model does not
   know its short name (measured 2026-09-17: «GPT-5 Codex, id T1», and an English answer to a Russian greeting).
+- The wrapper writes no text before or between its steps. Why: a wrapper opened with an English sentence about
+  what it was about to do (measured 2026-09-17).
 
 ## 0.17.0 — 2026-09-17
 
