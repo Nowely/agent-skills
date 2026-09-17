@@ -181,7 +181,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | `EXPECT:` | `<regex>` | the answer is only evidence if a command matching it ran AND succeeded; a matching command that exited non-zero does not count, and none matching is exit 5. Do not point it at a check whose failure IS the finding |
 | `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>` | the answer must parse as one JSON object |
 | `MODEL:` | `<slug>`: `gpt-6-astra` (Astra), `gpt-5.6-sol` (Sol), `gpt-5.6-terra` (Terra), `gpt-5.6-luna` (Luna) | this agent needs a model other than the configured default; the short name is for prose, the slug for this line |
-| `EFFORT:` | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra` | the task is worth more or less thinking |
+| `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`; `ultra` on Astra, Sol and Terra (the catalogue of 2026-09-17: `none` and `minimal` are on no model and exit 2 before the turn); no line inherits `~/.codex/config.toml` | the task is worth more or less thinking than the configured default; `low` for a one-line task |
 | `WEB_SEARCH:` | `cached`, `indexed`, `live` | the agent needs sources it cannot read locally |
 | `BRIEF:` | `yes` | a short answer is enough; omit it beside an output schema — it clips only the inline `answer` (`answerJson` is parsed from the whole one) yet still asks the model for 20 lines |
 | `ALLOW_NO_COMMANDS:` | `yes` | the agent is recall-only and will run nothing |

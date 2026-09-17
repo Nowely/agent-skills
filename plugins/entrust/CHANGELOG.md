@@ -3,6 +3,17 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- The codex page's `EFFORT:` row lists what the catalogue advertises and says that no line inherits
+  `~/.codex/config.toml`; the driver's `--help` says the same, and its comment beside the set records that no
+  model on codex 0.153.4 advertises `none` or `minimal`. The set itself is unchanged: those two still reach
+  model/list and are refused there, exit 2 before a turn. Why: a coordinator picked `minimal` for a one-line task
+  straight from the table and paid a wrapper launch for the refusal (measured 2026-09-17), and a driver that
+  clamped instead would re-create the silent downgrade incidents.md records.
+
 ## 0.16.0 — 2026-09-17
 
 ### Changed
