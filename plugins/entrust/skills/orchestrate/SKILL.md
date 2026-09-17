@@ -5,7 +5,7 @@ description: >-
   step (tests, tree-wide greps, source files, diffs, logs) onto Claude and Codex agents so the main context stays small.
 disable-model-invocation: true
 metadata:
-  version: "0.17.0"
+  version: "0.18.0"
 license: MIT
 ---
 

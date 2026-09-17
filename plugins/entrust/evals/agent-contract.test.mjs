@@ -4,14 +4,16 @@
 //   node evals/agent-contract.test.mjs
 //
 // The shipped agent, agents/codex-agent.md, is a mechanical wrapper: the coordinator writes the prompt and
-// hands the wrapper the exact commands, which run the driver as a background Bash task, so the ONE call
+// hands the wrapper the exact commands, which run the driver through scripts/agent-run.mjs as a background
+// Bash task, so the ONE call
 // and the field table are both SKILL.md's and the agent file carries only the relay's standing rules. This suite compares
 // that page, and the orchestrate page that re-cuts it, with the driver they describe.
 
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { DRIVER, FIELDS, ROOT, PROMPT_FIELDS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
+import { DRIVER, FIELDS, ROOT, PROMPT_FIELDS, SCRIPTS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
+import { ACCEPTED, TAKEN } from "../skills/codex/scripts/agent-run.mjs";
 
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "orchestrate", "SKILL.md");
@@ -99,24 +101,35 @@ test("SKILL.md's table names every field the driver accepts, and the driver acce
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the ONE call is --prompt-file with --report-file, in a background task, and every shell the page hands over parses",
-  "this line is copied verbatim into a Bash call: a stray quote is an agent that never runs, a missing --report-file is an agent whose report nobody can read after the notification, and an `&` of its own detaches the run from the task that is supposed to own it",
+test("the ONE call launches agent-run.mjs with --dir and --report-file in a background task, the launcher runs the driver with --prompt-file and --report-file, and every shell the page hands over parses",
+  "these lines are copied verbatim into Bash calls: a stray quote is an agent that never runs, a launch that named the driver directly would carry the redirects and the exit marker again, an `&` of its own detaches the run from the task that is supposed to own it, and a launcher that read the prompt could rewrite it",
   () => {
     const scripts = [...commands, ...inlineShell];
-    if (scripts.length < 2) return `expected the mktemp pre-step and the driver call, found ${scripts.length} shell snippets`;
+    if (scripts.length < 3) return `expected the mktemp pre-step, the launch and the status read, found ${scripts.length} shell snippets`;
     const problems = [];
     for (const src of scripts) {
       const r = spawnSync("bash", ["-n"], { input: src, encoding: "utf8" });
       if (r.status !== 0) problems.push(`bash -n rejected ${JSON.stringify(src.slice(0, 60))}: ${String(r.stderr).trim()}`);
     }
-    const call = commands.find((c) => c.includes("driver.mjs")) ?? "";
-    if (!call) problems.push("no indented `node \"...driver.mjs\"` line is on the page at all");
-    for (const part of ['--prompt-file "<DIR>/prompt.txt"', '--report-file "<REPORT>"',
-                        '> "<DIR>/out.json"', '2> "<DIR>/err.txt"'])
-      if (!call.includes(part)) problems.push(`the call does not carry ${part}: ${JSON.stringify(call)}`);
-    if (/(^|[^&])&\s*$/.test(call)) problems.push("the call ends in an `&` of its own, which hides the run from the task");
+    const call = commands.find((c) => c.includes("agent-run.mjs") && !c.includes("--status")) ?? "";
+    if (!call) problems.push("no indented launch line naming agent-run.mjs is on the page at all");
+    for (const part of ['--dir "<DIR>"', '--report-file "<REPORT>"'])
+      if (!call.includes(part)) problems.push(`the launch does not carry ${part}: ${JSON.stringify(call)}`);
+    if (call.includes("driver.mjs")) problems.push("the launch names the driver directly again");
+    if (/(^|[^&])&\s*$/.test(call)) problems.push("the launch ends in an `&` of its own, which hides the run from the task");
+    const status = commands.find((c) => c.includes("agent-run.mjs") && c.includes("--status")) ?? "";
+    if (!status) problems.push("no indented status line naming agent-run.mjs --status is on the page");
+    for (const part of ['--dir "<DIR>"', '--report-file "<REPORT>"'])
+      if (!status.includes(part)) problems.push(`the status read does not carry ${part}: ${JSON.stringify(status)}`);
     if (!/`run_in_background: true` and no `&` of your own/.test(flat))
       problems.push("the page does not say the call is a background task with no `&` of its own");
+    // The launcher's own spawn: exactly the two driver flags, prompt.txt as an argument only, the
+    // environment untouched. agent-run.test.mjs runs it; this reads the promise off the source.
+    const launcher = fs.readFileSync(path.join(SCRIPTS, "agent-run.mjs"), "utf8");
+    if (!/\[DRIVER, "--prompt-file", promptPath, "--report-file", report\]/.test(launcher))
+      problems.push("the launcher does not spawn the driver with exactly --prompt-file and --report-file");
+    if (/(readFileSync|openSync|createReadStream|readFile)\([^)]*prompt/i.test(launcher)) problems.push("the launcher reads prompt.txt");
+    if (!/env: process\.env/.test(launcher)) problems.push("the launcher does not pass its environment to the driver untouched");
     // And the driver has to offer exactly those two flags.
     for (const flag of ["--prompt-file", "--report-file"])
       if (!help.includes(flag)) problems.push(`--help does not offer ${flag}`);
@@ -147,6 +160,9 @@ test("every driver path and every state directory on both pages is the exact ${.
       for (const p of [...text.matchAll(/"([^"\n]*driver\.mjs)"/g)].map((m) => m[1]))
         if (p !== `\${CLAUDE_SKILL_DIR}/scripts/driver.mjs`)
           problems.push(`${label} names the driver as ${JSON.stringify(p)}, not "\${CLAUDE_SKILL_DIR}/scripts/driver.mjs"`);
+      for (const p of [...text.matchAll(/"([^"\n]*agent-run\.mjs)"/g)].map((m) => m[1]))
+        if (p !== `\${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs`)
+          problems.push(`${label} names the launcher as ${JSON.stringify(p)}, not "\${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs"`);
       // Every mention of the variable, in a recipe or in prose, is the exact placeholder: the substituted
       // form is what a plugin install replaces, and anything else reaches the shell as a literal. The one
       // exception is the recipe's assignment name, which forwards the placeholder under its own name.
@@ -160,11 +176,12 @@ test("every driver path and every state directory on both pages is the exact ${.
     // The one call every agent is launched by forwards the data directory under its own name: the driver reads
     // ENTRUST_STATE_DIR first, so an exported one (the clone route, where nothing substitutes the
     // placeholder and the forwarded value is empty) still wins, and a plugin install gets the resolved path.
-    if (!/CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/driver\.mjs"/.test(skill))
-      problems.push("the One call recipe no longer forwards CLAUDE_PLUGIN_DATA=\"${CLAUDE_PLUGIN_DATA}\" ahead of the driver");
+    if (!/CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs"/.test(skill))
+      problems.push("the One call recipe no longer forwards CLAUDE_PLUGIN_DATA=\"${CLAUDE_PLUGIN_DATA}\" ahead of the launcher");
     // The placeholder resolves to the skill directory, so the path below it is the shipped layout's.
-    if (!fs.existsSync(path.join(ROOT, "skills", "codex", "scripts", "driver.mjs")))
-      problems.push("scripts/driver.mjs is not where ${CLAUDE_SKILL_DIR} would resolve it");
+    for (const f of ["driver.mjs", "agent-run.mjs"])
+      if (!fs.existsSync(path.join(ROOT, "skills", "codex", "scripts", f)))
+        problems.push(`scripts/${f} is not where \${CLAUDE_SKILL_DIR} would resolve it`);
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -294,16 +311,12 @@ test("the shipped wrapper is the agent the page names: Bash alone, a pinned mode
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the wrapper's PATH line greps the driver's own words, so the two move together",
-  "step 3 sorts the report by three strings the driver prints — the pid line's reportPath=, the refusal of an entry already there, and the failure to publish — and a rewording of any of them in the driver would silently turn every report into PATH=own",
+test("the launcher sorts a report by the driver's own words, so the two move together",
+  "the status read tells whose run the file at <REPORT> is by three strings the driver prints — the pid line's reportPath=, the refusal of an entry already there, and the failure to publish — and a rewording of any of them in the driver would silently turn every report into PATH=own; agent-run.test.mjs measures the sorting, this pins the strings",
   () => {
-    const step = skill.split("\n").find((l) => l.includes('echo "PATH=$P"'));
-    if (!step) return "the page's step 3 no longer prints a PATH line";
     const problems = [];
-    for (const needle of ["reportPath=", "already exists, or is a symbolic link", "could not be published at"]) {
-      if (!step.includes(needle)) problems.push(`step 3 no longer greps ${JSON.stringify(needle)}`);
-      if (!driver.includes(needle)) problems.push(`the driver no longer prints ${JSON.stringify(needle)}`);
-    }
+    for (const needle of [ACCEPTED, ...TAKEN]) if (!driver.includes(needle)) problems.push(`the driver no longer prints ${JSON.stringify(needle)}`);
+    if (!/PATH=\$\{where\}/.test(fs.readFileSync(path.join(SCRIPTS, "agent-run.mjs"), "utf8"))) problems.push("the launcher's status read no longer prints a PATH line");
     return problems.length === 0 || problems.join("; ");
   });
 
