@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Оркестратор как управленец — итоги раунда 2026-09-17</title>
+<style>
+  :root {
+    --surface: #fcfcfb; --surface-2: #f0efec; --ink: #0b0b0b; --ink-2: #52514e; --line: #d9d8d3;
+    --s1: #2a78d6; --r1: #86b6ef; --r2: #5598e7; --r3: #2a78d6; --r4: #1c5cab; --r5: #0d366b;
+    --bad: #e34948; --good: #0ca30c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --surface: #1a1a19; --surface-2: #383835; --ink: #ffffff; --ink-2: #c3c2b7; --line: #4a4945;
+      --s1: #3987e5; --r1: #9ec5f4; --r2: #6da7ec; --r3: #3987e5; --r4: #256abf; --r5: #184f95; --bad: #e66767; }
+  }
+  html, body { margin: 0; background: var(--surface); color: var(--ink); font: 17px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body.ids-off .id { display: none; }
+  .id { color: var(--ink-2); font-size: 0.8em; margin-left: .3em; }
+  #deck { max-width: 1040px; margin: 0 auto; padding: 24px 28px 96px; }
+  section.slide { display: none; min-height: 70vh; }
+  section.slide.active { display: block; }
+  h1 { font-size: 1.9em; margin: .2em 0 .4em; line-height: 1.2; }
+  h2 { font-size: 1.45em; margin: .1em 0 .6em; }
+  h3 { font-size: 1.05em; margin: 1em 0 .3em; color: var(--ink-2); font-weight: 600; letter-spacing: .02em; }
+  p, li { max-width: 78ch; }
+  ul { padding-left: 1.2em; } li { margin: .3em 0; }
+  .lead { font-size: 1.15em; }
+  .muted { color: var(--ink-2); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .card { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; }
+  .card b { display: block; margin-bottom: .2em; }
+  table { border-collapse: collapse; width: 100%; font-size: .93em; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink-2); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .yes { color: var(--good); } .no { color: var(--ink-2); }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line);
+        display: flex; gap: 10px; align-items: center; padding: 10px 28px; font-size: .9em; }
+  nav button { font: inherit; padding: 6px 12px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 8px; cursor: pointer; }
+  nav .spacer { flex: 1; }
+  nav label { display: flex; gap: 6px; align-items: center; color: var(--ink-2); cursor: pointer; }
+  #toc { display: none; position: fixed; right: 20px; bottom: 56px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; max-height: 70vh; overflow: auto; font-size: .85em; }
+  #toc.open { display: block; }
+  #toc a { display: block; color: var(--ink); text-decoration: none; padding: 3px 0; }
+  #toc a:hover { text-decoration: underline; }
+  .chart { margin: 10px 0 4px; }
+  .chart svg { width: 100%; height: auto; display: block; }
+  .bar-label { font-size: 13px; fill: var(--ink); }
+  .bar-value { font-size: 13px; fill: var(--ink-2); }
+  .bar { fill: var(--s1); }
+  .bar:hover { opacity: .8; }
+  details { margin: .5em 0; } summary { cursor: pointer; color: var(--ink-2); }
+  .tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--surface); padding: 5px 8px; border-radius: 6px; font-size: .8em; display: none; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .85em; color: var(--ink-2); margin: 6px 0; }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; background: var(--sw); vertical-align: -1px; }
+  .kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 10px 0; }
+  .kpi div { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+  .kpi b { display: block; font-size: 1.6em; font-variant-numeric: tabular-nums; }
+  .kpi small { color: var(--ink-2); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; } @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body class="ids-off">
+<div id="deck">
+
+<section class="slide" data-title="Титул">
+  <p class="muted">entrust · /entrust:orchestrate · раунд 2026-09-17</p>
+  <h1>Оркестратор как управленец: что знает поле, что показала запись, что изменили</h1>
+  <p class="lead">Итоги ресерча в двух фазах: обзор практик и аналогов плюс ретроспектива семи прогонов, затем одиннадцать правок страницы. Улучшение не измерено: это фаза 3.</p>
+  <p class="muted">Стрелки ← → листают; кнопка «id улик» показывает ссылки на строки исследования; у каждого графика есть табличный вид.</p>
+</section>
+
+<section class="slide" data-title="Вопрос">
+  <h2>Вопрос и цель</h2>
+  <p class="lead">Как оркестратору лучше управлять: делить работу, составлять и брифовать агентов, давать права, надзирать, проверять, сводить, эскалировать и решать, когда не делегировать.</p>
+  <ul>
+    <li>Экономия собственного контекста оркестратора целью не была; измерение показало, что там и нет рычага.</li>
+    <li>Четыре темы владельца: таблица ролей; постоянный собеседник (советник, архитектор); больше дешёвых агентов; пул как ёмкость с весами вместо фиксированных чисел.</li>
+    <li>Линейка: ошибки координатора за прогон по восьми стадиям решения, исход прогона и цена. Фаза 1 даёт каталог, отображение и гипотезы; измеряет только фаза 3.</li>
+  </ul>
+</section>
+
+<section class="slide" data-title="Метод">
+  <h2>Метод: семь агентов в шести волнах, затем двое в дизайне</h2>
+  <table>
+    <tr><th>Волна</th><th>Кто</th><th>Сделал</th><th class="num">Время</th><th class="num">Токены</th></tr>
+    <tr><td>Измерение контекста</td><td>Opus M1</td><td>46 сессий, 8 446 ходов API: куда уходит контекст</td><td class="num">17 мин</td><td class="num">131k</td></tr>
+    <tr><td>Критика разреза</td><td>Codex Astra C0</td><td>«принять с поправками»: восемь стадий вместо семи классов ошибок, отображение на страницу уходит в сведение</td><td class="num">4 мин</td><td class="num">182k</td></tr>
+    <tr><td>Обзор: опыт вендоров</td><td>Opus S1</td><td>60 утверждений, 23 первоисточника, цитаты сверены машинно</td><td class="num">26 мин</td><td class="num">257k</td></tr>
+    <tr><td>Обзор: исследования</td><td>Codex Sol S2</td><td>48 утверждений из 18 статей: эффекты с компаратором и валидность оценщиков</td><td class="num">27 мин</td><td class="num">17,8M</td></tr>
+    <tr><td>Обзор: фреймворки</td><td>Codex Sol S3</td><td>80 механизмов в 13 фреймворках, версии закреплены</td><td class="num">16 мин</td><td class="num">7,9M</td></tr>
+    <tr><td>Ретроспектива</td><td>Opus T1</td><td>54 инцидента координатора со следами, 103 агента по ярусам, 27 поправок владельца</td><td class="num">20 мин</td><td class="num">292k</td></tr>
+    <tr><td>Сведение</td><td>Fable R</td><td>185 утверждений, отображение на обе страницы построчно, шортлист, гипотезы</td><td class="num">36 мин</td><td class="num">639k</td></tr>
+    <tr><td>Дизайн правок</td><td>Fable D1</td><td>одиннадцать дельт страницы, пины, запись в CHANGELOG; ревизия после критики</td><td class="num">33 мин</td><td class="num">658k</td></tr>
+    <tr><td>Критика дизайна</td><td>Codex Astra C1</td><td>2 оставить / 9 исправить / 0 убрать; пересчёт двух фактов по 78 отчётам</td><td class="num">12 мин</td><td class="num">3,6M</td></tr>
+  </table>
+  <p class="muted">Codex-токены считают кэшированный вход; два запуска Codex-обзоров отказали до хода из-за режима веб-поиска, который запрещает политика устройства, и не стоили ничего. Ошибки каждой волны записаны рядом с её результатом в rounds.md.</p>
+</section>
+
+<section class="slide" data-title="Контекст">
+  <h2>Побочная находка: куда уходит контекст оркестратора</h2>
+  <p>Доли прироста контекста по 46 сессиям. Страницы скилла и возвраты агентов внизу списка: сама страница не рычаг, места для управленческой структуры достаточно.</p>
+  <div class="chart" id="c-context"></div>
+  <details><summary>Таблица</summary><table id="t-context"></table></details>
+  <p class="muted">Метод: прирост между ходами делится на пул ассистента (его output_tokens) и пул пользователя при 2,5 символа на токен; остаток 15% не объяснён. Пик контекста: медиана 289k, 15 из 46 сессий за 500k.</p>
+</section>
+
+<section class="slide" data-title="Опыт вендоров">
+  <h2>Что узнали инженерные команды на своём опыте</h2>
+  <div class="grid">
+    <div class="card"><b>Cursor</b>Один агент «на всё» засыпал, делал работу сам и рано объявлял завершение; дерево владения «корневой планировщик → подпланировщики → рабочие» дало неделю автономной работы с ~1 000 коммитов в час. Самокоординация 20 агентов через общий лок-файл падала до пропускной способности 1–3. Требование 100% зелёного перед каждым коммитом сериализовало команду.<span class="id">S1-08, S1-41, S1-52</span></div>
+    <div class="card"><b>Anthropic</b>Короткие брифы посылали субагентов не туда и дублировали работу; ранний оркестратор спавнил 50 агентов на простой запрос. Лечение: бриф из четырёх полей и масштаб усилий по классу задачи. Роли по фазам разработки тратили на координацию больше, чем на работу; сильный оркестратор может оценивать субагентов сам.<span class="id">S1-02, S1-04, S1-14, S1-39</span></div>
+    <div class="card"><b>Replit</b>Проверка растёт вместе с автономией: «агент, срезающий углы при сборке, дальше срежет ещё»; тестирование вынесено в субагента.<span class="id">S1-42, S1-43</span></div>
+    <div class="card"><b>Magentic-One (Microsoft)</b>Агенты по инструментам, а не по ролям; два леджера, задача и прогресс; счётчик застоя, ведущий к переплану.<span class="id">S1-18, S1-51</span></div>
+    <div class="card"><b>Amp (Sourcegraph)</b>«Оракул» — советник другой модельной линии на один вопрос, не постоянная нить; дешёвый поисковый субагент втрое быстрее при заявленно том же качестве; после смены модели по умолчанию «ни одной жалобы».<span class="id">S1-11, S1-12, S1-13</span></div>
+    <div class="card"><b>Cognition, Manus, OpenAI</b>Агенты не держат долгий диалог для коллаборации «равных»; по умолчанию один поток с общим контекстом. Manus: одинаковые универсальные экземпляры, без «менеджер/кодер/дизайнер». OpenAI: дешёвый ярус «для параллельных рабочих, возвращающих дистиллят».<span class="id">S1-29, S1-30, S1-21, S1-22</span></div>
+  </div>
+  <p class="muted">Рефлексы вендоров противоположны: Codex советует продолжать одну нить, Claude Code — сбросить после двух правок. Модели ёмкости смешанного пула не публикует никто: есть потолки усилий, цены входа (мультиагент в 3–10 раз дороже одного агента), полосы ширины 5–30, бюджеты застоя.</p>
+</section>
+
+<section class="slide" data-title="Исследования">
+  <h2>Что показывают контролируемые сравнения</h2>
+  <div class="two">
+    <div>
+      <h3>За</h3>
+      <ul>
+        <li>Итеративная проверка снижает ошибки в среднем на 22,7% по 260 конфигурациям и шести бенчмаркам — самая сильная находка.<span class="id">S2-04</span></li>
+        <li>Программист плюс дизайнер тестов на одной модели поднимают Pass@1 на уровне функций.<span class="id">S2-14</span></li>
+        <li>Разделение покрытия и аудита помогает на 120 задачах авторизации.<span class="id">S2-30</span></li>
+        <li>Судья-модель совпадает с людьми выше 80%.<span class="id">S2-33</span></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Против</h3>
+      <ul>
+        <li>Команды при равном бюджете вызовов не дают значимого преимущества и стоят в 1,8 раза дороже в оценке; планировщик и критик «схлопывались» до пустых.<span class="id">S2-12, S2-11</span></li>
+        <li>Смешанные команды на глубоком поиске теряют 12,6 пункта; маршрутизаторы вне домена работают как случайные.<span class="id">S2-06, S2-18</span></li>
+        <li>«Больше агентов» выигрывает голосованием при линейной цене, не оркестрацией; дебаты не подтверждаются, многоходовость по косвенной метрике даёт −39%.<span class="id">S2-19, S2-21, S2-29</span></li>
+        <li>У судьи смещения позиции, многословия и предпочтения своих ответов; той же модели нельзя судить себя.<span class="id">S2-37, S2-38</span></li>
+      </ul>
+    </div>
+  </div>
+  <p class="muted">Никто не измерял постоянного советника против одноразового брифа. Никто не измерял ёмкость смешанного пула.</p>
+</section>
+
+<section class="slide" data-title="Аналоги">
+  <h2>Что делают аналоги: 13 фреймворков и четыре темы владельца</h2>
+  <table>
+    <tr><th>Фреймворк</th><th>Каталог ролей</th><th>Диалог с агентом</th><th>Дешёвые модели</th><th>Ёмкость / бюджет</th></tr>
+    <tr><td>AutoGen / Magentic-One</td><td class="yes">есть</td><td class="yes">есть</td><td class="no">нет, модели фиксированы</td><td class="no">нет</td></tr>
+    <tr><td>OpenAI Agents SDK</td><td class="no">на разработчике</td><td class="yes">есть</td><td class="no">нет</td><td class="no">нет</td></tr>
+    <tr><td>Google ADK</td><td class="no">на разработчике</td><td class="yes">есть</td><td class="no">нет</td><td class="no">нет</td></tr>
+    <tr><td>LangGraph</td><td class="no">на разработчике</td><td class="yes">есть</td><td class="no">нет</td><td class="no">нет</td></tr>
+    <tr><td>CrewAI</td><td class="yes">есть</td><td class="no">нет</td><td class="no">нет</td><td class="no">лимиты итераций, без бюджета</td></tr>
+    <tr><td>MetaGPT</td><td class="yes">есть</td><td class="yes">есть</td><td class="no">нет</td><td class="yes">денежный бюджет и раунды</td></tr>
+    <tr><td>Codex CLI</td><td class="yes">есть</td><td class="yes">есть</td><td class="no">ручной выбор</td><td class="yes">есть</td></tr>
+    <tr><td>Claude Code</td><td class="yes">есть</td><td class="yes">есть</td><td class="yes">есть</td><td class="yes">есть</td></tr>
+    <tr><td>wshobson/agents</td><td class="yes">есть</td><td class="yes">есть</td><td class="no">нет</td><td class="yes">эвристика</td></tr>
+    <tr><td>RuFlo</td><td class="yes">есть</td><td class="no">неизвестно</td><td class="no">нет</td><td class="yes">есть</td></tr>
+    <tr><td>Superpowers</td><td class="yes">есть</td><td class="yes">есть</td><td class="yes">есть</td><td class="no">нет</td></tr>
+    <tr><td>oh-my-claudecode</td><td class="yes">есть (19 ролей)</td><td class="no">нет</td><td class="yes">есть</td><td class="yes">ширина задаётся пользователем</td></tr>
+    <tr><td>Semantic Kernel</td><td class="yes">есть</td><td class="yes">есть</td><td class="no">нет</td><td class="no">нет</td></tr>
+  </table>
+  <p><b>Нет ни у кого:</b> бюджет пула с автоматической шириной и маршрутизацией; машинно-проверяемый контракт делегирования (зависимости, область записи, схема возврата, критерий успеха, улики); гарантии верности сводки и сохранения несогласия.<span class="id">S3, итог</span></p>
+</section>
+
+<section class="slide" data-title="Наша запись">
+  <h2>Наша запись: 54 инцидента координатора по стадиям решения</h2>
+  <div class="two">
+    <div><h3>Инциденты по стадии</h3><div class="chart" id="c-stages"></div><details><summary>Таблица</summary><table id="t-stages"></table></details></div>
+    <div><h3>Поправки владельца по стадии (27)</h3><div class="chart" id="c-owner"></div><details><summary>Таблица</summary><table id="t-owner"></table></details></div>
+  </div>
+  <div class="kpi">
+    <div><b>4</b><small>исход заблокирован, 2 из них предотвращены сработавшим правилом</small></div>
+    <div><b>22</b><small>только цена</small></div>
+    <div><b>14</b><small>едва не случилось</small></div>
+    <div><b>14</b><small>успешная обработка: правило сработало</small></div>
+  </div>
+  <p class="muted">Три самых дорогих: склейка 12 отчётов с чужими абзацами (измерение отозвано без результата); 19 блокирующих чтений транскриптов субагентов, 23,5% контекста одной сессии; удвоенный путь во всех 20 bulk-промптах (2,9M токенов Luna с непригодным полем вердикта).</p>
+</section>
+
+<section class="slide" data-title="Ярусы">
+  <h2>Ярусы моделей: что реально дали дешёвые агенты</h2>
+  <table>
+    <tr><th>Ярус</th><th class="num">Агентов</th><th class="num">Возврат использован</th><th class="num">Медиана токенов</th><th>Верность там, где проверяема</th><th class="num">Доля расходов Codex</th></tr>
+    <tr><td>Luna</td><td class="num">53</td><td class="num">94%</td><td class="num">90 065</td><td>20 из 20 нашли файл под битым путём; 13 из 13 совпали с судьёй; одна уникальная поправка; как источник находок 2 из 87</td><td class="num">15%</td></tr>
+    <tr><td>Sol</td><td class="num">18</td><td class="num">94%</td><td class="num">2 996 467 (33× Luna)</td><td>один кросс-плагинный дефект найден; одна проверка не запущена из-за SSL в песочнице</td><td class="num">73%</td></tr>
+    <tr><td>Astra</td><td class="num">6</td><td class="num">100%</td><td class="num">585 186 (6,5× Luna)</td><td>один вердикт из шести пал перед проверкой, которую не мог запустить ни один агент</td><td class="num">12%</td></tr>
+    <tr><td>Terra</td><td class="num">0</td><td class="num">—</td><td class="num">—</td><td>ни разу не использован</td><td class="num">0%</td></tr>
+    <tr><td>Haiku (Claude)</td><td class="num">50 + 57 обёрток</td><td class="num">—</td><td class="num">не записано</td><td>4 из 50 возвратов потеряны на схеме; большинство находок умерли под рефутацией</td><td class="num">—</td></tr>
+    <tr><td>Sonnet, Opus, Fable</td><td class="num">8 / 25 / 3</td><td class="num">100%</td><td class="num">не записано</td><td>Sonnet нёс единственное контролируемое измерение «до/после»; критика разреза Fable — самый ценный возврат корпуса</td><td class="num">—</td></tr>
+  </table>
+  <p class="muted">Ширину 20 Luna против 5–6 сильных читателей никто не сравнивал. Sol дорог, потому что нёс длинные ходы записи, ревью и продолжения. Отношения весов владельца 8 : 5 : 3 : 1 против измеренных 6,5 : 33 : ? : 1 — модель «ярус» одна запись не описывает, «роль × ярус» описывает.</p>
+</section>
+
+<section class="slide" data-title="Покрытие">
+  <h2>Страница против поля: 185 утверждений отображены построчно</h2>
+  <div class="chart" id="c-cover"></div>
+  <div class="legend" id="l-cover"></div>
+  <details><summary>Таблица по стадиям</summary>
+  <table>
+    <tr><th>Стадия</th><th class="num">есть</th><th class="num">частично</th><th class="num">не найдено</th><th>что на странице</th></tr>
+    <tr><td>1 разделить</td><td class="num">13</td><td class="num">7</td><td class="num">3</td><td>бриф TASK/CHECK/RETURN, единица bulk, критика разреза</td></tr>
+    <tr><td>2 составить</td><td class="num">23</td><td class="num">12</td><td class="num">6</td><td>ярусы, пул, границы, доля Codex</td></tr>
+    <tr><td>3 права</td><td class="num">7</td><td class="num">4</td><td class="num">0</td><td>права на агента, worktree, сеть</td></tr>
+    <tr><td>4 надзор</td><td class="num">5</td><td class="num">18</td><td class="num">6</td><td>ожидание, продолжение нити, таблица результатов — самая тонкая стадия</td></tr>
+    <tr><td>5 проверить</td><td class="num">9</td><td class="num">6</td><td class="num">6</td><td>свежий агент, кросс-семейство, два раунда, рефутер</td></tr>
+    <tr><td>6 свести</td><td class="num">9</td><td class="num">3</td><td class="num">0</td><td>атрибуция, никакой подмены, пять полей</td></tr>
+    <tr><td>7 эскалировать</td><td class="num">2</td><td class="num">11</td><td class="num">3</td><td>лестница «два раунда → верхний ряд → пользователь» — вторая тонкая стадия</td></tr>
+    <tr><td>8 не делегировать</td><td class="num">4</td><td class="num">8</td><td class="num">3</td><td>«простая задача — один агент», разведка своими руками</td></tr>
+  </table></details>
+  <p>Три четверти того, что знает поле, на страницах уже есть хотя бы частично. Дыры сидели в надзоре и эскалации: застой, проверка предпосылок, вердикт без проверки, цена и варианты в плане. Единственное противоречие оказалось видимым: страница запрещает оценивать свою работу, а не чужую.</p>
+</section>
+
+<section class="slide" data-title="Четыре темы">
+  <h2>Четыре темы владельца: что ответили улики</h2>
+  <div class="grid">
+    <div class="card"><b>Таблица ролей — спорно</b>Роли, нарезанные по инструменту, правам и судейству, защищены сравнениями и нашей записью (критика разреза, судьи, рефутеры окупались). Роли по фазам одной работы атакованы: у Anthropic они тратили больше на координацию, чем на работу. Таблица-кандидат из 16 ролей построена; эффект самой таблицы никто не измерял.</div>
+    <div class="card"><b>Постоянный собеседник — не проверено</b>Механизм есть в восьми системах; ни один источник не сравнивал долгую нить с одноразовым брифом; единственное многоходовое измерение отрицательное и косвенное. У нас 16 продолжений, все на правки, продолжение стоило 1,23 свежего агента; самые ценные возвраты были одноразовыми.</div>
+    <div class="card"><b>Дешёвые агенты — спорно</b>Luna хороша там, где одна единица, один адрес, дословная цитата, закрытый вердикт: за 1/33 цены Sol. Слаба как источник находок. Ширина против сильных читателей не сравнивалась; единственный контролируемый ряд про смешанные команды отрицательный. Terra не использовалась ни разу. «Больше» — гипотеза фазы 3: массовость, запасной режим по квоте, формы задач.</div>
+    <div class="card"><b>Пул как ёмкость — не проверено</b>Опубликованной модели нет ни у кого. Наши токены на агента: Luna 1 : Astra 6,5 : Sol 33; предложенные веса 1 : 8 : 5 расходятся на Sol, потому что Sol нёс длинные ходы. Не хватает цен за токен, токенов Claude-агентов и любых данных по Terra. Модель «роль × ярус» ложится на запись; на странице пока только учёт ожидаемых токенов в плане.</div>
+  </div>
+</section>
+
+<section class="slide" data-title="Что применили">
+  <h2>Что применили: одиннадцать фраз на странице</h2>
+  <p class="muted">Правило отбора: фраза попадает на страницу только против записанной ошибки координатора или контролируемого сравнения; шесть первых опираются на сравнения, остальные на опыт вендоров и наши инциденты.</p>
+  <div class="two">
+    <div>
+      <h3>Что увидишь в плане до «go»</h3>
+      <ul>
+        <li>Команды каждого агента сверены с его правами и средой; невыполненные предпосылки в плане.<span class="id">T1-44, T1-51</span></li>
+        <li>Ожидаемые токены по ярусу и роли по сопоставимым прогонам.<span class="id">T1-53, T1-07</span></li>
+        <li>Варианты пронумерованы с ценой, рекомендация помечена, план говорит, что выбирает «go».<span class="id">T1-23, T1-38</span></li>
+      </ul>
+      <h3>Как расходуются агенты</h3>
+      <ul>
+        <li>Решающая проверка раньше панели; зависимое исполнение у одного агента, проверка независима.<span class="id">S2-02, T1-45</span></li>
+        <li>Счёт bulk из числа единиц, план говорит почему столько.<span class="id">S2-05, T1-01</span></li>
+        <li>«В четыре раза дешевле» и «умнее» про Luna вырезаны: следов нет.<span class="id">T1-U3</span></li>
+        <li>Проверяющему называют весь объём; возврат говорит, что проверено и что нет.<span class="id">S1-40, T1-30</span></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Как проверяются результаты</h3>
+      <ul>
+        <li>Вердикт судьи без решающей проверки — «неизвестно».<span class="id">S2-37, T1-45</span></li>
+        <li>Находка рефутера — то, что меняет корректность; остальное в «открытое».<span class="id">S1-37, T1-50</span></li>
+        <li>Критик полноты реально запускается перед публикацией документа.<span class="id">S1-44, T1-49</span></li>
+      </ul>
+      <h3>Контроль процесса</h3>
+      <ul>
+        <li>Открыть один собранный бриф целиком и сверить пути, число единиц, цитаты.<span class="id">S1-08, T1-05, T1-09, T1-39</span></li>
+        <li>Два раунда отбора на одном блокере — застой: новый план и слово.<span class="id">S2-09, T1-45</span></li>
+      </ul>
+    </div>
+  </div>
+  <p class="muted">Страница 156 строк (+1), 55 пинов вместо 45; запись в CHANGELOG под Unreleased; в ветке, без коммита; действует после релиза и переустановки.</p>
+</section>
+
+<section class="slide" data-title="Что отвергли">
+  <h2>Что отвергли по уликам</h2>
+  <table>
+    <tr><th>Кандидат</th><th>Почему нет</th></tr>
+    <tr><td>Дебаты агентов или переписка между ними как проверка</td><td>Сравнения не находят эффекта глубины дебатов, многоходовость по косвенной метрике даёт минус; единственный плюс без равного по цене контроля.<span class="id">S2-21, S2-24, S2-29</span></td></tr>
+    <tr><td>Каталог ролей по фазам одной работы (планировщик → исполнитель → тестер → ревьюер)</td><td>У Anthropic такое деление тратило больше на координацию, чем на работу; роли планировщика и критика в сравнениях схлопывались до пустых.<span class="id">S1-04, S2-11</span></td></tr>
+    <tr><td>Постоянный советник по умолчанию</td><td>Не опровергнут, а не проверен: никто не измерял; локально продолжение стоит 1,23 свежего агента.<span class="id">S2-29, S1-29</span></td></tr>
+    <tr><td>Смешанные команды дешёвых и сильных на глубоком поиске без калибровки</td><td>−12,6 пункта в контролируемом ряду; маршрутизаторы вне домена случайны. Наша работа Luna была ограниченной, не глубокой.<span class="id">S2-06, S2-18</span></td></tr>
+    <tr><td>N одинаковых рефутеров с голосованием</td><td>Голосование при линейной цене — не оркестрация; 19 одинаковых вердиктов у нас ответили на битый промпт.<span class="id">S2-25, T1-09</span></td></tr>
+    <tr><td>Абсолютные зелёные ворота перед каждым коммитом при ширине</td><td>Cursor: сериализует команду; у нас шесть живых, порог не достигается.<span class="id">S1-41</span></td></tr>
+    <tr><td>Обученный вне домена маршрутизатор ярусов</td><td>Работает как случайный; сначала пары «в домене».<span class="id">S2-18</span></td></tr>
+    <tr><td>Передача разговора специалисту (handoff)</td><td>Улик за него нет ни в одной линзе; против — Cognition.<span class="id">S1-58</span></td></tr>
+    <tr><td>Слово «measured» без следа за каждой половиной</td><td>Правило критика разреза; «в четыре раза дешевле» оказалось таким.<span class="id">C0, R11</span></td></tr>
+  </table>
+</section>
+
+<section class="slide" data-title="Что ещё можно взять">
+  <h2>Что ещё есть у поля и почему пока не взяли</h2>
+  <p class="muted">Из 27 утверждений, которых на страницах нет вовсе, и 69 частичных; правило «только против записанной ошибки или контролируемого сравнения» отсеяло то, что ниже. Это резерв для фазы 3 или для следующего инцидента.</p>
+  <table>
+    <tr><th>Практика</th><th>Откуда</th><th>Почему не сейчас</th></tr>
+    <tr><td>Перемешанный порядок кандидатов у судьи, порядок записывается</td><td>исследования валидности судьи<span class="id">S2-34, S2-38, S2-43</span></td><td>Местного инцидента нет; дёшево добавить одной фразой, если владелец захочет.</td></tr>
+    <tr><td>Потолок прогона: лимит ходов, времени и денег на агента и на прогон</td><td>Agents SDK, CrewAI, MetaGPT<span class="id">S3-14, S3-30, S3-35</span></td><td>Граница владельца: без весов ёмкости до измерения; пока только учёт токенов в плане.</td></tr>
+    <tr><td>Сигналы, когда делить по инструменту: три порога Anthropic</td><td>Anthropic<span class="id">S1-17</span></td><td>Обоснование без сравнения и без нашего случая.</td></tr>
+    <tr><td>Восстановление с чекпоинта вместо перезапуска; когда продолжать нить, а когда брать свежего</td><td>Anthropic, Codex<span class="id">S1-31, S3-38</span></td><td>Механизм есть (продолжение нити); правила «когда» нет и инцидента нет; локально продолжение не дешевле.</td></tr>
+    <tr><td>Однопоточный агент как отправная точка; делегировать только доказанную пользу</td><td>Cognition, Anthropic<span class="id">S1-57, S1-55</span></td><td>Частично взято правилом «решающая проверка раньше панели»; полный контроль «один агент» — компаратор фазы 3.</td></tr>
+    <tr><td>Переписывание списка задач как механизм внимания между шагами</td><td>Manus<span class="id">S1-34</span></td><td>Наш план — этот список; правило застоя требует записывать состояние между раундами; остальное без инцидента.</td></tr>
+    <tr><td>Извлечение цели в новую нить вместо компакции</td><td>Cognition<span class="id">S1-29</span></td><td>Стадия надзора, компакции у нас почти не осталось после 12.09.</td></tr>
+    <tr><td>Общий список задач с зависимостями и переписка агентов (команды Claude Code)</td><td>Claude Code<span class="id">S3-49</span></td><td>Переписка агентов — в списке «не внедрять»; список задач с зависимостями — контракт владения на странице частично есть.</td></tr>
+    <tr><td>Хуки, отклоняющие завершение задачи без улик</td><td>Claude Code<span class="id">S3-50</span></td><td>Харнесс, не страница; у Codex-агентов роль хука играют ворота EXPECT.</td></tr>
+    <tr><td>Переплан от предусловий и эффектов после сбоя</td><td>RuFlo<span class="id">S3-65</span></td><td>Правило застоя даёт переплан; формальная модель предусловий без инцидента.</td></tr>
+  </table>
+</section>
+
+<section class="slide" data-title="Сравнение с аналогами">
+  <h2>Насколько мы лучше аналогов: честный ответ</h2>
+  <div class="two">
+    <div>
+      <h3>Чего нет у фреймворков, а у нас есть</h3>
+      <ul>
+        <li>Права на агента объявлены в его брифе и проверяются песочницей: чтение, worktree, живая запись, сеть.</li>
+        <li>Строгая схема возврата из пяти полей и ворота улик: ответ считается только при выполненной проверке, квитанция подтверждает ход.</li>
+        <li>Критика разреза до веера, единица bulk-работы, чтение одного возврата до подсчёта, кросс-семейное ревью.</li>
+        <li>Ни один из 13 фреймворков не сочетает машинно-проверяемый контракт по области записи, схеме возврата и уликам.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Где аналоги впереди</h3>
+      <ul>
+        <li>Magentic-One: явные объекты «леджер задачи» и «леджер прогресса», сброс контекстов при переплане; у нас застой — правило, а не объект.</li>
+        <li>Cursor: рекурсивное дерево владения в масштабе тысяч коммитов; у нас потолок шесть живых.</li>
+        <li>LangGraph: чекпоинты и возобновление любого узла; у нас продолжение только нити Codex.</li>
+        <li>MetaGPT, CrewAI, Agents SDK: бюджеты и лимиты на агента и на прогон; у нас их нет.</li>
+        <li>Контракт делегирования: зависимости и критерий успеха у нас в прозе, не в схеме.</li>
+      </ul>
+    </div>
+  </div>
+  <p><b>Итог.</b> По покрытию: три четверти того, что знает поле, на страницах уже есть хотя бы частично, и после правок закрыты стадии, где страница была тоньше всего. По качеству управления: не измерено ни у нас, ни у аналогов на сопоставимых задачах; поле само противоречиво в десяти местах. «Лучше» станет утверждением только после фазы 3.</p>
+</section>
+
+<section class="slide" data-title="Фаза 3">
+  <h2>Что не измерено: фаза 3</h2>
+  <p>Реальная задача под новой страницей, сопоставимые задачи и бюджеты, независимая оценка исхода, контроль «один агент без делегирования». Метрики: инциденты координатора за прогон по стадиям, поправки владельца, независимо проверенные исходы, агенты и платные ходы.</p>
+  <table>
+    <tr><th>Гипотеза</th><th>Что измерить</th></tr>
+    <tr><td>Решающая проверка раньше панели экономит агентов</td><td>агенты и платные ходы на принятый исход против контроля без делегирования</td></tr>
+    <tr><td>Ширина bulk: 5 / 10 / 20 / 50 Luna на одних и тех же утверждениях</td><td>независимо проверенные находки на агента</td></tr>
+    <tr><td>Калибровка дешёвого яруса: Luna, Terra, Sol на одних утверждениях</td><td>верность на утверждение по ярусу</td></tr>
+    <tr><td>Вердикт «неизвестно» без проверки</td><td>вердикты судьи, отменённые позднее выполненной проверкой</td></tr>
+    <tr><td>34 Luna вместо одного Sol на одной задаче</td><td>проверенные находки на токен</td></tr>
+    <tr><td>Запасной режим по квоте: что ещё уходит в Codex, когда остались только Luna</td><td>инциденты и перезапуски под таким составом</td></tr>
+    <tr><td>Формы задач Luna: сверка цитат, закрытая классификация, панели узнавания</td><td>верность на утверждение по форме</td></tr>
+    <tr><td>Постоянный советник против одноразовых брифов</td><td>исход и цена на сопоставимых задачах; местного случая нет</td></tr>
+  </table>
+</section>
+
+<section class="slide" data-title="Решения и статус">
+  <h2>Решения владельца и статус</h2>
+  <ul>
+    <li>Строка «никогда не оценивай свою работу» остаётся: противоречие с Anthropic оказалось видимым, страница и так разрешает проверять чужую работу своими руками.</li>
+    <li>Критик полноты запускается узко: один свежий читатель перед текстом для человека, никогда на возврат.</li>
+    <li>Про Luna вырезаны обе неподтверждённые половины; её развитие — три гипотезы фазы 3.</li>
+    <li>Восемь вопросов дизайна решены по рекомендациям; бюджет страницы 156 строк.</li>
+  </ul>
+  <h3>В ветке research-orchestration-practices, без коммита</h3>
+  <ul>
+    <li>Каталог ресерча: 12 файлов, все артефакты агентов, README с результатами и поправками, rounds.md с ошибками каждой волны.</li>
+    <li>Правки страницы, 55 пинов, запись в CHANGELOG; ISSUES.md с двумя дефектами, найденными попутно.</li>
+    <li>Дальше по слову: коммиты и PR; релиз и переустановка; фаза 3.</li>
+  </ul>
+</section>
+
+</div>
+
+<div class="tip" id="tip"></div>
+<div id="toc"></div>
+<nav>
+  <button id="prev">←</button>
+  <button id="next">→</button>
+  <span id="counter"></span>
+  <span class="spacer"></span>
+  <label><input type="checkbox" id="ids"> id улик</label>
+  <button id="tocbtn">содержание</button>
+</nav>
+
+<script>
+(function () {
+  const slides = Array.from(document.querySelectorAll('section.slide'));
+  let i = Math.max(0, Math.min(slides.length - 1, parseInt(location.hash.slice(1) || '0', 10) || 0));
+  const counter = document.getElementById('counter');
+  function show(n) {
+    i = (n + slides.length) % slides.length;
+    slides.forEach((s, k) => s.classList.toggle('active', k === i));
+    counter.textContent = (i + 1) + ' / ' + slides.length + ' · ' + slides[i].dataset.title;
+    location.hash = i; window.scrollTo(0, 0);
+  }
+  document.getElementById('prev').onclick = () => show(i - 1);
+  document.getElementById('next').onclick = () => show(i + 1);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { show(i + 1); e.preventDefault(); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { show(i - 1); e.preventDefault(); }
+    if (e.key === 'Home') show(0); if (e.key === 'End') show(slides.length - 1);
+  });
+  const toc = document.getElementById('toc');
+  slides.forEach((s, k) => { const a = document.createElement('a'); a.href = '#' + k; a.textContent = (k + 1) + '. ' + s.dataset.title; a.onclick = e => { e.preventDefault(); show(k); toc.classList.remove('open'); }; toc.appendChild(a); });
+  document.getElementById('tocbtn').onclick = () => toc.classList.toggle('open');
+  document.getElementById('ids').onchange = e => document.body.classList.toggle('ids-off', !e.target.checked);
+
+  const tip = document.getElementById('tip');
+  function hover(el, text) {
+    el.addEventListener('mousemove', e => { tip.style.display = 'block'; tip.textContent = text; tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY + 12) + 'px'; });
+    el.addEventListener('mouseleave', () => tip.style.display = 'none');
+  }
+  // horizontal bar chart, single series: thin marks, rounded data-end, direct labels
+  function bars(id, tableId, rows, unit) {
+    const max = Math.max(...rows.map(r => r[1]));
+    const W = 640, L = 250, rowH = 26, H = rows.length * rowH + 8;
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('role', 'img');
+    rows.forEach((r, k) => {
+      const y = k * rowH + 6, w = Math.max(2, (W - L - 70) * r[1] / max);
+      const lab = document.createElementNS(ns, 'text'); lab.setAttribute('x', L - 8); lab.setAttribute('y', y + 13); lab.setAttribute('text-anchor', 'end'); lab.setAttribute('class', 'bar-label'); lab.textContent = r[0]; svg.appendChild(lab);
+      const bar = document.createElementNS(ns, 'rect'); bar.setAttribute('x', L); bar.setAttribute('y', y); bar.setAttribute('width', w); bar.setAttribute('height', 14); bar.setAttribute('rx', 2); bar.setAttribute('class', 'bar'); svg.appendChild(bar);
+      const hit = document.createElementNS(ns, 'rect'); hit.setAttribute('x', 0); hit.setAttribute('y', y - 4); hit.setAttribute('width', W); hit.setAttribute('height', rowH); hit.setAttribute('fill', 'transparent'); svg.appendChild(hit);
+      hover(hit, r[0] + ': ' + r[1] + unit + (r[2] ? ' — ' + r[2] : ''));
+      const val = document.createElementNS(ns, 'text'); val.setAttribute('x', L + w + 6); val.setAttribute('y', y + 13); val.setAttribute('class', 'bar-value'); val.textContent = r[1] + unit; svg.appendChild(val);
+    });
+    document.getElementById(id).appendChild(svg);
+    const t = document.getElementById(tableId);
+    t.innerHTML = '<tr><th>Категория</th><th class="num">Значение</th></tr>' + rows.map(r => '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + unit + '</td></tr>').join('');
+  }
+  bars('c-context', 't-context', [
+    ['размышления модели', 26, 'диапазон 20–30% по принятой скорости'], ['вывод команд Bash', 16], ['необъяснённый остаток', 15, 'токенизация и рамка хода'],
+    ['входы вызовов: брифы агентам', 10], ['текст пользователя', 6], ['входы Write/Edit', 5], ['системные напоминания', 5],
+    ['Read', 3], ['загрузка страниц скилла', 2.1], ['TaskOutput', 1.9], ['возвраты агентов', 0.6]
+  ], '%');
+  bars('c-stages', 't-stages', [
+    ['1 разделить', 6], ['2 составить', 7], ['3 права', 6], ['4 надзор', 5], ['5 проверить', 17], ['6 свести', 7], ['7 эскалировать', 3], ['8 не делегировать', 3]
+  ], '');
+  bars('c-owner', 't-owner', [
+    ['1 разделить', 8], ['2 составить', 5], ['3 права', 0], ['4 надзор', 0], ['5 проверить', 4], ['6 свести', 8], ['7 эскалировать', 2], ['8 не делегировать', 0]
+  ], '');
+
+  // stacked coverage bar: ordinal ramp (how much of the claim the pages hold), red status for the one contradiction
+  const cov = [['есть', 72, 'var(--r5)'], ['частично', 69, 'var(--r4)'], ['условно', 5, 'var(--r3)'], ['неизвестно', 11, 'var(--r2)'], ['не найдено', 27, 'var(--r1)'], ['противоречит', 1, 'var(--bad)']];
+  const total = cov.reduce((a, c) => a + c[1], 0), W = 640, ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' 44');
+  let x = 0;
+  cov.forEach(c => {
+    const w = Math.max(3, W * c[1] / total - 2);
+    const r = document.createElementNS(ns, 'rect'); r.setAttribute('x', x); r.setAttribute('y', 8); r.setAttribute('width', w); r.setAttribute('height', 22); r.setAttribute('rx', 2); r.setAttribute('fill', c[2]); svg.appendChild(r);
+    hover(r, c[0] + ': ' + c[1] + ' из ' + total);
+    if (w > 40) { const t = document.createElementNS(ns, 'text'); t.setAttribute('x', x + 6); t.setAttribute('y', 23); t.setAttribute('class', 'bar-label'); t.setAttribute('fill', '#fff'); t.style.fill = c[2] === 'var(--r1)' ? 'var(--ink)' : '#fff'; t.textContent = c[1]; svg.appendChild(t); }
+    x += w + 2;
+  });
+  document.getElementById('c-cover').appendChild(svg);
+  document.getElementById('l-cover').innerHTML = cov.map(c => '<span style="--sw:' + c[2] + '">' + c[0] + ' · ' + c[1] + '</span>').join('');
+  show(i);
+})();
+</script>
+</body>
+</html>
