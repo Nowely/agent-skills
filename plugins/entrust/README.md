@@ -40,6 +40,22 @@ these open with none of that behind it is not something it can see. With `TMPDIR
 the listing scans Node's fallback temporary directory and says that agent scratch elsewhere may not
 have been seen.
 
+A fourth, `/entrust:experiment`, runs one registered experiment on the orchestrator's own rules: a
+protocol before any agent (hypothesis, arms with a comparator, frozen material, the ruler's metrics, a
+judge that does not see the arm, a stop rule), each arm an orchestrated run, the orchestrator's
+conclusion and then the user's verdict. Its one script keeps the record under the plugin's data
+directory beside the orchestrate runs, and copies it unchanged into a checkout as
+`research/<date>-<slug>/` ([skills/experiment/SKILL.md](skills/experiment/SKILL.md)); the five
+protocols registered first are in its references.
+
+Two more are experiments with a page of their own. `/entrust:advisor` adds a standing top-row advisor of
+the other model family to one run, asked one question at each decision point, with every decision
+recorded before and after ([skills/advisor/SKILL.md](skills/advisor/SKILL.md)); it states no benefit until
+protocol E3 has run. `/entrust:swarm` has one script make up to fifty bulk agents over a file of units
+through the sibling launcher, with a concurrency cap and one summary for a cheap reducer
+([skills/swarm/SKILL.md](skills/swarm/SKILL.md)); shared state and free messaging between agents are E4's
+arms, never the default.
+
 ## Prerequisites
 
 - **`codex` CLI, installed and authenticated.** `codex` must be on `PATH`, and the `~/.codex` in your
@@ -63,7 +79,7 @@ have been seen.
 
 ## Install
 
-As a plugin — the full set: all three skills, the driver and the suites (the repo is its own marketplace):
+As a plugin — the full set: all six skills, the driver and the suites (the repo is its own marketplace):
 
 ```
 /plugin marketplace add Nowely/agent-skills
@@ -93,13 +109,16 @@ mkdir -p ~/.claude/skills                           # absent on a machine that h
 ln -s "$PWD/skills/codex" ~/.claude/skills/codex
 ln -s "$PWD/skills/orchestrate" ~/.claude/skills/orchestrate
 ln -s "$PWD/skills/cleanup" ~/.claude/skills/cleanup
+ln -s "$PWD/skills/experiment" ~/.claude/skills/experiment
+ln -s "$PWD/skills/advisor" ~/.claude/skills/advisor
+ln -s "$PWD/skills/swarm" ~/.claude/skills/swarm
 mkdir -p ~/.claude/agents
 ln -s "$PWD/agents/codex-agent.md" ~/.claude/agents/codex-agent.md
 ```
 
-On this clone-and-symlink route the skill is `codex`, the modes are `/orchestrate` and `/cleanup`, and
+On this clone-and-symlink route the skill is `codex`, the modes are `/orchestrate`, `/cleanup`, `/experiment`, `/advisor` and `/swarm`, and
 the wrapper every Codex run goes through is `codex-agent`; on the plugin route they are
-`entrust:codex`, `/entrust:orchestrate`, `/entrust:cleanup` and
+`entrust:codex`, `/entrust:orchestrate`, `/entrust:cleanup`, `/entrust:experiment`, `/entrust:advisor`, `/entrust:swarm` and
 `entrust:codex-agent`. Agents are read when Claude Code starts, so a link made during a session is
 seen by the next one. Cleanup's command reaches its sibling script through the `codex` link beside
 it: Node resolves the command's `..` lexically, so keep those two links together.
@@ -113,7 +132,7 @@ Claude Code substitutes into the skill's recipes and which this install resolves
 and the isolated Codex home, the write locks, the worktree ledger and the orchestrator mode's run
 directories are all there. It survives plugin updates; an uninstall deletes it unless you pass
 `claude plugin uninstall --keep-data`, and
-`/entrust:cleanup` lists what is there and removes only the items you pick by number.
+`/entrust:cleanup` lists what is there and removes only the items you pick by number; experiment records under `experiments/` it neither lists nor removes.
 The driver keeps no default of its own: with neither that variable nor `ENTRUST_STATE_DIR` it
 exits 2. In every permission mode but auto and bypass, a write outside the working directory prompts, so
 add that directory to `permissions.additionalDirectories` once — this plugin adds no rules on your
@@ -264,6 +283,10 @@ skills/codex/                    the main skill: SKILL.md (the operating manual)
 skills/orchestrate/SKILL.md      the orchestrator mode: a delta over the codex skill, prompt only
 skills/cleanup/SKILL.md          the cleanup mode: runs scripts/cleanup.mjs, shows its listing and
                                  deletes what the user chose
+skills/experiment/               the experiment mode: SKILL.md (protocol, arms, two verdicts), scripts/experiment.mjs
+                                 (the record under the data directory), references/protocols.md (the first five)
+skills/advisor/SKILL.md          the advisor mode: one standing top-row thread per run, prompt only
+skills/swarm/                    the swarm mode: SKILL.md (units, launch, reducer, arms), scripts/swarm.mjs (the launcher)
 .claude-plugin/                  plugin + marketplace manifests
 evals/                           the suites, one file each; run-all.mjs lists them and runs them
                                  cheapest first, lib/harness.mjs and lib/scenarios.mjs are their
@@ -285,6 +308,9 @@ Canonical homes for repeated stories:
 | composition, rights, workflow | [`SKILL.md`](skills/codex/SKILL.md) |
 | orchestration: tiers, Codex share, agent bounds, returns | [`skills/orchestrate/SKILL.md`](skills/orchestrate/SKILL.md) |
 | what the plugin leaves behind, and removing it | [`skills/cleanup/SKILL.md`](skills/cleanup/SKILL.md), `node skills/codex/scripts/cleanup.mjs --help` |
+| experiments: protocol, arms, verdicts, the record | [`skills/experiment/SKILL.md`](skills/experiment/SKILL.md), `node skills/experiment/scripts/experiment.mjs --help` |
+| the standing advisor | [`skills/advisor/SKILL.md`](skills/advisor/SKILL.md) |
+| swarms: units, launch, reducer, coordination arms | [`skills/swarm/SKILL.md`](skills/swarm/SKILL.md), `node skills/swarm/scripts/swarm.mjs --help` |
 | flags and field formats | `node skills/codex/scripts/driver.mjs --help` (`--help-all` for the rest) |
 | environment, prompt files, receipts, worktree internals | [`environment-and-internals.md`](skills/codex/references/environment-and-internals.md) |
 | native capability parity and dated measurements | [`parity.md`](skills/codex/references/parity.md) |

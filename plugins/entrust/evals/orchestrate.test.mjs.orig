@@ -52,11 +52,11 @@ test("the frontmatter names the mode, forbids model invocation, and states the r
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the page stays inside its budget: 156 lines, one heading level, no fence",
+test("the page stays inside its budget: 155 lines, one heading level, no fence",
   "the mode is loaded into a context it exists to keep small, and it ships no code: a third heading level, a fence or a page that doubled in length are each the mode spending the budget it is selling",
   () => {
     const problems = [];
-    if (lines.length > 156) problems.push(`${lines.length} lines`);
+    if (lines.length > 155) problems.push(`${lines.length} lines`);
     const headings = lines.filter((l) => /^#+ /.test(l));
     const wrongLevel = headings.filter((l) => !l.startsWith("## "));
     if (!headings.length) problems.push("the page has no headings at all");
@@ -170,7 +170,7 @@ test("C6 the plan states the pool and the user overrides it in words",
   "the caps are settings the user owns: a plan that launched under the page's defaults without showing them gave the user nothing to overrule, and \"two Fable\" or \"only codex\" said after the first agent is a word too late",
   () => says(
     "Announce the composition here, and the caps beside it in a sentence: your own model, one Fable and one `gpt-6-astra` at a time, six alive.",
-    "A cap the user sets in words (\"two Fable\"), or agrees to when the plan proposes one with its reason, replaces the default for this run; composition words (\"only codex\", \"no codex\") follow the sibling's table.",
+    "A cap the user overrides in words (\"two Fable\") replaces the default for this run; composition words (\"only codex\", \"no codex\") follow the sibling's table.",
   ));
 
 test("C7 every agent's return is retold to the user in one short paragraph, the same shape for both sides",
@@ -194,10 +194,10 @@ test("D2 the orchestrator's own model is read out of the system prompt",
   "the plan states it beside the pool and an untagged subagent inherits it, and nothing else in the session says which it is: a coordinator that guesses announces the wrong model and cannot tell an inherited tier from a chosen one",
   () => says("Your own model is in your system prompt (\"You are powered by the model named ...\"); nothing else carries it."));
 
-test("D3 every Claude Agent call is tagged, fable only for Fable agents within the cap, and a Codex agent's model is its own header line",
+test("D3 every Claude Agent call is tagged, fable only for the one Fable agent, and a Codex agent's model is its own header line",
   "an untagged subagent silently inherits the session model, so a fan-out meant to be cheap runs at the top tier; and a Codex agent runs inside the shipped wrapper, whose model is pinned in its file, so a model or effort written as a tool option is spent on the wrapper while the agent runs on its `MODEL:` line",
   () => says(
-    "Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable` only for Fable agents within the agreed cap",
+    "Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable` only for the one Fable agent",
     "every Codex agent carries one with a slug from the table, never the config default",
     "is spent on the wrapper alone and never reaches Codex",
   ));
@@ -217,9 +217,9 @@ test("D5 the pool does not depend on the orchestrator's model, and the top pair 
     return prose === true && row === true || [prose, row].filter((r) => r !== true).join("; ");
   });
 
-test("D7 a Fable agent never spawns Fable, and only the orchestrator launches Fable agents",
+test("D7 a Fable agent never spawns Fable, and only the orchestrator launches the pool's Fable agent",
   "a top agent that may spawn its own top agent makes the cap of one unenforceable one level down, where nothing is counting; stated without \"agent\" the rule also read as forbidding a Fable orchestrator the one Fable agent the pool promises it",
-  () => says("a Fable agent never spawns Fable", "only you launch Fable agents"));
+  () => says("a Fable agent never spawns Fable", "only you launch the pool's Fable agent"));
 
 test("D8 effort is chosen per agent below the top row, and low effort only for mechanical Sonnet stages in a Workflow",
   "measured 2026-09-17: two Luna read agents at an inherited xhigh took 480 and 557 s and 1.2M and 2.3M tokens for a ledger and a grep task. The earlier rule inherited the user's effort everywhere because, measured on codex-cli 0.153.4, no effort level bought the evidence guarantee an exception once claimed; this rule claims cost, not evidence",
@@ -308,10 +308,10 @@ test("F2 the six verification bullets, one line each",
   "the list is read while composing a fan-out, so each bullet has to be one glance; a bullet that grew into a paragraph is a bullet that stops being read",
   () => shows(
     /^- Scout inline first: the work-list is yours, before any fan-out\.$/m,
-    /^- Adversarial verify: a refuter defaults to `refuted` when it is uncertain, and a finding is (one|what) that changes correctness or a stated requirement, the rest (its|in) `open`\.$/m,
+    /^- Adversarial verify: a refuter defaults to `refuted` when it is uncertain\.$/m,
     /^- Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters\.$/m,
-    /^- Judge panel for a design task: a verdict (missing|without|lacking) its decisive check is `unknown` in `result`; name the missing check in `open`\. Use the sibling's `EXPECT:` rule for a Codex check\.$/m,
-    /^- Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
+    /^- Judge panel for a design task\.$/m,
+    /^- Completeness critic at the end: what is missing, unverified, unread\.$/m,
     /^- No silent caps: name every agent, check or item you dropped\.$/m,
   ));
 
@@ -398,129 +398,6 @@ test("G6 the launcher and the driver make the run directory, the coordinator wri
     "Never run `mkdir`, Write or a shell redirect under that data directory yourself, because a headless session refuses each of them as a sensitive file with no prompt anyone can answer, while a subprocess handed the same path as an argument writes it unopposed (measured 2026-09-08)",
     "A Claude agent's artifact is its returned text, and a file it must leave goes under `$TMPDIR` with the path in that text",
   ));
-
-// ------------------------------------------------------------------ H: the 2026-09-17 research round (research/2026-09-17-orchestration-practices/)
-// These cases pin the rule where the words allow it (an alternation over the words that carry it, a
-// negative half where the rule forbids something); they are still text pins, not a reading of the page.
-
-test("B7 the page never tells the orchestrator to grade its own work",
-  "the opposite of B5 can be added anywhere on the page without touching B5's sentence: 'grade your own work' outside its negation, or an instruction to skip the independent review; this case reads those forms wherever they land. It cannot read every paraphrase, so B5 and a human reader stay the other half",
-  () => {
-    const problems = [];
-    for (const m of text.matchAll(/(grade|verify|review|judge)\w* (your|its|their) own (work|edits|code|diff)/gi)) {
-      const before = text.slice(Math.max(0, m.index - 30), m.index);
-      if (!/\b(never|not|nobody|no one)\b/i.test(before)) problems.push(`"${m[0]}" with no negation before it`);
-    }
-    if (/\b(ignore|skip|drop|omit)\b[^.\n]{0,40}\b(independent|fresh|separate)\b[^.\n]{0,20}\b(review|verif\w*)/i.test(text))
-      problems.push("the page tells the orchestrator to skip the independent review");
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("C9 every alternative is numbered with its cost, and the plan says what \"go\" selects",
-  "a bare word of approval over a fork the plan had left open was read as assent three times (30a:204 on 2026-09-12, 30a:848 on 2026-09-13, 426:92 on 2026-09-16) and an option shown without its cost was read as free (426:1214, 2026-09-17); numbered, priced and with the selection stated in the plan, \"go\" is an answer the user gave knowingly, and nothing is selected by an undisclosed default",
-  () => shows(
-    /Number each (alternative|fork|option|choice), show its cost and mark the recommendation/,
-    /(state|say|write) in the plan what "go" selects/i,
-  ));
-
-test("C10 the plan states expected tokens by tier and role, from comparable runs, and the page carries no tariff",
-  "the user's cost stop came mid-flight (a 51-agent wave, 2026-09-07) and an Astra ran at 1 % quota (2026-09-11); an estimate in the plan moves that stop before \"go\". A fixed number on the page would be a pooled median mixing roles and task shapes (Luna 13.6 k for a recognition read, 742 k for a tree verification), so the line must carry none",
-  () => {
-    const prose = shows(/State expected tokens by tier and role in the plan/, /name the comparable runs behind each estimate/, /mark unmeasured roles `unknown`/);
-    if (/State expected tokens[^\n]*\d/.test(text)) return "the plan step carries a number where it should carry an estimate";
-    return prose;
-  });
-
-test("C11 the commands each check needs are checked against planned rights and environment before the plan, and unmet prerequisites go into the plan",
-  "a review turn spent 2.65 M tokens and left its decisive check unrun because the sandbox could not complete it (sol-n2, 2026-09-17), and ten of thirteen agents in one run ended at exit 6 on declined requests; a prerequisite found before launch is a line in the plan, one found after it is a paid turn; the wording reassigns nothing after a refusal, which the sibling forbids",
-  () => shows(
-    /For (each|every) agent, (check|match|list) the required commands against its planned rights and environment/,
-    /Probe uncertain prerequisites cheaply; put unmet prerequisites in the plan/,
-  ));
-
-test("D9 the bulk count is derived from the units and the plan says why that many",
-  "eighty agents were launched on the word \"bigger\" against a page that already said six alive (2026-09-11) and a wave of fifty-one was stopped by the user for its cost (2026-09-07, before any cap); a derived count is one the user can weigh before the launch, and the rule claims nothing about yield, which no run has measured",
-  () => shows(/a count (derived|taken|drawn) from the units with the plan (saying|stating) why that many/));
-
-test("D10 Luna over Haiku carries no price claim",
-  "the sentence said \"four times cheaper\" with no Haiku token count anywhere in the record; the preference is the owner's and stays, the price goes, and no other price, ratio or cost word may take its place on that line",
-  () => {
-    const line = lines.find((l) => l.includes("Prefer Luna to Haiku"));
-    if (!line) return "the page no longer prefers Luna to Haiku in the bulk row";
-    if (!/\*\*Prefer Luna to Haiku in the bulk row\*\*/.test(line)) return "the preference lost its emphasis";
-    if (/cheap|price|cost|\btimes\b|×|\d+x\b/i.test(line)) return `the Luna line carries a price claim again: ${line.slice(0, 120)}`;
-    return true;
-  });
-
-test("E7 a decisive check runs before any panel, dependent execution stays in one agent, and its verification stays independent",
-  "sixteen agents over two naming rounds proposed, reviewed and judged before the check that decided was run (426:973, 426:1208, 2026-09-17), while the two tasks the coordinator kept in its own hands (2026-09-12, 2026-09-16) landed with critics only; the rule orders the check first and keeps the fresh verifier, it does not ban a panel",
-  () => shows(
-    /(Run|Make|Do) (a|the) decisive check before (commissioning|launching|spawning) (a|any) panel/,
-    /(Keep|Leave) dependent execution in one agent; keep its verification independent/,
-  ));
-
-test("F7 one assembled brief is opened whole before the fan-out, and its input paths, item count and quoted claims are checked",
-  "the split critic reads the decomposition, not the file the generator wrote: a join paired all twelve reports with the wrong paragraph (T1-05, 2026-09-11), a doubled path segment reached all twenty prompts (T1-09, 2026-09-12) and a quoting slip gave each of three agents one set of four (T1-39, 2026-09-17); paths that exist catch only the second, so the check names all three",
-  () => shows(/^- (Open|Read) one assembled brief whole before (the|any) fan-out; check its input paths in the agent's planned tree, its item count and each quoted claim against its source\.$/m));
-
-test("F8 two selection rounds on the same blocker are a stall, re-planned for the word, while repair rounds keep their escalation",
-  "the two-round rule counts fix rounds; naming rounds each crowned a winner and the same blocker, a collision check no agent had run, came back (426:973, 426:1208), so that rule never tripped; a stall keyed to a repeated blocker trips where a round count does not, and the repair ladder, two rounds then the top row then the user, is untouched",
-  () => shows(
-    /Between selection rounds, (record|write|note) the candidates rejected, the evidence gained and the remaining blocker/,
-    /Two rounds repeating the same blocker are a stall: show a new plan and wait for the word/,
-    /Fix, then cross-review, at most two rounds; then escalate to the Fable agent or the `gpt-6-astra` agent/,
-  ));
-
-test("G7 a verifier's brief names its target and whole scope, and its return separates what it checked from what it did not",
-  "a verifier that ran one or two checks and declared the whole passed is the early-victory shape (S1-40); locally the coordinator bounded a clipped 50 k-character report to the parts it had read (426:33, 2026-09-16) where three earlier overclaims from partial evidence were cut by agents (T1-08, T1-12, T1-49)",
-  () => shows(
-    /A verifier's brief (names|states) its target and the (whole|full) scope it must cover/,
-    /its return says what it checked and, in `open`, what it did not/,
-  ));
-
-test("D11 the caps count turns in progress, and a thread waiting for another message uses no slot",
-  "the pool caps parallel turns at a moment, not the threads that exist: a design of 2026-09-17 counted an idle advisor thread against the top-row cap, and the owner corrected it the same day",
-  () => shows(
-    /The caps count turns in progress/,
-    /(a|any) threads? (waiting|that waits) for another message (uses|takes|holds) no slot/,
-  ));
-
-test("C12 the completeness critic reads the request, the answer and the evidence before every final answer, and returns a verdict",
-  "the owner's corrections at the synthesis stage were 8 of 27 in the record and a README once published an inference from absence unchecked (T1-49, 2026-09-17); the critic is the one agent that reads the task whole, and a one-agent run is not exempt",
-  () => {
-    const prose = says(
-      "given the user's request, the final answer and its evidence once, before the answer goes out, never per return",
-      "returns done, partial or not done with what is missing",
-      "A one-agent task has no judgement agent beyond the completeness critic",
-    );
-    if (prose !== true) return prose;
-    const bullet = lines.find((l) => l.startsWith("- Completeness critic"));
-    if (!bullet) return "the completeness critic bullet is gone";
-    if (/\b(except|unless|skip|skipped|waived|optional)\b/.test(bullet)) return "the critic bullet exempts some run";
-    return true;
-  });
-
-test("E8 the roles reference is linked from the bounds paragraph",
-  "the role set was the tier table's four rows in practice; the reference is where the coordinator's variety lives, and a page without the link never sends anyone there",
-  () => shows(/\[roles\.md\]\(references\/roles\.md\)/));
-
-test("E9 the roles reference exists with its seven columns, at least fifteen roles, the six the page relies on, and no write right on a bulk verifier, a swarm reducer or a standing advisor",
-  "the page sends the coordinator to references/roles.md for what a role may write and return; a missing file, a table without those columns, a gutted table or a bulk row granted a tree is a reference that misleads",
-  () => {
-    const roles = read("skills/orchestrate/references/roles.md");
-    const problems = [];
-    if (!/^\| Role \| What it does \| May write \| Returns \| Spawn it when \| Tier \| Record \|$/m.test(roles)) problems.push("the seven-column header is missing");
-    const rows = roles.split("\n").filter((l) => /^\| [a-z]/.test(l));
-    if (rows.length < 15) problems.push(`only ${rows.length} role rows`);
-    for (const r of ["area scout", "split critic", "refuter", "bulk verifier", "judge", "completeness critic"]) if (!rows.some((l) => l.startsWith(`| ${r} |`))) problems.push(`no row for ${r}`);
-    for (const r of ["bulk verifier", "swarm reducer", "advisor, standing"]) {
-      const row = rows.find((l) => l.startsWith(`| ${r} |`));
-      if (!row) problems.push(`no row for ${r}`);
-      else if (/repository|run directory|live tree|worktree|state directory|data directory|owned files/i.test(row.split("|")[3])) problems.push(`the ${r} row grants a write right on a tree or the data directory`);
-    }
-    if (!/No role is a phase of one piece of work/.test(roles)) problems.push("the phase-pipeline sentence is gone");
-    return problems.length === 0 || problems.join("; ");
-  });
 
 // ------------------------------------------------------------------ the schema, and the links
 
