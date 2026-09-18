@@ -19,7 +19,7 @@ tag namespace serves every plugin in it, so the plugin's name is part of the tag
    every suite:
 
    ```bash
-   for f in skills/codex/scripts/*.mjs evals/*.mjs evals/lib/*.mjs; do node --check "$f"; done
+   for f in skills/*/scripts/*.mjs evals/*.mjs evals/lib/*.mjs; do node --check "$f"; done
    npm test
    ```
 
