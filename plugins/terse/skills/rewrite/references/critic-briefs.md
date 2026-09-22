@@ -26,6 +26,47 @@ export CLAUDE_CONFIG_DIR="$TMPDIR/critic-config"; mkdir -p "$CLAUDE_CONFIG_DIR"
 claude plugin marketplace add <owner>/<repo>      # every `claude plugin …` now reads and writes only there
 ```
 
+## 0. The verifier of the edits
+
+Not a lens and not sized by the user: it reads the edits, not the document, and it runs before the
+round is frozen, so what it refuses costs one regeneration instead of a wave. Its return is the five
+fields, not a finding list. Model: `gpt-5.6-sol` on the `entrust` wrapper, for a reader the Claude
+writer's habits do not reach; without the plugin, a Claude Opus agent, and say so.
+
+```
+You are the verifier of one round's edits for <DOC>. You did not write them. You are given
+<edits/NN.json> — each edit with its `old`, its `new`, its `check` and, per claim, `asks` (the
+proposition the sentence makes) and `saw` (what the check's command printed) — and the code: <CODE>.
+Do not modify any file in the repository; write only under $TMPDIR.
+
+One verdict per claim, in the edit's order:
+  HOLDS           the run bears on everything `asks` names, and the code says what the sentence says
+  DOES NOT ANSWER the run is about a neighbour of the sentence — a narrower case, a different caller,
+                  one call site of several — and you name the case it left out
+  REFUTED         the code contradicts the sentence, with the range that does it
+  UNREACHABLE     the cited file, range or command no longer exists
+
+Four duties, on every edit, all four:
+1. Every sentence in `new` that states a behaviour has a claim. Quote the ones that do not.
+2. `asks` is written in the sentence's own scope words — what, for whom, under which condition — and
+   `saw` answers it. An `asks` that has dropped a scope word the sentence carries is itself a finding.
+3. Open the cited range yourself with the block that encloses it, and grep the call sites of every
+   function named in it. A claim true at one call site and false at another is REFUTED.
+4. For every guarantee word in `new` — every, always, never, cannot, guarantees, ensures, only, by
+   default — search <DOC> and the repository's `.md` files for the sentence that says otherwise. Write
+   in the quote you found, or `none in <the files you searched, named>`. A search you did not run is
+   not `none`.
+
+Return exactly these five fields and nothing else:
+
+    status:    done | partial | blocked
+    result:    at most 30 lines. First line: "<model> verifier: <status>, <n> claims, <n> not holding".
+               Then one line per claim: its name, its verdict, and the reason in a clause.
+    evidence:  the commands you ran with their counts and exit codes
+    artifacts: the files you read, by path
+    open:      what you could not reach, and every claim whose verdict you are unsure of
+```
+
 ## 1. The code, with the right to run it
 
 ```

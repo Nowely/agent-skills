@@ -98,8 +98,8 @@ your shell rules forbid `cd`.
    proposition the sentence makes, in the sentence's own scope words — what, for whom, under which
    condition. `round.mjs` runs each `run` from the run directory before it writes anything and refuses
    the whole round when one `expect` finds nothing, so a citation that does not resolve stops there;
-   what the command printed is kept in the ledger as `saw`, and step 4b reads it against `asks`. The
-   format is the header of `round.mjs`.
+   what the command printed is kept in the ledger as `saw`, and the verifier below reads it against
+   `asks`. The format is the header of `round.mjs`.
 3. **Produce the round**: `node "$S/round.mjs" <NN-1>-<pass>.md <NN>-<pass>.md edits/NN.json --ledger ledger.json`.
 4. **Run the checks**, before any critic, with `R=<NN>-<pass>.md`:
    - `node "$S/rule1.mjs" "$R" --cut "<technical section heading>" --except "<section that may carry paths>"` — the rule that keeps mechanism out of the sections a reader meets first, with the document's own headings;
@@ -112,18 +112,27 @@ your shell rules forbid `cd`.
    from a ledger the abandoned attempt already grew carries the abandoned attempt's pins. A failure the
    previous round already had is a finding for this round's edits, not a block. A round is frozen the
    moment its critics launch, not before.
-5. **Announce the wave** — the lenses, their sizes from the table, the models, the cost — and wait for
-   the user's word; the user may size any lens to zero, and the least that still counts as a round is
-   lenses 1 and 2. Then **launch the critics**, one agent per lens, with the briefs in
-   [critic-briefs.md](references/critic-briefs.md), and the dedup agent over their reports; everything
-   they return is kept verbatim under `reviews/NN/`. The Codex lenses need the `entrust` plugin;
-   without it, run those lenses on Claude agents and say so.
-6. **Verify every finding yourself** from the check it carries — a finding without one is discarded —
+5. **Send the edits to the verifier** before the candidate is frozen: one agent that did not write them,
+   given `edits/NN.json` with every claim's `saw` and the right to read the code, brief 0 in
+   [critic-briefs.md](references/critic-briefs.md#0-the-verifier-of-the-edits). It returns a verdict per
+   claim. One `refuted` or `does not answer` sends the round back to the edits: remove the round file,
+   copy `ledger.NN.json` back over `ledger.json`, fix `edits/NN.json`, regenerate — and the verifier
+   reads the new one. Its report is kept verbatim under `reviews/NN/verifier.md`. Its cost is
+   **unmeasured**; the nearest observation is one Astra critic at 53 commands and 19 minutes
+   (`research/2026-09-22-terse-process/rounds.md`), and its catch rate is one blind run on one round, 6
+   of 10 regressions — a hypothesis the next rounds test, not a result.
+6. **Announce the wave** — the verifier, the lenses, their sizes from the table, the models, the cost —
+   and wait for the user's word; the user may size any lens to zero, and the least that still counts as
+   a round is the verifier and lenses 1 and 2. Then **launch the critics**, one agent per lens, with
+   the briefs in [critic-briefs.md](references/critic-briefs.md), and the dedup agent over their
+   reports; everything they return is kept verbatim under `reviews/NN/`. The Codex lenses need the
+   `entrust` plugin; without it, run those lenses on Claude agents and say so.
+7. **Verify every finding yourself** from the check it carries — a finding without one is discarded —
    and route each by the table in [loop.md](references/loop.md#where-a-finding-goes): a sentence to the
    next round's edits, a boundary or a term back to `rethink`, a code defect to the repository's
    `ISSUES.md`, a question the document does not answer to the user. When a finding routes to stage 3,
    make the structure map loop.md describes before the next round.
-7. **Record the round** in `rounds.md`, one table row: `| file | words | produced by | findings against
+8. **Record the round** in `rounds.md`, one table row: `| file | words | produced by | findings against
    it | regressions |` — *produced by* names the pass and the wave; *findings* is the dedup's count by
    category; **regressions** is the count of sentences the round introduced that its critics showed
    false or overstated. That number is the round's verdict.
@@ -167,7 +176,8 @@ In the run directory:
 - every round as its own file; `edits/NN.json`, `ledger.json`, `concepts.json`, `budgets.json`
 - `skeleton.md`, kept current with every decision taken after it was agreed — a section added, a fact
   restored, a budget changed
-- `rounds.md`, one row per round; `reviews/NN/`, every critic's report and the dedup, verbatim
+- `rounds.md`, one row per round; `reviews/NN/`, the verifier's report, every critic's report and the
+  dedup, verbatim
 - `diff-NN.patch` against the original; the cut ledger — every removed passage of twenty words or more,
   with its reason; the invisible-prerequisite inventory from the curse-of-knowledge pass, on rounds that
   ran a writer brief; the sections no task reached; and the structure map, when a stage-3 finding called
@@ -186,7 +196,8 @@ keeps its date and its numbers.
 - The measurements behind every rule here, dated: [measurements.md](references/measurements.md).
 - The three decisions before any sentence: [stages.md](../rethink/references/stages.md).
 - Writer briefs and judging sheets, both routes: [bake-off.md](references/bake-off.md).
-- Critic briefs, one per lens, and the rights header: [critic-briefs.md](references/critic-briefs.md).
+- The verifier of the edits, the critic briefs one per lens, and the rights header:
+  [critic-briefs.md](references/critic-briefs.md).
 - The checks as scripts with a planted-violation self-test: [scripts/](scripts/).
 - The rules, fixed: [writing-rules.md](references/writing-rules.md); the third pass, fixed:
   [curse-of-knowledge.md](references/curse-of-knowledge.md).

@@ -26,6 +26,15 @@ forensics remain in the repository references and release notes.
   so a round removed before the freeze takes its ledger entries with it instead of leaving them for the
   round that replaces it.
 
+### Added
+
+- A verifier reads the edits before the round is frozen — brief 0 in `critic-briefs.md`, one agent that
+  did not write them, given `edits/NN.json` with every claim's `saw` and the code, returning `holds`,
+  `does not answer`, `refuted` or `unreachable` per claim. A `refuted` or a `does not answer` sends the
+  round back to its edits, which costs one regeneration where the same finding from a critic costs a
+  wave. Its four duties are the ones a blind run on one recorded round caught 6 of 10 regressions with;
+  that is a hypothesis with n = 1 behind it, its cost is unmeasured, and the page says both.
+
 ## 0.1.1 — 2026-09-17
 
 ### Changed
