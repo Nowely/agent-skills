@@ -53,21 +53,24 @@ eviction or cleanup written in any other vocabulary is pinned as settled. The `n
 the sentence the claim is about — is never read. Either the test reads the sentence, or the mark is
 declared by the writer and the regex only warns.
 
-## E4. `rewrite` step 4 names nobody who may write `ledger.json` by hand and no format for it, and the one recorded run did it 26 times
+## E4. `rewrite` step 4 gives no procedure for a ledger entry written by hand, and the one recorded run wrote 26 of them
 
 **Evidence, level 3.** On 2026-09-22, replaying `research/2026-09-11-markup-round-0/edits/04.json`…
 `09.json` through `plugins/terse/skills/rewrite/scripts/round.mjs` from an empty ledger produces 40
 entries; `research/2026-09-11-markup-round-0/ledger.json` as shipped holds 66. The 26 in the file and
 not in the replay were written by a hand no step describes. `plugins/terse/skills/rewrite/SKILL.md`
-step 4 gives `round.mjs` as the only writer — item 2 declares `claims`, `retire` and `drop`, item 3
-runs the script, item 4 runs `ledger.mjs` over the result — and `plugins/terse/skills/rewrite/references/loop.md:68-70`
-says the ledger is grown from each edit's `claims` and `retire`. Neither says a pin may be added
-outside an edit, by whom, or in what shape.
+step 4 gives `round.mjs` as the only writer after initialisation — item 1 seeds the file with
+`audit/scripts/ledger-seed.mjs` on the audit route (`plugins/terse/skills/rewrite/SKILL.md:91`), item 2
+declares `claims`, `retire` and `drop`, item 3 runs the script, item 4 runs `ledger.mjs` over the
+result — and `plugins/terse/skills/rewrite/references/loop.md:68-70` says the ledger is grown from each
+edit's `claims` and `retire`. No step says a pin may be added outside an edit, by whom, or when.
 
 **Issue text.** The record shows the coordinator adding ledger entries directly — retired phrasings a
 critic found after the round was frozen, and pins for claims no edit introduced — which is the only way
-those 26 entries exist. The page presents the ledger as a file one script owns, so a coordinator
-following it has no route for a pin that arrives after the edits are written, and a coordinator who
-adds one anyway is writing a format nothing documents and nothing checks. Either step 4 says that
-entries may be added by hand between rounds, names the fields they must carry, and says which round
-they are charged to, or the pins that arrive late get an edits-file route of their own.
+those 26 entries exist. The page presents the ledger as a file its two scripts own, so a coordinator
+following it has no route for a pin that arrives after the edits are written. The fields such an entry
+needs are documented — `plugins/terse/skills/rewrite/scripts/ledger.mjs:3-4` gives the ledger's shape
+and `plugins/terse/skills/rewrite/scripts/round.mjs:4-11` the edits file's — but the page a coordinator
+executes gives no procedure for writing one: no step names who may add an entry between rounds, at what
+point, or which round's regression count it is charged to. Either step 4 states that procedure, or the
+pins that arrive late get an edits-file route of their own.
