@@ -122,3 +122,44 @@ record already says the local ruler measures model answerability. Verdict on the
 ([k2-completeness.md](k2-completeness.md), Opus K2: partial): it produced a map with a verdict per claim per
 target, which the 2026-09-11 survey never had; what it did not produce is any measurement that a candidate
 improves a document, which is phase 3 and has still never run, and it left one vendor page unread.
+
+## Wave 5 — the evaluation guide read, and the design's second round
+
+Codex Terra S4 decomposed the Anthropic evaluation guide (33 rows) and agents.md (12), 45/45 grep-validated,
+zero measured claims; the guide names baselines and earlier-version comparison and specifies no
+no-document arm ([s4-evaluation-guide-and-agents-md.md](s4-evaluation-guide-and-agents-md.md)).
+
+Fable A2 wrote [a2-design-v2.md](a2-design-v2.md) (674 lines) against C1's 34 findings, K2's four, P1's
+candidates and S4's rows: a disposition table claiming 34 fixed / 0 rejected / 4 open; the central claim
+re-derived as 2 replayed, 6 blind-caught, 4 blind-missed, 5 desk, 8 forced-only of 25; a transition
+counting rule with [a2-regress.mjs](a2-regress.mjs), which over the record gives 2, 2, 1, 1, 6, 4, 11
+against the recorded 1, 2, 1, 0, 6, 5, 10 ([a2-record-replay.txt](a2-record-replay.txt)); hunks as regions
+of the original→candidate diff with provenance by replay; seven P1 candidates taken as hypotheses, five left
+with entrust, six refusals carried.
+
+Codex Astra C2 ([c2-design-critique.md](c2-design-critique.md), 25 findings, 126/126 quotes verified,
+ten `regress.mjs` runs in [c2-regress-runs.log](c2-regress-runs.log)): of the 34 "fixed", 25 hold and 9 do
+not (F3.5, F3.7, F3.8, F3.11, F3.12, F3.18, F4.2, K2-c, K2-d). The counting rule passes C1's four toy
+cases and fails two new ones — a false sentence rewritten into a different false sentence is invisible to
+a transition count, and a new false clause beside a newly added true pin is missed; the supplied record
+command makes `--judge 9` select round 08; the replay's 02–08 total is 27 against the recorded 25. The
+pre-registered verifier test is not blind: the checkout it names contains the critics' reviews, the strict
+scorer's independence is unknown (C2-5.3), and 11/21 can pass while missing every round-08 case. The pipeline reads
+`refused.json` before anything writes it, a pre-freeze rejection keeps its ledger mutations, and HO6
+demands a verdict in files written before the verdict exists. On the question v2 left to the owner — charge
+a regression to the introducing round or to the round whose critics found it — the record already settles
+it: `loop.md:53-55` is conjunctive, introduced by the round *and* shown by its critics, so the replay's
+numbers are a different metric, not a disagreement the owner must resolve. C2 divides its 25 into 21 defects of correctness, count or requirement and four carried owner gaps.
+Verdict: not implementable as written. [k3-completeness.md](k3-completeness.md) (Codex Sol K3: partial, 70 of 75
+numbers matched) corrected four statements in the coordinator's closing answer and two in this section.
+
+Two design rounds is the bound this repository's orchestrate page sets before the question goes to the
+owner. What the two rounds established: the loop's defects are settled at level 3 — D1 replayed rounds 04–09
+byte-identical, C1 and C2 re-ran the counts, the toy ledgers and the hunk geometry on the record; none reran
+the lifecycle experiments, and C2 says the individual disputed adjudications of the record stay unknown; what has footing and does not depend on the contested parts is the seeded ledger (2 of 25,
+replayed), the executed check in `round.mjs`, and a pre-freeze verifier as a hypothesis whose test must run
+on a checkout without the critics' answers; the regression count keeps the record's own conjunctive
+definition and is computed from the pins the verification step writes, with no transition formula. What
+paper rounds do not produce is a measurement that a round healed, and each critic found a class the
+previous designer had not seen; the next unit of work is a small implemented step with its own test, not a
+v3.
