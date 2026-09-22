@@ -147,8 +147,18 @@ instrument with no room above cannot register an improvement, and a later "the s
 mean nothing. A zero can rise; report it and go on.
 
 Write the run file to `$RUN/audit.md` using the section contract in
-[ledgers.md](references/ledgers.md), then report to the user: the score, the failures with their
-causes, the refuted claims, and the absolute path. Offer `rewrite` as the next step; do not run it.
+[ledgers.md](references/ledgers.md). Under *Claim ledger*, write the entries a second time as the
+`json claims` block that reference describes: `rewrite` turns the confirmed and refuted ones into the
+ratchet it starts from, and a restatement in prose is not a string a pattern can find. Then:
+
+```bash
+# $A is this skill's scripts/: installed, $CLAUDE_PLUGIN_ROOT/skills/audit/scripts; from a checkout,
+# the scripts/ beside this file
+node "$A/ledger-seed.mjs" "$RUN/audit.md" "$RUN/ledger.json"
+```
+
+Report to the user: the score, the failures with their causes, the refuted claims, the count the seed
+printed, and the absolute path. Offer `rewrite` as the next step; do not run it.
 
 ## Reference
 
@@ -156,3 +166,4 @@ causes, the refuted claims, and the absolute path. Offer `rewrite` as the next s
 - Evidence levels, guarantee words, verdicts: [truth-pass.md](references/truth-pass.md).
 - The reader protocol and re-measurement: [measure.md](references/measure.md).
 - Entry formats and the run file contract: [ledgers.md](references/ledgers.md).
+- The claim ledger turned into `rewrite`'s ratchet: [scripts/ledger-seed.mjs](scripts/ledger-seed.mjs).

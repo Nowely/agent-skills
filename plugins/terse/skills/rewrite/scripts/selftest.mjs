@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Every check is tested against a planted violation before its output is believed. Exit 1 on any miss.
-import fs from "node:fs"; import os from "node:os"; import path from "node:path"; import { execFileSync } from "node:child_process";
+import fs from "node:fs"; import os from "node:os"; import path from "node:path"; import { execFileSync, spawnSync } from "node:child_process";
 const here = path.dirname(new URL(import.meta.url).pathname);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "terse-selftest."));
 const run = (script, args) => { try { return { code: 0, out: execFileSync("node", [path.join(here, script), ...args], { encoding: "utf8" }) }; }
                                 catch (e) { return { code: e.status, out: String(e.stdout) }; } };
+const runErr = (script, args) => { const r = spawnSync("node", [path.join(here, script), ...args], { encoding: "utf8" }); return { code: r.status, out: r.stdout ?? "", err: r.stderr ?? "" }; };
 let failed = 0;
 const check = (name, ok) => { console.log(`${ok ? "ok  " : "MISS"} ${name}`); if (!ok) failed++; };
 // rule1: a flag and a tilde path before the cut must both be reported; the same path inside the exception must be excused
@@ -57,6 +58,33 @@ check("sections counts per heading", /^\s*2 B$/m.test(s.out) && /TOTAL/.test(s.o
 const bj = path.join(tmp, "b.json"); fs.writeFileSync(bj, JSON.stringify({ A: 10, B: 1, C: 5, D: 5 }));
 const sb = run("sections.mjs", [d, bj]);
 check("sections reports a section over its budget and still exits 0", /\+1\s+B/.test(sb.out) && sb.code === 0);
+// ledger-seed: the audit's confirmed and refuted claims become the ratchet; unconfirmed is seeded nowhere
+const SEED = "../../audit/scripts/ledger-seed.mjs";
+const aud = path.join(tmp, "audit.md"), seed = path.join(tmp, "seed.json");
+const claims = [
+  { id: "C01", where: "README.md:3", sentence: "It writes into your tree only\non your word.", claim: "writing needs the word", level: 3, verdict: "confirmed", sources: "apply.mjs:1-9" },
+  { id: "C02", where: "README.md:9", sentence: "Every run leaves a receipt.", claim: "receipt on every run", level: 2, verdict: "refuted" },
+  { id: "C03", where: "README.md:11", sentence: "The cache is pruned weekly.", claim: "weekly prune", level: 1, verdict: "unconfirmed" },
+];
+const auditMd = (cs) => "# Audit\n\n## Claim ledger\n\n" + cs.map((c) => `### ${c.id} — ${c.where}\n\nClaim: ${c.claim}.\n`).join("\n") +
+  "\n```json claims\n" + JSON.stringify(cs) + "\n```\n";
+fs.writeFileSync(aud, auditMd(claims));
+const sd = runErr(SEED, [aud, seed]);
+const seeded = fs.existsSync(seed) ? JSON.parse(fs.readFileSync(seed, "utf8")) : [];
+check("seed takes the confirmed and the refuted and leaves the unconfirmed", sd.code === 0 && seeded.length === 2);
+check("a confirmed claim is seeded want:true at its level", seeded[0]?.want === true && seeded[0]?.level === 3 && /^C01 /.test(seeded[0]?.name));
+check("a refuted claim is seeded want:false at its level", seeded[1]?.want === false && seeded[1]?.level === 2);
+check("the unconfirmed claim is named on stderr", /C03/.test(sd.err) && !seeded.some((c) => /^C03 /.test(c.name)));
+const kept = path.join(tmp, "s-01.md"), dropped = path.join(tmp, "s-02.md");
+fs.writeFileSync(kept, "It writes into your tree only on your word.\n");
+fs.writeFileSync(dropped, "It writes into your tree.\n");
+const sl = run("ledger.mjs", [seed, kept, dropped]);
+check("a round that drops the seeded sentence fails the ledger", sl.code === 1 && /C01[^\n]*yes\s+LOST/.test(sl.out));
+check("seed refuses to overwrite a ledger", runErr(SEED, [aud, seed]).code === 1);
+const aud2 = path.join(tmp, "audit2.md"), seed2 = path.join(tmp, "seed2.json");
+fs.writeFileSync(aud2, auditMd(claims).replace("### C02", "### C09"));
+const sd2 = runErr(SEED, [aud2, seed2]);
+check("seed refuses an audit whose prose and block disagree", sd2.code === 1 && /C09/.test(sd2.err) && !fs.existsSync(seed2));
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(failed ? `\n${failed} check(s) MISSED` : "\nall checks caught their planted violation");
 process.exit(failed ? 1 : 0);

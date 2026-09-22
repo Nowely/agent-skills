@@ -87,7 +87,10 @@ your shell rules forbid `cd`.
      a reader to perform; `questions.json` — the questions a reader arrives with, from the audit's key
      when there is one, otherwise from the skeleton's purpose per section, one line each.
    On a resumed run reuse all four; the readers are new agents and stay fresh even where the questions
-   repeat. `ledger.json` starts empty and grows from the rounds.
+   repeat. `ledger.json` on the audit route is the audit's own claim ledger, seeded by
+   `node "$A/ledger-seed.mjs" audit.md ledger.json` (`$A` is `audit`'s `scripts/`) — every confirmed
+   claim a `want: true` the first round must not lose, every refuted one a `want: false`. On the
+   skeleton route it starts empty. Either way it grows from the rounds.
 2. **Write `edits/NN.json`**: for each edit the exact `old` text, which must occur once; the `new` text;
    `claims` it introduces and `retire` phrasings it removes as false; and `check` — `{"level": 1|2|3,
    "how": "command or file:line"}` — required whenever the edit carries claims. The format is the header

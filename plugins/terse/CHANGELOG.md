@@ -3,6 +3,18 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- `rewrite`'s ledger starts as the audit's claim ledger instead of empty, so the first round is already
+  under the ratchet. `audit` writes its entries a second time as a `json claims` block inside `audit.md`
+  — the prose entry restates a claim and a restatement is not a string a pattern can find — and the new
+  `audit/scripts/ledger-seed.mjs` turns every confirmed claim into a `want: true` pin and every refuted
+  one into a `want: false`, each the sentence itself, escaped. Replayed on the 2026-09-11 record: with a
+  ledger in place from the start, the two compression regressions of rounds 02 and 03 read LOST where
+  the run saw nothing until round 04.
+
 ## 0.1.1 — 2026-09-17
 
 ### Changed

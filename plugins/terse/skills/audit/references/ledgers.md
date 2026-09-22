@@ -18,7 +18,7 @@ Files audited, the entry file, the repository that backs them, and the absolute 
 The eight sections, as confirmed by the user.
 
 ## Claim ledger
-Entries C01, C02, … in document order.
+Entries C01, C02, … in document order, then the `json claims` block that carries the same entries.
 
 ## Questions and answer key
 Each question, its correct answer, the ledger entries that support it, and whether it is a control.
@@ -61,6 +61,29 @@ Position: misplaced — sends the reader to look the number up instead of statin
 - **Level** is 1, 2 or 3, as reached — see [truth-pass.md](truth-pass.md).
 - **Verdict** is confirmed, refuted or unconfirmed. A refuted entry names what contradicts it.
 - **Position** appears only when the claim is true and read where it misleads.
+
+## The `json claims` block
+
+`rewrite` seeds its ratchet from this ledger, so the entries are written twice: as the prose above, for
+a reader, and once more as one fenced block at the end of the same heading, for
+`audit/scripts/ledger-seed.mjs`. The restatement a reader needs is not the string a pattern can match,
+which is why the block carries `sentence` — the document's own words, copied, wrapping and all.
+
+````markdown
+```json claims
+[
+ {"id": "C07", "where": "README.md:46", "sentence": "The installer requires Node at or above the version package.json declares.",
+  "claim": "the installer requires the declared Node version", "level": 2, "verdict": "confirmed",
+  "sources": "package.json:1-9; skills/codex/scripts/driver.mjs:24-29"}
+]
+```
+````
+
+Every `### C..` entry appears in the block and no other does; the seed script exits 1 when the two
+disagree, and names which ids are in one half only. `ledger-seed.mjs AUDIT.md LEDGER.json` then writes
+every confirmed entry as `want: true` and every refuted one as `want: false`, each pattern the sentence
+escaped to a literal over whitespace-normalised text; unconfirmed entries are listed on stderr and
+seeded nowhere, since neither presence nor absence of them is a result.
 
 ## Reader results
 
