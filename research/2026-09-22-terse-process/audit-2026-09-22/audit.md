@@ -10,7 +10,7 @@ task readers; steps 4 and 6 are the coordinator's. Nothing was written into the 
 Files audited: the eighteen tracked `.md` files under `plugins/terse/` (`docs.txt` beside this file).
 Entry file: `plugins/terse/README.md` (90 lines, 933 words), confirmed by the owner over the marketplace
 root README. Repository backing them: `/Users/ruliny/Git/agent-skills` at `1a24018` — a plugin of skills,
-so "the code" is the three skill pages with their references, the eight scripts, and the three manifests;
+so "the code" is the three skill pages with their references, the seven scripts, and the three manifests;
 the README's numbers are claims about `research/2026-09-10-chain/`. Run directory:
 `/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-195101`.
 

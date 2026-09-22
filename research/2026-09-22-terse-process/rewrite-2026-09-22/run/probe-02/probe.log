@@ -1,0 +1,12 @@
+CLAUDE_CONFIG_DIR=probe-02/config-uninstall
+$ claude --version -> exit 0: 2.1.280 (Claude Code)
+$ claude plugin marketplace add /Users/ruliny/Git/agent-skills -> exit 0: Adding marketplace…✔ Successfully added marketplace: nowely (declared in user settings)
+$ claude plugin install terse@nowely -> exit 0: Installing plugin "terse@nowely"...✔ Successfully installed plugin: terse@nowely (scope: user)
+state after install: plugins/data/terse-nowely absent, its run marker absent, decoy absent
+state planted: plugins/data/terse-nowely present, its run marker present, decoy present
+$ claude plugin uninstall terse@nowely -> exit 0: ✔ Successfully uninstalled plugin: terse (scope: user)
+state after uninstall without --keep-data: plugins/data/terse-nowely absent, its run marker absent, decoy present
+$ claude plugin install terse@nowely -> exit 0: Installing plugin "terse@nowely"...✔ Successfully installed plugin: terse@nowely (scope: user)
+state reinstalled, planted again: plugins/data/terse-nowely present, its run marker present, decoy present
+$ claude plugin uninstall terse@nowely --keep-data -> exit 0: ✔ Successfully uninstalled plugin: terse (scope: user)
+state after uninstall with --keep-data: plugins/data/terse-nowely present, its run marker present, decoy present
