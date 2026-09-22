@@ -163,3 +163,54 @@ definition and is computed from the pins the verification step writes, with no t
 paper rounds do not produce is a measurement that a round healed, and each critic found a class the
 previous designer had not seen; the next unit of work is a small implemented step with its own test, not a
 v3.
+
+## Wave 6 — the implementation round
+
+On the owner's word, the first implemented step instead of a third design: the three items with footing.
+Opus W1 wrote in the live tree of the branch; Codex Sol R1 reviewed by running, twice; the coordinator
+verified the last pass under the redirect rule. Fourteen commits on top of `63826f9`, `plugins/terse` and `ISSUES.md` only,
+no version bump, the two frozen files untouched, `CHANGELOG.md` under Unreleased.
+
+- **The ledger is seeded from the audit** (`audit/scripts/ledger-seed.mjs`, new). The claim-ledger contract
+  in `ledgers.md` was not parseable — its `Claim:` line restates the sentence rather than quoting it — so
+  `audit.md` now carries a fenced `json claims` block under *Claim ledger*, and the seed refuses a block
+  elsewhere, a ledger with no `### C..` entry, and an entry missing any of its seven fields. On the record,
+  a ledger seeded from its own `want:true` entries and run over rounds 00–03 shows exactly two yes→LOST
+  transitions, at 02 and 03: D1's R02-1 and R03-1 (level 3, W1 and R1 each ran it).
+- **The check runs** (`round.mjs`). An edit with claims declares `check.run`, `check.expect` and, per
+  claim, `asks`; the command runs with the run directory as cwd, a failing `expect` refuses the round with
+  nothing written and the ledger byte-identical, and a successful round writes `saw` into the ledger entry
+  and a byte-copy snapshot `ledger.NN.json` beside the ledger so a round the verifier sends back is undone
+  by `cp`. `--allow-unrun` accepts the record's `how`-only edits, marked `unrun`; under it rounds 04→09
+  replay byte-identical (6/6, run by W1, R1 twice, and from a fresh `git archive`). A round declaring one
+  claim name twice is refused. Selftest 22 → 45 `ok` lines (K4's count from a `git archive` of each end; W1 reported 24 before);
+  the self-test's rule is a planted violation per gate, R1 broke five of the new ones and each failed as it
+  should, and K4 notes positive-path assertions among the 45 too.
+- **The verifier before the freeze** (brief 0 in `critic-briefs.md`, row 0 of the wave's table in
+  `rewrite/SKILL.md`). One agent that is not the writer reads `edits/NN.json` and the ledger entries the
+  round wrote, and returns `holds`, `does not answer`, `refuted` or `unreachable` per claim; the last three
+  send the round back to regeneration. It is sized by the user like a lens, default one, and the least that
+  counts as a round stays lenses 1 and 2. Its cost is unmeasured; the one blind run is M24 in
+  `measurements.md`, on Astra, a hypothesis and no evidence about Sol.
+- **Recorded, not fixed**: `ISSUES.md` E3 (the provisional mark reads the claim's name and pattern, never
+  the sentence) and E4 (the record's ledger holds 26 entries no script wrote, and the page gives no
+  procedure for a hand-written entry).
+- **The review**: R1's first pass found all six runtime claims true and ten text-and-contract defects
+  (the verifier's promised input did not exist; `unreachable` had no route; a "step 4b" that was not on
+  the page; `drop` missing from the schema; the seed accepting what the contract forbade; a mandatory
+  verifier against the page's announce-and-size rule). The second pass found the ten resolved and four
+  new: duplicate claim names collapsing silently, the brief overstating which edits carry a check, a
+  "ran best" cell naming an unmeasured model, and "catch rate" for a single run. The third fix pass was
+  verified by the coordinator (selftest 45/0, forbidden strings absent, syntax, citations), not by a third
+  paid review. R1's two reports are [r1-review.md](r1-review.md) and [r1b-re-review.md](r1b-re-review.md);
+  K4's check of the closing answer is [k4-completeness.md](k4-completeness.md) (partial, 50 of 55 matched;
+  its four corrections are applied here and in `rounds.md`).
+
+Decisions the round surfaced for the owner: whether a name declared in `claims` and in `retire` within one
+round should be refused (W1 widened the rule to that; the record has no such case); E4's procedure for a
+hand-written ledger entry, which the seed makes more pressing; and that `ledger-seed.mjs` has never seeded a real
+`audit.md`: the one audit run file in the repository, `research/2026-09-10-chain/chain/audit.md`, predates
+the `json claims` contract, and the seed refuses it with exit 1 naming the missing heading (the coordinator
+ran it); the first audit under the new contract is the seed's test. E3 adds a fourth decision
+(`ISSUES.md`): inspect the edited sentence for the provisional mark, or make it writer-declared with the
+regex as a warning.

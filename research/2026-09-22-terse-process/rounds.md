@@ -1,10 +1,11 @@
 # Rounds
 
-One orchestrated round in five waves, the coordinator on Fable 5.1 (Opus 5 during scouting). Waves 1–3 were
+One orchestrated round in six waves, the coordinator on Fable 5.1 (Opus 5 during scouting). Waves 1–3 were
 the plan's six agents; wave 4 the owner's five for the vendor sources; wave 5 four more for the evaluation
-guide and the design's second round: fifteen agent runs, none dropped. The split critic was skipped in
-wave 4, and one surveyor dropped fourteen draft rows of its own. Agents read only; every artifact came back as text or a file
-under the agent's own temporary directory and was copied here unchanged.
+guide and the design's second round; wave 6 the implementation, one writer and one reviewer resumed once:
+seventeen agent runs, none dropped. The split critic was skipped in
+wave 4, and one surveyor dropped fourteen draft rows of its own. Agents read only through wave 5; in wave 6 the writer committed in the live tree of the branch. Every read
+agent's artifact came back as text or a file under its own temporary directory and was copied here unchanged.
 
 | Wave | Agent | Task | Cost | Produced | Got wrong, or was told wrong |
 |---|---|---|---|---|---|
@@ -23,12 +24,20 @@ under the agent's own temporary directory and was copied here unchanged.
 | 5 | Fable A2 | design v2 against C1's 34 findings, K2's four, P1's candidates and S4's rows | 263k tokens, 14 min | `a2-design-v2.md`, 674 lines; `a2-regress.mjs`, `a2-record-replay.txt` | disposition claims 34 fixed / 0 rejected / 4 open — C2 recounts it; the counting rule's replay over the record gives 2,2,1,1,6,4,11 against rounds.md's 1,2,1,0,6,5,10, a charging question it leaves to the owner |
 | 5 | Codex Astra C2 | the attack on v2, seven fronts, ten counting runs, hunk geometry on the record | 29 commands, 26 min | `c2-design-critique.md`, 25 findings; `c2-regress-runs.log`, `c2-geometry-summary.txt`, `c2-geometry-commands.log` | not cross-checked in this round; ran no live model trial, which it says |
 | 5 | Codex Sol K3 | completeness critic on the coordinator's second closing answer | 10 commands, 8 min | `k3-completeness.md`: partial — 75 numbers checked, 70 matched; "C1 replayed the record" overstated, "nothing dropped" overbroad, "strict scoring not independent" stronger than C2's finding, an agent-per-step estimate with no source, and the agent total miscounted | — |
+| 6 | Opus W1 | implement the seed, the executed check and the verifier brief; then two fix passes | 246k tokens, 26 min (three calls) | 14 commits on `plugins/terse` + `ISSUES.md`: `audit/scripts/ledger-seed.mjs`, `round.mjs`, `selftest.mjs` (22→45 `ok` lines), `ledgers.md`, `audit/SKILL.md`, `rewrite/SKILL.md`, `critic-briefs.md`, `measurements.md` M24, `CHANGELOG.md`, E3 and E4 | first pass: promised the verifier a file that did not exist, cited a step not on the page, dropped `drop` from the schema, let the seed accept what the contract forbade, made the verifier mandatory; one commit fixed its own wrong line number in E4 |
+| 6 | Codex Sol R1 | review by running: six runtime claims, five planted breaks, text and contract | 32 commands, 13.5 min | all six runtime claims pass; ten text/contract findings; verdict not mergeable | — |
+| 6 | Codex Sol R1 (resumed) | re-review after the fixes | 17 commands, 8 min | ten resolved, four new; verdict not mergeable | — |
+| 6 | coordinator | verification of the last fix pass under the redirect rule | — | selftest 45/0, no "catch rate" or "step 4b", 14 commits, plugin tree clean before this record was written, syntax, E4 citations | not an independent agent; the skill allows it for a bounded check |
+| 6 | Codex Sol K4 | completeness critic on the third closing answer | 24 commands, 10 min | `k4-completeness.md`: partial — 55 checked, 50 matched; "clean tree" while the record was unstaged, 24→45 where the archive gives 22→45, "every check a planted violation" against positive-path assertions, "no audit run file" against the 2026-09-10 one; E3's stale `round.mjs:105` | — |
 
 Codex tokens are not measured by the driver; commands and minutes are what its reports carry. Claude tokens
 and minutes are the harness's task notifications. None of these figures is in the copied returns, so they
 cannot be re-derived from this directory. The returns were copied with `cp` from the paths the agents named.
 
 ## The coordinator's own errors
+
+- The third closing answer, first draft: the four K4 lists in its row above. Fixed before it went out;
+  E3's line number fixed in its own commit.
 
 - The second closing answer, first draft: four overstatements K3 lists in its row above, and seventeen agents
   where the rows count fifteen. Fixed before the answer went out.
