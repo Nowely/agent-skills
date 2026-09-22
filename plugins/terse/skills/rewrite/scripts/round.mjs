@@ -31,8 +31,8 @@
 // runs; ledger.mjs prints it as L2~. A `run` does not retire that mark: a sed over the source shows
 // what a line says, not what a lifecycle does.
 //
-// Before the ledger is written it is copied to `ledger.NN.json` beside itself, NN from TO's name, so
-// the state before this round is always on disk. A round the verifier sends back is undone by
+// Before the ledger is written its bytes are copied to `ledger.NN.json` beside it, NN from TO's name,
+// so the state before this round is always on disk. A round the verifier sends back is undone by
 // deleting TO and copying that file back over the ledger.
 import fs from "node:fs";
 import path from "node:path";
@@ -109,7 +109,9 @@ if (ledgerFile) {
   }
   const nn = path.basename(to).match(/^\d+/)?.[0] ?? path.basename(to).replace(/\.[^.]*$/, "");
   const snapshot = path.join(path.dirname(ledgerFile), `ledger.${nn}.json`);
-  fs.writeFileSync(snapshot, JSON.stringify(ledger, null, 1) + "\n");
+  // Copied, not re-serialised: `cp ledger.NN.json ledger.json` has to restore the bytes that were there.
+  if (fs.existsSync(ledgerFile)) fs.copyFileSync(ledgerFile, snapshot);
+  else fs.writeFileSync(snapshot, "[]\n");
   fs.writeFileSync(ledgerFile, JSON.stringify([...byName.values()], null, 1) + "\n");
   console.log(`ledger: ${byName.size} claim(s); the state before this round is in ${path.basename(snapshot)}`);
 }

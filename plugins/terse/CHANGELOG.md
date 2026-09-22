@@ -25,7 +25,7 @@ forensics remain in the repository references and release notes.
   executed and nothing read, and two regressions of one recorded round carried their own refutation
   inside the `how` they shipped with. `--allow-unrun` accepts the old shape for replaying a recorded
   run and marks those entries `unrun`; the 2026-09-11 record replays byte-identical under it.
-- A round can be undone. `round.mjs` leaves the ledger as it was in `ledger.NN.json` before growing it,
+- A round can be undone. `round.mjs` copies the ledger's bytes to `ledger.NN.json` before growing it,
   so a round removed before the freeze takes its ledger entries with it instead of leaving them for the
   round that replaces it.
 
