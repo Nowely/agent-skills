@@ -19,7 +19,8 @@
 // `expect`, `asks` and `saw`, the output clipped to 2000 characters. A non-zero exit is reported and
 // does not by itself refuse the round: what was asked of the command is `expect`.
 // Every claim states its `asks` — the proposition the sentence makes: what, for whom, under which
-// condition. A run that answers a neighbour of `asks` is what the verifier of step 4b reads for.
+// condition. A run that answers a neighbour of `asks` is what the verifier of step 4's wave reads for,
+// in the ledger entries written here — the edits file never carries `saw`.
 //
 // --allow-unrun accepts the schema that predates the running check: `check.how` with no `run`, and
 // claims with no `asks`. Such entries are marked `unrun: true`. It exists to replay a recorded run;

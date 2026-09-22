@@ -92,9 +92,11 @@ your shell rules forbid `cd`.
    claim a `want: true` the first round must not lose, every refuted one a `want: false`. On the
    skeleton route it starts empty. Either way it grows from the rounds.
 2. **Write `edits/NN.json`**: for each edit the exact `old` text, which must occur once; the `new` text;
-   `claims` it introduces and `retire` phrasings it removes as false; and, whenever the edit carries
-   claims, `check` — `{"level": 1|2|3, "run": "<command>", "expect": "<regex over what it printed>"}`,
-   where `run` at levels 1 and 2 is usually `sed -n 'A,Bp' <file>`. Every claim says what it `asks`: the
+   `claims` it introduces, `retire` phrasings it removes as false, and `drop` the names of ledger
+   entries whose claims the edit removes on purpose, each of them named in that round's row of
+   `rounds.md`. Whenever the edit carries claims it also carries `check` — `{"level": 1|2|3, "run":
+   "<command>", "expect": "<regex over what it printed>"}`, where `run` at levels 1 and 2 is usually
+   `sed -n 'A,Bp' <file>`. Every claim says what it `asks`: the
    proposition the sentence makes, in the sentence's own scope words — what, for whom, under which
    condition. `round.mjs` runs each `run` from the run directory before it writes anything and refuses
    the whole round when one `expect` finds nothing, so a citation that does not resolve stops there;
@@ -118,7 +120,8 @@ your shell rules forbid `cd`.
    reading before the freeze, so a claim whose run does not answer its sentence reaches the critics
    instead: the same finding, at the price of a wave rather than of one regeneration. Then:
    - **the verifier first**, when it is sized, on the edits and not on the document — one agent that
-     did not write them, brief 0 in
+     did not write them, given `edits/NN.json` and the `ledger.json` entries this round wrote, where
+     each claim's `saw` is, brief 0 in
      [critic-briefs.md](references/critic-briefs.md#0-the-verifier-of-the-edits). One `refuted` or
      `does not answer` sends the round back to its edits: remove the round file, copy `ledger.NN.json`
      back over `ledger.json`, fix `edits/NN.json`, regenerate — and the verifier reads the new one. An
@@ -144,7 +147,7 @@ the verifier's is what one wave measured on 2026-09-12 on a 1600-word README:
 
 | Agent | Reads | Where it ran best | Size | Cost |
 |---|---|---|---|---|
-| 0. the verifier of the edits | this round's edits with each claim's `asks` and `saw`, against the code; not the document | Codex gpt-5.6-sol | one | unmeasured, [M24](references/measurements.md#m24) |
+| 0. the verifier of the edits | this round's edits, and the `asks` and `saw` `round.mjs` wrote to the ledger, against the code; not the document | Codex gpt-5.6-sol | one | unmeasured, [M24](references/measurements.md#m24) |
 | 1. the code, with the right to run it | every behavioural claim; level 3 for anything about a lifecycle | Claude Opus | one | ~180k tokens, 17 min |
 | 2. the mechanical rules and the water | the skeleton's rules as a grep would; words whose score does not pay | Claude Opus | one | ~70k tokens, 7 min |
 | 3. adversarial, whole document | every sentence a reader acts on; scope words; CLI experiments in an isolated config | Codex gpt-6-astra | one | ~40 commands, 5 min |

@@ -35,9 +35,10 @@ is the five fields, not a finding list. Its own cost is unmeasured and its catch
 writer's habits do not reach; without the plugin, a Claude Opus agent, and say so.
 
 ```
-You are the verifier of one round's edits for <DOC>. You did not write them. You are given
-<edits/NN.json> — each edit with its `old`, its `new`, its `check` and, per claim, `asks` (the
-proposition the sentence makes) and `saw` (what the check's command printed) — and the code: <CODE>.
+You are the verifier of one round's edits for <DOC>. You did not write them. Two files and the code:
+<edits/NN.json>, each edit with its `old`, its `new` and its `check`; <ledger.json>, where this
+round's claims were written, each with its `asks` — the proposition the sentence makes — and its
+`saw`, what the check's command printed. The code: <CODE>. A claim's name is what joins the two.
 Do not modify any file in the repository; write only under $TMPDIR.
 
 One verdict per claim, in the edit's order:

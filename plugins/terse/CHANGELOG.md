@@ -29,8 +29,9 @@ forensics remain in the repository references and release notes.
 ### Added
 
 - A verifier reads the edits before the round is frozen — brief 0 in `critic-briefs.md`, one agent that
-  did not write them, given `edits/NN.json` with every claim's `saw` and the code, returning `holds`,
-  `does not answer`, `refuted` or `unreachable` per claim. A `refuted` or a `does not answer` sends the
+  did not write them, given `edits/NN.json`, the `ledger.json` entries the round wrote — `saw` lives
+  there, not in the edits file — and the code, returning `holds`, `does not answer`, `refuted` or
+  `unreachable` per claim. A `refuted` or a `does not answer` sends the
   round back to its edits, which costs one regeneration where the same finding from a critic costs a
   wave; an `unreachable` claim has its check rewritten or the claim dropped, because a round does not
   freeze on a pin nothing can reach. It is row 0 of the wave's table: the user sizes it in the same
