@@ -35,3 +35,20 @@ bullets, one line each" lists six regexes where the page's list has eight bullet
 sentence have no pin, so an edit that drops any of them leaves the suite green. F2 should pin every
 bullet of the verification list and say how many there are, and each unpinned sentence should get a
 case. The 2026-09-17 change added pins only for its own sentences and the bullets it rewrote.
+
+## E3. `round.mjs`'s provisional mark tests the claim's name and pattern, so a lifecycle claim worded without one of its eight words is never marked
+
+**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/round.mjs:105` tests
+`/lifecycle|stays|removed|continu|resum|reclaim|kept|prun/i` against `c.name + " " + c.pattern` and
+nothing else. The record's R08-8 is a pruning claim named `"retention numbers"` with pattern
+`"14 days or 400 entries"`: no word matches, no mark
+(`research/2026-09-22-terse-process/d1-regression-autopsy.md:578-582`). Replaying
+`research/2026-09-11-markup-round-0/edits/04.json`…`09.json` through the script on 2026-09-22 produces
+40 ledger entries and zero marked provisional.
+
+**Issue text.** A level-2 claim about a lifecycle is meant to be marked provisional, because three such
+claims were pinned as true and each fell to a run in the next wave. The mark is decided by a regex over
+the claim's own name and pattern, which are the writer's words, so a claim about retention, expiry,
+eviction or cleanup written in any other vocabulary is pinned as settled. The `new` text of the edit —
+the sentence the claim is about — is never read. Either the test reads the sentence, or the mark is
+declared by the writer and the regex only warns.
