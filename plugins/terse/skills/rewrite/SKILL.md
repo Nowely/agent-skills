@@ -92,18 +92,26 @@ your shell rules forbid `cd`.
    claim a `want: true` the first round must not lose, every refuted one a `want: false`. On the
    skeleton route it starts empty. Either way it grows from the rounds.
 2. **Write `edits/NN.json`**: for each edit the exact `old` text, which must occur once; the `new` text;
-   `claims` it introduces and `retire` phrasings it removes as false; and `check` — `{"level": 1|2|3,
-   "how": "command or file:line"}` — required whenever the edit carries claims. The format is the header
-   of `round.mjs`.
+   `claims` it introduces and `retire` phrasings it removes as false; and, whenever the edit carries
+   claims, `check` — `{"level": 1|2|3, "run": "<command>", "expect": "<regex over what it printed>"}`,
+   where `run` at levels 1 and 2 is usually `sed -n 'A,Bp' <file>`. Every claim says what it `asks`: the
+   proposition the sentence makes, in the sentence's own scope words — what, for whom, under which
+   condition. `round.mjs` runs each `run` from the run directory before it writes anything and refuses
+   the whole round when one `expect` finds nothing, so a citation that does not resolve stops there;
+   what the command printed is kept in the ledger as `saw`, and step 4b reads it against `asks`. The
+   format is the header of `round.mjs`.
 3. **Produce the round**: `node "$S/round.mjs" <NN-1>-<pass>.md <NN>-<pass>.md edits/NN.json --ledger ledger.json`.
 4. **Run the checks**, before any critic, with `R=<NN>-<pass>.md`:
    - `node "$S/rule1.mjs" "$R" --cut "<technical section heading>" --except "<section that may carry paths>"` — the rule that keeps mechanism out of the sections a reader meets first, with the document's own headings;
    - `node "$S/dup.mjs" "$R" concepts.json` — one idea, one home;
    - `node "$S/sections.mjs" "$R" budgets.json` — words per section against the budget, reported, never blocking;
    - `node "$S/ledger.mjs" ledger.json $(ls [0-9][0-9]-*.md | sort)` — the ratchet over every round in order; exit 1 when the new round loses a verified claim or revives a retired phrase.
-   A failure the round introduced is fixed before the critics see it: remove the round file, fix
-   `edits/NN.json`, regenerate. A failure the previous round already had is a finding for this round's
-   edits, not a block. A round is frozen the moment its critics launch, not before.
+   A failure the round introduced is fixed before the critics see it: remove the round file, copy
+   `ledger.NN.json` back over `ledger.json`, fix `edits/NN.json`, regenerate. That snapshot is written
+   by `round.mjs` before it grows the ledger, and it is the only way back: a regenerated round starting
+   from a ledger the abandoned attempt already grew carries the abandoned attempt's pins. A failure the
+   previous round already had is a finding for this round's edits, not a block. A round is frozen the
+   moment its critics launch, not before.
 5. **Announce the wave** — the lenses, their sizes from the table, the models, the cost — and wait for
    the user's word; the user may size any lens to zero, and the least that still counts as a round is
    lenses 1 and 2. Then **launch the critics**, one agent per lens, with the briefs in

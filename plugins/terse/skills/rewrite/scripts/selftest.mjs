@@ -41,17 +41,43 @@ check("round refuses an anchor that occurs twice", run("round.mjs", [from, to, e
 fs.writeFileSync(e, JSON.stringify([{ name: "x", old: "beta", new: "gamma", claims: [{ name: "g stays", pattern: "gamma" }] }]));
 check("round refuses claims without a check", run("round.mjs", [from, to, e]).code === 1 && !fs.existsSync(to));
 fs.writeFileSync(e, JSON.stringify([{ name: "x", old: "beta", new: "gamma", check: { level: 2, how: "read" }, claims: [{ name: "g stays", pattern: "gamma" }], retire: [{ name: "b", pattern: "beta" }] }]));
-const h = run("round.mjs", [from, to, e, "--ledger", lg]);
+const noRun = runErr("round.mjs", [from, to, e, "--ledger", lg]);
+check("round refuses a check that declares how and never runs", noRun.code === 1 && /G1/.test(noRun.err) && !fs.existsSync(to) && !fs.existsSync(lg));
+const h = run("round.mjs", [from, to, e, "--ledger", lg, "--allow-unrun"]);
 check("round writes the new file", h.code === 0 && fs.readFileSync(to, "utf8") === "alpha gamma alpha\n");
+check("a recorded check with no run is accepted under the flag and marked unrun",
+  JSON.parse(fs.readFileSync(lg, "utf8")).find((c) => c.name === "g stays")?.unrun === true);
 const grown = JSON.parse(fs.readFileSync(lg, "utf8"));
 check("round grows the ledger with a claim and a retirement", grown.length === 2);
 check("a claim inherits its edit's level", grown.find((c) => c.name === "g stays")?.level === 2);
 check("a level-2 lifecycle claim is marked provisional", grown.find((c) => c.name === "g stays")?.provisional === true);
 check("the ledger prints the level and the provisional mark", /g stays\s+L2~/.test(run("ledger.mjs", [lg, to]).out));
-check("round refuses to overwrite a round", run("round.mjs", [from, to, e]).code === 1);
+check("round refuses to overwrite a round", run("round.mjs", [from, to, e, "--allow-unrun"]).code === 1);
 const to2 = path.join(tmp, "to2.md");
 fs.writeFileSync(e, JSON.stringify([{ name: "y", old: "gamma", new: "delta", drop: ["g stays"] }]));
 check("round drops a ledger entry on purpose", run("round.mjs", [to, to2, e, "--ledger", lg]).code === 0 && !JSON.parse(fs.readFileSync(lg, "utf8")).some((c) => c.name === "g stays"));
+// round: the check runs, its output is kept, and a check that does not match writes nothing
+const from2 = path.join(tmp, "from2.md"), e2 = path.join(tmp, "e2.json"), lg2 = path.join(tmp, "lg2.json");
+const to3 = path.join(tmp, "to3.md"), to4 = path.join(tmp, "to4.md"), to5 = path.join(tmp, "to5.md");
+fs.writeFileSync(from2, "one two three\n");
+const running = (expect, claim = { name: "TWO", pattern: "TWO", asks: "the second word of from2.md is two" }) =>
+  [{ name: "r", old: "two", new: "TWO", check: { level: 1, run: "cat from2.md", expect }, claims: [claim] }];
+fs.writeFileSync(e2, JSON.stringify(running("one two three")));
+const rr = run("round.mjs", [from2, to3, e2, "--ledger", lg2]);
+check("a check whose expect matches writes the round", rr.code === 0 && fs.readFileSync(to3, "utf8") === "one TWO three\n");
+const withSaw = JSON.parse(fs.readFileSync(lg2, "utf8"))[0];
+check("the entry keeps run, expect and asks", withSaw.run === "cat from2.md" && withSaw.expect === "one two three" && /second word/.test(withSaw.asks));
+// the command is a relative path: it resolves only with the run directory as the working directory
+check("saw is what the command printed, from the run directory", withSaw.saw === "one two three\n");
+check("the state before the round is left beside the ledger", fs.readFileSync(path.join(tmp, "ledger.to3.json"), "utf8") === "[]\n");
+const before = fs.readFileSync(lg2);
+fs.writeFileSync(e2, JSON.stringify(running("four five six")));
+const rn = runErr("round.mjs", [from2, to4, e2, "--ledger", lg2]);
+check("a check whose expect does not match writes nothing", rn.code === 1 && !fs.existsSync(to4));
+check("a refused round leaves the ledger byte-identical", Buffer.compare(before, fs.readFileSync(lg2)) === 0);
+fs.writeFileSync(e2, JSON.stringify(running("one two three", { name: "no asks", pattern: "TWO" })));
+const na = runErr("round.mjs", [from2, to5, e2, "--ledger", lg2]);
+check("round refuses a claim that does not say what it asks", na.code === 1 && /asks/.test(na.err) && !fs.existsSync(to5));
 // sections
 const s = run("sections.mjs", [d]);
 check("sections counts per heading", /^\s*2 B$/m.test(s.out) && /TOTAL/.test(s.out));

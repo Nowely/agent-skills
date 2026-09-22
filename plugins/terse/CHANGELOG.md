@@ -14,6 +14,17 @@ forensics remain in the repository references and release notes.
   one into a `want: false`, each the sentence itself, escaped. Replayed on the 2026-09-11 record: with a
   ledger in place from the start, the two compression regressions of rounds 02 and 03 read LOST where
   the run saw nothing until round 04.
+- A declared check now runs. An edit that carries claims gives `check.run`, a command, and
+  `check.expect`, a regex over what it printed; `round.mjs` executes every one of them from the run
+  directory before it writes anything, refuses the whole round when one finds nothing, and keeps the
+  output as the claim's `saw`. Each claim also states what it `asks` — the proposition the sentence
+  makes, in the sentence's own scope words. The check used to be a `{level, how}` pair that nothing
+  executed and nothing read, and two regressions of one recorded round carried their own refutation
+  inside the `how` they shipped with. `--allow-unrun` accepts the old shape for replaying a recorded
+  run and marks those entries `unrun`; the 2026-09-11 record replays byte-identical under it.
+- A round can be undone. `round.mjs` leaves the ledger as it was in `ledger.NN.json` before growing it,
+  so a round removed before the freeze takes its ledger entries with it instead of leaving them for the
+  round that replaces it.
 
 ## 0.1.1 — 2026-09-17
 
