@@ -28,9 +28,10 @@ claude plugin marketplace add <owner>/<repo>      # every `claude plugin …` no
 
 ## 0. The verifier of the edits
 
-Not a lens and not sized by the user: it reads the edits, not the document, and it runs before the
-round is frozen, so what it refuses costs one regeneration instead of a wave. Its return is the five
-fields, not a finding list. Model: `gpt-5.6-sol` on the `entrust` wrapper, for a reader the Claude
+Not a lens — it reads the edits, not the document — but sized like one in the same announcement, and it
+runs before the round is frozen, so what it refuses costs one regeneration instead of a wave. Its return
+is the five fields, not a finding list. Its own cost is unmeasured and its catch rate is one blind run:
+[M24](measurements.md#m24). Model: `gpt-5.6-sol` on the `entrust` wrapper, for a reader the Claude
 writer's habits do not reach; without the plugin, a Claude Opus agent, and say so.
 
 ```

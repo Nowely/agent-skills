@@ -123,3 +123,13 @@ rights ~180k tokens and 17 minutes; Opus on rules and water ~70k and 7 minutes; 
 and 15 minutes; the Astra adversarial seat about forty commands in five minutes; each Sol task seat about
 twenty commands in five minutes; each Luna question seat about a minute. Eleven agents, about 410k Claude
 tokens plus eight Codex seats.
+
+<a id="m24"></a>**M24. The verifier of the edits, once, blind.** On 2026-09-22 one Codex `gpt-6-astra`
+agent was given round 08's twenty-seven edits and the code, no critic's report and no autopsy, and its
+list was frozen before the autopsy was read: it refused six of that round's ten regressions, five of
+them strictly. The four it missed were one sentence that declared no claim at all and three whose
+level-3 runs had answered a narrower case than the sentence made. One round, one model, one run — a
+hypothesis about the four duties, not a rate; and the model measured was Astra, while the brief names
+Sol for decorrelation from the Claude writer, so nothing here is evidence about Sol. Its own cost was
+not measured; the nearest observation is that agent's whole turn, 53 commands in 19 minutes. The run is
+`research/2026-09-22-terse-process/` in this repository.

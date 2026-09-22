@@ -32,8 +32,12 @@ forensics remain in the repository references and release notes.
   did not write them, given `edits/NN.json` with every claim's `saw` and the code, returning `holds`,
   `does not answer`, `refuted` or `unreachable` per claim. A `refuted` or a `does not answer` sends the
   round back to its edits, which costs one regeneration where the same finding from a critic costs a
-  wave. Its four duties are the ones a blind run on one recorded round caught 6 of 10 regressions with;
-  that is a hypothesis with n = 1 behind it, its cost is unmeasured, and the page says both.
+  wave; an `unreachable` claim has its check rewritten or the claim dropped, because a round does not
+  freeze on a pin nothing can reach. It is row 0 of the wave's table: the user sizes it in the same
+  announcement as the lenses and may size it to zero, the least that still counts as a round is
+  unchanged at lenses 1 and 2, and what a round without it gives up is said where the size is chosen.
+  Its cost is unmeasured and its catch rate is one blind run on one round; both are M24 in
+  `measurements.md`, where this repository's dated observations live.
 
 ## 0.1.1 — 2026-09-17
 

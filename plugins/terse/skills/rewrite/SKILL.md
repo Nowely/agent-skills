@@ -112,36 +112,39 @@ your shell rules forbid `cd`.
    from a ledger the abandoned attempt already grew carries the abandoned attempt's pins. A failure the
    previous round already had is a finding for this round's edits, not a block. A round is frozen the
    moment its critics launch, not before.
-5. **Send the edits to the verifier** before the candidate is frozen: one agent that did not write them,
-   given `edits/NN.json` with every claim's `saw` and the right to read the code, brief 0 in
-   [critic-briefs.md](references/critic-briefs.md#0-the-verifier-of-the-edits). It returns a verdict per
-   claim. One `refuted` or `does not answer` sends the round back to the edits: remove the round file,
-   copy `ledger.NN.json` back over `ledger.json`, fix `edits/NN.json`, regenerate — and the verifier
-   reads the new one. Its report is kept verbatim under `reviews/NN/verifier.md`. Its cost is
-   **unmeasured**; the nearest observation is one Astra critic at 53 commands and 19 minutes
-   (`research/2026-09-22-terse-process/rounds.md`), and its catch rate is one blind run on one round, 6
-   of 10 regressions — a hypothesis the next rounds test, not a result.
-6. **Announce the wave** — the verifier, the lenses, their sizes from the table, the models, the cost —
-   and wait for the user's word; the user may size any lens to zero, and the least that still counts as
-   a round is the verifier and lenses 1 and 2. Then **launch the critics**, one agent per lens, with
-   the briefs in [critic-briefs.md](references/critic-briefs.md), and the dedup agent over their
-   reports; everything they return is kept verbatim under `reviews/NN/`. The Codex lenses need the
-   `entrust` plugin; without it, run those lenses on Claude agents and say so.
-7. **Verify every finding yourself** from the check it carries — a finding without one is discarded —
+5. **Announce the wave** — the verifier, the lenses, their sizes from the table, the models, the cost —
+   and wait for the user's word; the user sizes each of them, and any of them may be zero. The least
+   that still counts as a round is lenses 1 and 2. A round sized without the verifier gives up the
+   reading before the freeze, so a claim whose run does not answer its sentence reaches the critics
+   instead: the same finding, at the price of a wave rather than of one regeneration. Then:
+   - **the verifier first**, when it is sized, on the edits and not on the document — one agent that
+     did not write them, brief 0 in
+     [critic-briefs.md](references/critic-briefs.md#0-the-verifier-of-the-edits). One `refuted` or
+     `does not answer` sends the round back to its edits: remove the round file, copy `ledger.NN.json`
+     back over `ledger.json`, fix `edits/NN.json`, regenerate — and the verifier reads the new one. An
+     `unreachable` claim is not a verified claim: rewrite its edit's `check` to a command that resolves
+     and regenerate, or drop the claim from the edit, because a round must not freeze with a pin in the
+     ledger that nothing can reach. Its report is kept verbatim under `reviews/NN/verifier.md`.
+   - **then the critics**, one agent per lens, with the briefs in
+     [critic-briefs.md](references/critic-briefs.md), and the dedup agent over their reports;
+     everything they return is kept verbatim under `reviews/NN/`. The Codex lenses need the `entrust`
+     plugin; without it, run those lenses on Claude agents and say so.
+6. **Verify every finding yourself** from the check it carries — a finding without one is discarded —
    and route each by the table in [loop.md](references/loop.md#where-a-finding-goes): a sentence to the
    next round's edits, a boundary or a term back to `rethink`, a code defect to the repository's
    `ISSUES.md`, a question the document does not answer to the user. When a finding routes to stage 3,
    make the structure map loop.md describes before the next round.
-8. **Record the round** in `rounds.md`, one table row: `| file | words | produced by | findings against
+7. **Record the round** in `rounds.md`, one table row: `| file | words | produced by | findings against
    it | regressions |` — *produced by* names the pass and the wave; *findings* is the dedup's count by
    category; **regressions** is the count of sentences the round introduced that its critics showed
    false or overstated. That number is the round's verdict.
 
-The lenses are fixed; the sizes are the user's, and the announcement names them. Costs are what one
-wave measured on 2026-09-12 on a 1600-word README:
+The lenses are fixed; the sizes are the user's, and the announcement names them. Every cost below but
+the verifier's is what one wave measured on 2026-09-12 on a 1600-word README:
 
-| Lens | Reads | Where it ran best | Size | Cost |
+| Agent | Reads | Where it ran best | Size | Cost |
 |---|---|---|---|---|
+| 0. the verifier of the edits | this round's edits with each claim's `asks` and `saw`, against the code; not the document | Codex gpt-5.6-sol | one | unmeasured, [M24](references/measurements.md#m24) |
 | 1. the code, with the right to run it | every behavioural claim; level 3 for anything about a lifecycle | Claude Opus | one | ~180k tokens, 17 min |
 | 2. the mechanical rules and the water | the skeleton's rules as a grep would; words whose score does not pay | Claude Opus | one | ~70k tokens, 7 min |
 | 3. adversarial, whole document | every sentence a reader acts on; scope words; CLI experiments in an isolated config | Codex gpt-6-astra | one | ~40 commands, 5 min |
