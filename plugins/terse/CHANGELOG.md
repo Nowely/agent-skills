@@ -43,8 +43,8 @@ forensics remain in the repository references and release notes.
   freeze on a pin nothing can reach. It is row 0 of the wave's table: the user sizes it in the same
   announcement as the lenses and may size it to zero, the least that still counts as a round is
   unchanged at lenses 1 and 2, and what a round without it gives up is said where the size is chosen.
-  Its cost is unmeasured and its catch rate is one blind run on one round; both are M24 in
-  `measurements.md`, where this repository's dated observations live.
+  Its cost is unmeasured, and the one blind run behind its four duties is a hypothesis about them and
+  not a rate; both are M24 in `measurements.md`, where this repository's dated observations live.
 
 ## 0.1.1 — 2026-09-17
 

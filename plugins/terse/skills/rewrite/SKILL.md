@@ -148,7 +148,7 @@ the verifier's is what one wave measured on 2026-09-12 on a 1600-word README:
 
 | Agent | Reads | Where it ran best | Size | Cost |
 |---|---|---|---|---|
-| 0. the verifier of the edits | this round's edits, and the `asks` and `saw` `round.mjs` wrote to the ledger, against the code; not the document | Codex gpt-5.6-sol | one | unmeasured, [M24](references/measurements.md#m24) |
+| 0. the verifier of the edits | this round's edits, and the `asks` and `saw` `round.mjs` wrote to the ledger, against the code; not the document | not measured; the brief names Codex gpt-5.6-sol, away from the Claude writer | one | unmeasured, [M24](references/measurements.md#m24) |
 | 1. the code, with the right to run it | every behavioural claim; level 3 for anything about a lifecycle | Claude Opus | one | ~180k tokens, 17 min |
 | 2. the mechanical rules and the water | the skeleton's rules as a grep would; words whose score does not pay | Claude Opus | one | ~70k tokens, 7 min |
 | 3. adversarial, whole document | every sentence a reader acts on; scope words; CLI experiments in an isolated config | Codex gpt-6-astra | one | ~40 commands, 5 min |
