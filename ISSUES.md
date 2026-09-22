@@ -129,3 +129,36 @@ instead of 4/7 (`audit-2026-09-22/audit.md`, Open).
 **Issue text.** The scoring of the planted question in the no-document arm changes the delta by one
 question and the page leaves it to the scorer. The page should say whether the no-document arm counts a
 correct "cannot tell" as a right answer, and the run-file contract should carry the choice.
+
+## E10. Two pages set the scripts directory from a bare `$CLAUDE_PLUGIN_ROOT`, which Claude Code neither substitutes nor exports
+
+**Evidence, level 2.** `plugins/terse/skills/rewrite/SKILL.md:83` ("installed, it is
+`$CLAUDE_PLUGIN_ROOT/skills/rewrite/scripts`") and `plugins/terse/skills/audit/SKILL.md:159` ("installed,
+`$CLAUDE_PLUGIN_ROOT/skills/audit/scripts`") tell the executor to set `S` and `A` from a bare variable.
+`plugins/entrust/evals/agent-contract.test.mjs:160-161` states the contract: Claude Code substitutes the
+exact `${...}` placeholder inline in a skill body and exports nothing to the Bash tool; a bare `$VAR` is
+neither, so an agent that follows the line gets `/skills/rewrite/scripts`. `plugins/entrust/CHANGELOG.md:372-375`
+records the same defect fixed on entrust's cleanup page by moving to `${CLAUDE_SKILL_DIR}`, which is
+substituted on both the installed and the clone routes. Found on 2026-09-22 by the writer of the
+run-directory fix (commits `9efef3d`, `3b71b62`); recorded, not fixed.
+
+**Issue text.** On an installed plugin the two lines that locate the scripts resolve to a path under `/`,
+so every `node "$S/..."` and `node "$A/..."` on the pages fails with a missing file. The fix is the form
+entrust already uses: `${CLAUDE_SKILL_DIR}/scripts` for `S` and `${CLAUDE_SKILL_DIR}/../audit/scripts`
+for `A`, with the checkout sentence kept.
+
+## E11. Both run directories are outside the working directory, where the Write tool and shell redirects prompt, and neither page says so
+
+**Evidence, level 1.** After `9efef3d`, `plugins/terse/skills/audit/SKILL.md:33` and
+`plugins/terse/skills/rewrite/SKILL.md:71` place every run under the plugin's data directory or
+`$TMPDIR/terse`, outside the repository and outside the session's working directory.
+`plugins/entrust/README.md:137-138`: "In every permission mode but auto and bypass, a write outside the
+working directory prompts, so add that directory to `permissions.additionalDirectories` once". The two
+terse pages tell the coordinator to `mkdir -p "$RUN"` and to write the run file, the rounds, the edits and
+the reviews there, and say nothing about the prompts or the setting. Found on 2026-09-22 by the writer of
+the run-directory fix; the audit's placement predates it.
+
+**Issue text.** A coordinator following either page in the default permission mode meets a permission
+prompt for every file the run writes. The pages should say where the run lands, that writes there prompt
+outside auto and bypass, and name `permissions.additionalDirectories` as the one-time setting, as
+entrust's README does for its own data directory.
