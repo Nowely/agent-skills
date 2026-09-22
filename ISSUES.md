@@ -52,3 +52,22 @@ the claim's own name and pattern, which are the writer's words, so a claim about
 eviction or cleanup written in any other vocabulary is pinned as settled. The `new` text of the edit —
 the sentence the claim is about — is never read. Either the test reads the sentence, or the mark is
 declared by the writer and the regex only warns.
+
+## E4. `rewrite` step 4 names nobody who may write `ledger.json` by hand and no format for it, and the one recorded run did it 26 times
+
+**Evidence, level 3.** On 2026-09-22, replaying `research/2026-09-11-markup-round-0/edits/04.json`…
+`09.json` through `plugins/terse/skills/rewrite/scripts/round.mjs` from an empty ledger produces 40
+entries; `research/2026-09-11-markup-round-0/ledger.json` as shipped holds 66. The 26 in the file and
+not in the replay were written by a hand no step describes. `plugins/terse/skills/rewrite/SKILL.md`
+step 4 gives `round.mjs` as the only writer — item 2 declares `claims`, `retire` and `drop`, item 3
+runs the script, item 4 runs `ledger.mjs` over the result — and `plugins/terse/skills/rewrite/references/loop.md:66-68`
+says the ledger is grown from each edit's `claims` and `retire`. Neither says a pin may be added
+outside an edit, by whom, or in what shape.
+
+**Issue text.** The record shows the coordinator adding ledger entries directly — retired phrasings a
+critic found after the round was frozen, and pins for claims no edit introduced — which is the only way
+those 26 entries exist. The page presents the ledger as a file one script owns, so a coordinator
+following it has no route for a pin that arrives after the edits are written, and a coordinator who
+adds one anyway is writing a format nothing documents and nothing checks. Either step 4 says that
+entries may be added by hand between rounds, names the fields they must carry, and says which round
+they are charged to, or the pins that arrive late get an edits-file route of their own.
