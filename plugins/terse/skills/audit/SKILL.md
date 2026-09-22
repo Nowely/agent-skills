@@ -30,12 +30,13 @@ Settle three things with the user in one exchange, not six:
 Then make the run directory:
 
 ```bash
-RUN="${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)" && mkdir -p "$RUN" && echo "$RUN"
+D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)" && mkdir -p "$RUN" && echo "$RUN"
 ```
 
-`CLAUDE_PLUGIN_DATA` is empty when this skill runs from a source checkout rather than an installed
-plugin, which is why the fallback is there. Name the absolute path in your report and in the run file;
-`rewrite` is given that path by the user and cannot guess it.
+`D` is empty when this skill runs from a source checkout rather than an installed plugin, which is why
+the fallback is there: installed, Claude Code writes the plugin's data directory into that line before
+it runs. Name the absolute path in your report and in the run file; `rewrite` is given that path by the
+user and cannot guess it.
 
 Write nothing into the audited repository. Not a report, not a note, not a fix.
 

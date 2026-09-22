@@ -68,7 +68,7 @@ formula of [`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directo
 naming the document.
 
 ```bash
-RUN="${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
+D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
 ```
 
 Name the absolute path in your report; a resumed run is given it by the user and cannot guess it. On

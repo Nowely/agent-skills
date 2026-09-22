@@ -32,12 +32,13 @@ forensics remain in the repository references and release notes.
   so a round removed before the freeze takes its ledger entries with it instead of leaving them for the
   round that replaces it.
 - `rewrite`'s run directory is outside the repository that holds the document: `audit`'s formula makes
-  it, in the plugin's data directory or `$TMPDIR/terse`, and the report names its absolute path. A code
-  defect the rounds find is written with its check into `code-defects.md` there and offered to the user,
-  and reaches the repository's `ISSUES.md` only on their word. The run used to sit under `research/` at
-  the root of the user's repository and the defects went into their `ISSUES.md` unasked, while the
-  skill's description, both manifests, this changelog and the README promise that nothing is written
-  into the tree without the user's word (`ISSUES.md` E5).
+  it, in the plugin's data directory when installed and in `$TMPDIR/terse` from a source checkout, and
+  the report names its absolute path. A code defect the rounds find is written with its check into
+  `code-defects.md` there and offered to the user, and reaches the repository's `ISSUES.md` only on
+  their word. The run used to sit under `research/` at the root of the user's repository and the
+  defects went into their `ISSUES.md` unasked, while the skill's description, both manifests, this
+  changelog and the README promise that nothing is written into the tree without the user's word
+  (`ISSUES.md` E5).
 
 ### Added
 
@@ -52,6 +53,14 @@ forensics remain in the repository references and release notes.
   unchanged at lenses 1 and 2, and what a round without it gives up is said where the size is chosen.
   Its cost is unmeasured, and the one blind run behind its four duties is a hypothesis about them and
   not a rate; both are M24 in `measurements.md`, where this repository's dated observations live.
+
+### Fixed
+
+- An installed `audit` makes its run directory in the plugin's data directory, no longer in
+  `$TMPDIR/terse`. Its formula wrote `${CLAUDE_PLUGIN_DATA:-…}`, a form Claude Code does not substitute:
+  it replaces only the exact `${CLAUDE_PLUGIN_DATA}` in a skill body and exports nothing to the shell,
+  so every installed run took the fallback. The formula now assigns the exact placeholder first and
+  falls back when it arrives empty, as it does from a source checkout.
 
 ## 0.1.1 — 2026-09-17
 
