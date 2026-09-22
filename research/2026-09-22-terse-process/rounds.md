@@ -1,6 +1,6 @@
 # Rounds
 
-One orchestrated round in six waves, the coordinator on Fable 5.1 (Opus 5 during scouting). Waves 1–3 were
+One orchestrated round in seven waves, the coordinator on Fable 5.1 (Opus 5 during scouting). Waves 1–3 were
 the plan's six agents; wave 4 the owner's five for the vendor sources; wave 5 four more for the evaluation
 guide and the design's second round; wave 6 the implementation, one writer and one reviewer resumed once:
 seventeen agent runs, none dropped. The split critic was skipped in
@@ -29,12 +29,24 @@ agent's artifact came back as text or a file under its own temporary directory a
 | 6 | Codex Sol R1 (resumed) | re-review after the fixes | 17 commands, 8 min | ten resolved, four new; verdict not mergeable | — |
 | 6 | coordinator | verification of the last fix pass under the redirect rule | — | selftest 45/0, no "catch rate" or "step 4b", 14 commits, plugin tree clean before this record was written, syntax, E4 citations | not an independent agent; the skill allows it for a bounded check |
 | 6 | Codex Sol K4 | completeness critic on the third closing answer | 24 commands, 10 min | `k4-completeness.md`: partial — 55 checked, 50 matched; "clean tree" while the record was unstaged, 24→45 where the archive gives 22→45, "every check a planted violation" against positive-path assertions, "no audit run file" against the 2026-09-10 one; E3's stale `round.mjs:105` | — |
+| 7 | Opus P0 | the reader profile and the seven questions | 61k tokens, 2.5 min | the profile in `audit-2026-09-22/audit.md`; two controls, one planted unanswerable; four questions for the owner | named Q2 a control; the truth pass showed the text answers it wrongly, and Q6 took its place as P0 itself anticipated |
+| 7 | Opus T1 | the truth pass and the key draft | 412k tokens, 36 min | `audit-2026-09-22/claim-ledger.md` (46 entries + `json claims`), `key-draft.md`; the seed's first live run | twice the estimated cost: installed the plugin in an isolated configuration and ran the lifecycle recipe; the coordinator's brief expected `-` for refuted rows on the original, which is backwards, and T1 said so |
+| 7 | Codex Luna Q1d–Q7n | fourteen readers, seven with the documentation and seven without | 0–3 commands, 18–39 s each | `audit-2026-09-22/readers.md` | Q7d answered the planted question with a confident yes; the wrapper's tokens (≈12k each) are the wrapper's, not Codex's |
+| 7 | Codex Sol TA | task reader: install and start the first audit | 24 commands, 17 min | `readers.md`, TA | copied the machine's `~/.claude.json` into its scratch configuration to transfer authentication (wrong, and its scratch directory holds the copy until deleted); ran a live Claude session with the machine's profile through `--plugin-dir` |
+| 7 | Codex Sol TB | task reader: audit to candidate, as a plan | 12 commands, 5.5 min | `readers.md`, TB | — |
+| 7 | coordinator | steps 1, 4 and 6: scope, the key's decisions, the score, the run file, E5–E9 | — | `audit-2026-09-22/audit.md`, `ISSUES.md` E5–E9 | the zsh one-based array shifted the first fourteen reader prompts by one question; caught before the fan-out |
+| 7 | Codex Sol K5 | completeness critic on the closing answer | see `k5-completeness.md` | `k5-completeness.md` | — |
 
 Codex tokens are not measured by the driver; commands and minutes are what its reports carry. Claude tokens
 and minutes are the harness's task notifications. None of these figures is in the copied returns, so they
 cannot be re-derived from this directory. The returns were copied with `cp` from the paths the agents named.
 
 ## The coordinator's own errors
+
+- Wave 7: the reader prompts were generated from a zsh array indexed as if zero-based; question 1 was
+  empty and question 7 unassigned. Caught by reading one brief whole before spawning; fourteen unrun
+  prompt directories remain in the data directory.
+- Wave 7: the truth-pass brief expected refuted rows to read `-` on the original; T1 corrected it.
 
 - The third closing answer, first draft: the four K4 lists in its row above. Fixed before it went out;
   E3's line number fixed in its own commit.

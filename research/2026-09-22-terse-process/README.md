@@ -214,3 +214,48 @@ the `json claims` contract, and the seed refuses it with exit 1 naming the missi
 ran it); the first audit under the new contract is the seed's test. E3 adds a fourth decision
 (`ISSUES.md`): inspect the edited sentence for the provisional mark, or make it writer-declared with the
 regex as a warning.
+
+## Wave 7 — the live round: the audit page executed on the plugin's own README
+
+On the owner's word, the first half of a live round: `audit` run by the coordinator as the page on this
+branch says, on `plugins/terse/README.md`, with the run file and every reader return under
+[audit-2026-09-22/](audit-2026-09-22/) (`audit.md` per the run-file contract; `claim-ledger.md`,
+`key-draft.md`, `ledger.json`, `docs.txt`; `readers.md`, the sixteen returns verbatim).
+
+- **Profile** (Opus P0): built from the pages, the scripts and the manifests; the owner confirmed it and
+  answered three questions — the reader documents any document; `terse` is meant for any text in any
+  language, code or not; the entry file is the plugin README.
+- **Truth pass** (Opus T1): 46 entries — 17 confirmed, 11 refuted, 18 unconfirmed; levels L1 4, L2 35,
+  L3 7. Refuted: the loop's stop rule (:31-34), "every round is kept" (:34, run), "applying anything to
+  your files needs your word" (:35-36 — `rewrite` writes `research/<date>-<slug>/` and `ISSUES.md` into
+  the repository unasked), "nothing else is needed" and "Node 22 … if you run the checkout directly"
+  (:48-49, run: the installed copy's self-test exits 127 without node), "will not touch a condition"
+  (:58), and four numbers under *What was measured* (:64, :76, :77-78, :84) against the 2026-09-10 record.
+  The seed ran on a real ledger for the first time: exit 0, 28 entries (17 `want:true`, 11 `want:false`),
+  18 unconfirmed listed on stderr; `ledger.mjs` over the unchanged README is red by design (every refuted
+  sentence present), which `ledgers.md` does not say. The pass cost 412k tokens and 36 minutes on a
+  933-word README, twice the estimate.
+- **Readers** (fourteen Codex gpt-5.6-luna, `EFFORT: low`, the `measure.md` brief verbatim; the
+  no-document arm ran for the first time in this repository): docs 5/7, no-document 0/7, delta +5/7;
+  steps 1,1,1,1,3,1,1; departures 0 and 0; controls Q1 and Q6 hold; the planted Q7 drew a confident "Yes"
+  in the docs arm (a reader failure by the page) and "I do not know" without documents. Each reader took
+  18–39 seconds and 0–3 commands. Q2 failed as the truth pass predicted: the reader quoted README:35-36
+  and answered "No".
+- **Task readers** (two Codex gpt-5.6-sol): TA installed the plugin in an isolated Claude configuration,
+  launched a live session and reached `/terse:audit`'s first question — the page's step-1 exchange — at
+  level 3, with nine forced guesses (the shell form of a slash invocation, the isolation mechanism, an
+  authentication transfer that was wrong, the trust and permission prompts); TB planned the audit-to-
+  candidate path and found no consent gate before the run directory is created inside the repository,
+  concluding not to invoke `rewrite` at all — eleven forced guesses (invocation syntax, date and slug
+  format, the round cap's default, the bridge from the bake-off winner to `01-candidate.md`, seven
+  artifact filenames, the command that makes the diff). Eight of the eighteen files were reached by no
+  task.
+- **What broke**: Q2 `refuted` (README:35-36); Q7 a reader failure beside one `missing` entry (no page says
+  the method holds for any language; found in passing at level 3, `rule1.mjs` passes a Russian line it
+  flags in English); TB `harmful` (the rewrite page's sequence leaves a reader who wants nothing written
+  worse off). Five defects went to `ISSUES.md` as E5–E9; `rewrite` was offered and not run.
+- **What the page did not say, met while executing it**: how the planted question scores in the
+  no-document arm (E9); that the ledger is red on the original; where `rethink` writes its skeleton. The
+  coordinator's own error: a one-based array in zsh shifted the questions by one in the first fourteen
+  reader prompts; caught by opening one assembled brief before the fan-out, rewritten under fresh paths,
+  and the fourteen unrun directories stay in the data directory.
