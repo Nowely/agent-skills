@@ -75,7 +75,7 @@ executes gives no procedure for writing one: no step names who may add an entry 
 point, or which round's regression count it is charged to. Either step 4 states that procedure, or the
 pins that arrive late get an edits-file route of their own.
 
-## E5. Four surfaces promise that nothing is written into your tree without your word, and `rewrite` writes a directory and a tracked file into it unasked
+## E5. The README and four more surfaces promise that nothing is written into your tree without your word, and `rewrite` writes a directory and a tracked file into it unasked
 
 **Evidence, level 2.** `plugins/terse/skills/rewrite/SKILL.md:6-7` ("writes into your tree only on your
 word"), `plugins/terse/.claude-plugin/plugin.json:4`, `.claude-plugin/marketplace.json:20` and
@@ -123,7 +123,7 @@ pass (entries C31, C32, C36, C37 unconfirmed for that reason).
 **Issue text.** The sentence overstates the record: the bake-off returns are there, the reader run's are
 not, and the claim should name what traces and what does not.
 
-## E8. `rule1.mjs` sees mechanism words in English only, so a Russian document passes rule 1 vacuously
+## E8. `rule1.mjs` passes a Russian line it flags in English; its word lists are English, and the cause was not isolated
 
 **Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/rule1.mjs:26-31` matches absolute paths,
 flags, environment variables, `exits N`, protocol names and header fields with English-only patterns
@@ -133,8 +133,10 @@ line was flagged twice, the Russian line not at all (`audit-2026-09-22/audit.md`
 owner's stated intent is that `terse` works on any text in any language.
 
 **Issue text.** Rule 1 — mechanism stays out of the sections a reader meets first — is enforced by a
-script whose word lists are English, so on a document in another language the check reports nothing and
-the round reads clean. Either the patterns take the document's language (a word list per language, or a
+script whose word lists are English; on the one probe made, the Russian line went unflagged although it
+carried a path the pattern does not depend on language for, so the cause — the word lists, the section
+logic, or the probe — was not isolated, and on a document in another language the check may report
+nothing and the round read clean. Either the patterns take the document's language (a word list per language, or a
 language-neutral core of paths, flags and codes plus a per-language list), or the page says rule 1 is
 checked for English text only.
 
