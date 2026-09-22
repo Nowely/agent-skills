@@ -38,7 +38,7 @@ case. The 2026-09-17 change added pins only for its own sentences and the bullet
 
 ## E3. `round.mjs`'s provisional mark tests the claim's name and pattern, so a lifecycle claim worded without one of its eight words is never marked
 
-**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/round.mjs:105` tests
+**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/round.mjs:117` tests
 `/lifecycle|stays|removed|continu|resum|reclaim|kept|prun/i` against `c.name + " " + c.pattern` and
 nothing else. The record's R08-8 is a pruning claim named `"retention numbers"` with pattern
 `"14 days or 400 entries"`: no word matches, no mark
