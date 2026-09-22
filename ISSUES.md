@@ -100,22 +100,24 @@ pass (entries C31, C32, C36, C37 unconfirmed for that reason).
 **Issue text.** The sentence overstates the record: the bake-off returns are there, the reader run's are
 not, and the claim should name what traces and what does not.
 
-## E8. `rule1.mjs` passes a Russian line it flags in English; its word lists are English, and the cause was not isolated
+## E8. `rule1.mjs` misses an exit code written in Russian, because its exit-code pattern is English; paths and flags are caught in either language
 
 **Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/rule1.mjs:26-31` matches absolute paths,
-flags, environment variables, `exits N`, protocol names and header fields with English-only patterns
-("exit code" is `/\bexits?\s+\d+\b|\bexit\s+(?:code|status)\b/`). On 2026-09-22 the truth-pass agent ran
-the script on an English line carrying a path and "exits 2" and on the same line in Russian: the English
-line was flagged twice, the Russian line not at all (`audit-2026-09-22/audit.md`, What broke, Q7). The
-owner's stated intent is that `terse` works on any text in any language.
+flags, environment variables, exit codes, protocol names and header fields; the exit-code pattern is
+`/\bexits?\s+\d+\b|\bexit\s+(?:code|status)\b|\bexit\s+ladder\b/gi`, English words. Four probes on
+2026-09-22 and 2026-09-23: three (the bake-off writers WA and WB, the judge J1, each in a scratch copy)
+ran the script on an English line carrying a path, a flag and "exits 2" and on the same line in Russian
+with «завершается с кодом 2» — the path and the flag were flagged in both languages, the exit code only in
+English; the truth-pass agent's earlier probe reported the whole Russian line passing, which the three later
+probes do not reproduce (`research/2026-09-22-terse-process/rewrite-2026-09-22/j1-opus-sheets.md`,
+`audit-2026-09-22/audit.md` What broke). The owner's stated intent is that `terse` works on any text in
+any language.
 
-**Issue text.** Rule 1 — mechanism stays out of the sections a reader meets first — is enforced by a
-script whose word lists are English; on the one probe made, the Russian line went unflagged although it
-carried a path the pattern does not depend on language for, so the cause — the word lists, the section
-logic, or the probe — was not isolated, and on a document in another language the check may report
-nothing and the round read clean. Either the patterns take the document's language (a word list per language, or a
-language-neutral core of paths, flags and codes plus a per-language list), or the page says rule 1 is
-checked for English text only.
+**Issue text.** Rule 1 — mechanism stays out of the sections a reader meets first — is checked by a script
+whose path, flag, variable and header patterns are language-neutral and whose exit-code words are English,
+so a document in another language that names an exit code in its own words passes that part of the check.
+Either the exit-code pattern takes a word list per language, or the page says which of rule 1's six kinds
+are checked for English text only.
 
 ## E9. `measure.md` does not say how the planted unanswerable question scores in the no-document arm
 
@@ -162,3 +164,31 @@ the run-directory fix; the audit's placement predates it.
 prompt for every file the run writes. The pages should say where the run lands, that writes there prompt
 outside auto and bypass, and name `permissions.additionalDirectories` as the one-time setting, as
 entrust's README does for its own data directory.
+
+## E12. `measure.md` lets the audit store its score in the audited repository on the user's word, and the audit page says it writes nothing there
+
+**Evidence, level 2.** `plugins/terse/skills/audit/SKILL.md:44`: "Write nothing into the audited
+repository. Not a report, not a note, not a fix."
+`plugins/terse/skills/audit/references/measure.md:117-121` ("Keeping the number as a regression test"):
+"A score sitting in the audited repository turns documentation rot into a failing check … Storing it
+there requires the user's word, because it means writing into their tree." Found on 2026-09-23 by the
+bake-off judge Opus J1 while checking a candidate's sentence that the audit writes nothing into the
+repository.
+
+**Issue text.** The two pages disagree on whether the audit may ever write into the audited repository:
+the skill page says never, the reference says on the user's word. A README that repeats either one is
+refuted by the other. The pages should say one thing — the reference's rule, stated on the skill page as
+the one exception with its consent step, or the reference's section removed.
+
+## E13. `rethink` hands over "one file" and no page says where it is written
+
+**Evidence, level 2.** `plugins/terse/skills/rethink/SKILL.md:70-83` (step 4, "What you hand over"):
+"One file, and it describes the document rather than arguing for itself" — the section lists what the
+file contains and ends "Then stop and wait", with no path, no run directory and no statement of whether
+the file lands inside or outside the user's repository; `rewrite/SKILL.md` step 4 says only to copy
+`skeleton.md` in. Found on 2026-09-22 by the truth pass (open item) and on 2026-09-23 by the writers WA
+and WB and the judge J1, each of whom had to say in a README candidate that the location is unstated.
+
+**Issue text.** `audit` and `rewrite` now name their run directory and its lifetime; `rethink` names
+nothing, so a reader asking "can it change my files?" gets no answer for one skill of three. The page
+should place the skeleton — the same formula as the other two, with a slug — and say so at the hand-over.
