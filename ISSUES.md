@@ -60,7 +60,7 @@ declared by the writer and the regex only warns.
 entries; `research/2026-09-11-markup-round-0/ledger.json` as shipped holds 66. The 26 in the file and
 not in the replay were written by a hand no step describes. `plugins/terse/skills/rewrite/SKILL.md`
 step 4 gives `round.mjs` as the only writer after initialisation — item 1 seeds the file with
-`audit/scripts/ledger-seed.mjs` on the audit route (`plugins/terse/skills/rewrite/SKILL.md:101`), item 2
+`audit/scripts/ledger-seed.mjs` on the audit route (`plugins/terse/skills/rewrite/SKILL.md:104`), item 2
 declares `claims`, `retire` and `drop`, item 3 runs the script, item 4 runs `ledger.mjs` over the
 result — and `plugins/terse/skills/rewrite/references/loop.md:68-70` says the ledger is grown from each
 edit's `claims` and `retire`. No step says a pin may be added outside an edit, by whom, or when.
