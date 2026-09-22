@@ -96,12 +96,13 @@ your shell rules forbid `cd`.
    entries whose claims the edit removes on purpose, each of them named in that round's row of
    `rounds.md`. Whenever the edit carries claims it also carries `check` — `{"level": 1|2|3, "run":
    "<command>", "expect": "<regex over what it printed>"}`, where `run` at levels 1 and 2 is usually
-   `sed -n 'A,Bp' <file>`. Every claim says what it `asks`: the
-   proposition the sentence makes, in the sentence's own scope words — what, for whom, under which
-   condition. `round.mjs` runs each `run` from the run directory before it writes anything and refuses
-   the whole round when one `expect` finds nothing, so a citation that does not resolve stops there;
-   what the command printed is kept in the ledger as `saw`, and the verifier below reads it against
-   `asks`. The format is the header of `round.mjs`.
+   `sed -n 'A,Bp' <file>`. Every claim says what it `asks`: the proposition the sentence makes, in the
+   sentence's own scope words — what, for whom, under which condition. A claim's name is the ledger's
+   key and one round sets it once, in one edit; a later round reusing the name is how a rewritten
+   sentence is re-pinned. `round.mjs` runs each `run` from the run directory before it writes anything
+   and refuses the whole round when one `expect` finds nothing, so a citation that does not resolve
+   stops there; what the command printed is kept in the ledger as `saw`, and the verifier below reads
+   it against `asks`. The format is the header of `round.mjs`.
 3. **Produce the round**: `node "$S/round.mjs" <NN-1>-<pass>.md <NN>-<pass>.md edits/NN.json --ledger ledger.json`.
 4. **Run the checks**, before any critic, with `R=<NN>-<pass>.md`:
    - `node "$S/rule1.mjs" "$R" --cut "<technical section heading>" --except "<section that may carry paths>"` — the rule that keeps mechanism out of the sections a reader meets first, with the document's own headings;

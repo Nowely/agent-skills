@@ -78,6 +78,12 @@ check("a refused round leaves the ledger byte-identical", Buffer.compare(before,
 fs.writeFileSync(e2, JSON.stringify(running("one two three", { name: "no asks", pattern: "TWO" })));
 const na = runErr("round.mjs", [from2, to5, e2, "--ledger", lg2]);
 check("round refuses a claim that does not say what it asks", na.code === 1 && /asks/.test(na.err) && !fs.existsSync(to5));
+const to7 = path.join(tmp, "to7.md");
+fs.writeFileSync(e2, JSON.stringify([
+  { name: "a", old: "one", new: "ONE", check: { level: 1, run: "cat from2.md", expect: "one" }, claims: [{ name: "same", pattern: "ONE", asks: "ONE stands first" }] },
+  { name: "b", old: "three", new: "THREE", check: { level: 1, run: "cat from2.md", expect: "three" }, claims: [{ name: "same", pattern: "THREE", asks: "THREE stands last" }] }]));
+const dup2 = runErr("round.mjs", [from2, to7, e2, "--ledger", lg2]);
+check("round refuses one name declared twice in a round", dup2.code === 1 && /declared twice/.test(dup2.err) && !fs.existsSync(to7));
 // the snapshot is a copy, not a re-serialisation: cp back must restore the bytes that were there
 const to6 = path.join(tmp, "to6.md"), odd = '[{"name":"kept","pattern":"TWO","want":true}]';
 fs.writeFileSync(lg2, odd);

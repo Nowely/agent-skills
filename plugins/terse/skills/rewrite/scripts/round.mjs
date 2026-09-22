@@ -11,6 +11,10 @@
 //                "drop":   ["name", ...]}]         // ledger entries for claims the edit removes on purpose, recorded in rounds.md
 // Every `old` must occur exactly once in FROM, or nothing is written. TO must not exist: a round is a
 // new file, never an overwrite. With --ledger, claims and retirements are appended (deduplicated by name).
+// A name is the ledger's key. Within one round it is set once — two edits declaring the same name
+// refuse the round, because the entry would keep one edit's `asks` and `saw` under the other's
+// pattern. Across rounds a later entry replacing an earlier one by name is the intended way to
+// re-pin a claim whose sentence was rewritten.
 //
 // An edit that declares claims carries a check, and the check runs. `run` is executed by /bin/sh with
 // the run directory — the directory TO is written into — as its working directory, under a 60-second
@@ -51,7 +55,14 @@ if (fs.existsSync(to)) { console.error(`${to} exists; a round is a new file, nev
 const edits = JSON.parse(fs.readFileSync(editsFile, "utf8"));
 const refuse = (msg) => { console.error(`${msg}; nothing written, the ledger untouched`); process.exit(1); };
 
-// 1. The schema, for every edit, before anything runs.
+// 1. One name, one entry, within this round.
+const declared = new Map();
+for (const e of edits) for (const c of [...(e.claims ?? []), ...(e.retire ?? [])]) {
+  if (declared.has(c.name)) refuse(`${e.name}: the name ${JSON.stringify(c.name)} is declared twice in this round, already by ${JSON.stringify(declared.get(c.name))}; a name is the ledger's key and one round sets it once`);
+  declared.set(c.name, e.name);
+}
+
+// 2. The schema, for every edit, before anything runs.
 for (const e of edits) {
   if (!(e.claims ?? []).length) continue;
   const c = e.check;
@@ -67,7 +78,7 @@ for (const e of edits) {
     refuse(`${e.name}: claim ${JSON.stringify(cl.name)} needs asks — what the sentence asserts, in its own scope words`);
 }
 
-// 2. The checks, all of them, still before anything is written.
+// 3. The checks, all of them, still before anything is written.
 const cwd = path.dirname(path.resolve(to));
 const saw = new Map();
 for (const e of edits) {
@@ -85,7 +96,7 @@ for (const e of edits) {
   console.log("ran ", e.name);
 }
 
-// 3. The edits.
+// 4. The edits.
 let t = fs.readFileSync(from, "utf8");
 for (const e of edits) {
   const n = t.split(e.old).length - 1;
