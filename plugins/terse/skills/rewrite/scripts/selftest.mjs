@@ -89,11 +89,12 @@ const SEED = "../../audit/scripts/ledger-seed.mjs";
 const aud = path.join(tmp, "audit.md"), seed = path.join(tmp, "seed.json");
 const claims = [
   { id: "C01", where: "README.md:3", sentence: "It writes into your tree only\non your word.", claim: "writing needs the word", level: 3, verdict: "confirmed", sources: "apply.mjs:1-9" },
-  { id: "C02", where: "README.md:9", sentence: "Every run leaves a receipt.", claim: "receipt on every run", level: 2, verdict: "refuted" },
-  { id: "C03", where: "README.md:11", sentence: "The cache is pruned weekly.", claim: "weekly prune", level: 1, verdict: "unconfirmed" },
+  { id: "C02", where: "README.md:9", sentence: "Every run leaves a receipt.", claim: "receipt on every run", level: 2, verdict: "refuted", sources: "driver.mjs:40-52" },
+  { id: "C03", where: "README.md:11", sentence: "The cache is pruned weekly.", claim: "weekly prune", level: 1, verdict: "unconfirmed", sources: "cache.mjs:1-30" },
 ];
-const auditMd = (cs) => "# Audit\n\n## Claim ledger\n\n" + cs.map((c) => `### ${c.id} — ${c.where}\n\nClaim: ${c.claim}.\n`).join("\n") +
-  "\n```json claims\n" + JSON.stringify(cs) + "\n```\n";
+const prose = (cs) => cs.map((c) => `### ${c.id} — ${c.where}\n\nClaim: ${c.claim}.\n`).join("\n");
+const block = (cs) => "```json claims\n" + JSON.stringify(cs) + "\n```\n";
+const auditMd = (cs) => `# Audit\n\n## Claim ledger\n\n${prose(cs)}\n${block(cs)}`;
 fs.writeFileSync(aud, auditMd(claims));
 const sd = runErr(SEED, [aud, seed]);
 const seeded = fs.existsSync(seed) ? JSON.parse(fs.readFileSync(seed, "utf8")) : [];
@@ -107,10 +108,22 @@ fs.writeFileSync(dropped, "It writes into your tree.\n");
 const sl = run("ledger.mjs", [seed, kept, dropped]);
 check("a round that drops the seeded sentence fails the ledger", sl.code === 1 && /C01[^\n]*yes\s+LOST/.test(sl.out));
 check("seed refuses to overwrite a ledger", runErr(SEED, [aud, seed]).code === 1);
-const aud2 = path.join(tmp, "audit2.md"), seed2 = path.join(tmp, "seed2.json");
-fs.writeFileSync(aud2, auditMd(claims).replace("### C02", "### C09"));
-const sd2 = runErr(SEED, [aud2, seed2]);
-check("seed refuses an audit whose prose and block disagree", sd2.code === 1 && /C09/.test(sd2.err) && !fs.existsSync(seed2));
+// every refusal the run-file contract asks for, each against its planted violation
+const refuses = (name, body, needle) => {
+  const f = path.join(tmp, `a-${name.replace(/\W+/g, "-")}.md`), o = path.join(tmp, `s-${name.replace(/\W+/g, "-")}.json`);
+  fs.writeFileSync(f, body); const r = runErr(SEED, [f, o]);
+  check(`seed refuses ${name}`, r.code === 1 && needle.test(r.err) && !fs.existsSync(o));
+};
+refuses("an audit whose prose and block disagree", auditMd(claims).replace("### C02", "### C09"), /C09/);
+refuses("a json claims block under another heading",
+  `# Audit\n\n## Claim ledger\n\n${prose(claims)}\n## Open\n\nnothing settled.\n\n${block(claims)}`, /another heading/);
+refuses("a claim ledger with no entries under it", `# Audit\n\n## Claim ledger\n\n${block(claims)}`, /### C\.\. entries/);
+refuses("an unconfirmed entry with no sources",
+  auditMd(claims.map((c) => (c.id === "C03" ? { ...c, sources: undefined } : c))), /C03: every entry needs sources/);
+refuses("an unconfirmed entry with no level",
+  auditMd(claims.map((c) => (c.id === "C03" ? { ...c, level: undefined } : c))), /C03: every entry needs level/);
+refuses("an entry with no claim of its own",
+  auditMd(claims.map((c) => (c.id === "C02" ? { ...c, claim: undefined } : c))), /C02: every entry needs claim/);
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(failed ? `\n${failed} check(s) MISSED` : "\nall checks caught their planted violation");
 process.exit(failed ? 1 : 0);

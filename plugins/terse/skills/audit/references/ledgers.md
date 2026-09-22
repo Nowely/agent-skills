@@ -79,8 +79,11 @@ which is why the block carries `sentence` — the document's own words, copied, 
 ```
 ````
 
-Every `### C..` entry appears in the block and no other does; the seed script exits 1 when the two
-disagree, and names which ids are in one half only. `ledger-seed.mjs AUDIT.md LEDGER.json` then writes
+The block sits under *Claim ledger* and beside the `### C..` entries it doubles, and every field of the
+entry format above is in it whatever the verdict — an unconfirmed claim states its level, its
+restatement and its sources like any other. `ledger-seed.mjs` refuses the run file on each of those:
+a block under another heading, a *Claim ledger* with no entries under it, an id in one half and not the
+other, a field left out. `ledger-seed.mjs AUDIT.md LEDGER.json` then writes
 every confirmed entry as `want: true` and every refuted one as `want: false`, each pattern the sentence
 escaped to a literal over whitespace-normalised text; unconfirmed entries are listed on stderr and
 seeded nowhere, since neither presence nor absence of them is a result.

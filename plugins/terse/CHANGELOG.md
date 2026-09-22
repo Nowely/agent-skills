@@ -11,7 +11,10 @@ forensics remain in the repository references and release notes.
   under the ratchet. `audit` writes its entries a second time as a `json claims` block inside `audit.md`
   — the prose entry restates a claim and a restatement is not a string a pattern can find — and the new
   `audit/scripts/ledger-seed.mjs` turns every confirmed claim into a `want: true` pin and every refuted
-  one into a `want: false`, each the sentence itself, escaped. Replayed on the 2026-09-11 record: with a
+  one into a `want: false`, each the sentence itself, escaped. The seed refuses a run file that does not
+  keep the contract — a block under another heading, a claim ledger with no prose entries under it, an
+  id in one half and not the other, or an entry missing a field, unconfirmed entries included — because
+  a ratchet seeded from half a ledger is worse than none. Replayed on the 2026-09-11 record: with a
   ledger in place from the start, the two compression regressions of rounds 02 and 03 read LOST where
   the run saw nothing until round 04.
 - A declared check now runs. An edit that carries claims gives `check.run`, a command, and
