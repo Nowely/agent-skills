@@ -75,29 +75,6 @@ executes gives no procedure for writing one: no step names who may add an entry 
 point, or which round's regression count it is charged to. Either step 4 states that procedure, or the
 pins that arrive late get an edits-file route of their own.
 
-## E5. The README and four more surfaces promise that nothing is written into your tree without your word, and `rewrite` writes a directory and a tracked file into it unasked
-
-**Evidence, level 2.** `plugins/terse/skills/rewrite/SKILL.md:6-7` ("writes into your tree only on your
-word"), `plugins/terse/.claude-plugin/plugin.json:4`, `.claude-plugin/marketplace.json:20` and
-`plugins/terse/CHANGELOG.md:63-64` ("nothing is written into your tree without your word") all make the
-promise; `plugins/terse/README.md:35-36` makes it to the reader. The same page puts the run directory at
-`research/<date>-<slug>/` "at the root of the repository that holds the document"
-(`rewrite/SKILL.md:66-67`) and routes a code defect "to the repository's `ISSUES.md`"
-(`rewrite/SKILL.md:136-140`, `loop.md:41`); only applying the candidate waits for a word
-(`rewrite/SKILL.md:176-177`). Found by the 2026-09-22 audit of the README: truth-pass entry C16 refuted,
-C15 misplaced; the docs-arm reader on "can it change my files?" answered "No" from README.md:35-36; the
-task reader asked to reach a candidate without a change to tracked files found no consent gate before the
-directory is created and concluded that the safe course was not to invoke `rewrite`
-(`research/2026-09-22-terse-process/audit-2026-09-22/audit.md`, What broke).
-
-**Issue text.** `rewrite`'s run directory is inside the user's repository and its finding-routing writes
-into the user's `ISSUES.md`, neither behind a consent step, while the skill description, both manifests,
-the changelog and the README promise that nothing reaches the tree without the user's word. Either the
-run directory moves outside the repository (the audit's already is: the plugin's data directory, or
-`$TMPDIR/terse`) and the `ISSUES.md` route becomes a proposal the user accepts, or the four promises and
-the README say what is written where and when. The rule that research runs live under `research/` is
-this repository's, not the user's.
-
 ## E6. `writing-rules.md` and `measurements.md` repeat two counts from 2026-09-10 that the run's own prompts and judge contradict
 
 **Evidence, level 2.** `plugins/terse/skills/rewrite/references/writing-rules.md:37-40` and

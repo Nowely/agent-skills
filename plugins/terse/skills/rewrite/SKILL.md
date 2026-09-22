@@ -63,8 +63,18 @@ fan-out, write one candidate yourself from the same brief and report that the co
 
 ## Step 4. The rounds
 
-Work in a run directory of the document's own — `research/<date>-<slug>/` at the root of the
-repository that holds the document; `audit` writes its run file elsewhere, and you copy `audit.md` in.
+Work in a run directory of the document's own, outside the repository that holds it: made by the
+formula of [`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory), with `<slug>`
+naming the document.
+
+```bash
+RUN="${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
+```
+
+Name the absolute path in your report; a resumed run is given it by the user and cannot guess it. On
+the audit route, copy `audit.md` in. Nothing goes into that repository without the user's word — not
+the candidate (step 5), not a code defect (item 6).
+
 Every round is its own file, `NN-<pass>.md`, named for what produced it — `01-candidate`, `06-water`,
 `08-review` — any name, used once; the original is `00-original.md`. Set `S` to this skill's `scripts/`
 directory once, as an absolute path: installed, it is `$CLAUDE_PLUGIN_ROOT/skills/rewrite/scripts`;
@@ -96,13 +106,13 @@ your shell rules forbid `cd`.
    entries whose claims the edit removes on purpose, each of them named in that round's row of
    `rounds.md`. Whenever the edit carries claims it also carries `check` — `{"level": 1|2|3, "run":
    "<command>", "expect": "<regex over what it printed>"}`, where `run` at levels 1 and 2 is usually
-   `sed -n 'A,Bp' <file>`. Every claim says what it `asks`: the proposition the sentence makes, in the
-   sentence's own scope words — what, for whom, under which condition. A claim's name is the ledger's
-   key and one round sets it once, in one edit; a later round reusing the name is how a rewritten
-   sentence is re-pinned. `round.mjs` runs each `run` from the run directory before it writes anything
-   and refuses the whole round when one `expect` finds nothing, so a citation that does not resolve
-   stops there; what the command printed is kept in the ledger as `saw`, and the verifier below reads
-   it against `asks`. The format is the header of `round.mjs`.
+   `sed -n 'A,Bp' <file>` with `<file>` absolute. Every claim says what it `asks`: the proposition the
+   sentence makes, in the sentence's own scope words — what, for whom, under which condition. A claim's
+   name is the ledger's key and one round sets it once, in one edit; a later round reusing the name is
+   how a rewritten sentence is re-pinned. `round.mjs` runs each `run` from the run directory before it
+   writes anything and refuses the whole round when one `expect` finds nothing, so a citation that does
+   not resolve stops there; what the command printed is kept in the ledger as `saw`, and the verifier
+   below reads it against `asks`. The format is the header of `round.mjs`.
 3. **Produce the round**: `node "$S/round.mjs" <NN-1>-<pass>.md <NN>-<pass>.md edits/NN.json --ledger ledger.json`.
 4. **Run the checks**, before any critic, with `R=<NN>-<pass>.md`:
    - `node "$S/rule1.mjs" "$R" --cut "<technical section heading>" --except "<section that may carry paths>"` — the rule that keeps mechanism out of the sections a reader meets first, with the document's own headings;
@@ -135,9 +145,11 @@ your shell rules forbid `cd`.
      plugin; without it, run those lenses on Claude agents and say so.
 6. **Verify every finding yourself** from the check it carries — a finding without one is discarded —
    and route each by the table in [loop.md](references/loop.md#where-a-finding-goes): a sentence to the
-   next round's edits, a boundary or a term back to `rethink`, a code defect to the repository's
-   `ISSUES.md`, a question the document does not answer to the user. When a finding routes to stage 3,
-   make the structure map loop.md describes before the next round.
+   next round's edits, a boundary or a term back to `rethink`, a code defect with its check into
+   `code-defects.md` in the run directory and to the user as a proposal, a question the document does
+   not answer to the user. A code defect goes into the repository's `ISSUES.md` only on the user's word:
+   the file is in their tree, and this skill promises to write there only when they say so. When a
+   finding routes to stage 3, make the structure map loop.md describes before the next round.
 7. **Record the round** in `rounds.md`, one table row: `| file | words | produced by | findings against
    it | regressions |` — *produced by* names the pass and the wave; *findings* is the dedup's count by
    category; **regressions** is the count of sentences the round introduced that its critics showed
@@ -185,6 +197,8 @@ In the run directory:
   restored, a budget changed
 - `rounds.md`, one row per round; `reviews/NN/`, the verifier's report, every critic's report and the
   dedup, verbatim
+- `code-defects.md`, when a finding routed to the code: each defect with its check, as offered to the
+  user
 - `diff-NN.patch` against the original; the cut ledger — every removed passage of twenty words or more,
   with its reason; the invisible-prerequisite inventory from the curse-of-knowledge pass, on rounds that
   ran a writer brief; the sections no task reached; and the structure map, when a stage-3 finding called

@@ -38,7 +38,7 @@ document ends up with a well-written section in the wrong place.
 | these two sections repeat each other | stage 3 | written into `skeleton.md` under *open decisions*; the user is asked; `rethink` re-enters at the structure |
 | this term is read as something else | stage 2 | the same, at the vocabulary; every occurrence is then rewritten |
 | every comparable document has X and we do not | stage 1 | the same, at the survey; a section and its budget from another |
-| the code does this, the document cannot say otherwise | the code | the repository's `ISSUES.md`, with the check; the document says what the code does today |
+| the code does this, the document cannot say otherwise | the code | `code-defects.md` in the run directory, with the check, offered to the user; the repository's `ISSUES.md` only on their word; the document says what the code does today |
 | the document does not answer this, and should it | the owner | asked, with the cost of answering it |
 
 A batch of findings that are all stage 4 after several rounds is a document converging; a batch that

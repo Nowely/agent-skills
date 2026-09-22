@@ -31,6 +31,13 @@ forensics remain in the repository references and release notes.
 - A round can be undone. `round.mjs` copies the ledger's bytes to `ledger.NN.json` before growing it,
   so a round removed before the freeze takes its ledger entries with it instead of leaving them for the
   round that replaces it.
+- `rewrite`'s run directory is outside the repository that holds the document: `audit`'s formula makes
+  it, in the plugin's data directory or `$TMPDIR/terse`, and the report names its absolute path. A code
+  defect the rounds find is written with its check into `code-defects.md` there and offered to the user,
+  and reaches the repository's `ISSUES.md` only on their word. The run used to sit under `research/` at
+  the root of the user's repository and the defects went into their `ISSUES.md` unasked, while the
+  skill's description, both manifests, this changelog and the README promise that nothing is written
+  into the tree without the user's word (`ISSUES.md` E5).
 
 ### Added
 
