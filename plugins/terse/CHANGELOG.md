@@ -32,13 +32,14 @@ forensics remain in the repository references and release notes.
   so a round removed before the freeze takes its ledger entries with it instead of leaving them for the
   round that replaces it.
 - `rewrite`'s run directory is outside the repository that holds the document: `audit`'s formula makes
-  it, in the plugin's data directory when installed and in `$TMPDIR/terse` from a source checkout, and
-  the report names its absolute path. A code defect the rounds find is written with its check into
-  `code-defects.md` there and offered to the user, and reaches the repository's `ISSUES.md` only on
-  their word. The run used to sit under `research/` at the root of the user's repository and the
-  defects went into their `ISSUES.md` unasked, while the skill's description, both manifests, this
-  changelog and the README promise that nothing is written into the tree without the user's word
-  (`ISSUES.md` E5).
+  it, in the plugin's data directory when installed and in `$TMPDIR/terse` from a source checkout. The
+  report names its absolute path, and the hand-over tells the user to copy a run that must outlive an
+  uninstall or a purge of the temporary directory. A code defect the rounds find is written with its
+  check into `code-defects.md` in the run directory and offered to the user, and reaches the
+  repository's `ISSUES.md` only on their word. The run used to sit under `research/` at the root of the
+  user's repository and the defects went into their `ISSUES.md` unasked, while the skill's description,
+  both manifests, this changelog and the README promise that nothing is written into the tree without
+  the user's word (`ISSUES.md` E5).
 
 ### Added
 
@@ -60,7 +61,10 @@ forensics remain in the repository references and release notes.
   `$TMPDIR/terse`. Its formula wrote `${CLAUDE_PLUGIN_DATA:-…}`, a form Claude Code does not substitute:
   it replaces only the exact `${CLAUDE_PLUGIN_DATA}` in a skill body and exports nothing to the shell,
   so every installed run took the fallback. The formula now assigns the exact placeholder first and
-  falls back when it arrives empty, as it does from a source checkout.
+  falls back when it arrives empty, as it does from a source checkout. The page now also says how long a
+  run lives: under the data directory it survives plugin updates and is deleted by
+  `claude plugin uninstall` unless `--keep-data` is passed, in the temporary directory the operating
+  system may purge it, and the report tells the user to copy a run that must outlive either.
 
 ## 0.1.1 — 2026-09-17
 

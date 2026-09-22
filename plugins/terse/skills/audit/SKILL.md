@@ -36,7 +36,10 @@ D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-
 `D` is empty when this skill runs from a source checkout rather than an installed plugin, which is why
 the fallback is there: installed, Claude Code writes the plugin's data directory into that line before
 it runs. Name the absolute path in your report and in the run file; `rewrite` is given that path by the
-user and cannot guess it.
+user and cannot guess it. Under the plugin's data directory a run survives plugin updates and is
+deleted by `claude plugin uninstall` unless `--keep-data` is passed, and in the temporary directory the
+operating system may purge it: say in your report that a run which must outlive either is the user's to
+copy somewhere durable.
 
 Write nothing into the audited repository. Not a report, not a note, not a fix.
 

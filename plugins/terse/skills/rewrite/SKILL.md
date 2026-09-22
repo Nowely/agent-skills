@@ -71,9 +71,12 @@ naming the document.
 D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
 ```
 
-Name the absolute path in your report; a resumed run is given it by the user and cannot guess it. On
-the audit route, copy `audit.md` in. Nothing goes into that repository without the user's word — not
-the candidate (step 5), not a code defect (item 6).
+Name the absolute path in your report; a resumed run is given it by the user and cannot guess it. Under
+the plugin's data directory a run survives plugin updates and is deleted by `claude plugin uninstall`
+unless `--keep-data` is passed, and in the temporary directory the operating system may purge it: say in
+the hand-over that a run which must outlive either is the user's to copy somewhere durable. On the audit
+route, copy `audit.md` in. Nothing goes into that repository without the user's word — not the
+candidate (step 5), not a code defect (item 6).
 
 Every round is its own file, `NN-<pass>.md`, named for what produced it — `01-candidate`, `06-water`,
 `08-review` — any name, used once; the original is `00-original.md`. Set `S` to this skill's `scripts/`
