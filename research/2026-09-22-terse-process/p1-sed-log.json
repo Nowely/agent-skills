@@ -1,0 +1,2064 @@
+{
+  "target": [
+    {
+      "key": "live",
+      "file": "plugins/terse/skills/rewrite/references/writing-rules.md",
+      "alias": "W",
+      "start": 6,
+      "end": 7,
+      "quote": "Default: no sentence that carries nothing. One earns its place by carrying a\ncontract, a constraint, or a reason the code cannot state.",
+      "command": "sed -n '6,7p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'",
+      "exit": 0
+    },
+    {
+      "key": "reason",
+      "file": "plugins/terse/skills/rewrite/references/writing-rules.md",
+      "alias": "W",
+      "start": 9,
+      "end": 10,
+      "quote": "Cut first: the argument for an instruction, restated wherever the instruction\nappears. Give the instruction; the case for it lives in one place.",
+      "command": "sed -n '9,10p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'",
+      "exit": 0
+    },
+    {
+      "key": "firstdef",
+      "file": "plugins/terse/skills/rewrite/references/writing-rules.md",
+      "alias": "W",
+      "start": 15,
+      "end": 16,
+      "quote": "Define a term where the reader first needs it, not before. A page does not open\nwith a glossary.",
+      "command": "sed -n '15,16p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'",
+      "exit": 0
+    },
+    {
+      "key": "purpose",
+      "file": "plugins/terse/skills/rewrite/references/writing-rules.md",
+      "alias": "W",
+      "start": 18,
+      "end": 19,
+      "quote": "A document states its purpose once, at the top, in the reader's words. That is not\nthe argument for an instruction, and it is not cut.",
+      "command": "sed -n '18,19p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'",
+      "exit": 0
+    },
+    {
+      "key": "safeguard",
+      "file": "plugins/terse/skills/rewrite/references/writing-rules.md",
+      "alias": "W",
+      "start": 21,
+      "end": 23,
+      "quote": "Never cut a condition, a limit or a warning where a reader decides. Repetition at\nan independently read decision point is not redundancy. A dated measurement keeps\nits date and its numbers, including ones the code has since changed.",
+      "command": "sed -n '21,23p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'",
+      "exit": 0
+    },
+    {
+      "key": "counts",
+      "file": "plugins/terse/skills/rewrite/references/writing-rules.md",
+      "alias": "W",
+      "start": 25,
+      "end": 25,
+      "quote": "Counts - sentence length, repeated phrases - prompt a review. They are not gates.",
+      "command": "sed -n '25,25p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'",
+      "exit": 0
+    },
+    {
+      "key": "fixed",
+      "file": "plugins/terse/skills/rewrite/references/writing-rules.md",
+      "alias": "W",
+      "start": 3,
+      "end": 4,
+      "quote": "Part two of the four-part chain. The text below is fixed. Apply it as written; do not restate it in\nyour own words, and do not extend it with rules you like better. It was measured in this form.",
+      "command": "sed -n '3,4p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'",
+      "exit": 0
+    },
+    {
+      "key": "modelcheck",
+      "file": "plugins/terse/skills/rewrite/references/writing-rules.md",
+      "alias": "W",
+      "start": 44,
+      "end": 47,
+      "quote": "These rules were themselves written against models as they behaved in September 2026. Anthropic's own\nguidance now warns that anti-formatting instructions written for earlier models push newer ones the wrong\nway, and the mechanism applies here: a rule aimed at a failure the model no longer has becomes a rule\nthat causes one. Re-check them against the model in front of you before treating them as fixed.",
+      "command": "sed -n '44,47p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'",
+      "exit": 0
+    },
+    {
+      "key": "nolinters",
+      "file": "plugins/terse/skills/rewrite/references/writing-rules.md",
+      "alias": "W",
+      "start": 49,
+      "end": 51,
+      "quote": "Already rejected on that evidence, so do not reach for them here: Diataxis or a house style guide as a\nmandatory pass; a hard word limit per sentence; a prose linter (Vale, textlint, proselint); a\npunctuation gate in CI.",
+      "command": "sed -n '49,51p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'",
+      "exit": 0
+    },
+    {
+      "key": "prereq",
+      "file": "plugins/terse/skills/rewrite/references/curse-of-knowledge.md",
+      "alias": "K",
+      "start": 11,
+      "end": 16,
+      "quote": "  1. Inventory the invisible prerequisites: what must a reader already know for this to make sense -\n     vocabulary, mental model, context, prior steps. The items you almost did not list are the curse.\n  2. Rebuild from the reader's actual state, not yours minus a bit: what do they see first, what will\n     they try first.\n  3. Write to the failure point: wherever a non-knower stalled, that is where the melody was playing\n     silently in your head.",
+      "command": "sed -n '11,16p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/curse-of-knowledge.md'",
+      "exit": 0
+    },
+    {
+      "key": "framing",
+      "file": "plugins/terse/skills/rewrite/references/curse-of-knowledge.md",
+      "alias": "K",
+      "start": 18,
+      "end": 20,
+      "quote": "Its own warnings: do not fix by adding more text, because the curse hides missing framing rather than\nmissing detail, and one sentence of \"what this is and when you need it\" beats three paragraphs of how.\nEvery \"obviously\", \"simply\" or \"just\" hides a prerequisite.",
+      "command": "sed -n '18,20p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/curse-of-knowledge.md'",
+      "exit": 0
+    },
+    {
+      "key": "realexamples",
+      "file": "plugins/terse/skills/rewrite/references/curse-of-knowledge.md",
+      "alias": "K",
+      "start": 33,
+      "end": 34,
+      "quote": "- **Two installations.** The host tool being installed does not establish that the second one is\n  installed and authenticated. Name both, and the language runtime, in the first setup paragraph.",
+      "command": "sed -n '33,34p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/curse-of-knowledge.md'",
+      "exit": 0
+    },
+    {
+      "key": "content_scope",
+      "file": "plugins/terse/skills/rethink/references/stages.md",
+      "alias": "S",
+      "start": 265,
+      "end": 268,
+      "quote": "Derived from what one owner changed on one document, on 2026-09-11 and 12, not from a standard. They are\nthat owner's rules and the calibration target for their next document; another owner's are learned the\nsame way, and none of them is a law of the genre. They are about content and order; the rules about\nsentences are in [writing-rules.md](../../rewrite/references/writing-rules.md) and are a different layer.",
+      "command": "sed -n '265,268p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'",
+      "exit": 0
+    },
+    {
+      "key": "problem",
+      "file": "plugins/terse/skills/rethink/references/stages.md",
+      "alias": "S",
+      "start": 270,
+      "end": 272,
+      "quote": "1. **Open with the problem and the goal.** What is this for, what is it trying to achieve. The project's\n   own purpose — parity between a delegated seat and a native one — was absent from a ten-section draft\n   about it.",
+      "command": "sed -n '270,272p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'",
+      "exit": 0
+    },
+    {
+      "key": "detail",
+      "file": "plugins/terse/skills/rethink/references/stages.md",
+      "alias": "S",
+      "start": 275,
+      "end": 276,
+      "quote": "3. **Technical detail lives in one section of its own, below the middle.** Whoever reaches it came for\n   it. Spread through the early sections it reads as a warning notice.",
+      "command": "sed -n '275,276p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'",
+      "exit": 0
+    },
+    {
+      "key": "prereqexception",
+      "file": "plugins/terse/skills/rethink/references/stages.md",
+      "alias": "S",
+      "start": 277,
+      "end": 279,
+      "quote": "4. **A prerequisite that is satisfied on nearly every machine is noise — unless the document depends on\n   it elsewhere.** `PATH` and credential files went; the runtime version and the wrapped tool's version\n   came back when the survey showed the upgrade warning is unactionable without them.",
+      "command": "sed -n '277,279p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'",
+      "exit": 0
+    },
+    {
+      "key": "copycmd",
+      "file": "plugins/terse/skills/rethink/references/stages.md",
+      "alias": "S",
+      "start": 280,
+      "end": 281,
+      "quote": "5. **Install is a block to copy, immediately.** This is the one thing in the rejected draft the owner\n   said he liked.",
+      "command": "sed -n '280,281p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'",
+      "exit": 0
+    },
+    {
+      "key": "update",
+      "file": "plugins/terse/skills/rethink/references/stages.md",
+      "alias": "S",
+      "start": 282,
+      "end": 283,
+      "quote": "6. **Update gets the same block, in the same form.** A document that says how to start and not how to\n   move forward is half a document.",
+      "command": "sed -n '282,283p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'",
+      "exit": 0
+    },
+    {
+      "key": "noinvent",
+      "file": "plugins/terse/skills/rethink/references/stages.md",
+      "alias": "S",
+      "start": 284,
+      "end": 285,
+      "quote": "7. **No invented examples.** A fabricated file path in a sample command is water; use something real or\n   nothing.",
+      "command": "sed -n '284,285p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'",
+      "exit": 0
+    },
+    {
+      "key": "vocab",
+      "file": "plugins/terse/skills/rethink/references/stages.md",
+      "alias": "S",
+      "start": 286,
+      "end": 289,
+      "quote": "8. **The vocabulary has to agree with the claim.** A document arguing that a delegated agent is the\n   equal of a native one, while calling it by a different word throughout, denies its own thesis in\n   every sentence. Internal jargon — a skill's name, a term the reference files use — is for readers who\n   are agents. Where the reader is a person, the word that names the claim is the word to use.",
+      "command": "sed -n '286,289p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'",
+      "exit": 0
+    },
+    {
+      "key": "table",
+      "file": "plugins/terse/skills/rethink/references/stages.md",
+      "alias": "S",
+      "start": 290,
+      "end": 293,
+      "quote": "9. **Where a section states a comparison whose rows differ, a table beats prose.** The claim is either\n   visible in the rows or it is not true, and a reader checks a table in seconds and an argument in\n   paragraphs. A table whose rows all say the same thing proves sameness by looking identical, and the\n   one built for this document was cut for exactly that.",
+      "command": "sed -n '290,293p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'",
+      "exit": 0
+    },
+    {
+      "key": "fenced",
+      "file": "plugins/terse/skills/rethink/references/stages.md",
+      "alias": "S",
+      "start": 294,
+      "end": 298,
+      "quote": "10. **A command goes in a fenced block, with a language, in the form that runs.** Not prose around it,\n    not the in-application shorthand. `/plugin install …` works only for a reader already inside Claude\n    Code; `claude plugin install …` works for the reader arriving at the page. The language tag is not\n    decoration: an untagged block is unhighlighted, and highlighting is what makes a command legible as\n    a command rather than as a quotation.",
+      "command": "sed -n '294,298p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'",
+      "exit": 0
+    },
+    {
+      "key": "caveat",
+      "file": "plugins/terse/skills/rethink/references/stages.md",
+      "alias": "S",
+      "start": 299,
+      "end": 302,
+      "quote": "11. **A qualification is not a fix.** A sentence that needs a caveat to be true says too much: say less, or\n    link the source that carries the detail. Five rounds of one document added caveats to make sentences\n    truer and each caveat was contradicted by a finer detail of the code — regressions rose from one to\n    ten. The owner named it: an *оговорка* is an anti-pattern.",
+      "command": "sed -n '299,302p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'",
+      "exit": 0
+    },
+    {
+      "key": "adesc",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 4,
+      "end": 7,
+      "quote": "  Measures a document against two rulers: whether fresh readers get the right answer, and whether every\n  claim about behaviour is true of the code. Returns a reader profile, a claim ledger, reader scores and\n  the list of what broke. It never proposes wording; `rewrite` does that.\ndisable-model-invocation: true",
+      "command": "sed -n '4,7p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "tdesc",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 4,
+      "end": 7,
+      "quote": "  Decides what a document should be before a sentence of it is written: what comparable documents already\n  solved, what things are called, and what is said in what order. Returns a skeleton and stops there —\n  the writing is `rewrite`'s. Use when a document's shape is wrong, or when starting one.\ndisable-model-invocation: true",
+      "command": "sed -n '4,7p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rdesc",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 4,
+      "end": 8,
+      "quote": "  Writes the text in rounds: one candidate, then critics with lenses that differ, then edits declared\n  with the check behind each, until the owner reads a round and says whether they would send it as it\n  is. Starts from a skeleton `rethink` agreed, or from the failures an `audit` measured. Proposes; writes\n  into your tree only on your word.\ndisable-model-invocation: true",
+      "command": "sed -n '4,8p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "auditorder",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 13,
+      "end": 16,
+      "quote": "An audit here is a measurement, not an opinion. You run seven steps in order, and the order carries the\nmethod: the profile decides which questions are worth asking, the code decides what the right answers\nare, and both exist before the first reader is spawned. A reader sent out before the answer key is\nwritten measures the text against your memory of it, and your memory has already read the code.",
+      "command": "sed -n '13,16p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "scope",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 23,
+      "end": 28,
+      "quote": "Settle three things with the user in one exchange, not six:\n\n- Which files are the documentation. Default to every tracked `.md`.\n- Which repository backs them, if any. Text with no code behind it still gets audited; the truth pass\n  runs in its weaker form, described in [truth-pass.md](references/truth-pass.md).\n- Where a reader arrives. Usually `README.md`. This is the entry file for every reader.",
+      "command": "sed -n '23,28p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "nowrite",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 40,
+      "end": 40,
+      "quote": "Write nothing into the audited repository. Not a report, not a note, not a fix.",
+      "command": "sed -n '40,40p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "profile",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 44,
+      "end": 45,
+      "quote": "Build it from the repository and from the user's own words, following\n[reader-profile.md](references/reader-profile.md). Show it and ask for corrections before Step 3.",
+      "command": "sed -n '44,45p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "ledger",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 52,
+      "end": 55,
+      "quote": "Every sentence that states what the software does becomes one ledger entry: the claim, the doc line,\nthe code that backs it, an evidence level and a verdict. Follow\n[truth-pass.md](references/truth-pass.md) for the levels, the rule on guarantee words, and the three\nverdicts. Use the entry format in [ledgers.md](references/ledgers.md).",
+      "command": "sed -n '52,55p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "evidencelevels",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 62,
+      "end": 63,
+      "quote": "- A citation that resolves proves only that a line exists. Reading the code proves what it says.\n  Running it proves what it does. Do not report the first as the third.",
+      "command": "sed -n '62,63p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "controls",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 73,
+      "end": 74,
+      "quote": "At least two of the questions must be ones the current text answers correctly. These are the controls.\nWithout them a later rewrite can raise the score by breaking something nobody asked about.",
+      "command": "sed -n '73,74p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "unanswerable",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 76,
+      "end": 78,
+      "quote": "Plant at least one question the documentation genuinely does not answer, and record it as unanswerable in\nthe key. A confident answer to it is a failure, and it is the only thing that separates a reader who read\nfrom a reader who knew. Benchmarks that do this plant about one in ten.",
+      "command": "sed -n '76,78p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "readers",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 85,
+      "end": 88,
+      "quote": "One fresh reader per question, per [measure.md](references/measure.md). Each one starts at the entry\nfile, may open only `.md` files, may not read source, and may not see another reader's work. It returns\nits answer, the files it opened, how many steps from the entry file it took, and whether it left the\ndocumentation to find out.",
+      "command": "sed -n '85,88p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "baseline",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 90,
+      "end": 96,
+      "quote": "**The baseline measurement runs a second arm with no documentation at all**: the same questions, the same\nmodel, no files. Its score is what a reader already knew, and the number this audit reports is the\ndifference between the two. A raw score without that arm cannot tell a document that teaches from a\ndocument that is merely about something the reader has seen before; the two published benchmarks that ran\nthis arm found the effect large enough to swallow a result our size. It doubles the reader agents, so it\nruns once, at the baseline. A re-measurement after a rewrite reuses the same no-document score and does\nnot pay again.",
+      "command": "sed -n '90,96p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "task",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 105,
+      "end": 112,
+      "quote": "Beside the question readers, two readers carrying a task: a starting state and an outcome they want,\nacting from the documentation alone, with no answer key and no source. Check the state they produce, not\nwhat they say. It is the only evidence at level 3 an audit makes, and it finds the failure a question\ncannot: a recipe whose every sentence is true and whose sequence leaves the reader worse off — measured\non 2026-09-12, \"commit or stash first\" reverted a reader's tree and showed the agent nothing. Report\nbeside the result which sections no task reached; a gate that passes everything has described the tasks,\nnot the document. The readers' forced guesses are the yield: ask for every place the text made them\ninvent something, and treat a guess that turned out right exactly like one that turned out wrong.",
+      "command": "sed -n '105,112p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "repeat",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 139,
+      "end": 143,
+      "quote": "**Placement is repaired by repetition as often as by relocation.** Written procedure in the field where\na misreading kills settles it this way: state the fact early, and require it again at the point of use.\nA local warning belongs immediately before its action; a global one is stated once and repeated locally.\nDo not move a fact away from where it is currently read correctly in order to put it where it is also\nneeded — put it in both places.",
+      "command": "sed -n '139,143p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "baselineceiling",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 145,
+      "end": 147,
+      "quote": "Report the score with its own limits beside it. If the baseline is a perfect score, say so and stop: an\ninstrument with no room above cannot register an improvement, and a later \"the score did not fall\" will\nmean nothing. A zero can rise; report it and go on.",
+      "command": "sed -n '145,147p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "areturn",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 149,
+      "end": 151,
+      "quote": "Write the run file to `$RUN/audit.md` using the section contract in\n[ledgers.md](references/ledgers.md), then report to the user: the score, the failures with their\ncauses, the refuted claims, and the absolute path. Offer `rewrite` as the next step; do not run it.",
+      "command": "sed -n '149,151p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "arefs",
+      "file": "plugins/terse/skills/audit/SKILL.md",
+      "alias": "A",
+      "start": 155,
+      "end": 158,
+      "quote": "- Building the profile, with a worked example: [reader-profile.md](references/reader-profile.md).\n- Evidence levels, guarantee words, verdicts: [truth-pass.md](references/truth-pass.md).\n- The reader protocol and re-measurement: [measure.md](references/measure.md).\n- Entry formats and the run file contract: [ledgers.md](references/ledgers.md).",
+      "command": "sed -n '155,158p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "tskeleton",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 13,
+      "end": 15,
+      "quote": "Three decisions, in order, each cheap to change here and expensive to change later. The output is a\nskeleton: section titles, what each is for, what each deliberately leaves out, a word budget, and the\nrules that will gate the writing. No prose.",
+      "command": "sed -n '13,15p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "tstop",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 17,
+      "end": 21,
+      "quote": "**Then it stops.** Putting a skeleton in front of the person before two thousand words are written\nagainst it is the point, not a courtesy. Measured on 2026-09-11: a ten-section draft written at ordinary\nquality was abandoned by its reader at the third section, and nine of his nine objections were about what\nthe document contained, where it sat, or how much of it there was. None was about phrasing. Every\nsentence in it was written against a shape nobody had agreed.",
+      "command": "sed -n '17,21p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "tmethod",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 23,
+      "end": 23,
+      "quote": "The method, with the measurements behind each stage: [stages.md](references/stages.md).",
+      "command": "sed -n '23,23p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "tfan",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 27,
+      "end": 28,
+      "quote": "A fan-out, not one reader. One agent searching for good examples returns the genre's folklore; six agents\non six slices return a sample.",
+      "command": "sed -n '27,28p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "tpermission",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 30,
+      "end": 32,
+      "quote": "Announce the count and the models before spawning, and wait for the user's word. Default slices, one\nsurveyor each: the exact genre, the same structural position, the most used regardless of genre, vendor\nguidance, whatever this document's hard part is, and one slice whose job is what *not* to copy.",
+      "command": "sed -n '30,32p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "tsources",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 34,
+      "end": 35,
+      "quote": "Two rules the surveyors carry, both learned by getting them wrong: **fetch, do not recall** — every\ndocument reported carries its URL and its headings in order — and **weight by use, not by taste**.",
+      "command": "sed -n '34,35p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "tterms",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 45,
+      "end": 47,
+      "quote": "Do not inherit a project's vocabulary because the project uses it. For each load-bearing term: who parses\nit and as what, where it comes from, and whether its commonest sense in the reader's own field is a\ndifferent thing.",
+      "command": "sed -n '45,47p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "ttermref",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 49,
+      "end": 52,
+      "quote": "Where the document's thesis is that A is like B, call A by B's word. Any other choice is an argument\nagainst the document, made in every sentence. The worked example — a project that called its delegated\nagents \"seats\" while claiming they were the equal of native subagents — is in\n[stages.md](references/stages.md#stage-2-the-words-themselves).",
+      "command": "sed -n '49,52p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "tcritics",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 59,
+      "end": 61,
+      "quote": "Critics see **all of them at once**, because ranking is the judgement being asked for and it cannot be\nmade from isolated reviews. Give each critic a different lens and require a fatal flaw for every\nstructure including the one it ranks first.",
+      "command": "sed -n '59,61p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "tcommon",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 63,
+      "end": 65,
+      "quote": "Ask each critic one more thing: what all of them got wrong. That answer is usually worth more than the\nranking — a failure every angle shares is a failure of the brief. On the run this method came from, it\nwas the three critics' shared answer that found the real defect, and none of the ten proposals had.",
+      "command": "sed -n '63,65p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "toutput",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 76,
+      "end": 80,
+      "quote": "- each section: title, one sentence of purpose, what it deliberately excludes, a word budget\n- the mechanical rules the writing must pass, written so that passing is a fact rather than an opinion\n- the terminology decisions from step 2, including the ones you rejected and why\n- what was deleted outright rather than moved, and the stated cost of deleting it\n- any edit this structure requires in a file that is not the document",
+      "command": "sed -n '76,80p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "thandoff",
+      "file": "plugins/terse/skills/rethink/SKILL.md",
+      "alias": "T",
+      "start": 82,
+      "end": 83,
+      "quote": "Then stop and wait. `rewrite` starts from the skeleton the user agreed to, and routes back here anything\nit finds that belongs to a stage above it.",
+      "command": "sed -n '82,83p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rbranches",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 18,
+      "end": 21,
+      "quote": "| a run directory with rounds in it already — whatever else you have | step 4, at the next round; steps 1 to 3 are not repeated | the last round's review under `reviews/NN/` |\n| a skeleton `rethink` agreed | step 2 | the skeleton's purpose, exclusions and budget per section |\n| an `audit` run file | step 1 | the named failures, each at its line, with its cause |\n| neither | say so, offer `/terse:audit` or `/terse:rethink`; if the user declines both, continue on your own guesses and say so in the report | — |",
+      "command": "sed -n '18,21p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rbackground",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 23,
+      "end": 25,
+      "quote": "Why it is rounds and not a pass, and the measurements behind every rule here:\n[loop.md](references/loop.md) and [measurements.md](references/measurements.md). Neither is needed to\nact; this file is.",
+      "command": "sed -n '23,25p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rbrief",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 34,
+      "end": 47,
+      "quote": "Assemble it once, for every writer, in this order; a resumed run does not reassemble it. On the\nskeleton route parts 2 and 5 do not exist; say so in the report rather than inventing them.\n\n1. **The skeleton**, if there is one — its purpose, exclusions and budget for the section being written,\n   unedited.\n2. **Who reads this** — the profile from the run file, unedited.\n3. **The writing rules** — [writing-rules.md](references/writing-rules.md), copied in as written.\n4. **The curse of knowledge** — [curse-of-knowledge.md](references/curse-of-knowledge.md), likewise.\n5. **Where the readers failed** — the entries under *What broke*, each with its line, its cause and its\n   quote, plus the passages that worked and must not be damaged.\n6. **The accuracy floor**: every statement about behaviour must be true of the code in this checkout,\n   and the writer records the level of evidence it reached — the three levels are in\n   [truth-pass.md](../audit/references/truth-pass.md#three-levels-of-evidence). A claim about a lifecycle\n   (what stays, what is removed, what a continued or retried run sees) at level 2 is a guess: run it.",
+      "command": "sed -n '34,47p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rcopy",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 49,
+      "end": 50,
+      "quote": "Copy the fixed parts; do not paraphrase them. The wording a critic receives is in\n[bake-off.md](references/bake-off.md); do not write a third.",
+      "command": "sed -n '49,50p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rfirst",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 54,
+      "end": 58,
+      "quote": "On a document that already exists, the first thing that runs is the adversarial whole-document read —\nlens 3 of step 4's table — with the right to run the code. On the audit route its findings are added\nunder *What broke*; on the skeleton route they become the first round's edits. Then the bake-off: three writers, one whole candidate each with a different stance, and two judges — the\nbriefs and the judging sheet, for both routes, are in [bake-off.md](references/bake-off.md). That is the\nonly bake-off; every round after it edits the round before.",
+      "command": "sed -n '54,58p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rperm",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 60,
+      "end": 62,
+      "quote": "Announce before spawning: the count, the models, and that the cost of a writer or a judge has not been\nmeasured (the critics' costs have; see the table). Wait for the user's word. If the user refuses the\nfan-out, write one candidate yourself from the same brief and report that the comparison was skipped.",
+      "command": "sed -n '60,62p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "selftest",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 74,
+      "end": 74,
+      "quote": "node \"$S/selftest.mjs\"      # once per session: every check against its planted violation",
+      "command": "sed -n '74,74p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rchecks",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 96,
+      "end": 103,
+      "quote": "4. **Run the checks**, before any critic, with `R=<NN>-<pass>.md`:\n   - `node \"$S/rule1.mjs\" \"$R\" --cut \"<technical section heading>\" --except \"<section that may carry paths>\"` — the rule that keeps mechanism out of the sections a reader meets first, with the document's own headings;\n   - `node \"$S/dup.mjs\" \"$R\" concepts.json` — one idea, one home;\n   - `node \"$S/sections.mjs\" \"$R\" budgets.json` — words per section against the budget, reported, never blocking;\n   - `node \"$S/ledger.mjs\" ledger.json $(ls [0-9][0-9]-*.md | sort)` — the ratchet over every round in order; exit 1 when the new round loses a verified claim or revives a retired phrase.\n   A failure the round introduced is fixed before the critics see it: remove the round file, fix\n   `edits/NN.json`, regenerate. A failure the previous round already had is a finding for this round's\n   edits, not a block. A round is frozen the moment its critics launch, not before.",
+      "command": "sed -n '96,103p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rdispatch",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 104,
+      "end": 109,
+      "quote": "5. **Announce the wave** — the lenses, their sizes from the table, the models, the cost — and wait for\n   the user's word; the user may size any lens to zero, and the least that still counts as a round is\n   lenses 1 and 2. Then **launch the critics**, one agent per lens, with the briefs in\n   [critic-briefs.md](references/critic-briefs.md), and the dedup agent over their reports; everything\n   they return is kept verbatim under `reviews/NN/`. The Codex lenses need the `entrust` plugin;\n   without it, run those lenses on Claude agents and say so.",
+      "command": "sed -n '104,109p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rverify",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 110,
+      "end": 114,
+      "quote": "6. **Verify every finding yourself** from the check it carries — a finding without one is discarded —\n   and route each by the table in [loop.md](references/loop.md#where-a-finding-goes): a sentence to the\n   next round's edits, a boundary or a term back to `rethink`, a code defect to the repository's\n   `ISSUES.md`, a question the document does not answer to the user. When a finding routes to stage 3,\n   make the structure map loop.md describes before the next round.",
+      "command": "sed -n '110,114p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rregress",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 115,
+      "end": 118,
+      "quote": "7. **Record the round** in `rounds.md`, one table row: `| file | words | produced by | findings against\n   it | regressions |` — *produced by* names the pass and the wave; *findings* is the dedup's count by\n   category; **regressions** is the count of sentences the round introduced that its critics showed\n   false or overstated. That number is the round's verdict.",
+      "command": "sed -n '115,118p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rgates",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 137,
+      "end": 144,
+      "quote": "Before the user reads a round, three things, none tradeable against another:\n\n- **no regression in the round**: the ledger passes, and no sentence the round introduced was shown\n  false or overstated by its critics;\n- **the task gate**: lens 4's two readers achieved their goals, and the sections no task reached are\n  named;\n- **the question readers**: lens 5, one per question, answered from the document; where they guessed is\n  listed.",
+      "command": "sed -n '137,144p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rstop",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 146,
+      "end": 150,
+      "quote": "**The loop stops when the user reads the round and says whether they would send it as it is.** Two\nconsecutive rounds with no regression is the signal to hand a round over, not a finish; a cap on rounds\nis set in the first announcement, and a cap reached is reported as a result. Hand over the round and\n`diff-NN.patch`, the diff against `00-original.md`, written into the run directory. Then stop: applying\nthe candidate to the user's files needs their word, and a diff they have read is what earns it.",
+      "command": "sed -n '146,150p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rstate",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 157,
+      "end": 158,
+      "quote": "- `skeleton.md`, kept current with every decision taken after it was agreed — a section added, a fact\n  restored, a budget changed",
+      "command": "sed -n '157,158p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rpreserve",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 167,
+      "end": 170,
+      "quote": "The safeguards are the last lines of [writing-rules.md](references/writing-rules.md) and override the\nrest of the rules wherever they collide: never cut a condition, a limit or a warning where a reader\ndecides; repetition at an independently read decision point is not redundancy; a dated measurement\nkeeps its date and its numbers.",
+      "command": "sed -n '167,170p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rscripts",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 179,
+      "end": 179,
+      "quote": "- The checks as scripts with a planted-violation self-test: [scripts/](scripts/).",
+      "command": "sed -n '179,179p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "header",
+      "file": "plugins/entrust/skills/codex/SKILL.md",
+      "alias": "D",
+      "start": 196,
+      "end": 197,
+      "quote": "The header is the leading run of upper-case `NAME: value` lines at column 0; the body starts at `TASK:` or\nat the first line that is not one; a non-field upper-case `NAME:` above it is exit 2 naming it.",
+      "command": "sed -n '196,197p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rights",
+      "file": "plugins/entrust/skills/codex/SKILL.md",
+      "alias": "D",
+      "start": 201,
+      "end": 201,
+      "quote": "| `RIGHTS:` | `read [<dir>]`, `worktree <repo>`, `write <dir>` | first, or not at all: no header is a read agent in the current directory |",
+      "command": "sed -n '201,201p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "expect",
+      "file": "plugins/entrust/skills/codex/SKILL.md",
+      "alias": "D",
+      "start": 205,
+      "end": 205,
+      "quote": "| `EXPECT:` | `<regex>` | the answer is only evidence if a command matching it ran AND succeeded; a matching command that exited non-zero does not count, and none matching is exit 5. Do not point it at a check whose failure IS the finding |",
+      "command": "sed -n '205,205p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "schema",
+      "file": "plugins/entrust/skills/codex/SKILL.md",
+      "alias": "D",
+      "start": 206,
+      "end": 206,
+      "quote": "| `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>` | the answer must parse as one JSON object |",
+      "command": "sed -n '206,206p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "model",
+      "file": "plugins/entrust/skills/codex/SKILL.md",
+      "alias": "D",
+      "start": 207,
+      "end": 207,
+      "quote": "| `MODEL:` | `<slug>`: `gpt-6-astra` (Astra), `gpt-5.6-sol` (Sol), `gpt-5.6-terra` (Terra), `gpt-5.6-luna` (Luna) | this agent needs a model other than the configured default; the short name is for prose, the slug for this line |",
+      "command": "sed -n '207,207p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "effort",
+      "file": "plugins/entrust/skills/codex/SKILL.md",
+      "alias": "D",
+      "start": 208,
+      "end": 208,
+      "quote": "| `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`; `ultra` on Astra, Sol and Terra (the catalogue of 2026-09-17: `none` and `minimal` are on no model and exit 2 before the turn); no line inherits `~/.codex/config.toml` | the task is worth more or less thinking than the configured default; `low` for a one-line task |",
+      "command": "sed -n '208,208p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "brief",
+      "file": "plugins/entrust/skills/codex/SKILL.md",
+      "alias": "D",
+      "start": 210,
+      "end": 210,
+      "quote": "| `BRIEF:` | `yes` | a short answer is enough; omit it beside an output schema — it clips only the inline `answer` (`answerJson` is parsed from the whole one) yet still asks the model for 20 lines |",
+      "command": "sed -n '210,210p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "gateowner",
+      "file": "plugins/entrust/skills/codex/SKILL.md",
+      "alias": "D",
+      "start": 213,
+      "end": 216,
+      "quote": "One field is missing from that table on purpose. `VERIFY` is refused in a prompt file without `--allow-prompt-verify`,\na flag the one call above does not pass: it runs a caller-declared command after the turn, so an agent that could\nwrite its own would be grading itself. Declare gates on the command line instead\n([result-gates.md](references/result-gates.md)).",
+      "command": "sed -n '213,216p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "shape",
+      "file": "plugins/entrust/skills/codex/SKILL.md",
+      "alias": "D",
+      "start": 296,
+      "end": 300,
+      "quote": "Write a concrete, checkable body:\n\n    TASK:   what to do\n    CHECK:  the ground truth, preferably something the agent cannot guess\n    RETURN: exactly what to hand back",
+      "command": "sed -n '296,300p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "one",
+      "file": "plugins/entrust/skills/codex/SKILL.md",
+      "alias": "D",
+      "start": 302,
+      "end": 308,
+      "quote": "Give one deliverable per agent. Split a return that asks for unrelated artifacts or decisions. Write `TASK:` in the\nuser's language: the agent answers in the language it is asked in (measured 2026-09-17: a task written in English\nabout a Russian «хай» came back in English). Whatever `RETURN:`\nasks for, its first line is one sentence a reader can take on its own: the name you gave the agent in the prompt\n(\"you are Codex Terra T1\"), its status and what it did. Give the name; the model does not know its short name and\nanswers with whatever it calls itself (measured 2026-09-17: «GPT-5 Codex, id T1»). That line is what the coordinator\nretells, and not itself a message to the user; the rest is the return's own shape.",
+      "command": "sed -n '302,308p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "standing",
+      "file": "plugins/entrust/skills/codex/SKILL.md",
+      "alias": "D",
+      "start": 310,
+      "end": 314,
+      "quote": "The standing rules are already on the thread — unattended, its egress and its web search each named\nwhichever way they went, a one-line record for a step that cannot run (the command, whether it started, its\nexit status if any, the exact diagnostic), never claim a test passed without the count — so do not repeat them. A follow-up continues a thread with `RESUME: <threadId>`; a\nrecall-only one runs no commands, so it also needs `ALLOW_NO_COMMANDS: yes` (`--allow-no-commands` on a\ncommand line).",
+      "command": "sed -n '310,314p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "user",
+      "file": "plugins/entrust/skills/codex/SKILL.md",
+      "alias": "D",
+      "start": 318,
+      "end": 324,
+      "quote": "Every word on this page is addressed to the coordinator, and an agent's return is too. What reaches the user is\nprose the coordinator writes: in the user's own language, naming an agent by its model and id and saying what it\ndid (\"Sonnet W5 replaced four flaky width checks\", \"Codex Astra A6 reviewed the retry instructions\") and not by\nthis page's own vocabulary. Keep `Codex` on a Codex agent: it is the only word in the name that says whose model ran. The sentence about an agent has one shape: the agent by name is the subject and what it does or did is the verb (\"Codex Sol R1 reads the diff\"); whatever runs beside it, and how long, follows in the user's own words for the tools. The model slug is machinery too, and so are `wrapper` and `driver`: the name is `Codex Sol R1`, never `gpt-5.6-sol`. A header field name, a status block, an internal\ntable's row name and an absolute path are machinery; they belong in a prompt or a report, and putting them in\nfront of a person says nothing they can act on. Rights are the one thing that must survive the translation: say\nwhat an agent may write, and where, in ordinary words, because that is what the user is being asked to approve.",
+      "command": "sed -n '318,324p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "assembly",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 119,
+      "end": 119,
+      "quote": "- Open one assembled brief whole before the fan-out; check its input paths in the agent's planned tree, its item count and each quoted claim against its source.",
+      "command": "sed -n '119,119p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "split",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 118,
+      "end": 118,
+      "quote": "- Critique the split before the fan-out: a top-row agent reads the decomposition, not the subject, for what the cut lost, what the wording added, which items are two and which the fan-out's rights cannot decide; twenty agents on a bad split agree and are all wrong (measured 2026-09-12: it caught two claims true at one release and false at the next, and they never reached the fan-out).",
+      "command": "sed -n '118,118p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "adversarial",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 120,
+      "end": 120,
+      "quote": "- Adversarial verify: a refuter defaults to `refuted` when it is uncertain, and a finding is one that changes correctness or a stated requirement, the rest its `open`.",
+      "command": "sed -n '120,120p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "diverse",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 121,
+      "end": 121,
+      "quote": "- Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters.",
+      "command": "sed -n '121,121p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "unanimous",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 122,
+      "end": 122,
+      "quote": "- Read a unanimous fan-out as evidence about the prompt first: open one return whole before you trust the tally (measured 2026-09-12: nineteen of twenty verdicts answered one broken path in every prompt).",
+      "command": "sed -n '122,122p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "unknown",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 123,
+      "end": 123,
+      "quote": "- Judge panel for a design task: a verdict missing its decisive check is `unknown` in `result`; name the missing check in `open`. Use the sibling's `EXPECT:` rule for a Codex check.",
+      "command": "sed -n '123,123p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "complete",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 124,
+      "end": 124,
+      "quote": "- Completeness critic at the end: one fresh strong-row reader chosen by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict. A publication (a README, a changelog, a synthesis) is read the same way before it goes out.",
+      "command": "sed -n '124,124p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "caps",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 125,
+      "end": 125,
+      "quote": "- No silent caps: name every agent, check or item you dropped.",
+      "command": "sed -n '125,125p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "crossreview",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 127,
+      "end": 128,
+      "quote": "Fix, then cross-review, at most two rounds; then escalate to the Fable agent or the `gpt-6-astra` agent, and to the user only when\nthat round fails too. Between selection rounds, record the candidates rejected, the evidence gained and the remaining blocker. Two rounds repeating the same blocker are a stall: show a new plan and wait for the word.",
+      "command": "sed -n '127,128p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "resume",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 134,
+      "end": 134,
+      "quote": "| `exitCode: 3`, a cut | read the partial; if the work is unfinished, continue that thread once with `RESUME:`, under a report path of its own |",
+      "command": "sed -n '134,134p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "returnscope",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 143,
+      "end": 144,
+      "quote": "Ask every prompt agent, Claude and Codex alike, for exactly these five fields, and send no `BRIEF:` line: the template is the bound, and `BRIEF:` would clip the answer at 20 lines. A verifier's brief names its target and the whole scope it must cover; its return says what it checked and, in `open`, what it did not. The first line of `result` is one sentence a\nreader can take on its own: the agent's model and id, its status and what it did (\"Sonnet W5: done, four flaky width checks replaced by threshold checks\"); the rest of the fields follow unchanged, and all five are yours to read, never to forward.",
+      "command": "sed -n '143,144p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "return",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 146,
+      "end": 150,
+      "quote": "    status:    done | partial | blocked\n    result:    at most 30 lines\n    evidence:  what ran, with counts; a test without its count is not evidence\n    artifacts: paths\n    open:      questions and risks",
+      "command": "sed -n '146,150p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "strict",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 152,
+      "end": 156,
+      "quote": "In a Workflow they are a JSON schema, and a Claude agent takes the `schema` option. A Codex agent takes the same five fields\nas a strict JSON Schema file (`additionalProperties: false` on every object, every property in `required`) named on its\n`OUTPUT_SCHEMA:` line, and you read them from `answerJson` in its report file:\n\n    {\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"status\",\"result\",\"evidence\",\"artifacts\",\"open\"],\"properties\":{\"status\":{\"type\":\"string\",\"enum\":[\"done\",\"partial\",\"blocked\"]},\"result\":{\"type\":\"string\"},\"evidence\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"artifacts\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"open\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}}",
+      "command": "sed -n '152,156p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "record",
+      "file": "plugins/terse/README.md",
+      "alias": "P",
+      "start": 64,
+      "end": 79,
+      "quote": "One run, on 2026-09-10, on one README in one repository. Read the size of it before the numbers:\n\n- The four-pass chain took six reader questions from three right answers to six, took readers leaving\n  the documentation from one to zero, and broke neither control question. **Six questions, one trial\n  each.** Three improvements and no reversals over six paired items gives an exact two-sided McNemar\n  *p* = 0.25, so this result is not distinguishable from chance. It is a pilot, not a rate.\n- Two of the six failures were lies rather than findability. A reader repeated two guarantees from\n  `README.md:5-9` that the code does not make. A structural rewrite would have carried both forward in\n  better prose.\n- A reader's own sense of clarity ran against the truth. Two who reported no confusion answered wrong;\n  the one who called a section scattered and confusing answered right. Neither skill asks a reader\n  whether the text was clear.\n- Five published writing standards were put against two unguided controls across ten agents, models\n  hidden from the judges. Both controls beat both entries of both standards. On the first 116 words,\n  seven of ten agents proposed nothing and the only agent that shortened the passage was a control. **Ten\n  agents, one run, one passage** — one observation per cell, not a rate.",
+      "command": "sed -n '64,79p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/README.md'",
+      "exit": 0
+    },
+    {
+      "key": "limits",
+      "file": "plugins/terse/README.md",
+      "alias": "P",
+      "start": 81,
+      "end": 86,
+      "quote": "Not measured: which of the four passes produced the gain, and whether a bake-off beats one careful pass.\nAlso not measured, and worth knowing before you trust any of the above: there was no arm that ran the\nsame questions with no document at all, so none of this separates what the text taught a reader from what\nthe reader already knew. Two published benchmarks that did run that arm found it large. The reference\nfiles say so where it matters, and\n[references/prior-art.md](references/prior-art.md) collects every finding against these numbers.",
+      "command": "sed -n '81,86p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/README.md'",
+      "exit": 0
+    },
+    {
+      "key": "humanlimit",
+      "file": "research/README.md",
+      "alias": "I",
+      "start": 10,
+      "end": 10,
+      "quote": "| [2026-09-11-terse-survey](2026-09-11-terse-survey/) | what does the field already know? | three rounds, 37 agents, 108 ranked practices; the plugin's own numbers measure model answerability, not human improvement; no arm ever ran without the document |",
+      "command": "sed -n '10,10p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/research/README.md'",
+      "exit": 0
+    },
+    {
+      "key": "regrecord",
+      "file": "research/README.md",
+      "alias": "I",
+      "start": 12,
+      "end": 12,
+      "quote": "| [2026-09-11-markup-round-0](2026-09-11-markup-round-0/) | can the method produce a README its owner would send as it is? | nine rounds; regressions per round 1, 2, 1, 0, 6, 5, 10 — every one a lifecycle sentence written from reading, not running; an eleven-agent wave found 41 defects after six rounds; the first naive reader said \"not yet\" for content, not phrasing; round 09 says less and awaits the owner's read |",
+      "command": "sed -n '12,12p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/research/README.md'",
+      "exit": 0
+    },
+    {
+      "key": "dryrun",
+      "file": "research/README.md",
+      "alias": "I",
+      "start": 13,
+      "end": 13,
+      "quote": "| [2026-09-12-skill-review](2026-09-12-skill-review/) | can a fresh agent execute the skill from its text? | 9,650 words to the first action and 19 gaps; after restructuring, 677 words; the dry-run prompt is the ruler for skill text |",
+      "command": "sed -n '13,13p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/research/README.md'",
+      "exit": 0
+    },
+    {
+      "key": "rsetup",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 80,
+      "end": 90,
+      "quote": "1. **Once per document**, write four files and copy in `skeleton.md`:\n   - `concepts.json` — one regex per idea the document carries, for the duplication count;\n   - `budgets.json` — every `##` heading of the document mapped to the skeleton's number, or one you set\n     and write back into `skeleton.md` where a section was added later. The comparison is a report the\n     owner reads, not a gate: growth per section per round is the number that showed four sections\n     swelling while every fix made them truer;\n   - `tasks.json` — two starting states and goals for lens 4, from the workflow the document most wants\n     a reader to perform; `questions.json` — the questions a reader arrives with, from the audit's key\n     when there is one, otherwise from the skeleton's purpose per section, one line each.\n   On a resumed run reuse all four; the readers are new agents and stay fresh even where the questions\n   repeat. `ledger.json` starts empty and grows from the rounds.",
+      "command": "sed -n '80,90p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "rprovenance",
+      "file": "plugins/terse/skills/rewrite/SKILL.md",
+      "alias": "R",
+      "start": 160,
+      "end": 164,
+      "quote": "- `diff-NN.patch` against the original; the cut ledger — every removed passage of twenty words or more,\n  with its reason; the invisible-prerequisite inventory from the curse-of-knowledge pass, on rounds that\n  ran a writer brief; the sections no task reached; and the structure map, when a stage-3 finding called\n  for one",
+      "command": "sed -n '160,164p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'",
+      "exit": 0
+    },
+    {
+      "key": "returnevidence",
+      "file": "plugins/entrust/skills/orchestrate/SKILL.md",
+      "alias": "O",
+      "start": 148,
+      "end": 148,
+      "quote": "    evidence:  what ran, with counts; a test without its count is not evidence",
+      "command": "sed -n '148,148p' '/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'",
+      "exit": 0
+    }
+  ],
+  "source": [
+    {
+      "id": "S1-1",
+      "command": "sed -n 719,719p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "If you’ve been using agents like Codex for your projects over the last year, you’ve likely accumulated a lot of instructions as you worked to steer the models toward good outcomes. With each release, it’s been worth revisiting those assumptions, but with GPT-6 Astra, it’s more important than ever.",
+      "exit": 0
+    },
+    {
+      "id": "S1-2",
+      "command": "sed -n 723,723p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "People now default to packaging a lot of skills into their projects, and each skill comes with a name and description that are loaded into the model’s context so it knows when to use them. But many descriptions are far too long, and when you add too many skills, Codex starts shortening their descriptions to fit. The model ends up seeing less of each description, making it harder to know which skill to pick.",
+      "exit": 0
+    },
+    {
+      "id": "S1-3",
+      "command": "sed -n 724,724p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "What’s worse is that descriptions can often contradict each other or over-emphasize when skills should be used, leading the model to load instructions that don’t actually help the task.",
+      "exit": 0
+    },
+    {
+      "id": "S1-4",
+      "command": "sed -n 732,732p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "Here, the bad skill description can push the model to use it anytime it touches anything related to a database, rather than only when it has to handle a migration.",
+      "exit": 0
+    },
+    {
+      "id": "S1-5",
+      "command": "sed -n 733,733p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "Second, one of the key markers of a useful skill is progressive disclosure. Reading a skill takes up context, bringing you closer to compaction and introducing guidance that may not apply to the task. For skills with multiple workflows, make the root document a minimal router that points to supporting docs and scripts. Give the model enough guidance to know where to look without forcing it to read things that don’t matter in the moment.",
+      "exit": 0
+    },
+    {
+      "id": "S1-6",
+      "command": "sed -n 734,734p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "Third, many skills were written as elaborate itineraries or recipes. Models have gotten much better at understanding nuance and ambiguity, so overly specific guidance can now hinder results where it previously helped.",
+      "exit": 0
+    },
+    {
+      "id": "S1-7",
+      "command": "sed -n 735,735p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "Repository skills also guide other contributors’ agents, which may use different models. Guidance that helps Sol or Luna may overconstrain GPT-6 Astra, so consider which models will use the instructions you leave behind.",
+      "exit": 0
+    },
+    {
+      "id": "S1-8",
+      "command": "sed -n 737,737p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "Because AGENTS.md applies whenever the model works in your repository, you should frequently revisit each instruction and ask yourself whether it’s still needed.",
+      "exit": 0
+    },
+    {
+      "id": "S1-9",
+      "command": "sed -n 738,738p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "Requiring a stack of docs or a full repo map before every edit is excessive for a typo fix. GPT-6 Astra can work out what it needs to read without being pushed to review the whole project before every change.",
+      "exit": 0
+    },
+    {
+      "id": "S1-10",
+      "command": "sed -n 744,744p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "Prompting the model to read files before every edit is a great way to burn context and slow work down. Pointing to some docs can still be helpful, however, so long as it is contextual. Be sure to keep your docs updated too!",
+      "exit": 0
+    },
+    {
+      "id": "S1-11",
+      "command": "sed -n 745,745p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "Previous models needed encouragement to run tests and check their work. GPT-6 Astra does that on its own, so the same instructions can lead to unnecessary testing.",
+      "exit": 0
+    },
+    {
+      "id": "S1-12",
+      "command": "sed -n 746,746p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "GPT-6 Astra is thorough, but it can be more tentative about how far to take a task. Sometimes it needs a little push to keep going. You can use AGENTS.md to give it permission for a specific workflow you know is safe, such as a local test suite:",
+      "exit": 0
+    },
+    {
+      "id": "S1-13",
+      "command": "sed -n 747,747p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "The local tests use disposable fixtures and have no production access. Run them, fix failures caused by the requested change, and rerun affected tests without asking for approval at each step.",
+      "exit": 0
+    },
+    {
+      "id": "S1-14",
+      "command": "sed -n 749,749p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "Pay careful attention to how you describe boundaries. If a previous model did things on your behalf without permission, you may have added strong language to make it ask first. That can be useful, but GPT-6 Astra, as our most aligned model, has much better judgment and will not perform tasks unless it knows it is safe – so you should treat it as such.",
+      "exit": 0
+    },
+    {
+      "id": "S1-15",
+      "command": "sed -n 750,750p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "If you stated boundaries previously because you wanted to prevent other models from going too far and you’re now switching to GPT-6 Astra, consider updating that language: Astra could take it too seriously and may stop work where you’d actually be happy for it to continue.",
+      "exit": 0
+    },
+    {
+      "id": "S1-16",
+      "command": "sed -n 752,752p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "If you’re used to GPT-5.6 Sol taking a request and continuing for long stretches, GPT-6 Astra can feel more tentative about when to stop. It may reach a first implementation and come back for your review while there’s still work to do.",
+      "exit": 0
+    },
+    {
+      "id": "S1-17",
+      "command": "sed -n 753,753p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "This is where it helps to define completion before starting. You might need to push Astra to continue until it’s fully done. If the task includes getting the implementation running, inspecting the result, and fixing what fails, make that part of the request. A requirement to stop for review after the first implementation will pull the model toward an earlier stopping point, so check whether that’s a decision you actually need to make.",
+      "exit": 0
+    },
+    {
+      "id": "S1-18",
+      "command": "sed -n 753,753p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "This is where it helps to define completion before starting. You might need to push Astra to continue until it’s fully done. If the task includes getting the implementation running, inspecting the result, and fixing what fails, make that part of the request. A requirement to stop for review after the first implementation will pull the model toward an earlier stopping point, so check whether that’s a decision you actually need to make.",
+      "exit": 0
+    },
+    {
+      "id": "S1-19",
+      "command": "sed -n 754,754p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "If you want it to keep exploring beyond a first pass, say what you want explored and where it should stop.",
+      "exit": 0
+    },
+    {
+      "id": "S1-20",
+      "command": "sed -n 755,755p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/main.txt",
+      "quote": "A new model is a good opportunity to clean your house, but you don’t need to review everything manually: ask GPT-6 Astra to do an audit based on what was discussed in this article, then go build something you wouldn’t have attempted before!",
+      "exit": 0
+    },
+    {
+      "id": "S1-21",
+      "command": "sed -n 701,701p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/build-skills.txt",
+      "quote": "Because implicit matching depends on description, write concise descriptions with clear scope and boundaries. Front-load the key use case and trigger words so a host can still match the skill if descriptions are shortened.",
+      "exit": 0
+    },
+    {
+      "id": "S1-22",
+      "command": "sed -n 701,701p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/build-skills.txt",
+      "quote": "Because implicit matching depends on description, write concise descriptions with clear scope and boundaries. Front-load the key use case and trigger words so a host can still match the skill if descriptions are shortened.",
+      "exit": 0
+    },
+    {
+      "id": "S1-23",
+      "command": "sed -n 686,686p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/build-skills.txt",
+      "quote": "In Codex, the initial list also includes each skill’s file path. To avoid crowding out the rest of the prompt, this list uses at most 2% of the model’s context window, or 8,000 characters when the context window is unknown. If many skills are installed, Codex shortens skill descriptions first. For large skill sets, Codex may omit some skills from the initial list and show a warning.",
+      "exit": 0
+    },
+    {
+      "id": "S1-24",
+      "command": "sed -n 752,752p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/build-skills.txt",
+      "quote": "Keep each skill focused on one job.",
+      "exit": 0
+    },
+    {
+      "id": "S1-25",
+      "command": "sed -n 753,753p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/build-skills.txt",
+      "quote": "Prefer instructions over scripts unless you need deterministic behavior or external tooling.",
+      "exit": 0
+    },
+    {
+      "id": "S1-26",
+      "command": "sed -n 754,754p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/build-skills.txt",
+      "quote": "Write imperative steps with explicit inputs and outputs.",
+      "exit": 0
+    },
+    {
+      "id": "S1-27",
+      "command": "sed -n 755,755p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/build-skills.txt",
+      "quote": "Test prompts against the skill description to confirm the right trigger behavior.",
+      "exit": 0
+    },
+    {
+      "id": "S1-28",
+      "command": "sed -n 679,679p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/skills-and-plugins.txt",
+      "quote": "Skills are most useful when good results depend on a repeatable approach. For example, a skill can prepare a daily brief, review documentation, create a presentation, apply a team writing standard, or gather information from the same connected tools each week.",
+      "exit": 0
+    },
+    {
+      "id": "S1-29",
+      "command": "sed -n 686,686p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/skills-and-plugins.txt",
+      "quote": "Describe the workflow. In ChatGPT, start with @skill-creator; in Codex, use $skill-creator. Explain the goal, the steps to follow, the expected format, and anything the skill should always include or avoid. Add a template or a good example when you have one.",
+      "exit": 0
+    },
+    {
+      "id": "S1-30",
+      "command": "sed -n 687,687p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/skills-and-plugins.txt",
+      "quote": "Review and try the draft. Check the instructions, test the skill with a realistic request, and refine it if the result misses a step or drifts from the format you want.",
+      "exit": 0
+    },
+    {
+      "id": "S1-31",
+      "command": "sed -n 672,672p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompting.txt",
+      "quote": "A short prompt is often enough. For larger or more important tasks, include the parts that matter:",
+      "exit": 0
+    },
+    {
+      "id": "S1-32",
+      "command": "sed -n 677,677p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompting.txt",
+      "quote": "Use only the parts that help. You don’t need to fill in every item or follow a required format.",
+      "exit": 0
+    },
+    {
+      "id": "S1-33",
+      "command": "sed -n 679,679p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompting.txt",
+      "quote": "Start with the result, not a detailed list of steps. Include the audience or format when those details change what ChatGPT should produce.",
+      "exit": 0
+    },
+    {
+      "id": "S1-34",
+      "command": "sed -n 681,681p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompting.txt",
+      "quote": "This prompt explains what to create and who will read it. Describe a process when the process itself matters. Otherwise, leave ChatGPT room to search, compare information, and adjust its approach.",
+      "exit": 0
+    },
+    {
+      "id": "S1-35",
+      "command": "sed -n 683,683p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompting.txt",
+      "quote": "Share the information that could change the result. Add only the sources that matter, and explain what ChatGPT should take from each one.",
+      "exit": 0
+    },
+    {
+      "id": "S1-36",
+      "command": "sed -n 706,706p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompting.txt",
+      "quote": "Focus on the one or two boundaries that matter most. You don’t need to control every step ChatGPT takes.",
+      "exit": 0
+    },
+    {
+      "id": "S1-37",
+      "command": "sed -n 712,712p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompting.txt",
+      "quote": "For important work, ask ChatGPT for a final check, such as confirming every action item has an owner and due date or flagging information it couldn’t verify. Then review the result yourself before you use or share it.",
+      "exit": 0
+    },
+    {
+      "id": "S1-38",
+      "command": "sed -n 714,714p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompting.txt",
+      "quote": "Your first prompt doesn’t need to be perfect. Review the result, then ask for the specific change you want.",
+      "exit": 0
+    },
+    {
+      "id": "S1-39",
+      "command": "sed -n 761,761p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompting.txt",
+      "quote": "Use Codex when you want ChatGPT to work with code, a codebase, or developer tools. A useful Codex prompt names the behavior you want, points to the relevant code or reproduction steps, preserves important constraints, and says how to verify the change.",
+      "exit": 0
+    },
+    {
+      "id": "S1-40",
+      "command": "sed -n 674,674p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/agents-md.txt",
+      "quote": "Codex skips empty files and stops adding files once the combined size reaches the limit defined by project_doc_max_bytes (32 KiB by default). For details on these knobs, see Project instructions discovery. Raise the limit or split instructions across nested directories when you hit the cap.",
+      "exit": 0
+    },
+    {
+      "id": "S1-41",
+      "command": "sed -n 674,674p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/agents-md.txt",
+      "quote": "Codex skips empty files and stops adding files once the combined size reaches the limit defined by project_doc_max_bytes (32 KiB by default). For details on these knobs, see Project instructions discovery. Raise the limit or split instructions across nested directories when you hit the cap.",
+      "exit": 0
+    },
+    {
+      "id": "S1-42",
+      "command": "sed -n 694,694p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/agents-md.txt",
+      "quote": "Codex stops searching once it reaches your current directory, so place overrides as close to specialized work as possible.",
+      "exit": 0
+    },
+    {
+      "id": "S1-43",
+      "command": "sed -n 709,709p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/agents-md.txt",
+      "quote": "Keep rules concise, explain the behavior to flag and any safe path or exception, and reserve formatting and lint checks for CI. See Customize what Codex reviews for setup and rule-writing guidance.",
+      "exit": 0
+    },
+    {
+      "id": "S1-44",
+      "command": "sed -n 813,813p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "GPT models like gpt-6-astra benefit from precise instructions that explicitly provide the logic and data required to complete the task in the prompt. To get the most out of the latest model, start with the current prompting guide.",
+      "exit": 0
+    },
+    {
+      "id": "S1-45",
+      "command": "sed -n 820,820p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "Prompting gpt-6-astra for coding tasks is most effective when following a few best practices: define the agent’s role, enforce structured tool use with examples, require thorough testing for correctness, and set Markdown standards for clean output.",
+      "exit": 0
+    },
+    {
+      "id": "S1-46",
+      "command": "sed -n 821,821p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "Explicit role and workflow guidance Frame the model as a software engineering agent with well-defined responsibilities. Provide clear instructions for using tools like functions.run for code tasks, and specify when not to use certain modes—for example, avoid interactive execution unless necessary.",
+      "exit": 0
+    },
+    {
+      "id": "S1-47",
+      "command": "sed -n 822,822p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "Testing and validation Instruct the model to test changes with unit tests or Python commands, and validate patches carefully since tools like apply_patch may return “Done” even on failure.",
+      "exit": 0
+    },
+    {
+      "id": "S1-48",
+      "command": "sed -n 823,823p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "Tool use examples Include concrete examples of how to invoke commands with the provided functions, which improves reliability and adherence to expected workflows.",
+      "exit": 0
+    },
+    {
+      "id": "S1-49",
+      "command": "sed -n 824,824p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "Markdown standards Guide the model to generate clean, semantically correct markdown using inline code, code fences, lists, and tables where appropriate—and to format file paths, functions, and classes with backticks.",
+      "exit": 0
+    },
+    {
+      "id": "S1-50",
+      "command": "sed -n 836,836p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "For front-end engineering work in larger codebases, we’ve found that adding these categories of instruction to your prompts delivers the best results:",
+      "exit": 0
+    },
+    {
+      "id": "S1-51",
+      "command": "sed -n 845,845p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "For agentic and long-running rollouts with gpt-6-astra, focus your prompts on three core practices: plan tasks thoroughly to ensure complete resolution, provide clear preambles for major tool usage decisions, and use a TODO tool to track workflow and progress in an organized manner.",
+      "exit": 0
+    },
+    {
+      "id": "S1-52",
+      "command": "sed -n 846,846p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "Planning and persistence Instruct the model to resolve the full query before yielding control, decomposing it into sub-tasks and reflecting after each tool call to confirm completeness.",
+      "exit": 0
+    },
+    {
+      "id": "S1-53",
+      "command": "sed -n 849,849p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "Ask the model to explain why it is calling a tool, but only at notable steps.",
+      "exit": 0
+    },
+    {
+      "id": "S1-54",
+      "command": "sed -n 852,852p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "Use a TODO list tool or rubric to enforce structured planning and avoid missed steps.",
+      "exit": 0
+    },
+    {
+      "id": "S1-55",
+      "command": "sed -n 855,855p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "There are some differences to consider when prompting a reasoning model versus prompting a GPT model. Generally speaking, reasoning models will provide better results on tasks with only high-level guidance. This differs from GPT models, which benefit from very precise instructions.",
+      "exit": 0
+    },
+    {
+      "id": "S1-56",
+      "command": "sed -n 858,858p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/prompt-engineering.txt",
+      "quote": "A GPT model is like a junior coworker. They’ll perform best with explicit instructions to create a specific output.",
+      "exit": 0
+    },
+    {
+      "id": "S1-57",
+      "command": "sed -n 673,673p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/tools-skills.txt",
+      "quote": "During skill discovery, the model sees the skill’s name and description. Write a description that explains both what the skill does and when to use it. For example, “Review and redline vendor agreements using the fallback clauses” gives the model more useful context than “Helps with legal work.”",
+      "exit": 0
+    },
+    {
+      "id": "S1-58",
+      "command": "sed -n 674,674p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/tools-skills.txt",
+      "quote": "Keep the main instructions in SKILL.md and link to supporting files as needed:",
+      "exit": 0
+    },
+    {
+      "id": "S1-59",
+      "command": "sed -n 698,698p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.G7GcVkrbLb/pages/tools-skills.txt",
+      "quote": "Once a skill is mounted, the model can decide when to use it. If you want more deterministic behavior, explicitly instruct the model to “use the <skill name> skill” when appropriate.",
+      "exit": 0
+    },
+    {
+      "id": "S2-1",
+      "command": "sed -n 9,13p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/overview.md",
+      "quote": "This guide assumes that you have:\n\n1. A clear definition of the success criteria for your use case\n2. Some ways to empirically test against those criteria\n3. A first draft prompt you want to improve",
+      "exit": 0
+    },
+    {
+      "id": "S2-2",
+      "command": "sed -n 31,31p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/overview.md",
+      "quote": "This guide focuses on success criteria that are controllable through prompt engineering. Not every success criteria or failing eval is best solved by prompt engineering. For example, you can sometimes improve latency and cost more easily by selecting a different model.",
+      "exit": 0
+    },
+    {
+      "id": "S2-3",
+      "command": "sed -n 35,35p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "Claude responds well to clear, explicit instructions. Being specific about your desired output can help enhance results. If you want \"above and beyond\" behavior, explicitly request it rather than relying on the model to infer this from vague prompts.",
+      "exit": 0
+    },
+    {
+      "id": "S2-4",
+      "command": "sed -n 42,42p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "* Provide instructions as sequential steps using numbered lists or bullet points when the order or completeness of steps matters.",
+      "exit": 0
+    },
+    {
+      "id": "S2-5",
+      "command": "sed -n 60,60p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "Providing context or motivation behind your instructions, such as explaining to Claude why such behavior is important, can help Claude better understand your goals and deliver more targeted responses.",
+      "exit": 0
+    },
+    {
+      "id": "S2-6",
+      "command": "sed -n 80,80p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "Examples are one of the most reliable ways to steer Claude's output format, tone, and structure. A few well-crafted examples (known as few-shot or multishot prompting) improve accuracy and consistency.",
+      "exit": 0
+    },
+    {
+      "id": "S2-7",
+      "command": "sed -n 89,89p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "  Include 3–5 examples for best results. You can also ask Claude to evaluate your examples for relevance and diversity, or to generate additional ones based on your initial set.",
+      "exit": 0
+    },
+    {
+      "id": "S2-9",
+      "command": "sed -n 94,94p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "XML tags help Claude parse complex prompts unambiguously, especially when your prompt mixes instructions, context, examples, and variable inputs. Wrapping each type of content in its own tag (for example, `<instructions>`, `<context>`, `<input>`) reduces misinterpretation.",
+      "exit": 0
+    },
+    {
+      "id": "S2-10",
+      "command": "sed -n 98,99p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "* Use consistent, descriptive tag names across your prompts.\n* Nest tags when content has a natural hierarchy (documents inside `<documents>`, each inside `<document index=\"n\">`).",
+      "exit": 0
+    },
+    {
+      "id": "S2-11",
+      "command": "sed -n 103,103p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "Setting a role in the system prompt focuses Claude's behavior and tone for your use case. Even a single sentence makes a difference:",
+      "exit": 0
+    },
+    {
+      "id": "S2-12",
+      "command": "sed -n 243,243p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "* **Put longform data at the top:** Place your long documents and inputs near the top of your prompt, above your query, instructions, and examples. This improves performance across all models.",
+      "exit": 0
+    },
+    {
+      "id": "S2-13",
+      "command": "sed -n 246,246p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "    Queries at the end can improve response quality by up to 30 percent in tests, especially with complex, multidocument inputs.",
+      "exit": 0
+    },
+    {
+      "id": "S2-15",
+      "command": "sed -n 328,331p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "This means Claude may skip verbal summaries after tool calls, jumping directly to the next action. If you prefer more visibility into its reasoning:\n\n```text Sample prompt wrap\nAfter completing a task that involves tool use, provide a quick summary of the work you've done.",
+      "exit": 0
+    },
+    {
+      "id": "S2-16",
+      "command": "sed -n 334,334p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "Claude Opus 5 is an exception on verbosity: its default user-facing responses run longer than prior models', and raising or lowering [effort](https://platform.claude.com/docs/en/build-with-claude/effort) does not reliably change visible response length. Prompt explicitly for conciseness instead. See [Prompting Claude Opus 5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5#response-length-and-verbosity) for a sample instruction. Claude Fable 5.1 has the opposite tendency during agentic work: it writes fewer user-facing updates between tool calls. Ask for progress text explicitly, and remove any instruction telling it to keep that text brief. See [Ask for user-facing progress updates](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1#ask-for-user-facing-progress-updates).",
+      "exit": 0
+    },
+    {
+      "id": "S2-17",
+      "command": "sed -n 340,340p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "1. **Tell Claude what to do instead of what not to do**",
+      "exit": 0
+    },
+    {
+      "id": "S2-18",
+      "command": "sed -n 351,351p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "   The formatting style used in your prompt may influence Claude's response style. If you are still experiencing steerability issues with output formatting, try matching your prompt style to your desired output style as closely as possible. For example, removing markdown from your prompt can reduce the volume of markdown in the output.",
+      "exit": 0
+    },
+    {
+      "id": "S2-19",
+      "command": "sed -n 404,404p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "Starting with Claude 4.6 models and [Claude Mythos Preview](https://anthropic.com/glasswing), prefilled responses (providing a partial assistant message for Claude to continue from) on the last assistant turn are no longer supported. Requests with prefilled assistant messages to these models return a 400 error. Model intelligence and instruction following have advanced such that most use cases of prefill no longer require it. Earlier models continue to support prefills, and adding assistant messages elsewhere in the conversation is not affected.",
+      "exit": 0
+    },
+    {
+      "id": "S2-20",
+      "command": "sed -n 411,411p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "  **Migration:** The [Structured Outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) feature is designed specifically to constrain Claude's responses to follow a given schema. Try asking the model to conform to your output structure first, as newer models can reliably match complex schemas when told to, especially if implemented with retries. For classification tasks, use either tools with an enum field containing your valid labels or structured outputs.",
+      "exit": 0
+    },
+    {
+      "id": "S2-21",
+      "command": "sed -n 442,442p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "Claude's latest models are trained for precise instruction following and benefit from explicit direction to use specific tools. If you say \"can you suggest some changes,\" Claude will sometimes provide suggestions rather than implementing them, even if making changes might be what you intended. To learn how to define tools and troubleshoot tool triggering, see [Tool use with Claude](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview).",
+      "exit": 0
+    },
+    {
+      "id": "S2-22",
+      "command": "sed -n 498,498p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "This behavior is steerable. While the model has a high success rate in parallel tool calling without prompting, you can boost this to \\~100% or adjust the aggression level:",
+      "exit": 0
+    },
+    {
+      "id": "S2-23",
+      "command": "sed -n 526,526p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "* **Replace blanket defaults with more targeted instructions.** Instead of \"Default to using \\[tool],\" add guidance like \"Use \\[tool] when it would enhance your understanding of the problem.\"",
+      "exit": 0
+    },
+    {
+      "id": "S2-24",
+      "command": "sed -n 545,545p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "Claude 4.6 and later models and Claude Mythos Preview use [adaptive thinking](https://platform.claude.com/docs/en/build-with-claude/thinking) (`thinking: {type: \"adaptive\"}`), where Claude dynamically decides when and how much to think. On Claude Fable 5.1, Claude Mythos 5.1, Claude Fable 5, and Claude Mythos 5, thinking is always on and adaptive thinking is the only mode. Claude calibrates its thinking based on two factors: the `effort` parameter and query complexity. Higher effort elicits more thinking, and more complex queries do the same. On easier queries that don't require thinking, the model responds directly. In internal evaluations, adaptive thinking reliably drives better performance than extended thinking. Consider moving to adaptive thinking.",
+      "exit": 0
+    },
+    {
+      "id": "S2-25",
+      "command": "sed -n 776,776p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "* **Prefer general instructions over prescriptive steps.** A prompt like \"think thoroughly\" often produces better reasoning than a hand-written step-by-step plan. Claude's reasoning frequently exceeds what a human would prescribe.",
+      "exit": 0
+    },
+    {
+      "id": "S2-26",
+      "command": "sed -n 778,778p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "* **Manual chain-of-thought (CoT) prompting as a fallback.** When thinking is off, you can still encourage step-by-step reasoning by asking Claude to think through the problem. Use structured tags like `<thinking>` and `<answer>` to cleanly separate reasoning from the final output. On Claude Opus 5, prefer keeping thinking enabled at a lower effort level instead: with thinking disabled, the model can occasionally emit internal XML tags into its visible output, so see [Running with thinking disabled](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5#running-with-thinking-disabled) before applying this pattern there.",
+      "exit": 0
+    },
+    {
+      "id": "S2-28",
+      "command": "sed -n 779,779p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "* **Ask Claude to self-check.** Append something like \"Before you finish, verify your answer against \\[test criteria].\" This catches errors reliably, especially for coding and math. Claude Opus 5 is the exception: it verifies its own work well without explicit instruction, and verification instructions carried over from prompts tuned for earlier models can cause over-verification, adding tokens and latency. When migrating to Claude Opus 5, remove these instructions rather than rewriting them. See [Task scope and over-verification](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5#task-scope-and-over-verification).",
+      "exit": 0
+    },
+    {
+      "id": "S2-29",
+      "command": "sed -n 804,806p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "Your context window will be automatically compacted as it approaches its limit, allowing\nyou to continue working indefinitely from where you left off. Therefore, do not stop\ntasks early due to token budget concerns. As you approach your token budget limit, save",
+      "exit": 0
+    },
+    {
+      "id": "S2-31",
+      "command": "sed -n 928,931p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "Use subagents when tasks can run in parallel, require isolated context, or involve\nindependent workstreams that don't need to share state. For simple tasks, sequential\noperations, single-file edits, or tasks where you need to maintain context across steps,\nwork directly rather than delegating.",
+      "exit": 0
+    },
+    {
+      "id": "S2-32",
+      "command": "sed -n 936,936p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "With adaptive thinking and subagent orchestration, Claude handles most multistep reasoning internally. Explicit prompt chaining (breaking a task into sequential API calls) is still useful when you need to inspect intermediate outputs or enforce a specific pipeline structure.",
+      "exit": 0
+    },
+    {
+      "id": "S2-33",
+      "command": "sed -n 958,959p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "Avoid over-engineering. Only make changes that are directly requested or clearly\nnecessary. Keep solutions simple and focused:",
+      "exit": 0
+    },
+    {
+      "id": "S2-34",
+      "command": "sed -n 1003,1004p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "Never speculate about code you have not opened. If the user references a specific file,\nyou MUST read the file before answering. Make sure to investigate and read relevant",
+      "exit": 0
+    },
+    {
+      "id": "S2-35",
+      "command": "sed -n 1017,1017p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/claude-prompting-best-practices.md",
+      "quote": "One technique that has proven effective to further boost performance is to give Claude a crop tool or [agent skill](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview). Testing has shown consistent uplift on image evaluations when Claude is able to \"zoom\" in on relevant regions of an image. Anthropic has created a [recipe for the crop tool](https://platform.claude.com/cookbook/multimodal-crop-tool).",
+      "exit": 0
+    },
+    {
+      "id": "S2-36",
+      "command": "sed -n 69,69p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-fable-5.md",
+      "quote": "On long autonomous runs, instruct Claude Fable 5 to audit progress against actual tool results. In Anthropic's testing, this nearly eliminated fabricated status reports even on tasks designed to elicit them:",
+      "exit": 0
+    },
+    {
+      "id": "S2-37",
+      "command": "sed -n 77,77p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-fable-5.md",
+      "quote": "Claude Fable 5 can occasionally take unrequested actions (drafting an email when none was asked for, creating defensive git-branch backups). Define explicit constraints on what Claude Fable 5 should and should not do:",
+      "exit": 0
+    },
+    {
+      "id": "S2-38",
+      "command": "sed -n 123,123p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-fable-5.md",
+      "quote": "Claude Fable 5 tends to perform better when it understands the intent behind a request: context lets it connect the task to relevant information rather than inferring intent on its own. Provide context about why you're asking, especially for long-running agents drawing on multiple workstreams:",
+      "exit": 0
+    },
+    {
+      "id": "S2-39",
+      "command": "sed -n 174,174p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-fable-5.md",
+      "quote": "* **Refactor existing prompts and skills.** Skills developed for prior models are often too prescriptive for Claude Fable 5 and can degrade output quality. Review and consider removing older instructions if default performance is better. Claude Fable 5 also does a good job of updating skills on the fly based on what it learns from the task at hand.",
+      "exit": 0
+    },
+    {
+      "id": "S2-40",
+      "command": "sed -n 175,175p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-fable-5.md",
+      "quote": "* **Don't instruct Claude to reproduce its reasoning in the response.** Prompts, skills, or harness instructions that tell the model to echo, transcribe, or explain its internal reasoning as response text can trigger the [`reasoning_extraction` refusal category](https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback#refusal-response) on Claude Fable 5, causing elevated fallbacks to Claude Opus 4.8. Audit existing skills and system prompts for reflection or show-your-thinking instructions when migrating. If your application needs reasoning visibility, read the structured `thinking` blocks from [adaptive thinking](https://platform.claude.com/docs/en/build-with-claude/thinking) instead, and use a [send-to-user tool](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5#create-a-send-to-user-tool) to surface progress during long runs.",
+      "exit": 0
+    },
+    {
+      "id": "S2-43",
+      "command": "sed -n 13,13p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-fable-5-1.md",
+      "quote": "* One tool call per turn in agent loops: [Batch independent tool calls in agent loops](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1#batch-independent-tool-calls-in-agent-loops)",
+      "exit": 0
+    },
+    {
+      "id": "S2-45",
+      "command": "sed -n 19,19p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-fable-5-1.md",
+      "quote": "* Client-side compaction summaries drop constraints, decisions, or exact details: [Tell the model what to preserve in compaction summaries](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1#tell-the-model-what-to-preserve-in-compaction-summaries)",
+      "exit": 0
+    },
+    {
+      "id": "S2-46",
+      "command": "sed -n 20,20p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-fable-5-1.md",
+      "quote": "* Unrequested fixes or extensions, or more committed test files than the task called for: [Keep changes and tests to what the task asks for](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1#keep-changes-and-tests-to-what-the-task-asks-for)",
+      "exit": 0
+    },
+    {
+      "id": "S2-48",
+      "command": "sed -n 24,24p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-fable-5-1.md",
+      "quote": "* Long deliverables at `xhigh` or `max` effort take a long time or hit `max_tokens`: [Leave room for long outputs at xhigh and max effort](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1#leave-room-for-long-outputs-at-xhigh-and-max-effort)",
+      "exit": 0
+    },
+    {
+      "id": "S2-49",
+      "command": "sed -n 39,39p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-opus-4-8.md",
+      "quote": "If you observe shallow reasoning on complex problems, raise effort to `high` or `xhigh` rather than prompting around it. If you need to keep effort at `low` for latency, add targeted guidance:",
+      "exit": 0
+    },
+    {
+      "id": "S2-50",
+      "command": "sed -n 69,69p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-opus-4-8.md",
+      "quote": "Claude Opus 4.8 interprets prompts literally and explicitly, particularly at lower effort levels. It does not silently generalize an instruction from one item to another, and it does not infer requests you didn't make. The upside of this literalism is precision and less thrash, and it generally performs better for API use cases with carefully tuned prompts, structured extraction, and pipelines where you want predictable behavior. If you need Claude to apply an instruction broadly, state the scope explicitly (for example, \"Apply this formatting to every section, not just the first one\").",
+      "exit": 0
+    },
+    {
+      "id": "S2-51",
+      "command": "sed -n 149,149p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-opus-4-8.md",
+      "quote": "Report every issue you find, including ones you are uncertain about or consider low-severity. Do not filter for importance or confidence at this stage - a separate verification step will do that. Your goal here is coverage: it is better to surface a finding that later gets filtered out than to silently drop a real bug. For each finding, include your confidence level and an estimated severity so a downstream filter can rank them.",
+      "exit": 0
+    },
+    {
+      "id": "S2-57",
+      "command": "sed -n 25,25p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-sonnet-5.md",
+      "quote": "If you see specific kinds of verbosity (such as over-explaining), you can add additional instructions in your prompt to prevent them. Positive examples showing how Claude can communicate with the appropriate level of concision tend to be more effective than negative examples or instructions that tell the model what not to do.",
+      "exit": 0
+    },
+    {
+      "id": "S2-58",
+      "command": "sed -n 37,37p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-sonnet-5.md",
+      "quote": "As a rough cross-model mapping when migrating: Claude Sonnet 5 at medium is comparable in intelligence to Claude Sonnet 4.6 at high, and Claude Sonnet 5 at high is comparable to Claude Sonnet 4.6 at max. When benchmarking, match by observed thinking length rather than effort name.",
+      "exit": 0
+    },
+    {
+      "id": "S2-59",
+      "command": "sed -n 41,41p /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terra-s2-2026-09-22/pages/prompting-claude-sonnet-5.md",
+      "quote": "If you observe shallow reasoning on complex problems, raise effort to `high` or `xhigh` rather than prompting around it. If you need to keep effort at `low` for latency, add targeted guidance:",
+      "exit": 0
+    },
+    {
+      "id": "S3-1",
+      "command": "sed -n 6,6p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "Reference for writing any document an agent consumes — a skill, an `AGENTS.md` / `CLAUDE.md`, a doc reached by a pointer. The packaging differs; the writing does not: the same levers make each one predictable — the agent taking the same _process_ every run, not producing the same output.",
+      "exit": 0
+    },
+    {
+      "id": "S3-2",
+      "command": "sed -n 8,8p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "When the document you're writing is a skill, read [`SKILL-MECHANICS.md`](SKILL-MECHANICS.md) for frontmatter, invocation choice, and router skills.",
+      "exit": 0
+    },
+    {
+      "id": "S3-3",
+      "command": "sed -n 12,12p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "A **context pointer** is a reference held in the agent's context that names some out-of-context material and encodes the condition for reaching it. A skill's description is one; a line in `AGENTS.md` naming a doc is the same object. The pointer's _wording_, not its target, decides when the agent reaches the material — and how reliably. A must-have target behind a weakly worded pointer is a variance bug: sharpen the wording first, and inline the material only if sharpening fails.",
+      "exit": 0
+    },
+    {
+      "id": "S3-4",
+      "command": "sed -n 12,12p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "A **context pointer** is a reference held in the agent's context that names some out-of-context material and encodes the condition for reaching it. A skill's description is one; a line in `AGENTS.md` naming a doc is the same object. The pointer's _wording_, not its target, decides when the agent reaches the material — and how reliably. A must-have target behind a weakly worded pointer is a variance bug: sharpen the wording first, and inline the material only if sharpening fails.",
+      "exit": 0
+    },
+    {
+      "id": "S3-5",
+      "command": "sed -n 14,14p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "A pointer does two jobs — state what the material is, and list the **branches** that should trigger reaching it (a branch is a distinct case the document handles, so different runs take different paths through it). Every word of an always-loaded pointer costs on every turn, so it earns even harder pruning than the body:",
+      "exit": 0
+    },
+    {
+      "id": "S3-6",
+      "command": "sed -n 14,14p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "A pointer does two jobs — state what the material is, and list the **branches** that should trigger reaching it (a branch is a distinct case the document handles, so different runs take different paths through it). Every word of an always-loaded pointer costs on every turn, so it earns even harder pruning than the body:",
+      "exit": 0
+    },
+    {
+      "id": "S3-7",
+      "command": "sed -n 16,16p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- **Front-load the leading word** — the pointer is where it does its triggering work.",
+      "exit": 0
+    },
+    {
+      "id": "S3-8",
+      "command": "sed -n 17,17p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- **One trigger per branch.** Synonyms that rename a single branch are one branch written twice; collapse them and keep only genuinely distinct branches.",
+      "exit": 0
+    },
+    {
+      "id": "S3-9",
+      "command": "sed -n 18,18p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- **Cut identity the body already carries.**",
+      "exit": 0
+    },
+    {
+      "id": "S3-10",
+      "command": "sed -n 24,24p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- **Context load** — the cost of always-loaded material on the agent's window: an `AGENTS.md` line, a skill description, anything sitting in context every turn, spending tokens and attention whether or not it fires.",
+      "exit": 0
+    },
+    {
+      "id": "S3-11",
+      "command": "sed -n 25,25p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- **Cognitive load** — the cost on the human: which documents exist and when to reach for each. The human is the index. Not a cost to minimise — it is the price of human agency; spend it where human judgement matters, remove it where it does not.",
+      "exit": 0
+    },
+    {
+      "id": "S3-12",
+      "command": "sed -n 27,27p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "Material reached only through a pointer escapes context load at the price of the pointer's own line; material with no pointer at all rides entirely on cognitive load.",
+      "exit": 0
+    },
+    {
+      "id": "S3-13",
+      "command": "sed -n 37,37p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "Push too little down and the top bloats; push too much and you hide material the agent actually needs. That tension is the whole decision.",
+      "exit": 0
+    },
+    {
+      "id": "S3-14",
+      "command": "sed -n 39,39p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Progressive disclosure** is the move down the ladder — out of the main file and behind a pointer — so the top stays legible. Not primarily a token optimisation: it is how the hierarchy is protected. Branching is the cleanest disclosure test: inline what every branch needs, and push behind a pointer what only some branches reach. When a document has steps, in-file reference that should be disclosed buries them and turns attending to them into a coin-flip — a variance lever, not just a legibility one.",
+      "exit": 0
+    },
+    {
+      "id": "S3-15",
+      "command": "sed -n 39,39p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Progressive disclosure** is the move down the ladder — out of the main file and behind a pointer — so the top stays legible. Not primarily a token optimisation: it is how the hierarchy is protected. Branching is the cleanest disclosure test: inline what every branch needs, and push behind a pointer what only some branches reach. When a document has steps, in-file reference that should be disclosed buries them and turns attending to them into a coin-flip — a variance lever, not just a legibility one.",
+      "exit": 0
+    },
+    {
+      "id": "S3-16",
+      "command": "sed -n 39,39p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Progressive disclosure** is the move down the ladder — out of the main file and behind a pointer — so the top stays legible. Not primarily a token optimisation: it is how the hierarchy is protected. Branching is the cleanest disclosure test: inline what every branch needs, and push behind a pointer what only some branches reach. When a document has steps, in-file reference that should be disclosed buries them and turns attending to them into a coin-flip — a variance lever, not just a legibility one.",
+      "exit": 0
+    },
+    {
+      "id": "S3-17",
+      "command": "sed -n 39,39p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Progressive disclosure** is the move down the ladder — out of the main file and behind a pointer — so the top stays legible. Not primarily a token optimisation: it is how the hierarchy is protected. Branching is the cleanest disclosure test: inline what every branch needs, and push behind a pointer what only some branches reach. When a document has steps, in-file reference that should be disclosed buries them and turns attending to them into a coin-flip — a variance lever, not just a legibility one.",
+      "exit": 0
+    },
+    {
+      "id": "S3-18",
+      "command": "sed -n 41,41p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Co-location** is the within-file companion: where the ladder decides _how far down_ a piece sits, co-location decides _what sits beside it_ once there. Keep a concept's definition, rules, and caveats under one heading rather than scattered, so reading one part brings its neighbours with it. The test: the document should read like documentation written for the agent — grouped material reads that way; scattered material does not. (Distinct from duplication: that repeats one meaning in two places; scattering fragments one meaning across many.)",
+      "exit": 0
+    },
+    {
+      "id": "S3-19",
+      "command": "sed -n 41,41p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Co-location** is the within-file companion: where the ladder decides _how far down_ a piece sits, co-location decides _what sits beside it_ once there. Keep a concept's definition, rules, and caveats under one heading rather than scattered, so reading one part brings its neighbours with it. The test: the document should read like documentation written for the agent — grouped material reads that way; scattered material does not. (Distinct from duplication: that repeats one meaning in two places; scattering fragments one meaning across many.)",
+      "exit": 0
+    },
+    {
+      "id": "S3-20",
+      "command": "sed -n 41,41p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Co-location** is the within-file companion: where the ladder decides _how far down_ a piece sits, co-location decides _what sits beside it_ once there. Keep a concept's definition, rules, and caveats under one heading rather than scattered, so reading one part brings its neighbours with it. The test: the document should read like documentation written for the agent — grouped material reads that way; scattered material does not. (Distinct from duplication: that repeats one meaning in two places; scattering fragments one meaning across many.)",
+      "exit": 0
+    },
+    {
+      "id": "S3-21",
+      "command": "sed -n 43,43p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Sprawl** is the failure mode here: a document simply too long, even when every line is live and unique. Attention thins across the excess, and every extra line is one more to keep relevant. The cure is the ladder: disclose reference behind pointers, and split by branch or sequence so each path carries only what it needs.",
+      "exit": 0
+    },
+    {
+      "id": "S3-22",
+      "command": "sed -n 43,43p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Sprawl** is the failure mode here: a document simply too long, even when every line is live and unique. Attention thins across the excess, and every extra line is one more to keep relevant. The cure is the ladder: disclose reference behind pointers, and split by branch or sequence so each path carries only what it needs.",
+      "exit": 0
+    },
+    {
+      "id": "S3-23",
+      "command": "sed -n 47,47p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "Every step ends on a **completion criterion** — the condition that tells the agent the work is done. Two properties make it a lever:",
+      "exit": 0
+    },
+    {
+      "id": "S3-24",
+      "command": "sed -n 49,49p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- **Clarity** — can the agent tell done from not-done? A vague bound (\"understanding reached\") invites **premature completion**: ending the step before it is genuinely done, attention slipping to _being done_. The visible steps still ahead — the **post-completion steps** — supply the pull; the criterion's clarity is the resistance. Defend in order: **sharpen the bound first** (local and cheap); only if it is irreducibly fuzzy _and_ you observe the rush, hide the later steps by splitting the sequence — and hiding only works across a real context boundary (a hand-off or a subagent dispatch; an inline call leaves the later steps in context and clears nothing).",
+      "exit": 0
+    },
+    {
+      "id": "S3-25",
+      "command": "sed -n 49,49p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- **Clarity** — can the agent tell done from not-done? A vague bound (\"understanding reached\") invites **premature completion**: ending the step before it is genuinely done, attention slipping to _being done_. The visible steps still ahead — the **post-completion steps** — supply the pull; the criterion's clarity is the resistance. Defend in order: **sharpen the bound first** (local and cheap); only if it is irreducibly fuzzy _and_ you observe the rush, hide the later steps by splitting the sequence — and hiding only works across a real context boundary (a hand-off or a subagent dispatch; an inline call leaves the later steps in context and clears nothing).",
+      "exit": 0
+    },
+    {
+      "id": "S3-26",
+      "command": "sed -n 50,50p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- **Demand** — how much it requires. \"Every modified model accounted for\" forces thorough work where \"produce a change list\" does not. Demand drives **legwork** — the digging the agent does within the work, latent in the wording rather than written as its own step — and it is not step-bound: \"every rule applied\" binds a body of flat reference just as \"every step done\" binds a sequence, which is how an all-reference document still carries an exhaustiveness bar.",
+      "exit": 0
+    },
+    {
+      "id": "S3-27",
+      "command": "sed -n 50,50p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- **Demand** — how much it requires. \"Every modified model accounted for\" forces thorough work where \"produce a change list\" does not. Demand drives **legwork** — the digging the agent does within the work, latent in the wording rather than written as its own step — and it is not step-bound: \"every rule applied\" binds a body of flat reference just as \"every step done\" binds a sequence, which is how an all-reference document still carries an exhaustiveness bar.",
+      "exit": 0
+    },
+    {
+      "id": "S3-28",
+      "command": "sed -n 52,52p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "The strongest criteria are both checkable and exhaustive.",
+      "exit": 0
+    },
+    {
+      "id": "S3-29",
+      "command": "sed -n 58,58p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- **By sequence** — split a run of steps where the post-completion steps tempt the agent to rush the one in front of it. Keeping them out of view drives more legwork on the current task. Beware the reverse: merging sequences exposes each step's later steps to what follows, inviting premature completion.",
+      "exit": 0
+    },
+    {
+      "id": "S3-30",
+      "command": "sed -n 58,58p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- **By sequence** — split a run of steps where the post-completion steps tempt the agent to rush the one in front of it. Keeping them out of view drives more legwork on the current task. Beware the reverse: merging sequences exposes each step's later steps to what follows, inviting premature completion.",
+      "exit": 0
+    },
+    {
+      "id": "S3-31",
+      "command": "sed -n 58,58p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- **By sequence** — split a run of steps where the post-completion steps tempt the agent to rush the one in front of it. Keeping them out of view drives more legwork on the current task. Beware the reverse: merging sequences exposes each step's later steps to what follows, inviting premature completion.",
+      "exit": 0
+    },
+    {
+      "id": "S3-32",
+      "command": "sed -n 63,63p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "A **leading word** is a compact concept already living in the model's pretraining that the agent thinks with while running the document (_lesson_, _fog of war_, _tracer bullets_). Repeated as a token, never as a sentence, it accumulates a distributed definition and anchors a whole region of behaviour in the fewest tokens, by recruiting priors the model already holds. Coining your own works if you define it clearly, but a made-up word recruits no priors — you pay in definition tokens what a pretrained word gives free; reach for an existing word first.",
+      "exit": 0
+    },
+    {
+      "id": "S3-33",
+      "command": "sed -n 63,63p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "A **leading word** is a compact concept already living in the model's pretraining that the agent thinks with while running the document (_lesson_, _fog of war_, _tracer bullets_). Repeated as a token, never as a sentence, it accumulates a distributed definition and anchors a whole region of behaviour in the fewest tokens, by recruiting priors the model already holds. Coining your own works if you define it clearly, but a made-up word recruits no priors — you pay in definition tokens what a pretrained word gives free; reach for an existing word first.",
+      "exit": 0
+    },
+    {
+      "id": "S3-34",
+      "command": "sed -n 63,63p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "A **leading word** is a compact concept already living in the model's pretraining that the agent thinks with while running the document (_lesson_, _fog of war_, _tracer bullets_). Repeated as a token, never as a sentence, it accumulates a distributed definition and anchors a whole region of behaviour in the fewest tokens, by recruiting priors the model already holds. Coining your own works if you define it clearly, but a made-up word recruits no priors — you pay in definition tokens what a pretrained word gives free; reach for an existing word first.",
+      "exit": 0
+    },
+    {
+      "id": "S3-35",
+      "command": "sed -n 65,65p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "It anchors twice. In the body, _execution_: the agent reaches for the same behaviour every time the word appears, and inside flat reference it focuses attention on a class of thing to look for. In a pointer, _invocation_: when the same word lives in your prompts, your docs, and your codebase, the agent links that shared language to the material and reaches it more reliably.",
+      "exit": 0
+    },
+    {
+      "id": "S3-36",
+      "command": "sed -n 65,65p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "It anchors twice. In the body, _execution_: the agent reaches for the same behaviour every time the word appears, and inside flat reference it focuses attention on a class of thing to look for. In a pointer, _invocation_: when the same word lives in your prompts, your docs, and your codebase, the agent links that shared language to the material and reaches it more reliably.",
+      "exit": 0
+    },
+    {
+      "id": "S3-37",
+      "command": "sed -n 72,72p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "You win twice: fewer tokens, and a sharper hook for the agent to hang its thinking on. Assume every document is carrying restatements that leading words retire — go find them.",
+      "exit": 0
+    },
+    {
+      "id": "S3-38",
+      "command": "sed -n 74,74p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Negation** is the failure mode beside this lever: steering by prohibition drags the forbidden behaviour into context and makes it _more_ available, not less. _Don't think of an elephant_, and the elephant is all there is; the negation is a weak modifier the strongly-activated concept overruns, so the ban half-reads as an instruction to do the thing. Prompt the **positive** — state the target behaviour (\"write one-line comments\") so the banned one is never spoken. A prohibition earns its place only as a hard guardrail you cannot phrase positively; even then, pair it with the positive target so attention lands on what to do.",
+      "exit": 0
+    },
+    {
+      "id": "S3-39",
+      "command": "sed -n 74,74p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Negation** is the failure mode beside this lever: steering by prohibition drags the forbidden behaviour into context and makes it _more_ available, not less. _Don't think of an elephant_, and the elephant is all there is; the negation is a weak modifier the strongly-activated concept overruns, so the ban half-reads as an instruction to do the thing. Prompt the **positive** — state the target behaviour (\"write one-line comments\") so the banned one is never spoken. A prohibition earns its place only as a hard guardrail you cannot phrase positively; even then, pair it with the positive target so attention lands on what to do.",
+      "exit": 0
+    },
+    {
+      "id": "S3-40",
+      "command": "sed -n 74,74p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Negation** is the failure mode beside this lever: steering by prohibition drags the forbidden behaviour into context and makes it _more_ available, not less. _Don't think of an elephant_, and the elephant is all there is; the negation is a weak modifier the strongly-activated concept overruns, so the ban half-reads as an instruction to do the thing. Prompt the **positive** — state the target behaviour (\"write one-line comments\") so the banned one is never spoken. A prohibition earns its place only as a hard guardrail you cannot phrase positively; even then, pair it with the positive target so attention lands on what to do.",
+      "exit": 0
+    },
+    {
+      "id": "S3-41",
+      "command": "sed -n 74,74p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "**Negation** is the failure mode beside this lever: steering by prohibition drags the forbidden behaviour into context and makes it _more_ available, not less. _Don't think of an elephant_, and the elephant is all there is; the negation is a weak modifier the strongly-activated concept overruns, so the ban half-reads as an instruction to do the thing. Prompt the **positive** — state the target behaviour (\"write one-line comments\") so the banned one is never spoken. A prohibition earns its place only as a hard guardrail you cannot phrase positively; even then, pair it with the positive target so attention lands on what to do.",
+      "exit": 0
+    },
+    {
+      "id": "S3-42",
+      "command": "sed -n 78,78p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- Keep each meaning in a **single source of truth**: one authoritative place, so changing the behaviour is a one-place edit. **Duplication** — the same meaning in more than one place — costs maintenance and tokens, and inflates a meaning's prominence on the ladder past its real rank. (The accidental inverse of a leading word, which repeats a token on purpose, never the meaning.)",
+      "exit": 0
+    },
+    {
+      "id": "S3-43",
+      "command": "sed -n 78,78p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- Keep each meaning in a **single source of truth**: one authoritative place, so changing the behaviour is a one-place edit. **Duplication** — the same meaning in more than one place — costs maintenance and tokens, and inflates a meaning's prominence on the ladder past its real rank. (The accidental inverse of a leading word, which repeats a token on purpose, never the meaning.)",
+      "exit": 0
+    },
+    {
+      "id": "S3-44",
+      "command": "sed -n 79,79p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- The **environment** is a source of truth too — `package.json` scripts, config files, the directory layout, `--help` output — and a document that restates it is a **cache**: a copy of a lookup, earning its load only when the lookup is expensive. Cache what the agent cannot find by looking: the unwritten convention, the reason behind a choice, the gotcha no config confesses. Leave the one-file, one-command lookups to the environment, where they cannot go stale.",
+      "exit": 0
+    },
+    {
+      "id": "S3-45",
+      "command": "sed -n 79,79p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- The **environment** is a source of truth too — `package.json` scripts, config files, the directory layout, `--help` output — and a document that restates it is a **cache**: a copy of a lookup, earning its load only when the lookup is expensive. Cache what the agent cannot find by looking: the unwritten convention, the reason behind a choice, the gotcha no config confesses. Leave the one-file, one-command lookups to the environment, where they cannot go stale.",
+      "exit": 0
+    },
+    {
+      "id": "S3-46",
+      "command": "sed -n 80,80p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- Check every line for **relevance**: does it still bear on what the document does? A line loses relevance by never bearing on the task (mere exposition, or a branch that should be disclosed) or by going stale as the behaviour or world it describes changes. Shorter documents are easier to keep relevant. Without a pruning discipline the default fate is **sediment**: stale layers that settle because adding feels safe and removing feels risky, until you must core down through them to find what is still live.",
+      "exit": 0
+    },
+    {
+      "id": "S3-47",
+      "command": "sed -n 80,80p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- Check every line for **relevance**: does it still bear on what the document does? A line loses relevance by never bearing on the task (mere exposition, or a branch that should be disclosed) or by going stale as the behaviour or world it describes changes. Shorter documents are easier to keep relevant. Without a pruning discipline the default fate is **sediment**: stale layers that settle because adding feels safe and removing feels risky, until you must core down through them to find what is still live.",
+      "exit": 0
+    },
+    {
+      "id": "S3-48",
+      "command": "sed -n 81,81p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- Hunt **no-ops** sentence by sentence: an instruction the model already obeys by default pays load to say nothing. The test — does it change behaviour versus the default? — is model-relative, not reader-relative: two people disagreeing about a no-op disagree about the default, and settle it by running the document, not by debate. When a sentence fails, delete the whole sentence rather than trim words from it. The test also grades leading words: a word too weak to beat the default (_be thorough_ when the agent is already thorough-ish) is a no-op, and the fix is a stronger word (_relentless_), not a different technique.",
+      "exit": 0
+    },
+    {
+      "id": "S3-49",
+      "command": "sed -n 81,81p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- Hunt **no-ops** sentence by sentence: an instruction the model already obeys by default pays load to say nothing. The test — does it change behaviour versus the default? — is model-relative, not reader-relative: two people disagreeing about a no-op disagree about the default, and settle it by running the document, not by debate. When a sentence fails, delete the whole sentence rather than trim words from it. The test also grades leading words: a word too weak to beat the default (_be thorough_ when the agent is already thorough-ish) is a no-op, and the fix is a stronger word (_relentless_), not a different technique.",
+      "exit": 0
+    },
+    {
+      "id": "S3-50",
+      "command": "sed -n 81,81p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- Hunt **no-ops** sentence by sentence: an instruction the model already obeys by default pays load to say nothing. The test — does it change behaviour versus the default? — is model-relative, not reader-relative: two people disagreeing about a no-op disagree about the default, and settle it by running the document, not by debate. When a sentence fails, delete the whole sentence rather than trim words from it. The test also grades leading words: a word too weak to beat the default (_be thorough_ when the agent is already thorough-ish) is a no-op, and the fix is a stronger word (_relentless_), not a different technique.",
+      "exit": 0
+    },
+    {
+      "id": "S3-51",
+      "command": "sed -n 81,81p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL.md",
+      "quote": "- Hunt **no-ops** sentence by sentence: an instruction the model already obeys by default pays load to say nothing. The test — does it change behaviour versus the default? — is model-relative, not reader-relative: two people disagreeing about a no-op disagree about the default, and settle it by running the document, not by debate. When a sentence fails, delete the whole sentence rather than trim words from it. The test also grades leading words: a word too weak to beat the default (_be thorough_ when the agent is already thorough-ish) is a no-op, and the fix is a stronger word (_relentless_), not a different technique.",
+      "exit": 0
+    },
+    {
+      "id": "S3-52",
+      "command": "sed -n 3,3p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "The skill-specific branch of [`writing-for-agents`](SKILL.md): what changes when the document is a skill — frontmatter, the invocation choice, and router skills. Everything else about writing it is the universal reference in `SKILL.md`.",
+      "exit": 0
+    },
+    {
+      "id": "S3-53",
+      "command": "sed -n 9,9p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "- A **model-invoked** skill keeps a `description`, so the agent can fire it autonomously — and other skills can reach it. You can still type its name: model-invocation always _includes_ user reach; a description only ever adds agent discovery, never removes the human's. The description is the skill's top-level context pointer, forced to stay loaded at all times — permanent context load in exchange for discoverability. A model-invoked skill whose content is all reference is also one home for shared reference: another skill can invoke it, so reference needed by several skills lives in one place. Mechanics: omit `disable-model-invocation`, and write a model-facing description carrying the trigger branches (the pointer-writing rules in `SKILL.md` apply in full).",
+      "exit": 0
+    },
+    {
+      "id": "S3-54",
+      "command": "sed -n 9,9p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "- A **model-invoked** skill keeps a `description`, so the agent can fire it autonomously — and other skills can reach it. You can still type its name: model-invocation always _includes_ user reach; a description only ever adds agent discovery, never removes the human's. The description is the skill's top-level context pointer, forced to stay loaded at all times — permanent context load in exchange for discoverability. A model-invoked skill whose content is all reference is also one home for shared reference: another skill can invoke it, so reference needed by several skills lives in one place. Mechanics: omit `disable-model-invocation`, and write a model-facing description carrying the trigger branches (the pointer-writing rules in `SKILL.md` apply in full).",
+      "exit": 0
+    },
+    {
+      "id": "S3-55",
+      "command": "sed -n 9,9p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "- A **model-invoked** skill keeps a `description`, so the agent can fire it autonomously — and other skills can reach it. You can still type its name: model-invocation always _includes_ user reach; a description only ever adds agent discovery, never removes the human's. The description is the skill's top-level context pointer, forced to stay loaded at all times — permanent context load in exchange for discoverability. A model-invoked skill whose content is all reference is also one home for shared reference: another skill can invoke it, so reference needed by several skills lives in one place. Mechanics: omit `disable-model-invocation`, and write a model-facing description carrying the trigger branches (the pointer-writing rules in `SKILL.md` apply in full).",
+      "exit": 0
+    },
+    {
+      "id": "S3-56",
+      "command": "sed -n 9,9p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "- A **model-invoked** skill keeps a `description`, so the agent can fire it autonomously — and other skills can reach it. You can still type its name: model-invocation always _includes_ user reach; a description only ever adds agent discovery, never removes the human's. The description is the skill's top-level context pointer, forced to stay loaded at all times — permanent context load in exchange for discoverability. A model-invoked skill whose content is all reference is also one home for shared reference: another skill can invoke it, so reference needed by several skills lives in one place. Mechanics: omit `disable-model-invocation`, and write a model-facing description carrying the trigger branches (the pointer-writing rules in `SKILL.md` apply in full).",
+      "exit": 0
+    },
+    {
+      "id": "S3-57",
+      "command": "sed -n 9,9p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "- A **model-invoked** skill keeps a `description`, so the agent can fire it autonomously — and other skills can reach it. You can still type its name: model-invocation always _includes_ user reach; a description only ever adds agent discovery, never removes the human's. The description is the skill's top-level context pointer, forced to stay loaded at all times — permanent context load in exchange for discoverability. A model-invoked skill whose content is all reference is also one home for shared reference: another skill can invoke it, so reference needed by several skills lives in one place. Mechanics: omit `disable-model-invocation`, and write a model-facing description carrying the trigger branches (the pointer-writing rules in `SKILL.md` apply in full).",
+      "exit": 0
+    },
+    {
+      "id": "S3-58",
+      "command": "sed -n 10,10p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "- A **user-invoked** skill strips the description from the agent's reach: only the human typing its name can invoke it, and no other skill can. Zero context load, but it spends cognitive load — you are the index that must remember it exists. Mechanics: set `disable-model-invocation: true`; the `description` becomes human-facing — a one-line summary, trigger lists stripped.",
+      "exit": 0
+    },
+    {
+      "id": "S3-59",
+      "command": "sed -n 10,10p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "- A **user-invoked** skill strips the description from the agent's reach: only the human typing its name can invoke it, and no other skill can. Zero context load, but it spends cognitive load — you are the index that must remember it exists. Mechanics: set `disable-model-invocation: true`; the `description` becomes human-facing — a one-line summary, trigger lists stripped.",
+      "exit": 0
+    },
+    {
+      "id": "S3-60",
+      "command": "sed -n 10,10p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "- A **user-invoked** skill strips the description from the agent's reach: only the human typing its name can invoke it, and no other skill can. Zero context load, but it spends cognitive load — you are the index that must remember it exists. Mechanics: set `disable-model-invocation: true`; the `description` becomes human-facing — a one-line summary, trigger lists stripped.",
+      "exit": 0
+    },
+    {
+      "id": "S3-61",
+      "command": "sed -n 12,12p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "Pick model-invocation only when the agent must reach the skill on its own, or another skill must. If it only ever fires by hand, make it user-invoked and pay no context load.",
+      "exit": 0
+    },
+    {
+      "id": "S3-62",
+      "command": "sed -n 12,12p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "Pick model-invocation only when the agent must reach the skill on its own, or another skill must. If it only ever fires by hand, make it user-invoked and pay no context load.",
+      "exit": 0
+    },
+    {
+      "id": "S3-63",
+      "command": "sed -n 14,14p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "Shared reference that two user-invoked skills both need can live in neither — with no descriptions, neither can fire the other. Push it to a plain file outside the skill system: external reference any skill can point at.",
+      "exit": 0
+    },
+    {
+      "id": "S3-64",
+      "command": "sed -n 14,14p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "Shared reference that two user-invoked skills both need can live in neither — with no descriptions, neither can fire the other. Push it to a plain file outside the skill system: external reference any skill can point at.",
+      "exit": 0
+    },
+    {
+      "id": "S3-65",
+      "command": "sed -n 18,18p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "The invocation cut of splitting (the sequence cut lives in `SKILL.md`): split off a model-invoked skill when you have a distinct leading word that should trigger it on its own — a trigger word you actually use in your prompts — or another skill must reach it. You pay context load for the new always-loaded description, so that independent reach has to be worth it.",
+      "exit": 0
+    },
+    {
+      "id": "S3-66",
+      "command": "sed -n 18,18p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "The invocation cut of splitting (the sequence cut lives in `SKILL.md`): split off a model-invoked skill when you have a distinct leading word that should trigger it on its own — a trigger word you actually use in your prompts — or another skill must reach it. You pay context load for the new always-loaded description, so that independent reach has to be worth it.",
+      "exit": 0
+    },
+    {
+      "id": "S3-67",
+      "command": "sed -n 22,22p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "When user-invoked skills multiply past what you can remember, that piled-up cognitive load is cured by a **router skill**: one user-invoked skill that names the others and when to reach for each, so the human has one skill to remember instead of many. It can only hint, never fire them: user-invoked skills have no description, so nothing but the human can reach them.",
+      "exit": 0
+    },
+    {
+      "id": "S3-68",
+      "command": "sed -n 22,22p /Users/ruliny/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+      "quote": "When user-invoked skills multiply past what you can remember, that piled-up cognitive load is cured by a **router skill**: one user-invoked skill that names the others and when to reach for each, so the human has one skill to remember instead of many. It can only hint, never fire them: user-invoked skills have no description, so nothing but the human can reach them.",
+      "exit": 0
+    }
+  ]
+}

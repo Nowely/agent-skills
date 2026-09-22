@@ -1,0 +1,138 @@
+{
+  "structural_checks": 20,
+  "satisfied": 20,
+  "application_tests_run": 0,
+  "model_experiments_run": 0,
+  "checks": [
+    {
+      "check": "pinned commit",
+      "satisfied": true,
+      "observed": "8c041b76d7f30196441285d77985b81ae9c9e59f"
+    },
+    {
+      "check": "survey row counts",
+      "satisfied": true,
+      "observed": {
+        "S1": 59,
+        "S2": 46,
+        "S3": 68
+      }
+    },
+    {
+      "check": "unique source IDs",
+      "satisfied": true,
+      "observed": 173
+    },
+    {
+      "check": "full quotation matching",
+      "satisfied": true,
+      "observed": {
+        "raw": 128,
+        "normalized_total": 173,
+        "unresolved": 0
+      }
+    },
+    {
+      "check": "normalized rg exits",
+      "satisfied": true,
+      "observed": {
+        "normalized_searches": 45,
+        "exit_zero": 45
+      }
+    },
+    {
+      "check": "no unplaced or invented IDs",
+      "satisfied": true,
+      "observed": {
+        "unplaced": [],
+        "invented": [],
+        "memberships": 182
+      }
+    },
+    {
+      "check": "claim count",
+      "satisfied": true,
+      "observed": 85
+    },
+    {
+      "check": "three valid target verdicts per claim",
+      "satisfied": true,
+      "observed": 255
+    },
+    {
+      "check": "mapping verdicts rendered",
+      "satisfied": true,
+      "observed": 255
+    },
+    {
+      "check": "all citations inside correct target family",
+      "satisfied": true,
+      "observed": 255
+    },
+    {
+      "check": "C citations inside requested sections",
+      "satisfied": true,
+      "observed": 85
+    },
+    {
+      "check": "single-model B/C condition gates",
+      "satisfied": true,
+      "observed": {
+        "claims": 26,
+        "conditional_verdicts": 52
+      }
+    },
+    {
+      "check": "pinned target/record sed quotations",
+      "satisfied": true,
+      "observed": 102
+    },
+    {
+      "check": "original source sed blocks",
+      "satisfied": true,
+      "observed": 173
+    },
+    {
+      "check": "pinned files match git show",
+      "satisfied": true,
+      "observed": 10
+    },
+    {
+      "check": "S3 supplied hashes",
+      "satisfied": true,
+      "observed": 2
+    },
+    {
+      "check": "all report citation anchors resolve",
+      "satisfied": true,
+      "observed": {
+        "anchors": 102,
+        "missing": []
+      }
+    },
+    {
+      "check": "required lists",
+      "satisfied": true,
+      "observed": {
+        "candidates": 12,
+        "do_not_adopt": 17,
+        "gaps": 5
+      }
+    },
+    {
+      "check": "candidate evidence ranking",
+      "satisfied": true,
+      "observed": {
+        "0": 3,
+        "1": 8,
+        "2": 1
+      }
+    },
+    {
+      "check": "repository status entries unchanged",
+      "satisfied": true,
+      "observed": " M research/README.md\n?? research/2026-09-22-terse-process/\n"
+    }
+  ],
+  "report_sha256": "4d74478849fc17954b853b019262f1a1bb5f4dfb765322e85aa77c73ef55c5f7"
+}

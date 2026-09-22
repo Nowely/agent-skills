@@ -1,0 +1,527 @@
+F1.1 design: grep -n -F -- '*Refuted by:* a triage `no change`' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=49
+49:*Refuted by:* a triage `no change` verdict later contradicted by an audit, where the contradicting
+
+F1.1 evidence: grep -n -F -- 'Ask nothing else. In particular, **never' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md
+exit=0; target_line=62
+62:Ask nothing else. In particular, **never ask whether the text was clear**. On 2026-09-10 that self-report
+
+F1.2 design: grep -n -F -- 'the same words.** *Refuted by:* a' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=165
+165:the same words.** *Refuted by:* a later round re-proposing a refused hunk verbatim, or the owner's
+
+F1.2 evidence: grep -n -F -- '- No entry gives a protocol' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/codex-sol-h1-terse-survey-harvest.md
+exit=0; target_line=85
+85:- No entry gives a protocol for refusing the whole rewrite while retaining valid individual corrections, or records refusal reasons in a form that improves a second handover.
+
+F1.2 additional: grep -n -F -- '`content`, `wording`, `unclear`, `other` — plus' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=164
+164:`content`, `wording`, `unclear`, `other` — plus their text, and the next round may not re-propose it in
+
+F1.3 design: grep -n -F -- 'paraphrases of retired claims, the reader' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=270
+270:paraphrases of retired claims, the reader finds fewer than the regex does. *Evidence:* D1 fact 3 —
+
+F1.3 evidence: grep -n -F -- '08 satisfied that pin by **paraphrase**:' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.JZamtTvIcT/regression-autopsy.md
+exit=0; target_line=360
+360:  08 satisfied that pin by **paraphrase**: the pattern is the literal string `The one place the two differ
+
+F1.3 additional: grep -n -F -- 'G5 zero-baseline counterexample: if each planted' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=30
+30:G5 zero-baseline counterexample: if each planted paraphrase evades the regex, regex matches=0; reader matches=0 does not satisfy fewer-than-regex (0 < 0 is false).
+
+F1.4 design: grep -n -F -- 'confirmed false sentence that no pattern-plus-proposition' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=282
+282:confirmed false sentence that no pattern-plus-proposition entry can express — then the count undercounts,
+
+F1.4 evidence: grep -n -F -- '- `rounds.md:17` counts 10 for round' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.JZamtTvIcT/regression-autopsy.md
+exit=0; target_line=609
+609:- `rounds.md:17` counts 10 for round 08; `ledger.json` carries **11** `NEG` entries whose single `YES` is
+
+F1.4 additional: grep -n -F -- 'and the ratio "pins written /' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=283
+283:and the ratio "pins written / findings verified" reports it. *Evidence:* D1 fact 2 (`:569-574`): the
+
+F1.5 design: grep -n -F -- 'a mapper verdict later overturned because' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=416
+416:a mapper verdict later overturned because the row's quote was not in the source. *Evidence:* M1 axis 1
+
+F1.5 evidence: grep -n -F -- '**Newer: fetched is a precondition, not' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.aasWWgOKbX/m1-two-surveys-compared.md
+exit=0; target_line=75
+75:**Newer: fetched is a precondition, not a marking, and the quote is machine-checked.**
+
+F1.5 additional: grep -n -F -- '(benefit / harm / null), fetch' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=415
+415:(benefit / harm / null), fetch status; a row without a quote that matches is not a row.** *Refuted by:*
+
+F2.1 design: grep -n -F -- '**Rule T1. Triage asks no agent' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=48
+48:**Rule T1. Triage asks no agent whether the text is clear, and its only agent signal is a keyed answer.**
+
+F2.1 evidence: grep -n -F -- 'Anecdote: two confident readers answered incorrectly' /Users/ruliny/Git/agent-skills/research/2026-09-12-skill-review/astra-method-attack.md
+exit=0; target_line=353
+353:Anecdote: two confident readers answered incorrectly and one confused reader answered correctly in one run (AUDIT:98–100). That defeats substituting clarity ratings for correctness. It does not establish that asking both questions has no value.
+
+F2.1 additional: grep -n -F -- '| 9 | `research/2026-09-11-terse-survey/round2-returns/protocol-evaluation-theory.json:94` | measured;' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/codex-sol-h1-terse-survey-harvest.md
+exit=0; target_line=22
+22:| 9 | `research/2026-09-11-terse-survey/round2-returns/protocol-evaluation-theory.json:94` | measured; opened | “Never use an LLM's own readability rating as a metric. Asking a frontier model to grade a text on a 1-12 scale or a 1-100 scale produced no significant relationship with measured reading effort.” | Gruteke Klein et al., arXiv:2502.11150, six models × four prompts; result CSVs and paper |
+
+F2.1 additional: grep -n -F -- 'no confusion answered wrong, the confused' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=51
+51:no confusion answered wrong, the confused one answered right (`audit/SKILL.md:98-101`, `measure.md:62-65`);
+
+F2.2 design: grep -n -F -- '**Rule S1. Surveyors never map; the' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=399
+399:**Rule S1. Surveyors never map; the mapper never surveys; the split critic reads the cut before any
+
+F2.2 evidence: grep -n -F -- '- Net: the older run has' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.aasWWgOKbX/m1-two-surveys-compared.md
+exit=0; target_line=264
+264:- Net: the older run has the completeness check and lacks the split check; the newer has the split check
+
+F2.2 additional: grep -n -F -- 'and lacks the completeness check. Neither' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.aasWWgOKbX/m1-two-surveys-compared.md
+exit=0; target_line=265
+265:  and lacks the completeness check. Neither run had both.
+
+F2.2 additional: grep -n -F -- 'survey for what nobody mentioned.** *Refuted' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=401
+401:survey for what nobody mentioned.** *Refuted by:* three surveys where the split critic changes no brief
+
+F3.1 design: grep -n -F -- '**19 of 25**. Misses: R04-1, R06-4,' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=540
+540:**19 of 25**. Misses: R04-1, R06-4, R07-2, R08-1, R08-5, R08-10. One known false alarm class in the hits:
+
+F3.1 evidence: grep -n -F -- '> "worktree ledger, images you attached,' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.JZamtTvIcT/regression-autopsy.md
+exit=0; target_line=229
+229:> "worktree ledger, images you attached, the scratch of read-only agents started from a shell that names
+
+F3.1 additional: grep -n -F -- 'when|ends|killed|dies|crashed|dead)\b`, case-insensitive, `read-only` masked. Hits: ABS' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=539
+539:when|ends|killed|dies|crashed|dead)\b`, case-insensitive, `read-only` masked. Hits: ABS 6, LIFE 15, either
+
+F3.1 additional: grep -n -F -- 'Trigger recount with the exact JavaScript' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=2
+2:Trigger recount with the exact JavaScript regexes and stated read-only mask: total=25 ABS=4 LIFE=15 either=18.
+
+F3.1 additional: grep -n -F -- 'Trigger misses: R04-1, R06-4, R07-2, R07-3,' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=3
+3:Trigger misses: R04-1, R06-4, R07-2, R07-3, R08-1, R08-5, R08-10.
+
+F3.2 design: grep -n -F -- 'Reproduce: `q.txt` (ids and D1'"'"'s quotes)' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=549
+549:Reproduce: `q.txt` (ids and D1's quotes) and `gateload.mjs` beside this file; the quotes are
+
+F3.2 evidence: grep -n -F -- 'ReferenceError: require is not defined in' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=10
+10:ReferenceError: require is not defined in ES module scope, you can use import instead
+
+F3.2 additional: grep -n -F -- 'Command: node /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/gateload.mjs /Users/ruliny/Git/agent-skills/research/2026-09-11-markup-round-0 — started;' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=5
+5:Command: node /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/gateload.mjs /Users/ruliny/Git/agent-skills/research/2026-09-11-markup-round-0 — started; exit 1; exact diagnostic follows:
+
+F3.2 additional: grep -n -F -- 'Unchanged .cjs copy command started; exit' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=17
+17:Unchanged .cjs copy command started; exit 0; gate-load output follows:
+
+F3.3 design: grep -n -F -- '| `broken` | S1 fired |' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=59
+59:| `broken` | S1 fired | `audit`, with the hits as ledger entries pre-filled `refuted`, level 3 |
+
+F3.3 evidence: grep -n -F -- '| 3 | the behaviour happens' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/truth-pass.md
+exit=0; target_line=16
+16:| 3 | the behaviour happens | a check that runs and shows it |
+
+F3.3 additional: grep -n -F -- '| 1 | the line exists' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/truth-pass.md
+exit=0; target_line=14
+14:| 1 | the line exists | the path and line number resolve |
+
+F3.3 additional: grep -n -F -- '| S1 | resolution | every' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=42
+42:| S1 | resolution | every path, command and link in inline code or a link target: does it exist in the checkout; a path the sentence tells the reader to create, and a block that discloses its own pin, are exempt | 0 agents | H1 a#23 (two-layer split, asserted), a#26 (deterministic first, argued), a#24 (211-finding noise, measured), a#25 (pin exemption, argued) |
+
+F3.4 design: grep -n -F -- '| S3 | staleness | for' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=44
+44:| S3 | staleness | for each sentence the prior ledger backed with `file:lines`, whether those lines changed since the sentence's own last commit (`git log -L` on the source range, `git log` on the doc line); with no prior ledger, whether any tracked non-`.md` file changed since the doc's last commit | 0 agents | H1 a#4 (fingerprint, argued), a#5 (co-change mining, argued); `unmeasured` here |
+
+F3.4 evidence: grep -n -F -- '| 4 | `research/2026-09-11-terse-survey/round2-returns/repo-wshobson-agents.json:11` | argued;' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/codex-sol-h1-terse-survey-harvest.md
+exit=0; target_line=17
+17:| 4 | `research/2026-09-11-terse-survey/round2-returns/repo-wshobson-agents.json:11` | argued; opened | “Stamp each document with the commit it was written against and the list of code paths it describes ('Fingerprint: git:5b237fa' / 'Monitored: src/auth/jwt.ts, package.json'), then decide whether to re-audit by running `git diff --stat <fingerprint>..HEAD -- <monitored paths>`: empty output means the document still describes the code it was compiled against, any output means recompile and re-stamp.” | wshobson/agents grounded-vault, SKILL.md:41–53,67–75 and details.md:136–138 |
+
+F3.5 design: grep -n -F -- '| `no change` | S1 clean;' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=58
+58:| `no change` | S1 clean; S3 shows no source change under any claim the prior ledger confirmed; S4 exists; S5 scores at or above the prior score with every control held and no reader departed | nobody; the owner sends |
+
+F3.5 evidence: grep -n -F -- '- the score falls by more' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md
+exit=0; target_line=113
+113:- the score falls by more than the measured noise floor, or by anything at all if no floor was measured
+
+F3.5 additional: grep -n -F -- '| `unmeasured` | S1–S3 clean and' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=62
+62:| `unmeasured` | S1–S3 clean and no S4 | the owner, with the audit's cost; triage cannot say `no change` |
+
+F3.5 additional: grep -n -F -- '- a control question that passed' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md
+exit=0; target_line=114
+114:- a control question that passed now fails
+
+F3.6 design: grep -n -F -- 'verdict, and the report carries a' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=102
+102:verdict, and the report carries a 2×2: `no change`/`unmeasured` × audit failure = false accept; flagged
+
+F3.6 evidence: grep -n -F -- '- No entry validates a cheap' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/codex-sol-h1-terse-survey-harvest.md
+exit=0; target_line=71
+71:- No entry validates a cheap triage instrument against the full reader test on a representative documentation corpus, so sensitivity, specificity, false-accept cost, false-reject cost, calibration, and an abstention rule are unanswered.
+
+F3.6 additional: grep -n -F -- '| `unmeasured` | S1–S3 clean and' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=62
+62:| `unmeasured` | S1–S3 clean and no S4 | the owner, with the audit's cost; triage cannot say `no change` |
+
+F3.6 additional: grep -n -F -- 'false-accept count above zero — then' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=104
+104:false-accept count above zero — then `no change` is withdrawn from the verdict set until the condition
+
+F3.7 design: grep -n -F -- '**Rule G3. A sentence in `new`' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=242
+242:**Rule G3. A sentence in `new` text that carries a guarantee or lifecycle word (the S2 lists) is refused
+
+F3.7 evidence: grep -n -F -- 'Level 3 is unreachable for a' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/truth-pass.md
+exit=0; target_line=75
+75:Level 3 is unreachable for a claim about the world rather than about software. The rule degrades to:
+
+F3.7 additional: grep -n -F -- 'a guarantee-shaped claim carries a named' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/truth-pass.md
+exit=0; target_line=76
+76:a guarantee-shaped claim carries a named source the reader can check, or it is weakened. Everything
+
+F3.7 additional: grep -n -F -- '- Which repository backs them, if' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md
+exit=0; target_line=26
+26:- Which repository backs them, if any. Text with no code behind it still gets audited; the truth pass
+
+F3.8 design: grep -n -F -- 'its failure count on that round' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=280
+280:its failure count on that round is the round's regression count, and the next round starts from a red
+
+F3.8 evidence: grep -n -F -- 'category; **regressions** is the count of' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md
+exit=0; target_line=117
+117:   category; **regressions** is the count of sentences the round introduced that its critics showed
+
+F3.8 additional: grep -n -F -- 'ledger.** Regressions(N) = rows whose first' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=281
+281:ledger.** Regressions(N) = rows whose first `YES` is at N + rows `LOST` at N. *Refuted by:* a critic-
+
+F3.8 additional: grep -n -F -- 'G6 proposed first-YES formula for round' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=36
+36:G6 proposed first-YES formula for round 3: first YES is at round 1, no positive rows exist, so computed regressions=0; the previously removed false sentence was reintroduced at round 3, so definition in rewrite/SKILL.md:117-118 counts 1.
+
+F3.8 additional: grep -n -F -- 'G6 persistent-error check: negative pattern present' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=37
+37:G6 persistent-error check: negative pattern present in rounds 1 and 2 gives failure count 1 on round 2 but first-YES formula 0; the two stated counts disagree.
+
+F3.9 design: grep -n -F -- '| R06-4 | e | —' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=320
+320:| R06-4 | e | — | — | no trigger word, no citation; **untouched** |
+
+F3.9 evidence: grep -n -F -- '- **Edit:** `edits/06.json[8]` "troubleshooting rows 2' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.JZamtTvIcT/regression-autopsy.md
+exit=0; target_line=172
+172:- **Edit:** `edits/06.json[8]` "troubleshooting rows 2 and 3". **Declared check:** none.
+
+F3.9 additional: grep -n -F -- '- (i) every sentence in `new`' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=220
+220:- (i) every sentence in `new` that states behaviour has a claim; an edit filed as "water" whose sentence
+
+F3.9 additional: grep -n -F -- 'G2 duty (i), which is a' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=514
+514:  G2 duty (i), which is a judgement that the sentence "states behaviour".
+
+F3.9 additional: grep -n -F -- 'R06-4 input is edits/06.json[8]; its new' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=29
+29:R06-4 input is edits/06.json[8]; its new text has ABS=false LIFE=true; contains behavioural assertion about a report path.
+
+F3.10 design: grep -n -F -- '**Rule HO2. Every hunk is separately' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=156
+156:**Rule HO2. Every hunk is separately acceptable; `apply.mjs original.md edits/NN.json --accept ids`
+
+F3.10 evidence: grep -n -F -- '3. **Produce the round**: `node "$S/round.mjs"' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md
+exit=0; target_line=95
+95:3. **Produce the round**: `node "$S/round.mjs" <NN-1>-<pass>.md <NN>-<pass>.md edits/NN.json --ledger ledger.json`.
+
+F3.10 additional: grep -n -F -- 'HO2 base check: edits/08.json[0].old occurs 0' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=26
+26:HO2 base check: edits/08.json[0].old occurs 0 times in 00-draft.md and 1 time in 07-lifecycle.md.
+
+F3.10 additional: grep -n -F -- 'HO2 first-round-original matches (zero-based index:count): 0:0,' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=27
+27:HO2 first-round-original matches (zero-based index:count): 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0, 11:0, 12:0, 13:0, 14:0, 15:0, 16:0, 17:0, 18:0, 19:0, 20:0, 21:0, 22:0, 23:0, 24:0, 25:0, 26:0
+
+F3.11 design: grep -n -F -- '`new` this hunk'"'"'s `old` occurs in' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=139
+139:   `new` this hunk's `old` occurs in — computed by the script, not declared). *Evidence:* H1 b#6
+
+F3.11 evidence: grep -n -F -- '- **Compound damage:** this edit'"'"'s sibling' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.JZamtTvIcT/regression-autopsy.md
+exit=0; target_line=447
+447:- **Compound damage:** this edit's sibling (`edits/08.json[16]`) retired `killed run's lock reclaimed`,
+
+F3.11 additional: grep -n -F -- 'writer would have written, and no' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/bake-off.md
+exit=0; target_line=143
+143:writer would have written, and no judge has scored it. Re-check every graft against the code, because a
+
+F3.11 additional: grep -n -F -- 'HO2 semantic-coupling check for lock edits' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=28
+28:HO2 semantic-coupling check for lock edits [16] and [24]: old[16] in new[24]=false; old[24] in new[16]=false. Both are false although D1:447-448 identifies compound damage.
+
+F3.12 design: grep -n -F -- 'the same words.** *Refuted by:* a' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=165
+165:the same words.** *Refuted by:* a later round re-proposing a refused hunk verbatim, or the owner's
+
+F3.12 evidence: grep -n -F -- 'by someone other than the writer.' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/loop.md
+exit=0; target_line=108
+108:by someone other than the writer. It also records what was deliberately refused, so the next round does
+
+F3.12 additional: grep -n -F -- '3. **The pin is a phrase,' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.JZamtTvIcT/regression-autopsy.md
+exit=0; target_line=576
+576:3. **The pin is a phrase, so a paraphrase walks through it — twice, provably.**
+
+F3.13 design: grep -n -F -- '`diff-NN.patch`"; the return list at `:154-163`' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=151
+151:`diff-NN.patch`"; the return list at `:154-163` becomes the sections above; the cut ledger
+
+F3.13 evidence: grep -n -F -- '- `diff-NN.patch` against the original; the' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md
+exit=0; target_line=160
+160:- `diff-NN.patch` against the original; the cut ledger — every removed passage of twenty words or more,
+
+F3.13 additional: grep -n -F -- 'with its reason; the invisible-prerequisite inventory' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md
+exit=0; target_line=161
+161:  with its reason; the invisible-prerequisite inventory from the curse-of-knowledge pass, on rounds that
+
+F3.13 additional: grep -n -F -- '**Invisible prerequisites.** One numbered item per' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/ledgers.md
+exit=0; target_line=103
+103:**Invisible prerequisites.** One numbered item per thing a reader must already know, each with the
+
+F3.13 additional: grep -n -F -- 'keep the inventory from step one;' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/curse-of-knowledge.md
+exit=0; target_line=4
+4:keep the inventory from step one; it is one of the artifacts `rewrite` returns.
+
+F3.14 design: grep -n -F -- 'count it should move, and a' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=436
+436:count it should move, and a practice whose number did not move across two documents is moved to the
+
+F3.14 evidence: grep -n -F -- '**Not measured:** which part of the' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md
+exit=0; target_line=130
+130:**Not measured:** which part of the chain produced the gain. The experiment that would isolate it —
+
+F3.14 additional: grep -n -F -- 'hypothesis is settled slowly, across documents,' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=448
+448:hypothesis is settled slowly, across documents, by S5 — not in the round that adopted it. What is not
+
+F3.14 additional: grep -n -F -- '**What it is.** README.md:5 — "Only' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.aasWWgOKbX/m1-two-surveys-compared.md
+exit=0; target_line=555
+555:**What it is.** README.md:5 — "Only phase 3 — matched tasks, independent outcome assessment, a
+
+F3.14 additional: grep -n -F -- 'the evidence calls for it the' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.aasWWgOKbX/m1-two-surveys-compared.md
+exit=0; target_line=560
+560:the evidence calls for it the comparator is a single agent or no delegation (H1, H15); cells need n ≥ 50 or
+
+F3.15 design: grep -n -F -- '**Rule S4. Effect claims are ranked' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=428
+428:**Rule S4. Effect claims are ranked by study design (controlled > varied-evidence > reasoned > mentioned)
+
+F3.15 evidence: grep -n -F -- '**Mapping values** (C0'"'"'s set): `present` =' /Users/ruliny/Git/agent-skills/research/2026-09-17-orchestration-practices/r-synthesis.md
+exit=0; target_line=9
+9:**Mapping values** (C0's set): `present` = the pages instruct the practice; `partial` = part of it, or a different mechanism aimed at the same failure; `conditional` = the pages have it or avoid it only under a condition the claim does not share (width, mode, rights level); `not located` = not in the two pages as read; `unknown` = no page counterpart is expected (measurement-method claims); `contradicts` = incompatible instructions under the same conditions. For a claim whose direction is harm or no-benefit, `present` means the pages already avoid the practice the source warns against. **Strength** (C0: study design, separate from source type): `CC` controlled comparison (S2-A rows with a comparator; S2-B validity studies tagged `CC-v`); `VE` vendor experience report (`VE-n` when the vendor reports a number of its own); `RA` rationale; `ME` mechanism only (exists; no effectiveness claim).
+
+F3.15 additional: grep -n -F -- '- Shortlist: `r-synthesis.md:697-699` — "Ranking key:' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.aasWWgOKbX/m1-two-surveys-compared.md
+exit=0; target_line=208
+208:- Shortlist: `r-synthesis.md:697-699` — "Ranking key: study-design strength first (CC > VE > RA > ME),
+
+F3.16 design: grep -n -F -- '*Evidence:* M1 `:440-442`, `:734-736`; phase 3' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=439
+439:*Evidence:* M1 `:440-442`, `:734-736`; phase 3 never ran for the newer run (`:568-582`). *Displaces:*
+
+F3.16 evidence: grep -n -F -- '- §8, the register: `r-synthesis.md:734-736` —' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.aasWWgOKbX/m1-two-surveys-compared.md
+exit=0; target_line=226
+226:  - §8, the register: `r-synthesis.md:734-736` — fifteen hypotheses, each with *stage*, *metric*,
+
+F3.16 additional: grep -n -F -- 'Each names its metric (C0'"'"'s ruler:' /Users/ruliny/Git/agent-skills/research/2026-09-17-orchestration-practices/r-synthesis.md
+exit=0; target_line=736
+736:Each names its metric (C0's ruler: unique coordinator incidents per comparable run by stage, owner corrections, independently verified outcomes, agents and paid turns) and its comparator. Where the evidence calls for it, the comparator is a single agent or no delegation. Each names a T1 incident or says "no local counterpart". These are hypotheses; nothing above tests them.
+
+F3.17 design: grep -n -F -- '/terse:rewrite → per round: verifier →' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=467
+467:/terse:rewrite → per round: verifier → scripts G1/G3/G4/G6 → wave → pins reader → proxy reader
+
+F3.17 evidence: grep -n -F -- '6. **Verify every finding yourself** from' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md
+exit=0; target_line=110
+110:6. **Verify every finding yourself** from the check it carries — a finding without one is discarded —
+
+F3.17 additional: grep -n -F -- '**Rule G6. After the critics, every' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=278
+278:**Rule G6. After the critics, every finding the coordinator verified as false or overstated is written as
+
+F3.17 additional: grep -n -F -- 'fails, and stores the output as' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=207
+207:fails, and stores the output as `check.saw` — the writer pastes nothing.** *Refuted by:* a citation that
+
+F3.17 additional: grep -n -F -- 'one cheap reader is given the' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=267
+267:one cheap reader is given the frozen round and every retired proposition plus one planted proposition
+
+F3.17 additional: grep -n -F -- '7. **Record the round** in `rounds.md`,' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md
+exit=0; target_line=115
+115:7. **Record the round** in `rounds.md`, one table row: `| file | words | produced by | findings against
+
+F3.18 design: grep -n -F -- 'count of `unclear` refusals per handover' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=183
+183:count of `unclear` refusals per handover is the format's score; the count of `content` refusals is the
+
+F3.18 evidence: grep -n -F -- 'Before deleting a fact a reader' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rethink/references/stages.md
+exit=0; target_line=148
+148:Before deleting a fact a reader called noise, try it in another form. The reader is reporting what the
+
+F3.18 additional: grep -n -F -- 'the version that was measured. Shown' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rethink/references/stages.md
+exit=0; target_line=157
+157:the version that was measured. Shown that, the same reader restored all three and said: *"possibly I did
+
+F3.18 additional: grep -n -F -- 'loop'"'"'s.** *Refuted by:* after three handovers' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=184
+184:loop's.** *Refuted by:* after three handovers `unclear` has not fallen while `content` has — then the
+
+F4.1 design: grep -n -F -- '1. **"G2 catches 11 of 25."**' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=518
+518:1. **"G2 catches 11 of 25."** It assumes an agent given `edits/NN.json` and the code finds at desk what
+
+F4.1 evidence: grep -n -F -- '- **Edit:** `edits/08.json[6]` "commands: orchestrate row' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.JZamtTvIcT/regression-autopsy.md
+exit=0; target_line=296
+296:- **Edit:** `edits/08.json[6]` "commands: orchestrate row shorter (F71)".
+
+F4.1 additional: grep -n -F -- '- **Edit:** `edits/08.json[24]`, claims `lock cure' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.JZamtTvIcT/regression-autopsy.md
+exit=0; target_line=434
+434:- **Edit:** `edits/08.json[24]`, claims `lock cure names the process group`.
+
+F4.1 additional: grep -n -F -- 'Blind refusal list caught 6/10 by' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=38
+38:Blind refusal list caught 6/10 by edit and disputed proposition: R08-1 -> edits/08.json[0]; R08-4 -> edits/08.json[10]; R08-5 -> edits/08.json[11]; R08-6 -> edits/08.json[13]; R08-8 -> edits/08.json[16]; R08-10 -> edits/08.json[26].
+
+F4.1 additional: grep -n -F -- 'Blind refusal list missed 4/10: R08-2' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=39
+39:Blind refusal list missed 4/10: R08-2 -> edits/08.json[6]; R08-3 -> edits/08.json[7]; R08-7 -> edits/08.json[14]; R08-9 -> edits/08.json[24].
+
+F4.1 additional: grep -n -F -- 'R08-5 qualification: blind refusal challenged exclusivity' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c1.aLxaNH/checks.log
+exit=0; target_line=40
+40:R08-5 qualification: blind refusal challenged exclusivity as unsupported; it did not identify the decorrelated-model counterexample. Strict explicit-counterexample scoring is 5 caught / 5 missed, adding R08-5 to misses.
+
+F4.1 additional: grep -n -F -- 'Fewer than five and the claim' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=521
+521:   Fewer than five and the claim falls to "forced", not "caught".
+
+F4.2 design: grep -n -F -- '2. **"`no change` is safe when' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=522
+522:2. **"`no change` is safe when a prior audit still holds."** Six to eight questions and two tasks passed
+
+F4.2 evidence: grep -n -F -- '<a id="m12"></a>**M12. What the task gate' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/measurements.md
+exit=0; target_line=63
+63:<a id="m12"></a>**M12. What the task gate cannot see.** Three readers, three tasks, all passed, on a round
+
+F4.2 additional: grep -n -F -- '| `no change` | S1 clean;' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=58
+58:| `no change` | S1 clean; S3 shows no source change under any claim the prior ledger confirmed; S4 exists; S5 scores at or above the prior score with every control held and no reader departed | nobody; the owner sends |
+
+F4.2 additional: grep -n -F -- '- **unconfirmed** — you could not' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/truth-pass.md
+exit=0; target_line=42
+42:- **unconfirmed** — you could not settle it.
+
+F4.2 additional: grep -n -F -- '> "a report path already used"' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.JZamtTvIcT/regression-autopsy.md
+exit=0; target_line=170
+170:> "a report path already used" — `06-preexisting.md:187` (troubleshooting row 2)
+
+F4.3 design: grep -n -F -- '3. **"The proxy reader'"'"'s '"'"'would you' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=526
+526:3. **"The proxy reader's 'would you send it' predicts the owner's."** One reader, one round, and the
+
+F4.3 evidence: grep -n -F -- 'who had never seen the plugin,' /Users/ruliny/Git/agent-skills/research/2026-09-11-markup-round-0/README.md
+exit=0; target_line=36
+36:who had never seen the plugin, on round 08: **not yet** — nothing said how to choose the model or the
+
+F4.3 additional: grep -n -F -- 'owner has not read round 09.' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=527
+527:   owner has not read round 09. Test: the owner's read of 09 against the Sol items at
+
+F4.3 additional: grep -n -F -- 'first and softens the second; the' /Users/ruliny/Git/agent-skills/research/2026-09-11-markup-round-0/README.md
+exit=0; target_line=38
+38:first and softens the second; the owner has not read it.
+
+F4.3 additional: grep -n -F -- 'candidate the ten-section map recorded. It' /Users/ruliny/Git/agent-skills/research/2026-09-11-markup-round-0/rounds.md
+exit=0; target_line=171
+171:candidate the ten-section map recorded. It adds the one thing the naive reader could not find — say
+
+F5.1 design: grep -n -F -- 'audits, ~10 agents each (`measurements.md` M21).' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=107
+107:audits, ~10 agents each (`measurements.md` M21). *Displaces:* nothing.
+
+F5.1 evidence: grep -n -F -- 'this arm found the effect large' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md
+exit=0; target_line=94
+94:this arm found the effect large enough to swallow a result our size. It doubles the reader agents, so it
+
+F5.1 additional: grep -n -F -- 'Beside the question readers, two readers' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md
+exit=0; target_line=105
+105:Beside the question readers, two readers carrying a task: a starting state and an outcome they want,
+
+F5.1 additional: grep -n -F -- '<a id="m21"></a>**M21. What one wave costs.**' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/measurements.md
+exit=0; target_line=121
+121:<a id="m21"></a>**M21. What one wave costs.** On 2026-09-12, on a 1600-word README: Opus with execution
+
+F5.2 design: grep -n -F -- '| 1 | G2 verifier: brief' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=487
+487:| 1 | G2 verifier: brief 0, `asks` field, step 4b | Q3 | `critic-briefs.md`, `rewrite/SKILL.md` step 4, `round.mjs` header | ~40 lines of text; +1 agent/round | 11 of 25 for no script work; the largest count at the least cost |
+
+F5.2 evidence: grep -n -F -- '**What it is.** README.md:5 — "Only' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.aasWWgOKbX/m1-two-surveys-compared.md
+exit=0; target_line=555
+555:**What it is.** README.md:5 — "Only phase 3 — matched tasks, independent outcome assessment, a
+
+F5.2 additional: grep -n -F -- '`unmeasured`; nearest measured, lens 1 Opus' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=234
+234:`unmeasured`; nearest measured, lens 1 Opus ~180k tokens, 17 min (`measurements.md` M21). Lens 2 already
+
+F5.2 additional: grep -n -F -- 'independently verified outcomes judged cross-family or' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.aasWWgOKbX/m1-two-surveys-compared.md
+exit=0; target_line=558
+558:independently verified outcomes judged cross-family or by a human (S2-37); agents and paid turns under
+
+F5.2 additional: grep -n -F -- '| 1. the code, with the' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md
+exit=0; target_line=125
+125:| 1. the code, with the right to run it | every behavioural claim; level 3 for anything about a lifecycle | Claude Opus | one | ~180k tokens, 17 min |
+
+F5.2 additional: grep -n -F -- 'you send it; (6) what reads' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=176
+176:you send it; (6) what reads as written for the author. Model: Codex Sol, one agent, ~5 min (the record:
+
+F5.2 additional: grep -n -F -- '| [08-review.md](08-review.md) | 1711 | the' /Users/ruliny/Git/agent-skills/research/2026-09-11-markup-round-0/rounds.md
+exit=0; target_line=17
+17:| [08-review.md](08-review.md) | 1711 | the coordinator, 27 edits against the wave's list and the owner's five decisions, each with a check; `budgets.json`, `tasks.json`, `questions.json` written; then 3 critics — Opus with a stub codex, Astra, a Sol reader who had never seen the plugin — see [reviews/08/](reviews/08/) | Opus 14, Astra 9 (7 shared), the reader: "not yet" | **10** of its own: 4 false, 5 overstated, 1 vaguer; 4 of the writer's 27 stated checks did not hold |
+
+F6.1 design: grep -n -F -- '**Rule T2. `no change` is issued' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=67
+67:**Rule T2. `no change` is issued only when a prior measurement exists and still holds; on a never-audited
+
+F6.1 evidence: grep -n -F -- '- No entry establishes when “no' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/codex-sol-h1-terse-survey-harvest.md
+exit=0; target_line=72
+72:- No entry establishes when “no change” is safe for an entire text, how many areas must be sampled, how recent evidence must be, or how to combine clean structural checks with unmeasured semantic risk.
+
+F6.2 design: grep -n -F -- '**Rule HO2. Every hunk is separately' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=156
+156:**Rule HO2. Every hunk is separately acceptable; `apply.mjs original.md edits/NN.json --accept ids`
+
+F6.2 evidence: grep -n -F -- '- No entry studies selective acceptance' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/codex-sol-h1-terse-survey-harvest.md
+exit=0; target_line=83
+83:- No entry studies selective acceptance of individual changes, dependencies among changes, or how to show that accepting one hunk requires another.
+
+F6.3 design: grep -n -F -- '**The design'"'"'s claim: 13 of 25' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=350
+350:**The design's claim: 13 of 25 refused before the freeze; 11 more refused until a run exists; 1 reached
+
+F6.3 evidence: grep -n -F -- 'An independent judge on the whole' /Users/ruliny/Git/agent-skills/research/2026-09-11-markup-round-0/rounds.md
+exit=0; target_line=219
+219:An independent judge on the whole diff — *did round N read better than round N−1* — is not built. The
+
+F6.4 design: grep -n -F -- '**Rule S5. Every adopted practice is' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.iUPMIn91WR/fable-a1-terse-design.md
+exit=0; target_line=435
+435:**Rule S5. Every adopted practice is registered as a hypothesis with the audit question or the regression
+
+F6.4 evidence: grep -n -F -- '16. **Phase 3: do not claim' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/tmp.aasWWgOKbX/m1-two-surveys-compared.md
+exit=0; target_line=469
+469:16. **Phase 3: do not claim improvement; register the protocols and stop.** Out: 15 + 3 hypotheses and,
