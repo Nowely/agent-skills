@@ -3,7 +3,7 @@
 One orchestrated round in seven waves, the coordinator on Fable 5.1 (Opus 5 during scouting). Waves 1–3 were
 the plan's six agents; wave 4 the owner's five for the vendor sources; wave 5 four more for the evaluation
 guide and the design's second round; wave 6 the implementation, one writer and one reviewer resumed once:
-seventeen agent runs, none dropped. The split critic was skipped in
+38 agent runs across the rows below (the fourteen readers are one row), none dropped. The split critic was skipped in
 wave 4, and one surveyor dropped fourteen draft rows of its own. Agents read only through wave 5; in wave 6 the writer committed in the live tree of the branch. Every read
 agent's artifact came back as text or a file under its own temporary directory and was copied here unchanged.
 
@@ -35,13 +35,17 @@ agent's artifact came back as text or a file under its own temporary directory a
 | 7 | Codex Sol TA | task reader: install and start the first audit | 24 commands, 17 min | `readers.md`, TA | copied the machine's `~/.claude.json` into its scratch configuration to transfer authentication (wrong, and its scratch directory holds the copy until deleted); ran a live Claude session with the machine's profile through `--plugin-dir` |
 | 7 | Codex Sol TB | task reader: audit to candidate, as a plan | 12 commands, 5.5 min | `readers.md`, TB | — |
 | 7 | coordinator | steps 1, 4 and 6: scope, the key's decisions, the score, the run file, E5–E9 | — | `audit-2026-09-22/audit.md`, `ISSUES.md` E5–E9 | the zsh one-based array shifted the first fourteen reader prompts by one question; caught before the fan-out |
-| 7 | Codex Sol K5 | completeness critic on the closing answer | see `k5-completeness.md` | `k5-completeness.md` | — |
+| 7 | Codex Sol K5 | completeness critic on the closing answer | 19 commands, 11.5 min | `k5-completeness.md`: done — 59 checked, 53 matched; the draft named 10 of 11 refutations, gave TB 5 minutes in one place and 5.5 in another, called the next rewrite the seed's first run, counted the bake-off as six, and stated q+7 as fixed; the record misreported the owner's answers and listed 17 of 18 unconfirmed | — |
 
 Codex tokens are not measured by the driver; commands and minutes are what its reports carry. Claude tokens
-and minutes are the harness's task notifications. None of these figures is in the copied returns, so they
-cannot be re-derived from this directory. The returns were copied with `cp` from the paths the agents named.
+and minutes are the harness's task notifications. Tokens and minutes are in no copied return and cannot be
+re-derived from this directory; a Codex agent's command count is, where its report was copied whole
+(`readers.md`, `r1-review.md`, `k*-completeness.md`). The returns were copied with `cp` from the paths the agents named.
 
 ## The coordinator's own errors
+
+- Wave 7's closing answer, first draft: the six K5 lists in its row; the record's four errors beside it.
+  Fixed before the answer went out; E5's title and E8's claim narrowed in their own commit.
 
 - Wave 7: the reader prompts were generated from a zsh array indexed as if zero-based; question 1 was
   empty and question 7 unassigned. Caught by reading one brief whole before spawning; fourteen unrun

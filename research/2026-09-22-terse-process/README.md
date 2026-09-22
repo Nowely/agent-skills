@@ -223,14 +223,16 @@ branch says, on `plugins/terse/README.md`, with the run file and every reader re
 `key-draft.md`, `ledger.json`, `docs.txt`; `readers.md`, the sixteen returns verbatim).
 
 - **Profile** (Opus P0): built from the pages, the scripts and the manifests; the owner confirmed it and
-  answered three questions — the reader documents any document; `terse` is meant for any text in any
-  language, code or not; the entry file is the plugin README.
+  answered four questions — "their words" stand as constructed, since no issue tracker exists; the reader
+  documents any document; `terse` is meant for any text in any language, code or not; the entry file is
+  the plugin README, not the marketplace root.
 - **Truth pass** (Opus T1): 46 entries — 17 confirmed, 11 refuted, 18 unconfirmed; levels L1 4, L2 35,
   L3 7. Refuted: the loop's stop rule (:31-34), "every round is kept" (:34, run), "applying anything to
   your files needs your word" (:35-36 — `rewrite` writes `research/<date>-<slug>/` and `ISSUES.md` into
   the repository unasked), "nothing else is needed" and "Node 22 … if you run the checkout directly"
   (:48-49, run: the installed copy's self-test exits 127 without node), "will not touch a condition"
-  (:58), and four numbers under *What was measured* (:64, :76, :77-78, :84) against the 2026-09-10 record.
+  (:58), four numbers under *What was measured* (:64, :76, :77-78, :84) against the 2026-09-10 record, and
+  "prior-art.md collects every finding against these numbers" (:84-86) — eleven in all.
   The seed ran on a real ledger for the first time: exit 0, 28 entries (17 `want:true`, 11 `want:false`),
   18 unconfirmed listed on stderr; `ledger.mjs` over the unchanged README is red by design (every refuted
   sentence present), which `ledgers.md` does not say. The pass cost 412k tokens and 36 minutes on a

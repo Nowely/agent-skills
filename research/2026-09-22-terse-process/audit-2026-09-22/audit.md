@@ -1034,11 +1034,13 @@ the routing rule writes into a tracked file. The reader's own conclusion from th
 - `ledger.mjs` over the unchanged README is red by design: every refuted sentence reads YES. `ledgers.md`
   does not say so; the first green ledger is the first round that removes them.
 - Eighteen ledger entries are unconfirmed, each with its reason in the entries: guarantees that reach only
-  page level (C02, C04, C08, C17, C28, C29, C38), effect claims nobody tested (C22, C25, C26), and numbers
+  page level (C02, C04, C08, C17, C28, C29, C38), the ledger-and-ratchet guarantee C14 (level 2: the ledger holds only
+  declared and seeded claims, and a claim-less edit passes `round.mjs`), effect claims nobody tested (C22, C25,
+  C26), and numbers
   whose readers' data is not in the record (C31, C32, C34–C37, C40).
 - Where `rethink` writes its skeleton is not stated on its page; the Node 22 floor was not tested (24.11.0
   ran); the profile's "their words" are the owner's recorded phrasings, not users' — no issue tracker
   exists.
 - The truth pass cost 412k tokens and 36 minutes on a 933-word README, twice the estimate, because it
   installed the plugin in an isolated configuration and ran the lifecycle recipe; the readers cost about a
-  minute each; the task readers 5 and 17 minutes.
+  minute each; the task readers 5.5 and 17 minutes.
