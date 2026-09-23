@@ -95,7 +95,7 @@
   "pattern": "The `rewrite` instructions create their run there too\\.",
   "want": true,
   "level": 2,
-  "asks": "rewrite's instructions create its run where audit's instructions create theirs: under the plugin data directory when installed, under the temporary directory from a checkout.",
+  "asks": "Rewrite's instructions create its run where audit's instructions create theirs: under the plugin data directory when installed, under ${TMPDIR:-/tmp}/terse from a checkout.",
   "run": "sed -n '33p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '66,68p;71p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
   "expect": "RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/\\$\\(date[\\s\\S]*Work in a run directory of the document's own, outside the repository that holds it: made by the\\s+formula of \\[`audit`'s step 1\\][\\s\\S]*RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/\\$\\(date",
   "saw": "D=\"${CLAUDE_PLUGIN_DATA}\"; RUN=\"${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$RUN\" && echo \"$RUN\"\nWork in a run directory of the document's own, outside the repository that holds it: made by the\nformula of [`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory), with `<slug>`\nnaming the document.\nD=\"${CLAUDE_PLUGIN_DATA}\"; RUN=\"${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>\" && mkdir -p \"$RUN\" && echo \"$RUN\"\n"
@@ -215,10 +215,10 @@
   "pattern": "The experiment had no no-document arm, and the repository has no individual reader records for it\\.",
   "want": true,
   "level": 2,
-  "asks": "The 2026-09-10 chain experiment had no arm that asked the same questions with no document, and the repository holds no records of its individual readers.",
-  "run": "sed -n '10p' /Users/ruliny/Git/agent-skills/research/README.md; sed -n '104,107p' /Users/ruliny/Git/agent-skills/plugins/terse/references/prior-art.md; sed -n '19,21p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/validation.json; sed -n '38,40p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/README.md; sed -n '40p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; echo \"files outside the reader brief with its departed: field: $(grep -rlE '^[[:space:]]*departed:' /Users/ruliny/Git/agent-skills/research /Users/ruliny/Git/agent-skills/plugins | grep -vc 'skills/audit/references/measure\\.md$')\"",
-  "expect": "no arm ever ran without the document[\\s\\S]*Both ran the control\\. We did not\\.[\\s\\S]*\"live_reader_experiments_run\": 0[\\s\\S]*Forty Codex seat returns[\\s\\S]*the 2026-09-10 run used Haiku[\\s\\S]*with its departed: field: 0",
-  "saw": "| [2026-09-11-terse-survey](2026-09-11-terse-survey/) | what does the field already know? | three rounds, 37 agents, 108 ranked practices; the plugin's own numbers measure model answerability, not human improvement; no arm ever ran without the document |\n**We have no control for prior knowledge, and two benchmarks say the control is large.** Code-QA-Bench's\nclosed-book arm — question only, no repository — scores **0.56 to 0.68** on tasks designed to require\ndocumentation, and its authors treat a high closed-book score as contamination. SWD-Bench's no-document\narm sits at chance (48.68 balanced accuracy, MCC −3.43). Both ran the control. We did not.\n  \"project_tests_run\": 0,\n  \"live_reader_experiments_run\": 0,\n  \"model_calls_run\": 0\nForty Codex seat returns from that day, one `.answer.md` and one `.prompt.txt` each, plus `index.json`\nwith the model, exit code and command count per seat. Thirty-four ran on `gpt-6-astra`, five on\n`gpt-5.6-sol`, one on `gpt-5.6-terra`.\nUse a cheap model; the 2026-09-10 run used Haiku and the failures it found were real. Announce the count\nfiles outside the reader brief with its departed: field: 0\n"
+  "asks": "The 2026-09-10 chain measurement, the one that took one README from 3/6 to 6/6, ran no arm that asked the same questions with no document, and the repository holds no record of that measurement's individual readers.",
+  "run": "sed -n '10p' /Users/ruliny/Git/agent-skills/research/README.md; sed -n '125,127p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; sed -n '94,98p' /Users/ruliny/Git/agent-skills/ISSUES.md",
+  "expect": "no arm ever ran without the document[\\s\\S]*the four-part chain moved one README from 3/6 to 6/6[\\s\\S]*hold summaries of the reader run, not the readers'\\s+returns; the 3/6 → 6/6 figures have no per-reader record in the repository",
+  "saw": "| [2026-09-11-terse-survey](2026-09-11-terse-survey/) | what does the field already know? | three rounds, 37 agents, 108 ranked practices; the plugin's own numbers measure model answerability, not human improvement; no arm ever ran without the document |\n**Measured, at the size of one run:** the four-part chain moved one README from 3/6 to 6/6, took\ndepartures from 1 to 0, and broke neither control. One trial per question; the result does not survive a\nsignificance test and must not be quoted as a rate. Two of the six failures were refuted claims rather\n**Evidence, level 2.** `plugins/terse/references/prior-art.md:910-911` calls `run-2x5/` \"forty Codex seat\nreturns from the bake-off\" and says \"Every 2026-09-10 number quoted anywhere in this file traces there\".\n`research/2026-09-10-chain/README.md` and `chain/` hold summaries of the reader run, not the readers'\nreturns; the 3/6 → 6/6 figures have no per-reader record in the repository. Found by the 2026-09-22 truth\npass (entries C31, C32, C36, C37 unconfirmed for that reason).\n"
  },
  {
   "name": "C45 two published benchmarks that ran a no-docum",
@@ -255,6 +255,46 @@
   "saw": "Work in a run directory of the document's own — `research/<date>-<slug>/` at the root of the\nrepository that holds the document; `audit` writes its run file elsewhere, and you copy `audit.md` in.\nWork in a run directory of the document's own, outside the repository that holds it: made by the\nformula of [`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory), with `<slug>`\nWrite nothing into the audited repository. Not a report, not a note, not a fix.\n"
  },
  {
+  "name": "R02a audit's run: plugin data directory installed, ${TMPDIR:-/tmp}/terse from a checkout, nothing written into the audited repository",
+  "pattern": "The `audit` instructions create the run under the plugin data directory when installed, or under `\\$\\{TMPDIR:-/tmp\\}/terse` from a checkout, and forbid writing into the audited repository\\.",
+  "want": true,
+  "level": 2,
+  "asks": "Audit's instructions create its run under the plugin data directory when the plugin is installed, or under ${TMPDIR:-/tmp}/terse when it runs from a checkout, and they forbid writing into the audited repository.",
+  "run": "sed -n '33p;36,38p;44p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md",
+  "expect": "D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\"; RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/\\$\\(date[\\s\\S]*installed, Claude Code writes the plugin's data directory into that line[\\s\\S]*Write nothing into the audited repository\\.",
+  "saw": "D=\"${CLAUDE_PLUGIN_DATA}\"; RUN=\"${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$RUN\" && echo \"$RUN\"\n`D` is empty when this skill runs from a source checkout rather than an installed plugin, which is why\nthe fallback is there: installed, Claude Code writes the plugin's data directory into that line before\nit runs. Name the absolute path in your report and in the run file; `rewrite` is given that path by the\nWrite nothing into the audited repository. Not a report, not a note, not a fix.\n"
+ },
+ {
+  "name": "R02c rewrite records a code defect in code-defects.md in the run and offers it to the user",
+  "pattern": "They instruct the agent to record a code defect in `code-defects\\.md` in the run and offer it to you\\.",
+  "want": true,
+  "level": 2,
+  "asks": "Rewrite's instructions tell the agent to record a code defect it finds in code-defects.md in the run directory and to offer it to the user.",
+  "run": "sed -n '149,152p;203,204p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "6\\. \\*\\*Verify every finding yourself\\*\\*[\\s\\S]*a code defect with its check into\\s+`code-defects\\.md` in the run directory and to the user as a proposal[\\s\\S]*`code-defects\\.md`, when a finding routed to the code: each defect with its check, as offered to the\\s+user",
+  "saw": "6. **Verify every finding yourself** from the check it carries — a finding without one is discarded —\n   and route each by the table in [loop.md](references/loop.md#where-a-finding-goes): a sentence to the\n   next round's edits, a boundary or a term back to `rethink`, a code defect with its check into\n   `code-defects.md` in the run directory and to the user as a proposal, a question the document does\n- `code-defects.md`, when a finding routed to the code: each defect with its check, as offered to the\n  user\n"
+ },
+ {
+  "name": "R02d copying a defect into ISSUES.md, or applying the candidate, waits for the user's word",
+  "pattern": "Copying that defect into the repository's `ISSUES\\.md`, or applying the candidate to your document, requires your word\\.",
+  "want": true,
+  "level": 2,
+  "asks": "Copying a code defect into the repository's ISSUES.md, and applying the candidate to the user's document, each require the user's word.",
+  "run": "sed -n '78,79p;153,154p;190,192p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "Nothing goes into that repository without the user's word — not the\\s+candidate \\(step 5\\), not a code defect \\(item 6\\)\\.[\\s\\S]*A code defect goes into the repository's `ISSUES\\.md` only on the user's word[\\s\\S]*Then stop: applying\\s+the candidate to the user's files needs their word",
+  "saw": "route, copy `audit.md` in. Nothing goes into that repository without the user's word — not the\ncandidate (step 5), not a code defect (item 6).\n   not answer to the user. A code defect goes into the repository's `ISSUES.md` only on the user's word:\n   the file is in their tree, and this skill promises to write there only when they say so. When a\nis set in the first announcement, and a cap reached is reported as a result. Hand over the round and\n`diff-NN.patch`, the diff against `00-original.md`, written into the run directory. Then stop: applying\nthe candidate to the user's files needs their word, and a diff they have read is what earns it.\n"
+ },
+ {
+  "name": "R02e the rethink page does not say where its skeleton is stored",
+  "pattern": "The `rethink` page does not specify where its skeleton is stored\\.",
+  "want": true,
+  "level": 2,
+  "asks": "The rethink page does not say where the skeleton it hands over is stored.",
+  "run": "grep -c -i -E 'director|\\$RUN|RUN=|CLAUDE_PLUGIN_DATA|TMPDIR|/tmp|mkdir|skeleton\\.md|stored|saved' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md; sed -n '183,188p' /Users/ruliny/Git/agent-skills/ISSUES.md",
+  "expect": "^0\\n[\\s\\S]*## E13\\. `rethink` hands over \"one file\" and no page says where it is written[\\s\\S]*with no path, no run directory and no statement of whether\\s+the file lands inside or outside the user's repository",
+  "saw": "0\n## E13. `rethink` hands over \"one file\" and no page says where it is written\n\n**Evidence, level 2.** `plugins/terse/skills/rethink/SKILL.md:70-83` (step 4, \"What you hand over\"):\n\"One file, and it describes the document rather than arguing for itself\" — the section lists what the\nfile contains and ends \"Then stop and wait\", with no path, no run directory and no statement of whether\nthe file lands inside or outside the user's repository; `rewrite/SKILL.md` step 4 says only to copy\n"
+ },
+ {
   "name": "G3a lifecycle: installed, claude plugin uninstall deletes the data directory and its runs unless --keep-data",
   "pattern": "Installed, `claude plugin uninstall` deletes the plugin data directory and the runs in it unless you pass `--keep-data`\\.",
   "want": true,
@@ -284,5 +324,15 @@
   "run": "sed -n '3,5p;125,127p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; sed -n '9p' /Users/ruliny/Git/agent-skills/research/README.md",
   "expect": "changed from 3/6 to 6/6 when the text was repaired[\\s\\S]*six questions, one trial each[\\s\\S]*moved one README from 3/6 to 6/6, took\\s+departures from 1 to 0, and broke neither control\\. One trial per question[\\s\\S]*3/6 → 6/6 on six reader questions, one trial each",
   "saw": "A fresh reader is the only ruler in this plugin that has been shown to move. Standards produced audits;\nreaders produced a number that changed from 3/6 to 6/6 when the text was repaired. That was one run on\none README, six questions, one trial each — McNemar two-sided *p* = 0.25, which is not distinguishable\n**Measured, at the size of one run:** the four-part chain moved one README from 3/6 to 6/6, took\ndepartures from 1 to 0, and broke neither control. One trial per question; the result does not survive a\nsignificance test and must not be quoted as a rate. Two of the six failures were refuted claims rather\n| [2026-09-10-chain](2026-09-10-chain/) | does a four-pass audit-and-revise chain make one README truer and easier to answer from? | 3/6 → 6/6 on six reader questions, one trial each (p = 0.25, not distinguishable from chance); two of six failures were false claims a prose rewrite would have kept; five published writing standards lost to unguided controls on ten seats |\n"
+ },
+ {
+  "name": "R02f2 a re-audit after a rewrite uses the same questions, answer key, entry file and model, or it is a new measurement",
+  "pattern": "When you re-audit after a rewrite, use the same questions, answer key, entry file, and model; changing one makes it a new measurement rather than a comparison\\.",
+  "want": true,
+  "level": 2,
+  "asks": "When the user re-audits after a rewrite, the re-audit uses the same questions, answer key, entry file and model as the audit before it; changing any one of them makes it a new measurement rather than a comparison.",
+  "run": "sed -n '106,109p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md",
+  "expect": "## Re-measuring after a rewrite[\\s\\S]*Same questions, same key, same entry file, same model\\. Change any of them and the two scores are not\\s+comparable; a new question set is a new measurement with a new baseline, not a result\\.",
+  "saw": "## Re-measuring after a rewrite\n\nSame questions, same key, same entry file, same model. Change any of them and the two scores are not\ncomparable; a new question set is a new measurement with a new baseline, not a result.\n"
  }
 ]

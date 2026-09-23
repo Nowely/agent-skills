@@ -1,8 +1,8 @@
 [
  {
-  "name": "G1 announce-and-wait, in the place Where it writes leaves before Install (G4 move 1/2)",
-  "old": "## Where it writes\n\nThe `audit` instructions create the run under the plugin data directory when installed, or under\n`$TMPDIR/terse` from a checkout, and forbid writing into the audited repository. The `rewrite`\ninstructions create their run there too. They instruct the agent to record a code defect in\n`code-defects.md` in the run and offer it to you. Copying that defect into the repository's `ISSUES.md`,\nor applying the candidate to your document, requires your word. The `rethink` page does not specify where\nits skeleton is stored.\n\n## Install",
-  "new": "All three skills announce how many agents they are about to spawn, on which model, and wait for your\nword.\n\n## Install",
+  "name": "G1 announce-and-wait restored after the three skill descriptions",
+  "old": "a new measurement rather than a comparison.",
+  "new": "a new measurement rather than a comparison.\n\nAll three skills announce how many agents they are about to spawn, on which model, and wait for your\nword.",
   "claims": [
    {
     "name": "G1 all three skills announce agents and model, then wait for your word",
@@ -17,9 +17,14 @@
   }
  },
  {
-  "name": "G4 the version boundary points below, where the section now stands",
+  "name": "G4 move 1/2: Where it writes leaves its place before Install",
+  "old": "## Where it writes\n\nThe `audit` instructions create the run under the plugin data directory when installed, or under\n`$TMPDIR/terse` from a checkout, and forbid writing into the audited repository. The `rewrite`\ninstructions create their run there too. They instruct the agent to record a code defect in\n`code-defects.md` in the run and offer it to you. Copying that defect into the repository's `ISSUES.md`,\nor applying the candidate to your document, requires your word. The `rethink` page does not specify where\nits skeleton is stored.\n\n## Install",
+  "new": "## Install"
+ },
+ {
+  "name": "G4 move 2/2: Where it writes follows Install; the version boundary points below",
   "old": "The outside-repository write boundary above\ntherefore describes this checkout, not that published revision.",
-  "new": "The outside-repository write boundary below\ntherefore describes this checkout, not that published revision.",
+  "new": "The outside-repository write boundary below\ntherefore describes this checkout, not that published revision.\n\n## Where it writes\n\nThe `audit` instructions create the run under the plugin data directory when installed, or under\n`$TMPDIR/terse` from a checkout, and forbid writing into the audited repository. The `rewrite`\ninstructions create their run there too. They instruct the agent to record a code defect in\n`code-defects.md` in the run and offer it to you. Copying that defect into the repository's `ISSUES.md`,\nor applying the candidate to your document, requires your word. The `rethink` page does not specify where\nits skeleton is stored.",
   "claims": [
    {
     "name": "G4 version boundary: the write boundary below is this checkout's, not 8c041b7's",
@@ -34,94 +39,9 @@
   }
  },
  {
-  "name": "G4 move 2/2, Where it writes 1/5: the heading and audit's run and no-write rule",
-  "old": "\n\n## What it will and will not do to your text",
-  "new": "\n\n## Where it writes\n\nThe `audit` instructions create the run under the plugin data directory when installed, or under\n`${TMPDIR:-/tmp}/terse` from a checkout, and forbid writing into the audited repository.\n\n## What it will and will not do to your text",
-  "claims": [
-   {
-    "name": "R02a audit's run: plugin data directory installed, ${TMPDIR:-/tmp}/terse from a checkout, nothing written into the audited repository",
-    "pattern": "The `audit` instructions create the run under the plugin data directory when installed, or under `\\$\\{TMPDIR:-/tmp\\}/terse` from a checkout, and forbid writing into the audited repository\\.",
-    "asks": "Audit's instructions create its run under the plugin data directory when the plugin is installed, or under ${TMPDIR:-/tmp}/terse when it runs from a checkout, and they forbid writing into the audited repository."
-   }
-  ],
-  "check": {
-   "level": 2,
-   "run": "sed -n '33p;36,38p;44p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md",
-   "expect": "D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\"; RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/\\$\\(date[\\s\\S]*installed, Claude Code writes the plugin's data directory into that line[\\s\\S]*Write nothing into the audited repository\\."
-  }
- },
- {
-  "name": "G4 move 2/2, Where it writes 2/5: rewrite's run in the same place (C15 re-pinned on it)",
-  "old": "\n\n## What it will and will not do to your text",
-  "new": " The `rewrite`\ninstructions create their run there too.\n\n## What it will and will not do to your text",
-  "claims": [
-   {
-    "name": "C15 rewrite writes its rounds and artefacts into",
-    "pattern": "The `rewrite` instructions create their run there too\\.",
-    "asks": "Rewrite's instructions create its run where audit's instructions create theirs: under the plugin data directory when installed, under ${TMPDIR:-/tmp}/terse from a checkout."
-   }
-  ],
-  "check": {
-   "level": 2,
-   "run": "sed -n '33p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '66,68p;71p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
-   "expect": "RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/\\$\\(date[\\s\\S]*Work in a run directory of the document's own, outside the repository that holds it: made by the\\s+formula of \\[`audit`'s step 1\\][\\s\\S]*RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/\\$\\(date"
-  }
- },
- {
-  "name": "G4 move 2/2, Where it writes 3/5: the code defect recorded in the run and offered",
-  "old": "\n\n## What it will and will not do to your text",
-  "new": " They instruct the agent to record a code defect in\n`code-defects.md` in the run and offer it to you.\n\n## What it will and will not do to your text",
-  "claims": [
-   {
-    "name": "R02c rewrite records a code defect in code-defects.md in the run and offers it to the user",
-    "pattern": "They instruct the agent to record a code defect in `code-defects\\.md` in the run and offer it to you\\.",
-    "asks": "Rewrite's instructions tell the agent to record a code defect it finds in code-defects.md in the run directory and to offer it to the user."
-   }
-  ],
-  "check": {
-   "level": 2,
-   "run": "sed -n '149,152p;203,204p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
-   "expect": "6\\. \\*\\*Verify every finding yourself\\*\\*[\\s\\S]*a code defect with its check into\\s+`code-defects\\.md` in the run directory and to the user as a proposal[\\s\\S]*`code-defects\\.md`, when a finding routed to the code: each defect with its check, as offered to the\\s+user"
-  }
- },
- {
-  "name": "G4 move 2/2, Where it writes 4/5: ISSUES.md and the candidate wait for your word",
-  "old": "\n\n## What it will and will not do to your text",
-  "new": " Copying that defect into the repository's `ISSUES.md`,\nor applying the candidate to your document, requires your word.\n\n## What it will and will not do to your text",
-  "claims": [
-   {
-    "name": "R02d copying a defect into ISSUES.md, or applying the candidate, waits for the user's word",
-    "pattern": "Copying that defect into the repository's `ISSUES\\.md`, or applying the candidate to your document, requires your word\\.",
-    "asks": "Copying a code defect into the repository's ISSUES.md, and applying the candidate to the user's document, each require the user's word."
-   }
-  ],
-  "check": {
-   "level": 2,
-   "run": "sed -n '78,79p;153,154p;190,192p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
-   "expect": "Nothing goes into that repository without the user's word — not the\\s+candidate \\(step 5\\), not a code defect \\(item 6\\)\\.[\\s\\S]*A code defect goes into the repository's `ISSUES\\.md` only on the user's word[\\s\\S]*Then stop: applying\\s+the candidate to the user's files needs their word"
-  }
- },
- {
-  "name": "G4 move 2/2, Where it writes 5/5: rethink names no place for its skeleton",
-  "old": "\n\n## What it will and will not do to your text",
-  "new": " The `rethink` page does not specify where\nits skeleton is stored.\n\n## What it will and will not do to your text",
-  "claims": [
-   {
-    "name": "R02e the rethink page does not say where its skeleton is stored",
-    "pattern": "The `rethink` page does not specify where its skeleton is stored\\.",
-    "asks": "The rethink page does not say where the skeleton it hands over is stored."
-   }
-  ],
-  "check": {
-   "level": 2,
-   "run": "grep -c -i -E 'director|\\$RUN|RUN=|CLAUDE_PLUGIN_DATA|TMPDIR|/tmp|mkdir|skeleton\\.md|stored|saved' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md; sed -n '183,188p' /Users/ruliny/Git/agent-skills/ISSUES.md",
-   "expect": "^0\\n[\\s\\S]*## E13\\. `rethink` hands over \"one file\" and no page says where it is written[\\s\\S]*with no path, no run directory and no statement of whether\\s+the file lands inside or outside the user's repository"
-  }
- },
- {
   "name": "G3a run lifetime, installed: uninstall deletes the runs unless --keep-data",
-  "old": "\n\n## What it will and will not do to your text",
-  "new": "\n\nInstalled, `claude plugin uninstall` deletes the plugin data directory and the runs in it unless you\npass `--keep-data`.\n\n## What it will and will not do to your text",
+  "old": "its skeleton is stored.",
+  "new": "its skeleton is stored.\n\nInstalled, `claude plugin uninstall` deletes the plugin data directory and the runs in it unless you\npass `--keep-data`.",
   "claims": [
    {
     "name": "G3a lifecycle: installed, claude plugin uninstall deletes the data directory and its runs unless --keep-data",
@@ -167,23 +87,6 @@
    "level": 1,
    "run": "sed -n '3,5p;125,127p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; sed -n '9p' /Users/ruliny/Git/agent-skills/research/README.md",
    "expect": "changed from 3/6 to 6/6 when the text was repaired[\\s\\S]*six questions, one trial each[\\s\\S]*moved one README from 3/6 to 6/6, took\\s+departures from 1 to 0, and broke neither control\\. One trial per question[\\s\\S]*3/6 → 6/6 on six reader questions, one trial each"
-  }
- },
- {
-  "name": "R02f the re-audit paragraph: the placement sentence cut, the re-measurement rule kept",
-  "old": "When you re-audit a temporary candidate, keep it at the same relative location in a copy of its Markdown\ntree so its links still resolve. Use the same questions, answer key, entry file, and model; changing one\nmakes it a new measurement rather than a comparison.",
-  "new": "When you re-audit after a rewrite, use the same questions, answer key, entry file, and model; changing one\nmakes it a new measurement rather than a comparison.",
-  "claims": [
-   {
-    "name": "R02f2 a re-audit after a rewrite uses the same questions, answer key, entry file and model, or it is a new measurement",
-    "pattern": "When you re-audit after a rewrite, use the same questions, answer key, entry file, and model; changing one makes it a new measurement rather than a comparison\\.",
-    "asks": "When the user re-audits after a rewrite, the re-audit uses the same questions, answer key, entry file and model as the audit before it; changing any one of them makes it a new measurement rather than a comparison."
-   }
-  ],
-  "check": {
-   "level": 2,
-   "run": "sed -n '106,109p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md",
-   "expect": "## Re-measuring after a rewrite[\\s\\S]*Same questions, same key, same entry file, same model\\. Change any of them and the two scores are not\\s+comparable; a new question set is a new measurement with a new baseline, not a result\\."
   }
  },
  {
@@ -306,6 +209,23 @@
   }
  },
  {
+  "name": "repin C15",
+  "old": "The `rewrite`\ninstructions create their run there too.",
+  "new": "The `rewrite`\ninstructions create their run there too.",
+  "claims": [
+   {
+    "name": "C15 rewrite writes its rounds and artefacts into",
+    "pattern": "The `rewrite` instructions create their run there too\\.",
+    "asks": "rewrite's instructions create its run where audit's instructions create theirs: under the plugin data directory when installed, under the temporary directory from a checkout."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '33p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '66,68p;71p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+   "expect": "RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/\\$\\(date[\\s\\S]*Work in a run directory of the document's own, outside the repository that holds it: made by the\\s+formula of \\[`audit`'s step 1\\][\\s\\S]*RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/\\$\\(date"
+  }
+ },
+ {
   "name": "repin C24",
   "old": "On one file measured on 2026-09-10, the chain moved 2,725 words to 2,571 — six percent — while the\nsecond pass cut 105 words and the third added 105 back as missing framing.",
   "new": "On one file measured on 2026-09-10, the chain moved 2,725 words to 2,571 — six percent — while the\nsecond pass cut 105 words and the third added 105 back as missing framing.",
@@ -381,13 +301,13 @@
    {
     "name": "C44 the 2026-09-10 measurement had no arm that",
     "pattern": "The experiment had no no-document arm, and the repository has no individual reader records for it\\.",
-    "asks": "The 2026-09-10 chain measurement, the one that took one README from 3/6 to 6/6, ran no arm that asked the same questions with no document, and the repository holds no record of that measurement's individual readers."
+    "asks": "The 2026-09-10 chain experiment had no arm that asked the same questions with no document, and the repository holds no records of its individual readers."
    }
   ],
   "check": {
    "level": 2,
-   "run": "sed -n '10p' /Users/ruliny/Git/agent-skills/research/README.md; sed -n '125,127p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; sed -n '94,98p' /Users/ruliny/Git/agent-skills/ISSUES.md",
-   "expect": "no arm ever ran without the document[\\s\\S]*the four-part chain moved one README from 3/6 to 6/6[\\s\\S]*hold summaries of the reader run, not the readers'\\s+returns; the 3/6 → 6/6 figures have no per-reader record in the repository"
+   "run": "sed -n '10p' /Users/ruliny/Git/agent-skills/research/README.md; sed -n '104,107p' /Users/ruliny/Git/agent-skills/plugins/terse/references/prior-art.md; sed -n '19,21p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/validation.json; sed -n '38,40p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/README.md; sed -n '40p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; echo \"files outside the reader brief with its departed: field: $(grep -rlE '^[[:space:]]*departed:' /Users/ruliny/Git/agent-skills/research /Users/ruliny/Git/agent-skills/plugins | grep -vc 'skills/audit/references/measure\\.md$')\"",
+   "expect": "no arm ever ran without the document[\\s\\S]*Both ran the control\\. We did not\\.[\\s\\S]*\"live_reader_experiments_run\": 0[\\s\\S]*Forty Codex seat returns[\\s\\S]*the 2026-09-10 run used Haiku[\\s\\S]*with its departed: field: 0"
   }
  }
 ]

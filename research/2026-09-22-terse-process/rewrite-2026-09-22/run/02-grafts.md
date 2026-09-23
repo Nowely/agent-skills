@@ -42,8 +42,7 @@ for every cut of twenty words or more to have a reason, and for declared behavio
 source and evidence. The shipped check rejects a new round that loses a pinned sentence or restores wording
 retired as false. That guard is not a promise that no regression can occur.
 
-When you re-audit a temporary candidate, keep it at the same relative location in a copy of its Markdown
-tree so its links still resolve. Use the same questions, answer key, entry file, and model; changing one
+When you re-audit after a rewrite, use the same questions, answer key, entry file, and model; changing one
 makes it a new measurement rather than a comparison.
 
 All three skills announce how many agents they are about to spawn, on which model, and wait for your
@@ -72,7 +71,7 @@ therefore describes this checkout, not that published revision.
 ## Where it writes
 
 The `audit` instructions create the run under the plugin data directory when installed, or under
-`$TMPDIR/terse` from a checkout, and forbid writing into the audited repository. The `rewrite`
+`${TMPDIR:-/tmp}/terse` from a checkout, and forbid writing into the audited repository. The `rewrite`
 instructions create their run there too. They instruct the agent to record a code defect in
 `code-defects.md` in the run and offer it to you. Copying that defect into the repository's `ISSUES.md`,
 or applying the candidate to your document, requires your word. The `rethink` page does not specify where

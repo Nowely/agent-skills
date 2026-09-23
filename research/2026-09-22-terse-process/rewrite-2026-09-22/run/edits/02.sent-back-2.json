@@ -170,20 +170,25 @@
   }
  },
  {
-  "name": "R02f the re-audit paragraph: the placement sentence cut, the re-measurement rule kept",
+  "name": "R02f the re-audit paragraph, claimed where it stands",
   "old": "When you re-audit a temporary candidate, keep it at the same relative location in a copy of its Markdown\ntree so its links still resolve. Use the same questions, answer key, entry file, and model; changing one\nmakes it a new measurement rather than a comparison.",
-  "new": "When you re-audit after a rewrite, use the same questions, answer key, entry file, and model; changing one\nmakes it a new measurement rather than a comparison.",
+  "new": "When you re-audit a temporary candidate, keep it at the same relative location in a copy of its Markdown\ntree so its links still resolve. Use the same questions, answer key, entry file, and model; changing one\nmakes it a new measurement rather than a comparison.",
   "claims": [
    {
-    "name": "R02f2 a re-audit after a rewrite uses the same questions, answer key, entry file and model, or it is a new measurement",
-    "pattern": "When you re-audit after a rewrite, use the same questions, answer key, entry file, and model; changing one makes it a new measurement rather than a comparison\\.",
-    "asks": "When the user re-audits after a rewrite, the re-audit uses the same questions, answer key, entry file and model as the audit before it; changing any one of them makes it a new measurement rather than a comparison."
+    "name": "R02f1 a re-audited temporary candidate keeps its relative place in a copy of its Markdown tree, so its links resolve",
+    "pattern": "When you re-audit a temporary candidate, keep it at the same relative location in a copy of its Markdown tree so its links still resolve\\.",
+    "asks": "When the user re-audits a temporary candidate, keeping it at the same relative location in a copy of its Markdown tree is what keeps its links resolving for the re-audit's readers."
+   },
+   {
+    "name": "R02f2 a re-audit uses the same questions, answer key, entry file and model, or it is a new measurement",
+    "pattern": "Use the same questions, answer key, entry file, and model; changing one makes it a new measurement rather than a comparison\\.",
+    "asks": "A re-audit uses the same questions, answer key, entry file and model as the audit it is compared with; changing any one of them makes it a new measurement rather than a comparison."
    }
   ],
   "check": {
    "level": 2,
-   "run": "sed -n '106,109p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md",
-   "expect": "## Re-measuring after a rewrite[\\s\\S]*Same questions, same key, same entry file, same model\\. Change any of them and the two scores are not\\s+comparable; a new question set is a new measurement with a new baseline, not a result\\."
+   "run": "sed -n '33,37p;49p;106,109p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md",
+   "expect": "\\| the `\\.md` files in the repository \\|[\\s\\S]*\\| starting at the entry file \\|[\\s\\S]*\\| following links it finds in the text \\|[\\s\\S]*You may open only \\.md files in <REPO>\\.[\\s\\S]*## Re-measuring after a rewrite[\\s\\S]*Same questions, same key, same entry file, same model\\. Change any of them and the two scores are not\\s+comparable"
   }
  },
  {
