@@ -77,6 +77,19 @@ forensics remain in the repository references and release notes.
   regressions, send-backs, readers, task gate and cost per round, with the verifier's variance between
   two threads as a hypothesis; and `stages.md` records that the 2026-09-11 failure came back and that
   the shape decision now comes first.
+- `rethink`'s hand-over, from the owner's read of the first skeleton for this plugin's README. The
+  skeleton's first part carries the genre's order from step 1 and says, place by place, where it follows
+  or departs and why; each section names its device; a seventh part holds the owner's decisions with the
+  coordinator's defaults and the points least sure, each with what would settle it. The owner is shown
+  the sections as a table with budgets and devices, the departures from the genre, the decisions with
+  their defaults and what is asked of them; the mechanical rules, terms, deletions and outside edits are
+  the writers' and the scripts'. Every skeleton is its own numbered file, the owner's answer is kept
+  verbatim beside it, and `skeleton.md` is a copy of the current one; agreement is still the user's word
+  on a named file, with its path and SHA-256. `briefs.md` gains the skeleton writer's brief and the
+  message to the owner, and `stages.md` gains rule 12 — a README describes the code as it is, with no
+  binding to a version without a weighty reason, in the owner's words from the same read — so lens 7's
+  default is now twelve rules. On 2026-09-23 the owner, sent a 447-line skeleton, asked first what
+  exactly was required of him.
 
 ### Added
 
@@ -104,7 +117,7 @@ forensics remain in the repository references and release notes.
   purpose statement — the skeleton's, or the audit's purpose line — and against the skeleton's own
   rules, section by section: what each section buys a reader who came for that purpose, the rules it
   breaks, paragraphs whose cut loses nothing the purpose needs, technical detail above the middle, and
-  the opening. Where the skeleton adopted them or none exists yet, the rules are the eleven of
+  the opening. Where the skeleton adopted them or none exists yet, the rules are the twelve of
   `stages.md`, which the brief calls one owner's calibration and not a law of the genre. A finding that
   names neither a rule nor the purpose is discarded, and the one change it proposes is a cut. No brief named those rules: in round 04 of 2026-09-23 the water
   lens proposed three cuts of seven words in all, and the owner, reading that round, found water by the

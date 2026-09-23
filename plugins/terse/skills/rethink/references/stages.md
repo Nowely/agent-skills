@@ -271,9 +271,10 @@ run where three were added without budgets ended 600 words over a total nobody h
 
 ## The rules this produced
 
-Derived from what one owner changed on one document, on 2026-09-11 and 12, not from a standard. They are
-that owner's rules and the calibration target for their next document; another owner's are learned the
-same way, and none of them is a law of the genre. They are about content and order; the rules about
+Derived from what one owner changed on his documents — rules 1 to 11 on one, on 2026-09-11 and 12, rule
+12 on the next, on 2026-09-24 — not from a standard. They are that owner's rules and the calibration
+target for their next document; another owner's are learned the same way, and none of them is a law of
+the genre. They are about content and order; the rules about
 sentences are in [writing-rules.md](../../rewrite/references/writing-rules.md) and are a different layer.
 
 1. **Open with the problem and the goal.** What is this for, what is it trying to achieve. The project's
@@ -309,6 +310,14 @@ sentences are in [writing-rules.md](../../rewrite/references/writing-rules.md) a
     link the source that carries the detail. Five rounds of one document added caveats to make sentences
     truer and each caveat was contradicted by a finer detail of the code — regressions rose from one to
     ten. The owner named it: an *оговорка* is an anti-pattern.
+12. **A README describes the code as it is.** Not a release: no binding to a version without a weighty
+    reason, and where the installed release differs from the code, that is the release's to settle, not a
+    sentence's. On 2026-09-24 a skeleton asked whether its README should ship only with the release that
+    would make one of its sentences true, and the owner answered: «REAMDE всегда должен соответствовать
+    коду. Если вышла версия 1, а в коде мы запилили еще 10 штук новых фич, значит реадми описывает
+    текущую действительность. В нем не должно быть без везкой причины привязка к версии.» — a README
+    always matches the code; if version 1 shipped and ten features have landed since, it describes the
+    present, and it carries no binding to a version without a weighty reason.
 
 ## One rule about the artifact you show for review
 

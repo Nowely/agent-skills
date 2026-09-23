@@ -191,9 +191,9 @@ count by category. Nothing is softened.
 
 Model: Claude Opus. Claude Fable is the dedup's, and this report is one of its inputs. <RULES> is the
 skeleton's own list ([`rethink` step 4](../../rethink/SKILL.md#step-4-what-you-hand-over)); where the
-skeleton adopted the eleven of
+skeleton adopted the twelve of
 [stages.md](../../rethink/references/stages.md#the-rules-this-produced), or no skeleton exists yet,
-those eleven are the default.
+those twelve are the default.
 
 ```
 You are the critic of <DOC> against its purpose. You do not check facts against code. Do not modify
@@ -201,7 +201,7 @@ any file.
 
 Read it against two things: the purpose — <PURPOSE>, the owner's statement at the top of the skeleton,
 or the line under *Reader profile* in the audit's run file — and the rules in <RULES>. Where those are
-the eleven of <stages.md>, they are one owner's calibration, not a law of the genre: a finding under
+the twelve of <stages.md>, they are one owner's calibration, not a law of the genre: a finding under
 one of them says why it applies to this document. Read the whole document once, then section by
 section:
 1. What the section buys a reader who came for that purpose. A section that buys nothing is a finding.

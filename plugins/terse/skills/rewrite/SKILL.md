@@ -192,7 +192,7 @@ the verifier's and lens 7's is what one wave measured on 2026-09-12 on a 1600-wo
 | 4. a task | a starting state and a goal, acted on from the document alone; the resulting state | Codex gpt-5.6-sol | two | ~20 commands, 5 min each |
 | 5. a reader's question | one question, one `cat` and nothing else; where they guessed | Codex gpt-5.6-luna | one per question | ~1 min each |
 | 6. dedup and rank | every other report, into one list with a reproducible check per finding | Claude Fable, after the rest | one | ~160k tokens, 15 min |
-| 7. purpose and content | every section against the owner's purpose statement and the skeleton's rules, the eleven of [stages.md](../rethink/references/stages.md#the-rules-this-produced) by default; not the facts | not measured; the brief names Claude Opus | one | unmeasured |
+| 7. purpose and content | every section against the owner's purpose statement and the skeleton's rules, the twelve of [stages.md](../rethink/references/stages.md#the-rules-this-produced) by default; not the facts | not measured; the brief names Claude Opus | one | unmeasured |
 
 Lenses differ; they are not disjoint, and a finding three of them raise is confirmed, not counted three
 times.

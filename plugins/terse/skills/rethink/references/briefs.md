@@ -232,3 +232,57 @@ backtracking — and 01 became the base at ranks 2, 3 and 1, a mean of 2.0 again
 07's 4.7. Read strictly, the rule retired 07 for two missing homes that 01 lacks as well; asked, the
 owner left the reading to the coordinator: «ничего не скажу, так как вне контекста. Решай сам.» — I will
 say nothing, it is outside my context; decide yourself.
+
+## 6. The skeleton, and what the owner reads
+
+```
+You write skeleton <NN> for <DOC>. The base is <R>/structures/<BASE>.md, and the grafts, each from the
+critics' lists with what it displaces, are: <GRAFTS>. Read first, in <R>: purpose.md; owner-words.md;
+the reports in critics/; the survey reports and survey/synthesis.md; terms.md; <DOC>; and, from the
+second skeleton on, the last one and the owner's read of it, skeleton-read-<NN-1>.md, whose every
+answer you apply or put back to the owner as a question.
+
+Seven parts, in order:
+1. The owner's purpose statement, verbatim; the base, with its ranks; the genre's order as a table —
+   place, what the genre puts there, N of M, where the owner's exemplars put it — with, at each place,
+   whether this skeleton follows or departs, and why.
+2. Each section: its heading and budget; its purpose; what it excludes; the device that carries it; and
+   what it rests on — a row, a count, a clause of the purpose, the owner's words.
+3. The mechanical rules, each a command and the output that passes.
+4. The terminology decisions, with the words rejected and why.
+5. What is deleted outright from <DOC>, with the cost of each deletion.
+6. The edits this structure needs in files that are not the document.
+7. The owner's decisions, each with your default; the five you are least sure of, each with what would
+   settle it.
+Each failure a critic found in all the structures is repaired here or named with its cost. The skeleton
+describes the document and never argues for itself: no section is introduced by who asked for it.
+
+Write <R>/skeleton.<NN>.md, and copy it to <R>/skeleton.md. Do not modify the repository <DOC> lives in;
+never `cd` inside a compound command. Return only: the path, the sections in order with their budgets,
+and the total.
+```
+
+The message to the owner, which the coordinator writes from the file:
+
+```
+skeleton.<NN>.md, SHA-256 <hash>. What is asked of you: your word on this file, or the numbers of the
+sections that are wrong, a few words each. Each default below stands unless you name it.
+
+| Section | Budget | Device |
+|---|---|---|
+<a row per section of part 2>
+
+Where it departs from the genre's order: <place — what N of M documents do — what this does — why>.
+Your decisions, each with my default: <decision — default>.
+```
+
+The answer goes verbatim into `<R>/skeleton-read-<NN>.md`, each point beside the decision it settles; the
+next skeleton is `skeleton.<NN+1>.md`, and none is overwritten. The owner's word of agreement names the
+file, and `rewrite` writes it, with the file's path and SHA-256, as the first line of its `rounds.md`.
+
+Measured on 2026-09-23/24: skeleton 01, 447 lines, went to the owner with a table of its ten sections and
+seven questions, and he asked what exactly was required of him
+([step 4](../SKILL.md#step-4-what-you-hand-over)). Told which parts were his, that each question had a
+default, and that one word or the numbers of the sections would do, he answered twenty minutes later,
+point by point; skeleton 02 was agreed sixteen minutes after that: «согласен, стало гораздо лучше» —
+agreed, it has become much better.
