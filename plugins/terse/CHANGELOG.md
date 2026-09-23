@@ -119,6 +119,16 @@ forensics remain in the repository references and release notes.
   the run was composed in the coordinator's messages; WebFetch returned paraphrases with invented
   headings for four of ten READMEs; no survey fetched the exemplar the owner had named; and the genre's
   order was counted only when the owner asked for it.
+- `briefs.md` gains stage 3: the structure writers' brief with ten default readings of the purpose; the
+  critics' brief with three default lenses — the owner's calibration, the reader's task, the genre and
+  the evidence — each reading its own file; and the rule that picks the base when the rankings split,
+  the owner-calibration critic's first unless the reader's-task critic shows a reader cannot reach an
+  answer from it, then the best average rank. Every structure accounts for the sections of the genre it
+  drops, with their usage weight and what dropping them costs, and an unknown that is the owner's to
+  decide is put to the owner before any structure is written; step 3 points to all three. On 2026-09-23
+  the ten structures were one inventory in ten orders, none said what it dropped, and all ten planned the
+  files section around a boundary only the owner could settle — failures of the brief, each named by one
+  of the three critics.
 
 ### Fixed
 

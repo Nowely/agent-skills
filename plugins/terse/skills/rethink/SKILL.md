@@ -67,19 +67,25 @@ agents "seats" while claiming they were the equal of native subagents — is in
 First the owner's purpose statement, verbatim: the audit's purpose line, or the user's own words asked
 for now — what this document is for and what it must make its reader able to do. Then about ten
 structures, each from a **different reading of what the document is for**, not ten runs of one prompt.
-Announce the count and the models, and wait.
+Announce the count and the models, and wait. Before the first writer, put to the owner any unknown the
+structures would plan around that is theirs to decide rather than a fact to check, and give every
+writer the answer as a fact. The ten default readings and the writers' brief, under which every
+structure says what sections of the genre it drops, at what weight and what cost, are in
+[briefs.md](references/briefs.md#3-the-structures).
 
 Critics see **all of them at once**, because ranking is the judgement being asked for and it cannot be
 made from isolated reviews. Give each critic a different lens, have every critic judge every structure
 against the purpose statement, and require a fatal flaw for every structure including the one it ranks
-first.
+first. The default lenses — the owner's calibration, the reader's task, the genre and the evidence — and
+the critics' brief: [briefs.md](references/briefs.md#4-the-critics).
 
 Ask each critic one more thing: what all of them got wrong. That answer is usually worth more than the
 ranking — a failure every angle shares is a failure of the brief. On the run this method came from, it
 was the three critics' shared answer that found the real defect, and none of the ten proposals had.
 
 Synthesise from the winner, grafting only what the critics named. Do not average ten structures into a
-compromise.
+compromise. Which structure is the winner when the rankings split:
+[briefs.md](references/briefs.md#5-the-base).
 
 ## Step 4. What you hand over
 

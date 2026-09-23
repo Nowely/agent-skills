@@ -118,3 +118,117 @@ Measured on 2026-09-23 (Codex Astra): 25 rows — TAKE 3, TAKE WITH CHANGE 10, A
 TAKE 6, CONTRADICTS 3 — over 29 sources fetched again, every one answered, and the fetch corrected the
 surveys' own counts in several rows. It is an edit plan for the current document, not an inventory of
 the genre: 12 of its 13 TAKE and TAKE WITH CHANGE rows name the line they replace.
+
+## 3. The structures
+
+**First, the owner's decisions.** An unknown the structures would have to plan around, and that is the
+owner's to decide rather than a fact to check, is put to the owner before any structure is written;
+every writer gets the answer as a fact, and until it comes a structure reserves the section and plans no
+sentence of it. Measured on 2026-09-23: the section answering "can it change my files?" rested on a
+boundary true of the branch and false of the shipped version, which only the owner could settle. The
+brief passed it down to ten writers: all ten planned the section around it and hedged, and three planned
+the very reassurance the audit had scored wrong.
+
+**The readings**, one per writer. The default ten are those of 2026-09-23; the ten angles of 2026-09-12
+are in [stages.md](stages.md#stage-3-the-structure-decided-before-any-prose).
+
+1. **Decide in thirty seconds** — the first screen: what it is, what it does, why one would want it.
+2. **What do I type** — built around the reader's first action and what comes back from it.
+3. **What it will not do** — for a reader who fears the tool: what it reads, writes, where, when it asks.
+4. **Against the alternatives** — for a reader who uses something else: what this is not, what it adds.
+5. **Change without harm** — for a reader burned by changes that made things worse: how one is proven.
+6. **Outside the field** — for a reader who knows none of its jargon: every command in one block to copy.
+7. **The genre's shape** — the order the vendor and the most-used documents converged on, with N of M.
+8. **The process as the spine** — one picture of it, and each section a stage, in the order they run.
+9. **Claims with their evidence** — for the sceptic: each claim beside how it was measured, its limit.
+10. **The shortest that serves** — the fewest words that meet the purpose: at most 400 on 2026-09-23.
+
+```
+You write ONE structure for <DOC>, from this reading of its purpose: <READING>. A structure, not
+prose: the section titles in order; for each section one sentence of purpose, what it deliberately
+excludes, a word budget, and the device that carries it — a table, a code block, a list, a diagram,
+plain paragraphs; the total budget; and at the top the owner's purpose statement, quoted verbatim from
+<R>/purpose.md. One page at most; no sentence of the document itself.
+
+Read first, in <R>: purpose.md, the purpose the structure serves; owner-words.md; the survey reports in
+survey/ — their heading inventories and the genre's order — and survey/synthesis.md, which records what
+to take into <DOC>, not what the genre has; the owner's exemplars, fetched in survey/fetched/; terms.md,
+the words decided, which you use; <DOC> as it stands; and, where there is an audit, the Reader profile
+and the Questions and answer key in audit.md. Do not read the source of what <DOC> describes: a
+structure written from the mechanism describes the mechanism.
+
+Your reading is the lens; the purpose statement is the judge. Under the title, in three lines: what your
+reading takes as the reader's first need, and what it therefore leaves out that another reading would
+keep.
+
+Account for what you keep and for what you drop. Every section you keep rests on a row of the synthesis,
+a place in the genre's order or a clause of the purpose, named — or says "new" and why the purpose needs
+it. For every kind of section the genre carries — in at least 2 of the exact-genre documents, or in the
+most used one — that your structure does not: its name, its count and top usage weight, what the reader
+loses without it, and why that is cheaper than its words.
+
+Write only <R>/structures/<NN>-<slug>.md. Do not modify the repository <DOC> lives in; never `cd` inside
+a compound command. Return only: the file's path, the section titles in order with their budgets, and
+the total.
+```
+
+Measured on 2026-09-23: ten writers (Sonnet ×4, Opus ×2, Codex Luna ×2, Sol, Terra) planned 300 to 778
+words against the current document's 933. Their brief gave them the synthesis and not the surveys, and
+asked what each kept section rested on, never what a structure dropped. The ten came out as one
+inventory in ten orders, no structure said what it left out, and none had Troubleshooting, which 3 of 9
+exact-genre READMEs carry, the most used among them. Skeleton 01 kept it at that weight and the owner
+cut it at his read: the drop was his to make, once it was visible.
+
+## 4. The critics
+
+Three lenses by default, one critic each. Each critic reads its lens's own file beside the common ones,
+and writes its own report.
+
+| Lens | Its own file | What it asks | On 2026-09-23 |
+|---|---|---|---|
+| the owner's calibration | `owner-words.md`, and any draft the owner rejected, with the verdict | would the owner send a document written from this structure, and which of their words it keeps or breaks | Claude Fable |
+| the reader's task | the audit's Reader profile, Questions and answer key and task readers' tasks; with no audit, what the purpose says the reader must be able to do | where each answer lives, and whether each task can be done in order without a guess | Codex Astra |
+| the genre and the evidence | the survey reports, the synthesis and the fetched documents | whether each section rests on a row, a count or the purpose; what the genre has that it drops, at what weight and what cost | Claude Opus |
+
+```
+You are a critic of stage 3 of rethink for <DOC>, on one lens: <LENS>. You see ALL the structures in
+<R>/structures/ at once — the numbered files, not the brief — because ranking is the judgement asked for
+and it cannot be made from isolated reviews. Read first, in <R>: purpose.md, the statement every
+structure is judged against; owner-words.md; survey/synthesis.md; terms.md; <DOC>; and your lens's own
+file, <LENS-FILE>.
+
+Return, in <R>/critics/<FILE>:
+1. A ranking of all of them, each with one line of why it sits there under your lens.
+2. For EVERY structure, the one you rank first included, its fatal flaw: the one thing that would make
+   the owner reject a document written from it, with the owner's words or the purpose clause it fails,
+   quoted.
+3. What all of them got wrong: the failure every structure shares, which is a failure of the brief
+   rather than of a writer, and what the brief should have said.
+4. The grafts: for the structure you rank first, the two or three sections or devices from the others it
+   should take, named by file and section, and what each displaces.
+No rewrites and no prose for the document. Do not modify the repository <DOC> lives in; write only
+under <R> and $TMPDIR; never `cd` inside a compound command. Return only: your file's path, your top
+three in order, and the shared failure in one sentence.
+```
+
+Measured on 2026-09-23: the three firsts split — 07, 09 and 01 — and each critic named a different
+failure all ten shared, each the brief's: the files section planned on a boundary only the owner could
+settle (the owner's calibration); no structure carrying the reader's whole path from an audit report to
+a reviewed draft without writing into their tree (the reader's task); and sections of the genre dropped
+without a word (the genre). Section 3 answers the first and the third; the skeleton carried the second,
+the path from a report to a draft inside Quick start.
+
+## 5. The base
+
+The structure the three rankings agree on is the base. Where they split, the owner-calibration critic's
+first stands, unless the reader's-task critic shows a reader cannot reach an answer from it; then the
+best average rank. Averaging ranks picks one structure to start from; it never averages the structures,
+which [stages.md](stages.md#stage-3-the-structure-decided-before-any-prose) warns against. Grafts come
+only from the critics' lists, each with what it displaces, and the failure each critic found in all the
+structures is repaired in the skeleton or named there with its cost.
+
+Measured on 2026-09-23: 07 fell — two of the audit's questions had no home in it, and one task needed
+backtracking — and 01 became the base at ranks 2, 3 and 1, a mean of 2.0 against 09's 3.3, 05's 3.7 and
+07's 4.7. Read strictly, the rule retired 07 for two missing homes that 01 lacks as well; asked, the
+owner left the reading to the coordinator: «ничего не скажу, так как вне контекста. Решай сам.» — I will
+say nothing, it is outside my context; decide yourself.
