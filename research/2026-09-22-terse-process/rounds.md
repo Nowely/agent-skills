@@ -59,6 +59,8 @@ agent's artifact came back as text or a file under its own temporary directory a
 | 9 | Opus lens 1 | the code, with the right to run it, on round 03 | 339k tokens, 30 min | `run/reviews/03/lens1-opus.md`: 60 sentences, 6 findings, 0 FALSE (round 02: 14, 2 FALSE); 20 isolated-config commands, 5 skill renders against an HTTP stub | — |
 | 9 | Opus lens 2 | the mechanical rules, the water, duplication and contradiction, on round 03 | 193k tokens, 24 min | `run/reviews/03/lens2-opus.md`: 12 findings (round 02: 22) — rule 1 clean, 4 rules, 2 water (13 words), 6 pairs | — |
 | 9 | Codex Luna D5-1–7 | question readers on round 03 | 2 commands, 27–34 s each | `run/reviews/03/c5-*.md`: 5 answered, 2 GUESSED (Q5, Q7) on sentences unchanged since round 02, where both were answered — the instrument's first observed noise, 2 of 7 flips on identical text | — |
+| 9 | Fable lens 6 | dedup and rank of the round-03 wave | 220k tokens (est. from the harness), 15 min | `run/reviews/03/lens6-fable-dedup.md`: 29 findings from 33, 6 by two or more lenses; regressions by the definition 0 | — |
+| 9 | coordinator | verification and routing of round 03; the gate verdict | — | `run/reviews/03/routing.md`; regressions(03) = 0; task gate not run; the noise pair Q5/Q7 | — |
 
 Codex tokens are not measured by the driver; commands and minutes are what its reports carry. Claude tokens
 and minutes are the harness's task notifications. Tokens and minutes are in no copied return and cannot be
