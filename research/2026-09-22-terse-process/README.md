@@ -330,9 +330,9 @@ run by the coordinator on `plugins/terse/README.md` from the audit's run file, e
   at level 3 (decision (k)), D7–D8, `cuts.md`. **Sent back twice** by the verifier (Codex Sol V3, three
   reads on one thread): first 9 of 16 claims, every one DOES NOT ANSWER — an `asks` phrased as a behaviour
   is not answered by a run that quotes a page, and the register frame makes every sentence of *What each one
-  does* a claim about a page — then the frame sentence itself, then 17 of 17. The same model held the same
-  register at 23 of 24 in round 03 in a fresh thread: how strict the verifier is belongs to the thread, not
-  to the page.
+  does* a claim about a page — then the frame sentence itself, then 17 of 17. The same model, in round 03's
+  fresh thread, held 23 of 24 claims written in the same section register: whether the difference is the
+  thread's or the two writers' `asks` wording is a hypothesis this run did not separate.
 - **The wave** (eleven agents after the verifier): lens 1 Opus 10 findings — 1 FALSE (the clone line: the
   commit is on no remote, a fetch by hash refused), 4 OVERSTATED, 5 UNDERSTATED; lens 2 Opus 14, five of
   them misses of the shipped checks, each planted and run; task readers on Claude Sonnet — task 1
