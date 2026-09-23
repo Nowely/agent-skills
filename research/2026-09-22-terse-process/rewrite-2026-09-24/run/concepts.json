@@ -1,0 +1,21 @@
+[
+  {"name": "consent — Quick start, How it works", "pattern": "say so\\b|say whether|your word"},
+  {"name": "the plugin's own folder — Quick start, How it works", "pattern": "folder of the plugin|plugin's own folder|its own folder|outside your repository"},
+  {"name": "agents announced, then it waits — Quick start", "pattern": "how many agents|which model|announce"},
+  {"name": "every word carries weight — opening", "pattern": "carries weight|weight and meaning"},
+  {"name": "not a compressor — opening, What was measured", "pattern": "compressor|shorten|shorter|cut (?:it|your [a-z]+) down|2,725"},
+  {"name": "you start each one — Skills", "pattern": "start each one yourself|starts? (?:on its own|by itself)"},
+  {"name": "back to audit — Skills", "pattern": "audit again|again with the same questions|same questions again"},
+  {"name": "a fix is not undone — How it works", "pattern": "undo(?:es)? a fix|make it worse|checked true|found false"},
+  {"name": "condition, limit, warning — How it works", "pattern": "condition, a limit|limit or a warning"},
+  {"name": "AI readers — How it works, What was measured", "pattern": "AI readers?"},
+  {"name": "answer key; without your text — How it works, What was measured", "pattern": "answer key|without (?:your|the) text"},
+  {"name": "claims against the code — How it works", "pattern": "against the code|named source"},
+  {"name": "the five causes — How it works", "pattern": "misleading steps|hard to find|misplaced"},
+  {"name": "best practices; documents like yours — opening, How it works", "pattern": "best practices?|documents like yours"},
+  {"name": "writers, judges, reviewers — How it works", "pattern": "\\bwriters?\\b|\\bjudges?\\b|\\breviewers?\\b"},
+  {"name": "the diff — Quick start, Skills", "pattern": "\\bdiff\\b"},
+  {"name": "p = 0.25 — What was measured", "pattern": "0\\.25|small trial"},
+  {"name": "a person, never measured — What was measured", "pattern": "a person\\b|\\bpeople\\b"},
+  {"name": "Node — Quick start", "pattern": "\\bNode\\b"}
+]

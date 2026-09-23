@@ -1,0 +1,8 @@
+[
+ {"name": "install-and-first-audit",
+  "start": "A machine with Claude Code and Node installed, and a small git repository whose README you doubt (make one under $TMPDIR: git init, one README.md of three or four paragraphs, one commit). An isolated Claude configuration directory under $TMPDIR keeps the install off the machine's real one.",
+  "goal": "The plugin installed and the first audit of that README started, up to the point where the plugin first asks you something; the exact commands in order with exit codes; what it asks first; where its output will land, inside or outside your repository."},
+ {"name": "audit-to-candidate-without-touching-the-tree",
+  "start": "You own a git repository with a README.md and have already run the audit on it; it reported a run directory path with an audit.md inside and a score with three failures.",
+  "goal": "A rewritten candidate of your README with its diff, obtained without any change to your repository's tracked files, and knowing exactly what you must approve and when — as a plan you would execute: every invocation in order; every file or directory the process creates, marked inside or outside your repository; every point at which your word is asked; the point at which you would stop if you wanted nothing at all written into your repository."}
+]
