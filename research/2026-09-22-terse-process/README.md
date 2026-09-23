@@ -36,6 +36,19 @@ waves, nothing written into the plugin. Every file here is an agent's return, ke
   the pipeline orders a post-critic verdict before the critics; the trigger-word count is 18/25 with the
   stated mask, not 19/25; S4 relabels the cited evidence categories; the appendix script fails as `.mjs`.
 
+- **The live round** ([audit-2026-09-22/](audit-2026-09-22/), [rewrite-2026-09-22/](rewrite-2026-09-22/),
+  waves 7–10): the pages of this branch executed end to end on the plugin's own README — the audit (11
+  refuted claims; readers 5 of 7 against 0 of 7 without the document), a bake-off, three rounds each under a
+  verifier and a wave; regressions 3 → 0 → 2, all at level 3, every one a sentence written from a decision
+  rather than a run; the task gate reached once, with the harness's route; the cap of four reached and round
+  04 handed over with its two regressions named. On the four questions: (1) a text is judged before it is
+  touched by the audit's refuted count and the reader delta, whose noise is now measured — two labels of seven
+  flip on unchanged text at one trial each; (2) the hand-over is a round file, its diff against the original,
+  the regressions charged, and the decisions the owner must take, in a run directory outside the repository;
+  (3) rounds heal when every sentence carries an executed check that a verifier reads before the freeze, and
+  the regressions that remain are the coordinator's decisions, not the writer's sentences; (4) the survey
+  method's phase 3 still never ran.
+
 What survives as a hypothesis with a reproducible footing: the ledger seeded from the audit (2 of 25,
 replayed by script); the executed check in `round.mjs` (catches nothing alone; the substrate a verifier
 reads); a verifier of the edits before the freeze (6/10 blind, n = 1); triage that cannot say `no change`
@@ -261,3 +274,91 @@ branch says, on `plugins/terse/README.md`, with the run file and every reader re
   coordinator's own error: a one-based array in zsh shifted the questions by one in the first fourteen
   reader prompts; caught by opening one assembled brief before the fan-out, rewritten under fresh paths,
   and the fourteen unrun directories stay in the data directory.
+
+## Wave 8 — the live round's second half: `rewrite` executed on the same README
+
+On the owner's word, E5 first: Opus W2 moved `rewrite`'s run directory outside the repository (five
+commits; both pages now carry one run line, `D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/…"`,
+and a retention sentence; Codex Sol R2 reviewed it; E5 closed). Then the page as it stands on the branch,
+run by the coordinator on `plugins/terse/README.md` from the audit's run file, every artefact under
+[rewrite-2026-09-22/](rewrite-2026-09-22/): `brief.md`, the three candidates and the judges' sheets, and
+`run/`, the run directory copied whole — rounds `00`–`02`, `edits/`, `ledger.json`, `reviews/02/`,
+`probe-02/`, `code-defects.md`, `skeleton.md`, `rounds.md`.
+
+- **Seed and pre-read**: `ledger-seed.mjs` seeded 28 entries from the audit's block; Codex Astra L3's
+  adversarial read of the original added four findings, among them the re-audit of a candidate that
+  stands outside the repository (D1 later).
+- **Bake-off** (three writers under blind labels, two judges, a third on the split): Opus WB path-first,
+  1389 words (A); Codex Sol WC frame-first, 960 (B); Opus WA repair-first, 1215 (C); judges Opus J1,
+  Codex Astra J2, Fable J3. A vetoed by two judges (A:57-58 false about executed checks); B and C survived
+  by majority, B ahead on repairs on two sheets and on level on one; B taken whole as `01-candidate.md`.
+  `ledger.mjs` on it: 13 confirmed sentences reworded and lost, to be re-pinned.
+- **Round 02** (Opus G1): the four grafts the judges named — announce-and-wait, the chain's departures and
+  controls, the run lifetime, *Where it writes* moved below *Install* — and 13 re-pins; 23 edits, 23 claims,
+  every check executed. **Sent back twice** by the verifier (Codex Sol V1, brief 0): C44's check counted a
+  neighbour of its sentence and six behaviour sentences carried no claim; then R02f1 stated placement advice
+  no page gives — cut, its gap routed as D1. Then 23 of 24 holding and the round frozen.
+- **The wave** (twelve agents after the verifier): lens 1 Opus 14 findings, 2 FALSE; lens 2 Opus 22; Codex
+  Astra C3 adversarial 3 CONFIRMED; Codex Sol task readers 0 of 2, both blocked at the isolated
+  configuration's login; Codex Luna question readers 7 of 7; Fable dedup 35 from 49, 5 raised by two or
+  more lenses. **Regressions(02) = 3** — sentences the round introduced and its critics showed false at
+  level 3: the uninstall scope (G3a), the `--plugin-dir` route's location (G3b), the audit's no-write rule
+  against `measure.md:117-121` (R02a, the pages' own contradiction, E12). Gate failed; the cap, missing from
+  the first announcement, set at four rounds. Routed: 18 sentence findings to round 03, five code defects as
+  proposals, E10–E13 to `ISSUES.md`, five questions to the owner. About 3.3M Claude tokens.
+
+## Wave 9 — round 03: the first round in the plugin's record that harmed nothing
+
+- **Round 03** (Opus G2, `edits/03.json` built from 02's bytes): 21 edits, 24 claims — 11 re-pins, 13 new;
+  the coordinator's decisions (a)–(e) applied (the page-register frame, the before-readers named, no scope
+  mechanics, the version boundary without editing history, the language sentence left); the three
+  regressions of 02 corrected at level 3 (`probe-03/`: four lifetime cases, four run-directory cases) and
+  level 2. **Sent back once** by the verifier (Codex Sol V2, a fresh thread): G3c, "the operating system may
+  purge the runs", a lifecycle claim at level 2 and so a guess by the page's own rule, reworded to what the
+  two pages warn; then 24 of 24 holding.
+- **The wave** (nine agents after the verifier; lenses 3 and 4 sized to zero): lens 1 Opus 6 findings, 0
+  FALSE; lens 2 Opus 12; Codex Luna readers 5 of 7 with two GUESSED on sentences byte-identical to round
+  02's (Q5, Q7) — the instrument's noise at one trial per question, and Q7's guess is the key's own answer
+  (E14); Fable dedup 29 from 33, 6 by two or more lenses. **Regressions(03) = 0**. The gate: no regression;
+  the task gate not run; one clean round of the two the page asks for before a hand-over. Routed: 15 sentence
+  findings to round 04, D7 and D8, E6 widened, six questions to the owner; recorded through `664f1c4`.
+
+## Wave 10 — round 04, the last under the cap, and what the record says
+
+- **Round 04** (Opus G3, four builds): 17 edits, 17 claims — 11 re-pins, 6 new, one drop; the 15 sentence
+  findings of the round-03 wave applied, the coordinator's decisions (f)–(l), the install-from-a-clone line
+  at level 3 (decision (k)), D7–D8, `cuts.md`. **Sent back twice** by the verifier (Codex Sol V3, three
+  reads on one thread): first 9 of 16 claims, every one DOES NOT ANSWER — an `asks` phrased as a behaviour
+  is not answered by a run that quotes a page, and the register frame makes every sentence of *What each one
+  does* a claim about a page — then the frame sentence itself, then 17 of 17. The same model held the same
+  register at 23 of 24 in round 03 in a fresh thread: how strict the verifier is belongs to the thread, not
+  to the page.
+- **The wave** (eleven agents after the verifier): lens 1 Opus 10 findings — 1 FALSE (the clone line: the
+  commit is on no remote, a fetch by hash refused), 4 OVERSTATED, 5 UNDERSTATED; lens 2 Opus 14, five of
+  them misses of the shipped checks, each planted and run; task readers on Claude Sonnet — task 1
+  **achieved**, the first time in this run: installed from the clone's path by the README's new line and
+  reached `/terse:audit`'s first question in seven turns, on the machine's signed-in profile through
+  `--plugin-dir` with five harness facts the document does not give, and the load left an empty data
+  directory on the real profile; task 2 partly — the write and stop points explicit, the invocation syntax,
+  the filenames and "send it" against "apply" guessed; Codex Luna readers 7 of 7 answered, 6 of 7 by the key
+  (Q7's confident "Yes", the third label in three rounds on unchanged text); Fable dedup 32 from 42, 6 by
+  two or more lenses.
+- **Regressions(04) = 2**, both the coordinator's decisions: the ratchet sentence, reworded on the dedup's
+  wording to promise a rejection the check does not make — a round that drops or re-pins an entry in its own
+  edits passes, and this round's own G4 drop is the counter-example; and the install line, added under
+  decision (k) over the writer's stated risk, naming a clone no reader can obtain. The dedup charged the
+  first by the definition and gave the second as the count from the reader's seat.
+- **The gate**: the cap of four reached; 03 = 0, 04 = 2; the task gate 1 achieved with the harness's route
+  and 1 partly; readers 6 of 7. Handed over: round 04 and `diff-04.patch` with the two regressions named and
+  their fixes, round 03 as the fallback.
+- **Found in passing**: D9 — a pinned claim's citation rots silently (a commit moved the lines R02e cited,
+  `ledger.mjs` never re-runs a check, and 40 of 41 matched when the coordinator re-ran them all); the shipped
+  checks' misses (more evidence for D4; D11, D12); page gaps D10, D13.
+- **What the live round measured about the loop**: rounds 02 → 03 → 04 = 3 → 0 → 2 regressions, all five at
+  level 3 and every one a sentence written from a decision rather than a run — three lifecycle sentences in
+  02, a wording taken from the dedup and a scope line taken by the coordinator in 04; the verifier before the
+  freeze sent rounds back 2, 1 and 2 times, each time on a real defect of the edits' evidence; the question
+  readers moved 7/7 → 5/7 → 7/7 at one trial each, two labels flipping on unchanged text; the task gate went
+  0 of 2 → not run → 1 achieved and 1 partly, and the achieved one needed the harness's route. Claude tokens
+  for the writer and the wave about 1.6M (G3 695k, lens 1 304k, lens 2 178k, Sonnet 171k, Fable 274k); the
+  Sol thread's three reads report 6.6M tokens, most of them cached re-reads; Luna 7 × 12k.
