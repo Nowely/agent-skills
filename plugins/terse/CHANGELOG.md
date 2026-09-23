@@ -97,6 +97,10 @@ forensics remain in the repository references and release notes.
   orders, the three critics' shared failures, and how the base was chosen. Beside the rule on the review
   artifact: the owner's read of skeleton 01, five objections each about which sections exist or where
   they sit and none about a phrase, and skeleton 02 agreed at 625 words against the current 909.
+- `stages.md`'s principle every stage serves carries the owner's restatement of it, 2026-09-24, verbatim
+  with a rendering: the aim is any text, the README now and documentation and code later; every word has
+  a reason and carries meaning, in code too; and the workflow takes a text apart into its skeleton,
+  essence, structure and meanings, evaluates them, and gathers the best practices.
 
 ### Added
 

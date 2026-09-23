@@ -34,6 +34,21 @@ it — each is a low-scoring item taking room a higher one wanted.
 It is also why a word budget is a design tool rather than a limit. At 2700 words nothing has to argue
 its way in. At 1000, every block must say what it displaces.
 
+On 2026-09-24 the owner restated it for any text, code included:
+
+> По поводу области. Моя цель, научить работать и улучшать любой текст. По сути за ними часто стоит одна
+> суть. Нигде не требуется проза, вода, нейрослоп и прочее. За каждым словом должна быть причина. Каждое
+> слово должно нести смысл и тд. Это относится к коду и прочему. Сейчас мы работаем на реадме, но позже
+> будем эксперементировать с документацией, кодом и тд. Для этого нужно разбирать и выделять скелет,
+> суть, структуру, смыслы. Их оценивать, собирать информацию о бестпрактисах и тд. В общем этот ворквлоу
+> мы и пытаемся итеративно построить.
+
+In English: the aim is to learn to work on and improve any text, since one essence often stands behind
+them all — the README now, documentation and code later. No prose, water or AI slop is needed anywhere;
+every word must have a reason and carry meaning, in code too. The workflow being built, iteratively,
+takes a text apart into its skeleton, its essence, its structure and its meanings, evaluates them, and
+gathers the best practices.
+
 ## The measurement that forced this file
 
 2026-09-11. Ten sections of documentation, 2233 words, written at the author's ordinary quality and
