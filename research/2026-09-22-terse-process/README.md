@@ -39,7 +39,7 @@ waves, nothing written into the plugin. Every file here is an agent's return, ke
 - **The live round** ([audit-2026-09-22/](audit-2026-09-22/), [rewrite-2026-09-22/](rewrite-2026-09-22/),
   waves 7–10): the pages of this branch executed end to end on the plugin's own README — the audit (11
   refuted claims; readers 5 of 7 against 0 of 7 without the document), a bake-off, three rounds each under a
-  verifier and a wave; regressions 3 → 0 → 2, all at level 3, every one a sentence written from a decision
+  verifier and a wave; regressions 3 → 0 → 2, four of the five at level 3 and one at level 2, every one a sentence written from a decision
   rather than a run; the task gate reached once, with the harness's route; the cap of four reached and round
   04 handed over with its two regressions named. On the four questions: (1) a text is judged before it is
   touched by the audit's refuted count and the reader delta, whose noise is now measured — two labels of seven
@@ -351,11 +351,19 @@ run by the coordinator on `plugins/terse/README.md` from the audit's run file, e
 - **The gate**: the cap of four reached; 03 = 0, 04 = 2; the task gate 1 achieved with the harness's route
   and 1 partly; readers 6 of 7. Handed over: round 04 and `diff-04.patch` with the two regressions named and
   their fixes, round 03 as the fallback.
+- **The owner's read, the loop's stop**: round 04 rejected as a README, for content and shape and not for
+  phrasing — the opening too long and tied to "README", no statement of what the plugin is for, the pipeline
+  described twice, *Install* verbose, no table of the skills, water in paragraphs, technical detail, a licence
+  line. No skeleton had been agreed: the audit route went straight into rounds, the failure `stages.md`
+  records from 2026-09-11, repeated on the plugin's own README. The owner's purpose statement and their
+  earlier words on READMEs, collected from the sessions since 2026-09-10, are in
+  [owner-readme-words.md](owner-readme-words.md). Costs by round from `rounds.md`: about 1.0M, 1.2M and 1.6M
+  Claude tokens.
 - **Found in passing**: D9 — a pinned claim's citation rots silently (a commit moved the lines R02e cited,
   `ledger.mjs` never re-runs a check, and 40 of 41 matched when the coordinator re-ran them all); the shipped
   checks' misses (more evidence for D4; D11, D12); page gaps D10, D13.
-- **What the live round measured about the loop**: rounds 02 → 03 → 04 = 3 → 0 → 2 regressions, all five at
-  level 3 and every one a sentence written from a decision rather than a run — three lifecycle sentences in
+- **What the live round measured about the loop**: rounds 02 → 03 → 04 = 3 → 0 → 2 regressions, four of the five at
+  level 3, one at level 2, and every one a sentence written from a decision rather than a run — three lifecycle sentences in
   02, a wording taken from the dedup and a scope line taken by the coordinator in 04; the verifier before the
   freeze sent rounds back 2, 1 and 2 times, each time on a real defect of the edits' evidence; the question
   readers moved 7/7 → 5/7 → 7/7 at one trial each, two labels flipping on unchanged text; the task gate went
