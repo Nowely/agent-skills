@@ -155,11 +155,12 @@ so every `node "$S/..."` and `node "$A/..."` on the pages fails with a missing f
 entrust already uses: `${CLAUDE_SKILL_DIR}/scripts` for `S` and `${CLAUDE_SKILL_DIR}/../audit/scripts`
 for `A`, with the checkout sentence kept.
 
-## E11. Both run directories are outside the working directory, where the Write tool and shell redirects prompt, and neither page says so
+## E11. All three run directories are outside the working directory, where the Write tool and shell redirects prompt, and no page says so
 
 **Evidence, level 1.** After `9efef3d`, `plugins/terse/skills/audit/SKILL.md:33` and
 `plugins/terse/skills/rewrite/SKILL.md:81` place every run under the plugin's data directory or
-`$TMPDIR/terse`, outside the repository and outside the session's working directory.
+`$TMPDIR/terse`, outside the repository and outside the session's working directory; since `3c4d1e1`
+`plugins/terse/skills/rethink/SKILL.md:29-53` does the same for `rethink`'s run.
 `plugins/entrust/README.md:137-138`: "In every permission mode but auto and bypass, a write outside the
 working directory prompts, so add that directory to `permissions.additionalDirectories` once". The two
 terse pages tell the coordinator to `mkdir -p "$RUN"` and to write the run file, the rounds, the edits and
