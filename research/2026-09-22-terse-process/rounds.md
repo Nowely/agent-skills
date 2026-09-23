@@ -1,6 +1,6 @@
 # Rounds
 
-One orchestrated round in eight waves, the coordinator on Fable 5.1 (Opus 5 during scouting). Waves 1–3 were
+One orchestrated round in nine waves, the coordinator on Fable 5.1 (Opus 5 during scouting). Waves 1–3 were
 the plan's six agents; wave 4 the owner's five for the vendor sources; wave 5 four more for the evaluation
 guide and the design's second round; wave 6 the implementation, one writer and one reviewer resumed once:
 38 agent runs across the rows below (the fourteen readers are one row), none dropped. The split critic was skipped in
@@ -54,6 +54,11 @@ agent's artifact came back as text or a file under its own temporary directory a
 | 8 | Codex Luna C5-1–7 | question readers on round 02 | 2 commands, 26–33 s each | `run/reviews/02/c5-*.md`: 7/7 answered by the key, six from one section | Q7 is now answered by the text, which the audit's key calls unanswerable; the page says nothing about a key the rewrite makes obsolete |
 | 8 | Fable lens 6 | dedup and rank of the wave | 222k tokens, 15 min | `run/reviews/02/lens6-fable-dedup.md`: 35 findings from 49, 5 raised by two or more lenses; conflicts named; the task gate not met | one finding of its own (Q7's key under the new text), marked YOURS |
 | 8 | coordinator | verification and routing of the wave; the 02 row; the gate verdict | — | `run/reviews/02/routing.md`; regressions(02) = 3; F4 and F10 re-run at level 3 | set no round cap in the first announcement, as the page requires; set it at four now |
+| 9 | Opus G2 | round 03 from the wave's list: 21 edits, 24 claims, D2–D6; sent back once by the verifier (G3c) | 480k tokens, 44 min (two calls) | `run/03-review.md` (1106 words), `run/edits/03.json`, `run/code-defects.md` D2–D6, `run/probe-03/`; the three regressions of 02 re-pinned at level 3 | first build claimed the OS purge as a fact of the OS (level 2 lifecycle = a guess, by the page); reworded to what the pages say |
+| 9 | Codex Sol V2 | verifier of round 03's edits, two reads (a fresh thread) | 13 + 5 commands, 7.7 + 3.4 min | `run/reviews/03/verifier-sol-v2.md`, `-v2b.md`: 23/24 then 24/24 HOLD | — |
+| 9 | Opus lens 1 | the code, with the right to run it, on round 03 | 339k tokens, 30 min | `run/reviews/03/lens1-opus.md`: 60 sentences, 6 findings, 0 FALSE (round 02: 14, 2 FALSE); 20 isolated-config commands, 5 skill renders against an HTTP stub | — |
+| 9 | Opus lens 2 | the mechanical rules, the water, duplication and contradiction, on round 03 | 193k tokens, 24 min | `run/reviews/03/lens2-opus.md`: 12 findings (round 02: 22) — rule 1 clean, 4 rules, 2 water (13 words), 6 pairs | — |
+| 9 | Codex Luna D5-1–7 | question readers on round 03 | 2 commands, 27–34 s each | `run/reviews/03/c5-*.md`: 5 answered, 2 GUESSED (Q5, Q7) on sentences unchanged since round 02, where both were answered — the instrument's first observed noise, 2 of 7 flips on identical text | — |
 
 Codex tokens are not measured by the driver; commands and minutes are what its reports carry. Claude tokens
 and minutes are the harness's task notifications. Tokens and minutes are in no copied return and cannot be
