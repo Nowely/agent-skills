@@ -22,6 +22,10 @@ sentence in it was written against a shape nobody had agreed.
 
 The method, with the measurements behind each stage: [stages.md](references/stages.md).
 
+**Entered from an `audit` whose shape is not agreed**, start at step 3, with the audit's profile, purpose
+and answer key as the brief. Step 1's survey runs before it at the size the user gives, and zero is a
+size; step 4 is unchanged.
+
 ## Step 1. What comparable documents already solved
 
 A fan-out, not one reader. One agent searching for good examples returns the genre's folklore; six agents

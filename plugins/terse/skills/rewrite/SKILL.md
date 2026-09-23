@@ -17,7 +17,8 @@ Two ways in, and they differ only in what tells you where the text is wrong:
 |---|---|---|
 | a run directory with rounds in it already — whatever else you have | step 4, at the next round; steps 1 to 3 are not repeated | the last round's review under `reviews/NN/` |
 | a skeleton `rethink` agreed | step 2 | the skeleton's purpose, exclusions and budget per section |
-| an `audit` run file | step 1 | the named failures, each at its line, with its cause |
+| an `audit` run file whose shape verdict is agreed | step 1 | the named failures, each at its line, with its cause |
+| an `audit` run file whose shape is not agreed | `/terse:rethink` at its structure stage first, given the audit's profile, purpose and key; then step 2 on the skeleton route, the ledger still seeded from the audit | the skeleton's purpose, exclusions and budget per section |
 | neither | say so, offer `/terse:audit` or `/terse:rethink`; if the user declines both, continue on your own guesses and say so in the report | — |
 
 Why it is rounds and not a pass, and the measurements behind every rule here:
@@ -26,13 +27,15 @@ act; this file is.
 
 ## Step 1. The measurement, where there is one
 
-Ask the user for the run directory from `audit` and read `audit.md` there. You need two headings:
-**Reader profile** and **What broke**. The contract is in [ledgers.md](../audit/references/ledgers.md).
+Ask the user for the run directory from `audit` and read `audit.md` there. You need three headings:
+**Score**, for the shape verdict, **Reader profile** and **What broke**. The contract is in
+[ledgers.md](../audit/references/ledgers.md). When the verdict is `shape: not agreed`, stop here and
+offer `/terse:rethink` at its structure stage, as the table above says.
 
 ## Step 2. The brief
 
 Assemble it once, for every writer, in this order; a resumed run does not reassemble it. On the
-skeleton route parts 2 and 5 do not exist; say so in the report rather than inventing them.
+skeleton route the brief has no parts 2 and 5; say so in the report rather than inventing them.
 
 1. **The skeleton**, if there is one — its purpose, exclusions and budget for the section being written,
    unedited.
@@ -74,9 +77,9 @@ D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-
 Name the absolute path in your report; a resumed run is given it by the user and cannot guess it. Under
 the plugin's data directory a run survives plugin updates and is deleted by `claude plugin uninstall`
 unless `--keep-data` is passed, and in the temporary directory the operating system may purge it: say in
-the hand-over that a run which must outlive either is the user's to copy somewhere durable. On the audit
-route, copy `audit.md` in. Nothing goes into that repository without the user's word — not the
-candidate (step 5), not a code defect (item 6).
+the hand-over that a run which must outlive either is the user's to copy somewhere durable. Where an
+audit came first, copy `audit.md` in. Nothing goes into that repository without the user's word — not
+the candidate (step 5), not a code defect (item 6).
 
 Every round is its own file, `NN-<pass>.md`, named for what produced it — `01-candidate`, `06-water`,
 `08-review` — any name, used once; the original is `00-original.md`. Set `S` to this skill's `scripts/`
@@ -100,10 +103,10 @@ your shell rules forbid `cd`.
      a reader to perform; `questions.json` — the questions a reader arrives with, from the audit's key
      when there is one, otherwise from the skeleton's purpose per section, one line each.
    On a resumed run reuse all four; the readers are new agents and stay fresh even where the questions
-   repeat. `ledger.json` on the audit route is the audit's own claim ledger, seeded by
-   `node "$A/ledger-seed.mjs" audit.md ledger.json` (`$A` is `audit`'s `scripts/`) — every confirmed
-   claim a `want: true` the first round must not lose, every refuted one a `want: false`. On the
-   skeleton route it starts empty. Either way it grows from the rounds.
+   repeat. `ledger.json`, where an audit came first — on the skeleton route entered from one too — is
+   the audit's own claim ledger, seeded by `node "$A/ledger-seed.mjs" audit.md ledger.json` (`$A` is
+   `audit`'s `scripts/`) — every confirmed claim a `want: true` the first round must not lose, every
+   refuted one a `want: false`. With no audit it starts empty. Either way it grows from the rounds.
 2. **Write `edits/NN.json`**: for each edit the exact `old` text, which must occur once; the `new` text;
    `claims` it introduces, `retire` phrasings it removes as false, and `drop` the names of ledger
    entries whose claims the edit removes on purpose, each of them named in that round's row of

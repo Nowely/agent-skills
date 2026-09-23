@@ -38,9 +38,9 @@ One entry per wrong answer, each with a cause.
 What could not be settled, and anything the steps contradicted each other about.
 ```
 
-Two headings are load-bearing for `rewrite`: **Reader profile** is the brief it writes to, and **What
-broke** is the fourth part of its chain. Without them it is three parts of a four-part method, and it
-has to say so.
+Three headings are load-bearing for `rewrite`: **Score** carries the shape verdict that decides whether
+it starts, **Reader profile** is the brief it writes to, and **What broke** is the fourth part of its
+chain. Without the last two it is three parts of a four-part method, and it has to say so.
 
 ## Claim ledger entry
 

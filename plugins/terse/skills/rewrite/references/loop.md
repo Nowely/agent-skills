@@ -36,6 +36,7 @@ document ends up with a well-written section in the wrong place.
 |---|---|---|
 | this sentence is wrong, unbacked, or water | stage 4 | the next round's `edits/NN.json` |
 | these two sections repeat each other | stage 3 | written into `skeleton.md` under *open decisions*; the user is asked; `rethink` re-enters at the structure |
+| this section buys the reader nothing the purpose needs | stage 3 | the same |
 | this term is read as something else | stage 2 | the same, at the vocabulary; every occurrence is then rewritten |
 | every comparable document has X and we do not | stage 1 | the same, at the survey; a section and its budget from another |
 | the code does this, the document cannot say otherwise | the code | `code-defects.md` in the run directory, with the check, offered to the user; the repository's `ISSUES.md` only on their word; the document says what the code does today |

@@ -40,6 +40,13 @@ forensics remain in the repository references and release notes.
   user's repository and the defects went into their `ISSUES.md` unasked, while the skill's description,
   both manifests, this changelog and the README promise that nothing is written into the tree without
   the user's word (`ISSUES.md` E5).
+- `rewrite` starts no round on a shape nobody agreed. Its first step reads the audit's shape verdict
+  under *Score*; when it is not agreed the document goes to `/terse:rethink` at its structure stage
+  with the audit's profile, purpose and key, and comes back on the skeleton route with its ledger still
+  seeded from the audit. `rethink` says how it is entered that way, the bake-off's skeleton-route brief
+  and sheet no longer require that no audit ran, and a finding that a section buys the reader nothing
+  the purpose needs is routed to the structure. On 2026-09-22/23 the audit route led straight from the
+  audit into four rounds, and the run's skeleton file reads "none agreed".
 
 ### Added
 

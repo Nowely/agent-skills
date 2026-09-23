@@ -75,9 +75,9 @@ e) For every claim about behaviour you changed or added: the level of evidence r
 
 ## The writer brief, skeleton route
 
-When there is no audit and the writing starts from a skeleton `rethink` agreed, send the whole skeleton
-— every section's purpose, what it excludes, its word budget — with the writing rules and the curse of
-knowledge, then this:
+When the writing starts from a skeleton `rethink` agreed, send the whole skeleton — every section's
+purpose, what it excludes, its word budget — with the writing rules and the curse of knowledge, then
+this:
 
 ```
 Write the whole of <FILE> against the skeleton above, section by section: each section's purpose is
@@ -125,7 +125,7 @@ sheets.
 
 ## The judging sheet, skeleton route
 
-When there is no audit, the first two rows stay vetoes and the primary row changes: **purpose met** — does
+On the skeleton route the first two rows stay vetoes and the primary row changes: **purpose met** — does
 the section do what the skeleton says it buys the reader, judged against that sentence and nothing else;
 then **exclusions respected** — nothing the skeleton excluded was restored; then **budget** — words
 against the skeleton's number, reported and never selecting. Give the judges the skeleton and the
