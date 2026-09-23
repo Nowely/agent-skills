@@ -28,8 +28,8 @@ One row per reader.
 
 ## Score
 Right answers over questions, steps, departures. Written as a single line that can be compared later.
-Then `shape: agreed` or `shape: not agreed`, and what it rests on: the skeleton the user read, or their
-words that the current shape stands, quoted.
+Then `shape: agreed` or `shape: not agreed`, and what an agreement rests on: the path and SHA-256 of the
+skeleton the user said they agree to, or their words that the current shape stands, quoted.
 
 ## What broke
 One entry per wrong answer, each with a cause.

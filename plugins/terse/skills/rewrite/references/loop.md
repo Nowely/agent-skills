@@ -40,7 +40,7 @@ document ends up with a well-written section in the wrong place.
 | this term is read as something else | stage 2 | the same, at the vocabulary; every occurrence is then rewritten |
 | every comparable document has X and we do not | stage 1 | the same, at the survey; a section and its budget from another |
 | the code does this, the document cannot say otherwise | the code | `code-defects.md` in the run directory, with the check, offered to the user; the repository's `ISSUES.md` only on their word; the document says what the code does today |
-| the document does not answer this, and should it | the owner | asked, with the cost of answering it |
+| the document does not answer this, and should it — or a section, a boundary, a rule or a budget should change | the owner | asked, with the cost of answering it; a structural answer is recorded in `skeleton.md` beside the question |
 
 A batch of findings that are all stage 4 after several rounds is a document converging; a batch that
 keeps producing stage 2 and 3 findings is a document whose skeleton was agreed too early, and saying so

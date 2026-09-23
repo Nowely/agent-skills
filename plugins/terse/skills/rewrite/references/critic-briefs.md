@@ -98,9 +98,9 @@ You are the critic for the mechanical rules, the water, and the contradictions i
 check facts against code. Do not modify any file.
 
 The rules the document was written to pass: <skeleton.md> — its per-section purpose, exclusions and
-budget, and its mechanical rules — and <writing-rules.md>. Where a rule and a younger recorded decision
-collide (a section added later, a fact restored on the owner's word), the younger decision governs;
-say which you applied.
+budget, and its mechanical rules — and <writing-rules.md>. Where a rule and a younger decision recorded
+in <skeleton.md> with the owner's answer collide (a section added later, a fact restored), the younger
+decision governs; say which you applied.
 
 Three lenses, reported separately, each finding with line and quote:
 1. THE MECHANICAL RULES, read as a grep would: every violation, or "clean"; each section's words
@@ -175,8 +175,8 @@ critic's evidence directly implies one; mark any such addition YOURS.
 For each finding: an id; the quoted sentence with line numbers; the finding in one sentence; which
 reports raised it — a finding raised by two or more lenses ranks higher; the reproducible check copied
 from the critic, or NO CHECK; a category — SENTENCE, STRUCTURE, CODE (a defect the document cannot
-fix), METHOD, SUPERSEDED (settled by a younger recorded decision in <skeleton.md> or its record),
-UNSETTLED, SCOPE; and a proposed minimal edit where one is obvious.
+fix), METHOD, SUPERSEDED (settled by a younger decision recorded in <skeleton.md> with the owner's
+answer), UNSETTLED, SCOPE; and a proposed minimal edit where one is obvious.
 
 Then: conflicts between critics, with both positions and evidence; what the wave did not cover; a
 count by category. Nothing is softened.

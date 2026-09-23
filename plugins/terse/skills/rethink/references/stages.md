@@ -67,8 +67,8 @@ The same failure came back on 2026-09-23, on this plugin's own README: an audit,
 `rewrite` on the audit route with no skeleton agreed, and the owner rejected round 04 for its opening, a
 missing statement of what the plugin is for, the pipeline told twice and water by the paragraph —
 content and arrangement again, not one phrase ([M25](../../rewrite/references/measurements.md#m25)). So
-the audit route now carries the shape decision: `audit` asks what the document is for and returns
-whether its shape is agreed, and `rewrite` starts no round on a shape that is not.
+the shape decision now comes first on every route: `audit` asks what the document is for and returns
+whether the user agreed its shape, and `rewrite` writes nothing on a shape they have not agreed to.
 
 ## Stage 1. What comparable documents already solved
 
@@ -239,14 +239,16 @@ the shortest honest version; the reader's clock, from two minutes to the day it 
 than features; trust, for a tool that runs commands; one continuous argument; and what comparable tools
 do, named.
 
-Each returns section titles, one sentence of purpose each, **what the section deliberately leaves out**,
-and a word budget. No prose. A structure is a set of decisions about what a reader needs and in what
-order, and those decisions have to be legible on their own.
+Every structure answers to one fixed brief, the owner's purpose statement, verbatim, which also opens
+the skeleton. Each returns section titles, one sentence of purpose each, **what the section deliberately
+leaves out**, and a word budget. No prose. A structure is a set of decisions about what a reader needs
+and in what order, and those decisions have to be legible on their own.
 
 Then compare them **together, not one at a time.** Critics see all ten at once, because ranking is the
 judgement being asked for and it cannot be made from isolated reviews. Give each critic a different
-lens, and ask for the worst flaw of every structure including the one it ranks first; a critic
-that finds none in its winner says so, and that is an answer, not a failure to look.
+lens, have each judge every structure against the purpose statement, and ask for the worst flaw of
+every structure including the one it ranks first; a critic that finds none in its winner says so, and
+that is an answer, not a failure to look.
 
 Ask each critic one more thing: what all ten got wrong. That answer is usually worth more than the
 ranking, because a failure every angle shares is a failure of the brief.
@@ -259,11 +261,11 @@ order.
 wrong skeleton costs more than one round trip.
 
 **And keep the skeleton current.** It is the contract the mechanical rules and the word budgets are read
-from, and every later decision — a section added on survey evidence, a fact restored on the reader's word,
-a budget that grew to carry a true sentence — is written back into it. Measured on 2026-09-12: a rules
-critic reading the skeleton as written reported the Node floor, the uninstall block and three sections as
-violations, all of them decisions the reader had taken after the skeleton was agreed and none of them
-recorded in it. A skeleton nobody maintains measures the document against a document nobody agreed. Every section
+from, and every later decision — a section added on survey evidence, a fact restored, a budget that grew
+to carry a true sentence — is a question to the owner, written back into it with their answer. Measured
+on 2026-09-12: a rules critic reading the skeleton as written reported the Node floor, the uninstall
+block and three sections as violations, all of them decisions the reader had taken after the skeleton
+was agreed and none of them recorded in it. A skeleton nobody maintains measures the document against a document nobody agreed. Every section
 carries a budget, the ones added later included: a section without one cannot be over it, and the one
 run where three were added without budgets ended 600 words over a total nobody had revised.
 

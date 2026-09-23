@@ -22,9 +22,9 @@ sentence in it was written against a shape nobody had agreed.
 
 The method, with the measurements behind each stage: [stages.md](references/stages.md).
 
-**Entered from an `audit` whose shape is not agreed**, start at step 3, with the audit's profile, purpose
-and answer key as the brief. Step 1's survey runs before it at the size the user gives, and zero is a
-size; step 4 is unchanged.
+**Entered from an `audit` whose shape is not agreed**, the audit's profile, purpose and answer key are
+the brief, and the steps keep their order: step 1 at the size the user gives, zero included; step 2 in
+full, because a profile and a key carry no terminology decisions; then steps 3 and 4.
 
 ## Step 1. What comparable documents already solved
 
@@ -57,12 +57,15 @@ agents "seats" while claiming they were the equal of native subagents — is in
 
 ## Step 3. The structure
 
-About ten structures, each from a **different reading of what the document is for**, not ten runs of one
-prompt. Announce the count and the models, and wait.
+First the owner's purpose statement, verbatim: the audit's purpose line, or the user's own words asked
+for now — what this document is for and what it must make its reader able to do. Then about ten
+structures, each from a **different reading of what the document is for**, not ten runs of one prompt.
+Announce the count and the models, and wait.
 
 Critics see **all of them at once**, because ranking is the judgement being asked for and it cannot be
-made from isolated reviews. Give each critic a different lens and require a fatal flaw for every
-structure including the one it ranks first.
+made from isolated reviews. Give each critic a different lens, have every critic judge every structure
+against the purpose statement, and require a fatal flaw for every structure including the one it ranks
+first.
 
 Ask each critic one more thing: what all of them got wrong. That answer is usually worth more than the
 ranking — a failure every angle shares is a failure of the brief. On the run this method came from, it
@@ -77,14 +80,16 @@ One file, and it describes the document rather than arguing for itself. A skelet
 section exists — "the block you asked for", "the one you said was missing" — is a negotiation transcript,
 and a reader feels it before they can name it.
 
+- at the top, the owner's purpose statement, verbatim
 - each section: title, one sentence of purpose, what it deliberately excludes, a word budget
 - the mechanical rules the writing must pass, written so that passing is a fact rather than an opinion
 - the terminology decisions from step 2, including the ones you rejected and why
 - what was deleted outright rather than moved, and the stated cost of deleting it
 - any edit this structure requires in a file that is not the document
 
-Then stop and wait. `rewrite` starts from the skeleton the user agreed to, and routes back here anything
-it finds that belongs to a stage above it.
+Then stop and wait for the user's word on this file. `rewrite` starts only from a skeleton the user said
+they agree to, recorded with its path and SHA-256, and routes back here anything it finds that belongs
+to a stage above it.
 
 ## Reference
 

@@ -11,15 +11,22 @@ metadata:
 license: MIT
 ---
 
+**Before any route, the shape.** Nothing is written on a shape the user has not agreed to in their own
+words: a named skeleton file they said they agree to, recorded with its path and SHA-256, or their
+words, quoted, that the document's current shape stands. `audit` records the verdict under *Score*;
+write it, with what it rests on, as the first line of `rounds.md`. A run file or run directory with no
+verdict is not agreed, and a run begun before this rule gets the check once, when it resumes. Not
+agreed, stop and offer `/terse:rethink` — at its structure stage, given the audit's profile, purpose and
+key, where there is an audit; the skeleton the user agrees to there is the way in.
+
 Two ways in, and they differ only in what tells you where the text is wrong:
 
 | You have | Start at | What drives the writing |
 |---|---|---|
-| a run directory with rounds in it already — whatever else you have | step 4, at the next round; steps 1 to 3 are not repeated | the last round's review under `reviews/NN/` |
-| a skeleton `rethink` agreed | step 2 | the skeleton's purpose, exclusions and budget per section |
-| an `audit` run file whose shape verdict is agreed | step 1 | the named failures, each at its line, with its cause |
-| an `audit` run file whose shape is not agreed | `/terse:rethink` at its structure stage first, given the audit's profile, purpose and key; then step 2 on the skeleton route, the ledger still seeded from the audit | the skeleton's purpose, exclusions and budget per section |
-| neither | say so, offer `/terse:audit` or `/terse:rethink`; if the user declines both, continue on your own guesses and say so in the report | — |
+| a run directory with rounds in it already | step 4, at the next round; steps 1 to 3 are not repeated | the last round's review under `reviews/NN/` |
+| a skeleton the user agreed to | step 2 | the skeleton's purpose, exclusions and budget per section |
+| an `audit` run file | step 1 | the named failures, each at its line, with its cause |
+| neither | say so and offer `/terse:audit` or `/terse:rethink`; if the user declines both, continue on your own guesses once the shape is agreed, and say so in the report | — |
 
 Why it is rounds and not a pass, and the measurements behind every rule here:
 [loop.md](references/loop.md) and [measurements.md](references/measurements.md). Neither is needed to
@@ -27,15 +34,15 @@ act; this file is.
 
 ## Step 1. The measurement, where there is one
 
-Ask the user for the run directory from `audit` and read `audit.md` there. You need three headings:
-**Score**, for the shape verdict, **Reader profile** and **What broke**. The contract is in
-[ledgers.md](../audit/references/ledgers.md). When the verdict is `shape: not agreed`, stop here and
-offer `/terse:rethink` at its structure stage, as the table above says.
+Ask the user for the run directory from `audit` and read `audit.md` there: **Score** holds the shape
+verdict the check above reads, and **Reader profile** and **What broke** are parts 2 and 5 of the brief.
+The contract is in [ledgers.md](../audit/references/ledgers.md).
 
 ## Step 2. The brief
 
-Assemble it once, for every writer, in this order; a resumed run does not reassemble it. On the
-skeleton route the brief has no parts 2 and 5; say so in the report rather than inventing them.
+Assemble it once, for every writer, in this order; a resumed run does not reassemble it. Parts 2 and 5
+come from the audit's run file wherever there is one, on either route; a skeleton route with no audit
+has neither, and says so in the report rather than inventing them.
 
 1. **The skeleton**, if there is one — its purpose, exclusions and budget for the section being written,
    unedited.
@@ -55,8 +62,8 @@ Copy the fixed parts; do not paraphrase them. The wording a critic receives is i
 ## Step 3. The first candidate
 
 On a document that already exists, the first thing that runs is the adversarial whole-document read —
-lens 3 of step 4's table — with the right to run the code. On the audit route its findings are added
-under *What broke*; on the skeleton route they become the first round's edits. Then the bake-off: three writers, one whole candidate each with a different stance, and two judges — the
+lens 3 of step 4's table — with the right to run the code. Where there is an audit its findings are
+added under *What broke*; otherwise they become the first round's edits. Then the bake-off: three writers, one whole candidate each with a different stance, and two judges — the
 briefs and the judging sheet, for both routes, are in [bake-off.md](references/bake-off.md). That is the
 only bake-off; every round after it edits the round before.
 
@@ -93,12 +100,14 @@ node "$S/selftest.mjs"      # once per session: every check against its planted 
 Every command below is written for the run directory as the working directory; pass absolute paths if
 your shell rules forbid `cd`.
 
-1. **Once per document**, write four files and copy in `skeleton.md`:
+1. **Once per document**, write four files and copy in `skeleton.md` — where the user said the current
+   shape stands, start one with their words:
    - `concepts.json` — one regex per idea the document carries, for the duplication count;
-   - `budgets.json` — every `##` heading of the document mapped to the skeleton's number, or one you set
-     and write back into `skeleton.md` where a section was added later. The comparison is a report the
-     owner reads, not a gate: growth per section per round is the number that showed four sections
-     swelling while every fix made them truer;
+   - `budgets.json` — every `##` heading of the document mapped to the skeleton's number, or, where the
+     user said the current shape stands, to the section's size now; a section added later gets the
+     number the user gave with it (item 6). The comparison is a report the owner reads, not a gate:
+     growth per section per round is the number that showed four sections swelling while every fix made
+     them truer;
    - `tasks.json` — two starting states and goals for lens 4, from the workflow the document most wants
      a reader to perform; `questions.json` — the questions a reader arrives with, from the audit's key
      when there is one, otherwise from the skeleton's purpose per section, one line each.
@@ -158,7 +167,10 @@ your shell rules forbid `cd`.
    `code-defects.md` in the run directory and to the user as a proposal, a question the document does
    not answer to the user. A code defect goes into the repository's `ISSUES.md` only on the user's word:
    the file is in their tree, and this skill promises to write there only when they say so. When a
-   finding routes to stage 3, make the structure map loop.md describes before the next round.
+   finding routes to stage 3, make the structure map loop.md describes before the next round. A
+   structural decision after the skeleton is agreed — a section added or removed, a boundary moved, a
+   rule dropped, a budget changed — is a question to the user, recorded in `skeleton.md` with their
+   answer; your own defaults cover sentence-level items only.
 7. **Record the round** in `rounds.md`, one table row: `| file | words | produced by | findings against
    it | regressions |` — *produced by* names the pass and the wave; *findings* is the dedup's count by
    category; **regressions** is the count of sentences the round introduced that its critics showed
@@ -196,21 +208,20 @@ Before the user reads a round, three things, none tradeable against another:
 first round with no regression is the signal to hand it over for that read, not a finish; a second clean
 round is not waited for, since the read is what the rounds prepare for: on 2026-09-23 a round with no
 regression was held back, and the next cost about 1.6M Claude tokens and brought two regressions
-([M25](references/measurements.md#m25)). The user's first read comes before any round: on either route
-they have read the skeleton or said that the current shape stands. A cap on rounds is set in the first
-announcement, and a cap reached is reported as a result. Hand over the round and
-`diff-NN.patch`, the diff against `00-original.md`, written into the run directory. Then stop: applying
-the candidate to the user's files needs their word, and a diff they have read is what earns it.
+([M25](references/measurements.md#m25)). When the user's read rejects the purpose, the content or the
+arrangement, the next step is `/terse:rethink` at its structure stage, not another round. A cap on
+rounds is set in the first announcement, and a cap reached is reported as a result. Hand over the round
+and `diff-NN.patch`, the diff against `00-original.md`, written into the run directory. Then stop:
+applying the candidate to the user's files needs their word, and a diff they have read is what earns it.
 
 ## Step 6. What you return
 
 In the run directory:
 
 - every round as its own file; `edits/NN.json`, `ledger.json`, `concepts.json`, `budgets.json`
-- `skeleton.md`, kept current with every decision taken after it was agreed — a section added, a fact
-  restored, a budget changed
-- `rounds.md`, one row per round; `reviews/NN/`, the verifier's report, every critic's report and the
-  dedup, verbatim
+- `skeleton.md`, kept current: every structural decision after the agreement, with the user's answer
+- `rounds.md`, the shape verdict on its first line, then one row per round; `reviews/NN/`, the
+  verifier's report, every critic's report and the dedup, verbatim
 - `code-defects.md`, when a finding routed to the code: each defect with its check, as offered to the
   user
 - `diff-NN.patch` against the original; the cut ledger — every removed passage of twenty words or more,

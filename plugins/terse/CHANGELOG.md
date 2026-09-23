@@ -40,13 +40,20 @@ forensics remain in the repository references and release notes.
   user's repository and the defects went into their `ISSUES.md` unasked, while the skill's description,
   both manifests, this changelog and the README promise that nothing is written into the tree without
   the user's word (`ISSUES.md` E5).
-- `rewrite` starts no round on a shape nobody agreed. Its first step reads the audit's shape verdict
-  under *Score*; when it is not agreed the document goes to `/terse:rethink` at its structure stage
-  with the audit's profile, purpose and key, and comes back on the skeleton route with its ledger still
-  seeded from the audit. `rethink` says how it is entered that way, the bake-off's skeleton-route brief
-  and sheet no longer require that no audit ran, and a finding that a section buys the reader nothing
-  the purpose needs is routed to the structure. On 2026-09-22/23 the audit route led straight from the
-  audit into four rounds, and the run's skeleton file reads "none agreed".
+- `rewrite` writes nothing on a shape the user has not agreed to. The check comes before every route —
+  a resumed run and a start with neither a skeleton nor an audit included — and reads the user's word:
+  a named skeleton file they agree to, with its path and SHA-256, or their quoted words that the current
+  shape stands, written as the first line of `rounds.md`. A run file or run directory with no verdict is
+  not agreed, and a run begun before the rule is checked once when it resumes. Not agreed, the document
+  goes to `/terse:rethink` at its structure stage with the audit's profile, purpose and key; its steps
+  keep their order, the survey sized by the user and the words in full, and its skeleton opens with the
+  owner's purpose statement, against which its critics judge every structure. The audit's profile and
+  failures reach the writers wherever an audit exists, and its ledger still seeds the rounds. A
+  structural decision after the agreement is a question to the user, recorded in the skeleton with their
+  answer; a read that rejects the purpose, the content or the arrangement goes back to `rethink`; and a
+  finding that a section buys the reader nothing the purpose needs is routed to the structure. On
+  2026-09-22/23 the audit route led straight from the audit into four rounds, and the run's skeleton
+  file reads "none agreed".
 - `round.mjs` refuses an edit whose `new` adds a qualifying clause its `old` did not have — *unless*,
   *except when*, *only if*, *as long as* and their kin — and quotes the clause, until the edit carries
   `qualifies`: one sentence on why the clause is the sentence's own scope, kept in the ledger as
@@ -79,12 +86,13 @@ forensics remain in the repository references and release notes.
   not a rate; both are M24 in `measurements.md`, where this repository's dated observations live.
 - `audit` asks the user what the document is for and what it must make its reader able to do, and
   keeps the answer in their words as the profile's ninth section. It returns a shape verdict beside the
-  score: `shape: agreed` when the user has read a skeleton of the document or has said that its current
-  shape stands, `shape: not agreed` otherwise, recorded under *Score* with what it rests on. When the
-  shape is not agreed it offers `/terse:rethink` at its structure stage instead of `rewrite`. On
-  2026-09-23 the pages went from an audit straight into four rounds of `rewrite` on this plugin's README,
-  and the owner rejected the result for its shape and content, not its phrasing, as a draft was rejected
-  on 2026-09-11; nothing on the pages had asked for the shape to be decided.
+  score: `shape: agreed` only on the user's word — that they agree to a named skeleton file, whose path
+  and SHA-256 it records, or, quoted, that the current shape stands — and `shape: not agreed` otherwise,
+  a skeleton read without assent included, recorded under *Score*. When the shape is not agreed it
+  offers `/terse:rethink` at its structure stage instead of `rewrite`. On 2026-09-23 the pages went from
+  an audit straight into four rounds of `rewrite` on this plugin's README, and the owner rejected the
+  result for its shape and content, not its phrasing, as a draft was rejected on 2026-09-11; nothing on
+  the pages had asked for the shape to be decided.
 - Lens 7, purpose and content: one Claude Opus critic reads the whole document against its purpose —
   the audit's purpose line, or the skeleton's — and the eleven content rules of `stages.md`, section by
   section: what each section buys a reader who came for that purpose, the rules it breaks by number,

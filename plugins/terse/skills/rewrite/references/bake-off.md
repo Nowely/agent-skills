@@ -75,8 +75,8 @@ e) For every claim about behaviour you changed or added: the level of evidence r
 
 ## The writer brief, skeleton route
 
-When the writing starts from a skeleton `rethink` agreed, send the whole skeleton — every section's
-purpose, what it excludes, its word budget — with the writing rules and the curse of knowledge, then
+When the writing starts from a skeleton the user agreed to, send the parts assembled in Step 2 of the
+skill — the whole skeleton first, every section's purpose, what it excludes, its word budget — then
 this:
 
 ```
