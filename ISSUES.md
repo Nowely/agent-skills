@@ -196,3 +196,22 @@ and WB and the judge J1, each of whom had to say in a README candidate that the 
 **Issue text.** `audit` and `rewrite` now name their run directory and its lifetime; `rethink` names
 nothing, so a reader asking "can it change my files?" gets no answer for one skill of three. The page
 should place the skeleton — the same formula as the other two, with a slug — and say so at the hand-over.
+
+## E14. A `missing` failure on the planted unanswerable question cannot be repaired and re-measured under "the same key"
+
+**Evidence, level 2.** `plugins/terse/skills/audit/SKILL.md:76-78` plants "at least one question the
+documentation genuinely does not answer, and record it as unanswerable in the key"; step 6's cause table
+(`audit/SKILL.md:121-127`) makes `missing` a failure a rewrite must repair by writing the answer;
+`plugins/terse/skills/audit/references/measure.md:106-109` says a re-measurement uses "Same questions, same
+key" and that changing any of them makes "a new measurement with a new baseline, not a result". On
+2026-09-22 the live audit's planted question ("My documentation is in Russian — do the readers go through
+it the same way?") was keyed unanswerable and, on the owner's ground truth, recorded as `missing`; the
+rewrite wrote the answer, and on 2026-09-23 the round-02 question reader answered it from the text
+(`research/2026-09-22-terse-process/rewrite-2026-09-22/run/reviews/02/c5-7.md`). Under the old key that
+right answer is a failure; under a corrected key the re-measurement is "a new measurement".
+
+**Issue text.** The three rules collide whenever the planted question's answer is what the rewrite is
+asked to write. The page should say which gives way: the planted question is excluded from the score
+delta once its answer is written (and the re-measure reports it beside the score), or the key entry is
+rewritten and the re-measure says so, or the planted question must be one the owner does not intend the
+document to answer. Found while executing the pages live.
