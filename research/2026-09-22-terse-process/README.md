@@ -370,3 +370,42 @@ run by the coordinator on `plugins/terse/README.md` from the audit's run file, e
   0 of 2 → not run → 1 achieved and 1 partly, and the achieved one needed the harness's route. Claude tokens
   for the writer and the wave about 1.6M (G3 695k, lens 1 304k, lens 2 178k, Sonnet 171k, Fable 274k); the
   Sol thread's three reads report 6.6M tokens, most of them cached re-reads; Luna 7 × 12k.
+
+## Wave 11 — the skills round after the owner's read
+
+The owner's direction: the goal is the skills; the README is the test subject; the codex-delegate README
+was never final, and its failure was the loop finding problems and the agent fixing them with caveats.
+Five changes to the pages, then two critics on them, then a second pass — all on the branch, each change
+its own commit, nothing released.
+
+- **The five changes** (Opus W3, commits `0bdf880`–`c230b85`): `audit` asks what the document is for in
+  the owner's words and returns `shape: agreed | not agreed`; `rewrite` starts no round on a shape not
+  agreed and routes through `rethink`'s structure stage; a lens 7 reads the document against its purpose
+  and the content rules; `round.mjs` refuses a fix by qualification unless the edit says why it is not one;
+  the first clean round is handed over, and M25 records the live run.
+- **Second opinion, Codex Astra A3** (22 findings, 17 CONFIRMED): the qualification check is a surface
+  signal — it would have refused round 02's true `--keep-data` exception and neither round-04 regression,
+  and `qualifies: "x"` admits anything — so the judgement belongs to the verifier; "read" is not "agreed";
+  the shape check must precede every route, the resumed run included; the audit → rethink → skeleton path
+  dropped the profile and the failures and skipped the terminology stage; the first-clean hand-over
+  collided with a task gate a zero-sized lens can never pass; coordinator decisions in `skeleton.md` had
+  stood in for agreement, and a sentence proposed by the dedup or the coordinator was never tested at the
+  scope its new words added — which is how both round-04 regressions entered; the skeleton must open with
+  the owner's purpose statement, and a read that rejects purpose or content routes to `rethink`, not to a
+  round. **Codex Sol R3** (8 findings): the same on "agreed", the round-03 citation, the entry order, the
+  regex's blind spots and the CHANGELOG's overclaims; nine `ISSUES.md` citations moved by the commits.
+- **Second pass** (W3, commits `73afb01`–`6fc92ca`, then `ISSUES.md:73` by the coordinator): agreement is
+  the user's word on a named skeleton, recorded with its path and SHA-256, and the check precedes every
+  route; the brief carries the audit's profile and failures on every route; `rethink`'s entry runs the
+  terminology stage; the skeleton opens with the purpose statement; a structural decision after agreement
+  is the user's question, the coordinator's defaults cover sentences only; a rejected read routes to
+  `rethink`; the first clean round is selected and its zero-sized lenses run on it before the hand-over;
+  the regex is described as the signal it is, an edit adding a clause without a claim is refused too, and
+  the verifier's fifth duty reads every `qualifies` reason as a claim; lens 7 applies the skeleton's own
+  rules. Self-test 45 → 50; frozen blocks unchanged; the 2026-09-11 record still replays byte-identical.
+- **Still open, from the critics and the writer**: no page says from whose starting state a scope risk is
+  tested; caveats outside the regex's forms are seen only through the verifier; lens 7 can be sized to
+  zero and proposes cuts only; the skeleton-route judging sheet does not give the judges *What broke*;
+  `rethink`'s intro does not yet list the purpose statement; the format of a `skeleton.md` begun from "the
+  current shape stands" is unspecified; the fifth duty and lens 7 have never been run. The next test is
+  the same README from `rethink`, the skeleton to the owner before any round.
