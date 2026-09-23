@@ -15,7 +15,7 @@ Path: `$RUN/audit.md`. Headings exactly as below, in this order.
 Files audited, the entry file, the repository that backs them, and the absolute run directory.
 
 ## Reader profile
-The eight sections, as confirmed by the user.
+The nine sections, as confirmed by the user; the last, what the document is for, in their own words.
 
 ## Claim ledger
 Entries C01, C02, … in document order, then the `json claims` block that carries the same entries.
@@ -28,6 +28,8 @@ One row per reader.
 
 ## Score
 Right answers over questions, steps, departures. Written as a single line that can be compared later.
+Then `shape: agreed` or `shape: not agreed`, and what it rests on: the skeleton the user read, or their
+words that the current shape stands, quoted.
 
 ## What broke
 One entry per wrong answer, each with a cause.

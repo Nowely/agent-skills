@@ -46,7 +46,9 @@ Write nothing into the audited repository. Not a report, not a note, not a fix.
 ## Step 2. The reader profile
 
 Build it from the repository and from the user's own words, following
-[reader-profile.md](references/reader-profile.md). Show it and ask for corrections before Step 3.
+[reader-profile.md](references/reader-profile.md). One line of it is the user's alone, in their own
+words: what this document is for, and what it must make its reader able to do. Show the profile and ask
+for corrections before Step 3.
 
 A wrong profile is not a small error. It chooses the questions, so the whole measurement ends up
 answering a question nobody arrives with, and every number after it is precise about the wrong thing.
@@ -162,7 +164,12 @@ node "$A/ledger-seed.mjs" "$RUN/audit.md" "$RUN/ledger.json"
 ```
 
 Report to the user: the score, the failures with their causes, the refuted claims, the count the seed
-printed, and the absolute path. Offer `rewrite` as the next step; do not run it.
+printed, the absolute path, and the shape verdict: `shape: agreed` when the user has read a skeleton of
+this document (`rethink` step 4) or has said in so many words that its current shape stands, otherwise
+`shape: not agreed`. Agreed, offer `rewrite` as the next step. Not agreed, offer `/terse:rethink` at its
+structure stage, and say why not `rewrite`: on 2026-09-11, and on 2026-09-23 after four rounds of
+`rewrite` on this plugin's own README, a document written on a shape nobody agreed was rejected for its
+content, not its phrasing (`research/2026-09-22-terse-process/`). Run neither.
 
 ## Reference
 

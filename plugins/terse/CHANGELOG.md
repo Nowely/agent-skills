@@ -54,6 +54,14 @@ forensics remain in the repository references and release notes.
   unchanged at lenses 1 and 2, and what a round without it gives up is said where the size is chosen.
   Its cost is unmeasured, and the one blind run behind its four duties is a hypothesis about them and
   not a rate; both are M24 in `measurements.md`, where this repository's dated observations live.
+- `audit` asks the user what the document is for and what it must make its reader able to do, and
+  keeps the answer in their words as the profile's ninth section. It returns a shape verdict beside the
+  score: `shape: agreed` when the user has read a skeleton of the document or has said that its current
+  shape stands, `shape: not agreed` otherwise, recorded under *Score* with what it rests on. When the
+  shape is not agreed it offers `/terse:rethink` at its structure stage instead of `rewrite`. On
+  2026-09-23 the pages went from an audit straight into four rounds of `rewrite` on this plugin's README,
+  and the owner rejected the result for its shape and content, not its phrasing, as a draft was rejected
+  on 2026-09-11; nothing on the pages had asked for the shape to be decided.
 
 ### Fixed
 

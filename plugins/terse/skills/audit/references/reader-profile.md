@@ -19,6 +19,7 @@ with it by construction and the measurement becomes a mirror.
 | Their words, not ours | issue titles, search terms, the user's phrasing — in their languages |
 | What earns their trust | which evidence the project can actually show a sceptic |
 | Voice | the constraints on sentences, terms and emphasis for this audience |
+| What this document is for | the user, in their own words: what it must make its reader able to do |
 
 Ask the user for anything the repository cannot answer. One round of questions, then show the profile
 and take corrections. Do not start the truth pass on an unconfirmed profile.
