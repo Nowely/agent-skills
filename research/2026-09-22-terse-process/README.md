@@ -409,3 +409,41 @@ its own commit, nothing released.
   `rethink`'s intro does not yet list the purpose statement; the format of a `skeleton.md` begun from "the
   current shape stands" is unspecified; the fifth duty and lens 7 have never been run. The next test is
   the same README from `rethink`, the skeleton to the owner before any round.
+
+## Wave 12 — the test: `rethink` on the same README, the skeleton to the owner before any round
+
+On the owner's word, the pages as changed in wave 11 run on the plugin's own README from the shape
+decision, everything under [rethink-2026-09-23/](rethink-2026-09-23/) (the run directory outside the
+repository, copied without the raw fetched READMEs): `purpose.md` (the owner's statement verbatim),
+`owner-readme-words.md`, `survey/` (three surveys, the synthesis, the common brief), `terms.md`,
+`structures/` (ten, with `readings.json`), `critics/` (three), `skeleton.md`, the fetched exemplar.
+
+- **Step 1, the survey** (Sonnet S1, Sonnet S2, Codex Terra S3; synthesis Codex Astra P2): 17 + 10 + 17
+  documents fetched with their URLs, headings, first hundred words, devices and star counts; 0 failures.
+  S2 caught WebFetch returning paraphrases with invented headings for four of ten large READMEs and
+  re-fetched all ten with curl — "fetch, do not recall" needs raw bytes, not a summariser. The synthesis:
+  25 rows, TAKE 3, TAKE WITH CHANGE 10, ALREADY PRESENT 3, DO NOT TAKE 6, CONTRADICTS 3; devices decided
+  — a three-row skills table, one install fence and a first invocation, a two-route list, one authentic
+  excerpt, no badges or table of contents.
+- **Step 2, the words** (Opus T2): 62 terms — keep 17, rename 24 toward plain words (AI reader, draft,
+  reviewer, folder, report, workflow, "until you say so"), define 4, drop 17 to the pages.
+- **Step 3, ten structures from ten readings of the purpose** (Sonnet ×4, Opus ×2, Codex Luna ×2, Sol,
+  Terra; 300 to 778 words against 933 now) and **three critics on all ten at once** — Fable on the owner's
+  calibration (07, 01, 10 …), Codex Astra on the reader's task (09, 05, 01), Opus on the genre and the
+  evidence (01, 05, 09). The three shared failures, each a failure of the brief: the "can it change my
+  files?" section planned on a fact the inputs leave split between the shipped version and the branch,
+  which is the owner's decision; no structure with the whole path from an audit report to a reviewed draft
+  without writing into the tree; the writers never accounted for the genre sections they dropped — none
+  had Troubleshooting (3 of 9 plugin READMEs, the most-used among them) and no survey fetched the owner's
+  exemplar sharpdeveye/maestro.
+- **Step 4, the skeleton** (Opus S4): the rule "the owner's calibration's first unless the reader's-task
+  critic shows a reader cannot reach an answer from it" retired 07 (no home for Q5 and Q7, task 2 needs
+  backtracking) and took 01, the best average rank (2, 3, 1); grafts only from the critics' lists; the
+  three shared failures repaired — the files boundary stated for the next release with the release
+  question put to the owner, the audit-to-draft path in Quick start, Troubleshooting kept at its usage
+  weight with Node 22 living there; maestro fetched (1,478 words, 593★) and accounted for section by
+  section. Ten sections, 754 words against 909 by the same count: opening 57, Skills 130, Install 20,
+  Update 12, Your files 60, Quick start 125, What it will and will not do to your text 90, How it works
+  80 (the cut for rule 1), What was measured 100, Troubleshooting 80. Nine decisions are the owner's and
+  five are marked least sure, each with what would settle it. Nothing is written against it before the
+  owner's word on the file, recorded with its SHA-256.
