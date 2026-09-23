@@ -18,9 +18,10 @@ To make it, grep the owner's sessions for the genre's words — for Claude Code,
 `~/.claude/projects/<project>/` — and keep a line only if the owner typed it: `type: "user"` with
 `origin.kind: "human"`. The first field alone also matches skill text loaded into a session, task
 notices, compaction summaries and subagent hand-backs. Keep each message verbatim with its timestamp and
-session, once where a forked or resumed session repeats it, and list the dropped hits with the reason;
-the owner's words in reviews and issues go in the same way. The documents the owner named as good go at
-the top, by URL: they are the survey's seventh slice.
+session, once where a forked or resumed session repeats it, and list the dropped hits with the reason.
+The owner's words in reviews and issues would go in the same way, but the file of 2026-09-23 drew on
+sessions alone, so that part is untried. The documents the owner named as good go at the top, by URL:
+they are the survey's seventh slice.
 
 Measured on 2026-09-23, on this plugin's README
 (`research/2026-09-22-terse-process/owner-readme-words.md` in this repository): 27 sessions searched; of
@@ -50,7 +51,7 @@ HTML only where there is no markdown — saved under <R>/survey/fetched/ and cou
 Never a rendering, never a summarising tool: a summary comes back with headings the file does not have.
 For every document: its URL; its headings in order; its word count; the first hundred words of its
 body, verbatim; its devices, counted — tables, bullet lists, code blocks, badges, images; and its usage
-signal with the number — stars, downloads, a marketplace listing.
+signal with the number — stars, downloads, a marketplace listing, forks: whatever the source shows.
 
 WEIGHT BY USE, NOT BY TASTE. Rank by that signal. Where a much-used document does something badly, say
 so, rather than ranking a pretty unknown above it.
@@ -220,18 +221,26 @@ the path from a report to a draft inside Quick start.
 
 ## 5. The base
 
-The structure the three rankings agree on is the base. Where they split, the owner-calibration critic's
-first stands, unless the reader's-task critic shows a reader cannot reach an answer from it; then the
-best average rank. Averaging ranks picks one structure to start from; it never averages the structures,
-which [stages.md](stages.md#stage-3-the-structure-decided-before-any-prose) warns against. Grafts come
-only from the critics' lists, each with what it displaces, and the failure each critic found in all the
+Disqualify first: a structure from which, the reader's-task critic shows, a reader cannot reach an answer
+— no section holds it — is out, whatever its ranks. Among the rest, the owner-calibration critic's first
+is the base if it is still in; otherwise the one whose average rank across the three critics is best.
+Averaging ranks picks one structure to start from; it never averages the structures, which
+[stages.md](stages.md#stage-3-the-structure-decided-before-any-prose) warns against. Grafts come only
+from the critics' lists, each with what it displaces, and the failure each critic found in all the
 structures is repaired in the skeleton or named there with its cost.
+
+This is the rule the 2026-09-23/24 run applied once, with one change: the run applied the disqualifier
+to the owner-calibration critic's first alone, and the weakness that left is recorded below. In this
+form the rule has not been run.
 
 Measured on 2026-09-23: 07 fell — two of the audit's questions had no home in it, and one task needed
 backtracking — and 01 became the base at ranks 2, 3 and 1, a mean of 2.0 against 09's 3.3, 05's 3.7 and
-07's 4.7. Read strictly, the rule retired 07 for two missing homes that 01 lacks as well; asked, the
-owner left the reading to the coordinator: «ничего не скажу, так как вне контекста. Решай сам.» — I will
-say nothing, it is outside my context; decide yourself.
+07's 4.7. Read strictly, the run's rule retired 07 for two missing homes that 01 lacks as well; asked,
+the owner left the reading to the coordinator: «ничего не скажу, так как вне контекста. Решай сам.» — I
+will say nothing, it is outside my context; decide yourself. Applied to every structure, as above, the
+same critiques keep only 09: nine of the ten had no home for Q7, the planted question the audit's key
+calls unanswerable, and 01 had none for Q5 either. With the planted question left out, six are left, and
+09 still has the best average.
 
 ## 6. The skeleton, and what the owner reads
 
@@ -243,16 +252,19 @@ second skeleton on, the last one and the owner's read of it, skeleton-read-<NN-1
 answer you apply or put back to the owner as a question.
 
 Seven parts, in order:
-1. The owner's purpose statement, verbatim; the base, with its ranks; the genre's order as a table —
-   place, what the genre puts there, N of M, where the owner's exemplars put it — with, at each place,
-   whether this skeleton follows or departs, and why.
+1. Every statement of the owner's in purpose.md that governs the document, verbatim, each with its
+   rendering; the base, with its ranks; the genre's order as a table — place, what the genre puts
+   there, N of M, where the owner's exemplars put it — with, at each place, whether this skeleton
+   follows or departs, and why.
 2. Each section: its heading and budget; its purpose; what it excludes; the device that carries it; and
    what it rests on — a row, a count, a clause of the purpose, the owner's words.
 3. The mechanical rules, each a command and the output that passes.
 4. The terminology decisions, with the words rejected and why.
 5. What is deleted outright from <DOC>, with the cost of each deletion.
 6. The edits this structure needs in files that are not the document.
-7. The owner's decisions, each with your default; the five you are least sure of, each with what would
+7. The decisions: those the owner's last read settled, each with where in the read; those still the
+   owner's, each with your default; anything kept against the owner's word, with its evidence; anything
+   routed outside the document, and where to; and the five you are least sure of, each with what would
    settle it.
 Each failure a critic found in all the structures is repaired here or named with its cost. The skeleton
 describes the document and never argues for itself: no section is introduced by who asked for it.
@@ -273,7 +285,9 @@ the sections that are wrong, a few words each. Each default below stands unless 
 <a row per section of part 2>
 
 Where it departs from the genre's order: <place — what N of M documents do — what this does — why>.
+Kept against your word: <what — its evidence>.
 Your decisions, each with my default: <decision — default>.
+Least sure, each with what would settle it: <point — what settles it>.
 ```
 
 The answer goes verbatim into `<R>/skeleton-read-<NN>.md`, each point beside the decision it settles; the
@@ -284,5 +298,7 @@ Measured on 2026-09-23/24: skeleton 01, 447 lines, went to the owner with a tabl
 seven questions, and he asked what exactly was required of him
 ([step 4](../SKILL.md#step-4-what-you-hand-over)). Told which parts were his, that each question had a
 default, and that one word or the numbers of the sections would do, he answered twenty minutes later,
-point by point; skeleton 02 was agreed sixteen minutes after that: «согласен, стало гораздо лучше» —
-agreed, it has become much better.
+point by point. The message for skeleton 02 held the table of sections with what each carries, the
+departures from the genre, one line kept against his word with its evidence and two questions with
+defaults, and no least-sure points; sixteen minutes after his read he agreed: «согласен, стало гораздо
+лучше» — agreed, it has become much better.

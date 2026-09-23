@@ -110,7 +110,7 @@ ranking — a failure every angle shares is a failure of the brief. On the run t
 was the three critics' shared answer that found the real defect, and none of the ten proposals had.
 
 Synthesise from the winner, grafting only what the critics named. Do not average ten structures into a
-compromise. Which structure is the winner when the rankings split:
+compromise. Which structure becomes the base, and what rules one out:
 [briefs.md](references/briefs.md#5-the-base).
 
 ## Step 4. What you hand over
@@ -119,28 +119,31 @@ One file, and it describes the document rather than arguing for itself. A skelet
 section exists — "the block you asked for", "the one you said was missing" — is a negotiation transcript,
 and a reader feels it before they can name it. Its parts, in order:
 
-1. the owner's purpose statement, verbatim; then the genre's order from step 1 and, place by place,
-   where this skeleton follows it or departs from it, and why
+1. every statement of the owner's that governs the document, verbatim; then the genre's order from
+   step 1 and, place by place, where this skeleton follows it or departs from it, and why
 2. each section: title, one sentence of purpose, what it deliberately excludes, the device that carries
    it, a word budget
 3. the mechanical rules the writing must pass, written so that passing is a fact rather than an opinion
 4. the terminology decisions from step 2, including the ones you rejected and why
 5. what was deleted outright rather than moved, and the stated cost of deleting it
 6. any edit this structure requires in a file that is not the document
-7. the decisions that are the owner's, each with your default, and the ones you are least sure of, each
-   with what would settle it
+7. the decisions: those the owner's last read settled; those still the owner's, each with your default;
+   anything kept against the owner's word, with its evidence; anything routed outside the document; and
+   the five you are least sure of, each with what would settle it
 
 The owner is shown part 2 as a table — a row per section, its budget, its device — with the departures
-from the genre's order, the owner's decisions with your defaults, and what is asked of them: their word
-on the file, or the numbers of the sections that are wrong, a default standing unless they name it.
-Parts 3 to 6 are the writers' and the scripts'. On 2026-09-23 the owner, sent the file with a table of
-its sections, answered first «Что от меня конкретно требуется? Скелетон довольно большой файл» — what
-exactly is asked of me? The skeleton is quite a big file.
+from the genre's order, anything kept against their word with its evidence, the decisions still theirs
+with your defaults, the five points you are least sure of with what would settle each, and what is asked
+of them: their word on the file, or the numbers of the sections that are wrong, a default standing
+unless they name it. Parts 3 to 6 are the writers' and the scripts'. On 2026-09-23 the owner, sent the
+file with a table of its sections, answered first «Что от меня конкретно требуется? Скелетон довольно
+большой файл» — what exactly is asked of me? The skeleton is quite a big file.
 
-Every skeleton is its own numbered file, `skeleton.NN.md`, never overwritten, and `skeleton.md` is a copy
-of the current one. The owner's answer to skeleton NN is kept verbatim in `skeleton-read-NN.md`, and the
-skeleton written from it is `skeleton.NN+1.md`. The skeleton writer's brief and the message to the
-owner: [briefs.md](references/briefs.md#6-the-skeleton-and-what-the-owner-reads).
+Every skeleton is its own numbered file, `skeleton.<NN>.md`, never overwritten, and `skeleton.md` is a
+copy of the current one. The owner's answer to skeleton `<NN>` is kept verbatim in
+`skeleton-read-<NN>.md`, and the skeleton written from it is `skeleton.<NN+1>.md`. The skeleton
+writer's brief and the message to the owner:
+[briefs.md](references/briefs.md#6-the-skeleton-and-what-the-owner-reads).
 
 Then stop and wait for the user's word on the file, whose absolute path in the run directory the
 hand-over names. `rewrite` starts only from a skeleton the user said they agree to, a numbered file

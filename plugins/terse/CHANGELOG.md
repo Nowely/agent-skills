@@ -78,18 +78,20 @@ forensics remain in the repository references and release notes.
   two threads as a hypothesis; and `stages.md` records that the 2026-09-11 failure came back and that
   the shape decision now comes first.
 - `rethink`'s hand-over, from the owner's read of the first skeleton for this plugin's README. The
-  skeleton's first part carries the genre's order from step 1 and says, place by place, where it follows
-  or departs and why; each section names its device; a seventh part holds the owner's decisions with the
-  coordinator's defaults and the points least sure, each with what would settle it. The owner is shown
-  the sections as a table with budgets and devices, the departures from the genre, the decisions with
-  their defaults and what is asked of them; the mechanical rules, terms, deletions and outside edits are
-  the writers' and the scripts'. Every skeleton is its own numbered file, the owner's answer is kept
-  verbatim beside it, and `skeleton.md` is a copy of the current one; agreement is still the user's word
-  on a named file, with its path and SHA-256. `briefs.md` gains the skeleton writer's brief and the
-  message to the owner, and `stages.md` gains rule 12 — a README describes the code as it is, with no
-  binding to a version without a weighty reason, in the owner's words from the same read — so lens 7's
-  default is now twelve rules. On 2026-09-23 the owner, sent a 447-line skeleton, asked first what
-  exactly was required of him.
+  skeleton's first part carries every statement of the owner's that governs the document, verbatim, and
+  the genre's order from step 1, saying place by place where it follows or departs and why; each section
+  names its device; a seventh part holds the decisions the owner's read settled, those still the owner's
+  with the coordinator's defaults, anything kept against the owner's word with its evidence, anything
+  routed outside the document, and the five points least sure, each with what would settle it. The owner
+  is shown the sections as a table with budgets and devices, the departures from the genre, what is kept
+  against their word, the decisions with their defaults, the points least sure and what is asked of them;
+  the mechanical rules, terms, deletions and outside edits are the writers' and the scripts'. Every
+  skeleton is its own numbered file, the owner's answer is kept verbatim beside it, and `skeleton.md` is
+  a copy of the current one; agreement is still the user's word on a named file, with its path and
+  SHA-256. `briefs.md` gains the skeleton writer's brief and the message to the owner, and `stages.md`
+  gains rule 12 — a README describes the code as it is, with no binding to a version without a weighty
+  reason, in the owner's words from the same read — so lens 7's default is now twelve rules. On
+  2026-09-23 the owner, sent a 447-line skeleton, asked first what exactly was required of him.
 - `stages.md` records the 2026-09-23/24 run on this plugin's README. Under stage 1: 39 documents over the
   six slices, WebFetch's paraphrases for four of ten READMEs, the owner's exemplar no survey fetched, and
   the genre's order as counted afterwards — what it is first in 9 of 9 plugin READMEs, install in 8, the
@@ -145,9 +147,10 @@ forensics remain in the repository references and release notes.
   order was counted only when the owner asked for it.
 - `briefs.md` gains stage 3: the structure writers' brief with ten default readings of the purpose; the
   critics' brief with three default lenses — the owner's calibration, the reader's task, the genre and
-  the evidence — each reading its own file; and the rule that picks the base when the rankings split,
-  the owner-calibration critic's first unless the reader's-task critic shows a reader cannot reach an
-  answer from it, then the best average rank. Every structure accounts for the sections of the genre it
+  the evidence — each reading its own file; and the rule that picks the base: a structure from which the
+  reader's-task critic shows a reader cannot reach an answer is out, then the owner-calibration critic's
+  first if it is still in, else the best average rank — the run's rule with its disqualifier applied to
+  every structure, in that form not yet run. Every structure accounts for the sections of the genre it
   drops, with their usage weight and what dropping them costs, and an unknown that is the owner's to
   decide is put to the owner before any structure is written; step 3 points to all three. On 2026-09-23
   the ten structures were one inventory in ten orders, none said what it dropped, and all ten planned the

@@ -292,8 +292,9 @@ they dropped. Each critic's shared failure was the brief's: the section on wheth
 change the reader's files, planned by all ten around a boundary that was the owner's to decide and was
 passed down to the writers instead; no structure carrying the reader's whole path from an audit report
 to a reviewed draft; and no structure accounting for a section of the genre it left out. The base went
-by the rule in [briefs.md](briefs.md#5-the-base): the owner-calibration critic's first fell to the
-reader's-task critic, and the best average rank, 2, 3 and 1, took it.
+by the run's rule, which [briefs.md](briefs.md#5-the-base) records with its weakness: the
+owner-calibration critic's first fell to the reader's-task critic, and the best average rank, 2, 3 and
+1, took it.
 
 **Then stop and put the structure in front of the owner.** Rewriting two thousand words against the
 wrong skeleton costs more than one round trip.
