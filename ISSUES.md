@@ -186,19 +186,6 @@ the skill page says never, the reference says on the user's word. A README that 
 refuted by the other. The pages should say one thing — the reference's rule, stated on the skill page as
 the one exception with its consent step, or the reference's section removed.
 
-## E13. `rethink` hands over "one file" and no page says where it is written
-
-**Evidence, level 2.** `plugins/terse/skills/rethink/SKILL.md:77-92` (step 4, "What you hand over"):
-"One file, and it describes the document rather than arguing for itself" — the section lists what the
-file contains and ends "Then stop and wait", with no path, no run directory and no statement of whether
-the file lands inside or outside the user's repository; `rewrite/SKILL.md` step 4 says only to copy
-`skeleton.md` in. Found on 2026-09-22 by the truth pass (open item) and on 2026-09-23 by the writers WA
-and WB and the judge J1, each of whom had to say in a README candidate that the location is unstated.
-
-**Issue text.** `audit` and `rewrite` now name their run directory and its lifetime; `rethink` names
-nothing, so a reader asking "can it change my files?" gets no answer for one skill of three. The page
-should place the skeleton — the same formula as the other two, with a slug — and say so at the hand-over.
-
 ## E14. A `missing` failure on the planted unanswerable question cannot be repaired and re-measured under "the same key"
 
 **Evidence, level 2.** `plugins/terse/skills/audit/SKILL.md:82-84` plants "at least one question the

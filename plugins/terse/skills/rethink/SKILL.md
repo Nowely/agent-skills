@@ -26,6 +26,32 @@ The method, with the measurements behind each stage: [stages.md](references/stag
 the brief, and the steps keep their order: step 1 at the size the user gives, zero included; step 2 in
 full, because a profile and a key carry no terminology decisions; then steps 3 and 4.
 
+## The run directory
+
+Everything this skill writes goes into a run directory of the document's own, outside the repository
+that holds it, made by the formula of
+[`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory) with `<slug>` naming the
+document:
+
+```bash
+D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>-rethink" && mkdir -p "$RUN" && echo "$RUN"
+```
+
+`D` is empty when this skill runs from a source checkout rather than an installed plugin, which is why
+the fallback is there: installed, Claude Code writes the plugin's data directory into that line before
+it runs. At the top of the run directory go `purpose.md`, the owner's calibration file `owner-words.md`,
+`terms.md`, every `skeleton.<NN>.md` with its `skeleton-read-<NN>.md`, and `skeleton.md`; beneath it,
+`survey/` for the surveys and the synthesis, with `survey/fetched/` and `survey/synthesis-sources/` for
+the documents fetched, `structures/` for the structures and `critics/` for the critics' reports. Where an
+audit came first, copy its `audit.md` in. Nothing goes into the repository that holds the document.
+
+Name the absolute path in the hand-over; `rewrite` is given the skeleton's path by the user and cannot
+guess it. Under the plugin's data directory a run survives plugin updates and is deleted when the
+plugin's last installation is removed, by `claude plugin uninstall` without `--keep-data`, and by
+`claude plugin marketplace remove`, which has no such option; in the temporary directory the operating
+system may purge it. Say in the hand-over that a run which must outlive either is the user's to copy
+somewhere durable.
+
 ## Step 1. What comparable documents already solved
 
 A fan-out, not one reader. One agent searching for good examples returns the genre's folklore; six agents
@@ -116,9 +142,10 @@ of the current one. The owner's answer to skeleton NN is kept verbatim in `skele
 skeleton written from it is `skeleton.NN+1.md`. The skeleton writer's brief and the message to the
 owner: [briefs.md](references/briefs.md#6-the-skeleton-and-what-the-owner-reads).
 
-Then stop and wait for the user's word on the file. `rewrite` starts only from a skeleton the user said
-they agree to, a numbered file recorded with its path and SHA-256, and routes back here anything it
-finds that belongs to a stage above it.
+Then stop and wait for the user's word on the file, whose absolute path in the run directory the
+hand-over names. `rewrite` starts only from a skeleton the user said they agree to, a numbered file
+recorded with its path and SHA-256, and routes back here anything it finds that belongs to a stage
+above it.
 
 ## Reference
 

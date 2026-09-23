@@ -1,8 +1,8 @@
 # Briefs, one per role
 
 Every agent `rethink` starts gets one of these with its placeholders filled, and nothing else: `<R>` is
-the run directory, `<DOC>` the document, and every file a brief names under `<R>` is there before the
-agent starts. A Codex agent gets its brief the way
+the absolute path of [the run directory](../SKILL.md#the-run-directory), `<DOC>` the document, and every
+file a brief names under `<R>` is there before the agent starts. A Codex agent gets its brief the way
 [critic-briefs.md](../../rewrite/references/critic-briefs.md) sends one to a critic; a Claude agent gets
 the same body through the Agent tool. Every brief ends by asking for a path and a few lines back: the
 report is the file.
@@ -265,8 +265,8 @@ and the total.
 The message to the owner, which the coordinator writes from the file:
 
 ```
-skeleton.<NN>.md, SHA-256 <hash>. What is asked of you: your word on this file, or the numbers of the
-sections that are wrong, a few words each. Each default below stands unless you name it.
+<R>/skeleton.<NN>.md, SHA-256 <hash>. What is asked of you: your word on this file, or the numbers of
+the sections that are wrong, a few words each. Each default below stands unless you name it.
 
 | Section | Budget | Device |
 |---|---|---|

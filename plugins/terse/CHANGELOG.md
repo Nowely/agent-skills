@@ -164,6 +164,16 @@ forensics remain in the repository references and release notes.
   run lives: under the data directory it survives plugin updates and is deleted by
   `claude plugin uninstall` unless `--keep-data` is passed, in the temporary directory the operating
   system may purge it, and the report tells the user to copy a run that must outlive either.
+- `rethink` names where it writes: a run directory of the document's own, by `audit`'s formula with the
+  slug and `-rethink`, holding the calibration file, the words and every skeleton and read, with
+  `survey/`, `structures/` and `critics/` beneath it, and nothing in the repository that holds the
+  document. The hand-over names its absolute path and how long it lives: under the plugin's data
+  directory until the plugin's last installation is uninstalled without `--keep-data` or its
+  marketplace is removed, as measured on 2026-09-23 on Claude Code 2.1.280, and in the temporary
+  directory until the system purges it. The page handed over "one file" and said nowhere where it went
+  (`ISSUES.md` E13); the 2026-09-23 run's directory,
+  `…/terse/runs/20260923-212113-terse-readme-rethink`, already had this form, by the coordinator's
+  choice.
 
 ## 0.1.1 — 2026-09-17
 
