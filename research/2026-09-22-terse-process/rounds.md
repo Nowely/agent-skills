@@ -52,6 +52,8 @@ agent's artifact came back as text or a file under its own temporary directory a
 | 8 | Codex Astra C3 | adversarial, whole document, on round 02 | 52 commands, 10 min | `run/reviews/02/c3-astra-findings.md`: 3 CONFIRMED — no route to the reviewed revision, the empty-ledger refusal a zero-claim document meets, two judges' criteria unstated | — |
 | 8 | Codex Sol C4-1, C4-2 | task readers on round 02 | 19 + 13 commands, 6 + 7 min | `run/reviews/02/c4-1.md`, `c4-2.md`: both blocked at the isolated configuration's login; no untrue sentence observed; the stop point now read correctly from the document | — |
 | 8 | Codex Luna C5-1–7 | question readers on round 02 | 2 commands, 26–33 s each | `run/reviews/02/c5-*.md`: 7/7 answered by the key, six from one section | Q7 is now answered by the text, which the audit's key calls unanswerable; the page says nothing about a key the rewrite makes obsolete |
+| 8 | Fable lens 6 | dedup and rank of the wave | 222k tokens, 15 min | `run/reviews/02/lens6-fable-dedup.md`: 35 findings from 49, 5 raised by two or more lenses; conflicts named; the task gate not met | one finding of its own (Q7's key under the new text), marked YOURS |
+| 8 | coordinator | verification and routing of the wave; the 02 row; the gate verdict | — | `run/reviews/02/routing.md`; regressions(02) = 3; F4 and F10 re-run at level 3 | set no round cap in the first announcement, as the page requires; set it at four now |
 
 Codex tokens are not measured by the driver; commands and minutes are what its reports carry. Claude tokens
 and minutes are the harness's task notifications. Tokens and minutes are in no copied return and cannot be
