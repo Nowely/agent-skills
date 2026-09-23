@@ -47,6 +47,15 @@ forensics remain in the repository references and release notes.
   and sheet no longer require that no audit ran, and a finding that a section buys the reader nothing
   the purpose needs is routed to the structure. On 2026-09-22/23 the audit route led straight from the
   audit into four rounds, and the run's skeleton file reads "none agreed".
+- `round.mjs` refuses an edit whose `new` adds a qualifying clause its `old` did not have — *unless*,
+  *except when*, *only if*, *as long as* and their kin — and quotes the clause, until the edit carries
+  `qualifies`: one sentence on why the clause is the sentence's own scope, kept in the ledger as
+  `qualified`. Rule 11 of `stages.md` says a qualification is not a fix, and nothing checked it (M23:
+  rounds 04 to 08 of one README, repaired by caveats, regressed 1, 0, 6, 5 and 10 times). Over the
+  recorded edits it fires on one edit of the 2026-09-22 run, round 02's G3a, which that round's wave
+  showed overstated, and on three of the 2026-09-11 record, among them "a write lock lasts as long as
+  its run", itself an overstatement. `--allow-unrun` reports a recorded one and lets it through, so that
+  record still replays byte-identical.
 
 ### Added
 

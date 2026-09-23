@@ -118,7 +118,10 @@ your shell rules forbid `cd`.
    how a rewritten sentence is re-pinned. `round.mjs` runs each `run` from the run directory before it
    writes anything and refuses the whole round when one `expect` finds nothing, so a citation that does
    not resolve stops there; what the command printed is kept in the ledger as `saw`, and the verifier
-   below reads it against `asks`. The format is the header of `round.mjs`.
+   below reads it against `asks`. An edit whose `new` adds a qualifying clause its `old` did not have —
+   *unless*, *only if*, *except when* and their kin — is refused until it carries `qualifies`, one
+   sentence on why the clause is the sentence's own scope and not a caveat, which the ledger keeps as
+   `qualified`. The format is the header of `round.mjs`.
 3. **Produce the round**: `node "$S/round.mjs" <NN-1>-<pass>.md <NN>-<pass>.md edits/NN.json --ledger ledger.json`.
 4. **Run the checks**, before any critic, with `R=<NN>-<pass>.md`:
    - `node "$S/rule1.mjs" "$R" --cut "<technical section heading>" --except "<section that may carry paths>"` — the rule that keeps mechanism out of the sections a reader meets first, with the document's own headings;

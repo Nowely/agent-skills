@@ -8,7 +8,8 @@
 //                "claims": [{"name", "pattern",
 //                            "asks": "what the sentence asserts, in its own scope words"}],
 //                "retire": [{"name","pattern"}],  // phrasings this edit removes as false   (want: false)
-//                "drop":   ["name", ...]}]         // ledger entries for claims the edit removes on purpose, recorded in rounds.md
+//                "drop":   ["name", ...],          // ledger entries for claims the edit removes on purpose, recorded in rounds.md
+//                "qualifies": "one sentence"}]     // why a qualifying clause `new` adds is the sentence's own scope, not a caveat
 // Every `old` must occur exactly once in FROM, or nothing is written. TO must not exist: a round is a
 // new file, never an overwrite. With --ledger, claims and retirements are appended (deduplicated by name).
 // A name is the ledger's key. Within one round it is set once — two edits declaring the same name
@@ -26,9 +27,16 @@
 // condition. A run that answers a neighbour of `asks` is what the verifier of step 4's wave reads for,
 // in the ledger entries written here — the edits file never carries `saw`.
 //
+// A qualification is not a fix (stages.md rule 11, measurements.md M23). An edit whose `new` holds more
+// qualifying clauses than its `old` — unless, except when/where/for/that, only if/when/where/after/once,
+// provided that, as long as, but not, save for/where, other than, apart from — refuses the round before
+// any check runs, unless it gives `qualifies`: one sentence on why the clause is the sentence's own
+// scope. That sentence is kept as `qualified` on every ledger entry the edit's claims write.
+//
 // --allow-unrun accepts the schema that predates the running check: `check.how` with no `run`, and
 // claims with no `asks`. Such entries are marked `unrun: true`. It exists to replay a recorded run;
-// a round written today declares `run` and `expect`.
+// a round written today declares `run` and `expect`. Under it a recorded qualification is reported on
+// stderr and let through, so a recorded run replays as it ran.
 //
 // A level-2 claim whose name or pattern mentions a lifecycle — stays, removed, continued, resumed,
 // reclaimed, kept, pruned — is marked provisional in the ledger, because such claims have fallen to
@@ -78,7 +86,27 @@ for (const e of edits) {
     refuse(`${e.name}: claim ${JSON.stringify(cl.name)} needs asks — what the sentence asserts, in its own scope words`);
 }
 
-// 3. The checks, all of them, still before anything is written.
+// 3. A qualification is not a fix: an edit that adds a qualifying clause says why, or nothing runs.
+const QUAL = /\b(unless|except (when|where|for|that)|only (if|when|where|after|once)|provided that|as long as|but not|save (for|where)|other than|apart from)\b/gi;
+const flat = (s) => String(s ?? "").replace(/\s+/g, " ");
+const tally = (s) => { const m = new Map(); for (const [q] of flat(s).matchAll(QUAL)) m.set(q.toLowerCase(), (m.get(q.toLowerCase()) ?? 0) + 1); return m; };
+const sum = (m) => [...m.values()].reduce((a, b) => a + b, 0);
+for (const e of edits) {
+  if (e.qualifies !== undefined && !(typeof e.qualifies === "string" && e.qualifies.trim()))
+    refuse(`${e.name}: qualifies is one sentence — why the clause is the sentence's own scope, not a caveat`);
+  const was = tally(e.old), is = tally(e.new);
+  if (sum(is) <= sum(was) || e.qualifies) continue;
+  // Quote each clause of a form whose count grew; drop the ones `old` already had word for word.
+  const n = flat(e.new), o = flat(e.old).toLowerCase();
+  const grown = [...n.matchAll(QUAL)].filter((m) => is.get(m[0].toLowerCase()) > (was.get(m[0].toLowerCase()) ?? 0))
+    .map((m) => n.slice(m.index).match(/^[^.,;:!?|—)]*/)[0].trim());
+  const added = grown.filter((q) => !o.includes(q.toLowerCase()));
+  const why = `${e.name}: adds ${(added.length ? added : grown).map((q) => JSON.stringify(q)).join(", ")} — a qualification is not a fix; a sentence that needs a caveat says too much (stages.md rule 11; measurements.md M23: round 08 of 2026-09-12, repaired by caveats, regressed ten times). Say less, or give the edit "qualifies": one sentence on why the clause is the sentence's own scope`;
+  if (allowUnrun) console.error(`${why}. Let through: --allow-unrun replays a recorded round`);
+  else refuse(why);
+}
+
+// 4. The checks, all of them, still before anything is written.
 const cwd = path.dirname(path.resolve(to));
 const saw = new Map();
 for (const e of edits) {
@@ -96,7 +124,7 @@ for (const e of edits) {
   console.log("ran ", e.name);
 }
 
-// 4. The edits.
+// 5. The edits.
 let t = fs.readFileSync(from, "utf8");
 for (const e of edits) {
   const n = t.split(e.old).length - 1;
@@ -112,6 +140,7 @@ if (ledgerFile) {
     for (const c of e.claims ?? []) byName.set(c.name, { name: c.name, pattern: c.pattern, want: true,
       level: e.check?.level ?? null,
       ...(c.asks ? { asks: c.asks } : {}),
+      ...(e.qualifies ? { qualified: e.qualifies } : {}),
       ...(unrun ? { ...(e.check?.how ? { how: e.check.how } : {}), unrun: true }
                 : { run: e.check.run, expect: e.check.expect, saw: saw.get(e.name) ?? "" }),
       ...(e.check?.level === 2 && /lifecycle|stays|removed|continu|resum|reclaim|kept|prun/i.test(c.name + " " + c.pattern) ? { provisional: true } : {}) });
