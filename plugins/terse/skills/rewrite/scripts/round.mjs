@@ -9,7 +9,7 @@
 //                            "asks": "what the sentence asserts, in its own scope words"}],
 //                "retire": [{"name","pattern"}],  // phrasings this edit removes as false   (want: false)
 //                "drop":   ["name", ...],          // ledger entries for claims the edit removes on purpose, recorded in rounds.md
-//                "qualifies": "one sentence"}]     // why a qualifying clause `new` adds is the sentence's own scope, not a caveat
+//                "qualifies": "..."}]              // for the verifier: why an added qualifying clause is the sentence's own scope
 // Every `old` must occur exactly once in FROM, or nothing is written. TO must not exist: a round is a
 // new file, never an overwrite. With --ledger, claims and retirements are appended (deduplicated by name).
 // A name is the ledger's key. Within one round it is set once — two edits declaring the same name
@@ -27,11 +27,14 @@
 // condition. A run that answers a neighbour of `asks` is what the verifier of step 4's wave reads for,
 // in the ledger entries written here — the edits file never carries `saw`.
 //
-// A qualification is not a fix (stages.md rule 11, measurements.md M23). An edit whose `new` holds more
-// qualifying clauses than its `old` — unless, except when/where/for/that, only if/when/where/after/once,
-// provided that, as long as, but not, save for/where, other than, apart from — refuses the round before
-// any check runs, unless it gives `qualifies`: one sentence on why the clause is the sentence's own
-// scope. That sentence is kept as `qualified` on every ledger entry the edit's claims write.
+// A qualification is not a fix (stages.md rule 11, measurements.md M23). The check is a signal over a
+// fixed list of forms — unless, except when/where/for/that, only if/when/where/after/once, provided
+// that, as long as, but not, save for/where, other than, apart from — counted on whitespace-normalised
+// text. An edit whose `new` holds more of them than its `old` refuses the round before any check runs,
+// unless it gives `qualifies` and declares a claim: the clause is a behaviour the verifier reads. A form
+// swapped for another leaves the count equal and is not seen. `qualifies` is a string for the verifier,
+// why the clause is the sentence's own scope; the script checks only that it is not empty, and keeps it
+// as `qualified` on the ledger entry of each of the edit's claims.
 //
 // --allow-unrun accepts the schema that predates the running check: `check.how` with no `run`, and
 // claims with no `asks`. Such entries are marked `unrun: true`. It exists to replay a recorded run;
@@ -86,22 +89,28 @@ for (const e of edits) {
     refuse(`${e.name}: claim ${JSON.stringify(cl.name)} needs asks — what the sentence asserts, in its own scope words`);
 }
 
-// 3. A qualification is not a fix: an edit that adds a qualifying clause says why, or nothing runs.
+// 3. A qualification is not a fix: a signal over fixed forms, whose reason the verifier reads.
 const QUAL = /\b(unless|except (when|where|for|that)|only (if|when|where|after|once)|provided that|as long as|but not|save (for|where)|other than|apart from)\b/gi;
 const flat = (s) => String(s ?? "").replace(/\s+/g, " ");
 const tally = (s) => { const m = new Map(); for (const [q] of flat(s).matchAll(QUAL)) m.set(q.toLowerCase(), (m.get(q.toLowerCase()) ?? 0) + 1); return m; };
 const sum = (m) => [...m.values()].reduce((a, b) => a + b, 0);
 for (const e of edits) {
   if (e.qualifies !== undefined && !(typeof e.qualifies === "string" && e.qualifies.trim()))
-    refuse(`${e.name}: qualifies is one sentence — why the clause is the sentence's own scope, not a caveat`);
+    refuse(`${e.name}: qualifies is empty — it is the string the verifier reads: why the clause is the sentence's own scope`);
   const was = tally(e.old), is = tally(e.new);
-  if (sum(is) <= sum(was) || e.qualifies) continue;
+  if (sum(is) <= sum(was)) continue;
   // Quote each clause of a form whose count grew; drop the ones `old` already had word for word.
   const n = flat(e.new), o = flat(e.old).toLowerCase();
   const grown = [...n.matchAll(QUAL)].filter((m) => is.get(m[0].toLowerCase()) > (was.get(m[0].toLowerCase()) ?? 0))
     .map((m) => n.slice(m.index).match(/^[^.,;:!?|—)]*/)[0].trim());
   const added = grown.filter((q) => !o.includes(q.toLowerCase()));
-  const why = `${e.name}: adds ${(added.length ? added : grown).map((q) => JSON.stringify(q)).join(", ")} — a qualification is not a fix; a sentence that needs a caveat says too much (stages.md rule 11; measurements.md M23: round 08 of 2026-09-12, repaired by caveats, regressed ten times). Say less, or give the edit "qualifies": one sentence on why the clause is the sentence's own scope`;
+  const quoted = (added.length ? added : grown).map((q) => JSON.stringify(q)).join(", ");
+  const why = !e.qualifies
+    ? `${e.name}: adds ${quoted} — a qualification is not a fix; a sentence that needs a caveat says too much (stages.md rule 11; measurements.md M23: round 08 of 2026-09-12, repaired by caveats, regressed ten times). Say less, or give the edit "qualifies" for the verifier: why the clause is the sentence's own scope`
+    : !(e.claims ?? []).length
+      ? `${e.name}: adds ${quoted} and declares no claim — a qualifying clause states a behaviour, and its "qualifies" reason is read on a claim's ledger entry; declare the claim`
+      : null;
+  if (!why) continue;
   if (allowUnrun) console.error(`${why}. Let through: --allow-unrun replays a recorded round`);
   else refuse(why);
 }

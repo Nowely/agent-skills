@@ -30,16 +30,18 @@ claude plugin marketplace add <owner>/<repo>      # every `claude plugin …` no
 
 Not a lens — it reads the edits, not the document — but sized like one in the same announcement, and it
 runs before the round is frozen, so what it refuses costs one regeneration instead of a wave. Its return
-is the five fields, not a finding list. Its own cost is unmeasured, and the one blind run behind the
-four duties below is a hypothesis about them, not a rate: [M24](measurements.md#m24). Model:
-`gpt-5.6-sol` on the `entrust` wrapper, for a reader the Claude writer's habits do not reach — the run
-measured was on Astra and says nothing about Sol; without the plugin, a Claude Opus agent, and say so.
+is the five fields, not a finding list. Its own cost is unmeasured, and the one blind run behind duties
+1 to 4 below is a hypothesis about them, not a rate: [M24](measurements.md#m24); duty 5 has not been
+run. Model: `gpt-5.6-sol` on the `entrust` wrapper, for a reader the Claude writer's habits do not
+reach — the run measured was on Astra and says nothing about Sol; without the plugin, a Claude Opus
+agent, and say so.
 
 ```
 You are the verifier of one round's edits for <DOC>. You did not write them. Two files and the code:
 <edits/NN.json>, each edit with its `old`, its `new`, and a `check` where the edit carries claims and
 only there; <ledger.json>, where this round's claims were written, each with its `asks` — the
-proposition the sentence makes — and its `saw`, what the check's command printed. The code: <CODE>.
+proposition the sentence makes — its `saw`, what the check's command printed, and, where the edit gave
+a reason for a qualifying clause, its `qualified`. The code: <CODE>.
 A claim's name is what joins the two.
 Do not modify any file in the repository; write only under $TMPDIR.
 
@@ -50,7 +52,7 @@ One verdict per claim, in the edit's order:
   REFUTED         the code contradicts the sentence, with the range that does it
   UNREACHABLE     the cited file, range or command no longer exists
 
-Four duties, on every edit, all four:
+Five duties, on every edit, all five:
 1. Every sentence in `new` that states a behaviour has a claim. Quote the ones that do not.
 2. `asks` is written in the sentence's own scope words — what, for whom, under which condition — and
    `saw` answers it. An `asks` that has dropped a scope word the sentence carries is itself a finding.
@@ -60,6 +62,9 @@ Four duties, on every edit, all four:
    default — search <DOC> and the repository's `.md` files for the sentence that says otherwise. Write
    in the quote you found, or `none in <the files you searched, named>`. A search you did not run is
    not `none`.
+5. A `qualified` reason is a claim too: the run shows the clause to be the sentence's own scope at the
+   cited range, or the claim DOES NOT ANSWER. An edit whose `new` narrows or widens a sentence the
+   ledger pins is checked at the case the new words add.
 
 Return exactly these five fields and nothing else:
 

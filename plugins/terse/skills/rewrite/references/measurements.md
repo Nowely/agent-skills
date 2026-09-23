@@ -146,7 +146,9 @@ Claude lenses and the dedup cost about 1.0M, 1.2M and 1.6M tokens a round. Round
 and was held back, its task readers sized to zero and the page asking for two clean rounds; the owner
 then read round 04 and rejected it for its shape and content — the opening, no statement of what the
 plugin is for, the pipeline told twice, a verbose install, no table of the skills, water by the
-paragraph, technical detail, a licence line — and not for one phrase. A hypothesis the run did not
-separate: the same verifier model held 23 of 24 claims on round 03's thread and refused 9 of 16 on round
-04's, and the two writers worded their `asks` differently. The run is
-`research/2026-09-22-terse-process/` in this repository.
+paragraph, technical detail, a licence line — and not for one phrase. Scanned afterwards, the
+qualification regex of `round.mjs` fires on 4 of the 127 edits recorded in this run and the 2026-09-11
+one: twice on a sentence that regressed (G3a here, R06-5 there), once beside one (the edit that carried
+R08-5), once on none — a signal, not a rate. A hypothesis the run did not separate: the same verifier
+model held 23 of 24 claims on round 03's thread and refused 9 of 16 on round 04's, and the two writers
+worded their `asks` differently. The run is `research/2026-09-22-terse-process/` in this repository.

@@ -54,15 +54,20 @@ forensics remain in the repository references and release notes.
   finding that a section buys the reader nothing the purpose needs is routed to the structure. On
   2026-09-22/23 the audit route led straight from the audit into four rounds, and the run's skeleton
   file reads "none agreed".
-- `round.mjs` refuses an edit whose `new` adds a qualifying clause its `old` did not have — *unless*,
-  *except when*, *only if*, *as long as* and their kin — and quotes the clause, until the edit carries
-  `qualifies`: one sentence on why the clause is the sentence's own scope, kept in the ledger as
-  `qualified`. Rule 11 of `stages.md` says a qualification is not a fix, and nothing checked it (M23:
-  rounds 04 to 08 of one README, repaired by caveats, regressed 1, 0, 6, 5 and 10 times). Over the
-  recorded edits it fires on one edit of the 2026-09-22 run, round 02's G3a, which that round's wave
-  showed overstated, and on three of the 2026-09-11 record, among them "a write lock lasts as long as
-  its run", itself an overstatement. `--allow-unrun` reports a recorded one and lets it through, so that
-  record still replays byte-identical.
+- `round.mjs` refuses an edit whose `new` holds more of a fixed list of qualifying forms than its `old`
+  — *unless*, *except when*, *only if*, *as long as* and their kin, counted on whitespace-normalised
+  text — and quotes the added clause, until the edit carries `qualifies` and declares a claim.
+  `qualifies` is a string the verifier reads, why the clause is the sentence's own scope, kept as
+  `qualified` on the ledger entry of each of the edit's claims; the script checks only that it is not
+  empty, and a form swapped for another leaves the count equal and is not seen. The verifier gains a
+  fifth duty: it reads each `qualified` reason as a claim, and checks an edit that narrows or widens a
+  pinned sentence at the case its new words add. `rewrite` treats a sentence a critic, the dedup or the
+  coordinator proposed as a claim like any other, its scope risk settled by a run or by narrower wording
+  before the freeze. Rule 11 of `stages.md` says a qualification is not a fix, and nothing checked it
+  (M23: rounds 04 to 08 of one README, repaired by caveats, regressed 1, 0, 6, 5 and 10 times). Over
+  the 127 recorded edits of 2026-09-11 and 2026-09-22 the regex fires four times — twice on a sentence
+  that regressed, once beside one, once on none (M25) — a signal, not a rate. `--allow-unrun` reports a
+  recorded one and lets it through, so the 2026-09-11 record still replays byte-identical.
 - The first round with no regression is selected for the user's read, and a second clean round is no
   longer waited for: the task and question readers sized to zero on it are run on that frozen round
   before the hand-over, with no writing round between, and the hand-over names whatever the user kept at
@@ -84,8 +89,8 @@ forensics remain in the repository references and release notes.
   freeze on a pin nothing can reach. It is row 0 of the wave's table: the user sizes it in the same
   announcement as the lenses and may size it to zero, the least that still counts as a round is
   unchanged at lenses 1 and 2, and what a round without it gives up is said where the size is chosen.
-  Its cost is unmeasured, and the one blind run behind its four duties is a hypothesis about them and
-  not a rate; both are M24 in `measurements.md`, where this repository's dated observations live.
+  Its cost is unmeasured, and the one blind run behind its first four duties is a hypothesis about them
+  and not a rate; both are M24 in `measurements.md`, where this repository's dated observations live.
 - `audit` asks the user what the document is for and what it must make its reader able to do, and
   keeps the answer in their words as the profile's ninth section. It returns a shape verdict beside the
   score: `shape: agreed` only on the user's word — that they agree to a named skeleton file, whose path

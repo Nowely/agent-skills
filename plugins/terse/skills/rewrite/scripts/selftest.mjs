@@ -92,7 +92,7 @@ run("round.mjs", [from2, to6, e2, "--ledger", lg2]);
 check("the snapshot holds the previous ledger byte for byte", fs.readFileSync(path.join(tmp, "ledger.to6.json"), "utf8") === odd);
 // round: an edit that adds a qualification is refused unless it says why the clause is scope, not a caveat
 const from3 = path.join(tmp, "from3.md"), e3 = path.join(tmp, "e3.json"), lg3 = path.join(tmp, "lg3.json");
-const [to8, to9, to10, to11] = ["to8.md", "to9.md", "to10.md", "to11.md"].map((f) => path.join(tmp, f));
+const [to8, to9, to10, to11, to12] = ["to8.md", "to9.md", "to10.md", "to11.md", "to12.md"].map((f) => path.join(tmp, f));
 fs.writeFileSync(from3, "The run is kept.\nIt stops on a lock unless you wait.\n");
 const caveat = (more = {}) => [{ name: "q", old: "The run is kept.", new: "The run is kept unless\nyou pass --prune.",
   check: { level: 1, run: "cat from3.md", expect: "kept" }, claims: [{ name: "kept", pattern: "kept", asks: "the run is kept" }], ...more }];
@@ -105,6 +105,9 @@ fs.writeFileSync(e3, JSON.stringify(caveat({ qualifies: why })));
 const q2 = run("round.mjs", [from3, to9, e3, "--ledger", lg3]);
 check("an edit that says why is written and its ledger entry keeps the reason",
   q2.code === 0 && fs.existsSync(to9) && JSON.parse(fs.readFileSync(lg3, "utf8")).find((c) => c.name === "kept")?.qualified === why);
+fs.writeFileSync(e3, JSON.stringify(caveat({ qualifies: why, claims: [] })));
+const q5 = runErr("round.mjs", [from3, to12, e3]);
+check("an edit that adds a qualification with a reason and no claim is refused", q5.code === 1 && /declares no claim/.test(q5.err) && !fs.existsSync(to12));
 fs.writeFileSync(e3, JSON.stringify([{ name: "k", old: "on a lock unless you wait", new: "on a held lock unless you wait" }]));
 check("an edit that keeps a qualification its old text had needs no reason", run("round.mjs", [from3, to10, e3]).code === 0 && fs.existsSync(to10));
 fs.writeFileSync(e3, JSON.stringify(caveat({ check: { level: 1, how: "read" } })));

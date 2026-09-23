@@ -127,10 +127,14 @@ your shell rules forbid `cd`.
    how a rewritten sentence is re-pinned. `round.mjs` runs each `run` from the run directory before it
    writes anything and refuses the whole round when one `expect` finds nothing, so a citation that does
    not resolve stops there; what the command printed is kept in the ledger as `saw`, and the verifier
-   below reads it against `asks`. An edit whose `new` adds a qualifying clause its `old` did not have —
-   *unless*, *only if*, *except when* and their kin — is refused until it carries `qualifies`, one
-   sentence on why the clause is the sentence's own scope and not a caveat, which the ledger keeps as
-   `qualified`. The format is the header of `round.mjs`.
+   below reads it against `asks`. An edit whose `new` holds more of a fixed list of qualifying forms
+   than its `old` — *unless*, *only if*, *except when* and their kin — is refused until it carries
+   `qualifies` and declares a claim; `qualifies` is a string, why the clause is the sentence's own scope,
+   kept on the claim's ledger entry as `qualified` for the verifier to read. The count is a signal: a
+   form swapped for another is not seen. A sentence a critic, the dedup or you proposed is a claim like
+   any other: its check plants the case the finding names and the case the new wording adds, and a
+   scope risk the writer or the verifier states is settled by a run or by narrower wording before the
+   freeze, never by your decision alone. The format is the header of `round.mjs`.
 3. **Produce the round**: `node "$S/round.mjs" <NN-1>-<pass>.md <NN>-<pass>.md edits/NN.json --ledger ledger.json`.
 4. **Run the checks**, before any critic, with `R=<NN>-<pass>.md`:
    - `node "$S/rule1.mjs" "$R" --cut "<technical section heading>" --except "<section that may carry paths>"` — the rule that keeps mechanism out of the sections a reader meets first, with the document's own headings;
@@ -181,7 +185,7 @@ the verifier's and lens 7's is what one wave measured on 2026-09-12 on a 1600-wo
 
 | Agent | Reads | Where it ran best | Size | Cost |
 |---|---|---|---|---|
-| 0. the verifier of the edits | this round's edits, and the `asks` and `saw` `round.mjs` wrote to the ledger, against the code; not the document | not measured; the brief names Codex gpt-5.6-sol, away from the Claude writer | one | unmeasured, [M24](references/measurements.md#m24) |
+| 0. the verifier of the edits | this round's edits, and the `asks`, `saw` and `qualified` `round.mjs` wrote to the ledger, against the code; not the document | not measured; the brief names Codex gpt-5.6-sol, away from the Claude writer | one | unmeasured, [M24](references/measurements.md#m24) |
 | 1. the code, with the right to run it | every behavioural claim; level 3 for anything about a lifecycle | Claude Opus | one | ~180k tokens, 17 min |
 | 2. the mechanical rules and the water | the skeleton's rules as a grep would; words whose score does not pay | Claude Opus | one | ~70k tokens, 7 min |
 | 3. adversarial, whole document | every sentence a reader acts on; scope words; CLI experiments in an isolated config | Codex gpt-6-astra | one | ~40 commands, 5 min |
