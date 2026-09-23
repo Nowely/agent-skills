@@ -33,16 +33,23 @@ on six slices return a sample.
 
 Announce the count and the models before spawning, and wait for the user's word. Default slices, one
 surveyor each: the exact genre, the same structural position, the most used regardless of genre, vendor
-guidance, whatever this document's hard part is, and one slice whose job is what *not* to copy.
+guidance, whatever this document's hard part is, and one slice whose job is what *not* to copy. A
+seventh reads the documents the owner names as good, asked for before anyone is spawned: on 2026-09-23
+no survey fetched the exemplar the owner had named.
 
 Two rules the surveyors carry, both learned by getting them wrong: **fetch, do not recall** — every
-document reported carries its URL and its headings in order — and **weight by use, not by taste**.
+document reported carries its URL and its headings in order — and **weight by use, not by taste**. Each
+also returns the genre's order — every place from the top, what the genre puts there, in N of M
+documents fetched — because the skeleton says where it follows that order and where it departs.
 
 Presentation is surveyed here too, from the markdown source rather than from a rendering, because a
 summary of a document does not show you its devices.
 
 One synthesis decides what to take. The bar is that a change earns its words in *this* document: it names
 what it displaces, or admits the document grows.
+
+The briefs, and how to make the file of the owner's own words on the genre that every agent here reads:
+[briefs.md](references/briefs.md).
 
 ## Step 2. The words
 
@@ -94,5 +101,6 @@ to a stage above it.
 ## Reference
 
 - The four stages, the measurements, and the content rules: [stages.md](references/stages.md).
+- Every agent's brief, and the owner's calibration file: [briefs.md](references/briefs.md).
 - Filling the blocks, and the loop: [loop.md](../rewrite/references/loop.md).
 - What the field already says about all of this: [prior-art.md](../../references/prior-art.md).

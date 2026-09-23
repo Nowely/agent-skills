@@ -109,6 +109,16 @@ forensics remain in the repository references and release notes.
   names neither a rule nor the purpose is discarded, and the one change it proposes is a cut. No brief named those rules: in round 04 of 2026-09-23 the water
   lens proposed three cuts of seven words in all, and the owner, reading that round, found water by the
   paragraph. Its cost is unmeasured.
+- `rethink` ships its briefs, in `references/briefs.md`, starting with stage 1: the surveyors' brief, the
+  synthesis's, and how the owner's calibration file is made — the owner's own words on the genre, grepped
+  from the messages they typed in past sessions and kept verbatim with their dates, which every surveyor,
+  structure writer and critic reads. A surveyor fetches the raw markdown, never through a summarising
+  tool, and returns the genre's order: each place from the top, what the genre puts there, in N of M
+  documents fetched. A seventh slice reads the documents the owner names as good, asked for before anyone
+  is spawned; step 1 names it and the order. On 2026-09-23, on this plugin's own README, every brief of
+  the run was composed in the coordinator's messages; WebFetch returned paraphrases with invented
+  headings for four of ten READMEs; no survey fetched the exemplar the owner had named; and the genre's
+  order was counted only when the owner asked for it.
 
 ### Fixed
 
