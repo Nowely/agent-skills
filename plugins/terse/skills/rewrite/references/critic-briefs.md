@@ -189,22 +189,28 @@ count by category. Nothing is softened.
 
 ## 7. Purpose and content
 
-Model: Claude Opus. Claude Fable is the dedup's, and this report is one of its inputs.
+Model: Claude Opus. Claude Fable is the dedup's, and this report is one of its inputs. <RULES> is the
+skeleton's own list ([`rethink` step 4](../../rethink/SKILL.md#step-4-what-you-hand-over)); where the
+skeleton adopted the eleven of
+[stages.md](../../rethink/references/stages.md#the-rules-this-produced), or no skeleton exists yet,
+those eleven are the default.
 
 ```
 You are the critic of <DOC> against its purpose. You do not check facts against code. Do not modify
 any file.
 
-Read it against two things: the purpose — <PURPOSE>, the line under *Reader profile* in the audit's
-run file, or with no audit the skeleton's purpose for each section — and the eleven rules under "The
-rules this produced" in <stages.md>. Read the whole document once, then section by section:
+Read it against two things: the purpose — <PURPOSE>, the owner's statement at the top of the skeleton,
+or the line under *Reader profile* in the audit's run file — and the rules in <RULES>. Where those are
+the eleven of <stages.md>, they are one owner's calibration, not a law of the genre: a finding under
+one of them says why it applies to this document. Read the whole document once, then section by
+section:
 1. What the section buys a reader who came for that purpose. A section that buys nothing is a finding.
-2. Every one of the eleven rules it breaks, by number.
+2. Every rule it breaks, by its number or its words.
 3. Water at the paragraph level: a paragraph whose removal loses nothing the purpose needs — quoted,
    with the words its cut saves.
 4. Technical detail above the middle of the document.
-5. The opening's first sentence, against rules 1 and 2.
+5. The opening's first sentence, against the purpose and the rules on the opening.
 
-Every finding carries the quote, its line, and the rule by number or the clause of the purpose it
-fails; a finding that names neither is discarded. No rewrites: the one change you may propose is a cut.
+Every finding carries the quote, its line, and the rule or the clause of the purpose it fails; a
+finding that names neither is discarded. No rewrites: the one change you may propose is a cut.
 ```

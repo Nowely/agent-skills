@@ -100,12 +100,13 @@ forensics remain in the repository references and release notes.
   an audit straight into four rounds of `rewrite` on this plugin's README, and the owner rejected the
   result for its shape and content, not its phrasing, as a draft was rejected on 2026-09-11; nothing on
   the pages had asked for the shape to be decided.
-- Lens 7, purpose and content: one Claude Opus critic reads the whole document against its purpose —
-  the audit's purpose line, or the skeleton's — and the eleven content rules of `stages.md`, section by
-  section: what each section buys a reader who came for that purpose, the rules it breaks by number,
-  paragraphs whose cut loses nothing the purpose needs, technical detail above the middle, and the
-  opening against rules 1 and 2. A finding that names neither a rule nor the purpose is discarded, and
-  the one change it proposes is a cut. No brief named those rules: in round 04 of 2026-09-23 the water
+- Lens 7, purpose and content: one Claude Opus critic reads the whole document against the owner's
+  purpose statement — the skeleton's, or the audit's purpose line — and against the skeleton's own
+  rules, section by section: what each section buys a reader who came for that purpose, the rules it
+  breaks, paragraphs whose cut loses nothing the purpose needs, technical detail above the middle, and
+  the opening. Where the skeleton adopted them or none exists yet, the rules are the eleven of
+  `stages.md`, which the brief calls one owner's calibration and not a law of the genre. A finding that
+  names neither a rule nor the purpose is discarded, and the one change it proposes is a cut. No brief named those rules: in round 04 of 2026-09-23 the water
   lens proposed three cuts of seven words in all, and the owner, reading that round, found water by the
   paragraph. Its cost is unmeasured.
 
