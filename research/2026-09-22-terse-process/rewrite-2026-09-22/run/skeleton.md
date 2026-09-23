@@ -12,7 +12,8 @@ and gates nothing. Decisions taken after this file was written are appended belo
   (`reviews/02/routing.md`), as applied in `03-review.md`:
   - (a) register (L6-25): "the instructions say" or "the page says" where the source is a page (level 2),
     direct where a script does it (level 3). Applied as one sentence at the head of *What each one does* —
-    "Each skill is a page of instructions for Claude; below is what each page says." — so the pinned
+    "Each skill is a page of instructions for Claude; below is what each page says." (round 04, L6.3-17:
+    "…what each page and its references say.", R03a re-pinned) — so the pinned
     sentences under it keep their words; the attributed sentences elsewhere keep their attribution (W9 not
     applied); the script sentence ("The shipped check rejects…") stays direct.
   - (b) L98-99 (L6-08): the six before-readers of 2026-09-10 are recorded one by one
@@ -24,3 +25,24 @@ and gates nothing. Decisions taken after this file was written are appended belo
   - (e) the audit key's Q7 is the coordinator's matter, not the text's: the language sentence is left as it
     is (L6-24, W8, not applied).
   Budgets are unchanged; `sections.mjs` reports four sections over (see `rounds.md`, round 03).
+- 2026-09-23, round 04: the coordinator's decisions on the round-03 wave's UNSETTLED and SCOPE items
+  (`reviews/03/routing.md`), as applied in `04-terms.md`:
+  - (f) the regression count (L6.3-08): the definition of `rewrite/SKILL.md:181-182` and `loop.md:52-55`
+    is kept as written — a sentence the round introduced, shown false or overstated — and a sentence an
+    earlier round wrote that this round re-pins counts as introduced only in the words the round changed.
+  - (g) decision (d) covers every branch name (L6.3-15): the boundary sentence carries the date and the
+    two commits and no branch, not even the one the install resolves; its last sentence, a repeat of the
+    first, is cut (G4 dropped; R03i and R03j re-pinned).
+  - (h) decision (a) reaches its own section (L6.3-16): the frame sentence governs *What each one does*;
+    attributed sentences elsewhere keep their attribution, unattributed ones are not changed for it.
+  - (i) the three dated findings round 01 cut (L6.3-22; `00-original.md:70-72`, `:73-75`, `:84`) stay
+    cut: the audit left C34–C37 unconfirmed at levels 1–2 (`audit.md:331-361`; the readers' answers and
+    the cause per failure are not in the record) and an unconfirmed claim is not restored; C45 was
+    refuted. The reasons are recorded in `cuts.md`.
+  - (j) the README does not name rewrite's guess route (L6.3-12): the sentence names the skeleton, the
+    audit's run file, and a resumed run of rewrite's own.
+  - (k) the install line for this checkout (L6.3-02, carried from L6-04) is added at level 3: the
+    install performed from the checkout's path into an isolated configuration, and the installed tree
+    compared with the checkout's.
+  - (l) the gate reads Q7's GUESSED as the key's answer (L6.3-28, E14): a confident yes or no is the
+    failure; the language sentence stays (decision (e)).

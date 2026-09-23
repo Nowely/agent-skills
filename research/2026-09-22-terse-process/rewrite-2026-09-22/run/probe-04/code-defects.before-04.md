@@ -5,7 +5,7 @@ These are findings the rounds routed to the code, per `rewrite/SKILL.md` step 4 
 repository: its `ISSUES.md` takes an entry only on the owner's word (`rewrite/SKILL.md:153-154`). Each
 entry is written in that file's register (`ISSUES.md:1-5`: evidence at file:line, an evidence level, and
 wording that can become an issue unchanged). On the owner's word each would go there as the next number,
-in this file's order: at `1af4160`, whose last entry is E14, D1 as E15, D2–D6 (round 03) as E16–E20, and D7–D8 (round 04) as E21–E22.
+in this file's order: at `1af4160`, whose last entry is E14, D1 as E15 and D2–D6 (round 03) as E16–E20.
 
 ## D1. `rewrite` keeps its candidate outside the repository, and no page says where the candidate stands when it is re-audited, whose readers open only the repository's `.md` files
 
@@ -191,87 +191,3 @@ state they produce, but does not say where that state lives: no `$TMPDIR`, no is
 installs a plugin, edits a configuration or runs a recipe that resets a tree acts on the user's real
 machine. Step 5b should carry lens 4's isolation: the starting state under `$TMPDIR`, a host application's
 commands in an isolated configuration there, and nothing written outside it.
-
-## D7. The pages give a run's lifetime as "deleted by `claude plugin uninstall` unless `--keep-data`", and it is not: removing one of two installations keeps the runs, and `claude plugin marketplace remove` deletes them with no `--keep-data`
-
-**Evidence, level 3.** `plugins/terse/skills/audit/SKILL.md:39-42` and `plugins/terse/skills/rewrite/SKILL.md:74-77`
-state a run's lifetime in one clause each: under the plugin's data directory a run "survives plugin updates
-and is deleted by `claude plugin uninstall` unless `--keep-data` is passed". Neither page names a scope, the
-last installation, or `claude plugin marketplace remove` (the grep below over the two pages: 0). Claude Code
-2.1.280, in Claude configurations isolated under the run directory and not signed in, with the plugin
-installed from this checkout's marketplace and a run planted in `plugins/data/terse-nowely/runs/` beside a
-decoy directory: `uninstall` deletes the data directory and the run (case A); `uninstall --keep-data` keeps
-both (B); with the plugin installed at user and at project scope, uninstalling the user installation keeps
-both, and uninstalling the last one deletes them (C); `claude plugin marketplace remove nowely` exits 0,
-deletes both, and leaves no plugin installed, and its `--help` offers no option but `--scope` (D). The decoy
-survives every case. Found by the round-02 wave's lens 1 (Claude Opus, F9 and F10, level 3,
-`reviews/02/lens1-opus.md:67-79`; F10 re-run by the coordinator), recorded in round 03 as
-`probe-03/lifetime-probe.sh` with its log (claim G3a), raised again by the round-03 wave's lens 1 (P2,
-`reviews/03/lens1-opus.md:228-231`), and re-run for this entry on 2026-09-23 as `probe-04/lifetime-probe.sh`:
-the same script with its probe directory under `probe-04/` and the sign-in gate of `probe-03/install-probe.sh`
-added, whose log is byte-identical to round 03's (`diff` exit 0). The README already states the rule the pages
-lack (`04-terms.md:93-94`, G3a).
-
-**Check.** From any directory:
-
-    sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-04/lifetime-probe.sh; sed -n '39,42p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '74,77p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md; echo "page lines naming marketplace remove, a scope or the last installation: $(cat /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md | grep -c -E 'marketplace remove|last (installation|scope)|--scope')"
-
-It prints (run on 2026-09-23 at `b7a17da`, whose plugin tree is `2f29a8f`'s, exit 0; kept at
-`probe-04/d7-check.out`, the probe's own log at `probe-04/lifetime-probe.log`) the lines this regex matches:
-
-    A state after uninstall: terse-nowely absent, run marker absent[\s\S]*B state after uninstall --keep-data: terse-nowely present, run marker present[\s\S]*C state after uninstall of the user installation, the project one left: terse-nowely present, run marker present[\s\S]*C state after uninstall of the last installation: terse-nowely absent, run marker absent[\s\S]*D \$ claude plugin marketplace remove nowely -> exit 0\nD state after marketplace remove: terse-nowely absent, run marker absent[\s\S]*marketplace remove options: --help --scope\s*\n[\s\S]*deleted by `claude plugin uninstall` unless `--keep-data` is passed[\s\S]*deleted by `claude plugin uninstall`\s+unless `--keep-data` is passed[\s\S]*page lines naming marketplace remove, a scope or the last installation: 0\s*$
-
-**Issue text.** `audit` and `rewrite` tell the agent that a run under the plugin's data directory is deleted
-by `claude plugin uninstall` unless `--keep-data` is passed, and the agent passes that on as the run's
-lifetime. Measured on Claude Code 2.1.280, it is wrong in two directions. With the plugin installed at two
-scopes, uninstalling one keeps the data directory and its runs; they go only when the last installation is
-removed. And `claude plugin marketplace remove` deletes them as well, with no `--keep-data` to stop it. A
-user who removes the marketplace to tidy up loses every run without being warned, and a user who reads
-"uninstall deletes it" while a second installation remains expects a deletion that does not happen. Both
-pages should say that the runs are deleted when the plugin's last installation is removed, by
-`claude plugin uninstall` without `--keep-data` or by `claude plugin marketplace remove`, which has no such
-option.
-
-## D8. The bake-off vetoes any weakened warning, the accuracy floor and the rule on guarantee words require a false one to be corrected or weakened, and no page says which wins
-
-**Evidence, level 2.** `plugins/terse/skills/rewrite/references/bake-off.md:114`, one of the sheet's two veto
-rows ("a candidate that fails either is out", `:108-109`), asks "was a condition, limit or warning at a
-decision point cut or weakened?", with no exception for one that is false. The same file's writer brief
-says "Correct what the current file gets wrong rather than carrying it forward" (`:60-62`; the accuracy
-floor of `plugins/terse/skills/rewrite/SKILL.md:44-47`), and `plugins/terse/skills/audit/references/truth-pass.md:23-25`
-leaves a guarantee-shaped claim two options only: "reach level 3 or be weakened to what levels 1 and 2
-support. There is no third option". A warning that is false at a decision point falls under both: to
-correct it is to cut or weaken it, which fails the veto row. The only sentence on precedence,
-`rewrite/SKILL.md:212-215`, puts the safeguards of `writing-rules.md` — "Never cut a condition, a limit or a
-warning where a reader decides" (`plugins/terse/skills/rewrite/references/writing-rules.md:21`) — above "the
-rest of the rules wherever they collide", without saying whether the accuracy floor or the rule on guarantee
-words is among them; read literally, it keeps the false warning. No line of the three skills speaks of a
-false or refuted condition, limit or warning (the search below: 0). The round-01 judges already resolved it
-both ways: one read the veto as permitting the correction of a false claim
-(`research/2026-09-22-terse-process/rewrite-2026-09-22/j2-astra-sheets.md:66, 184, 302`), another applied
-`rewrite/SKILL.md:212-213`'s override against the audit's "stays at level 2 or is cut" and vetoed a candidate
-on it (`j3-fable-sheets.md:303-314`, the same directory). The README carried the conflict as a permission no page grants, "A
-writer may reword one or correct it when it is false" (`03-review.md:101-102`, cut in round 04). Found by
-the round-02 wave's lens 1 (Claude Opus, note c, `reviews/02/lens1-opus.md:140`) and not recorded then, and
-again by the round-03 wave's lens 1 (P4, `reviews/03/lens1-opus.md:236-238`) and lens 2 (P2,
-`reviews/03/lens2-opus.md:222-225`).
-
-**Check.** From any directory:
-
-    sed -n '60,62p;108,109p;114p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/bake-off.md; sed -n '23,25p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/truth-pass.md; sed -n '21p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/writing-rules.md; sed -n '44,47p;212,215p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md; echo "page lines on a false or refuted condition, limit or warning: $(grep -rh -i -E '(false|refuted|wrong) (condition|limit|warning)|(condition|limit|warning)[^.]{0,40}(is|are|was) (false|refuted|wrong)' /Users/ruliny/Git/agent-skills/plugins/terse/skills | wc -l | tr -d ' ')"
-
-It prints (run on 2026-09-23 at `b7a17da`, whose plugin tree is `2f29a8f`'s, exit 0; kept at
-`probe-04/d8-check.out`) the lines this regex matches:
-
-    Correct what the current file gets wrong rather than\s+carrying it forward[\s\S]*The first two rows are vetoes: a candidate that fails either is out[\s\S]*\| protected passages \| was a condition, limit or warning at a decision point cut or weakened\?[\s\S]*\| veto \|[\s\S]*must reach level 3 or be\s+weakened to what levels 1 and 2 support\. There is no third option[\s\S]*Never cut a condition, a limit or a warning where a reader decides\.[\s\S]*The accuracy floor\*\*: every statement about behaviour must be true of the code in this checkout[\s\S]*override the\s+rest of the rules wherever they collide: never cut a condition, a limit or a warning where a reader\s+decides[\s\S]*page lines on a false or refuted condition, limit or warning: 0\s*$
-
-**Issue text.** The bake-off's judging sheet vetoes any candidate that cuts or weakens a condition, limit or
-warning at a decision point, and nothing excepts one that is false. The writer brief beside it tells the
-writer to correct what the current file gets wrong, and the truth pass leaves a guarantee-shaped claim
-that cannot reach level 3 no option but to be weakened. A false warning at a decision point is caught
-between them: correcting it fails a veto row, keeping it fails the accuracy floor. The one precedence
-sentence, in `rewrite`'s step 6, ranks the writing rules' safeguards above "the rest of the rules" without
-saying whether the accuracy floor is one of them, and the judges of one bake-off have already read it both
-ways. The veto row should except a warning the claim ledger holds as refuted, and say that correcting it to
-what the evidence supports is not weakening it; or the precedence sentence should name the accuracy floor as
-the rule the safeguards do not override.

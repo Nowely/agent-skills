@@ -1,0 +1,19 @@
+THE ACCURACY FLOOR: every statement about behaviour must be true of the code in this checkout, and
+you must know the file and line that backs it. Correct what the current file gets wrong rather than
+carrying it forward. Rewrites of this file have already failed by writing a cleaner sentence that
+One sheet per candidate. The first two rows are vetoes: a candidate that fails either is out, whatever
+else it does well.
+| protected passages | was a condition, limit or warning at a decision point cut or weakened? was a passage the audit recorded as working damaged? | veto |
+**every, always, never, cannot, guarantees, ensures** — a claim in this shape must reach level 3 or be
+weakened to what levels 1 and 2 support. There is no third option, because a guarantee is a claim about
+all runs, and reading one function proves nothing about all runs.
+Never cut a condition, a limit or a warning where a reader decides. Repetition at
+6. **The accuracy floor**: every statement about behaviour must be true of the code in this checkout,
+   and the writer records the level of evidence it reached — the three levels are in
+   [truth-pass.md](../audit/references/truth-pass.md#three-levels-of-evidence). A claim about a lifecycle
+   (what stays, what is removed, what a continued or retried run sees) at level 2 is a guess: run it.
+The safeguards are the last lines of [writing-rules.md](references/writing-rules.md) and override the
+rest of the rules wherever they collide: never cut a condition, a limit or a warning where a reader
+decides; repetition at an independently read decision point is not redundancy; a dated measurement
+keeps its date and its numbers.
+page lines on a false or refuted condition, limit or warning: 0

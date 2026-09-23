@@ -1,0 +1,437 @@
+# round 04 checks, 2026-09-23 15:56:08 +0300; repository HEAD b7a17da
+
+$ node $S/round.mjs $R/03-review.md $R/04-terms.md $R/edits/04.json --ledger $R/ledger.json
+ran  L6.3-17 the frame names each page and its references (R03a re-pinned)
+ran  L6.3-08 the readers are model agents (C06 re-pinned)
+ran  L6.3-13/14 rethink surveys in and beyond the genre; the water cut (C09 re-pinned)
+ran  L6.3-11 the skeleton's contents include the rules the writing must pass (C10 re-pinned)
+ran  L6.3-12 rewrite's ways in: the skeleton, an audit's run file, or its own run with rounds (C11 re-pinned)
+ran  L6.3-21 the hand-over without the repeated frame (R04a new)
+ran  L6.3-18 the claims a round declares (R03g re-pinned)
+ran  L6.3-04 the ratchet in the reader's words (R04b new, level 3)
+ran  L6.3-20 the boundary names the README, not a page (R03i re-pinned)
+ran  L6.3-02 the SCOPE line: installing the commit this README describes (R04c new, level 3)
+ran  L6.3-03/15 the 2026-09-22 boundary: no branch, both pages, l75 cut (R03j re-pinned, R04d new, G4 dropped)
+ran  L6.3-09 the chain preceded the plugin's bake-off and rounds (R04f new)
+ran  L6.3-10/20 the records the plugin's repository holds: each reader before, the totals after (C44 re-pinned)
+ran  L6.3-08 the pilot's third limit: no word on a human reader (R04e new)
+ran  L6.3-19 the 2 × 5 run is an experiment, not the bake-off (C42 re-pinned)
+ok  L6.3-17 the frame names each page and its references (R03a re-pinned)
+ok  L6.3-08 the readers are model agents (C06 re-pinned)
+ok  L6.3-13/14 rethink surveys in and beyond the genre; the water cut (C09 re-pinned)
+ok  L6.3-11 the skeleton's contents include the rules the writing must pass (C10 re-pinned)
+ok  L6.3-12 rewrite's ways in: the skeleton, an audit's run file, or its own run with rounds (C11 re-pinned)
+ok  L6.3-21 the hand-over without the repeated frame (R04a new)
+ok  L6.3-18 the claims a round declares (R03g re-pinned)
+ok  L6.3-04 the ratchet in the reader's words (R04b new, level 3)
+ok  L6.3-20 the boundary names the README, not a page (R03i re-pinned)
+ok  L6.3-02 the SCOPE line: installing the commit this README describes (R04c new, level 3)
+ok  L6.3-03/15 the 2026-09-22 boundary: no branch, both pages, l75 cut (R03j re-pinned, R04d new, G4 dropped)
+ok  L6.3-01 cut: the permission no page grants
+ok  L6.3-09 the chain preceded the plugin's bake-off and rounds (R04f new)
+ok  L6.3-10/20 the records the plugin's repository holds: each reader before, the totals after (C44 re-pinned)
+ok  L6.3-08 the pilot's third limit: no word on a human reader (R04e new)
+ok  L6.3-19 the 2 × 5 run is an experiment, not the bake-off (C42 re-pinned)
+ledger: 56 claim(s); the state before this round is in ledger.04.json
+wrote /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/04-terms.md
+exit 0
+
+$ node $S/rule1.mjs $R/04-terms.md --cut "Install" --except "Install"
+
+0 violation(s), 0 excused
+exit 0
+
+$ node $S/dup.mjs $R/04-terms.md $R/concepts.json
+  1   three skills, user-invoked     (opening)
+  2   fresh readers measure answerability (opening) | What each one does
+  1   claims checked against the code (opening)
+  1   audit never proposes wording   What each one does
+  2   rethink stops at a skeleton    (opening) | What each one does
+  1   bake-off: writers and judges   What each one does
+  2   rounds and critics             What each one does | What was measured
+  1   nothing written to your files without your word Where it writes
+  1   announce agents and wait       What each one does
+  1   install commands               Install
+  1   node prerequisite              Install
+  1   not a compressor               What it will and will not do to your text
+  1   conditions, limits, warnings kept What it will and will not do to your text
+  2   the 2026-09-10 measurement     What it will and will not do to your text | What was measured
+  2   no no-document arm             What each one does | What was measured
+  1   the ledger and the ratchet     What each one does
+  0   the verifier before the freeze 
+  1   run directory location         Where it writes
+  1   any language, any text         (opening)
+
+0 concept(s) in three or more sections
+exit 0
+
+$ node $S/sections.mjs $R/04-terms.md $R/budgets.json
+  149 / 99   +50   (opening)
+  392 / 324  +68   What each one does
+  119 / 49   +70   Install
+  156 / 120  +36   Where it writes
+  104 / 127  -23   What it will and will not do to your text
+  218 / 309  -91   What was measured
+    1 / 1    0   Licence
+ 1139 TOTAL, 4 section(s) over budget
+exit 0
+
+$ node $S/sections.mjs $R/03-review.md $R/budgets.json   (round 03, for the growth per section)
+  149 / 99   +50   (opening)
+  361 / 324  +37   What each one does
+   91 / 49   +42   Install
+  156 / 120  +36   Where it writes
+  116 / 127  -11   What it will and will not do to your text
+  204 / 309  -105   What was measured
+    1 / 1    0   Licence
+ 1078 TOTAL, 4 section(s) over budget
+exit 0
+
+$ node $S/ledger.mjs $R/ledger.json $R/00-original.md $R/01-candidate.md $R/02-grafts.md $R/03-review.md $R/04-terms.md
+claim                                                                                                                                                                 lvl  00-o 01-c 02-g 03-r 04-t
+C01 terse is a Claude Code plugin whose                                                                                                                               L2   LOST LOST LOST yes  yes 
+C03 the plugin ships three skills.                                                                                                                                    L3   LOST yes  yes  yes  yes 
+C05 `rethink` returns a skeleton that `rewrite`                                                                                                                       L2   yes  yes  yes  yes  yes 
+C06 audit builds a profile of the project's                                                                                                                           L2   LOST LOST LOST LOST yes 
+C07 audit returns a score, the questions that                                                                                                                         L2   LOST LOST LOST yes  yes 
+C09 rethink decides, before any prose is written                                                                                                                      L2   LOST LOST LOST LOST yes 
+C10 rethink hands over a skeleton, each section                                                                                                                       L2   LOST LOST LOST LOST yes 
+C11 rewrite starts from a skeleton `rethink` agr                                                                                                                      L2~  LOST LOST LOST LOST yes 
+C12 three writers produce candidates and two jud                                                                                                                      L2   YES   -    -    -    -  
+C13 every round of a rewrite stays on                                                                                                                                 L3   YES   -    -    -    -  
+C15 rewrite writes its rounds and artefacts into                                                                                                                      L2   LOST LOST LOST yes  yes 
+C16 nothing rewrite does changes the user's file                                                                                                                      L2   YES   -    -    -    -  
+C18 inside Claude Code, `/plugin marketplace add                                                                                                                      L2   yes  yes  yes  yes  yes 
+C19 from a shell, `claude plugin marketplace add                                                                                                                      L2   yes  yes  yes  yes  yes 
+C20 after the two install steps nothing else                                                                                                                          L3   YES   -    -    -    -  
+C21 Node 22 or newer is needed only                                                                                                                                   L3   YES   -    -    -    -  
+C23 shortening the text is not terse's aim:                                                                                                                           L2   yes  yes  yes  yes  yes 
+C24 on the one 2026-09-10 README the chain                                                                                                                            L3   LOST LOST LOST yes  yes 
+C27 rewrite leaves every condition, limit and wa                                                                                                                      L2   YES   -    -    -    -  
+C30 everything under *What was measured* comes f                                                                                                                      L2   YES   -    -    -    -  
+C33 three discordant pairs, all improvements, an                                                                                                                      L3   LOST LOST LOST yes  yes 
+C39 the 2026-09-10 bake-off put five published w                                                                                                                      L2   YES   -    -    -    -  
+C41 on the audited README's first 116 words,                                                                                                                          L2   YES   -    -    -    -  
+C42 the passage result rests on ten agents                                                                                                                            L2   LOST LOST LOST LOST yes 
+C43 nothing in the record isolates which of                                                                                                                           L2   LOST yes  yes  yes  yes 
+C44 the 2026-09-10 measurement had no arm that                                                                                                                        L2   LOST LOST LOST LOST yes 
+C45 two published benchmarks that ran a no-docum                                                                                                                      L2   YES   -    -    -    -  
+C46 the plugin's reference files state the missi                                                                                                                      L2   YES   -    -    -    -  
+G1 all three skills announce agents and model, then wait for your word                                                                                                L2   LOST LOST yes  yes  yes 
+R02a audit's run: plugin data directory installed, ${TMPDIR:-/tmp}/terse from a checkout, nothing written into the audited repository                                 L2   LOST LOST LOST yes  yes 
+R02c rewrite records a code defect in code-defects.md in the run and offers it to the user                                                                            L2   LOST LOST LOST yes  yes 
+R02d copying a defect into ISSUES.md, or applying the candidate, waits for the user's word                                                                            L2   LOST yes  yes  yes  yes 
+R02e the rethink page does not say where its skeleton is stored                                                                                                       L2   LOST yes  yes  yes  yes 
+G3a lifecycle: installed, claude plugin uninstall deletes the data directory and its runs unless --keep-data                                                          L3   LOST LOST LOST yes  yes 
+G3b lifecycle: from a checkout the operating system may purge the runs; copy a run to keep it                                                                         L3   LOST LOST LOST yes  yes 
+G2 chain, as its pages report: departures one to zero, neither control broken                                                                                         L1   LOST LOST yes  yes  yes 
+R02f2 a re-audit after a rewrite uses the same questions, answer key, entry file and model, or it is a new measurement                                                L2   LOST LOST yes  yes  yes 
+R03a register: each skill is a page of instructions for Claude, and the section says what each page says                                                              L2   LOST LOST LOST LOST yes 
+R03c the claim ledger excludes voice and ordering, illustrative examples, arguments for instructions, unshipped tools' recipes                                        L2   LOST LOST LOST yes  yes 
+R03d for an existing document an adversarial read precedes a bake-off of three whole-file candidates and two judges                                                   L2   LOST LOST LOST yes  yes 
+R03e later rounds are checked against the claim ledger, the audit's on its route; tasks and questions before a round reaches you                                      L2   LOST LOST LOST yes  yes 
+R03f the loop stops when you read a round and say whether you would send it as it is                                                                                  L2   LOST LOST LOST yes  yes 
+R03g every cut of twenty words or more carries a reason, every declared behavioural claim its source and evidence                                                     L2   LOST LOST LOST LOST yes 
+R03h install needs Claude Code; running a skill needs sign-in; audit and rewrite also need Node 22 or newer on PATH                                                   L3   LOST LOST LOST yes  yes 
+R03i this page describes commit 2f29a8f                                                                                                                               L2   LOST LOST LOST LOST yes 
+R03j at the 2026-09-22 audit the install commands resolved main at 8c041b7, whose rewrite page wrote into the document repository unasked                             L2   LOST LOST LOST LOST yes 
+R03b installed, the runs land in plugins/data/terse-nowely/runs/ inside Claude Code's configuration directory                                                         L3   LOST LOST LOST yes  yes 
+G3c the audit and rewrite pages warn that the operating system may purge a run in the temporary directory; copy a run to keep it                                      L2   LOST LOST LOST yes  yes 
+R03l the writing rules forbid cutting a condition, limit or warning; the bake-off vetoes a candidate that cuts or weakens one                                         L2   LOST LOST LOST yes  yes 
+R03k ranking on wording one judge put both controls above every entry of the three published standards; ranking on verified findings the other did not                L2   LOST LOST LOST yes  yes 
+R04a a round is handed over as a candidate and its diff from the original                                                                                             L2   LOST LOST LOST LOST yes 
+R04b the shipped check rejects a new round that loses a sentence an earlier round verified or brings back wording one retired as false                                L3   LOST LOST LOST LOST yes 
+R04c to install commit 2f29a8f, marketplace add takes the path of a local clone checked out at it in place of Nowely/agent-skills, then plugin install terse@nowely   L3   LOST LOST LOST LOST yes 
+R04d at 8c041b7 the audit and rewrite pages differ from the ones this README describes                                                                                L2   LOST LOST LOST LOST yes 
+R04f the chain, four passes that preceded the plugin's bake-off and rounds, covered one README                                                                        L2   LOST LOST LOST LOST yes 
+R04e the result neither clears a significance threshold, nor separates what the text taught from prior knowledge, nor says whether a human reader improved            L2   LOST LOST LOST LOST yes 
+
+0 failure(s) in /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/04-terms.md
+exit 0
+
+$ wc -w $R/03-review.md $R/04-terms.md
+    1106 03-review.md
+    1167 04-terms.md
+    2273 total
+
+$ node $S/dup.mjs $R/03-review.md $R/concepts.03.json   (round 03 under the old patterns: the false positive)
+  3   rethink stops at a skeleton    (opening) | What each one does | Where it writes   <<<
+  1   conditions, limits, warnings kept What it will and will not do to your text
+1 concept(s) in three or more sections
+exit 0
+
+$ node $S/dup.mjs $R/03-review.md $R/concepts.json   (round 03 under the new patterns)
+  2   rethink stops at a skeleton    (opening) | What each one does
+  1   conditions, limits, warnings kept What it will and will not do to your text
+0 concept(s) in three or more sections
+exit 0
+
+$ diff -u $R/00-original.md $R/04-terms.md > $R/diff-04.patch
+exit 1 (1: the files differ)
+     185 diff-04.patch
+
+$ diff -u $R/03-review.md $R/04-terms.md | diffstat-like count
+42
+
+$ node $S/selftest.mjs   (once per session, rewrite/SKILL.md:86-88)
+ok   seed refuses an unconfirmed entry with no sources
+ok   seed refuses an unconfirmed entry with no level
+ok   seed refuses an entry with no claim of its own
+
+all checks caught their planted violation
+exit 0
+45
+0
+
+# ---- second build, after the verifier's send-back (reviews/04/verifier-sol-v3.md), 2026-09-23 16:31:51 +0300; repository HEAD b7a17da
+$ rm $R/04-terms.md; cp $R/ledger.04.json $R/ledger.json   (done before the build; ledger.json sha256 now:)
+4f939622178c28d2f35f47f2573dddbf01c8d61cfdf63cb336a098e6e47e1e84  ledger.json
+4f939622178c28d2f35f47f2573dddbf01c8d61cfdf63cb336a098e6e47e1e84  ledger.04.json
+
+$ node $S/round.mjs $R/03-review.md $R/04-terms.md $R/edits/04.json --ledger $R/ledger.json
+ran  L6.3-17 the frame names each page and its references (R03a re-pinned)
+ran  L6.3-08 the readers are model agents (C06 re-pinned)
+ran  L6.3-13/14 rethink surveys in and beyond the genre; the water cut (C09 re-pinned)
+ran  L6.3-11 the skeleton's contents include the rules the writing must pass (C10 re-pinned)
+ran  L6.3-12 rewrite's ways in: the skeleton, an audit's run file, or its own run with rounds (C11 re-pinned)
+ran  L6.3-21 the hand-over without the repeated frame (R04a new)
+ran  L6.3-18 the claims a round declares (R03g re-pinned)
+ran  L6.3-04 the ratchet in the reader's words (R04b new, level 3)
+ran  L6.3-20 the boundary names the README, not a page (R03i re-pinned)
+ran  L6.3-02 the SCOPE line: installing the commit this README describes (R04c new, level 3)
+ran  L6.3-03/15 the 2026-09-22 boundary: no branch, both pages, l75 cut (R03j re-pinned, R04d new, G4 dropped)
+ran  R02e re-pinned: its run finds ISSUES.md E13 by heading, since b7a17da moved its lines (sentence unchanged)
+ran  L6.3-09 the chain preceded the plugin's bake-off and rounds (R04f new)
+ran  L6.3-10/20 the records the plugin's repository holds: each reader before, the totals after (C44 re-pinned)
+ran  L6.3-08 the pilot's third limit: no word on a human reader (R04e new)
+ran  L6.3-19 the 2 × 5 run is an experiment, not the bake-off; the draft as the source names it (C42 re-pinned)
+ok  L6.3-17 the frame names each page and its references (R03a re-pinned)
+ok  L6.3-08 the readers are model agents (C06 re-pinned)
+ok  L6.3-13/14 rethink surveys in and beyond the genre; the water cut (C09 re-pinned)
+ok  L6.3-11 the skeleton's contents include the rules the writing must pass (C10 re-pinned)
+ok  L6.3-12 rewrite's ways in: the skeleton, an audit's run file, or its own run with rounds (C11 re-pinned)
+ok  L6.3-21 the hand-over without the repeated frame (R04a new)
+ok  L6.3-18 the claims a round declares (R03g re-pinned)
+ok  L6.3-04 the ratchet in the reader's words (R04b new, level 3)
+ok  L6.3-20 the boundary names the README, not a page (R03i re-pinned)
+ok  L6.3-02 the SCOPE line: installing the commit this README describes (R04c new, level 3)
+ok  L6.3-03/15 the 2026-09-22 boundary: no branch, both pages, l75 cut (R03j re-pinned, R04d new, G4 dropped)
+ok  R02e re-pinned: its run finds ISSUES.md E13 by heading, since b7a17da moved its lines (sentence unchanged)
+ok  L6.3-01 cut: the permission no page grants
+ok  L6.3-09 the chain preceded the plugin's bake-off and rounds (R04f new)
+ok  L6.3-10/20 the records the plugin's repository holds: each reader before, the totals after (C44 re-pinned)
+ok  L6.3-08 the pilot's third limit: no word on a human reader (R04e new)
+ok  L6.3-19 the 2 × 5 run is an experiment, not the bake-off; the draft as the source names it (C42 re-pinned)
+ledger: 56 claim(s); the state before this round is in ledger.04.json
+wrote /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/04-terms.md
+exit 0
+
+$ shasum -a 256 ledger.04.json   (the snapshot round.mjs rewrote: still the state before the round)
+4f939622178c28d2f35f47f2573dddbf01c8d61cfdf63cb336a098e6e47e1e84  ledger.04.json
+
+$ node $S/rule1.mjs $R/04-terms.md --cut "Install" --except "Install"
+
+0 violation(s), 0 excused
+exit 0
+
+$ node $S/dup.mjs $R/04-terms.md $R/concepts.json
+  1   three skills, user-invoked     (opening)
+  2   fresh readers measure answerability (opening) | What each one does
+  1   claims checked against the code (opening)
+  1   audit never proposes wording   What each one does
+  2   rethink stops at a skeleton    (opening) | What each one does
+  1   bake-off: writers and judges   What each one does
+  2   rounds and critics             What each one does | What was measured
+  1   nothing written to your files without your word Where it writes
+  1   announce agents and wait       What each one does
+  1   install commands               Install
+  1   node prerequisite              Install
+  1   not a compressor               What it will and will not do to your text
+  1   conditions, limits, warnings kept What it will and will not do to your text
+  2   the 2026-09-10 measurement     What it will and will not do to your text | What was measured
+  2   no no-document arm             What each one does | What was measured
+  1   the ledger and the ratchet     What each one does
+  0   the verifier before the freeze 
+  1   run directory location         Where it writes
+  1   any language, any text         (opening)
+
+0 concept(s) in three or more sections
+exit 0
+
+$ node $S/sections.mjs $R/04-terms.md $R/budgets.json
+  149 / 99   +50   (opening)
+  392 / 324  +68   What each one does
+  119 / 49   +70   Install
+  156 / 120  +36   Where it writes
+  104 / 127  -23   What it will and will not do to your text
+  219 / 309  -90   What was measured
+    1 / 1    0   Licence
+ 1140 TOTAL, 4 section(s) over budget
+exit 0
+
+$ node $S/ledger.mjs $R/ledger.json $R/00-original.md $R/01-candidate.md $R/02-grafts.md $R/03-review.md $R/04-terms.md
+claim  lvl  00-o 01-c 02-g 03-r 04-t
+C01 terse is a Claude Code plugin whose  L2   LOST LOST LOST yes  yes 
+C03 the plugin ships three skills.  L3   LOST yes  yes  yes  yes 
+C05 `rethink` returns a skeleton that `rewrite`  L2   yes  yes  yes  yes  yes 
+C06 audit builds a profile of the project's  L2   LOST LOST LOST LOST yes 
+C07 audit returns a score, the questions that  L2   LOST LOST LOST yes  yes 
+C09 rethink decides, before any prose is written  L2   LOST LOST LOST LOST yes 
+C10 rethink hands over a skeleton, each section  L2   LOST LOST LOST LOST yes 
+C11 rewrite starts from a skeleton `rethink` agr  L2~  LOST LOST LOST LOST yes 
+C12 three writers produce candidates and two jud  L2   YES   -    -    -    -  
+C13 every round of a rewrite stays on  L3   YES   -    -    -    -  
+C15 rewrite writes its rounds and artefacts into  L2   LOST LOST LOST yes  yes 
+C16 nothing rewrite does changes the user's file  L2   YES   -    -    -    -  
+C18 inside Claude Code, `/plugin marketplace add  L2   yes  yes  yes  yes  yes 
+C19 from a shell, `claude plugin marketplace add  L2   yes  yes  yes  yes  yes 
+C20 after the two install steps nothing else  L3   YES   -    -    -    -  
+C21 Node 22 or newer is needed only  L3   YES   -    -    -    -  
+C23 shortening the text is not terse's aim:  L2   yes  yes  yes  yes  yes 
+C24 on the one 2026-09-10 README the chain  L3   LOST LOST LOST yes  yes 
+C27 rewrite leaves every condition, limit and wa  L2   YES   -    -    -    -  
+C30 everything under *What was measured* comes f  L2   YES   -    -    -    -  
+C33 three discordant pairs, all improvements, an  L3   LOST LOST LOST yes  yes 
+C39 the 2026-09-10 bake-off put five published w  L2   YES   -    -    -    -  
+C41 on the audited README's first 116 words,  L2   YES   -    -    -    -  
+C42 the passage result rests on ten agents  L2   LOST LOST LOST LOST yes 
+C43 nothing in the record isolates which of  L2   LOST yes  yes  yes  yes 
+C44 the 2026-09-10 measurement had no arm that  L2   LOST LOST LOST LOST yes 
+C45 two published benchmarks that ran a no-docum  L2   YES   -    -    -    -  
+C46 the plugin's reference files state the missi  L2   YES   -    -    -    -  
+G1 all three skills announce agents and model, then wait for your word  L2   LOST LOST yes  yes  yes 
+R02a audit's run: plugin data directory installed, ${TMPDIR:-/tmp}/terse from a checkout, nothing written into the audited repository  L2   LOST LOST LOST yes  yes 
+R02c rewrite records a code defect in code-defects.md in the run and offers it to the user  L2   LOST LOST LOST yes  yes 
+R02d copying a defect into ISSUES.md, or applying the candidate, waits for the user's word  L2   LOST yes  yes  yes  yes 
+R02e the rethink page does not say where its skeleton is stored  L2   LOST yes  yes  yes  yes 
+G3a lifecycle: installed, claude plugin uninstall deletes the data directory and its runs unless --keep-data  L3   LOST LOST LOST yes  yes 
+G3b lifecycle: from a checkout the operating system may purge the runs; copy a run to keep it  L3   LOST LOST LOST yes  yes 
+G2 chain, as its pages report: departures one to zero, neither control broken  L1   LOST LOST yes  yes  yes 
+R02f2 a re-audit after a rewrite uses the same questions, answer key, entry file and model, or it is a new measurement  L2   LOST LOST yes  yes  yes 
+R03a register: each skill is a page of instructions for Claude, and the section says what each page says  L2   LOST LOST LOST LOST yes 
+R03c the claim ledger excludes voice and ordering, illustrative examples, arguments for instructions, unshipped tools' recipes  L2   LOST LOST LOST yes  yes 
+R03d for an existing document an adversarial read precedes a bake-off of three whole-file candidates and two judges  L2   LOST LOST LOST yes  yes 
+R03e later rounds are checked against the claim ledger, the audit's on its route; tasks and questions before a round reaches you  L2   LOST LOST LOST yes  yes 
+R03f the loop stops when you read a round and say whether you would send it as it is  L2   LOST LOST LOST yes  yes 
+R03g every cut of twenty words or more carries a reason, every declared behavioural claim its source and evidence  L2   LOST LOST LOST LOST yes 
+R03h install needs Claude Code; running a skill needs sign-in; audit and rewrite also need Node 22 or newer on PATH  L3   LOST LOST LOST yes  yes 
+R03i this page describes commit 2f29a8f  L2   LOST LOST LOST LOST yes 
+R03j at the 2026-09-22 audit the install commands resolved main at 8c041b7, whose rewrite page wrote into the document repository unasked  L2   LOST LOST LOST LOST yes 
+R03b installed, the runs land in plugins/data/terse-nowely/runs/ inside Claude Code's configuration directory  L3   LOST LOST LOST yes  yes 
+G3c the audit and rewrite pages warn that the operating system may purge a run in the temporary directory; copy a run to keep it  L2   LOST LOST LOST yes  yes 
+R03l the writing rules forbid cutting a condition, limit or warning; the bake-off vetoes a candidate that cuts or weakens one  L2   LOST LOST LOST yes  yes 
+R03k ranking on wording one judge put both controls above every entry of the three published standards; ranking on verified findings the other did not                L2   LOST LOST LOST yes  yes 
+R04a a round is handed over as a candidate and its diff from the original  L2   LOST LOST LOST LOST yes 
+R04b the shipped check rejects a new round that loses a sentence an earlier round verified or brings back wording one retired as false  L3   LOST LOST LOST LOST yes 
+R04c to install commit 2f29a8f, marketplace add takes the path of a local clone checked out at it in place of Nowely/agent-skills, then plugin install terse@nowely   L3   LOST LOST LOST LOST yes 
+R04d at 8c041b7 the audit and rewrite pages differ from the ones this README describes  L2   LOST LOST LOST LOST yes 
+R04f the chain, four passes that preceded the plugin's bake-off and rounds, covered one README  L2   LOST LOST LOST LOST yes 
+R04e the result neither clears a significance threshold, nor separates what the text taught from prior knowledge, nor says whether a human reader improved            L2   LOST LOST LOST LOST yes 
+
+0 failure(s) in /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/04-terms.md
+exit 0
+
+$ wc -w $R/03-review.md $R/04-terms.md
+    1106 03-review.md
+    1168 04-terms.md
+    2274 total
+
+$ diff -u $R/00-original.md $R/04-terms.md > $R/diff-04.patch
+exit 1 (1: the files differ)
+     185
+
+$ diff -u 04-terms.md of the first build (replayed from edits/04.sent-back.json) against the second
+120c120
+< - A separate experiment used ten agents in a 2 × 5 design: four writing standards, one an unpublished
+---
+> - A separate experiment used ten agents in a 2 × 5 design: four writing standards, one of them a
+exit 1
+
+# ---- second build regenerated once more, 2026-09-23 16:35:13 +0300, after correcting one edit's name and a comment in edits/04.build.mjs (R02e's lines moved at 1af4160, not only at b7a17da); repository HEAD b7a17da
+$ rm 04-terms.md; cp ledger.04.json ledger.json; node $S/round.mjs $R/03-review.md $R/04-terms.md $R/edits/04.json --ledger $R/ledger.json
+ledger: 56 claim(s); the state before this round is in ledger.04.json
+wrote /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/04-terms.md
+exit 0
+$ shasum -a 256 against the build before the name fix:
+34cc4cb0c62b799c12b7ff8ea8e637fcc6393a05fcb798976d8ca03d1da0efa5  04-terms.md
+41ace8652386dd5da06ebdca60cb51114224ea55aebb857e68302c02923e3b50  ledger.json
+68a3d1853e5fa2a96c1c861f8ba83481ac724fbf4afc3203867ce33510384691  edits/04.json
+(before: 34cc4cb0c62b799c12b7ff8ea8e637fcc6393a05fcb798976d8ca03d1da0efa5  04-terms.md 41ace8652386dd5da06ebdca60cb51114224ea55aebb857e68302c02923e3b50  ledger.json c98f65c7cbd3fbb3f738e8d9260cee41c76ddd0bd13b41ec18966417f0cfb59f  edits/04.json )
+$ the four checks on the regenerated file (byte-identical to the one above), exit codes only:
+0 violation(s), 0 excused
+rule1 exit 0
+0 concept(s) in three or more sections
+dup exit 0
+ 1140 TOTAL, 4 section(s) over budget
+sections exit 0
+0 failure(s) in /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/04-terms.md
+ledger exit 0
+    1168
+diff exit 1, 185 lines
+
+# ---- third build, before the verifier's second read, 2026-09-23 16:44:28 +0300: R03j's asks and run also name the run of the page's lineage in this repository; repository HEAD b7a17da
+$ rm 04-terms.md; cp ledger.04.json ledger.json:
+4f939622178c28d2f35f47f2573dddbf01c8d61cfdf63cb336a098e6e47e1e84  ledger.json
+4f939622178c28d2f35f47f2573dddbf01c8d61cfdf63cb336a098e6e47e1e84  ledger.04.json
+$ node $S/round.mjs $R/03-review.md $R/04-terms.md $R/edits/04.json --ledger $R/ledger.json
+ledger: 56 claim(s); the state before this round is in ledger.04.json
+wrote /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/04-terms.md
+exit 0
+$ shasum -a 256 04-terms.md ledger.json ledger.04.json edits/04.json
+34cc4cb0c62b799c12b7ff8ea8e637fcc6393a05fcb798976d8ca03d1da0efa5  04-terms.md
+50c8982efe85ee8de1d5a32374a0e9c97cd04da6a286ca97f980a7003bc9172e  ledger.json
+4f939622178c28d2f35f47f2573dddbf01c8d61cfdf63cb336a098e6e47e1e84  ledger.04.json
+902a038d37b72b115d28e3d8ec68457c832816423ebdeb1b490c2f5597df6c53  edits/04.json
+$ node $S/rule1.mjs $R/04-terms.md --cut "Install" --except "Install"
+0 violation(s), 0 excused
+exit 0
+$ node $S/dup.mjs $R/04-terms.md $R/concepts.json
+0 concept(s) in three or more sections
+exit 0
+$ node $S/sections.mjs $R/04-terms.md $R/budgets.json
+  149 / 99   +50   (opening)
+  392 / 324  +68   What each one does
+  119 / 49   +70   Install
+  156 / 120  +36   Where it writes
+  104 / 127  -23   What it will and will not do to your text
+  219 / 309  -90   What was measured
+    1 / 1    0   Licence
+ 1140 TOTAL, 4 section(s) over budget
+exit 0
+$ node $S/ledger.mjs $R/ledger.json 00 01 02 03 04
+0 failure(s) in /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/04-terms.md
+exit 0
+$ wc -w $R/04-terms.md
+    1168
+$ diff -u $R/00-original.md $R/04-terms.md > $R/diff-04.patch
+exit 1 (1: the files differ), 185 lines
+
+# ---- fourth build, after the verifier's second read (reviews/04/verifier-sol-v3b.md), R03a only, 2026-09-23 17:00:13 +0300; repository HEAD b7a17da
+$ rm 04-terms.md; cp ledger.04.json ledger.json:
+4f939622178c28d2f35f47f2573dddbf01c8d61cfdf63cb336a098e6e47e1e84  ledger.json
+4f939622178c28d2f35f47f2573dddbf01c8d61cfdf63cb336a098e6e47e1e84  ledger.04.json
+$ node $S/round.mjs $R/03-review.md $R/04-terms.md $R/edits/04.json --ledger $R/ledger.json
+ledger: 56 claim(s); the state before this round is in ledger.04.json
+wrote /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/04-terms.md
+exit 0
+$ shasum -a 256 04-terms.md ledger.json ledger.04.json edits/04.json
+34cc4cb0c62b799c12b7ff8ea8e637fcc6393a05fcb798976d8ca03d1da0efa5  04-terms.md
+7197618ae6b7d5f84820805504fdb72b981406c52d91f5ec72910e5c52f11793  ledger.json
+4f939622178c28d2f35f47f2573dddbf01c8d61cfdf63cb336a098e6e47e1e84  ledger.04.json
+f911337cafd03fe77e613b77ac8f45c9e21c3cec32f622743825dcb0799ac89e  edits/04.json
+$ node $S/rule1.mjs $R/04-terms.md --cut "Install" --except "Install"
+0 violation(s), 0 excused
+exit 0
+$ node $S/dup.mjs $R/04-terms.md $R/concepts.json
+0 concept(s) in three or more sections
+exit 0
+$ node $S/sections.mjs $R/04-terms.md $R/budgets.json
+ 1140 TOTAL, 4 section(s) over budget
+exit 0
+$ node $S/ledger.mjs $R/ledger.json 00 01 02 03 04
+0 failure(s) in /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/04-terms.md
+exit 0
+$ wc -w $R/04-terms.md
+    1168
+$ diff -u $R/00-original.md $R/04-terms.md > $R/diff-04.patch
+exit 1 (1: the files differ), 185 lines

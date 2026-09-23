@@ -1,0 +1,11 @@
+round 02 that loses: ledger.mjs exit 1; rows: verified L2 yes yes LOST;retired L? - - - ; 1 failure(s) in 02-loses.md
+round 02 that revives: ledger.mjs exit 1; rows: verified L2 yes yes yes ;retired L? - - YES ; 1 failure(s) in 02-revives.md
+round 02 that keeps: ledger.mjs exit 0; rows: verified L2 yes yes yes ;retired L? - - - ; 0 failure(s) in 02-keeps.md
+the page on it, rewrite/SKILL.md:124-126:
+   - `node "$S/ledger.mjs" ledger.json $(ls [0-9][0-9]-*.md | sort)` — the ratchet over every round in order; exit 1 when the new round loses a verified claim or revives a retired phrase.
+   A failure the round introduced is fixed before the critics see it: remove the round file, copy
+   `ledger.NN.json` back over `ledger.json`, fix `edits/NN.json`, regenerate. That snapshot is written
+ledger.mjs:6-8:
+//   want true  : a verified claim that must be present (LOST when absent)
+//   want false : a phrasing found false, which must be absent (YES when present)
+// Text is whitespace-normalised. Prints one row per claim, one column per file, and exits 1 when the

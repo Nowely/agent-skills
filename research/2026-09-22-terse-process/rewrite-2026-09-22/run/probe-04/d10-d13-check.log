@@ -1,0 +1,10 @@
+D10 rewrite/SKILL.md:190-191:
+is set in the first announcement, and a cap reached is reported as a result. Hand over the round and
+`diff-NN.patch`, the diff against `00-original.md`, written into the run directory. Then stop: applying
+D10 rethink route named at rewrite/SKILL.md:16-21, 'original' mentions there: 0
+D11 sections.mjs on a copy whose Install heading is renamed:   119 Installing   (no budget); 1140 TOTAL, 3 section(s) over budget;
+D11 sections.mjs on a copy without the Licence section, lines naming Licence or a missing section: 0
+D12 sections.mjs on a Chinese sentence with no spaces:     1 介绍   (no budget)
+D12 sections.mjs:13: const flush = () => { const w = buf.join(" ").split(/\s+/).filter(Boolean).length; rows.push([cur, w]); total += w; };
+D13 rewrite/SKILL.md lines saying who applies the candidate: 191:`diff-NN.patch`, the diff against `00-original.md`, written into the run directory. Then stop: applying;
+D13 rewrite/SKILL.md lines on whether an audit run from another commit is valid input: 0

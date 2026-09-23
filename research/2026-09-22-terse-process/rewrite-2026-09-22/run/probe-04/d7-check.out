@@ -1,0 +1,35 @@
+A $ claude plugin marketplace add <checkout> -> exit 0
+A $ claude plugin install terse@nowely -> exit 0
+A state planted: terse-nowely present, run marker present, decoy present
+A $ claude plugin uninstall terse@nowely -> exit 0
+A state after uninstall: terse-nowely absent, run marker absent, decoy present
+B $ claude plugin marketplace add <checkout> -> exit 0
+B $ claude plugin install terse@nowely -> exit 0
+B state planted: terse-nowely present, run marker present, decoy present
+B $ claude plugin uninstall terse@nowely --keep-data -> exit 0
+B state after uninstall --keep-data: terse-nowely present, run marker present, decoy present
+C $ claude plugin marketplace add <checkout> -> exit 0
+C $ claude plugin install terse@nowely --scope user -> exit 0
+C $ claude plugin install terse@nowely --scope project -> exit 0
+C state planted: terse-nowely present, run marker present, decoy present
+C $ claude plugin uninstall terse@nowely --scope user -> exit 0
+C state after uninstall of the user installation, the project one left: terse-nowely present, run marker present, decoy present
+C $ claude plugin uninstall terse@nowely --scope project -> exit 0
+C state after uninstall of the last installation: terse-nowely absent, run marker absent, decoy present
+D $ claude plugin marketplace add <checkout> -> exit 0
+D $ claude plugin install terse@nowely -> exit 0
+D state planted: terse-nowely present, run marker present, decoy present
+D $ claude plugin marketplace remove nowely -> exit 0
+D state after marketplace remove: terse-nowely absent, run marker absent, decoy present
+D plugin list: No plugins installed. Use `claude plugin install` to install a plugin.
+uninstall option: --keep-data Preserve the plugin's persistent data directory
+marketplace remove options: --help --scope 
+user and cannot guess it. Under the plugin's data directory a run survives plugin updates and is
+deleted by `claude plugin uninstall` unless `--keep-data` is passed, and in the temporary directory the
+operating system may purge it: say in your report that a run which must outlive either is the user's to
+copy somewhere durable.
+Name the absolute path in your report; a resumed run is given it by the user and cannot guess it. Under
+the plugin's data directory a run survives plugin updates and is deleted by `claude plugin uninstall`
+unless `--keep-data` is passed, and in the temporary directory the operating system may purge it: say in
+the hand-over that a run which must outlive either is the user's to copy somewhere durable. On the audit
+page lines naming marketplace remove, a scope or the last installation: 0
