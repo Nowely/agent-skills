@@ -5,7 +5,7 @@ These are findings the rounds routed to the code, per `rewrite/SKILL.md` step 4 
 repository: its `ISSUES.md` takes an entry only on the owner's word (`rewrite/SKILL.md:153-154`). Each
 entry is written in that file's register (`ISSUES.md:1-5`: evidence at file:line, an evidence level, and
 wording that can become an issue unchanged). On the owner's word each would go there as the next number,
-in this file's order: at `1af4160`, whose last entry is E14, D1 as E15, D2–D6 (round 03) as E16–E20, and D7–D8 (round 04) as E21–E22.
+in this file's order: at `1af4160`, whose last entry is E14, D1 as E15, D2–D6 (round 03) as E16–E20, and D7–D13 (round 04) as E21–E27.
 
 ## D1. `rewrite` keeps its candidate outside the repository, and no page says where the candidate stands when it is re-audited, whose readers open only the repository's `.md` files
 
@@ -275,3 +275,116 @@ saying whether the accuracy floor is one of them, and the judges of one bake-off
 ways. The veto row should except a warning the claim ledger holds as refuted, and say that correcting it to
 what the evidence supports is not weakening it; or the precedence sentence should name the accuracy floor as
 the rule the safeguards do not override.
+
+## D9. A pinned claim's evidence is run once, when its round is written, and never again: a citation that stops resolving is reported by no script
+
+**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/round.mjs` executes every edit's `check.run`
+before the round is written, refuses the round when an `expect` finds nothing, and keeps `run`, `expect`
+and `saw` in the ledger entry (its header, and the check loop). `plugins/terse/skills/rewrite/scripts/ledger.mjs:18-22`
+reads only `pattern` and `want` of every entry against the round files and never executes `run`. So an
+entry whose `run` cites a file by line — the form `rewrite/SKILL.md` step 4 item 2 recommends for levels
+1 and 2, `sed -n 'A,Bp' <file>` — keeps passing the ratchet after the cited file changes under it. In this
+run, R02e (round 02) cited `ISSUES.md:183-188` for entry E13; commit `1af4160` (E14 added above it) moved
+those lines and `b7a17da` moved them again. R02e's `run` executed on 2026-09-23 prints nothing E13 says
+and its `expect` does not match, while `ledger.mjs` over the ledger that holds that entry exits 0 with
+"0 failure(s)". Found by the coordinator by re-running every pinned entry's `run` (40 of 41 matched);
+C44's citation had rotted the same way and was caught only because round 04 re-pinned it. Round 04 re-pinned
+R02e under its name with a run that finds E13 by its heading.
+
+**Check.** From any directory:
+
+    node /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-04/rot-check.mjs
+
+It prints (exit 0; kept at `probe-04/rot-check.log`) lines this regex matches:
+
+    R02e as written in round 02, run today: expect matches: false\n[^\n]*rounds 00-03: exit 0 \| 0 failure\(s\)
+
+**Issue text.** `round.mjs` runs a claim's check once, when the round that declares it is written, and
+`ledger.mjs` afterwards checks only that the pinned sentence is still present. The evidence behind a pin can
+therefore stop resolving — the cited file edited, its lines shifted by a commit above them — and nothing
+reports it: the pin stays green while its `saw` describes a file that no longer says that at those lines.
+The page's own advice to cite by `sed -n 'A,Bp'` makes this the common case. `ledger.mjs`, or `round.mjs`
+at every round, should re-run every pinned entry's `run` and report the entries whose `expect` no longer
+matches, as a report before it is a gate; and the page should prefer anchors that survive a line shift — a
+heading, a phrase — over line numbers wherever the cited file is one that changes.
+
+## D10. The hand-over gives every round's diff "against `00-original.md`", and the route that starts from a skeleton has no original
+
+**Evidence, level 2.** `plugins/terse/skills/rewrite/SKILL.md:190-191` hands over "`diff-NN.patch`, the diff
+against `00-original.md`" with no distinction of route, and `:16-21`, which names the routes a run starts
+from — a run that already holds rounds, a skeleton, an audit run file, or neither — says nothing of an
+original on the skeleton route, where the document is being written for the first time
+(`rethink/SKILL.md:6`, "or when starting one"). The README's sentence "A round is handed over as a candidate
+and its diff from the original" (R04a, level 2) restates the page and inherits the gap. Found by the
+round-04 wave's lens 2 (Claude Opus, P5, level 2).
+
+**Check.** From any directory:
+
+    sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-04/d10-d13-check.sh
+
+Its D10 lines (kept at `probe-04/d10-d13-check.log`) must match:
+
+    D10 rewrite/SKILL\.md:190-191:\n[\s\S]*?`diff-NN\.patch`, the diff against `00-original\.md`[\s\S]*D10 rethink route named at rewrite/SKILL\.md:16-21, 'original' mentions there: 0
+
+**Issue text.** `rewrite`'s hand-over names one artefact for every run, the diff against `00-original.md`,
+and one of its routes has no original: a document written from a skeleton `rethink` agreed. The page should
+say what the hand-over is on that route — the round file alone, or a diff against the skeleton — and what
+`00-original.md` holds there, if anything.
+
+## D11. `sections.mjs` drops a renamed section from its over-budget count and says nothing when a budgeted section disappears
+
+**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/sections.mjs:19-24` reports each heading it
+finds against `budgets.json` and counts the sections over budget among them; a heading not in the budget
+file is printed as "(no budget)" and leaves the count, and a budgeted heading absent from the document is
+never mentioned. On a copy of round 04 with `## Install` renamed to `## Installing` the report reads
+"3 section(s) over budget" where the frozen file reads 4; on a copy with the `## Licence` section removed
+no line names it. A report the coordinator reads for growth per section per round can therefore show a
+section's growth vanish with its heading. Found by the round-04 wave's lens 2 (Claude Opus, R6, level 3,
+planted and run), reproduced by lens 6 and for this entry on 2026-09-23.
+
+**Check.** The same command as D10. Its D11 lines must match:
+
+    D11 sections\.mjs on a copy whose Install heading is renamed:\s+119 Installing\s+\(no budget\); 1140 TOTAL, 3 section\(s\) over budget;\s*\nD11 sections\.mjs on a copy without the Licence section, lines naming Licence or a missing section: 0
+
+**Issue text.** `sections.mjs` is the report that shows a section swelling round by round. It loses a section
+from the over-budget count the moment its heading changes, and it is silent when a budgeted section is
+gone. It should print every budgeted heading the document lacks, and count a "(no budget)" heading as a
+section the writer must map or the coordinator must budget, so that a rename cannot hide growth.
+
+## D12. `sections.mjs` counts space-separated words, so its budgets and growth mean nothing for text without spaces
+
+**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/sections.mjs:13` counts words as
+`buf.join(" ").split(/\s+/).filter(Boolean).length`. A Chinese sentence of twenty-six characters with no
+spaces counts as one word, so a section written in such a script is never over budget and never grows. The
+README's scope sentence, "Markdown in any language", is inherited from round 02 and measured by the round-04
+wave's lens 1 as overstated at level 3 on this and on `rule1.mjs`'s English exit-code words (the latter
+recorded as ISSUES E8). Found by lens 1 (Claude Opus, F7, level 3), reproduced by lens 6 and for this entry.
+
+**Check.** The same command as D10. Its D12 lines must match:
+
+    D12 sections\.mjs on a Chinese sentence with no spaces:\s+1 介绍[\s\S]*D12 sections\.mjs:13: const flush = \(\) => \{ const w = buf\.join\(" "\)\.split\(/\\s\+/\)\.filter\(Boolean\)\.length;
+
+**Issue text.** The plugin says its scope is Markdown in any language, and its budget report counts words
+by splitting on whitespace, which counts a sentence in Chinese, Japanese or Thai as one word. `sections.mjs`
+should count by a unit that exists in every script — characters, or graphemes by `Intl.Segmenter` — or the
+pages should say the budgets are measured in space-separated words and hold for such languages only.
+
+## D13. Two things a task reader needed that no page states: whether an audit run from one commit is input to another commit's `rewrite`, and who applies the candidate after the word
+
+**Evidence, level 2.** `plugins/terse/skills/rewrite/SKILL.md:190-192` says that applying the candidate to
+the user's files "needs their word", and no line of the page says who performs it, the user or the agent,
+or with what command; no line of the page says whether an audit run made under one commit of the plugin is
+valid input to a `rewrite` run under another, though the README at `2f29a8f` describes a commit its install
+commands do not fetch. Found by the round-04 wave's task reader 2 (Claude Sonnet, `reviews/04/c4-2.md`,
+guesses 8 and 9, GOAL partly), classed by lens 6 as page gaps the README may not fill.
+
+**Check.** The same command as D10. Its D13 lines must match:
+
+    D13 rewrite/SKILL\.md lines saying who applies the candidate: 191:[^\n]*Then stop: applying;\s*\nD13 rewrite/SKILL\.md lines on whether an audit run from another commit is valid input: 0
+
+**Issue text.** A reader planning the audit-to-candidate path from the README stops at two questions the pages
+do not answer: after they give the word, who writes the candidate over their file and how; and whether the
+audit run they already have is usable when the plugin they run `rewrite` with is not the commit that made
+it. `rewrite`'s hand-over should say what happens after the word — the agent applies `NN-<pass>.md` over
+the document's path, or the user applies `diff-NN.patch` — and step 1 should say what a run from another
+commit is worth: accepted, re-seeded, or refused.
