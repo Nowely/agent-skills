@@ -83,9 +83,11 @@ standards were put against two unguided controls and that seven of ten seats pro
 prompts under `research/2026-09-10-chain/run-2x5/` (`v04PR6HL.prompt.txt:13-20`) describe a 2×5 design —
 four standards, one of them an unpublished CLAUDE.md draft, plus one control pair — and the judge's own
 count on the 116-word passage (`o8eHzS6U.answer.md:10-19`) reaches six at most, with three seats
-lengthening it. Found by the 2026-09-22 truth pass (entries C39, C41, both refuted at README.md:76-78).
+lengthening it. Found by the 2026-09-22 truth pass (entries C39, C41, both refuted at README.md:76-78). The research
+index `research/README.md:9` repeats the same counts ("five published writing standards lost to unguided
+controls on ten seats"); found by the round-03 wave's lens 1 (P1) on 2026-09-23.
 
-**Issue text.** The two reference pages restate the README's refuted numbers. `writing-rules.md` carries
+**Issue text.** The two reference pages and the research index restate the README's refuted numbers. `writing-rules.md` carries
 the SHA-256 of its own text, so the correction changes the measurement it was made under and the SHA line
 and the note beside it move together with the text, per the repository's rule on frozen blocks.
 
