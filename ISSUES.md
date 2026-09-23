@@ -93,12 +93,16 @@ and the note beside it move together with the text, per the repository's rule on
 
 **Evidence, level 2.** `plugins/terse/references/prior-art.md:910-911` calls `run-2x5/` "forty Codex seat
 returns from the bake-off" and says "Every 2026-09-10 number quoted anywhere in this file traces there".
-`research/2026-09-10-chain/README.md` and `chain/` hold summaries of the reader run, not the readers'
-returns; the 3/6 → 6/6 figures have no per-reader record in the repository. Found by the 2026-09-22 truth
-pass (entries C31, C32, C36, C37 unconfirmed for that reason).
+`research/2026-09-10-chain/README.md` and `chain/` hold summaries of the reader run; the six readers of
+the *before* measurement are recorded one by one, with verdicts, quoted lines and the one departure, in
+`research/2026-09-10-chain/chain-source-prompt.txt:103-132` — not under `run-2x5/` — and no per-reader
+record of the *after* measurement (6/6) exists anywhere in the repository. Found by the 2026-09-22 truth
+pass (entries C31, C32, C36, C37 unconfirmed) and corrected on 2026-09-23 by the wave's lens 1, which
+found the before-records this entry had said did not exist.
 
-**Issue text.** The sentence overstates the record: the bake-off returns are there, the reader run's are
-not, and the claim should name what traces and what does not.
+**Issue text.** The sentence overstates the record: the bake-off returns are there, the reader run's
+before-records are in the chain's source prompt and its after-records are nowhere, and the claim should
+name what traces and what does not.
 
 ## E8. `rule1.mjs` misses an exit code written in Russian, because its exit-code pattern is English; paths and flags are caught in either language
 
