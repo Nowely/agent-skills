@@ -1,0 +1,4 @@
+# blind labels, 2026-09-24 — not shown to the judges
+A = opus.md (Claude Opus, repair-first)
+B = sonnet.md (Claude Sonnet, path-first)
+C = sol.md (Codex Sol, frame-first)
