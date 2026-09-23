@@ -133,3 +133,20 @@ hypothesis about the four duties, not a rate; and the model measured was Astra, 
 Sol for decorrelation from the Claude writer, so nothing here is evidence about Sol. Its own cost was
 not measured; the nearest observation is that agent's whole turn, 53 commands in 19 minutes. The run is
 `research/2026-09-22-terse-process/` in this repository.
+
+<a id="m25"></a>**M25. A clean round held back, on a shape nobody agreed.** On 2026-09-22/23 the pages ran
+live on this plugin's own README: an audit, a bake-off, then rounds 02 to 04 on the audit route with no
+skeleton agreed, each read by a verifier before the freeze and by a wave after it. The rounds regressed
+3, 0 and 2 times — three sentences about where a run is written and what deletes it, then a wording
+taken from the dedup and a scope line the coordinator decided — four of the five shown at level 3. The
+verifier sent the rounds back 2, 1 and 2 times, each on a real defect of the evidence; the question
+readers answered 7/7, 5/7 and 7/7 at one trial each, two labels flipping on unchanged text; the task
+gate went from 0 of 2 to not run to 1 achieved, on the harness's route, and 1 partly. The writer, the
+Claude lenses and the dedup cost about 1.0M, 1.2M and 1.6M tokens a round. Round 03 had no regression
+and was held back, its task gate not run and the page asking for two clean rounds; the owner then read
+round 04 and rejected it for its shape and content — the opening, no statement of what the plugin is
+for, the pipeline told twice, a verbose install, no table of the skills, water by the paragraph,
+technical detail, a licence line — and not for one phrase. A hypothesis the run did not separate: the
+same verifier model held 23 of 24 claims on round 03's thread and refused 9 of 16 on round 04's, and
+the two writers worded their `asks` differently. The run is `research/2026-09-22-terse-process/` in
+this repository.

@@ -63,6 +63,13 @@ His first objection is also worth naming for what it is. "It is not clear what p
 is not a preference; it is a reader failing to get an answer, which is what `audit` measures. Where a
 document has never been audited, that objection is the one to expect first.
 
+The same failure came back on 2026-09-23, on this plugin's own README: an audit, then four rounds of
+`rewrite` on the audit route with no skeleton agreed, and the owner rejected round 04 for its opening, a
+missing statement of what the plugin is for, the pipeline told twice and water by the paragraph —
+content and arrangement again, not one phrase ([M25](../../rewrite/references/measurements.md#m25)). So
+the audit route now carries the shape decision: `audit` asks what the document is for and returns
+whether its shape is agreed, and `rewrite` starts no round on a shape that is not.
+
 ## Stage 1. What comparable documents already solved
 
 **Before designing anything, read how others in the same position did it, weighting by how much use a

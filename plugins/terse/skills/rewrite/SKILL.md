@@ -192,9 +192,13 @@ Before the user reads a round, three things, none tradeable against another:
 - **the question readers**: lens 5, one per question, answered from the document; where they guessed is
   listed.
 
-**The loop stops when the user reads the round and says whether they would send it as it is.** Two
-consecutive rounds with no regression is the signal to hand a round over, not a finish; a cap on rounds
-is set in the first announcement, and a cap reached is reported as a result. Hand over the round and
+**The loop stops when the user reads the round and says whether they would send it as it is.** The
+first round with no regression is the signal to hand it over for that read, not a finish; a second clean
+round is not waited for, since the read is what the rounds prepare for: on 2026-09-23 a round with no
+regression was held back, and the next cost about 1.6M Claude tokens and brought two regressions
+([M25](references/measurements.md#m25)). The user's first read comes before any round: on either route
+they have read the skeleton or said that the current shape stands. A cap on rounds is set in the first
+announcement, and a cap reached is reported as a result. Hand over the round and
 `diff-NN.patch`, the diff against `00-original.md`, written into the run directory. Then stop: applying
 the candidate to the user's files needs their word, and a diff they have read is what earns it.
 

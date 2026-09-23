@@ -56,6 +56,13 @@ forensics remain in the repository references and release notes.
   showed overstated, and on three of the 2026-09-11 record, among them "a write lock lasts as long as
   its run", itself an overstatement. `--allow-unrun` reports a recorded one and lets it through, so that
   record still replays byte-identical.
+- The hand-over signal is the first round with no regression; a second clean round is no longer waited
+  for. On 2026-09-23 round 03 had no regression and was held back, and round 04 cost about 1.6M Claude
+  tokens, brought two regressions and was rejected by the owner for its shape. `loop.md` says the same;
+  `measurements.md` gains M25, that live run on this plugin's README — regressions, send-backs, readers,
+  task gate and cost per round, with the verifier's variance between two threads as a hypothesis; and
+  `stages.md` records that the 2026-09-11 failure came back and that the audit route now carries the
+  shape decision.
 
 ### Added
 
