@@ -114,6 +114,19 @@ nothing.
 Then synthesise rather than imitate: take the shape that has been proven, and put your own material in
 it.
 
+Measured on 2026-09-23, on this plugin's own README: three surveyors on the six slices fetched 39
+distinct documents, none left unfetched, and one synthesis merged them into 25 rows. **Fetching is the
+raw bytes.** For four of one surveyor's ten, the larger files, WebFetch returned a paraphrase dressed as
+the source — headings the files do not have, no code block, no link — and the surveyor, catching it by
+that shape, fetched all ten again with `curl`. **The owner's exemplar is a slice of its own.** He had
+named one on 2026-09-12, sharpdeveye/maestro, in words every surveyor was given; no survey fetched it, a
+critic did at stage 3, and it held four devices none of the ten structures could weigh. Hence the
+seventh slice ([briefs.md](briefs.md#1-the-survey)), the documents the owner names as good. **The
+genre's order is a return of its own.** It was counted only after the owner asked for it, from the
+headings of the nine plugin READMEs fetched: what it is, first in 9 of 9; install in 8 of 9, straight
+after what it is in 4 of those 8; the inventory of skills or commands in 7 of 9, after install in 4 of
+those 7; How it works in 4 of 9, after install in 3 of those 4.
+
 ### Presentation is a third axis, and it is surveyed the same way
 
 Content, arrangement and length are what a reader complains about. **How the page looks is what they
@@ -257,6 +270,16 @@ Synthesise from the winner, grafting only the specific ideas the critics named. 
 structures into a compromise; that is how a document ends up with everyone's sections and nobody's
 order.
 
+Measured on 2026-09-23, on the same README: ten structures from ten readings, planned at 300 to 778
+words, came out as one inventory in ten orders. The writers saw the genre only through the synthesis —
+an edit plan for the current document — and were asked what each kept section rested on, never what
+they dropped. Each critic's shared failure was the brief's: the section on whether the plugin can
+change the reader's files, planned by all ten around a boundary that was the owner's to decide and was
+passed down to the writers instead; no structure carrying the reader's whole path from an audit report
+to a reviewed draft; and no structure accounting for a section of the genre it left out. The base went
+by the rule in [briefs.md](briefs.md#5-the-base): the owner-calibration critic's first fell to the
+reader's-task critic, and the best average rank, 2, 3 and 1, took it.
+
 **Then stop and put the structure in front of the owner.** Rewriting two thousand words against the
 wrong skeleton costs more than one round trip.
 
@@ -328,6 +351,14 @@ existed — "the block you liked", "the twin block you said was missing", "the s
 name". The reviewer's reaction was that something was wrong before he could say what: the sections were
 being justified to him rather than shown. Cut every trace of the negotiation that produced a structure
 before showing it. The purpose of a section is what it does for its reader, never who asked for it.
+
+Measured again on 2026-09-23/24, on this plugin's README. Skeleton 01, ten sections planned at 754
+words, went to the owner as the file with a table, and he first asked what was required of him. Told
+which parts were his and what to answer, he answered with five objections, each about which sections
+exist or where they sit — Skills first; Install, Update and Quick start as three sections; Your files;
+Quick start in the middle; Troubleshooting — beside a rule on content (rule 12 above), the aim added to
+the opening, and a request for the genre's order. None was about a phrase. Skeleton 02, five sections
+planned at 625 words against the current README's 909 by the same count, was agreed the same night.
 
 ## What it costs
 

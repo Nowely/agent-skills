@@ -90,6 +90,13 @@ forensics remain in the repository references and release notes.
   binding to a version without a weighty reason, in the owner's words from the same read — so lens 7's
   default is now twelve rules. On 2026-09-23 the owner, sent a 447-line skeleton, asked first what
   exactly was required of him.
+- `stages.md` records the 2026-09-23/24 run on this plugin's README. Under stage 1: 39 documents over the
+  six slices, WebFetch's paraphrases for four of ten READMEs, the owner's exemplar no survey fetched, and
+  the genre's order as counted afterwards — what it is first in 9 of 9 plugin READMEs, install in 8, the
+  inventory in 7, How it works in 4. Under stage 3: why ten structures came out as one inventory in ten
+  orders, the three critics' shared failures, and how the base was chosen. Beside the rule on the review
+  artifact: the owner's read of skeleton 01, five objections each about which sections exist or where
+  they sit and none about a phrase, and skeleton 02 agreed at 625 words against the current 909.
 
 ### Added
 
