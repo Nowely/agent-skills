@@ -195,7 +195,8 @@ times.
 
 ## Step 5. The gate, and the stop
 
-Before the user reads a round, three things, none tradeable against another:
+Before the user reads a round, three things, none tradeable against another; one the user sized to zero
+is named in the hand-over as not run, never as passed:
 
 - **no regression in the round**: the ledger passes, and no sentence the round introduced was shown
   false or overstated by its critics;
@@ -205,14 +206,17 @@ Before the user reads a round, three things, none tradeable against another:
   listed.
 
 **The loop stops when the user reads the round and says whether they would send it as it is.** The
-first round with no regression is the signal to hand it over for that read, not a finish; a second clean
-round is not waited for, since the read is what the rounds prepare for: on 2026-09-23 a round with no
-regression was held back, and the next cost about 1.6M Claude tokens and brought two regressions
-([M25](references/measurements.md#m25)). When the user's read rejects the purpose, the content or the
-arrangement, the next step is `/terse:rethink` at its structure stage, not another round. A cap on
-rounds is set in the first announcement, and a cap reached is reported as a result. Hand over the round
-and `diff-NN.patch`, the diff against `00-original.md`, written into the run directory. Then stop:
-applying the candidate to the user's files needs their word, and a diff they have read is what earns it.
+first round with no regression is selected for that read, not a finish, and no second clean round is
+waited for. Lenses 4 and 5, where they were sized to zero on it, are announced for that frozen round and
+run on it before the hand-over, with no writing round between; the gate reads their results, and the
+hand-over names whatever stayed at zero by the user's sizing. On 2026-09-23 this would have selected
+round 03 and run its task readers on it; the page asked for a second clean round instead, and round 04
+cost about 1.6M Claude tokens and brought two regressions ([M25](references/measurements.md#m25)). When
+the user's read rejects the purpose, the content or the arrangement, the next step is `/terse:rethink` at
+its structure stage, not another round. A cap on rounds is set in the first announcement, and a cap
+reached is reported as a result. Hand over the round and `diff-NN.patch`, the diff against
+`00-original.md`, written into the run directory. Then stop: applying the candidate to the user's files
+needs their word, and a diff they have read is what earns it.
 
 ## Step 6. What you return
 

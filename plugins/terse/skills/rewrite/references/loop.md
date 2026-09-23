@@ -83,7 +83,8 @@ A round that simplifies without re-verifying is not a round, it is a bet.
 
 The loop stops when the owner reads a round and says whether they would send it as it is. That
 judgement is what every round exists to prepare for; the gate in `SKILL.md` step 5 says what must hold
-before their time is asked for. The first round with no regression is the hand-over signal, not a finish
+before their time is asked for. The first round with no regression is selected for that read, the
+readers sized to zero on it are run on it first, and that is the hand-over signal, not a finish
 ([M25](measurements.md#m25)): a critic asked for findings always produces findings, so no count of them
 stops anything. Seven rounds of one document never reached a quiet round, and the wave after the seventh
 found forty-one sentence defects ([M10](measurements.md#m10)). Cap the rounds and report the cap as a

@@ -143,10 +143,10 @@ verifier sent the rounds back 2, 1 and 2 times, each on a real defect of the evi
 readers answered 7/7, 5/7 and 7/7 at one trial each, two labels flipping on unchanged text; the task
 gate went from 0 of 2 to not run to 1 achieved, on the harness's route, and 1 partly. The writer, the
 Claude lenses and the dedup cost about 1.0M, 1.2M and 1.6M tokens a round. Round 03 had no regression
-and was held back, its task gate not run and the page asking for two clean rounds; the owner then read
-round 04 and rejected it for its shape and content — the opening, no statement of what the plugin is
-for, the pipeline told twice, a verbose install, no table of the skills, water by the paragraph,
-technical detail, a licence line — and not for one phrase. A hypothesis the run did not separate: the
-same verifier model held 23 of 24 claims on round 03's thread and refused 9 of 16 on round 04's, and
-the two writers worded their `asks` differently. The run is `research/2026-09-22-terse-process/` in
-this repository.
+and was held back, its task readers sized to zero and the page asking for two clean rounds; the owner
+then read round 04 and rejected it for its shape and content — the opening, no statement of what the
+plugin is for, the pipeline told twice, a verbose install, no table of the skills, water by the
+paragraph, technical detail, a licence line — and not for one phrase. A hypothesis the run did not
+separate: the same verifier model held 23 of 24 claims on round 03's thread and refused 9 of 16 on round
+04's, and the two writers worded their `asks` differently. The run is
+`research/2026-09-22-terse-process/` in this repository.
