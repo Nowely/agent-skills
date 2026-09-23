@@ -38,7 +38,7 @@ case. The 2026-09-17 change added pins only for its own sentences and the bullet
 
 ## E3. `round.mjs`'s provisional mark tests the claim's name and pattern, so a lifecycle claim worded without one of its eight words is never marked
 
-**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/round.mjs:117` tests
+**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/round.mjs:155` tests
 `/lifecycle|stays|removed|continu|resum|reclaim|kept|prun/i` against `c.name + " " + c.pattern` and
 nothing else. The record's R08-8 is a pruning claim named `"retention numbers"` with pattern
 `"14 days or 400 entries"`: no word matches, no mark
@@ -60,9 +60,9 @@ declared by the writer and the regex only warns.
 entries; `research/2026-09-11-markup-round-0/ledger.json` as shipped holds 66. The 26 in the file and
 not in the replay were written by a hand no step describes. `plugins/terse/skills/rewrite/SKILL.md`
 step 4 gives `round.mjs` as the only writer after initialisation — item 1 seeds the file with
-`audit/scripts/ledger-seed.mjs` on the audit route (`plugins/terse/skills/rewrite/SKILL.md:104`), item 2
+`audit/scripts/ledger-seed.mjs` on the audit route (`plugins/terse/skills/rewrite/SKILL.md:116`), item 2
 declares `claims`, `retire` and `drop`, item 3 runs the script, item 4 runs `ledger.mjs` over the
-result — and `plugins/terse/skills/rewrite/references/loop.md:68-70` says the ledger is grown from each
+result — and `plugins/terse/skills/rewrite/references/loop.md:69-71` says the ledger is grown from each
 edit's `claims` and `retire`. No step says a pin may be added outside an edit, by whom, or when.
 
 **Issue text.** The record shows the coordinator adding ledger entries directly — retired phrasings a
@@ -140,8 +140,8 @@ correct "cannot tell" as a right answer, and the run-file contract should carry 
 
 ## E10. Two pages set the scripts directory from a bare `$CLAUDE_PLUGIN_ROOT`, which Claude Code neither substitutes nor exports
 
-**Evidence, level 2.** `plugins/terse/skills/rewrite/SKILL.md:83` ("installed, it is
-`$CLAUDE_PLUGIN_ROOT/skills/rewrite/scripts`") and `plugins/terse/skills/audit/SKILL.md:159` ("installed,
+**Evidence, level 2.** `plugins/terse/skills/rewrite/SKILL.md:93` ("installed, it is
+`$CLAUDE_PLUGIN_ROOT/skills/rewrite/scripts`") and `plugins/terse/skills/audit/SKILL.md:161` ("installed,
 `$CLAUDE_PLUGIN_ROOT/skills/audit/scripts`") tell the executor to set `S` and `A` from a bare variable.
 `plugins/entrust/evals/agent-contract.test.mjs:160-161` states the contract: Claude Code substitutes the
 exact `${...}` placeholder inline in a skill body and exports nothing to the Bash tool; a bare `$VAR` is
@@ -158,7 +158,7 @@ for `A`, with the checkout sentence kept.
 ## E11. Both run directories are outside the working directory, where the Write tool and shell redirects prompt, and neither page says so
 
 **Evidence, level 1.** After `9efef3d`, `plugins/terse/skills/audit/SKILL.md:33` and
-`plugins/terse/skills/rewrite/SKILL.md:71` place every run under the plugin's data directory or
+`plugins/terse/skills/rewrite/SKILL.md:81` place every run under the plugin's data directory or
 `$TMPDIR/terse`, outside the repository and outside the session's working directory.
 `plugins/entrust/README.md:137-138`: "In every permission mode but auto and bypass, a write outside the
 working directory prompts, so add that directory to `permissions.additionalDirectories` once". The two
@@ -188,7 +188,7 @@ the one exception with its consent step, or the reference's section removed.
 
 ## E13. `rethink` hands over "one file" and no page says where it is written
 
-**Evidence, level 2.** `plugins/terse/skills/rethink/SKILL.md:70-83` (step 4, "What you hand over"):
+**Evidence, level 2.** `plugins/terse/skills/rethink/SKILL.md:77-92` (step 4, "What you hand over"):
 "One file, and it describes the document rather than arguing for itself" — the section lists what the
 file contains and ends "Then stop and wait", with no path, no run directory and no statement of whether
 the file lands inside or outside the user's repository; `rewrite/SKILL.md` step 4 says only to copy
@@ -201,9 +201,9 @@ should place the skeleton — the same formula as the other two, with a slug —
 
 ## E14. A `missing` failure on the planted unanswerable question cannot be repaired and re-measured under "the same key"
 
-**Evidence, level 2.** `plugins/terse/skills/audit/SKILL.md:76-78` plants "at least one question the
+**Evidence, level 2.** `plugins/terse/skills/audit/SKILL.md:82-84` plants "at least one question the
 documentation genuinely does not answer, and record it as unanswerable in the key"; step 6's cause table
-(`audit/SKILL.md:121-127`) makes `missing` a failure a rewrite must repair by writing the answer;
+(`audit/SKILL.md:127-133`) makes `missing` a failure a rewrite must repair by writing the answer;
 `plugins/terse/skills/audit/references/measure.md:106-109` says a re-measurement uses "Same questions, same
 key" and that changing any of them makes "a new measurement with a new baseline, not a result". On
 2026-09-22 the live audit's planted question ("My documentation is in Russian — do the readers go through

@@ -2,9 +2,9 @@
 
 Every rule in `SKILL.md` and [loop.md](loop.md) rests on something that happened, dated. This file keeps
 those events so the rules can be re-examined and so the skill's own text does not have to carry them.
-All of them are from one run — one README, one owner, 2026-09-10 to 2026-09-12 — and the record of that
-run is `research/2026-09-11-markup-round-0/rounds.md` in this repository. One document is enough to
-justify a rule; it is not enough to state a rate.
+M1 to M23 are from one README and one owner, 2026-09-10 to 2026-09-12, `research/2026-09-11-markup-round-0/`;
+M24 and M25 from the run of 2026-09-22/23 on this plugin's README, `research/2026-09-22-terse-process/`. One
+document is enough to justify a rule; it is not enough to state a rate.
 
 <a id="m1"></a>**M1. No block-local critic can see across blocks.** A water critic reading an assembled
 draft end to end found one claim stated four times in four sections, each defensible where it stood —

@@ -2,9 +2,8 @@
 name: audit
 description: >-
   Measures a document against two rulers: whether fresh readers get the right answer, and whether every
-  claim about behaviour is true of the code. Returns a reader profile, a claim ledger, reader scores, the
-  list of what broke, and whether the user agreed the document's shape. It never proposes wording;
-  `rewrite` does that.
+  claim about behaviour is true of the code. Returns a reader profile, a claim ledger, reader scores, what
+  broke, and whether the user agreed the shape. It never proposes wording; `rewrite` does that.
 disable-model-invocation: true
 metadata:
   version: "0.1.1"
