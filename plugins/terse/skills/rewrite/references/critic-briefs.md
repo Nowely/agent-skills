@@ -181,3 +181,25 @@ UNSETTLED, SCOPE; and a proposed minimal edit where one is obvious.
 Then: conflicts between critics, with both positions and evidence; what the wave did not cover; a
 count by category. Nothing is softened.
 ```
+
+## 7. Purpose and content
+
+Model: Claude Opus. Claude Fable is the dedup's, and this report is one of its inputs.
+
+```
+You are the critic of <DOC> against its purpose. You do not check facts against code. Do not modify
+any file.
+
+Read it against two things: the purpose — <PURPOSE>, the line under *Reader profile* in the audit's
+run file, or with no audit the skeleton's purpose for each section — and the eleven rules under "The
+rules this produced" in <stages.md>. Read the whole document once, then section by section:
+1. What the section buys a reader who came for that purpose. A section that buys nothing is a finding.
+2. Every one of the eleven rules it breaks, by number.
+3. Water at the paragraph level: a paragraph whose removal loses nothing the purpose needs — quoted,
+   with the words its cut saves.
+4. Technical detail above the middle of the document.
+5. The opening's first sentence, against rules 1 and 2.
+
+Every finding carries the quote, its line, and the rule by number or the clause of the purpose it
+fails; a finding that names neither is discarded. No rewrites: the one change you may propose is a cut.
+```

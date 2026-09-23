@@ -162,7 +162,7 @@ your shell rules forbid `cd`.
    false or overstated. That number is the round's verdict.
 
 The lenses are fixed; the sizes are the user's, and the announcement names them. Every cost below but
-the verifier's is what one wave measured on 2026-09-12 on a 1600-word README:
+the verifier's and lens 7's is what one wave measured on 2026-09-12 on a 1600-word README:
 
 | Agent | Reads | Where it ran best | Size | Cost |
 |---|---|---|---|---|
@@ -172,7 +172,8 @@ the verifier's is what one wave measured on 2026-09-12 on a 1600-word README:
 | 3. adversarial, whole document | every sentence a reader acts on; scope words; CLI experiments in an isolated config | Codex gpt-6-astra | one | ~40 commands, 5 min |
 | 4. a task | a starting state and a goal, acted on from the document alone; the resulting state | Codex gpt-5.6-sol | two | ~20 commands, 5 min each |
 | 5. a reader's question | one question, one `cat` and nothing else; where they guessed | Codex gpt-5.6-luna | one per question | ~1 min each |
-| 6. dedup and rank | every report above, into one list with a reproducible check per finding | Claude Fable, after the rest | one | ~160k tokens, 15 min |
+| 6. dedup and rank | every other report, into one list with a reproducible check per finding | Claude Fable, after the rest | one | ~160k tokens, 15 min |
+| 7. purpose and content | every section against the document's purpose and the eleven rules of [stages.md](../rethink/references/stages.md#the-rules-this-produced); not the facts | not measured; the brief names Claude Opus | one | unmeasured |
 
 Lenses differ; they are not disjoint, and a finding three of them raise is confirmed, not counted three
 times.
