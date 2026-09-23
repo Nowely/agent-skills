@@ -70,7 +70,7 @@ critic found after the round was frozen, and pins for claims no edit introduced 
 those 26 entries exist. The page presents the ledger as a file its two scripts own, so a coordinator
 following it has no route for a pin that arrives after the edits are written. The fields such an entry
 needs are documented — `plugins/terse/skills/rewrite/scripts/ledger.mjs:3-4` gives the ledger's shape
-and `plugins/terse/skills/rewrite/scripts/round.mjs:4-11` the edits file's — but the page a coordinator
+and `plugins/terse/skills/rewrite/scripts/round.mjs:4-12` the edits file's — but the page a coordinator
 executes gives no procedure for writing one: no step names who may add an entry between rounds, at what
 point, or which round's regression count it is charged to. Either step 4 states that procedure, or the
 pins that arrive late get an edits-file route of their own.
