@@ -1,4 +1,5 @@
 shape: agreed — the owner, 2026-09-24, on `skeleton.02.md` (SHA-256 2c27168c73d01378013590c09dc668cc6c545f564acfac4e39d8e326fca0c9e4): "согласен, стало гораздо лучше."
+shape: agreed — the owner, 2026-09-24, on `skeleton.03.md` (SHA-256 c12bdc4f9709de33519f70f4d19b39fe8149cebeed0061afeef986366eb8336e): "го", after their read of round 03 (`skeleton-read-02.md` in the rethink run); the rounds from 04 on are written against skeleton 03.
 
 # Rounds — rewrite of plugins/terse/README.md from the agreed skeleton
 
