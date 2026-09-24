@@ -90,7 +90,8 @@ forensics remain in the repository references and release notes.
   a copy of the current one; agreement is still the user's word on a named file, with its path and
   SHA-256. `briefs.md` gains the skeleton writer's brief and the message to the owner, and `stages.md`
   gains rule 12 — a README describes the code as it is, with no binding to a version without a weighty
-  reason, in the owner's words from the same read — so lens 7's default is now twelve rules. On
+  reason, in the owner's words from the same read — so lens 7's default rose to twelve rules, fourteen
+  with rules 13 and 14 below. On
   2026-09-23 the owner, sent a 447-line skeleton, asked first what exactly was required of him.
 - `stages.md` records the 2026-09-23/24 run on this plugin's README. Under stage 1: 39 documents over the
   six slices, WebFetch's paraphrases for four of ten READMEs, the owner's exemplar no survey fetched, and
@@ -124,8 +125,7 @@ forensics remain in the repository references and release notes.
   READMEs head the blocks inside their start section.
 - `rewrite` says what follows the user's word on a round: the read is recorded verbatim under the round's
   row, sent or not; on the word the round file replaces the document byte for byte as a commit of its own,
-  nothing else in the repository changes, a release is a separate word, and a later run starts from the
-  replaced document. On 2026-09-24 the pages stopped at "then stop" and the coordinator had to decide the
+  a release is a separate word, and a later run starts from the replaced document. On 2026-09-24 the pages stopped at "then stop" and the coordinator had to decide the
   rest.
 
 ### Added
@@ -154,8 +154,8 @@ forensics remain in the repository references and release notes.
   purpose statement — the skeleton's, or the audit's purpose line — and against the skeleton's own
   rules, section by section: what each section buys a reader who came for that purpose, the rules it
   breaks, paragraphs whose cut loses nothing the purpose needs, technical detail above the middle, and
-  the opening. Where the skeleton adopted them or none exists yet, the rules are the twelve of
-  `stages.md`, which the brief calls one owner's calibration and not a law of the genre. A finding that
+  the opening. Where the skeleton adopted them or none exists yet, the rules are `stages.md`'s, fourteen
+  by this release, which the brief calls one owner's calibration and not a law of the genre. A finding that
   names neither a rule nor the purpose is discarded, and the one change it proposes is a cut. No brief named those rules: in round 04 of 2026-09-23 the water
   lens proposed three cuts of seven words in all, and the owner, reading that round, found water by the
   paragraph. Its cost is unmeasured.
