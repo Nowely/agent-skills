@@ -538,22 +538,32 @@ explicit and no excerpt, *What was measured* replaced by *Checks and guarantees*
   owner's content came in, which rule 4 leaves to the owner; the seven readers answered from one section
   on every round of the run.
 
-## Wave 15 — the owner's word on round 04, and the README replaced
+## Wave 15 — the owner's word on round 04, the README replaced, and the reflection into the pages
 
 The owner read round 04 and sent it as it is: «Да. Текущий вариант пока что лучший … Еще есть куда стремиться». By
 the page's rule the loop stopped on that word; the read is recorded verbatim beside the round in
 `rewrite-2026-09-24/run/rounds.md`, the decisions listed with defaults stand at the defaults, and `04-shape.md`
-replaced `plugins/terse/README.md` byte for byte as commit `a613394`. The owner asked for three things: the result
-fixed, the skills improved from what the run showed, and the achievements recorded; the first and the third are
-that commit and the one that carries this section, the second is proposed to the owner as page edits and waits
-for their word. No release was asked for, and the branch is not merged into `main`, from which the marketplace
-installs 0.1.1.
+replaced `plugins/terse/README.md` byte for byte as commit `a613394`. The owner asked for three things — the
+result fixed, the skills improved from what the run showed, the achievements recorded — and gave the word on the
+proposal for the second. No release was asked for; the branch is not merged into `main`, from which the
+marketplace installs 0.1.1.
 
-- **What the run measured, end to end**: from the owner's rejection of the audit route's round 04 (wave 10) to a
-  round they would send took one skills round, one rethink run (three skeletons, two reads), one bake-off and
-  three rounds, with regressions 1 → 0 → 0; the owner's two reads of a round were both about sections, never a
-  phrase, and each went to the structure stage rather than to a round, as the pages changed in wave 11 require.
-- **Open on the owner's side**: the release; the 15 SENTENCE findings and the STRUCTURE item (D1) for a next
-  iteration; D1–D24 into `ISSUES.md`; the naming convention the owner raised (`file-name.v1.md`) against the
-  run's `NN-<pass>.md` and `skeleton.<NN>.md`; the task readers' scratch directories and the earlier credential
-  copy.
+- **The reflection** (`reflection-2026-09-24/reflect15.patch`, applied as `c1c30ed`, `2a88e3e` and `d7a1f37`):
+  `stages.md` rules 13 and 14 from the owner's read of round 03 — a README carries no results; nothing from a
+  run on the page — with lens 7's default at fourteen; the survey, the synthesis and the skeleton count a
+  section's sub-blocks and what marks them; `rewrite` says what follows the user's word on a round.
+- **Codex Sol R5** (`reflection-2026-09-24/r5-pages-review.md`): seven checks on the three commits, five
+  holding — every owner quotation verbatim against `skeleton-read-02.md`, the round-03 phrases as written, the
+  sub-block counts as `skeleton.03.md` states them, no page contradicting rules 13 or 14 in 22 hits — and two
+  not: two earlier Unreleased bullets still said twelve rules, and the new paragraph said nothing else changes
+  on the word while `a613394` also carried the changelog line. Both fixed in `d2fafd4`, the clause cut rather
+  than qualified. In passing: the record of the owner's read of skeleton 01 carried a corrected spelling where
+  it says verbatim; restored as typed in `f9987f1`, from the transcript.
+- **Codex Sol I1** (`reflection-2026-09-24/i1-verdicts.md`, `i1-issues-draft.md`): the 24 defects the two
+  rewrite runs routed to the code, each check re-run on HEAD — 23 reproduce, none fixed, D24 unreachable in the
+  sandbox (`<(...)` refused) and reproduced by the coordinator with files; D13 survives by half, its post-word
+  half answered by `d7a1f37`. Entered in `ISSUES.md` as E15–E38 (`c28684f`), the probe scripts' repository copies
+  named beside the checks that call them, since the scripts name the temporary run directory.
+- **Open on the owner's side**: the release; the 15 SENTENCE findings and the STRUCTURE item (E15) for a next
+  iteration; the naming convention the owner raised (`file-name.v1.md`) against the run's `NN-<pass>.md` and
+  `skeleton.<NN>.md`; the task readers' scratch directories and the earlier credential copy.
