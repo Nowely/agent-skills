@@ -1,0 +1,1 @@
+Write the README for the repository at /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse-bench/snapshot. Read whatever you need there. Write it to /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse-bench/A/README.md and return the path.

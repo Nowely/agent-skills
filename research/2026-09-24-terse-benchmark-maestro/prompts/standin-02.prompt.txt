@@ -1,0 +1,13 @@
+Question set 02, before any structure is written. The survey of the genre is done (your run directory's survey/synthesis.md, which you may read: it is the survey's decision record, not the README). The structures would otherwise plan around the unknowns below; each is yours to decide, not a fact to check. Answer each with a decision and one reason; where you take the default, say so. Write to /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse-bench/standin/answers-02.md and return it. Read only the snapshot and the run directory /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse/runs/20260924-125421-maestro-readme-rethink; never the repository's published README, npm or Marketplace pages on the network.
+
+1. The order of the three routes wherever they are listed (the chooser, the install blocks): skill files → extension → MCP server (default), or another order, and which one a reader who has not chosen is sent to first.
+2. The command inventory: all 24 command names in the README, in their four groups (default), or the groups with a link to the site for the names.
+3. The memory layer and version: presented as a capability of the product with no version named (default, since a README describes the code as it is), or as "new in 2.0" with the version.
+4. The extension's effects on a workspace (the sync into ten provider folders on every activation, the MCP entry written into the workspace config, the Zero-Defect writes into CLAUDE.md, .cursorrules, .agents/rules/): said in full as a list beside the extension route (default), or a one-sentence note with a link to the extension's README.
+5. Contributors: one line naming source/skills/ as the only place to edit and the build command (default), or a Contributing section with the build, validate and test commands.
+6. The licence: one line naming MIT with a link to LICENSE (default), or nothing in the README.
+7. Where a stuck reader goes: a link to the repository's issues (default), or nothing, or the website.
+8. The MCP server's HTTP mode: the stdio command only, with a link to mcp-server/README.md for HTTP (default), or both commands in the README.
+9. Badges and a banner: none (default), or a version and marketplace badge row under the title.
+10. The website maestroskills.dev: named once as the place for the full documentation and the interactive showcase (default), or not named.
+11. Anything else you, as the owner, would settle before a structure is planned — say it now, or say there is nothing.
