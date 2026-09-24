@@ -22,8 +22,8 @@ a bare agent: the 2026-09-10 bake-off compared prompts on one README, judged by 
 - **A, the bare agent.** One Claude Opus agent, the code snapshot, one prompt and one attempt, no rules,
   no skill page, no survey, no revision. The prompt, verbatim: *Write the README for the repository at
   `<SNAPSHOT>`. Read whatever you need there. Write it to `<OUT>/README.md` and return the path.*
-- **B, the skills.** `/terse:rethink` to a skeleton, then `/terse:rewrite` from that skeleton to the first
-  round with no regression, both driven by the stand-in user below and never by a reader of C.
+- **B, the skills.** `/terse:rewrite` on its one path — the writer, every critic at once, one repair —
+  driven by the stand-in user below and never by a reader of C.
 - **C, the reference.** The repository's own `README.md` at the snapshot commit, untouched.
 
 ## The snapshot, and who sees what
@@ -31,8 +31,8 @@ a bare agent: the 2026-09-10 bake-off compared prompts on one README, judged by 
 - One commit, named in the record; a clone at that commit under `$TMPDIR`; the root `README.md` removed
   from what A and B read and kept aside as C. Everything else stays and is the same for both — the
   sub-packages' READMEs, the changelog, the manifests: the code's own documentation, not the reference.
-- B's survey excludes the target repository, its forks and mirrors and any page that quotes its README; a
-  surveyor who lands on one drops it and says so in the report.
+- B's genre scout, where one runs, excludes the target repository, its forks and mirrors and any page
+  that quotes its README; a scout who lands on one drops it and says so in the report.
 - No writer, critic or judge of A or B reads C before the ranking. The coordinator reads C only for its
   audit and for the scoring, after A and B are frozen with their SHA-256 in the record; where the
   coordinator has seen C before the run, the record says so and what was seen.
@@ -40,16 +40,12 @@ a bare agent: the 2026-09-10 bake-off compared prompts on one README, judged by 
 
 ## The stand-in user
 
-The pages ask their user for a purpose, a profile line, the sizes of fan-outs, the decisions a skeleton
-leaves open and the word on the shape. In the benchmark one Claude Opus agent stands in, kept for the
+The pages ask their user, in one message, for the purpose, what the text must and must not say, and the
+word on the run. In the benchmark one Claude Opus agent stands in, kept for the
 whole of B: it has read the snapshot and never C, answers what the pages ask from the snapshot's own
 words — the manifests, the descriptions the code carries — and takes every default a page offers, saying
-which. Its answers are recorded verbatim, and its word on the skeleton is the agreement line of the run,
-named as the stand-in's. The calibration file `owner-words.md` is empty with one line saying so, the
-owner-calibration critic is sized to zero, and the base is chosen by the reader's-task critic's
-disqualifications and then the best average rank of the two critics left
-([briefs.md](../skills/rethink/references/briefs.md#5-the-base)). The lenses of the rewrite wave run at one
-each, lens 4 at two, the cap at three rounds.
+which. Its answers are recorded verbatim. The rules of [rules.md](rules.md) apply as for every text: the
+stand-in answers the run's questions and never stands in for the owner's accumulated feedback.
 
 ## The rulers, written before the run
 
@@ -65,7 +61,7 @@ Every text gets the same measurements; where a ruler can be blind it is.
 3. **Tasks.** The audit's two task readers per text, in an isolated profile, from the text alone:
    achieved, partly, not.
 4. **Form.** The genre's order and sub-blocks from B's survey applied to all three; `rule1.mjs`,
-   `dup.mjs` with the skeleton's concepts, `sections.mjs`; lens 2's counts.
+   `dup.mjs` with the plan's concepts, `sections.mjs`; lens 2's counts.
 5. **Blind ranking.** Three judges — Claude Fable, Codex Astra, Claude Opus — on the bake-off's judging
    sheet ([bake-off.md](../skills/rewrite/references/bake-off.md#the-judging-sheet)), the texts shuffled,
    one reason per rank, a veto where the sheet gives one.
@@ -75,7 +71,7 @@ Every text gets the same measurements; where a ruler can be blind it is.
 
 The hypotheses, so the reflection is not fitted to the result: **H1**, B has fewer refuted claims than A
 and than C; **H2**, C ranks first on the owner's read; **H3**, A is not behind B on form. H1 false means
-the truth pass does not carry into a text written from a skeleton; H2 false is the plugin's best result;
+the truth pass does not carry into a text written from a plan; H2 false is the plugin's best result;
 H3 true with H1 true says the skills earn their cost on truth, not on prose; and A above B on the owner's
 read is premise 3.
 
@@ -101,4 +97,13 @@ the judges' reports, the owner's read verbatim, the costs. The result also goes 
 
 ## Results
 
-Not yet run.
+**2026-09-24, sharpdeveye/maestro** (`research/2026-09-24-terse-benchmark-maestro/`). On the owner's blind
+read: C, the repository's own README, first; B, the skills, second, at parity with C on a quick read; A, the
+bare agent, third, for its formatting and wordiness. Three model judges put A first twice and C last three
+times; the owner did the opposite at both ends. Refuted claims: A 12 of 121, B 11 of 69, C 25 of 105.
+Readers answered 7 of 7 questions from A and from B, 3 of 7 from C, 1 of 7 with no document. B took
+6 h 38 min against A's 14 minutes. The owner's second read: B still loses to C on formatting — C says what
+it is, lists its advantages and gives a Quick start of install and first use — and B carried none of the
+feedback the owner gave on this plugin's own README, because the run left the owner's words out by this
+page's rule. That rule is withdrawn: the stand-in user answers the questions of the run, and
+[rules.md](rules.md) applies as it does for every text.
