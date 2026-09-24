@@ -222,6 +222,13 @@ reached is reported as a result. Hand over the round and `diff-NN.patch`, the di
 `00-original.md`, written into the run directory. Then stop: applying the candidate to the user's files
 needs their word, and a diff they have read is what earns it.
 
+Record their read verbatim in `rounds.md` under the round's row, with the date and whether they would
+send it. On their word, the round file replaces the document in their repository byte for byte, as a
+commit of its own that names the round; nothing else in their repository changes on that word, and a
+release is a separate one. The findings routed to a next round stay in the round's routing file, and a
+later run starts from the replaced document as its `00-original.md`. On 2026-09-24 the owner's word on
+round 04 was «Текущий вариант пока что лучший», and the README is that round's bytes.
+
 ## Step 6. What you return
 
 In the run directory:

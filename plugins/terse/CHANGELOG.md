@@ -122,6 +122,11 @@ forensics remain in the repository references and release notes.
   the genre splits a section. On 2026-09-24 the owner asked for Quick start's three blocks to be marked as
   the genre marks them, and skeleton 03 had to count it afterwards: 4 of 8 plugin READMEs and 4 of 5 agent
   READMEs head the blocks inside their start section.
+- `rewrite` says what follows the user's word on a round: the read is recorded verbatim under the round's
+  row, sent or not; on the word the round file replaces the document byte for byte as a commit of its own,
+  nothing else in the repository changes, a release is a separate word, and a later run starts from the
+  replaced document. On 2026-09-24 the pages stopped at "then stop" and the coordinator had to decide the
+  rest.
 
 ### Added
 
