@@ -49,14 +49,31 @@ waves, nothing written into the plugin. Every file here is an agent's return, ke
   the regressions that remain are the coordinator's decisions, not the writer's sentences; (4) the survey
   method's phase 3 still never ran.
 
+- **The rethink, and the rewrite from an agreed skeleton** ([rethink-2026-09-23/](rethink-2026-09-23/),
+  [rewrite-2026-09-24/](rewrite-2026-09-24/), waves 11–15): the owner rejected the audit route's round 04 for its
+  shape and content, so the pages were changed first — the shape agreed before any round, lens 7 for purpose and
+  content, a qualifying clause refused without a declared reason, the first clean round handed over — and then run
+  again on the same README: a survey of 39 documents, ten structures under three critics, three skeletons each read
+  by the owner (01 rejected on five sections, 02 agreed, 03 agreed after the read of round 03), a bake-off and
+  three rounds with regressions 1 → 0 → 0. The owner sent round 04 as it is on 2026-09-24, and it is the plugin's
+  README (`a613394`). On the four questions: (1) the shape is now judged before a sentence is touched, on the
+  owner's word about a named file; (2) the hand-over the owner acted on was a round with its diff and the
+  decisions with defaults; (3) as above, with the caveat signal added; (4) the survey method is on `rethink`'s
+  pages, its phase 3 still unrun.
+
 What survives as a hypothesis with a reproducible footing: the ledger seeded from the audit (2 of 25,
 replayed by script); the executed check in `round.mjs` (catches nothing alone; the substrate a verifier
 reads); a verifier of the edits before the freeze (6/10 blind, n = 1); triage that cannot say `no change`
 without a prior measurement; the handover's reading order, unmeasured.
 
-## What did not carry over
+## What carried over, and what did not
 
-Nothing was written into `plugins/terse/`. The design is v1 and its critique names the revision.
+Into `plugins/terse/`, by the wave that wrote it: the seeded ledger, the executed check and the verifier (wave 6);
+the run directory outside the repository (wave 8); the shape agreement before any route, lens 7, the `qualifies`
+signal and the first clean round handed over (wave 11); `rethink`'s briefs, its run directory and its hand-over
+form, and rule 12 (waves 12–13); the README itself, on the owner's word (wave 15). Not: the designs v1 and v2 as
+written — no `triage` skill, no effect tuple in the hand-over, no eight-rule gate — and the survey method's
+phase 3, which has never run.
 
 ## Files
 
@@ -520,3 +537,23 @@ explicit and no excerpt, *What was measured* replaced by *Checks and guarantees*
   or a page gap before a wave; the budget rule never blocked and the rounds grew (661, 687, 788) as the
   owner's content came in, which rule 4 leaves to the owner; the seven readers answered from one section
   on every round of the run.
+
+## Wave 15 — the owner's word on round 04, and the README replaced
+
+The owner read round 04 and sent it as it is: «Да. Текущий вариант пока что лучший … Еще есть куда стремиться». By
+the page's rule the loop stopped on that word; the read is recorded verbatim beside the round in
+`rewrite-2026-09-24/run/rounds.md`, the decisions listed with defaults stand at the defaults, and `04-shape.md`
+replaced `plugins/terse/README.md` byte for byte as commit `a613394`. The owner asked for three things: the result
+fixed, the skills improved from what the run showed, and the achievements recorded; the first and the third are
+that commit and the one that carries this section, the second is proposed to the owner as page edits and waits
+for their word. No release was asked for, and the branch is not merged into `main`, from which the marketplace
+installs 0.1.1.
+
+- **What the run measured, end to end**: from the owner's rejection of the audit route's round 04 (wave 10) to a
+  round they would send took one skills round, one rethink run (three skeletons, two reads), one bake-off and
+  three rounds, with regressions 1 → 0 → 0; the owner's two reads of a round were both about sections, never a
+  phrase, and each went to the structure stage rather than to a round, as the pages changed in wave 11 require.
+- **Open on the owner's side**: the release; the 15 SENTENCE findings and the STRUCTURE item (D1) for a next
+  iteration; D1–D24 into `ISSUES.md`; the naming convention the owner raised (`file-name.v1.md`) against the
+  run's `NN-<pass>.md` and `skeleton.<NN>.md`; the task readers' scratch directories and the earlier credential
+  copy.
