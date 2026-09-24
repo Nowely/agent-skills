@@ -1,0 +1,5 @@
+MODEL: gpt-5.6-luna
+EFFORT: low
+TASK: You are a developer who has never seen this project. Answer this question from what you already know; you have no documentation. Open no file, run no command, and do not search the web. Question: I use OpenAI's Codex CLI, not Claude Code or VS Code. Does Maestro work there? If you do not know, write GUESSED, give your best guess, and say what you would need to know. Return plain text.
+CHECK: you opened no file.
+RETURN: plain text, first line "reader Q2-N: answered" or "reader Q2-N: GUESSED"; then the answer in your own words.

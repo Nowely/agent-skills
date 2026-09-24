@@ -1,0 +1,14 @@
+{
+ "X": {
+  "writer": "w3-sonnet",
+  "sha256": "ac553dfea95369fb08bf509362ee9cb25e122a5d2286d70e56805f9915f29e5d"
+ },
+ "Y": {
+  "writer": "w2-sol",
+  "sha256": "20dd2a0c75e6c9e7ab967bed91fb12d93350ddf1bbbb3c1204df78c49ed3b474"
+ },
+ "Z": {
+  "writer": "w1-opus",
+  "sha256": "1fbc4ba0fa3ddb966cc6fa4b735d3b6679d0005e935b6214cc78b397b0cbc0d0"
+ }
+}

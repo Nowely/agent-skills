@@ -1,0 +1,121 @@
+# Answer key — reader test for the README of sharpdeveye/maestro at 00f9115
+
+The answers come from the code of the snapshot, whose root README was removed. The key was written without reading any README being compared. The only documentation read was the two sub-package READMEs, taken as the code's own documentation. Paths are relative to the snapshot root.
+
+The key follows audit SKILL.md step 4 and references/measure.md. There are seven questions, one per decision of a reader who builds LLM features inside an AI coding agent. Q7 is the planted question, one the code does not settle: a confident answer to it counts as a failure. Controls are not marked, because choosing them needs the text this key was written without.
+
+The level-3 checks ran in `$TMPDIR/terse-bench-key-scratch`: a copy of the snapshot, a stub `vscode` module, and `harness/run.mjs` and `harness/run2.mjs`. The machine-readable version of this key, with the same fields, is `key.json` next to this file.
+
+## Q1
+
+**Decision:** Does it fit my problem?
+
+**Question:** I build features on top of LLMs — a RAG assistant, an agent that calls tools. What would Maestro do for that work: is it something my app runs, or something else?
+
+**Answer:** Nothing your app imports or runs. Maestro is written guidance for your AI coding agent about building LLM and agent workflows: one core skill (agent-workflow) with rules for prompts, context management, tool orchestration, agent architecture, evaluation and feedback loops, RAG and knowledge systems, and guardrails, plus 24 slash commands, each a procedure the coding agent carries out on your project's AI workflow — /diagnose scores it on five dimensions, /fortify adds retries, fallbacks and timeouts, /enrich adds retrieval, /guard adds safety and cost limits. The same text reaches the agent as skill folders, through an MCP server that returns it as prompts and tool results, or through a VS Code extension. Only the extension's @maestro chat calls a model, and it uses the editor's own.
+
+**Lines:** `source/skills/agent-workflow/SKILL.md:3`, `source/skills/agent-workflow/SKILL.md:33-36`, `source/skills/agent-workflow/SKILL.md:48-198`, `source/skills/diagnose/SKILL.md:16`, `source/skills/fortify/SKILL.md:3`, `source/skills/enrich/SKILL.md:3`, `source/skills/guard/SKILL.md:18`, `mcp-server/src/tools.ts:155-157`, `mcp-server/src/tools.ts:210-211`, `mcp-server/src/prompts.ts:9-28`, `mcp-server/package.json:34-38`, `maestro-extension/src/chat/participant.ts:124-134`
+
+**Right if:** Describes Maestro as guidance the coding agent follows — skills, slash commands or prompts — about designing, auditing or improving LLM/agent workflows (prompts, context, tools, multi-agent design, evaluation, RAG, guardrails), and not as code the application imports or runs.
+
+**Wrong if:** Calls it a framework, SDK, library, runtime, orchestrator, gateway or evaluation harness that the app imports or that executes the LLM feature; says it calls a model with its own API key; or describes it as general code-quality or precision commands with no LLM/agent-workflow subject.
+
+**Evidence:** Level 2: the skills, the MCP server and the chat participant read in full. The MCP server has no model SDK among its dependencies; the only model call in the code is the extension's `vscode.lm.selectChatModels({})`.
+
+## Q2
+
+**Decision:** Does it fit my tool?
+
+**Question:** I use OpenAI's Codex CLI, not Claude Code or VS Code. Does Maestro work there?
+
+**Answer:** Yes. Maestro ships the same skill folders for ten agents, and Codex is one of them: they go into `.codex/skills/` (and the shared `.agents/skills/`), beside `.claude`, `.cursor`, `.gemini`, `.kiro`, `.trae`, `.trae-cn`, `.opencode` and `.pi`. The MCP server (`npx -y maestro-workflow-mcp`) offers the same commands to any MCP client. Neither needs VS Code or the extension.
+
+**Lines:** `scripts/build.js:13-25`, `maestro-extension/src/extension.ts:197-208`, `.gitignore:16-27`, `package.json:4-16`, `mcp-server/package.json:4-8`
+
+**Right if:** Yes, through Maestro's skill files in a Codex skills folder (the code targets `.codex/skills/` and `.agents/skills/`) and/or through the MCP server.
+
+**Wrong if:** Says Codex is not supported; says Maestro needs VS Code, the extension or Claude Code; or names a Codex route the code does not provide (a Codex plugin or marketplace entry, a generated AGENTS.md).
+
+**Evidence:** Level 3 that Maestro writes `.codex/skills/<skill>/SKILL.md`: `scripts/build.js` run in a scratch copy put 25 skills into each of the ten folders. Whether Codex CLI loads that folder lies outside this repository and was not checked.
+
+## Q3
+
+**Decision:** Which install route fits a terminal agent?
+
+**Question:** I run Claude Code in a terminal, without VS Code. What exactly do I run or copy to install Maestro there?
+
+**Answer:** Put the skill folders where Claude Code reads skills: Maestro's Claude Code target is `.claude/skills/<command>/SKILL.md` in the project. Either run `npx skills add sharpdeveye/maestro` (the repository's skills-lock.json records that source, and the extension's changelog refers to users installing with `npx skills add`), or copy the folders under `source/skills/` into `.claude/skills/`. The route that puts no files in the project is the MCP server: command `npx`, args `-y maestro-workflow-mcp`, over stdio, Node 20 or later; it offers the 24 commands as prompts plus ten `maestro_*` tools. The VS Code extension plays no part, and `npm run build` in a clone of Maestro fills `.claude/skills/` inside the clone, not in your project.
+
+**Lines:** `scripts/build.js:10`, `scripts/build.js:14-16`, `scripts/build.js:72-80`, `maestro-extension/src/extension.ts:199`, `maestro-extension/src/extension.ts:232-240`, `skills-lock.json:1-8`, `maestro-extension/CHANGELOG.md:11`, `mcp-server/package.json:2-8`, `mcp-server/package.json:51-53`, `mcp-server/README.md:17-32`, `mcp-server/src/index.ts:34-37`, `mcp-server/src/prompts.ts:9-12`, `.github/workflows/publish-mcp.yml:35-37`
+
+**Right if:** Gives a route that needs no VS Code: getting the skill folders into Claude Code's skills folder (`.claude/skills/`), e.g. with `npx skills add sharpdeveye/maestro` or by copying `source/skills/*`; or registering the `maestro-workflow-mcp` MCP server run through npx.
+
+**Wrong if:** Says the VS Code extension is required or is the way to install it; uses `npm install maestro` or `npx maestro` (nothing by that name is published from this repository — its only npm package is `maestro-workflow-mcp`); says to run `npm run build` in their own project, or that building a clone installs into their project; or gives an install command the code does not support, such as a Claude Code plugin or marketplace install.
+
+**Evidence:** Level 3 that `npm run build` writes the ten folders inside the Maestro checkout it runs in (scratch copy) and that 24 of the 25 skills are commands (bundler output counted). Level 2 for `npx skills add sharpdeveye/maestro`: supported by skills-lock.json and the changelog line, not run, because running it downloads sharpdeveye/maestro from GitHub. Level 2 for the MCP command (bin entry, stdio branch).
+
+## Q4
+
+**Decision:** What do I run first, and how do I know it worked?
+
+**Question:** Once it's installed, what should I run first, and what will I see if that first run worked?
+
+**Answer:** /teach-maestro — the skill calls itself the first command to run. The agent interviews you in five rounds (models and providers, workflow architecture, quality and evaluation, constraints, priorities) and saves the answers as `.maestro.md` in the project root. The other 23 commands' instructions have the agent read that file first (`.maestro/context.md` is also accepted) and, when it is missing, send you to /teach-maestro. The first run worked when `.maestro.md` exists; in VS Code the Maestro sidebar then shows '.maestro.md — Detected' and the status-bar tooltip changes from 'No .maestro.md detected' to 'Ready'. The recommended next command is /diagnose, which answers with a 'MAESTRO DIAGNOSTIC' box scoring five areas from 1 to 5 (overall out of 25) and naming the commands to run next.
+
+**Lines:** `source/skills/teach-maestro/SKILL.md:3`, `source/skills/teach-maestro/SKILL.md:10-12`, `source/skills/teach-maestro/SKILL.md:18-49`, `source/skills/teach-maestro/SKILL.md:75`, `source/skills/teach-maestro/SKILL.md:94-96`, `source/skills/agent-workflow/SKILL.md:13-17`, `source/skills/diagnose/SKILL.md:12`, `source/skills/fortify/SKILL.md:12`, `source/skills/diagnose/SKILL.md:71-93`, `maestro-extension/src/core/context.ts:11`, `maestro-extension/src/statusbar/manager.ts:26-33`, `maestro-extension/webview-ui/src/components/context-status.tsx:15-38`, `maestro-extension/src/extension.ts:107-112`, `mcp-server/src/tools.ts:259-286`
+
+**Right if:** /teach-maestro first (the extension's Initialize button and the MCP `maestro_init` tool do the same job), and as the sign a context file in the project root — `.maestro.md` (or `.maestro/context.md`), or the extension's Detected/Ready indicators for it — or, after it, the /diagnose scorecard.
+
+**Wrong if:** Another command first with no context step (e.g. starting with /diagnose); says no setup is needed; or gives as the sign something the code does not produce for this run (an install-success message from a CLI, a version command, a test run, the extension's skills-synchronized notice).
+
+**Evidence:** Level 2: what the agent does is set by the skill text, and no agent was run.
+
+**Note:** Through the extension's @maestro chat in VS Code, the model gets no tools, no attached files and no earlier turns (participant.ts:53-122, 195, 268). So /teach-maestro there can neither hold its multi-turn interview nor save `.maestro.md` by itself. This is level 2. It does not change the key, because the question asks what the first command is and what shows it worked.
+
+## Q5
+
+**Decision:** Which command fits my next problem?
+
+**Question:** Later on, my LLM feature keeps failing in production whenever the model API times out or returns rate-limit errors. Which Maestro command is meant for that?
+
+**Answer:** /fortify. Its description: 'Use when the workflow lacks error handling, has been failing in production, or needs retry logic, fallback strategies, and circuit breakers.' It has the agent add input validation, retry with backoff for rate limits (429), server errors and timeouts, fallback responses, circuit breakers and a timeout on every external call, and it recommends /evaluate afterwards to test the failure handling.
+
+**Lines:** `source/skills/fortify/SKILL.md:3`, `source/skills/fortify/SKILL.md:17`, `source/skills/fortify/SKILL.md:27-38`, `source/skills/fortify/SKILL.md:40-65`, `source/skills/fortify/SKILL.md:78-80`, `source/skills/guard/SKILL.md:3`, `source/skills/accelerate/SKILL.md:3`
+
+**Right if:** /fortify (mentioning /diagnose before it or /evaluate after it is fine).
+
+**Wrong if:** Any other command as the answer — /guard (safety limits and rate-limiting your own endpoints), /accelerate (speed and cost), /diagnose or /evaluate alone (analysis), /iterate, /zero-defect — or a command that does not exist (/retry, /harden, /resilience).
+
+**Evidence:** Level 2: the skills' descriptions and bodies. /guard mentions rate limits only as limits on your own endpoints (guard/SKILL.md:28-42, 87).
+
+## Q6
+
+**Decision:** What does the extension route do to my repository?
+
+**Question:** If I install the VS Code extension, what will it write into my repository, and when?
+
+**Answer:** Without asking, on activation — which its manifest sets to editor startup, in whatever folder is open — it writes into the first workspace folder: (1) a SKILL.md for each of the 25 skills in ten folders, `.agents/skills`, `.claude/skills`, `.cursor/skills`, `.gemini/skills`, `.codex/skills`, `.kiro/skills`, `.trae/skills`, `.trae-cn/skills`, `.opencode/skills` and `.pi/skills` — 250 files, overwriting any edits; (2) an MCP server entry `maestro-workflow-mcp` (`npx -y maestro-workflow-mcp@latest`) added to an existing `.vscode/mcp.json`, `.claude/mcp.json` or `.agents/mcp.json`, or a new `.vscode/mcp.json`; on a later activation, once the entry exists, it rewrites `.vscode/mcp.json` with Maestro's entry alone, dropping any other servers. When used: a @maestro slash command that completes or fails appends a line to `.maestro/audit.jsonl` and `.maestro/decisions.jsonl` (creating `.maestro/`, `.maestro/sessions/` and `.maestro/.gitignore`), and switching zero-defect mode on writes a marked block into `CLAUDE.md`, plus `.cursorrules` in Cursor and `.agents/rules/maestro-zero-defect.md` in Antigravity.
+
+**Lines:** `maestro-extension/package.json:32-34`, `maestro-extension/src/extension.ts:38-42`, `maestro-extension/src/extension.ts:186-252`, `maestro-extension/src/adapters/mcp-config.ts:20-27`, `maestro-extension/src/adapters/mcp-config.ts:38-82`, `maestro-extension/src/adapters/mcp-config.ts:136-151`, `maestro-extension/src/chat/participant.ts:230-250`, `maestro-extension/src/chat/participant.ts:276-291`, `maestro-extension/src/chat/participant.ts:295-341`, `packages/core/src/decisions.ts:29-61`, `packages/core/src/audit.ts:48-65`, `maestro-extension/src/extension.ts:84-91`, `maestro-extension/src/adapters/editor.ts:33-121`
+
+**Right if:** Says that it writes Maestro's skill files into the repository's agent folders on its own when it activates at editor startup, not only when a command is run (naming several of the ten, e.g. `.claude/skills` and `.cursor/skills`). A full answer also names the MCP entry in `.vscode/mcp.json` and the `.maestro/` logs.
+
+**Wrong if:** Says it writes nothing, only adds a sidebar or commands, writes only when a command is run or after asking, writes only one editor's folder, or leaves existing config files alone.
+
+**Evidence:** Level 3 under a stub of the VS Code API, with the shipped functions run unchanged in scratch. `autoInstallSkills` wrote 250 files into the ten folders and overwrote a hand-edited `.claude/skills/diagnose/SKILL.md`. `autoConfigureMcpServer` kept the user's own server in `.vscode/mcp.json` on the first run and left only `maestro-workflow-mcp` after the second, showing its "configured automatically" notice both times. Level 2 that activation calls both unconditionally once a folder is open, and for the `.maestro/` logs and the zero-defect writes.
+
+## Q7 — unanswerable
+
+**Decision:** Does it fit my tool? (planted)
+
+**Question:** Our team is pinned to an older Claude Code release. What is the minimum Claude Code version Maestro needs?
+
+**Answer:** Unanswerable from the code. No file states a Claude Code version. The only version floors in the repository belong to other things: the VS Code extension needs VS Code 1.95 or later, and the MCP server needs Node 20 or later.
+
+**Lines:** `maestro-extension/package.json:15-17`, `mcp-server/package.json:51-53`
+
+**Right if:** Says the documentation does not state a minimum Claude Code version (it may add that the VS Code 1.95 and Node 20 floors belong to the extension and the MCP server).
+
+**Wrong if:** Names any Claude Code version, asserts every version works, or gives VS Code 1.95+ or Node 20+ as the Claude Code requirement.
+
+**Evidence:** Level 2: searching the snapshot for "claude code", "claude-code" and "claude_code", ignoring case, finds six lines, and none states a version:  maestro-extension/CHANGELOG.md:58, maestro-extension/README.md:32 and :111, maestro-extension/package.json:296, maestro-extension/src/adapters/mcp-config.ts:23 and maestro-extension/src/adapters/editor.ts:11.
