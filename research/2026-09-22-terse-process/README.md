@@ -558,7 +558,10 @@ marketplace installs 0.1.1.
   not: two earlier Unreleased bullets still said twelve rules, and the new paragraph said nothing else changes
   on the word while `a613394` also carried the changelog line. Both fixed in `d2fafd4`, the clause cut rather
   than qualified. In passing: the record of the owner's read of skeleton 01 carried a corrected spelling where
-  it says verbatim; restored as typed in `f9987f1`, from the transcript.
+  it says verbatim; restored as typed in `f9987f1`, from the transcript. Resumed as the completeness critic of the
+  closing message (`k7-closing-completeness.md`): two numbers corrected — the minutes were the wrappers', and the
+  driver's reports do carry tokens — and one omission, the six scratch roots of the task readers still on the
+  machine.
 - **Codex Sol I1** (`reflection-2026-09-24/i1-verdicts.md`, `i1-issues-draft.md`): the 24 defects the two
   rewrite runs routed to the code, each check re-run on HEAD — 23 reproduce, none fixed, D24 unreachable in the
   sandbox (`<(...)` refused) and reproduced by the coordinator with files; D13 survives by half, its post-word
@@ -566,4 +569,7 @@ marketplace installs 0.1.1.
   named beside the checks that call them, since the scripts name the temporary run directory.
 - **Open on the owner's side**: the release; the 15 SENTENCE findings and the STRUCTURE item (E15) for a next
   iteration; the naming convention the owner raised (`file-name.v1.md`) against the run's `NN-<pass>.md` and
-  `skeleton.<NN>.md`; the task readers' scratch directories and the earlier credential copy.
+  `skeleton.<NN>.md`; on the machine, `~/.claude/plugins/data/terse-inline`, the credential copy under
+  `$TMPDIR/terse-ta.I7F5yq/`, and the task readers' scratch roots under `$TMPDIR` — `terse-fresh-reader-repo`,
+  `terse-fresh-reader-config`, `terse-c4-1-repo`, `terse-c4-1-claude-config`, `terse-fresh-reader-t1r3`,
+  `t1-r4-work`.
