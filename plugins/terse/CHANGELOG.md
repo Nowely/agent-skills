@@ -117,6 +117,11 @@ forensics remain in the repository references and release notes.
   from a run on the page: what comes back is said in the reader's words, never as a dated report line, a
   ledger label or an excerpt. Lens 7's default is fourteen rules. The round the owner read held two runs'
   numbers and showed the audit's `missing` finding as its example, which he read as an error.
+- The survey, the synthesis and the skeleton count a section's sub-blocks and what marks them — a `###`
+  heading, a bold lead-in, a fence standing alone — beside the devices, and the skeleton names them where
+  the genre splits a section. On 2026-09-24 the owner asked for Quick start's three blocks to be marked as
+  the genre marks them, and skeleton 03 had to count it afterwards: 4 of 8 plugin READMEs and 4 of 5 agent
+  READMEs head the blocks inside their start section.
 
 ### Added
 

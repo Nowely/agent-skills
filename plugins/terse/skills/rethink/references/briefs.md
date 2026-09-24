@@ -50,8 +50,9 @@ raw file (raw.githubusercontent.com/OWNER/REPO/HEAD/README.md) or the GitHub con
 HTML only where there is no markdown — saved under <R>/survey/fetched/ and counted from the saved bytes.
 Never a rendering, never a summarising tool: a summary comes back with headings the file does not have.
 For every document: its URL; its headings in order; its word count; the first hundred words of its
-body, verbatim; its devices, counted — tables, bullet lists, code blocks, badges, images; and its usage
-signal with the number — stars, downloads, a marketplace listing, forks: whatever the source shows.
+body, verbatim; its devices, counted — tables, bullet lists, code blocks, badges, images; its sub-blocks —
+what each section is split into and what marks the split, a `###` heading, a bold lead-in or a fence
+standing alone — counted the same way; and its usage signal with the number — stars, downloads, a marketplace listing, forks: whatever the source shows.
 
 WEIGHT BY USE, NOT BY TASTE. Rank by that signal. Where a much-used document does something badly, say
 so, rather than ranking a pretty unknown above it.
@@ -61,7 +62,8 @@ does for them, what to type? And which device carries what: a table of commands,
 install, a diagram for a process.
 
 THE GENRE'S ORDER, as a table counted from the headings you saved: each place from the top, what the
-genre puts there, and in N of M of your documents, named. For an exemplar of the owner's, its own order,
+genre puts there, and in N of M of your documents, named; at each place, the sub-blocks the genre
+splits it into and what marks them, in N of M. For an exemplar of the owner's, its own order,
 heading by heading.
 
 GAPS, as SECTIONS WITH A PURPOSE AND A PLACE, never adjectives: "a section titled X, whose purpose is Y,
@@ -87,6 +89,11 @@ with `curl`. No survey fetched the owner's exemplar. And the genre's order was c
 owner asked for it, at his read of the skeleton: «нужно на уровне смыслов и идей понимать, предметную
 область, какие в ней порядки, предпослыки, типовые правила для структуры» — the domain has to be
 understood at the level of meanings and ideas: its orders, its premises, its typical rules for structure.
+Nor were the sub-blocks: reading round 03 on 2026-09-24, the owner asked for Quick start's install,
+workflow and update to be marked as the genre marks them — «Тут опять же можно посмотреть, а как
+делают. … Возможно использовать ## заголовки, либо через bold выделить три смысловых блока» — and the
+count was made afterwards, for skeleton 03: 4 of 8 plugin READMEs and 4 of 5 agent READMEs head the
+blocks inside their start section.
 
 ## 2. The synthesis
 
@@ -105,8 +112,8 @@ Merge every item a report solved or named as a gap into ONE table, a row each:
   for a TAKE or a TAKE WITH CHANGE, what it displaces in <DOC>, by line, or the growth it admits, in
     words.
 Then: the count by verdict; the not-to-copy items merged, each with its harm and its verdict; the
-presentation devices decided, each with its count; the genre's order merged from the reports, with the
-owner's exemplars' order beside it; the disagreements between reports, and every correction the fetch
+presentation devices decided, each with its count; the genre's order merged from the reports, each place
+with its sub-blocks and their marks, with the owner's exemplars' order beside it; the disagreements between reports, and every correction the fetch
 made to their evidence; what the purpose needs that no survey covered; and the owner's requirements
 that no surveyed document matches.
 
@@ -256,8 +263,8 @@ Seven parts, in order:
    rendering; the base, with its ranks; the genre's order as a table — place, what the genre puts
    there, N of M, where the owner's exemplars put it — with, at each place, whether this skeleton
    follows or departs, and why.
-2. Each section: its heading and budget; its purpose; what it excludes; the device that carries it; and
-   what it rests on — a row, a count, a clause of the purpose, the owner's words.
+2. Each section: its heading and budget; its purpose; what it excludes; the device that carries it and,
+   where the genre splits the section, its sub-blocks with what marks each; and what it rests on — a row, a count, a clause of the purpose, the owner's words.
 3. The mechanical rules, each a command and the output that passes.
 4. The terminology decisions, with the words rejected and why.
 5. What is deleted outright from <DOC>, with the cost of each deletion.

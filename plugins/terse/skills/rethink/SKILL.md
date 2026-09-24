@@ -122,7 +122,7 @@ and a reader feels it before they can name it. Its parts, in order:
 1. every statement of the owner's that governs the document, verbatim; then the genre's order from
    step 1 and, place by place, where this skeleton follows it or departs from it, and why
 2. each section: title, one sentence of purpose, what it deliberately excludes, the device that carries
-   it, a word budget
+   it and, where the genre splits the section, its sub-blocks with what marks each, a word budget
 3. the mechanical rules the writing must pass, written so that passing is a fact rather than an opinion
 4. the terminology decisions from step 2, including the ones you rejected and why
 5. what was deleted outright rather than moved, and the stated cost of deleting it
