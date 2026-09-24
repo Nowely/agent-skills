@@ -44,9 +44,10 @@ Nothing goes into the repository without the user's word.
 
 ## Step 3. The draft
 
-The writer, brief 1 of `roles.md`: from the code, the rules, the purpose, the genre's notes and the
-existing text, if any. It puts a plan on one screen in its report — each section, what it gives the
-reader, the device, a word budget — and writes the text. Where the genre has no notes in
+The writer, brief 1 of `roles.md`: from the code, the rules, the purpose, the genre's notes, the
+existing text if any, and the plan the user agreed in `rethink` if they give its path. It puts a plan
+on one screen in its report — each section, what it gives the reader, the device, a word budget — and
+writes the text. Where the genre has no notes in
 [genres/](../../references/genres/), the genre scout, brief 2, runs beside it; its table is kept there
 for the next text of the kind, on the user's word.
 
@@ -76,15 +77,16 @@ A refuted sentence still in the final goes back to the writer before the hand-ov
 
 ## Step 6. The hand-over
 
-Give the user the final text, the plan, the list of findings applied and declined, and the diff against
-the existing text, all in the run directory. The user reads. If they would not send it as it is, their
-words go to the writer for one more repair; new critics run only if they ask. Applying the text to
-their files needs their word.
+Give the user the final text, the plan and the list of findings applied and declined, all in the run
+directory, and for a text that existed, the diff against it. The user reads. If they would not send it
+as it is, their words go to the writer for one more repair; new critics run only if they ask. Applying
+the text to their files needs their word.
 
 ## What you return
 
 In the run directory: `purpose.md`; the draft and the writer's report with its plan; `critics/`, every
-report verbatim; the final text with the applied-and-declined list; the scripts' output; `diff.patch`.
+report verbatim; the final text with the applied-and-declined list; the scripts' output; `diff.patch`
+for a text that existed.
 
 ## Why this shape
 
