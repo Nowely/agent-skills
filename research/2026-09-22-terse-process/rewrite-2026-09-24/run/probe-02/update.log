@@ -1,0 +1,20 @@
+claude: 2.1.280 (Claude Code)
+auth status: not logged in
+the copy's plugins/terse against the checkout's: identical
+marketplace add <copy> -> exit 0
+plugin install terse@nowely -> exit 0; installed 0.1.1
+terse 0.1.1
+  Skills (3)  audit, rethink, rewrite
+plugin details terse@nowely -> exit 0
+the copy's plugin.json now: "version": "0.1.2"
+$ claude plugin marketplace update nowely
+Updating marketplace: nowely...Validating local marketplace
+✔ Successfully updated marketplace: nowely
+exit 0
+$ claude plugin update terse@nowely
+Checking for updates for plugin "terse@nowely" at user scope…
+✔ Plugin "terse" updated from 0.1.1 to 0.1.2 for scope user. Restart to apply changes.
+exit 0
+installed versions now: 0.1.1 0.1.2 
+help: Update a plugin to the latest version (restart required to apply)
+checkout status for plugins/ and .claude-plugin/: []

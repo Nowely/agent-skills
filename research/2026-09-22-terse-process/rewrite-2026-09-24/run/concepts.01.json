@@ -6,7 +6,7 @@
   {"name": "not a compressor — opening, What was measured", "pattern": "compressor|shorten|shorter|cut (?:it|your [a-z]+) down|2,725"},
   {"name": "you start each one — Skills", "pattern": "start each one yourself|starts? (?:on its own|by itself)"},
   {"name": "back to audit — Skills", "pattern": "audit again|again with the same questions|same questions again"},
-  {"name": "a fix is not undone — How it works", "pattern": "undo(?:es)? a fix|checked true|found false"},
+  {"name": "a fix is not undone — How it works", "pattern": "undo(?:es)? a fix|make it worse|checked true|found false"},
   {"name": "condition, limit, warning — How it works", "pattern": "condition, a limit|limit or a warning"},
   {"name": "AI readers — How it works, What was measured", "pattern": "AI readers?"},
   {"name": "answer key; without your text — How it works, What was measured", "pattern": "answer key|without (?:your|the) text"},
