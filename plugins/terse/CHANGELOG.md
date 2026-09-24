@@ -103,6 +103,14 @@ forensics remain in the repository references and release notes.
   with a rendering: the aim is any text, the README now and documentation and code later; every word has
   a reason and carries meaning, in code too; and the workflow takes a text apart into its skeleton,
   essence, structure and meanings, evaluates them, and gathers the best practices.
+- The README is round 04 of the 2026-09-24 rewrite from the skeleton the owner agreed to: 788 words by the
+  plugin's own count in five sections — what the plugin is for, Quick start as Install, Workflow and Update,
+  a table of the three skills, How it works as one line per skill, and *Checks and guarantees* — the methods,
+  what each checks and where it comes from — in place of *What was measured*. Every sentence the rounds
+  wrote carries a check that ran against the code at `f97eb4a`, read by a verifier before the freeze and by
+  three lenses after it, with no regression charged; the owner read it and sent it as it is. The previous
+  README gave two runs' numbers and a licence line in 933 words; the owner rejected the numbers as a README
+  section — a user wants the result, not what the author did with the plugin twice.
 
 ### Added
 
