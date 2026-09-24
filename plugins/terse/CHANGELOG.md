@@ -130,6 +130,12 @@ forensics remain in the repository references and release notes.
 
 ### Added
 
+- `references/benchmark.md`: the protocol for measuring the skills against a bare agent, with a human best
+  practice as the reference — three texts, a snapshot the writers see without its README, a stand-in user for
+  the owner-less run, seven rulers and three hypotheses written before the run — from the owner's proposal of
+  2026-09-24, with his three premises: the model's memory is the baseline, the reference keeps what its
+  maintainers know and the owner judges, and a bare agent beating the skills means they fail their main task.
+  Not yet run.
 - A verifier reads the edits before the round is frozen — brief 0 in `critic-briefs.md`, one agent that
   did not write them, given `edits/NN.json`, the `ledger.json` entries the round wrote — `saw` lives
   there, not in the edits file — and the code, returning `holds`, `does not answer`, `refuted` or
