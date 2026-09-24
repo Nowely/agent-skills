@@ -310,8 +310,8 @@ run where three were added without budgets ended 600 words over a total nobody h
 
 ## The rules this produced
 
-Derived from what one owner changed on his documents — rules 1 to 11 on one, on 2026-09-11 and 12, rule
-12 on the next, on 2026-09-24 — not from a standard. They are that owner's rules and the calibration
+Derived from what one owner changed on his documents — rules 1 to 11 on one, on 2026-09-11 and 12, rules
+12 to 14 on the next, on 2026-09-24 — not from a standard. They are that owner's rules and the calibration
 target for their next document; another owner's are learned the same way, and none of them is a law of
 the genre. They are about content and order; the rules about
 sentences are in [writing-rules.md](../../rewrite/references/writing-rules.md) and are a different layer.
@@ -357,6 +357,26 @@ sentences are in [writing-rules.md](../../rewrite/references/writing-rules.md) a
     текущую действительность. В нем не должно быть без везкой причины привязка к версии.» — a README
     always matches the code; if version 1 shipped and ten features have landed since, it describes the
     present, and it carries no binding to a version without a weighty reason.
+13. **A README carries no results.** What was measured on the document — how often its author ran the
+    plugin on it and what came out — is technical information for the plugin's development and lives inside
+    the plugin, not on its front page. In its place the reader wants what the pipeline is made of: how the
+    agents work, which methods it checks, where those methods come from and why, and what is guaranteed.
+    On 2026-09-24 the owner read a round whose *What was measured* section held two runs' numbers: «What
+    was measured - это секция, которая, на мой взгляд, не нужна readme. … Какую ценность оно будет нести
+    пользователю, который захочет прмименить ее у себя? … Ему главное результат. Если нужна техническая
+    информация для дальнейшего иехнического развития, то ее можно держать где-то внутри, но не в реадми.
+    Здесь же было бы полезнее дежржать архитектуру пайлпана … какие методы проверяет, откуда эти методы и
+    почему. В общем техническая информация о составе плагина, гарантиях качества.» The section became
+    *Checks and guarantees*: each method, what it checks, where it comes from, and what is and is not
+    promised.
+14. **Nothing from a run on the page.** What the plugin hands back is described in the reader's words —
+    what the report lists, what the draft is — and never shown as a run's register: no dated report line,
+    no failure label from a ledger, no excerpt of a run file. On 2026-09-24 a round showed the audit's own
+    finding as its example — «Its report on this plugin's README, 2026-09-22:» and «`missing`: the owner's
+    intent» — and the owner read it as an error: «Не очень понятна фраза … Почему README, почему дата. …
+    `missing`: the owner's intent тоже непонятная фраза. Выглядит как ты применил /terse:audit и
+    столкнулся с ошибкой. Идея возможно правильная, но реализация - не очень.» The idea — show what comes
+    back — survived as a sentence; the register did not.
 
 ## One rule about the artifact you show for review
 

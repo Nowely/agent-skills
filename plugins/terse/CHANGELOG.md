@@ -111,6 +111,12 @@ forensics remain in the repository references and release notes.
   three lenses after it, with no regression charged; the owner read it and sent it as it is. The previous
   README gave two runs' numbers and a licence line in 933 words; the owner rejected the numbers as a README
   section — a user wants the result, not what the author did with the plugin twice.
+- `stages.md` gains rules 13 and 14 from the owner's read of round 03 on 2026-09-24, verbatim: a README
+  carries no results — what was measured on it is development information and lives inside the plugin, and
+  in its place the reader wants the pipeline, the methods, their origin and the guarantees — and nothing
+  from a run on the page: what comes back is said in the reader's words, never as a dated report line, a
+  ledger label or an excerpt. Lens 7's default is fourteen rules. The round the owner read held two runs'
+  numbers and showed the audit's `missing` finding as its example, which he read as an error.
 
 ### Added
 
