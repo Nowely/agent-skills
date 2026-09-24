@@ -490,3 +490,33 @@ with their edits, probes, verifier reads, waves, dedups and routings, `code-defe
   while a writer was committing; the announcement sentence placed where a concept reached three sections.
 - **Costs**: Claude about 5.6M tokens across the wave (writers 1.4M, verifier reads on Codex, lenses 1.9M,
   task readers 0.3M, dedups 0.6M, judges and setup 0.4M, the pages' writer 0.85M); Luna 14 × 12.5k.
+
+## Wave 14 — the owner's read of round 03, skeleton 03, and round 04
+
+The owner read the first clean round and did not send it: three objections, all about sections — Quick
+start as one block, a report excerpt that read as an error, *What was measured* as a section a user has
+no use for. By the pages as changed on 2026-09-23 the read went to `rethink`'s structure stage: the
+words recorded verbatim (`rethink-2026-09-23/skeleton-read-02.md`), skeleton 03 written by the same
+synthesis (Quick start in three headed blocks by the genre's count, the workflow block with the scope
+explicit and no excerpt, *What was measured* replaced by *Checks and guarantees*, the route with one home;
+645 words) and agreed the same day; then round 04 in the rewrite run against it.
+
+- **Round 04** (Opus G4, 788 words): the restructuring — 19 edits, 25 claims, five drops by name for the
+  removed section and the excerpt. The verifier sent it back twice: one real overstatement ("file and
+  line" for every wrong answer, where a `missing` failure has no line), two page gaps the README had
+  repeated (how `rewrite` receives the skeleton, D21; a folder form of the scope the audit page does not
+  give), a guarantee word at level 2 relabelled as the pages' promise, and the chains named as the
+  README's recommendation since no page orders the closing audit; then 25 of 25.
+- **The wave**: 54 findings from 66; **no regression** — lens 1's three overstated verdicts on round-04
+  sentences each restate a page at the page's level, and their faults are the pages' (`prior-art.md`
+  overstating its own body, a cut ledger no step writes, a "byte for byte" note false by an indent:
+  D22–D24); lens 7 found no section that buys nothing and a clean opening; task 1 achieved with the
+  harness's route, task 2 partly on the pages' gaps; readers 6 of 7 from one section each, Q7 guessed as
+  the key requires, now with no language sentence in the text. Handed to the owner with its diff: the
+  second clean round of the run, the first under skeleton 03. Rounds 02 → 03 → 04 = 1 → 0 → 0.
+- **What this wave measured about the loop**: a rejected read routed to the structure stage cost one
+  skeleton and one round (about 2.4M Claude tokens) against the four rounds the audit route had cost
+  before any skeleton existed; the verifier's send-backs (2, 1, 2 per round) each caught an overstatement
+  or a page gap before a wave; the budget rule never blocked and the rounds grew (661, 687, 788) as the
+  owner's content came in, which rule 4 leaves to the owner; the seven readers answered from one section
+  on every round of the run.

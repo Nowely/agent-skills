@@ -1,6 +1,6 @@
 # Code defects — rewrite of plugins/terse/README.md from the agreed skeleton, run 20260924-002235-terse-readme-rewrite2
 
-Findings the rounds routed to the code, per `rewrite/SKILL.md` step 4 item 6 and `loop.md`'s routing table, each with its check, offered to the owner as a proposal. Nothing here is in the repository: `ISSUES.md` takes an entry only on the owner's word. Numbering continues the previous run's `code-defects.md` (D1–D13, `research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md`), whose header maps D1–D13 to E15–E27; D14–D20 would be E28–E34. The pages are read at commit `f97eb4a` (the plugin tree; later commits on the branch touch `research/` only until noted).
+Findings the rounds routed to the code, per `rewrite/SKILL.md` step 4 item 6 and `loop.md`'s routing table, each with its check, offered to the owner as a proposal. Nothing here is in the repository: `ISSUES.md` takes an entry only on the owner's word. Numbering continues the previous run's `code-defects.md` (D1–D13, `research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md`), whose header maps D1–D13 to E15–E27; D14–D24 would be E28–E38. The pages are read at commit `f97eb4a` (the plugin tree; later commits on the branch touch `research/` only until noted).
 
 ## D14. No audit step writes the user's shape verdict into the run file after the report, though `rewrite` reads it there
 
@@ -85,3 +85,51 @@ Prints the ratchet's loop over the ledger's entries, the empty start on the skel
 Prints `ok  ru` and `exit 0`; the English form of the same edit exits 1.
 
 **Issue text.** `round.mjs` refuses an edit that adds a qualifying clause without a reason, and recognises the clause by an English word list, so a caveat written in any other language passes unseen. The list should carry the common forms of the languages the plugin claims, or the check should be handed to the verifier's fifth duty with the script marking every edit whose `new` grew a subordinate clause, in any language, by structure rather than by words.
+
+## D21. `rewrite`'s skeleton route never says how the skeleton reaches it
+
+**Evidence, level 2.** `plugins/terse/skills/rewrite/SKILL.md:22–39`: the routes table sends "a skeleton the user agreed to" to step 2, and step 1 asks the user for the run directory from `audit` on the audit route; no line asks the user for the skeleton's path, names where `rethink` left it (since `3c4d1e1`, `rethink`'s own run directory, `rethink/SKILL.md:29–53`), or says that the agreed file's path and SHA-256 are read from the audit run file's *Score* or from the user's words. `rethink/SKILL.md` step 4 hands the file over and records the user's word with its SHA-256, but hands it to nobody. On this run the coordinator copied the skeleton into the rewrite run by hand. Found by the verifier of round 04 (Codex Sol V6, C09: "rewrite/SKILL.md:22-39 never instructs the skeleton route to ask for it") and by the round-03 wave's task reader 2 (the rethink → rewrite hand-off guessed).
+
+**Check.** From any directory:
+
+    sed -n '22,39p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md | grep -n -i -E 'skeleton' ; sed -n '22,39p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md | grep -c -i -E 'skeleton.{0,40}(path|directory|where)'
+
+The first prints the lines that name the skeleton route; the second prints `0`: none of them says where the skeleton is or how the skill is given it.
+
+**Issue text.** `rewrite` starts from a skeleton the user agreed to and never says how it gets it: not a path asked of the user, not the `rethink` run directory, not the audit run file's *Score* line. A reader planning the rethink → rewrite path guesses that the skeleton is handed over the way the audit's folder is. Step 1 should say, for the skeleton route, where the agreed skeleton is read from — the user names the file, or `rethink`'s run directory is given as `audit`'s is — and that its SHA-256 is compared with the one the agreement recorded.
+
+## D22. `prior-art.md` overstates its own body: "every practice marked measured, argued or asserted" and "the curated forty"
+
+**Evidence, level 2.** `plugins/terse/references/prior-art.md:14–15` says every practice carries one of three marks — measured, argued, asserted — and `:302` calls its curated section "the curated forty"; the round-04 wave's lens 1 (Claude Opus, F8) counted the body: the marks are not on every entry and the curated section's count is not forty (the report gives the counts by line). The README sentence "The field's practices, each marked measured, argued or asserted, gathered and ranked" restated the page and was marked OVERSTATED for it; the fault is the page's.
+
+**Check.** From any directory:
+
+    sed -n '14,15p;302p' /Users/ruliny/Git/agent-skills/plugins/terse/references/prior-art.md; grep -c -E '^\s*[0-9]+\. \*\*' /Users/ruliny/Git/agent-skills/plugins/terse/references/prior-art.md; grep -c -i -E '\b(measured|argued|asserted)\b' /Users/ruliny/Git/agent-skills/plugins/terse/references/prior-art.md
+
+Prints the two self-descriptions and two counts to set against them (the numbered entries; the lines carrying a mark); the counts do not bear "every" and "forty".
+
+**Issue text.** `prior-art.md` describes itself as a list in which every practice is marked measured, argued or asserted, and as a curated forty; its body carries neither: not every entry has a mark and the curated section is not forty entries. A README that repeats the page's self-description repeats the overstatement. The page should say what its body does — how many entries, how many marked, how many curated — or its body should be brought to what it says.
+
+## D23. `rewrite`'s step 6 returns a cut ledger that no step writes
+
+**Evidence, level 2.** `plugins/terse/skills/rewrite/SKILL.md:235` lists among what the skill returns "the cut ledger — every removed passage of twenty words or more, with its reason", and `references/ledgers.md` gives its format; no step of the page tells the writer or the coordinator to write it — step 4 item 2 requires a reason for a cut of twenty words or more inside `edits/NN.json`, and nothing gathers those into the ledger. On this run `cuts.md` was written once, by the coordinator's brief in the previous run, and not by any page step. The README's "your read, with a reason for every cut of twenty words or more" restates step 6 at the page's level and was marked OVERSTATED for it (lens 1 F6).
+
+**Check.** From any directory:
+
+    grep -n -i 'cut ledger' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md; grep -n -i -E 'write.*(cut ledger|cuts\.md)|cuts\.md' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/loop.md
+
+The first prints the return list's line; the second prints no step that writes the file.
+
+**Issue text.** `rewrite` promises to return a cut ledger — every removed passage of twenty words or more with its reason — and no step produces it: the reasons live inside each round's edits file and nobody gathers them. A user reading the return list expects a file that does not exist unless the coordinator makes it by hand. Step 4 should write the cut ledger from the edits' reasons at each round, or step 6 should return the reasons where they are.
+
+## D24. `writing-rules.md:29` says "byte for byte" of a block that differs from its source by an indent
+
+**Evidence, level 2.** `plugins/terse/skills/rewrite/references/writing-rules.md:29`, the note beside the frozen block's SHA line, says the block is the source prompt's PART 2 "byte for byte"; `research/2026-09-10-chain/chain-source-prompt.txt:64–83`, the source, is indented four spaces, and `diff` between the two shows the indent only. The SHA on the page is of the page's own text and stays valid; the note's "byte for byte" is false by the indent. Found by the round-04 wave's lens 1 (Claude Opus).
+
+**Check.** From any directory:
+
+    sed -n '29p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/writing-rules.md; diff <(sed -n '6,25p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/writing-rules.md) <(sed -n '64,83p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain-source-prompt.txt | sed 's/^    //') && echo "identical after removing the indent"
+
+Prints the note and, after the indent is removed from the source, no difference: the block equals its source up to the indent and not byte for byte.
+
+**Issue text.** The frozen block's note says it is the source prompt's text byte for byte; the source is indented four spaces and the block is not, so the claim is false by exactly the indent. The repository's rule is that the SHA line and the note move together and the text never alone: the note should say "the source's text with its indent removed", and the SHA line stays as it is.

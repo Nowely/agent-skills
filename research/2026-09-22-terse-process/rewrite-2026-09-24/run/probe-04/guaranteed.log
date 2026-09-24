@@ -1,0 +1,16 @@
+rundir-rewrite.sh (rewrite audit rethink): exit 0
+  renders stopped at login, cost 0: 9 of 9
+  run folders made outside the working directory: 9 of 9
+  <data> = <probe>/config-installed/plugins/data/terse-nowely, exists
+  <data> = <probe>/config-plugindir/plugins/data/terse-inline, exists
+  the page read as a plain file, D left as written, TMPDIR set: 3 of 3 → $TMPDIR/terse/runs/…
+  the same, TMPDIR unset: 3 of 3 → /tmp/terse/runs/…
+  <work> = each load's working directory, for the repository; entries added to the three: 0
+  checkout status for plugins/ and .claude-plugin/: []
+guard.sh: exit 0
+  a cut, no drop: round.mjs exit 0; ledger.mjs exit 1; T the tool asks before it deletes L? yes LOST;F it deletes without asking L? - - ;
+  b retired phrasing back, word for word: round.mjs exit 0; ledger.mjs exit 1; T the tool asks before it deletes L? yes yes ;F it deletes without asking L? - YES ;
+  c neither: round.mjs exit 0; ledger.mjs exit 0; T the tool asks before it deletes L? yes yes ;F it deletes without asking L? - - ;
+  d cut, drop declared: round.mjs exit 0; ledger.mjs exit 0; F it deletes without asking L? - - ;
+  e retired claim back, other words: round.mjs exit 0; ledger.mjs exit 0; T the tool asks before it deletes L? yes yes ;F it deletes without asking L? - - ;
+  d's edit names its drop: "drop":["T the tool asks before it deletes"]

@@ -1,0 +1,138 @@
+# round 04 checks, 2026-09-24 09:41:03; 04-shape.md sha256 1e6eed3b993a06180f90c7e28aad4bed5d0bb580daba2124b71981b59a8d64e0
+ledger.04.json sha256 eca0e1cd507d701fc382cf2a8ca04e3f13f2acac882bb8bca2497855c0bfbefb (ledger.json before the round: eca0e1cd507d701fc382cf2a8ca04e3f13f2acac882bb8bca2497855c0bfbefb)
+
+$ node rule1.mjs F --cut "How it works" --except "Quick start"
+
+0 violation(s), 0 excused
+exit 0
+
+$ node rule1.mjs F --cut "How it works"   (skeleton 03 rule 1, no --except)
+
+0 violation(s), 0 excused
+exit 0
+
+$ node dup.mjs F concepts.json
+  2   consent — Quick start, Checks and guarantees Quick start | Checks and guarantees
+  2   the plugin's own folder — Quick start, Checks and guarantees Quick start | Checks and guarantees
+  1   agents announced, then it waits — Quick start Quick start
+  1   every word carries weight — opening (opening)
+  1   not a compressor — opening     (opening)
+  1   the scope — Quick start        Quick start
+  2   what a report holds — Quick start, Skills Quick start | Skills
+  1   you start each one — Skills    Skills
+  1   back to audit — Quick start    Quick start
+  2   a fix is not undone — How it works, Checks and guarantees (opening) | Checks and guarantees
+  1   condition, limit, warning — Checks and guarantees Checks and guarantees
+  2   AI readers — How it works, Checks and guarantees How it works | Checks and guarantees
+  1   answer key; without your text — How it works How it works
+  1   claims against the code — How it works How it works
+  1   the five causes — How it works How it works
+  2   best practices; documents like yours — opening, How it works (opening) | How it works
+  2   writers, judges, reviewers — How it works Quick start | How it works
+  2   the diff — Quick start, Skills Quick start | Skills
+  1   where the methods come from — Checks and guarantees Checks and guarantees
+  1   a person — Checks and guarantees Checks and guarantees
+  1   Node — Quick start             Quick start
+
+0 concept(s) in three or more sections
+exit 0
+
+$ node sections.mjs F budgets.json
+   65 / 70   -5   (opening)
+  246 / 190  +56   Quick start
+  123 / 110  +13   Skills
+  164 / 115  +49   How it works
+  190 / 160  +30   Checks and guarantees
+  788 TOTAL, 4 section(s) over budget
+exit 0
+$ block budgets (rule 4): Install <= 26, Workflow <= 140, Update <= 18
+  206	### Workflow
+  17	### Update
+  17	### Install
+
+$ node ledger.mjs ledger.json 00-original.md 01-candidate.md 02-grafts.md 03-routes.md 04-shape.md
+claim                                                                                                                            lvl  00-o 01-c 02-g 03-r 04-s
+C01 terse is a Claude Code plugin whose                                                                                          L2   LOST LOST LOST yes  yes 
+C03 the plugin ships three skills.                                                                                               L3   LOST yes  yes  yes  yes 
+C05 `rethink` returns a skeleton that `rewrite`                                                                                  L2   LOST LOST LOST LOST yes 
+C06 audit builds a profile of the project's                                                                                      L2   LOST LOST LOST LOST yes 
+C07 audit returns a score, the questions that                                                                                    L2   LOST LOST LOST LOST yes 
+C09 rethink decides, before any prose is written                                                                                 L2   LOST LOST LOST LOST yes 
+C10 rethink hands over a skeleton, each section                                                                                  L2   LOST LOST LOST yes  yes 
+C11 rewrite starts from a skeleton `rethink` agr                                                                                 L2   LOST LOST LOST yes  yes 
+C12 three writers produce candidates and two jud                                                                                 L2   YES   -    -    -    -  
+C13 every round of a rewrite stays on                                                                                            L3   YES   -    -    -    -  
+C15 rewrite writes its rounds and artefacts into                                                                                 L3   LOST LOST LOST LOST yes 
+C16 nothing rewrite does changes the user's file                                                                                 L2   YES   -    -    -    -  
+C19 from a shell, `claude plugin marketplace add                                                                                 L3   LOST yes  yes  yes  yes 
+C20 after the two install steps nothing else                                                                                     L3   YES   -    -    -    -  
+C21 Node 22 or newer is needed only                                                                                              L3   YES   -    -    -    -  
+C23 shortening the text is not terse's aim:                                                                                      L2   yes  yes  yes  yes  yes 
+C27 rewrite leaves every condition, limit and wa                                                                                 L2   YES   -    -    -    -  
+C30 everything under *What was measured* comes f                                                                                 L2   YES   -    -    -    -  
+C39 the 2026-09-10 bake-off put five published w                                                                                 L2   YES   -    -    -    -  
+C41 on the audited README's first 116 words,                                                                                     L2   YES   -    -    -    -  
+C45 two published benchmarks that ran a no-docum                                                                                 L2   YES   -    -    -    -  
+C46 the plugin's reference files state the missi                                                                                 L2   YES   -    -    -    -  
+R02a you need Node 22 or newer and a signed-in Claude Code: signed out no skill runs, audit and rewrite stop without Node        L3   LOST yes  LOST yes  yes 
+R02c after an audit, a shape that stands takes rewrite with the report's folder, one that does not takes rethink first           L2   LOST LOST LOST LOST yes 
+R02d rewrite hands back a new draft of the whole document and its diff, in the plugin's own folder outside the repository        L3   LOST LOST LOST yes  yes 
+R02e the update commands update the plugin, and the update applies after Claude Code restarts                                    L3   LOST LOST yes  yes  yes 
+R02g nothing in your repository changes until you say so, as the three pages instruct                                            L2   LOST LOST LOST LOST yes 
+R02f no run measured whether a person reads the improved text better, only whether a model answers                               L2   LOST LOST LOST LOST yes 
+R03a audit asks which files and where your readers start, then waits for your answer                                             L3   LOST LOST LOST LOST yes 
+R03i you decide whether the draft replaces your document                                                                         L2   LOST LOST yes  yes  yes 
+R03b audit announces its agents and model and waits; rewrite does so before its writers, judges and a round's reviewers          L2   LOST LOST LOST yes  yes 
+R03c by default three writers draft and two judges pick, then rounds of edits checked by AI reviewers, each from its own angle   L2   LOST LOST LOST LOST yes 
+R03d the rules forbid filler, and cutting or weakening a condition, a limit or a warning where readers decide                    L2   LOST LOST LOST LOST yes 
+R03e rethink starts by reading documents like yours, with as many agents as you allow                                            L2   LOST LOST LOST LOST yes 
+R03f word count never selects a draft; cuts of twenty words or more carry reasons                                                L2   LOST LOST LOST LOST yes 
+R03g a round that silently loses a sentence checked true, or repeats one found false, is refused before you see it               L3   LOST LOST LOST yes  yes 
+R04a the workflow's commands are typed in Claude Code                                                                            L3   LOST LOST LOST LOST yes 
+R04b the report lists the questions answered wrong, why, and where: file and line when a sentence is at fault                    L2   LOST LOST LOST LOST yes 
+R04c if every answer from your text is already right, stop                                                                       L2   LOST LOST LOST LOST yes 
+R04d the user says whether the document's shape stands                                                                           L2   LOST yes  yes  yes  yes 
+R04j the audit row: which questions the text answers wrong, why, and where; no rewording                                         L2   LOST LOST LOST LOST yes 
+R04e you start each one yourself                                                                                                 L2   LOST LOST LOST LOST yes 
+R04f rewrite's steps: an adversarial first read, rounds of edits with running checks and a refusal, your read                    L2   LOST LOST LOST LOST yes 
+R04g the content rules: what a document says, in what order, from what one owner changed on his documents                        L2   LOST LOST LOST LOST yes 
+R04h the scripted checks, each tested against a deliberate violation                                                             L3   LOST LOST LOST LOST yes 
+R04i the field's practices, each marked measured, argued or asserted, gathered and ranked                                        L2   LOST LOST LOST LOST yes 
+
+0 failure(s) in /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260924-002235-terse-readme-rewrite2/04-shape.md
+exit 0
+
+# skeleton 03, part 3, rules 2, 5, 6 and 7
+$ grep -n "^#"
+1:# terse
+5:## Quick start
+7:### Install
+16:### Workflow
+45:### Update
+54:## Skills
+64:## How it works
+70:## Checks and guarantees
+$ opening fence lines, with the heading above them
+  9: ```bash   under ## Quick start ### Install
+  20: ```text   under ## Quick start ### Workflow
+  28: ```text   under ## Quick start ### Workflow
+  36: ```text   under ## Quick start ### Workflow
+  47: ```bash   under ## Quick start ### Update
+$ grep -c '/plugin': 0
+rule 6 item 5: first non-blank line under ### Install: ```bash
+rule 6 item 6: first non-blank line under ### Update: ```bash
+rule 6 item 11, qualifiers outside the fences: 0
+rule 7, must-not words outside the fences: 0 line(s)
+rule 7, pipeline outside How it works: []
+rule 7, reader pairs other than AI/your: 0
+opening holds weight: 1, meaning: 1
+'until you say so': 2
+'rounds of edits': 2
+'documents like yours': 1
+'AI reviewers': 2
+'### Workflow': 1
+first line holding skeleton: 34; outline in it: 1
+first line holding shape: 26; order in it: 1
+first line holding diff: 32; change in it: 1
+first AI reader: fresh AI reader
+terse outside the H1 and the commands: 0
