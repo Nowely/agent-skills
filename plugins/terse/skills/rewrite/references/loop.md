@@ -1,5 +1,9 @@
 # The loop: why rounds, where findings go, what the ledger and the map are for
 
+> **Superseded on 2026-09-24** by [roles.md](roles.md), the one path `rewrite` runs: one writer, every critic at
+> once, one repair. This page is kept as the record of the sequential method it describes and of what
+> was measured under it; no step points here.
+
 Stage 4 of the four the method has. Stages 1 to 3 — what comparable documents solved, what things are
 called, and what the document says in what order — are settled in `rethink` and arrive here as an agreed
 skeleton: [stages.md](../../rethink/references/stages.md). The commands and the order of a round are in

@@ -165,10 +165,10 @@ node "$A/ledger-seed.mjs" "$RUN/audit.md" "$RUN/ledger.json"
 
 Report to the user: the score, the failures with their causes, the refuted claims, the count the seed
 printed, the absolute path, and the shape verdict. It is `shape: agreed` only on the user's word: that
-they agree to a named skeleton file (`rethink` step 4), whose path and SHA-256 go into the run file, or,
-quoted, that the document's current shape stands. A skeleton they read without saying they agree to it
-is not agreement; anything short of their word is `shape: not agreed`. Agreed, offer `rewrite` as the
-next step. Not agreed, offer `/terse:rethink` at its structure stage, and say why not `rewrite`: on
+they agree to a named plan (`rethink` step 5), whose path and SHA-256 go into the run file, or, quoted,
+that the document's current shape stands. A plan they read without saying they agree to it is not
+agreement; anything short of their word is `shape: not agreed`. Agreed, offer `rewrite` as the next
+step. Not agreed, offer `/terse:rethink`, and say why not `rewrite` alone: on
 2026-09-11, and on 2026-09-23 after four rounds of `rewrite` on this plugin's own README, a document
 written on a shape nobody agreed was rejected for its content, not its phrasing
 (`research/2026-09-22-terse-process/`). Run neither.

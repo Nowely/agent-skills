@@ -1,266 +1,97 @@
 ---
 name: rewrite
 description: >-
-  Writes the text in rounds: one candidate, then critics with lenses that differ, then edits declared
-  with the check behind each, until the owner reads a round and says whether they would send it as it
-  is. Starts from a skeleton `rethink` agreed, or from the failures an `audit` measured. Proposes; writes
-  into your tree only on your word.
+  Writes or rewrites a text in one pass: a writer works from the code and the rules, every critic reads
+  the draft at the same time — truth by running the code, a rationalizer, form, terms, the rules, fresh
+  readers — and the writer repairs once. Proposes; writes into your tree only on your word.
 disable-model-invocation: true
 metadata:
   version: "0.1.1"
 license: MIT
 ---
 
-**Before any route, the shape.** Nothing is written on a shape the user has not agreed to in their own
-words: a named skeleton file they said they agree to, recorded with its path and SHA-256, or their
-words, quoted, that the document's current shape stands. `audit` records the verdict under *Score*;
-write it, with what it rests on, as the first line of `rounds.md`. A run file or run directory with no
-verdict is not agreed, and a run begun before this rule gets the check once, when it resumes. Not
-agreed, stop and offer `/terse:rethink` — at its structure stage, given the audit's profile, purpose and
-key, where there is an audit; the skeleton the user agrees to there is the way in.
+One writer, then every critic at once, then the writer once more, then your read. Each critic holds one
+concern, so none waits for another. Every role works from [rules.md](../../references/rules.md); the
+briefs are in [roles.md](references/roles.md).
 
-Two ways in, and they differ only in what tells you where the text is wrong:
+## Step 1. One message to the user
 
-| You have | Start at | What drives the writing |
-|---|---|---|
-| a run directory with rounds in it already | step 4, at the next round; steps 1 to 3 are not repeated | the last round's review under `reviews/NN/` |
-| a skeleton the user agreed to | step 2 | the skeleton's purpose, exclusions and budget per section |
-| an `audit` run file | step 1 | the named failures, each at its line, with its cause |
-| neither | say so and offer `/terse:audit` or `/terse:rethink`; if the user declines both, continue on your own guesses once the shape is agreed, and say so in the report | — |
+Ask once, in one message, and announce the run in the same message:
 
-Why it is rounds and not a pass, and the measurements behind every rule here:
-[loop.md](references/loop.md) and [measurements.md](references/measurements.md). Neither is needed to
-act; this file is.
+- what the text is for and who reads it, in their words;
+- anything the text must say or must not say;
+- any rule of `rules.md` they set aside for this text;
+- for an existing text, whether its shape stands or should follow the genre.
 
-## Step 1. The measurement, where there is one
+The announcement names the agents and their models from the table in `roles.md`: the writer, the genre
+scout when the genre has no notes, and the critics with how many truth critics the length calls for.
+Wait for the word. Keep the answer verbatim in `purpose.md` of the run directory. A behaviour the user
+asks the text to state is a claim like any other (rule 23).
 
-Ask the user for the run directory from `audit` and read `audit.md` there: **Score** holds the shape
-verdict the check above reads, and **Reader profile** and **What broke** are parts 2 and 5 of the brief.
-The contract is in [ledgers.md](../audit/references/ledgers.md).
+## Step 2. The run directory
 
-## Step 2. The brief
-
-Assemble it once, for every writer, in this order; a resumed run does not reassemble it. Parts 2 and 5
-come from the audit's run file wherever there is one, on either route; a skeleton route with no audit
-has neither, and says so in the report rather than inventing them.
-
-1. **The skeleton**, if there is one — its purpose, exclusions and budget for the section being written,
-   unedited.
-2. **Who reads this** — the profile from the run file, unedited.
-3. **The writing rules** — [writing-rules.md](references/writing-rules.md), copied in as written.
-4. **The curse of knowledge** — [curse-of-knowledge.md](references/curse-of-knowledge.md), likewise.
-5. **Where the readers failed** — the entries under *What broke*, each with its line, its cause and its
-   quote, plus the passages that worked and must not be damaged.
-6. **The accuracy floor**: every statement about behaviour must be true of the code in this checkout,
-   and the writer records the level of evidence it reached — the three levels are in
-   [truth-pass.md](../audit/references/truth-pass.md#three-levels-of-evidence). A claim about a lifecycle
-   (what stays, what is removed, what a continued or retried run sees) at level 2 is a guess: run it.
-
-Copy the fixed parts; do not paraphrase them. The wording a critic receives is in
-[bake-off.md](references/bake-off.md); do not write a third.
-
-## Step 3. The first candidate
-
-On a document that already exists, the first thing that runs is the adversarial whole-document read —
-lens 3 of step 4's table — with the right to run the code. Where there is an audit its findings are
-added under *What broke*; otherwise they become the first round's edits. Then the bake-off: three writers, one whole candidate each with a different stance, and two judges — the
-briefs and the judging sheet, for both routes, are in [bake-off.md](references/bake-off.md). That is the
-only bake-off; every round after it edits the round before.
-
-Announce before spawning: the count, the models, and that the cost of a writer or a judge has not been
-measured (the critics' costs have; see the table). Wait for the user's word. If the user refuses the
-fan-out, write one candidate yourself from the same brief and report that the comparison was skipped.
-
-## Step 4. The rounds
-
-Work in a run directory of the document's own, outside the repository that holds it: made by the
-formula of [`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory), with `<slug>`
-naming the document.
+Outside the repository that holds the text, by the formula of
+[`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory), `<slug>` naming the text:
 
 ```bash
 D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
 ```
 
-Name the absolute path in your report; a resumed run is given it by the user and cannot guess it. Under
-the plugin's data directory a run survives plugin updates and is deleted by `claude plugin uninstall`
-unless `--keep-data` is passed, and in the temporary directory the operating system may purge it: say in
-the hand-over that a run which must outlive either is the user's to copy somewhere durable. Where an
-audit came first, copy `audit.md` in. Nothing goes into that repository without the user's word — not
-the candidate (step 5), not a code defect (item 6).
+Name its absolute path in the hand-over. Under the plugin's data directory a run survives plugin
+updates and is deleted by `claude plugin uninstall` unless `--keep-data` is passed; in the temporary
+directory the operating system may purge it. A run that must outlive either is the user's to copy.
+Nothing goes into the repository without the user's word.
 
-Every round is its own file, `NN-<pass>.md`, named for what produced it — `01-candidate`, `06-water`,
-`08-review` — any name, used once; the original is `00-original.md`. Set `S` to this skill's `scripts/`
-directory once, as an absolute path: installed, it is `$CLAUDE_PLUGIN_ROOT/skills/rewrite/scripts`;
-from a checkout, the `scripts/` beside this file. Then:
+## Step 3. The draft
 
-```bash
-node "$S/selftest.mjs"      # once per session: every check against its planted violation
-```
+The writer, brief 1 of `roles.md`: from the code, the rules, the purpose, the genre's notes and the
+existing text, if any. It puts a plan on one screen in its report — each section, what it gives the
+reader, the device, a word budget — and writes the text. Where the genre has no notes in
+[genres/](../../references/genres/), the genre scout, brief 2, runs beside it; its table is kept there
+for the next text of the kind, on the user's word.
 
-Every command below is written for the run directory as the working directory; pass absolute paths if
-your shell rules forbid `cd`.
+## Step 4. Every critic at once
 
-1. **Once per document**, write four files and copy in `skeleton.md` — where the user said the current
-   shape stands, start one with their words:
-   - `concepts.json` — one regex per idea the document carries, for the duplication count;
-   - `budgets.json` — every `##` heading of the document mapped to the skeleton's number, or, where the
-     user said the current shape stands, to the section's size now; a section added later gets the
-     number the user gave with it (item 6). The comparison is a report the owner reads, not a gate:
-     growth per section per round is the number that showed four sections swelling while every fix made
-     them truer;
-   - `tasks.json` — two starting states and goals for lens 4, from the workflow the document most wants
-     a reader to perform; `questions.json` — the questions a reader arrives with, from the audit's key
-     when there is one, otherwise from the skeleton's purpose per section, one line each.
-   On a resumed run reuse all four; the readers are new agents and stay fresh even where the questions
-   repeat. `ledger.json`, where an audit came first — on the skeleton route entered from one too — is
-   the audit's own claim ledger, seeded by `node "$A/ledger-seed.mjs" audit.md ledger.json` (`$A` is
-   `audit`'s `scripts/`) — every confirmed claim a `want: true` the first round must not lose, every
-   refuted one a `want: false`. With no audit it starts empty. Either way it grows from the rounds.
-2. **Write `edits/NN.json`**: for each edit the exact `old` text, which must occur once; the `new` text;
-   `claims` it introduces, `retire` phrasings it removes as false, and `drop` the names of ledger
-   entries whose claims the edit removes on purpose, each of them named in that round's row of
-   `rounds.md`. Whenever the edit carries claims it also carries `check` — `{"level": 1|2|3, "run":
-   "<command>", "expect": "<regex over what it printed>"}`, where `run` at levels 1 and 2 is usually
-   `sed -n 'A,Bp' <file>` with `<file>` absolute. Every claim says what it `asks`: the proposition the
-   sentence makes, in the sentence's own scope words — what, for whom, under which condition. A claim's
-   name is the ledger's key and one round sets it once, in one edit; a later round reusing the name is
-   how a rewritten sentence is re-pinned. `round.mjs` runs each `run` from the run directory before it
-   writes anything and refuses the whole round when one `expect` finds nothing, so a citation that does
-   not resolve stops there; what the command printed is kept in the ledger as `saw`, and the verifier
-   below reads it against `asks`. An edit whose `new` holds more of a fixed list of qualifying forms
-   than its `old` — *unless*, *only if*, *except when* and their kin — is refused until it carries
-   `qualifies` and declares a claim; `qualifies` is a string, why the clause is the sentence's own scope,
-   kept on the claim's ledger entry as `qualified` for the verifier to read. The count is a signal: a
-   form swapped for another is not seen. A sentence a critic, the dedup or you proposed is a claim like
-   any other: its check plants the case the finding names and the case the new wording adds, and a
-   scope risk the writer or the verifier states is settled by a run or by narrower wording before the
-   freeze, never by your decision alone. The format is the header of `round.mjs`.
-3. **Produce the round**: `node "$S/round.mjs" <NN-1>-<pass>.md <NN>-<pass>.md edits/NN.json --ledger ledger.json`.
-4. **Run the checks**, before any critic, with `R=<NN>-<pass>.md`:
-   - `node "$S/rule1.mjs" "$R" --cut "<technical section heading>" --except "<section that may carry paths>"` — the rule that keeps mechanism out of the sections a reader meets first, with the document's own headings;
-   - `node "$S/dup.mjs" "$R" concepts.json` — one idea, one home;
-   - `node "$S/sections.mjs" "$R" budgets.json` — words per section against the budget, reported, never blocking;
-   - `node "$S/ledger.mjs" ledger.json $(ls [0-9][0-9]-*.md | sort)` — the ratchet over every round in order; exit 1 when the new round loses a verified claim or revives a retired phrase.
-   A failure the round introduced is fixed before the critics see it: remove the round file, copy
-   `ledger.NN.json` back over `ledger.json`, fix `edits/NN.json`, regenerate. That snapshot is written
-   by `round.mjs` before it grows the ledger, and it is the only way back: a regenerated round starting
-   from a ledger the abandoned attempt already grew carries the abandoned attempt's pins. A failure the
-   previous round already had is a finding for this round's edits, not a block. A round is frozen the
-   moment its critics launch, not before.
-5. **Announce the wave** — the verifier, the lenses, their sizes from the table, the models, the cost —
-   and wait for the user's word; the user sizes each of them, and any of them may be zero. The least
-   that still counts as a round is lenses 1 and 2. A round sized without the verifier gives up the
-   reading before the freeze, so a claim whose run does not answer its sentence reaches the critics
-   instead: the same finding, at the price of a wave rather than of one regeneration. Then:
-   - **the verifier first**, when it is sized, on the edits and not on the document — one agent that
-     did not write them, given `edits/NN.json` and the `ledger.json` entries this round wrote, where
-     each claim's `saw` is, brief 0 in
-     [critic-briefs.md](references/critic-briefs.md#0-the-verifier-of-the-edits). One `refuted` or
-     `does not answer` sends the round back to its edits: remove the round file, copy `ledger.NN.json`
-     back over `ledger.json`, fix `edits/NN.json`, regenerate — and the verifier reads the new one. An
-     `unreachable` claim is not a verified claim: rewrite its edit's `check` to a command that resolves
-     and regenerate, or drop the claim from the edit, because a round must not freeze with a pin in the
-     ledger that nothing can reach. Its report is kept verbatim under `reviews/NN/verifier.md`.
-   - **then the critics**, one agent per lens, with the briefs in
-     [critic-briefs.md](references/critic-briefs.md), and the dedup agent over their reports;
-     everything they return is kept verbatim under `reviews/NN/`. The Codex lenses need the `entrust`
-     plugin; without it, run those lenses on Claude agents and say so.
-6. **Verify every finding yourself** from the check it carries — a finding without one is discarded —
-   and route each by the table in [loop.md](references/loop.md#where-a-finding-goes): a sentence to the
-   next round's edits, a boundary or a term back to `rethink`, a code defect with its check into
-   `code-defects.md` in the run directory and to the user as a proposal, a question the document does
-   not answer to the user. A code defect goes into the repository's `ISSUES.md` only on the user's word:
-   the file is in their tree, and this skill promises to write there only when they say so. When a
-   finding routes to stage 3, make the structure map loop.md describes before the next round. A
-   structural decision after the skeleton is agreed — a section added or removed, a boundary moved, a
-   rule dropped, a budget changed — is a question to the user, recorded in `skeleton.md` with their
-   answer; your own defaults cover sentence-level items only.
-7. **Record the round** in `rounds.md`, one table row: `| file | words | produced by | findings against
-   it | regressions |` — *produced by* names the pass and the wave; *findings* is the dedup's count by
-   category; **regressions** is the count of sentences the round introduced that its critics showed
-   false or overstated. That number is the round's verdict.
+Launch them in one message, on the draft:
 
-The lenses are fixed; the sizes are the user's, and the announcement names them. Every cost below but
-the verifier's and lens 7's is what one wave measured on 2026-09-12 on a 1600-word README:
+- truth, brief 3, one agent per group of sections — a few hundred words each, so each finishes fast;
+- the rationalizer, brief 4: does this reader need it, here;
+- form, brief 5; terms, brief 6; the rules one by one, brief 7;
+- three to five question readers, brief 8, and one task reader, brief 9.
 
-| Agent | Reads | Where it ran best | Size | Cost |
-|---|---|---|---|---|
-| 0. the verifier of the edits | this round's edits, and the `asks`, `saw` and `qualified` `round.mjs` wrote to the ledger, against the code; not the document | not measured; the brief names Codex gpt-5.6-sol, away from the Claude writer | one | unmeasured, [M24](references/measurements.md#m24) |
-| 1. the code, with the right to run it | every behavioural claim; level 3 for anything about a lifecycle | Claude Opus | one | ~180k tokens, 17 min |
-| 2. the mechanical rules and the water | the skeleton's rules as a grep would; words whose score does not pay | Claude Opus | one | ~70k tokens, 7 min |
-| 3. adversarial, whole document | every sentence a reader acts on; scope words; CLI experiments in an isolated config | Codex gpt-6-astra | one | ~40 commands, 5 min |
-| 4. a task | a starting state and a goal, acted on from the document alone; the resulting state | Codex gpt-5.6-sol | two | ~20 commands, 5 min each |
-| 5. a reader's question | one question, one `cat` and nothing else; where they guessed | Codex gpt-5.6-luna | one per question | ~1 min each |
-| 6. dedup and rank | every other report, into one list with a reproducible check per finding | Claude Fable, after the rest | one | ~160k tokens, 15 min |
-| 7. purpose and content | every section against the owner's purpose statement and the skeleton's rules, the fourteen of [stages.md](../rethink/references/stages.md#the-rules-this-produced) by default; not the facts | not measured; the brief names Claude Opus | one | unmeasured |
+Each writes its report into `critics/` of the run directory. No agent merges them: the writer reads them
+all.
 
-Lenses differ; they are not disjoint, and a finding three of them raise is confirmed, not counted three
-times.
+## Step 5. One repair
 
-## Step 5. The gate, and the stop
+The writer again, sent every report: it applies each finding or declines it with the reason in a line,
+re-checks every sentence it changed against the code, and returns the final text and that list. Then
+run the scripts on the final, `S` being this skill's `scripts/` — installed,
+`$CLAUDE_PLUGIN_ROOT/skills/rewrite/scripts`; from a checkout, the directory beside this file:
 
-Before the user reads a round, three things, none tradeable against another; one the user sized to zero
-is named in the hand-over as not run, never as passed:
+- `node "$S/rule1.mjs" final.md --cut "<the technical section>"` — no mechanism before it;
+- `node "$S/sections.mjs" final.md budgets.json` — words per section against the plan, a report.
 
-- **no regression in the round**: the ledger passes, and no sentence the round introduced was shown
-  false or overstated by its critics;
-- **the task gate**: lens 4's two readers achieved their goals, and the sections no task reached are
-  named;
-- **the question readers**: lens 5, one per question, answered from the document; where they guessed is
-  listed.
+A refuted sentence still in the final goes back to the writer before the hand-over.
 
-**The loop stops when the user reads the round and says whether they would send it as it is.** The
-first round with no regression is selected for that read, not a finish, and no second clean round is
-waited for. Lenses 4 and 5, where they were sized to zero on it, are announced for that frozen round and
-run on it before the hand-over, with no writing round between; the gate reads their results, and the
-hand-over names whatever stayed at zero by the user's sizing. On 2026-09-23 this would have selected
-round 03 and run its task readers on it; the page asked for a second clean round instead, and round 04
-cost about 1.6M Claude tokens and brought two regressions ([M25](references/measurements.md#m25)). When
-the user's read rejects the purpose, the content or the arrangement, the next step is `/terse:rethink` at
-its structure stage, not another round. A cap on rounds is set in the first announcement, and a cap
-reached is reported as a result. Hand over the round and `diff-NN.patch`, the diff against
-`00-original.md`, written into the run directory. Then stop: applying the candidate to the user's files
-needs their word, and a diff they have read is what earns it.
+## Step 6. The hand-over
 
-Record their read verbatim in `rounds.md` under the round's row, with the date and whether they would
-send it. On their word, the round file replaces the document in their repository byte for byte, as a
-commit of its own that names the round, and a release is a separate word. The findings routed to a
-next round stay in the round's routing file, and a later run starts from the replaced document as its
-`00-original.md`. On 2026-09-24 the owner's word on round 04 was «Текущий вариант пока что лучший», and
-the README is that round's bytes.
+Give the user the final text, the plan, the list of findings applied and declined, and the diff against
+the existing text, all in the run directory. The user reads. If they would not send it as it is, their
+words go to the writer for one more repair; new critics run only if they ask. Applying the text to
+their files needs their word.
 
-## Step 6. What you return
+## What you return
 
-In the run directory:
+In the run directory: `purpose.md`; the draft and the writer's report with its plan; `critics/`, every
+report verbatim; the final text with the applied-and-declined list; the scripts' output; `diff.patch`.
 
-- every round as its own file; `edits/NN.json`, `ledger.json`, `concepts.json`, `budgets.json`
-- `skeleton.md`, kept current: every structural decision after the agreement, with the user's answer
-- `rounds.md`, the shape verdict on its first line, then one row per round; `reviews/NN/`, the
-  verifier's report, every critic's report and the dedup, verbatim
-- `code-defects.md`, when a finding routed to the code: each defect with its check, as offered to the
-  user
-- `diff-NN.patch` against the original; the cut ledger — every removed passage of twenty words or more,
-  with its reason; the invisible-prerequisite inventory from the curse-of-knowledge pass, on rounds that
-  ran a writer brief; the sections no task reached; and the structure map, when a stage-3 finding called
-  for one
+## Why this shape
 
-Formats for the ledgers are in [ledgers.md](../audit/references/ledgers.md).
-
-The safeguards are the last lines of [writing-rules.md](references/writing-rules.md) and override the
-rest of the rules wherever they collide: never cut a condition, a limit or a warning where a reader
-decides; repetition at an independently read decision point is not redundancy; a dated measurement
-keeps its date and its numbers.
-
-## Reference
-
-- Why rounds, the routing of findings, the ledger, the map and the checks: [loop.md](references/loop.md).
-- The measurements behind every rule here, dated: [measurements.md](references/measurements.md).
-- The three decisions before any sentence: [stages.md](../rethink/references/stages.md).
-- Writer briefs and judging sheets, both routes: [bake-off.md](references/bake-off.md).
-- The verifier of the edits, the critic briefs one per lens, and the rights header:
-  [critic-briefs.md](references/critic-briefs.md).
-- The checks as scripts with a planted-violation self-test: [scripts/](scripts/).
-- The rules, fixed: [writing-rules.md](references/writing-rules.md); the third pass, fixed:
-  [curse-of-knowledge.md](references/curse-of-knowledge.md).
-- Run file and ledger formats: [ledgers.md](../audit/references/ledgers.md); evidence levels:
-  [truth-pass.md](../audit/references/truth-pass.md).
+On 2026-09-24 the same README was written by a sequential path — a survey, a synthesis, a terms stage,
+ten structures under three critics, a skeleton, a bake-off, a verified round, a wave and its dedup —
+in 6 h 38 min. On the owner's read it sat at parity with the repository's own README and above a bare
+agent's; what changed the text for the better was the truth checked by running the code and the rules
+where they were applied, and here each of those concerns is one role run at the same time as the
+others. The measurements behind the rules: [measurements.md](references/measurements.md); the run:
+`research/2026-09-24-terse-benchmark-maestro/`. To measure a text before or after, `/terse:audit`.

@@ -1,158 +1,35 @@
 ---
 name: rethink
 description: >-
-  Decides what a document should be before a sentence of it is written: what comparable documents already
-  solved, what things are called, and what is said in what order. Returns a skeleton and stops there —
-  the writing is `rewrite`'s. Use when a document's shape is wrong, or when starting one.
+  Decides what a text should say and in what order before it is written: the genre's order, a plan on
+  one screen, and the form and rationalizer critics on that plan. Returns the plan and stops; `rewrite`
+  writes from it. Use when you want to agree the shape first.
 disable-model-invocation: true
 metadata:
   version: "0.1.1"
 license: MIT
 ---
 
-Three decisions, in order, each cheap to change here and expensive to change later. The output is a
-skeleton: section titles, what each is for, what each deliberately leaves out, a word budget, and the
-rules that will gate the writing. No prose.
+The shape first, when the user wants to see it before any prose. The same roles `rewrite` runs, stopped
+at the plan: [roles.md](../rewrite/references/roles.md), working from
+[rules.md](../../references/rules.md).
 
-**Then it stops.** Putting a skeleton in front of the person before two thousand words are written
-against it is the point, not a courtesy. Measured on 2026-09-11: a ten-section draft written at ordinary
-quality was abandoned by its reader at the third section, and nine of his nine objections were about what
-the document contained, where it sat, or how much of it there was. None was about phrasing. Every
-sentence in it was written against a shape nobody had agreed.
+1. **One message to the user**, as `rewrite` step 1: what the text is for and who reads it, what it must
+   and must not say, any rule set aside. Announce the agents below and wait for the word. Keep the answer
+   in `purpose.md` of a run directory made by
+   [`audit`'s formula](../audit/SKILL.md#step-1-scope-and-the-run-directory) with `<slug>-rethink`.
+2. **The genre's order.** From [genres/](../../references/genres/) where the kind has notes; otherwise
+   the genre scout, brief 2, and its table is kept there on the user's word.
+3. **The plan.** The writer, brief 1, stopped before the text: each section, what it gives the reader,
+   the device that carries it, a word budget; where it departs from the genre's order, why. One screen.
+4. **Two critics at once on the plan**: form, brief 5, and the rationalizer, brief 4, each asking of every
+   section whether this reader needs it here.
+5. **The hand-over.** The plan with the critics' findings applied or declined, and what is asked of the
+   user: their word on it, or the sections that are wrong. Then stop. `rewrite` starts from the plan they
+   agreed, given its path.
 
-The method, with the measurements behind each stage: [stages.md](references/stages.md).
-
-**Entered from an `audit` whose shape is not agreed**, the audit's profile, purpose and answer key are
-the brief, and the steps keep their order: step 1 at the size the user gives, zero included; step 2 in
-full, because a profile and a key carry no terminology decisions; then steps 3 and 4.
-
-## The run directory
-
-Everything this skill writes goes into a run directory of the document's own, outside the repository
-that holds it, made by the formula of
-[`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory) with `<slug>` naming the
-document:
-
-```bash
-D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>-rethink" && mkdir -p "$RUN" && echo "$RUN"
-```
-
-`D` is empty when this skill runs from a source checkout rather than an installed plugin, which is why
-the fallback is there: installed, Claude Code writes the plugin's data directory into that line before
-it runs. At the top of the run directory go `purpose.md`, the owner's calibration file `owner-words.md`,
-`terms.md`, every `skeleton.<NN>.md` with its `skeleton-read-<NN>.md`, and `skeleton.md`; beneath it,
-`survey/` for the surveys and the synthesis, with `survey/fetched/` and `survey/synthesis-sources/` for
-the documents fetched, `structures/` for the structures and `critics/` for the critics' reports. Where an
-audit came first, copy its `audit.md` in. Nothing goes into the repository that holds the document.
-
-Name the absolute path in the hand-over; `rewrite` is given the skeleton's path by the user and cannot
-guess it. Under the plugin's data directory a run survives plugin updates and is deleted when the
-plugin's last installation is removed, by `claude plugin uninstall` without `--keep-data`, and by
-`claude plugin marketplace remove`, which has no such option; in the temporary directory the operating
-system may purge it. Say in the hand-over that a run which must outlive either is the user's to copy
-somewhere durable.
-
-## Step 1. What comparable documents already solved
-
-A fan-out, not one reader. One agent searching for good examples returns the genre's folklore; six agents
-on six slices return a sample.
-
-Announce the count and the models before spawning, and wait for the user's word. Default slices, one
-surveyor each: the exact genre, the same structural position, the most used regardless of genre, vendor
-guidance, whatever this document's hard part is, and one slice whose job is what *not* to copy. A
-seventh reads the documents the owner names as good, asked for before anyone is spawned: on 2026-09-23
-no survey fetched the exemplar the owner had named.
-
-Two rules the surveyors carry, both learned by getting them wrong: **fetch, do not recall** — every
-document reported carries its URL and its headings in order — and **weight by use, not by taste**. Each
-also returns the genre's order — every place from the top, what the genre puts there, in N of M
-documents fetched — because the skeleton says where it follows that order and where it departs.
-
-Presentation is surveyed here too, from the markdown source rather than from a rendering, because a
-summary of a document does not show you its devices.
-
-One synthesis decides what to take. The bar is that a change earns its words in *this* document: it names
-what it displaces, or admits the document grows.
-
-The briefs, and how to make the file of the owner's own words on the genre that every agent here reads:
-[briefs.md](references/briefs.md).
-
-## Step 2. The words
-
-Do not inherit a project's vocabulary because the project uses it. For each load-bearing term: who parses
-it and as what, where it comes from, and whether its commonest sense in the reader's own field is a
-different thing.
-
-Where the document's thesis is that A is like B, call A by B's word. Any other choice is an argument
-against the document, made in every sentence. The worked example — a project that called its delegated
-agents "seats" while claiming they were the equal of native subagents — is in
-[stages.md](references/stages.md#stage-2-the-words-themselves).
-
-## Step 3. The structure
-
-First the owner's purpose statement, verbatim: the audit's purpose line, or the user's own words asked
-for now — what this document is for and what it must make its reader able to do. Then about ten
-structures, each from a **different reading of what the document is for**, not ten runs of one prompt.
-Announce the count and the models, and wait. Before the first writer, put to the owner any unknown the
-structures would plan around that is theirs to decide rather than a fact to check, and give every
-writer the answer as a fact. The ten default readings and the writers' brief, under which every
-structure says what sections of the genre it drops, at what weight and what cost, are in
-[briefs.md](references/briefs.md#3-the-structures).
-
-Critics see **all of them at once**, because ranking is the judgement being asked for and it cannot be
-made from isolated reviews. Give each critic a different lens, have every critic judge every structure
-against the purpose statement, and require a fatal flaw for every structure including the one it ranks
-first. The default lenses — the owner's calibration, the reader's task, the genre and the evidence — and
-the critics' brief: [briefs.md](references/briefs.md#4-the-critics).
-
-Ask each critic one more thing: what all of them got wrong. That answer is usually worth more than the
-ranking — a failure every angle shares is a failure of the brief. On the run this method came from, it
-was the three critics' shared answer that found the real defect, and none of the ten proposals had.
-
-Synthesise from the winner, grafting only what the critics named. Do not average ten structures into a
-compromise. Which structure becomes the base, and what rules one out:
-[briefs.md](references/briefs.md#5-the-base).
-
-## Step 4. What you hand over
-
-One file, and it describes the document rather than arguing for itself. A skeleton introduced by why each
-section exists — "the block you asked for", "the one you said was missing" — is a negotiation transcript,
-and a reader feels it before they can name it. Its parts, in order:
-
-1. every statement of the owner's that governs the document, verbatim; then the genre's order from
-   step 1 and, place by place, where this skeleton follows it or departs from it, and why
-2. each section: title, one sentence of purpose, what it deliberately excludes, the device that carries
-   it and, where the genre splits the section, its sub-blocks with what marks each, a word budget
-3. the mechanical rules the writing must pass, written so that passing is a fact rather than an opinion
-4. the terminology decisions from step 2, including the ones you rejected and why
-5. what was deleted outright rather than moved, and the stated cost of deleting it
-6. any edit this structure requires in a file that is not the document
-7. the decisions: those the owner's last read settled; those still the owner's, each with your default;
-   anything kept against the owner's word, with its evidence; anything routed outside the document; and
-   the five you are least sure of, each with what would settle it
-
-The owner is shown part 2 as a table — a row per section, its budget, its device — with the departures
-from the genre's order, anything kept against their word with its evidence, the decisions still theirs
-with your defaults, the five points you are least sure of with what would settle each, and what is asked
-of them: their word on the file, or the numbers of the sections that are wrong, a default standing
-unless they name it. Parts 3 to 6 are the writers' and the scripts'. On 2026-09-23 the owner, sent the
-file with a table of its sections, answered first «Что от меня конкретно требуется? Скелетон довольно
-большой файл» — what exactly is asked of me? The skeleton is quite a big file.
-
-Every skeleton is its own numbered file, `skeleton.<NN>.md`, never overwritten, and `skeleton.md` is a
-copy of the current one. The owner's answer to skeleton `<NN>` is kept verbatim in
-`skeleton-read-<NN>.md`, and the skeleton written from it is `skeleton.<NN+1>.md`. The skeleton
-writer's brief and the message to the owner:
-[briefs.md](references/briefs.md#6-the-skeleton-and-what-the-owner-reads).
-
-Then stop and wait for the user's word on the file, whose absolute path in the run directory the
-hand-over names. `rewrite` starts only from a skeleton the user said they agree to, a numbered file
-recorded with its path and SHA-256, and routes back here anything it finds that belongs to a stage
-above it.
-
-## Reference
-
-- The four stages, the measurements, and the content rules: [stages.md](references/stages.md).
-- Every agent's brief, and the owner's calibration file: [briefs.md](references/briefs.md).
-- Filling the blocks, and the loop: [loop.md](../rewrite/references/loop.md).
-- What the field already says about all of this: [prior-art.md](../../references/prior-art.md).
+Measured on 2026-09-11 and again on 2026-09-23: drafts written against a shape nobody had agreed were
+rejected for what they said and in what order, not for their phrasing. On 2026-09-24 the sequential
+method this page used to hold — a survey, a synthesis, ten structures under three critics, a skeleton of
+13,000 words — took three hours before a sentence was written; the record of it is in
+[stages.md](references/stages.md).

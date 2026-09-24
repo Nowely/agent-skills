@@ -1,5 +1,9 @@
 # Briefs, one per role
 
+> **Superseded on 2026-09-24** by [roles.md](../../rewrite/references/roles.md), the one path `rewrite` runs: one writer, every critic at
+> once, one repair. This page is kept as the record of the sequential method it describes and of what
+> was measured under it; no step points here.
+
 Every agent `rethink` starts gets one of these with its placeholders filled, and nothing else: `<R>` is
 the absolute path of [the run directory](../SKILL.md#the-run-directory), `<DOC>` the document, and every
 file a brief names under `<R>` is there before the agent starts. A Codex agent gets its brief the way

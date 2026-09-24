@@ -1,5 +1,9 @@
 # The bake-off
 
+> **Superseded on 2026-09-24** by [roles.md](roles.md), the one path `rewrite` runs: one writer, every critic at
+> once, one repair. This page is kept as the record of the sequential method it describes and of what
+> was measured under it; no step points here.
+
 One writer produces one text and has no way to know whether a better one was available. Three writers
 and a judge produce a comparison. The cost is real, so the pool stays small and the user agrees to it
 before anything is spawned.

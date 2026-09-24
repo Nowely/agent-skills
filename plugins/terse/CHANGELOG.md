@@ -7,6 +7,13 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- `rewrite` runs one path: one writer from the code and the rules; every critic at once on the draft —
+  truth split by sections and checked by running the code, a rationalizer asking whether the reader needs
+  each fact, form, terms, the rules one by one, fresh readers — then one repair and the user's read. The
+  rounds, the bake-off, the verifier's send-backs, the wave after a freeze and its dedup are no longer
+  steps; each concern they held is one role in `rewrite/references/roles.md`, and the pages that held
+  them are marked superseded. `rethink` runs the same roles stopped at a plan on one screen. On
+  2026-09-24 the sequential path took 6 h 38 min on a README of 1,200 words.
 - The rules are one list, `references/rules.md`: the fourteen content rules merged with the owner's
   feedback from 2026-09-10 to 09-24, each generalised and marked with its source — the owner's words
   with the date, a count of the genre, or a measured failure — and a convenience of ours marked as such.

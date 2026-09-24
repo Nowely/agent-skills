@@ -21,7 +21,7 @@ In Claude Code:
 /terse:audit
 ```
 
-It asks for the scope — which files to check, every tracked `.md` by default — and where your readers start. Before starting agents, audit says how many and on which model, and waits until you say so; rewrite does so before its writers and judges, and before a round's reviewers. Its report lists the questions your text answers wrong, why, and where — file and line when a sentence is at fault.
+It asks for the scope — which files to check, every tracked `.md` by default — and where your readers start. Before starting agents, each skill says how many and on which model, and waits until you say so. Its report lists the questions your text answers wrong, why, and where — file and line when a sentence is at fault.
 
 If every answer from your text is already right, stop. Otherwise say whether the document's shape — what it says, in what order — stands. If it does, run this and, when it asks, give it the folder the report names:
 
@@ -31,7 +31,7 @@ If every answer from your text is already right, stop. Otherwise say whether the
 
 It hands back a new draft of your whole document and its diff, each change against the original, in a folder of its own outside your repository. You decide whether the draft replaces your document.
 
-If the shape does not stand, run this first to decide a new one: a skeleton, an outline you agree to.
+If the shape does not stand, run this first to decide a new one: a plan, an outline you agree to.
 
 ```text
 /terse:rethink
@@ -56,27 +56,27 @@ Restart Claude Code to apply it.
 | Command | When to run it | What you get back |
 |---|---|---|
 | `/terse:audit` | You cannot tell whether your document is fine | A report: which questions the text answers wrong, why, and where — file and line when a sentence is at fault; no rewording |
-| `/terse:rethink` | No document yet, or it says the wrong things in the wrong order | A skeleton: an outline of sections, each with its purpose and size, to agree to before the text is written |
-| `/terse:rewrite` | After audit, once you say the shape stands; or from a skeleton you agreed to | A new draft of the whole document, and its diff |
+| `/terse:rethink` | No document yet, or it says the wrong things in the wrong order | A plan: the sections, each with what it gives the reader and its size, to agree to before the text is written |
+| `/terse:rewrite` | You want the text written or rewritten | A new draft of the whole document, and its diff |
 
 You start each one yourself.
 
 ## How it works
 
 - **audit** — a profile of who reads it → every claim checked against the code or a named source → questions and an answer key → a fresh AI reader per question, with and without your text, starting where your readers start → a cause for each wrong answer: false, missing, misplaced, hard to find, misleading steps. [Its page](skills/audit/SKILL.md)
-- **rethink** — documents like yours, read by as many agents as you allow → the words chosen → about ten structures, ranked together by AI reviewers → a skeleton you agree to. [Its page](skills/rethink/SKILL.md)
-- **rewrite** — an adversarial first read of an existing text → by default three writers and two judges, never picking by word count → rounds of edits, each claim with a check that runs, a round refused if it silently loses a checked sentence → AI reviewers, each from its own angle → your read, with a reason for every cut of twenty words or more. [Its page](skills/rewrite/SKILL.md)
+- **rethink** — the order documents like yours follow → a plan on one screen → form and relevance critics on the plan → a plan you agree to. [Its page](skills/rethink/SKILL.md)
+- **rewrite** — one writer, from the code and the rules → every critic at once: truth by running the code, relevance for your reader, form, terms, the rules, fresh AI readers → one repair → your read. [Its page](skills/rewrite/SKILL.md)
 
 ## Checks and guarantees
 
 | Method | What it checks | Where it comes from |
 |---|---|---|
 | The writing rules | Filler, an argument restated, editing history; a condition, a limit or a warning cut or weakened where your readers decide | Part two of a four-part rewrite, measured on one README: [the rules](skills/rewrite/references/writing-rules.md) |
-| The content rules | What a document says, and in what order | What one owner changed on his documents: [the rules](skills/rethink/references/stages.md) |
+| The rules | What a text says, in what order, and what never appears in it | One owner's feedback and counts of the genre, each rule marked with its source: [the rules](references/rules.md) |
 | The scripted checks | Mechanism before the decision, one idea in three sections, words against a budget, a declared check that runs, a sentence checked true lost; each tested against a deliberate violation | [The measurements behind them](skills/rewrite/references/measurements.md) |
 
 [The field's practices, each marked measured, argued or asserted](references/prior-art.md), gathered and ranked.
 
-**What the skills promise:** Each run is written in the plugin's own folder. A round that silently loses a sentence checked true, or repeats one found false, is refused before you see it. Nothing in your repository changes until you say so.
+**What the skills promise:** Each run is written in the plugin's own folder. A sentence the truth critics refute goes back to the writer before you see the text. Nothing in your repository changes until you say so.
 
 **Not guaranteed:** that a person reads the result better; what is measured is what AI readers get from the text.

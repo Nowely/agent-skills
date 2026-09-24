@@ -1,5 +1,9 @@
 # Critic briefs, one per lens
 
+> **Superseded on 2026-09-24** by [roles.md](roles.md), the one path `rewrite` runs: one writer, every critic at
+> once, one repair. This page is kept as the record of the sequential method it describes and of what
+> was measured under it; no step points here.
+
 Every brief ends the same way: **every finding carries a reproducible check — a command and its output,
 or a file and line — and a finding without one is discarded.** No praise, no summary of what reads well,
 no rewrites unless the lens is the water lens. Fill `<DOC>`, `<CODE>` and the paths; send nothing else.
