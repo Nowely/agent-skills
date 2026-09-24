@@ -1,0 +1,36 @@
+ran  C01 re-pinned — decision L6.2-30: "a README first" cut (the round-04 verdict "tied to README")
+ran  R02a re-pinned — decision L6.2-03: the sign-in clause cut over the judges' graft (stages.md rule 4)
+ran  R03a new — L6.2-18 and 34: what audit asks first, and the wait after it, as the run on record showed
+ran  R02b re-pinned — L6.2-34: "From its report" → "Its report"; the excerpt unchanged
+ran  R02c re-pinned — L6.2-20: rewrite asks for the folder; it is not an argument on the command
+ran  R02d re-pinned — L6.2-21: the draft's folder is rewrite's own, not the one the reader gave
+ran  R03b new — L6.2-18+19: one sentence for all three skills' announce-and-wait, at the end of Quick start's run
+ran  C10 re-pinned — L6.2-04+28: "size" for the unglossed "budget"; "before the text is written"
+ran  C11 re-pinned — L6.2-17: the shape condition where the reader picks the next skill
+ran  C05 re-pinned — L6.2-01, round 02's regression: the bare chain; line 52 stays
+ran  R03c new — L6.2-11, round 01's FALSE: one agent per lens, the lenses differing and not disjoint
+ran  R03d new — L6.2-29: the rules named by what they forbid, filler included
+ran  R03e new — L6.2-12: rethink's reading, at the size the user gives
+ran  R03f new — L6.2-09: the page's words for the length rule
+ran  R03g new — L6.2-13: the guard, as far as the shipped check reaches
+ran  C24 re-pinned — L6.2-33: the section's own arrow
+ran  R03h new — L6.2-15: the README the 2026-09-22 audit measured is the one this draft replaces
+ok  C01 re-pinned — decision L6.2-30: "a README first" cut (the round-04 verdict "tied to README")
+ok  R02a re-pinned — decision L6.2-03: the sign-in clause cut over the judges' graft (stages.md rule 4)
+ok  R03a new — L6.2-18 and 34: what audit asks first, and the wait after it, as the run on record showed
+ok  R02b re-pinned — L6.2-34: "From its report" → "Its report"; the excerpt unchanged
+ok  R02c re-pinned — L6.2-20: rewrite asks for the folder; it is not an argument on the command
+ok  R02d re-pinned — L6.2-21: the draft's folder is rewrite's own, not the one the reader gave
+ok  R03b new — L6.2-18+19: one sentence for all three skills' announce-and-wait, at the end of Quick start's run
+ok  C10 re-pinned — L6.2-04+28: "size" for the unglossed "budget"; "before the text is written"
+ok  C11 re-pinned — L6.2-17: the shape condition where the reader picks the next skill
+ok  C05 re-pinned — L6.2-01, round 02's regression: the bare chain; line 52 stays
+ok  R03c new — L6.2-11, round 01's FALSE: one agent per lens, the lenses differing and not disjoint
+ok  R03d new — L6.2-29: the rules named by what they forbid, filler included
+ok  R03e new — L6.2-12: rethink's reading, at the size the user gives
+ok  R03f new — L6.2-09: the page's words for the length rule
+ok  R03g new — L6.2-13: the guard, as far as the shipped check reaches
+ok  C24 re-pinned — L6.2-33: the section's own arrow
+ok  R03h new — L6.2-15: the README the 2026-09-22 audit measured is the one this draft replaces
+ledger: 40 claim(s); the state before this round is in ledger.03.json
+wrote /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260924-002235-terse-readme-rewrite2/03-routes.md
