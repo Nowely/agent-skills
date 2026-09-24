@@ -447,3 +447,46 @@ repository, copied without the raw fetched READMEs): `purpose.md` (the owner's s
   80 (the cut for rule 1), What was measured 100, Troubleshooting 80. Nine decisions are the owner's and
   five are marked least sure, each with what would settle it. Nothing is written against it before the
   owner's word on the file, recorded with its SHA-256.
+
+## Wave 13 — the rewrite from the agreed skeleton, and the first clean round
+
+On the owner's word, two fan-outs: the `rethink` method folded into its pages (Opus W4, Codex Sol R4 —
+`briefs.md` new, the run directory that closes E13, the base rule with its weakness, twelve content
+rules), and the rewrite of the README from skeleton 02 on the skeleton route, everything under
+[rewrite-2026-09-24/run/](rewrite-2026-09-24/run/): the agreement line first in `rounds.md`, the brief
+with the coordinator's note, the seeded ledger (17 confirmed, 11 refuted), the bake-off, rounds 02 and 03
+with their edits, probes, verifier reads, waves, dedups and routings, `code-defects.md` D14–D20.
+
+- **The bake-off** (Opus repair-first, Codex Sol frame-first, Sonnet path-first; judges Fable and Codex
+  Astra): both judges chose the same candidate with no veto — the other two each fell on one sentence, a
+  shape decision the page leaves to the user's word and a guarantee at level 2. Two shared faults were
+  the coordinator's brief: the excerpt taken from a Score line in the dropped vocabulary, and "beside your
+  document" for a draft that lives in a folder outside the repository. The ledger over the winner: 16 of
+  17 pins lost by wording, as a new shape must; 0 retired phrasings revived.
+- **Round 02** (Opus G4, 661 words): the judges' grafts, the `missing` finding as the excerpt, the restart
+  clause after the update (level 3), the draft's folder said as the page says it. The verifier sent it
+  back once on levels of evidence (three claims made level 3 by a run-line probe over the three pages,
+  one by the record of both routes), then 20 of 20. The wave — lenses 1, 2 and 7, two task readers, seven
+  question readers, the dedup: 45 findings from 57; **one regression**, the writer's own repair of a graft
+  ("for the first time", false on the audit → rethink → rewrite → audit route); task 1 achieved with the
+  harness's route, task 2 partly; readers 6 of 7 from one section each, Q7 guessed as the key requires.
+- **Round 03** (G4, 687 words): the regression's clause cut; eleven sentence findings applied; the
+  coordinator's decisions — the sign-in clause cut over the judges' graft (rule 4, the owner's words),
+  "a README first" cut, one announcement sentence for the skills. The verifier refuted three sentences of
+  the first build — "each skill … waits" against the page's own unannounced adversarial read (a page
+  defect, D18), "three writers, two judges" against the user's refusal of the fan-out, "brings back one
+  found false" against a paraphrase — all repaired before the freeze, then 18 of 18. The wave: 42 findings
+  from 66; **no regression**; lens 1 0 FALSE; task 1 achieved, task 2 partly; readers 6 of 7 plus Q7
+  guessed. The first round with no regression, handed to the owner with its diff by the page as changed
+  on 2026-09-23.
+- **What the run measured about the loop**: rounds 02 → 03 = 1 → 0; the verifier sent rounds back 1 and 1
+  times, on levels of evidence and on three real overstatements, each caught before a wave; lens 7 found
+  8 and 12; the seven readers answered from one section each on both rounds; the task gate stayed at 1
+  achieved (with the harness's route) and 1 partly on both. Seven page and script defects found in passing
+  (D14–D20): the shape verdict never written back into the run file, a re-audit with no way to reuse the
+  first audit's questions, three blind spots of the checks, the adversarial read unannounced, the
+  bake-off winner's sentences unpinned, the qualification signal English-only. The coordinator's own
+  errors: two stale sentences in the lens briefs carried by `sed` from the previous run; a `git mv` staged
+  while a writer was committing; the announcement sentence placed where a concept reached three sections.
+- **Costs**: Claude about 5.6M tokens across the wave (writers 1.4M, verifier reads on Codex, lenses 1.9M,
+  task readers 0.3M, dedups 0.6M, judges and setup 0.4M, the pages' writer 0.85M); Luna 14 × 12.5k.

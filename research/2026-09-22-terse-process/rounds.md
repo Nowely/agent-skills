@@ -106,6 +106,8 @@ agent's artifact came back as text or a file under its own temporary directory a
 | 13 | Opus lens 7 | purpose and content, on round 03 | 205k tokens, 20 min | `run/reviews/03/lens7-opus.md`: 12 findings — 1 section that buys nothing, 7 rules broken, 2 clause-level water, 1 technical detail above the middle, the opening's first sentence | — |
 | 13 | Sonnet c4-1, c4-2 (round 03) | task readers on round 03 | 102k tokens, 10.9 min; 52k tokens, 3.3 min | `run/reviews/03/c4-1.md`: GOAL achieved (the harness's route); `c4-2.md`: GOAL partly — the replace action, the rethink-to-rewrite hand-off and the reviewer and folder defaults not named | — |
 | 13 | Codex Luna G5-1–7 | question readers on round 03 | 1 command, 22–28 s each | `run/reviews/03/c5-*.md`: 6 answered from one section each; Q7 GUESSED, the key's reading; two readers echoed the template's "answered \| GUESSED" line | — |
+| 13 | Fable lens 6 (round 03) | dedup and rank of the round-03 wave | 330k tokens, 23 min | `run/reviews/03/lens6-fable-dedup.md`: 42 from 66, 10 by two or more; regressions by the definition 0, the fifteen changed sentences each considered | — |
+| 13 | coordinator (round 03) | routing of round 03; the gate; D19–D20; the hand-over | — | `run/reviews/03/routing.md`; regressions(03) = 0; the first clean round handed to the owner with `diff-03.patch`; the owner's questions listed | — |
 
 Codex tokens are not measured by the driver; commands and minutes are what its reports carry. Claude tokens
 and minutes are the harness's task notifications. Tokens and minutes are in no copied return and cannot be
