@@ -14,6 +14,9 @@ forensics remain in the repository references and release notes.
   steps; each concern they held is one role in `rewrite/references/roles.md`, and the pages that held
   them are marked superseded. `rethink` runs the same roles stopped at a plan on one screen. On
   2026-09-24 the sequential path took 6 h 38 min on a README of 1,200 words.
+  `ISSUES.md` E4, E17, E22, E24, E27, E28, E32, E33, E35 and E37 are removed: the ledger written by
+  hand, the audit's seed into the rounds, the bake-off's veto, the skeleton route and its diff, the
+  unannounced adversarial read, the ratchet and the cut ledger are no longer steps.
 - The rules are one list, `references/rules.md`: the fourteen content rules merged with the owner's
   feedback from 2026-09-10 to 09-24, each generalised and marked with its source — the owner's words
   with the date, a count of the genre, or a measured failure — and a convenience of ours marked as such.
