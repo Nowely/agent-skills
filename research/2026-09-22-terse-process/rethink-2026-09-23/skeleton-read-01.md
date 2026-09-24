@@ -17,7 +17,7 @@
   line under How it works; the question whether anything of `entrust` is reused stands for the pages.
 - **Quick start:** "вроде бы быстрый старт, но где-то в середине находится." → right after the opening.
 - **The genre:** "хочется понять, есть ли проекты с такой же структурой? Их нет. Уверен… нужно на уровне
-  смыслов и идей понимать предметную область, какие в ней порядки, предпосылки, типовые правила для
+  смыслов и идей понимать, предметную область, какие в ней порядки, предпослыки, типовые правила для
   структуры." → the skeleton states the genre's typical order from the surveys, N of M, and where it
   follows or departs from it and why.
 - **Troubleshooting:** "Выглядит как тоже что-то мусорное. Плагин должен просто работать… либо агент
