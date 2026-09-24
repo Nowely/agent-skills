@@ -1,0 +1,10 @@
+[
+ "What is Maestro, and does it work with the coding agent I use?",
+ "I use Claude Code. What do I run to get Maestro into my project, and what do I type first?",
+ "I work in Cursor and want the editor extension. What will it write into my project without asking?",
+ "What does my first run give me, and how do I know it worked?",
+ "My agent's prompts keep drifting and its outputs contradict earlier decisions. Which Maestro command do I run for each?",
+ "Where does Maestro keep what happened in my last session, and how does the next session pick it up?",
+ "Are the cost figures Maestro shows exact enough to bill a client?",
+ "I want to change one of the skills. Where do I edit, and what do I run to check the change?"
+]

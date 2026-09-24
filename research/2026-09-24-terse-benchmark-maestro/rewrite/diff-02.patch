@@ -1,0 +1,50 @@
+--- 01-candidate.md
++++ 02-repairs.md
+@@ -14,7 +14,7 @@
+ 
+ ## Getting started
+ 
+-Maestro reaches your coding agent by one of three routes: **skill files**, plain folders your coding agent loads from its skills folder; the **VS Code extension**; or an **MCP server**, a small program that your MCP client — your coding agent itself, or an app such as Claude Desktop — starts on your machine. If you haven't picked one, start with skill files.
++Maestro reaches your coding agent by one of three routes: **skill files**, plain folders your coding agent loads from its skills folder; the **VS Code extension**; or an **MCP server**, a small program your MCP client — your coding agent, or an app such as Claude Desktop — starts on your machine. If you haven't picked one, start with skill files.
+ 
+ | Route | Works in | Needs | Writes into your project |
+ |---|---|---|---|
+@@ -30,7 +30,7 @@
+ npx skills add sharpdeveye/maestro
+ ```
+ 
+-`npx skills` is a separate installer, not part of Maestro; it installs the skills into this project, chooses your coding agent's folders itself, and writes `skills-lock.json` there. Install all 25 — every command except `/teach-maestro` loads the core skill, `agent-workflow`, first.
++`npx skills` is a separate installer, not part of Maestro; it installs the skills into this project, chooses your coding agent's folders itself, and writes `skills-lock.json` there. Install all 25 — every command except `/teach-maestro` loads the core skill first.
+ 
+ If your coding agent is not one `npx skills` covers, copy the skill folders from `source/skills/` into its skills folder in the project yourself:
+ 
+@@ -54,7 +54,7 @@
+ - **Each skill's `SKILL.md`** — and only that file — into the ten skills folders of the first folder in your workspace, rewritten at every start; edits to those copies are lost.
+ - **An MCP server entry** in the workspace's MCP config, so your coding agent can also reach the skills through the MCP server.
+ - **Zero-Defect mode's rules**, when you switch it on: a marked block of 8 precision rules in `CLAUDE.md`, created if missing; also `.cursorrules` in Cursor, and `.agents/rules/maestro-zero-defect.md` in Antigravity.
+-- **`.maestro/`**: each `@maestro` run adds a line to the decision log and to the command log (`audit.jsonl`); the folder's own `.gitignore` is headed "Maestro session data — opt-in to version control," and `.maestro/context.md` stays versioned.
++- **`.maestro/`**: `@maestro` commands write to its decision log and command log (`audit.jsonl`); the folder's own `.gitignore` is headed "Maestro session data — opt-in to version control," and `.maestro/context.md` stays versioned.
+ 
+ Use it from the Command Center sidebar, from the command palette ("Maestro: Teach — Generate .maestro.md" and "Maestro: Diagnose — Workflow quality audit"), or in VS Code's chat:
+ 
+@@ -90,7 +90,7 @@
+ 
+ Every command needs `.maestro.md` in place first — except this one.
+ 
+-1. **`/teach-maestro`**, once per project: interviews you about the project and saves the answers as `.maestro.md` in its root; if `.maestro/context.md` already exists, that is read first instead.
++1. **`/teach-maestro`**, once per project: asks your coding agent to interview you about the project and save the answers as `.maestro.md` in its root; if `.maestro/context.md` already exists, that is read first instead.
+ 2. **`/diagnose`**: a report on your AI workflow — five dimensions, each scored 1–5; an overall score out of 25; a [Maestro command](#commands) to run for each gap.
+ 
+ ## Commands
+@@ -130,9 +130,9 @@
+ 2. **`/recap`**, at the start of the next one — reads back the latest summary and the last five decisions.
+ 3. **`/reflect`** — scores Maestro's own commands from those logs: usage, completion rate, ~cost, and duration.
+ 
+-Run a command through `@maestro` in VS Code's chat, and the extension adds a line to the command log (`audit.jsonl`) with its duration, ~tokens and ~cost — only the extension writes this log.
++Only the extension writes the command log (`audit.jsonl`): its lines come from commands run through `@maestro` in VS Code's chat, each with the command's duration, ~tokens and ~cost.
+ 
+-Costs and token counts are estimates (~): costs are within ±20%, useful for trends and not for invoicing; token counts are for the context budget, not for billing.
++Costs and token counts are estimates (~): costs are useful for trends, not for invoicing; token counts are for the context budget, not for billing.
+ 
+ ## Documentation
+ 

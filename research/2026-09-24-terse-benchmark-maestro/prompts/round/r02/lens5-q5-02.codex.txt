@@ -1,0 +1,5 @@
+MODEL: gpt-5.6-luna
+EFFORT: low
+TASK: You are a fresh reader. Read ONE file and nothing else, with cat: /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse/runs/20260924-150946-maestro-readme-rewrite/02-repairs.md. Do not open any other file, and do not use anything you already know about this software. Answer this question from that document alone: My agent's prompts keep drifting and its outputs contradict earlier decisions. Which Maestro command do I run for each? Quote the exact sentence or sentences the answer comes from and name the section heading. If the document does not answer it, write GUESSED, give your best guess, and say what sentence you wished were there. Say whether assembling the answer took more than one section. Run no command other than that one cat. Return plain text.
+CHECK: the quote is in the file you read.
+RETURN: plain text, first line "Codex Luna lens 5 question 5: answered" or "Codex Luna lens 5 question 5: GUESSED"; then the answer, the quote with its section heading, and whether more than one section was needed.
