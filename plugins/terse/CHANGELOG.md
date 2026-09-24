@@ -7,6 +7,11 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- The rules are one list, `references/rules.md`: the fourteen content rules merged with the owner's
+  feedback from 2026-09-10 to 09-24, each generalised and marked with its source — the owner's words
+  with the date, a count of the genre, or a measured failure — and a convenience of ours marked as such.
+  Genre notes for READMEs of developer tools, from the two surveys, are in `references/genres/`. On
+  2026-09-24 the owner found his earlier feedback missing from a README the skills wrote without it.
 - `rewrite`'s ledger starts as the audit's claim ledger instead of empty, so the first round is already
   under the ratchet. `audit` writes its entries a second time as a `json claims` block inside `audit.md`
   — the prose entry restates a claim and a restatement is not a string a pattern can find — and the new

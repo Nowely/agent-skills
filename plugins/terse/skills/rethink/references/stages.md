@@ -310,73 +310,10 @@ run where three were added without budgets ended 600 words over a total nobody h
 
 ## The rules this produced
 
-Derived from what one owner changed on his documents — rules 1 to 11 on one, on 2026-09-11 and 12, rules
-12 to 14 on the next, on 2026-09-24 — not from a standard. They are that owner's rules and the calibration
-target for their next document; another owner's are learned the same way, and none of them is a law of
-the genre. They are about content and order; the rules about
-sentences are in [writing-rules.md](../../rewrite/references/writing-rules.md) and are a different layer.
-
-1. **Open with the problem and the goal.** What is this for, what is it trying to achieve. The project's
-   own purpose — parity between a delegated seat and a native one — was absent from a ten-section draft
-   about it.
-2. **The opening sells; it does not warn.** No protocol names, no process names, no exit codes, no
-   failure modes in the sections a reader meets first.
-3. **Technical detail lives in one section of its own, below the middle.** Whoever reaches it came for
-   it. Spread through the early sections it reads as a warning notice.
-4. **A prerequisite that is satisfied on nearly every machine is noise — unless the document depends on
-   it elsewhere.** `PATH` and credential files went; the runtime version and the wrapped tool's version
-   came back when the survey showed the upgrade warning is unactionable without them.
-5. **Install is a block to copy, immediately.** This is the one thing in the rejected draft the owner
-   said he liked.
-6. **Update gets the same block, in the same form.** A document that says how to start and not how to
-   move forward is half a document.
-7. **No invented examples.** A fabricated file path in a sample command is water; use something real or
-   nothing.
-8. **The vocabulary has to agree with the claim.** A document arguing that a delegated agent is the
-   equal of a native one, while calling it by a different word throughout, denies its own thesis in
-   every sentence. Internal jargon — a skill's name, a term the reference files use — is for readers who
-   are agents. Where the reader is a person, the word that names the claim is the word to use.
-9. **Where a section states a comparison whose rows differ, a table beats prose.** The claim is either
-   visible in the rows or it is not true, and a reader checks a table in seconds and an argument in
-   paragraphs. A table whose rows all say the same thing proves sameness by looking identical, and the
-   one built for this document was cut for exactly that.
-10. **A command goes in a fenced block, with a language, in the form that runs.** Not prose around it,
-    not the in-application shorthand. `/plugin install …` works only for a reader already inside Claude
-    Code; `claude plugin install …` works for the reader arriving at the page. The language tag is not
-    decoration: an untagged block is unhighlighted, and highlighting is what makes a command legible as
-    a command rather than as a quotation.
-11. **A qualification is not a fix.** A sentence that needs a caveat to be true says too much: say less, or
-    link the source that carries the detail. Five rounds of one document added caveats to make sentences
-    truer and each caveat was contradicted by a finer detail of the code — regressions rose from one to
-    ten. The owner named it: an *оговорка* is an anti-pattern.
-12. **A README describes the code as it is.** Not a release: no binding to a version without a weighty
-    reason, and where the installed release differs from the code, that is the release's to settle, not a
-    sentence's. On 2026-09-24 a skeleton asked whether its README should ship only with the release that
-    would make one of its sentences true, and the owner answered: «REAMDE всегда должен соответствовать
-    коду. Если вышла версия 1, а в коде мы запилили еще 10 штук новых фич, значит реадми описывает
-    текущую действительность. В нем не должно быть без везкой причины привязка к версии.» — a README
-    always matches the code; if version 1 shipped and ten features have landed since, it describes the
-    present, and it carries no binding to a version without a weighty reason.
-13. **A README carries no results.** What was measured on the document — how often its author ran the
-    plugin on it and what came out — is technical information for the plugin's development and lives inside
-    the plugin, not on its front page. In its place the reader wants what the pipeline is made of: how the
-    agents work, which methods it checks, where those methods come from and why, and what is guaranteed.
-    On 2026-09-24 the owner read a round whose *What was measured* section held two runs' numbers: «What
-    was measured - это секция, которая, на мой взгляд, не нужна readme. … Какую ценность оно будет нести
-    пользователю, который захочет прмименить ее у себя? … Ему главное результат. Если нужна техническая
-    информация для дальнейшего иехнического развития, то ее можно держать где-то внутри, но не в реадми.
-    Здесь же было бы полезнее дежржать архитектуру пайлпана … какие методы проверяет, откуда эти методы и
-    почему. В общем техническая информация о составе плагина, гарантиях качества.» The section became
-    *Checks and guarantees*: each method, what it checks, where it comes from, and what is and is not
-    promised.
-14. **Nothing from a run on the page.** What the plugin hands back is described in the reader's words —
-    what the report lists, what the draft is — and never shown as a run's register: no dated report line,
-    no failure label from a ledger, no excerpt of a run file. On 2026-09-24 a round showed the audit's own
-    finding as its example — «Its report on this plugin's README, 2026-09-22:» and «`missing`: the owner's
-    intent» — and the owner read it as an error: «Не очень понятна фраза … Почему README, почему дата. …
-    `missing`: the owner's intent тоже непонятная фраза. Выглядит как ты применил /terse:audit и
-    столкнулся с ошибкой. Идея возможно правильная, но реализация - не очень.» The idea — show what comes
-    back — survived as a sentence; the register did not.
+The rules now live in one list, [rules.md](../../../references/rules.md), each with its source — the owner's
+words with the date, a count of the genre, or a measured failure. The fourteen first derived here were
+merged into it on 2026-09-24 with the owner's later feedback; their earlier wording is in the history of
+this file.
 
 ## One rule about the artifact you show for review
 
