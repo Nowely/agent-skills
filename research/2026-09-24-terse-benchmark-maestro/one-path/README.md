@@ -49,9 +49,10 @@ try it, the one change, `PLEASANT: 1-10`. 15–21 s and 29–32k tokens each.
 | B | 2nd | 6 | 7 |
 | A | 3rd | 6 | 6 |
 
-The mark does not separate the owner's first choice from the second, and all six readers, C's among them, said the
-page stopped being pleasant at the command catalogue and asked for one worked example instead — against rule 10 and
-against the text the owner put first. One trial per cell. The mark is dropped; a cold reader stays in the path to
+The mark does not separate the owner's first choice from the second. Five of the six readers, both of C's among
+them, said the page stopped being pleasant at the command catalogue (the sixth, at B's install details), and all six
+asked for a worked example or for the catalogue to move out — against rule 10 and against the text the owner put
+first. One trial per cell. The mark is dropped; a cold reader stays in the path to
 find defects and gives no mark (`roles.md` brief 11).
 
 ## What the owner decided, 2026-09-25
