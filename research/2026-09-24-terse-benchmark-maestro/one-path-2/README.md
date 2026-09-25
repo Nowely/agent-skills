@@ -71,3 +71,23 @@ reference's opening `<div>`, and the reader took both for one file. Every vote w
   strongest selling line in either file; and the badges as signs of a maintained project.
 - **Against ours**: "hold up in production" called generic (7 of 37); the draft's own pain bullet ("Made for LLM
   work") had been cut by the rules critic under rule 6's "no failure modes".
+
+### Three openings, each file read on its own (2026-09-25)
+
+After rules 5, 6 and 14 changed (`9ea29a7`, `ececebc`), the writer rewrote only the opening: `04-opening.md`, E,
+188 words — the reader's problem first ("Demos forgive what production doesn't: …"), then capabilities with what
+each means for the reader, no steps. Twenty Codex Luna readers ranked E, D2's opening and the reference's, blind,
+in all six orders, each file read with its own command (`openings/ranking3.md`, files under `openings/three/`):
+
+| | first place: E / D2 / C | mean rank: E / D2 / C | E over D2 | E over C | D2 over C |
+|---|---|---|---|---|---|
+| better | 10 / 3 / 7 | 1.65 / 2.20 / 2.15 | 14 of 20 | 13 of 20 | 10 of 20 |
+| sells more | 13 / 1 / 6 | 1.50 / 2.30 / 2.20 | 17 of 20 | 13 of 20 | 11 of 20 |
+
+- E leads on both questions and against both texts; the reasons quote its problem line and "find these weak spots
+  in your app and fix them".
+- D2 against the reference is even here, 10 to 10 and 11 to 9. The first round's 32 to 5 does not survive the
+  change of method — separate reads, three texts at once — so that round's margin is not evidence; which of the
+  two changes moved it is not isolated.
+- The reference's first places rest on its numbers and badges, called credible and established, the same things
+  others call a badge wall.
