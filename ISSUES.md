@@ -421,3 +421,43 @@ SHA line and the note move together and the text never alone: the note should sa
 indent removed", and the SHA line stays as it is.
 
 _From research/2026-09-22-terse-process/rewrite-2026-09-24/run/code-defects.md, D24._
+
+## E39. `advisor`, `experiment` and `swarm` start by loading `orchestrate` through the Skill tool, which refuses a skill marked `disable-model-invocation`
+
+**Evidence, level 3 for `advisor`, level 1 for the other two.**
+
+- `plugins/entrust/skills/advisor/SKILL.md:13` (at `75ba5e9`) begins "Load [orchestrate](../orchestrate/SKILL.md) now
+  (Skill tool, `entrust:orchestrate`; …)"; `experiment/SKILL.md:13` and `swarm/SKILL.md:13` begin the same way.
+- `plugins/entrust/skills/orchestrate/SKILL.md:6` is `disable-model-invocation: true`.
+- 2026-09-25: the owner invoked `/entrust:advisor`; the coordinator's Skill call for `entrust:orchestrate` returned
+  "Skill entrust:orchestrate cannot be used with Skill tool due to disable-model-invocation. Ask the user to run
+  /entrust:orchestrate themselves — it cannot be invoked via the Skill tool. Do not replicate this skill's workflow
+  by other means — it is reserved for explicit user invocation." The advisor did not start.
+
+**Check.** `grep -n 'disable-model-invocation' /Users/ruliny/Git/agent-skills/plugins/entrust/skills/orchestrate/SKILL.md; grep -n 'Skill tool, `entrust:orchestrate`' /Users/ruliny/Git/agent-skills/plugins/entrust/skills/*/SKILL.md`
+prints line 6 of `orchestrate` and line 13 of `advisor`, `experiment` and `swarm`.
+
+**Issue text.** Three user-invoked skills open by telling the model to load `orchestrate` with the Skill tool, and
+`orchestrate` is marked `disable-model-invocation`, so the load is refused and none of the three starts as written.
+The owner's direction for `advisor` (2026-09-25): «В целом advisor не считаю, что должен тянуть orchestrate» — the
+advisor adds one thread of the other model family to whatever run it is invoked in and loads only `codex`, which the
+Skill tool accepts. For `experiment` and `swarm` the page either asks the user to run `/entrust:orchestrate` first or
+stops depending on it.
+
+## E40. `rule1.mjs` reports a link's URL as an absolute path, and a flag in the install block that rule 7 requires
+
+**Evidence, level 3.** On 2026-09-25, `node plugins/terse/skills/rewrite/scripts/rule1.mjs 02-repaired.md --cut "How it works"`
+on the one-path maestro README (`research/2026-09-24-terse-benchmark-maestro/one-path/02-repaired.md`) reported
+`/marketplace.visualstudio.com/items`, `/open-vsx.org/extension/sharpdeveye/maestro-workflow` and
+`/www.npmjs.com/package/maestro-workflow-mcp` as absolute paths, from `https://…` link targets: the path pattern at
+`rule1.mjs:26` (at `75ba5e9`) excludes a preceding word character, `.`, `~`, `$` and `)`, but not `/`, so it matches from
+the second slash of `https://`. It also reported `--skill` in the Quick start block `npx skills add sharpdeveye/maestro
+--skill '*'`, the only form that installs every skill; `rule1.mjs:9-10` scans fences on purpose and `rule1.mjs:45`
+lets `--except` excuse absolute paths only, while `references/rules.md` rule 7 asks for the install "in the form that
+runs".
+
+**Issue text.** `rule1.mjs` keeps mechanism out of the first sections, and on a real README three of its five
+reports were link URLs read as absolute paths, because its path pattern matches after the second slash of `https://`.
+A fourth was a flag inside the install command that the rules require to be copyable as it runs, and no switch can
+excuse a flag. The path pattern should skip a match preceded by `:/`, link targets should be stripped before
+matching, and a flag in a fenced install block under the rules' Quick start should be exempt or excusable.
