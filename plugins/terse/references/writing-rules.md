@@ -1,7 +1,7 @@
 # The writing rules
 
-Part two of the four-part chain. The text below is fixed. Apply it as written; do not restate it in
-your own words, and do not extend it with rules you like better. It was measured in this form.
+The sentence layer under [rules.md](rules.md), for the writer and the sentence critic. The text below is
+fixed. Apply it as written; do not restate it in your own words or extend it. It was measured in this form.
 
 Default: no sentence that carries nothing. One earns its place by carrying a
 contract, a constraint, or a reason the code cannot state.

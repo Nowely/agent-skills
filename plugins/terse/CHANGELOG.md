@@ -7,6 +7,17 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- A definition two skills use is stated once, and the pages link it. `truth.md` holds how a claim is checked —
+  the levels, the verdicts, the guarantee words, what a light and a full run may do — for the audit's truth
+  pass, `rewrite`'s truth critics and rule 20: the pages had drifted to two words for an unsettled claim
+  (`unconfirmed`, `unverifiable`) and two rules for a guarantee word, the audit's demanding a run. `roles.md`
+  defines light and full, and holds the question reader's brief for a set of documents beside the one for one
+  text, with the rule never to ask a reader whether the text was clear. `run.md` says where a run lives and for
+  how long; the line that makes it stays in each skill's own SKILL.md, the same line in all three, because
+  Claude Code substitutes `${CLAUDE_PLUGIN_DATA}` only in a skill's body. The audit's line had no `<slug>`, and
+  `rethink` pointed at the audit's, which read from another page would not be substituted and would put an
+  installed run in the temporary directory. The two sentence-layer pages no longer call themselves parts of the
+  four-part chain; their frozen blocks and digests are unchanged.
 - The pages more than one skill works from sit together under `references/`: `roles.md`, `truth.md` (the
   audit's `truth-pass.md`, renamed because `rewrite`'s truth critics check by it too), `writing-rules.md`,
   `curse-of-knowledge.md` and `measurements.md`. Each had lived in one skill's folder, and a change made there

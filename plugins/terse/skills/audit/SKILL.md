@@ -27,19 +27,12 @@ Settle three things with the user in one exchange, not six:
   runs in its weaker form, described in [truth.md](../../references/truth.md).
 - Where a reader arrives. Usually `README.md`. This is the entry file for every reader.
 
-Then make the run directory:
+Then make the run directory, `<slug>` naming the audited document; where it lives, how long, and what
+its path is for: [run.md](../../references/run.md).
 
 ```bash
-D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)" && mkdir -p "$RUN" && echo "$RUN"
+D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
 ```
-
-`D` is empty when this skill runs from a source checkout rather than an installed plugin, which is why
-the fallback is there: installed, Claude Code writes the plugin's data directory into that line before
-it runs. Name the absolute path in your report and in the run file; `rewrite` is given that path by the
-user and cannot guess it. Under the plugin's data directory a run survives plugin updates and is
-deleted by `claude plugin uninstall` unless `--keep-data` is passed, and in the temporary directory the
-operating system may purge it: say in your report that a run which must outlive either is the user's to
-copy somewhere durable.
 
 Write nothing into the audited repository. Not a report, not a note, not a fix.
 
@@ -56,17 +49,9 @@ answering a question nobody arrives with, and every number after it is precise a
 ## Step 3. The truth pass
 
 Every sentence that states what the software does becomes one ledger entry: the claim, the doc line,
-the code that backs it, an evidence level and a verdict. Follow
-[truth.md](../../references/truth.md) for the levels, the rule on guarantee words, and the three
-verdicts. Use the entry format in [ledgers.md](references/ledgers.md).
-
-Two habits decide whether this step is worth running:
-
-- Work to refute, not to confirm. When in doubt, the verdict is **unconfirmed**, and unconfirmed is the
-  dangerous one: it survives because nobody proved it false. Both false claims found on 2026-09-10
-  lived there.
-- A citation that resolves proves only that a line exists. Reading the code proves what it says.
-  Running it proves what it does. Do not report the first as the third.
+the code that backs it, an evidence level and a verdict, checked as [truth.md](../../references/truth.md)
+says — its levels, its guarantee words, its three verdicts. Use the entry format in
+[ledgers.md](references/ledgers.md).
 
 ## Step 4. The questions and the answer key
 
@@ -88,10 +73,8 @@ from a reader who knew. Benchmarks that do this plant about one in ten.
 Announce the plan before spawning anything: how many readers, which model, roughly what it costs. Wait
 for the user's word. Fan-outs that surprise the user are not measurements, they are bills.
 
-One fresh reader per question, per [measure.md](references/measure.md). Each one starts at the entry
-file, may open only `.md` files, may not read source, and may not see another reader's work. It returns
-its answer, the files it opened, how many steps from the entry file it took, and whether it left the
-documentation to find out.
+One fresh reader per question: brief 8 of [roles.md](../../references/roles.md), in its form for a set of
+documents, under the rights in [measure.md](references/measure.md).
 
 **The baseline measurement runs a second arm with no documentation at all**: the same questions, the same
 model, no files. Its score is what a reader already knew, and the number this audit reports is the
@@ -100,11 +83,6 @@ document that is merely about something the reader has seen before; the two publ
 this arm found the effect large enough to swallow a result our size. It doubles the reader agents, so it
 runs once, at the baseline. A re-measurement after a rewrite reuses the same no-document score and does
 not pay again.
-
-Never ask a reader whether the text was clear. On 2026-09-10 the self-report ran against the truth: two
-readers who reported no confusion answered wrong, and the one who called the section scattered and
-confusing answered right. If a reader volunteers the judgement, keep it as a hint and keep it out of the
-score.
 
 ## Step 5b. The task readers
 

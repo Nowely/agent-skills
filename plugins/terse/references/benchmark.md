@@ -52,7 +52,7 @@ stand-in answers the run's questions and never stands in for the owner's accumul
 Every text gets the same measurements; where a ruler can be blind it is.
 
 1. **Truth.** The audit's truth pass ([truth.md](truth.md)) on each
-   text against the snapshot: claims confirmed, refuted, unverifiable. On C this is the audit run on a
+   text against the snapshot: claims confirmed, refuted, unconfirmed. On C this is the audit run on a
    best practice: whether the skill finds a real defect in one.
 2. **Answerability.** One question key from the reader profile and the code
    ([measure.md](../skills/audit/references/measure.md)), written by an agent that has read none of the

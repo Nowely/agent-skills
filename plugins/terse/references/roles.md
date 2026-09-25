@@ -1,16 +1,16 @@
 # The roles
 
-One writer, then every critic at once on the writer's draft, then the writer once more, then a check of
-what the repair changed. Each critic holds one concern and nothing else, so they run in parallel and none
-waits for another. Fill `<DOC>` (the text under review), `<CODE>` (the repository the text describes),
-`<RULES>` (`references/rules.md` of this plugin), `<SENTENCES>` (`writing-rules.md` and
-`curse-of-knowledge.md` beside this page), `<PURPOSE>` (the owner's words: what the text is for and who
-reads it), `<OUT>` (the run directory); send nothing else. Every brief ends with: do not modify the
+Every agent the three skills start, with its model and its brief. `rewrite` runs one writer, then every
+critic at once on the writer's draft, then the writer once more, then a check of what the repair changed;
+`rethink` runs the writer, the genre scout, form and the rationalizer on a plan; `audit` runs the question
+readers. Each critic holds one concern and nothing else, so they run in parallel and none waits for
+another. Fill `<DOC>` (the text under review), `<CODE>` (the repository the text describes), `<RULES>`
+(`rules.md` beside this page), `<SENTENCES>` (`writing-rules.md` and `curse-of-knowledge.md` beside this
+page), `<TRUTH>` (`truth.md` beside this page), `<PURPOSE>` (the owner's words: what the text is for and
+who reads it), `<OUT>` (the run directory); send nothing else. Every brief ends with: do not modify the
 repository, write only under `$TMPDIR`, never `cd` inside a compound command. Every agent returns its
 report as its final message, and the coordinator saves it: a harness hook refuses a subagent's report
-file. A run is light by default: every role reads and runs nothing. It is full when the user asks: one agent
-builds a runnable copy of the code while the writer writes, the truth critics may run the code there, and
-the task reader carries out the Quick start.
+file.
 
 | Role | Model | Runs | Brief |
 |---|---|---|---|
@@ -22,10 +22,17 @@ the task reader carries out the Quick start.
 | terms | Claude Sonnet | on the draft | 6 |
 | rules | Claude Sonnet | on the draft | 7 |
 | sentences | Claude Sonnet | on the draft | 10 |
-| question readers, three to five | Codex Luna | on the draft, and again on the repaired text | 8 |
+| question readers | Codex Luna | `rewrite`: three to five, on the draft and again on the repaired text; `audit`: one per question | 8 |
 | task reader | Codex Sol | on the draft, full mode only | 9 |
 | harness | Claude Sonnet | beside the writer, full mode only | 12 |
 | cold readers, two | Codex Astra and Codex Sol | on the repaired text | 11 |
+
+## Light and full
+
+A run is light by default: every role reads and runs nothing. It is full when the user asks: one agent
+builds a runnable copy of the code while the rest of the run goes on (brief 12), the truth checks may run
+the code there, and a task reader carries out what the text tells it to do (brief 9). A skill names the
+mode when it announces its agents.
 
 ## 1. The writer
 
@@ -70,11 +77,9 @@ scout.
 
 ```
 Check every sentence that states a behaviour in <SECTIONS> of <DOC> — a group of sections, or the
-sentences a repair changed — against <CODE>, by reading it: the lines that do it, the tests that pin it,
-the documentation the code ships. Build, install and run nothing. For each: confirmed, with the level
-reached — 1 the line resolves, 2 an independent reader of the code would say the same — and the lines;
-refuted, with the range; or unverifiable, and why. A guarantee word — every, always, never, only — holds
-where you read every case, and is overstated otherwise. Return only the refuted and the overstated sentences, each with its line in <DOC>, the evidence, and the shortest sentence
+sentences a repair changed — against <CODE>, as <TRUTH> checks a claim in a light run: read the code, run
+nothing, and judge each sentence by its levels, its verdicts and its guarantee words. Return only the
+refuted and the overstated sentences, each with its line in <DOC>, the evidence, and the shortest sentence
 that is true, or "cut" where the reader loses nothing they need. Never propose a sentence longer than the
 one it replaces.
 ```
@@ -120,11 +125,37 @@ and how. Return only the breaks.
 
 ## 8. A question reader
 
+One reader per question: a reader that answers two has learned the text from the first. Never ask a
+reader whether the text was clear: on 2026-09-10 the self-report ran against the truth — two readers who
+reported no confusion answered wrong, and the one who called a section scattered and confusing answered
+right. A judgement a reader volunteers is a hint, kept out of any score. The quote is what makes a wrong
+answer diagnosable: it names the line that misled the reader, and that line is where the repair goes.
+
+For one text, as `rewrite` sends it:
+
 ```
 You are a fresh reader. Read ONE file and nothing else, with cat: <DOC>. Do not use anything you
 already know about this software. Answer from that document alone: <QUESTION>. Quote the sentence the
 answer comes from and name its section. If the document does not answer it, write GUESSED, give your
 best guess, and the sentence you wished were there. Run no command other than that one cat.
+```
+
+For a set of documents, as `audit` sends it, starting where its readers start:
+
+```
+You are reading a project's documentation for the first time. You have never seen this project.
+
+Start at <ENTRY FILE>. You may open only .md files in <REPO>. You may not open source code,
+tests or configuration, and you may not search the web.
+
+Answer this question: <QUESTION>
+
+Return:
+  answer:    your answer, in your own words
+  files:     every file you opened, in the order you opened them
+  steps:     how many files you opened before you could answer
+  departed:  yes if you needed anything outside the .md files, no otherwise
+  quote:     the line you based your answer on, with its file and line number
 ```
 
 ## 9. The task reader

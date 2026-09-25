@@ -23,23 +23,20 @@ Ask once, in one message, and announce the run in the same message:
 - any rule of `rules.md` they set aside for this text;
 - for an existing text, whether its shape stands or should follow the genre.
 
-The announcement names the mode — light by default, full when the user asks — and that mode's agents with
-their models from `roles.md`: the writer, the genre scout when the genre has no notes, and the critics.
+The announcement names the mode, [light or full](../../references/roles.md#light-and-full), and that mode's
+agents with their models from `roles.md`: the writer, the genre scout when the genre has no notes, and the critics.
 Wait for the word. Keep the answer verbatim in `purpose.md` of the run directory. A behaviour the user
 asks the text to state is a claim like any other (rule 23).
 
 ## Step 2. The run directory
 
-Outside the repository that holds the text, by the formula of
-[`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory), `<slug>` naming the text:
+Outside the repository that holds the text, `<slug>` naming the text; where it lives, how long, and what
+its path is for: [run.md](../../references/run.md).
 
 ```bash
 D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
 ```
 
-Name its absolute path in the hand-over. Under the plugin's data directory a run survives plugin
-updates and is deleted by `claude plugin uninstall` unless `--keep-data` is passed; in the temporary
-directory the operating system may purge it. A run that must outlive either is the user's to copy.
 Nothing goes into the repository without the user's word.
 
 ## Step 3. The draft
@@ -47,9 +44,9 @@ Nothing goes into the repository without the user's word.
 The writer, brief 1 of `roles.md`: from the code, the rules, the purpose, the genre's notes, the
 existing text if any, and the plan the user agreed in `rethink` if they give its path. It writes its
 plan's word budgets to `budgets.json` before the text, then `01-draft.md`, and returns the plan with its
-evidence; save that as `writer-notes.md`. It reads the code and runs nothing. In full mode one agent builds
-a runnable copy of the code beside it, brief 12, for the truth critics. Where the genre has no notes in [genres/](../../references/genres/), the genre scout, brief 2, runs
-beside it; its table is kept there for the next text of the kind, on the user's word.
+evidence; save that as `writer-notes.md`. In full mode the harness, brief 12, runs beside it. Where the
+genre has no notes in [genres/](../../references/genres/), the genre scout, brief 2, runs beside it; its
+table is kept there for the next text of the kind, on the user's word.
 
 ## Step 4. Every critic at once
 
@@ -60,9 +57,8 @@ Launch them in one message, on the draft:
 - form, brief 5; terms, brief 6; the rules one by one, brief 7; sentences, brief 10;
 - three to five question readers, brief 8; in full mode, one task reader, brief 9.
 
-In light mode every critic reads and runs nothing. In full mode the truth critics may also run the code in
-the copy brief 12 built, and the task reader carries out the Quick start. Each returns its report; save it into `critics/` of the run directory. No agent merges them: the writer
-reads them all.
+In full mode each truth critic's brief carries the line brief 3 gives for it. Each returns its report;
+save it into `critics/` of the run directory. No agent merges them: the writer reads them all.
 
 ## Step 5. One repair, and a check of it
 

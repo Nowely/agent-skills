@@ -16,8 +16,12 @@ at the plan: [roles.md](../../references/roles.md), working from
 
 1. **One message to the user**, as `rewrite` step 1: what the text is for and who reads it, what it must
    and must not say, any rule set aside. Announce the agents below and wait for the word. Keep the answer
-   in `purpose.md` of a run directory made by
-   [`audit`'s formula](../audit/SKILL.md#step-1-scope-and-the-run-directory) with `<slug>-rethink`.
+   in `purpose.md` of the run directory, `<slug>` naming the text and ending in `-rethink`
+   ([run.md](../../references/run.md)):
+
+   ```bash
+   D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
+   ```
 2. **The genre's order.** From [genres/](../../references/genres/) where the kind has notes; otherwise
    the genre scout, brief 2, and its table is kept there on the user's word.
 3. **The plan.** The writer, brief 1, stopped before the text: each section, what it gives the reader,
