@@ -13,6 +13,13 @@ forensics remain in the repository references and release notes.
   route or not at all (rule 8); alike rows of an inventory say what tells them apart (rule 10); How it works holds
   only what its reader needs (rule 12). A pleasantness mark from cold readers was tried and dropped: on
   2026-09-25 it gave the owner's first and second choice the same mark.
+- `rewrite` applies the sentence rules again: `writing-rules.md` and `curse-of-knowledge.md` had been in no role
+  since the one path, and a sentence critic, brief 10, now reads the draft against them. The writer reads the code
+  rather than running it, writes its word budgets before the text, and numbers its texts — `01-draft.md`,
+  `02-repaired.md` — so none is called final before the user's word. After the repair, truth on the changed
+  sentences, the question readers again and two cold readers, brief 11, check it, because on 2026-09-25 the
+  repair brought in a contradiction nobody read for. Agents return their reports as messages, since a harness
+  hook refuses a subagent's report file.
 - `rewrite` runs one path: one writer from the code and the rules; every critic at once on the draft —
   truth split by sections and checked by running the code, a rationalizer asking whether the reader needs
   each fact, form, terms, the rules one by one, fresh readers — then one repair and the user's read. The

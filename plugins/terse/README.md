@@ -65,14 +65,14 @@ You start each one yourself.
 
 - **audit** — a profile of who reads it → every claim checked against the code or a named source → questions and an answer key → a fresh AI reader per question, with and without your text, starting where your readers start → a cause for each wrong answer: false, missing, misplaced, hard to find, misleading steps. [Its page](skills/audit/SKILL.md)
 - **rethink** — the order documents like yours follow → a plan on one screen → form and relevance critics on the plan → a plan you agree to. [Its page](skills/rethink/SKILL.md)
-- **rewrite** — one writer, from the code and the rules → every critic at once: truth by running the code, relevance for your reader, form, terms, the rules, fresh AI readers → one repair → your read. [Its page](skills/rewrite/SKILL.md)
+- **rewrite** — one writer, from the code and the rules → every critic at once: truth by running the code, relevance for your reader, form, terms, sentences, the rules, fresh AI readers → one repair → a check of what it changed → your read. [Its page](skills/rewrite/SKILL.md)
 
 ## Checks and guarantees
 
 | Method | What it checks | Where it comes from |
 |---|---|---|
 | The writing rules | Filler, an argument restated, editing history; a condition, a limit or a warning cut or weakened where your readers decide | Part two of a four-part rewrite, measured on one README: [the rules](skills/rewrite/references/writing-rules.md) |
-| The rules | What a text says, in what order, and what never appears in it | One owner's feedback and counts of the genre, each rule marked with its source: [the rules](references/rules.md) |
+| The rules | That the text is pleasant to read, first; then what it says, in what order, and what never appears in it | One owner's feedback and counts of the genre, each rule marked with its source: [the rules](references/rules.md) |
 | The scripted checks | Mechanism before the decision, one idea in three sections, words against a budget, a declared check that runs, a sentence checked true lost; each tested against a deliberate violation | [The measurements behind them](skills/rewrite/references/measurements.md) |
 
 [The field's practices, each marked measured, argued or asserted](references/prior-art.md), gathered and ranked.
