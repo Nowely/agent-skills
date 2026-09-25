@@ -259,17 +259,17 @@ On HEAD it exited 0 under a freshly reset signed-out profile, printed `"source":
 
 _From research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D5._
 
-## E20. `audit`'s task readers are told to act and have their state checked, and nothing tells them where that state lives
+## E20. The task reader's brief starts its state under `$TMPDIR` and names no isolated configuration for a host application's commands
 
-**Evidence, level 2.** `plugins/terse/skills/audit/SKILL.md:109-118` (at d7a1f37) sends two readers with "a starting state and an outcome they want, acting from the documentation alone" and says "Check the state they produce, not what they say"; it names no place for that state and no isolated configuration for a host application's commands. `plugins/terse/skills/rewrite/references/roles.md:113-118` (at 829c235), `rewrite`'s task reader, has its starting state "created under $TMPDIR", and the page's header has every brief end "write only under `$TMPDIR`"; neither page names an isolated configuration for a host application's commands.
+**Evidence, level 2.** `plugins/terse/skills/audit/SKILL.md:109-118` (at d7a1f37) sends two readers with "a starting state and an outcome they want, acting from the documentation alone" and says "Check the state they produce, not what they say"; it names no place for that state and no isolated configuration for a host application's commands. `plugins/terse/skills/rewrite/references/roles.md:113-118` (at 829c235), `rewrite`'s task reader, has its starting state "created under $TMPDIR", and the page's header has every brief end "write only under `$TMPDIR`"; neither page names an isolated configuration for a host application's commands. Since 2026-09-25 `audit`'s task readers, now run only in a full run, are sent the same brief 9 of `plugins/terse/references/roles.md`, so both start under `$TMPDIR`; the brief still names no isolated configuration.
 
 **Check.** From any directory:
 
     sed -n '107,116p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md | grep -c -E 'TMPDIR|isolated|CONFIG_DIR'; git -C /Users/ruliny/Git/agent-skills show 829c235:plugins/terse/skills/rewrite/references/roles.md | sed -n '113,118p'
 
-At 829c235 it prints `0` for the audit's step and then the task reader's brief with its `$TMPDIR` starting state.
+At 829c235 it prints `0` for the audit's step and then the task reader's brief with its `$TMPDIR` starting state. On 2026-09-25, `grep -c -E 'isolated|CONFIG_DIR' /Users/ruliny/Git/agent-skills/plugins/terse/references/roles.md` printed `0` for the brief both skills now send.
 
-**Issue text.** `audit`'s step 5b sends two task readers to act from the documentation and checks the state they produce, but does not say where that state lives: no `$TMPDIR`, no isolated host configuration. `rewrite`'s task reader, the same kind of reader, starts under `$TMPDIR`, and neither names an isolated configuration. A task reader of a document that installs a plugin, edits a configuration or runs a recipe that resets a tree acts on the user's real machine. Both should say it: the starting state under `$TMPDIR`, a host application's commands in an isolated configuration there, and nothing written outside it.
+**Issue text.** `audit` and `rewrite` send their task readers one brief, which starts the reader's state under `$TMPDIR` and names no isolated configuration for a host application's commands. A task reader of a document that installs a plugin, edits a configuration or runs a recipe that resets a tree acts on the user's real machine. The brief should say it: a host application's commands in an isolated configuration under `$TMPDIR`, and nothing written outside it.
 
 _From research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D6._
 

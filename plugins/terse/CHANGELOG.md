@@ -7,6 +7,13 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- `audit` puts a pleasant read first and runs light by default, as `rewrite` has since 2026-09-25. Two cold
+  readers, brief 11, read the entry file in the same launch as the question readers; what they found hard to
+  read, each point with its line, opens the report and the run file's new *A pleasant read* heading, with no
+  mark: the user's read decides. The truth pass reads the code. The user's word makes the run full: the harness,
+  brief 12, builds a copy for the pass to run the code in, and the two task readers go out on brief 9, which
+  starts their state under `$TMPDIR`. A light report says that nothing was run. `rethink` names no mode, since
+  none of its roles runs code, and the form its plan gives each section is the plan's share of a pleasant read.
 - A definition two skills use is stated once, and the pages link it. `truth.md` holds how a claim is checked —
   the levels, the verdicts, the guarantee words, what a light and a full run may do — for the audit's truth
   pass, `rewrite`'s truth critics and rule 20: the pages had drifted to two words for an unsettled claim

@@ -12,7 +12,10 @@ Path: `$RUN/audit.md`. Headings exactly as below, in this order.
 # Audit of <what was audited> at <commit or date>
 
 ## Scope
-Files audited, the entry file, the repository that backs them, and the absolute run directory.
+Files audited, the entry file, the repository that backs them, the mode, and the absolute run directory.
+
+## A pleasant read
+What the cold readers found hard or unpleasant to read, each point with its line; no mark.
 
 ## Reader profile
 The nine sections, as confirmed by the user; the last, what the document is for, in their own words.

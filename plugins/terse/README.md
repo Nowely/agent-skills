@@ -21,7 +21,7 @@ In Claude Code:
 /terse:audit
 ```
 
-It asks for the scope — which files to check, every tracked `.md` by default — and where your readers start. Before starting agents, each skill says how many and on which model, and waits until you say so. Its report lists the questions your text answers wrong, why, and where — file and line when a sentence is at fault.
+It asks for the scope — which files to check, every tracked `.md` by default — and where your readers start. Before starting agents, each skill says how many and on which model, and waits until you say so. Its report starts with what makes your text hard to read, then lists the questions it answers wrong, why, and where — file and line when a sentence is at fault.
 
 If every answer from your text is already right, stop. Otherwise say whether the document's shape — what it says, in what order — stands. If it does, run this and, when it asks, give it the folder the report names:
 
@@ -55,7 +55,7 @@ Restart Claude Code to apply it.
 
 | Command | When to run it | What you get back |
 |---|---|---|
-| `/terse:audit` | You cannot tell whether your document is fine | A report: which questions the text answers wrong, why, and where — file and line when a sentence is at fault; no rewording |
+| `/terse:audit` | You cannot tell whether your document is fine | A report: what makes the text hard to read, then which questions it answers wrong, why, and where — file and line when a sentence is at fault; no rewording |
 | `/terse:rethink` | No document yet, or it says the wrong things in the wrong order | A plan: the sections, each with what it gives the reader and its size, to agree to before the text is written |
 | `/terse:rewrite` | You want the text written or rewritten | A new draft of the whole document, and its diff |
 
@@ -63,8 +63,8 @@ You start each one yourself.
 
 ## How it works
 
-- **audit** — a profile of who reads it → every claim checked against the code or a named source → questions and an answer key → a fresh AI reader per question, with and without your text, starting where your readers start → a cause for each wrong answer: false, missing, misplaced, hard to find, misleading steps. [Its page](skills/audit/SKILL.md)
-- **rethink** — the order documents like yours follow → a plan on one screen → form and relevance critics on the plan → a plan you agree to. [Its page](skills/rethink/SKILL.md)
+- **audit** — a profile of who reads it → every claim checked by reading the code or a named source → questions and an answer key → a fresh AI reader per question, with and without your text, starting where your readers start, and two more on what makes it hard to read → a cause for each wrong answer: false, missing, misplaced, hard to find, misleading steps. Ask for a full run and the claims are also run, and two AI readers carry out tasks from your text. [Its page](skills/audit/SKILL.md)
+- **rethink** — the order documents like yours follow → a plan on one screen: each section, what it gives the reader and the form it takes → form and relevance critics on the plan → a plan you agree to. [Its page](skills/rethink/SKILL.md)
 - **rewrite** — one writer, from the code and the rules → every critic at once: truth by reading the code, relevance for your reader, form, terms, sentences, the rules, fresh AI readers → one repair → a check of what it changed → your read. Ask for a full run and the truth critics also run the code, and an AI reader carries out a task from your text. [Its page](skills/rewrite/SKILL.md)
 
 ## Checks and guarantees

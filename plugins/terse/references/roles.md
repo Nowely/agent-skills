@@ -2,15 +2,15 @@
 
 Every agent the three skills start, with its model and its brief. `rewrite` runs one writer, then every
 critic at once on the writer's draft, then the writer once more, then a check of what the repair changed;
-`rethink` runs the writer, the genre scout, form and the rationalizer on a plan; `audit` runs the question
-readers. Each critic holds one concern and nothing else, so they run in parallel and none waits for
-another. Fill `<DOC>` (the text under review), `<CODE>` (the repository the text describes), `<RULES>`
-(`rules.md` beside this page), `<SENTENCES>` (`writing-rules.md` and `curse-of-knowledge.md` beside this
-page), `<TRUTH>` (`truth.md` beside this page), `<PURPOSE>` (the owner's words: what the text is for and
-who reads it), `<OUT>` (the run directory); send nothing else. Every brief ends with: do not modify the
-repository, write only under `$TMPDIR`, never `cd` inside a compound command. Every agent returns its
-report as its final message, and the coordinator saves it: a harness hook refuses a subagent's report
-file.
+`rethink` runs the writer, the genre scout, form and the rationalizer on a plan; `audit` runs the readers,
+and in a full run the harness. Each critic holds one concern and nothing else, so they run in parallel
+and none waits for another. Fill `<DOC>` (the text under review), `<CODE>` (the repository the text
+describes), `<RULES>` (`rules.md` beside this page), `<SENTENCES>` (`writing-rules.md` and
+`curse-of-knowledge.md` beside this page), `<TRUTH>` (`truth.md` beside this page), `<PURPOSE>` (the
+owner's words: what the text is for and who reads it), `<OUT>` (the run directory); send nothing else.
+Every brief ends with: do not modify the repository, write only under `$TMPDIR`, never `cd` inside a
+compound command. Every agent returns its report as its final message, and the coordinator saves it: a
+harness hook refuses a subagent's report file.
 
 | Role | Model | Runs | Brief |
 |---|---|---|---|
@@ -23,16 +23,16 @@ file.
 | rules | Claude Sonnet | on the draft | 7 |
 | sentences | Claude Sonnet | on the draft | 10 |
 | question readers | Codex Luna | `rewrite`: three to five, on the draft and again on the repaired text; `audit`: one per question | 8 |
-| task reader | Codex Sol | on the draft, full mode only | 9 |
-| harness | Claude Sonnet | beside the writer, full mode only | 12 |
-| cold readers, two | Codex Astra and Codex Sol | on the repaired text | 11 |
+| task reader | Codex Sol | `rewrite`: one, on the draft; `audit`: two, on the documentation; full mode only | 9 |
+| harness | Claude Sonnet | beside the writer, or from the audit's first step; full mode only | 12 |
+| cold readers, two | Codex Astra and Codex Sol | `rewrite`: on the repaired text; `audit`: on the entry file | 11 |
 
 ## Light and full
 
 A run is light by default: every role reads and runs nothing. It is full when the user asks: one agent
 builds a runnable copy of the code while the rest of the run goes on (brief 12), the truth checks may run
-the code there, and a task reader carries out what the text tells it to do (brief 9). A skill names the
-mode when it announces its agents.
+the code there, and a task reader carries out what the text tells it to do (brief 9). A skill that starts
+a role able to run code names the mode when it announces its agents.
 
 ## 1. The writer
 
@@ -161,11 +161,14 @@ Return:
 ## 9. The task reader
 
 ```
-You are a fresh reader carrying a task. You may read ONE file, with cat: <DOC>. Starting state:
+You are a fresh reader carrying a task. You may read <READ>, and nothing else. Starting state:
 <STATE>, created under $TMPDIR. Goal: <GOAL>. Do what the document says, then show the resulting state.
 Report every command with its output, every point where you had to guess and the sentence you wished
 were there, and every sentence that turned out untrue. End with one line: GOAL: achieved | partly | not.
 ```
+
+`rewrite` fills <READ> with "ONE file, with cat: <DOC>"; `audit` with "the .md files in <REPO>, starting at
+<ENTRY FILE>".
 
 ## 10. Sentences
 
@@ -192,10 +195,10 @@ choice from the second, so a cold reader finds defects and gives no mark.
 ## 12. The harness, full mode only
 
 ```
-Build a runnable copy of <CODE> under $TMPDIR for the truth critics, while the text is being written:
+Build a runnable copy of <CODE> under $TMPDIR for the truth checks, while the rest of the run goes on:
 install its dependencies with every cache under $TMPDIR, build what the repository builds, and stub what
 cannot run outside its host. Change nothing in <CODE>. Return as your final message the copy's path, how to
-start each part, and what could not be built and why; give the path as <HARNESS> to every truth critic.
+start each part, and what could not be built and why; give the path as <HARNESS> to every truth check.
 ```
 
 ## Why this shape

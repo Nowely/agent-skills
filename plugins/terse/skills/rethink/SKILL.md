@@ -1,9 +1,9 @@
 ---
 name: rethink
 description: >-
-  Decides what a text should say and in what order before it is written: the genre's order, a plan on
-  one screen, and the form and rationalizer critics on that plan. Returns the plan and stops; `rewrite`
-  writes from it. Use when you want to agree the shape first.
+  Decides what a text should say, in what order and in what form, before it is written: the genre's
+  order, a plan on one screen, and the form and rationalizer critics on that plan. Returns the plan and
+  stops; `rewrite` writes from it. Use when you want to agree the shape first.
 disable-model-invocation: true
 metadata:
   version: "0.1.1"
@@ -12,12 +12,12 @@ license: MIT
 
 The shape first, when the user wants to see it before any prose. The same roles `rewrite` runs, stopped
 at the plan: [roles.md](../../references/roles.md), working from
-[rules.md](../../references/rules.md).
+[rules.md](../../references/rules.md), a pleasant read first.
 
 1. **One message to the user**, as `rewrite` step 1: what the text is for and who reads it, what it must
-   and must not say, any rule set aside. Announce the agents below and wait for the word. Keep the answer
-   in `purpose.md` of the run directory, `<slug>` naming the text and ending in `-rethink`
-   ([run.md](../../references/run.md)):
+   and must not say, any rule set aside. It names no mode: no role here runs code. Announce the agents
+   below and wait for the word. Keep the answer in `purpose.md` of the run directory, `<slug>` naming the
+   text and ending in `-rethink` ([run.md](../../references/run.md)):
 
    ```bash
    D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
@@ -25,7 +25,8 @@ at the plan: [roles.md](../../references/roles.md), working from
 2. **The genre's order.** From [genres/](../../references/genres/) where the kind has notes; otherwise
    the genre scout, brief 2, and its table is kept there on the user's word.
 3. **The plan.** The writer, brief 1, stopped before the text: each section, what it gives the reader,
-   the device that carries it, a word budget; where it departs from the genre's order, why. One screen.
+   the device that carries it — the plan's share of a pleasant read, rule 14 — and a word budget; where
+   it departs from the genre's order, why. One screen.
 4. **Two critics at once on the plan**: form, brief 5, and the rationalizer, brief 4, each asking of every
    section whether this reader needs it here.
 5. **The hand-over.** The plan with the critics' findings applied or declined, and what is asked of the
