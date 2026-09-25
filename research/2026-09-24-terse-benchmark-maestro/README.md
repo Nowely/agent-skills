@@ -33,6 +33,13 @@ come out better or worse than one a bare agent writes, and how far is either fro
 - **The reference**: 25 of its 105 claims are refuted against its own code (stale counts, a manual install that copies directories the repository does not contain, a VS Code configuration in the wrong shape); the audit finds real defects in a README its owner holds up as good, and the owner still reads it first.
 - **Hypotheses**: H1 holds by count (B 11, A 12, C 25) and fails by share against A; H2 holds; H3 fails on the owner's read — A is behind on form — while the water ruler, counting filler phrases, placed A first: the owner's wordiness is length and coverage, which that ruler does not count.
 
+## The one path, test D (2026-09-25)
+
+`rewrite`, rebuilt as one path, wrote the same README in 70 minutes: one writer, twelve critics at once, one repair
+(`one-path/README.md`). The owner did not patch it. Two cold readers' findings, the owner's first criterion — a text
+pleasant to read — and a pleasantness mark that failed its calibration on A, B and C became the tasks the pages now
+carry.
+
 - **Files**: `rounds.md`, every agent with its cost; `prompts/`, every brief as sent; `rethink/`, arm B's rethink run
   (`…/20260924-125421-maestro-readme-rethink` under `$TMPDIR/terse/runs/`) — the stand-in's answers, the purpose, the
   three surveys and the synthesis, the words, ten structures, two critics, the base, skeletons 01 and 02 with their

@@ -1,0 +1,14 @@
+RIGHTS: read /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/visit/v3
+MODEL: gpt-6-astra
+EFFORT: high
+TASK: You are a developer who builds LLM features and works in an AI coding tool, visiting a project's page for the first time. Read ONE file, with cat, and nothing else: /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/visit/v3/README.md. Do not use anything you already know about this software, and run no other command.
+
+Answer in plain text:
+1. Where was it pleasant to read, and where did it stop being pleasant? Quote the lines.
+2. What is this project, and whom is it for? One sentence of your own.
+3. Would you try it? What decided it?
+4. The one change that would make it most pleasant to read.
+
+End with one line: PLEASANT: <1-10>, where 10 is a page you enjoyed reading to the end and 1 a page you gave up on.
+CHECK: every quote is in the file you read.
+RETURN: plain text, answers 1 to 4, and the last line PLEASANT: <n>.
