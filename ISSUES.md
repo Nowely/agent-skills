@@ -4,21 +4,41 @@ Recorded per the repository rule: evidence at file:line, an evidence level (1: t
 independent reader of the code would say the same; 3: the behaviour was made to happen), and wording that
 can become an issue unchanged. An entry leaves when its fix lands and the changelog names it.
 
-## E1. The codex page lists three `WEB_SEARCH:` values without saying a device policy may allow only some
+## E1. A user's "the network is allowed" becomes `WEB_SEARCH:`, and a mode the device refuses is swapped for `cached` without asking
 
-**Evidence, level 3.** `plugins/entrust/skills/codex/SKILL.md:191` (at `7e7d9cc`) reads
-`| `WEB_SEARCH:` | `cached`, `indexed`, `live` | the agent needs sources it cannot read locally |`. On
-2026-09-17 two read agents whose prompt files carried `WEB_SEARCH: live` exited 2 before any turn; the
-driver's stderr said: `entrust: --web-search live is not permitted by this device's managed policy, which
-allows cached; the server would silently apply one of those and no response field would say so`. Both ran
-after the line was changed to `cached` (`research/2026-09-17-orchestration-practices/rounds.md`, the
-Planning row).
+**Evidence, level 3.**
 
-**Issue text.** The `WEB_SEARCH:` row of the header-fields table names `cached`, `indexed` and `live` as if
-all three were always available. On a device whose managed policy allows only `cached`, a prompt file with
-`live` is refused with exit 2 before the turn, and the coordinator learns the constraint from stderr after
-writing the brief. The row should say that the driver refuses a mode the device policy forbids, name the
-stderr line that says which modes are allowed, and name `cached` as the value that runs everywhere.
+- `plugins/entrust/skills/codex/SKILL.md:209` (at `23036f0`) reads
+  `| `WEB_SEARCH:` | `cached`, `indexed`, `live` | the agent needs sources it cannot read locally |`, a
+  "when" that reads as "the agent needs the internet". The network is another channel, open at every level
+  with no line: `SKILL.md:175-176`, "Every level reaches the network, as a native subagent does, and
+  `NETWORK: no` denies the sandbox that — not the provider's web search, which is `WEB_SEARCH:`'s own
+  channel."
+- This device's managed policy, `/Library/Managed Preferences/com.openai.codex.plist`, carries
+  `allowed_web_search_modes = ["cached"]` in its `requirements_toml_base64`. `driver.mjs:1156-1178` reads
+  it and `driver.mjs:2333-2338` refuses any other mode at `--run`; `--new` accepts the prompt file.
+- 2026-09-17: two read agents with `WEB_SEARCH: live` exited 2 before the turn, and both ran after the
+  line became `cached` (`research/2026-09-17-orchestration-practices/rounds.md`, the Planning row).
+- 2026-09-25: the owner answered a proposal of two review agents with «ходить в сеть можно», the network
+  is allowed. The coordinator wrote `WEB_SEARCH: live` into both prompt files; `--new` printed `PROMPT=…`
+  and exited 0 for each, and each `--run` ended with `DRIVER_EXIT=2` and
+  `ERROR=--web-search live is not permitted by this device's managed policy, which allows cached; the server would silently apply one of those and no response field would say so`,
+  15 s and one spawned agent each, no Codex turn. The coordinator relaunched both with
+  `WEB_SEARCH: cached`, the provider's cache, which nobody had asked for. The owner: «Была четкая
+  установка. Сеть разрешена», «Не кеш, а сеть». The network they allowed needed no line at all.
+
+**Issue text.** A user who allows the network means the agent's own commands — `curl`, `git`, `npm` —
+which reach it at every level with no header line. The `WEB_SEARCH:` row describes itself only as "the
+agent needs sources it cannot read locally", so a coordinator reads "the network is allowed" as
+`WEB_SEARCH:` and picks a mode. On a device whose managed policy narrows the modes, the mode is refused at
+`--run`, after `--new` accepted it and an agent was spawned; the refusal names the allowed modes, and the
+coordinator swaps in one of them, a channel the user did not allow. It happened on 2026-09-17 and again on
+2026-09-25, the second time after this entry had proposed naming `cached` as the value that runs
+everywhere. The row should say that `WEB_SEARCH:` is the provider's search tool, not the network; that
+network access needs no line; and that the field is set only when the user asks for the provider's search.
+A mode the device refuses goes back to the user as a question, never to another mode. `--new` should check
+the mode against the device policy, so that the refusal comes before an agent is spawned, and the refusal
+should say that the network is unaffected.
 
 ## E2. `orchestrate.test.mjs` pins none of the rules 0.15.0 added, and F2's "six bullets" is eight on the page
 
