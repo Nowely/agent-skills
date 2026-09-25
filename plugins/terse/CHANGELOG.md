@@ -7,6 +7,13 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- `rewrite` runs light by default and full when the user asks. In a light run every role reads and runs
+  nothing: the truth critics check each sentence against the code's lines, tests and documentation, and a
+  guarantee word holds only where every case is read (rule 20). A full run adds one agent that builds a runnable
+  copy while the writer writes (brief 12), truth critics that may run the code there, and the task reader. On
+  2026-09-25 the second run took 1 h 33 min, and truth critics that each rebuilt the same harness held the
+  critical path twice, 24 and 20 minutes; the owner: «Он скорее должен опираться на доступные readonly
+  информацию».
 - `references/rules.md` puts a pleasant read above every rule, in the owner's words of 2026-09-25: a pleasant
   text sells, formatting is one of its properties, and it reads naturally rather than as every technical detail
   of the code. Quick start carries the routes most readers take, and a narrower route's cost is said beside that

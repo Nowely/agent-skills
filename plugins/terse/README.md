@@ -65,7 +65,7 @@ You start each one yourself.
 
 - **audit** — a profile of who reads it → every claim checked against the code or a named source → questions and an answer key → a fresh AI reader per question, with and without your text, starting where your readers start → a cause for each wrong answer: false, missing, misplaced, hard to find, misleading steps. [Its page](skills/audit/SKILL.md)
 - **rethink** — the order documents like yours follow → a plan on one screen → form and relevance critics on the plan → a plan you agree to. [Its page](skills/rethink/SKILL.md)
-- **rewrite** — one writer, from the code and the rules → every critic at once: truth by running the code, relevance for your reader, form, terms, sentences, the rules, fresh AI readers → one repair → a check of what it changed → your read. [Its page](skills/rewrite/SKILL.md)
+- **rewrite** — one writer, from the code and the rules → every critic at once: truth by reading the code, relevance for your reader, form, terms, sentences, the rules, fresh AI readers → one repair → a check of what it changed → your read. Ask for a full run and the truth critics also run the code, and an AI reader carries out a task from your text. [Its page](skills/rewrite/SKILL.md)
 
 ## Checks and guarantees
 

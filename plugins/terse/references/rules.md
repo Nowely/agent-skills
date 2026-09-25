@@ -118,8 +118,10 @@ day: «Текст должен быть легким для чтения и по
 ## Truth and words
 
 20. **Every claim is true of the code, at the level its words assert.** A guarantee word — every,
-    always, never, only — is shown by a run or narrowed. *owner, 2026-09-10: «двадцать с лишним мест,
-    где текст утверждает о поведении кода то, чего код не делает»; measured, 2026-09-10 and 09-22.*
+    always, never, only — holds where every case is read in the code, and is narrowed otherwise; a full
+    run may also show it by running. *owner, 2026-09-10: «двадцать с лишним мест, где текст утверждает о
+    поведении кода то, чего код не делает»; 2026-09-25: «Он скорее должен опираться на доступные readonly
+    информацию»; measured, 2026-09-10 and 09-22.*
 21. **A qualification is not a fix.** A sentence that needs a caveat to be true says too much: say less,
     or link the source. *owner, 2026-09-12; measured: five rounds of caveats raised regressions from
     one to ten.*

@@ -8,7 +8,9 @@ waits for another. Fill `<DOC>` (the text under review), `<CODE>` (the repositor
 reads it), `<OUT>` (the run directory); send nothing else. Every brief ends with: do not modify the
 repository, write only under `$TMPDIR`, never `cd` inside a compound command. Every agent returns its
 report as its final message, and the coordinator saves it: a harness hook refuses a subagent's report
-file.
+file. A run is light by default: every role reads and runs nothing. It is full when the user asks: one agent
+builds a runnable copy of the code while the writer writes, the truth critics may run the code there, and
+the task reader carries out the Quick start.
 
 | Role | Model | Runs | Brief |
 |---|---|---|---|
@@ -21,7 +23,8 @@ file.
 | rules | Claude Sonnet | on the draft | 7 |
 | sentences | Claude Sonnet | on the draft | 10 |
 | question readers, three to five | Codex Luna | on the draft, and again on the repaired text | 8 |
-| task reader | Codex Sol | on the draft | 9 |
+| task reader | Codex Sol | on the draft, full mode only | 9 |
+| harness | Claude Sonnet | beside the writer, full mode only | 12 |
 | cold readers, two | Codex Astra and Codex Sol | on the repaired text | 11 |
 
 ## 1. The writer
@@ -35,9 +38,8 @@ which and why. The purpose, in the owner's words: <PURPOSE>. The genre's order, 
 
 Plan first: each section, what it gives the reader, the device that carries it, a word budget. Write the
 budgets to <OUT>/budgets.json, every `## ` heading mapped to its words, before the text. Every sentence
-about behaviour is true of the code: note beside it the line that shows it. Read rather than run: the
-truth critics run the code, so run only what reading cannot settle. A requirement the owner stated is a
-claim like any other.
+about behaviour is true of the code: note beside it the line that shows it. Read the code; run nothing.
+A requirement the owner stated is a claim like any other.
 
 Write the text to <OUT>/01-draft.md. Return as your final message the plan, the evidence notes, and every
 rule you set aside with the reason.
@@ -68,14 +70,17 @@ scout.
 
 ```
 Check every sentence that states a behaviour in <SECTIONS> of <DOC> — a group of sections, or the
-sentences a repair changed — against <CODE>. For each: confirmed, with the level reached — 1 the line
-resolves, 2 an independent reader of the code would say the same, 3 you made it happen — and the line or
-the command; refuted, with the range; or unverifiable, and why. A guarantee word — every, always, never,
-only — reaches level 3 or is refuted. Run what can be run, in a copy under $TMPDIR. Return only the
-refuted and the overstated sentences, each with its line in <DOC>, the evidence, and the shortest sentence
+sentences a repair changed — against <CODE>, by reading it: the lines that do it, the tests that pin it,
+the documentation the code ships. Build, install and run nothing. For each: confirmed, with the level
+reached — 1 the line resolves, 2 an independent reader of the code would say the same — and the lines;
+refuted, with the range; or unverifiable, and why. A guarantee word — every, always, never, only — holds
+where you read every case, and is overstated otherwise. Return only the refuted and the overstated sentences, each with its line in <DOC>, the evidence, and the shortest sentence
 that is true, or "cut" where the reader loses nothing they need. Never propose a sentence longer than the
 one it replaces.
 ```
+
+In full mode, add to the brief: "You may also run the code in <HARNESS>, the copy built for this run, and
+nowhere else; what you make happen there is level 3."
 
 ## 4. The rationalizer
 
@@ -153,6 +158,15 @@ the one path's first text found a contradiction the repair had brought in and tw
 tell apart; in the same round, marks for pleasantness from cold readers did not separate the owner's first
 choice from the second, so a cold reader finds defects and gives no mark.
 
+## 12. The harness, full mode only
+
+```
+Build a runnable copy of <CODE> under $TMPDIR for the truth critics, while the text is being written:
+install its dependencies with every cache under $TMPDIR, build what the repository builds, and stub what
+cannot run outside its host. Change nothing in <CODE>. Return as your final message the copy's path, how to
+start each part, and what could not be built and why; give the path as <HARNESS> to every truth critic.
+```
+
 ## Why this shape
 
 Measured on 2026-09-24, on the README of sharpdeveye/maestro written from scratch: the sequential path —
@@ -165,4 +179,7 @@ run at the same time as the others (`research/2026-09-24-terse-benchmark-maestro
 this path, on 2026-09-25, took 70 minutes: the writer spent 33 of them running code the truth critics ran
 again, the repair brought in a contradiction nobody read for, and the sentence rules were in no role —
 hence the writer who reads, the check after the repair, and the sentence critic
-(`research/2026-09-24-terse-benchmark-maestro/one-path/`).
+(`research/2026-09-24-terse-benchmark-maestro/one-path/`). The second, on 2026-09-25, took 1 h 33 min: three
+truth critics and the check's each built the same harness and held the critical path twice, 24 and 20
+minutes, while every finding they reached by running named the code lines that cause it — hence truth by
+reading in a light run, and one shared copy in a full one (`…/one-path-2/`).

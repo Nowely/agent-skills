@@ -23,8 +23,8 @@ Ask once, in one message, and announce the run in the same message:
 - any rule of `rules.md` they set aside for this text;
 - for an existing text, whether its shape stands or should follow the genre.
 
-The announcement names the agents and their models from the table in `roles.md`: the writer, the genre
-scout when the genre has no notes, and the critics with how many truth critics the length calls for.
+The announcement names the mode — light by default, full when the user asks — and that mode's agents with
+their models from `roles.md`: the writer, the genre scout when the genre has no notes, and the critics.
 Wait for the word. Keep the answer verbatim in `purpose.md` of the run directory. A behaviour the user
 asks the text to state is a claim like any other (rule 23).
 
@@ -47,8 +47,8 @@ Nothing goes into the repository without the user's word.
 The writer, brief 1 of `roles.md`: from the code, the rules, the purpose, the genre's notes, the
 existing text if any, and the plan the user agreed in `rethink` if they give its path. It writes its
 plan's word budgets to `budgets.json` before the text, then `01-draft.md`, and returns the plan with its
-evidence; save that as `writer-notes.md`. It reads the code rather than running it: the truth critics run
-it. Where the genre has no notes in [genres/](../../references/genres/), the genre scout, brief 2, runs
+evidence; save that as `writer-notes.md`. It reads the code and runs nothing. In full mode one agent builds
+a runnable copy of the code beside it, brief 12, for the truth critics. Where the genre has no notes in [genres/](../../references/genres/), the genre scout, brief 2, runs
 beside it; its table is kept there for the next text of the kind, on the user's word.
 
 ## Step 4. Every critic at once
@@ -58,9 +58,10 @@ Launch them in one message, on the draft:
 - truth, brief 3, one agent per group of sections — a few hundred words each, so each finishes fast;
 - the rationalizer, brief 4: does this reader need it, here;
 - form, brief 5; terms, brief 6; the rules one by one, brief 7; sentences, brief 10;
-- three to five question readers, brief 8, and one task reader, brief 9.
+- three to five question readers, brief 8; in full mode, one task reader, brief 9.
 
-Each returns its report; save it into `critics/` of the run directory. No agent merges them: the writer
+In light mode every critic reads and runs nothing. In full mode the truth critics may also run the code in
+the copy brief 12 built, and the task reader carries out the Quick start. Each returns its report; save it into `critics/` of the run directory. No agent merges them: the writer
 reads them all.
 
 ## Step 5. One repair, and a check of it
@@ -101,6 +102,8 @@ agent's; what changed the text for the better was the truth checked by running t
 where they were applied, and here each of those concerns is one role run at the same time as the
 others. Its first run, on 2026-09-25, took 70 minutes, and what it missed — a contradiction the repair
 brought in, sentences no role read, a writer re-running what the truth critics ran — is what step 5's check,
-brief 10 and the reading writer are for. The measurements behind the rules:
+brief 10 and the reading writer are for. Its second run took 1 h 33 min, and truth critics that each rebuilt
+the same harness held the critical path twice, 24 and 20 minutes: hence light by default, and one shared copy
+when the user asks for full. The measurements behind the rules:
 [measurements.md](references/measurements.md); the runs: `research/2026-09-24-terse-benchmark-maestro/`.
 To measure a text before or after, `/terse:audit`.
