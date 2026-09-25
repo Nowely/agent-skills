@@ -7,6 +7,10 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- Rule 5 makes an advantage a capability and what it means for the reader, with a command at most as proof,
+  because the draft's advantages walked through the commands its Quick start repeats while the other README's
+  listed its parts. Rule 14 adds badges where they carry live information, none typed by hand and no licence
+  badge.
 - Rule 6 lets the opening name the reader's problem that the project solves, and still forbids warnings about
   the project itself: on 2026-09-25 the rules critic had cut the draft's own problem line under "no failure
   modes", and in a blind read of two openings the other README's problem line was called the strongest

@@ -53,9 +53,15 @@ day: «Текст должен быть легким для чтения и по
    чтобы сказать самое важное - про его миссию, цель или задачу … ты начинаешь перегружать
    терминами»; 2026-09-23: «Оно неотвечает на вопрос об задаче этого плагина, его
    предназначении».*
-5. **Then its advantages, as a short list.** What it does for the reader that its alternatives do not,
-   one bold-led item each. *owner, 2026-09-24, of the README they ranked first: «отвечает что это за
-   проект, и сразу подчеркивает конкурентные преимущества … используя форматирвание список».*
+5. **Then its advantages, as a short list.** What the project gives the reader that its alternatives do
+   not — a capability and what it means for them — one bold-led item each. A command may stand in an item
+   as proof, never as a step: the steps are Quick start's. *owner, 2026-09-24, of the README they ranked
+   first: «отвечает что это за проект, и сразу подчеркивает конкурентные преимущества … используя
+   форматирвание список»; 2026-09-25: «почему в самое начало ты ввел действия пользователя, а не то, что
+   предоставляет проект. Тот же самый workflow мы описываем в quick start. Возможно, нужно что-то среднее
+   между этими двумя вариантами». measured, 2026-09-25: in a blind read, 21 of 37 readers faulted the
+   other README's items for listing its parts, while the draft's items walked through the commands its
+   Quick start repeats.*
 6. **The opening sells; it does not warn, define or ask.** It may name the reader's problem that the
    project solves, in the reader's words — that is a reason to read on — but never warns about the project
    itself. No question as the first sentence, no protocol or process names, no talk about the document
@@ -101,8 +107,12 @@ day: «Текст должен быть легким для чтения и по
     *owner, 2026-09-12: «не всегда имеет смысл выдумывать структуру с нуля, всегда хорошо подглядеть у
     коллег»; genre, as in 7 and 10.*
 14. **Formatting is the genre's.** Headings for sections, headed or bold-led sub-blocks, a fenced block
-    with a language for every command, a list for parallel items. *owner, 2026-09-11: «удобно иметь их в
-    codeblock … с укзанием языка»; 2026-09-24: «Оформление. В 2 оно все равно уступает».*
+    with a language for every command, a list for parallel items. Badges under the title where they carry
+    live information the reader wants, such as the current version or where it installs from; none that
+    types a value by hand (rule 17), and a licence badge is the licence line rule 15 drops. *owner,
+    2026-09-11: «удобно иметь их в codeblock … с укзанием языка»; 2026-09-24: «Оформление. В 2 оно все
+    равно уступает»; 2026-09-25: «Бейджи. Нужно добавлять, если они уместны. Это реадми, они могут быть
+    уместны. Где-то нет информации, которую так можно предоставить или хотелось бы».*
 
 ## What never appears
 
