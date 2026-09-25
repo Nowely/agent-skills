@@ -194,7 +194,7 @@ count by category. Nothing is softened.
 ## 7. Purpose and content
 
 Model: Claude Opus. Claude Fable is the dedup's, and this report is one of its inputs. <RULES> is the
-skeleton's own list ([`rethink` step 4](../../rethink/SKILL.md#step-4-what-you-hand-over)); where the
+skeleton's own list ([`rethink` step 4](../../rethink/SKILL.md)); where the
 skeleton adopted the fourteen of
 [stages.md](../../rethink/references/stages.md#the-rules-this-produced), or no skeleton exists yet,
 those fourteen are the default.

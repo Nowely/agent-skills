@@ -5,7 +5,7 @@
 > was measured under it; no step points here.
 
 Every agent `rethink` starts gets one of these with its placeholders filled, and nothing else: `<R>` is
-the absolute path of [the run directory](../SKILL.md#the-run-directory), `<DOC>` the document, and every
+the absolute path of [the run directory](../../../references/run.md), `<DOC>` the document, and every
 file a brief names under `<R>` is there before the agent starts. A Codex agent gets its brief the way
 [critic-briefs.md](../../rewrite/references/critic-briefs.md) sends one to a critic; a Claude agent gets
 the same body through the Agent tool. Every brief ends by asking for a path and a few lines back: the
@@ -307,7 +307,7 @@ file, and `rewrite` writes it, with the file's path and SHA-256, as the first li
 
 Measured on 2026-09-23/24: skeleton 01, 447 lines, went to the owner with a table of its ten sections and
 seven questions, and he asked what exactly was required of him
-([step 4](../SKILL.md#step-4-what-you-hand-over)). Told which parts were his, that each question had a
+([step 4](../SKILL.md)). Told which parts were his, that each question had a
 default, and that one word or the numbers of the sections would do, he answered twenty minutes later,
 point by point. The message for skeleton 02 held the table of sections with what each carries, the
 departures from the genre, one line kept against his word with its evidence and two questions with

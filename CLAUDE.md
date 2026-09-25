@@ -21,4 +21,9 @@ CHANGELOG, tests and evals; release tags are `<name>@X.Y.Z`.
   `curse-of-knowledge.md` carry the SHA-256 of their own text. Check it after any edit or move nearby; a
   change to the text changes the measurement it was made under, so the SHA line and the note beside it
   are updated together, never the text alone.
+- **terse's shared pages**: a definition two terse skills use lives once, under `plugins/terse/references/`;
+  a skill page holds its steps and links it, and a brief names the file instead of restating it. The one
+  exception is the run-directory line, kept identical in each SKILL.md because Claude Code substitutes
+  `${CLAUDE_PLUGIN_DATA}` only in a skill's body. After any edit to terse's pages, run
+  `node plugins/terse/evals/pages.test.mjs`: it checks that line, every relative link and the frozen digests.
 - **Fan-outs**: state the agent count and the models before spawning, and wait for the word.

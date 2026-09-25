@@ -189,6 +189,11 @@ forensics remain in the repository references and release notes.
 
 ### Added
 
+- `evals/pages.test.mjs` checks what linking cannot keep in agreement: that every relative link in the
+  plugin's pages opens, its anchor included; that the run-directory line is one line in the three skills, in
+  the exact `${...}` form; and that each frozen block still hashes to the digest its page records. Its first run
+  found three anchors in the superseded records broken since `rethink`'s page was rewritten; they point at the
+  page now.
 - `references/benchmark.md`: the protocol for measuring the skills against a bare agent, with a human best
   practice as the reference — three texts, a snapshot the writers see without its README, a stand-in user for
   the owner-less run, seven rulers and three hypotheses written before the run — from the owner's proposal of
