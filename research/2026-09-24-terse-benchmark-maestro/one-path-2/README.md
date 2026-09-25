@@ -51,3 +51,23 @@ from `repairs.json`, in which the writer logged every finding with the text befo
 - The writer's Q2: keep the maestroskills.dev link? Kept.
 - Both cold readers called "hold up in production" a promise the page does not show; the writer kept it by rules 4
   and 16.
+
+## The openings, side by side (2026-09-25)
+
+The owner asked which top of the page — everything above Quick start — is better and sells more, ours
+(`03-fixed.md`) or the reference's, and why, from clean agents; then «Задействуй кодекс еще. 40 лун как минимум».
+Blind, both orders (`openings/`): the first four readers — Codex Astra, Codex Sol, Claude Opus, Claude Sonnet —
+chose ours, Opus "only by a little"; of 46 Codex Luna votes, 37 counted: ours 32, the reference's 5 (order a
+17 to 3, order b 15 to 2). Nine were not counted: in order b, `cat 1.md 2.md` runs our text straight into the
+reference's opening `<div>`, and the reader took both for one file. Every vote with its reason: `openings/votes.md`.
+
+- **For ours**: what it is and what you get in the first sentence, then bullets that name a command you would type
+  and what it does.
+- **Against the reference**: a banner, eight badges, a stats line and navigation before a word on what it is
+  (21 of 37 mention them); bullets that list its parts — "a comprehensive agent-workflow skill with 7
+  domain-specific reference files", "25 commands … and more" — rather than what you do (21 of 37).
+- **For the reference**, even from readers who chose ours: its problem line, "AI agents are only as good as the
+  workflows they operate in. Without guidance, you get the same predictable mistakes: …", which Opus called the
+  strongest selling line in either file; and the badges as signs of a maintained project.
+- **Against ours**: "hold up in production" called generic (7 of 37); the draft's own pain bullet ("Made for LLM
+  work") had been cut by the rules critic under rule 6's "no failure modes".
