@@ -2,8 +2,9 @@
 
 What a text must do for its reader, in the order a writer meets the questions. Every writer and every
 critic of the three skills works from this list; a run's owner may add a rule or set one aside, in
-words, and the run records it. Sentence-level rules are a separate layer:
-[writing-rules.md](../skills/rewrite/references/writing-rules.md).
+words, and the run records it. Sentence-level rules are a separate layer, which the writer and the
+sentence critic apply as written: [writing-rules.md](../skills/rewrite/references/writing-rules.md) and
+[curse-of-knowledge.md](../skills/rewrite/references/curse-of-knowledge.md).
 
 Each rule names its source, so that a critic can weigh it and a later edit can see what it rests on:
 
@@ -13,6 +14,19 @@ Each rule names its source, so that a critic can weigh it and a later edit can s
 
 A rule marked **ours** is a convenience this plugin adopted, not a norm of the genre: use it where it
 helps the reader, never require it.
+
+## First: a pleasant read
+
+Above every rule below, the text is pleasant to read. A pleasant text sells: the reader settles into it
+and works with it gladly, and it reads naturally, not as everything true about the code. Formatting is one
+of its properties (rule 14); so are sentences taken in at one reading, the reader's own words (rule 22),
+and no technical detail the reader does not need where they are (rules 3 and 12). It never excuses a false
+sentence: a hard one is said more simply, or cut (rule 21). No model's score stands in for it: on
+2026-09-25 two cold readers gave the owner's first and second choice the same mark, so the owner's read
+decides. *owner, 2026-09-25: «Текст должен быть приятным для чтения. На самом деле, это критерий номер 1.
+Приятный текст - продающий текст. В него легче погрузиться, с ним приятнее работать. Одним из свойств
+такого текста является оформление»; «весь текст должно смотреть естетственно и оганично»; earlier the same
+day: «Текст должен быть легким для чтения и понимания».*
 
 ## The reader
 
@@ -55,22 +69,29 @@ helps the reader, never require it.
    8; the start section split into headed blocks in 4 of 8 plugin and 4 of 5 agent READMEs. owner,
    2026-09-11: «понавилось что есть Install and first run и сразу блок»; 2026-09-24: «в быстром старте
    сразу говорит как устаниваить, как начать пользоваться - workdlow».*
-8. **Say what to do, not everything that is true.** One route by default; other routes one line each
-   or a link. *owner, 2026-09-24: «Getting started честен, но бессмысленен … нужно просто сказать, что
-   нужно сделать»; 2026-09-23: «крайне многословно идет описание секции install».*
+8. **Say what to do, not everything that is true.** Quick start carries the routes most readers take; a
+   route for a narrower audience — a server to configure, a build from source — gets its own section
+   further down, or a link, and what it costs the reader is said there or not at all. *owner, 2026-09-24:
+   «Getting started честен, но бессмысленен … нужно просто сказать, что нужно сделать»; 2026-09-23:
+   «крайне многословно идет описание секции install»; 2026-09-25: «нет необходимости грузить пользователя
+   техническими деталями. Можно просто не использовать мсп в быстром старте».*
 9. **Update, where a command exists: one line or one block.** *ours, owner 2026-09-24: «Update это
    лишнее удобство, которое мы пришли сами».*
 
 ## The body
 
-10. **The inventory is a table.** Commands, skills, options: name, what it does, when to reach for it.
-    *genre, 2026-09-23: an inventory in 7 of 9 plugin READMEs. owner, 2026-09-12: «нет таблицы с
-    командами скилов, хотя по сути эта база для плагина».*
+10. **The inventory is a table.** Commands, skills, options: name, what it does, when to reach for it;
+    two rows that sound alike say what tells them apart. *genre, 2026-09-23: an inventory in 7 of 9 plugin
+    READMEs. owner, 2026-09-12: «нет таблицы с командами скилов, хотя по сути эта база для плагина».
+    measured, 2026-09-25: a cold reader could not tell two neighbouring rows apart in a table the one path
+    wrote.*
 11. **Rows that differ go in a table; rows that say the same thing do not.** *owner, 2026-09-11: «про паритет думаю, нужна таблица»;
     measured, 2026-09-11: a table whose rows were identical was cut.*
 12. **Technical detail lives in one section below the middle.** How it works, for the reader who came
-    for it; spread through the early sections it reads as a warning. *owner, 2026-09-11: «Если хочешь
-    рассказать про технические детали, то нужна отдельная секция из разряда "как это работает"».*
+    for it, and only what that reader needs there; spread through the early sections it reads as a
+    warning. *owner, 2026-09-11: «Если хочешь рассказать про технические детали, то нужна отдельная секция
+    из разряда "как это работает"»; 2026-09-25: «Нет потребности прям все донести до пользователя, всю
+    техническую подноготную, каждый технический камушек».*
 13. **The order follows the genre, and a departure says why.** What it is, Quick start, the inventory,
     how it works. Look at what the most-used documents of the kind do before inventing a structure.
     *owner, 2026-09-12: «не всегда имеет смысл выдумывать структуру с нуля, всегда хорошо подглядеть у

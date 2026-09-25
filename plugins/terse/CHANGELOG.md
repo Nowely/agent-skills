@@ -7,6 +7,12 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- `references/rules.md` puts a pleasant read above every rule, in the owner's words of 2026-09-25: a pleasant
+  text sells, formatting is one of its properties, and it reads naturally rather than as every technical detail
+  of the code. Quick start carries the routes most readers take, and a narrower route's cost is said beside that
+  route or not at all (rule 8); alike rows of an inventory say what tells them apart (rule 10); How it works holds
+  only what its reader needs (rule 12). A pleasantness mark from cold readers was tried and dropped: on
+  2026-09-25 it gave the owner's first and second choice the same mark.
 - `rewrite` runs one path: one writer from the code and the rules; every critic at once on the draft —
   truth split by sections and checked by running the code, a rationalizer asking whether the reader needs
   each fact, form, terms, the rules one by one, fresh readers — then one repair and the user's read. The
