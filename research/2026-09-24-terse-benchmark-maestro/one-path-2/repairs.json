@@ -1,0 +1,1127 @@
+[
+  {
+    "critic": "form",
+    "finding": "L29 closing sentences are standing feature description, not a step (rule 8)",
+    "draft_lines": "29",
+    "verdict": "applied",
+    "reason": "Cut the sidebar sentence, which truth-1 also refuted; kept Open VSX (what fork users do) and the files note (a warning at the install choice, per the rationalizer and the writing rules)",
+    "old": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's skills into it for every supported agent. Its sidebar sends any command to the chat in one click.",
+    "new": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's command files into it for every supported coding tool."
+  },
+  {
+    "critic": "form",
+    "finding": "Sidebar fact said twice, in Quick start and How it works (rule 12)",
+    "draft_lines": "29, 120",
+    "verdict": "applied",
+    "reason": "Cut the Quick start copy and kept How it works' (level 3 per truth-3); followed form and truth-1 over the rationalizer's keep-at-29",
+    "old": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's skills into it for every supported agent. Its sidebar sends any command to the chat in one click.",
+    "new": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's command files into it for every supported coding tool."
+  },
+  {
+    "critic": "form",
+    "finding": "@maestro mechanism in the /reflect cell and again in How it works (rule 12)",
+    "draft_lines": "59, 121",
+    "verdict": "applied",
+    "reason": "The cell now states only the condition in plain words; How it works keeps the mechanism",
+    "old": "| `/reflect` | Shows which commands you run, finish or abandon | You run commands through the extension's `@maestro` in VS Code |",
+    "new": "| `/reflect` | Shows which commands you run, finish or abandon | You run commands in VS Code's chat through the extension |"
+  },
+  {
+    "critic": "form",
+    "finding": "MCP server section departs from the genre order with no reason given (rule 13)",
+    "draft_lines": "97",
+    "verdict": "applied",
+    "reason": "The section now opens by saying whom it serves; no sentence about the document itself (rule 19)",
+    "old": "Maestro also runs as an MCP server. Add it to your client's configuration:",
+    "new": "Other AI clients can run Maestro as an MCP server. Add it to your client's MCP config:"
+  },
+  {
+    "critic": "form",
+    "finding": "MCP section body is config detail that belongs in How it works (rule 12)",
+    "draft_lines": "97-112",
+    "verdict": "declined",
+    "reason": "Rule 8 gives a narrower install route its own section further down; its tool and resource inventory was cut instead",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "form",
+    "finding": "What-it-writes runs two sentences over five targets; rule 15 allows one line",
+    "draft_lines": "124",
+    "verdict": "applied",
+    "reason": "Rewritten as one line that names each file and who writes it",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "form",
+    "finding": "Parallel write targets not set as a list (rule 14)",
+    "draft_lines": "124",
+    "verdict": "declined",
+    "reason": "Rule 15 fixes this as one line; the Zero-Defect write moved into the bullet list above",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "form",
+    "finding": "/refine and /calibrate rows share prompts, errors and logs and may blur (rule 10, hypothesis)",
+    "draft_lines": "67-68",
+    "verdict": "applied",
+    "reason": "/refine now says final polish and /calibrate one convention",
+    "old": "| `/refine` | Polishes prompts, tool descriptions, errors, logs and config without changing behavior | Your app works and you are about to ship |",
+    "new": "| `/refine` | Gives prompts, tool descriptions, errors, logs and config a final polish | Your app works and you are about to ship |"
+  },
+  {
+    "critic": "form",
+    "finding": "/refine and /calibrate rows share prompts, errors and logs and may blur (rule 10, hypothesis)",
+    "draft_lines": "67-68",
+    "verdict": "applied",
+    "reason": "/refine now says final polish and /calibrate one convention",
+    "old": "| `/calibrate` | Makes names, prompts, errors and logs consistent and records the conventions in `.maestro.md` | Parts were built in different ways |",
+    "new": "| `/calibrate` | Makes names, prompt style, errors and logs follow one convention | Parts were built in different ways |"
+  },
+  {
+    "critic": "form",
+    "finding": "Opening bullet 1 restates line 3 rather than naming an advantage (rule 5)",
+    "draft_lines": "5",
+    "verdict": "applied",
+    "reason": "Bullet cut; line 3 carries the problem fit and four distinct advantages remain",
+    "old": "- **Made for LLM work.** It targets what breaks in AI systems: unstructured prompts, overstuffed context, too many tools, no evaluation, no guardrails.\n",
+    "new": ""
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut the 'Starts from your project' bullet",
+    "draft_lines": "6",
+    "verdict": "declined",
+    "reason": "Rule 5 (owner) wants the advantages as a list; this one sells the project context that line 39 only shows as a step",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut the 'From finding to fix' bullet",
+    "draft_lines": "7",
+    "verdict": "declined",
+    "reason": "Rule 5 keeps the list; the bullet was narrowed instead to what truth-1 could back",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut the 'Picks up where you left off' bullet",
+    "draft_lines": "9",
+    "verdict": "declined",
+    "reason": "Rule 5: memory across sessions is a distinct advantage, not only two table rows",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut 'In your agent's chat,'",
+    "draft_lines": "33",
+    "verdict": "applied",
+    "reason": "The reader knows where a slash command goes",
+    "old": "In your agent's chat, once per project:",
+    "new": "Once per project:"
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut the list of interview topics",
+    "draft_lines": "39",
+    "verdict": "declined",
+    "reason": "It tells the reader what to have ready and reader-Q4 answered from it; the sentence was split instead",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut the five area names from the /diagnose outcome",
+    "draft_lines": "47",
+    "verdict": "applied",
+    "reason": "The reader acts on the lowest score, not the names",
+    "old": "You get a score from 1 to 5 for prompts, context, tools, architecture and safety, then the most serious findings and the commands to run for them. Start with the one for your lowest score.",
+    "new": "It scores five areas from 1 to 5, lists the most serious findings and names the commands to run. Start with the one for your lowest score."
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut 'the most serious findings and'",
+    "draft_lines": "47",
+    "verdict": "declined",
+    "reason": "Rule 7 asks Quick start to say what comes back, and the findings are part of it",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut 'Each command ends by suggesting what to run next.'",
+    "draft_lines": "51",
+    "verdict": "applied",
+    "reason": "It helps no one find a row, and truth-2 found it overstated",
+    "old": "Each command ends by suggesting what to run next.\n\n",
+    "new": ""
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut 'from 1 to 5' from the /diagnose row",
+    "draft_lines": "57",
+    "verdict": "applied",
+    "reason": "First run already gives the scale",
+    "old": "| `/diagnose` | Scores five areas from 1 to 5 and names the command for each gap | You need a baseline |",
+    "new": "| `/diagnose` | Scores five areas and maps gaps to commands | You need a baseline |"
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut 'and grades them A to F'",
+    "draft_lines": "58",
+    "verdict": "applied",
+    "reason": "The scenario range already tells /evaluate from /diagnose",
+    "old": "| `/evaluate` | Runs realistic scenarios, normal to hostile, and grades them A to F | After a change, to see how your app behaves |",
+    "new": "| `/evaluate` | Runs realistic scenarios, from normal to hostile input | After a change, to see how your app behaves |"
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut 'and records the conventions in .maestro.md'",
+    "draft_lines": "68",
+    "verdict": "applied",
+    "reason": "Choosing the command doesn't depend on where it writes",
+    "old": "| `/calibrate` | Makes names, prompts, errors and logs consistent and records the conventions in `.maestro.md` | Parts were built in different ways |",
+    "new": "| `/calibrate` | Makes names, prompt style, errors and logs follow one convention | Parts were built in different ways |"
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut 'eight' from the /zero-defect row",
+    "draft_lines": "71",
+    "verdict": "declined",
+    "reason": "Followed terms: 'the eight precision rules' is the one name used in both places",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut 'and the data passed between steps'",
+    "draft_lines": "79",
+    "verdict": "applied",
+    "reason": "Explains a pipeline to people who build them",
+    "old": "| `/chain` | Designs a multi-step tool pipeline and the data passed between steps | One task takes several tool calls |",
+    "new": "| `/chain` | Designs a multi-step tool pipeline | One task takes several tool calls |"
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut 'once one agent proves not enough'",
+    "draft_lines": "80",
+    "verdict": "applied",
+    "reason": "Repeats the row's own 'Use it when' cell",
+    "old": "| `/compose` | Designs a multi-agent system once one agent proves not enough | One agent has tried and failed |",
+    "new": "| `/compose` | Designs a multi-agent system | One agent has tried and failed |"
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut ', measured before and after'",
+    "draft_lines": "82",
+    "verdict": "applied",
+    "reason": "A method, not a reason to pick the command",
+    "old": "| `/accelerate` | Cuts latency, cost and tokens, measured before and after | Your app is too slow or too expensive |",
+    "new": "| `/accelerate` | Cuts latency, cost and tokens | Your app is too slow or too expensive |"
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut 'and saves the answers to .maestro.md' from the /teach-maestro row",
+    "draft_lines": "89",
+    "verdict": "applied",
+    "reason": "Path dropped; the row still says what the command produces",
+    "old": "| `/teach-maestro` | Interviews you and saves the answers to `.maestro.md` | First, once per project |",
+    "new": "| `/teach-maestro` | Interviews you and saves your project's context | First, once per project |"
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut the resources clause",
+    "draft_lines": "112",
+    "verdict": "applied",
+    "reason": "The model reads the resources; the reader never picks one",
+    "old": "Your client then offers each command as a prompt, and Maestro's principles and seven reference guides as resources. Ten tools let the model fetch a command's instructions, read your `.maestro.md` and keep a decision log. The VS Code extension registers the server for you.",
+    "new": "Your client then offers each command as a prompt. The VS Code extension registers the server for you."
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut the ten-tools sentence",
+    "draft_lines": "112",
+    "verdict": "applied",
+    "reason": "The model calls the tools and the npm link lists them",
+    "old": "Your client then offers each command as a prompt, and Maestro's principles and seven reference guides as resources. Ten tools let the model fetch a command's instructions, read your `.maestro.md` and keep a decision log. The VS Code extension registers the server for you.",
+    "new": "Your client then offers each command as a prompt. The VS Code extension registers the server for you."
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut 'All but /teach-maestro first load agent-workflow...' (internal name, repeats 39)",
+    "draft_lines": "116",
+    "verdict": "applied",
+    "reason": "Slug and the .maestro.md repeat are gone; the load instruction stays in truth-3's true form",
+    "old": "All but `/teach-maestro` first load `agent-workflow`, the core skill, and read your `.maestro.md`.",
+    "new": "All but `/teach-maestro` tell it to load the core skill first."
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut the core skill's inventory sentence",
+    "draft_lines": "116",
+    "verdict": "declined",
+    "reason": "How it works is where this reader learns what stands behind the commands, and with line 5 cut it is the one place naming the domains; split instead",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut the sidebar bullet (repeats 29)",
+    "draft_lines": "120",
+    "verdict": "declined",
+    "reason": "The Quick start copy was cut instead because truth-1 refuted it; this one holds at level 3 per truth-3",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut 'on the editor's chat model with your project context'",
+    "draft_lines": "121",
+    "verdict": "applied",
+    "reason": "Cut the model clause (overstated per truth-3); kept 'with your project context', which is what @maestro adds",
+    "old": "- **`@maestro` in VS Code's chat**, which runs a command on the editor's chat model with your project context and logs each run in `.maestro/` for `/reflect`.",
+    "new": "- **`@maestro` in VS Code's chat**, which runs commands with your project context and logs runs in `.maestro/` for `/reflect`."
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut '.maestro.md plus'",
+    "draft_lines": "124",
+    "verdict": "declined",
+    "reason": "The what-it-writes line lists every file, and a reader looks for them there",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut the extension sentence; move the rules-file and MCP-config pieces",
+    "draft_lines": "124",
+    "verdict": "applied",
+    "reason": "Rules file moved into the Zero-Defect bullet; the MCP write stays in the one what-it-writes line, not in Quick start (owner, rule 8)",
+    "old": "- **Zero-Defect mode**, a switch that adds the `/zero-defect` rules to every `@maestro` request and to `CLAUDE.md`.",
+    "new": "- **Zero-Defect mode**, a switch that adds the eight precision rules to every `@maestro` request. It also writes them into `CLAUDE.md`, and in Cursor or Antigravity into their rules file."
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut the extension sentence; move the rules-file and MCP-config pieces",
+    "draft_lines": "124",
+    "verdict": "applied",
+    "reason": "Rules file moved into the Zero-Defect bullet; the MCP write stays in the one what-it-writes line, not in Quick start (owner, rule 8)",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Cut the second Contributing sentence",
+    "draft_lines": "128",
+    "verdict": "applied",
+    "reason": "Shortened to five words; it still tells a contributor the other copies are generated",
+    "old": "Edit skills only in `source/skills/`. The agent folders, the extension and the MCP server all build their copies from there.",
+    "new": "Edit skills only in `source/skills/`. The other copies are built from it."
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Gap: the tool-fit line omits the MCP route",
+    "draft_lines": "8",
+    "verdict": "applied",
+    "reason": "Added 'and a server for other AI clients' without the protocol name (rule 6)",
+    "old": "- **Fits the tools you use.** Skills for Claude Code, Cursor, Codex, Gemini CLI, Kiro, Trae, OpenCode, Pi and Antigravity, and an extension for VS Code.",
+    "new": "- **Fits your coding tool.** Commands for Claude Code, Cursor, Codex, Gemini CLI, Kiro, Trae, OpenCode, Pi and Antigravity, an extension for VS Code, and a server for other AI clients."
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Gap: MCP route missing from Install and when to choose it is unsaid",
+    "draft_lines": "15, 97-99",
+    "verdict": "applied",
+    "reason": "The MCP section now opens with whom it serves; Install stays without MCP (owner, rule 8, 2026-09-25)",
+    "old": "Maestro also runs as an MCP server. Add it to your client's configuration:",
+    "new": "Other AI clients can run Maestro as an MCP server. Add it to your client's MCP config:"
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Gap: /teach-maestro in VS Code chat goes through @maestro (hypothesis)",
+    "draft_lines": "33, 121",
+    "verdict": "declined",
+    "reason": "Open owner question; default kept, and with the sidebar sentence cut Quick start no longer points VS Code users at @maestro",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "rationalizer",
+    "finding": "Gap: agent-workflow is a prerequisite if the skills CLI lets readers pick skills (hypothesis)",
+    "draft_lines": "20",
+    "verdict": "declined",
+    "reason": "task1's run installed all 25 skills with no choice offered",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "rules",
+    "finding": "Pleasant read hurt by mechanisms stated twice",
+    "draft_lines": "29, 39, 116, 120, 124",
+    "verdict": "applied",
+    "reason": "Duplicates removed at 29, 116 and 124",
+    "old": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's skills into it for every supported agent. Its sidebar sends any command to the chat in one click.",
+    "new": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's command files into it for every supported coding tool."
+  },
+  {
+    "critic": "rules",
+    "finding": "Pleasant read hurt by mechanisms stated twice",
+    "draft_lines": "29, 39, 116, 120, 124",
+    "verdict": "applied",
+    "reason": "Duplicates removed at 29, 116 and 124",
+    "old": "All but `/teach-maestro` first load `agent-workflow`, the core skill, and read your `.maestro.md`.",
+    "new": "All but `/teach-maestro` tell it to load the core skill first."
+  },
+  {
+    "critic": "rules",
+    "finding": "Pleasant read hurt by mechanisms stated twice",
+    "draft_lines": "29, 39, 116, 120, 124",
+    "verdict": "applied",
+    "reason": "Duplicates removed at 29, 116 and 124",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "rules",
+    "finding": "@maestro used unglossed in the /reflect cell (rule 2)",
+    "draft_lines": "59",
+    "verdict": "applied",
+    "reason": "The cell now says 'VS Code's chat through the extension'",
+    "old": "| `/reflect` | Shows which commands you run, finish or abandon | You run commands through the extension's `@maestro` in VS Code |",
+    "new": "| `/reflect` | Shows which commands you run, finish or abandon | You run commands in VS Code's chat through the extension |"
+  },
+  {
+    "critic": "rules",
+    "finding": "Opening bullet lists failure modes (rule 6)",
+    "draft_lines": "5",
+    "verdict": "applied",
+    "reason": "Bullet cut",
+    "old": "- **Made for LLM work.** It targets what breaks in AI systems: unstructured prompts, overstuffed context, too many tools, no evaluation, no guardrails.\n",
+    "new": ""
+  },
+  {
+    "critic": "rules",
+    "finding": "Mechanism detail spread into Quick start: 29 vs 120/124, 39 vs 116 (rule 12)",
+    "draft_lines": "29, 39, 116, 120, 124",
+    "verdict": "applied",
+    "reason": "Sidebar cut from Quick start and the .maestro.md repeat from 116; the files note stays at the install choice (a warning where the reader decides) and in the one what-it-writes line (rule 15)",
+    "old": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's skills into it for every supported agent. Its sidebar sends any command to the chat in one click.",
+    "new": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's command files into it for every supported coding tool."
+  },
+  {
+    "critic": "rules",
+    "finding": "Mechanism detail spread into Quick start: 29 vs 120/124, 39 vs 116 (rule 12)",
+    "draft_lines": "29, 39, 116, 120, 124",
+    "verdict": "applied",
+    "reason": "Sidebar cut from Quick start and the .maestro.md repeat from 116; the files note stays at the install choice (a warning where the reader decides) and in the one what-it-writes line (rule 15)",
+    "old": "All but `/teach-maestro` first load `agent-workflow`, the core skill, and read your `.maestro.md`.",
+    "new": "All but `/teach-maestro` tell it to load the core skill first."
+  },
+  {
+    "critic": "rules",
+    "finding": "Mechanism detail spread into Quick start: 29 vs 120/124, 39 vs 116 (rule 12)",
+    "draft_lines": "29, 39, 116, 120, 124",
+    "verdict": "applied",
+    "reason": "Sidebar cut from Quick start and the .maestro.md repeat from 116; the files note stays at the install choice (a warning where the reader decides) and in the one what-it-writes line (rule 15)",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "rules",
+    "finding": "MCP section's departure from the order not explained (rule 13)",
+    "draft_lines": "97",
+    "verdict": "applied",
+    "reason": "The section now opens with whom it serves",
+    "old": "Maestro also runs as an MCP server. Add it to your client's configuration:",
+    "new": "Other AI clients can run Maestro as an MCP server. Add it to your client's MCP config:"
+  },
+  {
+    "critic": "rules",
+    "finding": "Nine tools named against 'ten' and 'eight more' folders (rule 20)",
+    "draft_lines": "8, 124, 132",
+    "verdict": "applied",
+    "reason": "Counts removed; the text now says each coding tool's folder",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "rules",
+    "finding": "Nine tools named against 'ten' and 'eight more' folders (rule 20)",
+    "draft_lines": "8, 124, 132",
+    "verdict": "applied",
+    "reason": "Counts removed; the text now says each coding tool's folder",
+    "old": "npm run build   # copy the skills into the ten agent folders",
+    "new": "npm run build   # copy the skills into each coding tool's folder"
+  },
+  {
+    "critic": "sentences",
+    "finding": "Line 3's second sentence hangs three verbs off one clause",
+    "draft_lines": "3",
+    "verdict": "applied",
+    "reason": "Split in two; 'Together' keeps it from reading as every command doing all three",
+    "old": "It gives your coding agent 24 slash commands that check your prompts, context, tools and agent design, fix what is weak, and add what is missing.",
+    "new": "It gives your coding tool 24 slash commands. Together they check your prompts, context, tools and agent design, fix what is weak, and add what is missing."
+  },
+  {
+    "critic": "sentences",
+    "finding": "List runs into 'then saves'",
+    "draft_lines": "39",
+    "verdict": "applied",
+    "reason": "Split in two",
+    "old": "It asks about your models, workflow, quality checks, constraints and priorities, then saves the answers to `.maestro.md` in your project. The other commands read this file first.",
+    "new": "It asks about your models, workflow, quality checks, constraints and priorities. Then it saves your answers to `.maestro.md` in your project. The other commands read this file first."
+  },
+  {
+    "critic": "sentences",
+    "finding": "Elliptical 'then the most serious findings...'",
+    "draft_lines": "47",
+    "verdict": "applied",
+    "reason": "Three parallel verbs with a stated subject",
+    "old": "You get a score from 1 to 5 for prompts, context, tools, architecture and safety, then the most serious findings and the commands to run for them. Start with the one for your lowest score.",
+    "new": "It scores five areas from 1 to 5, lists the most serious findings and names the commands to run. Start with the one for your lowest score."
+  },
+  {
+    "critic": "sentences",
+    "finding": "Forward reference to @maestro",
+    "draft_lines": "59",
+    "verdict": "applied",
+    "reason": "Took the critic's plain wording",
+    "old": "| `/reflect` | Shows which commands you run, finish or abandon | You run commands through the extension's `@maestro` in VS Code |",
+    "new": "| `/reflect` | Shows which commands you run, finish or abandon | You run commands in VS Code's chat through the extension |"
+  },
+  {
+    "critic": "sentences",
+    "finding": "Elliptical resources clause",
+    "draft_lines": "112",
+    "verdict": "applied",
+    "reason": "Clause cut with the rationalizer's finding",
+    "old": "Your client then offers each command as a prompt, and Maestro's principles and seven reference guides as resources. Ten tools let the model fetch a command's instructions, read your `.maestro.md` and keep a decision log. The VS Code extension registers the server for you.",
+    "new": "Your client then offers each command as a prompt. The VS Code extension registers the server for you."
+  },
+  {
+    "critic": "sentences",
+    "finding": "Three code names and a carried-over subject",
+    "draft_lines": "116",
+    "verdict": "applied",
+    "reason": "Rewritten without the slug",
+    "old": "All but `/teach-maestro` first load `agent-workflow`, the core skill, and read your `.maestro.md`.",
+    "new": "All but `/teach-maestro` tell it to load the core skill first."
+  },
+  {
+    "critic": "sentences",
+    "finding": "Nested list after a colon",
+    "draft_lines": "116",
+    "verdict": "applied",
+    "reason": "Split in two",
+    "old": "The core skill holds Maestro's principles, a checklist of common mistakes and seven reference guides: prompts, context, tools, agent architecture, feedback loops, retrieval and guardrails.",
+    "new": "The core skill holds Maestro's principles and a checklist of common mistakes. It also holds seven reference guides: prompts, context, tools, agent architecture, feedback loops, retrieval and guardrails."
+  },
+  {
+    "critic": "sentences",
+    "finding": "Two actions each with two riders",
+    "draft_lines": "121",
+    "verdict": "applied",
+    "reason": "Model clause cut; one short clause per action",
+    "old": "- **`@maestro` in VS Code's chat**, which runs a command on the editor's chat model with your project context and logs each run in `.maestro/` for `/reflect`.",
+    "new": "- **`@maestro` in VS Code's chat**, which runs commands with your project context and logs runs in `.maestro/` for `/reflect`."
+  },
+  {
+    "critic": "sentences",
+    "finding": "Three code names behind an appositive",
+    "draft_lines": "122",
+    "verdict": "applied",
+    "reason": "Split into what it adds and what it writes",
+    "old": "- **Zero-Defect mode**, a switch that adds the `/zero-defect` rules to every `@maestro` request and to `CLAUDE.md`.",
+    "new": "- **Zero-Defect mode**, a switch that adds the eight precision rules to every `@maestro` request. It also writes them into `CLAUDE.md`, and in Cursor or Antigravity into their rules file."
+  },
+  {
+    "critic": "sentences",
+    "finding": "34-word sentence, the longest in the text",
+    "draft_lines": "124",
+    "verdict": "applied",
+    "reason": "Replaced by one shorter line",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "terms",
+    "finding": "'tools' in 'Fits the tools you use' reads as LLM tools",
+    "draft_lines": "8",
+    "verdict": "applied",
+    "reason": "Now 'Fits your coding tool'",
+    "old": "- **Fits the tools you use.** Skills for Claude Code, Cursor, Codex, Gemini CLI, Kiro, Trae, OpenCode, Pi and Antigravity, and an extension for VS Code.",
+    "new": "- **Fits your coding tool.** Commands for Claude Code, Cursor, Codex, Gemini CLI, Kiro, Trae, OpenCode, Pi and Antigravity, an extension for VS Code, and a server for other AI clients."
+  },
+  {
+    "critic": "terms",
+    "finding": "'agent' also names the host tool; use 'coding tool'",
+    "draft_lines": "3, 17, 29, 33, 71, 116, 124, 128, 132",
+    "verdict": "applied",
+    "reason": "The host is now 'coding tool' throughout, so 'agent' means only the reader's product",
+    "old": "It gives your coding agent 24 slash commands that check your prompts, context, tools and agent design, fix what is weak, and add what is missing.",
+    "new": "It gives your coding tool 24 slash commands. Together they check your prompts, context, tools and agent design, fix what is weak, and add what is missing."
+  },
+  {
+    "critic": "terms",
+    "finding": "'agent' also names the host tool; use 'coding tool'",
+    "draft_lines": "3, 17, 29, 33, 71, 116, 124, 128, 132",
+    "verdict": "applied",
+    "reason": "The host is now 'coding tool' throughout, so 'agent' means only the reader's product",
+    "old": "**Skills**, the command files themselves, for any supported agent:",
+    "new": "**Command files** for any supported coding tool. Run this from your project's root:"
+  },
+  {
+    "critic": "terms",
+    "finding": "'agent' also names the host tool; use 'coding tool'",
+    "draft_lines": "3, 17, 29, 33, 71, 116, 124, 128, 132",
+    "verdict": "applied",
+    "reason": "The host is now 'coding tool' throughout, so 'agent' means only the reader's product",
+    "old": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's skills into it for every supported agent. Its sidebar sends any command to the chat in one click.",
+    "new": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's command files into it for every supported coding tool."
+  },
+  {
+    "critic": "terms",
+    "finding": "'agent' also names the host tool; use 'coding tool'",
+    "draft_lines": "3, 17, 29, 33, 71, 116, 124, 128, 132",
+    "verdict": "applied",
+    "reason": "The host is now 'coding tool' throughout, so 'agent' means only the reader's product",
+    "old": "In your agent's chat, once per project:",
+    "new": "Once per project:"
+  },
+  {
+    "critic": "terms",
+    "finding": "'agent' also names the host tool; use 'coding tool'",
+    "draft_lines": "3, 17, 29, 33, 71, 116, 124, 128, 132",
+    "verdict": "applied",
+    "reason": "The host is now 'coding tool' throughout, so 'agent' means only the reader's product",
+    "old": "| `/zero-defect` | Holds your coding agent to eight precision rules for the rest of the session | Critical work: deploys, security, money |",
+    "new": "| `/zero-defect` | Asks your coding tool to follow eight precision rules | Critical work: deploys, security, money |"
+  },
+  {
+    "critic": "terms",
+    "finding": "'agent' also names the host tool; use 'coding tool'",
+    "draft_lines": "3, 17, 29, 33, 71, 116, 124, 128, 132",
+    "verdict": "applied",
+    "reason": "The host is now 'coding tool' throughout, so 'agent' means only the reader's product",
+    "old": "Each command is a skill: a Markdown file of instructions your agent follows with its own tools.",
+    "new": "Each command is a skill: a Markdown file of instructions your coding tool follows."
+  },
+  {
+    "critic": "terms",
+    "finding": "'agent' also names the host tool; use 'coding tool'",
+    "draft_lines": "3, 17, 29, 33, 71, 116, 124, 128, 132",
+    "verdict": "applied",
+    "reason": "The host is now 'coding tool' throughout, so 'agent' means only the reader's product",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "terms",
+    "finding": "'agent' also names the host tool; use 'coding tool'",
+    "draft_lines": "3, 17, 29, 33, 71, 116, 124, 128, 132",
+    "verdict": "applied",
+    "reason": "The host is now 'coding tool' throughout, so 'agent' means only the reader's product",
+    "old": "Edit skills only in `source/skills/`. The agent folders, the extension and the MCP server all build their copies from there.",
+    "new": "Edit skills only in `source/skills/`. The other copies are built from it."
+  },
+  {
+    "critic": "terms",
+    "finding": "'agent' also names the host tool; use 'coding tool'",
+    "draft_lines": "3, 17, 29, 33, 71, 116, 124, 128, 132",
+    "verdict": "applied",
+    "reason": "The host is now 'coding tool' throughout, so 'agent' means only the reader's product",
+    "old": "npm run build   # copy the skills into the ten agent folders",
+    "new": "npm run build   # copy the skills into each coding tool's folder"
+  },
+  {
+    "critic": "terms",
+    "finding": "MCP 'prompt' misparsed; say 'slash command'",
+    "draft_lines": "112",
+    "verdict": "declined",
+    "reason": "'prompt' is the word this section's reader knows, and clients show prompts in different places, so 'slash command' would not hold for all",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "terms",
+    "finding": "Drop the agent-workflow slug, keep 'the core skill'",
+    "draft_lines": "116",
+    "verdict": "applied",
+    "reason": "Slug dropped",
+    "old": "All but `/teach-maestro` first load `agent-workflow`, the core skill, and read your `.maestro.md`.",
+    "new": "All but `/teach-maestro` tell it to load the core skill first."
+  },
+  {
+    "critic": "terms",
+    "finding": "'Skills' used before it is defined; say 'Commands'",
+    "draft_lines": "8, 17",
+    "verdict": "applied",
+    "reason": "The opening says 'Commands' and Install 'Command files'",
+    "old": "- **Fits the tools you use.** Skills for Claude Code, Cursor, Codex, Gemini CLI, Kiro, Trae, OpenCode, Pi and Antigravity, and an extension for VS Code.",
+    "new": "- **Fits your coding tool.** Commands for Claude Code, Cursor, Codex, Gemini CLI, Kiro, Trae, OpenCode, Pi and Antigravity, an extension for VS Code, and a server for other AI clients."
+  },
+  {
+    "critic": "terms",
+    "finding": "'Skills' used before it is defined; say 'Commands'",
+    "draft_lines": "8, 17",
+    "verdict": "applied",
+    "reason": "The opening says 'Commands' and Install 'Command files'",
+    "old": "**Skills**, the command files themselves, for any supported agent:",
+    "new": "**Command files** for any supported coding tool. Run this from your project's root:"
+  },
+  {
+    "critic": "terms",
+    "finding": "skill and command name one artifact twice; use 'command'",
+    "draft_lines": "8, 17, 29, 116, 124, 128, 132",
+    "verdict": "applied",
+    "reason": "Reader-facing text now says command or command files; 'skill' stays where How it works defines it and for contributors, who edit SKILL.md files",
+    "old": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's skills into it for every supported agent. Its sidebar sends any command to the chat in one click.",
+    "new": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's command files into it for every supported coding tool."
+  },
+  {
+    "critic": "terms",
+    "finding": "skill and command name one artifact twice; use 'command'",
+    "draft_lines": "8, 17, 29, 116, 124, 128, 132",
+    "verdict": "applied",
+    "reason": "Reader-facing text now says command or command files; 'skill' stays where How it works defines it and for contributors, who edit SKILL.md files",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "terms",
+    "finding": "Host named agent, editor and client, and its chat four ways; use 'coding tool' everywhere",
+    "draft_lines": "3, 29, 33, 99, 112, 120, 121",
+    "verdict": "declined",
+    "reason": "'coding tool' is applied (see the 'agent' finding); 'editor' stays for the extension and 'client' in the MCP section, where each is the exact word, and two of the four chat mentions were cut",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "terms",
+    "finding": "The /capture record named five ways; use 'session log'",
+    "draft_lines": "9, 94, 95, 112, 124",
+    "verdict": "applied",
+    "reason": "Named 'session notes' in the /capture and /recap rows and the what-it-writes line; 'logs' stays for the separate JSONL logs; 'decision log' went with the cut tools sentence",
+    "old": "| `/capture` | Saves what the session did, decided and left open | At the end of a session |",
+    "new": "| `/capture` | Saves session notes: what you did, decided and left open | At the end of a session |"
+  },
+  {
+    "critic": "terms",
+    "finding": "The /capture record named five ways; use 'session log'",
+    "draft_lines": "9, 94, 95, 112, 124",
+    "verdict": "applied",
+    "reason": "Named 'session notes' in the /capture and /recap rows and the what-it-writes line; 'logs' stays for the separate JSONL logs; 'decision log' went with the cut tools sentence",
+    "old": "| `/recap` | Reads the last saved session back and says where to resume | At the start of the next |",
+    "new": "| `/recap` | Reads your last session notes back and says where to resume | At the start of the next |"
+  },
+  {
+    "critic": "terms",
+    "finding": "The /capture record named five ways; use 'session log'",
+    "draft_lines": "9, 94, 95, 112, 124",
+    "verdict": "applied",
+    "reason": "Named 'session notes' in the /capture and /recap rows and the what-it-writes line; 'logs' stays for the separate JSONL logs; 'decision log' went with the cut tools sentence",
+    "old": "Your client then offers each command as a prompt, and Maestro's principles and seven reference guides as resources. Ten tools let the model fetch a command's instructions, read your `.maestro.md` and keep a decision log. The VS Code extension registers the server for you.",
+    "new": "Your client then offers each command as a prompt. The VS Code extension registers the server for you."
+  },
+  {
+    "critic": "terms",
+    "finding": "The /capture record named five ways; use 'session log'",
+    "draft_lines": "9, 94, 95, 112, 124",
+    "verdict": "applied",
+    "reason": "Named 'session notes' in the /capture and /recap rows and the what-it-writes line; 'logs' stays for the separate JSONL logs; 'decision log' went with the cut tools sentence",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "terms",
+    "finding": "The zero-defect rule set named three ways; use 'the eight precision rules'",
+    "draft_lines": "71, 122, 124",
+    "verdict": "applied",
+    "reason": "The table and the Zero-Defect bullet both say 'eight precision rules'; line 124's third name is gone",
+    "old": "- **Zero-Defect mode**, a switch that adds the `/zero-defect` rules to every `@maestro` request and to `CLAUDE.md`.",
+    "new": "- **Zero-Defect mode**, a switch that adds the eight precision rules to every `@maestro` request. It also writes them into `CLAUDE.md`, and in Cursor or Antigravity into their rules file."
+  },
+  {
+    "critic": "terms",
+    "finding": "The zero-defect rule set named three ways; use 'the eight precision rules'",
+    "draft_lines": "71, 122, 124",
+    "verdict": "applied",
+    "reason": "The table and the Zero-Defect bullet both say 'eight precision rules'; line 124's third name is gone",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "terms",
+    "finding": "'architecture' vs 'agent architecture', 'safety' vs 'guardrails' vs 'safeguards'",
+    "draft_lines": "5, 47, 92, 116",
+    "verdict": "applied",
+    "reason": "Line 47's area names cut and line 92 now says 'guardrails'",
+    "old": "You get a score from 1 to 5 for prompts, context, tools, architecture and safety, then the most serious findings and the commands to run for them. Start with the one for your lowest score.",
+    "new": "It scores five areas from 1 to 5, lists the most serious findings and names the commands to run. Start with the one for your lowest score."
+  },
+  {
+    "critic": "terms",
+    "finding": "'architecture' vs 'agent architecture', 'safety' vs 'guardrails' vs 'safeguards'",
+    "draft_lines": "5, 47, 92, 116",
+    "verdict": "applied",
+    "reason": "Line 47's area names cut and line 92 now says 'guardrails'",
+    "old": "| `/specialize` | Adds a field's terminology, regulations, evaluation and safeguards | Your app serves law, medicine or another field |",
+    "new": "| `/specialize` | Adds a field's terminology, regulations, evaluation and guardrails | Your app serves law, medicine or another field |"
+  },
+  {
+    "critic": "terms",
+    "finding": "The MCP config named two ways; use 'your MCP config'",
+    "draft_lines": "99, 124",
+    "verdict": "applied",
+    "reason": "Line 99 says 'your client's MCP config'; line 124 now names the one file the extension writes, .vscode/mcp.json",
+    "old": "Maestro also runs as an MCP server. Add it to your client's configuration:",
+    "new": "Other AI clients can run Maestro as an MCP server. Add it to your client's MCP config:"
+  },
+  {
+    "critic": "terms",
+    "finding": "The MCP config named two ways; use 'your MCP config'",
+    "draft_lines": "99, 124",
+    "verdict": "applied",
+    "reason": "Line 99 says 'your client's MCP config'; line 124 now names the one file the extension writes, .vscode/mcp.json",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "truth-1",
+    "finding": "Sidebar 'any command... in one click' refuted: 16 of 24 sit in collapsed groups",
+    "draft_lines": "29",
+    "verdict": "applied",
+    "reason": "Cut from Quick start",
+    "old": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's skills into it for every supported agent. Its sidebar sends any command to the chat in one click.",
+    "new": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's command files into it for every supported coding tool."
+  },
+  {
+    "critic": "truth-1",
+    "finding": "'writes Maestro's skills' overstated: SKILL.md only, no reference guides",
+    "draft_lines": "29",
+    "verdict": "applied",
+    "reason": "Now 'writes Maestro's command files'",
+    "old": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's skills into it for every supported agent. Its sidebar sends any command to the chat in one click.",
+    "new": "Cursor and Antigravity get it from Open VSX. Each time you open a project, the extension writes Maestro's command files into it for every supported coding tool."
+  },
+  {
+    "critic": "truth-1",
+    "finding": "Line 7's guarantee reaches level 2 only",
+    "draft_lines": "7",
+    "verdict": "applied",
+    "reason": "Said less: /diagnose maps the problems it finds to commands; the 'each command suggests the next' clause cut",
+    "old": "- **From finding to fix.** `/diagnose` names the command for each gap, and each command suggests the next.",
+    "new": "- **From finding to fix.** `/diagnose` maps the problems it finds to the commands that fix them."
+  },
+  {
+    "critic": "truth-2",
+    "finding": "'Each command ends by suggesting what to run next' overstated",
+    "draft_lines": "51",
+    "verdict": "applied",
+    "reason": "Cut",
+    "old": "Each command ends by suggesting what to run next.\n\n",
+    "new": ""
+  },
+  {
+    "critic": "truth-2",
+    "finding": "'names the command for each gap' overstated",
+    "draft_lines": "57",
+    "verdict": "applied",
+    "reason": "Now 'maps gaps to commands'",
+    "old": "| `/diagnose` | Scores five areas from 1 to 5 and names the command for each gap | You need a baseline |",
+    "new": "| `/diagnose` | Scores five areas and maps gaps to commands | You need a baseline |"
+  },
+  {
+    "critic": "truth-2",
+    "finding": "'without changing behavior' contradicted by the skill's own checklist",
+    "draft_lines": "67",
+    "verdict": "applied",
+    "reason": "Cut; followed truth-2 over the rationalizer's keep, since a false limit protects no one",
+    "old": "| `/refine` | Polishes prompts, tool descriptions, errors, logs and config without changing behavior | Your app works and you are about to ship |",
+    "new": "| `/refine` | Gives prompts, tool descriptions, errors, logs and config a final polish | Your app works and you are about to ship |"
+  },
+  {
+    "critic": "truth-2",
+    "finding": "'for the rest of the session' refuted on VS Code's @maestro",
+    "draft_lines": "71",
+    "verdict": "applied",
+    "reason": "Now 'Asks your coding tool to follow eight precision rules'",
+    "old": "| `/zero-defect` | Holds your coding agent to eight precision rules for the rest of the session | Critical work: deploys, security, money |",
+    "new": "| `/zero-defect` | Asks your coding tool to follow eight precision rules | Critical work: deploys, security, money |"
+  },
+  {
+    "critic": "truth-3",
+    "finding": "'first load agent-workflow' overstated: @maestro never loads the core skill",
+    "draft_lines": "116",
+    "verdict": "applied",
+    "reason": "Now 'tell it to load the core skill first'",
+    "old": "All but `/teach-maestro` first load `agent-workflow`, the core skill, and read your `.maestro.md`.",
+    "new": "All but `/teach-maestro` tell it to load the core skill first."
+  },
+  {
+    "critic": "truth-3",
+    "finding": "'logs each run' refuted and 'the editor's chat model' overstated",
+    "draft_lines": "121",
+    "verdict": "applied",
+    "reason": "Model clause cut; 'logs runs'",
+    "old": "- **`@maestro` in VS Code's chat**, which runs a command on the editor's chat model with your project context and logs each run in `.maestro/` for `/reflect`.",
+    "new": "- **`@maestro` in VS Code's chat**, which runs commands with your project context and logs runs in `.maestro/` for `/reflect`."
+  },
+  {
+    "critic": "truth-3",
+    "finding": "Extension writes overstated: no reference guides; only .vscode/mcp.json, replaced on later starts",
+    "draft_lines": "124",
+    "verdict": "applied",
+    "reason": "Now 'the command files' and the exact file .vscode/mcp.json; the replacement on later starts is not added as a condition (rule 21) and stays an open defect for the owner",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "reader-Q3",
+    "finding": "Answered from Install",
+    "draft_lines": "",
+    "verdict": "no finding",
+    "reason": "Nothing to change",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "reader-Q4",
+    "finding": "Answered from First run",
+    "draft_lines": "",
+    "verdict": "no finding",
+    "reason": "Nothing to change",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "reader-Q5",
+    "finding": "Answered from the Fix and harden table",
+    "draft_lines": "",
+    "verdict": "no finding",
+    "reason": "Nothing to change",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "reader-Q6",
+    "finding": "Answer blurred who writes what and missed the MCP config write",
+    "draft_lines": "29, 124",
+    "verdict": "applied",
+    "reason": "The one what-it-writes line now names the writer of each file, .vscode/mcp.json included",
+    "old": "Maestro writes `.maestro.md` plus session notes and logs in `.maestro/`. The extension also writes the skills into each agent's folder (`.claude/skills/`, `.cursor/skills/` and eight more), its server entry into your MCP config, and the Zero-Defect rules into `CLAUDE.md` and Cursor's or Antigravity's rules file.",
+    "new": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`."
+  },
+  {
+    "critic": "task1",
+    "finding": "Wished-for: say to run the install from the project root",
+    "draft_lines": "16-21",
+    "verdict": "applied",
+    "reason": "Added 'Run this from your project's root'",
+    "old": "**Skills**, the command files themselves, for any supported agent:",
+    "new": "**Command files** for any supported coding tool. Run this from your project's root:"
+  },
+  {
+    "critic": "task1",
+    "finding": "Wished-for: say to answer y if npx asks to install the skills package",
+    "draft_lines": "20",
+    "verdict": "declined",
+    "reason": "A standard npx prompt the reader knows (rule 2), and the fresh reader answered it unaided",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "task1",
+    "finding": "Wished-for: say the installer auto-detects Claude Code and links .claude/skills",
+    "draft_lines": "16-21",
+    "verdict": "declined",
+    "reason": "Third-party installer detail the reader doesn't act on (rule 8), not in the snapshot's code",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "task1",
+    "finding": "Goal achieved; no untrue sentence observed",
+    "draft_lines": "",
+    "verdict": "no finding",
+    "reason": "Nothing to change",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "writer",
+    "finding": "Dropped 'with its own tools' from the skill definition",
+    "draft_lines": "116",
+    "verdict": "applied",
+    "reason": "'tools' there also reads as the model's tools, and @maestro calls the model with none (truth-1, level 3)",
+    "old": "Each command is a skill: a Markdown file of instructions your agent follows with its own tools.",
+    "new": "Each command is a skill: a Markdown file of instructions your coding tool follows."
+  },
+  {
+    "critic": "writer",
+    "finding": "Install labels made parallel: no comma after the extension label",
+    "draft_lines": "23",
+    "verdict": "applied",
+    "reason": "The two route labels now read the same way",
+    "old": "**VS Code extension**, for VS Code, Cursor and Antigravity:",
+    "new": "**VS Code extension** for VS Code, Cursor and Antigravity:"
+  },
+  {
+    "critic": "check-truth",
+    "finding": "Line 6 overstated: two rows of /diagnose's map send gaps to commands that do not fix them",
+    "draft_lines": "6",
+    "verdict": "applied",
+    "reason": "Took the critic's shortest true sentence",
+    "old": "- **From finding to fix.** `/diagnose` maps the problems it finds to the commands that fix them.",
+    "new": "- **From finding to fix.** `/diagnose` maps what it finds to Maestro commands."
+  },
+  {
+    "critic": "check-truth",
+    "finding": "Line 121 refuted as a list of writes: the server also goes to other MCP configs, .vscode/mcp.json is replaced, and command files also come from the skills CLI",
+    "draft_lines": "121",
+    "verdict": "applied",
+    "reason": "The line now says only what the commands write; each route's writes stay beside that route (rule 8), and the .vscode/mcp.json overwrite, which no short true sentence can state (rule 21), stays a code defect for the owner",
+    "old": "What gets written to your project: `.maestro.md` from `/teach-maestro`, session notes and logs in `.maestro/`, and with the extension, the command files for each coding tool and its server in `.vscode/mcp.json`.",
+    "new": "As you work, `/teach-maestro` writes `.maestro.md` and `/capture` writes session notes and logs in `.maestro/`."
+  },
+  {
+    "critic": "check-truth",
+    "finding": "In passing: the extension installs no reference guides, though line 113 names seven",
+    "draft_lines": "113",
+    "verdict": "no finding",
+    "reason": "The critic proposes no change; line 113 describes the core skill as source/skills and the skills CLI ship it, and the extension's gap is a code defect for the owner",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "cold-astra",
+    "finding": "'hold up in production' promises more than the README demonstrates",
+    "draft_lines": "3",
+    "verdict": "declined",
+    "reason": "Rule 4 asks the opening for the mission, and the demonstration asked for would be a result, which rule 16 excludes",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "cold-astra",
+    "finding": "Points 2, 3 and 7 are praise",
+    "draft_lines": "38, 79, 113",
+    "verdict": "no finding",
+    "reason": "Nothing to change",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "cold-astra",
+    "finding": "No Node.js/npm prerequisites or versions at the install command",
+    "draft_lines": "18-20",
+    "verdict": "declined",
+    "reason": "Rule 3: a prerequisite or version is excluded; a reader without npx knows why it fails",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "cold-astra",
+    "finding": "Name the five areas /diagnose scores",
+    "draft_lines": "46",
+    "verdict": "applied",
+    "reason": "Named with /diagnose's own report labels; the table row's 'five areas' still agrees",
+    "old": "It scores five areas from 1 to 5, lists the most serious findings and names the commands to run.",
+    "new": "It scores prompts, context, tools, architecture and safety from 1 to 5, lists the most serious findings and names the commands to run."
+  },
+  {
+    "critic": "cold-astra",
+    "finding": "Show sample /diagnose output",
+    "draft_lines": "46",
+    "verdict": "declined",
+    "reason": "Rule 18 (no invented examples) and rule 16 (no excerpts of a run's output)",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "cold-astra",
+    "finding": "Say whether the extension's writes merge with or overwrite existing files",
+    "draft_lines": "28",
+    "verdict": "applied",
+    "reason": "The command files are rewritten on every open (extension.ts:215-241), so the line now says 'a fresh copy'; the .vscode/mcp.json overwrite stays with the owner as a code defect (rule 21)",
+    "old": "Each time you open a project, the extension writes Maestro's command files into it for every supported coding tool.",
+    "new": "Each time you open a project, the extension writes a fresh copy of Maestro's command files into it for every supported coding tool."
+  },
+  {
+    "critic": "cold-astra",
+    "finding": "Say how to turn the automatic writes off",
+    "draft_lines": "28",
+    "verdict": "declined",
+    "reason": "Rule 15: no troubleshooting; the code has no setting for it, so the only way is uninstalling, which the rules exclude",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "cold-sol",
+    "finding": "Strengths 1-10 are praise",
+    "draft_lines": "3, 6, 16-19, 38, 46, 52, 66-67, 96, 113, 121",
+    "verdict": "no finding",
+    "reason": "Nothing to change; strength 10 praised line 121, which check-truth refuted and which now says less",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "cold-sol",
+    "finding": "Production claim not backed by an example, benchmark or sample result",
+    "draft_lines": "3",
+    "verdict": "declined",
+    "reason": "Rule 16 excludes results and benchmarks; rule 4 keeps the mission line",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "cold-sol",
+    "finding": "No Node.js/npm prerequisites or version for the command-file install",
+    "draft_lines": "18-20",
+    "verdict": "declined",
+    "reason": "Rule 3: a prerequisite or version is excluded",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "cold-sol",
+    "finding": "One install command shown for three editors, then Open VSX for two of them",
+    "draft_lines": "22-28",
+    "verdict": "applied",
+    "reason": "The command now follows 'In VS Code, run:'; the Open VSX line serves the other two",
+    "old": "**VS Code extension** for VS Code, Cursor and Antigravity:",
+    "new": "**VS Code extension** for VS Code, Cursor and Antigravity. In VS Code, run:"
+  },
+  {
+    "critic": "cold-sol",
+    "finding": "No way given to disable, remove or reverse the generated files",
+    "draft_lines": "28",
+    "verdict": "declined",
+    "reason": "Rule 15: no troubleshooting or uninstall steps",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "cold-sol",
+    "finding": "MCP section sends readers to npm for the tool list and HTTP mode",
+    "draft_lines": "109",
+    "verdict": "declined",
+    "reason": "Rule 8 lets a narrower route link out for depth, and the purpose asks for the npm link rather than a repeat; the model calls the tools, not the reader",
+    "old": "",
+    "new": ""
+  },
+  {
+    "critic": "cold-sol",
+    "finding": "Contributing lacks tests, style expectations and process",
+    "draft_lines": "123-130",
+    "verdict": "declined",
+    "reason": "The purpose limits it to where to edit skills and how to check and build them; the repo documents no style guide or process to point to (rule 18), and its tests cover extension and core code, not skills",
+    "old": "",
+    "new": ""
+  }
+]

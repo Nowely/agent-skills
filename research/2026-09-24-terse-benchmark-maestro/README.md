@@ -40,6 +40,12 @@ come out better or worse than one a bare agent writes, and how far is either fro
 pleasant to read — and a pleasantness mark that failed its calibration on A, B and C became the tasks the pages now
 carry.
 
+## The one path, iteration D2 (2026-09-25)
+
+The same README after the pages took the owner's first criterion, the sentence rules and a check after the repair:
+1 h 33 min, 926 visible words, median sentence 10 words (C 11), 10 sentences refuted on the draft against D's 22
+(`one-path-2/README.md`). Who changed what, edit by edit: `one-path-2/impact.html`.
+
 - **Files**: `rounds.md`, every agent with its cost; `prompts/`, every brief as sent; `rethink/`, arm B's rethink run
   (`…/20260924-125421-maestro-readme-rethink` under `$TMPDIR/terse/runs/`) — the stand-in's answers, the purpose, the
   three surveys and the synthesis, the words, ten structures, two critics, the base, skeletons 01 and 02 with their

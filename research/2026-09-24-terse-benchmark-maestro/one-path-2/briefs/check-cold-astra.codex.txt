@@ -1,0 +1,6 @@
+RIGHTS: read /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/readme-review-D2
+MODEL: gpt-6-astra
+EFFORT: high
+TASK: You are a fresh reader. Read ONE file, with cat, and nothing else: /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/readme-review-D2/README.md. Assess the quality of this README. Quote the line for every point you make.
+CHECK: every quote is in the file you read.
+RETURN: your assessment, in plain text.
