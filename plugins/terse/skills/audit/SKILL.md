@@ -143,27 +143,18 @@ Report the score with its own limits beside it. If the baseline is a perfect sco
 instrument with no room above cannot register an improvement, and a later "the score did not fall" will
 mean nothing. A zero can rise; report it and go on.
 
-Write the run file to `$RUN/audit.md` using the section contract in
-[ledgers.md](references/ledgers.md). Under *Claim ledger*, write the entries a second time as the
-`json claims` block that reference describes: `rewrite` turns the confirmed and refuted ones into the
-ratchet it starts from, and a restatement in prose is not a string a pattern can find. Then:
-
-```bash
-# $A is this skill's scripts/: installed, $CLAUDE_PLUGIN_ROOT/skills/audit/scripts; from a checkout,
-# the scripts/ beside this file
-node "$A/ledger-seed.mjs" "$RUN/audit.md" "$RUN/ledger.json"
-```
+Write the run file to `$RUN/audit.md` using the section contract in [ledgers.md](references/ledgers.md):
+`rewrite` is given this run's directory, and its writer works from that file.
 
 Report to the user, first, what the cold readers found hard to read, with its lines; then the score, the
-failures with their causes, the refuted claims, the count the seed printed, the absolute path, and the
-shape verdict; in a light run, also that nothing was run, so no claim is above level 2 and no recipe was
-tried. It is `shape: agreed` only on the user's word: that
-they agree to a named plan (`rethink` step 5), whose path and SHA-256 go into the run file, or, quoted,
-that the document's current shape stands. A plan they read without saying they agree to it is not
-agreement; anything short of their word is `shape: not agreed`. Agreed, offer `rewrite` as the next
-step. Not agreed, offer `/terse:rethink`, and say why not `rewrite` alone: on
-2026-09-11, and on 2026-09-23 after four rounds of `rewrite` on this plugin's own README, a document
-written on a shape nobody agreed was rejected for its content, not its phrasing
+failures with their causes, the refuted claims, the absolute path, and the shape verdict; in a light run,
+also that nothing was run, so no claim is above level 2 and no recipe was tried. It is `shape: agreed`
+only on the user's word: that they agree to a named plan (`rethink` step 5), whose path and SHA-256 go
+into the run file, or, quoted, that the document's current shape stands. A plan they read without saying
+they agree to it is not agreement; anything short of their word is `shape: not agreed`. Agreed, offer
+`rewrite` as the next step, given this run's directory. Not agreed, offer `/terse:rethink`, and say why
+not `rewrite` alone: on 2026-09-11, and on 2026-09-23 after four rounds of `rewrite` on this plugin's own
+README, a document written on a shape nobody agreed was rejected for its content, not its phrasing
 (`research/2026-09-22-terse-process/`). Run neither.
 
 ## Reference
@@ -173,4 +164,3 @@ written on a shape nobody agreed was rejected for its content, not its phrasing
 - Evidence levels, guarantee words, verdicts: [truth.md](../../references/truth.md).
 - The reader protocol and re-measurement: [measure.md](references/measure.md).
 - Entry formats and the run file contract: [ledgers.md](references/ledgers.md).
-- The claim ledger turned into `rewrite`'s ratchet: [scripts/ledger-seed.mjs](scripts/ledger-seed.mjs).

@@ -7,6 +7,13 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- `rewrite` takes an audit's run: step 1 asks for its directory, whose reader profile and shape verdict answer
+  what they cover, and the writer answers what the audit found hard to read, every failure under What broke and
+  every refuted claim. The audit no longer writes the `json claims` block or runs `ledger-seed.mjs`, and its run
+  file's contract no longer lists two ledgers `rewrite` returned under the sequential path: since the one path,
+  nothing read the ratchet the block seeded, so the README's "give it the folder the report names" led nowhere
+  and an audit's findings were lost on the way to `rewrite`. The script still ships, called by no page, until the
+  old path's scripts are decided on at the release.
 - `audit` puts a pleasant read first and runs light by default, as `rewrite` has since 2026-09-25. Two cold
   readers, brief 11, read the entry file in the same launch as the question readers; what they found hard to
   read, each point with its line, opens the report and the run file's new *A pleasant read* heading, with no

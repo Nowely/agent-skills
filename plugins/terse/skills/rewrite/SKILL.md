@@ -18,6 +18,8 @@ your read. Each critic holds one concern, so none waits for another. Every role 
 
 Ask once, in one message, and announce the run in the same message:
 
+- the directory of an `audit` run of this text, if there is one: its reader profile and shape verdict
+  answer what they cover below, and only the rest is asked;
 - what the text is for and who reads it, in their words;
 - anything the text must say or must not say;
 - any rule of `rules.md` they set aside for this text;
@@ -42,7 +44,8 @@ Nothing goes into the repository without the user's word.
 ## Step 3. The draft
 
 The writer, brief 1 of `roles.md`: from the code, the rules, the purpose, the genre's notes, the
-existing text if any, and the plan the user agreed in `rethink` if they give its path. It writes its
+existing text if any, the plan the user agreed in `rethink` if they give its path, and the audit's run
+file if they gave its directory. It writes its
 plan's word budgets to `budgets.json` before the text, then `01-draft.md`, and returns the plan with its
 evidence; save that as `writer-notes.md`. In full mode the harness, brief 12, runs beside it. Where the
 genre has no notes in [genres/](../../references/genres/), the genre scout, brief 2, runs beside it; its

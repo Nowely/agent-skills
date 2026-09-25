@@ -1,8 +1,8 @@
-# The run file and the three ledgers
+# The run file and its claim ledger
 
 `audit` and `rewrite` are two skills and two invocations, possibly two sessions. Nothing passes between
 them except one file, so the file has a contract: fixed headings, fixed order, no renaming. `rewrite` is
-given the directory and reads the headings by name.
+given the directory, and its writer reads the file.
 
 ## The run file
 
@@ -21,7 +21,7 @@ What the cold readers found hard or unpleasant to read, each point with its line
 The nine sections, as confirmed by the user; the last, what the document is for, in their own words.
 
 ## Claim ledger
-Entries C01, C02, … in document order, then the `json claims` block that carries the same entries.
+Entries C01, C02, … in document order.
 
 ## Questions and answer key
 Each question, its correct answer, the ledger entries that support it, and whether it is a control.
@@ -41,9 +41,9 @@ One entry per wrong answer, each with a cause.
 What could not be settled, and anything the steps contradicted each other about.
 ```
 
-Three headings are load-bearing for `rewrite`: **Score** carries the shape verdict that decides whether
-it starts, **Reader profile** is the brief it writes to, and **What broke** is the fourth part of its
-chain. Without the last two it is three parts of a four-part method, and it has to say so.
+`rewrite`'s writer acts on five headings: **Reader profile** is who it writes for; **A pleasant read**,
+**What broke** and the refuted entries of the **Claim ledger** are what the text must answer; and
+**Score** carries the shape verdict, whether the text's shape stands.
 
 ## Claim ledger entry
 
@@ -66,32 +66,6 @@ Position: misplaced — sends the reader to look the number up instead of statin
 - **Level** is 1, 2 or 3, as reached — see [truth.md](../../../references/truth.md).
 - **Verdict** is confirmed, refuted or unconfirmed. A refuted entry names what contradicts it.
 - **Position** appears only when the claim is true and read where it misleads.
-
-## The `json claims` block
-
-`rewrite` seeds its ratchet from this ledger, so the entries are written twice: as the prose above, for
-a reader, and once more as one fenced block at the end of the same heading, for
-`audit/scripts/ledger-seed.mjs`. The restatement a reader needs is not the string a pattern can match,
-which is why the block carries `sentence` — the document's own words, copied, wrapping and all.
-
-````markdown
-```json claims
-[
- {"id": "C07", "where": "README.md:46", "sentence": "The installer requires Node at or above the version package.json declares.",
-  "claim": "the installer requires the declared Node version", "level": 2, "verdict": "confirmed",
-  "sources": "package.json:1-9; skills/codex/scripts/driver.mjs:24-29"}
-]
-```
-````
-
-The block sits under *Claim ledger* and beside the `### C..` entries it doubles, and every field of the
-entry format above is in it whatever the verdict — an unconfirmed claim states its level, its
-restatement and its sources like any other. `ledger-seed.mjs` refuses the run file on each of those:
-a block under another heading, a *Claim ledger* with no entries under it, an id in one half and not the
-other, a field left out. `ledger-seed.mjs AUDIT.md LEDGER.json` then writes
-every confirmed entry as `want: true` and every refuted one as `want: false`, each pattern the sentence
-escaped to a literal over whitespace-normalised text; unconfirmed entries are listed on stderr and
-seeded nowhere, since neither presence nor absence of them is a result.
 
 ## Reader results
 
@@ -117,25 +91,3 @@ Repair must: correct the scope sentence and remove both guarantees at their sour
 
 Name the cause with one of the five words — refuted, missing, placement, findability, harmful — because
 `rewrite` treats them differently. Name the ledger entries involved. State what a repair must achieve, not how to word it.
-
-## The two ledgers `rewrite` returns
-
-**Cut ledger.** Every removed passage of twenty words or more: where it was, what it said, and why it
-went. A cut without a reason is indistinguishable from losing something.
-
-```markdown
-### Cut 4 — README.md:118-124, 31 words
-
-What it said: the argument for declaring rights per call, restated beside the rights table.
-
-Why: the case for an instruction lives in one place; the instruction stays.
-```
-
-**Invisible prerequisites.** One numbered item per thing a reader must already know, each with the
-repair. The 2026-09-10 run found twenty-four on one README. The items you almost did not write down are
-the ones that matter.
-
-```markdown
-3. **Configuration versus prerequisites.** A reader treats every item under a heading named
-   Prerequisites as mandatory. State at the install decision that the optional file need not be created.
-```
