@@ -1,6 +1,6 @@
 # The measurements behind the rules
 
-Every rule in `SKILL.md` and [loop.md](loop.md) rests on something that happened, dated. This file keeps
+Every rule in `SKILL.md` and [loop.md](../skills/rewrite/references/loop.md) rests on something that happened, dated. This file keeps
 those events so the rules can be re-examined and so the skill's own text does not have to carry them.
 M1 to M23 are from one README and one owner, 2026-09-10 to 2026-09-12, `research/2026-09-11-markup-round-0/`;
 M24 and M25 from the run of 2026-09-22/23 on this plugin's README, `research/2026-09-22-terse-process/`. One

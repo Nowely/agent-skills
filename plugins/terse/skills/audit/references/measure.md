@@ -88,7 +88,7 @@ right answer found by reading the source is a documentation failure with a corre
 
 Then give every wrong answer a cause — refuted, missing, placement, findability or harmful. The five are defined
 in Step 6 of [SKILL.md](../SKILL.md), the evidence rules behind `refuted` are in
-[truth-pass.md](truth-pass.md), and the ledger entry in [ledgers.md](ledgers.md) records which one.
+[truth.md](../../../references/truth.md), and the ledger entry in [ledgers.md](ledgers.md) records which one.
 `missing` is the one most easily mistaken for `findability`: if the answer is nowhere in the `.md` files,
 no path leads to it and no rewrite of the path will help.
 

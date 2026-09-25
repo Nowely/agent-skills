@@ -3,8 +3,8 @@
 What a text must do for its reader, in the order a writer meets the questions. Every writer and every
 critic of the three skills works from this list; a run's owner may add a rule or set one aside, in
 words, and the run records it. Sentence-level rules are a separate layer, which the writer and the
-sentence critic apply as written: [writing-rules.md](../skills/rewrite/references/writing-rules.md) and
-[curse-of-knowledge.md](../skills/rewrite/references/curse-of-knowledge.md).
+sentence critic apply as written: [writing-rules.md](writing-rules.md) and
+[curse-of-knowledge.md](curse-of-knowledge.md).
 
 Each rule names its source, so that a critic can weigh it and a later edit can see what it rests on:
 

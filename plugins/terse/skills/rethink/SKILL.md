@@ -11,7 +11,7 @@ license: MIT
 ---
 
 The shape first, when the user wants to see it before any prose. The same roles `rewrite` runs, stopped
-at the plan: [roles.md](../rewrite/references/roles.md), working from
+at the plan: [roles.md](../../references/roles.md), working from
 [rules.md](../../references/rules.md).
 
 1. **One message to the user**, as `rewrite` step 1: what the text is for and who reads it, what it must

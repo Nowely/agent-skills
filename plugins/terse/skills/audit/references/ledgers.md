@@ -60,7 +60,7 @@ Position: misplaced — sends the reader to look the number up instead of statin
 
 - **Claim** restates the sentence as a checkable assertion, not as a quote.
 - **Sources** name file and line range. Every source is a real path in the audited checkout.
-- **Level** is 1, 2 or 3, as reached — see [truth-pass.md](truth-pass.md).
+- **Level** is 1, 2 or 3, as reached — see [truth.md](../../../references/truth.md).
 - **Verdict** is confirmed, refuted or unconfirmed. A refuted entry names what contradicts it.
 - **Position** appears only when the claim is true and read where it misleads.
 

@@ -7,6 +7,11 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- The pages more than one skill works from sit together under `references/`: `roles.md`, `truth.md` (the
+  audit's `truth-pass.md`, renamed because `rewrite`'s truth critics check by it too), `writing-rules.md`,
+  `curse-of-knowledge.md` and `measurements.md`. Each had lived in one skill's folder, and a change made there
+  for that skill left the other skills' copies behind: on 2026-09-25 light mode reached `rewrite`'s pages and
+  not the audit's.
 - Rule 5 makes an advantage a capability and what it means for the reader, with a command at most as proof,
   because the draft's advantages walked through the commands its Quick start repeats while the other README's
   listed its parts. Rule 14 adds badges where they carry live information, none typed by hand and no licence
@@ -39,7 +44,7 @@ forensics remain in the repository references and release notes.
   truth split by sections and checked by running the code, a rationalizer asking whether the reader needs
   each fact, form, terms, the rules one by one, fresh readers — then one repair and the user's read. The
   rounds, the bake-off, the verifier's send-backs, the wave after a freeze and its dedup are no longer
-  steps; each concern they held is one role in `rewrite/references/roles.md`, and the pages that held
+  steps; each concern they held is one role in `references/roles.md`, and the pages that held
   them are marked superseded. `rethink` runs the same roles stopped at a plan on one screen. On
   2026-09-24 the sequential path took 6 h 38 min on a README of 1,200 words.
   `ISSUES.md` E4, E17, E22, E24, E27, E28, E32, E33, E35 and E37 are removed: the ledger written by

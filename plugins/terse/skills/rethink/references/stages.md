@@ -81,7 +81,7 @@ document has never been audited, that objection is the one to expect first.
 The same failure came back on 2026-09-23, on this plugin's own README: an audit, then four rounds of
 `rewrite` on the audit route with no skeleton agreed, and the owner rejected round 04 for its opening, a
 missing statement of what the plugin is for, the pipeline told twice and water by the paragraph —
-content and arrangement again, not one phrase ([M25](../../rewrite/references/measurements.md#m25)). So
+content and arrangement again, not one phrase ([M25](../../../references/measurements.md#m25)). So
 the shape decision now comes first on every route: `audit` asks what the document is for and returns
 whether the user agreed its shape, and `rewrite` writes nothing on a shape they have not agreed to.
 

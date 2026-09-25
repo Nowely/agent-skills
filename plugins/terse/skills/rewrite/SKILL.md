@@ -12,7 +12,7 @@ license: MIT
 
 One writer, then every critic at once, then the writer once more and a check of what it changed, then
 your read. Each critic holds one concern, so none waits for another. Every role works from
-[rules.md](../../references/rules.md), a pleasant read first; the briefs are in [roles.md](references/roles.md).
+[rules.md](../../references/rules.md), a pleasant read first; the briefs are in [roles.md](../../references/roles.md).
 
 ## Step 1. One message to the user
 
@@ -105,5 +105,5 @@ brought in, sentences no role read, a writer re-running what the truth critics r
 brief 10 and the reading writer are for. Its second run took 1 h 33 min, and truth critics that each rebuilt
 the same harness held the critical path twice, 24 and 20 minutes: hence light by default, and one shared copy
 when the user asks for full. The measurements behind the rules:
-[measurements.md](references/measurements.md); the runs: `research/2026-09-24-terse-benchmark-maestro/`.
+[measurements.md](../../references/measurements.md); the runs: `research/2026-09-24-terse-benchmark-maestro/`.
 To measure a text before or after, `/terse:audit`.

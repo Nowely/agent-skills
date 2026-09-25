@@ -75,8 +75,8 @@ declared by the writer and the regex only warns.
 
 ## E6. `writing-rules.md` and `measurements.md` repeat two counts from 2026-09-10 that the run's own prompts and judge contradict
 
-**Evidence, level 2.** `plugins/terse/skills/rewrite/references/writing-rules.md:37-40` and
-`plugins/terse/skills/rewrite/references/measurements.md:97-99` (M19) say five published writing
+**Evidence, level 2.** `plugins/terse/references/writing-rules.md:37-40` and
+`plugins/terse/references/measurements.md:97-99` (M19) say five published writing
 standards were put against two unguided controls and that seven of ten seats proposed nothing. The run's
 prompts under `research/2026-09-10-chain/run-2x5/` (`v04PR6HL.prompt.txt:13-20`) describe a 2×5 design —
 four standards, one of them an unpublished CLAUDE.md draft, plus one control pair — and the judge's own
@@ -265,7 +265,7 @@ _From research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, 
 
 **Check.** From any directory:
 
-    sed -n '107,116p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md | grep -c -E 'TMPDIR|isolated|CONFIG_DIR'; sed -n '113,118p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/roles.md
+    sed -n '107,116p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md | grep -c -E 'TMPDIR|isolated|CONFIG_DIR'; git -C /Users/ruliny/Git/agent-skills show 829c235:plugins/terse/skills/rewrite/references/roles.md | sed -n '113,118p'
 
 At 829c235 it prints `0` for the audit's step and then the task reader's brief with its `$TMPDIR` starting state.
 
@@ -409,7 +409,7 @@ byte" is false by the indent. Found by the round-04 wave's lens 1 (Claude Opus) 
 
 **Check.** From any directory, with two temporary files in place of process substitution:
 
-    T=$(mktemp -d); sed -n '6,25p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/writing-rules.md > "$T/block"; sed -n '64,83p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain-source-prompt.txt | sed 's/^    //' > "$T/source"; diff "$T/block" "$T/source" && echo "identical after removing the indent"; sed -n '64,83p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain-source-prompt.txt | diff -q "$T/block" -; echo "raw diff exit $?"
+    T=$(mktemp -d); sed -n '6,25p' /Users/ruliny/Git/agent-skills/plugins/terse/references/writing-rules.md > "$T/block"; sed -n '64,83p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain-source-prompt.txt | sed 's/^    //' > "$T/source"; diff "$T/block" "$T/source" && echo "identical after removing the indent"; sed -n '64,83p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain-source-prompt.txt | diff -q "$T/block" -; echo "raw diff exit $?"
 
 On HEAD it printed `identical after removing the indent` and `raw diff exit 1`: the block equals its source up to
 the indent and not byte for byte. The run file's own check, written with `<(...)`, could not run in the reviewer's

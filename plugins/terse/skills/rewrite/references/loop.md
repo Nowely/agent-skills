@@ -1,6 +1,6 @@
 # The loop: why rounds, where findings go, what the ledger and the map are for
 
-> **Superseded on 2026-09-24** by [roles.md](roles.md), the one path `rewrite` runs: one writer, every critic at
+> **Superseded on 2026-09-24** by [roles.md](../../../references/roles.md), the one path `rewrite` runs: one writer, every critic at
 > once, one repair. This page is kept as the record of the sequential method it describes and of what
 > was measured under it; no step points here.
 
@@ -8,7 +8,7 @@ Stage 4 of the four the method has. Stages 1 to 3 — what comparable documents 
 called, and what the document says in what order — are settled in `rethink` and arrive here as an agreed
 skeleton: [stages.md](../../rethink/references/stages.md). The commands and the order of a round are in
 `SKILL.md` step 4; this file says why each part is there. Every dated measurement referred to below is
-in [measurements.md](measurements.md).
+in [measurements.md](../../../references/measurements.md).
 
 ## Why it is a loop
 
@@ -19,10 +19,10 @@ because of. Two loops, and the outer one is the one usually missing:
   back. One round is a first opinion, not a check. Two questions before a block is kept: does it have
   anything to say, and does it repeat a neighbour.
 - **The outer loop, over the whole document.** No block-local critic can see across blocks; a claim
-  stated four times in four sections was defensible in each ([M1](measurements.md#m1)). On a document
+  stated four times in four sections was defensible in each ([M1](../../../references/measurements.md#m1)). On a document
   that already exists, the outer loop runs first — one adversarial reader over the whole document, with
   the right to run the code, before any block is touched — because that pass found thirteen defects three
-  per-block reviews had passed ([M2](measurements.md#m2)).
+  per-block reviews had passed ([M2](../../../references/measurements.md#m2)).
 
 Critics work in parallel with lenses that differ: a single critic asked twice returns its own first
 answer twice. The least a round runs is lenses 1 and 2 of the table in `SKILL.md`; the ones that found
@@ -60,25 +60,25 @@ regression, and one regression is a failing round however many findings it also 
 the reader cannot tell a sentence that was never right from one that stopped being right.
 
 Compression is how regression enters: the first thing cut is the qualification that made a claim true
-([M3](measurements.md#m3)). Reading is how it enters next: every regression in three consecutive rounds
+([M3](../../../references/measurements.md#m3)). Reading is how it enters next: every regression in three consecutive rounds
 was a sentence about a lifecycle written from one line of code, and the critic who found them ran the
-driver ([M4](measurements.md#m4)).
+driver ([M4](../../../references/measurements.md#m4)).
 
 So:
 
 - **Every round is its own file**, named for the pass that produced it. A round that is not a file
-  cannot be diffed, and the ratchet is a diff ([M5](measurements.md#m5)).
+  cannot be diffed, and the ratchet is a diff ([M5](../../../references/measurements.md#m5)).
 - **A round is frozen the moment its critics launch.** A fix applied while they read leaves them
-  reviewing a document that no longer exists; the fix is the next round ([M6](measurements.md#m6)).
+  reviewing a document that no longer exists; the fix is the next round ([M6](../../../references/measurements.md#m6)).
 - **`ledger.json` carries every verified claim**: the pattern that finds it, whether it must be present
   or absent, and the level it was verified at. `round.mjs` grows it from each edit's `claims` and
   `retire`; `ledger.mjs` fails a round that loses a claim or revives a retired phrase. A level-2 entry
   about a lifecycle is marked provisional, because three such entries were pinned as true and each fell
-  to a run in the next wave ([M7](measurements.md#m7)). A retired phrase is searched for everywhere it
-  could survive, table cells included ([M8](measurements.md#m8)).
+  to a run in the next wave ([M7](../../../references/measurements.md#m7)). A retired phrase is searched for everywhere it
+  could survive, table cells included ([M8](../../../references/measurements.md#m8)).
 - **Every changed sentence is re-verified from the code, not from the ledger**: a ledger entry proves
   the old sentence was true, which is exactly the thing an edit can end. A repair is a new draft of
-  every sentence it touches, including the ones nobody asked to change ([M9](measurements.md#m9)).
+  every sentence it touches, including the ones nobody asked to change ([M9](../../../references/measurements.md#m9)).
 - **`rounds.md` records each round's regression count.** That is the verdict; findings are the yield.
 
 A round that simplifies without re-verifying is not a round, it is a bet.
@@ -89,21 +89,21 @@ The loop stops when the owner reads a round and says whether they would send it 
 judgement is what every round exists to prepare for; the gate in `SKILL.md` step 5 says what must hold
 before their time is asked for. The first round with no regression is selected for that read, the
 readers sized to zero on it are run on it first, and that is the hand-over signal, not a finish
-([M25](measurements.md#m25)): a critic asked for findings always produces findings, so no count of them
+([M25](../../../references/measurements.md#m25)): a critic asked for findings always produces findings, so no count of them
 stops anything. Seven rounds of one document never reached a quiet round, and the wave after the seventh
-found forty-one sentence defects ([M10](measurements.md#m10)). Cap the rounds and report the cap as a
+found forty-one sentence defects ([M10](../../../references/measurements.md#m10)). Cap the rounds and report the cap as a
 result.
 
 ## The task gate
 
 `audit` gives each fresh reader one question and scores the answer. That finds a document that cannot be
 understood. It cannot find a document that is understood, followed exactly, and still leaves the reader
-worse off, because no reader in that protocol ever acts ([M11](measurements.md#m11)). So a gate is a
+worse off, because no reader in that protocol ever acts ([M11](../../../references/measurements.md#m11)). So a gate is a
 task: a fresh reader is given a starting state and an outcome they want, acts from the document alone,
 and the resulting state is checked, not what they said. It is the only check in the method at level 3.
 
 It sees only what a task exercises: report, beside the pass, which sections no task reached — three
-tasks passed a round with four false sentences no task touched ([M12](measurements.md#m12)). The forced
+tasks passed a round with four false sentences no task touched ([M12](../../../references/measurements.md#m12)). The forced
 guesses are worth more than the pass; ask for every place the document made a reader invent something,
 and treat a guess that turned out right like one that turned out wrong.
 
@@ -118,13 +118,13 @@ known fix.
 
 It explains; it does not accept. Its first column derives the intended benefit from the skeleton, so a
 mistaken skeleton produces a perfectly faithful map, and a rationale for a section never outranks a
-failed task ([M13](measurements.md#m13)). Make one when a stage-3 question is open; do not maintain one
+failed task ([M13](../../../references/measurements.md#m13)). Make one when a stage-3 question is open; do not maintain one
 as a matter of course.
 
 ## Contradiction, which the duplication count cannot see
 
 The duplication count finds the same idea twice. It is blind to two statements that cannot both be
-true; the code settles which ([M14](measurements.md#m14)). So: take every claim the document makes about
+true; the code settles which ([M14](../../../references/measurements.md#m14)). So: take every claim the document makes about
 what cannot happen — *nothing*, *never*, *only*, *always*, *by default* — and find the sentence
 elsewhere that says it can.
 
@@ -132,7 +132,7 @@ elsewhere that says it can.
 
 A reader who meets the same thing three times learns nothing the second and third times and pays in
 attention. `dup.mjs` counts, per idea, the sections it lands in; three or more is a finding
-([M15](measurements.md#m15)). The one exception is narrow: repetition at an independently read decision
+([M15](../../../references/measurements.md#m15)). The one exception is narrow: repetition at an independently read decision
 point — a symptom row in a troubleshooting table a reader reaches without the section that explained
 the cause. The test is whether the second reader plausibly skipped the first occurrence, not whether the
 fact is important. Everything else is cut at the occurrence furthest from where the reader acts on it.
@@ -141,12 +141,12 @@ fact is important. Everything else is cut at the occurrence furthest from where 
 
 "The rules pass, read as a grep would read them" is a claim about a regular expression and inherits
 every hole in one: a rule-1 check that excluded `~`-paths reported clean for three rounds while the
-document violated the rule in four places ([M16](measurements.md#m16)). So every check is tested against
+document violated the rule in four places ([M16](../../../references/measurements.md#m16)). So every check is tested against
 a planted violation before its output is believed — `scripts/selftest.mjs` does that for the five that
 ship — and text is whitespace-normalised before matching, because a claim broken across a line has
 defeated two checks.
 
 When a rule fires, ask whether the rule is wrong. Two rules of this method collided — no paths before the
 technical section, and literal paths in the section whose job is to say where things are kept — and the
-resolution is a stated exception (`rule1.mjs --except`), not a silent one ([M17](measurements.md#m17)). A
+resolution is a stated exception (`rule1.mjs --except`), not a silent one ([M17](../../../references/measurements.md#m17)). A
 violation is a question, not a verdict; the first thing to test is which of the two rules is younger.

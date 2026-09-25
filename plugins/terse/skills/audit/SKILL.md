@@ -24,7 +24,7 @@ Settle three things with the user in one exchange, not six:
 
 - Which files are the documentation. Default to every tracked `.md`.
 - Which repository backs them, if any. Text with no code behind it still gets audited; the truth pass
-  runs in its weaker form, described in [truth-pass.md](references/truth-pass.md).
+  runs in its weaker form, described in [truth.md](../../references/truth.md).
 - Where a reader arrives. Usually `README.md`. This is the entry file for every reader.
 
 Then make the run directory:
@@ -57,7 +57,7 @@ answering a question nobody arrives with, and every number after it is precise a
 
 Every sentence that states what the software does becomes one ledger entry: the claim, the doc line,
 the code that backs it, an evidence level and a verdict. Follow
-[truth-pass.md](references/truth-pass.md) for the levels, the rule on guarantee words, and the three
+[truth.md](../../references/truth.md) for the levels, the rule on guarantee words, and the three
 verdicts. Use the entry format in [ledgers.md](references/ledgers.md).
 
 Two habits decide whether this step is worth running:
@@ -176,7 +176,7 @@ written on a shape nobody agreed was rejected for its content, not its phrasing
 ## Reference
 
 - Building the profile, with a worked example: [reader-profile.md](references/reader-profile.md).
-- Evidence levels, guarantee words, verdicts: [truth-pass.md](references/truth-pass.md).
+- Evidence levels, guarantee words, verdicts: [truth.md](../../references/truth.md).
 - The reader protocol and re-measurement: [measure.md](references/measure.md).
 - Entry formats and the run file contract: [ledgers.md](references/ledgers.md).
 - The claim ledger turned into `rewrite`'s ratchet: [scripts/ledger-seed.mjs](scripts/ledger-seed.mjs).

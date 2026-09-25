@@ -71,9 +71,9 @@ You start each one yourself.
 
 | Method | What it checks | Where it comes from |
 |---|---|---|
-| The writing rules | Filler, an argument restated, editing history; a condition, a limit or a warning cut or weakened where your readers decide | Part two of a four-part rewrite, measured on one README: [the rules](skills/rewrite/references/writing-rules.md) |
+| The writing rules | Filler, an argument restated, editing history; a condition, a limit or a warning cut or weakened where your readers decide | Part two of a four-part rewrite, measured on one README: [the rules](references/writing-rules.md) |
 | The rules | That the text is pleasant to read, first; then what it says, in what order, and what never appears in it | One owner's feedback and counts of the genre, each rule marked with its source: [the rules](references/rules.md) |
-| The scripted checks | Mechanism before the decision, one idea in three sections, words against a budget, a declared check that runs, a sentence checked true lost; each tested against a deliberate violation | [The measurements behind them](skills/rewrite/references/measurements.md) |
+| The scripted checks | Mechanism before the decision, one idea in three sections, words against a budget, a declared check that runs, a sentence checked true lost; each tested against a deliberate violation | [The measurements behind them](references/measurements.md) |
 
 [The field's practices, each marked measured, argued or asserted](references/prior-art.md), gathered and ranked.
 

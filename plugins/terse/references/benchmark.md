@@ -51,7 +51,7 @@ stand-in answers the run's questions and never stands in for the owner's accumul
 
 Every text gets the same measurements; where a ruler can be blind it is.
 
-1. **Truth.** The audit's truth pass ([truth-pass.md](../skills/audit/references/truth-pass.md)) on each
+1. **Truth.** The audit's truth pass ([truth.md](truth.md)) on each
    text against the snapshot: claims confirmed, refuted, unverifiable. On C this is the audit run on a
    best practice: whether the skill finds a real defect in one.
 2. **Answerability.** One question key from the reader profile and the code
@@ -93,7 +93,7 @@ record says. Human readers are not measured; the readers are models, as everywhe
 `research/<date>-terse-benchmark-<repo>/`: a README with the result, `rounds.md`, the snapshot commit,
 every prompt, A, B and C as frozen with their SHA-256, the audits, the readers' and task readers' returns,
 the judges' reports, the owner's read verbatim, the costs. The result also goes into
-[measurements.md](../skills/rewrite/references/measurements.md) as a dated entry.
+[measurements.md](measurements.md) as a dated entry.
 
 ## Results
 

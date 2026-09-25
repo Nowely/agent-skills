@@ -17,7 +17,7 @@ CHANGELOG, tests and evals; release tags are `<name>@X.Y.Z`.
 - **Research runs** live under `research/<date>-<slug>/`. Every iteration of a document is its own
   numbered file, never overwritten; a round is frozen once its critics launch; `rounds.md` beside them
   records the findings and the regression count of each round.
-- **Frozen blocks**: `plugins/terse/skills/rewrite/references/writing-rules.md` and
+- **Frozen blocks**: `plugins/terse/references/writing-rules.md` and
   `curse-of-knowledge.md` carry the SHA-256 of their own text. Check it after any edit or move nearby; a
   change to the text changes the measurement it was made under, so the SHA line and the note beside it
   are updated together, never the text alone.

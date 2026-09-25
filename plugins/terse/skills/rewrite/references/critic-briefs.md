@@ -1,6 +1,6 @@
 # Critic briefs, one per lens
 
-> **Superseded on 2026-09-24** by [roles.md](roles.md), the one path `rewrite` runs: one writer, every critic at
+> **Superseded on 2026-09-24** by [roles.md](../../../references/roles.md), the one path `rewrite` runs: one writer, every critic at
 > once, one repair. This page is kept as the record of the sequential method it describes and of what
 > was measured under it; no step points here.
 
@@ -35,7 +35,7 @@ claude plugin marketplace add <owner>/<repo>      # every `claude plugin …` no
 Not a lens — it reads the edits, not the document — but sized like one in the same announcement, and it
 runs before the round is frozen, so what it refuses costs one regeneration instead of a wave. Its return
 is the five fields, not a finding list. Its own cost is unmeasured, and the one blind run behind duties
-1 to 4 below is a hypothesis about them, not a rate: [M24](measurements.md#m24); duty 5 has not been
+1 to 4 below is a hypothesis about them, not a rate: [M24](../../../references/measurements.md#m24); duty 5 has not been
 run. Model: `gpt-5.6-sol` on the `entrust` wrapper, for a reader the Claude writer's habits do not
 reach — the run measured was on Astra and says nothing about Sol; without the plugin, a Claude Opus
 agent, and say so.
