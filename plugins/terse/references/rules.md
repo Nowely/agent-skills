@@ -56,10 +56,14 @@ day: «Текст должен быть легким для чтения и по
 5. **Then its advantages, as a short list.** What it does for the reader that its alternatives do not,
    one bold-led item each. *owner, 2026-09-24, of the README they ranked first: «отвечает что это за
    проект, и сразу подчеркивает конкурентные преимущества … используя форматирвание список».*
-6. **The opening sells; it does not warn, define or ask.** No question as the first sentence, no
-   failure modes, no protocol or process names, no talk about the document itself. *owner, 2026-09-11:
-   «вводный блок призванный продать, а не напугать»; 2026-09-23: «Оно начинается с вопроса. Оно
-   привязывется к readme».*
+6. **The opening sells; it does not warn, define or ask.** It may name the reader's problem that the
+   project solves, in the reader's words — that is a reason to read on — but never warns about the project
+   itself. No question as the first sentence, no protocol or process names, no talk about the document
+   itself. *owner, 2026-09-11: «вводный блок призванный продать, а не напугать»; 2026-09-23: «Оно
+   начинается с вопроса. Оно привязывется к readme»; 2026-09-25: «Правило можно поправить». measured,
+   2026-09-25: in a blind read of two openings, a reader called the other README's problem line «the
+   strongest selling line in either file», and the rules critic had cut the draft's own under "no failure
+   modes".*
 
 ## Quick start
 

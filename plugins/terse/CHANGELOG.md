@@ -7,6 +7,10 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- Rule 6 lets the opening name the reader's problem that the project solves, and still forbids warnings about
+  the project itself: on 2026-09-25 the rules critic had cut the draft's own problem line under "no failure
+  modes", and in a blind read of two openings the other README's problem line was called the strongest
+  selling line in either.
 - `rewrite` runs light by default and full when the user asks. In a light run every role reads and runs
   nothing: the truth critics check each sentence against the code's lines, tests and documentation, and a
   guarantee word holds only where every case is read (rule 20). A full run adds one agent that builds a runnable
