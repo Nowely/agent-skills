@@ -304,16 +304,24 @@ test("F1 a Codex agent is a background Agent call of the shipped codex-agent typ
     return prose;
   });
 
-test("F2 the six verification bullets, one line each",
-  "the list is read while composing a fan-out, so each bullet has to be one glance; a bullet that grew into a paragraph is a bullet that stops being read",
-  () => shows(
-    /^- Scout inline first: the work-list is yours, before any fan-out\.$/m,
-    /^- Adversarial verify: a refuter defaults to `refuted` when it is uncertain, and a finding is (one|what) that changes correctness or a stated requirement, the rest (its|in) `open`\.$/m,
-    /^- Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters\.$/m,
-    /^- Judge panel for a design task: a verdict (missing|without|lacking) its decisive check is `unknown` in `result`; name the missing check in `open`\. Use the sibling's `EXPECT:` rule for a Codex check\.$/m,
-    /^- Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
-    /^- No silent caps: name every agent, check or item you dropped\.$/m,
-  ));
+test("F2 the nine verification bullets, one line each",
+  "the list is read while composing a fan-out, so each bullet has to be one glance; a bullet that grew into a paragraph is a bullet that stops being read, and a bullet added or dropped changes the count the fan-out is checked against (measured 2026-09-17: five sentences, three of them bullets here, were deleted from the page in memory and 45 registered cases stayed green)",
+  () => {
+    const section = text.split("## Verification")[1]?.split("\n## ")[0] ?? "";
+    const bullets = section.split("\n").filter((l) => l.startsWith("- "));
+    if (bullets.length !== 9) return `the Verification list has ${bullets.length} bullets, not nine`;
+    return shows(
+      /^- Scout inline first: the work-list is yours, before any fan-out\.$/m,
+      /^- Critique the split before the fan-out: a top-row agent reads the decomposition, not the subject, for what the cut lost, what the wording added, which items are two and which the fan-out's rights cannot decide; twenty agents on a bad split agree and are all wrong \(measured [\d-]+: it caught two claims true at one release and false at the next, and they never reached the fan-out\)\.$/m,
+      /^- (Open|Read) one assembled brief whole before (the|any) fan-out; check its input paths in the agent's planned tree, its item count and each quoted claim against its source\.$/m,
+      /^- Adversarial verify: a refuter defaults to `refuted` when it is uncertain, and a finding is (one|what) that changes correctness or a stated requirement, the rest (its|in) `open`\.$/m,
+      /^- Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters\.$/m,
+      /^- Read a unanimous fan-out as evidence about the prompt first: open one return whole before you trust the tally \(measured [\d-]+: nineteen of twenty verdicts answered one broken path in every prompt\)\.$/m,
+      /^- Judge panel for a design task: a verdict (missing|without|lacking) its decisive check is `unknown` in `result`; name the missing check in `open`\. Use the sibling's `EXPECT:` rule for a Codex check\.$/m,
+      /^- Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
+      /^- No silent caps: name every agent, check or item you dropped\.$/m,
+    );
+  });
 
 test("F3 two rounds of fix and cross-review, then escalate",
   "without a bound the fix loop is where a run spends its budget; the escalation names where the round after the second one goes, the top pair first and the user last",
@@ -451,6 +459,17 @@ test("D10 Luna over Haiku carries no price claim",
     if (/cheap|price|cost|\btimes\b|×|\d+x\b/i.test(line)) return `the Luna line carries a price claim again: ${line.slice(0, 120)}`;
     return true;
   });
+
+test("D12 the bulk unit is one claim, one address, a verbatim quote, and a closed-set verdict about the subject, never the brief",
+  "a bulk verifier scored on its own prompt agrees with itself for the wrong reason (measured 2026-09-12: a broken path in every brief drew the same verdict from nineteen of twenty agents); this sentence is what keeps a bulk verdict about the input rather than the ask, and the 2026-09-17 mutation baseline deleted it with the suite staying green",
+  () => says(
+    "The unit of a bulk fan-out is one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief",
+    "whether an address moved or was wrong is a judgement about your own input, and it stays out of the set",
+  ));
+
+test("D13 the bulk row announces its count before spawning, like any other fan-out",
+  "the bulk row sits outside the alive cap, which is exactly the row a count could grow in unannounced; the clause was deleted alongside the Luna preference in the 2026-09-17 mutation baseline and the suite stayed green",
+  () => says("announce its count before spawning, like any other fan-out"));
 
 test("E7 a decisive check runs before any panel, dependent execution stays in one agent, and its verification stays independent",
   "sixteen agents over two naming rounds proposed, reviewed and judged before the check that decided was run (426:973, 426:1208, 2026-09-17), while the two tasks the coordinator kept in its own hands (2026-09-12, 2026-09-16) landed with critics only; the rule orders the check first and keeps the fresh verifier, it does not ban a panel",
