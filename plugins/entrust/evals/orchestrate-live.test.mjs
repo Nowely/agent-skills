@@ -105,7 +105,9 @@ const note = (line) => console.log(`      ${line}`);
 
 // --------------------------------------------------------------- the vocabulary the page owns
 
-const CODEX_MODELS = ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra"];
+// The pool's Codex rows by slug, whatever the generation; the page itself names them by short name only.
+const CODEX_SLUG = /\bgpt-\d+(?:\.\d+)*-(astra|sol|terra)\b/i;
+const isTierModel = (m) => typeof m === "string" && CODEX_SLUG.exec(m)?.[0] === m;
 const SIBLING_SKILLS = ["entrust:codex", "codex"];
 // A Codex agent is one Agent call whose prompt carries the driver, a prompt file and a report file. Both
 // flags, because a prompt that merely mentions the driver is a probe or the coordinator reading a report.
@@ -406,7 +408,7 @@ const quote = (line) => JSON.stringify(line.trim().slice(0, 140));
 const lines = (text) => text.split("\n").filter((l) => l.trim());
 
 // The top pair is capped in every session, since the pool is the same whatever the coordinator's model:
-// at most one Fable and one gpt-6-astra agent per wave. The page states a cap, not a duty: measured, a Fable
+// at most one Fable and one Astra agent per wave. The page states a cap, not a duty: measured, a Fable
 // coordinator planned a four-agent comparison on strong-tier agents and reserved the top pair for a tie-break,
 // which the page allows. Case 1 and case 2 differ only in their session model and their task.
 //
@@ -425,12 +427,12 @@ function planProblems({ text, toolUses, scratch, head0 }) {
   // survives of the pair is the negative below, which needs no path to fire and no English to read.
   if (text.includes(".orchestrate/"))
     problems.push("the plan puts the run directory back inside the repository as `.orchestrate/`");
-  // The tier table pairs each slug with the short name the page's user-facing template uses ("Codex
+  // The tier table names each Codex model by the short name the page's user-facing template uses ("Codex
   // Terra T1"), so a plan written for the user names the agent either way; measured, three Opus plans for
   // one task wrote "Terra, `gpt-5.6-terra`", "Codex Terra (cheap tier)" and "One Codex agent — Terra —".
   // The word Codex itself is required a few lines below, so the name alone is what is read here.
-  if (!CODEX_MODELS.some((m) => text.includes(m)) && !/\b(Astra|Sol|Terra|Luna)\b/.test(text))
-    problems.push(`no agent carries a Codex model from the tier table (${CODEX_MODELS.join(", ")} or its short name)`);
+  if (!CODEX_SLUG.test(text) && !/\b(Astra|Sol|Terra|Luna)\b/.test(text))
+    problems.push("no agent carries a Codex model from the tier table (Astra, Sol or Terra, by name or slug)");
   // Where the plan has an agent table, the rows ARE the agents and everything else is commentary about them:
   // measured, a plan that listed one Fable agent in a row and then wrote "one Fable agent, one gpt-6-astra
   // agent, caps respected" in a bullet counted its own summary as a second agent. A plan with no table is
@@ -469,7 +471,7 @@ function planProblems({ text, toolUses, scratch, head0 }) {
   const tagged = agentLines.filter((l) => /\bfable\b/i.test(l) && isAgent(l));
   const count = tagged.reduce((n, l) => n + [...l.matchAll(/\bfable\b/gi)].length, 0);
   const sequenced = /alive at a time|one at a time|one after the other|sequential|runs after|then the (second|other)|по очереди|последовательн|не одновременно|друг за другом|после (перв|первого)|сначала .{0,40}(затем|потом)/i.test(text);
-  for (const [name, re] of [["fable", /\bfable\b/gi], ["gpt-6-astra", /gpt-6-astra/g]]) {
+  for (const [name, re] of [["fable", /\bfable\b/gi], ["astra", /\bastra\b/gi]]) {
     const max = capMax(re);
     if (max > 1 && !sequenced)
       problems.push(`${max} ${name} agents in one wave with no sequencing stated, and the cap is one alive at a time: ${agentLines.filter((l) => re.test(l) && isAgent(l)).slice(0, 3).map(quote).join(" ")}`);
@@ -555,7 +557,7 @@ test("plan only under Opus: the first attempt stops at a plan",
 // --------------------------------------------------------------- 2
 
 test("plan only under Fable: the top pair is capped",
-  "the pool is the same in every session and a design task is where its caps bite: at most one Fable agent and one gpt-6-astra agent alive at a time, the only thing between a design fan-out and a batch of top-tier agents, and the astra agent named at all only proves the session read the tier table",
+  "the pool is the same in every session and a design task is where its caps bite: at most one Fable agent and one Astra agent alive at a time, the only thing between a design fan-out and a batch of top-tier agents, and the astra agent named at all only proves the session read the tier table",
   async () => {
     const dir = caseDir(2, "plan-fable");
     const scratch = scratchClone(dir);
@@ -587,9 +589,9 @@ test("plan only under Fable: the top pair is capped",
     if (!s.planText) problems.push(`the session produced no text (result subtype ${JSON.stringify(s.result?.subtype ?? null)})`);
     problems.push(...planProblems({ text: s.planText, toolUses: s.toolUses, scratch, head0 }));
     // The top Codex agent by name, not by tier table membership: planProblems accepts any of the three
-    // slugs, and for a design task the top row is the whole claim.
-    if (!lines(s.planText).some((l) => l.includes("gpt-6-astra") || /\bAstra\b/.test(l)))
-      problems.push("the plan names no gpt-6-astra agent");
+    // rows, and for a design task the top row is the whole claim.
+    if (!lines(s.planText).some((l) => /\bastra\b/i.test(l)))
+      problems.push("the plan names no Astra agent");
     return settle(dir, problems);
   });
 
@@ -631,7 +633,7 @@ function jsonObject(text) {
 
 // --------------------------------------------------------------- 4
 
-test("gpt-6-astra answers on its own thread when not invited to delegate",
+test("Astra answers on its own thread when not invited to delegate",
   "a Codex agent's evidence is the commands its report lists, and the report describes the thread the driver started: invited to delegate, the top model ran nothing on that thread and answered out of children the report cannot show, so what the page rests on is that an agent asked to do the work itself does it here",
   async () => {
     const dir = caseDir(4, "astra-own-thread");
@@ -640,7 +642,7 @@ test("gpt-6-astra answers on its own thread when not invited to delegate",
     const expected = Object.fromEntries(files.map((f) => [f, wcL(path.join(scratch, f))]));
     // No --effort: the page sends no EFFORT: line, so the agent inherits the configured effort and this is
     // the agent the page describes. What the server selected is noted beside the case, never asserted.
-    const base = ["--level", "read", "--cwd", scratch, "--model", "gpt-6-astra"];
+    const base = ["--level", "read", "--cwd", scratch, "--model", "astra"];
     // A release gate leaves no job record on the machine it runs on: --help-all documents
     // ENTRUST_STATE_DIR as where everything the driver owns lives, and it must be absolute.
     const env = { ...process.env, ENTRUST_STATE_DIR: path.join(dir, "state") };
@@ -659,7 +661,7 @@ test("gpt-6-astra answers on its own thread when not invited to delegate",
     if (r.code !== 0) problems.push(`the driver exited ${r.code} (turnStatus ${JSON.stringify(report.turnStatus ?? null)}): ${r.err.trim().slice(-200)}`);
     // Which agent answered, before anything is concluded about it: a run that fell back to the config
     // default would answer this prompt just as well, at another model.
-    if (report.model !== "gpt-6-astra") problems.push(`the report's model is ${JSON.stringify(report.model)}, not gpt-6-astra`);
+    if (!/^gpt-\d+(?:\.\d+)*-astra$/.test(report.model ?? "")) problems.push(`the report's model is ${JSON.stringify(report.model)}, not an Astra`);
     const commands = Array.isArray(report.commands) ? report.commands : [];
     if (!commands.length) problems.push("the report lists no command, so nothing ran on the thread that answered");
     // The counters beside subagentThreads: a delegating agent shows both, and the counters are the signal
@@ -859,7 +861,7 @@ test("the full run under Opus: plan, go, run",
       try {
         const rep = JSON.parse(fs.readFileSync(f, "utf8"));
         seen.push(`${rep.model ?? null}:${rep.turnStatus ?? null}:${rep.exitCode ?? null}`);
-        if (CODEX_MODELS.includes(rep.model) && rep.turnStatus === "completed") ran.push(rep.model);
+        if (isTierModel(rep.model) && rep.turnStatus === "completed") ran.push(rep.model);
       } catch { seen.push(`${path.basename(f)}: unreadable`); }
     }
     save(dir, "agent-reports.txt", `${seen.join("\n")}\n`);

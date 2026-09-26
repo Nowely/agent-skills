@@ -83,6 +83,24 @@ test("an entrust@ tag on HEAD is the version the tree claims",
 
 // ------------------------------------------------------------------ content
 
+// ------------------------------------------------------------------ model names
+
+test("no skill page names a Codex model by its version",
+  "the driver resolves astra, sol, terra and luna to the newest model of that name the catalogue lists; a version written on a page went stale the day GPT-6 Sol shipped and kept agents on GPT-5.6 Sol, while the Claude names beside it moved on their own",
+  () => {
+    const pages = [];
+    const walk = (rel) => {
+      for (const d of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+        const r = `${rel}/${d.name}`;
+        if (d.isDirectory()) walk(r); else if (d.name.endsWith(".md")) pages.push(r);
+      }
+    };
+    walk("skills");
+    const hits = pages.flatMap((rel) => read(rel).split("\n").map((l, i) => [rel, i + 1, l]))
+      .filter(([, , l]) => /\bgpt-\d/.test(l)).map(([rel, n, l]) => `${rel}:${n}: ${l.trim().slice(0, 80)}`);
+    return pages.length > 0 && hits.length === 0 || `a page names a versioned model: ${hits.join("; ") || "no pages found"}`;
+  });
+
 // Everything git tracks under this plugin's directory, which is exactly what an install copies: the
 // marketplace source names that directory, and `git -C ROOT ls-files` lists it and nothing above it.
 const tracked = (() => {

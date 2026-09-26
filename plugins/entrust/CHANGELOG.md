@@ -3,6 +3,26 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- A Codex agent's `MODEL:` line, and the driver's `--model`, take a short name (`astra`, `sol`, `terra`,
+  `luna`, in any case) and run the newest model of that name the server's own `model/list` shows: versions
+  compare as numbers (6.10 after 6.9), and a hidden model is never chosen. A full slug still pins one
+  version, and a name no listed model carries is exit 2 before the turn with the catalogue in the message,
+  as before. The driver writes what the name became on stderr, and the report keeps the slug. The skill
+  pages name Codex models by short name only: the orchestrate tier table's Codex column, the codex page's
+  `MODEL:` row and example, the roles reference, and the advisor, swarm and experiment pages. The
+  `RECEIPT=` line takes its short name from the slug's family (`gpt-6-sol` and `gpt-5.6-sol` are both Sol)
+  instead of a table of slugs, and the live gate's Astra case launches `--model astra` and accepts any
+  Astra. Pinned by four cases in `evals/cli.test.mjs` against a fake catalogue of several generations
+  (`FAKE_MODEL_FAMILIES`), by a case in `evals/package.test.mjs` that fails when a page under `skills/`
+  names a `gpt-<n>` model, and by the updated page cases. Why: on 2026-09-26 the catalogue listed GPT-6
+  Sol and GPT-6 Luna while every page, the status line's table and the tests still named `gpt-5.6-sol`
+  and `gpt-5.6-luna`, so a coordinator asked for Sol kept launching the older model; the Claude names
+  beside them (Opus, Sonnet, Haiku) had moved on their own.
+
 ## 0.20.0 — 2026-09-18
 
 ### Added

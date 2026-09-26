@@ -412,6 +412,16 @@ function onLine(line) {
 
   if (m.method === "model/list") {
     const efforts = ["none", "low", "medium", "high", "xhigh", "max", "ultra"];
+    // Several generations under one short name, the newest neither first nor last in its family, one
+    // newer model hidden, and 6.10 after 6.9: a short name must resolve by version, never by list order.
+    if (process.env.FAKE_MODEL_FAMILIES) {
+      const entry = (model, hidden = false) => ({ id: model, model, displayName: model, description: "Fixture model",
+        hidden, isDefault: model === "gpt-6-astra", defaultReasoningEffort: "medium",
+        supportedReasoningEfforts: efforts.map((reasoningEffort) => ({ reasoningEffort, description: reasoningEffort })) });
+      w(reply(m.id, { data: [entry("gpt-6-astra"), entry("gpt-5.6-sol"), entry("gpt-7-sol", true), entry("gpt-6-sol"),
+        entry("gpt-6.9-luna"), entry("gpt-6.10-luna"), entry("gpt-5.6-luna")], nextCursor: null }));
+      return;
+    }
     w(reply(m.id, { data: [{
       id: "fake-model", model: "fake-model", displayName: "Fake Model",
       description: "Fixture model", hidden: false, isDefault: true,
