@@ -112,6 +112,4 @@ never makes them removable.
 
 Forward `CLAUDE_PLUGIN_DATA` as shown. The script uses
 `ENTRUST_STATE_DIR` first, then `CLAUDE_PLUGIN_DATA`; setup follows the
-sibling's [One call](../codex/SKILL.md#one-call). On the clone route both
-commands need the codex skill linked beside this one; the installation
-recipe links the two together.
+sibling's [One call](../codex/SKILL.md#one-call).

@@ -10,7 +10,7 @@ metadata:
 license: MIT
 ---
 
-Load [orchestrate](../orchestrate/SKILL.md) now (Skill tool, `entrust:orchestrate`; bare `orchestrate` on a clone-and-symlink install), which loads codex. A swarm is the orchestrate page's bulk row at its widest: the units, the brief template and the reducer are yours; the launches and the waits are the script's. The mode adds no driver change, no header field and no flag; its one script makes each agent through the sibling's launcher, runs them and writes their summary. This mode moves one thing: under it a Terra swarm counts as the bulk row does, against the swarm's own cap and never against the alive cap of six, and the plan says so.
+Load [orchestrate](../orchestrate/SKILL.md) now (Skill tool, `entrust:orchestrate`), which loads codex. A swarm is the orchestrate page's bulk row at its widest: the units, the brief template and the reducer are yours; the launches and the waits are the script's. The mode adds no driver change, no header field and no flag; its one script makes each agent through the sibling's launcher, runs them and writes their summary. This mode moves one thing: under it a Terra swarm counts as the bulk row does, against the swarm's own cap and never against the alive cap of six, and the plan says so.
 
 ## The units and the brief
 

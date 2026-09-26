@@ -86,9 +86,9 @@ As a plugin — the full set: all six skills, the driver and the suites (the rep
 /plugin install entrust@nowely
 ```
 
-This route exposes the skill as `entrust:codex`, the orchestrator mode as
-`entrust:orchestrate` and the cleanup as `entrust:cleanup`; the last two only the user can
-turn on.
+This route exposes the skill as `entrust:codex`, the modes as `/entrust:orchestrate`, `/entrust:cleanup`,
+`/entrust:experiment`, `/entrust:advisor` and `/entrust:swarm`, which only the user can turn on, and the
+wrapper every Codex run goes through as `entrust:codex-agent`.
 
 The same two steps from a shell: `claude plugin marketplace add Nowely/agent-skills`, then
 `claude plugin install entrust@nowely`. To update, refresh the marketplace clone and
@@ -98,33 +98,6 @@ then the plugin, and restart Claude Code:
 claude plugin marketplace update nowely
 claude plugin update entrust@nowely
 ```
-
-Or from source — clone and symlink, so the checkout stays the single source of truth (the `orchestrate`
-symlink is only needed for the orchestrator mode):
-
-```bash
-git clone https://github.com/Nowely/agent-skills.git
-cd agent-skills/plugins/entrust
-mkdir -p ~/.claude/skills                           # absent on a machine that has never run Claude Code
-ln -s "$PWD/skills/codex" ~/.claude/skills/codex
-ln -s "$PWD/skills/orchestrate" ~/.claude/skills/orchestrate
-ln -s "$PWD/skills/cleanup" ~/.claude/skills/cleanup
-ln -s "$PWD/skills/experiment" ~/.claude/skills/experiment
-ln -s "$PWD/skills/advisor" ~/.claude/skills/advisor
-ln -s "$PWD/skills/swarm" ~/.claude/skills/swarm
-mkdir -p ~/.claude/agents
-ln -s "$PWD/agents/codex-agent.md" ~/.claude/agents/codex-agent.md
-```
-
-On this clone-and-symlink route the skill is `codex`, the modes are `/orchestrate`, `/cleanup`, `/experiment`, `/advisor` and `/swarm`, and
-the wrapper every Codex run goes through is `codex-agent`; on the plugin route they are
-`entrust:codex`, `/entrust:orchestrate`, `/entrust:cleanup`, `/entrust:experiment`, `/entrust:advisor`, `/entrust:swarm` and
-`entrust:codex-agent`. Agents are read when Claude Code starts, so a link made during a session is
-seen by the next one. Cleanup's command reaches its sibling script through the `codex` link beside
-it: Node resolves the command's `..` lexically, so keep those two links together.
-
-The `mkdir -p` is not decoration: without it every `ln -s` call fails with `No such file or directory`
-on a fresh account, which is exactly the account this route is written for.
 
 **Where the driver's state lives.** `${CLAUDE_PLUGIN_DATA}`, the plugin's own data directory, which
 Claude Code substitutes into the skill's recipes and which this install resolves to
@@ -136,14 +109,15 @@ directories are all there. It survives plugin updates; an uninstall deletes it u
 The driver keeps no default of its own: with neither that variable nor `ENTRUST_STATE_DIR` it
 exits 2. In every permission mode but auto and bypass, a write outside the working directory prompts, so
 add that directory to `permissions.additionalDirectories` once — this plugin adds no rules on your
-behalf. On the clone-and-symlink route nothing substitutes the placeholder, so export an absolute path
-of your own instead, in your shell profile:
+behalf. A shell outside Claude Code has no `CLAUDE_PLUGIN_DATA`; to run the driver by hand, as under
+First run, export an absolute path of your own. The driver reads `ENTRUST_STATE_DIR` first, so wherever
+it is set it overrides the plugin's directory:
 
 ```bash
 export ENTRUST_STATE_DIR="$HOME/.local/state/entrust"
 ```
 
-Verify the install from the checkout (plugin installs carry the suites too, under the plugin root) —
+Verify the install from the plugin root (a checkout of the repository carries the suites too) —
 costs nothing, calls no model:
 
 ```bash
@@ -151,22 +125,19 @@ npm test    # every suite, cheapest first, stops at the first red
 ```
 
 A plugin root carries no git metadata, so the `package` suite's tag and payload cases announce
-themselves there as skipped instead of failing; from the checkout they run.
+themselves there as skipped instead of failing; from a checkout they run.
 
 The `fidelity` suite is what to watch after a `codex` upgrade: it performs a real handshake and diffs
 it against the fixture, so protocol drift shows up as a failing case instead of a confident wrong
 answer. Without `codex` on `PATH` it skips and exits 0, which is what CI does; after a `codex` upgrade the
 release checklist ([RELEASING.md](../../RELEASING.md)) runs it locally, where the skip becomes a failure.
 
-Run the suites from the **repository or plugin root**. Do not compute that root by appending `../..`
-to the skill path: where the skill is a symlink (the clone-and-symlink install above), Node collapses
-`..` lexically and lands somewhere that does not exist, while `ls` follows the link and appears to
-work. Resolve the link, or use the install path announced when the skill loads, or `installPath` in
-`installed_plugins.json`.
+Run the suites from the **repository or plugin root**; the plugin root is the install path announced
+when the skill loads, or `installPath` in `installed_plugins.json`.
 
 ## First run
 
-From the checkout, with the state directory exported as Install says:
+From the plugin root, with the state directory exported as Install says:
 
 ```bash
 node skills/codex/scripts/driver.mjs --cwd . --brief \
@@ -184,7 +155,7 @@ say what that does and does not prove).
 
 Inside Claude Code you rarely type this yourself: the skill's `SKILL.md` is the operating manual the
 agent reads mid-task, including when to give a panel agent to Codex at all. With the plugin installed it
-is `entrust:codex` (the clone-and-symlink spellings are under Install). An agent is the
+is `entrust:codex`. An agent is the
 `codex-agent` wrapper, an Agent call (foreground for the one agent you wait for, background for those that run side by
 side) that runs that same driver through the launcher in one foreground Bash call: the prompt through the launcher's
 `--new`, the report at `--report-file`; add `RIGHTS: worktree <repo>`

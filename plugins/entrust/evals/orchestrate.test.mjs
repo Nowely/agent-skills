@@ -89,7 +89,7 @@ test("A3 the sibling is loaded first and this page re-cuts only what the mode ch
     const raw = shows(/\[codex\]\(\.\.\/codex\/SKILL\.md\)/);
     if (raw !== true) problems.push(raw);
     const prose = says(
-      "(Skill tool, `entrust:codex`; bare `codex` on a clone-and-symlink install)",
+      "(Skill tool, `entrust:codex`)",
       "this page re-cuts only what the mode changes",
       "1. Load the sibling skill with the Skill tool if it is not loaded yet, scout, then decide the composition and the agents.",
     );
@@ -368,7 +368,7 @@ test("G1 the five template lines, their indentation, the inline schema, and no B
 test("G3 the run directory: its path, why it needs no .gitignore, kept after the task, and what a Codex agent's artifacts are",
   "one directory per run is what keeps an agent's artifacts findable and out of the tree the run works in; the plugin's data directory is outside every repository, so nothing has to be ignored and nothing lands in a payload, and `.claude/` is the one path whose writes prompt however the permissions are set",
   () => says(
-    "The run directory is `<state>/orchestrate/<project-slug>/<run>/`, `<state>` the driver's state directory (`${CLAUDE_PLUGIN_DATA}` on a plugin install, the exported `ENTRUST_STATE_DIR` on the clone route)",
+    "The run directory is `<state>/orchestrate/<project-slug>/<run>/`, `<state>` the driver's state directory (`${CLAUDE_PLUGIN_DATA}`)",
     "the working directory's absolute path with every character that is not a letter or a digit replaced by `-`",
     "It is outside every repository, so no `.gitignore`",
     "not the repository root, not the project's `.claude/`, whose writes prompt whatever the allow rules say",

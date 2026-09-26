@@ -10,7 +10,7 @@ metadata:
 license: MIT
 ---
 
-Load [orchestrate](../orchestrate/SKILL.md) now (Skill tool, `entrust:orchestrate`; bare `orchestrate` on a clone-and-symlink install), which loads codex; this page adds one standing thread to the run it is invoked for and re-cuts nothing else. The mode is prompt only: no driver change, no new header field or flag.
+Load [orchestrate](../orchestrate/SKILL.md) now (Skill tool, `entrust:orchestrate`), which loads codex; this page adds one standing thread to the run it is invoked for and re-cuts nothing else. The mode is prompt only: no driver change, no new header field or flag.
 
 ## The advisor
 
