@@ -1,0 +1,23 @@
+claude: 2.1.280 (Claude Code)
+A auth status: not logged in
+B auth status: not logged in
+checkout HEAD: b7a17da; plugins/terse, HEAD against 2f29a8f: 0 lines of diff --stat
+working tree against 2f29a8f, plugins/terse and .claude-plugin: diff exit 0
+untracked or ignored files under plugins/terse: 0
+clone B: HEAD 2f29a8f
+archive of 2f29a8f: 28 files
+A $ claude plugin marketplace add <checkout, absolute path> -> exit 0
+A $ claude plugin install terse@nowely -> exit 0
+A installed at: <config-A>/plugins/cache/nowely/terse/0.1.1; recorded commit: b7a17da
+A installed files: 28
+A installed tree against its source's plugins/terse: identical (diff -rq exit 0)
+A installed tree against git archive 2f29a8f: identical (diff -rq exit 0)
+B $ claude plugin marketplace add ../clone-2f29a8f (relative to the working directory) -> exit 0
+B $ claude plugin install terse@nowely -> exit 0
+B installed at: <config-B>/plugins/cache/nowely/terse/0.1.1; recorded commit: 2f29a8f
+B installed files: 28
+B installed tree against its source's plugins/terse: identical (diff -rq exit 0)
+B installed tree against git archive 2f29a8f: identical (diff -rq exit 0)
+real 2.09
+user 0.80
+sys 0.76

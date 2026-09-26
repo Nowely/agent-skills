@@ -1,0 +1,506 @@
+COMMAND: grep -n -F -- '| `no change` | S1 clean;' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+97:| `no change` | S1 clean; S3 empty for every source the ledger cites; S4 exists; every prior `refuted` ledger entry and every *What broke* item is closed (its line changed since the audit and a later confirmed re-score covers it); S5 at or above the prior score, every control held, no reader departed, and the fall — if any — inside a measured noise floor | nobody; the owner sends |
+
+COMMAND: grep -n -F -- '| `regressed` | S4 exists and' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+102:| `regressed` | S4 exists and S5 fails one of `measure.md:111-115`'s three ways | `audit` step 6: cause per wrong answer, from the readers' quotes; the truth pass scoped to the quoted lines |
+
+COMMAND: grep -n -F -- '- the score falls by more' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md
+STARTED: yes; EXIT: 0
+113:- the score falls by more than the measured noise floor, or by anything at all if no floor was measured
+
+COMMAND: grep -n -F -- '- a control question that passed' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md
+STARTED: yes; EXIT: 0
+114:- a control question that passed now fails
+
+COMMAND: grep -n -F -- '- a claim confirmed before is' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md
+STARTED: yes; EXIT: 0
+115:- a claim confirmed before is refuted now, which means the rewrite introduced a false statement
+
+COMMAND: grep -n -F -- 'right answer found by reading the' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md
+STARTED: yes; EXIT: 0
+87:right answer found by reading the source is a documentation failure with a correct answer attached.
+
+COMMAND: grep -n -F -- '**Rule T3. A sentence with a' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+121:**Rule T3. A sentence with a trigger word and no level-3 evidence is `unbacked`, whatever its truth.**
+
+COMMAND: grep -n -F -- 'directory declares no code, with `source:`' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+315:directory declares no code, with `source:` naming what the reader can check.** *Refuted by:* over three
+
+COMMAND: grep -n -F -- 'Level 3 is unreachable for a' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/truth-pass.md
+STARTED: yes; EXIT: 0
+75:Level 3 is unreachable for a claim about the world rather than about software. The rule degrades to:
+
+COMMAND: grep -n -F -- 'a guarantee-shaped claim carries a named' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/truth-pass.md
+STARTED: yes; EXIT: 0
+76:a guarantee-shaped claim carries a named source the reader can check, or it is weakened. Everything
+
+COMMAND: grep -n -F -- 'G3 applies to every new sentence' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/c1-design-critique.md
+STARTED: yes; EXIT: 0
+174:G3 applies to every new sentence with a trigger and requires an executed level-3 claim, without the existing truth-pass exception for world claims or source-only documents. The plugin expressly audits text with no code (audit/SKILL.md:26-27). A sourced statement in that supported input class cannot clear this new gate even when the previous contract accepts it. T3 also labels such statements unbacked indefinitely.
+
+COMMAND: grep -n -F -- 'refused groups per handover and refused' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+253:refused groups per handover and refused propositions re-proposed; no refusal is attributed to format or to
+
+COMMAND: grep -n -F -- 'content.** *Refuted by:* three handovers of' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+254:content.** *Refuted by:* three handovers of one document in which the transition count falls and the
+
+COMMAND: grep -n -F -- 'owner'"'"'s refusals do not — then' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+255:owner's refusals do not — then the handover, not the text, is what the rounds fail on, and the format is
+
+COMMAND: grep -n -F -- 'Before deleting a fact a reader' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rethink/references/stages.md
+STARTED: yes; EXIT: 0
+148:Before deleting a fact a reader called noise, try it in another form. The reader is reporting what the
+
+COMMAND: grep -n -F -- 'The rule assigns unclear counts to' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/c1-design-critique.md
+STARTED: yes; EXIT: 0
+276:The rule assigns unclear counts to the handover format and content counts to the loop, and diagnoses a format failure from their trends. The recorded owner first rejected prerequisite content, then restored it and said the objection may have been its presentation. Thus a content-labelled refusal can be a format failure, and an unclear refusal can arise from missing content. Raw counts also change with the number of hunks. The proposed score cannot support the claimed format-versus-text diagnosis.
+
+COMMAND: grep -n -F -- '| `no change` | S1 clean;' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+97:| `no change` | S1 clean; S3 empty for every source the ledger cites; S4 exists; every prior `refuted` ledger entry and every *What broke* item is closed (its line changed since the audit and a later confirmed re-score covers it); S5 at or above the prior score, every control held, no reader departed, and the fall — if any — inside a measured noise floor | nobody; the owner sends |
+
+COMMAND: grep -n -F -- '**Rule T2. `no change` needs a' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+114:**Rule T2. `no change` needs a prior measurement that still holds with nothing left open; a never-audited
+
+COMMAND: grep -n -F -- '2. **"`no change` is safe under' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+643:2. **"`no change` is safe under T2 as rewritten."** v1's claim 2, not settled; F4.2's hole is closed by
+
+COMMAND: grep -n -F -- 'One entry per wrong answer, each' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/ledgers.md
+STARTED: yes; EXIT: 0
+33:One entry per wrong answer, each with a cause.
+
+COMMAND: grep -n -F -- 'What could not be settled, and' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/ledgers.md
+STARTED: yes; EXIT: 0
+36:What could not be settled, and anything the steps contradicted each other about.
+
+COMMAND: grep -n -F -- '- **unconfirmed** — you could not' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/truth-pass.md
+STARTED: yes; EXIT: 0
+42:- **unconfirmed** — you could not settle it.
+
+COMMAND: grep -n -F -- '**Rule HO5. Sections 1–4 of the' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+261:**Rule HO5. Sections 1–4 of the handover are written in the language the owner asked in.** *Refuted by:*
+
+COMMAND: grep -n -F -- '1. **The natural language the document' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/k2-completeness.md
+STARTED: yes; EXIT: 0
+101:1. **The natural language the document is written in.** `grep -i -w language` over all 17 saved sources:
+
+COMMAND: grep -n -F -- 'for a reader whose language differs' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/k2-completeness.md
+STARTED: yes; EXIT: 0
+103:   for a reader whose language differs from the document's. The targets already carry a *measured* rule
+
+COMMAND: grep -n -F -- '`$RUN/handover-NN.md`, fixed headings, beside `candidate-NN.md` (the' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+172:`$RUN/handover-NN.md`, fixed headings, beside `candidate-NN.md` (the whole text) and `diff-NN.patch`
+
+COMMAND: grep -n -F -- '**Rule HO3. A refused group is' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+233:**Rule HO3. A refused group is recorded with its proposition and the owner's words; the next writer
+
+COMMAND: grep -n -F -- 'receives the list; lens 7 receives' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+234:receives the list; lens 7 receives it too and quotes any sentence that re-proposes a refused proposition,
+
+COMMAND: grep -n -F -- 'in any words.** *Refuted by:* a' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+235:in any words.** *Refuted by:* a refused proposition re-proposed within two rounds and reaching the owner
+
+COMMAND: grep -n -F -- 'by someone other than the writer.' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/loop.md
+STARTED: yes; EXIT: 0
+108:by someone other than the writer. It also records what was deliberately refused, so the next round does
+
+COMMAND: grep -n -F -- 'not re-propose it, and the blocks' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/loop.md
+STARTED: yes; EXIT: 0
+109:not re-propose it, and the blocks that fail with the cost of fixing each, including the ones with no
+
+COMMAND: grep -n -F -- '**Rule G6. A round'"'"'s regression count' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+344:**Rule G6. A round's regression count is the number of sentence groups that are bad at N and were not bad
+
+COMMAND: grep -n -F -- 'at N−1, where a group is' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+345:at N−1, where a group is bad when any pin in it fails — a `want:false` pattern present, or a `want:true`
+
+COMMAND: grep -n -F -- 'c5-r2.md: failing groups=1 regressions=0' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/regress-runs.log
+STARTED: yes; EXIT: 0
+44:c5-r2.md: failing groups=1 regressions=0
+
+COMMAND: grep -n -F -- 'version of this claim had *already*' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/d1-regression-autopsy.md
+STARTED: yes; EXIT: 0
+358:  version of this claim had *already* been found false
+
+COMMAND: grep -n -F -- '08 satisfied that pin by **paraphrase**:' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/d1-regression-autopsy.md
+STARTED: yes; EXIT: 0
+360:  08 satisfied that pin by **paraphrase**: the pattern is the literal string `The one place the two differ
+
+COMMAND: grep -n -F -- '08-review.md: failing groups=23 regressions=10 [NEG '"'"'grants' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/regress-runs.log
+STARTED: yes; EXIT: 0
+98:08-review.md: failing groups=23 regressions=10 [NEG 'grants a different sandbox'; NEG 'pinned to'; NEG 'not your answers, run records or reports'; NEG '.gitignore covers'; NEG 'sharing only'; NEG 'a copy with unsaved files is left as it is'; NEG 'trimmed when a later run starts'; NEG 'asked for that command by name'; NEG 'That the thread existed is backed'; NEG 'stop the Codex processes']
+
+COMMAND: grep -n -F -- 'at N−1, where a group is' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+345:at N−1, where a group is bad when any pin in it fails — a `want:false` pattern present, or a `want:true`
+
+COMMAND: grep -n -F -- '`00..N` after the coordinator has written' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+347:`00..N` after the coordinator has written the round's verified findings as `want:false` entries with a
+
+COMMAND: grep -n -F -- '| 2 | script | G1' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+531:| 2 | script | G1 runs every `run`, writes `saw`, refuses on `expect`; G3 refuses trigger sentences without a level-3 run or `source:`; writes `NN-pass.md`; grows the ledger | `edits/NN.json` | `NN-pass.md`, `ledger.json` |
+
+COMMAND: grep -n -F -- 'const bad = [...groups].map(([g, cs]) =>' /tmp/fable-a2.cB3Zls/regress.mjs
+STARTED: yes; EXIT: 0
+15:const bad = [...groups].map(([g, cs]) => [g, texts.map((t, i) => cs.some((c) => new RegExp(patAt(c, i), c.flags ?? "").test(t) !== c.want))]);
+
+COMMAND: grep -n -F -- 'c6-r0.md: failing groups=1 regressions=-' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/regress-runs.log
+STARTED: yes; EXIT: 0
+50:c6-r0.md: failing groups=1 regressions=-
+
+COMMAND: grep -n -F -- 'c6-r1.md: failing groups=1 regressions=0' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/regress-runs.log
+STARTED: yes; EXIT: 0
+51:c6-r1.md: failing groups=1 regressions=0
+
+COMMAND: grep -n -F -- 're-pin at r1. Record: `node regress.mjs' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+668:re-pin at r1. Record: `node regress.mjs ledger.json 00-draft-instructions.md 00-draft.md 01…09` →
+
+COMMAND: grep -n -F -- '| 7 | script | G6:' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+537:| 7 | script | G6: `ledger.mjs --judge NN` over `00..NN` → regressions(NN) | `ledger.json`, the rounds | the number for `rounds.md` |
+
+COMMAND: grep -n -F -- 'if (judge !== null) process.exit(reg[judge]?.length ?' /tmp/fable-a2.cB3Zls/regress.mjs
+STARTED: yes; EXIT: 0
+19:if (judge !== null) process.exit(reg[judge]?.length ? 1 : 0);
+
+COMMAND: grep -n -F -- 'STARTED: yes; EXIT: 1' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/regress-runs.log
+STARTED: yes; EXIT: 0
+71:STARTED: yes; EXIT: 1
+
+COMMAND: grep -n -F -- '08-review.md: failing groups=23 regressions=11 [NEG '"'"'grants' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/regress-runs.log
+STARTED: yes; EXIT: 0
+66:08-review.md: failing groups=23 regressions=11 [NEG 'grants a different sandbox'; NEG 'pinned to'; NEG 'not your answers, run records or reports'; NEG '.gitignore covers'; NEG 'The one thing it has'; NEG 'sharing only'; NEG 'a copy with unsaved files is left as it is'; NEG 'trimmed when a later run starts'; NEG 'asked for that command by name'; NEG 'That the thread existed is backed'; NEG 'stop the Codex processes']
+82:08-review.md: failing groups=23 regressions=11 [NEG 'grants a different sandbox'; NEG 'pinned to'; NEG 'not your answers, run records or reports'; NEG '.gitignore covers'; NEG 'The one thing it has'; NEG 'sharing only'; NEG 'a copy with unsaved files is left as it is'; NEG 'trimmed when a later run starts'; NEG 'asked for that command by name'; NEG 'That the thread existed is backed'; NEG 'stop the Codex processes']
+
+COMMAND: grep -n -F -- '09-reduction.md: failing groups=0 regressions=0' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/regress-runs.log
+STARTED: yes; EXIT: 0
+67:09-reduction.md: failing groups=0 regressions=0
+83:09-reduction.md: failing groups=0 regressions=0
+99:09-reduction.md: failing groups=0 regressions=0
+
+COMMAND: grep -n -F -- 'through the ledger over `00..NN, accepted-NN`,' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+218:through the ledger over `00..NN, accepted-NN`, the verifier re-reads every sentence in an accepted group
+
+COMMAND: grep -n -F -- 'whose neighbouring group in the same' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+219:whose neighbouring group in the same section was refused, and the re-score runs on the mixture, not on
+
+COMMAND: grep -n -F -- '- F6.2 — selective acceptance. The' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+624:- F6.2 — selective acceptance. The group rule is mechanical; the coupling D1 `:447-448` shows leaves no
+
+COMMAND: grep -n -F -- '- **Compound damage:** this edit'"'"'s sibling' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/d1-regression-autopsy.md
+STARTED: yes; EXIT: 0
+447:- **Compound damage:** this edit's sibling (`edits/08.json[16]`) retired `killed run's lock reclaimed`,
+
+COMMAND: grep -n -F -- 'a **true** claim, so the round' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/d1-regression-autopsy.md
+STARTED: yes; EXIT: 0
+448:  a **true** claim, so the round both added a wrong cure and deleted the right one.
+
+COMMAND: grep -n -F -- 'Edit 08[16] candidate span occurs 1' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/geometry-summary.txt
+STARTED: yes; EXIT: 0
+62:Edit 08[16] candidate span occurs 1 times; hunks [33]; groups [33]
+
+COMMAND: grep -n -F -- 'Edit 08[24] candidate span occurs 1' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/geometry-summary.txt
+STARTED: yes; EXIT: 0
+63:Edit 08[24] candidate span occurs 1 times; hunks [53]; groups [53]
+
+COMMAND: grep -n -F -- 'writer would have written, and no' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/bake-off.md
+STARTED: yes; EXIT: 0
+143:writer would have written, and no judge has scored it. Re-check every graft against the code, because a
+
+COMMAND: grep -n -F -- '| 5 | agents | the' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+535:| 5 | agents | the wave (lenses 1–6); G5's proposition reader on the frozen round; on a handover round, lens 7 with `refused.json` | the frozen round | `reviews/NN/` |
+
+COMMAND: grep -n -F -- '| 9 | owner | accepts' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+539:| 9 | owner | accepts groups; `apply.mjs` writes `accepted-NN.md`; HO2's re-verification; the tree only on the word | | `refused.json`, `accepted-NN.md` |
+
+COMMAND: grep -n -F -- '**Across rounds.** A refusal does not' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+227:**Across rounds.** A refusal does not fork the chain. `refused.json` records the group, its candidate
+
+COMMAND: grep -n -F -- '1. **Once per document**, write four' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md
+STARTED: yes; EXIT: 0
+80:1. **Once per document**, write four files and copy in `skeleton.md`:
+
+COMMAND: grep -n -F -- '| 2 | script | G1' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+531:| 2 | script | G1 runs every `run`, writes `saw`, refuses on `expect`; G3 refuses trigger sentences without a level-3 run or `source:`; writes `NN-pass.md`; grows the ledger | `edits/NN.json` | `NN-pass.md`, `ledger.json` |
+
+COMMAND: grep -n -F -- '| 4 | verifier (G2) |' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+533:| 4 | verifier (G2) | verdicts per claim; re-pins for LOST-by-true-paraphrase; `refuted` or `does not answer` → delete `NN-pass.md`, back to 1 | `edits/NN.json` with `saw`, the code | `reviews/NN/verifier.md`, re-pins |
+
+COMMAND: grep -n -F -- 'const ledger = fs.existsSync(ledgerFile) ? JSON.parse(fs.readFileSync(ledgerFile,' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/scripts/round.mjs
+STARTED: yes; EXIT: 0
+31:  const ledger = fs.existsSync(ledgerFile) ? JSON.parse(fs.readFileSync(ledgerFile, "utf8")) : [];
+
+COMMAND: grep -n -F -- 'for (const c of e.claims ??' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/scripts/round.mjs
+STARTED: yes; EXIT: 0
+34:    for (const c of e.claims ?? []) byName.set(c.name, { name: c.name, pattern: c.pattern, want: true,
+
+COMMAND: grep -n -F -- 'for (const n of e.drop ??' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/scripts/round.mjs
+STARTED: yes; EXIT: 0
+38:    for (const n of e.drop ?? []) { if (!byName.delete(n)) console.error(`${e.name}: drop names a ledger entry that does not exist: ${n}`); }
+
+COMMAND: grep -n -F -- '1 failure(s) in /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/pipeline-probe/candidate.md' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/pipeline-probe.log
+STARTED: yes; EXIT: 0
+25:1 failure(s) in /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/pipeline-probe/candidate.md
+
+COMMAND: grep -n -F -- '**Rule HO6. The first line of' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+266:**Rule HO6. The first line of every file and every agent return in this design carries its verdict —
+
+COMMAND: grep -n -F -- 'the effect tuple, the verifier'"'"'s count,' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+267:the effect tuple, the verifier's count, the proxy's yes/not yet — so a clip at any line keeps the
+
+COMMAND: grep -n -F -- '| 2 | script | G1' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+531:| 2 | script | G1 runs every `run`, writes `saw`, refuses on `expect`; G3 refuses trigger sentences without a level-3 run or `source:`; writes `NN-pass.md`; grows the ledger | `edits/NN.json` | `NN-pass.md`, `ledger.json` |
+
+COMMAND: grep -n -F -- '| **freeze** | coordinator | announces' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+534:| **freeze** | coordinator | announces the wave; **the round is frozen when the critics launch** (`rewrite/SKILL.md:103`, `loop.md:66-68`) | | |
+
+COMMAND: grep -n -F -- '| 7 | script | G6:' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+537:| 7 | script | G6: `ledger.mjs --judge NN` over `00..NN` → regressions(NN) | `ledger.json`, the rounds | the number for `rounds.md` |
+
+COMMAND: grep -n -F -- 'Ask every prompt agent, Claude and' /Users/ruliny/Git/agent-skills/plugins/entrust/skills/orchestrate/SKILL.md
+STARTED: yes; EXIT: 0
+143:Ask every prompt agent, Claude and Codex alike, for exactly these five fields, and send no `BRIEF:` line: the template is the bound, and `BRIEF:` would clip the answer at 20 lines. A verifier's brief names its target and the whole scope it must cover; its return says what it checked and, in `open`, what it did not. The first line of `result` is one sentence a
+
+COMMAND: grep -n -F -- 'reader can take on its own:' /Users/ruliny/Git/agent-skills/plugins/entrust/skills/orchestrate/SKILL.md
+STARTED: yes; EXIT: 0
+144:reader can take on its own: the agent's model and id, its status and what it did ("Sonnet W5: done, four flaky width checks replaced by threshold checks"); the rest of the fields follow unchanged, and all five are yours to read, never to forward.
+
+COMMAND: grep -n -F -- '**The pre-registered test.** Brief 0 run' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+429:**The pre-registered test.** Brief 0 run blind, twice — once on Sol, once on Astra — on `edits/06.json`,
+
+COMMAND: grep -n -F -- '`07.json`, `08.json` at `b29e921` (`c1:9`), each' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+430:`07.json`, `08.json` at `b29e921` (`c1:9`), each refusal list frozen by SHA-256 before D1 is opened, then
+
+COMMAND: grep -n -F -- 'this duty is `unmeasured` as a' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+377:this duty is `unmeasured` as a catch and is what the pre-registered test measures. *Displaces:* `how`.
+
+COMMAND: grep -n -F -- 'Pinned round 06: edits=9, checks=0, asks=0,' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/prereg-input-summary.txt
+STARTED: yes; EXIT: 0
+1:Pinned round 06: edits=9, checks=0, asks=0, run=0, saw=0.
+
+COMMAND: grep -n -F -- 'Pinned round 07: edits=8, checks=0, asks=0,' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/prereg-input-summary.txt
+STARTED: yes; EXIT: 0
+2:Pinned round 07: edits=8, checks=0, asks=0, run=0, saw=0.
+
+COMMAND: grep -n -F -- 'Pinned round 08: edits=27, checks=27, asks=0,' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/prereg-input-summary.txt
+STARTED: yes; EXIT: 0
+3:Pinned round 08: edits=27, checks=27, asks=0, run=0, saw=0.
+
+COMMAND: grep -n -F -- '`07.json`, `08.json` at `b29e921` (`c1:9`), each' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+430:`07.json`, `08.json` at `b29e921` (`c1:9`), each refusal list frozen by SHA-256 before D1 is opened, then
+
+COMMAND: grep -n -F -- 'the document and the repository'"'"'s `.md`' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+300:the document and the repository's `.md` files are searched for the sentence that says otherwise, quote or
+
+COMMAND: grep -n -F -- 'Pinned b29e921 includes all three reviews/08' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/prereg-input-summary.txt
+STARTED: yes; EXIT: 0
+4:Pinned b29e921 includes all three reviews/08 files and rounds.md; saved pinned-review-08.md is its Opus report.
+
+COMMAND: grep -n -F -- '- **F-a FALSE (L3).** "a copy' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/pinned-review-08.md
+STARTED: yes; EXIT: 0
+7:- **F-a FALSE (L3).** "a copy with unsaved files is left as it is, commits and all" (L121). Dirtiness is `git status --porcelain` (`driver.mjs:1650-1656`), blind to ignored files; a preserved copy holding only a `.gitignore`d file was judged clean, removed by the next `--worktree` run, the file destroyed. The dirty case with an untracked file behaves as claimed.
+
+COMMAND: grep -n -F -- '- **F-b FALSE (L3).** cleanup row' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/pinned-review-08.md
+STARTED: yes; EXIT: 0
+8:- **F-b FALSE (L3).** cleanup row "not your answers, run records or reports" (L59). An orchestrate seat's report lives inside a run directory (`orchestrate/SKILL.md:103`) and run rows are selectable (`cleanup.mjs:867-869`); seeded `<state>/orchestrate/<slug>/run-42/seat-a/report.json`, selected the run: "I deleted the run 42", report gone, answers survive. The listing on a seeded state dir produced only *kept* rows.
+
+COMMAND: grep -n -F -- '- **F-e OVERSTATED, and a regression' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/astra-c2.n1oboI/pinned-review-08.md
+STARTED: yes; EXIT: 0
+11:- **F-e OVERSTATED, and a regression against the retired sentence (L3).** Row 2's cure "when that run is dead, stop the Codex processes the refusal names" (L190). Three cases in `acquireLock` (`driver.mjs:1444-1456`): a live holder's refusal says the opposite ("leave it there, a lock whose holder is gone is reclaimed on the next attempt without your help"); only a dead driver with a live codex group names a process; a plain dead holder is reclaimed silently (planted, exit 0). 07's "reclaimed by the next" was true and was retired.
+
+COMMAND: grep -n -F -- 'scored against D1'"'"'s 21 items in' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+431:scored against D1's 21 items in those rounds by explicit counterexample. Rounds 06 and 07 declare no
+
+COMMAND: grep -n -F -- '**What it is.** README.md:5 — "Only' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/m1-two-surveys-compared.md
+STARTED: yes; EXIT: 0
+555:**What it is.** README.md:5 — "Only phase 3 — matched tasks, independent outcome assessment, a
+
+COMMAND: grep -n -F -- 'independently verified outcomes judged cross-family or' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/m1-two-surveys-compared.md
+STARTED: yes; EXIT: 0
+558:independently verified outcomes judged cross-family or by a human (S2-37); agents and paid turns under
+
+COMMAND: grep -n -F -- '| S4-21 | Guide — Tone' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/s4-evaluation-guide-and-agents-md.md
+STARTED: yes; EXIT: 0
+27:| S4-21 | Guide — Tone and style (customer service) - LLM-based Likert scale | # Generally best practice to use a different model to evaluate than the model used to generate the evaluated output | Use a separate evaluator model. | Model-generated output. | asserted | benefit | model | supplied, hash verified |
+
+COMMAND: grep -n -F -- 'Primary refusal-level score: 6 caught /' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/c1-design-critique.md
+STARTED: yes; EXIT: 0
+47:Primary refusal-level score: 6 caught / 4 missed of 10. Extra refusals outside D1’s ten are [1,3,12,18,20,25], not silently called false positives: D1 itself leaves additional 08 regressions unresolved at 609-613. Strict explicit-counterexample score: 5 caught / 5 missed, with R08-5 moved to missed. Part 6’s seven desk cases: 5/7 by refusal, 4/7 by explicit counterexample. The single run is n=1; the selected model was Astra, not the design’s Sol, and it cannot determine Sol’s rate. No hindsight additions changed List A.
+
+COMMAND: grep -n -F -- 'scored against D1'"'"'s 21 items in' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+431:scored against D1's 21 items in those rounds by explicit counterexample. Rounds 06 and 07 declare no
+
+COMMAND: grep -n -F -- 'checks, so the verifier'"'"'s duty (i)' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+432:checks, so the verifier's duty (i) is what is measured there. Threshold, stated now: fewer than 11 of 21
+
+COMMAND: grep -n -F -- 'strict on the model chosen for' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+433:strict on the model chosen for the live verifier — then `caught` collapses to `forced`, G2 becomes a
+
+COMMAND: grep -n -F -- 'this duty is `unmeasured` as a' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+377:this duty is `unmeasured` as a catch and is what the pre-registered test measures. *Displaces:* `how`.
+
+COMMAND: grep -n -F -- '| [06-preexisting.md](06-preexisting.md) | 1578 | the' /Users/ruliny/Git/agent-skills/research/2026-09-11-markup-round-0/rounds.md
+STARTED: yes; EXIT: 0
+15:| [06-preexisting.md](06-preexisting.md) | 1578 | the coordinator, 9 edits against the 8 confirmed pre-existing defects; then 1 Opus critic against the code, who measured 4 of the claims by running the driver, the CLI and `codex exec` | 9 verdicts, 10 regressions listed, 4 unsettled | **4**, plus 2 overstatements |
+
+COMMAND: grep -n -F -- '| [07-lifecycle.md](07-lifecycle.md) | 1611 | the' /Users/ruliny/Git/agent-skills/research/2026-09-11-markup-round-0/rounds.md
+STARTED: yes; EXIT: 0
+16:| [07-lifecycle.md](07-lifecycle.md) | 1611 | the coordinator, 8 edits against 06's review, each re-verified from the code; then a wave of eleven — 2 Opus, 1 Astra, 2 Sol, 5 Luna, 1 Fable to dedup — see [reviews/07/](reviews/07/) | 87 deduplicated: 41 sentence, 12 unsettled, 9 scope, 7 structure, 7 superseded, 6 code, 5 method | **5** of its own: 2 false, 3 overstated |
+
+COMMAND: grep -n -F -- '| [08-review.md](08-review.md) | 1711 | the' /Users/ruliny/Git/agent-skills/research/2026-09-11-markup-round-0/rounds.md
+STARTED: yes; EXIT: 0
+17:| [08-review.md](08-review.md) | 1711 | the coordinator, 27 edits against the wave's list and the owner's five decisions, each with a check; `budgets.json`, `tasks.json`, `questions.json` written; then 3 critics — Opus with a stub codex, Astra, a Sol reader who had never seen the plugin — see [reviews/08/](reviews/08/) | Opus 14, Astra 9 (7 shared), the reader: "not yet" | **10** of its own: 4 false, 5 overstated, 1 vaguer; 4 of the writer's 27 stated checks did not hold |
+
+COMMAND: grep -n -F -- 'strict on the model chosen for' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+433:strict on the model chosen for the live verifier — then `caught` collapses to `forced`, G2 becomes a
+
+COMMAND: grep -n -F -- 'critic lens after the freeze, and' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+434:critic lens after the freeze, and the design's central claim is the two replayed pins. Cost: six Codex
+
+COMMAND: grep -n -F -- 'hypothesis; `forced` — G3 refuses the' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+383:hypothesis; `forced` — G3 refuses the edit until a level-3 run exists (regex hit replayed; whether the run
+
+COMMAND: grep -n -F -- 'the 25 carry no trigger word' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+130:the 25 carry no trigger word (R04-1, R06-4, R07-2, R07-3, R08-1, R08-5, R08-10); triage says so in its
+
+COMMAND: grep -n -F -- 'Trigger misses: R04-1, R06-4, R07-2, R07-3,' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/c1-checks.log
+STARTED: yes; EXIT: 0
+3:Trigger misses: R04-1, R06-4, R07-2, R07-3, R08-1, R08-5, R08-10.
+
+COMMAND: grep -n -F -- '- F6.1 — when leaving a' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+621:- F6.1 — when leaving a whole document alone is safe. v2 adds `unrepaired`, `regressed` and the audit
+
+COMMAND: grep -n -F -- '- No entry establishes when “no' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/h1-survey-harvest.md
+STARTED: yes; EXIT: 0
+72:- No entry establishes when “no change” is safe for an entire text, how many areas must be sampled, how recent evidence must be, or how to combine clean structural checks with unmeasured semantic risk.
+
+COMMAND: grep -n -F -- '- F6.2 — selective acceptance. The' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+624:- F6.2 — selective acceptance. The group rule is mechanical; the coupling D1 `:447-448` shows leaves no
+
+COMMAND: grep -n -F -- '- No entry studies selective acceptance' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/h1-survey-harvest.md
+STARTED: yes; EXIT: 0
+83:- No entry studies selective acceptance of individual changes, dependencies among changes, or how to show that accepting one hunk requires another.
+
+COMMAND: grep -n -F -- '- F6.3 — healing measured between' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+626:- F6.3 — healing measured between rounds. The transition count reproduces the record within four seams,
+
+COMMAND: grep -n -F -- 'An independent judge on the whole' /Users/ruliny/Git/agent-skills/research/2026-09-11-markup-round-0/rounds.md
+STARTED: yes; EXIT: 0
+219:An independent judge on the whole diff — *did round N read better than round N−1* — is not built. The
+
+COMMAND: grep -n -F -- '- F6.4 — adoption of a' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+630:- F6.4 — adoption of a practice. S5 now forbids demotion without an arm; the arm per practice
+
+COMMAND: grep -n -F -- '**Not measured:** which part of the' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md
+STARTED: yes; EXIT: 0
+130:**Not measured:** which part of the chain produced the gain. The experiment that would isolate it —
+
+COMMAND: grep -n -F -- 'each a place where "its critics"' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+627:  each a place where "its critics" and "the introducing round" disagree; the owner has to choose which
+
+COMMAND: grep -n -F -- 'the introducing round; the skill'"'"'s definition' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+649:   the introducing round; the skill's definition charges the round whose critics found it
+
+COMMAND: grep -n -F -- '(`loop.md:53-55`); the record shows the two' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+650:   (`loop.md:53-55`); the record shows the two disagree at 02, 05, 07 and 08 (Appendix A(ii)). Test: run
+
+COMMAND: grep -n -F -- 'something worse: **a sentence the round' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/loop.md
+STARTED: yes; EXIT: 0
+53:something worse: **a sentence the round introduced that its critics showed false or overstated is a
+
+COMMAND: grep -n -F -- 'regression, and one regression is a' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/loop.md
+STARTED: yes; EXIT: 0
+54:regression, and one regression is a failing round however many findings it also produced**, because
+
+COMMAND: grep -n -F -- '**R07-2 (overstated) — ADDED.** (same sentence,' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/d1-regression-autopsy.md
+STARTED: yes; EXIT: 0
+217:**R07-2 (overstated) — ADDED.** (same sentence, second clause)
+
+COMMAND: grep -n -F -- '- `rounds.md:17` counts 10 for round' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/d1-regression-autopsy.md
+STARTED: yes; EXIT: 0
+609:- `rounds.md:17` counts 10 for round 08; `ledger.json` carries **11** `NEG` entries whose single `YES` is
+
+COMMAND: grep -n -F -- '**F9 · L8, L155** "the run' /Users/ruliny/Git/agent-skills/research/2026-09-11-markup-round-0/reviews/07/fable-dedup-and-rank.md
+STARTED: yes; EXIT: 0
+23:**F9 · L8, L155** "the run stops if the server grants anything else" — the assertion ignores `excludeSlashTmp` (schema ThreadStartResponse.json:1086; `grep excludeSlashTmp driver.mjs` → none). Raised by astra (A1). CODE (ISSUES C5); README can only narrow: "…if Codex grants a different sandbox or network than that."
+
+COMMAND: grep -n -F -- '**Rule HO5. Sections 1–4 of the' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+261:**Rule HO5. Sections 1–4 of the handover are written in the language the owner asked in.** *Refuted by:*
+
+COMMAND: grep -n -F -- 'an owner refusal or a question' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+262:an owner refusal or a question about wording that the owner's language would have removed, twice.
+
+COMMAND: grep -n -F -- 'The outcome is a failure that' /Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/c1-design-critique.md
+STARTED: yes; EXIT: 0
+58:The outcome is a failure that a clarity question “would have flagged”, but T1 forbids asking that question and S5 collects keyed answers only. A subsequent audit can expose an error; it cannot reveal what an unasked question would have diagnosed. No comparison arm collects the missing signal. This leaves the ban protected against the very diagnostic benefit at issue, rather than specifying an observable refutation.
+
+COMMAND: grep -n -F -- '**Rule G5. A retired entry carries' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+333:**Rule G5. A retired entry carries `proposition:` beside `pattern:`; once per round one cheap reader is
+
+COMMAND: grep -n -F -- 'and returns per item: asserted (quote)' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+335:and returns per item: asserted (quote) or not.** Self-test, once per document: three planted paraphrases
+
+COMMAND: grep -n -F -- 'self-test, two readers in a row' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+338:self-test, two readers in a row discarded — the lens does not work on this document. *Evidence:* D1 fact
+
+COMMAND: grep -n -F -- '3 (`:576-583`), M8 (`measurements.md:44-46`); `one incident`' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+STARTED: yes; EXIT: 0
+339:3 (`:576-583`), M8 (`measurements.md:44-46`); `one incident` each. Cost: one Luna, ~1 min. *Displaces:*

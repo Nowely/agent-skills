@@ -1,0 +1,41 @@
+<!-- rationalizer; 1.4 min; 30671 tokens; exit 0 -->
+
+Codex Sol R1: complete — 14 cuts proposed, saving 208 words.
+
+- Line 1 — “Dust” — **Keep**; identifies the tool — **0 words saved**.
+- Line 3 — “Build status” badge — **Cut**; release engineering does not help the reader install or inspect disk use — **2 words saved**.
+- Line 5 — “Because I want an easy way to see where my disk is being used.” — **Cut**; restates the reader’s existing goal — **14 words saved**.
+- Line 7 — “is a more intuitive `du`: it” — **Cut**; subjective comparison delays the concrete description — **6 words saved**. Keep “Dust finds the largest files and directories beneath the paths you give it and lays them out as a size-sorted tree.”
+- Line 9 — “Immediate overview. With no path, Dust scans the current directory and fits the number of entries to the terminal height.” — **Cut**; lines 21–25 demonstrate the same behavior where the reader acts — **20 words saved**.
+- Line 10 — “Structure stays visible. Sizes, tree branches, and percentage bars show both what is large and where it belongs.” — **Cut**; line 27 explains the result at the point it appears — **18 words saved**.
+- Line 11 — “Focused answers. Narrow the view by depth, path, file type, size, or regular expression.” — **Cut**; the options table supplies actionable controls — **14 words saved**.
+- Line 13 — “Quick start” — **Keep**; directs the reader to the shortest path to a result — **0 words saved**.
+- Line 15 — “Install the latest release:” — **Keep**; states what the following command changes — **0 words saved**.
+- Lines 17–19 — install command — **Keep**; it is the required installation action, including the exact remote source — **0 words saved**.
+- Line 21 — “Then” — **Cut**; sequence is already clear from placement — **1 word saved**. Keep “scan the directory you are in:”.
+- Lines 23–25 — “dust” — **Keep**; produces the promised immediate result — **0 words saved**.
+- Line 27 — result description and alternate-path instruction — **Keep**; explains what appeared and the next common action — **0 words saved**.
+- Lines 29–31 — “dust PATH...” — **Keep**; gives the exact syntax for scanning elsewhere — **0 words saved**.
+- Line 33 — “Useful options” — **Keep**; separates optional decisions from the quick start — **0 words saved**.
+- Line 35 — “Start with `-n` when you want more or less detail. Combine the other controls as the question changes.” — **Cut**; the table already states each decision condition — **18 words saved**.
+- Lines 37–38 — option-table headings and separator — **Keep**; make the controls and their decision conditions scannable — **0 words saved**.
+- Line 39 — `-n, --number-of-lines NUMBER` row — **Keep**; controls an immediately visible output limit — **0 words saved**.
+- Line 40 — `-d, --depth DEPTH` row — **Keep**; controls tree depth when the first result is too detailed — **0 words saved**.
+- Line 41 — `-F, --only-file` row — **Keep**; directly answers the common largest-files question — **0 words saved**.
+- Line 42 — `-D, --only-dir` row — **Keep**; directly answers the directory-totals question — **0 words saved**.
+- Line 43 — `-e, --filter REGEX` row — **Keep**; gives the condition and action for narrowing by name — **0 words saved**.
+- Line 44 — `-v, --invert-filter REGEX` row — **Keep**; gives the condition and action for excluding distracting matches — **0 words saved**.
+- Line 45 — `-X, --ignore-directory PATH` row — **Keep**; lets the reader exclude a known subtree from the total — **0 words saved**.
+- Line 46 — `-z, --min-size SIZE` row — **Keep**; preserves the size threshold at the decision point — **0 words saved**.
+- Line 47 — `-x, --limit-filesystem` row — **Keep**; preserves the mounted-filesystem boundary where the reader chooses scan scope — **0 words saved**.
+- Line 48 — `-s, --apparent-size` row — **Keep**; preserves the allocated-versus-logical-size distinction where the reader chooses a measure — **0 words saved**.
+- Line 49 — `-f, --filecount` row — **Cut**; counting files is outside the stated disk-space task — **14 words saved**.
+- Line 50 — `-p, --full-paths` row — **Keep**; resolves ambiguous output when acting on a result — **0 words saved**.
+- Line 51 — `-R, --screen-reader` row — **Keep**; accessibility behavior must remain at the reader’s output-format decision — **0 words saved**.
+- Line 52 — `-j, --output-json` row — **Cut**; machine consumption is outside the install-and-view task — **14 words saved**.
+- Line 53 — `--config FILE` row — **Cut**; reusable configuration is a later workflow, not an immediate decision — **16 words saved**.
+- Line 55 — “See every flag:” — **Keep**; provides a compact escape hatch after trimming advanced options — **0 words saved**.
+- Lines 57–59 — “dust --help” — **Keep**; gives the exact action for discovering omitted controls — **0 words saved**.
+- Line 61 — “How it works” — **Cut**; introduces implementation detail rather than a reader decision — **3 words saved**.
+- Line 63 — metadata, inode, device, and selection explanation — **Cut**; internal mechanics are unnecessary, while the actionable size distinction already remains on line 48 — **46 words saved**.
+- Line 65 — standard-error, standard-output, and JSON-stream explanation — **Cut**; shell-stream internals and JSON are outside the immediate terminal-view task — **22 words saved**.

@@ -1,0 +1,57 @@
+<!-- rationalizer; 1.2 min; 31076 tokens; exit 0 -->
+
+Codex Sol R1: complete — 4 cuts proposed, saving 42 words.
+
+- Line 1 — “dust” — KEEP, identifies the project immediately — 0 words saved.
+- Line 3 — “Build Status” badge — CUT, CI state does not help this reader decide whether the tool solves their disk-space problem — 2 words saved.
+- Line 5 — “`du` + Rust = `dust`.” — KEEP, anchors the tool to a familiar command — 0 words saved.
+- Line 5 — “An easy way to see where your disk space is being used.” — KEEP, states the immediate payoff — 0 words saved.
+- Line 7 — “`dust` turns a directory into a compact tree of its largest files and subdirectories.” — KEEP, explains the product and result — 0 words saved.
+- Line 7 — “Human-readable sizes, proportional bars, and percentages keep the large entries visible without a `sort` or `head` pipeline.” — KEEP, differentiates it from the workflow the reader knows — 0 words saved.
+- Line 7 — “With default settings, it scans the current directory and adapts its width and line count to your terminal.” — KEEP, shows that the useful first run needs no flags — 0 words saved.
+- Lines 9–11 — demo image — KEEP, lets the reader judge the actual interface before installing — 0 words saved.
+- Line 13 — “Install” — KEEP, marks the reader’s first action — 0 words saved.
+- Line 15 — installer platform detection and latest-release statement — KEEP, tells the reader whether the command applies to their system — 0 words saved.
+- Lines 17–19 — `curl … | sh` command — KEEP, provides the fastest installation route — 0 words saved.
+- Line 21 — “Or install `dust` with a package manager” — KEEP, introduces familiar alternatives — 0 words saved.
+- Line 21 — “you already use” — CUT, package-manager familiarity is already implicit — 3 words saved.
+- Lines 23–24 — package table headings — KEEP, make the installation choices scannable — 0 words saved.
+- Line 25 — Homebrew command — KEEP, gives macOS and Linux readers an actionable route — 0 words saved.
+- Line 26 — Fedora command — KEEP, gives Fedora readers an actionable route — 0 words saved.
+- Line 27 — Snap command — KEEP, gives Snap users an actionable route whose limitation follows immediately — 0 words saved.
+- Line 28 — deb-get command — KEEP, gives its users an actionable route — 0 words saved.
+- Line 29 — Conda command — KEEP, gives Conda users an actionable route — 0 words saved.
+- Line 30 — Scoop command — KEEP, gives Windows readers an actionable route — 0 words saved.
+- Line 31 — Cargo command — KEEP, supplies a portable fallback for readers who already have Rust — 0 words saved.
+- Line 33 — “The Snap package can access files only under `/home`.” — KEEP, preserves a material limitation where the reader chooses an installer — 0 words saved.
+- Line 33 — prebuilt-archive link — KEEP, provides a route for systems not covered by the listed managers — 0 words saved.
+- Line 35 — “Run it” — KEEP, marks the next action — 0 words saved.
+- Line 37 — “From the directory you want to inspect” — KEEP, supplies the command’s essential context — 0 words saved.
+- Lines 39–41 — `dust` — KEEP, delivers the promised zero-configuration first run — 0 words saved.
+- Line 43 — sizes and largest-entry tree description — KEEP, tells the reader how to interpret the report — 0 words saved.
+- Line 43 — bar, percentage, and lighter-segment explanation — KEEP, explains the distinctive parent-context visualization — 0 words saved.
+- Line 45 — multi-path explanation — KEEP, exposes a useful capability without forcing the reader through the full reference — 0 words saved.
+- Lines 47–49 — `dust <path> [<path> ...]` — KEEP, gives the actionable syntax for that capability — 0 words saved.
+- Line 51 — “Use `dust --help` for the complete command reference.” — KEEP, routes advanced needs away from the README — 0 words saved.
+- Line 53 — “Choose what to see” — KEEP, frames the small task-oriented command guide — 0 words saved.
+- Lines 55–56 — task table headings — KEEP, make command discovery fast — 0 words saved.
+- Line 57 — `dust -n 20` — KEEP, changes the amount of output in a common first-run scenario — 0 words saved.
+- Line 58 — `dust -d 3` — KEEP, controls tree depth in a common first-run scenario — 0 words saved.
+- Line 59 — `dust -F` — KEEP, directly answers which files are largest — 0 words saved.
+- Line 60 — `dust -D` — KEEP, lets the reader focus on directory growth — 0 words saved.
+- Line 61 — `dust -i` — KEEP, provides a common visibility choice — 0 words saved.
+- Line 62 — `dust -x` — KEEP, prevents an inspection from crossing filesystem boundaries — 0 words saved.
+- Line 63 — `dust -s` — KEEP, preserves the allocated-versus-apparent-size choice where it is made — 0 words saved.
+- Line 64 — `dust -z 100MB` — KEEP, shows how to suppress entries too small to matter — 0 words saved.
+- Line 65 — regular-expression filtering — KEEP, demonstrates path-based narrowing promised by the pitch — 0 words saved.
+- Line 66 — screen-reader flags — KEEP, preserves an accessibility route at the point of output choice — 0 words saved.
+- Line 67 — JSON output — KEEP, shows the tool can extend into automated workflows — 0 words saved.
+- Line 69 — “Combine these controls as needed: `dust -D -d 2 -n 50` shows up to 50 directories within two levels.” — CUT, the table already makes flag composition evident and the example adds no new behavior — 19 words saved.
+- Line 71 — “Configure defaults” — KEEP, marks the route for repeated use — 0 words saved.
+- Line 73 — configuration search order and paths — KEEP, exact paths are necessary once the reader chooses persistent defaults — 0 words saved.
+- Lines 75–80 — TOML example — KEEP, turns configuration into a copyable action and demonstrates common keys — 0 words saved.
+- Line 82 — sample-config link and summarized capabilities — KEEP, exposes available defaults without reproducing the full reference — 0 words saved.
+- Line 82 — `dust --config <file>` — KEEP, provides the one-run override when persistent configuration is inappropriate — 0 words saved.
+- Lines 84–86 — “Alternatives” and the list of `ncdu`, `dua`, `dutree`, `pdu`, and a `du` pipeline — CUT, it merely names competitors while the useful `du` comparison already appears in the pitch — 18 words saved.
+- Line 88 — “License” — KEEP, marks information relevant to adoption decisions — 0 words saved.
+- Line 90 — Apache License 2.0 statement and link — KEEP, supplies the legal condition needed for adoption — 0 words saved.

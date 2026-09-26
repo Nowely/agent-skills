@@ -1,0 +1,6 @@
+MODEL: gpt-6-astra
+EFFORT: medium
+TASK: You are Codex Astra C1. You are a fresh reader. Read ONE file, with cat, and nothing else: <DOC>. Assess the quality of the comments in this Rust source file. Quote the line for every point you make.
+
+Do not modify the repository, write only under $TMPDIR, never cd inside a compound command.
+RETURN: First line: "Codex Astra C1:", your status, and your assessment in one sentence. Then your points, each with the line it quotes.

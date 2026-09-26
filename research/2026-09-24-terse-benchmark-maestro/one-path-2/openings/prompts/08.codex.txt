@@ -1,0 +1,11 @@
+RIGHTS: read /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/openings/b
+MODEL: gpt-5.6-luna
+EFFORT: medium
+TASK: You are a developer who builds LLM features and works in an AI coding tool, landing on a project's GitHub page. The two files below are two versions of the top of the same project's README — everything above its Quick start — in raw markdown; picture each rendered on GitHub. Read both with cat and nothing else: /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/openings/b/1.md and /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/openings/b/2.md. Do not use anything you already know about this project, and run no other command.
+
+Start your answer with exactly these two lines, each with 1 or 2:
+BETTER: <which opening is better>
+SELLS: <which opening makes you want to try the project more>
+Then say why in three to five sentences: what in the winner works on you and what in the other does not, quoting the lines.
+CHECK: every quote is in the file it names.
+RETURN: plain text; the first two lines are BETTER: and SELLS:.

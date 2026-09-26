@@ -1,0 +1,6 @@
+D2 retired phrase with a capital: ledger.mjs exit 0; retired row: retired L? - - - 
+D2 retired phrase in lower case: ledger.mjs exit 1; retired row: retired L? - - YES 
+D2 scripts that write a flags field: 0 of 2 (round.mjs, ledger-seed.mjs); ledger.mjs reads it: 1
+D3 empty claim ledger: ledger-seed.mjs exit 1: <probe>/d3/audit.md: no ### C.. entries under ## Claim ledger; the block is the machine half of entries a reader reads, not a replacement for them
+D3 ledger.json written: no
+D4 rule1 on planted lines 1-4: exit 1; reported: ! line 3 env var $TMPDIR;! line 4 flag name --keep-data;

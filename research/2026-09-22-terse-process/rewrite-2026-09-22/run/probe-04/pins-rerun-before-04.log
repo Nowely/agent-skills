@@ -1,0 +1,36 @@
+holds C01 exit 0
+skip (probe) C03
+holds C06 exit 0
+holds C07 exit 0
+holds C09 exit 0
+holds C10 exit 0
+holds C11 exit 0
+holds C15 exit 0
+holds C24 exit 0
+holds C33 exit 0
+holds C42 exit 0
+holds C43 exit 0
+DOES NOT RESOLVE C44 exit 0
+holds G1 exit 0
+holds G4 exit 0
+holds R02a exit 0
+holds R02c exit 0
+holds R02d exit 0
+DOES NOT RESOLVE R02e exit 0
+skip (probe) G3a
+skip (probe) G3b
+holds G2 exit 0
+holds R02f2 exit 0
+holds R03a exit 0
+holds R03c exit 0
+holds R03d exit 0
+holds R03e exit 0
+holds R03f exit 0
+holds R03g exit 0
+skip (probe) R03h
+holds R03i exit 0
+holds R03j exit 0
+skip (probe) R03b
+holds G3c exit 0
+holds R03l exit 0
+holds R03k exit 0

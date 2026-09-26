@@ -1,0 +1,3 @@
+A = Opus WB path-first (tmp.S06I0oLqjd/04-final.md)
+B = Codex Sol WC frame-first (terse-writer-C.0Zwo1X/04-final.md)
+C = Opus WA repair-first (opus-wa.hVVCWdsuJt/README.md)

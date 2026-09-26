@@ -1,0 +1,75 @@
+3c3
+< [![Build status](https://github.com/bootandy/dust/actions/workflows/CICD.yml/badge.svg?branch=master)](https://github.com/bootandy/dust/actions)
+---
+> Dust shows you where disk space is being used. Its size-sorted tree keeps the largest entries and their place in the directory structure together.
+5c5,7
+< > Because I want an easy way to see where my disk is being used.
+---
+> - **Ready at once.** By default, Dust scans the current directory and sets its entry limit from the terminal height.
+> - **Structure stays visible.** Sizes and tree branches show which entries are large and where each one sits.
+> - **Focused answers.** Options narrow the view by depth, path, size, or regular expression.
+7,12d8
+< Dust is a more intuitive `du`: it finds the largest files and directories beneath the paths you give it and lays them out as a size-sorted tree.
+< 
+< - **Immediate overview.** With no path, Dust scans the current directory and fits the number of entries to the terminal height.
+< - **Structure stays visible.** Sizes, tree branches, and percentage bars show both what is large and where it belongs.
+< - **Focused answers.** Narrow the view by depth, path, file type, size, or regular expression.
+< 
+15c11
+< Install the latest release:
+---
+> On macOS or Linux, install the latest release:
+21c17
+< Then scan the directory you are in:
+---
+> Run Dust:
+27c23
+< Dust prints a tree of the largest entries, with disk sizes and percentage bars. Pass one or more paths to scan somewhere else:
+---
+> Default text output shows sizes in a tree, with percent bars when space permits.
+29,32d24
+< ```text
+< dust PATH...
+< ```
+< 
+35,36d26
+< Start with `-n` when you want more or less detail. Combine the other controls as the question changes.
+< 
+39c29,30
+< | `-n, --number-of-lines NUMBER` | Limits the selection to the largest entries | The default view is too short or too long |
+---
+> | `PATH...` | Supplies one or more positional paths | You want to inspect somewhere else |
+> | `-n, --number-of-lines NUMBER` | Limits the view to its largest entries | The default view is too short or too long |
+41,44c32,35
+< | `-F, --only-file` | Shows only files | You are looking for the largest individual files |
+< | `-D, --only-dir` | Shows only directories | You want directory totals without file rows |
+< | `-e, --filter REGEX` | Includes only matching paths | A name or extension defines the search |
+< | `-v, --invert-filter REGEX` | Excludes matching paths | Known clutter is hiding useful entries |
+---
+> | `-F, --only-file` | Flattens entries without children | You want to compare leaf entries directly |
+> | `-D, --only-dir` | Keeps directory child entries | You want directory totals without files |
+> | `-e, --filter REGEX` | Includes matching files | A name or extension defines the search |
+> | `-v, --invert-filter REGEX` | Excludes matching files | Known clutter is hiding useful entries |
+47,49c38,39
+< | `-x, --limit-filesystem` | Stays on the starting filesystem | A mounted filesystem should not count |
+< | `-s, --apparent-size` | Uses file length instead of allocated blocks | Logical file size matters more than disk use |
+< | `-f, --filecount` | Counts child files instead of bytes | File count is the useful measure |
+---
+> | `-x, --limit-filesystem` | Limits the scan to detected starting filesystems | Mounted filesystems should not count |
+> | `-s, --apparent-size` | Uses file length on Unix | File length matters more than disk space |
+51,53c41
+< | `-R, --screen-reader` | Removes bars and adds a depth column | Reading the output with a screen reader |
+< | `-j, --output-json` | Prints the selected tree as JSON | Another command will consume the result |
+< | `--config FILE` | Loads settings from a chosen config file | You keep a reusable set of defaults |
+---
+> | `-R, --screen-reader` | Removes bars and adds a depth column | You use a screen reader |
+55c43
+< See every flag:
+---
+> See every option:
+63,65c51
+< Dust reads directory entries and filesystem metadata, totals the children beneath each directory, and selects the largest entries for display. By default on Unix, it measures allocated space and avoids counting the same inode and device twice; `--apparent-size` switches to file length and includes duplicate inodes.
+< 
+< While Dust scans, progress and errors go to standard error. The finished tree goes to standard output; `--output-json` sends JSON there instead.
+---
+> Dust writes any scan progress and errors to `stderr`. It writes the finished tree to `stdout`.

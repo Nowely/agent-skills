@@ -1,0 +1,24 @@
+== rule1.mjs
+! line 10  absolute path  /marketplace.visualstudio.com/items
+! line 25  flag name      --install-extension
+! line 94  protocol name  MCP
+! line 96  protocol name  MCP
+! line 96  protocol name  MCP
+! line 109  absolute path  /www.npmjs.com/package/maestro-workflow-mcp
+
+6 violation(s), 0 excused
+exit 1
+== sections.mjs (budgets written before the draft)
+  136 / 150  -14   (opening)
+  133 / 200  -67   Quick start
+  585 / 560  +25   Commands
+   63 / 120  -57   MCP server
+  150 / 190  -40   How it works
+   33 / 55   -22   Contributing
+ 1100 TOTAL, 1 section(s) over budget
+== rule1.mjs --cut "MCP server" (the first technical section)
+! line 10  absolute path  /marketplace.visualstudio.com/items
+! line 25  flag name      --install-extension
+
+2 violation(s), 0 excused
+exit 1

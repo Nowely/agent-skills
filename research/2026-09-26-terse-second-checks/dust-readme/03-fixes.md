@@ -1,0 +1,23 @@
+- truth — `dust -s` does not consistently switch Windows output from allocated space to file length — APPLIED — limited the row to Unix, where `platform.rs` implements that distinction.
+- cold-astra — The introduction immediately explains the name and purpose — APPLIED — retained it unchanged because this reader first needs to recognize the tool and its job.
+- cold-astra — The report-versus-interactive-browser distinction is useful — APPLIED — retained it unchanged because it helps readers choose the right kind of disk-usage tool before installing.
+- cold-astra — The task-oriented command table explains meaningful choices — APPLIED — retained the table and corrected the `-s` row's platform scope.
+- cold-astra — “The project warns” sounds unnecessarily secondhand — APPLIED — changed it to the direct but evidence-bounded statement that the Snap package may be unable to read outside `/home`.
+- cold-astra — Installer architectures and destination are unspecified — APPLIED — added every OS/architecture target selected by `install.sh` and its exact destination precedence.
+- cold-astra — The lighter bar segments are explained vaguely — APPLIED — now says the solid segment is the entry's total share and lighter segments extend to its parent's size.
+- cold-astra — Config lookup does not say whether the first file wins or files merge — APPLIED — stated that the first valid file is used and files are not merged.
+- cold-sol — The opening immediately explains the project and purpose — APPLIED — retained it because it answers the reader's first question without delay.
+- cold-sol — The interface expectation is clear — APPLIED — retained the report-versus-browser sentence unchanged.
+- cold-sol — The default behavior is useful and does not force configuration first — APPLIED — retained it and kept configuration explicitly optional.
+- cold-sol — Piping a mutable remote installer directly to a shell lacks a review alternative — APPLIED — kept the immediate route but added a link and instructions to inspect the same script before running it.
+- cold-sol — The Snap limitation is well placed — APPLIED — kept it beside the Snap installation route and made its wording direct.
+- cold-sol — Usage progresses naturally from the default command to paths — APPLIED — retained that sequence unchanged.
+- cold-sol — Screen-reader output is presented as a concrete workflow — APPLIED — retained the `dust -R -p` task row unchanged.
+- cold-sol — Regex parent-directory behavior and the full-reference pointer are useful — APPLIED — retained both after the command table.
+- cold-sol — Configuration precedence is documented precisely — APPLIED — retained the lookup order and added the first-valid-file, no-merge behavior.
+- cold-sol — Release archives lack checksum or signature-verification instructions — DECLINED — the repository provides no checksum, signature, or verification procedure that could be documented truthfully.
+- cold-sol — Permissions, unsupported architectures, and failed installation lack troubleshooting — APPLIED — added a short section covering PATH warnings, unsupported installer targets, and `--print-errors`.
+- Q1 — Mac Homebrew installation is answered correctly — APPLIED — retained `brew install dust` unchanged.
+- Q2 — The top-ten home-directory command is derivable correctly — APPLIED — retained positional path syntax and the `-n` example unchanged.
+- Q3 — The output shape is answered correctly — APPLIED — retained the tree, size, bar, and percentage description while making the lighter segments more precise.
+- Q4 — Excluding root-level `node_modules` is answered correctly — APPLIED — retained `dust -X node_modules` and its direct-under-scan-path scope unchanged.

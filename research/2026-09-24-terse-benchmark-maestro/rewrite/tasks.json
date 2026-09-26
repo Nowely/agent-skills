@@ -1,0 +1,8 @@
+[
+ {"name": "install-by-the-fitting-route-and-reach-the-first-command",
+  "start": "A machine with Node 20 or newer and git. A small project of your own under $TMPDIR (git init, a few source files, one commit) in which you use Claude Code as your coding agent. No Maestro anywhere yet. The document alone tells you what Maestro is; you have not seen any other page about it.",
+  "goal": "Maestro's skills installed into that project by the route the document sends a Claude Code user to, up to the point where you would type the first Maestro command: the exact commands you ran in order with their exit codes; where the skill files landed (paths) and how many; what the document told you to type first and second, and in which interface; anything the document promised that you could not verify from the project state, named."},
+ {"name": "find-the-command-for-the-next-problem",
+  "start": "Maestro is installed in your project and you have run its first two commands once. Your coding agent's workflow has grown slow and expensive, and its outputs contradict earlier decisions you made with it. You do not know Maestro's commands by name.",
+  "goal": "From the document alone: the command or commands the document tells you to run for each of the two problems, what each will produce, and the section and line where you found them; whether the document told you where earlier decisions are kept and how a new session picks them up; the point at which you had to guess, if any."}
+]

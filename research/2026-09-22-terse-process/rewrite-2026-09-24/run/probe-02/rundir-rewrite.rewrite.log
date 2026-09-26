@@ -1,0 +1,11 @@
+claude: 2.1.280 (Claude Code); copy of plugins/terse = checkout's: identical
+installed (marketplace add <copy> exit 0, plugin install terse@nowely exit 0):
+  rewrite: /terse:rewrite exit 1, Not logged in, cost 0; D="<data>"; run → <data>/runs/<stamp>-readme, made, outside <work>
+  <data> = <probe>/config-installed/plugins/data/terse-nowely, exists
+plugindir (--plugin-dir <copy>/plugins/terse):
+  rewrite: /terse:rewrite exit 1, Not logged in, cost 0; D="<data>"; run → <data>/runs/<stamp>-readme, made, outside <work>
+  <data> = <probe>/config-plugindir/plugins/data/terse-inline, exists
+skills (<work>/.claude/skills/<name>/SKILL.md, no plugin loader):
+  rewrite: /rewrite exit 1, Not logged in, cost 0; D="${CLAUDE_PLUGIN_DATA}" as written; run → <probe>/tmp-skills/terse/runs/<stamp>-readme, made, outside <work>; TMPDIR unset → /tmp/terse/runs/<stamp>-readme
+<work> = each load's working directory, for the repository; entries added to the three: 0
+checkout status for plugins/ and .claude-plugin/: []

@@ -1,0 +1,31 @@
+claim                                              lvl  00-o 01-c
+C01 terse is a Claude Code plugin whose            L2   yes  LOST
+C03 the plugin ships three skills.                 L3   yes  LOST
+C05 `rethink` returns a skeleton that `rewrite`    L2   yes  LOST
+C06 audit builds a profile of the project's        L2   yes  LOST
+C07 audit returns a score, the questions that      L2   yes  LOST
+C09 rethink decides, before any prose is written   L2   yes  LOST
+C10 rethink hands over a skeleton, each section    L2   yes  LOST
+C11 rewrite starts from a skeleton `rethink` agr   L2   yes  LOST
+C12 three writers produce candidates and two jud   L2   YES   -  
+C13 every round of a rewrite stays on              L3   YES   -  
+C15 rewrite writes its rounds and artefacts into   L2   yes  LOST
+C16 nothing rewrite does changes the user's file   L2   YES   -  
+C18 inside Claude Code, `/plugin marketplace add   L2   yes  LOST
+C19 from a shell, `claude plugin marketplace add   L2   yes  LOST
+C20 after the two install steps nothing else       L3   YES   -  
+C21 Node 22 or newer is needed only                L3   YES   -  
+C23 shortening the text is not terse's aim:        L2   yes  yes 
+C24 on the one 2026-09-10 README the chain         L3   yes  LOST
+C27 rewrite leaves every condition, limit and wa   L2   YES   -  
+C30 everything under *What was measured* comes f   L2   YES   -  
+C33 three discordant pairs, all improvements, an   L3   yes  LOST
+C39 the 2026-09-10 bake-off put five published w   L2   YES   -  
+C41 on the audited README's first 116 words,       L2   YES   -  
+C42 the passage result rests on ten agents         L2   yes  LOST
+C43 nothing in the record isolates which of        L2   yes  LOST
+C44 the 2026-09-10 measurement had no arm that     L2   yes  LOST
+C45 two published benchmarks that ran a no-docum   L2   YES   -  
+C46 the plugin's reference files state the missi   L2   YES   -  
+
+16 failure(s) in /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260924-002235-terse-readme-rewrite2/01-candidate.md

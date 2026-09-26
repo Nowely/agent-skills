@@ -1,0 +1,6 @@
+not logged in
+--plugin-dir /terse:audit: exit 1, Not logged in · Please run /login; "source":"terse@inline"
+the page's line as received begins D="<probe>/config-pdir/plugins/data/terse-inline";
+data directory terse-inline: exists; temporary directory runs: absent
+$ claude plugin uninstall terse@inline -> exit 1: ✘ Failed to uninstall plugin "terse@inline": This plugin is loaded via --plugin-dir for this session with no marketplace backing — it cannot be uninstalled. Drop the --plugin-dir flag to stop loading it, or `claude plugin disable` to turn it off.
+stub run after that uninstall: present

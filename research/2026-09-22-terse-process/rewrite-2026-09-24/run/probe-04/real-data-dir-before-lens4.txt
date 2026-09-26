@@ -1,0 +1,9 @@
+total 0
+drwxr-xr-x   8 ruliny  staff  256 Sep 23 17:12 .
+drwxr-xr-x  12 ruliny  staff  384 Sep 24 04:20 ..
+drwxr-xr-x   2 ruliny  staff   64 Aug 30 19:58 codex-openai-codex
+drwxr-xr-x  10 ruliny  staff  320 Sep 18 01:24 entrust-nowely
+drwxr-xr-x   2 ruliny  staff   64 Apr  2 13:09 superpowers-claude-plugins-official
+drwxr-xr-x   2 ruliny  staff   64 May  7 16:15 superpowers-superpowers-dev
+drwxr-xr-x   2 ruliny  staff   64 Sep 23 17:12 terse-inline
+drwxr-xr-x   5 ruliny  staff  160 Sep 11 22:54 terse-nowely

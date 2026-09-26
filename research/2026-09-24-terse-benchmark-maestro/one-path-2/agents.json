@@ -1,0 +1,175 @@
+[
+ {
+  "name": "writer",
+  "model": "Claude Opus",
+  "stage": "draft, repair, fix",
+  "minutes": 47.5,
+  "tokens": 529190,
+  "tools": 118,
+  "phases": {
+   "draft": 30.0,
+   "repair": 13.1,
+   "fix": 4.4
+  }
+ },
+ {
+  "name": "truth-1",
+  "model": "Claude Opus",
+  "stage": "critics",
+  "minutes": 24,
+  "tokens": 239799,
+  "tools": 74
+ },
+ {
+  "name": "truth-2",
+  "model": "Claude Opus",
+  "stage": "critics",
+  "minutes": 11.9,
+  "tokens": 199419,
+  "tools": 39
+ },
+ {
+  "name": "truth-3",
+  "model": "Claude Opus",
+  "stage": "critics",
+  "minutes": 18.2,
+  "tokens": 242997,
+  "tools": 71
+ },
+ {
+  "name": "rationalizer",
+  "model": "Claude Opus",
+  "stage": "critics",
+  "minutes": 9.3,
+  "tokens": 91356,
+  "tools": 7
+ },
+ {
+  "name": "form",
+  "model": "Claude Sonnet",
+  "stage": "critics",
+  "minutes": 5.9,
+  "tokens": 78417,
+  "tools": 5
+ },
+ {
+  "name": "terms",
+  "model": "Claude Sonnet",
+  "stage": "critics",
+  "minutes": 13.1,
+  "tokens": 121264,
+  "tools": 8
+ },
+ {
+  "name": "rules",
+  "model": "Claude Sonnet",
+  "stage": "critics",
+  "minutes": 10.3,
+  "tokens": 100708,
+  "tools": 11
+ },
+ {
+  "name": "sentences",
+  "model": "Claude Sonnet",
+  "stage": "critics",
+  "minutes": 7.1,
+  "tokens": 87904,
+  "tools": 11
+ },
+ {
+  "name": "check-truth",
+  "model": "Claude Opus",
+  "stage": "check",
+  "minutes": 19.8,
+  "tokens": 265663,
+  "tools": 91
+ },
+ {
+  "name": "reader-Q3",
+  "model": "Codex Luna",
+  "stage": "critics",
+  "minutes": 0.1,
+  "tokens": 24227,
+  "tools": 1
+ },
+ {
+  "name": "reader-Q4",
+  "model": "Codex Luna",
+  "stage": "critics",
+  "minutes": 0.2,
+  "tokens": 24228,
+  "tools": 1
+ },
+ {
+  "name": "reader-Q5",
+  "model": "Codex Luna",
+  "stage": "critics",
+  "minutes": 0.2,
+  "tokens": 24222,
+  "tools": 1
+ },
+ {
+  "name": "reader-Q6",
+  "model": "Codex Luna",
+  "stage": "critics",
+  "minutes": 0.2,
+  "tokens": 24366,
+  "tools": 1
+ },
+ {
+  "name": "task1",
+  "model": "Codex Sol",
+  "stage": "critics",
+  "minutes": 3.6,
+  "tokens": 312668,
+  "tools": 20
+ },
+ {
+  "name": "check-reader-Q3",
+  "model": "Codex Luna",
+  "stage": "check",
+  "minutes": 0.2,
+  "tokens": 24060,
+  "tools": 1
+ },
+ {
+  "name": "check-reader-Q4",
+  "model": "Codex Luna",
+  "stage": "check",
+  "minutes": 0.1,
+  "tokens": 23998,
+  "tools": 1
+ },
+ {
+  "name": "check-reader-Q5",
+  "model": "Codex Luna",
+  "stage": "check",
+  "minutes": 0.1,
+  "tokens": 24011,
+  "tools": 1
+ },
+ {
+  "name": "check-reader-Q6",
+  "model": "Codex Luna",
+  "stage": "check",
+  "minutes": 0.2,
+  "tokens": 24156,
+  "tools": 1
+ },
+ {
+  "name": "cold-astra",
+  "model": "Codex Astra",
+  "stage": "check",
+  "minutes": 0.5,
+  "tokens": 29282,
+  "tools": 1
+ },
+ {
+  "name": "cold-sol",
+  "model": "Codex Sol",
+  "stage": "check",
+  "minutes": 0.5,
+  "tokens": 28299,
+  "tools": 1
+ }
+]

@@ -1,90 +1,82 @@
 # terse
 
-A Claude Code plugin that measures whether your documentation gives readers the right answer, and then
-repairs what it measured. It sends fresh readers through your `.md` files and checks every claim about
-behaviour against the code, so a failure arrives with a line number and a cause rather than an opinion.
+A Claude Code plugin for assessing and improving any text, by several AI agents working from rules and best practices. Its aim is text in which every word carries weight and meaning, without AI slop. It is not a compressor. It is for when you cannot tell whether a document is fine, and touching it may make it worse.
 
-Three skills. You invoke all three; none starts on its own.
+## Quick start
 
-```
-/terse:rethink  →  skeleton  →  /terse:rewrite  →  candidate + diff  →  /terse:audit
-/terse:audit    →  run file  →  /terse:rewrite  →  candidate + diff  →  /terse:audit again
-   what broke                    what to write                          did it hold
-```
+### Install
 
-## What each one does
-
-**`/terse:audit`** builds a profile of who reads this project, derives the correct answers from the
-code, then sends one fresh reader per question through the documentation — `.md` only, starting where a
-real reader starts. It returns a score, the questions that failed, and why each failed: the text lied,
-the answer was nowhere, the true sentence sat where it misleads, it was there and unfindable, or every
-sentence was true and the sequence left the reader worse off. It never suggests
-wording.
-
-**`/terse:rethink`** decides what a document should be before a sentence of it is written: what
-comparable documents in the same genre already solved, what things should be called, and what is said in
-what order. It returns a skeleton — section titles, what each is for, what each leaves out, a word budget
-— and stops there for your word. It exists because a draft written at ordinary quality was abandoned by
-its reader at the third section, and nine of his nine objections were about what the document contained,
-where it sat and how much of it there was. None was about phrasing.
-
-**`/terse:rewrite`** takes a skeleton or an audit's run file and writes against it. Three writers produce
-candidates and two judges score them on the failures rather than on taste; the winner then goes through
-a loop of critics whose lenses do not overlap — the code, the rules, an adversarial reader, a task, a
-reader's questions — until a round finds nothing new and nothing got worse. Every round is kept as its
-own file. You get the winner, the diff, a list of every cut of twenty words or more with its reason, and the file, line and evidence level behind every behavioural claim. It writes into its own run directory. Applying
-anything to your files needs your word.
-
-All three skills announce how many agents they are about to spawn, on which model, and wait.
-
-## Install
-
-```
-/plugin marketplace add Nowely/agent-skills
-/plugin install terse@nowely
+```bash
+claude plugin marketplace add Nowely/agent-skills
+claude plugin install terse@nowely
 ```
 
-The same two steps from a shell: `claude plugin marketplace add Nowely/agent-skills`, then
-`claude plugin install terse@nowely`. Nothing else is needed — no dependencies, no configuration file,
-no account anywhere. Node 22 or newer if you run the checkout directly.
+You need: Node 22 or newer.
 
-## What it will and will not do to your text
+### Workflow
 
-It makes documentation truer and easier to answer from. It is not a compressor. On the one file
-measured, the chain moved 2,725 words to 2,571 — six percent — while the second pass cut 105 words and
-the third added 105 back as missing framing. If your text is long because it is wrong, this shortens it.
-If it is long because it explains something hard, it will stay long and start being right.
+In Claude Code:
 
-It will not touch a condition, a limit or a warning at a point where you decide something. It will not
-strip a repetition that sits at a decision a reader reaches independently. It will not drop the date or
-the numbers from a measurement, including numbers the code has since changed.
+```text
+/terse:audit
+```
 
-## What was measured
+It asks for the scope — which files to check, every tracked `.md` by default — and where your readers start. Before starting agents, each skill says how many and on which model, and waits until you say so. Its report starts with what makes your text hard to read, then lists the questions it answers wrong, why, and where — file and line when a sentence is at fault.
 
-One run, on 2026-09-10, on one README in one repository. Read the size of it before the numbers:
+If every answer from your text is already right, stop. Otherwise say whether the document's shape — what it says, in what order — stands. If it does, run this and, when it asks, give it the folder the report names:
 
-- The four-pass chain took six reader questions from three right answers to six, took readers leaving
-  the documentation from one to zero, and broke neither control question. **Six questions, one trial
-  each.** Three improvements and no reversals over six paired items gives an exact two-sided McNemar
-  *p* = 0.25, so this result is not distinguishable from chance. It is a pilot, not a rate.
-- Two of the six failures were lies rather than findability. A reader repeated two guarantees from
-  `README.md:5-9` that the code does not make. A structural rewrite would have carried both forward in
-  better prose.
-- A reader's own sense of clarity ran against the truth. Two who reported no confusion answered wrong;
-  the one who called a section scattered and confusing answered right. Neither skill asks a reader
-  whether the text was clear.
-- Five published writing standards were put against two unguided controls across ten agents, models
-  hidden from the judges. Both controls beat both entries of both standards. On the first 116 words,
-  seven of ten agents proposed nothing and the only agent that shortened the passage was a control. **Ten
-  agents, one run, one passage** — one observation per cell, not a rate.
+```text
+/terse:rewrite
+```
 
-Not measured: which of the four passes produced the gain, and whether a bake-off beats one careful pass.
-Also not measured, and worth knowing before you trust any of the above: there was no arm that ran the
-same questions with no document at all, so none of this separates what the text taught a reader from what
-the reader already knew. Two published benchmarks that did run that arm found it large. The reference
-files say so where it matters, and
-[references/prior-art.md](references/prior-art.md) collects every finding against these numbers.
+It hands back a new draft of your whole document and its diff, each change against the original, in a folder of its own outside your repository. You decide whether the draft replaces your document.
 
-## Licence
+If the shape does not stand, run this first to decide a new one: a plan, an outline you agree to.
 
-MIT.
+```text
+/terse:rethink
+```
+
+Recommended orders, each command run by you:
+
+- `/terse:audit` → `/terse:rewrite` → `/terse:audit` again with the same questions
+- `/terse:rethink` → `/terse:rewrite` → `/terse:audit`
+
+### Update
+
+```bash
+claude plugin marketplace update nowely
+claude plugin update terse@nowely
+```
+
+Restart Claude Code to apply it.
+
+## Skills
+
+| Command | When to run it | What you get back |
+|---|---|---|
+| `/terse:audit` | You cannot tell whether your document is fine | A report: what makes the text hard to read, then which questions it answers wrong, why, and where — file and line when a sentence is at fault; no rewording |
+| `/terse:rethink` | No document yet, or it says the wrong things in the wrong order | A plan: the sections, each with what it gives the reader and its size, to agree to before the text is written |
+| `/terse:rewrite` | You want the text written or rewritten | A new draft of the whole document, and its diff |
+
+You start each one yourself.
+
+## How it works
+
+- **audit** — a profile of who reads it → every claim checked by reading the code or a named source → questions and an answer key → a fresh AI reader per question, with and without your text, starting where your readers start, and two more on what makes it hard to read → a cause for each wrong answer: false, missing, misplaced, hard to find, misleading steps. Ask for a full run and the claims are also run, and two AI readers carry out tasks from your text. [Its page](skills/audit/SKILL.md)
+- **rethink** — what your text is and who it is for → how the best texts of its kind are built → a plan on one screen: each part, what it gives the reader and the form it takes → form and relevance critics on the plan → a plan you agree to. [Its page](skills/rethink/SKILL.md)
+- **rewrite** — one writer, who first works out what your text is, who reads it and what they need → every critic at once: truth by reading the code, relevance for your reader, form, terms, sentences, fresh AI readers → one repair → a check of what it changed → your read. Ask for a full run and the truth critics also run the code, and an AI reader carries out a task from your text. [Its page](skills/rewrite/SKILL.md)
+
+## Checks and guarantees
+
+| Method | What it checks | Where it comes from |
+|---|---|---|
+| The writing rules | Filler, an argument restated, editing history; a condition, a limit or a warning cut or weakened where your readers decide | Part two of a four-part rewrite, measured on one README: [the rules](references/writing-rules.md) |
+| The rules | Two things required of every text — it is pleasant to read, and true within its world — and advice for finding its best structure, words and form, taken where it helps | One owner's feedback and counts of documents of a kind, each piece marked with its source: [the rules](references/rules.md); advice for one kind of text, such as a README, in [its genre notes](references/genres/) |
+| The scripted check | Words per section against the writer's own plan, as a report; tested against a deliberate violation | [The measurements behind the scripts](references/measurements.md) |
+
+[The field's practices, each marked measured, argued or asserted](references/prior-art.md), gathered and ranked.
+
+**What the skills promise:** Each run is written in the plugin's own folder. A sentence the truth critics refute goes back to the writer before you see the text. Nothing in your repository changes until you say so.
+
+**Not guaranteed:** that a person reads the result better; what is measured is what AI readers get from the text.

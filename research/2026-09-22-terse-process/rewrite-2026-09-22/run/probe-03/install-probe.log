@@ -1,0 +1,12 @@
+claude: 2.1.280 (Claude Code)
+auth status: not logged in
+node on PATH: no
+marketplace add, not signed in, no node on PATH: exit 0
+plugin install, not signed in, no node on PATH: exit 0
+/terse:audit, not signed in: exit 1, Not logged in · Please run /login
+/terse:rethink, not signed in: exit 1, Not logged in · Please run /login
+/terse:rewrite, not signed in: exit 1, Not logged in · Please run /login
+a skill script with no node on PATH: exit 127
+pages that run node: audit rewrite 
+rethink: node commands 0, scripts directory absent
+declared: {"private":true,"type":"module","engines":{"node":">=22"}}

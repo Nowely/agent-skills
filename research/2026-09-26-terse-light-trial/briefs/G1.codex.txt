@@ -1,0 +1,7 @@
+MODEL: gpt-5.6-sol
+EFFORT: medium
+TASK: You are Codex Sol G1, the genre scout. Find how documents of this kind are written: the README of a command-line utility that people install through package managers — disk usage, file search, system monitoring and the like. Fetch five to eight of the most used — by stars, downloads or listings — as raw markdown with curl, never through a summarising tool, and save them under /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse/runs/20260926-130310-dust-readme/fetched/. Do not fetch bootandy/dust or any page that quotes its README. Return one table: each place from the top, what the genre puts there, in N of M documents, and how it is formatted there — headings, bold lead-ins, tables, fenced blocks, lists. Then what the best openings and quick starts do in their first 150 words. Cite nothing you did not fetch.
+
+Do not modify any repository, write only under $TMPDIR, never cd inside a compound command.
+CHECK: every document in the table is a file you saved under fetched/, and every count is over those files.
+RETURN: First line: "Codex Sol G1:", your status, and how many documents you counted. Then the table, then the openings and quick starts.

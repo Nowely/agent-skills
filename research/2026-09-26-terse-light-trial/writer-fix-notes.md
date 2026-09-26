@@ -1,0 +1,18 @@
+<!-- Codex Sol W1, fix; 3.0 min; 3120829 tokens -->
+
+Codex Sol W1: complete — 12 findings applied and 2 declined.
+
+- truth — “Dust shows you where disk space is being used” overstated allocated-space behavior on Windows — APPLIED — replaced it with a size-sorted-tree claim supported across platforms.
+- truth — the default entry limit was not always derived from terminal height — APPLIED — removed the limit claim and kept only the default current-directory behavior.
+- truth — “install the latest release” overpromised support across Linux architectures — APPLIED — narrowed the route to running the installer on macOS.
+- truth — `-v` did not exclude a matching positional root file — APPLIED — changed “Excludes” to the critic’s narrower “Filters.”
+- truth — `-x` could not enforce filesystem limits when Windows device IDs were unavailable — APPLIED — limited the claim to Unix.
+- truth — “any scan progress and errors” included an interrupt message that uses stdout — APPLIED — narrowed the sentence to progress and filesystem errors.
+- Q3 — the `du` comparison disappeared, leaving the improvement to be guessed — APPLIED — the opening now calls Dust a `du` alternative and states the size-sorted-tree difference.
+- cold-astra — add a representative output tree — DECLINED — rules 16 and 18 exclude run excerpts and invented examples.
+- cold-astra — the percentage-bar denominator was unspecified — APPLIED — Quick start now says each bar compares an entry with the root total.
+- cold-astra — the `-F` and `-D` descriptions left files, empty directories, and hierarchy unclear — APPLIED — removed the leaf-based `-F` row under rule 21 and rewrote `-D` as “Hides files below the root.”
+- cold-sol — add a package-manager or verification alternative to the remote installer — APPLIED — added a later Cargo section with `cargo install du-dust` and `dust --version`, following rule 8.
+- cold-sol — the only runnable usage example was `dust` — APPLIED — added the existing `dust -n 10` command as a focused example.
+- cold-sol — add representative output — DECLINED — rules 16 and 18 exclude run excerpts and invented examples.
+- cold-sol — “Keeps directory child entries” did not clearly say whether files were excluded — APPLIED — changed it to “Hides files below the root.”

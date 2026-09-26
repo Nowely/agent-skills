@@ -1,0 +1,139 @@
+You are writer W3 of the bake-off for the README of the repository at /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse-bench/snapshot — sharpdeveye/maestro at 00f9115, its root README removed. The README is written from scratch; there is no current document. What follows is your whole brief, in the order the rewrite page assembles it (plugins/terse/skills/rewrite/SKILL.md, step 2), then the bake-off's writer brief for the skeleton route, verbatim (references/bake-off.md), then this benchmark's own rules.
+
+PART 1 — THE SKELETON the owner agreed to: /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse/runs/20260924-125421-maestro-readme-rethink/skeleton.02.md, SHA-256 c7c9a4f783c85d1bf565e272ecc2270cd97a979caa5b72787c74550b403a2a46. Read it whole before anything else: every section's purpose, what it excludes, its budget, its device and sub-blocks, the mechanical rules of its part 3 and the words of its part 4.
+
+PART 2 — WHO READS THIS. There is no audit on this route, so no reader profile from a run file exists; the reader is the owner's own description, verbatim from the rethink run's purpose.md (the stand-in owner's answer 2):
+
+## 2. The reader
+
+**Who.** A developer who builds LLM features, agents or pipelines (prompts, tools, RAG, multi-agent setups) and does that work inside an AI coding tool: Claude Code, Cursor, Gemini CLI, Codex, Kiro, Trae, OpenCode, Pi, Antigravity, or VS Code's chat. They know their tool and what a slash command is. I don't assume they know what an MCP server or a skills folder is, and they have not picked an install route yet. The second group is people who already use the extension or the MCP server and come for the full command list, the source, or to contribute.
+
+**From where.** I have no traffic numbers. These are the routes the snapshot shows:
+
+- **GitHub itself.** The repo is the homepage in `package.json:23` and `mcp-server/package.json:33` ("https://github.com/sharpdeveye/maestro"). Its keywords are in `package.json:5-16`: ai, agents, workflows, skills, cursor, claude, gemini, codex, prompt-engineering, orchestration.
+- **The VS Code Marketplace or Open VSX listing.** `maestro-extension/README.md:10` has "[Install](vscode:extension/sharpdeveye.maestro-workflow) · [Website](https://maestroskills.dev) · [GitHub](https://github.com/sharpdeveye/maestro) · [MCP Server](https://www.npmjs.com/package/maestro-workflow-mcp)". Line `:121` has "[GitHub](https://github.com/sharpdeveye/maestro) | Source code, skills, and contributions". Open VSX publishing is the "Publish to Open VSX" step in `.github/workflows/build-extension.yml`.
+- **npm.** `mcp-server/README.md:11` says "MCP server for [Maestro](https://github.com/sharpdeveye/maestro) — exposes 25 workflow skills as tools, prompts, and resources for any MCP-compatible AI client."
+- **The skills CLI.** `maestro-extension/CHANGELOG.md:11` mentions "users using `npx skills add`". `skills-lock.json:5-6` records `"source": "sharpdeveye/maestro"`, `"sourceType": "github"`.
+- **The website.** maestroskills.dev is the extension's homepage (`maestro-extension/package.json:14`), described as "Interactive showcase and documentation" (`maestro-extension/README.md:120`). The only link inside a tool goes to the website, not to GitHub: the sidebar footer at `maestro-extension/webview-ui/src/App.tsx:75`.
+
+**Entry file.** Every reader of this README starts at `README.md` in the repository root. The Marketplace page and the npm page are entry files for their own channels, and both send readers back to the repo. So the root README must not assume the reader has seen either one. Inside the product, every route starts at one command, `/teach-maestro`: "This is the entry point for Maestro." (`source/skills/teach-maestro/SKILL.md:12`).
+
+
+PART 3 — THE WRITING RULES, copied as written from plugins/terse/skills/rewrite/references/writing-rules.md:
+
+# The writing rules
+
+Part two of the four-part chain. The text below is fixed. Apply it as written; do not restate it in
+your own words, and do not extend it with rules you like better. It was measured in this form.
+
+Default: no sentence that carries nothing. One earns its place by carrying a
+contract, a constraint, or a reason the code cannot state.
+
+Cut first: the argument for an instruction, restated wherever the instruction
+appears. Give the instruction; the case for it lives in one place.
+
+Also cut: editing history ("previously", "used to", "moved out of", "per PR #123",
+"on this machine"); capitals used for emphasis; a true claim on the wrong line.
+
+Define a term where the reader first needs it, not before. A page does not open
+with a glossary.
+
+A document states its purpose once, at the top, in the reader's words. That is not
+the argument for an instruction, and it is not cut.
+
+Never cut a condition, a limit or a warning where a reader decides. Repetition at
+an independently read decision point is not redundancy. A dated measurement keeps
+its date and its numbers, including ones the code has since changed.
+
+Counts - sentence length, repeated phrases - prompt a review. They are not gates.
+
+## Provenance
+
+The twenty lines above are reproduced byte for byte from `PART 2` of the prompt that was measured, kept
+at `research/2026-09-10-chain/chain-source-prompt.txt` in this repository. Their SHA-256 is
+`7a577b29aff3a255de1f7b2418f8c16cb8246d78e03bb31d1ea64ced772f635d`, computed over the block alone and not
+over this file. If an edit ever lands inside them, that digest stops matching and the reproduction claim
+above becomes false.
+
+## Where these rules came from
+
+A run on 2026-09-10 put five writing standards against two unguided controls, on one README, across ten
+seats with the models hidden from the judges. Both controls beat both entries of both published
+standards. On the first 116 words, seven of the ten proposed nothing at all, two produced a longer text,
+and the only seat that shortened it (116 to 97 words) was a control. One observation per cell, one
+passage, one run — enough to justify not adopting a standard, not enough to state a rate. The lesson is
+in the last rule above: standards that read as checklists produce audits, not rewriting.
+
+These rules were themselves written against models as they behaved in September 2026. Anthropic's own
+guidance now warns that anti-formatting instructions written for earlier models push newer ones the wrong
+way, and the mechanism applies here: a rule aimed at a failure the model no longer has becomes a rule
+that causes one. Re-check them against the model in front of you before treating them as fixed.
+
+Already rejected on that evidence, so do not reach for them here: Diataxis or a house style guide as a
+mandatory pass; a hard word limit per sentence; a prose linter (Vale, textlint, proselint); a
+punctuation gate in CI.
+
+PART 4 — THE CURSE OF KNOWLEDGE, copied as written from plugins/terse/skills/rewrite/references/curse-of-knowledge.md:
+
+# The curse of knowledge
+
+Part three of the four-part chain. The text below is fixed. Run the three numbered steps in order and
+keep the inventory from step one; it is one of the artifacts `rewrite` returns.
+
+Camerer, Loewenstein & Weber (1989) and Newton (1990): once you know something you cannot accurately
+simulate the mind of someone who does not. Tappers tapping a song predicted listeners would name it half
+the time; the real rate was 2.5%. Your documentation is the tapping. You hear the melody and can no
+longer hear the knocking. The procedure:
+
+  1. Inventory the invisible prerequisites: what must a reader already know for this to make sense -
+     vocabulary, mental model, context, prior steps. The items you almost did not list are the curse.
+  2. Rebuild from the reader's actual state, not yours minus a bit: what do they see first, what will
+     they try first.
+  3. Write to the failure point: wherever a non-knower stalled, that is where the melody was playing
+     silently in your head.
+
+Its own warnings: do not fix by adding more text, because the curse hides missing framing rather than
+missing detail, and one sentence of "what this is and when you need it" beats three paragraphs of how.
+Every "obviously", "simply" or "just" hides a prerequisite.
+
+## Provenance
+
+The fifteen lines above are reproduced byte for byte from `PART 3` of the prompt that was measured, kept
+at `research/2026-09-10-chain/chain-source-prompt.txt` in this repository. Their SHA-256 is
+`fac7a93b1e7e8a5cc71beda90ee0c0f6626a2a4499b366eb50ed48c87ebe2409`, computed over the block alone and not
+over this file.
+
+## What the inventory looks like when it is honest
+
+From the 2026-09-10 run on one README, three of the twenty-four items it found:
+
+- **Two installations.** The host tool being installed does not establish that the second one is
+  installed and authenticated. Name both, and the language runtime, in the first setup paragraph.
+- **Configuration versus prerequisites.** A reader treats every item under a heading named
+  Prerequisites as mandatory. Say at the install decision that the optional file need not be created.
+- **Instructions versus checks.** Prose addressed to a model is not an executable check. A reader who
+  cannot tell them apart believes a verification runs that does not.
+
+Note the shape: none of them is a missing detail. Each is a missing frame around details already on the
+page. That pass added 105 words to a text the previous pass had cut by 105, and the addition was framing
+rather than implementation background.
+
+PART 5 — WHERE THE READERS FAILED. There is no audit on this route and no document yet, so there are no entries under What broke and no passages that worked; this part is empty, and the report says so rather than inventing them.
+
+PART 6 — THE ACCURACY FLOOR: every statement about behaviour must be true of the code in this checkout — the snapshot at /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse-bench/snapshot — and the writer records the level of evidence it reached: 1, the line resolves; 2, an independent reader of the code would say the same; 3, the behaviour was made to happen. A claim about a lifecycle (what stays, what is removed, what a continued or retried run sees) at level 2 is a guess: run it, in a temporary directory under $TMPDIR, never in the snapshot.
+
+THE BAKE-OFF WRITER BRIEF, SKELETON ROUTE, verbatim:
+
+Write the whole of README.md against the skeleton above, section by section: each section's purpose is what it buys the reader, its exclusions are not yours to restore, and its budget is a design decision, not a limit to fill. Your angle is path-first: build the route a reader walks through the document, from choosing an install route to the first report and the next command, then write the rest on it.
+
+Do not modify the repository. Write your draft into your own temporary directory and name the path.
+
+THE ACCURACY FLOOR: every statement about behaviour must be true of the code in this checkout, and you must record which level of evidence it reached — the line resolves, the code says this, or you made it happen. A claim about a lifecycle at level 2 is a guess; run it.
+
+CHECK:
+a) For each sentence about behaviour, the level and the command or line.
+b) What the skeleton's purpose asked for that you could not write, and why.
+c) List what you were tempted to cut and kept, because it is a condition, a limit or a warning at a point where a reader decides.
+d) Report the word count against the budget.
+
+THIS BENCHMARK'S RULES, which add to the above and override none of it: the checkout is the snapshot, /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse-bench/snapshot. Never read, fetch or cite https://github.com/sharpdeveye/maestro, its README, its forks or mirrors, maestroskills.dev, or any page that quotes its README; do not run anything that downloads sharpdeveye/maestro from GitHub — npx skills add sharpdeveye/maestro, a git clone of it — because the download carries the README this benchmark keeps from every writer: a claim about that route stays at the level the snapshot gives it, and says so. Anything you run, run in a copy under $TMPDIR, never in the snapshot. Never open /Users/ruliny/Git/agent-skills/research/ or anything under it: it holds a copy of the README this benchmark keeps from you, and another arm's work; read only the plugin pages this brief names. Keep every intermediate draft as its own numbered file beside the final one. Write only under /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse-bench-w/w3-sonnet; never cd inside a compound command. Return only: the path of the final draft, its word count against the skeleton's total, and the answers to CHECK a) to d).

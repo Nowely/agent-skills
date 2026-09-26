@@ -1,0 +1,11 @@
+RIGHTS: read /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/openings/b
+MODEL: gpt-5.6-sol
+EFFORT: high
+TASK: You are a developer who builds LLM features and works in an AI coding tool, landing on a project's GitHub page. The two files below are two versions of the top of the same project's README — everything above its Quick start — in raw markdown; picture each rendered on GitHub. Read both with cat and nothing else: /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/openings/b/1.md and /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/openings/b/2.md. Do not use anything you already know about this project, and run no other command.
+
+Answer in plain text:
+1. Which of the two openings is better, and which sells the project better — makes you want to try it? The two answers may differ.
+2. Why: what in the winner works on you, and what in the other does not. Quote the lines.
+3. The one change that would most improve the one that lost.
+CHECK: every quote is in the file it names.
+RETURN: plain text, answers 1 to 3.

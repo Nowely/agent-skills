@@ -1,0 +1,38 @@
+ran  C01 re-pinned: the opening sentence, unchanged from 01
+ran  C19 re-pinned: the install fence, run as written; C18 dropped (skeleton part 5, :42–45 the /plugin fence)
+ran  R02a new — graft Fable 1 / Astra 1: the sign-in on the "You need" line (l3 F2; coordinator's note 4)
+ran  R02b new — the excerpt: the Q7 `missing` finding of the 2026-09-22 report, verbatim, in place of the Score fragment
+ran  C09 re-pinned, R02c new — graft Astra 2: the skeleton you agree to, on the not-agreed branch
+ran  R02d new — graft Fable 3 with Astra's shared fault: what rewrite hands back, and where, at the decision
+ran  R02e new — Fable's observation: the restart at the update, in the one clause the device allows
+ran  C03 re-pinned: three skills, one table row each (table unchanged here)
+ran  C10 re-pinned: rethink's row, unchanged from 01
+ran  C11 re-pinned — Astra's shared fault: rewrite's row without "beside"
+ran  C05 re-pinned — graft Fable 2 / Astra 3, as the pages have it: each order ends as it does
+ran  C06 re-pinned: the judgment, unchanged from 01
+ran  C07 re-pinned: the five causes, unchanged from 01
+ran  C15 re-pinned: the folder line, unchanged from 01
+ran  C33 re-pinned: p = 0.25, unchanged from 01
+ran  C44 re-pinned: no run without the text on 2026-09-10, unchanged from 01
+ran  C24 re-pinned: 2,725 → 2,571, unchanged from 01
+ran  R02f new — graft Fable 4: what was measured instead; C42 and C43 dropped (skeleton part 5, :76–79 and :81)
+ok  C01 re-pinned: the opening sentence, unchanged from 01
+ok  C19 re-pinned: the install fence, run as written; C18 dropped (skeleton part 5, :42–45 the /plugin fence)
+ok  R02a new — graft Fable 1 / Astra 1: the sign-in on the "You need" line (l3 F2; coordinator's note 4)
+ok  R02b new — the excerpt: the Q7 `missing` finding of the 2026-09-22 report, verbatim, in place of the Score fragment
+ok  C09 re-pinned, R02c new — graft Astra 2: the skeleton you agree to, on the not-agreed branch
+ok  R02d new — graft Fable 3 with Astra's shared fault: what rewrite hands back, and where, at the decision
+ok  R02e new — Fable's observation: the restart at the update, in the one clause the device allows
+ok  C03 re-pinned: three skills, one table row each (table unchanged here)
+ok  C10 re-pinned: rethink's row, unchanged from 01
+ok  C11 re-pinned — Astra's shared fault: rewrite's row without "beside"
+ok  C05 re-pinned — graft Fable 2 / Astra 3, as the pages have it: each order ends as it does
+ok  C06 re-pinned: the judgment, unchanged from 01
+ok  C07 re-pinned: the five causes, unchanged from 01
+ok  C15 re-pinned: the folder line, unchanged from 01
+ok  C33 re-pinned: p = 0.25, unchanged from 01
+ok  C44 re-pinned: no run without the text on 2026-09-10, unchanged from 01
+ok  C24 re-pinned: 2,725 → 2,571, unchanged from 01
+ok  R02f new — graft Fable 4: what was measured instead; C42 and C43 dropped (skeleton part 5, :76–79 and :81)
+ledger: 31 claim(s); the state before this round is in ledger.02.json
+wrote /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260924-002235-terse-readme-rewrite2/02-grafts.md

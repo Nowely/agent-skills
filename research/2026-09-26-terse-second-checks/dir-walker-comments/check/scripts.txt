@@ -1,0 +1,7 @@
+# sections.mjs on 02-repaired.rs: a source file has no '## ' headings, so the script sees one section
+ 2233 (opening)   (no budget)
+ 2233 TOTAL, 0 section(s) over budget
+
+# code-same.mjs, original against the repair
+code lines: 544 vs 544; differing: 0
+comment lines: // 112 -> 53, /// 0 -> 28, //! 0 -> 10

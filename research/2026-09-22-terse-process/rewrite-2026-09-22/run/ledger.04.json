@@ -1,0 +1,467 @@
+[
+ {
+  "name": "C01 terse is a Claude Code plugin whose",
+  "pattern": "`terse` is a Claude Code plugin that measures whether readers get the right answer and whether a document's claims agree with the code behind it, and proposes a rewrite\\.",
+  "want": true,
+  "level": 2,
+  "asks": "terse is a Claude Code plugin that measures two things about a document, whether readers get the right answer from it and whether its claims agree with the code behind it, and that also proposes a rewrite of the document.",
+  "run": "sed -n '4p' /Users/ruliny/Git/agent-skills/plugins/terse/.claude-plugin/plugin.json; sed -n '3,7p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '3,7p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "`audit`\\s+measures\\s+it:\\s+fresh\\s+readers\\s+answer\\s+the\\s+questions\\s+your\\s+readers\\s+arrive\\s+with,\\s+and\\s+every\\s+claim\\s+about\\s+behaviour\\s+is\\s+checked\\s+against\\s+the\\s+code\\s+that\\s+backs\\s+it[\\s\\S]*`rewrite`\\s+writes\\s+it\\s+in\\s+rounds[\\s\\S]*Measures a document against two rulers: whether fresh readers get the right answer, and whether every\\s+claim about behaviour is true of the code[\\s\\S]*Writes the text in rounds[\\s\\S]*Proposes;\\s+writes\\s+into\\s+your\\s+tree\\s+only\\s+on\\s+your\\s+word\\.",
+  "saw": "  \"description\": \"Three user-invoked skills for documentation. `audit` measures it: fresh readers answer the questions your readers arrive with, and every claim about behaviour is checked against the code that backs it. `rethink` decides what a document should be \\u2014 what the genre already solved, what things are called, what is said in what order \\u2014 and stops at a skeleton for your word. `rewrite` writes it in rounds, each reviewed by critics with lenses that differ, until you read a round and say whether you would send it as it is. Nothing is written into your tree without you.\",\ndescription: >-\n  Measures a document against two rulers: whether fresh readers get the right answer, and whether every\n  claim about behaviour is true of the code. Returns a reader profile, a claim ledger, reader scores and\n  the list of what broke. It never proposes wording; `rewrite` does that.\ndisable-model-invocation: true\ndescription: >-\n  Writes the text in rounds: one candidate, then critics with lenses that differ, then edits declared\n  with the check behind each, until the owner reads a round and says whether they would send it as it\n  is. Starts from a skeleton `rethink` agreed, or from the failures an `audit` measured. Proposes; writes\n  into your tree only on your word.\n"
+ },
+ {
+  "name": "C03 the plugin ships three skills.",
+  "pattern": "The plugin ships three user-invoked skills\\.",
+  "want": true,
+  "level": 3,
+  "asks": "The plugin ships three skills, and they are invoked by the user rather than by the model.",
+  "run": "sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-02/details-probe.sh",
+  "expect": "install exit 0[\\s\\S]*Skills \\(3\\)\\s+audit, rethink, rewrite[\\s\\S]*details exit 0[\\s\\S]*audit/SKILL\\.md:7:disable-model-invocation: true[\\s\\S]*rethink/SKILL\\.md:7:disable-model-invocation: true[\\s\\S]*rewrite/SKILL\\.md:8:disable-model-invocation: true",
+  "saw": "marketplace add exit 0\ninstall exit 0\nterse 0.1.1\n  Skills (3)  audit, rethink, rewrite\ndetails exit 0\n/Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md:7:disable-model-invocation: true\n/Users/ruliny/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md:7:disable-model-invocation: true\n/Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md:8:disable-model-invocation: true\n"
+ },
+ {
+  "name": "C05 `rethink` returns a skeleton that `rewrite` ",
+  "pattern": "/terse:rethink → skeleton → /terse:rewrite → candidate \\+ diff → /terse:audit /terse:audit → run file → /terse:rewrite → candidate \\+ diff → /terse:audit again what broke what to write did it hold",
+  "want": true,
+  "level": 2,
+  "how": "plugins/terse/skills/rethink/SKILL.md:13-21, 70-83; plugins/terse/skills/audit/SKILL.md:149-161; plugins/terse/skills/rewrite/SKILL.md:14-21, 173-177; plugins/terse/skills/audit/references/measure.md:106-115"
+ },
+ {
+  "name": "C06 audit builds a profile of the project's",
+  "pattern": "\\*\\*`/terse:audit`\\*\\* writes a reader profile, a claim ledger, and an answer key before assigning one fresh reader to each question\\. Readers start at the entry file and may open only Markdown\\.",
+  "want": true,
+  "level": 2,
+  "asks": "audit writes a reader profile, a claim ledger and an answer key before it assigns one fresh reader to each question; the readers start at the entry file and may open only Markdown.",
+  "run": "sed -n '13,16p;46p;54,57p;69p;74p;84p;89,90p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md",
+  "expect": "both exist before the first reader is spawned[\\s\\S]*## Step 2\\. The reader profile[\\s\\S]*## Step 3\\. The truth pass[\\s\\S]*becomes one ledger entry[\\s\\S]*## Step 4\\. The questions and the answer key[\\s\\S]*Write the correct answer to each from the ledger[\\s\\S]*## Step 5\\. The readers[\\s\\S]*One fresh reader per question[\\s\\S]*Each one starts at the entry\\s+file, may open only `\\.md` files",
+  "saw": "An audit here is a measurement, not an opinion. You run seven steps in order, and the order carries the\nmethod: the profile decides which questions are worth asking, the code decides what the right answers\nare, and both exist before the first reader is spawned. A reader sent out before the answer key is\nwritten measures the text against your memory of it, and your memory has already read the code.\n## Step 2. The reader profile\n## Step 3. The truth pass\n\nEvery sentence that states what the software does becomes one ledger entry: the claim, the doc line,\nthe code that backs it, an evidence level and a verdict. Follow\n## Step 4. The questions and the answer key\nWrite the correct answer to each from the ledger, and write it now. The ledger already holds the code\n## Step 5. The readers\nOne fresh reader per question, per [measure.md](references/measure.md). Each one starts at the entry\nfile, may open only `.md` files, may not read source, and may not see another reader's work. It returns\n"
+ },
+ {
+  "name": "C07 audit returns a score, the questions that",
+  "pattern": "It returns the profile, claim ledger, score against the no-document baseline, and failures\\. Each wrong answer gets a cause: a false sentence, no answer anywhere, a true sentence where it misleads, a well-placed answer not found, or true sentences whose sequence leaves the reader worse off\\.",
+  "want": true,
+  "level": 2,
+  "asks": "audit returns the reader profile, the claim ledger, a score against the no-document baseline, and the failures; each wrong answer gets one cause of five: the text states what the code does not do, the documentation answers the question nowhere, a true sentence sits where it misleads, a true answer in the right place was not found, or every sentence is true and their sequence leaves the reader worse off.",
+  "run": "sed -n '5,6p;94,96p;120p;123,131p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md",
+  "expect": "Returns a reader profile, a claim ledger, reader scores and\\s+the list of what broke[\\s\\S]*the number this audit reports is the\\s+difference between the two[\\s\\S]*reported as the difference from the no-document arm[\\s\\S]*Give every wrong answer a cause[\\s\\S]*\\|\\s+refuted\\s+\\|\\s+the\\s+text\\s+states\\s+what\\s+the\\s+code\\s+does\\s+not\\s+do\\s+\\|[\\s\\S]*\\|\\s+missing\\s+\\|\\s+the\\s+documentation\\s+does\\s+not\\s+answer\\s+the\\s+question\\s+anywhere\\s+\\|[\\s\\S]*\\|\\s+placement\\s+\\|\\s+the\\s+sentence\\s+is\\s+true\\s+and\\s+sits\\s+where\\s+it\\s+misleads\\s+\\|[\\s\\S]*\\|\\s+findability\\s+\\|\\s+true,\\s+in\\s+the\\s+right\\s+place,\\s+not\\s+found\\s+\\|[\\s\\S]*\\|\\s+harmful\\s+\\|\\s+every\\s+sentence\\s+true,\\s+the\\s+sequence\\s+leaves\\s+the\\s+reader\\s+worse\\s+off\\s+\\|",
+  "saw": "  claim about behaviour is true of the code. Returns a reader profile, a claim ledger, reader scores and\n  the list of what broke. It never proposes wording; `rewrite` does that.\n**The baseline measurement runs a second arm with no documentation at all**: the same questions, the same\nmodel, no files. Its score is what a reader already knew, and the number this audit reports is the\ndifference between the two. A raw score without that arm cannot tell a document that teaches from a\nThe score is right answers over questions, reported as the difference from the no-document arm. Report steps taken and departures from the documentation\nGive every wrong answer a cause, because the cause decides what a rewrite must do:\n\n| Cause | What happened | What a rewrite must do |\n|---|---|---|\n| refuted | the text states what the code does not do | correct the claim at its source |\n| missing | the documentation does not answer the question anywhere | write the answer, and say where it goes |\n| placement | the sentence is true and sits where it misleads | put it at the decision — by moving it, or by repeating it there |\n| findability | true, in the right place, not found | change the path to it |\n| harmful | every sentence true, the sequence leaves the reader worse off | repair the recipe, and test it by running it |\n"
+ },
+ {
+  "name": "C09 rethink decides, before any prose is written",
+  "pattern": "\\*\\*`/terse:rethink`\\*\\* works before prose\\. It compares documents in the same genre, settles terms, and explores structures\\.",
+  "want": true,
+  "level": 2,
+  "asks": "rethink works before any prose is written: it compares documents in the same genre, settles the terms, and explores structures.",
+  "run": "sed -n '4,5p;13,15p;25p;30,32p;43p;45,46p;54,56p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md",
+  "expect": "Decides what a document should be before a sentence of it is written[\\s\\S]*No prose\\.[\\s\\S]*## Step 1\\. What comparable documents already solved[\\s\\S]*the exact genre[\\s\\S]*## Step 2\\. The words[\\s\\S]*load-bearing term[\\s\\S]*## Step 3\\. The structure[\\s\\S]*About ten structures",
+  "saw": "  Decides what a document should be before a sentence of it is written: what comparable documents already\n  solved, what things are called, and what is said in what order. Returns a skeleton and stops there —\nThree decisions, in order, each cheap to change here and expensive to change later. The output is a\nskeleton: section titles, what each is for, what each deliberately leaves out, a word budget, and the\nrules that will gate the writing. No prose.\n## Step 1. What comparable documents already solved\nAnnounce the count and the models before spawning, and wait for the user's word. Default slices, one\nsurveyor each: the exact genre, the same structural position, the most used regardless of genre, vendor\nguidance, whatever this document's hard part is, and one slice whose job is what *not* to copy.\n## Step 2. The words\nDo not inherit a project's vocabulary because the project uses it. For each load-bearing term: who parses\nit and as what, where it comes from, and whether its commonest sense in the reader's own field is a\n## Step 3. The structure\n\nAbout ten structures, each from a **different reading of what the document is for**, not ten runs of one\n"
+ },
+ {
+  "name": "C10 rethink hands over a skeleton, each section",
+  "pattern": "Its output is a skeleton: each section's title, purpose, exclusions, and word budget\\. It then waits for your word\\.",
+  "want": true,
+  "level": 2,
+  "asks": "rethink's output is a skeleton giving each section's title, purpose, exclusions and word budget, and rethink then waits for the user's word.",
+  "run": "sed -n '13,15p;76p;82,83p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md",
+  "expect": "The output is a\\s+skeleton: section titles, what each is for, what each deliberately leaves out, a word budget[\\s\\S]*each section: title, one sentence of purpose, what it deliberately excludes, a word budget[\\s\\S]*Then stop and wait\\. `rewrite` starts from the skeleton the user agreed to",
+  "saw": "Three decisions, in order, each cheap to change here and expensive to change later. The output is a\nskeleton: section titles, what each is for, what each deliberately leaves out, a word budget, and the\nrules that will gate the writing. No prose.\n- each section: title, one sentence of purpose, what it deliberately excludes, a word budget\nThen stop and wait. `rewrite` starts from the skeleton the user agreed to, and routes back here anything\nit finds that belongs to a stage above it.\n"
+ },
+ {
+  "name": "C11 rewrite starts from a skeleton `rethink` agr",
+  "pattern": "\\*\\*`/terse:rewrite`\\*\\* starts from that skeleton or an audit run\\.",
+  "want": true,
+  "level": 2,
+  "asks": "rewrite starts from the skeleton rethink produced or from an audit's run.",
+  "run": "sed -n '16,20p;29p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "\\| a skeleton `rethink` agreed \\| step 2 \\|[\\s\\S]*\\| an `audit` run file \\| step 1 \\|[\\s\\S]*Ask the user for the run directory from `audit` and read `audit\\.md` there",
+  "saw": "| You have | Start at | What drives the writing |\n|---|---|---|\n| a run directory with rounds in it already — whatever else you have | step 4, at the next round; steps 1 to 3 are not repeated | the last round's review under `reviews/NN/` |\n| a skeleton `rethink` agreed | step 2 | the skeleton's purpose, exclusions and budget per section |\n| an `audit` run file | step 1 | the named failures, each at its line, with its cause |\nAsk the user for the run directory from `audit` and read `audit.md` there. You need two headings:\n"
+ },
+ {
+  "name": "C12 three writers produce candidates and two jud",
+  "pattern": "Three writers produce candidates and two judges score them on the failures rather than on taste; the winner then goes through a loop of critics whose lenses do not overlap — the code, the rules, an adversarial reader, a task, a reader's questions — until a round finds nothing new and nothing got worse\\.",
+  "want": false,
+  "level": 2,
+  "how": "plugins/terse/skills/rewrite/SKILL.md:52-62, 118-135, 146-160, 162-177; plugins/terse/skills/rewrite/references/bake-off.md:17-29, 106-132; plugins/terse/skills/rewrite/references/loop.md:81-88; plugins/terse/skills/rewrite/references/measurements.md:52-55"
+ },
+ {
+  "name": "C13 every round of a rewrite stays on",
+  "pattern": "Every round is kept as its own file\\.",
+  "want": false,
+  "level": 3,
+  "how": "plugins/terse/skills/rewrite/SKILL.md:68-69, 107-117, 123-131; plugins/terse/skills/rewrite/scripts/round.mjs:12-13, 38-40, 54; plugins/terse/skills/rewrite/references/loop.md:64-67"
+ },
+ {
+  "name": "C15 rewrite writes its rounds and artefacts into",
+  "pattern": "The `rewrite` instructions place their run by the same rule, with a code defect recorded in its `code-defects\\.md` and offered to you\\.",
+  "want": true,
+  "level": 2,
+  "asks": "Rewrite's instructions place rewrite's run by the same rule as audit's run: in the plugin's data directory when Claude Code supplies one, otherwise under ${TMPDIR:-/tmp}/terse.",
+  "run": "sed -n '33p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '66,68p;71p;149,152p;203,204p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/\\$\\(date[\\s\\S]*Work in a run directory of the document's own, outside the repository that holds it: made by the\\s+formula of \\[`audit`'s\\s+step\\s+1\\][\\s\\S]*RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/\\$\\(date[\\s\\S]*a\\s+code\\s+defect\\s+with\\s+its\\s+check\\s+into\\s+`code-defects\\.md`\\s+in\\s+the\\s+run\\s+directory\\s+and\\s+to\\s+the\\s+user\\s+as\\s+a\\s+proposal[\\s\\S]*`code-defects\\.md`,\\s+when\\s+a\\s+finding\\s+routed\\s+to\\s+the\\s+code:\\s+each\\s+defect\\s+with\\s+its\\s+check,\\s+as\\s+offered\\s+to\\s+the\\s+user",
+  "saw": "D=\"${CLAUDE_PLUGIN_DATA}\"; RUN=\"${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$RUN\" && echo \"$RUN\"\nWork in a run directory of the document's own, outside the repository that holds it: made by the\nformula of [`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory), with `<slug>`\nnaming the document.\nD=\"${CLAUDE_PLUGIN_DATA}\"; RUN=\"${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>\" && mkdir -p \"$RUN\" && echo \"$RUN\"\n6. **Verify every finding yourself** from the check it carries — a finding without one is discarded —\n   and route each by the table in [loop.md](references/loop.md#where-a-finding-goes): a sentence to the\n   next round's edits, a boundary or a term back to `rethink`, a code defect with its check into\n   `code-defects.md` in the run directory and to the user as a proposal, a question the document does\n- `code-defects.md`, when a finding routed to the code: each defect with its check, as offered to the\n  user\n"
+ },
+ {
+  "name": "C16 nothing rewrite does changes the user's file",
+  "pattern": "Applying anything to your files needs your word\\.",
+  "want": false,
+  "level": 2,
+  "how": "plugins/terse/skills/rewrite/SKILL.md:6-7, 64-67, 136-140, 173-177; plugins/terse/skills/rewrite/references/loop.md:35-42"
+ },
+ {
+  "name": "C18 inside Claude Code, `/plugin marketplace add",
+  "pattern": "/plugin marketplace add Nowely/agent-skills /plugin install terse@nowely",
+  "want": true,
+  "level": 2,
+  "how": ".claude-plugin/marketplace.json:1-27; plugins/terse/.claude-plugin/plugin.json:1-10"
+ },
+ {
+  "name": "C19 from a shell, `claude plugin marketplace add",
+  "pattern": "The same two steps from a shell: `claude plugin marketplace add Nowely/agent-skills`, then `claude plugin install terse@nowely`\\.",
+  "want": true,
+  "level": 2,
+  "how": ".claude-plugin/marketplace.json:1-27; plugins/terse/.claude-plugin/plugin.json:1-10"
+ },
+ {
+  "name": "C20 after the two install steps nothing else",
+  "pattern": "Nothing else is needed — no dependencies, no configuration file, no account anywhere\\.",
+  "want": false,
+  "level": 3,
+  "how": "plugins/terse/package.json:1-7; plugins/terse/skills/audit/SKILL.md:153-158; plugins/terse/skills/rewrite/SKILL.md:69-75, 106-111, 134-135"
+ },
+ {
+  "name": "C21 Node 22 or newer is needed only",
+  "pattern": "Node 22 or newer if you run the checkout directly\\.",
+  "want": false,
+  "level": 3,
+  "how": "plugins/terse/package.json:4-6; plugins/terse/skills/audit/SKILL.md:153-158; plugins/terse/skills/rewrite/SKILL.md:69-75"
+ },
+ {
+  "name": "C23 shortening the text is not terse's aim:",
+  "pattern": "It is not a compressor\\.",
+  "want": true,
+  "level": 2,
+  "how": "plugins/terse/skills/rewrite/references/bake-off.md:13-15, 118, 136-138; plugins/terse/skills/rewrite/SKILL.md:82-85, 110; plugins/terse/skills/rewrite/scripts/sections.mjs:4, 25; research/2026-09-10-chain/README.md:32-34"
+ },
+ {
+  "name": "C24 on the one 2026-09-10 README the chain",
+  "pattern": "On one file measured on 2026-09-10, a four-pass rewrite chain moved 2,725 words to 2,571 — six percent — while the second pass cut 105 words and the third added 105 back as missing framing\\.",
+  "want": true,
+  "level": 3,
+  "asks": "On the one file measured on 2026-09-10, a rewrite chain of four passes took the text from 2,725 words to 2,571, about six percent fewer, while its second pass cut 105 words and its third added 105 back as missing framing.",
+  "run": "wc -w /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/00-original.md /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/01-reader-pass.md /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/02-writing-pass.md /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/03-prerequisite-pass.md /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/README.md | awk '{print} NR<=5{w[NR]=$1} END{printf \"pass two %+d, pass three %+d, whole chain %+d = %.2f%%\\n\", w[3]-w[2], w[4]-w[3], w[5]-w[1], (w[5]-w[1])/w[1]*100}'; sed -n '1p;16p;32,34p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/README.md; sed -n '25p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/audit.md",
+  "expect": "2725 [^\\n]*00-original\\.md[\\s\\S]*2482 [^\\n]*01-reader-pass\\.md[\\s\\S]*2377 [^\\n]*02-writing-pass\\.md[\\s\\S]*2482 [^\\n]*03-prerequisite-pass\\.md[\\s\\S]*2571 [^\\n]*README\\.md[\\s\\S]*pass\\s+two\\s+-105,\\s+pass\\s+three\\s+\\+105,\\s+whole\\s+chain\\s+-154\\s+=\\s+-5\\.65%[\\s\\S]*#\\s+The\\s+2026-09-10\\s+chain\\s+and\\s+bake-off[\\s\\S]*The\\s+four-pass\\s+rewrite\\s+of\\s+one\\s+README,\\s+stage\\s+by\\s+stage[\\s\\S]*the second pass cut 105 words and the third added 105 back\\s+as missing framing[\\s\\S]*Added 105 words for missing framing",
+  "saw": "    2725 /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/00-original.md\n    2482 /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/01-reader-pass.md\n    2377 /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/02-writing-pass.md\n    2482 /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/03-prerequisite-pass.md\n    2571 /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/README.md\n   12637 total\npass two -105, pass three +105, whole chain -154 = -5.65%\n# The 2026-09-10 chain and bake-off\nThe four-pass rewrite of one README, stage by stage, and the artifacts it produced.\nThe word counts above are the measured ones: the second pass cut 105 words and the third added 105 back\nas missing framing, which is why the net change across the whole chain is six percent and the claim that\nthis plugin compresses text is false.\nInventoried 24 hidden prerequisites. Defined driver, seat, thread, worktree and path placeholders where needed; moved required state before the first task; distinguished optional config, prompt instructions, automated gates, source exports and the repository root. Added 105 words for missing framing rather than more implementation background.\n"
+ },
+ {
+  "name": "C27 rewrite leaves every condition, limit and wa",
+  "pattern": "It will not touch a condition, a limit or a warning at a point where you decide something\\.",
+  "want": false,
+  "level": 2,
+  "how": "plugins/terse/skills/rewrite/references/writing-rules.md:21-23; plugins/terse/skills/rewrite/references/bake-off.md:47, 60-63, 113-114; plugins/terse/skills/rewrite/references/critic-briefs.md:108-110; plugins/terse/skills/audit/SKILL.md:123; plugins/terse/skills/rewrite/SKILL.md:195-198"
+ },
+ {
+  "name": "C30 everything under *What was measured* comes f",
+  "pattern": "One run, on 2026-09-10, on one README in one repository\\.",
+  "want": false,
+  "level": 2,
+  "how": "research/2026-09-10-chain/README.md:1, 14-16, 36-48; research/2026-09-10-chain/chain/audit.md:1-3; research/2026-09-10-chain/run-2x5/zP378l2j.prompt.txt:9-15; research/2026-09-10-chain/run-2x5/v04PR6HL.prompt.txt:8-11"
+ },
+ {
+  "name": "C33 three discordant pairs, all improvements, an",
+  "pattern": "Three improvements and no reversals give exact two-sided McNemar \\*p\\* = 0\\.25\\.",
+  "want": true,
+  "level": 3,
+  "asks": "Three improvements and no reversals, the counts the chain's pages report, give an exact two-sided McNemar p of 0.25.",
+  "run": "node -e 'const b=3,c=0,n=b+c,C=(n,k)=>{let r=1;for(let i=0;i<k;i++)r=r*(n-i)/(i+1);return r};let s=0;for(let k=0;k<=Math.min(b,c);k++)s+=C(n,k);console.log(\"improvements \"+b+\", reversals \"+c+\": exact two-sided McNemar p = \"+Math.min(1,2*s*Math.pow(0.5,n)))'; sed -n '92,95p' /Users/ruliny/Git/agent-skills/plugins/terse/references/prior-art.md; sed -n '9p' /Users/ruliny/Git/agent-skills/research/README.md",
+  "expect": "improvements\\s+3,\\s+reversals\\s+0:\\s+exact\\s+two-sided\\s+McNemar\\s+p\\s+=\\s+0\\.25[\\s\\S]*Three improvements and zero reversals over six\\s+paired questions gives an exact two-sided McNemar \\*\\*p\\s+=\\s+0\\.25\\*\\*[\\s\\S]*3/6\\s+→\\s+6/6\\s+on\\s+six\\s+reader\\s+questions",
+  "saw": "improvements 3, reversals 0: exact two-sided McNemar p = 0.25\n**The headline number is not distinguishable from noise.** Three improvements and zero reversals over six\npaired questions gives an exact two-sided McNemar **p = 0.25**. Our 3/6 → 6/6 clears skillsbench's\n30-point noise floor at +50 points, and still cannot be told from chance at conventional thresholds. One\ntrial per question, and nothing we publish says so.\n| [2026-09-10-chain](2026-09-10-chain/) | does a four-pass audit-and-revise chain make one README truer and easier to answer from? | 3/6 → 6/6 on six reader questions, one trial each (p = 0.25, not distinguishable from chance); two of six failures were false claims a prose rewrite would have kept; five published writing standards lost to unguided controls on ten seats |\n"
+ },
+ {
+  "name": "C39 the 2026-09-10 bake-off put five published w",
+  "pattern": "Five published writing standards were put against two unguided controls across ten agents, models hidden from the judges\\.",
+  "want": false,
+  "level": 2,
+  "how": "research/2026-09-10-chain/run-2x5/v04PR6HL.prompt.txt:8-24; research/2026-09-10-chain/run-2x5/o8eHzS6U.prompt.txt:8-18; research/2026-09-10-chain/run-2x5/zP378l2j.prompt.txt:21; research/2026-09-10-chain/run-2x5/oRfBREBF.prompt.txt:21; research/2026-09-10-chain/run-2x5/rCYUALAd.prompt.txt:21"
+ },
+ {
+  "name": "C41 on the audited README's first 116 words,",
+  "pattern": "On the first 116 words, seven of ten agents proposed nothing and the only agent that shortened the passage was a control\\.",
+  "want": false,
+  "level": 2,
+  "how": "research/2026-09-10-chain/run-2x5/o8eHzS6U.answer.md:6, 10-19"
+ },
+ {
+  "name": "C42 the passage result rests on ten agents",
+  "pattern": "A separate bake-off used ten agents in a 2 × 5 design: four writing standards, one an unpublished draft, and one unguided control condition with two agents\\.",
+  "want": true,
+  "level": 2,
+  "asks": "A separate bake-off used ten agents in a two-by-five design: four writing standards, one of them an unpublished draft, and one unguided control condition given to two agents.",
+  "run": "sed -n '1p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/README.md; sed -n '8p;13,20p;22p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/run-2x5/v04PR6HL.prompt.txt",
+  "expect": "# The 2026-09-10 chain and bake-off[\\s\\S]*Ten agents audited the repository[\\s\\S]*The design is a two-by-five factorial\\. Five standards, each given to two agents of DIFFERENT model\\s+families:[\\s\\S]*Diataxis\\s+P1, P2[\\s\\S]*verification against the implementation\\s+P3, P4[\\s\\S]*a draft rule block for the owner's CLAUDE\\.md\\s+P5, P6[\\s\\S]*house style\\s+P7, P8[\\s\\S]*CONTROL, no standard given at all\\s+P9, P10[\\s\\S]*Which entrant ran on which model is deliberately hidden",
+  "saw": "# The 2026-09-10 chain and bake-off\nTen agents audited the repository at /Users/ruliny/Git/codex-delegate, which is the checkout you are sitting\nThe design is a two-by-five factorial. Five standards, each given to two agents of DIFFERENT model\nfamilies:\n\n  Diataxis                                       P1, P2\n  verification against the implementation        P3, P4\n  a draft rule block for the owner's CLAUDE.md   P5, P6\n  riekelt/technical-writer house style           P7, P8\n  CONTROL, no standard given at all              P9, P10\nWhich entrant ran on which model is deliberately hidden from you, and the model names have been stripped\n"
+ },
+ {
+  "name": "C43 nothing in the record isolates which of",
+  "pattern": "Not measured: which pass produced the reported answer gain, or whether a bake-off beats one careful pass\\.",
+  "want": true,
+  "level": 2,
+  "asks": "Nothing measured which pass of the chain produced the reported gain in right answers, or whether a bake-off beats one careful pass.",
+  "run": "sed -n '130,132p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; sed -n '8,9p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/bake-off.md",
+  "expect": "\\*\\*Not measured:\\*\\* which part of the chain produced the gain\\. The experiment that would isolate it[\\s\\S]*was designed and deliberately not run[\\s\\S]*\\*\\*Not measured:\\*\\* that a\\s+bake-off beats a single careful pass",
+  "saw": "**Not measured:** which part of the chain produced the gain. The experiment that would isolate it —\nthree writers given different subsets, eighteen readers — was designed and deliberately not run. Do not\nreport a single part as the cause.\nstandards in this plugin were chosen, and it overturned the expected result. **Not measured:** that a\nbake-off beats a single careful pass at repairing a document. The single chained pass is what produced\n"
+ },
+ {
+  "name": "C44 the 2026-09-10 measurement had no arm that",
+  "pattern": "The experiment had no no-document arm\\. The repository records its six readers before the rewrite one by one and holds no record of its readers after it\\.",
+  "want": true,
+  "level": 2,
+  "asks": "The 2026-09-10 chain measurement ran no arm that asked its questions with no document; the repository records, one by one, the six readers who answered from the README before the rewrite, and holds no record of the readers who answered after it.",
+  "run": "sed -n '10p' /Users/ruliny/Git/agent-skills/research/README.md; sed -n '104p;107p' /Users/ruliny/Git/agent-skills/plugins/terse/references/prior-art.md; sed -n '103,106p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain-source-prompt.txt; grep -n -o '^  [1-6]\\. \"[^\"]*\" - ANSWERED [A-Z]*' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain-source-prompt.txt; sed -n '96,99p' /Users/ruliny/Git/agent-skills/ISSUES.md; sed -n '533p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/audit.md; grep -h live_reader_experiments_run /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/chain/validation.json",
+  "expect": "no arm ever ran without the document[\\s\\S]*\\*\\*We\\s+have\\s+no\\s+control\\s+for\\s+prior\\s+knowledge[\\s\\S]*Both\\s+ran\\s+the\\s+control\\.\\s+We\\s+did\\s+not\\.[\\s\\S]*===\\s+PART\\s+4\\.\\s+WHERE\\s+THE\\s+SIX\\s+READERS\\s+ACTUALLY\\s+FAILED\\s+===[\\s\\S]*Three of six answered\\s+correctly[\\s\\S]*1\\.\\s+\"What\\s+is\\s+this\\?\"\\s+-\\s+ANSWERED\\s+WRONG[\\s\\S]*2\\.\\s+\"What\\s+must\\s+I\\s+install\\?\"\\s+-\\s+ANSWERED\\s+PARTIALLY[\\s\\S]*3\\.\\s+\"How\\s+do\\s+I\\s+run\\s+it\\s+the\\s+first\\s+time\\?\"\\s+-\\s+ANSWERED\\s+CORRECTLY[\\s\\S]*4\\.\\s+\"What\\s+may\\s+it\\s+touch\\?\"\\s+-\\s+ANSWERED\\s+CORRECTLY[\\s\\S]*5\\.\\s+\"How\\s+do\\s+I\\s+know\\s+the\\s+work\\s+happened\\?\"\\s+-\\s+ANSWERED\\s+WRONG[\\s\\S]*6\\.\\s+\"How\\s+do\\s+I\\s+remove\\s+what\\s+it\\s+left\\?\"\\s+-\\s+ANSWERED\\s+CORRECTLY[\\s\\S]*the six readers of\\s+the \\*before\\* measurement are recorded one by one[\\s\\S]*no per-reader\\s+record of the \\*after\\* measurement \\(6/6\\) exists anywhere in the repository[\\s\\S]*No\\s+new\\s+six-reader\\s+experiment\\s+was\\s+run[\\s\\S]*\"live_reader_experiments_run\":\\s+0",
+  "saw": "| [2026-09-11-terse-survey](2026-09-11-terse-survey/) | what does the field already know? | three rounds, 37 agents, 108 ranked practices; the plugin's own numbers measure model answerability, not human improvement; no arm ever ran without the document |\n**We have no control for prior knowledge, and two benchmarks say the control is large.** Code-QA-Bench's\narm sits at chance (48.68 balanced accuracy, MCC −3.43). Both ran the control. We did not.\n=== PART 4. WHERE THE SIX READERS ACTUALLY FAILED ===\n\nEach read only the .md files, starting at README.md, and answered one question. Three of six answered\ncorrectly. Repair each failure below at its source.\n108:  1. \"What is this?\" - ANSWERED WRONG\n114:  2. \"What must I install?\" - ANSWERED PARTIALLY\n120:  3. \"How do I run it the first time?\" - ANSWERED CORRECTLY\n126:  4. \"What may it touch?\" - ANSWERED CORRECTLY\n128:  5. \"How do I know the work happened?\" - ANSWERED WRONG\n132:  6. \"How do I remove what it left?\" - ANSWERED CORRECTLY\n`research/2026-09-10-chain/README.md` and `chain/` hold summaries of the reader run; the six readers of\nthe *before* measurement are recorded one by one, with verdicts, quoted lines and the one departure, in\n`research/2026-09-10-chain/chain-source-prompt.txt:103-132` — not under `run-2x5/` — and no per-reader\nrecord of the *after* measurement (6/6) exists anywhere in the repository. Found by the 2026-09-22 truth\n- No new six-reader experiment was run; repairs were checked structurally and against local implementation. No project test suite, model turn, network call, installation, update, cleanup deletion or schema regeneration was run.\n  \"live_reader_experiments_run\": 0,\n"
+ },
+ {
+  "name": "C45 two published benchmarks that ran a no-docum",
+  "pattern": "Two published benchmarks that did run that arm found it large\\.",
+  "want": false,
+  "level": 2,
+  "how": "plugins/terse/references/prior-art.md:104-107; plugins/terse/skills/audit/references/measure.md:75-78"
+ },
+ {
+  "name": "C46 the plugin's reference files state the missi",
+  "pattern": "The reference files say so where it matters, and \\[references/prior-art\\.md\\]\\(references/prior-art\\.md\\) collects every finding against these numbers\\.",
+  "want": false,
+  "level": 2,
+  "how": "plugins/terse/skills/audit/SKILL.md:90-96; plugins/terse/skills/audit/references/measure.md:70-81; plugins/terse/references/prior-art.md:87-133; research/2026-09-11-terse-survey/seat-returns/A5.md:1, 20, 30"
+ },
+ {
+  "name": "G1 all three skills announce agents and model, then wait for your word",
+  "pattern": "All three skills announce how many agents they are about to spawn, on which model, and wait for your word\\.",
+  "want": true,
+  "level": 2,
+  "asks": "Each of the three skills, before it spawns agents, says how many it is about to spawn and on which model, and waits for the user's word.",
+  "run": "sed -n '86,87p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '40,42p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; sed -n '30p;56,57p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md; sed -n '60,61p;131,132p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "Announce the plan before spawning anything: how many readers, which model[\\s\\S]*Wait\\s+for the user's word\\.[\\s\\S]*Announce the count\\s+and the model to the user and wait for their word before spawning\\.[\\s\\S]*Announce the count and the models before spawning, and wait for the user's word\\.[\\s\\S]*Announce the count and the models, and wait\\.[\\s\\S]*Announce before spawning: the count, the models[\\s\\S]*Wait for the user's word\\.[\\s\\S]*\\*\\*Announce the wave\\*\\*[^\\n]*the models[\\s\\S]*and wait for the user's word",
+  "saw": "Announce the plan before spawning anything: how many readers, which model, roughly what it costs. Wait\nfor the user's word. Fan-outs that surprise the user are not measurements, they are bills.\nUse a cheap model; the 2026-09-10 run used Haiku and the failures it found were real. Announce the count\nand the model to the user and wait for their word before spawning. A measurement the user did not agree\nto pay for is not a measurement they asked for.\nAnnounce the count and the models before spawning, and wait for the user's word. Default slices, one\nAbout ten structures, each from a **different reading of what the document is for**, not ten runs of one\nprompt. Announce the count and the models, and wait.\nAnnounce before spawning: the count, the models, and that the cost of a writer or a judge has not been\nmeasured (the critics' costs have; see the table). Wait for the user's word. If the user refuses the\n5. **Announce the wave** — the verifier, the lenses, their sizes from the table, the models, the cost —\n   and wait for the user's word; the user sizes each of them, and any of them may be zero. The least\n"
+ },
+ {
+  "name": "G4 version boundary: the write boundary below is this checkout's, not 8c041b7's",
+  "pattern": "The section below describes this commit, not that one\\.",
+  "want": true,
+  "level": 2,
+  "asks": "The section after this sentence, on where the plugin writes, describes commit 2f29a8f and not the published revision 8c041b7, whose rewrite page and audit run line differ.",
+  "run": "git -C /Users/ruliny/Git/agent-skills diff --quiet 2f29a8f HEAD -- plugins/terse .claude-plugin; echo \"plugin tree at HEAD against 2f29a8f: diff exit $?\"; sed -n '198p' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/brief.md | grep -o 'the advertised install commands fetch[^;]*'; sed -n '209p' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/audit.md | grep -o 'is github.com/Nowely/agent-skills and [^;]*'; echo '8c041b7, rewrite/SKILL.md:66-67, 112-113:'; git -C /Users/ruliny/Git/agent-skills show 8c041b7:plugins/terse/skills/rewrite/SKILL.md | sed -n '66,67p;112,113p'; echo '8c041b7, audit/SKILL.md:33:'; git -C /Users/ruliny/Git/agent-skills show 8c041b7:plugins/terse/skills/audit/SKILL.md | sed -n '33p'; echo '2f29a8f = HEAD, audit/SKILL.md:33, 44:'; sed -n '33p;44p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; echo '2f29a8f = HEAD, rewrite/SKILL.md:66-67, 78-79:'; sed -n '66,67p;78,79p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "plugin tree at HEAD against 2f29a8f: diff exit 0[\\s\\S]*the advertised install commands fetch the marketplace's `main`, which at 8c041b7 ships terse 0\\.1\\.1 with the old `rewrite` page that wrote into the repository unasked[\\s\\S]*`origin/main`\\s+\\(8c041b7\\)\\s+lists\\s+terse\\s+0\\.1\\.1[\\s\\S]*Work\\s+in\\s+a\\s+run\\s+directory\\s+of\\s+the\\s+document's\\s+own\\s+—\\s+`research/<date>-<slug>/`\\s+at\\s+the\\s+root\\s+of\\s+the\\s+repository that holds the document[\\s\\S]*a\\s+code\\s+defect\\s+to\\s+the\\s+repository's\\s+`ISSUES\\.md`[\\s\\S]*RUN=\"\\$\\{CLAUDE_PLUGIN_DATA:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/[\\s\\S]*D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\";\\s+RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/[\\s\\S]*Write\\s+nothing\\s+into\\s+the\\s+audited\\s+repository\\.[\\s\\S]*Work\\s+in\\s+a\\s+run\\s+directory\\s+of\\s+the\\s+document's\\s+own,\\s+outside\\s+the\\s+repository\\s+that\\s+holds\\s+it[\\s\\S]*Nothing\\s+goes\\s+into\\s+that\\s+repository\\s+without\\s+the\\s+user's\\s+word",
+  "saw": "plugin tree at HEAD against 2f29a8f: diff exit 0\nthe advertised install commands fetch the marketplace's `main`, which at 8c041b7 ships terse 0.1.1 with the old `rewrite` page that wrote into the repository unasked\nis github.com/Nowely/agent-skills and `origin/main` (8c041b7) lists terse 0.1.1\n8c041b7, rewrite/SKILL.md:66-67, 112-113:\nWork in a run directory of the document's own — `research/<date>-<slug>/` at the root of the\nrepository that holds the document; `audit` writes its run file elsewhere, and you copy `audit.md` in.\n   next round's edits, a boundary or a term back to `rethink`, a code defect to the repository's\n   `ISSUES.md`, a question the document does not answer to the user. When a finding routes to stage 3,\n8c041b7, audit/SKILL.md:33:\nRUN=\"${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$RUN\" && echo \"$RUN\"\n2f29a8f = HEAD, audit/SKILL.md:33, 44:\nD=\"${CLAUDE_PLUGIN_DATA}\"; RUN=\"${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$RUN\" && echo \"$RUN\"\nWrite nothing into the audited repository. Not a report, not a note, not a fix.\n2f29a8f = HEAD, rewrite/SKILL.md:66-67, 78-79:\nWork in a run directory of the document's own, outside the repository that holds it: made by the\nformula of [`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory), with `<slug>`\nroute, copy `audit.md` in. Nothing goes into that repository without the user's word — not the\ncandidate (step 5), not a code defect (item 6).\n"
+ },
+ {
+  "name": "R02a audit's run: plugin data directory installed, ${TMPDIR:-/tmp}/terse from a checkout, nothing written into the audited repository",
+  "pattern": "The audit page forbids writing into the audited repository; its reference on measuring allows storing the score there on your word\\.",
+  "want": true,
+  "level": 2,
+  "asks": "The audit page tells the agent to write nothing into the audited repository, and the audit's reference on measuring allows the score to be stored in that repository when the user gives their word.",
+  "run": "sed -n '44p;171p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '117,121p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md",
+  "expect": "Write\\s+nothing\\s+into\\s+the\\s+audited\\s+repository\\.\\s+Not\\s+a\\s+report,\\s+not\\s+a\\s+note,\\s+not\\s+a\\s+fix\\.[\\s\\S]*-\\s+The\\s+reader\\s+protocol\\s+and\\s+re-measurement:\\s+\\[measure\\.md\\]\\(references/measure\\.md\\)\\.[\\s\\S]*##\\s+Keeping\\s+the\\s+number\\s+as\\s+a\\s+regression\\s+test[\\s\\S]*A score sitting in the audited repository[\\s\\S]*Storing it there requires the user's word, because it\\s+means writing into their tree\\.",
+  "saw": "Write nothing into the audited repository. Not a report, not a note, not a fix.\n- The reader protocol and re-measurement: [measure.md](references/measure.md).\n## Keeping the number as a regression test\n\nA score sitting in the audited repository turns documentation rot into a failing check: the text drifts,\nthe number falls, and the fall is the refusal. Storing it there requires the user's word, because it\nmeans writing into their tree. The run file keeps it either way.\n"
+ },
+ {
+  "name": "R02c rewrite records a code defect in code-defects.md in the run and offers it to the user",
+  "pattern": "The `rewrite` instructions place their run by the same rule, with a code defect recorded in its `code-defects\\.md` and offered to you\\.",
+  "want": true,
+  "level": 2,
+  "asks": "Rewrite's instructions have a code defect found in the rounds recorded in code-defects.md inside rewrite's run and offered to the user.",
+  "run": "sed -n '33p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '66,68p;71p;149,152p;203,204p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/\\$\\(date[\\s\\S]*Work in a run directory of the document's own, outside the repository that holds it: made by the\\s+formula of \\[`audit`'s\\s+step\\s+1\\][\\s\\S]*RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/\\$\\(date[\\s\\S]*a\\s+code\\s+defect\\s+with\\s+its\\s+check\\s+into\\s+`code-defects\\.md`\\s+in\\s+the\\s+run\\s+directory\\s+and\\s+to\\s+the\\s+user\\s+as\\s+a\\s+proposal[\\s\\S]*`code-defects\\.md`,\\s+when\\s+a\\s+finding\\s+routed\\s+to\\s+the\\s+code:\\s+each\\s+defect\\s+with\\s+its\\s+check,\\s+as\\s+offered\\s+to\\s+the\\s+user",
+  "saw": "D=\"${CLAUDE_PLUGIN_DATA}\"; RUN=\"${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$RUN\" && echo \"$RUN\"\nWork in a run directory of the document's own, outside the repository that holds it: made by the\nformula of [`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory), with `<slug>`\nnaming the document.\nD=\"${CLAUDE_PLUGIN_DATA}\"; RUN=\"${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>\" && mkdir -p \"$RUN\" && echo \"$RUN\"\n6. **Verify every finding yourself** from the check it carries — a finding without one is discarded —\n   and route each by the table in [loop.md](references/loop.md#where-a-finding-goes): a sentence to the\n   next round's edits, a boundary or a term back to `rethink`, a code defect with its check into\n   `code-defects.md` in the run directory and to the user as a proposal, a question the document does\n- `code-defects.md`, when a finding routed to the code: each defect with its check, as offered to the\n  user\n"
+ },
+ {
+  "name": "R02d copying a defect into ISSUES.md, or applying the candidate, waits for the user's word",
+  "pattern": "Copying that defect into the repository's `ISSUES\\.md`, or applying the candidate to your document, requires your word\\.",
+  "want": true,
+  "level": 2,
+  "asks": "Copying a code defect into the repository's ISSUES.md, and applying the candidate to the user's document, each require the user's word.",
+  "run": "sed -n '78,79p;153,154p;190,192p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "Nothing goes into that repository without the user's word — not the\\s+candidate \\(step 5\\), not a code defect \\(item 6\\)\\.[\\s\\S]*A code defect goes into the repository's `ISSUES\\.md` only on the user's word[\\s\\S]*Then stop: applying\\s+the candidate to the user's files needs their word",
+  "saw": "route, copy `audit.md` in. Nothing goes into that repository without the user's word — not the\ncandidate (step 5), not a code defect (item 6).\n   not answer to the user. A code defect goes into the repository's `ISSUES.md` only on the user's word:\n   the file is in their tree, and this skill promises to write there only when they say so. When a\nis set in the first announcement, and a cap reached is reported as a result. Hand over the round and\n`diff-NN.patch`, the diff against `00-original.md`, written into the run directory. Then stop: applying\nthe candidate to the user's files needs their word, and a diff they have read is what earns it.\n"
+ },
+ {
+  "name": "R02e the rethink page does not say where its skeleton is stored",
+  "pattern": "The `rethink` page does not specify where its skeleton is stored\\.",
+  "want": true,
+  "level": 2,
+  "asks": "The rethink page does not say where the skeleton it hands over is stored.",
+  "run": "grep -c -i -E 'director|\\$RUN|RUN=|CLAUDE_PLUGIN_DATA|TMPDIR|/tmp|mkdir|skeleton\\.md|stored|saved' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md; sed -n '183,188p' /Users/ruliny/Git/agent-skills/ISSUES.md",
+  "expect": "^0\\n[\\s\\S]*## E13\\. `rethink` hands over \"one file\" and no page says where it is written[\\s\\S]*with no path, no run directory and no statement of whether\\s+the file lands inside or outside the user's repository",
+  "saw": "0\n## E13. `rethink` hands over \"one file\" and no page says where it is written\n\n**Evidence, level 2.** `plugins/terse/skills/rethink/SKILL.md:70-83` (step 4, \"What you hand over\"):\n\"One file, and it describes the document rather than arguing for itself\" — the section lists what the\nfile contains and ends \"Then stop and wait\", with no path, no run directory and no statement of whether\nthe file lands inside or outside the user's repository; `rewrite/SKILL.md` step 4 says only to copy\n"
+ },
+ {
+  "name": "G3a lifecycle: installed, claude plugin uninstall deletes the data directory and its runs unless --keep-data",
+  "pattern": "When the plugin's last installation is removed, by `claude plugin uninstall` without `--keep-data` or by `claude plugin marketplace remove`, its data directory and the runs in it are deleted\\.",
+  "want": true,
+  "level": 3,
+  "asks": "When the plugin's last installation is removed, by claude plugin uninstall without --keep-data or by claude plugin marketplace remove, the plugin's data directory is deleted together with the runs in it.",
+  "run": "sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-03/lifetime-probe.sh",
+  "expect": "A state planted: terse-nowely present, run marker present, decoy present[\\s\\S]*A state after uninstall: terse-nowely absent, run marker absent, decoy present[\\s\\S]*B state after uninstall --keep-data: terse-nowely present, run marker present, decoy present[\\s\\S]*C\\s+\\$\\s+claude\\s+plugin\\s+install\\s+terse@nowely\\s+--scope\\s+project\\s+->\\s+exit\\s+0[\\s\\S]*C state after uninstall of the user installation, the project one left: terse-nowely present, run marker present, decoy present[\\s\\S]*C state after uninstall of the last installation: terse-nowely absent, run marker absent, decoy present[\\s\\S]*D\\s+\\$\\s+claude\\s+plugin\\s+marketplace\\s+remove\\s+nowely\\s+->\\s+exit\\s+0[\\s\\S]*D state after marketplace remove: terse-nowely absent, run marker absent, decoy present[\\s\\S]*D plugin list: No plugins installed[\\s\\S]*uninstall option: --keep-data Preserve the plugin's persistent data directory[\\s\\S]*marketplace remove options: --help --scope\\s*$",
+  "saw": "A $ claude plugin marketplace add <checkout> -> exit 0\nA $ claude plugin install terse@nowely -> exit 0\nA state planted: terse-nowely present, run marker present, decoy present\nA $ claude plugin uninstall terse@nowely -> exit 0\nA state after uninstall: terse-nowely absent, run marker absent, decoy present\nB $ claude plugin marketplace add <checkout> -> exit 0\nB $ claude plugin install terse@nowely -> exit 0\nB state planted: terse-nowely present, run marker present, decoy present\nB $ claude plugin uninstall terse@nowely --keep-data -> exit 0\nB state after uninstall --keep-data: terse-nowely present, run marker present, decoy present\nC $ claude plugin marketplace add <checkout> -> exit 0\nC $ claude plugin install terse@nowely --scope user -> exit 0\nC $ claude plugin install terse@nowely --scope project -> exit 0\nC state planted: terse-nowely present, run marker present, decoy present\nC $ claude plugin uninstall terse@nowely --scope user -> exit 0\nC state after uninstall of the user installation, the project one left: terse-nowely present, run marker present, decoy present\nC $ claude plugin uninstall terse@nowely --scope project -> exit 0\nC state after uninstall of the last installation: terse-nowely absent, run marker absent, decoy present\nD $ claude plugin marketplace add <checkout> -> exit 0\nD $ claude plugin install terse@nowely -> exit 0\nD state planted: terse-nowely present, run marker present, decoy present\nD $ claude plugin marketplace remove nowely -> exit 0\nD state after marketplace remove: terse-nowely absent, run marker absent, decoy present\nD plugin list: No plugins installed. Use `claude plugin install` to install a plugin.\nuninstall option: --keep-data Preserve the plugin's persistent data directory\nmarketplace remove options: --help --scope \n"
+ },
+ {
+  "name": "G3b lifecycle: from a checkout the operating system may purge the runs; copy a run to keep it",
+  "pattern": "The `audit` instructions create the run in the plugin's data directory when Claude Code supplies one, and otherwise under `\\$\\{TMPDIR:-/tmp\\}/terse`\\.",
+  "want": true,
+  "level": 3,
+  "asks": "The audit page's instructions create the run in the plugin's data directory when Claude Code supplies one, and otherwise under ${TMPDIR:-/tmp}/terse.",
+  "run": "sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-03/rundir-probe.sh; sed -n '33p;36,38p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md",
+  "expect": "installed: install exit 0[\\s\\S]*installed:\\s+/terse:audit\\s+exit\\s+1,\\s+Not\\s+logged\\s+in\\s+·\\s+Please\\s+run\\s+/login,\\s+cost\\s+0[\\s\\S]*installed:\\s+the\\s+page's\\s+line\\s+as\\s+received\\s+begins\\s+D=\"<probe>/config-installed/plugins/data/terse-nowely\";[\\s\\S]*installed: terse-nowely exists[\\s\\S]*plugindir:\\s+the\\s+page's\\s+line\\s+as\\s+received\\s+begins\\s+D=\"<probe>/config-plugindir/plugins/data/terse-inline\";[\\s\\S]*skills:\\s+the\\s+page's\\s+line\\s+as\\s+received\\s+begins\\s+D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\";[\\s\\S]*formula,\\s+no\\s+data\\s+directory,\\s+TMPDIR\\s+set:\\s+<probe>/tmp-formula/terse/runs/<stamp>[\\s\\S]*formula,\\s+no\\s+data\\s+directory,\\s+TMPDIR\\s+unset:\\s+/tmp/terse/runs/<stamp>[\\s\\S]*formula,\\s+data\\s+directory\\s+written\\s+in:\\s+<probe>/data-formula/runs/<stamp>[\\s\\S]*D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\";\\s+RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/[\\s\\S]*installed, Claude Code writes the plugin's data directory into that line before\\s+it runs",
+  "saw": "installed: isolated configuration not logged in\ninstalled: marketplace add exit 0\ninstalled: install exit 0\ninstalled: /terse:audit exit 1, Not logged in · Please run /login, cost 0\ninstalled: the page's line as received begins D=\"<probe>/config-installed/plugins/data/terse-nowely\";\ninstalled: terse-nowely exists\nplugindir: isolated configuration not logged in\nplugindir: /terse:audit exit 1, Not logged in · Please run /login, cost 0\nplugindir: the page's line as received begins D=\"<probe>/config-plugindir/plugins/data/terse-inline\";\nplugindir: terse-inline exists\nskills: isolated configuration not logged in\nskills: /audit exit 1, Not logged in · Please run /login, cost 0\nskills: the page's line as received begins D=\"${CLAUDE_PLUGIN_DATA}\";\nformula, no data directory, TMPDIR set: <probe>/tmp-formula/terse/runs/<stamp>\nformula, no data directory, TMPDIR unset: /tmp/terse/runs/<stamp>\nformula, data directory written in: <probe>/data-formula/runs/<stamp>\nD=\"${CLAUDE_PLUGIN_DATA}\"; RUN=\"${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$RUN\" && echo \"$RUN\"\n`D` is empty when this skill runs from a source checkout rather than an installed plugin, which is why\nthe fallback is there: installed, Claude Code writes the plugin's data directory into that line before\nit runs. Name the absolute path in your report and in the run file; `rewrite` is given that path by the\n"
+ },
+ {
+  "name": "G2 chain, as its pages report: departures one to zero, neither control broken",
+  "pattern": "Its pages report six questions, one trial per question, with 3/6 answers right before and 6/6 after, one reader leaving the documentation before and none after, and neither control question broken\\.",
+  "want": true,
+  "level": 1,
+  "asks": "The pages that report the 2026-09-10 chain state six questions with one trial each, 3/6 answers right before and 6/6 after, one reader leaving the documentation before and none after, and neither control question broken.",
+  "run": "sed -n '3,5p;125,127p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; sed -n '9p' /Users/ruliny/Git/agent-skills/research/README.md",
+  "expect": "changed from 3/6 to 6/6 when the text was repaired[\\s\\S]*six questions, one trial each[\\s\\S]*moved one README from 3/6 to 6/6, took\\s+departures from 1 to 0, and broke neither control\\. One trial per question[\\s\\S]*3/6 → 6/6 on six reader questions, one trial each",
+  "saw": "A fresh reader is the only ruler in this plugin that has been shown to move. Standards produced audits;\nreaders produced a number that changed from 3/6 to 6/6 when the text was repaired. That was one run on\none README, six questions, one trial each — McNemar two-sided *p* = 0.25, which is not distinguishable\n**Measured, at the size of one run:** the four-part chain moved one README from 3/6 to 6/6, took\ndepartures from 1 to 0, and broke neither control. One trial per question; the result does not survive a\nsignificance test and must not be quoted as a rate. Two of the six failures were refuted claims rather\n| [2026-09-10-chain](2026-09-10-chain/) | does a four-pass audit-and-revise chain make one README truer and easier to answer from? | 3/6 → 6/6 on six reader questions, one trial each (p = 0.25, not distinguishable from chance); two of six failures were false claims a prose rewrite would have kept; five published writing standards lost to unguided controls on ten seats |\n"
+ },
+ {
+  "name": "R02f2 a re-audit after a rewrite uses the same questions, answer key, entry file and model, or it is a new measurement",
+  "pattern": "When you re-audit after a rewrite, use the same questions, answer key, entry file, and model; changing one makes it a new measurement rather than a comparison\\.",
+  "want": true,
+  "level": 2,
+  "asks": "When the user re-audits after a rewrite, the re-audit uses the same questions, answer key, entry file and model as the audit before it; changing any one of them makes it a new measurement rather than a comparison.",
+  "run": "sed -n '106,109p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/measure.md",
+  "expect": "## Re-measuring after a rewrite[\\s\\S]*Same questions, same key, same entry file, same model\\. Change any of them and the two scores are not\\s+comparable; a new question set is a new measurement with a new baseline, not a result\\.",
+  "saw": "## Re-measuring after a rewrite\n\nSame questions, same key, same entry file, same model. Change any of them and the two scores are not\ncomparable; a new question set is a new measurement with a new baseline, not a result.\n"
+ },
+ {
+  "name": "R03a register: each skill is a page of instructions for Claude, and the section says what each page says",
+  "pattern": "Each skill is a page of instructions for Claude; below is what each page says\\.",
+  "want": true,
+  "level": 2,
+  "asks": "Each of the three skills is a page of instructions written for Claude, and the section that follows describes each skill by what its page says.",
+  "run": "sed -n '2p;7,8p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '2p;7,8p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md; sed -n '2p;7,8p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md; sed -n '13p;36,38p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '30p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md; sed -n '29p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "name: audit[\\s\\S]*disable-model-invocation: true[\\s\\S]*name: rethink[\\s\\S]*disable-model-invocation: true[\\s\\S]*name: rewrite[\\s\\S]*disable-model-invocation: true[\\s\\S]*You\\s+run\\s+seven\\s+steps\\s+in\\s+order[\\s\\S]*installed, Claude Code writes the plugin's data directory into that line before\\s+it runs[\\s\\S]*Announce\\s+the\\s+count\\s+and\\s+the\\s+models\\s+before\\s+spawning,\\s+and\\s+wait\\s+for\\s+the\\s+user's\\s+word\\.[\\s\\S]*Ask\\s+the\\s+user\\s+for\\s+the\\s+run\\s+directory\\s+from\\s+`audit`\\s+and\\s+read\\s+`audit\\.md`\\s+there\\.",
+  "saw": "name: audit\ndisable-model-invocation: true\nmetadata:\nname: rethink\ndisable-model-invocation: true\nmetadata:\nname: rewrite\n  into your tree only on your word.\ndisable-model-invocation: true\nAn audit here is a measurement, not an opinion. You run seven steps in order, and the order carries the\n`D` is empty when this skill runs from a source checkout rather than an installed plugin, which is why\nthe fallback is there: installed, Claude Code writes the plugin's data directory into that line before\nit runs. Name the absolute path in your report and in the run file; `rewrite` is given that path by the\nAnnounce the count and the models before spawning, and wait for the user's word. Default slices, one\nAsk the user for the run directory from `audit` and read `audit.md` there. You need two headings:\n"
+ },
+ {
+  "name": "R03c the claim ledger excludes voice and ordering, illustrative examples, arguments for instructions, unshipped tools' recipes",
+  "pattern": "The claim ledger excludes voice and ordering, illustrative examples, arguments for instructions, and recipes for tools the repository does not ship\\.",
+  "want": true,
+  "level": 2,
+  "asks": "The claim ledger audit writes leaves out voice and ordering, illustrative examples, arguments for instructions, and recipes for tools the audited repository does not ship.",
+  "run": "sed -n '61,71p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/references/truth-pass.md; sed -n '56,57p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md",
+  "expect": "##\\s+What\\s+is\\s+not\\s+a\\s+claim\\s+about\\s+behaviour[\\s\\S]*-\\s+the\\s+argument\\s+for\\s+an\\s+instruction[\\s\\S]*-\\s+voice,\\s+tone\\s+and\\s+ordering[\\s\\S]*-\\s+examples\\s+that\\s+illustrate\\s+rather\\s+than\\s+promise[\\s\\S]*-\\s+recipes\\s+for\\s+tools\\s+this\\s+repository\\s+does\\s+not\\s+ship[\\s\\S]*They\\s+do\\s+not\\s+enter\\s+the\\s+ledger\\.[\\s\\S]*Every sentence that states what the software does becomes one ledger entry",
+  "saw": "## What is not a claim about behaviour\n\nKeep this boundary or the pass turns into a general audit of the prose, which is the failure mode this\nplugin exists to avoid:\n\n- the argument for an instruction\n- voice, tone and ordering\n- examples that illustrate rather than promise\n- recipes for tools this repository does not ship\n\nThese belong to `rewrite`, under the writing rules. They do not enter the ledger.\nEvery sentence that states what the software does becomes one ledger entry: the claim, the doc line,\nthe code that backs it, an evidence level and a verdict. Follow\n"
+ },
+ {
+  "name": "R03d for an existing document an adversarial read precedes a bake-off of three whole-file candidates and two judges",
+  "pattern": "For an existing document, an adversarial read precedes a bake-off: three whole-file candidates and two judges\\.",
+  "want": true,
+  "level": 2,
+  "asks": "For a document that already exists, rewrite runs an adversarial read first and then a bake-off: three whole-file candidates, judged by two judges.",
+  "run": "sed -n '54,58p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "On a document that already exists, the first thing that runs is the adversarial whole-document read[\\s\\S]*Then\\s+the\\s+bake-off:\\s+three\\s+writers,\\s+one\\s+whole\\s+candidate\\s+each\\s+with\\s+a\\s+different\\s+stance,\\s+and\\s+two\\s+judges[\\s\\S]*That is the\\s+only bake-off",
+  "saw": "On a document that already exists, the first thing that runs is the adversarial whole-document read —\nlens 3 of step 4's table — with the right to run the code. On the audit route its findings are added\nunder *What broke*; on the skeleton route they become the first round's edits. Then the bake-off: three writers, one whole candidate each with a different stance, and two judges — the\nbriefs and the judging sheet, for both routes, are in [bake-off.md](references/bake-off.md). That is the\nonly bake-off; every round after it edits the round before.\n"
+ },
+ {
+  "name": "R03e later rounds are checked against the claim ledger, the audit's on its route; tasks and questions before a round reaches you",
+  "pattern": "Later rounds edit the selected candidate and are checked against the claim ledger, the audit's when rewrite starts from one; task outcomes and reader questions are checked before a round reaches you\\.",
+  "want": true,
+  "level": 2,
+  "asks": "Each round after the bake-off edits the round before and is checked against the claim ledger, which is the audit's own claim ledger when rewrite starts from an audit run; task outcomes and reader questions are checked before a round reaches the user.",
+  "run": "sed -n '57,58p;103,106p;120p;124p;179,186p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "every round after it edits the round before[\\s\\S]*`ledger\\.json`\\s+on\\s+the\\s+audit\\s+route\\s+is\\s+the\\s+audit's\\s+own\\s+claim\\s+ledger[\\s\\S]*On the\\s+skeleton route it starts empty[\\s\\S]*\\*\\*Run\\s+the\\s+checks\\*\\*,\\s+before\\s+any\\s+critic[\\s\\S]*ledger\\.mjs[\\s\\S]*exit 1 when the new round loses a verified claim[\\s\\S]*Before\\s+the\\s+user\\s+reads\\s+a\\s+round,\\s+three\\s+things[\\s\\S]*\\*\\*the\\s+task\\s+gate\\*\\*:\\s+lens\\s+4's\\s+two\\s+readers\\s+achieved\\s+their\\s+goals[\\s\\S]*\\*\\*the\\s+question\\s+readers\\*\\*:\\s+lens\\s+5,\\s+one\\s+per\\s+question",
+  "saw": "briefs and the judging sheet, for both routes, are in [bake-off.md](references/bake-off.md). That is the\nonly bake-off; every round after it edits the round before.\n   repeat. `ledger.json` on the audit route is the audit's own claim ledger, seeded by\n   `node \"$A/ledger-seed.mjs\" audit.md ledger.json` (`$A` is `audit`'s `scripts/`) — every confirmed\n   claim a `want: true` the first round must not lose, every refuted one a `want: false`. On the\n   skeleton route it starts empty. Either way it grows from the rounds.\n4. **Run the checks**, before any critic, with `R=<NN>-<pass>.md`:\n   - `node \"$S/ledger.mjs\" ledger.json $(ls [0-9][0-9]-*.md | sort)` — the ratchet over every round in order; exit 1 when the new round loses a verified claim or revives a retired phrase.\nBefore the user reads a round, three things, none tradeable against another:\n\n- **no regression in the round**: the ledger passes, and no sentence the round introduced was shown\n  false or overstated by its critics;\n- **the task gate**: lens 4's two readers achieved their goals, and the sections no task reached are\n  named;\n- **the question readers**: lens 5, one per question, answered from the document; where they guessed is\n  listed.\n"
+ },
+ {
+  "name": "R03f the loop stops when you read a round and say whether you would send it as it is",
+  "pattern": "The loop stops when you read a round and say whether you would send it as it is\\.",
+  "want": true,
+  "level": 2,
+  "asks": "The rewrite loop stops when the user reads a round and says whether they would send it as it is.",
+  "run": "sed -n '188,190p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "\\*\\*The\\s+loop\\s+stops\\s+when\\s+the\\s+user\\s+reads\\s+the\\s+round\\s+and\\s+says\\s+whether\\s+they\\s+would\\s+send\\s+it\\s+as\\s+it\\s+is\\.\\*\\*",
+  "saw": "**The loop stops when the user reads the round and says whether they would send it as it is.** Two\nconsecutive rounds with no regression is the signal to hand a round over, not a finish; a cap on rounds\nis set in the first announcement, and a cap reached is reported as a result. Hand over the round and\n"
+ },
+ {
+  "name": "R03g every cut of twenty words or more carries a reason, every declared behavioural claim its source and evidence",
+  "pattern": "Every cut of twenty words or more must carry a reason, and every declared behavioural claim its source and evidence\\.",
+  "want": true,
+  "level": 2,
+  "asks": "rewrite's instructions require every cut of twenty words or more to carry a reason, and every behavioural claim a round declares to carry its source and the level of evidence it reached.",
+  "run": "sed -n '44,46p;107,111p;205,206p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md; sed -n '67p;117p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/bake-off.md",
+  "expect": "every statement about behaviour must be true of the code in this checkout,\\s+and the writer records the level of evidence it reached[\\s\\S]*Whenever the edit carries claims it also carries `check`[\\s\\S]*the cut ledger — every removed passage of twenty words or more,\\s+with its reason[\\s\\S]*b\\)\\s+Back\\s+every\\s+behavioural\\s+claim\\s+with\\s+a\\s+file\\s+and\\s+line\\.[\\s\\S]*\\|\\s+cuts\\s+justified\\s+\\|\\s+does\\s+every\\s+cut\\s+of\\s+twenty\\s+words\\s+or\\s+more\\s+carry\\s+a\\s+reason\\?\\s+\\|",
+  "saw": "6. **The accuracy floor**: every statement about behaviour must be true of the code in this checkout,\n   and the writer records the level of evidence it reached — the three levels are in\n   [truth-pass.md](../audit/references/truth-pass.md#three-levels-of-evidence). A claim about a lifecycle\n2. **Write `edits/NN.json`**: for each edit the exact `old` text, which must occur once; the `new` text;\n   `claims` it introduces, `retire` phrasings it removes as false, and `drop` the names of ledger\n   entries whose claims the edit removes on purpose, each of them named in that round's row of\n   `rounds.md`. Whenever the edit carries claims it also carries `check` — `{\"level\": 1|2|3, \"run\":\n   \"<command>\", \"expect\": \"<regex over what it printed>\"}`, where `run` at levels 1 and 2 is usually\n- `diff-NN.patch` against the original; the cut ledger — every removed passage of twenty words or more,\n  with its reason; the invisible-prerequisite inventory from the curse-of-knowledge pass, on rounds that\nb) Back every behavioural claim with a file and line.\n| cuts justified | does every cut of twenty words or more carry a reason? | secondary |\n"
+ },
+ {
+  "name": "R03h install needs Claude Code; running a skill needs sign-in; audit and rewrite also need Node 22 or newer on PATH",
+  "pattern": "Install Claude Code first\\. Running a skill needs you signed in to it; for `audit` and `rewrite`, also put Node 22 or newer on `PATH`\\.",
+  "want": true,
+  "level": 3,
+  "asks": "The user installs Claude Code before the two install commands; running any of the three skills needs the user signed in to Claude Code; for audit and rewrite, which run Node scripts, the user also puts Node on PATH, at the version the plugin declares, 22 or newer.",
+  "run": "sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-03/install-probe.sh",
+  "expect": "auth status: not logged in[\\s\\S]*node on PATH: no[\\s\\S]*marketplace add, not signed in, no node on PATH: exit 0[\\s\\S]*plugin install, not signed in, no node on PATH: exit 0[\\s\\S]*/terse:audit,\\s+not\\s+signed\\s+in:\\s+exit\\s+1,\\s+Not\\s+logged\\s+in\\s+·\\s+Please\\s+run\\s+/login[\\s\\S]*/terse:rethink,\\s+not\\s+signed\\s+in:\\s+exit\\s+1,\\s+Not\\s+logged\\s+in\\s+·\\s+Please\\s+run\\s+/login[\\s\\S]*/terse:rewrite,\\s+not\\s+signed\\s+in:\\s+exit\\s+1,\\s+Not\\s+logged\\s+in\\s+·\\s+Please\\s+run\\s+/login[\\s\\S]*a skill script with no node on PATH: exit 127[\\s\\S]*pages that run node: audit rewrite[\\s\\S]*rethink: node commands 0, scripts directory absent[\\s\\S]*\"engines\":\\{\"node\":\">=22\"\\}",
+  "saw": "claude: 2.1.280 (Claude Code)\nauth status: not logged in\nnode on PATH: no\nmarketplace add, not signed in, no node on PATH: exit 0\nplugin install, not signed in, no node on PATH: exit 0\n/terse:audit, not signed in: exit 1, Not logged in · Please run /login\n/terse:rethink, not signed in: exit 1, Not logged in · Please run /login\n/terse:rewrite, not signed in: exit 1, Not logged in · Please run /login\na skill script with no node on PATH: exit 127\npages that run node: audit rewrite \nrethink: node commands 0, scripts directory absent\ndeclared: {\"private\":true,\"type\":\"module\",\"engines\":{\"node\":\">=22\"}}\n"
+ },
+ {
+  "name": "R03i this page describes commit 2f29a8f",
+  "pattern": "This page describes commit `2f29a8f`\\.",
+  "want": true,
+  "level": 2,
+  "asks": "This page describes the plugin as it is at commit 2f29a8f.",
+  "run": "git -C /Users/ruliny/Git/agent-skills diff --quiet 2f29a8f HEAD -- plugins/terse .claude-plugin; echo \"plugin tree at HEAD against 2f29a8f: diff exit $?\"; sed -n '198p' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/brief.md | grep -o 'the advertised install commands fetch[^;]*'; sed -n '209p' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/audit.md | grep -o 'is github.com/Nowely/agent-skills and [^;]*'; echo '8c041b7, rewrite/SKILL.md:66-67, 112-113:'; git -C /Users/ruliny/Git/agent-skills show 8c041b7:plugins/terse/skills/rewrite/SKILL.md | sed -n '66,67p;112,113p'; echo '8c041b7, audit/SKILL.md:33:'; git -C /Users/ruliny/Git/agent-skills show 8c041b7:plugins/terse/skills/audit/SKILL.md | sed -n '33p'; echo '2f29a8f = HEAD, audit/SKILL.md:33, 44:'; sed -n '33p;44p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; echo '2f29a8f = HEAD, rewrite/SKILL.md:66-67, 78-79:'; sed -n '66,67p;78,79p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "plugin tree at HEAD against 2f29a8f: diff exit 0[\\s\\S]*the advertised install commands fetch the marketplace's `main`, which at 8c041b7 ships terse 0\\.1\\.1 with the old `rewrite` page that wrote into the repository unasked[\\s\\S]*`origin/main`\\s+\\(8c041b7\\)\\s+lists\\s+terse\\s+0\\.1\\.1[\\s\\S]*Work\\s+in\\s+a\\s+run\\s+directory\\s+of\\s+the\\s+document's\\s+own\\s+—\\s+`research/<date>-<slug>/`\\s+at\\s+the\\s+root\\s+of\\s+the\\s+repository that holds the document[\\s\\S]*a\\s+code\\s+defect\\s+to\\s+the\\s+repository's\\s+`ISSUES\\.md`[\\s\\S]*RUN=\"\\$\\{CLAUDE_PLUGIN_DATA:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/[\\s\\S]*D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\";\\s+RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/[\\s\\S]*Write\\s+nothing\\s+into\\s+the\\s+audited\\s+repository\\.[\\s\\S]*Work\\s+in\\s+a\\s+run\\s+directory\\s+of\\s+the\\s+document's\\s+own,\\s+outside\\s+the\\s+repository\\s+that\\s+holds\\s+it[\\s\\S]*Nothing\\s+goes\\s+into\\s+that\\s+repository\\s+without\\s+the\\s+user's\\s+word",
+  "saw": "plugin tree at HEAD against 2f29a8f: diff exit 0\nthe advertised install commands fetch the marketplace's `main`, which at 8c041b7 ships terse 0.1.1 with the old `rewrite` page that wrote into the repository unasked\nis github.com/Nowely/agent-skills and `origin/main` (8c041b7) lists terse 0.1.1\n8c041b7, rewrite/SKILL.md:66-67, 112-113:\nWork in a run directory of the document's own — `research/<date>-<slug>/` at the root of the\nrepository that holds the document; `audit` writes its run file elsewhere, and you copy `audit.md` in.\n   next round's edits, a boundary or a term back to `rethink`, a code defect to the repository's\n   `ISSUES.md`, a question the document does not answer to the user. When a finding routes to stage 3,\n8c041b7, audit/SKILL.md:33:\nRUN=\"${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$RUN\" && echo \"$RUN\"\n2f29a8f = HEAD, audit/SKILL.md:33, 44:\nD=\"${CLAUDE_PLUGIN_DATA}\"; RUN=\"${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$RUN\" && echo \"$RUN\"\nWrite nothing into the audited repository. Not a report, not a note, not a fix.\n2f29a8f = HEAD, rewrite/SKILL.md:66-67, 78-79:\nWork in a run directory of the document's own, outside the repository that holds it: made by the\nformula of [`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory), with `<slug>`\nroute, copy `audit.md` in. Nothing goes into that repository without the user's word — not the\ncandidate (step 5), not a code defect (item 6).\n"
+ },
+ {
+  "name": "R03j at the 2026-09-22 audit the install commands resolved main at 8c041b7, whose rewrite page wrote into the document repository unasked",
+  "pattern": "At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `8c041b7`, whose rewrite page wrote into the document repository without asking\\.",
+  "want": true,
+  "level": 2,
+  "asks": "At the audit of 2026-09-22, the two install commands resolved the marketplace's main branch at 8c041b7, and that revision's rewrite page wrote into the document's repository without asking the user.",
+  "run": "git -C /Users/ruliny/Git/agent-skills diff --quiet 2f29a8f HEAD -- plugins/terse .claude-plugin; echo \"plugin tree at HEAD against 2f29a8f: diff exit $?\"; sed -n '198p' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/brief.md | grep -o 'the advertised install commands fetch[^;]*'; sed -n '209p' /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/audit.md | grep -o 'is github.com/Nowely/agent-skills and [^;]*'; echo '8c041b7, rewrite/SKILL.md:66-67, 112-113:'; git -C /Users/ruliny/Git/agent-skills show 8c041b7:plugins/terse/skills/rewrite/SKILL.md | sed -n '66,67p;112,113p'; echo '8c041b7, audit/SKILL.md:33:'; git -C /Users/ruliny/Git/agent-skills show 8c041b7:plugins/terse/skills/audit/SKILL.md | sed -n '33p'; echo '2f29a8f = HEAD, audit/SKILL.md:33, 44:'; sed -n '33p;44p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; echo '2f29a8f = HEAD, rewrite/SKILL.md:66-67, 78-79:'; sed -n '66,67p;78,79p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "plugin tree at HEAD against 2f29a8f: diff exit 0[\\s\\S]*the advertised install commands fetch the marketplace's `main`, which at 8c041b7 ships terse 0\\.1\\.1 with the old `rewrite` page that wrote into the repository unasked[\\s\\S]*`origin/main`\\s+\\(8c041b7\\)\\s+lists\\s+terse\\s+0\\.1\\.1[\\s\\S]*Work\\s+in\\s+a\\s+run\\s+directory\\s+of\\s+the\\s+document's\\s+own\\s+—\\s+`research/<date>-<slug>/`\\s+at\\s+the\\s+root\\s+of\\s+the\\s+repository that holds the document[\\s\\S]*a\\s+code\\s+defect\\s+to\\s+the\\s+repository's\\s+`ISSUES\\.md`[\\s\\S]*RUN=\"\\$\\{CLAUDE_PLUGIN_DATA:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/[\\s\\S]*D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\";\\s+RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/[\\s\\S]*Write\\s+nothing\\s+into\\s+the\\s+audited\\s+repository\\.[\\s\\S]*Work\\s+in\\s+a\\s+run\\s+directory\\s+of\\s+the\\s+document's\\s+own,\\s+outside\\s+the\\s+repository\\s+that\\s+holds\\s+it[\\s\\S]*Nothing\\s+goes\\s+into\\s+that\\s+repository\\s+without\\s+the\\s+user's\\s+word",
+  "saw": "plugin tree at HEAD against 2f29a8f: diff exit 0\nthe advertised install commands fetch the marketplace's `main`, which at 8c041b7 ships terse 0.1.1 with the old `rewrite` page that wrote into the repository unasked\nis github.com/Nowely/agent-skills and `origin/main` (8c041b7) lists terse 0.1.1\n8c041b7, rewrite/SKILL.md:66-67, 112-113:\nWork in a run directory of the document's own — `research/<date>-<slug>/` at the root of the\nrepository that holds the document; `audit` writes its run file elsewhere, and you copy `audit.md` in.\n   next round's edits, a boundary or a term back to `rethink`, a code defect to the repository's\n   `ISSUES.md`, a question the document does not answer to the user. When a finding routes to stage 3,\n8c041b7, audit/SKILL.md:33:\nRUN=\"${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$RUN\" && echo \"$RUN\"\n2f29a8f = HEAD, audit/SKILL.md:33, 44:\nD=\"${CLAUDE_PLUGIN_DATA}\"; RUN=\"${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$RUN\" && echo \"$RUN\"\nWrite nothing into the audited repository. Not a report, not a note, not a fix.\n2f29a8f = HEAD, rewrite/SKILL.md:66-67, 78-79:\nWork in a run directory of the document's own, outside the repository that holds it: made by the\nformula of [`audit`'s step 1](../audit/SKILL.md#step-1-scope-and-the-run-directory), with `<slug>`\nroute, copy `audit.md` in. Nothing goes into that repository without the user's word — not the\ncandidate (step 5), not a code defect (item 6).\n"
+ },
+ {
+  "name": "R03b installed, the runs land in plugins/data/terse-nowely/runs/ inside Claude Code's configuration directory",
+  "pattern": "Installed, the runs land in `plugins/data/terse-nowely/runs/` inside Claude Code's configuration directory\\.",
+  "want": true,
+  "level": 3,
+  "asks": "When the plugin is installed, the audit's runs land in plugins/data/terse-nowely/runs/ inside Claude Code's configuration directory.",
+  "run": "sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-03/rundir-probe.sh; sed -n '33p;36,38p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md",
+  "expect": "installed: install exit 0[\\s\\S]*installed:\\s+/terse:audit\\s+exit\\s+1,\\s+Not\\s+logged\\s+in\\s+·\\s+Please\\s+run\\s+/login,\\s+cost\\s+0[\\s\\S]*installed:\\s+the\\s+page's\\s+line\\s+as\\s+received\\s+begins\\s+D=\"<probe>/config-installed/plugins/data/terse-nowely\";[\\s\\S]*installed: terse-nowely exists[\\s\\S]*plugindir:\\s+the\\s+page's\\s+line\\s+as\\s+received\\s+begins\\s+D=\"<probe>/config-plugindir/plugins/data/terse-inline\";[\\s\\S]*skills:\\s+the\\s+page's\\s+line\\s+as\\s+received\\s+begins\\s+D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\";[\\s\\S]*formula,\\s+no\\s+data\\s+directory,\\s+TMPDIR\\s+set:\\s+<probe>/tmp-formula/terse/runs/<stamp>[\\s\\S]*formula,\\s+no\\s+data\\s+directory,\\s+TMPDIR\\s+unset:\\s+/tmp/terse/runs/<stamp>[\\s\\S]*formula,\\s+data\\s+directory\\s+written\\s+in:\\s+<probe>/data-formula/runs/<stamp>[\\s\\S]*D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\";\\s+RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/[\\s\\S]*installed, Claude Code writes the plugin's data directory into that line before\\s+it runs",
+  "saw": "installed: isolated configuration not logged in\ninstalled: marketplace add exit 0\ninstalled: install exit 0\ninstalled: /terse:audit exit 1, Not logged in · Please run /login, cost 0\ninstalled: the page's line as received begins D=\"<probe>/config-installed/plugins/data/terse-nowely\";\ninstalled: terse-nowely exists\nplugindir: isolated configuration not logged in\nplugindir: /terse:audit exit 1, Not logged in · Please run /login, cost 0\nplugindir: the page's line as received begins D=\"<probe>/config-plugindir/plugins/data/terse-inline\";\nplugindir: terse-inline exists\nskills: isolated configuration not logged in\nskills: /audit exit 1, Not logged in · Please run /login, cost 0\nskills: the page's line as received begins D=\"${CLAUDE_PLUGIN_DATA}\";\nformula, no data directory, TMPDIR set: <probe>/tmp-formula/terse/runs/<stamp>\nformula, no data directory, TMPDIR unset: /tmp/terse/runs/<stamp>\nformula, data directory written in: <probe>/data-formula/runs/<stamp>\nD=\"${CLAUDE_PLUGIN_DATA}\"; RUN=\"${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$RUN\" && echo \"$RUN\"\n`D` is empty when this skill runs from a source checkout rather than an installed plugin, which is why\nthe fallback is there: installed, Claude Code writes the plugin's data directory into that line before\nit runs. Name the absolute path in your report and in the run file; `rewrite` is given that path by the\n"
+ },
+ {
+  "name": "G3c the audit and rewrite pages warn that the operating system may purge a run in the temporary directory; copy a run to keep it",
+  "pattern": "The `audit` and `rewrite` pages warn that the operating system may purge a run in the temporary directory; copy a run you want to keep\\.",
+  "want": true,
+  "level": 2,
+  "asks": "The audit page and the rewrite page each warn that the operating system may purge a run in the temporary directory, and each says that a run the user wants to keep is the user's to copy.",
+  "run": "echo 'audit/SKILL.md:39-42:'; sed -n '39,42p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; echo 'rewrite/SKILL.md:74-77:'; sed -n '74,77p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+  "expect": "audit/SKILL.md:39-42:[\\s\\S]*in the temporary directory the\\s+operating system may purge it: say in your report that a run which must outlive either is the user's to\\s+copy somewhere durable[\\s\\S]*rewrite/SKILL.md:74-77:[\\s\\S]*in the temporary directory the operating system may purge it: say in\\s+the hand-over that a run which must outlive either is the user's to copy somewhere durable",
+  "saw": "audit/SKILL.md:39-42:\nuser and cannot guess it. Under the plugin's data directory a run survives plugin updates and is\ndeleted by `claude plugin uninstall` unless `--keep-data` is passed, and in the temporary directory the\noperating system may purge it: say in your report that a run which must outlive either is the user's to\ncopy somewhere durable.\nrewrite/SKILL.md:74-77:\nName the absolute path in your report; a resumed run is given it by the user and cannot guess it. Under\nthe plugin's data directory a run survives plugin updates and is deleted by `claude plugin uninstall`\nunless `--keep-data` is passed, and in the temporary directory the operating system may purge it: say in\nthe hand-over that a run which must outlive either is the user's to copy somewhere durable. On the audit\n"
+ },
+ {
+  "name": "R03l the writing rules forbid cutting a condition, limit or warning; the bake-off vetoes a candidate that cuts or weakens one",
+  "pattern": "The writing rules forbid cutting a condition, limit, or warning where a reader decides, and the bake-off vetoes a candidate that cuts or weakens one\\.",
+  "want": true,
+  "level": 2,
+  "asks": "The writing rules forbid a writer to cut a condition, a limit or a warning at a point where a reader decides, and the bake-off's judging sheet vetoes a candidate that cuts or weakens one.",
+  "run": "sed -n '21,22p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/writing-rules.md; sed -n '108,114p' /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/references/bake-off.md",
+  "expect": "Never\\s+cut\\s+a\\s+condition,\\s+a\\s+limit\\s+or\\s+a\\s+warning\\s+where\\s+a\\s+reader\\s+decides\\.[\\s\\S]*The\\s+first\\s+two\\s+rows\\s+are\\s+vetoes:\\s+a\\s+candidate\\s+that\\s+fails\\s+either\\s+is\\s+out[\\s\\S]*\\|\\s+protected\\s+passages\\s+\\|\\s+was\\s+a\\s+condition,\\s+limit\\s+or\\s+warning\\s+at\\s+a\\s+decision\\s+point\\s+cut\\s+or\\s+weakened\\?[\\s\\S]*\\|\\s+veto\\s+\\|",
+  "saw": "Never cut a condition, a limit or a warning where a reader decides. Repetition at\nan independently read decision point is not redundancy. A dated measurement keeps\nOne sheet per candidate. The first two rows are vetoes: a candidate that fails either is out, whatever\nelse it does well.\n\n| Row | Question | Weight |\n|---|---|---|\n| new false claims | does any behavioural claim contradict the code, or exceed the evidence level its source supports? | veto |\n| protected passages | was a condition, limit or warning at a decision point cut or weakened? was a passage the audit recorded as working damaged? | veto |\n"
+ },
+ {
+  "name": "R03k ranking on wording one judge put both controls above every entry of the three published standards; ranking on verified findings the other did not",
+  "pattern": "Ranking on wording, one judge put both controls above every entry of the three published standards; ranking on verified findings, the other did not\\.",
+  "want": true,
+  "level": 2,
+  "asks": "Of the bake-off's two judges, the one told to rank on wording put both control agents above every entry of the three published standards (Diataxis, Vercel's documentation skill, riekelt/technical-writer), and the one told to rank on findings verified against the repository did not.",
+  "run": "for f in zP378l2j oRfBREBF rCYUALAd; do printf '%s: ' $f; sed -n '21p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/run-2x5/$f.prompt.txt; done; printf 'EKalWntb: '; sed -n '21,22p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/run-2x5/EKalWntb.prompt.txt; echo 'judge o8eHzS6U, prompt :14-18, 24:'; sed -n '14,18p;24p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/run-2x5/o8eHzS6U.prompt.txt; echo 'judge v04PR6HL, prompt :34, 37:'; sed -n '34p;37p' /Users/ruliny/Git/agent-skills/research/2026-09-10-chain/run-2x5/v04PR6HL.prompt.txt; node -e 'for (const f of [\"o8eHzS6U\",\"v04PR6HL\"]) { const r = JSON.parse(require(\"fs\").readFileSync(\"/Users/ruliny/Git/agent-skills/research/2026-09-10-chain/run-2x5/\"+f+\".answer.md\",\"utf8\")).result; console.log(f+\" ranks: \"+r.split(\"\\n\").filter(l=>/^\\d+\\. P\\d+/.test(l)).map(l=>{const m=l.match(/^(\\d+)\\. (P\\d+) — ([^:]+)/); return m[1]+\" \"+m[2]+\" \"+m[3]}).join(\"; \")) }'",
+  "expect": "YOUR\\s+STANDARD:\\s+Diataxis\\.[\\s\\S]*YOUR\\s+STANDARD:\\s+verification\\s+against\\s+the\\s+implementation,\\s+in\\s+the\\s+form\\s+Vercel's\\s+own\\s+documentation\\s+skill[\\s\\S]*YOUR\\s+STANDARD:\\s+the\\s+technical-writing\\s+house\\s+style\\s+published\\s+as\\s+riekelt/technical-writer\\.[\\s\\S]*It has no\\s+website\\.[\\s\\S]*CONTROL,\\s+no\\s+standard\\s+given\\s+at\\s+all\\s+P9,\\s+P10[\\s\\S]*So:\\s+wording,\\s+redundancy,\\s+and\\s+relevance\\.\\s+Not\\s+factual\\s+accuracy\\.[\\s\\S]*a\\)\\s+VERIFY\\s+A\\s+SAMPLE\\s+AGAINST\\s+THE\\s+REPOSITORY\\.[\\s\\S]*A confirmed finding from a modest report outranks an eloquent unverified one[\\s\\S]*o8eHzS6U\\s+ranks:\\s+1\\s+P6\\s+draft\\s+CLAUDE\\.md\\s+block;\\s+2\\s+P9\\s+CONTROL;\\s+3\\s+P10\\s+CONTROL;\\s+4\\s+P5\\s+draft\\s+CLAUDE\\.md\\s+block;\\s+5\\s+P2\\s+Diataxis;\\s+6\\s+P3\\s+implementation\\s+verification;\\s+7\\s+P7\\s+riekelt/technical-writer;\\s+8\\s+P8\\s+riekelt/technical-writer;\\s+9\\s+P4\\s+implementation\\s+verification;\\s+10\\s+P1\\s+Diataxis[\\s\\S]*v04PR6HL\\s+ranks:\\s+1\\s+P3\\s+Implementation\\s+verification;\\s+2\\s+P6\\s+Draft\\s+CLAUDE\\.md\\s+block;\\s+3\\s+P10\\s+CONTROL;\\s+4\\s+P7\\s+riekelt\\s+house\\s+style;\\s+5\\s+P4\\s+Implementation\\s+verification;\\s+6\\s+P2\\s+Diataxis;\\s+7\\s+P9\\s+CONTROL",
+  "saw": "zP378l2j: YOUR STANDARD: Diataxis.\noRfBREBF: YOUR STANDARD: verification against the implementation, in the form Vercel's own documentation skill\nrCYUALAd: YOUR STANDARD: the technical-writing house style published as riekelt/technical-writer.\nEKalWntb: YOUR STANDARD is the block below, drafted for this owner's always-loaded instruction file. It has no\nwebsite. Do not go looking for another standard; everything you are given is here.\njudge o8eHzS6U, prompt :14-18, 24:\n  Diataxis                                       P1, P2\n  verification against the implementation        P3, P4\n  a draft rule block for the owner's CLAUDE.md   P5, P6\n  riekelt/technical-writer house style           P7, P8\n  CONTROL, no standard given at all              P9, P10\nSo: wording, redundancy, and relevance. Not factual accuracy. A separate judge already ranked these ten on\njudge v04PR6HL, prompt :34, 37:\na) VERIFY A SAMPLE AGAINST THE REPOSITORY. You have the checkout and a shell. Take at least twelve\n   overstated. A confirmed finding from a modest report outranks an eloquent unverified one.\no8eHzS6U ranks: 1 P6 draft CLAUDE.md block; 2 P9 CONTROL; 3 P10 CONTROL; 4 P5 draft CLAUDE.md block; 5 P2 Diataxis; 6 P3 implementation verification; 7 P7 riekelt/technical-writer; 8 P8 riekelt/technical-writer; 9 P4 implementation verification; 10 P1 Diataxis\nv04PR6HL ranks: 1 P3 Implementation verification; 2 P6 Draft CLAUDE.md block; 3 P10 CONTROL; 4 P7 riekelt house style; 5 P4 Implementation verification; 6 P2 Diataxis; 7 P9 CONTROL; 8 P5 Draft CLAUDE.md block; 9 P8 riekelt house style; 10 P1 Diataxis\n"
+ }
+]

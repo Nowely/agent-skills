@@ -1,0 +1,54 @@
+- Q1 — add “On macOS, open Terminal” before the install command — DECLINED — rule 2 excludes explaining the reader’s own terminal; the useful platform distinction was retained by naming macOS in the install label.
+- Q2 — the reader could derive `dust -n 10 ~` — DECLINED — no defect was reported; the repaired inventory retains both positional roots and `-n`.
+- Q3 — the reader found the expected first-run output — DECLINED — no repair was requested; the description remains, narrowed to the default text view.
+- Q4 — the reader could derive `dust -X node_modules` — DECLINED — no defect was reported; the `-X` row remains.
+- form — the author quote split the masthead before the tool and job — APPLIED — removed the quote and opened with Dust’s job in the reader’s words.
+- form — the build-status badge did not carry useful install or version information — APPLIED — removed the badge.
+- form — the opening described mechanism instead of leading with the mission — APPLIED — the first sentence now says what Dust does for the reader, and implementation detail was removed.
+- form — `dust PATH...` was reference syntax inside Quick start — APPLIED — removed it from Quick start and represented positional roots in the option inventory.
+- form — the placeholder command used a `text` fence instead of the command-block language — APPLIED — removed that block, so all remaining command blocks use `bash`.
+- rationalizer — cut the build-status badge — APPLIED — it did not help the reader install Dust or inspect disk use.
+- rationalizer — cut the first-person project quote — APPLIED — replaced it with one reader-centered mission sentence.
+- rationalizer — cut “more intuitive `du`” — APPLIED — removed the subjective comparison and named the result directly.
+- rationalizer — cut the Immediate overview advantage — DECLINED — rule 5 requires a short advantages list; the item was retained and narrowed to the verified default.
+- rationalizer — cut the Structure stays visible advantage — DECLINED — rule 5 requires the advantages list; the item states the tree’s reader benefit without repeating the first-run output verbatim.
+- rationalizer — cut the Focused answers advantage — DECLINED — rule 5 requires the advantages list; the item previews why the option inventory matters.
+- rationalizer — cut “Then” before the first run — APPLIED — the sequence is clear from placement.
+- rationalizer — cut the introductory option-table sentences — APPLIED — the table now begins immediately under its heading.
+- rationalizer — cut the file-count option — APPLIED — removed it as outside the immediate disk-space task.
+- rationalizer — cut the JSON option — APPLIED — removed it as outside the immediate terminal-view task.
+- rationalizer — cut the config-file option — APPLIED — removed it as a later workflow.
+- rationalizer — cut the How it works heading — DECLINED — rules 12 and 13 require technical detail in a later How it works section.
+- rationalizer — cut the metadata, inode, device, and selection explanation — APPLIED — removed the entire implementation paragraph.
+- rationalizer — cut the stdout/stderr explanation — DECLINED — rule 15 requires one line saying what the tool writes, and the owner explicitly asked for it.
+- rules — rule 4 was broken by the author-centered opening quote — APPLIED — the opening now names Dust’s job in the reader’s words.
+- rules — rule 6 was broken because the quote did not sell a reader benefit — APPLIED — removed the quote and led with the benefit.
+- rules — rule 14 did not justify the CI badge — APPLIED — removed the badge.
+- sentences — the opening sentence joined too many clauses around bare `du` — APPLIED — replaced it with two short reader-facing sentences and removed the comparison.
+- sentences — “fits the number of entries to the terminal height” required rereading — APPLIED — changed it to “sets its entry limit from the terminal height.”
+- sentences — “where it belongs” had an unclear antecedent — APPLIED — changed it to “where each one sits.”
+- sentences — the Unix inode/device sentence compressed two topics and assumed internal vocabulary — APPLIED — removed the sentence.
+- sentences — the stdout/JSON sentence used a semicolon, a bare flag subject, and an unclear “there” — APPLIED — removed JSON here and split stdout/stderr behavior into short sentences.
+- terms — “question” in the option introduction could mean an interrogative — APPLIED — removed the redundant introduction.
+- terms — “standard error” and “standard output” could be parsed as ordinary adjectives — APPLIED — replaced them with `stderr` and `stdout`.
+- terms — “inode” was an internal name — APPLIED — removed the inode discussion.
+- terms — “device” could mean a gadget — APPLIED — removed the device discussion; the option row uses “filesystems.”
+- terms — the opening called entries “files and directories” while the rest used “entries” — APPLIED — the opening now uses “entries.”
+- terms — “file rows” differed from the neighboring row’s “files” — APPLIED — the directory row now says “without files.”
+- terms — “children” differed from the dominant “entries” in the mechanics paragraph — APPLIED — removed that paragraph.
+- terms — the `-n` row switched between “selection” and “view” — APPLIED — it now says “Limits the view.”
+- terms — “controls,” “flags,” and “options” named the same thing — APPLIED — removed “controls” and changed the help lead-in to “every option.”
+- terms — “logical file size” differed from “file length” — APPLIED — the apparent-size row uses “file length” in both columns.
+- terms — “allocated blocks,” “allocated space,” and “disk use” named the same measure — APPLIED — removed the internal explanation and uses “disk space” at the decision point.
+- terms — “settings” and “defaults” competed in the config row — APPLIED — removed the later-workflow row.
+- truth-1 — the no-path opening claim ignored configured file sources and non-default limits — APPLIED — narrowed it to Dust’s default current-directory and terminal-height behavior.
+- truth-1 — “scan the directory you are in” ignored configured file sources — APPLIED — Quick start now says only “Run Dust.”
+- truth-1 — the first-run sentence promised percent bars even when disabled or too narrow — APPLIED — it now describes default text output and says bars appear when space permits.
+- truth-1 — positional paths were promised even when a configured file source takes precedence — APPLIED — removed that behavioral sentence from Quick start; the inventory now identifies `PATH...` only as positional arguments.
+- truth-2 — `-F` was described as showing only files although empty directories are leaves — APPLIED — the row now says it flattens entries without children.
+- truth-2 — `-D` was described as showing only directories although the root is preserved — APPLIED — the row now says it keeps directory child entries.
+- truth-2 — `-e` was described as including only matching paths although the regex is applied to files — APPLIED — the row now says it includes matching files.
+- truth-2 — `-v` was described as excluding matching paths although matching directories remain traversable — APPLIED — the row now says it excludes matching files.
+- truth-2 — `-x` promised one starting filesystem despite multiple or undetected devices — APPLIED — the row now limits the claim to detected starting filesystems.
+- truth-2 — `-s` promised file length on every platform — APPLIED — the row now limits that claim to Unix.
+- truth-2 — the Unix allocated-space and deduplication sentence overstated implementation details — APPLIED — removed the sentence.

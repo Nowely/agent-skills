@@ -1,8 +1,8 @@
 # Who reads this
 
-The profile is the first part of the chain and it does two jobs. Here it chooses the questions the
-measurement asks. In `rewrite` it is the brief the rewrite is written to. One artifact, both times, which
-is why it is written once and carried in the run file rather than re-derived.
+The profile does two jobs. Here it chooses the questions the measurement asks. In `rewrite`, given this
+run's directory, it is who the writer writes for. One artifact, both times, which is why it is written
+once and carried in the run file rather than re-derived.
 
 ## Where to get it
 
@@ -19,6 +19,7 @@ with it by construction and the measurement becomes a mirror.
 | Their words, not ours | issue titles, search terms, the user's phrasing — in their languages |
 | What earns their trust | which evidence the project can actually show a sceptic |
 | Voice | the constraints on sentences, terms and emphasis for this audience |
+| What this document is for | the user, in their own words: what it must make its reader able to do |
 
 Ask the user for anything the repository cannot answer. One round of questions, then show the profile
 and take corrections. Do not start the truth pass on an unconfirmed profile.
