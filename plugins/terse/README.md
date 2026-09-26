@@ -1,6 +1,6 @@
 # terse
 
-A Claude Code plugin for assessing and improving any text, in rounds of edits by several AI agents working from rules and best practices. Its aim is text in which every word carries weight and meaning, without AI slop. It is not a compressor. It is for when you cannot tell whether a document is fine, and touching it may make it worse.
+A Claude Code plugin for assessing and improving any text, by several AI agents working from rules and best practices. Its aim is text in which every word carries weight and meaning, without AI slop. It is not a compressor. It is for when you cannot tell whether a document is fine, and touching it may make it worse.
 
 ## Quick start
 
