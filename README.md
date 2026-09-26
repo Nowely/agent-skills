@@ -21,7 +21,6 @@ Then install what you need:
 plugins/<name>/plugin/            one plugin as it installs: its manifest, skills and docs
 plugins/<name>/                   beside it, what does not install: changelog, suites, ledger, research,
                                   entrust's protocol schema
-research/                         research runs about the repository as a whole
 ```
 
 A plugin owns everything under `plugins/<name>/`, and an install copies only its `plugin/`. The
