@@ -68,12 +68,12 @@ test("the page stays inside its budget: 156 lines, one heading level, no fence",
 // ------------------------------------------------------------------ the tier table
 
 test("the tier table pairs all eight model names, one tier per row",
-  "the pairing IS the table: a coordinator reads across a row to turn its own tier into a Codex `MODEL:` line, and a half-updated rename leaves it sending a name the driver rejects",
+  "the pairing IS the table: a coordinator reads across a row to turn its own tier into a Codex `MODEL:` line, and a half-updated rename leaves it sending a name the driver rejects. The Codex column carries the short name alone, because the driver resolves it to the newest model of that name and a version written here went stale the day GPT-6 Sol shipped",
   () => shows(
-    /^\| top \| Fable \| `gpt-6-astra` \| Astra \| design, mentoring, final review and verdict, decomposition you cannot do, a case stuck after two failed attempts\. Never implementation \|$/m,
-    /^\| strong \| Opus \| `gpt-5\.6-sol` \| Sol \| write agents, non-trivial analysis \|$/m,
-    /^\| cheap \| Sonnet \| `gpt-5\.6-terra` \| Terra \| mechanical, hard-to-get-wrong work \|$/m,
-    /^\| bulk \| Haiku \| `gpt-5\.6-luna` \| Luna \| \*\*outside the pool, with a pool of its own\*\*: up to 50 alive at once\. .* \|$/m,
+    /^\| top \| Fable \| Astra \| design, mentoring, final review and verdict, decomposition you cannot do, a case stuck after two failed attempts\. Never implementation \|$/m,
+    /^\| strong \| Opus \| Sol \| write agents, non-trivial analysis \|$/m,
+    /^\| cheap \| Sonnet \| Terra \| mechanical, hard-to-get-wrong work \|$/m,
+    /^\| bulk \| Haiku \| Luna \| \*\*outside the pool, with a pool of its own\*\*: up to 50 alive at once\. .* \|$/m,
   ));
 
 // ------------------------------------------------------------------ A: what the mode is
@@ -169,7 +169,7 @@ test("C5 the harvest is landed by proposal, naming the three envelope handles",
 test("C6 the plan states the pool and the user overrides it in words",
   "the caps are settings the user owns: a plan that launched under the page's defaults without showing them gave the user nothing to overrule, and \"two Fable\" or \"only codex\" said after the first agent is a word too late",
   () => says(
-    "Announce the composition here, and the caps beside it in a sentence: your own model, one Fable and one `gpt-6-astra` at a time, six alive.",
+    "Announce the composition here, and the caps beside it in a sentence: your own model, one Fable and one Astra at a time, six alive.",
     "A cap the user sets in words (\"two Fable\"), or agrees to when the plan proposes one with its reason, replaces the default for this run; composition words (\"only codex\", \"no codex\") follow the sibling's table.",
   ));
 
@@ -198,13 +198,13 @@ test("D3 every Claude Agent call is tagged, fable only for Fable agents within t
   "an untagged subagent silently inherits the session model, so a fan-out meant to be cheap runs at the top tier; and a Codex agent runs inside the shipped wrapper, whose model is pinned in its file, so a model or effort written as a tool option is spent on the wrapper while the agent runs on its `MODEL:` line",
   () => says(
     "Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable` only for Fable agents within the agreed cap",
-    "every Codex agent carries one with a slug from the table, never the config default",
+    "every Codex agent carries one with a name from the table, never the config default",
     "is spent on the wrapper alone and never reaches Codex",
   ));
 
-test("D4 one Fable agent and one gpt-6-astra agent alive at a time",
+test("D4 one Fable agent and one Astra agent alive at a time",
   "the top tier is the expensive one and it is the one a fan-out multiplies fastest; the cap is the only thing between a five-agent batch and five top-tier agents",
-  () => says("at most one Fable agent and one `gpt-6-astra` agent alive at a time"));
+  () => says("at most one Fable agent and one Astra agent alive at a time"));
 
 test("D5 the pool does not depend on the orchestrator's model, and the top pair takes its roles in turn",
   "the pool is the user's, not the session's: an Opus orchestrator that designed for itself and reviewed with a fresh Opus spent the strong tier on the top tier's work while a Fable agent sat unused; one Fable agent, one role at a time, is available to every orchestrator",
@@ -260,7 +260,7 @@ test("E4 the three bound rows: alive at once, the top pair, the Codex write agen
   "these are the numbers that decide whether a fan-out runs or deadlocks: a second Codex write agent on one directory exits 10 before its turn ever runs",
   () => shows(
     /^\| alive at once \| 6, Claude and Codex together, the top pair counted in \|$/m,
-    /^\| Fable agents, `gpt-6-astra` agents \| 1 each, alive at a time \|$/m,
+    /^\| Fable agents, Astra agents \| 1 each, alive at a time \|$/m,
     /^\| Codex write agents per directory \| 1: a second on the same directory exits 10 at once, before its turn runs \|$/m,
   ));
 
@@ -317,7 +317,7 @@ test("F2 the six verification bullets, one line each",
 
 test("F3 two rounds of fix and cross-review, then escalate",
   "without a bound the fix loop is where a run spends its budget; the escalation names where the round after the second one goes, the top pair first and the user last",
-  () => says("Fix, then cross-review, at most two rounds; then escalate to the Fable agent or the `gpt-6-astra` agent, and to the user only when that round fails too."));
+  () => says("Fix, then cross-review, at most two rounds; then escalate to the Fable agent or the Astra agent, and to the user only when that round fails too."));
 
 test("F4 every row of the Result table",
   "this table is read at the one moment judgement is worst, when an agent has just failed; a missing row is a relaunch that duplicates a live run, or a gate verdict retried until it costs real money",
@@ -468,7 +468,7 @@ test("F8 two selection rounds on the same blocker are a stall, re-planned for th
   () => shows(
     /Between selection rounds, (record|write|note) the candidates rejected, the evidence gained and the remaining blocker/,
     /Two rounds repeating the same blocker are a stall: show a new plan and wait for the word/,
-    /Fix, then cross-review, at most two rounds; then escalate to the Fable agent or the `gpt-6-astra` agent/,
+    /Fix, then cross-review, at most two rounds; then escalate to the Fable agent or the Astra agent/,
   ));
 
 test("G7 a verifier's brief names its target and whole scope, and its return separates what it checked from what it did not",

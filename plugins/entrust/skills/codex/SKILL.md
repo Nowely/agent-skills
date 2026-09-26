@@ -65,8 +65,8 @@ for agents that run side by side or while you work (measured 2026-09-17: a foreg
 hand-back message inside the same turn and no task notification after it, so you answer once — the owner's
 native foreground subagent showed one message after the hand-back frame — and an eleven-minute call ended
 normally, so the call has no ceiling of its own), and a `description` of
-`Codex <short name> <id>: <task in a few words>` — `Astra` for `gpt-6-astra`, `Sol` for `gpt-5.6-sol`,
-`Terra` for `gpt-5.6-terra`, `Luna` for `gpt-5.6-luna` — so the card the user sees names the agent, its
+`Codex <short name> <id>: <task in a few words>` — `Astra`, `Sol`, `Terra` or `Luna`, the name on the
+`MODEL:` line — so the card the user sees names the agent, its
 vendor and its task, and not the command line. That type is the agent this plugin ships,
 [agents/codex-agent.md](../../agents/codex-agent.md): a relay with the Bash tool alone and its model pinned
 in its own file, so its context is half a `general-purpose` subagent's (measured 2026-09-12: 8.2k against
@@ -96,7 +96,7 @@ nothing left running.
 The prompt, one Bash call, the heredoc quoted so nothing in it expands:
 
     node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --new --report-file "<REPORT>" <<'PROMPT'
-    MODEL: gpt-5.6-terra
+    MODEL: terra
     TASK: …
     CHECK: …
     RETURN: …
@@ -204,7 +204,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | `RESUME:` | `<threadId>`, `last` | this agent continues an earlier thread instead of opening one |
 | `EXPECT:` | `<regex>` | the answer is only evidence if a command matching it ran AND succeeded; a matching command that exited non-zero does not count, and none matching is exit 5. Do not point it at a check whose failure IS the finding |
 | `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>` | the answer must parse as one JSON object |
-| `MODEL:` | `<slug>`: `gpt-6-astra` (Astra), `gpt-5.6-sol` (Sol), `gpt-5.6-terra` (Terra), `gpt-5.6-luna` (Luna) | this agent needs a model other than the configured default; the short name is for prose, the slug for this line |
+| `MODEL:` | `astra`, `sol`, `terra`, `luna`: the newest model of that name the catalogue lists, resolved before the turn; a full slug from the catalogue pins one version | this agent needs a model other than the configured default; in prose the name is capitalised |
 | `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`; `ultra` on Astra, Sol and Terra (the catalogue of 2026-09-17: `none` and `minimal` are on no model and exit 2 before the turn); no line inherits `~/.codex/config.toml` | the task is worth more or less thinking than the configured default; `low` for a one-line task |
 | `WEB_SEARCH:` | `cached`, `indexed`, `live` | the agent needs sources it cannot read locally |
 | `BRIEF:` | `yes` | a short answer is enough; omit it beside an output schema — it clips only the inline `answer` (`answerJson` is parsed from the whole one) yet still asks the model for 20 lines |
@@ -318,7 +318,7 @@ command line).
 Every word on this page is addressed to the coordinator, and an agent's return is too. What reaches the user is
 prose the coordinator writes: in the user's own language, naming an agent by its model and id and saying what it
 did ("Sonnet W5 replaced four flaky width checks", "Codex Astra A6 reviewed the retry instructions") and not by
-this page's own vocabulary. Keep `Codex` on a Codex agent: it is the only word in the name that says whose model ran. The sentence about an agent has one shape: the agent by name is the subject and what it does or did is the verb ("Codex Sol R1 reads the diff"); whatever runs beside it, and how long, follows in the user's own words for the tools. The model slug is machinery too, and so are `wrapper` and `driver`: the name is `Codex Sol R1`, never `gpt-5.6-sol`. A header field name, a status block, an internal
+this page's own vocabulary. Keep `Codex` on a Codex agent: it is the only word in the name that says whose model ran. The sentence about an agent has one shape: the agent by name is the subject and what it does or did is the verb ("Codex Sol R1 reads the diff"); whatever runs beside it, and how long, follows in the user's own words for the tools. The model slug is machinery too, and so are `wrapper` and `driver`: the name is `Codex Sol R1`, never the slug the report carries. A header field name, a status block, an internal
 table's row name and an absolute path are machinery; they belong in a prompt or a report, and putting them in
 front of a person says nothing they can act on. Rights are the one thing that must survive the translation: say
 what an agent may write, and where, in ordinary words, because that is what the user is being asked to approve.

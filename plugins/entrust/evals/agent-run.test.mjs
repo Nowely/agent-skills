@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { EXIT, FAKE, SCRIPTS, codexShim, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
-import { ACCEPTED, REFUSED, SHORT_NAMES, STATUS_LINES, TAKEN, agentDirOf } from "../skills/codex/scripts/agent-run.mjs";
+import { ACCEPTED, REFUSED, STATUS_LINES, TAKEN, agentDirOf, shortName } from "../skills/codex/scripts/agent-run.mjs";
 
 const LAUNCHER = path.join(SCRIPTS, "agent-run.mjs");
 const DRIVER_SRC = fs.readFileSync(path.join(SCRIPTS, "driver.mjs"), "utf8");
@@ -86,14 +86,14 @@ test("--status prints the nine lines in order, PATH=own for the run's own report
     if (get("FIRST") !== String(r.answer).split("\n")[0].slice(0, 300)) problems.push(`FIRST is not the answer's first line: ${get("FIRST")}`);
     if (!get("ANSWER") || get("ANSWER").includes("\n")) problems.push(`ANSWER is empty or multi-line: ${JSON.stringify(get("ANSWER"))}`);
     if (get("ERROR") !== "") problems.push(`ERROR is not empty on a clean run: ${get("ERROR")}`);
-    const model = SHORT_NAMES[r.model] ?? r.model;
+    const model = shortName(r.model);
     if (get("RECEIPT") !== `turnStatus=${r.turnStatus} receiptOk=${r.receiptOk} model=${model}`) problems.push(`RECEIPT=${get("RECEIPT")}`);
     if (get("FILE") !== "exists") problems.push(`FILE=${get("FILE")}`);
     if (get("REPORT") !== report) problems.push(`REPORT=${get("REPORT")}`);
     return problems.length === 0 || problems.join("; ");
   });
 
-test("a slug in the report becomes its short name on the RECEIPT line, and an unknown model stays as written",
+test("a slug of any generation in the report becomes its short name on the RECEIPT line, and an unknown model stays as written",
   "the coordinator retold `model=gpt-5.6-terra` to the user twice (measured 2026-09-17); the slug it reads is the slug it writes, so the status line carries the name the page uses",
   async () => {
     const { dir, report } = fresh();
@@ -101,7 +101,8 @@ test("a slug in the report becomes its short name on the RECEIPT line, and an un
     fs.writeFileSync(path.join(dir, "exit"), "0\n");
     fs.writeFileSync(path.join(dir, "err.txt"), `entrust: pid=1 identity=x ${ACCEPTED}${report}\n`);
     const problems = [];
-    for (const [slug, name] of [...Object.entries(SHORT_NAMES), ["gpt-9-nova", "gpt-9-nova"]]) {
+    for (const [slug, name] of [["gpt-6-astra", "Astra"], ["gpt-6-sol", "Sol"], ["gpt-5.6-sol", "Sol"], ["gpt-5.6-terra", "Terra"],
+                                ["gpt-6-luna", "Luna"], ["gpt-9-nova", "gpt-9-nova"], ["gpt-6-sol-mini", "gpt-6-sol-mini"]]) {
       fs.writeFileSync(report, JSON.stringify({ ok: true, exitCode: 0, turnStatus: "completed", receiptOk: true, model: slug, answer: "x" }));
       const { lines } = await status(dir, report);
       const receipt = lines.find((l) => l.startsWith("RECEIPT=")) ?? "";

@@ -38,7 +38,7 @@ run directory: its artifact is its report, and a brief that asks a Codex read ag
 2. Show the plan and stop, in the user's own language and in ordinary words: what will be done, who does each part by model name, what each may write, that the agents reach the network and any you are keeping off it, and that
    reports and artifacts land outside the repository, except a worktree agent's own tree, which the driver makes and removes inside the repository under its `.claude` directory. Name no path and no header field. A worktree agent is named as such, because a worktree will be made. Browser and end-to-end runs go to a Claude agent, or to a write agent with the grants parity.md's
    [Browser-mode sandbox](../codex/references/parity.md#browser-mode-sandbox) section names; a read agent cannot, because that section's Chromium override is a file in the tree it may not write.
-   Announce the composition here, and the caps beside it in a sentence: your own model, one Fable and one `gpt-6-astra` at a time, six alive. State expected tokens by tier and role in the plan; name the comparable runs behind each estimate and mark unmeasured roles `unknown`. A cap the user sets in words ("two Fable"), or agrees to when the plan proposes one with its reason,
+   Announce the composition here, and the caps beside it in a sentence: your own model, one Fable and one Astra at a time, six alive. State expected tokens by tier and role in the plan; name the comparable runs behind each estimate and mark unmeasured roles `unknown`. A cap the user sets in words ("two Fable"), or agrees to when the plan proposes one with its reason,
    replaces the default for this run; composition words ("only codex", "no codex") follow the sibling's table. One plan when there is one; when several approaches are viable, show them all with a
    recommendation and let the user pick. Number each alternative, show its cost and mark the recommendation; state in the plan what "go" selects.
 3. The user's "go" covers only what the plan listed. After it, live-tree implementers write in the live working directory and an
@@ -55,15 +55,15 @@ run directory: its artifact is its report, and a brief that asks a Codex read ag
 
 ## Model tiers
 
-| Tier | Claude | Codex `MODEL:` | Codex short name | Work |
-| --- | --- | --- | --- | --- |
-| top | Fable | `gpt-6-astra` | Astra | design, mentoring, final review and verdict, decomposition you cannot do, a case stuck after two failed attempts. Never implementation |
-| strong | Opus | `gpt-5.6-sol` | Sol | write agents, non-trivial analysis |
-| cheap | Sonnet | `gpt-5.6-terra` | Terra | mechanical, hard-to-get-wrong work |
-| bulk | Haiku | `gpt-5.6-luna` | Luna | **outside the pool, with a pool of its own**: up to 50 alive at once. Fast, cheap and not clever — work that is wide rather than deep, and where a wrong answer does not quietly corrupt something. What to spend them on is yours to decide |
+| Tier | Claude | Codex | Work |
+| --- | --- | --- | --- |
+| top | Fable | Astra | design, mentoring, final review and verdict, decomposition you cannot do, a case stuck after two failed attempts. Never implementation |
+| strong | Opus | Sol | write agents, non-trivial analysis |
+| cheap | Sonnet | Terra | mechanical, hard-to-get-wrong work |
+| bulk | Haiku | Luna | **outside the pool, with a pool of its own**: up to 50 alive at once. Fast, cheap and not clever — work that is wide rather than deep, and where a wrong answer does not quietly corrupt something. What to spend them on is yours to decide |
 
 Your own model is in your system prompt ("You are powered by the model named ..."); nothing else carries it. You are outside the
-pool, and the pool is the same whatever you are: at most one Fable agent and one `gpt-6-astra` agent alive at a time, each taking
+pool, and the pool is the same whatever you are: at most one Fable agent and one Astra agent alive at a time, each taking
 the top-row roles in turn, architect for one task and judge for the next, and the strong and cheap agents the alive cap admits. The caps count turns in progress: separate advisor, critic and architect threads may take turns within them, and a thread waiting for another message uses no slot.
 **Prefer Luna to Haiku in the bulk row**: measured better. The bulk row does not
 count against the alive cap and never takes a top-row role; announce its count before spawning, like any other fan-out, a count derived from the units with the plan saying why that many.
@@ -71,7 +71,7 @@ The unit of a bulk fan-out is one claim, one address, a verbatim quote, and a ve
 
 - Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable` only for Fable agents within the agreed cap;
   untagged, a subagent inherits your session model. A Codex agent's model is its `MODEL:` line, and every Codex agent carries one
-  with a slug from the table, never the config default: a Codex agent runs inside the `codex-agent` wrapper, whose model is pinned in its
+  with a name from the table, never the config default: a Codex agent runs inside the `codex-agent` wrapper, whose model is pinned in its
   own file, so pass that Agent call no `model`; one written there, or an `effort`, is spent on the wrapper alone and never reaches Codex.
 - Subagents may spawn subagents, but a Fable agent never spawns Fable: it tags its own Agent calls `opus` or `sonnet`; only you launch
   Fable agents.
@@ -97,7 +97,7 @@ cross-review agent is a prompt agent with the diff's path in `TASK:` and the tem
 | comparison or design | 2 to 4 agents |
 | complex | 5 agents or more, launched in batches inside the alive cap |
 | alive at once | 6, Claude and Codex together, the top pair counted in |
-| Fable agents, `gpt-6-astra` agents | 1 each, alive at a time |
+| Fable agents, Astra agents | 1 each, alive at a time |
 | Codex write agents per directory | 1: a second on the same directory exits 10 at once, before its turn runs |
 
 Allocate inside those bounds by judgement, not to fill a band; [roles.md](references/roles.md) defines the responsibility, rights and return of each role seen so far, and a new one is named the same way. Run a decisive check before commissioning a panel. Keep dependent execution in one agent; keep its verification independent. Several writers at once is how a task goes faster: split by file ownership, as Claude agents on one live tree or as Codex agents in separate worktrees, never two Codex write agents on one directory. Disjoint filenames do not make work independent, so settle the contract between the owners before they start; when their work collides anyway, stop the writers, restate the contract, let each owner repair only its own files, then have an agent that wrote neither verify the combined tree. While another writer holds part of a checkout, nobody changes what they share: no stash, branch switch, reset, clean or rebase, and that binds you too when you run a check of your own. A writer may run the suite while it iterates, but the evidence that decides comes from an agent that did not write the code, or from you under the redirect rule.
@@ -124,7 +124,7 @@ in the brief.
 - Completeness critic at the end: one fresh strong-row reader chosen by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict. A publication (a README, a changelog, a synthesis) is read the same way before it goes out.
 - No silent caps: name every agent, check or item you dropped.
 
-Fix, then cross-review, at most two rounds; then escalate to the Fable agent or the `gpt-6-astra` agent, and to the user only when
+Fix, then cross-review, at most two rounds; then escalate to the Fable agent or the Astra agent, and to the user only when
 that round fails too. Between selection rounds, record the candidates rejected, the evidence gained and the remaining blocker. Two rounds repeating the same blocker are a stall: show a new plan and wait for the word.
 
 | Result | What to do |

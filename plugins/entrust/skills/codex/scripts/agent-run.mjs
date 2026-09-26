@@ -47,9 +47,11 @@ export const TAKEN = ["already exists, or is a symbolic link", "could not be pub
 // A launch this script refused never ran the driver; the marker keeps its lines from being read as a
 // run's, whatever an earlier run left in the directory.
 export const REFUSED = "entrust agent-run: refused";
-// The short names the page uses for the catalogue's slugs: the status line says what the coordinator
-// retells, and the slug stays in the report.
-export const SHORT_NAMES = { "gpt-6-astra": "Astra", "gpt-5.6-sol": "Sol", "gpt-5.6-terra": "Terra", "gpt-5.6-luna": "Luna" };
+// The short names the page uses for the catalogue's slugs, whatever the generation: the status line says
+// what the coordinator retells, and the slug stays in the report. Any other model stays as written.
+export const SHORT_NAMES = ["Astra", "Sol", "Terra", "Luna"];
+export const shortName = (slug) =>
+  SHORT_NAMES.find((n) => new RegExp(`^gpt-\\d+(?:\\.\\d+)*-${n}$`, "i").test(slug)) ?? slug;
 export const FIRST_MAX = 300, ANSWER_MAX = 600, ERROR_MAX = 300;
 // The status read prints these names, in this order, whatever it found.
 export const STATUS_LINES = ["DRIVER_EXIT", "PATH", "EXIT", "FIRST", "ANSWER", "ERROR", "RECEIPT", "FILE", "REPORT"];
@@ -175,7 +177,7 @@ export function statusLines(dir, report) {
       `FIRST=${s.split("\n")[0].slice(0, FIRST_MAX)}`,
       `ANSWER=${s.length <= ANSWER_MAX ? oneLine(s) : `(long: ${s.length} chars, read the report)`}`,
       `ERROR=${oneLine(e).replace(/ \/ /g, " ").slice(0, ERROR_MAX)}`,
-      `RECEIPT=turnStatus=${r.turnStatus ?? "null"} receiptOk=${r.receiptOk ?? "none"} model=${r.model ? (SHORT_NAMES[r.model] ?? r.model) : "none"}`);
+      `RECEIPT=turnStatus=${r.turnStatus ?? "null"} receiptOk=${r.receiptOk ?? "none"} model=${r.model ? shortName(r.model) : "none"}`);
   } else {
     // No report: the one reason a coordinator can act on is the launcher's own refusal, if there was one.
     const refusal = err.split("\n").find((l) => l.startsWith(REFUSED)) ?? "";

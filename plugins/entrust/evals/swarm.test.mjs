@@ -74,15 +74,15 @@ test("U1 a unit is the bulk row's unit, fifty at most, the template has its plac
       /one per line, fifty at most/,
       /one brief template with `\{\{UNIT\}\}` where the unit goes and `\{\{UNIT_ID\}\}` where its number goes/,
       /assemble one brief and open it whole before the launch/,
-      /Every brief carries `MODEL: gpt-5\.6-luna` or `gpt-5\.6-terra`, `EFFORT: low` for Luna and `medium` for Terra/,
+      /Every brief carries `MODEL: luna` or `MODEL: terra`, `EFFORT: low` for Luna and `medium` for Terra/,
       /a swarm never carries a top-row or strong-row model, and it never writes: every agent is a read agent/,
       /Announce the count, derived from the units with the plan saying why that many, before the launch/,
     );
     if (prose !== true) return prose;
     const models = [...flat.matchAll(/`MODEL: ([^`]+)`/g)].map((m) => m[1]);
-    const bad = models.filter((m) => !/^gpt-5\.6-(luna|terra)$/.test(m));
+    const bad = models.filter((m) => !/^(luna|terra)$/i.test(m));
     if (bad.length) return `the page admits a swarm model outside the bulk and cheap rows: ${bad.join(", ")}`;
-    if (/(gpt-6-astra|gpt-5\.6-sol|\bOpus\b|\bFable\b)/.test(flat)) return "the page names a strong or top model";
+    if (/\b(astra|sol)\b/i.test(flat) || /\b(Opus|Fable)\b/.test(flat)) return "the page names a strong or top model";
     return true;
   });
 
