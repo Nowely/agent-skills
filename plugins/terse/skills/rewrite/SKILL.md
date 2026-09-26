@@ -1,9 +1,10 @@
 ---
 name: rewrite
 description: >-
-  Writes or rewrites a text pleasant to read and true of the code: a writer works from the code and the
-  rules, every critic reads the draft at once — truth, a rationalizer, form, terms, sentences, the rules,
-  fresh readers — the writer repairs once, and a check reads the repair. Touches your files only on your word.
+  Writes or rewrites a text pleasant to read and true within its world: a writer first works out what the
+  text is and who reads it, every critic reads the draft at once — truth, a rationalizer, form, terms,
+  sentences, fresh readers — the writer repairs once, and a check reads the repair. Touches your files only
+  on your word.
 disable-model-invocation: true
 metadata:
   version: "0.1.1"
@@ -60,7 +61,7 @@ Launch them in one message, on the draft:
 
 - truth, brief 3, one agent per group of sections — a few hundred words each, so each finishes fast;
 - the rationalizer, brief 4: does this reader need it, here;
-- form, brief 5; terms, brief 6; the rules one by one, brief 7; sentences, brief 10;
+- form, brief 5; terms, brief 6; sentences, brief 10;
 - three to five question readers, brief 8; in full mode, one task reader, brief 9.
 
 In full mode each truth critic's brief carries the line brief 3 gives for it. Each returns its report;
@@ -68,8 +69,8 @@ save it into `critics/` of the run directory. No agent merges them: the writer r
 
 ## Step 5. One repair, and a check of it
 
-The writer again, sent every report: it applies each finding or declines it with the reason in a line,
-re-checks every sentence it changed against the code, reads the whole text once for a count or a name
+The writer again, sent every report: it applies each finding or declines it with a reason from the
+context in a line — a rule's number is no reason — re-checks every sentence it changed against its world, reads the whole text once for a count or a name
 that disagrees with itself, and writes `02-repaired.md` with that list. Then, in one message: truth,
 brief 3, on the sentences the repair changed; the question readers again; the two cold readers, brief 11.
 Run the scripts on it too, from this skill's `scripts/`, the directory beside this file:

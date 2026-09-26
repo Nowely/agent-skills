@@ -7,6 +7,14 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- The critics argue from the reader, and a rule's number is no reason to decline a finding or to demand one.
+  The rationalizer asks whether the reader needs a thing or whether it makes them want it, and keeps the
+  comparison, the demo and the pitch; form reads the text beside the best texts of its kind and says what the
+  reader gains; truth proposes the plainest true sentence rather than the shortest, notes a rare case instead
+  of writing it in, and never narrows a route the reader takes; terms reads from the writer's context. The
+  rules critic is gone: its whole work was checking the text against numbered rules. On the dust README the
+  repair adopted replacements such as "Flattens entries without children" that both cold readers stumbled on,
+  and the check narrowed "macOS or Linux" to "macOS" over one unsupported architecture.
 - The writer starts from the text's world: before any plan it writes `context.md` — what the thing is and
   what it resembles, who reads the text and in what situation, what they need first, what would make them
   want it, the one thought it carries — and the plan follows from that rather than from a list of sections.

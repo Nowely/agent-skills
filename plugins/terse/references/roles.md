@@ -22,7 +22,6 @@ harness hook refuses a subagent's report file.
 | rationalizer | Claude Opus | on the draft | 4 |
 | form | Claude Sonnet | on the draft | 5 |
 | terms | Claude Sonnet | on the draft | 6 |
-| rules | Claude Sonnet | on the draft | 7 |
 | sentences | Claude Sonnet | on the draft | 10 |
 | question readers | Codex Luna | `rewrite`: three to five, on the draft and again on the repaired text; `audit`: one per question | 8 |
 | task reader | Codex Sol | `rewrite`: one, on the draft; `audit`: two, on the documentation; full mode only | 9 |
@@ -63,8 +62,8 @@ Write the text to <OUT>/01-draft.md. Return as your final message the context, t
 notes.
 ```
 
-The repair is the same agent, sent every critic's report: it applies each finding or declines it with the
-reason in a line, re-checks every sentence it changed, then reads the whole text once as its reader, so
+The repair is the same agent, sent every critic's report: it applies each finding or declines it with a
+reason from the context in a line — a rule is advice, and its number is no reason — re-checks every sentence it changed, then reads the whole text once as its reader, so
 that a count or a name said twice agrees with itself, and writes `02-repaired.md` beside the draft with
 that list. Then, at once: truth, brief 3, on the sentences the repair changed; the question readers
 again; and the two cold readers, brief 11. A refuted sentence, a contradiction or a question now answered
@@ -88,12 +87,14 @@ kept as the genre's notes; the next text of the same kind is written from them w
 ## 3. Truth, one agent per group of sections
 
 ```
-Check every sentence that states a behaviour in <SECTIONS> of <DOC> — a group of sections, or the
-sentences a repair changed — against <CODE>, as <TRUTH> checks a claim in a light run: read the code, run
-nothing, and judge each sentence by its levels, its verdicts and its guarantee words. Return only the
-refuted and the overstated sentences, each with its line in <DOC>, the evidence, and the shortest sentence
-that is true, or "cut" where the reader loses nothing they need. Never propose a sentence longer than the
-one it replaces.
+Check every sentence that states a fact in <SECTIONS> of <DOC> — a group of sections, or the sentences a
+repair changed — against its world, <CODE>, as <TRUTH> checks a claim in a light run: read, run nothing of
+what the text describes, and judge each sentence by its levels, its verdicts and its guarantee words.
+Return only the refuted and the overstated sentences, each with its line in <DOC>, the evidence, and the
+plainest sentence that is true for this reader — <CONTEXT> — or "cut" where they lose nothing they need.
+Plain, not shortest: a replacement the reader must read twice is no fix. A rare case that would not
+mislead this reader is noted, not written into the text, and a route the reader takes is not narrowed to
+fit it.
 ```
 
 In full mode, add to the brief: "You may also run the code in <HARNESS>, the copy built for this run, and
@@ -102,37 +103,31 @@ nowhere else; what you make happen there is level 3."
 ## 4. The rationalizer
 
 ```
-The reader of <DOC> is: <PURPOSE>. For every fact, sentence and block, ask: does this reader need it
-here, to decide or to act? Who writes this, and who reads it? What does the reader lose if it goes? Be
-hardest on versions, paths, prerequisites, internal names and anything explained that this reader
-already knows. Return a list: the line, the words, cut or keep with the reason in a clause, and the
-words saved. Keep a condition, a limit or a warning at a point where the reader decides.
+The reader of <DOC>, and the text's world: <CONTEXT>. For every fact, sentence and block, ask: does this
+reader need it here, to decide or to act — or does it make them want the thing? What does the reader lose
+if it goes? Be hardest on versions, paths, prerequisites, internal names and anything explained that this
+reader already knows; keep what tells them what the thing is and why it is worth having — a comparison
+with what they know, a demo, the pitch — even where it is not a step. Return a list: the line, the words,
+cut or keep with the reason in a clause, and the words saved. Keep a condition, a limit or a warning at a
+point where the reader decides.
 ```
 
 ## 5. Form
 
 ```
-Read <DOC> against the pleasant-read requirement of <RULES>, its advice, and the genre's order <GENRE>. Is it
-pleasant to look at and to scan? Is the opening what it is, what it is for and its advantages as a list?
-Is there a Quick start right after it, with install and the first use, carrying only the routes most
-readers take? Is the inventory a table whose alike rows say what tells them apart? Are sections and
-sub-blocks formatted as the genre formats them? Which section is missing, which is extra, which is out of
-place? Return each finding with its line and the rule it breaks.
+Read <DOC> as its reader — <CONTEXT> — beside the best texts of its kind, <GENRE>, and the advice of
+<RULES>. Is it pleasant to look at and to scan? Does it give this reader, early, what they need first and
+what would make them want the thing? Which part does this reader need that is missing, which is there
+only because texts of the kind have it, which is out of place? Which formatting would help them read
+it? Return each finding with its line and what the reader gains from the change.
 ```
 
 ## 6. Terms
 
 ```
-Read <DOC> as its reader: <PURPOSE>. List every word this reader would parse differently from what the
+Read <DOC> as its reader: <CONTEXT>. List every word this reader would parse differently from what the
 text means, every internal name used where the reader has a word of their own, and every term used
 twice under two names. Return each with its line and the word to use.
-```
-
-## 7. Rules
-
-```
-Check <DOC> against every rule of <RULES>, one by one. For each rule: holds, or the lines that break it
-and how. Return only the breaks.
 ```
 
 ## 8. A question reader
@@ -185,10 +180,10 @@ were there, and every sentence that turned out untrue. End with one line: GOAL: 
 ## 10. Sentences
 
 ```
-Read <DOC> against <SENTENCES>, applied as written, and against the pleasant-read requirement of <RULES>. Find every
-sentence its reader would have to read twice: too long, conditions stacked, a path, a flag or a name in
-the middle of prose, a term before the reader needs it. Return each with its line and a plainer sentence
-that says the same, or "cut" where it carries nothing.
+Read <DOC> against <SENTENCES>, applied as written, and against the pleasant-read requirement of
+<RULES>. Find every sentence its reader would have to read twice: too long, conditions stacked, a path, a
+flag or a name in the middle of prose, a term before the reader needs it. Return each with its line and a
+plainer sentence that says the same, or "cut" where it carries nothing.
 ```
 
 ## 11. A cold reader
@@ -198,9 +193,8 @@ You are a fresh reader. Read ONE file, with cat, and nothing else: <DOC>. Assess
 <KIND>. Quote the line for every point you make.
 ```
 
-Its findings are weighed like any critic's, and one that asks for what a rule excludes — a prerequisite,
-troubleshooting, a licence line — is declined with the rule's number. On 2026-09-25 two cold readers of
-the one path's first text found a contradiction the repair had brought in and two rows no reader could
+Its findings are weighed against the context like any critic's. On 2026-09-25 two cold readers of the
+one path's first text found a contradiction the repair had brought in and two rows no reader could
 tell apart; in the same round, marks for pleasantness from cold readers did not separate the owner's first
 choice from the second, so a cold reader finds defects and gives no mark.
 
