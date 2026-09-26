@@ -48,7 +48,7 @@ test("the frontmatter names the mode, forbids model invocation, and carries a ve
   });
 
 test("the page stays inside its budget: 60 lines, one heading level, no fence",
-  "the mode is loaded on top of two pages; the launch line is indented, never fenced, as the sibling's commands are",
+  "the mode is loaded on top of the codex page; the launch line is indented, never fenced, as the sibling's commands are",
   () => {
     const problems = [];
     if (lines.length > 60) problems.push(`${lines.length} lines`);
@@ -57,13 +57,25 @@ test("the page stays inside its budget: 60 lines, one heading level, no fence",
     return problems.length === 0 || problems.join("; ");
   });
 
-test("A1 the orchestrate page is loaded first, the swarm is the bulk row at its widest, the mode adds no driver change, and a Terra swarm counts against the swarm's cap alone",
-  "a swarm that re-defined the unit or the pool would drift from the page that owns them; the orchestrate page exempts the bulk row from the alive cap, and the owner named Terra swarms, so the exemption is stated here as this mode's one override",
+test("A0 the page loads codex through the Skill tool, and no sentence asks it to load orchestrate",
+  "orchestrate is `disable-model-invocation`, so the Skill tool refuses to load it and a page that asks for that load does not start (E39)",
+  () => {
+    const problems = [];
+    const asks = /\bload\b[^.;]*\borchestrate\b/i.exec(flat) ?? /Skill tool[^)]*entrust:orchestrate/.exec(flat);
+    if (asks) problems.push(`a sentence asks to load orchestrate: ${asks[0].slice(0, 120)}`);
+    const loads = [...flat.matchAll(/Skill tool, `entrust:([a-z-]+)`/g)].map((m) => m[1]);
+    if (loads.join() !== "codex") problems.push(`the Skill-tool loads the page asks for: ${loads.join(", ") || "none"}`);
+    const prose = says("Load the sibling [codex](../codex/SKILL.md) now (Skill tool, `entrust:codex`)", /this page holds every other rule a swarm needs/);
+    if (prose !== true) problems.push(prose);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("A1 the swarm is a bulk fan-out at its widest, the mode adds no driver change, and a Terra swarm counts against the swarm's cap alone",
+  "orchestrate exempts the bulk row from the alive cap, and the page carries that rule itself because it loads codex alone (E39); the owner named Terra swarms, so the exemption covers Terra",
   () => says(
-    "Load [orchestrate](../orchestrate/SKILL.md) now",
-    /A swarm is the orchestrate page's bulk row at its widest/,
+    /A swarm is a bulk fan-out at its widest/,
     /adds no driver change, no header field and no flag/,
-    /a Terra swarm counts as the bulk row does, against the swarm's own cap and never against the alive cap of six, and the plan says so/,
+    /Its agents are a pool of their own\. A Terra swarm counts as a Luna one does, against the swarm's own cap and never against the alive cap of six, and the plan says so/,
   ));
 
 test("U1 a unit is the bulk row's unit, fifty at most, the template has its placeholders, every brief is a read agent on a bulk or cheap model at the page's effort, and no strong or top model is admitted",
@@ -73,10 +85,12 @@ test("U1 a unit is the bulk row's unit, fifty at most, the template has its plac
       /one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief/,
       /one per line, fifty at most/,
       /one brief template with `\{\{UNIT\}\}` where the unit goes and `\{\{UNIT_ID\}\}` where its number goes/,
-      /assemble one brief and open it whole before the launch/,
+      /[Aa]ssemble one brief and open it whole before the launch, checking its paths, its count and each quote against its source/,
       /Every brief carries `MODEL: luna` or `MODEL: terra`, `EFFORT: low` for Luna and `medium` for Terra/,
-      /a swarm never carries a top-row or strong-row model, and it never writes: every agent is a read agent/,
-      /Announce the count, derived from the units with the plan saying why that many, before the launch/,
+      /[Aa] swarm never carries a top-row or strong-row model, and it never writes: every agent is a read agent/,
+      /Its `OUTPUT_SCHEMA:` file, under your temporary directory, holds the five fields' schema below/,
+    /Announce the count, derived from the units with the plan saying why that many, before the launch/,
+    /Show the plan and stop; "go" covers the swarm as announced and nothing else/,
     );
     if (prose !== true) return prose;
     const models = [...flat.matchAll(/`MODEL: ([^`]+)`/g)].map((m) => m[1]);
@@ -86,11 +100,27 @@ test("U1 a unit is the bulk row's unit, fifty at most, the template has its plac
     return true;
   });
 
+test("U2 the five fields' schema on the page parses, is strict, and names the five fields in order",
+  "a Codex agent's `OUTPUT_SCHEMA:` must be a strict JSON Schema file; the schema was orchestrate's, and the page now carries it because it loads codex alone",
+  () => {
+    const m = /^ {4}(\{"type":"object".*)$/m.exec(text);
+    if (!m) return "no indented schema line on the page";
+    let s;
+    try { s = JSON.parse(m[1]); } catch (e) { return `the schema does not parse: ${e.message}`; }
+    const five = ["status", "result", "evidence", "artifacts", "open"];
+    const problems = [];
+    if (s.additionalProperties !== false) problems.push("additionalProperties is not false");
+    if (JSON.stringify(s.required) !== JSON.stringify(five)) problems.push(`required is ${JSON.stringify(s.required)}`);
+    if (JSON.stringify(Object.keys(s.properties ?? {})) !== JSON.stringify(five)) problems.push("properties differ from the five fields");
+    if (JSON.stringify(s.properties?.status?.enum) !== JSON.stringify(["done", "partial", "blocked"])) problems.push("status is not done | partial | blocked");
+    return problems.length === 0 || problems.join("; ");
+  });
+
 test("L1 the launch line, the run layout the cleanup expects, the summary outside the run, the cap of fifty, the background task off the agent map, and the queue mode",
-  "a swarm whose agents sat one level below the run left the run kept forever by the cleanup, and a summary inside the run broke the orchestrate page's promise that only the launcher and the driver write there (both shown 2026-09-18)",
+  "a swarm whose agents sat one level below the run left the run kept forever by the cleanup, and a summary inside the run broke the orchestrate page's promise that only the launcher and the driver write there (both shown 2026-09-18); the run layout is orchestrate's, carried here because the page loads codex alone",
   () => {
     const prose = says(
-      /The run directory is the orchestrate run directory/,
+      /The run directory is `<state>\/orchestrate\/<project-slug>\/<run>\/`: `<run>` unique, `<project-slug>` the working directory's absolute path with every character but letters and digits replaced by `-`/,
       /make agent `<id>` at `<run directory>\/<id>\/report\.json` with its `agent\/` beside it, the shape the cleanup expects of a run/,
       /at most `--concurrency` at once, fifty at most/,
       /writes `summary\.json` outside the run, in an agent-scratch directory under your temporary directory/,
@@ -102,25 +132,26 @@ test("L1 the launch line, the run layout the cleanup expects, the summary outsid
   });
 
 test("R1 one cheap reducer reads the reports that are this run's own, opens one return whole, tallies, and the coordinator reads one return itself",
-  "the orchestrate page's unanimity rule, kept at swarm width: a tally nobody opened is a tally about the prompt; a stale report under a taken path is not this run's evidence",
+  "orchestrate's unanimity rule, carried here at swarm width: a tally nobody opened is a tally about the prompt; a stale report under a taken path is not this run's evidence",
   () => says(
-    /one cheap agent, the reducer of roles\.md, gets the summary path: it reads every report whose status line says the report is this run's own, opens one return whole, tallies the verdicts by unit/,
+    /the reducer, one Sonnet or Terra agent, gets the summary path\. It reads every report whose status line says the report is this run's own, opens one return whole, and tallies the verdicts by unit/,
+    /It returns the five fields with the tally in `result`/,
     /names the units whose answer did not parse, whose exit was not zero or whose report was not this run's/,
     /Read one return whole yourself before trusting the tally/,
     /a unanimous tally is evidence about the brief first/,
   ));
 
-test("C1 sharing nothing is the default, shared state and free messaging are E4 arms, and peer messaging is named as the research's do-not-adopt",
-  "the 2026-09-17 research put peer messaging and debate as verification on its do-not-adopt list (S2-21, S2-24, S1-58) and found shared state supported by mechanism rationale only; an arm that became the default before E4 would be the claim the research refused",
+test("C1 sharing nothing is the default, shared state and free messaging are E4 arms in an experiment the user starts, E4 is linked, and peer messaging is named as the research's do-not-adopt",
+  "the 2026-09-17 research put peer messaging and debate as verification on its do-not-adopt list (S2-21, S2-24, S1-58) and found shared state supported by mechanism rationale only; an arm that became the default before E4 would be the claim the research refused; experiment is `disable-model-invocation` too, so the user starts it, and the page links E4 because it loads codex alone",
   () => says(
     /The default swarm shares nothing: each agent has its unit and returns its verdict/,
-    /Two arms run only under protocol E4 of the experiment skill/,
+    /Two arms run only under protocol E4 of the experiment skill, in an experiment the user starts with `\/entrust:experiment`; E4 is in \[protocols\.md\]\(\.\.\/experiment\/references\/protocols\.md#e4-swarm-coordination-none-shared-state-free-messaging\)/,
     /put peer messaging and debate as verification on its do-not-adopt list/,
     /the arm that E4 measures as better becomes the default, and the other stays an arm/,
   ));
 
 test("every relative link resolves, inside this repository, to a file and to a heading that exists",
-  "the page delegates its whole mechanism to the orchestrate page by link; a moved file turns the mode into a 404 only a reader notices",
+  "the page delegates its whole mechanism to the codex page by link; a moved file turns the mode into a 404 only a reader notices",
   () => {
     const dir = path.dirname(path.join(ROOT, PAGE));
     const problems = [];
