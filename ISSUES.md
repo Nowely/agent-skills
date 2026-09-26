@@ -348,3 +348,69 @@ files and rebuilt the table's places for comments by itself.
 notes do not cover yet; its brief asks for them "as raw markdown with curl". For the comments of a source file, a
 man page or a story there is no markdown to fetch, and the coordinator has to rewrite the brief before the scout can
 run. The brief should ask for each document's raw text, fetched with curl and never through a summarising tool.
+
+## E43. An `agent-run` case fails on CI: SIGTERM to the waiting `--run` finds a driver that already finished
+
+**Evidence, level 3 for the failure, level 2 for the cause.**
+
+- `plugins/entrust/evals/agent-run.test.mjs:290` (at `01d1158`), "--run refuses a directory that ran for another
+  report path, … and forwards SIGTERM to a driver it only waits for", sends SIGTERM to the second, waiting call at
+  `:320` and requires `DRIVER_EXIT=1` in both outputs at `:322`.
+- CI on main failed on this case alone, "1/15 failed", with the lines `["DRIVER_EXIT=0","DRIVER_EXIT=0"]`: run
+  35277743392 (9a539d3, macOS, Node 22), 35319899766 (8983268, Ubuntu, Node 24), 36249088680 (0f05244, Ubuntu,
+  Node 22); it also failed CI on PR #12 and PR #14. Three OS and Node pairs, one line.
+- Exit 0 in both outputs says the fake turn completed before the signal landed; nothing in the case holds the turn
+  open until the signal is sent (level 2).
+
+**Check.** `gh run view 36249088680 --repo Nowely/agent-skills --log-failed | grep -A1 'FAIL  --run refuses'`
+prints the failure with `["DRIVER_EXIT=0","DRIVER_EXIT=0"]`.
+
+**Issue text.** The `agent-run` case that forwards SIGTERM to a driver the second `--run` only waits for fails on
+CI about one run in three, on macOS and Linux and on Node 22 and 24, always the same way: both calls print
+`DRIVER_EXIT=0`, so the turn had completed before the signal arrived. A red main has become ordinary, which hides a
+real failure among these. The case should hold the fake turn open until the signal is sent, or wait for a state
+that proves the driver is still in its turn, before it sends SIGTERM.
+
+## E44. Two `lock` cases fail on CI now and then, and the lock concurrency failure was never diagnosed
+
+**Evidence, level 3 for the failures; no cause established.**
+
+- `plugins/entrust/evals/lock.test.mjs:142` (at `01d1158`), "a run releases only the lock it owns", failed CI run
+  34710644138 (3960788, macOS, Node 22) with "releaseLock removed or changed the peer's replacement lock".
+- `lock.test.mjs:352`, "two concurrent runs: exactly one wins", failed CI run 35320724153 (8c041b7, Ubuntu,
+  Node 24) with "expected one 0 and one 10, got [0,0]", 1/58 failed.
+- Commit `fc20cf5` already recorded a lock case as "not diagnosed" after a red CI.
+
+**Check.** `gh run view 35320724153 --repo Nowely/agent-skills --log-failed | grep 'FAIL '` prints the concurrency
+failure; `gh run view 34710644138 --repo Nowely/agent-skills --log-failed | grep 'FAIL '` prints the release one.
+
+**Issue text.** Two lock cases fail on CI from time to time: two concurrent runs both won the lock (`[0,0]` where one
+0 and one 10 are required), and a run's release removed a peer's replacement lock. Either is a real double run or a
+race in the case itself, and nothing so far says which. Until it is diagnosed, a red main cannot be read, and a
+release rule that waits for a green one would stop about every second release.
+
+## E45. At the tool's ten-minute ceiling the `codex-agent` wrapper handed back the harness notice instead of rerunning, and its exit killed the driver
+
+**Evidence, level 3 for the wrapper's steps, level 2 for the kill.**
+
+- `plugins/entrust/agents/codex-agent.md:13-15` (at `01d1158`): with no `REPORT=` line, "run the very same command
+  again at once … Do not open, tail or wait on the output file".
+- 2026-09-26, session `97a19b68`, agent D1 (Astra), wrapper transcript
+  `~/.claude/projects/-Users-user-Git-agent-skills/97a19b68-24e5-4b0a-ae89-8670eef7d23a/subagents/agent-a299e6bb74c8b457c.jsonl`:
+  at 15:38:35Z the Bash result was "Command did not complete within its 600s timeout and was moved to the
+  background"; the wrapper wrote "I'm waiting for the background task to complete", ran `cat` on the output file,
+  and at 15:38:58Z called SubagentHandback with the notice as its lines. It never reran the command.
+- The launcher forwards SIGTERM to its driver (`plugins/entrust/skills/codex/scripts/agent-run.mjs:145`). The
+  driver's stderr ends "interrupted by SIGTERM"; `out.json` was written at 15:39:01Z and the `exit` marker at
+  15:39:02Z, seconds after the wrapper ended. The report: exit 1, `turnStatus: interrupted`, no answer,
+  1,824,779 tokens spent.
+
+**Check.** `jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | .name' <that
+transcript>` prints `Bash`, `Bash`, `SubagentHandback`: one run of the command, one `cat`, the hand-back.
+
+**Issue text.** The wrapper's rerun at the ceiling is an instruction to a small model, and on 2026-09-26 the model
+did not follow it: it narrated, read the output file, and handed back the "moved to the background" notice with no
+`REPORT=` line. Ending its turn ended the backgrounded launcher, whose SIGTERM reached the driver, so a ten-minute
+Astra turn was lost with its tokens. Measured on 2026-09-17 the same step held three runs of three; it is not
+reliable. A turn that reaches the ceiling should survive the wrapper that started it, or the rerun should not
+depend on the model's compliance.
