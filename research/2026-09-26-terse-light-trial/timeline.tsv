@@ -1,0 +1,24 @@
+agent	model	launched	note
+W1	Sol high	13:06:12	writer
+G1	Sol medium	13:06:12	genre scout
+B1	Sol high	13:09:04	bare control
+T1	Sol high	13:12:37	truth, lines 1-31
+Q1-draft	Luna medium	13:12:37	question reader
+Q2-draft	Luna medium	13:12:37	question reader
+Q3-draft	Luna medium	13:12:37	question reader
+Q4-draft	Luna medium	13:12:37	question reader
+form	Sonnet	13:12:37	critic
+terms	Sonnet	13:12:37	critic
+rules	Sonnet	13:12:37	critic
+sentences	Sonnet	13:12:37	critic
+T2	Sol high	13:13:20	truth, lines 33-65
+R1	Sol medium	13:17:30	rationalizer
+W1-repair	Sol high	13:25:09	repair, resumed thread
+CT1	Sol high	13:31:09	truth on changed lines
+C1	Astra medium	13:31:09	cold reader
+C2	Sol medium	13:31:09	cold reader
+Q1-repaired	Luna medium	13:31:09	question reader again
+Q2-repaired	Luna medium	13:31:09	question reader again
+Q3-repaired	Luna medium	13:31:09	question reader again
+Q4-repaired	Luna medium	13:31:09	question reader again
+W1-fix	Sol high	13:36:54	fix of the checked lines, resumed thread
