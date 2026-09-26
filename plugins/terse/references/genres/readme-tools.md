@@ -2,7 +2,8 @@
 
 What the most-used documents of the kind put where, counted from raw markdown, and the owner's advice for
 READMEs of this kind. The writer reads these instead of running a genre scout; a scout's new count for the same
-kind replaces a line here, with its date.
+kind replaces a line here, with its date. A tool people install and run in a terminal is another kind:
+[readme-terminal-tools.md](readme-terminal-tools.md).
 
 | Place | What the genre puts there | Count | Formatting |
 |---|---|---|---|

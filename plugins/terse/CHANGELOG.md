@@ -211,6 +211,10 @@ forensics remain in the repository references and release notes.
 
 ### Added
 
+- `references/genres/readme-terminal-tools.md`: genre notes for the README of a tool people install and run
+  in a terminal, from eight such READMEs counted on 2026-09-26 — the familiar command named in 8 of 8, what
+  the reader will see in 7 of 8, package-manager choices in 8 of 8 — with the owner's advice from the dust
+  run. The plugin README's notes now say they are for plugins and skill libraries.
 - `evals/pages.test.mjs` checks what linking cannot keep in agreement: that every relative link in the
   plugin's pages opens, its anchor included; that the run-directory line is one line in the three skills, in
   the exact `${...}` form; and that each frozen block still hashes to the digest its page records. Its first run
