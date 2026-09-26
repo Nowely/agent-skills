@@ -267,6 +267,11 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- `rule1.mjs` no longer reads a link's address or a bare URL as an absolute path, and it excuses the commands
+  in the Quick start's fenced blocks (`--commands`, "Quick start" when none is given), which rule 7 wants in
+  the form that runs; it lists them as excused rather than dropping them. On the maestro text of 2026-09-25,
+  four of its five reports were of these kinds; the fifth, an MCP route in the Quick start's prose, is still
+  reported.
 - `rewrite` runs its scripts from `${CLAUDE_SKILL_DIR}/scripts`. The page set their directory from a bare
   `$CLAUDE_PLUGIN_ROOT`, which Claude Code neither substitutes nor exports, so on an installed plugin both
   commands pointed under `/` and failed. The page test now fails on a bare or defaulted placeholder.

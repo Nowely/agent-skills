@@ -426,21 +426,3 @@ The owner's direction for `advisor` (2026-09-25): «В целом advisor не �
 advisor adds one thread of the other model family to whatever run it is invoked in and loads only `codex`, which the
 Skill tool accepts. For `experiment` and `swarm` the page either asks the user to run `/entrust:orchestrate` first or
 stops depending on it.
-
-## E40. `rule1.mjs` reports a link's URL as an absolute path, and a flag in the install block that rule 7 requires
-
-**Evidence, level 3.** On 2026-09-25, `node plugins/terse/skills/rewrite/scripts/rule1.mjs 02-repaired.md --cut "How it works"`
-on the one-path maestro README (`research/2026-09-24-terse-benchmark-maestro/one-path/02-repaired.md`) reported
-`/marketplace.visualstudio.com/items`, `/open-vsx.org/extension/sharpdeveye/maestro-workflow` and
-`/www.npmjs.com/package/maestro-workflow-mcp` as absolute paths, from `https://…` link targets: the path pattern at
-`rule1.mjs:26` (at `75ba5e9`) excludes a preceding word character, `.`, `~`, `$` and `)`, but not `/`, so it matches from
-the second slash of `https://`. It also reported `--skill` in the Quick start block `npx skills add sharpdeveye/maestro
---skill '*'`, the only form that installs every skill; `rule1.mjs:9-10` scans fences on purpose and `rule1.mjs:45`
-lets `--except` excuse absolute paths only, while `references/rules.md` rule 7 asks for the install "in the form that
-runs".
-
-**Issue text.** `rule1.mjs` keeps mechanism out of the first sections, and on a real README three of its five
-reports were link URLs read as absolute paths, because its path pattern matches after the second slash of `https://`.
-A fourth was a flag inside the install command that the rules require to be copyable as it runs, and no switch can
-excuse a flag. The path pattern should skip a match preceded by `:/`, link targets should be stripped before
-matching, and a flag in a fenced install block under the rules' Quick start should be exempt or excusable.

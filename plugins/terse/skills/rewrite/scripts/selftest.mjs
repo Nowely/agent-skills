@@ -17,6 +17,17 @@ check("rule1 reports the planted tilde path", a.out.includes("~/.codex/sessions"
 check("rule1 excuses the path in the stated exception", /stated exception/.test(a.out) && a.out.includes("~/.claude/plugins/data/x"));
 check("rule1 ignores the section after the cut", !a.out.includes("--help"));
 check("rule1 exits 1 on a violation", a.code === 1);
+// rule1: a link's address and a bare URL are not paths; the Quick start's command block is excused, and
+// its prose and a block before it are not
+const r2 = path.join(tmp, "r2.md");
+fs.writeFileSync(r2, "See [the docs](https://example.com/docs/guide), [the guide](/docs/guide.md) or <https://example.org/a/b>.\n\n" +
+  "```bash\ntool --opening-flag\n```\n\n## Quick start\n\n```bash\nnpx skills add owner/repo --skill '*'\n```\n\n" +
+  "Then pass --prose-flag when asked.\n\n## How it works\n");
+const a2 = run("rule1.mjs", [r2]);
+check("rule1 reads no link address or bare URL as a path", !/example\.(com|org)|docs\/guide/.test(a2.out));
+check("rule1 excuses a flag in the Quick start's command block", /--skill\s+\[command to copy\]/.test(a2.out));
+check("rule1 still reports a flag in the Quick start's prose", /^! line \d+\s+flag name\s+--prose-flag/m.test(a2.out));
+check("rule1 still reports a flag in a block before the Quick start", /^! line \d+\s+flag name\s+--opening-flag/m.test(a2.out));
 // dup: a concept broken across a line still counts, and three sections are flagged
 const d = path.join(tmp, "d.md"), c = path.join(tmp, "c.json");
 fs.writeFileSync(d, "## A\nan agent that ran\nnothing\n## B\nran nothing\n## C\nran nothing\n## D\nunrelated\n");
