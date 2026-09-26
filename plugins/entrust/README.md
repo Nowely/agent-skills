@@ -155,8 +155,8 @@ themselves there as skipped instead of failing; from the checkout they run.
 
 The `fidelity` suite is what to watch after a `codex` upgrade: it performs a real handshake and diffs
 it against the fixture, so protocol drift shows up as a failing case instead of a confident wrong
-answer. Without `codex` on `PATH` it skips and exits 0, which is what CI does; the release checklist
-([RELEASING.md](RELEASING.md)) runs it locally, where the skip becomes a failure.
+answer. Without `codex` on `PATH` it skips and exits 0, which is what CI does; after a `codex` upgrade the
+release checklist ([RELEASING.md](../../RELEASING.md)) runs it locally, where the skip becomes a failure.
 
 Run the suites from the **repository or plugin root**. Do not compute that root by appending `../..`
 to the skill path: where the skill is a symlink (the clone-and-symlink install above), Node collapses

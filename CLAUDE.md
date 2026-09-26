@@ -12,8 +12,8 @@ CHANGELOG, tests and evals; release tags are `<name>@X.Y.Z`.
   independent reader of the code would say the same; 3 — the behaviour was made to happen. A claim about
   a lifecycle (what stays, what is removed, what a continuation sees) is level 3 or a guess.
 - **Commits** carry one theme each, and the message is a sentence that says what changed and why it was
-  worth it. A version bump is its own commit; CHANGELOG entries stay under Unreleased until the release.
-  No attribution trailers.
+  worth it. A version bump is its own commit on the PR's branch, and the squash merge folds it into main;
+  CHANGELOG entries stay under Unreleased until the release. No attribution trailers.
 - **Research runs** live under `research/<date>-<slug>/`. Every iteration of a document is its own
   numbered file, never overwritten; a round is frozen once its critics launch; `rounds.md` beside them
   records the findings and the regression count of each round.

@@ -3,5 +3,8 @@
   "type": "module",
   "engines": {
     "node": ">=22"
+  },
+  "scripts": {
+    "test": "node evals/pages.test.mjs && node skills/rewrite/scripts/selftest.mjs"
   }
 }

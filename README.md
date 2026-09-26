@@ -27,4 +27,4 @@ catalogue at the root is the repository's, not any one plugin's.
 ## Releases
 
 One tag namespace serves every plugin, so a tag names the plugin it releases:
-`entrust@0.16.0`. A plugin's own `RELEASING.md` is the procedure for cutting it.
+`entrust@0.16.0`. [RELEASING.md](RELEASING.md) is the procedure for cutting any of them.
