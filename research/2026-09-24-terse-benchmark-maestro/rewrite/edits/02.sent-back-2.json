@@ -1,0 +1,148 @@
+[
+ {
+  "name": "(a) X:57 — the .maestro/ bullet of the extension write list",
+  "old": "**`.maestro/`**: each `@maestro` run adds a line to the decision log and to the command log (`audit.jsonl`);",
+  "new": "**`.maestro/`**: `@maestro` commands write to its decision log and command log (`audit.jsonl`);",
+  "check": {
+   "level": 3,
+   "run": "node --experimental-transform-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON probe-02/participant-probe.mjs | grep -E '^S(1|2|3|4|6|9|11) '; printf 'extension call sites of appendAudit/appendDecision: '; grep -rn 'appendAudit(\\|appendDecision(' $TMPDIR/terse-bench/snapshot/maestro-extension/src | wc -l | tr -d ' '; grep -rn 'appendAudit(\\|appendDecision(' $TMPDIR/terse-bench/snapshot/maestro-extension/src | sed 's|^.*/snapshot/||'",
+   "expect": "^(?=[\\s\\S]*S1 wave /diagnose runs to its end: audit=1 decisions=1 completed)(?=[\\s\\S]*S2 wave /diagnose, the model call throws an error: audit=1 decisions=1 failed)(?=[\\s\\S]*S3 wave /diagnose, cancelled before its first phase: audit=0 decisions=0)(?=[\\s\\S]*S4 wave /diagnose, cancelled while the answer streams: audit=0 decisions=0)(?=[\\s\\S]*S6 single-shot /teach-maestro runs to its end: audit=1 decisions=1 completed)(?=[\\s\\S]*S9 /teach-maestro, no language model available: audit=0 decisions=0)(?=[\\s\\S]*S11 plain @maestro message, no slash command: audit=0 decisions=0)(?=[\\s\\S]*files=\\.maestro/\\{\\.gitignore,audit\\.jsonl,decisions\\.jsonl\\})(?=[\\s\\S]*extension call sites of appendAudit/appendDecision: 2\\n)(?=[\\s\\S]*maestro-extension/src/chat/participant\\.ts:317: +appendAudit\\(projectRoot)(?=[\\s\\S]*maestro-extension/src/chat/participant\\.ts:329: +appendDecision\\(projectRoot)"
+  },
+  "claims": [
+   {
+    "name": "(a) the extension writes .maestro/ logs from @maestro commands — Getting started, VS Code extension",
+    "pattern": "`@maestro` commands write to its decision log and command log \\(`audit\\.jsonl`\\)",
+    "asks": "In the project the VS Code extension writes into, the lines of .maestro/decisions.jsonl and .maestro/audit.jsonl that the extension adds come from commands run through @maestro, and from nothing else in the extension; the sentence makes no claim that every @maestro run adds a line, which is false: a wave cancelled through its token, a run that finds no language model, and a plain @maestro message add none."
+   }
+  ],
+  "retire": [
+   {
+    "name": "(a) retired: each @maestro run adds a line (X:57)",
+    "pattern": "each `@maestro` run adds a line"
+   }
+  ]
+ },
+ {
+  "name": "(a) X:133 — the command-log sentence of Memory across sessions",
+  "old": "Run a command through `@maestro` in VS Code's chat, and the extension adds a line to the command log (`audit.jsonl`) with its duration, ~tokens and ~cost — only the extension writes this log.",
+  "new": "Only the extension writes the command log (`audit.jsonl`): its lines come from commands run through `@maestro` in VS Code's chat, each with the command's duration, ~tokens and ~cost.",
+  "check": {
+   "level": 3,
+   "run": "node --experimental-transform-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON probe-02/participant-probe.mjs | grep -E '^S(1|2|5|6|8|11) '; node --experimental-transform-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON probe-02/extension-probe.mjs | grep '^Visual Studio Code: palette \"Maestro: Diagnose'; printf 'call sites of appendAudit in the snapshot outside tests: '; grep -rn 'appendAudit(' $TMPDIR/terse-bench/snapshot/maestro-extension/src $TMPDIR/terse-bench/snapshot/mcp-server/src $TMPDIR/terse-bench/snapshot/packages/core/src $TMPDIR/terse-bench/snapshot/scripts $TMPDIR/terse-bench/snapshot/source | wc -l | tr -d ' '; grep -rn 'appendAudit(' $TMPDIR/terse-bench/snapshot/maestro-extension/src $TMPDIR/terse-bench/snapshot/mcp-server/src $TMPDIR/terse-bench/snapshot/packages/core/src $TMPDIR/terse-bench/snapshot/scripts $TMPDIR/terse-bench/snapshot/source | sed 's|^.*/snapshot/||'; grep -rn 'audit\\.jsonl' $TMPDIR/terse-bench/snapshot/source/skills | sed 's|^.*/snapshot/||'; sed -n '521p' $TMPDIR/terse-bench/snapshot/mcp-server/src/tools.ts",
+   "expect": "^(?=[\\s\\S]*S1 [^\\n]*audit=1 decisions=1 completed \\[duration_ms,token_usage,cost_estimate_usd\\])(?=[\\s\\S]*S2 [^\\n]*audit=1 decisions=1 failed \\[duration_ms,token_usage,cost_estimate_usd\\])(?=[\\s\\S]*S5 [^\\n]*audit=1 decisions=1 cancelled \\[duration_ms,token_usage,cost_estimate_usd\\])(?=[\\s\\S]*S6 [^\\n]*audit=1 decisions=1 completed \\[duration_ms,token_usage,cost_estimate_usd\\])(?=[\\s\\S]*S8 [^\\n]*audit=1 decisions=1 completed \\[duration_ms,token_usage,cost_estimate_usd\\])(?=[\\s\\S]*S11 plain @maestro message, no slash command: audit=0)(?=[\\s\\S]*Visual Studio Code: palette \"Maestro: Diagnose — Workflow quality audit\" -> workbench\\.action\\.chat\\.open @maestro /diagnose)(?=[\\s\\S]*call sites of appendAudit in the snapshot outside tests: 2\\n)(?=[\\s\\S]*maestro-extension/src/chat/participant\\.ts:317: +appendAudit\\(projectRoot)(?=[\\s\\S]*packages/core/src/audit\\.ts:48:export function appendAudit\\()(?=[\\s\\S]*source/skills/reflect/SKILL\\.md:22:1\\. \\*\\*`\\.maestro/audit\\.jsonl`\\*\\* — every command invocation)(?=[\\s\\S]*Use Maestro commands via the VS Code extension to generate audit entries)"
+  },
+  "claims": [
+   {
+    "name": "(a) only the extension writes the command log — Memory across sessions",
+    "pattern": "Only the extension writes the command log \\(`audit\\.jsonl`\\)",
+    "asks": "Of Maestro's routes, only the VS Code extension writes .maestro/audit.jsonl: its one call to appendAudit (participant.ts:317) is the only call in the snapshot outside the library that defines it and the tests; the MCP server imports it and never calls it, and the one skill that names the file, /reflect, reads it."
+   },
+   {
+    "name": "(a) command-log lines come from @maestro commands — Memory across sessions",
+    "pattern": "its lines come from commands run through `@maestro` in VS Code's chat",
+    "asks": "Every line the extension writes to the command log comes from a slash command run through @maestro in VS Code's chat — which is where the extension's sidebar and palette send a command in VS Code — and never from a plain @maestro message; the sentence claims no line for every run."
+   },
+   {
+    "name": "(a) each command-log line holds duration, ~tokens, ~cost — Memory across sessions",
+    "pattern": "each with the command's duration, ~tokens and ~cost",
+    "asks": "Every command-log line the extension writes carries the command's duration and its estimated token counts and estimated cost (duration_ms, token_usage, cost_estimate_usd), on the completed, failed and cancelled paths alike."
+   }
+  ],
+  "retire": [
+   {
+    "name": "(a) retired: a command run through @maestro adds a command-log line (X:133)",
+    "pattern": "and the extension adds a line to the command log"
+   }
+  ]
+ },
+ {
+  "name": "(b) X:135 — the estimates sentence, as the owner decided in answers-07",
+  "old": "Costs and token counts are estimates (~): costs are within ±20%, useful for trends and not for invoicing; token counts are for the context budget, not for billing.",
+  "new": "Costs and token counts are estimates (~): costs are useful for trends, not for invoicing; token counts are for the context budget, not for billing.",
+  "check": {
+   "level": 2,
+   "run": "node --experimental-transform-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON probe-02/participant-probe.mjs --figures | grep -E '^S(1|3|9) '; printf 'writers of the command log outside tests: '; grep -rn 'appendAudit(' $TMPDIR/terse-bench/snapshot/maestro-extension/src $TMPDIR/terse-bench/snapshot/mcp-server/src $TMPDIR/terse-bench/snapshot/packages/core/src $TMPDIR/terse-bench/snapshot/scripts $TMPDIR/terse-bench/snapshot/source | sed 's|^.*/snapshot/||; s|  *| |g' | cut -c1-70 | tr '\\n' ' '; echo; grep -n 'Accuracy' $TMPDIR/terse-bench/snapshot/packages/core/src/cost-estimator.ts; grep -n 'heuristic\\|not billing\\|Math.ceil' $TMPDIR/terse-bench/snapshot/packages/core/src/token-estimator.ts; sed -n '312,314p' $TMPDIR/terse-bench/snapshot/maestro-extension/src/chat/participant.ts; grep -n \"'default'\" $TMPDIR/terse-bench/snapshot/packages/core/src/cost-estimator.ts; grep -n 'Option 1\\|costs are useful for trends\\|token counts are for the context budget\\|estimates (~)' $TMPDIR/terse/runs/20260924-125421-maestro-readme-rethink/standin/answers-07.md",
+   "expect": "^(?=[\\s\\S]*S1 figures: recorded token_usage=\\{\"input\":0,\"output\":260\\} cost_estimate_usd=0\\.0021; decision token_cost=\\{\"input\":0,\"output\":260\\}; recomputed: output = ceil\\(960 streamed chars / 3\\.7\\) = 260 tokens, cost = 0 in at \\$2 \\+ 260 out at \\$8 per 1M \\(the default rate\\) = 0\\.0021; the mock model reported no usage)(?=[\\s\\S]*S3 wave /diagnose, cancelled before its first phase: audit=0 decisions=0)(?=[\\s\\S]*S9 /teach-maestro, no language model available: audit=0 decisions=0)(?=[\\s\\S]*writers of the command log outside tests: maestro-extension/src/chat/participant\\.ts:317: appendAudit\\(projectRoot packages/core/src/audit\\.ts:48:export function appendAudit\\( \\n)(?=[\\s\\S]*5: \\* Accuracy: ±20% — useful for trends, not invoicing\\.)(?=[\\s\\S]*Token estimation — heuristic approach)(?=[\\s\\S]*uses token counts for context budget display \\(not billing\\))(?=[\\s\\S]*return Math\\.ceil\\(text\\.length / 3\\.7\\))(?=[\\s\\S]*const costEstimate = estimateCost\\(null, inputTokens, outputTokens\\))(?=[\\s\\S]*if \\(!model\\) return MODEL_COSTS\\['default'\\])(?=[\\s\\S]*Option 1, your default\\.\\*\\* Drop \"±20%\")(?=[\\s\\S]*costs and token counts are estimates \\(~\\))(?=[\\s\\S]*costs are useful for trends, not for invoicing)(?=[\\s\\S]*token counts are for the context budget, not for billing)"
+  },
+  "claims": [
+   {
+    "name": "(b) costs and token counts are estimates — Memory across sessions",
+    "pattern": "Costs and token counts are estimates \\(~\\)",
+    "asks": "The cost and token figures Maestro records are estimates, not measured usage. They are the ~tokens and ~cost on the command-log lines, which /reflect's ~cost totals are summed from, and the extension, the log's one writer (participant.ts:317), computes both where it builds each line (participant.ts:311-314): token counts by the character heuristic, text length divided by 3.7 (token-estimator.ts:22), and the cost as those counts priced at the fixed default table rate, because no model is passed (cost-estimator.ts:39, :66). A run that writes no line records no figure."
+   },
+   {
+    "name": "(b) costs useful for trends, not for invoicing — Memory across sessions",
+    "pattern": "costs are useful for trends, not for invoicing",
+    "asks": "The recorded cost figures are for watching trends and not for invoicing: the owner's must-say 8 without \"±20%\", word for word as answers-07.md decided, from the estimator's own line cost-estimator.ts:5; the sentence gives no accuracy bound."
+   },
+   {
+    "name": "(b) token counts for the context budget, not billing — Memory across sessions",
+    "pattern": "token counts are for the context budget, not for billing",
+    "asks": "The token counts are a heuristic kept for the context-budget display and not for billing (token-estimator.ts:10), in the owner's words of answers-07.md."
+   }
+  ],
+  "retire": [
+   {
+    "name": "(b) retired: costs within ±20% (X:135)",
+    "pattern": "±20"
+   }
+  ]
+ },
+ {
+  "name": "(c) X:93 — what /teach-maestro does, true on every route",
+  "old": "interviews you about the project and saves the answers as `.maestro.md` in its root;",
+  "new": "asks your coding agent to interview you about the project and save the answers as `.maestro.md` in its root;",
+  "check": {
+   "level": 3,
+   "run": "node --experimental-transform-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON probe-02/extension-probe.mjs --synced | grep -E '^(Visual Studio Code: (palette \"Maestro: Teach|sidebar)|(Cursor|Antigravity): palette \"Maestro: Teach|synced \\.claude)' | sed 's/workbench\\.action\\.chat\\.open/chat.open/; s/antigravity\\.sendPromptToAgentPanel/agent panel/'; node --experimental-transform-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON probe-02/participant-probe.mjs | grep -E '^S6 detail'; node --experimental-transform-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON probe-02/mcp-prompt-probe.mjs | grep -E '^MCP (prompts|teach)'; grep -n 'You are conducting a structured interview\\|Save this file to the project root' $TMPDIR/terse-bench/snapshot/source/skills/teach-maestro/SKILL.md | sed 's|^|source/skills/teach-maestro/SKILL.md:|' | cut -c1-100; printf 'file writes in the extension and core sources: '; grep -rn 'writeFileSync\\|appendFileSync' $TMPDIR/terse-bench/snapshot/maestro-extension/src $TMPDIR/terse-bench/snapshot/packages/core/src | grep -v '/test/' | wc -l | tr -d ' '; grep -rn 'writeFileSync\\|appendFileSync' $TMPDIR/terse-bench/snapshot/maestro-extension/src $TMPDIR/terse-bench/snapshot/packages/core/src | grep -v '/test/' | sed 's|^.*/snapshot/||; s|^maestro-extension/src/||; s|  *| |g' | cut -c1-66",
+   "expect": "^(?=[\\s\\S]*Visual Studio Code: palette \"Maestro: Teach — Generate \\.maestro\\.md\" -> chat\\.open @maestro /teach-maestro)(?=[\\s\\S]*Visual Studio Code: sidebar run-command teach-maestro -> chat\\.open @maestro /teach-maestro)(?=[\\s\\S]*Visual Studio Code: sidebar init-context -> chat\\.open @maestro /teach-maestro)(?=[\\s\\S]*Cursor: palette \"Maestro: Teach — Generate \\.maestro\\.md\" -> chat\\.open /teach-maestro)(?=[\\s\\S]*Antigravity: palette \"Maestro: Teach — Generate \\.maestro\\.md\" -> agent panel /teach-maestro)(?=[\\s\\S]*synced \\.claude/skills/teach-maestro/SKILL\\.md: exists true; holds \"You are conducting a structured interview\": true; holds \"Save this file to the project root as `\\.maestro\\.md`\": true)(?=[\\s\\S]*MCP prompts registered: 24; teach-maestro prompt: 1 message, role user)(?=[\\s\\S]*MCP teach-maestro prompt text holds \"You are conducting a structured interview\": true; holds \"Save this file to the project root as `\\.maestro\\.md`\": true; equals the body of source/skills/teach-maestro/SKILL\\.md: true)(?=[\\s\\S]*source/skills/teach-maestro/SKILL\\.md:16:You are conducting a structured interview)(?=[\\s\\S]*source/skills/teach-maestro/SKILL\\.md:75:Save this file to the project root as `\\.maestro\\.md`)(?=[\\s\\S]*S6 detail: the skill text sent to the model asks it to save \\.maestro\\.md: true; \\.maestro\\.md in the workspace after the run: false; tools passed to the model: null)(?=[\\s\\S]*file writes in the extension and core sources: 8\\n)(?=[\\s\\S]*extension\\.ts:240:[^\\n]*SKILL\\.md)(?=[\\s\\S]*mcp-config\\.ts:128:)(?=[\\s\\S]*mcp-config\\.ts:150:)(?=[\\s\\S]*editor\\.ts:73:)(?=[\\s\\S]*editor\\.ts:120:)(?=[\\s\\S]*audit\\.ts:62:)(?=[\\s\\S]*decisions\\.ts:57:)(?=[\\s\\S]*decisions\\.ts:101:)"
+  },
+  "claims": [
+   {
+    "name": "(c) /teach-maestro asks the coding agent to interview and save .maestro.md — First run",
+    "pattern": "asks your coding agent to interview you about the project and save the answers as `\\.maestro\\.md` in its root",
+    "asks": "On every route, /teach-maestro hands the coding agent the skill text that tells it to interview the reader about the project and save the answers as .maestro.md in the project root: on the skill-file route the agent loads source/skills/teach-maestro/SKILL.md, which says both; on the MCP route the server serves that same text as the teach-maestro prompt; on the extension route VS Code's palette, sidebar and chat send @maestro /teach-maestro, whose participant passes the text to the model, while Cursor and Antigravity send /teach-maestro to their own agent, beside the SKILL.md the extension synced into the skills folders. The sentence does not claim the file gets saved, which is false in VS Code: the participant's model call gets no tools, and no code of the extension or its core library writes .maestro.md."
+   }
+  ],
+  "retire": [
+   {
+    "name": "(c) retired: /teach-maestro saves the answers as .maestro.md (X:93)",
+    "pattern": "saves the answers as `\\.maestro\\.md`"
+   }
+  ]
+ },
+ {
+  "name": "(d) X:33 — the core skill named only in its home, the opening",
+  "old": "every command except `/teach-maestro` loads the core skill, `agent-workflow`, first.",
+  "new": "every command except `/teach-maestro` loads the core skill first.",
+  "check": {
+   "level": 2,
+   "run": "grep -l 'Invoke /agent-workflow' $TMPDIR/terse-bench/snapshot/source/skills/*/SKILL.md | wc -l | tr -d ' '; grep -L 'Invoke /agent-workflow' $TMPDIR/terse-bench/snapshot/source/skills/*/SKILL.md | sed 's|^.*/skills/||'; grep -n '^user-invocable' $TMPDIR/terse-bench/snapshot/source/skills/agent-workflow/SKILL.md; sed -n '12p' $TMPDIR/terse-bench/snapshot/source/skills/diagnose/SKILL.md; sed -n '12p' $TMPDIR/terse-bench/snapshot/source/skills/teach-maestro/SKILL.md",
+   "expect": "^23\\nagent-workflow/SKILL\\.md\\nteach-maestro/SKILL\\.md\\n6:user-invocable: false\\nInvoke /agent-workflow — [^\\n]*\\nThis is the entry point for Maestro\\."
+  },
+  "claims": [
+   {
+    "name": "(d) every command but /teach-maestro loads the core skill first — Getting started, Skill files",
+    "pattern": "every command except `/teach-maestro` loads the core skill first",
+    "asks": "Installed as skill files, 23 of the 24 commands open by telling the coding agent to invoke the core skill, agent-workflow, before anything else; /teach-maestro, the 24th, does not, and agent-workflow itself is no command (user-invocable: false)."
+   }
+  ]
+ },
+ {
+  "name": "(d) X:17 — two words out of the lead-in's MCP gloss",
+  "old": "a small program that your MCP client — your coding agent itself, or an app such as Claude Desktop — starts on your machine.",
+  "new": "a small program your MCP client — your coding agent, or an app such as Claude Desktop — starts on your machine.",
+  "check": {
+   "level": 2,
+   "run": "sed -n '17,45p' $TMPDIR/terse-bench/snapshot/mcp-server/README.md; grep -n '\"bin\"' -A2 $TMPDIR/terse-bench/snapshot/mcp-server/package.json",
+   "expect": "^(?=[\\s\\S]*### Local \\(stdio\\))(?=[\\s\\S]*Add to your MCP client configuration:)(?=[\\s\\S]*\\*\\*Claude Desktop\\*\\* \\(`claude_desktop_config\\.json`\\))(?=[\\s\\S]*\"command\": \"npx\")(?=[\\s\\S]*\"args\": \\[\"-y\", \"maestro-workflow-mcp\"\\])(?=[\\s\\S]*\\*\\*Cursor\\*\\* \\(`\\.cursor/mcp\\.json`\\):[\\s\\S]*\"mcpServers\"[\\s\\S]*\"command\": \"npx\",\\s*\"args\": \\[\"-y\", \"maestro-workflow-mcp\"\\])(?=[\\s\\S]*\"bin\")"
+  },
+  "claims": [
+   {
+    "name": "(d) the MCP server is a program the MCP client starts on your machine — Getting started",
+    "pattern": "a small program your MCP client — your coding agent, or an app such as Claude Desktop — starts on your machine",
+    "asks": "On the MCP route the server is a local program: the reader's MCP client — a coding agent such as Cursor, or an app such as Claude Desktop — starts it on the reader's own machine from its configuration, by npx -y maestro-workflow-mcp (mcp-server/README.md:17-28, :34)."
+   }
+  ]
+ }
+]

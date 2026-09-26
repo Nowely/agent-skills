@@ -1,0 +1,6 @@
+MODEL: gpt-5.6-sol
+EFFORT: medium
+TASK: You are Codex Sol R1, the rationalizer. The reader of $TMPDIR/terse/runs/20260926-130310-dust-readme/01-draft.md is: for someone at a terminal who wants to see what takes space on their disk — to install it and see the result at once. For every fact, sentence and block, ask: does this reader need it here, to decide or to act? Who writes this, and who reads it? What does the reader lose if it goes? Be hardest on versions, paths, prerequisites, internal names and anything explained that this reader already knows. Return a list: the line, the words, cut or keep with the reason in a clause, and the words saved. Keep a condition, a limit or a warning at a point where the reader decides.
+
+Do not modify the repository, write only under $TMPDIR, never cd inside a compound command.
+RETURN: First line: "Codex Sol R1:", your status, and how many cuts you propose and the words they save. Then the list.

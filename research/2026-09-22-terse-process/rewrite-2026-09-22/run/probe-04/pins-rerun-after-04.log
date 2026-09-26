@@ -1,0 +1,1 @@
+pins whose run matches its expect now: 36 ; not matching: none ; not run here (probe-03 scripts run host commands outside probe-04): C03,G3a,G3b,R03h,R03b

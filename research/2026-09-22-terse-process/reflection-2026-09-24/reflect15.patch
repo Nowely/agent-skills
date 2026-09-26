@@ -1,0 +1,177 @@
+diff -ru $TMPDIR/terse-process/reflect15/a/plugins/terse/CHANGELOG.md $TMPDIR/terse-process/reflect15/b/plugins/terse/CHANGELOG.md
+--- $TMPDIR/terse-process/reflect15/a/plugins/terse/CHANGELOG.md	2026-09-24 11:48:50
++++ $TMPDIR/terse-process/reflect15/b/plugins/terse/CHANGELOG.md	2026-09-24 11:48:50
+@@ -111,6 +111,11 @@
+   three lenses after it, with no regression charged; the owner read it and sent it as it is. The previous
+   README gave two runs' numbers and a licence line in 933 words; the owner rejected the numbers as a README
+   section — a user wants the result, not what the author did with the plugin twice.
++- `stages.md` gains rules 13 and 14 from the owner's read of round 03 on 2026-09-24 — a README carries no
++  results, and nothing from a run on the page — so lens 7's default is fourteen rules; the survey, the
++  synthesis and the skeleton count a section's sub-blocks with what marks them, which skeleton 03 had to
++  count afterwards; and `rewrite` says what follows the user's word on a round: the read recorded verbatim,
++  the document replaced byte for byte as a commit of its own, the release a separate word.
+ 
+ ### Added
+ 
+diff -ru $TMPDIR/terse-process/reflect15/a/plugins/terse/skills/rethink/SKILL.md $TMPDIR/terse-process/reflect15/b/plugins/terse/skills/rethink/SKILL.md
+--- $TMPDIR/terse-process/reflect15/a/plugins/terse/skills/rethink/SKILL.md	2026-09-24 11:48:50
++++ $TMPDIR/terse-process/reflect15/b/plugins/terse/skills/rethink/SKILL.md	2026-09-24 11:48:50
+@@ -122,7 +122,7 @@
+ 1. every statement of the owner's that governs the document, verbatim; then the genre's order from
+    step 1 and, place by place, where this skeleton follows it or departs from it, and why
+ 2. each section: title, one sentence of purpose, what it deliberately excludes, the device that carries
+-   it, a word budget
++   it and, where the genre splits the section, its sub-blocks with what marks each, a word budget
+ 3. the mechanical rules the writing must pass, written so that passing is a fact rather than an opinion
+ 4. the terminology decisions from step 2, including the ones you rejected and why
+ 5. what was deleted outright rather than moved, and the stated cost of deleting it
+diff -ru $TMPDIR/terse-process/reflect15/a/plugins/terse/skills/rethink/references/briefs.md $TMPDIR/terse-process/reflect15/b/plugins/terse/skills/rethink/references/briefs.md
+--- $TMPDIR/terse-process/reflect15/a/plugins/terse/skills/rethink/references/briefs.md	2026-09-24 11:48:50
++++ $TMPDIR/terse-process/reflect15/b/plugins/terse/skills/rethink/references/briefs.md	2026-09-24 11:48:50
+@@ -50,8 +50,9 @@
+ HTML only where there is no markdown — saved under <R>/survey/fetched/ and counted from the saved bytes.
+ Never a rendering, never a summarising tool: a summary comes back with headings the file does not have.
+ For every document: its URL; its headings in order; its word count; the first hundred words of its
+-body, verbatim; its devices, counted — tables, bullet lists, code blocks, badges, images; and its usage
+-signal with the number — stars, downloads, a marketplace listing, forks: whatever the source shows.
++body, verbatim; its devices, counted — tables, bullet lists, code blocks, badges, images; its sub-blocks —
++what each section is split into and what marks the split, a `###` heading, a bold lead-in or a fence
++standing alone — counted the same way; and its usage signal with the number — stars, downloads, a marketplace listing, forks: whatever the source shows.
+ 
+ WEIGHT BY USE, NOT BY TASTE. Rank by that signal. Where a much-used document does something badly, say
+ so, rather than ranking a pretty unknown above it.
+@@ -61,7 +62,8 @@
+ install, a diagram for a process.
+ 
+ THE GENRE'S ORDER, as a table counted from the headings you saved: each place from the top, what the
+-genre puts there, and in N of M of your documents, named. For an exemplar of the owner's, its own order,
++genre puts there, and in N of M of your documents, named; at each place, the sub-blocks the genre
++splits it into and what marks them, in N of M. For an exemplar of the owner's, its own order,
+ heading by heading.
+ 
+ GAPS, as SECTIONS WITH A PURPOSE AND A PLACE, never adjectives: "a section titled X, whose purpose is Y,
+@@ -87,6 +89,11 @@
+ owner asked for it, at his read of the skeleton: «нужно на уровне смыслов и идей понимать, предметную
+ область, какие в ней порядки, предпослыки, типовые правила для структуры» — the domain has to be
+ understood at the level of meanings and ideas: its orders, its premises, its typical rules for structure.
++Nor were the sub-blocks: reading round 03 on 2026-09-24, the owner asked for Quick start's install,
++workflow and update to be marked as the genre marks them — «Тут опять же можно посмотреть, а как
++делают. … Возможно использовать ## заголовки, либо через bold выделить три смысловых блока» — and the
++count was made afterwards, for skeleton 03: 4 of 8 plugin READMEs and 4 of 5 agent READMEs head the
++blocks inside their start section.
+ 
+ ## 2. The synthesis
+ 
+@@ -105,8 +112,8 @@
+   for a TAKE or a TAKE WITH CHANGE, what it displaces in <DOC>, by line, or the growth it admits, in
+     words.
+ Then: the count by verdict; the not-to-copy items merged, each with its harm and its verdict; the
+-presentation devices decided, each with its count; the genre's order merged from the reports, with the
+-owner's exemplars' order beside it; the disagreements between reports, and every correction the fetch
++presentation devices decided, each with its count; the genre's order merged from the reports, each place
++with its sub-blocks and their marks, with the owner's exemplars' order beside it; the disagreements between reports, and every correction the fetch
+ made to their evidence; what the purpose needs that no survey covered; and the owner's requirements
+ that no surveyed document matches.
+ 
+@@ -256,8 +263,8 @@
+    rendering; the base, with its ranks; the genre's order as a table — place, what the genre puts
+    there, N of M, where the owner's exemplars put it — with, at each place, whether this skeleton
+    follows or departs, and why.
+-2. Each section: its heading and budget; its purpose; what it excludes; the device that carries it; and
+-   what it rests on — a row, a count, a clause of the purpose, the owner's words.
++2. Each section: its heading and budget; its purpose; what it excludes; the device that carries it and,
++   where the genre splits the section, its sub-blocks with what marks each; and what it rests on — a row, a count, a clause of the purpose, the owner's words.
+ 3. The mechanical rules, each a command and the output that passes.
+ 4. The terminology decisions, with the words rejected and why.
+ 5. What is deleted outright from <DOC>, with the cost of each deletion.
+diff -ru $TMPDIR/terse-process/reflect15/a/plugins/terse/skills/rethink/references/stages.md $TMPDIR/terse-process/reflect15/b/plugins/terse/skills/rethink/references/stages.md
+--- $TMPDIR/terse-process/reflect15/a/plugins/terse/skills/rethink/references/stages.md	2026-09-24 11:48:50
++++ $TMPDIR/terse-process/reflect15/b/plugins/terse/skills/rethink/references/stages.md	2026-09-24 11:48:50
+@@ -310,8 +310,8 @@
+ 
+ ## The rules this produced
+ 
+-Derived from what one owner changed on his documents — rules 1 to 11 on one, on 2026-09-11 and 12, rule
+-12 on the next, on 2026-09-24 — not from a standard. They are that owner's rules and the calibration
++Derived from what one owner changed on his documents — rules 1 to 11 on one, on 2026-09-11 and 12, rules
++12 to 14 on the next, on 2026-09-24 — not from a standard. They are that owner's rules and the calibration
+ target for their next document; another owner's are learned the same way, and none of them is a law of
+ the genre. They are about content and order; the rules about
+ sentences are in [writing-rules.md](../../rewrite/references/writing-rules.md) and are a different layer.
+@@ -357,6 +357,26 @@
+     текущую действительность. В нем не должно быть без везкой причины привязка к версии.» — a README
+     always matches the code; if version 1 shipped and ten features have landed since, it describes the
+     present, and it carries no binding to a version without a weighty reason.
++13. **A README carries no results.** What was measured on the document — how often its author ran the
++    plugin on it and what came out — is technical information for the plugin's development and lives inside
++    the plugin, not on its front page. In its place the reader wants what the pipeline is made of: how the
++    agents work, which methods it checks, where those methods come from and why, and what is guaranteed.
++    On 2026-09-24 the owner read a round whose *What was measured* section held two runs' numbers: «What
++    was measured - это секция, которая, на мой взгляд, не нужна readme. … Какую ценность оно будет нести
++    пользователю, который захочет прмименить ее у себя? … Ему главное результат. Если нужна техническая
++    информация для дальнейшего иехнического развития, то ее можно держать где-то внутри, но не в реадми.
++    Здесь же было бы полезнее дежржать архитектуру пайлпана … какие методы проверяет, откуда эти методы и
++    почему. В общем техническая информация о составе плагина, гарантиях качества.» The section became
++    *Checks and guarantees*: each method, what it checks, where it comes from, and what is and is not
++    promised.
++14. **Nothing from a run on the page.** What the plugin hands back is described in the reader's words —
++    what the report lists, what the draft is — and never shown as a run's register: no dated report line,
++    no failure label from a ledger, no excerpt of a run file. On 2026-09-24 a round showed the audit's own
++    finding as its example — «Its report on this plugin's README, 2026-09-22:» and «`missing`: the owner's
++    intent» — and the owner read it as an error: «Не очень понятна фраза … Почему README, почему дата. …
++    `missing`: the owner's intent тоже непонятная фраза. Выглядит как ты применил /terse:audit и
++    столкнулся с ошибкой. Идея возможно правильная, но реализация - не очень.» The idea — show what comes
++    back — survived as a sentence; the register did not.
+ 
+ ## One rule about the artifact you show for review
+ 
+diff -ru $TMPDIR/terse-process/reflect15/a/plugins/terse/skills/rewrite/SKILL.md $TMPDIR/terse-process/reflect15/b/plugins/terse/skills/rewrite/SKILL.md
+--- $TMPDIR/terse-process/reflect15/a/plugins/terse/skills/rewrite/SKILL.md	2026-09-24 11:48:50
++++ $TMPDIR/terse-process/reflect15/b/plugins/terse/skills/rewrite/SKILL.md	2026-09-24 11:48:50
+@@ -192,7 +192,7 @@
+ | 4. a task | a starting state and a goal, acted on from the document alone; the resulting state | Codex gpt-5.6-sol | two | ~20 commands, 5 min each |
+ | 5. a reader's question | one question, one `cat` and nothing else; where they guessed | Codex gpt-5.6-luna | one per question | ~1 min each |
+ | 6. dedup and rank | every other report, into one list with a reproducible check per finding | Claude Fable, after the rest | one | ~160k tokens, 15 min |
+-| 7. purpose and content | every section against the owner's purpose statement and the skeleton's rules, the twelve of [stages.md](../rethink/references/stages.md#the-rules-this-produced) by default; not the facts | not measured; the brief names Claude Opus | one | unmeasured |
++| 7. purpose and content | every section against the owner's purpose statement and the skeleton's rules, the fourteen of [stages.md](../rethink/references/stages.md#the-rules-this-produced) by default; not the facts | not measured; the brief names Claude Opus | one | unmeasured |
+ 
+ Lenses differ; they are not disjoint, and a finding three of them raise is confirmed, not counted three
+ times.
+@@ -221,6 +221,13 @@
+ reached is reported as a result. Hand over the round and `diff-NN.patch`, the diff against
+ `00-original.md`, written into the run directory. Then stop: applying the candidate to the user's files
+ needs their word, and a diff they have read is what earns it.
++
++Record their read verbatim in `rounds.md` under the round's row, with the date and whether they would
++send it. On their word, the round file replaces the document in their repository byte for byte, as a
++commit of its own that names the round; nothing else in their repository changes on that word, and a
++release is a separate one. The findings routed to a next round stay in the round's routing file, and a
++later run starts from the replaced document as its `00-original.md`. On 2026-09-24 the owner's word on
++round 04 was «Текущий вариант пока что лучший», and the README is that round's bytes.
+ 
+ ## Step 6. What you return
+ 
+diff -ru $TMPDIR/terse-process/reflect15/a/plugins/terse/skills/rewrite/references/critic-briefs.md $TMPDIR/terse-process/reflect15/b/plugins/terse/skills/rewrite/references/critic-briefs.md
+--- $TMPDIR/terse-process/reflect15/a/plugins/terse/skills/rewrite/references/critic-briefs.md	2026-09-24 11:48:50
++++ $TMPDIR/terse-process/reflect15/b/plugins/terse/skills/rewrite/references/critic-briefs.md	2026-09-24 11:48:50
+@@ -191,9 +191,9 @@
+ 
+ Model: Claude Opus. Claude Fable is the dedup's, and this report is one of its inputs. <RULES> is the
+ skeleton's own list ([`rethink` step 4](../../rethink/SKILL.md#step-4-what-you-hand-over)); where the
+-skeleton adopted the twelve of
++skeleton adopted the fourteen of
+ [stages.md](../../rethink/references/stages.md#the-rules-this-produced), or no skeleton exists yet,
+-those twelve are the default.
++those fourteen are the default.
+ 
+ ```
+ You are the critic of <DOC> against its purpose. You do not check facts against code. Do not modify
+@@ -201,7 +201,7 @@
+ 
+ Read it against two things: the purpose — <PURPOSE>, the owner's statement at the top of the skeleton,
+ or the line under *Reader profile* in the audit's run file — and the rules in <RULES>. Where those are
+-the twelve of <stages.md>, they are one owner's calibration, not a law of the genre: a finding under
++the fourteen of <stages.md>, they are one owner's calibration, not a law of the genre: a finding under
+ one of them says why it applies to this document. Read the whole document once, then section by
+ section:
+ 1. What the section buys a reader who came for that purpose. A section that buys nothing is a finding.

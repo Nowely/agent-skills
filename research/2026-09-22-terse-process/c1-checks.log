@@ -1,0 +1,42 @@
+Checks executed in this turn; no repository test suite or live behavior probe was run.
+Trigger recount with the exact JavaScript regexes and stated read-only mask: total=25 ABS=4 LIFE=15 either=18.
+Trigger misses: R04-1, R06-4, R07-2, R07-3, R08-1, R08-5, R08-10.
+R07-3 quote: R07-3|worktree ledger, images you attached, the scratch of read-only agents started from a shell that names no
+Command: node $TMPDIR/tmp.iUPMIn91WR/gateload.mjs ~/Git/agent-skills/research/2026-09-11-markup-round-0 — started; exit 1; exact diagnostic follows:
+file:///private$TMPDIR/tmp.iUPMIn91WR/gateload.mjs:2
+const fs=require("fs");
+         ^
+
+ReferenceError: require is not defined in ES module scope, you can use import instead
+    at file:///private$TMPDIR/tmp.iUPMIn91WR/gateload.mjs:2:10
+    at ModuleJob.run (node:internal/modules/esm/module_job:377:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:691:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.11.0
+Unchanged .cjs copy command started; exit 0; gate-load output follows:
+04 edits 4 checks 0 L3 0 hit 3 refused 3
+05 edits 3 checks 0 L3 0 hit 2 refused 2
+06 edits 9 checks 0 L3 0 hit 6 refused 6
+07 edits 8 checks 0 L3 0 hit 7 refused 7
+08 edits 27 checks 27 L3 7 hit 16 refused 9
+09 edits 15 checks 15 L3 8 hit 8 refused 2
+08-review.md units 48 hit 27
+09-reduction.md units 50 hit 27
+HO2 base check: edits/08.json[0].old occurs 0 times in 00-draft.md and 1 time in 07-lifecycle.md.
+HO2 first-round-original matches (zero-based index:count): 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0, 11:0, 12:0, 13:0, 14:0, 15:0, 16:0, 17:0, 18:0, 19:0, 20:0, 21:0, 22:0, 23:0, 24:0, 25:0, 26:0
+HO2 semantic-coupling check for lock edits [16] and [24]: old[16] in new[24]=false; old[24] in new[16]=false. Both are false although D1:447-448 identifies compound damage.
+R06-4 input is edits/06.json[8]; its new text has ABS=false LIFE=true; contains behavioural assertion about a report path.
+G5 zero-baseline counterexample: if each planted paraphrase evades the regex, regex matches=0; reader matches=0 does not satisfy fewer-than-regex (0 < 0 is false).
+G6 recurrence check: existing ledger command started; exit 1 (expected ledger refusal); output follows:
+claim                        lvl  toy- toy- toy- toy-
+returned retired falsehood   L?    -   YES   -   YES 
+
+1 failure(s) in /private$TMPDIR/astra-c1.aLxaNH/toy-round-3.md
+G6 proposed first-YES formula for round 3: first YES is at round 1, no positive rows exist, so computed regressions=0; the previously removed false sentence was reintroduced at round 3, so definition in rewrite/SKILL.md:117-118 counts 1.
+G6 persistent-error check: negative pattern present in rounds 1 and 2 gives failure count 1 on round 2 but first-YES formula 0; the two stated counts disagree.
+Blind refusal list caught 6/10 by edit and disputed proposition: R08-1 -> edits/08.json[0]; R08-4 -> edits/08.json[10]; R08-5 -> edits/08.json[11]; R08-6 -> edits/08.json[13]; R08-8 -> edits/08.json[16]; R08-10 -> edits/08.json[26].
+Blind refusal list missed 4/10: R08-2 -> edits/08.json[6]; R08-3 -> edits/08.json[7]; R08-7 -> edits/08.json[14]; R08-9 -> edits/08.json[24].
+R08-5 qualification: blind refusal challenged exclusivity as unsupported; it did not identify the decorrelated-model counterexample. Strict explicit-counterexample scoring is 5 caught / 5 missed, adding R08-5 to misses.
+Part 6 named desk subset: caught 5/7 by refusal, missed R08-2 and R08-9; strict explicit-counterexample scoring 4/7. This run is n=1 and was Astra, not the proposed Sol verifier.
+Additional refusal indices outside D1 ten: [1,3,12,18,20,25]. Not classified as false positives without an independent adjudication of those claims.

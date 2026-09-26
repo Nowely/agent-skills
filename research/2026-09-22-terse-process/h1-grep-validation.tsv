@@ -1,0 +1,50 @@
+question	file	line	grep_anchor	match_count	line_verified	stderr
+a	research/2026-09-11-terse-survey/seat-returns/A6.md	17	If you find none, say so plainly	1	True	
+a	research/2026-09-11-terse-survey/seat-returns/A6.md	18	If you cannot name the wrong output	1	True	
+a	research/2026-09-11-terse-survey/round1-returns/read-vercel-eve.json	8	Leave clear, correct prose unchanged	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/repo-wshobson-agents.json	11	Stamp each document with the commit it	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/protocol-benchmarks.json	308	Mine the repository's own history for stale-documentation	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/protocol-evaluation-theory.json	63	Evaluate the process that produced the document	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/protocol-evaluation-theory.json	277	Conclusion: use a formula, if at all	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/protocol-evaluation-theory.json	276	Klare 1976: of 36 studies that tried	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/protocol-evaluation-theory.json	94	Never use an LLM's own readability rating	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/protocol-evaluation-theory.json	100	If you ever want a cheap automatic	1	True	
+a	plugins/terse/references/practices-full.md	30	Diagnose a paragraph by extracting the first	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/linter-structural.json	104	Every pair in confusion_sets.txt carries its own	1	True	
+a	research/2026-09-11-terse-survey/round1-returns/read-neeeophytee-agent-stylebooks.json	9	The sharpest fact: the one source that	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/protocol-comprehension.json	74	The thresholds are unstable across the literature	1	True	
+a	research/2026-09-11-terse-survey/round3-seats/R3-L3-validators.md	15	**Measures:** separate printable-material scores: 17 understandability	1	True	
+a	research/2026-09-11-terse-survey/round3-seats/R3-L3-validators.md	26	Final round: understandability had 82% agreement, Cohen’s	1	True	
+a	research/2026-09-11-terse-survey/round3-seats/R3-L4-sentence-measures.md	5	Centre embedding: 0.729 vs 0.272 clauses/sentence, OR	1	True	
+a	plugins/terse/references/prior-art.md	651	Validate a rule by seeding its violations	1	True	
+a	plugins/terse/references/prior-art.md	58	Production telemetry at GitHub, Algolia, Elastic and	1	True	
+a	plugins/terse/references/practices-full.md	1431	Run paraphrase testing as a cheap second measurement	1	True	
+a	plugins/terse/references/practices-full.md	1435	Fix the success metric before testing: state	1	True	
+a	plugins/terse/references/practices-full.md	1439	Order the measurements: small qualitative tests first	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/repo-specialone0007-review-skills.json	11	Split the docs audit into two layers	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/repo-specialone0007-review-skills.json	19	it produced 211 findings on one real repo	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/repo-specialone0007-review-skills.json	65	Exempt a document from drift findings when	1	True	
+a	research/2026-09-11-terse-survey/round2-returns/repo-gurevich89-ai-docs-reviewer.json	12	Spend model calls only where a cheap deterministic	1	True	
+b	plugins/terse/references/prior-art.md	500	Report what is in good shape, specifically	1	True	
+b	research/2026-09-11-terse-survey/round2-returns/repo-deichrenner-driftcheck.json	6	On a finding: TTY → a ratatui	1	True	
+b	research/2026-09-11-terse-survey/round2-returns/repo-deichrenner-driftcheck.json	60	With findings in hand, a TTY opens	1	True	
+b	plugins/terse/references/prior-art.md	398	A mechanical preservation gate on every rewrite	1	True	
+b	plugins/terse/references/prior-art.md	403	Inventory every fact, number, qualification and conditional	1	True	
+b	plugins/terse/references/prior-art.md	658	An `execution_evidence` field on every handoff	1	True	
+b	plugins/terse/references/prior-art.md	369	Report a rewrite's effect as a four-tuple	1	True	
+b	plugins/terse/references/prior-art.md	381	Treat a regression as a first-class outcome	1	True	
+b	research/2026-09-11-terse-survey/round3-seats/R3-A-reader-validity.md	41	Model–human average-rating correlation was	1	True	
+b	plugins/terse/references/practices-full.md	1350	Measure the document the way the reader	1	True	
+b	plugins/terse/references/practices-full.md	1219	When you compare two versions of a	1	True	
+b	research/2026-09-11-terse-survey/round2-returns/protocol-evaluation-theory.json	15	Require any evaluation method you adopt to	1	True	
+b	research/2026-09-11-terse-survey/round3-seats/R3-L5-judge-bias.md	1	Codex gpt-5.6-terra R3-L5 — opened the bake-off	1	True	
+b	plugins/terse/references/prior-art.md	831	Göpferich §3: expert judgement is preparatory and	1	True	
+b	plugins/terse/references/prior-art.md	189	Human edit effects	1	True	
+b	plugins/terse/references/prior-art.md	183	A/A repeatability	1	True	
+b	plugins/terse/references/prior-art.md	36	exit when the reader stops complaining	1	True	
+b	plugins/terse/references/prior-art.md	700	One-sentence-per-source-line does not converge at all	1	True	
+b	research/2026-09-11-terse-survey/round1-returns/read-conorbronsdon-avoid-ai-writing.json	8	Rewrite output is fixed at four sections	1	True	
+b	research/2026-09-11-terse-survey/round2-returns/repo-deichrenner-driftcheck.json	17	Force every finding into a fixed JSON schema	1	True	
+b	research/2026-09-11-terse-survey/round2-returns/repo-gurevich89-ai-docs-reviewer.json	42	End the repair pass by re-running the measurement	1	True	
+b	research/2026-09-11-terse-survey/round2-returns/repo-gurevich89-ai-docs-reviewer.json	48	Render the audit as a work list	1	True	
+b	research/2026-09-11-terse-survey/round2-returns/repo-specialone0007-review-skills.json	96	The report ends with fixed sections: Likely	1	True	

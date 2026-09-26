@@ -1,0 +1,19 @@
+claude: 2.1.280 (Claude Code)
+auth status: not logged in
+node on PATH: no
+$ claude plugin marketplace add Nowely/agent-skills -> exit 0; Successfully added marketplace: nowely
+$ claude plugin install terse@nowely -> exit 0; Successfully installed plugin: terse@nowely
+installed at <config>/plugins/cache/nowely/terse/0.1.1; skills there: audit rethink rewrite (3)
+$ claude plugin marketplace update nowely -> exit 0; Successfully updated marketplace: nowely
+$ claude plugin update terse@nowely -> exit 0; terse is already at the latest version (0.1.1)
+/terse:audit, not signed in: exit 1, Not logged in · Please run /login
+/terse:rethink, not signed in: exit 1, Not logged in · Please run /login
+/terse:rewrite, not signed in: exit 1, Not logged in · Please run /login
+a skill script with no node on PATH: exit 127
+the same script with node v24.11.0 on PATH: exit 0; all checks caught their planted violation
+pages that run node: audit rewrite 
+rethink: node commands 0, scripts directory absent
+declared: {"private":true,"type":"module","engines":{"node":">=22"}}
+real 6.13
+user 2.10
+sys 0.79

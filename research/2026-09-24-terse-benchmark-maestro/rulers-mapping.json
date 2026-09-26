@@ -1,0 +1,14 @@
+{
+ "P": {
+  "arm": "A",
+  "sha256": "2141ebaf80477d01b2d28624cd2d7c9cf0e0d260a5be4c87a465a271b6d133b4"
+ },
+ "Q": {
+  "arm": "C",
+  "sha256": "08d50a1f15ec874e59f12f9da4b3aaaa9ebc694c4c119a265506e0d3f4e29768"
+ },
+ "R": {
+  "arm": "B",
+  "sha256": "20b8ea66842cac9a9031c1a57c8818d61e0fcf7d7052475070c636aae82bae3b"
+ }
+}

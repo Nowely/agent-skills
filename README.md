@@ -12,7 +12,7 @@ Then install what you need:
 | Plugin | Install | What it does |
 | --- | --- | --- |
 | [entrust](plugins/entrust/) | `/plugin install entrust@nowely` | Runs OpenAI Codex as a subagent beside Claude's own agents. Each call declares what Codex may write; the report says what actually ran. |
-| [terse](plugins/terse/) | `/plugin install terse@nowely` | Measures whether documentation gives readers the right answer — fresh readers per question, every behavioural claim checked against the code — and repairs what it measured. |
+| [terse](plugins/terse/) | `/plugin install terse@nowely` | Assesses and improves any text — a README, code comments, an essay. Fresh readers find where it stumbles, each claim is checked against what backs it, and one writer with critics working at once rewrites it on your word. |
 
 ## Layout
 

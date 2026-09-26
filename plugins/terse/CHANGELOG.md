@@ -3,6 +3,95 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.2.0 — 2026-09-26
+
+`rewrite` and `rethink` run one path instead of rounds, the rules are two requirements and advice, and the
+pages the skills share are stated once. Measured on two READMEs and one file of code comments:
+`research/2026-09-24-terse-benchmark-maestro/`, `research/2026-09-26-terse-light-trial/` and
+`research/2026-09-26-terse-second-checks/`.
+
+### Changed
+
+- **One path instead of rounds.** `rewrite` runs one writer, then every critic at once on the draft, then one
+  repair and a check of what the repair changed, then your read. The writer first works out the text's world
+  and writes `context.md` — what the thing is and what it resembles, who reads it and in what situation, what
+  they need first, what would make them want it and choose it over what it resembles, the one thought it
+  carries — and plans from that rather than from a list of sections. The critics: truth by groups of sections,
+  a rationalizer that asks whether the reader needs a part here or whether it makes them want the thing, form
+  beside the best texts of the kind, terms, sentences and question readers; after the repair, truth on the
+  changed sentences, the question readers again and two cold readers. Every role and its brief is in
+  `references/roles.md`. On 2026-09-24 the rounds, the bake-off, the verifier and the wave after a freeze took
+  6 h 38 min on a README of 1,200 words; the one path wrote the same README in 70 minutes.
+- **Light by default, full on your word.** In a light run every role reads and runs nothing, and a guarantee
+  word holds only where every case is read. A full run adds one agent that builds a runnable copy for the truth
+  checks, and a task reader that carries out what the text says. On 2026-09-25 truth critics that each built
+  their own copy held the critical path twice, 24 and 20 minutes.
+- **`rethink`** runs the same roles stopped at a plan on one screen: the context, then each part, what it gives
+  the reader, its device and its budget, with form and the rationalizer on the plan. Its sequential stages — a
+  survey, a synthesis, ten structures under three critics, a skeleton — took three hours before a sentence on
+  2026-09-24.
+- **`audit`** puts a pleasant read first: two cold readers read the entry file beside the question readers, and
+  what they found hard to read opens the report, with no mark. It runs light by default; the harness and the
+  task readers run in a full one. `rewrite` takes an audit's run directory: its reader profile and shape verdict
+  answer what they cover, and the writer answers what the audit found hard to read, every failure and every
+  refuted claim.
+- **The rules are two requirements and advice.** `references/rules.md` requires every text to be pleasant to
+  read and true within its world — the code for documentation, the facts for an essay, what a story has set
+  up — which the writer widens only with you; the rest is advice, taken where it helps and left without apology,
+  each piece with its source. The critics argue from the reader, and a rule's number is no reason to decline a
+  finding or to demand one. On 2026-09-26 a bare agent's README for a disk-usage tool beat ours, which had cut
+  the demo, the one-line pitch and the install routes under rules applied as requirements; the owner: «Правила
+  должны нести рекомендательный характер».
+- **Truth and the repair.** The truth critic returns what is wrong for this reader, each with the plainest true
+  sentence, apart from the rare cases that would not mislead them, which stay out of the text. The repair takes a
+  finding where the text becomes truer for its reader or easier to read, and declines one that adds words the
+  reader does not need there; the fix after the check takes only what the check found wrong, and what a reader
+  wished added goes to you. On the second dust README the repair had taken 35 of 36 findings, the truth
+  critic's caveats among them. Not yet measured.
+- **Shared pages.** A definition two skills use is stated once under `references/`: `roles.md`, `rules.md`,
+  `truth.md` (the audit's `truth-pass.md`), `run.md`, `writing-rules.md`, `curse-of-knowledge.md` and
+  `measurements.md`. Copies in each skill's folder had drifted apart: on 2026-09-25 light mode reached
+  `rewrite`'s pages and not the audit's.
+- **Runs live outside your repository**: in the plugin's data directory when installed, in `$TMPDIR/terse`
+  from a source checkout, and the report names the path and how long it lives. A code defect a run finds is
+  offered to you, never written into your `ISSUES.md` unasked (`ISSUES.md` E5).
+- **The README** is the one the owner sent as it is on 2026-09-24: what the plugin is for, Quick start, a table
+  of the three skills, How it works, and Checks and guarantees.
+
+### Added
+
+- Genre notes in `references/genres/`: the README of a plugin or skill library, and of a terminal tool, each
+  counted from the most used READMEs of its kind, with the owner's advice — among it, highlights that say why
+  this tool rather than what any tool of its kind could claim, and the options as one table sorted by
+  usefulness. Where a kind has no notes, the genre scout runs before the writer and names the best texts of the
+  kind for it to read.
+- `evals/pages.test.mjs`: every relative link in the plugin's pages opens, its anchor included; the
+  run-directory line is one line in the three skills, in the exact `${...}` form; each frozen block hashes to
+  the digest its page records.
+- `references/benchmark.md`, the protocol for measuring the skills against a bare agent with a human best
+  practice as the reference; its first run is `research/2026-09-24-terse-benchmark-maestro/`.
+
+### Removed
+
+- The rounds' scripts and pages, which no step has run since the one path of 2026-09-24: `ledger.mjs`, the
+  ratchet that kept a verified claim in every later round; `round.mjs`, which built each round from checked
+  edits; `dup.mjs`, which flagged an idea found in three sections or more; `rule1.mjs`, which kept flags and
+  paths out of the sections before How it works and on the dust README counted a terminal tool's options as
+  violations; and the pages `loop.md`, `critic-briefs.md`, `bake-off.md` and `rethink`'s `stages.md`. The
+  installed plugin now carries only what runs; the record stays in the tag `terse@0.1.1` and in `research/`,
+  and `selftest.mjs` keeps the checks of `sections.mjs`. Closes E3, E8, E16, E18, E23, E30, E31 and E34 of
+  `ISSUES.md`.
+
+### Fixed
+
+- `rewrite` runs its script from `${CLAUDE_SKILL_DIR}/scripts`. The page used a bare `$CLAUDE_PLUGIN_ROOT`,
+  which Claude Code neither substitutes nor exports, so on an installed plugin the command failed. The page
+  test fails on a bare or defaulted placeholder.
+- An installed `audit` makes its run in the plugin's data directory, no longer in `$TMPDIR/terse`: its
+  `${CLAUDE_PLUGIN_DATA:-…}` form is not substituted, so every installed run took the fallback.
+- `rethink` makes a run directory of its own, outside the repository that holds the text, and names it at the
+  hand-over (`ISSUES.md` E13).
+
 ## 0.1.1 — 2026-09-17
 
 ### Changed

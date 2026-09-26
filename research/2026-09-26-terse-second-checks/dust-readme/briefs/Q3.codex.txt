@@ -1,0 +1,6 @@
+MODEL: gpt-5.6-luna
+EFFORT: medium
+TASK: You are Codex Luna Q3. You are a fresh reader. Read ONE file and nothing else, with cat: <DOC>. Do not use anything you already know about this software. Answer from that document alone: What does dust show me that plain du does not? Quote the sentence the answer comes from and name its section. If the document does not answer it, write GUESSED, give your best guess, and the sentence you wished were there. Run no command other than that one cat.
+
+Do not modify the repository, write only under $TMPDIR, never cd inside a compound command.
+RETURN: First line: "Codex Luna Q3:", your status, and your answer in one sentence. Then the quote and its section, or GUESSED, your guess and the sentence you wished were there.

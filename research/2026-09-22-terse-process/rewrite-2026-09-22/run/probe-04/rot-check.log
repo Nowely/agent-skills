@@ -1,0 +1,5 @@
+R02e as written in round 02, run today: expect matches: false
+ledger.mjs over the ledger that holds that entry, rounds 00-03: exit 0 | 0 failure(s) in $TMPDIR/terse/runs/20260922-233021-terse-readme/03-review.md
+f677303 ISSUES.md:183 begins: "## E13. `rethink` hands over \"one file\" and no pag"
+1af4160 ISSUES.md:183 begins: "the skill page says never, the reference says on t"
+b7a17da ISSUES.md:183 begins: ""

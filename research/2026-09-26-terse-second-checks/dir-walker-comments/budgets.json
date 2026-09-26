@@ -1,0 +1,12 @@
+{
+  "## File-level map": 85,
+  "## Completion state": 75,
+  "## Root orchestration": 125,
+  "## Deduplication and aggregation": 110,
+  "## Filtering": 55,
+  "## Retry and commit boundary": 175,
+  "## Entry dispatch": 90,
+  "## Completion propagation": 185,
+  "## Error policy": 35,
+  "## Regression tests": 120
+}

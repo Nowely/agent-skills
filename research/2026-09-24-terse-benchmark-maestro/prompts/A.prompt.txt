@@ -1,0 +1,1 @@
+Write the README for the repository at $TMPDIR/terse-bench/snapshot. Read whatever you need there. Write it to $TMPDIR/terse-bench/A/README.md and return the path.

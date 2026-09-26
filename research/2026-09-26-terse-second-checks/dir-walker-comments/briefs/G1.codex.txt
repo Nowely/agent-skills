@@ -1,0 +1,6 @@
+MODEL: gpt-5.6-sol
+EFFORT: medium
+TASK: You are Codex Sol G1, the genre scout. Find how documents of this kind are written: the comments in a Rust source file — the module's doc comment (`//!`), the doc comments on its items (`///`) and the comments inside function bodies — written for the developers who maintain that file, in a module that walks a directory tree on several threads. Fetch five to eight of the most used — by stars, downloads or listings — as raw text with curl, never through a summarising tool, and save them under $TMPDIR/terse/runs/20260926-142621-dust-dir-walker-comments/fetched/. Return one table: each place from the top, what the genre puts there, in N of M documents, and how it is formatted there — headings, bold lead-ins, tables, fenced blocks, lists. Then name the two or three best, and what their first 150 words do for their reader. Cite nothing you did not fetch.
+
+Do not modify the repository, write only under $TMPDIR, never cd inside a compound command. Fetch nothing from the bootandy/dust repository. Read nothing under ~/Git/agent-skills/research/, $TMPDIR/terse-trial-dust/, $TMPDIR/terse-trial-2/, or any other run under $TMPDIR/terse/runs/.
+RETURN: First line: "Codex Sol G1:", your status, and how many files you fetched. Then the table, and the best two or three with what their first 150 words do.

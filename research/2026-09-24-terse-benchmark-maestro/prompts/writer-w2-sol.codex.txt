@@ -1,0 +1,6 @@
+MODEL: gpt-5.6-sol
+EFFORT: high
+OUTPUT_SCHEMA: $TMPDIR/terse-process/five.json
+TASK: Your whole brief is the file $TMPDIR/terse-bench/prompts/writer-w2-sol.txt. Read it first, whole, and do exactly what it says; it is your task. Write only under $TMPDIR/terse-bench-w/w2-sol.
+CHECK: the final draft exists under $TMPDIR/terse-bench-w/w2-sol; every sentence about behaviour has its level and its command or line in your CHECK a); you read no file under ~/Git/agent-skills/research/ and fetched nothing from sharpdeveye/maestro on the network.
+RETURN: the five fields of the schema. result: the path of the final draft, its word count against the skeleton's total, and the answers to CHECK a) to d) of the brief. evidence: the commands you ran with exit codes. artifacts: the final draft and every intermediate draft. open: what the skeleton asked for that you could not write, and why.

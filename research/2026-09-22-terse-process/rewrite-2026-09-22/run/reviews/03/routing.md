@@ -1,0 +1,13 @@
+# Routing of the round-03 wave — the coordinator, 2026-09-23
+
+Source: `lens6-fable-dedup.md` (29 findings from 33). Verified by the coordinator from the checks the critics carry: lens 6 reproduced rule1 (0), dup (1), sections (1078, 4 over), the ledger over 00–03 (0 failures), lens 2's greps and lens 1's `reword|rephrase` grep (0); the coordinator read the diff 02→03 for every sentence lens 6 marks introduced or inherited; lens 1's twenty isolated-configuration commands and five stub renders are taken at its stated level 3, not re-run.
+
+| Where | What | Count |
+|---|---|---|
+| the next round's `edits/04.json` | the 15 SENTENCE findings — among them: cut "may reword one or correct it when it is false" (no page grants "reword"; the pages conflict on "correct", D8); say the readers are model agents and what the ruler measures (the changelog's known limit); define "pinned" and "retired as false" where the guard is named (the Q5 reader guessed for that reason); the version boundary once, without the branch's name, and the whole page not one section; the "no record after" sentence beside the 6/6 figure; the chain's precedence over the shipped procedure | 15 |
+| `code-defects.md`, as proposals (D7, D8) | the pages' lifetime sentences omit the last-installation rule and `marketplace remove` (lens 1 P2, level 3); `bake-off.md:114`'s veto against `bake-off.md:60-62` and `truth-pass.md:23-25`'s correction rule, with no rule saying which wins (lens 1 P4, lens 2 P2) — both routed by round 02 and not recorded then | 2 |
+| already recorded | E6 (`research/README.md:9` repeats the counts too — add to E6), E10, E12, E14, D1, D4, D6 | 7 |
+| the owner | UNSETTLED and SCOPE: whether a re-pinned inherited sentence counts as the round's regression (the record's definition says introduced — no); decision (d)'s reach over the word `main`; decision (a)'s reach outside its section; the three dated findings round 01 cut with no recorded reason (restore, or record the reason); whether the README names rewrite's guess route; the install line for this checkout (L6-04, carried) | 6 |
+| the method (this record) | Q5 and Q7 flipped from answered to GUESSED on byte-identical sentences: the instrument's noise, 2 of 7 on one pair; Q7's guess is, under E14, the key's own answer, so round 02's confident "Yes" was the failure and round 03's guess the right reading | 1 |
+
+The gate of step 5 on round 03: **no regression** — met (0); **the task gate** — not run (lens 4 sized to zero; the sandboxed task readers of round 02 could not log in); **the question readers** — 5 of 7 answered, 2 guessed on unchanged text. One round without regression; the page's hand-over signal is two in a row. The cap is four: round 04 remains.

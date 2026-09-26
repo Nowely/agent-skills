@@ -1,0 +1,287 @@
+[
+ {
+  "name": "L6.3-17 the frame names each page and its references (R03a re-pinned)",
+  "old": "Each skill is a page of instructions for Claude; below is what each page says.",
+  "new": "Each skill is a page of instructions for Claude; below is what each page and its references say.",
+  "claims": [
+   {
+    "name": "R03a register: each skill is a page of instructions for Claude, and the section says what each page says",
+    "pattern": "Each skill is a page of instructions for Claude; below is what each page and its references say\\.",
+    "asks": "Each of the three skills is a page of instructions for Claude — a SKILL.md whose frontmatter names it and disables model invocation — with reference files under its references/ directory; and the section What each one does says what those pages and references say: its sentences that carry a claim (fourteen: C06 C07 C09 C10 C11 G1 R02f2 R03c R03d R03e R03f R03g R04a R04b) have runs that cite only skill pages and reference files under plugins/terse/skills, or — R04b, through its probe — the shipped scripts under scripts/, none outside that tree; and its three sentences that carry no claim (the baseline and the task readers; audit stating what a repair must achieve without proposing wording; the guard being no promise that no regression can occur) are quoted from audit/SKILL.md:6, 94 and 109-110, audit/references/ledgers.md:114 and rewrite/SKILL.md:181-182."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "grep -n -E '^(name|disable-model-invocation):' ~/Git/agent-skills/plugins/terse/skills/*/SKILL.md | sed 's#^~/Git/agent-skills/plugins/terse/skills/##'; sed -n '13p' ~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md | grep -o 'You run seven steps in order'; sed -n '30p' ~/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md | grep -o 'Announce the count and the models before spawning'; sed -n '29p' ~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md | grep -o 'Ask the user for the run directory from .audit.'; ls ~/Git/agent-skills/plugins/terse/skills/*/references | sed 's#^~/Git/agent-skills/plugins/terse/skills/##'; node -e 'const fs=require(\"fs\"),R=process.argv[1],K=\"~/Git/agent-skills/plugins/terse/skills/\";const L=JSON.parse(fs.readFileSync(R+\"/ledger.json\",\"utf8\")),E=JSON.parse(fs.readFileSync(R+\"/edits/04.json\",\"utf8\"));const m=new Map(L.map(c=>[c.name,c]));for(const e of E)for(const c of e.claims||[])m.set(c.name,{...c,want:true,run:e.check.run});let t=fs.readFileSync(R+\"/03-review.md\",\"utf8\");for(const e of E)t=t.split(e.old).join(e.new);const s=t.split(/\\n(?=## )/).find(x=>x.startsWith(\"## What each one does\")).replace(/^.*\\n/,\"\").replace(/\\s+/g,\" \").trim();const P=x=>[...new Set(x.match(/\\/(Users|var|private|tmp)\\/[^\\s\"\\x27;|)]+/g)||[])];let n=0,k=0,cov=\"\";for(const c of m.values()){if(!c.want||/^R03a /.test(c.name))continue;const q=s.match(new RegExp(c.pattern,c.flags||\"\"));if(!q)continue;k++;cov+=q[0]+\" \";const p=P(c.run||\"\"),a=p.filter(x=>x.startsWith(K)).map(x=>x.slice(K.length)),b=p.filter(x=>x.startsWith(R)),o=p.filter(x=>!x.startsWith(K)&&!x.startsWith(R));n+=o.length;console.log(c.name.split(\" \")[0]+\" \"+a.join(\" \")+b.map(x=>\"probe: \"+x.slice(R.length+1)+\" -> \"+P(fs.readFileSync(x,\"utf8\")).filter(y=>y.startsWith(K)).map(y=>y.slice(K.length)).join(\" \")).join(\" \")+(o.length?\" OUTSIDE: \"+o.join(\" \"):\"\"))}const u=s.split(/(?<=[.!?])\\s+(?=[A-Z*`])/).filter(x=>!cov.includes(x.replace(/\\.$/,\"\"))&&!/^Each skill is a page/.test(x));console.log(\"section claims: \"+k+\"; cited outside plugins/terse/skills: \"+n);console.log(\"section sentences with no claim: \"+u.length);u.forEach(x=>console.log(\"- \"+x.slice(0,58)));' $TMPDIR/terse/runs/20260922-233021-terse-readme; echo 'their pages:'; sed -n '6p' ~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md | grep -o 'It never proposes wording'; sed -n '114p' ~/Git/agent-skills/plugins/terse/skills/audit/references/ledgers.md | grep -o 'State what a repair must achieve, not how to word it.'; sed -n '94p' ~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md | grep -o 'The baseline measurement runs a second arm with no documentation at all'; sed -n '109,110p' ~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md | tr '\\n' ' ' | grep -o 'two readers carrying a task: a starting state and an outcome they want, acting from the documentation alone'; sed -n '181,182p' ~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md | tr '\\n' ' ' | tr -s ' ' | grep -o 'no regression in the round\\*\\*: the ledger passes, and no sentence the round introduced was shown false or overstated by its critics'",
+   "expect": "audit/SKILL\\.md:2:name: audit\\naudit/SKILL\\.md:7:disable-model-invocation: true\\nrethink/SKILL\\.md:2:name: rethink\\nrethink/SKILL\\.md:7:disable-model-invocation: true\\nrewrite/SKILL\\.md:2:name: rewrite\\nrewrite/SKILL\\.md:8:disable-model-invocation: true\\n[\\s\\S]*You run seven steps in order\\nAnnounce the count and the models before spawning\\nAsk the user for the run directory from `audit`\\n[\\s\\S]*audit/references:\\nledgers\\.md\\nmeasure\\.md\\nreader-profile\\.md\\ntruth-pass\\.md\\n\\nrethink/references:\\nstages\\.md\\n\\nrewrite/references:\\nbake-off\\.md\\ncritic-briefs\\.md\\ncurse-of-knowledge\\.md\\nloop\\.md\\nmeasurements\\.md\\nwriting-rules\\.md\\n[\\s\\S]*\\nR04b probe: probe-04/ledger-guard\\.sh -> rewrite/scripts rewrite/SKILL\\.md\\n[\\s\\S]*section claims: 14; cited outside plugins/terse/skills: 0\\nsection sentences with no claim: 3\\n- A baseline asks the same questions with no documentation,[^\\n]*\\n- Audit states what a repair must achieve without proposing[^\\n]*\\n- That guard is not a promise that no regression can occur\\.\\n[\\s\\S]*their pages:\\nIt never proposes wording\\nState what a repair must achieve, not how to word it\\.\\nThe baseline measurement runs a second arm with no documentation at all\\ntwo readers carrying a task: a starting state and an outcome they want, acting from the documentation alone\\nno regression in the round\\*\\*: the ledger passes, and no sentence the round introduced was shown false or overstated by its critics"
+  }
+ },
+ {
+  "name": "L6.3-08 the readers are model agents (C06 re-pinned)",
+  "old": "**`/terse:audit`** writes a reader profile, a claim ledger, and an answer key before assigning one fresh\nreader to each question. Readers start at the entry file and may open only Markdown.",
+  "new": "**`/terse:audit`** writes a reader profile, a claim ledger, and an answer key before assigning one fresh\nreader, a model agent, to each question. Readers start at the entry file and may open only Markdown.",
+  "claims": [
+   {
+    "name": "C06 audit builds a profile of the project's",
+    "pattern": "\\*\\*`/terse:audit`\\*\\* writes a reader profile, a claim ledger, and an answer key before assigning one fresh reader, a model agent, to each question\\. Readers start at the entry file and may open only Markdown\\.",
+    "asks": "The audit page instructs Claude to write a reader profile, a claim ledger and an answer key before it spawns one fresh reader per question, each reader a model agent whose count and model are announced before spawning; and it says each reader starts at the entry file and may open only .md files."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '13,16p;46p;54,57p;69p;74p;84,87p;89,90p' ~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '40,42p' ~/Git/agent-skills/plugins/terse/skills/audit/references/measure.md",
+   "expect": "both exist before the first reader is spawned[\\s\\S]*##\\s+Step\\s+2\\.\\s+The\\s+reader\\s+profile[\\s\\S]*##\\s+Step\\s+3\\.\\s+The\\s+truth\\s+pass[\\s\\S]*becomes one ledger entry[\\s\\S]*##\\s+Step\\s+4\\.\\s+The\\s+questions\\s+and\\s+the\\s+answer\\s+key[\\s\\S]*Write\\s+the\\s+correct\\s+answer\\s+to\\s+each\\s+from\\s+the\\s+ledger[\\s\\S]*##\\s+Step\\s+5\\.\\s+The\\s+readers[\\s\\S]*Announce\\s+the\\s+plan\\s+before\\s+spawning\\s+anything:\\s+how\\s+many\\s+readers,\\s+which\\s+model,\\s+roughly\\s+what\\s+it\\s+costs\\.[\\s\\S]*One\\s+fresh\\s+reader\\s+per\\s+question[\\s\\S]*Each one starts at the entry\\s+file, may open only `\\.md` files[\\s\\S]*Use\\s+a\\s+cheap\\s+model;\\s+the\\s+2026-09-10\\s+run\\s+used\\s+Haiku\\s+and\\s+the\\s+failures\\s+it\\s+found\\s+were\\s+real\\.[\\s\\S]*Announce the count\\s+and the model to the user and wait for their word before spawning"
+  }
+ },
+ {
+  "name": "L6.3-13/14 rethink surveys in and beyond the genre; the water cut (C09 re-pinned)",
+  "old": "**`/terse:rethink`** works before prose. It compares documents in the same genre, settles terms, and\nexplores structures.",
+  "new": "**`/terse:rethink`** surveys documents in and beyond the genre, settles terms, and explores\nstructures.",
+  "claims": [
+   {
+    "name": "C09 rethink decides, before any prose is written",
+    "pattern": "\\*\\*`/terse:rethink`\\*\\* surveys documents in and beyond the genre, settles terms, and explores structures\\.",
+    "asks": "rethink surveys documents both in the document's genre and beyond it, settles the terms, and explores structures."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '25,32p;43,47p;54,57p' ~/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md",
+   "expect": "##\\s+Step\\s+1\\.\\s+What\\s+comparable\\s+documents\\s+already\\s+solved[\\s\\S]*six agents\\s+on six slices return a sample[\\s\\S]*Default slices, one\\s+surveyor each: the exact genre, the same structural position, the most used regardless of genre, vendor\\s+guidance, whatever this document's hard part is, and one slice whose job is what \\*not\\* to copy[\\s\\S]*##\\s+Step\\s+2\\.\\s+The\\s+words[\\s\\S]*For each load-bearing term: who parses\\s+it and as what[\\s\\S]*##\\s+Step\\s+3\\.\\s+The\\s+structure[\\s\\S]*About\\s+ten\\s+structures"
+  }
+ },
+ {
+  "name": "L6.3-11 the skeleton's contents include the rules the writing must pass (C10 re-pinned)",
+  "old": "Its output is a skeleton: each section's title, purpose, exclusions, and word budget.\nIt then waits for your word.",
+  "new": "Its output is a skeleton: each section's title, purpose, exclusions, and word budget, and the\nrules the writing must pass. It then waits for your word.",
+  "claims": [
+   {
+    "name": "C10 rethink hands over a skeleton, each section",
+    "pattern": "Its output is a skeleton: each section's title, purpose, exclusions, and word budget, and the rules the writing must pass\\. It then waits for your word\\.",
+    "asks": "The rethink page says the skeleton it hands over holds each section's title, purpose, exclusions and word budget, and the rules the writing must pass, and it instructs Claude to stop and wait for the user after handing it over."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '13,15p;70p;76,83p' ~/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md",
+   "expect": "The output is a\\s+skeleton: section titles, what each is for, what each deliberately leaves out, a word budget, and the\\s+rules that will gate the writing[\\s\\S]*##\\s+Step\\s+4\\.\\s+What\\s+you\\s+hand\\s+over[\\s\\S]*-\\s+each\\s+section:\\s+title,\\s+one\\s+sentence\\s+of\\s+purpose,\\s+what\\s+it\\s+deliberately\\s+excludes,\\s+a\\s+word\\s+budget[\\s\\S]*-\\s+the\\s+mechanical\\s+rules\\s+the\\s+writing\\s+must\\s+pass,\\s+written\\s+so\\s+that\\s+passing\\s+is\\s+a\\s+fact\\s+rather\\s+than\\s+an\\s+opinion[\\s\\S]*Then\\s+stop\\s+and\\s+wait\\.[\\s\\S]*`rewrite`\\s+starts\\s+from\\s+the\\s+skeleton\\s+the\\s+user\\s+agreed\\s+to"
+  }
+ },
+ {
+  "name": "L6.3-12 rewrite's ways in: the skeleton, an audit's run file, or its own run with rounds (C11 re-pinned)",
+  "old": "**`/terse:rewrite`** starts from that skeleton or an audit run.",
+  "new": "**`/terse:rewrite`** starts from that skeleton or an audit's run file, or resumes a run of its own that\nalready holds rounds.",
+  "claims": [
+   {
+    "name": "C11 rewrite starts from a skeleton `rethink` agr",
+    "pattern": "\\*\\*`/terse:rewrite`\\*\\* starts from that skeleton or an audit's run file, or resumes a run of its own that already holds rounds\\.",
+    "asks": "The rewrite page names these three starts: the skeleton rethink agreed, an audit's run file, and a run directory of its own that already holds rounds, which it takes up at the next round."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '16,20p;29p;74p' ~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+   "expect": "\\|\\s+a\\s+run\\s+directory\\s+with\\s+rounds\\s+in\\s+it\\s+already\\s+—\\s+whatever\\s+else\\s+you\\s+have\\s+\\|\\s+step\\s+4,\\s+at\\s+the\\s+next\\s+round;\\s+steps\\s+1\\s+to\\s+3\\s+are\\s+not\\s+repeated\\s+\\|[\\s\\S]*\\|\\s+a\\s+skeleton\\s+`rethink`\\s+agreed\\s+\\|\\s+step\\s+2\\s+\\|[\\s\\S]*\\|\\s+an\\s+`audit`\\s+run\\s+file\\s+\\|\\s+step\\s+1\\s+\\|[\\s\\S]*Ask\\s+the\\s+user\\s+for\\s+the\\s+run\\s+directory\\s+from\\s+`audit`\\s+and\\s+read\\s+`audit\\.md`\\s+there\\.[\\s\\S]*a\\s+resumed\\s+run\\s+is\\s+given\\s+it\\s+by\\s+the\\s+user\\s+and\\s+cannot\\s+guess\\s+it"
+  }
+ },
+ {
+  "name": "L6.3-21 the hand-over without the repeated frame (R04a new)",
+  "old": "The instructions say to hand over a candidate and its diff from the original.",
+  "new": "A round is handed over as a candidate and its diff from the original.",
+  "claims": [
+   {
+    "name": "R04a a round is handed over as a candidate and its diff from the original",
+    "pattern": "A round is handed over as a candidate and its diff from the original\\.",
+    "asks": "The rewrite page instructs Claude to hand a round over to the user as the candidate together with its diff against the original."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '188,192p' ~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+   "expect": "\\*\\*The\\s+loop\\s+stops\\s+when\\s+the\\s+user\\s+reads\\s+the\\s+round\\s+and\\s+says\\s+whether\\s+they\\s+would\\s+send\\s+it\\s+as\\s+it\\s+is\\.\\*\\*[\\s\\S]*Hand over the round and\\s+`diff-NN\\.patch`, the diff against `00-original\\.md`, written into the run directory[\\s\\S]*applying\\s+the candidate to the user's files needs their word"
+  }
+ },
+ {
+  "name": "L6.3-18 the claims a round declares (R03g re-pinned)",
+  "old": "Every cut of twenty words or\nmore must carry a reason, and every declared behavioural claim its source and\nevidence.",
+  "new": "Every cut of twenty words or\nmore must carry a reason, and every behavioural claim a round declares must carry its source and\nevidence.",
+  "claims": [
+   {
+    "name": "R03g every cut of twenty words or more carries a reason, every declared behavioural claim its source and evidence",
+    "pattern": "Every cut of twenty words or more must carry a reason, and every behavioural claim a round declares must carry its source and evidence\\.",
+    "asks": "rewrite's instructions require every cut of twenty words or more to carry a reason, and every behavioural claim a round declares to carry its source and the level of evidence it reached."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '44,46p;107,111p;205,206p' ~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md; sed -n '67p;117p' ~/Git/agent-skills/plugins/terse/skills/rewrite/references/bake-off.md",
+   "expect": "every statement about behaviour must be true of the code in this checkout,\\s+and the writer records the level of evidence it reached[\\s\\S]*Whenever the edit carries claims it also carries `check`[\\s\\S]*the cut ledger — every removed passage of twenty words or more,\\s+with its reason[\\s\\S]*b\\)\\s+Back\\s+every\\s+behavioural\\s+claim\\s+with\\s+a\\s+file\\s+and\\s+line\\.[\\s\\S]*\\|\\s+cuts\\s+justified\\s+\\|\\s+does\\s+every\\s+cut\\s+of\\s+twenty\\s+words\\s+or\\s+more\\s+carry\\s+a\\s+reason\\?\\s+\\|"
+  }
+ },
+ {
+  "name": "L6.3-04 the ratchet in the reader's words (R04b new, level 3)",
+  "old": "The shipped check rejects a new round that loses a pinned sentence or restores wording\nretired as false.",
+  "new": "The shipped check rejects a new round that loses a sentence an earlier round\nverified, or brings back wording one retired as false.",
+  "claims": [
+   {
+    "name": "R04b the shipped check rejects a new round that loses a sentence an earlier round verified or brings back wording one retired as false",
+    "pattern": "The shipped check rejects a new round that loses a sentence an earlier round verified, or brings back wording one retired as false\\.",
+    "asks": "The check that ships with the plugin rejects a new round, exiting 1, when the round loses a sentence an earlier round verified (a pinned claim absent from the new round) or brings back wording an earlier round retired as false (a retired phrase present in the new round); a round that does neither passes."
+   }
+  ],
+  "check": {
+   "level": 3,
+   "run": "sh $TMPDIR/terse/runs/20260922-233021-terse-readme/probe-04/ledger-guard.sh",
+   "expect": "round\\s+02\\s+that\\s+loses:\\s+ledger\\.mjs\\s+exit\\s+1;\\s+rows:\\s+verified\\s+L2\\s+yes\\s+yes\\s+LOST;retired\\s+L\\?\\s+-\\s+-\\s+-\\s+;\\s+1\\s+failure\\(s\\)\\s+in\\s+02-loses\\.md[\\s\\S]*round\\s+02\\s+that\\s+revives:\\s+ledger\\.mjs\\s+exit\\s+1;\\s+rows:\\s+verified\\s+L2\\s+yes\\s+yes\\s+yes\\s+;retired\\s+L\\?\\s+-\\s+-\\s+YES\\s+;\\s+1\\s+failure\\(s\\)\\s+in\\s+02-revives\\.md[\\s\\S]*round\\s+02\\s+that\\s+keeps:\\s+ledger\\.mjs\\s+exit\\s+0;\\s+rows:\\s+verified\\s+L2\\s+yes\\s+yes\\s+yes\\s+;retired\\s+L\\?\\s+-\\s+-\\s+-\\s+;\\s+0\\s+failure\\(s\\)\\s+in\\s+02-keeps\\.md[\\s\\S]*exit 1 when the new round loses a verified claim or revives a retired phrase[\\s\\S]*want\\s+true\\s+:\\s+a\\s+verified\\s+claim\\s+that\\s+must\\s+be\\s+present\\s+\\(LOST\\s+when\\s+absent\\)[\\s\\S]*want\\s+false\\s+:\\s+a\\s+phrasing\\s+found\\s+false,\\s+which\\s+must\\s+be\\s+absent\\s+\\(YES\\s+when\\s+present\\)"
+  }
+ },
+ {
+  "name": "L6.3-20 the boundary names the README, not a page (R03i re-pinned)",
+  "old": "This page describes commit `2f29a8f`.",
+  "new": "This README describes commit `2f29a8f`.",
+  "claims": [
+   {
+    "name": "R03i this page describes commit 2f29a8f",
+    "pattern": "This README describes commit `2f29a8f`\\.",
+    "asks": "The plugin tree this README's statements are checked against is the one at commit 2f29a8f: in the checkout the rounds read, HEAD's plugins/terse and .claude-plugin equal 2f29a8f's."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "git -C ~/Git/agent-skills diff --quiet 2f29a8f HEAD -- plugins/terse .claude-plugin; echo \"plugin tree at HEAD against 2f29a8f: diff exit $?\"; sed -n '198p' $TMPDIR/terse/runs/20260922-233021-terse-readme/brief.md | grep -o 'the advertised install commands fetch[^;]*'; sed -n '209p' $TMPDIR/terse/runs/20260922-233021-terse-readme/audit.md | grep -o 'is github.com/Nowely/agent-skills and [^;]*'; echo '8c041b7, rewrite/SKILL.md:66-67, 112-113:'; git -C ~/Git/agent-skills show 8c041b7:plugins/terse/skills/rewrite/SKILL.md | sed -n '66,67p;112,113p'; echo '8c041b7, audit/SKILL.md:33:'; git -C ~/Git/agent-skills show 8c041b7:plugins/terse/skills/audit/SKILL.md | sed -n '33p'; echo '2f29a8f = HEAD, audit/SKILL.md:33, 44:'; sed -n '33p;44p' ~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; echo '2f29a8f = HEAD, rewrite/SKILL.md:66-67, 78-79:'; sed -n '66,67p;78,79p' ~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md",
+   "expect": "plugin tree at HEAD against 2f29a8f: diff exit 0[\\s\\S]*the advertised install commands fetch the marketplace's `main`, which at 8c041b7 ships terse 0\\.1\\.1 with the old `rewrite` page that wrote into the repository unasked[\\s\\S]*`origin/main`\\s+\\(8c041b7\\)\\s+lists\\s+terse\\s+0\\.1\\.1[\\s\\S]*Work\\s+in\\s+a\\s+run\\s+directory\\s+of\\s+the\\s+document's\\s+own\\s+—\\s+`research/<date>-<slug>/`\\s+at\\s+the\\s+root\\s+of\\s+the\\s+repository that holds the document[\\s\\S]*a\\s+code\\s+defect\\s+to\\s+the\\s+repository's\\s+`ISSUES\\.md`[\\s\\S]*RUN=\"\\$\\{CLAUDE_PLUGIN_DATA:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/[\\s\\S]*D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\";\\s+RUN=\"\\$\\{D:-\\$\\{TMPDIR:-/tmp\\}/terse\\}/runs/[\\s\\S]*Write\\s+nothing\\s+into\\s+the\\s+audited\\s+repository\\.[\\s\\S]*Work\\s+in\\s+a\\s+run\\s+directory\\s+of\\s+the\\s+document's\\s+own,\\s+outside\\s+the\\s+repository\\s+that\\s+holds\\s+it[\\s\\S]*Nothing\\s+goes\\s+into\\s+that\\s+repository\\s+without\\s+the\\s+user's\\s+word"
+  }
+ },
+ {
+  "name": "L6.3-02 the SCOPE line: installing the commit this README describes (R04c new, level 3)",
+  "old": "At the 2026-09-22 audit, the install commands resolved the\nmarketplace's `main` at `8c041b7`, whose rewrite page wrote into the document repository without asking.",
+  "new": "To install that commit, run\n`claude plugin marketplace add` with the path of a local clone checked out at it in place of\n`Nowely/agent-skills`, then `claude plugin install terse@nowely`.",
+  "claims": [
+   {
+    "name": "R04c to install commit 2f29a8f, marketplace add takes the path of a local clone checked out at it in place of Nowely/agent-skills, then plugin install terse@nowely",
+    "pattern": "To install that commit, run `claude plugin marketplace add` with the path of a local clone checked out at it in place of `Nowely/agent-skills`, then `claude plugin install terse@nowely`\\.",
+    "asks": "A reader who wants commit 2f29a8f, the commit this README describes, installs it by running claude plugin marketplace add with the path of a local clone checked out at that commit in place of Nowely/agent-skills, and then claude plugin install terse@nowely; what gets installed is that commit's plugin tree."
+   }
+  ],
+  "check": {
+   "level": 3,
+   "run": "sh $TMPDIR/terse/runs/20260922-233021-terse-readme/probe-04/install-checkout.sh",
+   "expect": "A auth status: not logged in[\\s\\S]*B auth status: not logged in[\\s\\S]*plugins/terse,\\s+HEAD\\s+against\\s+2f29a8f:\\s+0\\s+lines\\s+of\\s+diff\\s+--stat[\\s\\S]*working\\s+tree\\s+against\\s+2f29a8f,\\s+plugins/terse\\s+and\\s+\\.claude-plugin:\\s+diff\\s+exit\\s+0[\\s\\S]*untracked\\s+or\\s+ignored\\s+files\\s+under\\s+plugins/terse:\\s+0[\\s\\S]*clone\\s+B:\\s+HEAD\\s+2f29a8f[\\s\\S]*archive\\s+of\\s+2f29a8f:\\s+28\\s+files[\\s\\S]*A\\s+\\$\\s+claude\\s+plugin\\s+marketplace\\s+add\\s+<checkout,\\s+absolute\\s+path>\\s+->\\s+exit\\s+0[\\s\\S]*A\\s+\\$\\s+claude\\s+plugin\\s+install\\s+terse@nowely\\s+->\\s+exit\\s+0[\\s\\S]*A\\s+installed\\s+files:\\s+28[\\s\\S]*A\\s+installed\\s+tree\\s+against\\s+its\\s+source's\\s+plugins/terse:\\s+identical\\s+\\(diff\\s+-rq\\s+exit\\s+0\\)[\\s\\S]*A\\s+installed\\s+tree\\s+against\\s+git\\s+archive\\s+2f29a8f:\\s+identical\\s+\\(diff\\s+-rq\\s+exit\\s+0\\)[\\s\\S]*B\\s+\\$\\s+claude\\s+plugin\\s+marketplace\\s+add\\s+\\.\\./clone-2f29a8f\\s+\\(relative\\s+to\\s+the\\s+working\\s+directory\\)\\s+->\\s+exit\\s+0[\\s\\S]*B\\s+\\$\\s+claude\\s+plugin\\s+install\\s+terse@nowely\\s+->\\s+exit\\s+0[\\s\\S]*B\\s+installed\\s+at:\\s+<config-B>/plugins/cache/nowely/terse/0\\.1\\.1;\\s+recorded\\s+commit:\\s+2f29a8f[\\s\\S]*B\\s+installed\\s+files:\\s+28[\\s\\S]*B\\s+installed\\s+tree\\s+against\\s+its\\s+source's\\s+plugins/terse:\\s+identical\\s+\\(diff\\s+-rq\\s+exit\\s+0\\)[\\s\\S]*B\\s+installed\\s+tree\\s+against\\s+git\\s+archive\\s+2f29a8f:\\s+identical\\s+\\(diff\\s+-rq\\s+exit\\s+0\\)"
+  }
+ },
+ {
+  "name": "L6.3-03/15 the 2026-09-22 boundary: no branch, both pages, l75 cut (R03j re-pinned, R04d new, G4 dropped)",
+  "old": "The section below describes this commit, not that one.",
+  "new": "On 2026-09-22 the install commands with `Nowely/agent-skills` resolved to `8c041b7`, whose audit and\nrewrite pages differ from the ones described here; its rewrite page wrote into the document repository\nwithout asking.",
+  "claims": [
+   {
+    "name": "R03j at the 2026-09-22 audit the install commands resolved main at 8c041b7, whose rewrite page wrote into the document repository unasked",
+    "pattern": "On 2026-09-22 the install commands with `Nowely/agent-skills` resolved to `8c041b7`, whose audit and rewrite pages differ from the ones described here; its rewrite page wrote into the document repository without asking\\.",
+    "asks": "Record, 2026-09-22: the adversarial whole-document read, added under the audit's What broke, ran the two install commands with Nowely/agent-skills, which fetched the marketplace's main at 8c041b7 and installed terse 0.1.1. Instruction, 8c041b7's rewrite page (level 2): step 4 puts the run in research/<date>-<slug>/ at the root of the repository that holds the document, and no line of that block asks the user before the directory is made; the page's lines that ask or wait (7, 29, 61, 104-105, 150) concern its description's promise to write only on your word, the audit's run directory, spawning agents and applying the candidate. Record, this repository: the page shipped at 0.1.0 (b29e921) with the same lines, and a rewrite run was written into this repository under that instruction — research/2026-09-11-markup-round-0/, a rewrite of this repository's plugins/codex-delegate/README.md that holds its rounds at the repository's root, whose rounds 08 and 09 were committed after the page first placed runs under research/ (1e3f5b2)."
+   },
+   {
+    "name": "R04d at 8c041b7 the audit and rewrite pages differ from the ones this README describes",
+    "pattern": "whose audit and rewrite pages differ from the ones described here",
+    "asks": "At 8c041b7, the revision the install commands resolved to on 2026-09-22, the audit page and the rewrite page differ from the pages at 2f29a8f that this README describes."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '196p' $TMPDIR/terse/runs/20260922-233021-terse-readme/brief.md | grep -o 'adversarial whole-document read (Codex Astra L3, 2026-09-22, added under What broke'; sed -n '3p' ~/Git/agent-skills/research/2026-09-22-terse-process/rewrite-2026-09-22/l3-adversarial-findings.md | grep -o 'Checks performed on 2026-09-22'; sed -n '23,24p' ~/Git/agent-skills/research/2026-09-22-terse-process/rewrite-2026-09-22/l3-adversarial-findings.md; sed -n '11p' ~/Git/agent-skills/research/2026-09-22-terse-process/rewrite-2026-09-22/l3-adversarial-findings.md | grep -o 'The exact two shell commands fetched .main. at .8c041b76d7f30196441285d77985b81ae9c9e59f. and installed terse 0.1.1'; sed -n '13p' ~/Git/agent-skills/research/2026-09-22-terse-process/rewrite-2026-09-22/l3-adversarial-findings.md | grep -o 'This confirms the fetched payload and its instructions, not that a model performed the unapproved writes'; sed -n '209p' $TMPDIR/terse/runs/20260922-233021-terse-readme/audit.md | grep -o '.origin/main. (8c041b7) lists terse 0.1.1'; echo '8c041b7 against 2f29a8f, plugins/terse:'; git -C ~/Git/agent-skills diff --shortstat 8c041b7 2f29a8f -- plugins/terse; git -C ~/Git/agent-skills diff --stat=72 8c041b7 2f29a8f -- plugins/terse/skills/audit/SKILL.md plugins/terse/skills/rewrite/SKILL.md | sed '$d'; echo '8c041b7, rewrite/SKILL.md:64, 66-67:'; git -C ~/Git/agent-skills show 8c041b7:plugins/terse/skills/rewrite/SKILL.md | sed -n '64p;66,67p'; echo \"8c041b7, rewrite/SKILL.md, every line that asks, waits or needs the user's word, with the phrase:\"; git -C ~/Git/agent-skills show 8c041b7:plugins/terse/skills/rewrite/SKILL.md | grep -n -o -i -E \"your word|user's word|their word|(^|[^a-z])ask|wait for|consent|approv|permission\"; echo \"of them in step 4's run-directory block, 64-78: $(git -C ~/Git/agent-skills show 8c041b7:plugins/terse/skills/rewrite/SKILL.md | sed -n '64,78p' | grep -c -i -E \"your word|user's word|their word|(^|[^a-z])ask|wait for|consent|approv|permission\")\"; [ \"$(git -C ~/Git/agent-skills show b29e921:plugins/terse/skills/rewrite/SKILL.md | sed -n '64,67p')\" = \"$(git -C ~/Git/agent-skills show 8c041b7:plugins/terse/skills/rewrite/SKILL.md | sed -n '64,67p')\" ] && echo 'rewrite/SKILL.md:64-67 at b29e921 (0.1.0) = at 8c041b7'; echo 'a rewrite run in this repository:'; ls -d ~/Git/agent-skills/research/2026-09-11-markup-round-0 | sed 's#^~/Git/agent-skills/##'; sed -n '3,4p' ~/Git/agent-skills/research/2026-09-11-markup-round-0/README.md | tr '\\n' ' ' | grep -o 'The document: .plugins/codex-delegate/README.md., 2726 words'; git -C ~/Git/agent-skills cat-file -e b29e921:plugins/codex-delegate/README.md && echo 'b29e921:plugins/codex-delegate/README.md exists'; sed -n '43p;45p' ~/Git/agent-skills/research/2026-09-11-markup-round-0/README.md | grep -o -E '^## What is in this directory|^- .NN-<pass>.md. — every round, never overwritten'; git -C ~/Git/agent-skills log --format='committed into the repository: %h %ad' --date=short -1 -- research/2026-09-11-markup-round-0; echo \"first commit putting research/<date>-<slug>/ in the page, on terse-plugin: $(git -C ~/Git/agent-skills log terse-plugin --format=%h -S 'research/<date>-<slug>/' -- plugins/terse/skills/rewrite/SKILL.md | tail -1)\"; git -C ~/Git/agent-skills show 1e3f5b2:plugins/terse/skills/rewrite/SKILL.md | sed -n '141p' | grep -o '.research/<date>-<slug>/. in the repository'; echo 'then rounds 08 and 09 of that run:'; for c in 1e3f5b2 a4238a5 0eb7762; do git -C ~/Git/agent-skills log -1 --format='%h %ad' --date=format:'%Y-%m-%d %H:%M' $c; done; git -C ~/Git/agent-skills show --name-only --format= a4238a5 -- research/2026-09-11-markup-round-0/08-review.md; git -C ~/Git/agent-skills show --name-only --format= 0eb7762 -- research/2026-09-11-markup-round-0/09-reduction.md",
+   "expect": "adversarial\\s+whole-document\\s+read\\s+\\(Codex\\s+Astra\\s+L3,\\s+2026-09-22,\\s+added\\s+under\\s+What\\s+broke[\\s\\S]*Checks\\s+performed\\s+on\\s+2026-09-22[\\s\\S]*claude\\s+plugin\\s+marketplace\\s+add\\s+Nowely/agent-skills\\nclaude\\s+plugin\\s+install\\s+terse@nowely[\\s\\S]*The\\s+exact\\s+two\\s+shell\\s+commands\\s+fetched\\s+`main`\\s+at\\s+`8c041b76d7f30196441285d77985b81ae9c9e59f`\\s+and\\s+installed\\s+terse\\s+0\\.1\\.1[\\s\\S]*This\\s+confirms\\s+the\\s+fetched\\s+payload\\s+and\\s+its\\s+instructions,\\s+not\\s+that\\s+a\\s+model\\s+performed\\s+the\\s+unapproved\\s+writes[\\s\\S]*`origin/main`\\s+\\(8c041b7\\)\\s+lists\\s+terse\\s+0\\.1\\.1[\\s\\S]*8c041b7\\s+against\\s+2f29a8f,\\s+plugins/terse:[\\s\\S]*10\\s+files\\s+changed,\\s+487\\s+insertions\\(\\+\\),\\s+50\\s+deletions\\(-\\)[\\s\\S]*plugins/terse/skills/audit/SKILL\\.md\\s+\\|\\s+27 [\\s\\S]*plugins/terse/skills/rewrite/SKILL\\.md\\s+\\|\\s+92 [\\s\\S]*8c041b7,\\s+rewrite/SKILL\\.md:64,\\s+66-67:[\\s\\S]*##\\s+Step\\s+4\\.\\s+The\\s+rounds[\\s\\S]*Work\\s+in\\s+a\\s+run\\s+directory\\s+of\\s+the\\s+document's\\s+own\\s+—\\s+`research/<date>-<slug>/`\\s+at\\s+the\\s+root\\s+of\\s+the\\s+repository that holds the document[\\s\\S]*with the phrase:\\n7:your word\\n29:Ask\\n61:Wait for\\n61:user's word\\n104:wait for\\n105:user's word\\n150:their word\\nof them in step 4's run-directory block, 64-78: 0\\n[\\s\\S]*rewrite/SKILL\\.md:64-67\\s+at\\s+b29e921\\s+\\(0\\.1\\.0\\)\\s+=\\s+at\\s+8c041b7[\\s\\S]*a rewrite run in this repository:\\nresearch/2026-09-11-markup-round-0\\nThe\\s+document:\\s+`plugins/codex-delegate/README\\.md`,\\s+2726\\s+words[\\s\\S]*b29e921:plugins/codex-delegate/README\\.md\\s+exists[\\s\\S]*##\\s+What\\s+is\\s+in\\s+this\\s+directory\\n-\\s+`NN-<pass>\\.md`\\s+—\\s+every\\s+round,\\s+never\\s+overwritten[\\s\\S]*committed\\s+into\\s+the\\s+repository:\\s+b29e921\\s+2026-09-12[\\s\\S]*first commit putting research/<date>-<slug>/ in the page, on terse-plugin: 1e3f5b2\\n`research/<date>-<slug>/`\\s+in\\s+the\\s+repository[\\s\\S]*then rounds 08 and 09 of that run:\\n1e3f5b2 2026-09-12 19:03\\na4238a5 2026-09-12 20:29\\n0eb7762 2026-09-12 20:45\\nresearch/2026-09-11-markup-round-0/08-review\\.md\\nresearch/2026-09-11-markup-round-0/09-reduction\\.md"
+  },
+  "drop": [
+   "G4 version boundary: the write boundary below is this checkout's, not 8c041b7's"
+  ]
+ },
+ {
+  "name": "R02e re-pinned: its run finds ISSUES.md E13 by heading, since E13 moved from line 183 (sentence unchanged)",
+  "old": "The `rethink` page does not specify where\nits skeleton is stored.",
+  "new": "The `rethink` page does not specify where\nits skeleton is stored.",
+  "claims": [
+   {
+    "name": "R02e the rethink page does not say where its skeleton is stored",
+    "pattern": "The `rethink` page does not specify where its skeleton is stored\\.",
+    "asks": "The rethink page does not say where the skeleton it hands over is stored."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "grep -c -i -E 'director|\\$RUN|RUN=|CLAUDE_PLUGIN_DATA|TMPDIR|/tmp|mkdir|skeleton\\.md|stored|saved' ~/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md; grep -n -A6 '^## E13' ~/Git/agent-skills/ISSUES.md",
+   "expect": "^0\\n[\\s\\S]*\\d+:## E13\\. `rethink` hands over \"one file\" and no page says where it is written[\\s\\S]*with no path, no run directory and no statement of whether\\s+(\\d+-)?the file lands inside or outside the user's repository"
+  }
+ },
+ {
+  "name": "L6.3-01 cut: the permission no page grants",
+  "old": " A writer\nmay reword one or correct it when it is false.",
+  "new": ""
+ },
+ {
+  "name": "L6.3-09 the chain preceded the plugin's bake-off and rounds (R04f new)",
+  "old": "The chain covered one README.",
+  "new": "The chain, four passes that preceded the plugin's bake-off and rounds,\n  covered one README.",
+  "claims": [
+   {
+    "name": "R04f the chain, four passes that preceded the plugin's bake-off and rounds, covered one README",
+    "pattern": "The chain, four passes that preceded the plugin's bake-off and rounds, covered one README\\.",
+    "asks": "The 2026-09-10 chain was four passes run before the plugin had its bake-off and its rounds, and it covered one README."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '1,5p;14,30p;36p' ~/Git/agent-skills/research/2026-09-10-chain/README.md; sed -n '81p;93,95p' ~/Git/agent-skills/plugins/terse/CHANGELOG.md",
+   "expect": "#\\s+The\\s+2026-09-10\\s+chain\\s+and\\s+bake-off[\\s\\S]*The\\s+evidence\\s+the\\s+`terse`\\s+plugin\\s+was\\s+built\\s+on[\\s\\S]*##\\s+`chain/`[\\s\\S]*The\\s+four-pass\\s+rewrite\\s+of\\s+one\\s+README,\\s+stage\\s+by\\s+stage,\\s+and\\s+the\\s+artifacts\\s+it\\s+produced\\.[\\s\\S]*\\|\\s+`00-original\\.md`\\s+\\|\\s+the\\s+README\\s+as\\s+it\\s+stood,\\s+2,725\\s+words\\s+\\|[\\s\\S]*\\|\\s+`01-reader-pass\\.md`\\s+\\|\\s+after\\s+the\\s+reader\\s+profile,\\s+2,482\\s+words\\s+\\|[\\s\\S]*\\|\\s+`02-writing-pass\\.md`\\s+\\|\\s+after\\s+the\\s+writing\\s+rules,\\s+2,377\\s+words\\s+\\|[\\s\\S]*\\|\\s+`03-prerequisite-pass\\.md`\\s+\\|\\s+after\\s+the\\s+curse\\s+of\\s+knowledge,\\s+2,482\\s+words\\s+\\|[\\s\\S]*\\|\\s+`README\\.md`\\s+\\|\\s+the\\s+final\\s+result\\s+after\\s+repairing\\s+the\\s+measured\\s+reader\\s+failures,\\s+2,571\\s+words\\s+\\|[\\s\\S]*##\\s+`run-2x5/`[\\s\\S]*##\\s+0\\.1\\.0\\s+—\\s+2026-09-12[\\s\\S]*`rewrite` writes against a skeleton or an audit's run file: one bake-off, then rounds of critics"
+  }
+ },
+ {
+  "name": "L6.3-10/20 the records the plugin's repository holds: each reader before, the totals after (C44 re-pinned)",
+  "old": "The experiment had no no-document arm. The repository\n  records its six readers before the rewrite one by one and holds no record of its readers\n  after it.",
+  "new": "The experiment had no no-document arm. The plugin's repository\n  records each of the experiment's six readers before the rewrite, and only the totals after\n  it.",
+  "claims": [
+   {
+    "name": "C44 the 2026-09-10 measurement had no arm that",
+    "pattern": "The experiment had no no-document arm\\. The plugin's repository records each of the experiment's six readers before the rewrite, and only the totals after it\\.",
+    "asks": "The 2026-09-10 chain measurement ran no arm that asked its questions with no document; the plugin's repository records, one by one, each of the six readers who answered from the README before the rewrite, and records only the totals for the readers who answered after it."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '9p' ~/Git/agent-skills/research/README.md | grep -o '3/6 → 6/6 on six reader questions, one trial each'; sed -n '10p' ~/Git/agent-skills/research/README.md | grep -o 'no arm ever ran without the document'; sed -n '104p;107p' ~/Git/agent-skills/plugins/terse/references/prior-art.md | grep -o -E 'We have no control for prior knowledge|Both ran the control\\. We did not\\.'; sed -n '103,106p' ~/Git/agent-skills/research/2026-09-10-chain/chain-source-prompt.txt; grep -n -o '^  [1-6]\\. \"[^\"]*\" - ANSWERED [A-Z]*' ~/Git/agent-skills/research/2026-09-10-chain/chain-source-prompt.txt; sed -n '125,126p' ~/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; echo 'files in the repository (.md .txt .json, .git excluded) holding lines in the before-record form, with counts:'; grep -rc -E '[1-6]\\. \"[^\"]*\" - ANSWERED (WRONG|PARTIALLY|CORRECTLY)' --include='*.md' --include='*.txt' --include='*.json' --exclude-dir=.git ~/Git/agent-skills | grep -v ':0$' | sed 's#^~/Git/agent-skills/##' | sort; cmp -s ~/Git/agent-skills/research/2026-09-10-chain/chain-source-prompt.txt ~/Git/agent-skills/research/2026-09-10-chain/run-2x5/Faf2geGl.prompt.txt && echo 'run-2x5/Faf2geGl.prompt.txt and chain-source-prompt.txt: byte-identical'; grep -rh -E '[1-6]\\. \"[^\"]*\" - ANSWERED (WRONG|PARTIALLY|CORRECTLY)' --include='*.md' --include='*.txt' --include='*.json' --exclude-dir=.git ~/Git/agent-skills | awk -v f=~/Git/agent-skills/research/2026-09-10-chain/chain-source-prompt.txt 'BEGIN{while((getline l < f)>0) own[l]=1} !own[$0]{n++} END{print \"lines in that form that are not lines of the before-record: \" n+0}'; grep -n -E '^## E[78]\\.|the \\*before\\* measurement are recorded one by one|record of the \\*after\\* measurement \\(6/6\\) exists anywhere in the repository' ~/Git/agent-skills/ISSUES.md | cut -c1-120; sed -n '533p' ~/Git/agent-skills/research/2026-09-10-chain/chain/audit.md | grep -o 'No new six-reader experiment was run'; grep -h live_reader_experiments_run ~/Git/agent-skills/research/2026-09-10-chain/chain/validation.json",
+   "expect": "3/6\\s+→\\s+6/6\\s+on\\s+six\\s+reader\\s+questions,\\s+one\\s+trial\\s+each[\\s\\S]*no arm ever ran without the document[\\s\\S]*We\\s+have\\s+no\\s+control\\s+for\\s+prior\\s+knowledge[\\s\\S]*Both\\s+ran\\s+the\\s+control\\.\\s+We\\s+did\\s+not\\.[\\s\\S]*===\\s+PART\\s+4\\.\\s+WHERE\\s+THE\\s+SIX\\s+READERS\\s+ACTUALLY\\s+FAILED\\s+===[\\s\\S]*Three of six answered\\s+correctly[\\s\\S]*1\\.\\s+\"What\\s+is\\s+this\\?\"\\s+-\\s+ANSWERED\\s+WRONG[\\s\\S]*2\\.\\s+\"What\\s+must\\s+I\\s+install\\?\"\\s+-\\s+ANSWERED\\s+PARTIALLY[\\s\\S]*3\\.\\s+\"How\\s+do\\s+I\\s+run\\s+it\\s+the\\s+first\\s+time\\?\"\\s+-\\s+ANSWERED\\s+CORRECTLY[\\s\\S]*4\\.\\s+\"What\\s+may\\s+it\\s+touch\\?\"\\s+-\\s+ANSWERED\\s+CORRECTLY[\\s\\S]*5\\.\\s+\"How\\s+do\\s+I\\s+know\\s+the\\s+work\\s+happened\\?\"\\s+-\\s+ANSWERED\\s+WRONG[\\s\\S]*6\\.\\s+\"How\\s+do\\s+I\\s+remove\\s+what\\s+it\\s+left\\?\"\\s+-\\s+ANSWERED\\s+CORRECTLY[\\s\\S]*the\\s+four-part\\s+chain\\s+moved\\s+one\\s+README\\s+from\\s+3/6\\s+to\\s+6/6,\\s+took\\s+departures\\s+from\\s+1\\s+to\\s+0,\\s+and\\s+broke\\s+neither\\s+control[\\s\\S]*holding lines in the before-record form, with counts:\\nresearch/2026-09-10-chain/chain-source-prompt\\.txt:6\\nresearch/2026-09-10-chain/run-2x5/Faf2geGl\\.prompt\\.txt:6\\n[\\s\\S]*run-2x5/Faf2geGl\\.prompt\\.txt\\s+and\\s+chain-source-prompt\\.txt:\\s+byte-identical[\\s\\S]*lines\\s+in\\s+that\\s+form\\s+that\\s+are\\s+not\\s+lines\\s+of\\s+the\\s+before-record:\\s+0[\\s\\S]*\\n\\d+:## E7\\. [\\s\\S]*\\n\\d+:the \\*before\\* measurement are recorded one by one[\\s\\S]*\\n\\d+:record of the \\*after\\* measurement \\(6/6\\) exists anywhere in the repository[\\s\\S]*\\n\\d+:## E8\\. [\\s\\S]*No\\s+new\\s+six-reader\\s+experiment\\s+was\\s+run[\\s\\S]*\"live_reader_experiments_run\":\\s+0"
+  }
+ },
+ {
+  "name": "L6.3-08 the pilot's third limit: no word on a human reader (R04e new)",
+  "old": "The result neither clears a significance threshold nor separates\n  what the text taught from prior knowledge.",
+  "new": "The result neither clears a significance threshold nor separates\n  what the text taught from prior knowledge, nor says whether a human reader improved.",
+  "claims": [
+   {
+    "name": "R04e the result neither clears a significance threshold, nor separates what the text taught from prior knowledge, nor says whether a human reader improved",
+    "pattern": "The result neither clears a significance threshold nor separates what the text taught from prior knowledge, nor says whether a human reader improved\\.",
+    "asks": "The chain's result does not clear a significance threshold, does not separate what the text taught its readers from what they already knew, and does not say whether a human reader improved."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '92,95p;104p' ~/Git/agent-skills/plugins/terse/references/prior-art.md; sed -n '40p;125,127p' ~/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; sed -n '100,103p' ~/Git/agent-skills/plugins/terse/CHANGELOG.md; sed -n '128,132p' ~/Git/agent-skills/plugins/terse/references/prior-art.md",
+   "expect": "\\*\\*The\\s+headline\\s+number\\s+is\\s+not\\s+distinguishable\\s+from\\s+noise\\.\\*\\*[\\s\\S]*cannot be told from chance at conventional thresholds[\\s\\S]*\\*\\*We\\s+have\\s+no\\s+control\\s+for\\s+prior\\s+knowledge[\\s\\S]*the\\s+2026-09-10\\s+run\\s+used\\s+Haiku[\\s\\S]*the result does not survive a\\s+significance test[\\s\\S]*###\\s+Known\\s+limits[\\s\\S]*The audit's ruler measures whether a model can answer from the text, not whether a human reader\\s+improved[\\s\\S]*##\\s+Is\\s+a\\s+model\\s+reader\\s+a\\s+valid\\s+stand-in\\?\\s+The\\s+honest\\s+answer[\\s\\S]*terse currently measures model answerability, and its numbers are not valid evidence of\\s+human improvement yet"
+  }
+ },
+ {
+  "name": "L6.3-19 the 2 × 5 run is an experiment, not the bake-off; the draft as the source names it (C42 re-pinned)",
+  "old": "A separate bake-off used ten agents in a 2 × 5 design: four writing standards, one an unpublished draft,\n  and one unguided control condition with two agents.",
+  "new": "A separate experiment used ten agents in a 2 × 5 design: four writing standards, one of them a\n  draft, and one unguided control condition with two agents.",
+  "claims": [
+   {
+    "name": "C42 the passage result rests on ten agents",
+    "pattern": "A separate experiment used ten agents in a 2 × 5 design: four writing standards, one of them a draft, and one unguided control condition with two agents\\.",
+    "asks": "A separate experiment used ten agents in a two-by-five design: five conditions of two agents each, four of them writing standards, one of the four a draft rule block for the owner's CLAUDE.md, and the fifth a control condition given no standard at all."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '1p' ~/Git/agent-skills/research/2026-09-10-chain/README.md; sed -n '8p;13,20p;22p' ~/Git/agent-skills/research/2026-09-10-chain/run-2x5/v04PR6HL.prompt.txt",
+   "expect": "# The 2026-09-10 chain and bake-off[\\s\\S]*Ten agents audited the repository[\\s\\S]*The design is a two-by-five factorial\\. Five standards, each given to two agents of DIFFERENT model\\s+families:[\\s\\S]*Diataxis\\s+P1, P2[\\s\\S]*verification against the implementation\\s+P3, P4[\\s\\S]*a draft rule block for the owner's CLAUDE\\.md\\s+P5, P6[\\s\\S]*house style\\s+P7, P8[\\s\\S]*CONTROL, no standard given at all\\s+P9, P10[\\s\\S]*Which entrant ran on which model is deliberately hidden"
+  }
+ }
+]

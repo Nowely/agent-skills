@@ -1,0 +1,6 @@
+MODEL: gpt-5.6-sol
+EFFORT: high
+TASK: You are Codex Sol B1. Improve the comments in src/dir_walker.rs of the repository at $TMPDIR/terse-trial-dust/dust. Only the comments may change; every line of code stays as it is. Write the improved file to $TMPDIR/terse-trial-2/walker-bare/dir_walker.rs.
+
+Do not modify the repository, write only under $TMPDIR, never cd inside a compound command. Read nothing under ~/Git/agent-skills/research/, nothing in $TMPDIR/terse-trial-dust/ outside dust/, nothing in $TMPDIR/terse-trial-2/ outside walker-bare/, and no run under $TMPDIR/terse/runs/.
+RETURN: First line: "Codex Sol B1:", your status, and what you changed in one sentence. Then your main changes as a short list.

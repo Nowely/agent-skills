@@ -1,0 +1,5 @@
+MODEL: gpt-5.6-luna
+EFFORT: low
+TASK: You are a fresh reader. Read ONE file and nothing else, with cat: $TMPDIR/terse-bench-D2/writer/01-draft.md. Do not open any other file, and do not use anything you already know about this software. Answer this question from that document alone: Once it's installed, what should I run first, and what will I see if that first run worked? Quote the exact sentence or sentences the answer comes from and name the section heading. If the document does not answer it, write GUESSED, give your best guess, and say what sentence you wished were there. Run no command other than that one cat. Return plain text.
+CHECK: the quote is in the file you read.
+RETURN: plain text, first line "reader D2-Q4: answered" or "reader D2-Q4: GUESSED"; then the answer and the quote with its section heading.

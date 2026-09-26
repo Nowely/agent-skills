@@ -1,0 +1,22 @@
+! line 30  flag name      --number-of-lines
+! line 31  flag name      --depth
+! line 32  flag name      --only-file
+! line 33  flag name      --only-dir
+! line 34  flag name      --filter
+! line 35  flag name      --invert-filter
+! line 36  flag name      --ignore-directory
+! line 37  flag name      --min-size
+! line 38  flag name      --limit-filesystem
+! line 39  flag name      --apparent-size
+! line 40  flag name      --full-paths
+! line 41  flag name      --screen-reader
+! line 46  flag name      --help
+
+13 violation(s), 0 excused
+exit 1
+   78 (opening)   (no budget)
+   34 / 100  -66   Quick start
+  253 / 300  -47   Useful options
+   16 / 120  -104   How it works
+  381 TOTAL, 0 section(s) over budget
+exit 0

@@ -1,0 +1,38 @@
+ran  R04a new — Workflow block: its heading; where the commands are typed
+ran  R03a re-pinned — the scope said outright (skeleton 2.2; the owner's read, skeleton-read-02.md:12–13)
+ran  R03b re-pinned — the announcement moved to audit's paragraph (L6.3-02), over the excerpt's lead-in
+ran  R04b re-pinned — what the report holds, the line said where there is one; the excerpt dropped
+ran  R04c new — the stop, said of the answers from the text (L6.3-13)
+ran  R04d new, R02c re-pinned — the shape question and the audit way into rewrite; the rethink clause moves below its own fence
+ran  C09, C05 re-pinned — the rethink branch in its own fence, the two command lines moved here from Skills; the announcement leaves this place; Update's heading
+ran  R04j new — the Skills audit row says what the report holds as R04b does (the verifier's refutation of "file and line" for every answer)
+ran  R04e new — Skills keeps one line: each skill is started by the reader; the command lines left for Workflow
+ran  C06, C07 re-pinned — audit's steps
+ran  R03e re-pinned — rethink's steps
+ran  R03c, R03f re-pinned, R04f new — rewrite's steps
+ran  R03d re-pinned, R04g new — the table's head and the two rule rows; C33 and C44 dropped (skeleton part 5, :62–86)
+ran  R04h new — the scripted checks row, run; C24 dropped (skeleton part 5, :53–56 and :62–86)
+ran  R04i new — the field's practices, linked by what they are; R03h dropped (skeleton part 5, :62–86)
+ran  C15, R03g re-pinned — the promise line's run-backed halves, under "What the skills promise" (the verifier: no guarantee at level 2)
+ran  R02g, R02f re-pinned — the promise line's page-backed half, with c4-1's partial record, and Not guaranteed
+ok  Install block: its heading (skeleton 2.2, rule 2)
+ok  R04a new — Workflow block: its heading; where the commands are typed
+ok  R03a re-pinned — the scope said outright (skeleton 2.2; the owner's read, skeleton-read-02.md:12–13)
+ok  R03b re-pinned — the announcement moved to audit's paragraph (L6.3-02), over the excerpt's lead-in
+ok  R04b re-pinned — what the report holds, the line said where there is one; the excerpt dropped
+ok  R04c new — the stop, said of the answers from the text (L6.3-13)
+ok  R04d new, R02c re-pinned — the shape question and the audit way into rewrite; the rethink clause moves below its own fence
+ok  C09, C05 re-pinned — the rethink branch in its own fence, the two command lines moved here from Skills; the announcement leaves this place; Update's heading
+ok  R04j new — the Skills audit row says what the report holds as R04b does (the verifier's refutation of "file and line" for every answer)
+ok  R04e new — Skills keeps one line: each skill is started by the reader; the command lines left for Workflow
+ok  C06, C07 re-pinned — audit's steps
+ok  R03e re-pinned — rethink's steps
+ok  R03c, R03f re-pinned, R04f new — rewrite's steps
+ok  Checks and guarantees: its heading, over What was measured (skeleton 2.5; part 5, :62–86)
+ok  R03d re-pinned, R04g new — the table's head and the two rule rows; C33 and C44 dropped (skeleton part 5, :62–86)
+ok  R04h new — the scripted checks row, run; C24 dropped (skeleton part 5, :53–56 and :62–86)
+ok  R04i new — the field's practices, linked by what they are; R03h dropped (skeleton part 5, :62–86)
+ok  C15, R03g re-pinned — the promise line's run-backed halves, under "What the skills promise" (the verifier: no guarantee at level 2)
+ok  R02g, R02f re-pinned — the promise line's page-backed half, with c4-1's partial record, and Not guaranteed
+ledger: 46 claim(s); the state before this round is in ledger.04.json
+wrote $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/04-shape.md

@@ -1,0 +1,21 @@
+[
+ {"name": "three skills, user-invoked", "pattern": "user-invoked|none starts on its own|invoke all three"},
+ {"name": "fresh readers measure answerability", "pattern": "fresh reader|right answer"},
+ {"name": "claims checked against the code", "pattern": "agree with the code|against the code|true of the code|line number"},
+ {"name": "audit never proposes wording", "pattern": "without proposing wording|never (suggests|proposes) wording|proposes no (replacement )?wording"},
+ {"name": "rethink stops at a skeleton", "pattern": "returns a skeleton|output is a skeleton|→\\s*skeleton"},
+ {"name": "bake-off: writers and judges", "pattern": "[Tt]hree writers|two judges"},
+ {"name": "rounds and critics", "pattern": "round|critic"},
+ {"name": "nothing written to your files without your word", "pattern": "requires your word|needs your word|without your word|on your word"},
+ {"name": "announce agents and wait", "pattern": "announce how many agents|wait"},
+ {"name": "install commands", "pattern": "plugin marketplace add|plugin install"},
+ {"name": "node prerequisite", "pattern": "[Nn]ode 2[0-9]|node on PATH"},
+ {"name": "not a compressor", "pattern": "not a compressor|2,725|2,571"},
+ {"name": "conditions, limits, warnings kept", "pattern": "condition, (a )?limit,? or (a )?warning|repetition"},
+ {"name": "the 2026-09-10 measurement", "pattern": "2026-09-10|3/6|6/6|p\\s*=\\s*0\\.25|McNemar"},
+ {"name": "no no-document arm", "pattern": "no document at all|no-document"},
+ {"name": "the ledger and the ratchet", "pattern": "ledger|ratchet|regression"},
+ {"name": "the verifier before the freeze", "pattern": "verifier|before the freeze|frozen"},
+ {"name": "run directory location", "pattern": "run directory|create the run|place their run|data directory|TMPDIR"},
+ {"name": "any language, any text", "pattern": "any language|[Rr]ussian|non-English"}
+]

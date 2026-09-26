@@ -1,0 +1,32 @@
+Question set 05: your read of skeleton 01. The file is $TMPDIR/terse/runs/20260924-125421-maestro-readme-rethink/skeleton.01.md, SHA-256 55e8236997428606adaa8468481a8104d5a2503b572774a1ba1ef6644bf0d7a2. What is asked of you: your word on this file, or the numbers of the sections that are wrong, a few words each. Each default below stands unless you name it. You may open the file; parts 3 to 6 are the writers' and the scripts', not yours.
+
+| Section | Budget | Device |
+|---|---|---|
+| 1. The opening, # Maestro, no ## heading | 120 | the banner; one row of three live version badges; the title and the tagline; one paragraph on what Maestro works on and where it runs; a count line; three task links |
+| 2. ## Getting started | 670 | a two-sentence lead-in and a three-row chooser, Route · Works in · Needs · Writes into your project; then ### Skill files 130 (a bash fence, the manual copy line, the ten folders with their tools), ### VS Code extension 200 (the ID, a bold-led list of the four writes, the first-use surfaces), ### MCP server 100 (a text fence, a link for the clients and HTTP), ### First run 85 (a numbered list of two steps ending on the report) |
+| 3. ## Commands | 340 | one table of 24 rows, Group · Command · What it does, each name linked to its SKILL.md |
+| 4. ## Memory across sessions | 150 | a numbered list of three commands in run order; one sentence on the command log; one on the estimates |
+| 5. ## Documentation | 40 | a list of four links |
+| 6. ## Support and contributing | 70 | two plain lines: the issues; source/skills/ with npm run check and npm run build |
+| 7. ## License | 12 | one line |
+| Total | 1,402 | |
+
+Where it departs from the genre's order: no table of contents, which 2 of 7 exact-genre READMEs carry: three task links instead. No rationale section before setup, such as How it works or a comparison with another tool, which 3 of 7 carry: the opening's definition stands in. The chooser opens Getting started with no heading of its own, where 2 of your 3 exemplars head it. Install is split by route into three ### blocks, not per coding agent as 3 of 7 do. The inventory is one item-level table, which 0 of 7 use, because your purpose names "the command table". No sponsor aside, star history, community, security, troubleshooting, philosophy, updating or telemetry section, each carried by 1 to 3 of 7.
+
+Kept against your word: your reason for the route order, that skill files are "the only route that reaches all ten tools", is not printed, because the extension writes the same ten folders and the installer's reach is not shown; your "The agent then fetches them with maestro_run_command" is not printed, because the reader asks by name and "tools" on this page means the reader's own LLM tools. The route order itself stands.
+
+Your decisions, each with my default:
+1. Where the title and the tagline sit: under the badge row. Alternative: between the banner and the badges, Spec Kit's order.
+2. The MCP block: the command, one sentence on where it goes, a link to mcp-server/README.md for the four clients. Alternative: one config block copied from that page.
+3. Updating: no section and no update block for any route.
+4. The extension's seven reference files that never reach the project: not a README sentence, the first write bullet's "only that file" carries it; listed for you as a code question.
+5. Length: 1,402 words.
+
+Least sure, each with what would settle it:
+1. The installer line, npx skills add sharpdeveye/maestro, unrun; one run in an empty project would settle it, and in this benchmark nobody writing may run it, because the download carries the README kept from the writers.
+2. Seven of the ten folder-to-tool pairs rest on your answer, not the snapshot; each agent's own skills documentation would settle it.
+3. The MCP hand-off gives a command and a link, not a config block; a task reader new to MCP adding the server from this block alone would settle it.
+4. First run as a fourth ### block, which a Skill files reader reaches past two other route blocks by a link; one task reader per route would settle it.
+5. "Workflow" is defined in the opening rather than renamed, and the tagline may read as a development method first; five cold readers of the title, tagline and first sentence would settle it.
+
+Write your answer to $TMPDIR/terse-bench/standin/answers-05.md and return it. Read only the snapshot and the run directory; never the repository's published README or its pages on the network.

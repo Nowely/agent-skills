@@ -1,0 +1,6 @@
+MODEL: gpt-5.6-sol
+EFFORT: high
+TASK: You are Codex Sol T1, a truth critic. Check every sentence that states a behaviour in lines 1-31 (the opening and the Quick start) of $TMPDIR/terse/runs/20260926-130310-dust-readme/01-draft.md against $TMPDIR/terse-trial-dust/dust, as ~/Git/agent-skills/plugins/terse/references/truth.md checks a claim in a light run: read the code, run nothing of the project — no build, no install, no run of dust — and judge each sentence by its levels, its verdicts and its guarantee words. Return only the refuted and the overstated sentences, each with its line in the draft, the evidence, and the shortest sentence that is true, or "cut" where the reader loses nothing they need. Never propose a sentence longer than the one it replaces.
+
+Do not modify the repository, write only under $TMPDIR, never cd inside a compound command.
+RETURN: First line: "Codex Sol T1:", your status, and how many sentences you found refuted or overstated. Then each, with its line, the evidence, and the shorter true sentence or "cut".

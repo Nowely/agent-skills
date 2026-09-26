@@ -1,0 +1,17 @@
+# sections.mjs on 02-repaired.md with budgets.json as the writer wrote it (keys carry '## '):
+  108 (opening)   (no budget)
+  143 Install   (no budget)
+   71 Run it   (no budget)
+  174 Choose what to see   (no budget)
+   56 Configure defaults   (no budget)
+    8 License   (no budget)
+  560 TOTAL, 0 section(s) over budget
+
+# the same, keys stripped of '## ' by the coordinator:
+  108 (opening)   (no budget)
+  143 / 260  -117   Install
+   71 / 150  -79   Run it
+  174 / 190  -16   Choose what to see
+   56 / 130  -74   Configure defaults
+    8 / 25   -17   License
+  560 TOTAL, 0 section(s) over budget

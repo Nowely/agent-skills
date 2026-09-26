@@ -1,0 +1,6 @@
+MODEL: gpt-5.6-sol
+EFFORT: medium
+TASK: You are Codex Sol C2. You are a fresh reader. Read ONE file, with cat, and nothing else: <DOC>. Assess the quality of the comments in this Rust source file. Quote the line for every point you make.
+
+Do not modify the repository, write only under $TMPDIR, never cd inside a compound command.
+RETURN: First line: "Codex Sol C2:", your status, and your assessment in one sentence. Then your points, each with the line it quotes.

@@ -1,0 +1,16 @@
+installed: isolated configuration not logged in
+installed: marketplace add exit 0
+installed: install exit 0
+installed: /terse:audit exit 1, Not logged in · Please run /login, cost 0
+installed: the page's line as received begins D="<probe>/config-installed/plugins/data/terse-nowely";
+installed: terse-nowely exists
+plugindir: isolated configuration not logged in
+plugindir: /terse:audit exit 1, Not logged in · Please run /login, cost 0
+plugindir: the page's line as received begins D="<probe>/config-plugindir/plugins/data/terse-inline";
+plugindir: terse-inline exists
+skills: isolated configuration not logged in
+skills: /audit exit 1, Not logged in · Please run /login, cost 0
+skills: the page's line as received begins D="${CLAUDE_PLUGIN_DATA}";
+formula, no data directory, TMPDIR set: <probe>/tmp-formula/terse/runs/<stamp>
+formula, no data directory, TMPDIR unset: /tmp/terse/runs/<stamp>
+formula, data directory written in: <probe>/data-formula/runs/<stamp>

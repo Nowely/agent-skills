@@ -1,0 +1,337 @@
+[
+ {
+  "name": "C01 re-pinned: the opening sentence, unchanged from 01",
+  "old": "A Claude Code plugin for assessing and improving any text, a README first, in rounds of edits by several AI agents working from rules and best practices.",
+  "new": "A Claude Code plugin for assessing and improving any text, a README first, in rounds of edits by several AI agents working from rules and best practices.",
+  "claims": [
+   {
+    "name": "C01 terse is a Claude Code plugin whose",
+    "pattern": "A Claude Code plugin for assessing and improving any text, a README first, in rounds of edits by several AI agents working from rules and best practices\\.",
+    "asks": "The scope \"any text, a README first\" is the owner's stated aim, not a page's behaviour: the owner's purpose statement recorded in this run names it — «оценка и улучшение текста (чтобы это ни значило). Документация, комментарии, проза, текст и даже код» (purpose.md:5–6, rendered at 12–13), «научить работать и улучшать любой текст» and «Сейчас мы работаем на реадме» (32–34, rendered at 43–45) — and the audit's profile records it as the owner's intent (audit.md:21–22); the pages themselves take a document's Markdown files, with or without code behind them, README.md the usual entry (audit/SKILL.md:25–28). The rest is what the pages say, level 2: terse is a Claude Code plugin (its manifest, plugin.json:2); its audit measures a document (audit/SKILL.md:4); its rewrite works in rounds of edits made by several AI agents — three writers and two judges, then critics, one agent per lens, the AI reviewers (rewrite/SKILL.md:4, 66, 164–165; critic-briefs.md:1) — under the writing rules (rewrite/SKILL.md:50) and from what comparable documents already solved, which rethink surveys first (rethink/SKILL.md:4–5, 55)."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/purpose.md' 5-6 'Это оценка и улучшение текста (чтобы это ни значило).' 'Документация, комментарии, проза, текст и даже код, и тд - не важно.'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/purpose.md' 12-13 'assessing and improving text, whatever that means. Documentation, comments, prose, text, even code — it does not matter which.'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/purpose.md' 32-34 'Моя цель, научить работать и улучшать любой текст.' 'Сейчас мы работаем на реадме'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/purpose.md' 43-45 'the goal is to learn to work on and improve any text' 'The README is the first subject'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/audit.md' 21-22 'the owner'\\''s own intent, not in any page, is that `terse` works on any text in any language, code or not.'; grep -n -o -H '\"name\": \"terse\"' ~/Git/agent-skills/plugins/terse/.claude-plugin/plugin.json | sed 's#^~/Git/agent-skills/##'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md' 4-4 'Measures a document against two rulers'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md' 25-28 'Default to every tracked `.md`.' 'Text with no code behind it still gets audited' 'Usually `README.md`.'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 4-4 'Writes the text in rounds: one candidate, then critics with lenses that differ'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 66-66 'three writers, one whole candidate each with a different stance, and two judges'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 164-165 '**then the critics**, one agent per lens, with the briefs in [critic-briefs.md](references/critic-briefs.md)'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/references/critic-briefs.md' 1-1 '# Critic briefs, one per lens'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 50-50 '**The writing rules** — [writing-rules.md](references/writing-rules.md), copied in as written.'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md' 4-5 'what comparable documents already solved'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md' 55-55 '## Step 1. What comparable documents already solved'",
+   "expect": "^(?=[\\s\\S]*(?:^|\\n)R/purpose\\.md:5-6: Это\\s+оценка\\s+и\\s+улучшение\\s+текста\\s+\\(чтобы\\s+это\\s+ни\\s+значило\\)\\.)(?=[\\s\\S]*(?:^|\\n)R/purpose\\.md:5-6: Документация,\\s+комментарии,\\s+проза,\\s+текст\\s+и\\s+даже\\s+код,\\s+и\\s+тд\\s+-\\s+не\\s+важно\\.)(?=[\\s\\S]*(?:^|\\n)R/purpose\\.md:12-13: assessing\\s+and\\s+improving\\s+text,\\s+whatever\\s+that\\s+means\\.\\s+Documentation,\\s+comments,\\s+prose,\\s+text,\\s+even\\s+code\\s+—\\s+it\\s+does\\s+not\\s+matter\\s+which\\.)(?=[\\s\\S]*(?:^|\\n)R/purpose\\.md:32-34: Моя\\s+цель,\\s+научить\\s+работать\\s+и\\s+улучшать\\s+любой\\s+текст\\.)(?=[\\s\\S]*(?:^|\\n)R/purpose\\.md:32-34: Сейчас\\s+мы\\s+работаем\\s+на\\s+реадме)(?=[\\s\\S]*(?:^|\\n)R/purpose\\.md:43-45: the\\s+goal\\s+is\\s+to\\s+learn\\s+to\\s+work\\s+on\\s+and\\s+improve\\s+any\\s+text)(?=[\\s\\S]*(?:^|\\n)R/purpose\\.md:43-45: The\\s+README\\s+is\\s+the\\s+first\\s+subject)(?=[\\s\\S]*(?:^|\\n)R/audit\\.md:21-22: the\\s+owner's\\s+own\\s+intent,\\s+not\\s+in\\s+any\\s+page,\\s+is\\s+that\\s+`terse`\\s+works\\s+on\\s+any\\s+text\\s+in\\s+any\\s+language,\\s+code\\s+or\\s+not\\.)(?=[\\s\\S]*plugins/terse/\\.claude-plugin/plugin\\.json:2:\"name\":\\s+\"terse\")(?=[\\s\\S]*(?:^|\\n)audit/SKILL\\.md:4-4: Measures\\s+a\\s+document\\s+against\\s+two\\s+rulers)(?=[\\s\\S]*(?:^|\\n)audit/SKILL\\.md:25-28: Default\\s+to\\s+every\\s+tracked\\s+`\\.md`\\.)(?=[\\s\\S]*(?:^|\\n)audit/SKILL\\.md:25-28: Text\\s+with\\s+no\\s+code\\s+behind\\s+it\\s+still\\s+gets\\s+audited)(?=[\\s\\S]*(?:^|\\n)audit/SKILL\\.md:25-28: Usually\\s+`README\\.md`\\.)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:4-4: Writes\\s+the\\s+text\\s+in\\s+rounds:\\s+one\\s+candidate,\\s+then\\s+critics\\s+with\\s+lenses\\s+that\\s+differ)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:66-66: three\\s+writers,\\s+one\\s+whole\\s+candidate\\s+each\\s+with\\s+a\\s+different\\s+stance,\\s+and\\s+two\\s+judges)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:164-165: \\*\\*then\\s+the\\s+critics\\*\\*,\\s+one\\s+agent\\s+per\\s+lens,\\s+with\\s+the\\s+briefs\\s+in\\s+\\[critic-briefs\\.md\\]\\(references/critic-briefs\\.md\\))(?=[\\s\\S]*(?:^|\\n)rewrite/references/critic-briefs\\.md:1-1: #\\s+Critic\\s+briefs,\\s+one\\s+per\\s+lens)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:50-50: \\*\\*The\\s+writing\\s+rules\\*\\*\\s+—\\s+\\[writing-rules\\.md\\]\\(references/writing-rules\\.md\\),\\s+copied\\s+in\\s+as\\s+written\\.)(?=[\\s\\S]*(?:^|\\n)rethink/SKILL\\.md:4-5: what\\s+comparable\\s+documents\\s+already\\s+solved)(?=[\\s\\S]*(?:^|\\n)rethink/SKILL\\.md:55-55: ##\\s+Step\\s+1\\.\\s+What\\s+comparable\\s+documents\\s+already\\s+solved)"
+  }
+ },
+ {
+  "name": "C19 re-pinned: the install fence, run as written; C18 dropped (skeleton part 5, :42–45 the /plugin fence)",
+  "old": "claude plugin marketplace add Nowely/agent-skills\nclaude plugin install terse@nowely",
+  "new": "claude plugin marketplace add Nowely/agent-skills\nclaude plugin install terse@nowely",
+  "claims": [
+   {
+    "name": "C19 from a shell, `claude plugin marketplace add",
+    "pattern": "claude plugin marketplace add Nowely/agent-skills claude plugin install terse@nowely",
+    "asks": "From a shell, `claude plugin marketplace add Nowely/agent-skills` then `claude plugin install terse@nowely` install terse into Claude Code: on a clean configuration, signed out, both exit 0 and the plugin is in Claude Code's plugin cache with its skills."
+   }
+  ],
+  "check": {
+   "level": 3,
+   "run": "sh $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/install.sh",
+   "expect": "^(?=[\\s\\S]*auth\\s+status:\\s+not\\s+logged\\s+in)(?=[\\s\\S]*\\$\\s+claude\\s+plugin\\s+marketplace\\s+add\\s+Nowely/agent-skills\\s+->\\s+exit\\s+0;\\s+Successfully\\s+added\\s+marketplace:\\s+nowely)(?=[\\s\\S]*\\$\\s+claude\\s+plugin\\s+install\\s+terse@nowely\\s+->\\s+exit\\s+0;\\s+Successfully\\s+installed\\s+plugin:\\s+terse@nowely)(?=[\\s\\S]*installed\\s+at\\s+<config>/plugins/cache/nowely/terse/[0-9.]+;\\s+skills\\s+there:\\s+audit\\s+rethink\\s+rewrite\\s+\\(3\\))"
+  },
+  "drop": [
+   "C18 inside Claude Code, `/plugin marketplace add"
+  ]
+ },
+ {
+  "name": "R02a new — graft Fable 1 / Astra 1: the sign-in on the \"You need\" line (l3 F2; coordinator's note 4)",
+  "old": "You need: Node 22 or newer.",
+  "new": "You need: Node 22 or newer, and a signed-in Claude Code.",
+  "claims": [
+   {
+    "name": "R02a you need Node 22 or newer and a signed-in Claude Code: signed out no skill runs, audit and rewrite stop without Node",
+    "pattern": "You need: Node 22 or newer, and a signed-in Claude Code\\.",
+    "asks": "Past the two install commands, running the skills needs a Claude Code that is signed in — signed out, /terse:audit, /terse:rethink and /terse:rewrite each stop at \"Not logged in\" — and, for audit and rewrite, whose pages run Node scripts (rethink's runs none), Node at the version the plugin declares, 22 or newer: a skill script with no node exits 127 and passes with Node 24.11.0. The floor of 22 is the declaration; no Node older than 24.11.0 was run."
+   }
+  ],
+  "check": {
+   "level": 3,
+   "run": "sh $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/install.sh",
+   "expect": "^(?=[\\s\\S]*auth\\s+status:\\s+not\\s+logged\\s+in)(?=[\\s\\S]*node\\s+on\\s+PATH:\\s+no)(?=[\\s\\S]*/terse:audit,\\s+not\\s+signed\\s+in:\\s+exit\\s+1,\\s+Not\\s+logged\\s+in\\s+·\\s+Please\\s+run\\s+/login)(?=[\\s\\S]*/terse:rethink,\\s+not\\s+signed\\s+in:\\s+exit\\s+1,\\s+Not\\s+logged\\s+in\\s+·\\s+Please\\s+run\\s+/login)(?=[\\s\\S]*/terse:rewrite,\\s+not\\s+signed\\s+in:\\s+exit\\s+1,\\s+Not\\s+logged\\s+in\\s+·\\s+Please\\s+run\\s+/login)(?=[\\s\\S]*a\\s+skill\\s+script\\s+with\\s+no\\s+node\\s+on\\s+PATH:\\s+exit\\s+127)(?=[\\s\\S]*the\\s+same\\s+script\\s+with\\s+node\\s+v24\\.11\\.0\\s+on\\s+PATH:\\s+exit\\s+0;\\s+all\\s+checks\\s+caught\\s+their\\s+planted\\s+violation)(?=[\\s\\S]*pages\\s+that\\s+run\\s+node:\\s+audit\\s+rewrite)(?=[\\s\\S]*rethink:\\s+node\\s+commands\\s+0)(?=[\\s\\S]*\"engines\":\\{\"node\":\">=22\"\\})"
+  }
+ },
+ {
+  "name": "R02b new — the excerpt: the Q7 `missing` finding of the 2026-09-22 report, verbatim, in place of the Score fragment",
+  "old": "docs 5/7, no-document 0/7, delta +5/7",
+  "new": "`missing`: the owner's intent — the method holds for any text\nin any language, code or not — appears in no page",
+  "claims": [
+   {
+    "name": "R02b the excerpt is verbatim from the 2026-09-22 report's What broke, the Q7 missing finding, with no must-not word",
+    "pattern": "From its report on this plugin's README, 2026-09-22: ```text `missing`: the owner's intent — the method holds for any text in any language, code or not — appears in no page ```",
+    "asks": "The excerpt under \"From its report on this plugin's README, 2026-09-22\" is verbatim from that report — the audit of this plugin's README at 1a24018, dated 2026-09-22 — in its What broke section, the Q7 entry's `missing` finding (audit.md:1014–1015), with the report's own line break; its sentence goes on \"… and no question can be answered on it from the documentation\", and the excerpt stops before that clause; 22 whitespace tokens, at most thirty words; no word of the skeleton's must-not list and no reader pair in it."
+   }
+  ],
+  "check": {
+   "level": 3,
+   "run": "sh $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/excerpt.sh",
+   "expect": "^(?=[\\s\\S]*excerpt\\s+line\\s+1\\s+found\\s+at\\s+audit\\.md:1014)(?=[\\s\\S]*excerpt\\s+line\\s+2\\s+found\\s+at\\s+audit\\.md:1015)(?=[\\s\\S]*joined,\\s+in\\s+the\\s+normalised\\s+report:\\s+1\\s+time\\(s\\))(?=[\\s\\S]*997:##\\s+What\\s+broke\\s+1010:###\\s+Q7\\s+—\\s+reader\\s+failure,\\s+and\\s+one\\s+`missing`\\s+entry\\s+1020:###\\s+Task\\s+TB)(?=[\\s\\S]*the\\s+report's\\s+date:\\s+993:2026-09-22,\\s+README\\s+at\\s+1a24018)(?=[\\s\\S]*the\\s+sentence\\s+ends:\\s+appears\\s+in\\s+no\\s+page,\\s+and\\s+no\\s+question\\s+can\\s+be\\s+answered\\s+on\\s+it\\s+from\\s+the\\s+documentation\\.)(?=[\\s\\S]*excerpt\\s+size:\\s+22\\s+whitespace\\s+tokens,\\s+20\\s+words)(?=[\\s\\S]*must-not\\s+words\\s+in\\s+the\\s+excerpt:\\s+0)(?=[\\s\\S]*reader\\s+pairs\\s+in\\s+the\\s+excerpt:\\s+0)"
+  }
+ },
+ {
+  "name": "C09 re-pinned, R02c new — graft Astra 2: the skeleton you agree to, on the not-agreed branch",
+  "old": "If it does, run this and give it the folder the report names; if not, run `/terse:rethink` first to decide a new one.",
+  "new": "If it does, run this and give it the folder the report names; if not, run `/terse:rethink` first to decide a new one: a skeleton, an outline you agree to.",
+  "claims": [
+   {
+    "name": "C09 rethink decides, before any prose is written",
+    "pattern": "if not, run `/terse:rethink` first to decide a new one: a skeleton, an outline you agree to\\.",
+    "asks": "What the pages say rethink does on this branch: it decides what the document should be — what is said, in what order — and returns it as a skeleton, an outline of the sections (titles, what each is for and leaves out, a word budget), then waits for the user's word on it; rewrite starts only from a skeleton the user said they agree to."
+   },
+   {
+    "name": "R02c after an audit, a shape that stands takes rewrite with the report's folder, one that does not takes rethink first",
+    "pattern": "If it does, run this and give it the folder the report names;",
+    "asks": "What the pages say comes after an audit: when the user says the document's current shape stands, the audit offers rewrite as the next step, and rewrite is given the run directory whose absolute path the audit's report names; when they do not, the audit offers rethink instead, and rewrite writes nothing on a shape the user has not agreed to."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '166,171p' ~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '14,16p;37p' ~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md; sed -n '4,5p;13,15p;148,149p' ~/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md",
+   "expect": "^(?=[\\s\\S]*the\\s+absolute\\s+path,\\s+and\\s+the\\s+shape\\s+verdict)(?=[\\s\\S]*quoted,\\s+that\\s+the\\s+document's\\s+current\\s+shape\\s+stands)(?=[\\s\\S]*Agreed,\\s+offer\\s+`rewrite`\\s+as\\s+the\\s+next\\s+step\\.\\s+Not\\s+agreed,\\s+offer\\s+`/terse:rethink`)(?=[\\s\\S]*Nothing\\s+is\\s+written\\s+on\\s+a\\s+shape\\s+the\\s+user\\s+has\\s+not\\s+agreed\\s+to)(?=[\\s\\S]*Ask\\s+the\\s+user\\s+for\\s+the\\s+run\\s+directory\\s+from\\s+`audit`)(?=[\\s\\S]*Decides\\s+what\\s+a\\s+document\\s+should\\s+be\\s+before\\s+a\\s+sentence\\s+of\\s+it\\s+is\\s+written)(?=[\\s\\S]*and\\s+what\\s+is\\s+said\\s+in\\s+what\\s+order\\.\\s+Returns\\s+a\\s+skeleton\\s+and\\s+stops\\s+there)(?=[\\s\\S]*The\\s+output\\s+is\\s+a\\s+skeleton:\\s+section\\s+titles,\\s+what\\s+each\\s+is\\s+for,\\s+what\\s+each\\s+deliberately\\s+leaves\\s+out,\\s+a\\s+word\\s+budget)(?=[\\s\\S]*Then\\s+stop\\s+and\\s+wait\\s+for\\s+the\\s+user's\\s+word\\s+on\\s+the\\s+file)(?=[\\s\\S]*`rewrite`\\s+starts\\s+only\\s+from\\s+a\\s+skeleton\\s+the\\s+user\\s+said\\s+they\\s+agree\\s+to)"
+  }
+ },
+ {
+  "name": "R02d new — graft Fable 3 with Astra's shared fault: what rewrite hands back, and where, at the decision",
+  "old": "It hands back a draft and its diff, each change against your document, and you decide whether the draft replaces it.",
+  "new": "It hands back a new draft of your whole document and its diff, each change against the original, in the plugin's own folder outside your repository. You decide whether the draft replaces your document.",
+  "claims": [
+   {
+    "name": "R02d rewrite hands back a new draft of the whole document and its diff, in the plugin's own folder outside the repository",
+    "pattern": "It hands back a new draft of your whole document and its diff, each change against the original, in the plugin's own folder outside your repository\\. You decide whether the draft replaces your document\\.",
+    "asks": "Level 3, run: rewrite's run line, as Claude Code hands the page to the model, sets D to the plugin's data directory when the plugin is installed (<config>/plugins/data/terse-nowely) or loaded with --plugin-dir (<config>/plugins/data/terse-inline), and stays as written when the page is read as a plain file from a checkout, where the line falls back to ${TMPDIR:-/tmp}/terse; run by the shell from a working directory that stands for the user's repository, each load makes the run folder there, outside that directory, and adds nothing to it. Record: this run's directory has the fallback's form and holds 01-candidate.md, a whole document, and diff-01.patch, its diff from 00-original.md, both in that directory. What the page instructs at the hand-over, level 2: the round and diff-NN.patch, the diff against 00-original.md, written into the run directory; applying the draft to the user's files needs their word."
+   }
+  ],
+  "check": {
+   "level": 3,
+   "run": "sh $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/rundir-rewrite.sh rewrite; sh $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/record-run.sh; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 66-66 'one whole candidate each'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 91-92 'Every round is its own file, `NN-<pass>.md`' 'the original is `00-original.md`'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 221-223 'Hand over the round and `diff-NN.patch`, the diff against `00-original.md`, written into the run directory. Then stop: applying the candidate to the user'\\''s files needs their word'",
+   "expect": "^(?=[\\s\\S]*installed \\(marketplace add <copy> exit 0, plugin install terse@nowely exit 0\\):\n  rewrite: /terse:rewrite exit 1, Not logged in, cost 0; D=\"<data>\"; run → <data>/runs/<stamp>-readme, made, outside <work>\n  <data> = <probe>/config-installed/plugins/data/terse-nowely, exists)(?=[\\s\\S]*plugindir \\(--plugin-dir <copy>/plugins/terse\\):\n  rewrite: /terse:rewrite exit 1, Not logged in, cost 0; D=\"<data>\"; run → <data>/runs/<stamp>-readme, made, outside <work>\n  <data> = <probe>/config-plugindir/plugins/data/terse-inline, exists)(?=[\\s\\S]*skills \\(<work>/\\.claude/skills/<name>/SKILL\\.md, no plugin loader\\):\n  rewrite: /rewrite exit 1, Not logged in, cost 0; D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\" as written; run → <probe>/tmp-skills/terse/runs/<stamp>-readme, made, outside <work>; TMPDIR unset → /tmp/terse/runs/<stamp>-readme)(?=[\\s\\S]*<work> = each load's working directory, for the repository; entries added to the three: 0)(?=[\\s\\S]*checkout status for plugins/ and \\.claude-plugin/: \\[\\])(?=[\\s\\S]*copy of plugins/terse = checkout's: identical)(?=[\\s\\S]*this\\s+run's\\s+directory:\\s+\\$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2,\\s+the\\s+form\\s+of\\s+the\\s+fallback\\s+\\$\\{TMPDIR:-/tmp\\}/terse/runs/<stamp>-<slug>)(?=[\\s\\S]*its\\s+01-candidate\\.md,\\s+headings:\\s+#\\s+terse\\s+\\|\\s+##\\s+Quick\\s+start\\s+\\|\\s+##\\s+Skills\\s+\\|\\s+##\\s+How\\s+it\\s+works\\s+\\|\\s+##\\s+What\\s+was\\s+measured)(?=[\\s\\S]*its\\s+diff-01\\.patch:\\s+---\\s+00-original\\.md\\s+→\\s+\\+\\+\\+\\s+01-candidate\\.md,\\s+both\\s+in\\s+that\\s+directory:\\s+2)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:66-66: one\\s+whole\\s+candidate\\s+each)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:91-92: Every\\s+round\\s+is\\s+its\\s+own\\s+file,\\s+`NN-<pass>\\.md`)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:91-92: the\\s+original\\s+is\\s+`00-original\\.md`)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:221-223: Hand\\s+over\\s+the\\s+round\\s+and\\s+`diff-NN\\.patch`,\\s+the\\s+diff\\s+against\\s+`00-original\\.md`,\\s+written\\s+into\\s+the\\s+run\\s+directory\\.\\s+Then\\s+stop:\\s+applying\\s+the\\s+candidate\\s+to\\s+the\\s+user's\\s+files\\s+needs\\s+their\\s+word)"
+  }
+ },
+ {
+  "name": "R02e new — Fable's observation: the restart at the update, in the one clause the device allows",
+  "old": "claude plugin update terse@nowely\n```\n\n## Skills",
+  "new": "claude plugin update terse@nowely\n```\n\nRestart Claude Code to apply it.\n\n## Skills",
+  "claims": [
+   {
+    "name": "R02e the update commands update the plugin, and the update applies after Claude Code restarts",
+    "pattern": "claude plugin marketplace update nowely claude plugin update terse@nowely ``` Restart Claude Code to apply it\\.",
+    "asks": "The README's two update commands update terse, and the update applies once Claude Code restarts: with a newer version published in the marketplace, `claude plugin marketplace update nowely` then `claude plugin update terse@nowely` exit 0 and the second prints \"updated from 0.1.1 to 0.1.2 … Restart to apply changes\"; its help reads \"restart required to apply\"; against GitHub today both exit 0 and report terse already at the latest version. The restart is the host's own instruction, printed; an open session's behaviour without it was not run."
+   }
+  ],
+  "check": {
+   "level": 3,
+   "run": "sh $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/update.sh; sh $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/install.sh",
+   "expect": "^(?=[\\s\\S]*the\\s+copy's\\s+plugin\\.json\\s+now:\\s+\"version\":\\s+\"0\\.1\\.2\")(?=[\\s\\S]*\\$\\s+claude\\s+plugin\\s+marketplace\\s+update\\s+nowely[\\s\\S]*?Successfully\\s+updated\\s+marketplace:\\s+nowely\\s+exit 0)(?=[\\s\\S]*\\$\\s+claude\\s+plugin\\s+update\\s+terse@nowely[\\s\\S]*?Plugin\\s+\"terse\"\\s+updated\\s+from\\s+0\\.1\\.1\\s+to\\s+0\\.1\\.2\\s+for\\s+scope\\s+user\\.\\s+Restart\\s+to\\s+apply\\s+changes\\.\\s+exit 0)(?=[\\s\\S]*help:\\s+Update\\s+a\\s+plugin\\s+to\\s+the\\s+latest\\s+version\\s+\\(restart\\s+required\\s+to\\s+apply\\))(?=[\\s\\S]*\\$\\s+claude\\s+plugin\\s+marketplace\\s+update\\s+nowely\\s+->\\s+exit\\s+0;\\s+Successfully\\s+updated\\s+marketplace:\\s+nowely)(?=[\\s\\S]*\\$\\s+claude\\s+plugin\\s+update\\s+terse@nowely\\s+->\\s+exit\\s+0;\\s+terse\\s+is\\s+already\\s+at\\s+the\\s+latest\\s+version\\s+\\(0\\.1\\.1\\))"
+  }
+ },
+ {
+  "name": "C03 re-pinned: three skills, one table row each (table unchanged here)",
+  "old": "| Command | When to run it | What you get back |",
+  "new": "| Command | When to run it | What you get back |",
+  "claims": [
+   {
+    "name": "C03 the plugin ships three skills.",
+    "pattern": "\\| `/terse:audit` \\| [^|]+ \\| [^|]+ \\| \\| `/terse:rethink` \\| [^|]+ \\| [^|]+ \\| \\| `/terse:rewrite` \\| [^|]+ \\| [^|]+ \\|",
+    "asks": "The plugin as this checkout ships it, installed into Claude Code, has three skills — audit, rethink and rewrite — and the table gives each one row."
+   }
+  ],
+  "check": {
+   "level": 3,
+   "run": "sh $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/update.sh",
+   "expect": "^(?=[\\s\\S]*the\\s+copy's\\s+plugins/terse\\s+against\\s+the\\s+checkout's:\\s+identical)(?=[\\s\\S]*plugin\\s+install\\s+terse@nowely\\s+->\\s+exit\\s+0)(?=[\\s\\S]*Skills\\s+\\(3\\)\\s+audit,\\s+rethink,\\s+rewrite)(?=[\\s\\S]*plugin\\s+details\\s+terse@nowely\\s+->\\s+exit\\s+0)"
+  }
+ },
+ {
+  "name": "C10 re-pinned: rethink's row, unchanged from 01",
+  "old": "| `/terse:rethink` | No document yet, or it says the wrong things in the wrong order | A skeleton: an outline of sections, each with its purpose and budget, to agree to before anything is written |",
+  "new": "| `/terse:rethink` | No document yet, or it says the wrong things in the wrong order | A skeleton: an outline of sections, each with its purpose and budget, to agree to before anything is written |",
+  "claims": [
+   {
+    "name": "C10 rethink hands over a skeleton, each section",
+    "pattern": "\\| `/terse:rethink` \\| No document yet, or it says the wrong things in the wrong order \\| A skeleton: an outline of sections, each with its purpose and budget, to agree to before anything is written \\|",
+    "asks": "What the rethink page says: it is for a document whose shape is wrong or one not yet written; it returns a skeleton — section titles, what each is for, what each leaves out, a word budget, and the rules that gate the writing — and stops for the user's word on it before anything is written; rewrite starts only from a skeleton the user said they agree to."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '4,6p;13,17p;148,149p' ~/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md",
+   "expect": "^(?=[\\s\\S]*Use\\s+when\\s+a\\s+document's\\s+shape\\s+is\\s+wrong,\\s+or\\s+when\\s+starting\\s+one\\.)(?=[\\s\\S]*The\\s+output\\s+is\\s+a\\s+skeleton:\\s+section\\s+titles,\\s+what\\s+each\\s+is\\s+for,\\s+what\\s+each\\s+deliberately\\s+leaves\\s+out,\\s+a\\s+word\\s+budget,\\s+and\\s+the\\s+rules\\s+that\\s+will\\s+gate\\s+the\\s+writing\\.)(?=[\\s\\S]*\\*\\*Then\\s+it\\s+stops\\.\\*\\*\\s+Putting\\s+a\\s+skeleton\\s+in\\s+front\\s+of\\s+the\\s+person\\s+before\\s+two\\s+thousand\\s+words\\s+are\\s+written)(?=[\\s\\S]*Then\\s+stop\\s+and\\s+wait\\s+for\\s+the\\s+user's\\s+word\\s+on\\s+the\\s+file)(?=[\\s\\S]*`rewrite`\\s+starts\\s+only\\s+from\\s+a\\s+skeleton\\s+the\\s+user\\s+said\\s+they\\s+agree\\s+to)"
+  }
+ },
+ {
+  "name": "C11 re-pinned — Astra's shared fault: rewrite's row without \"beside\"",
+  "old": "A new draft of the whole document beside yours, and its diff |",
+  "new": "A new draft of the whole document, and its diff |",
+  "claims": [
+   {
+    "name": "C11 rewrite starts from a skeleton `rethink` agr",
+    "pattern": "\\| `/terse:rewrite` \\| After audit, or a skeleton you agreed to \\| A new draft of the whole document, and its diff \\|",
+    "asks": "Level 3 by record, both ways into rewrite run to a whole draft and its diff: the skeleton route in this run — the owner's agreement to skeleton.02.md with its SHA-256 on rounds.md line 1, the SHA of this run's skeleton.md, then 01-candidate.md and diff-01.patch in the run directory; the audit route in the run of 2026-09-22/23, under the pages at 2f29a8f — an audit's run file (audit.md, identical to the report kept in the repository) in its run directory, then 01-candidate.md and diff-01.patch, and round 04 with diff-04.patch handed to the owner. The page names the same two ways in — a skeleton the user agreed to, an audit run file — writes nothing on a shape the user has not agreed to, and hands over the round with its diff against 00-original.md (rewrite/SKILL.md:14–16, 24–28, 221–223)."
+   }
+  ],
+  "check": {
+   "level": 3,
+   "run": "sh $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/records.sh",
+   "expect": "^(?=[\\s\\S]*R/rounds\\.md:1:\\s+shape:\\s+agreed\\s+—\\s+the\\s+owner,\\s+2026-09-24,\\s+on\\s+`skeleton\\.02\\.md`\\s+\\(SHA-256\\s+2c27168c73d01378013590c09dc668cc6c545f564acfac4e39d8e326fca0c9e4\\))(?=[\\s\\S]*R/skeleton\\.md\\s+sha256\\s+2c27168c73d01378…,\\s+the\\s+one\\s+line\\s+1\\s+records:\\s+1)(?=[\\s\\S]*R/01-candidate\\.md:\\s+69\\s+lines,\\s+first\\s+\"#\\s+terse\";\\s+R/diff-01\\.patch:\\s+---\\s+<runs>/20260924-002235-terse-readme-rewrite2/00-original\\.md\\s+\\+\\+\\+\\s+<runs>/20260924-002235-terse-readme-rewrite2/01-candidate\\.md)(?=[\\s\\S]*audit\\s+route,\\s+2026-09-22/23,\\s+under\\s+the\\s+pages\\s+at\\s+2f29a8f\\s+\\(record:\\s+research/2026-09-22-terse-process/rewrite-2026-09-22/run\\):)(?=[\\s\\S]*its\\s+run\\s+directory\\s+holds\\s+audit\\.md:\\s+yes,\\s+identical\\s+to\\s+research/2026-09-22-terse-process/audit-2026-09-22/audit\\.md:\\s+yes;\\s+its\\s+score:\\s+docs\\s+5/7,\\s+no-document\\s+0/7)(?=[\\s\\S]*rounds\\.md\\s+row\\s+00:\\s+\\|\\s+00-original\\.md\\s+\\|\\s+933\\s+\\|\\s+the\\s+README\\s+at\\s+1a24018\\s+\\|\\s+audit\\s+2026-09-22:\\s+docs\\s+5/7,\\s+11\\s+refuted\\s+claims;)(?=[\\s\\S]*rounds\\.md\\s+row\\s+01:\\s+\\|\\s+01-candidate\\.md\\s+\\|\\s+960\\s+\\|\\s+bake-off:)(?=[\\s\\S]*01-candidate\\.md:\\s+first\\s+\"#\\s+terse\";\\s+diff-01\\.patch:\\s+---\\s+<runs>/20260922-233021-terse-readme/00-original\\.md\\s+\\+\\+\\+\\s+<runs>/20260922-233021-terse-readme/01-candidate\\.md)(?=[\\s\\S]*handed\\s+over:\\s+diff-04\\.patch\\s+---\\s+<runs>/20260922-233021-terse-readme/00-original\\.md\\s+\\+\\+\\+\\s+<runs>/20260922-233021-terse-readme/04-terms\\.md\\s+;\\s+rounds\\.md:\\s+\"round\\s+04\\s+and\\s+`diff-04\\.patch`\\s+go\\s+to\\s+the\\s+owner\")(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:14-16: Nothing\\s+is\\s+written\\s+on\\s+a\\s+shape\\s+the\\s+user\\s+has\\s+not\\s+agreed\\s+to)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:24-28: \\|\\s+a\\s+skeleton\\s+the\\s+user\\s+agreed\\s+to\\s+\\|\\s+step\\s+2\\s+\\|)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:24-28: \\|\\s+an\\s+`audit`\\s+run\\s+file\\s+\\|\\s+step\\s+1\\s+\\|)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:221-223: Hand\\s+over\\s+the\\s+round\\s+and\\s+`diff-NN\\.patch`,\\s+the\\s+diff\\s+against\\s+`00-original\\.md`,\\s+written\\s+into\\s+the\\s+run\\s+directory\\.)"
+  }
+ },
+ {
+  "name": "C05 re-pinned — graft Fable 2 / Astra 3, as the pages have it: each order ends as it does",
+  "old": "- `/terse:audit` → `/terse:rewrite` → `/terse:audit`\n- `/terse:rethink` → `/terse:rewrite` → `/terse:audit`",
+  "new": "- `/terse:audit` → `/terse:rewrite` → `/terse:audit` again with the same questions\n- `/terse:rethink` → `/terse:rewrite` → `/terse:audit` for the first time",
+  "claims": [
+   {
+    "name": "C05 `rethink` returns a skeleton that `rewrite` ",
+    "pattern": "- `/terse:audit` → `/terse:rewrite` → `/terse:audit` again with the same questions - `/terse:rethink` → `/terse:rewrite` → `/terse:audit` for the first time",
+    "asks": "What the pages lay out for the two orders. The audit order: an audit whose shape the user agreed offers rewrite as its next step (audit/SKILL.md:170–171), rewrite's audit way in (rewrite/SKILL.md:24–28); an audit after a rewrite re-measures with the same questions, key, entry file and model, and a new question set is a new measurement with a new baseline, not a result (measure.md:106–109); the re-measurement reuses the first audit's score without the text (audit/SKILL.md:100–102). The rethink order: rethink returns a skeleton and leaves the writing to rewrite (rethink/SKILL.md:5–6), which takes it by its skeleton way in (rewrite/SKILL.md:24–28); with no audit before it, its brief has no audit's profile or failures and its questions come from the skeleton, not an audit's key (rewrite/SKILL.md:43–45, 112–113) — so its closing audit is the document's first: it writes the questions and their answer key (audit/SKILL.md:73–77) and runs the arm without the text at that baseline (audit/SKILL.md:96–97)."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '106,109p' ~/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md' 100-102 'It doubles the reader agents, so it runs once, at the baseline. A re-measurement after a rewrite reuses the same no-document score and does not pay again.'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md' 170-171 'Agreed, offer `rewrite` as the next step.'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 24-28 '| a skeleton the user agreed to | step 2 |' '| an `audit` run file | step 1 |'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 43-45 'Parts 2 and 5 come from the audit'\\''s run file wherever there is one, on either route; a skeleton route with no audit has neither'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 112-113 'the questions a reader arrives with, from the audit'\\''s key when there is one, otherwise from the skeleton'\\''s purpose per section'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md' 5-6 'Returns a skeleton and stops there — the writing is `rewrite`'\\''s.'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md' 73-77 'One question per decision the reader must make' 'Write the correct answer to each from the ledger, and write it now.'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md' 96-97 '**The baseline measurement runs a second arm with no documentation at all**: the same questions, the same model, no files.'",
+   "expect": "^(?=[\\s\\S]*##\\s+Re-measuring\\s+after\\s+a\\s+rewrite)(?=[\\s\\S]*Same\\s+questions,\\s+same\\s+key,\\s+same\\s+entry\\s+file,\\s+same\\s+model\\.\\s+Change\\s+any\\s+of\\s+them\\s+and\\s+the\\s+two\\s+scores\\s+are\\s+not\\s+comparable;\\s+a\\s+new\\s+question\\s+set\\s+is\\s+a\\s+new\\s+measurement\\s+with\\s+a\\s+new\\s+baseline,\\s+not\\s+a\\s+result\\.)(?=[\\s\\S]*(?:^|\\n)audit/SKILL\\.md:100-102: It\\s+doubles\\s+the\\s+reader\\s+agents,\\s+so\\s+it\\s+runs\\s+once,\\s+at\\s+the\\s+baseline\\.\\s+A\\s+re-measurement\\s+after\\s+a\\s+rewrite\\s+reuses\\s+the\\s+same\\s+no-document\\s+score\\s+and\\s+does\\s+not\\s+pay\\s+again\\.)(?=[\\s\\S]*(?:^|\\n)audit/SKILL\\.md:170-171: Agreed,\\s+offer\\s+`rewrite`\\s+as\\s+the\\s+next\\s+step\\.)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:24-28: \\|\\s+a\\s+skeleton\\s+the\\s+user\\s+agreed\\s+to\\s+\\|\\s+step\\s+2\\s+\\|)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:24-28: \\|\\s+an\\s+`audit`\\s+run\\s+file\\s+\\|\\s+step\\s+1\\s+\\|)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:43-45: Parts\\s+2\\s+and\\s+5\\s+come\\s+from\\s+the\\s+audit's\\s+run\\s+file\\s+wherever\\s+there\\s+is\\s+one,\\s+on\\s+either\\s+route;\\s+a\\s+skeleton\\s+route\\s+with\\s+no\\s+audit\\s+has\\s+neither)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:112-113: the\\s+questions\\s+a\\s+reader\\s+arrives\\s+with,\\s+from\\s+the\\s+audit's\\s+key\\s+when\\s+there\\s+is\\s+one,\\s+otherwise\\s+from\\s+the\\s+skeleton's\\s+purpose\\s+per\\s+section)(?=[\\s\\S]*(?:^|\\n)rethink/SKILL\\.md:5-6: Returns\\s+a\\s+skeleton\\s+and\\s+stops\\s+there\\s+—\\s+the\\s+writing\\s+is\\s+`rewrite`'s\\.)(?=[\\s\\S]*(?:^|\\n)audit/SKILL\\.md:73-77: One\\s+question\\s+per\\s+decision\\s+the\\s+reader\\s+must\\s+make)(?=[\\s\\S]*(?:^|\\n)audit/SKILL\\.md:73-77: Write\\s+the\\s+correct\\s+answer\\s+to\\s+each\\s+from\\s+the\\s+ledger,\\s+and\\s+write\\s+it\\s+now\\.)(?=[\\s\\S]*(?:^|\\n)audit/SKILL\\.md:96-97: \\*\\*The\\s+baseline\\s+measurement\\s+runs\\s+a\\s+second\\s+arm\\s+with\\s+no\\s+documentation\\s+at\\s+all\\*\\*:\\s+the\\s+same\\s+questions,\\s+the\\s+same\\s+model,\\s+no\\s+files\\.)"
+  }
+ },
+ {
+  "name": "C06 re-pinned: the judgment, unchanged from 01",
+  "old": "A fresh AI reader per question answers from the text alone, starting where your readers start, against an answer key written first from the code or a named source; the same questions run without your text.",
+  "new": "A fresh AI reader per question answers from the text alone, starting where your readers start, against an answer key written first from the code or a named source; the same questions run without your text.",
+  "claims": [
+   {
+    "name": "C06 audit builds a profile of the project's",
+    "pattern": "A fresh AI reader per question answers from the text alone, starting where your readers start, against an answer key written first from the code or a named source; the same questions run without your text\\.",
+    "asks": "What the audit page instructs: the answer key is written from the claim ledger — the code — before the first reader is started, and where no code backs the text a claim carries a named source the reader can check; one fresh reader, a model agent, per question, each starting at the entry file where the user's readers arrive and opening only the .md files; the same questions run a second time with no files at all."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '13,16p;28p;76p;88p;91,92p;96,97p' ~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md; sed -n '14p;40p' ~/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; sed -n '73,77p' ~/Git/agent-skills/plugins/terse/skills/audit/references/truth-pass.md",
+   "expect": "^(?=[\\s\\S]*both\\s+exist\\s+before\\s+the\\s+first\\s+reader\\s+is\\s+spawned)(?=[\\s\\S]*Where\\s+a\\s+reader\\s+arrives\\.\\s+Usually\\s+`README\\.md`\\.\\s+This\\s+is\\s+the\\s+entry\\s+file\\s+for\\s+every\\s+reader\\.)(?=[\\s\\S]*Write\\s+the\\s+correct\\s+answer\\s+to\\s+each\\s+from\\s+the\\s+ledger,\\s+and\\s+write\\s+it\\s+now\\.)(?=[\\s\\S]*how\\s+many\\s+readers,\\s+which\\s+model)(?=[\\s\\S]*One\\s+fresh\\s+reader\\s+per\\s+question)(?=[\\s\\S]*Each\\s+one\\s+starts\\s+at\\s+the\\s+entry\\s+file,\\s+may\\s+open\\s+only\\s+`\\.md`\\s+files,\\s+may\\s+not\\s+read\\s+source)(?=[\\s\\S]*runs\\s+a\\s+second\\s+arm\\s+with\\s+no\\s+documentation\\s+at\\s+all\\*\\*:\\s+the\\s+same\\s+questions,\\s+the\\s+same\\s+model,\\s+no\\s+files\\.)(?=[\\s\\S]*Written\\s+from\\s+the\\s+code,\\s+not\\s+from\\s+the\\s+documentation\\.)(?=[\\s\\S]*Use\\s+a\\s+cheap\\s+model)(?=[\\s\\S]*a\\s+guarantee-shaped\\s+claim\\s+carries\\s+a\\s+named\\s+source\\s+the\\s+reader\\s+can\\s+check)"
+  }
+ },
+ {
+  "name": "C07 re-pinned: the five causes, unchanged from 01",
+  "old": "Wrong answers get a cause: false, missing, misplaced, hard to find, misleading steps.",
+  "new": "Wrong answers get a cause: false, missing, misplaced, hard to find, misleading steps.",
+  "claims": [
+   {
+    "name": "C07 audit returns a score, the questions that",
+    "pattern": "Wrong answers get a cause: false, missing, misplaced, hard to find, misleading steps\\.",
+    "asks": "What the audit page instructs: every wrong answer gets one of five causes, in its table's order — refuted, missing, placement, findability, harmful — which the README calls false, missing, misplaced, hard to find and misleading steps."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '125,133p' ~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md",
+   "expect": "^(?=[\\s\\S]*Give\\s+every\\s+wrong\\s+answer\\s+a\\s+cause)(?=[\\s\\S]*\\|\\s+refuted\\s+\\|\\s+the\\s+text\\s+states\\s+what\\s+the\\s+code\\s+does\\s+not\\s+do\\s+\\|[\\s\\S]*\\|\\s+missing\\s+\\|\\s+the\\s+documentation\\s+does\\s+not\\s+answer\\s+the\\s+question\\s+anywhere\\s+\\|[\\s\\S]*\\|\\s+placement\\s+\\|\\s+the\\s+sentence\\s+is\\s+true\\s+and\\s+sits\\s+where\\s+it\\s+misleads\\s+\\|[\\s\\S]*\\|\\s+findability\\s+\\|\\s+true,\\s+in\\s+the\\s+right\\s+place,\\s+not\\s+found\\s+\\|[\\s\\S]*\\|\\s+harmful\\s+\\|\\s+every\\s+sentence\\s+true,\\s+the\\s+sequence\\s+leaves\\s+the\\s+reader\\s+worse\\s+off\\s+\\|)"
+  }
+ },
+ {
+  "name": "C15 re-pinned: the folder half of the folder line, unchanged from 01, at level 3",
+  "old": "Each run is written in the plugin's own folder;",
+  "new": "Each run is written in the plugin's own folder;",
+  "claims": [
+   {
+    "name": "C15 rewrite writes its rounds and artefacts into",
+    "pattern": "Each run is written in the plugin's own folder;",
+    "asks": "Level 3, run: each of the three pages' run lines — rewrite's, audit's, rethink's — as Claude Code hands the page to the model, sets D to the plugin's data directory when installed (<config>/plugins/data/terse-nowely) or loaded with --plugin-dir (<config>/plugins/data/terse-inline), and stays as written when the page is read as a plain file from a checkout, where the line falls back to ${TMPDIR:-/tmp}/terse; run by the shell from a working directory that stands for the user's repository, each makes its run folder there, outside that directory, and adds nothing to it. The sentence's second half, after the semicolon, is claimed apart as R02g."
+   }
+  ],
+  "check": {
+   "level": 3,
+   "run": "sh $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/rundir-rewrite.sh rewrite audit rethink",
+   "expect": "^(?=[\\s\\S]*installed \\(marketplace add <copy> exit 0, plugin install terse@nowely exit 0\\):\n  rewrite: /terse:rewrite exit 1, Not logged in, cost 0; D=\"<data>\"; run → <data>/runs/<stamp>-readme, made, outside <work>\n  audit: /terse:audit exit 1, Not logged in, cost 0; D=\"<data>\"; run → <data>/runs/<stamp>, made, outside <work>\n  rethink: /terse:rethink exit 1, Not logged in, cost 0; D=\"<data>\"; run → <data>/runs/<stamp>-readme-rethink, made, outside <work>\n  <data> = <probe>/config-installed/plugins/data/terse-nowely, exists)(?=[\\s\\S]*plugindir \\(--plugin-dir <copy>/plugins/terse\\):\n  rewrite: /terse:rewrite exit 1, Not logged in, cost 0; D=\"<data>\"; run → <data>/runs/<stamp>-readme, made, outside <work>\n  audit: /terse:audit exit 1, Not logged in, cost 0; D=\"<data>\"; run → <data>/runs/<stamp>, made, outside <work>\n  rethink: /terse:rethink exit 1, Not logged in, cost 0; D=\"<data>\"; run → <data>/runs/<stamp>-readme-rethink, made, outside <work>\n  <data> = <probe>/config-plugindir/plugins/data/terse-inline, exists)(?=[\\s\\S]*skills \\(<work>/\\.claude/skills/<name>/SKILL\\.md, no plugin loader\\):\n  rewrite: /rewrite exit 1, Not logged in, cost 0; D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\" as written; run → <probe>/tmp-skills/terse/runs/<stamp>-readme, made, outside <work>; TMPDIR unset → /tmp/terse/runs/<stamp>-readme\n  audit: /audit exit 1, Not logged in, cost 0; D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\" as written; run → <probe>/tmp-skills/terse/runs/<stamp>, made, outside <work>; TMPDIR unset → /tmp/terse/runs/<stamp>\n  rethink: /rethink exit 1, Not logged in, cost 0; D=\"\\$\\{CLAUDE_PLUGIN_DATA\\}\" as written; run → <probe>/tmp-skills/terse/runs/<stamp>-readme-rethink, made, outside <work>; TMPDIR unset → /tmp/terse/runs/<stamp>-readme-rethink)(?=[\\s\\S]*<work> = each load's working directory, for the repository; entries added to the three: 0)(?=[\\s\\S]*checkout status for plugins/ and \\.claude-plugin/: \\[\\])(?=[\\s\\S]*copy of plugins/terse = checkout's: identical)"
+  }
+ },
+ {
+  "name": "R02g new: the other half of the folder line, unchanged from 01, in the page register",
+  "old": "nothing in your repository changes until you say so.",
+  "new": "nothing in your repository changes until you say so.",
+  "claims": [
+   {
+    "name": "R02g nothing in your repository changes until you say so, as the three pages instruct",
+    "pattern": "nothing in your repository changes until you say so\\.",
+    "asks": "What the three pages instruct, reported as their instruction; the guarantee word \"nothing\" stands only as that report, no signed-in run having exercised it: audit writes nothing into the audited repository, \"not a report, not a note, not a fix\" (audit/SKILL.md:44); everything rethink writes goes into a run directory outside the repository that holds the document, and nothing goes into that repository (rethink/SKILL.md:31–32, 46); from rewrite nothing goes into it without the user's word — not the draft, not a code defect (rewrite/SKILL.md:88–89) — a code defect enters the repository's ISSUES.md only on the user's word (172–173), and applying the draft to the user's files needs their word (222–223)."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md' 44-44 'Write nothing into the audited repository. Not a report, not a note, not a fix.'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md' 31-32 'Everything this skill writes goes into a run directory of the document'\\''s own, outside the repository that holds it'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rethink/SKILL.md' 46-46 'Nothing goes into the repository that holds the document.'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 88-89 'Nothing goes into that repository without the user'\\''s word — not the candidate (step 5), not a code defect (item 6).'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 172-173 'A code defect goes into the repository'\\''s `ISSUES.md` only on the user'\\''s word'; ~/.nvm/versions/node/v24.11.0/bin/node '$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02/quote.mjs' '~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md' 222-223 'applying the candidate to the user'\\''s files needs their word'",
+   "expect": "^(?=[\\s\\S]*(?:^|\\n)audit/SKILL\\.md:44-44: Write\\s+nothing\\s+into\\s+the\\s+audited\\s+repository\\.\\s+Not\\s+a\\s+report,\\s+not\\s+a\\s+note,\\s+not\\s+a\\s+fix\\.)(?=[\\s\\S]*(?:^|\\n)rethink/SKILL\\.md:31-32: Everything\\s+this\\s+skill\\s+writes\\s+goes\\s+into\\s+a\\s+run\\s+directory\\s+of\\s+the\\s+document's\\s+own,\\s+outside\\s+the\\s+repository\\s+that\\s+holds\\s+it)(?=[\\s\\S]*(?:^|\\n)rethink/SKILL\\.md:46-46: Nothing\\s+goes\\s+into\\s+the\\s+repository\\s+that\\s+holds\\s+the\\s+document\\.)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:88-89: Nothing\\s+goes\\s+into\\s+that\\s+repository\\s+without\\s+the\\s+user's\\s+word\\s+—\\s+not\\s+the\\s+candidate\\s+\\(step\\s+5\\),\\s+not\\s+a\\s+code\\s+defect\\s+\\(item\\s+6\\)\\.)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:172-173: A\\s+code\\s+defect\\s+goes\\s+into\\s+the\\s+repository's\\s+`ISSUES\\.md`\\s+only\\s+on\\s+the\\s+user's\\s+word)(?=[\\s\\S]*(?:^|\\n)rewrite/SKILL\\.md:222-223: applying\\s+the\\s+candidate\\s+to\\s+the\\s+user's\\s+files\\s+needs\\s+their\\s+word)"
+  }
+ },
+ {
+  "name": "C33 re-pinned: p = 0.25, unchanged from 01",
+  "old": "One small trial; the gain could be chance (*p* = 0.25).",
+  "new": "One small trial; the gain could be chance (*p* = 0.25).",
+  "claims": [
+   {
+    "name": "C33 three discordant pairs, all improvements, an",
+    "pattern": "One small trial; the gain could be chance \\(\\*p\\* = 0\\.25\\)\\.",
+    "asks": "The 2026-09-10 result, 3 of 6 → 6 of 6 with one trial per question, is three improvements and no reversals — the counts the record reports — and an exact two-sided test on those counts gives p = 0.25: the gain could be chance."
+   }
+  ],
+  "check": {
+   "level": 3,
+   "run": "node -e 'const b=3,c=0,n=b+c,C=(n,k)=>{let r=1;for(let i=0;i<k;i++)r=r*(n-i)/(i+1);return r};let s=0;for(let k=0;k<=Math.min(b,c);k++)s+=C(n,k);console.log(\"improvements \"+b+\", reversals \"+c+\": exact two-sided McNemar p = \"+Math.min(1,2*s*Math.pow(0.5,n)))'; sed -n '92,95p' ~/Git/agent-skills/plugins/terse/references/prior-art.md; sed -n '9p' ~/Git/agent-skills/research/README.md",
+   "expect": "^(?=[\\s\\S]*improvements\\s+3,\\s+reversals\\s+0:\\s+exact\\s+two-sided\\s+McNemar\\s+p\\s+=\\s+0\\.25)(?=[\\s\\S]*Three\\s+improvements\\s+and\\s+zero\\s+reversals\\s+over\\s+six\\s+paired\\s+questions\\s+gives\\s+an\\s+exact\\s+two-sided\\s+McNemar\\s+\\*\\*p\\s+=\\s+0\\.25\\*\\*)(?=[\\s\\S]*3/6\\s+→\\s+6/6\\s+on\\s+six\\s+reader\\s+questions,\\s+one\\s+trial\\s+each\\s+\\(p\\s+=\\s+0\\.25,\\s+not\\s+distinguishable\\s+from\\s+chance\\))"
+  }
+ },
+ {
+  "name": "C44 re-pinned: no run without the text on 2026-09-10, unchanged from 01",
+  "old": "The same questions were not run without the text.",
+  "new": "The same questions were not run without the text.",
+  "claims": [
+   {
+    "name": "C44 the 2026-09-10 measurement had no arm that",
+    "pattern": "The same questions were not run without the text\\.",
+    "asks": "The 2026-09-10 run asked its questions only with the README: the record says no arm ran the same questions without the document, and the 2026-09-22 audit's limits line says the arm without the document ran there for the first time in this repository."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '10p' ~/Git/agent-skills/research/README.md; sed -n '104p;107p' ~/Git/agent-skills/plugins/terse/references/prior-art.md; sed -n '995p' $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/audit.md",
+   "expect": "^(?=[\\s\\S]*no\\s+arm\\s+ever\\s+ran\\s+without\\s+the\\s+document)(?=[\\s\\S]*We\\s+have\\s+no\\s+control\\s+for\\s+prior\\s+knowledge)(?=[\\s\\S]*Both\\s+ran\\s+the\\s+control\\.\\s+We\\s+did\\s+not\\.)(?=[\\s\\S]*the\\s+no-document\\s+arm\\s+ran\\s+for\\s+the\\s+first\\s+time\\s+in\\s+this\\s+repository)"
+  }
+ },
+ {
+  "name": "C24 re-pinned: 2,725 → 2,571, unchanged from 01",
+  "old": "The same run took that README from 2,725 words to 2,571.",
+  "new": "The same run took that README from 2,725 words to 2,571.",
+  "claims": [
+   {
+    "name": "C24 on the one 2026-09-10 README the chain",
+    "pattern": "The same run took that README from 2,725 words to 2,571\\.",
+    "asks": "The 2026-09-10 run's README went from 2,725 words, as it stood, to 2,571 in the final result — counted now with wc -w on the two files the record keeps, and the record's table gives the same two counts."
+   }
+  ],
+  "check": {
+   "level": 3,
+   "run": "wc -w ~/Git/agent-skills/research/2026-09-10-chain/chain/00-original.md ~/Git/agent-skills/research/2026-09-10-chain/chain/README.md; sed -n '16p;20p;24p' ~/Git/agent-skills/research/2026-09-10-chain/README.md",
+   "expect": "^(?=[\\s\\S]*2725 [^\\n]*chain/00-original\\.md)(?=[\\s\\S]*2571 [^\\n]*chain/README\\.md)(?=[\\s\\S]*The\\s+four-pass\\s+rewrite\\s+of\\s+one\\s+README,\\s+stage\\s+by\\s+stage)(?=[\\s\\S]*\\|\\s+`00-original\\.md`\\s+\\|\\s+the\\s+README\\s+as\\s+it\\s+stood,\\s+2,725\\s+words\\s+\\|)(?=[\\s\\S]*\\|\\s+`README\\.md`\\s+\\|\\s+the\\s+final\\s+result\\s+after\\s+repairing\\s+the\\s+measured\\s+reader\\s+failures,\\s+2,571\\s+words\\s+\\|)"
+  }
+ },
+ {
+  "name": "R02f new — graft Fable 4: what was measured instead; C42 and C43 dropped (skeleton part 5, :76–79 and :81)",
+  "old": "Never measured: whether a person reads the improved text better.",
+  "new": "Never measured: whether a person reads the improved text better — only whether a model does.",
+  "claims": [
+   {
+    "name": "R02f no run measured whether a person reads the improved text better, only whether a model answers",
+    "pattern": "Never measured: whether a person reads the improved text better — only whether a model does\\.",
+    "asks": "The readers of both runs were models — Haiku on 2026-09-10, Codex gpt-5.6-luna on 2026-09-22 — and the record says what they measure is whether a model can answer from the text, not whether a person reads it better; no run measured a person."
+   }
+  ],
+  "check": {
+   "level": 2,
+   "run": "sed -n '993p;995p' $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/audit.md; sed -n '40p' ~/Git/agent-skills/plugins/terse/skills/audit/references/measure.md; sed -n '130,132p' ~/Git/agent-skills/plugins/terse/references/prior-art.md; sed -n '10p' ~/Git/agent-skills/research/README.md",
+   "expect": "^(?=[\\s\\S]*readers\\s+Codex\\s+gpt-5\\.6-luna)(?=[\\s\\S]*the\\s+2026-09-10\\s+run\\s+used\\s+Haiku)(?=[\\s\\S]*the\\s+readers\\s+are\\s+a\\s+model,\\s+and\\s+the\\s+ruler\\s+measures\\s+whether\\s+a\\s+model\\s+can\\s+answer\\s+from\\s+the\\s+text,\\s+not\\s+whether\\s+a\\s+person\\s+improved)(?=[\\s\\S]*terse\\s+currently\\s+measures\\s+model\\s+answerability,\\s+and\\s+its\\s+numbers\\s+are\\s+not\\s+valid\\s+evidence\\s+of\\s+human\\s+improvement\\s+yet)(?=[\\s\\S]*the\\s+plugin's\\s+own\\s+numbers\\s+measure\\s+model\\s+answerability,\\s+not\\s+human\\s+improvement)"
+  },
+  "drop": [
+   "C42 the passage result rests on ten agents",
+   "C43 nothing in the record isolates which of"
+  ]
+ }
+]

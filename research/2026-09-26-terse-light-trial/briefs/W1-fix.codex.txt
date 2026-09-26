@@ -1,0 +1,7 @@
+RESUME: 01a0dd2d-c44b-77b3-becb-167b124c5005
+MODEL: gpt-5.6-sol
+EFFORT: high
+TASK: You are Codex Sol W1 again, now for the fix. A check read $TMPDIR/terse/runs/20260926-130310-dust-readme/02-repaired.md, and its reports are in $TMPDIR/terse/runs/20260926-130310-dust-readme/check/: truth.md checks the sentences the repair changed against the code; cold-astra.md and cold-sol.md are two fresh readers assessing the README; Q1.md to Q4.md are the question readers again — Q3 is now GUESSED where the draft had answered it, because the repair removed the comparison with du. Fix those lines only: each refuted or overstated sentence, the question now guessed, and what the cold readers found hard to read or missing; decline a finding a rule of ~/Git/agent-skills/plugins/terse/references/rules.md excludes, with the rule's number. A sentence made true is said plainly: where a critic's shorter replacement is harder to read than the claim needs, narrow the claim or cut it in plain words instead (the first section of rules.md, and rule 21). Re-check every sentence you change against the code; read the code, run nothing of the project. Write the text to $TMPDIR/terse/runs/20260926-130310-dust-readme/03-fixed.md, and one line per finding — the report, the finding, applied or declined, the reason — to $TMPDIR/terse/runs/20260926-130310-dust-readme/03-fixes.md.
+
+Do not modify the repository, write only under $TMPDIR, never cd inside a compound command.
+RETURN: First line: "Codex Sol W1:", your status, and how many findings you applied and declined. Then the list.

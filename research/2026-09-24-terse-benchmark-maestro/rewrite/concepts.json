@@ -1,0 +1,118 @@
+[
+ {
+  "name": "the AI workflow defined — (opening)",
+  "pattern": "evaluation,? and guardrails"
+ },
+ {
+  "name": "the core skill — (opening)",
+  "pattern": "agent-workflow"
+ },
+ {
+  "name": "reference files — (opening), Getting started",
+  "pattern": "reference files"
+ },
+ {
+  "name": "the ten skills folders — Getting started",
+  "pattern": "\\.trae-cn"
+ },
+ {
+  "name": "skills-lock.json — Getting started",
+  "pattern": "skills-lock\\.json"
+ },
+ {
+  "name": "the extension's writes — Getting started",
+  "pattern": "CLAUDE\\.md|\\.cursorrules|maestro-zero-defect\\.md|every (start|activation)"
+ },
+ {
+  "name": "the MCP server entry — Getting started",
+  "pattern": "MCP (server )?entry|MCP config"
+ },
+ {
+  "name": "the .gitignore — Getting started",
+  "pattern": "\\.gitignore|version control"
+ },
+ {
+  "name": "Open VSX — Getting started",
+  "pattern": "Open VSX"
+ },
+ {
+  "name": "requirements — Getting started",
+  "pattern": "1\\.95|Node 20"
+ },
+ {
+  "name": "the prompt menu — Getting started",
+  "pattern": "prompt menu"
+ },
+ {
+  "name": "the config block — Getting started",
+  "pattern": "mcpServers|claude_desktop_config"
+ },
+ {
+  "name": "waves — Getting started",
+  "pattern": "\\bwaves?\\b"
+ },
+ {
+  "name": "the context file read first — Getting started",
+  "pattern": "\\.maestro/context\\.md"
+ },
+ {
+  "name": "the report — Getting started",
+  "pattern": "out of 25|scored 1"
+ },
+ {
+  "name": "/teach-maestro — Getting started, Commands",
+  "pattern": "/teach-maestro"
+ },
+ {
+  "name": "/diagnose — Getting started, Commands",
+  "pattern": "/diagnose"
+ },
+ {
+  "name": "Command Center, palette — Getting started, Documentation",
+  "pattern": "Command Center|command palette"
+ },
+ {
+  "name": "group labels — Commands",
+  "pattern": "Fix & Improve|Enhancement"
+ },
+ {
+  "name": "session summaries — Memory across sessions, Commands",
+  "pattern": "session summar"
+ },
+ {
+  "name": "the decision log — Memory across sessions, Getting started",
+  "pattern": "decisions\\.jsonl|decision log"
+ },
+ {
+  "name": "the command log — Getting started, Memory across sessions",
+  "pattern": "command log|audit\\.jsonl"
+ },
+ {
+  "name": "estimates — Memory across sessions",
+  "pattern": "±20|invoic|billing"
+ },
+ {
+  "name": "maestroskills.dev — Documentation",
+  "pattern": "maestroskills\\.dev"
+ },
+ {
+  "name": "HTTP mode — Getting started, Documentation",
+  "pattern": "\\bHTTP\\b"
+ },
+ {
+  "name": "source/skills/ — Getting started, Support and contributing",
+  "pattern": "source/skills/"
+ },
+ {
+  "name": "npm run check, build — Support and contributing",
+  "pattern": "npm run (check|build)"
+ },
+ {
+  "name": "the issues — Support and contributing",
+  "pattern": "\\bissues\\b"
+ },
+ {
+  "name": "MIT — License",
+  "pattern": "\\bMIT\\b"
+ }
+]

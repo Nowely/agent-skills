@@ -1,0 +1,111 @@
+# round 02 checks, 2026-09-24 01:56:12; 02-grafts.md sha256 b4b3802b928677b45225b07e2178ce7afebf347ead4d17e851f47c7c4b7e64f8
+ledger.02.json sha256 f5fddeeb88b8936cd4e22aba7d19f5dd8600008400025ad96859a22fccd13401 (ledger.json before the round: f5fddeeb88b8936cd4e22aba7d19f5dd8600008400025ad96859a22fccd13401)
+
+$ node rule1.mjs 02-grafts.md --cut "How it works" --except "Quick start"
+
+0 violation(s), 0 excused
+exit 0
+
+$ node rule1.mjs 02-grafts.md --cut "How it works"   (the skeleton's rule 1 form, no --except)
+
+0 violation(s), 0 excused
+exit 0
+
+$ node dup.mjs 02-grafts.md concepts.json
+  2   consent — Quick start, How it works Quick start | How it works
+  2   the plugin's own folder — Quick start, How it works Quick start | How it works
+  1   agents announced, then it waits — Quick start Quick start
+  1   every word carries weight — opening (opening)
+  2   not a compressor — opening, What was measured (opening) | What was measured
+  1   you start each one — Skills    Skills
+  1   back to audit — Skills         Skills
+  1   a fix is not undone — How it works How it works
+  1   condition, limit, warning — How it works How it works
+  2   AI readers — How it works, What was measured How it works | What was measured
+  2   answer key; without your text — How it works, What was measured How it works | What was measured
+  1   claims against the code — How it works How it works
+  1   the five causes — How it works How it works
+  2   best practices; documents like yours — opening, How it works (opening) | How it works
+  1   writers, judges, reviewers — How it works How it works
+  2   the diff — Quick start, Skills Quick start | Skills
+  1   p = 0.25 — What was measured   What was measured
+  1   a person, never measured — What was measured What was measured
+  1   Node — Quick start             Quick start
+
+0 concept(s) in three or more sections
+exit 0
+
+$ node sections.mjs 02-grafts.md budgets.json
+   68 / 70   -2   (opening)
+  201 / 180  +21   Quick start
+  133 / 130  +3   Skills
+  148 / 140  +8   How it works
+  111 / 105  +6   What was measured
+  661 TOTAL, 4 section(s) over budget
+exit 0
+
+$ node ledger.mjs ledger.json 00-original.md 01-candidate.md 02-grafts.md
+claim                                                                                                                       lvl  00-o 01-c 02-g
+C01 terse is a Claude Code plugin whose                                                                                     L2   LOST yes  yes 
+C03 the plugin ships three skills.                                                                                          L3   LOST yes  yes 
+C05 `rethink` returns a skeleton that `rewrite`                                                                             L2   LOST LOST yes 
+C06 audit builds a profile of the project's                                                                                 L2   LOST yes  yes 
+C07 audit returns a score, the questions that                                                                               L2   LOST yes  yes 
+C09 rethink decides, before any prose is written                                                                            L2   LOST LOST yes 
+C10 rethink hands over a skeleton, each section                                                                             L2   LOST yes  yes 
+C11 rewrite starts from a skeleton `rethink` agr                                                                            L2   LOST LOST yes 
+C12 three writers produce candidates and two jud                                                                            L2   YES   -    -  
+C13 every round of a rewrite stays on                                                                                       L3   YES   -    -  
+C15 rewrite writes its rounds and artefacts into                                                                            L2   LOST yes  yes 
+C16 nothing rewrite does changes the user's file                                                                            L2   YES   -    -  
+C19 from a shell, `claude plugin marketplace add                                                                            L3   LOST yes  yes 
+C20 after the two install steps nothing else                                                                                L3   YES   -    -  
+C21 Node 22 or newer is needed only                                                                                         L3   YES   -    -  
+C23 shortening the text is not terse's aim:                                                                                 L2   yes  yes  yes 
+C24 on the one 2026-09-10 README the chain                                                                                  L3   LOST yes  yes 
+C27 rewrite leaves every condition, limit and wa                                                                            L2   YES   -    -  
+C30 everything under *What was measured* comes f                                                                            L2   YES   -    -  
+C33 three discordant pairs, all improvements, an                                                                            L3   LOST yes  yes 
+C39 the 2026-09-10 bake-off put five published w                                                                            L2   YES   -    -  
+C41 on the audited README's first 116 words,                                                                                L2   YES   -    -  
+C44 the 2026-09-10 measurement had no arm that                                                                              L2   LOST yes  yes 
+C45 two published benchmarks that ran a no-docum                                                                            L2   YES   -    -  
+C46 the plugin's reference files state the missi                                                                            L2   YES   -    -  
+R02a you need Node 22 or newer and a signed-in Claude Code: signed out no skill runs, audit and rewrite stop without Node   L3   LOST LOST yes 
+R02b the excerpt is verbatim from the 2026-09-22 report's What broke, the Q7 missing finding, with no must-not word         L3   LOST LOST yes 
+R02c after an audit, a shape that stands takes rewrite with the report's folder, one that does not takes rethink first      L2   LOST yes  yes 
+R02d rewrite hands back a new draft of the whole document and its diff, in the plugin's own folder outside the repository   L2   LOST LOST yes 
+R02e the update commands update the plugin, and the update applies after Claude Code restarts                               L3   LOST LOST yes 
+R02f no run measured whether a person reads the improved text better, only whether a model answers                          L2   LOST LOST yes 
+
+0 failure(s) in $TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/02-grafts.md
+exit 0
+
+# the skeleton's part 3, rules 2, 5, 6.11 and 7
+$ grep -n "^#"
+1:# terse
+5:## Quick start
+44:## Skills
+57:## How it works
+67:## What was measured
+$ opening fence lines
+  7: ```bash
+  16: ```text
+  22: ```text
+  29: ```text
+  37: ```bash
+$ grep -c '/plugin': 0
+rule 6 item 11, qualifiers outside the text fences: 0
+rule 7, must-not words outside the text fences: 0 line(s)
+rule 7, reader pairs other than AI/your: 0
+opening holds weight: 1, meaning: 1
+'until you say so': 2
+'rounds of edits': 2
+'documents like yours': 1
+'AI reviewers': 1
+first line holding skeleton: 27; outline in it: 1
+first line holding shape: 27; order in it: 1
+first line holding diff: 33; change in it: 1
+score used: 0
+first AI reader: fresh AI reader
+terse outside the H1 and the commands: 0

@@ -1,0 +1,7 @@
+RESUME: 01a0dd2d-c44b-77b3-becb-167b124c5005
+MODEL: gpt-5.6-sol
+EFFORT: high
+TASK: You are Codex Sol W1 again, now for the repair. Every critic has read your draft, and each report is a file in $TMPDIR/terse/runs/20260926-130310-dust-readme/critics/: truth-1.md and truth-2.md check the claims against the code; rationalizer.md asks whether the reader needs each fact here; form.md, terms.md, rules.md and sentences.md read the form, the words, the rules one by one and the sentences; Q1.md to Q4.md are fresh readers answering a question from the draft alone, and GUESSED marks a question the draft did not answer. Apply each finding or decline it with the reason in a line; a finding that asks for what a rule of ~/Git/agent-skills/plugins/terse/references/rules.md excludes is declined with the rule's number. Re-check every sentence you change against the code; read the code, run nothing of the project. Then read the whole text once as its reader, so that a count or a name said twice agrees with itself. Write the text to $TMPDIR/terse/runs/20260926-130310-dust-readme/02-repaired.md, and the list — one line per finding: the critic, the finding, applied or declined, the reason — to $TMPDIR/terse/runs/20260926-130310-dust-readme/02-repairs.md.
+
+Do not modify the repository, write only under $TMPDIR, never cd inside a compound command.
+RETURN: First line: "Codex Sol W1:", your status, and how many findings you applied and declined. Then the list.

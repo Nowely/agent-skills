@@ -1,0 +1,5 @@
+MODEL: gpt-5.6-luna
+EFFORT: low
+TASK: You are a fresh reader. Read ONE file and nothing else, with cat: $TMPDIR/terse-bench-rulers/texts/Q.md. Do not open any other file, and do not use anything you already know about this software. Answer this question from that document alone: I run Claude Code in a terminal, without VS Code. What exactly do I run or copy to install Maestro there? Quote the exact sentence or sentences the answer comes from and name the section heading. If the document does not answer it, write GUESSED, give your best guess, and say what sentence you wished were there. Say whether assembling the answer took more than one section. Run no command other than that one cat. Return plain text.
+CHECK: the quote is in the file you read.
+RETURN: plain text, first line "reader Q3-Q: answered" or "reader Q3-Q: GUESSED"; then the answer, the quote with its section heading, and whether more than one section was needed.

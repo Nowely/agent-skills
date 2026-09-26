@@ -1,0 +1,11 @@
+00-draft-instructions.md: failing groups=28 regressions=-
+00-draft.md: failing groups=29 regressions=1 [NEG 'Commit or stash']
+01-candidate.md: failing groups=39 regressions=11 [NEG 'Nothing leaves your machine'; NEG 'run cleanup first'; NEG 'The install summary says'; NEG 'the write locks stay'; NEG 'only … that takes rights per call'; NEG 'seat orchestrate cleanup'; NEG 'Lists what the plugin left on this machine'; NEG 'one place the two differ'; NEG 'sized too small'; NEG 'a difference stops the run'; NEG 'mutation-checked']
+02-revision.md: failing groups=39 regressions=2 [ran-nothing qualified by default; NEG 'a turn happened at all is backed']
+03-repair.md: failing groups=37 regressions=2 [read grant = a temp directory only; NEG 'scratch space of its own']
+04-ratchet.md: failing groups=34 regressions=1 [NEG 04 'rights read from the turn']
+05-critics.md: failing groups=33 regressions=1 [NEG 'grants anything else']
+06-preexisting.md: failing groups=32 regressions=6 [NEG 'keeps the copy it had'; NEG 'cleanup lists what the plugin left'; NEG 'a report path already used'; NEG 'continues from where it stopped'; NEG 'lock lasts as long as its run'; NEG 'failed turn's copy stay']
+07-lifecycle.md: failing groups=28 regressions=4 [killed run's lock reclaimed; OOM row: leaving no report; NEG 'images you attached'; NEG 'commits are kept under refs' unconditional]
+08-review.md: failing groups=23 regressions=11 [NEG 'grants a different sandbox'; NEG 'pinned to'; NEG 'not your answers, run records or reports'; NEG '.gitignore covers'; NEG 'The one thing it has'; NEG 'sharing only'; NEG 'a copy with unsaved files is left as it is'; NEG 'trimmed when a later run starts'; NEG 'asked for that command by name'; NEG 'That the thread existed is backed'; NEG 'stop the Codex processes']
+09-reduction.md: failing groups=0 regressions=0

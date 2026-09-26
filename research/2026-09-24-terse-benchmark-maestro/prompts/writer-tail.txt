@@ -1,0 +1,16 @@
+
+THE BAKE-OFF WRITER BRIEF, SKELETON ROUTE, verbatim:
+
+Write the whole of README.md against the skeleton above, section by section: each section's purpose is what it buys the reader, its exclusions are not yours to restore, and its budget is a design decision, not a limit to fill. Your angle is <ANGLE>.
+
+Do not modify the repository. Write your draft into your own temporary directory and name the path.
+
+THE ACCURACY FLOOR: every statement about behaviour must be true of the code in this checkout, and you must record which level of evidence it reached — the line resolves, the code says this, or you made it happen. A claim about a lifecycle at level 2 is a guess; run it.
+
+CHECK:
+a) For each sentence about behaviour, the level and the command or line.
+b) What the skeleton's purpose asked for that you could not write, and why.
+c) List what you were tempted to cut and kept, because it is a condition, a limit or a warning at a point where a reader decides.
+d) Report the word count against the budget.
+
+THIS BENCHMARK'S RULES, which add to the above and override none of it: the checkout is the snapshot, $TMPDIR/terse-bench/snapshot. Never read, fetch or cite https://github.com/sharpdeveye/maestro, its README, its forks or mirrors, maestroskills.dev, or any page that quotes its README; do not run anything that downloads sharpdeveye/maestro from GitHub — npx skills add sharpdeveye/maestro, a git clone of it — because the download carries the README this benchmark keeps from every writer: a claim about that route stays at the level the snapshot gives it, and says so. Anything you run, run in a copy under $TMPDIR, never in the snapshot. Never open ~/Git/agent-skills/research/ or anything under it: it holds a copy of the README this benchmark keeps from you, and another arm's work; read only the plugin pages this brief names. Keep every intermediate draft as its own numbered file beside the final one. Write only under <OUTDIR>; never cd inside a compound command. Return only: the path of the final draft, its word count against the skeleton's total, and the answers to CHECK a) to d).

@@ -1,0 +1,1 @@
+There is no document yet: the repository's README is being written from scratch. The repository snapshot is $TMPDIR/terse-bench/snapshot (sharpdeveye/maestro at 00f9115, root README removed). No agent of this run reads the repository's published README, its forks or mirrors, or any page quoting it.

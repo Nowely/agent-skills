@@ -1,8 +1,8 @@
-# The run file and the three ledgers
+# The run file and its claim ledger
 
 `audit` and `rewrite` are two skills and two invocations, possibly two sessions. Nothing passes between
 them except one file, so the file has a contract: fixed headings, fixed order, no renaming. `rewrite` is
-given the directory and reads the headings by name.
+given the directory, and its writer reads the file.
 
 ## The run file
 
@@ -12,10 +12,13 @@ Path: `$RUN/audit.md`. Headings exactly as below, in this order.
 # Audit of <what was audited> at <commit or date>
 
 ## Scope
-Files audited, the entry file, the repository that backs them, and the absolute run directory.
+Files audited, the entry file, the repository that backs them, the mode, and the absolute run directory.
+
+## A pleasant read
+What the cold readers found hard or unpleasant to read, each point with its line; no mark.
 
 ## Reader profile
-The eight sections, as confirmed by the user.
+The nine sections, as confirmed by the user; the last, what the document is for, in their own words.
 
 ## Claim ledger
 Entries C01, C02, … in document order.
@@ -28,6 +31,8 @@ One row per reader.
 
 ## Score
 Right answers over questions, steps, departures. Written as a single line that can be compared later.
+Then `shape: agreed` or `shape: not agreed`, and what an agreement rests on: the path and SHA-256 of the
+plan the user said they agree to, or their words that the current shape stands, quoted.
 
 ## What broke
 One entry per wrong answer, each with a cause.
@@ -36,9 +41,9 @@ One entry per wrong answer, each with a cause.
 What could not be settled, and anything the steps contradicted each other about.
 ```
 
-Two headings are load-bearing for `rewrite`: **Reader profile** is the brief it writes to, and **What
-broke** is the fourth part of its chain. Without them it is three parts of a four-part method, and it
-has to say so.
+`rewrite`'s writer acts on five headings: **Reader profile** is who it writes for; **A pleasant read**,
+**What broke** and the refuted entries of the **Claim ledger** are what the text must answer; and
+**Score** carries the shape verdict, whether the text's shape stands.
 
 ## Claim ledger entry
 
@@ -58,7 +63,7 @@ Position: misplaced — sends the reader to look the number up instead of statin
 
 - **Claim** restates the sentence as a checkable assertion, not as a quote.
 - **Sources** name file and line range. Every source is a real path in the audited checkout.
-- **Level** is 1, 2 or 3, as reached — see [truth-pass.md](truth-pass.md).
+- **Level** is 1, 2 or 3, as reached — see [truth.md](../../../references/truth.md).
 - **Verdict** is confirmed, refuted or unconfirmed. A refuted entry names what contradicts it.
 - **Position** appears only when the claim is true and read where it misleads.
 
@@ -86,25 +91,3 @@ Repair must: correct the scope sentence and remove both guarantees at their sour
 
 Name the cause with one of the five words — refuted, missing, placement, findability, harmful — because
 `rewrite` treats them differently. Name the ledger entries involved. State what a repair must achieve, not how to word it.
-
-## The two ledgers `rewrite` returns
-
-**Cut ledger.** Every removed passage of twenty words or more: where it was, what it said, and why it
-went. A cut without a reason is indistinguishable from losing something.
-
-```markdown
-### Cut 4 — README.md:118-124, 31 words
-
-What it said: the argument for declaring rights per call, restated beside the rights table.
-
-Why: the case for an instruction lives in one place; the instruction stays.
-```
-
-**Invisible prerequisites.** One numbered item per thing a reader must already know, each with the
-repair. The 2026-09-10 run found twenty-four on one README. The items you almost did not write down are
-the ones that matter.
-
-```markdown
-3. **Configuration versus prerequisites.** A reader treats every item under a heading named
-   Prerequisites as mandatory. State at the install decision that the optional file need not be created.
-```

@@ -1,0 +1,73 @@
+Every 08 old-string in original, previous: [(0, 0, 1), (1, 0, 1), (2, 0, 1), (3, 0, 1), (4, 0, 1), (5, 0, 1), (6, 0, 1), (7, 0, 1), (8, 0, 1), (9, 0, 1), (10, 0, 1), (11, 0, 1), (12, 0, 1), (13, 0, 1), (14, 0, 1), (15, 0, 1), (16, 0, 1), (17, 0, 1), (18, 0, 1), (19, 0, 1), (20, 0, 1), (21, 0, 1), (22, 0, 1), (23, 0, 1), (24, 0, 1), (25, 0, 1), (26, 0, 1)]
+COMMAND: git diff --no-index --unified=0 -- ~/Git/agent-skills/research/2026-09-11-markup-round-0/00-draft.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/08-review.md; started yes; exit 1 (differences expected)
+Original-to-08 zero-context hunks=57; groups from known 08 provenance only=55; full provenance unknown (edits/01.json, 02.json, 03.json absent).
+H1: original 3,1; candidate 3,1; round08 edits []; group 1
+H2: original 5,1; candidate 5,2; round08 edits []; group 2
+H3: original 7,4; candidate 8,4; round08 edits [0]; group 3
+H4: original 12,4; candidate 13,1; round08 edits []; group 4
+H5: original 17,14; candidate 15,3; round08 edits []; group 5
+H6: original 33,6; candidate 20,2; round08 edits []; group 6
+H7: original 40,2; candidate 23,1; round08 edits []; group 7
+H8: original 43,3; candidate 25,5; round08 edits [1]; group 8
+H9: original 47,3; candidate 31,2; round08 edits [2]; group 9
+H10: original 51,1; candidate 34,2; round08 edits []; group 10
+H11: original 53,19; candidate 37,3; round08 edits []; group 11
+H12: original 73,2; candidate 41,1; round08 edits [3]; group 12
+H13: original 76,1; candidate 43,1; round08 edits []; group 13
+H14: original 78,2; candidate 45,1; round08 edits [4]; group 14
+H15: original 81,3; candidate 47,8; round08 edits [5]; group 15
+H16: original 85,4; candidate 56,4; round08 edits [6, 7]; group 16
+H17: original 90,2; candidate 61,1; round08 edits []; group 17
+H18: original 93,4; candidate 63,1; round08 edits []; group 18
+H19: original 98,1; candidate 65,3; round08 edits []; group 19
+H20: original 100,1; candidate 69,2; round08 edits [8]; group 20
+H21: original 102,3; candidate 72,3; round08 edits [9]; group 23
+H22: original 106,1; candidate 76,3; round08 edits [9]; group 23
+H23: original 108,3; candidate 80,1; round08 edits [9]; group 23
+H24: original 112,4; candidate 82,1; round08 edits []; group 24
+H25: original 117,2; candidate 84,1; round08 edits []; group 25
+H26: original 120,1; candidate 86,7; round08 edits [10]; group 26
+H27: original 122,2; candidate 94,5; round08 edits []; group 27
+H28: original 125,5; candidate 100,5; round08 edits [11]; group 28
+H29: original 131,4; candidate 106,1; round08 edits []; group 29
+H30: original 136,3; candidate 108,3; round08 edits [12]; group 30
+H31: original 140,1; candidate 112,1; round08 edits []; group 31
+H32: original 142,2; candidate 114,9; round08 edits [13, 14, 15]; group 32
+H33: original 145,9; candidate 124,2; round08 edits [16]; group 33
+H34: original 155,2; candidate 127,1; round08 edits []; group 34
+H35: original 158,4; candidate 129,2; round08 edits [17]; group 35
+H36: original 163,1; candidate 132,2; round08 edits [18]; group 36
+H37: original 165,1; candidate 135,1; round08 edits []; group 37
+H38: original 167,2; candidate 137,1; round08 edits []; group 38
+H39: original 170,3; candidate 139,1; round08 edits []; group 39
+H40: original 174,4; candidate 141,1; round08 edits []; group 40
+H41: original 179,2; candidate 143,5; round08 edits [19]; group 41
+H42: original 182,2; candidate 149,2; round08 edits []; group 42
+H43: original 185,1; candidate 152,1; round08 edits []; group 43
+H44: original 187,3; candidate 154,2; round08 edits []; group 44
+H45: original 191,1; candidate 157,5; round08 edits [20]; group 45
+H46: original 193,4; candidate 163,1; round08 edits [21]; group 46
+H47: original 198,4; candidate 165,3; round08 edits []; group 47
+H48: original 203,3; candidate 169,2; round08 edits []; group 48
+H49: original 207,2; candidate 172,6; round08 edits []; group 49
+H50: original 210,1; candidate 179,3; round08 edits [22]; group 50
+H51: original 212,3; candidate 183,1; round08 edits []; group 51
+H52: original 216,1; candidate 185,1; round08 edits []; group 52
+H53: original 218,3; candidate 187,6; round08 edits [23, 24, 25]; group 53
+H54: original 222,4; candidate 194,2; round08 edits []; group 54
+H55: original 227,1; candidate 197,1; round08 edits []; group 55
+H56: original 229,4; candidate 199,3; round08 edits []; group 56
+H57: original 234,3; candidate 203,2; round08 edits [26]; group 57
+MULTI-HUNK GROUP 23: [21, 22, 23], original spans [(102, 3), (106, 1), (108, 3)], candidate spans [(72, 3), (76, 3), (80, 1)]
+Edit 08[16] candidate span occurs 1 times; hunks [33]; groups [33]
+Edit 08[24] candidate span occurs 1 times; hunks [53]; groups [53]
+All hunks compose to candidate: True
+No hunks compose to original: True
+Single-group mixtures constructed: 55
+Replay 03 through 04: byte equality True
+Replay 03 through 05: byte equality True
+Replay 03 through 06: byte equality True
+Replay 03 through 07: byte equality True
+Replay 03 through 08: byte equality True
+Available chain replacement ancestry on 08[16]: [(4, 3), (5, 2), (6, 4), (7, 4), (8, 16)]
+Available chain replacement ancestry on 08[24]: [(6, 8), (7, 6), (8, 24)]

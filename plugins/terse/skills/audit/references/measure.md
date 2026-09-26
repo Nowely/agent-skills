@@ -27,8 +27,8 @@ answering from what it already knew rather than from what it read.
 
 ## The reader's rights
 
-One reader per question. A reader that answers two questions has learned the file from the first
-question, and is no longer fresh for the second.
+Each reader gets brief 8 of [roles.md](../../../references/roles.md), in its form for a set of documents,
+one reader per question, and nothing else.
 
 | Allowed | Forbidden |
 |---|---|
@@ -37,35 +37,9 @@ question, and is no longer fresh for the second.
 | following links it finds in the text | a table of contents you supply |
 | saying it could not find the answer | another reader's output, or yours |
 
-Use a cheap model; the 2026-09-10 run used Haiku and the failures it found were real. Announce the count
-and the model to the user and wait for their word before spawning. A measurement the user did not agree
-to pay for is not a measurement they asked for.
-
-## The reader's brief
-
-```
-You are reading a project's documentation for the first time. You have never seen this project.
-
-Start at <ENTRY FILE>. You may open only .md files in <REPO>. You may not open source code,
-tests or configuration, and you may not search the web.
-
-Answer this question: <QUESTION>
-
-Return:
-  answer:    your answer, in your own words
-  files:     every file you opened, in the order you opened them
-  steps:     how many files you opened before you could answer
-  departed:  yes if you needed anything outside the .md files, no otherwise
-  quote:     the line you based your answer on, with its file and line number
-```
-
-Ask nothing else. In particular, **never ask whether the text was clear**. On 2026-09-10 that self-report
-ran against the truth: two readers who reported no confusion answered wrong, and the one who called a
-section scattered and confusing answered right. If a reader volunteers the judgement, record it as a
-hint and keep it out of the score.
-
-The `quote` field is what makes a wrong answer diagnosable. It names the line that misled the reader, and
-that line is where the repair goes.
+The model is the question readers' in roles.md, a cheap one: the 2026-09-10 run used Haiku and the
+failures it found were real. Announce the count and the model to the user and wait for their word before
+spawning. A measurement the user did not agree to pay for is not a measurement they asked for.
 
 ## The no-document arm
 
@@ -88,7 +62,7 @@ right answer found by reading the source is a documentation failure with a corre
 
 Then give every wrong answer a cause — refuted, missing, placement, findability or harmful. The five are defined
 in Step 6 of [SKILL.md](../SKILL.md), the evidence rules behind `refuted` are in
-[truth-pass.md](truth-pass.md), and the ledger entry in [ledgers.md](ledgers.md) records which one.
+[truth.md](../../../references/truth.md), and the ledger entry in [ledgers.md](ledgers.md) records which one.
 `missing` is the one most easily mistaken for `findability`: if the answer is nowhere in the `.md` files,
 no path leads to it and no rewrite of the path will help.
 

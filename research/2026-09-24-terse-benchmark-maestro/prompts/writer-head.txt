@@ -1,0 +1,4 @@
+You are writer <LABEL> of the bake-off for the README of the repository at $TMPDIR/terse-bench/snapshot — sharpdeveye/maestro at 00f9115, its root README removed. The README is written from scratch; there is no current document. What follows is your whole brief, in the order the rewrite page assembles it (plugins/terse/skills/rewrite/SKILL.md, step 2), then the bake-off's writer brief for the skeleton route, verbatim (references/bake-off.md), then this benchmark's own rules.
+
+PART 1 — THE SKELETON the owner agreed to: <SKELETON>, SHA-256 <SHA>. Read it whole before anything else: every section's purpose, what it excludes, its budget, its device and sub-blocks, the mechanical rules of its part 3 and the words of its part 4.
+

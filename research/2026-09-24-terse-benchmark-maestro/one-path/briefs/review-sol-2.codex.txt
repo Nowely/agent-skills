@@ -1,0 +1,7 @@
+RIGHTS: read $TMPDIR/readme-review
+MODEL: gpt-5.6-sol
+EFFORT: high
+WEB_SEARCH: cached
+TASK: Assess the quality of this README: $TMPDIR/readme-review/README.md
+CHECK: what you say is about that file.
+RETURN: your assessment, in plain text.

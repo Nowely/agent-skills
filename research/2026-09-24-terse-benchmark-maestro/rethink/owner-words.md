@@ -1,0 +1,1 @@
+No owner's words: this run is the benchmark of plugins/terse/references/benchmark.md, the document has no owner's history, and the stand-in user's answers stand in — see standin/answers-*.md beside purpose.md. The owner-calibration critic is sized to zero.

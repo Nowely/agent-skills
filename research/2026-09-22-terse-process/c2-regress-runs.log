@@ -1,0 +1,101 @@
+COMMAND: node /tmp/fable-a2.cB3Zls/regress.mjs /tmp/fable-a2.cB3Zls/toy/c1-ledger.json /tmp/fable-a2.cB3Zls/toy/c1-r0.md /tmp/fable-a2.cB3Zls/toy/c1-r1.md /tmp/fable-a2.cB3Zls/toy/c1-r2.md /tmp/fable-a2.cB3Zls/toy/c1-r3.md
+STARTED: yes; EXIT: 0
+STDOUT:
+c1-r0.md: failing groups=0 regressions=-
+c1-r1.md: failing groups=1 regressions=1 [returned retired falsehood]
+c1-r2.md: failing groups=0 regressions=0
+c1-r3.md: failing groups=1 regressions=1 [returned retired falsehood]
+STDERR:
+
+COMMAND: node /tmp/fable-a2.cB3Zls/regress.mjs /tmp/fable-a2.cB3Zls/toy/c2-ledger.json /tmp/fable-a2.cB3Zls/toy/c2-r0.md /tmp/fable-a2.cB3Zls/toy/c2-r1.md /tmp/fable-a2.cB3Zls/toy/c2-r2.md
+STARTED: yes; EXIT: 0
+STDOUT:
+c2-r0.md: failing groups=0 regressions=-
+c2-r1.md: failing groups=1 regressions=1 [persistent falsehood]
+c2-r2.md: failing groups=1 regressions=0
+STDERR:
+
+COMMAND: node /tmp/fable-a2.cB3Zls/regress.mjs /tmp/fable-a2.cB3Zls/toy/c3-ledger.json /tmp/fable-a2.cB3Zls/toy/c3-r0.md /tmp/fable-a2.cB3Zls/toy/c3-r1.md
+STARTED: yes; EXIT: 0
+STDOUT:
+c3-r0.md: failing groups=0 regressions=-
+c3-r1.md: failing groups=1 regressions=1 [S1]
+STDERR:
+
+COMMAND: node /tmp/fable-a2.cB3Zls/regress.mjs /tmp/fable-a2.cB3Zls/toy/c4-ledger-norepin.json /tmp/fable-a2.cB3Zls/toy/c4-r0.md /tmp/fable-a2.cB3Zls/toy/c4-r1.md
+STARTED: yes; EXIT: 0
+STDOUT:
+c4-r0.md: failing groups=0 regressions=-
+c4-r1.md: failing groups=1 regressions=1 [read grant = a temp directory only]
+STDERR:
+
+COMMAND: node /tmp/fable-a2.cB3Zls/regress.mjs /tmp/fable-a2.cB3Zls/toy/c4-ledger-repin.json /tmp/fable-a2.cB3Zls/toy/c4-r0.md /tmp/fable-a2.cB3Zls/toy/c4-r1.md
+STARTED: yes; EXIT: 0
+STDOUT:
+c4-r0.md: failing groups=0 regressions=-
+c4-r1.md: failing groups=0 regressions=0
+STDERR:
+
+COMMAND: node /tmp/fable-a2.cB3Zls/regress.mjs $TMPDIR/astra-c2.n1oboI/toy/c5-ledger.json $TMPDIR/astra-c2.n1oboI/toy/c5-r0.md $TMPDIR/astra-c2.n1oboI/toy/c5-r1.md $TMPDIR/astra-c2.n1oboI/toy/c5-r2.md
+STARTED: yes; EXIT: 0
+STDOUT:
+c5-r0.md: failing groups=0 regressions=-
+c5-r1.md: failing groups=1 regressions=1 [S1]
+c5-r2.md: failing groups=1 regressions=0
+STDERR:
+
+COMMAND: node /tmp/fable-a2.cB3Zls/regress.mjs $TMPDIR/astra-c2.n1oboI/toy/c6-ledger.json $TMPDIR/astra-c2.n1oboI/toy/c6-r0.md $TMPDIR/astra-c2.n1oboI/toy/c6-r1.md
+STARTED: yes; EXIT: 0
+STDOUT:
+c6-r0.md: failing groups=1 regressions=-
+c6-r1.md: failing groups=1 regressions=0
+STDERR:
+
+COMMAND: node /tmp/fable-a2.cB3Zls/regress.mjs ~/Git/agent-skills/research/2026-09-11-markup-round-0/ledger.json ~/Git/agent-skills/research/2026-09-11-markup-round-0/00-draft-instructions.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/00-draft.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/01-candidate.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/02-revision.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/03-repair.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/04-ratchet.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/05-critics.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/06-preexisting.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/07-lifecycle.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/08-review.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/09-reduction.md
+STARTED: yes; EXIT: 0
+STDOUT:
+00-draft-instructions.md: failing groups=28 regressions=-
+00-draft.md: failing groups=29 regressions=1 [NEG 'Commit or stash']
+01-candidate.md: failing groups=39 regressions=11 [NEG 'Nothing leaves your machine'; NEG 'run cleanup first'; NEG 'The install summary says'; NEG 'the write locks stay'; NEG 'only … that takes rights per call'; NEG 'seat orchestrate cleanup'; NEG 'Lists what the plugin left on this machine'; NEG 'one place the two differ'; NEG 'sized too small'; NEG 'a difference stops the run'; NEG 'mutation-checked']
+02-revision.md: failing groups=39 regressions=2 [ran-nothing qualified by default; NEG 'a turn happened at all is backed']
+03-repair.md: failing groups=37 regressions=2 [read grant = a temp directory only; NEG 'scratch space of its own']
+04-ratchet.md: failing groups=34 regressions=1 [NEG 04 'rights read from the turn']
+05-critics.md: failing groups=33 regressions=1 [NEG 'grants anything else']
+06-preexisting.md: failing groups=32 regressions=6 [NEG 'keeps the copy it had'; NEG 'cleanup lists what the plugin left'; NEG 'a report path already used'; NEG 'continues from where it stopped'; NEG 'lock lasts as long as its run'; NEG 'failed turn's copy stay']
+07-lifecycle.md: failing groups=28 regressions=4 [killed run's lock reclaimed; OOM row: leaving no report; NEG 'images you attached'; NEG 'commits are kept under refs' unconditional]
+08-review.md: failing groups=23 regressions=11 [NEG 'grants a different sandbox'; NEG 'pinned to'; NEG 'not your answers, run records or reports'; NEG '.gitignore covers'; NEG 'The one thing it has'; NEG 'sharing only'; NEG 'a copy with unsaved files is left as it is'; NEG 'trimmed when a later run starts'; NEG 'asked for that command by name'; NEG 'That the thread existed is backed'; NEG 'stop the Codex processes']
+09-reduction.md: failing groups=0 regressions=0
+STDERR:
+
+COMMAND: node /tmp/fable-a2.cB3Zls/regress.mjs ~/Git/agent-skills/research/2026-09-11-markup-round-0/ledger.json ~/Git/agent-skills/research/2026-09-11-markup-round-0/00-draft-instructions.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/00-draft.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/01-candidate.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/02-revision.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/03-repair.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/04-ratchet.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/05-critics.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/06-preexisting.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/07-lifecycle.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/08-review.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/09-reduction.md --judge 9
+STARTED: yes; EXIT: 1
+STDOUT:
+00-draft-instructions.md: failing groups=28 regressions=-
+00-draft.md: failing groups=29 regressions=1 [NEG 'Commit or stash']
+01-candidate.md: failing groups=39 regressions=11 [NEG 'Nothing leaves your machine'; NEG 'run cleanup first'; NEG 'The install summary says'; NEG 'the write locks stay'; NEG 'only … that takes rights per call'; NEG 'seat orchestrate cleanup'; NEG 'Lists what the plugin left on this machine'; NEG 'one place the two differ'; NEG 'sized too small'; NEG 'a difference stops the run'; NEG 'mutation-checked']
+02-revision.md: failing groups=39 regressions=2 [ran-nothing qualified by default; NEG 'a turn happened at all is backed']
+03-repair.md: failing groups=37 regressions=2 [read grant = a temp directory only; NEG 'scratch space of its own']
+04-ratchet.md: failing groups=34 regressions=1 [NEG 04 'rights read from the turn']
+05-critics.md: failing groups=33 regressions=1 [NEG 'grants anything else']
+06-preexisting.md: failing groups=32 regressions=6 [NEG 'keeps the copy it had'; NEG 'cleanup lists what the plugin left'; NEG 'a report path already used'; NEG 'continues from where it stopped'; NEG 'lock lasts as long as its run'; NEG 'failed turn's copy stay']
+07-lifecycle.md: failing groups=28 regressions=4 [killed run's lock reclaimed; OOM row: leaving no report; NEG 'images you attached'; NEG 'commits are kept under refs' unconditional]
+08-review.md: failing groups=23 regressions=11 [NEG 'grants a different sandbox'; NEG 'pinned to'; NEG 'not your answers, run records or reports'; NEG '.gitignore covers'; NEG 'The one thing it has'; NEG 'sharing only'; NEG 'a copy with unsaved files is left as it is'; NEG 'trimmed when a later run starts'; NEG 'asked for that command by name'; NEG 'That the thread existed is backed'; NEG 'stop the Codex processes']
+09-reduction.md: failing groups=0 regressions=0
+STDERR:
+
+COMMAND: node /tmp/fable-a2.cB3Zls/regress.mjs $TMPDIR/astra-c2.n1oboI/record-parity-grouped.json ~/Git/agent-skills/research/2026-09-11-markup-round-0/00-draft-instructions.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/00-draft.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/01-candidate.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/02-revision.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/03-repair.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/04-ratchet.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/05-critics.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/06-preexisting.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/07-lifecycle.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/08-review.md ~/Git/agent-skills/research/2026-09-11-markup-round-0/09-reduction.md
+STARTED: yes; EXIT: 0
+STDOUT:
+00-draft-instructions.md: failing groups=28 regressions=-
+00-draft.md: failing groups=29 regressions=1 [NEG 'Commit or stash']
+01-candidate.md: failing groups=39 regressions=11 [NEG 'Nothing leaves your machine'; NEG 'run cleanup first'; NEG 'The install summary says'; NEG 'the write locks stay'; NEG 'only … that takes rights per call'; NEG 'seat orchestrate cleanup'; NEG 'Lists what the plugin left on this machine'; parity-exclusivity; NEG 'sized too small'; NEG 'a difference stops the run'; NEG 'mutation-checked']
+02-revision.md: failing groups=39 regressions=2 [ran-nothing qualified by default; NEG 'a turn happened at all is backed']
+03-repair.md: failing groups=37 regressions=2 [read grant = a temp directory only; NEG 'scratch space of its own']
+04-ratchet.md: failing groups=34 regressions=1 [NEG 04 'rights read from the turn']
+05-critics.md: failing groups=33 regressions=1 [NEG 'grants anything else']
+06-preexisting.md: failing groups=32 regressions=6 [NEG 'keeps the copy it had'; NEG 'cleanup lists what the plugin left'; NEG 'a report path already used'; NEG 'continues from where it stopped'; NEG 'lock lasts as long as its run'; NEG 'failed turn's copy stay']
+07-lifecycle.md: failing groups=28 regressions=4 [killed run's lock reclaimed; OOM row: leaving no report; NEG 'images you attached'; NEG 'commits are kept under refs' unconditional]
+08-review.md: failing groups=23 regressions=10 [NEG 'grants a different sandbox'; NEG 'pinned to'; NEG 'not your answers, run records or reports'; NEG '.gitignore covers'; NEG 'sharing only'; NEG 'a copy with unsaved files is left as it is'; NEG 'trimmed when a later run starts'; NEG 'asked for that command by name'; NEG 'That the thread existed is backed'; NEG 'stop the Codex processes']
+09-reduction.md: failing groups=0 regressions=0
+STDERR:
+

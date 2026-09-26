@@ -1,0 +1,92 @@
+<!-- writer-repair-notes; 4.7 min; 3821494 tokens; exit 0 -->
+
+Codex Sol W1: complete — 87 findings applied, 1 declined.
+
+- truth-1 — Opening implies bars and percentages always appear — APPLIED — qualified them by terminal width because this reader should know what the first report may omit.
+- truth-1 — Installer claim ignores unsupported architectures — APPLIED — added the supported-architecture condition at the installation decision.
+- truth-1 — Snap access outside `/home` is stated as a guarantee — APPLIED — recast it as the project's warning because the repository does not contain the Snap policy that would prove the guarantee.
+- truth-1 — Run description implies bars and percentages always appear — APPLIED — made bars and sufficient width explicit conditions.
+- truth-2 — Regex row says paths are retained although filtering applies to files — APPLIED — now says matching files are kept and explains that parent directories remain as context.
+- truth-2 — Combined example omits the separately displayed starting directory — APPLIED — removed the example because the task table already teaches the three controls.
+- truth-2 — Sample config is described as the complete set of keys — APPLIED — now calls it examples of supported keys.
+- rationalizer — Keep the `dust` title — APPLIED — the arriving reader needs the project name first.
+- rationalizer — Cut the build-status badge — APPLIED — CI state does not help the disk-space reader reach a first result.
+- rationalizer — Keep “`du` + Rust = `dust`” — APPLIED — it anchors the unfamiliar tool to the command this reader already knows.
+- rationalizer — Keep the easy-disk-usage payoff — APPLIED — it states the reader's immediate job in their words.
+- rationalizer — Keep the compact largest-entry tree explanation — APPLIED — the opening still names the report, files, directories, and selection behavior.
+- rationalizer — Keep human-readable sizes, bars, percentages, and no-pipeline benefit — APPLIED — retained as a scannable benefit with the terminal-width condition added.
+- rationalizer — Keep current-directory and terminal-adaptive defaults — APPLIED — the reader needs to know the first run requires no flags.
+- rationalizer — Keep the demo image — APPLIED — it shows the interface before installation.
+- rationalizer — Keep the Install heading — APPLIED — it marks the reader's first action.
+- rationalizer — Keep installer platform and release guidance — APPLIED — retained with the architecture limit needed for a correct install choice.
+- rationalizer — Keep the curl installer command — APPLIED — it is the shortest repository-supported route to the first run.
+- rationalizer — Keep the package-manager introduction — APPLIED — it gives readers familiar installation alternatives.
+- rationalizer — Cut “you already use” — APPLIED — package-manager familiarity is implicit for this terminal reader.
+- rationalizer — Keep the package table headings — APPLIED — System and Command make the routes scannable.
+- rationalizer — Keep the Homebrew route — APPLIED — it gives macOS and Linux readers a copyable install command.
+- rationalizer — Keep the Fedora route — APPLIED — it gives Fedora readers a copyable install command.
+- rationalizer — Keep the Snap route — APPLIED — it remains actionable and its limitation follows immediately.
+- rationalizer — Keep the deb-get route — APPLIED — it serves Debian and Ubuntu readers who use that manager.
+- rationalizer — Keep the Conda route — APPLIED — it preserves a repository-documented cross-platform package route.
+- rationalizer — Keep the Scoop route — APPLIED — it gives Windows readers a package-manager command.
+- rationalizer — Keep the Cargo route — APPLIED — it gives readers with Rust a source-install route.
+- rationalizer — Keep the Snap `/home` limitation — APPLIED — retained as a warning where the reader chooses the package, with certainty reduced to what the repository proves.
+- rationalizer — Keep the release-archive link — APPLIED — it covers readers whose system is not represented in the package table.
+- rationalizer — Keep the Run it heading — APPLIED — it marks the promised next action after installation.
+- rationalizer — Keep “From the directory you want to inspect” — APPLIED — it supplies the context needed to understand the bare `dust` command.
+- rationalizer — Keep the bare `dust` command — APPLIED — it delivers the immediate first result the owner wants.
+- rationalizer — Keep the size and largest-entry tree description — APPLIED — it tells the new reader how to read the report.
+- rationalizer — Keep the bar, percentage, and parent-context explanation — APPLIED — retained with clearer wording and the conditions under which bars appear.
+- rationalizer — Keep multipath guidance — APPLIED — it exposes a useful next action without opening the full reference.
+- rationalizer — Keep `dust <path> [<path> ...]` — APPLIED — it gives actionable syntax without inventing a path.
+- rationalizer — Keep the `dust --help` pointer — APPLIED — retained after the curated commands so advanced detail waits until it is needed.
+- rationalizer — Keep the Choose what to see heading — APPLIED — it frames the task-oriented controls in the reader's goal.
+- rationalizer — Keep the task table headings — APPLIED — Task and Command make lookup immediate.
+- rationalizer — Keep `dust -n 20` — APPLIED — entry count is a likely first adjustment.
+- rationalizer — Keep `dust -d 3` — APPLIED — tree depth is a likely first adjustment.
+- rationalizer — Keep `dust -F` — APPLIED — it directly answers which files are largest.
+- rationalizer — Keep `dust -D` — APPLIED — it lets the reader focus on directory growth.
+- rationalizer — Keep `dust -i` — APPLIED — hidden-entry handling is a common inspection choice.
+- rationalizer — Keep `dust -x` — APPLIED — filesystem boundaries materially affect what is counted.
+- rationalizer — Keep `dust -s` — APPLIED — the row now translates the internal term into file length versus allocated space.
+- rationalizer — Keep `dust -z 100MB` — APPLIED — it shows how to remove entries too small to matter.
+- rationalizer — Keep regex filtering — APPLIED — retained with file-only semantics and parent context made explicit.
+- rationalizer — Keep screen-reader flags — APPLIED — accessibility remains beside the output choices.
+- rationalizer — Keep JSON output — APPLIED — it gives the terminal reader a machine-readable route without implementation detail.
+- rationalizer — Cut the combined `-D -d 2 -n 50` example — APPLIED — the table already teaches those controls and the sentence misstated the root count.
+- rationalizer — Keep the Configure defaults heading — APPLIED — it marks the optional path for repeated use.
+- rationalizer — Keep config lookup paths — APPLIED — exact locations are necessary once the reader chooses persistent defaults.
+- rationalizer — Keep the TOML example — APPLIED — it turns optional configuration into a copyable action.
+- rationalizer — Keep the sample-config link and summary — APPLIED — shortened to an accurate pointer so detail stays behind the link.
+- rationalizer — Keep `dust --config <file>` — APPLIED — it serves a one-run choice without requiring persistent setup.
+- rationalizer — Cut Alternatives — APPLIED — a bare competitor list does not help this answer-now reader install or interpret dust.
+- rationalizer — Keep the License heading — APPLIED — licensing matters when a reader decides whether they can adopt the tool.
+- rationalizer — Keep the Apache-2.0 statement — APPLIED — it supplies the legal condition in one line.
+- form — State report output versus an interactive browser — APPLIED — added to the opening so readers can choose the right kind of disk tool before installing.
+- form — Add gdu to Alternatives — DECLINED — the Alternatives section was removed because a bare comparison list does not advance this reader's immediate install-and-see goal.
+- form — Explain default symbolic-link behavior — APPLIED — added the real `-L` action where the reader chooses what the scan includes.
+- form — Say configuration is optional — APPLIED — the answer-now reader should not mistake defaults for a prerequisite.
+- form — Turn the dense opening benefits into a list — APPLIED — three bold-led lines now separate focus, readability, and first-run defaults.
+- form — Split the Snap warning from release archives — APPLIED — each installation fact now sits on its own line for the reader who needs it.
+- form — Move `dust --help` after common controls — APPLIED — the curated first choices now come before the full-reference detour.
+- form — Remove the build badge — APPLIED — it was a maintainer signal rather than help with the reader's disk-space problem.
+- terms — “paths” changes meaning between targets, filter entries, and display settings — APPLIED — removed the config category list and wrote “files whose paths” for the filter; kept `paths` rather than `names` because the code matches full file paths.
+- terms — “large entries” conflicts with ranked “largest entries” — APPLIED — the repaired opening consistently says largest.
+- terms — “apparent size” is an internal name — APPLIED — translated it to file length versus allocated disk space.
+- terms — “subdirectories” and “directories” name the same thing — APPLIED — the repaired opening consistently says directories.
+- terms — “line count” and “entries” name the same output limit — APPLIED — the repaired opening says number of entries.
+- terms — “roots” competes with “paths” — APPLIED — the multipath sentence now uses paths throughout.
+- terms — “levels” competes with “depth” — APPLIED — the table now says tree depth and the inaccurate combined example was removed.
+- terms — “Command” competes with “controls” — APPLIED — Command remains the table label and the separate controls sentence was removed.
+- sentences — Opening benefit sentence makes the pipeline hard to parse — APPLIED — split the benefits into list items and named the familiar `sort | head` pipeline directly.
+- sentences — Installer OS list forces a reread — APPLIED — separated Windows environments from Linux and macOS, then stated the architecture condition in a second sentence.
+- sentences — Bar explanation has an ambiguous pronoun and compressed context phrase — APPLIED — it now says entry share and parent directory explicitly.
+- sentences — Multipath sentence obscures which count belongs to which action — APPLIED — it now pairs one path with inspection and several paths with comparison.
+- sentences — Combined-flags example requires reverse mapping — APPLIED — removed it because the task table already maps each command to its effect.
+- sentences — Config lookup sentence nests three paths and a fallback — APPLIED — split the fallback into its own sentence.
+- sentences — Sample-config sentence carries an unnecessary six-item list — APPLIED — reduced it to an accurate pointer to examples of supported keys.
+- sentences — Alternatives sentence makes a shell pipeline look like a tool name — APPLIED — removed the section because it did not help this reader reach a result.
+- Q1 — Mac Homebrew installation was answered — APPLIED — retained the `brew install dust` row unchanged.
+- Q2 — Home-directory top-ten command was derivable from the draft — APPLIED — retained both the `-n` pattern and positional-path syntax because this shell-literate reader can combine them.
+- Q3 — The shape of dust's output was answered — APPLIED — retained the opening description and strengthened it with the report-versus-browser distinction.
+- Q4 — Excluding `node_modules` had to be guessed — APPLIED — added `dust -X node_modules` for the directory directly under the scan path; did not use the guessed nonexistent `--exclude` flag.

@@ -1,0 +1,15 @@
+skeleton route, this run:
+  R/rounds.md:1: shape: agreed — the owner, 2026-09-24, on `skeleton.02.md` (SHA-256 2c27168c73d01378013590c09dc668cc6c545f564acfac4e39d8e326fca0c9e4): "согласен, стало гораздо лучше."
+  R/skeleton.md sha256 2c27168c73d01378…, the one line 1 records: 1
+  R/01-candidate.md: 69 lines, first "# terse"; R/diff-01.patch: --- <runs>/20260924-002235-terse-readme-rewrite2/00-original.md +++ <runs>/20260924-002235-terse-readme-rewrite2/01-candidate.md 
+audit route, 2026-09-22/23, under the pages at 2f29a8f (record: research/2026-09-22-terse-process/rewrite-2026-09-22/run):
+  its run directory holds audit.md: yes, identical to research/2026-09-22-terse-process/audit-2026-09-22/audit.md: yes; its score: docs 5/7, no-document 0/7
+  rounds.md row 00: | 00-original.md | 933 | the README at 1a24018 | audit 2026-09-22: docs 5/7, 11 refuted claims; 
+  rounds.md row 01: | 01-candidate.md | 960 | bake-off: Opus WB path-first (13…
+  01-candidate.md: first "# terse"; diff-01.patch: --- <runs>/20260922-233021-terse-readme/00-original.md +++ <runs>/20260922-233021-terse-readme/01-candidate.md 
+  handed over: diff-04.patch --- <runs>/20260922-233021-terse-readme/00-original.md +++ <runs>/20260922-233021-terse-readme/04-terms.md ; rounds.md: "round 04 and `diff-04.patch` go to the owner"
+the page:
+rewrite/SKILL.md:14-16: Nothing is written on a shape the user has not agreed to
+rewrite/SKILL.md:24-28: | a skeleton the user agreed to | step 2 |
+rewrite/SKILL.md:24-28: | an `audit` run file | step 1 |
+rewrite/SKILL.md:221-223: Hand over the round and `diff-NN.patch`, the diff against `00-original.md`, written into the run directory.
