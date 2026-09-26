@@ -72,7 +72,7 @@ a line. A rule is advice, and its number is no reason; a caveat is seldom a fix 
 as a fix"), and the rare cases truth lists stay out of the text. Re-check every sentence you change
 against its world; read, run nothing of what the text describes. Then read the whole text once as its
 reader, so that a count or a name said twice agrees with itself. Write the text to <OUT>/02-repaired.md,
-and to <OUT>/02-repairs.md one line per finding: the critic, the finding, taken or declined, the reason.
+and to <OUT>/02-repairs.md one line per finding: the critic, the finding, applied or declined, the reason.
 ```
 
 Then, at once: truth, brief 3, on the sentences the repair changed; the question readers again; and the two
