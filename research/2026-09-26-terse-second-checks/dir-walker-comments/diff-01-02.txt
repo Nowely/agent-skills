@@ -1,0 +1,312 @@
+--- /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse/runs/20260926-142621-dust-dir-walker-comments/01-draft.rs	2026-09-26 14:41:04
++++ /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse/runs/20260926-142621-dust-dir-walker-comments/02-repaired.rs	2026-09-26 15:14:22
+@@ -1,10 +1,13 @@
+ //! Collects filesystem entries into aggregate [`Node`] trees.
+ //!
+-//! Directory discovery fans out through Rayon tasks. Completed subtrees then
+-//! join upward through [`PendingDir`], so a directory is built only after its
+-//! own listing is complete and every descendant has finished. The directory
+-//! algorithm makes no recursive calls; [`clean_inodes`] is a later recursive
+-//! pass that deduplicates filesystem identities and aggregates each tree.
++//! Directory discovery fans out through Rayon tasks. Each [`PendingDir`] counts
++//! one obligation for its own `walk_dir` task and one for every child task it
++//! spawns. The task that brings a directory's count to zero finalizes it and
++//! passes any resulting [`Node`] to its parent.
++//!
++//! The directory algorithm makes no recursive calls. The later recursive
++//! [`clean_inodes`] pass removes repeated inode/device pairs unless
++//! apparent-size mode is enabled, then aggregates the retained nodes.
+ 
+ use std::cmp::Ordering;
+ use std::fs;
+@@ -51,8 +54,11 @@
+     pub filter_modified_time: Option<(Operator, i64)>,
+     pub filter_accessed_time: Option<(Operator, i64)>,
+     pub filter_changed_time: Option<(Operator, i64)>,
++    /// Selects apparent-size accounting when `Node::size` carries bytes.
+     pub use_apparent_size: bool,
++    /// Selects file-count accounting for `Node::size` instead of bytes.
+     pub by_filecount: bool,
++    /// Selects maximum aggregation for directory `Node::size` instead of sum.
+     pub by_filetime: &'a Option<FileTime>,
+     pub ignore_hidden: bool,
+     pub follow_links: bool,
+@@ -60,22 +66,26 @@
+     pub errors: Arc<Mutex<RuntimeErrors>>,
+ }
+ 
+-// Join state for one directory. Child tasks retain their parent's state so a
+-// completed subtree can be published directly to it.
++/// Join state for one directory. Child tasks retain their parent's state so a
++/// completed subtree can be published directly to it.
+ struct PendingDir {
+     dir: PathBuf,
+     depth: usize,
+     is_symlink: bool,
+     parent: Option<Arc<PendingDir>>,
+-    // Outstanding completions: one for this directory's scan, plus one for
+-    // every spawned child directory. The transition to zero owns finalization.
++    /// Outstanding obligations. A real entry counts its own `walk_dir` task and
++    /// every child task it spawns; the sentinel counts the root. Zero finalizes
++    /// a real entry or ends propagation at the sentinel.
+     pending: AtomicUsize,
+     children: Mutex<Vec<Node>>,
+ }
+ 
++/// Walk each input root and return every `Node` tree that was built. A directory
++/// is finalized only when its own obligation and every child-task obligation
++/// have been completed.
+ pub fn walk_it(dirs: HashSet<PathBuf>, walk_data: &WalkData) -> Vec<Node> {
+-    // FxHash is confined to fixed-width `(inode, device)` metadata keys; this
+-    // set never hashes paths or other variable-length user input.
++    // FxHash only sees fixed-width inode/device numbers here, never paths or
++    // other variable-length input.
+     let mut inodes: FxHashSet<(u64, u64)> = FxHashSet::default();
+     let mut top_level_nodes: Vec<Node> = Vec::new();
+ 
+@@ -87,10 +97,10 @@
+                 .map(|m| m.file_type().is_symlink())
+                 .unwrap_or(false);
+ 
+-        // Give the root a synthetic parent so `finalize_chain` can handle every
+-        // real directory identically. The finished root is pushed into
+-        // `outer.children`; `parent: None` stops propagation before the empty
+-        // outer path can become a Node.
++        // `outer` is a sentinel parent that lets `finalize_chain` handle every
++        // real directory identically. A successfully built root is pushed into
++        // the sentinel's children. With no parent, the sentinel stops
++        // propagation before its empty path can become a Node.
+         let outer = Arc::new(PendingDir {
+             dir: PathBuf::new(),
+             depth: 0,
+@@ -104,8 +114,8 @@
+             depth: 0,
+             is_symlink: root_is_symlink,
+             parent: Some(outer.clone()),
+-            // The scan sentinel prevents children from finalizing this
+-            // directory while its entry list is still being processed.
++            // The root's own task obligation prevents child tasks from finalizing
++            // it while its entry list is still being processed.
+             pending: AtomicUsize::new(1),
+             children: Mutex::new(Vec::new()),
+         });
+@@ -131,8 +141,8 @@
+     top_level_nodes
+ }
+ 
+-// Deduplicate filesystem identities before rolling child values into parents.
+-// Apparent-size mode deliberately counts every directory entry instead.
++/// Deduplicate filesystem identities before rolling child values into parents.
++/// Apparent-size mode skips this identity check.
+ fn clean_inodes(x: Node, inodes: &mut FxHashSet<(u64, u64)>, walk_data: &WalkData) -> Option<Node> {
+     if !walk_data.use_apparent_size
+         && let Some(id) = x.inode_device
+@@ -141,7 +151,7 @@
+         return None;
+     }
+ 
+-    // Parallel completion does not define child order. Sorting before the
++    // Parallel completion does not define the child sequence. Sorting before the
+     // pre-order pass also makes the surviving name of sibling hard links stable.
+     let mut tmp: Vec<_> = x.children;
+     tmp.sort_by(sort_by_inode);
+@@ -151,7 +161,8 @@
+         .collect();
+ 
+     let actual_size = if walk_data.by_filetime.is_some() {
+-        // In file-time mode, `size` carries the newest selected timestamp.
++        // File-time aggregation keeps the maximum of the directory's own stored
++        // value and those of its retained children.
+         new_children
+             .iter()
+             .map(|c| c.size)
+@@ -174,7 +185,7 @@
+ 
+ fn sort_by_inode(a: &Node, b: &Node) -> std::cmp::Ordering {
+     // Keep equal filesystem identities adjacent, with the path as a stable
+-    // tie-breaker. Nodes without an identity sort before nodes with one.
++    // tie-breaker.
+     match (a.inode_device, b.inode_device) {
+         (Some(x), Some(y)) => {
+             if x.0 != y.0 {
+@@ -191,15 +202,17 @@
+     }
+ }
+ 
+-// Match relative ignores exactly and absolute ignores as subtree roots.
++/// A relative ignore must match exactly; an absolute ignore can also match
++/// canonicalized paths beneath it.
+ fn is_ignored_path(path: &Path, walk_data: &WalkData) -> bool {
+     if walk_data.ignore_directories.contains(path) {
+         return true;
+     }
+ 
+-    // `main` canonicalizes absolute ignore paths. Canonicalizing the candidate
+-    // lets aliases through symlinks compare against the same subtree root; a
+-    // failed canonicalization cannot match an absolute root.
++    // `main` attempts to canonicalize absolute ignore paths and keeps the
++    // original on failure. Canonicalizing the candidate resolves symlink
++    // aliases for the same comparison; its empty fallback cannot match an
++    // absolute root.
+     for ignored_path in walk_data.ignore_directories.iter() {
+         if !ignored_path.is_absolute() {
+             continue;
+@@ -268,14 +281,16 @@
+     is_dot_file && walk_data.ignore_hidden
+ }
+ 
++/// Handle one path, spawn work for traversable entries, then complete this
++/// task's obligation.
+ fn walk_dir<'scope>(
+     scope: &rayon::Scope<'scope>,
+     pending: Arc<PendingDir>,
+     walk_data: &'scope WalkData<'scope>,
+ ) {
+     if pending.dir.is_dir() {
+-        // Only an interrupted read is retried. No `PendingDir` state is changed
+-        // until a complete listing attempt is available, so retry needs no rollback.
++        // Only an interrupted read is retried. No `PendingDir` state changes
++        // before a retry, so it needs no rollback.
+         loop {
+             let entries = match fs::read_dir(&pending.dir) {
+                 Ok(entries) => entries,
+@@ -304,10 +319,11 @@
+                 continue;
+             }
+ 
+-            // Commit point. Each entry contributes at most one child, so the
+-            // listing length is a safe capacity bound. Rayon collects file
++            // Commit point. Each entry contributes at most one Node, so the
++            // listing length is a safe capacity bound. Rayon collects leaf
+             // nodes without locking `pending`; one `extend` publishes the
+-            // batch. Directory nodes arrive later through `finalize_chain`.
++            // batch. Directory nodes are published separately through
++            // `finalize_chain`.
+             {
+                 let mut children = pending.children.lock().unwrap();
+                 children.reserve(collected.len());
+@@ -338,8 +354,8 @@
+     finalize_chain(pending, walk_data);
+ }
+ 
+-// Return file nodes to the caller's batch. Ignored entries contribute nothing;
+-// directory entries spawn work and publish their Node only when complete.
++/// Ignored entries contribute nothing. Traversable entries spawn work and
++/// publish any resulting Node only when complete.
+ fn process_entry<'scope>(
+     scope: &rayon::Scope<'scope>,
+     pending: &Arc<PendingDir>,
+@@ -353,10 +369,10 @@
+     let is_symlink = data.is_symlink();
+ 
+     if data.is_dir() || (walk_data.follow_links && is_symlink) {
+-        // Count the child before making it runnable: otherwise it could finish
+-        // before the parent records the obligation. Only the numeric count is
+-        // shared atomically; child Nodes are published under `children`, so
+-        // relaxed ordering is sufficient here.
++        // Record the child's obligation before it can run. If spawning came
++        // first, the child could finish before the parent recorded it. Only the
++        // numeric count is shared atomically; child Nodes are published under
++        // `children`, so relaxed ordering is sufficient here.
+         pending.pending.fetch_add(1, AtomicOrdering::Relaxed);
+ 
+         let child = Arc::new(PendingDir {
+@@ -388,29 +404,27 @@
+     node
+ }
+ 
+-// Complete one obligation, then iteratively propagate any newly completed
+-// directory toward the root.
+-//
+-// `node_to_push` is the subtree completed on the preceding iteration. Publishing
+-// it and decrementing its parent's count under one lock ensures the transition
+-// to zero observes that child. The task that sees zero takes the children,
+-// builds the directory outside the lock, and continues with its parent.
+-//
+-// A nonzero count leaves finalization to another task. `parent: None` marks the
+-// synthetic outer node; by then its children contain the finished real root.
++/// Complete one obligation, then iteratively propagate any newly completed
++/// directory toward the root.
++///
++/// `node_to_push` carries the subtree completed on the preceding iteration. A
++/// nonzero count leaves finalization to another task. When an entry with a
++/// parent reaches zero, this task takes its children, calls `build_node` outside
++/// the lock, and continues with its parent. `parent: None` identifies the
++/// sentinel; any successfully built root has already been pushed into its
++/// children.
+ fn finalize_chain(mut pending: Arc<PendingDir>, walk_data: &WalkData) {
+     let mut node_to_push: Option<Node> = None;
+     loop {
+-        // Keep publish, decrement, and the last task's `take` in one critical
+-        // section. The atomic count is separate from the Vec, but the lock is
+-        // what makes the completed child visible before finalization.
++        // The count is atomic, but finalization also depends on the child Vec;
++        // keep the mutex through publication, decrement, and any `take`.
+         let (parent, children) = {
+             let mut children_guard = pending.children.lock().unwrap();
+             if let Some(n) = node_to_push.take() {
+                 children_guard.push(n);
+             }
+             // The mutex publishes child data; the atomic only elects the last
+-            // completer, so it needs no additional memory ordering.
++            // task, so it needs no additional memory ordering.
+             if pending.pending.fetch_sub(1, AtomicOrdering::Relaxed) != 1 {
+                 return;
+             }
+@@ -448,7 +462,8 @@
+         }
+         std::io::ErrorKind::Interrupted => {
+             editable_error.interrupted_error += 1;
+-            // This counter is diagnostic only; `walk_dir` owns retry policy.
++            // This counter is diagnostic only; `walk_dir` decides whether to
++            // retry.
+             if editable_error.interrupted_error > 999 {
+                 eprintln!(
+                     "Too many Interrupted Errors occurred while scanning filesystem, skipping: {}",
+@@ -507,13 +522,11 @@
+         let n = create_node();
+         let walkdata = create_walker(false);
+ 
+-        // A filesystem identity is retained on first sight.
+         assert_eq!(
+             clean_inodes(n.clone(), &mut inodes, &walkdata),
+             Some(n.clone())
+         );
+ 
+-        // A later Node with the same identity is removed.
+         assert_eq!(clean_inodes(n.clone(), &mut inodes, &walkdata), None);
+     }
+ 
+@@ -524,7 +537,7 @@
+         let n = create_node();
+         let walkdata = create_walker(true);
+ 
+-        // Apparent size counts directory entries, including hard links.
++        // Apparent size skips identity deduplication, so both Nodes remain.
+         assert_eq!(
+             clean_inodes(n.clone(), &mut inodes, &walkdata),
+             Some(n.clone())
+@@ -617,7 +630,6 @@
+         let result = walk_it(roots, &walkdata);
+         assert_eq!(result.len(), 1);
+         assert_eq!(max_depth(&result[0]), DEPTH);
+-        // Root plus DEPTH descendants, each holding exactly one child.
+         assert_eq!(count_nodes(&result[0]), DEPTH + 1);
+     }
+ 
+@@ -645,7 +657,6 @@
+ 
+     #[test]
+     fn test_walk_missing_root_records_file_not_found() {
+-        // A missing root is reported even though it has no directory listing.
+         let tmp = tempfile::tempdir().unwrap();
+         let missing = tmp.path().join("does-not-exist");
+ 
+@@ -667,7 +678,6 @@
+     #[cfg(unix)]
+     #[test]
+     fn test_walk_permission_denied_subdir_is_recorded() {
+-        // PermissionDenied on a child directory is retained in RuntimeErrors.
+         use std::os::unix::fs::PermissionsExt;
+ 
+         let tmp = tempfile::tempdir().unwrap();

@@ -1,0 +1,22 @@
+agent	model	launched	note
+W1	Sol high	14:27:02	writer
+T1	Sol high	14:35:02	truth, lines 1-51
+Q1-draft	Luna medium	14:35:02	question reader
+Q2-draft	Luna medium	14:35:02	question reader
+Q3-draft	Luna medium	14:35:02	question reader
+Q4-draft	Luna medium	14:35:02	question reader
+form	Sonnet	14:35:02	critic
+terms	Sonnet	14:35:02	critic
+sentences	Sonnet	14:35:02	critic
+T2	Sol high	14:38:27	truth, lines 53-90
+R1	Sol medium	14:42:38	rationalizer
+W1-repair	Sol high	14:53:48	repair, resumed thread
+CT1	Sol high	14:59:20	truth on changed lines
+C1	Astra medium	14:59:20	cold reader
+C2	Sol medium	14:59:20	cold reader
+Q1-repaired	Luna medium	14:59:20	question reader again
+Q2-repaired	Luna medium	14:59:20	question reader again
+Q3-repaired	Luna medium	14:59:20	question reader again
+Q4-repaired	Luna medium	14:59:20	question reader again
+W1-fix	Sol high	15:05:24	fix of the checked lines, resumed thread
+W1-fix-2	Sol high	15:08:39	fix retried after serverOverloaded

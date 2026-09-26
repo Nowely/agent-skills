@@ -1,0 +1,7 @@
+Read /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse/runs/20260926-142621-dust-readme/01-draft.md as its reader — /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse/runs/20260926-142621-dust-readme/context.md — beside the best texts of its kind, /Users/ruliny/Git/agent-skills/plugins/terse/references/genres/readme-terminal-tools.md and the three best READMEs it names, /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse/runs/20260926-142621-dust-readme/fetched/fd.md, /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse/runs/20260926-142621-dust-readme/fetched/dua-cli.md and /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse/runs/20260926-142621-dust-readme/fetched/gdu.md, and the advice of
+/Users/ruliny/Git/agent-skills/plugins/terse/references/rules.md. Is it pleasant to look at and to scan? Does it give this reader, early, what they need first and
+what would make them want the thing? Which part does this reader need that is missing, which is there
+only because texts of the kind have it, which is out of place? Which formatting would help them read
+it? Return each finding with its line and what the reader gains from the change.
+
+Do not modify the repository, write only under $TMPDIR, never cd inside a compound command. Read nothing under /Users/ruliny/Git/agent-skills/research/, nothing in /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse-trial-dust/ outside dust/, and no other run under /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse/runs/. Return your report as your final message.
