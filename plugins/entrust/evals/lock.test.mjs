@@ -350,12 +350,19 @@ test("a symlink at the lock path is refused rather than followed",
   });
 
 test("two concurrent runs: exactly one wins",
-  "the natural race is the one that actually happens in a fan-out, and it must not regress",
+  "the natural race is the one that actually happens in a fan-out, and it must not regress. A fast `happy` turn on both sides lets the first run finish and release before the second reaches acquireLock, so [0,0] would be two valid SEQUENTIAL acquisitions rather than the double one this case exists to catch — slow-turn holds the first run's lock on disk long enough that the second is provably a contender, not a second solo runner",
   async () => {
     const d = freshDir("race");
-    const [a, b] = await Promise.all([run(d), run(d)]);
-    const codes = [a.code, b.code].sort((x, y) => x - y);
-    if (codes[0] !== EXIT.OK || codes[1] !== EXIT.BUSY) return `expected one 0 and one 10, got ${JSON.stringify(codes)}`;
+    const p = lockFor(d);
+    const holder = run(d, { scenario: "slow-turn" });
+    if (!await waitUntil(() => readJson(p)?.appServerPgid)) {
+      const { code, err } = await holder;
+      return "the holder never recorded its app-server group in " + p + " (exit " + code + ": " + err.trim().slice(0, 120) + ")";
+    }
+    const contender = run(d);
+    const [h, c] = await Promise.all([holder, contender]);
+    if (h.code !== EXIT.OK) return `the holder exited ${h.code}, expected ${EXIT.OK}: ${h.err.trim().slice(0, 120)}`;
+    if (c.code !== EXIT.BUSY) return `the contender exited ${c.code}, expected ${EXIT.BUSY}: ${c.err.trim().slice(0, 120)}`;
     if (fs.existsSync(lockFor(d))) return "a lock was left behind after both runs finished";
     return true;
   });
