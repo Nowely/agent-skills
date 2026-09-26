@@ -426,3 +426,45 @@ The owner's direction for `advisor` (2026-09-25): «В целом advisor не �
 advisor adds one thread of the other model family to whatever run it is invoked in and loads only `codex`, which the
 Skill tool accepts. For `experiment` and `swarm` the page either asks the user to run `/entrust:orchestrate` first or
 stops depending on it.
+
+## E41. `sections.mjs` finds no budget when `budgets.json` keys carry the `## ` that brief 1 names
+
+**Evidence, level 3.**
+
+- `plugins/terse/skills/rewrite/scripts/sections.mjs:15` (at `e38699a`) keeps a heading's text without its `## `,
+  and `sections.mjs:20` looks the budget up by that text alone; its usage line, `sections.mjs:3`, reads
+  `BUDGETS.json = {"<heading text>": <words>, ...}`.
+- `plugins/terse/references/roles.md:55-56`, brief 1, tells the writer to write the budgets "to <OUT>/budgets.json,
+  every `## ` heading mapped to its words".
+- 2026-09-26: both writers of the second checks keyed the file as `"## Install"`
+  (`research/2026-09-26-terse-second-checks/dust-readme/budgets.json`, `…/dir-walker-comments/budgets.json`). On the
+  repaired README the script printed "(no budget)" beside every section and "0 section(s) over budget"
+  (`…/dust-readme/check/scripts.txt`).
+
+**Check.**
+
+    T=$(mktemp -d); printf '# t\n\n## Install\n\none two three\n' > "$T/t.md"; printf '{"## Install": 1}' > "$T/b.json"; node /Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/scripts/sections.mjs "$T/t.md" "$T/b.json"
+
+prints `3 Install   (no budget)` and `0 section(s) over budget`; with the key `"Install"` the same section prints
+`+2` and `1 section(s) over budget`.
+
+**Issue text.** `rewrite` runs `sections.mjs` to report the words of each section against the writer's own
+budgets, and the script looks each budget up by the heading's text. Brief 1 asks the writer for "every `## `
+heading mapped to its words", and writers key the file as `"## Install"`; the script then finds no budget for any
+section and reports none over, with nothing to say it matched nothing. It should strip the leading `#`s from a key
+and name any key that matches no heading, and brief 1 should ask for each heading's text.
+
+## E42. The genre scout's brief asks for "raw markdown", which a kind of text that is not markdown does not have
+
+**Evidence, level 1.** `plugins/terse/references/roles.md:76-78` (at `e38699a`), brief 2, asks for five to eight
+documents of the kind "as raw markdown with curl, never through a summarising tool". On 2026-09-26 the kind was the
+comments of a Rust source file, and the coordinator filled the brief as "raw text"
+(`research/2026-09-26-terse-second-checks/dir-walker-comments/briefs/G1.codex.txt`); the scout fetched eight source
+files and rebuilt the table's places for comments by itself.
+
+**Check.** `grep -n 'raw markdown' /Users/ruliny/Git/agent-skills/plugins/terse/references/roles.md` prints line 77.
+
+**Issue text.** `rules.md` is for any text, and the genre scout is how a writer sees the best texts of a kind the
+notes do not cover yet; its brief asks for them "as raw markdown with curl". For the comments of a source file, a
+man page or a story there is no markdown to fetch, and the coordinator has to rewrite the brief before the scout can
+run. The brief should ask for each document's raw text, fetched with curl and never through a summarising tool.
