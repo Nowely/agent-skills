@@ -7,7 +7,7 @@ must stay silent on, and the things it must get right once it has fired. Those a
 ## Running the suites
 
 ```bash
-npm test                      # every suite, cheapest first, stopping at the first red
+node evals/run-all.mjs        # every suite, cheapest first, stopping at the first red
 node evals/cli.test.mjs       # one suite, when it is the thing being worked on
 ```
 
@@ -26,7 +26,7 @@ directory, config directory and `TMPDIR` of its own.
 
 The counts are deliberately not written down here — the last one was wrong twice in two days. The
 `CASES` arrays are the inventory, and each suite states its own count in its last line. A case that
-cannot run where it is — no `mkfifo`, a case-insensitive volume, no git metadata under a plugin root —
+cannot run where it is — no `mkfifo`, a case-insensitive volume, no git metadata in a source archive —
 returns the harness's `skip(reason)` sentinel: it prints as `skip` with its reason, counts as neither
 pass nor fail, and the summary names it. A check that passed silently on a machine that could not run it
 is the one result that reads as evidence and is not.
@@ -39,15 +39,15 @@ what `cli.test.mjs` and `protocol.test.mjs` share: the shim, every file a case p
 the runner that gives each case its own state root. `driver.mjs` runs `main()` only when it IS the entry
 point, which is what makes importing it safe.
 
-`.github/workflows/ci.yml` runs `npm test` on every leg of its OS × Node matrix; the suites that need a
-real `codex` or `claude` skip there. It installs nothing and calls no model.
+`.github/workflows/ci.yml` runs `node evals/run-all.mjs` on every leg of its OS × Node matrix; the suites
+that need a real `codex` or `claude` skip there. It installs nothing and calls no model.
 
 `fidelity.test.mjs` runs LOCALLY, before a release: it needs the real `codex` and an
 authenticated home, and its opt-in live-turn case spends a real turn. Absent the binary it exits 0,
 which makes "portable behaviour passed" and "fidelity was verified" the same code — so the local
 pre-release run passes `--require-live` (or sets `REQUIRE_LIVE_CODEX=1`) and the skip becomes a failure.
 `orchestrate-live.test.mjs` is the second local gate: it drives the real headless `claude` binary against
-`skills/orchestrate/SKILL.md`, spending real sessions, the subagents they spawn and one Astra
+`plugin/skills/orchestrate/SKILL.md`, spending real sessions, the subagents they spawn and one Astra
 Codex turn, a second one when `ENTRUST_LIVE_ORCHESTRATE_DELEGATE=1` adds the delegation probe,
 which checks the `subagentThreads` of an agent that took the invitation. Without
 `ENTRUST_LIVE_ORCHESTRATE=1` it prints one NOT RUN line and exits 0.
@@ -57,7 +57,7 @@ which checks the `subagentThreads` of an agent that took the invitation. Without
 A delegation skill fails in two directions, and both are quiet. If it never fires, work that wanted a
 second, decorrelated opinion silently gets one Claude's opinion instead. If it fires on everything, every
 trivial question pays a whole agent's turn overhead and memory (the figures are in
-[parity.md](../skills/codex/references/parity.md#fan-out-and-reporting)). Neither shows up as an error.
+[parity.md](../plugin/skills/codex/references/parity.md#fan-out-and-reporting)). Neither shows up as an error.
 
 The negative cases matter as much as the positive ones. Case 9 is the sharp one: `codex` appearing as part
 of a filename must not pull in the whole skill.
@@ -104,7 +104,7 @@ passed while nothing actually ran, because those files are loaded automatically.
 to be fetched — a branch name that contradicts the documented default, a hash of a file you just wrote.
 
 Run the machine, not the memory. Memory is the binding constraint: an isolated delegation costs a fraction
-of a `--host-home` one (figures in [parity.md](../skills/codex/references/parity.md#fan-out-and-reporting))
+of a `--host-home` one (figures in [parity.md](../plugin/skills/codex/references/parity.md#fan-out-and-reporting))
 — the difference being a private copy of every MCP server in `~/.codex/config.toml`. Run these in waves
 rather than all at once. A case killed by the OS reports as a trigger failure and is not one.
 

@@ -3,7 +3,7 @@
 //
 //   node evals/package.test.mjs
 //
-// The marketplace entry names this directory as the plugin's source, so the payload IS this subtree:
+// The marketplace entry names ROOT, the plugin's installed directory, as its source, so the payload IS that subtree:
 // everything git tracks under it is installed into a user's plugin cache. Nothing asserted what must be
 // in it, and nothing compared the places the version is written against each other or against the tag.
 
@@ -17,10 +17,12 @@ import { EVALS, ROOT, SCRIPTS, VERSION, measured, parseCount, registry, runCases
 const { cases: CASES, test } = registry();
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
 const git = (args) => spawnSync("git", ["-C", ROOT, ...args], { encoding: "utf8" });
-// An installed plugin root is a copy of the payload with no .git in it. Every case below that reads
-// git announces itself there instead of failing, or `npm test` from that root — which README.md
-// promises — is red on its second suite with a message saying every payload file is missing.
+// A checkout with no .git in it (a source archive) has the payload and the suites and no git. Every
+// case below that reads git announces itself there instead of failing, or run-all there is red on its
+// second suite with a message saying every payload file is missing.
 const hasRepo = git(["rev-parse", "--git-dir"]).status === 0;
+// The repository's catalogue: .claude-plugin/ at the top of the checkout, three levels above ROOT.
+const CATALOGUE = path.join(ROOT, "..", "..", "..", ".claude-plugin", "marketplace.json");
 // Every skill page the tree holds, read from the directory rather than listed: a new skill is a new copy
 // of the version and a new set of links the day its directory appears.
 const skillPages = fs.readdirSync(path.join(ROOT, "skills"), { withFileTypes: true })
@@ -49,14 +51,37 @@ test("marketplace.json describes the same plugin as plugin.json",
   "the marketplace entry is a second copy of the plugin's name and description, and a marketplace listing that names a plugin the manifest does not is an install that fails at the last step",
   () => {
     const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
-    // The catalogue is the repository's, not the plugin's: one file lists every plugin, so it sits two
+    // The catalogue is the repository's, not the plugin's: one file lists every plugin, so it sits three
     // levels above this tree. An installed plugin is a copy of this directory alone, with no marketplace
     // above it, so the case announces itself there rather than failing on a file that was never shipped.
-    const catalogue = path.join(ROOT, "..", "..", ".claude-plugin", "marketplace.json");
+    const catalogue = CATALOGUE;
     if (!fs.existsSync(catalogue)) return skip("no marketplace above this tree, so there is no entry to compare");
     const entry = JSON.parse(fs.readFileSync(catalogue, "utf8")).plugins.find((p) => p.name === plugin.name);
     if (!entry) return `marketplace.json lists no plugin named ${plugin.name}`;
     return entry.description === plugin.description || "the two descriptions differ";
+  });
+
+test("every marketplace source is a plugin's installed directory, and holds none of its working material",
+  "an install copies the whole directory an entry's source names, and `claude plugin validate` passed a source naming a directory with no plugin.json and one naming no directory at all (2026-09-26): a source one level too high installs nothing, and one that holds the suites, the research, the ledger, the changelog or the protocol schemas ships them to every user",
+  () => {
+    if (!fs.existsSync(CATALOGUE)) return skip("no marketplace above this tree, so there are no sources to resolve");
+    const top = path.dirname(path.dirname(CATALOGUE));
+    const WORKING = ["evals", "research", "ISSUES.md", "CHANGELOG.md"];
+    const problems = [];
+    const entries = JSON.parse(fs.readFileSync(CATALOGUE, "utf8")).plugins ?? [];
+    for (const e of entries) {
+      if (typeof e.source !== "string" || !e.source.startsWith("./")) { problems.push(`${e.name}: source ${JSON.stringify(e.source)} is not a path in this repository`); continue; }
+      const dir = path.resolve(top, e.source);
+      const manifest = path.join(dir, ".claude-plugin", "plugin.json");
+      if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) { problems.push(`${e.name}: source ${e.source} is not a directory`); continue; }
+      if (!fs.existsSync(manifest)) { problems.push(`${e.name}: source ${e.source} holds no .claude-plugin/plugin.json`); continue; }
+      const name = JSON.parse(fs.readFileSync(manifest, "utf8")).name;
+      if (name !== e.name) problems.push(`${e.name}: source ${e.source} holds the plugin ${JSON.stringify(name)}`);
+      const carried = [...WORKING.filter((w) => fs.existsSync(path.join(dir, w))),
+        ...fs.readdirSync(dir).filter((n) => /^schema-\d/.test(n))];
+      if (carried.length) problems.push(`${e.name}: source ${e.source} would install ${carried.join(", ")}`);
+    }
+    return entries.length > 0 && problems.length === 0 || problems.join("; ") || "marketplace.json lists no plugin";
   });
 
 test("an entrust@ tag on HEAD is the version the tree claims",
@@ -101,8 +126,8 @@ test("no skill page names a Codex model by its version",
     return pages.length > 0 && hits.length === 0 || `a page names a versioned model: ${hits.join("; ") || "no pages found"}`;
   });
 
-// Everything git tracks under this plugin's directory, which is exactly what an install copies: the
-// marketplace source names that directory, and `git -C ROOT ls-files` lists it and nothing above it.
+// Everything git tracks under ROOT, which is exactly what an install copies: the marketplace source
+// names that directory, and `git -C ROOT ls-files` lists it and nothing above or beside it.
 const tracked = (() => {
   const r = git(["ls-files", "-z"]);
   return r.status === 0 ? r.stdout.split("\0").filter(Boolean) : null;
@@ -112,15 +137,15 @@ test("git can list the payload (the content cases below are sound)",
   "the content cases read this list; the floor sits far below the tree's real count but still catches an empty or near-empty list, which would let every content case below pass vacuously",
   () => {
     if (!hasRepo) return skip("no git repository here, so there is no payload list to build");
-    return (tracked && tracked.length > 30) || `git ls-files returned ${tracked ? tracked.length : "an error"}`;
+    return (tracked && tracked.length > 15) || `git ls-files returned ${tracked ? tracked.length : "an error"}`;
   });
 
 test("every file the plugin needs to run is in the payload",
   "an install is a copy of this tree: a file left untracked is a file the user does not get, and the failure lands at delegation time as exit 90 or a missing reference",
   () => {
     if (!hasRepo) return skip("no git repository here; what an install carries is decided in the checkout it was cut from");
-    // The fixed entries are the files no directory listing yields; skill pages, scripts and suites come
-    // from the tree itself, so a file created and never `git add`ed is caught here rather than at a
+    // The fixed entries are the files no directory listing yields; skill pages and scripts come from
+    // the tree itself, so a file created and never `git add`ed is caught here rather than at a
     // user's install.
     const under = (rel) => fs.readdirSync(path.join(ROOT, rel)).filter((f) => f.endsWith(".mjs")).map((f) => `${rel}/${f}`);
     const required = [
@@ -130,8 +155,8 @@ test("every file the plugin needs to run is in the payload",
       ...skillPages,
       ...under(path.relative(ROOT, SCRIPTS)),
       ...under("skills/experiment/scripts"), ...under("skills/swarm/scripts"),
-      ...under(path.relative(ROOT, EVALS)), ...under(path.relative(ROOT, path.join(EVALS, "lib"))),
     ];
+    // The suites are not in that list: they sit beside ROOT, and what installs is ROOT alone.
     const have = new Set(tracked ?? []);
     const missing = required.filter((f) => !have.has(f));
     // Every reference a SKILL.md sends the reader to, resolved rather than listed here: a new one is
@@ -145,8 +170,10 @@ test("every file the plugin needs to run is in the payload",
     const problems = [];
     if (missing.length) problems.push(`not tracked, so not shipped: ${missing.join(", ")}`);
     if (dangling.length) problems.push(`SKILL.md links to files the payload does not carry: ${dangling.join(", ")}`);
-    // The conformance suite validates the fixture against these, and the upgrade recipe regenerates them.
-    if (!(tracked ?? []).some((f) => /^schema-\d[^/]*\/.+\.json$/.test(f))) problems.push("no schema-<version>/ directory is tracked");
+    // The conformance suite validates the fixture against these, and the upgrade recipe regenerates them;
+    // they sit beside ROOT with the suites, since the driver reads none of them at run time.
+    const beside = spawnSync("git", ["-C", path.dirname(EVALS), "ls-files", "-z"], { encoding: "utf8" }).stdout.split("\0");
+    if (!beside.some((f) => /^schema-\d[^/]*\/.+\.json$/.test(f))) problems.push("no schema-<version>/ directory is tracked beside the plugin");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -180,26 +207,29 @@ test("nothing in the payload is ignored by .gitignore",
 // ------------------------------------------------------------------ the runner, and an installed root
 
 // Here rather than in a suite of their own because their subject is this repository's own machinery —
-// what an install carries, and how `npm test` counts what it ran — not the driver's behaviour.
+// what an install carries, and how run-all counts what it ran — not the driver's behaviour.
 
 // The two cases that re-run this suite inside a copy set this, or the copy would copy itself.
 const NESTED = process.env.ENTRUST_EVAL_NESTED === "1";
 
-// An installed plugin root, made the way `source: "./"` makes one: every tracked file, no .git.
+// A checkout with no .git, as a source archive makes one: the payload and the suites, each where it sits
+// relative to the other, every tracked file and nothing else.
+const TOP = (() => { let t = ROOT; while (path.relative(t, EVALS).startsWith("..")) t = path.dirname(t); return t; })();
 function payloadCopy(name) {
   const d = tempDir(`codex-payload-${name}-`);
-  for (const f of tracked) {
-    const dest = path.join(d, f);
+  const suites = git(["-C", EVALS, "ls-files", "-z"]).stdout.split("\0").filter(Boolean);
+  for (const [from, files] of [[ROOT, tracked], [EVALS, suites]]) for (const f of files) {
+    const dest = path.join(d, path.relative(TOP, from), f);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.copyFileSync(path.join(ROOT, f), dest);
+    fs.copyFileSync(path.join(from, f), dest);
   }
   return d;
 }
-const runSuiteIn = (dir) => spawnNode([path.join(dir, "evals", "package.test.mjs")],
+const runSuiteIn = (dir) => spawnNode([path.join(dir, path.relative(TOP, EVALS), "package.test.mjs")],
   { env: { ENTRUST_EVAL_NESTED: "1" }, killAfterMs: 120000 }).done;
 
-test("this suite is green from a plugin root that has no .git",
-  "README.md tells a user to run `npm test` from the installed plugin root; there git answers nothing, and the cases that read it used to FAIL — three of seven — which stopped run-all on its second suite with a message saying every payload file was missing",
+test("this suite is green from a checkout that has no .git",
+  "a source archive is a checkout without git metadata; there git answers nothing, and the cases that read it used to FAIL — three of seven — which stopped run-all on its second suite with a message saying every payload file was missing",
   async () => {
     if (NESTED) return skip("this run IS the copy");
     if (!tracked) return skip("no git repository here to copy a payload out of");
@@ -249,7 +279,7 @@ test("parseCount tells a suite that ran from one that did not",
   });
 
 test("run-all fails on a suite a signal killed",
-  "a killed child reports `code` null and `process.exit(null)` exits 0, so a suite that was killed — out of memory, out of a sandbox — used to end `npm test` green",
+  "a killed child reports `code` null and `process.exit(null)` exits 0, so a suite that was killed — out of memory, out of a sandbox — used to end run-all green",
   async () => {
     const d = tempDir("codex-runall-");
     fs.mkdirSync(path.join(d, "lib"));

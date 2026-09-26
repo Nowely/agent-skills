@@ -23,7 +23,7 @@ and do not publish from an unclean tree. The entrust series starts at `entrust@0
    - Review the complete release diff; confirm no scratch files or credentials are tracked.
    - Run the plugin's conditional checks (its section below) whose trigger the release hits.
    - When the release changes what a session shows, open a fresh session loaded from the candidate
-     (`claude --plugin-dir plugins/<plugin>`), not from the installed copy, confirm its version, and exercise the
+     (`claude --plugin-dir plugins/<plugin>/plugin`), not from the installed copy, confirm its version, and exercise the
      changed behaviour.
    - When the release changes a path, a brief or a procedure the other plugin uses, run one real example through
      the other plugin.
@@ -49,12 +49,12 @@ and do not publish from an unclean tree. The entrust series starts at `entrust@0
 
 ## entrust
 
-- **Version**: `.claude-plugin/plugin.json`, the `metadata.version` line of every `skills/*/SKILL.md`, and the
-  driver's `VERSION`. `npm test` fails naming the one missed.
+- **Version**: `plugin/.claude-plugin/plugin.json`, the `metadata.version` line of every `plugin/skills/*/SKILL.md`,
+  and the driver's `VERSION`. `node evals/package.test.mjs` from `plugins/entrust` fails naming the one missed.
 - **Tag check**: `node evals/package.test.mjs` from `plugins/entrust` compares the version against an
   `entrust@` tag on `HEAD` and announces itself as skipped before one exists.
 - **After a Codex CLI upgrade**, or when `codex --version` differs from the driver's `PINNED_CODEX`: follow
-  README.md › After a codex upgrade first, then run the live fidelity gate,
+  plugin/README.md › After a codex upgrade first, then run the live fidelity gate,
   `ENTRUST_LIVE_TURN=1 node evals/fidelity.test.mjs --require-live`. It spends one real turn; inspect every
   fixture/live difference, keep the fixture emitting what the live server emits, and record its lines in the notes.
 - **Live orchestrate gate**, `ENTRUST_LIVE_ORCHESTRATE=1 node evals/orchestrate-live.test.mjs`, when the release
@@ -64,15 +64,15 @@ and do not publish from an unclean tree. The entrust series starts at `entrust@0
   the agent to delegate. Keep the artifact directory its last line prints with the release notes. A failed case
   blocks the release, and a skipped case is not a pass: the summary names it. Record the codex-cli and Claude Code
   builds used.
-- **Notes**: add the codex-cli and Node versions the release was measured with, and the open `ISSUES.md` entries
-  about entrust as known issues.
+- **Notes**: add the codex-cli and Node versions the release was measured with, and the open entries of
+  `plugins/entrust/ISSUES.md` as known issues.
 
 ## terse
 
-- **Version**: `.claude-plugin/plugin.json`.
-- **Tag check**: `jq -r .version plugins/terse/.claude-plugin/plugin.json` prints the tag's `X.Y.Z`; terse has no
+- **Version**: `plugin/.claude-plugin/plugin.json`.
+- **Tag check**: `jq -r .version plugins/terse/plugin/.claude-plugin/plugin.json` prints the tag's `X.Y.Z`; terse has no
   package suite.
 - **Pages**: after any edit to a page, `node plugins/terse/evals/pages.test.mjs` checks the run-directory line,
-  every relative link and the frozen digests; CI runs it with the selftest through `npm test`.
+  every relative link and the frozen digests; CI runs it by path, with the rewrite scripts' selftest.
 - **Cross-plugin**: terse's briefs launch entrust agents, so an entrust release that changes how an agent is
   launched runs one terse brief through it before its tag.

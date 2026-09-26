@@ -13,7 +13,7 @@ import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { DRIVER, FIELDS, ROOT, PROMPT_FIELDS, SCRIPTS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
-import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../skills/codex/scripts/agent-run.mjs";
+import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../plugin/skills/codex/scripts/agent-run.mjs";
 
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "orchestrate", "SKILL.md");

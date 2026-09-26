@@ -3,6 +3,20 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- **What installs is now `plugins/terse/plugin/`.** The marketplace entry's `source` is
+  `./plugins/terse/plugin`: the skills, the references, the README, the LICENSE and `package.json`. The
+  page check and this changelog no longer install; they stay in the repository beside it, at
+  `plugins/terse/evals/pages.test.mjs` and `plugins/terse/CHANGELOG.md`, with the plugin's defects ledger
+  (`plugins/terse/ISSUES.md`) and the research runs the pages cite (`plugins/terse/research/`), whose new
+  paths the pages now name. `package.json` has no `test` script: CI runs the page check and the rewrite
+  scripts' selftest by path. Why: an install copies the whole source directory, so every install carried
+  the page check and the changelog; the owner's rule is that the installed plugin carries what the plugin
+  needs and the working material lives beside it.
+
 ## 0.2.0 — 2026-09-26
 
 `rewrite` and `rethink` run one path instead of rounds, the rules are two requirements and advice, and the

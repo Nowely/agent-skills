@@ -1,0 +1,10 @@
+{
+  "name": "terse",
+  "version": "0.2.0",
+  "description": "Three skills you invoke to assess and improve any text: a README, code comments, an essay. `audit` finds where readers stumble and checks each claim against the code or facts behind it. `rethink` agrees what the text says and in what order before it is written. `rewrite` writes it: one writer who first works out who reads it, every critic at once, one repair and a check. Nothing touches your files without your word.",
+  "author": {
+    "name": "Nowely"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/Nowely/agent-skills/tree/main/plugins/terse/plugin"
+}

@@ -31,7 +31,7 @@ import { EXIT, PINNED_CODEX, ROOT, SCRIPTS, registry, runCases, skip, spawnNode,
          tempDir } from "./lib/harness.mjs";
 // A NAMESPACE import, not named bindings: the liveness helpers are the driver's, and a named import of
 // one it stops exporting would fail at load and report nothing at all rather than failing case by case.
-import * as driver from "../skills/codex/scripts/driver.mjs";
+import * as driver from "../plugin/skills/codex/scripts/driver.mjs";
 
 const CLEANUP = path.join(SCRIPTS, "cleanup.mjs");
 const CLEANUP_PAGE = path.join(ROOT, "skills", "cleanup", "SKILL.md");
