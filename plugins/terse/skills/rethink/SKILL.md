@@ -15,7 +15,7 @@ at the plan: [roles.md](../../references/roles.md), working from
 [rules.md](../../references/rules.md), a pleasant read first.
 
 1. **One message to the user**, as `rewrite` step 1: what the text is for and who reads it, what it must
-   and must not say, any rule set aside. It names no mode: no role here runs code. Announce the agents
+   and must not say. It names no mode: no role here runs code. Announce the agents
    below and wait for the word. Keep the answer in `purpose.md` of the run directory, `<slug>` naming the
    text and ending in `-rethink` ([run.md](../../references/run.md)):
 
@@ -25,7 +25,7 @@ at the plan: [roles.md](../../references/roles.md), working from
 2. **The genre's order.** From [genres/](../../references/genres/) where the kind has notes; otherwise
    the genre scout, brief 2, and its table is kept there on the user's word.
 3. **The plan.** The writer, brief 1, stopped before the text: each section, what it gives the reader,
-   the device that carries it — the plan's share of a pleasant read, rule 14 — and a word budget; where
+   the device that carries it — the plan's share of a pleasant read — and a word budget; where
    it departs from the genre's order, why. One screen.
 4. **Two critics at once on the plan**: form, brief 5, and the rationalizer, brief 4, each asking of every
    section whether this reader needs it here.

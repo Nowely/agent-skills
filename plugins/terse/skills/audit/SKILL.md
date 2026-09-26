@@ -92,7 +92,7 @@ not pay again.
 
 In the same launch, two cold readers, brief 11 of [roles.md](../../references/roles.md), each on the entry
 file alone: what makes it hard or unpleasant to read, each point quoting its line. A pleasant read comes
-first in [rules.md](../../references/rules.md#first-a-pleasant-read), and their findings come first in the
+first in [rules.md](../../references/rules.md#a-pleasant-read), and their findings come first in the
 report. They give no mark, as brief 11 says, and the user's own read decides; what a cold reader would write
 instead stays out of the report, as all wording does.
 

@@ -7,6 +7,14 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- `references/rules.md` requires two things of every text — it is pleasant to read, and true within its
+  world: the code for documentation, the facts for an essay, what a story has set up for a story, which the
+  writer widens only with the user — and everything else in it is advice, taken where it helps this text and
+  left without apology. Each piece says what it helps with and where it came from; the pieces go by name, not
+  number. What holds only for a README — Quick start, Update, the inventory table, the genre's order, badges,
+  the sections the owner found to be noise — moved to the README's genre notes. On 2026-09-26 a bare agent's
+  README for a disk-usage tool beat ours, which had dropped the demo, the one-line pitch and the install
+  routes under rules applied as requirements; the owner: «Правила должны нести рекомендательный характер».
 - `rewrite` takes an audit's run: step 1 asks for its directory, whose reader profile and shape verdict answer
   what they cover, and the writer answers what the audit found hard to read, every failure under What broke and
   every refuted claim. The audit no longer writes the `json claims` block or runs `ledger-seed.mjs`, and its run

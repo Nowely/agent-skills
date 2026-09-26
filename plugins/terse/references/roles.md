@@ -103,7 +103,7 @@ words saved. Keep a condition, a limit or a warning at a point where the reader 
 ## 5. Form
 
 ```
-Read <DOC> against the first section of <RULES>, its rules 4 to 16, and the genre's order <GENRE>. Is it
+Read <DOC> against the pleasant-read requirement of <RULES>, its advice, and the genre's order <GENRE>. Is it
 pleasant to look at and to scan? Is the opening what it is, what it is for and its advantages as a list?
 Is there a Quick start right after it, with install and the first use, carrying only the routes most
 readers take? Is the inventory a table whose alike rows say what tells them apart? Are sections and
@@ -176,7 +176,7 @@ were there, and every sentence that turned out untrue. End with one line: GOAL: 
 ## 10. Sentences
 
 ```
-Read <DOC> against <SENTENCES>, applied as written, and against the first section of <RULES>. Find every
+Read <DOC> against <SENTENCES>, applied as written, and against the pleasant-read requirement of <RULES>. Find every
 sentence its reader would have to read twice: too long, conditions stacked, a path, a flag or a name in
 the middle of prose, a term before the reader needs it. Return each with its line and a plainer sentence
 that says the same, or "cut" where it carries nothing.

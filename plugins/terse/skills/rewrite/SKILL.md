@@ -22,13 +22,13 @@ Ask once, in one message, and announce the run in the same message:
   answer what they cover below, and only the rest is asked;
 - what the text is for and who reads it, in their words;
 - anything the text must say or must not say;
-- any rule of `rules.md` they set aside for this text;
 - for an existing text, whether its shape stands or should follow the genre.
 
 The announcement names the mode, [light or full](../../references/roles.md#light-and-full), and that mode's
 agents with their models from `roles.md`: the writer, the genre scout when the genre has no notes, and the critics.
 Wait for the word. Keep the answer verbatim in `purpose.md` of the run directory. A behaviour the user
-asks the text to state is a claim like any other (rule 23).
+asks the text to state is a claim like any other: one the text's world does not hold goes back to them as a
+question.
 
 ## Step 2. The run directory
 

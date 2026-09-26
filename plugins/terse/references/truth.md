@@ -1,9 +1,11 @@
-# Truth: how a claim about behaviour is checked
+# Truth: how a claim is checked against its world
 
-Documentation fails in two ways that look identical from the outside: a reader cannot find the answer,
-or a reader finds an answer the software does not honour. Only one of them is repaired by better
-structure. `audit`'s truth pass and `rewrite`'s truth critics both check the second by this page; the
-audit's pass runs before any reader is spawned so that its output can serve as the answer key.
+A text is true within the world it describes ([rules.md](rules.md#true-within-its-world)). For documentation
+that world is the code, and most of this page is about it. Documentation fails in two ways that look
+identical from the outside: a reader cannot find the answer, or a reader finds an answer the software does
+not honour. Only one of them is repaired by better structure. `audit`'s truth pass and `rewrite`'s truth
+critics both check the second by this page; the audit's pass runs before any reader is spawned so that its
+output can serve as the answer key.
 
 ## Three levels of evidence
 
@@ -76,9 +78,12 @@ ledger, and a truth critic does not report them.
 
 ## When no code backs the text
 
-Level 3 is unreachable for a claim about the world rather than about software. The guarantee rule
-degrades to: a guarantee-shaped claim carries a named source the reader can check, or it is narrowed.
-Everything else stands — the three verdicts, the refutation stance, the position flag.
+The world is still what the text describes, and level 3 is out of reach. For an essay or a report it is the
+facts: a guarantee-shaped claim carries a named source the reader can check, or it is narrowed. For a story it
+is what the story has set up: a statement holds where that world allows it, and an element the story never
+prepared — a power, a rescue, a rule — is not a fact of the world until the user adds it. Either way, what the
+world does not hold goes to the user as a question, not into the text. Everything else stands — the three
+verdicts, the refutation stance, the position flag.
 
-This weaker form has not been measured. Say so in the report rather than reporting a score as though it
+These weaker forms have not been measured. Say so in the report rather than reporting a score as though they
 had been.
