@@ -4,7 +4,7 @@ One procedure for every plugin in the marketplace. Releases use annotated `<plug
 namespace for the whole repository, and matching GitHub release notes; never move or recreate a published tag,
 and do not publish from an unclean tree. The entrust series starts at `entrust@0.16.0`; the seventeen
 `codex-delegate@*` tags before it are the same plugin under its previous name. Why the order is what it is:
-[research/2026-09-26-release-pipeline](research/2026-09-26-release-pipeline/03-proposal.md).
+[the release-pipeline research at `78ed179`](https://github.com/Nowely/agent-skills/blob/78ed179/research/2026-09-26-release-pipeline/03-proposal.md).
 
 ## The order
 
