@@ -321,13 +321,13 @@ A structure put in front of a reviewer describes the document. It does not argue
 
 Measured the hard way on 2026-09-11: a skeleton was written with each section introduced by why it
 existed — "the block you liked", "the twin block you said was missing", "the section you asked for by
-name". The reviewer's reaction was that something was wrong before he could say what: the sections were
-being justified to him rather than shown. Cut every trace of the negotiation that produced a structure
+name". The reviewer's reaction was that something was wrong before they could say what: the sections were
+being justified to them rather than shown. Cut every trace of the negotiation that produced a structure
 before showing it. The purpose of a section is what it does for its reader, never who asked for it.
 
 Measured again on 2026-09-23/24, on this plugin's README. Skeleton 01, ten sections planned at 754
-words, went to the owner as the file with a table, and he first asked what was required of him. Told
-which parts were his and what to answer, he answered with five objections, each about which sections
+words, went to the owner as the file with a table, and they first asked what was required of them. Told
+which parts were theirs and what to answer, they answered with five objections, each about which sections
 exist or where they sit — Skills first; Install, Update and Quick start as three sections; Your files;
 Quick start in the middle; Troubleshooting — beside a rule on content (rule 12 above), the aim added to
 the opening, and a request for the genre's order. None was about a phrase. Skeleton 02, five sections

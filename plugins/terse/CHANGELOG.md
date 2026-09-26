@@ -79,7 +79,7 @@ forensics remain in the repository references and release notes.
   feedback from 2026-09-10 to 09-24, each generalised and marked with its source — the owner's words
   with the date, a count of the genre, or a measured failure — and a convenience of ours marked as such.
   Genre notes for READMEs of developer tools, from the two surveys, are in `references/genres/`. On
-  2026-09-24 the owner found his earlier feedback missing from a README the skills wrote without it.
+  2026-09-24 the owner found their earlier feedback missing from a README the skills wrote without it.
 - `rewrite`'s ledger starts as the audit's claim ledger instead of empty, so the first round is already
   under the ratchet. `audit` writes its entries a second time as a `json claims` block inside `audit.md`
   — the prose entry restates a claim and a restatement is not a string a pattern can find — and the new
@@ -165,7 +165,7 @@ forensics remain in the repository references and release notes.
   gains rule 12 — a README describes the code as it is, with no binding to a version without a weighty
   reason, in the owner's words from the same read — so lens 7's default rose to twelve rules, fourteen
   with rules 13 and 14 below. On
-  2026-09-23 the owner, sent a 447-line skeleton, asked first what exactly was required of him.
+  2026-09-23 the owner, sent a 447-line skeleton, asked first what exactly was required of them.
 - `stages.md` records the 2026-09-23/24 run on this plugin's README. Under stage 1: 39 documents over the
   six slices, WebFetch's paraphrases for four of ten READMEs, the owner's exemplar no survey fetched, and
   the genre's order as counted afterwards — what it is first in 9 of 9 plugin READMEs, install in 8, the
@@ -190,7 +190,7 @@ forensics remain in the repository references and release notes.
   in its place the reader wants the pipeline, the methods, their origin and the guarantees — and nothing
   from a run on the page: what comes back is said in the reader's words, never as a dated report line, a
   ledger label or an excerpt. Lens 7's default is fourteen rules. The round the owner read held two runs'
-  numbers and showed the audit's `missing` finding as its example, which he read as an error.
+  numbers and showed the audit's `missing` finding as its example, which they read as an error.
 - The survey, the synthesis and the skeleton count a section's sub-blocks and what marks them — a `###`
   heading, a bold lead-in, a fence standing alone — beside the devices, and the skeleton names them where
   the genre splits a section. On 2026-09-24 the owner asked for Quick start's three blocks to be marked as
@@ -211,7 +211,7 @@ forensics remain in the repository references and release notes.
 - `references/benchmark.md`: the protocol for measuring the skills against a bare agent, with a human best
   practice as the reference — three texts, a snapshot the writers see without its README, a stand-in user for
   the owner-less run, seven rulers and three hypotheses written before the run — from the owner's proposal of
-  2026-09-24, with his three premises: the model's memory is the baseline, the reference keeps what its
+  2026-09-24, with their three premises: the model's memory is the baseline, the reference keeps what its
   maintainers know and the owner judges, and a bare agent beating the skills means they fail their main task.
   Not yet run.
 - A verifier reads the edits before the round is frozen — brief 0 in `critic-briefs.md`, one agent that

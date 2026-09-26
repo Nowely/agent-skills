@@ -90,7 +90,7 @@ Codex Terra), 39 distinct documents, none left unfetched. For four of one survey
 files, WebFetch returned a paraphrase dressed as the source — headings the files do not have, no code
 block, no link; the surveyor caught it by that shape before citing anything and fetched all ten again
 with `curl`. No survey fetched the owner's exemplar. And the genre's order was counted only after the
-owner asked for it, at his read of the skeleton: «нужно на уровне смыслов и идей понимать, предметную
+owner asked for it, at their read of the skeleton: «нужно на уровне смыслов и идей понимать, предметную
 область, какие в ней порядки, предпослыки, типовые правила для структуры» — the domain has to be
 understood at the level of meanings and ideas: its orders, its premises, its typical rules for structure.
 Nor were the sub-blocks: reading round 03 on 2026-09-24, the owner asked for Quick start's install,
@@ -189,7 +189,7 @@ words against the current document's 933. Their brief gave them the synthesis an
 asked what each kept section rested on, never what a structure dropped. The ten came out as one
 inventory in ten orders, no structure said what it left out, and none had Troubleshooting, which 3 of 9
 exact-genre READMEs carry, the most used among them. Skeleton 01 kept it at that weight and the owner
-cut it at his read: the drop was his to make, once it was visible.
+cut it at their read: the drop was theirs to make, once it was visible.
 
 ## 4. The critics
 
@@ -306,10 +306,10 @@ next skeleton is `skeleton.<NN+1>.md`, and none is overwritten. The owner's word
 file, and `rewrite` writes it, with the file's path and SHA-256, as the first line of its `rounds.md`.
 
 Measured on 2026-09-23/24: skeleton 01, 447 lines, went to the owner with a table of its ten sections and
-seven questions, and he asked what exactly was required of him
-([step 4](../SKILL.md)). Told which parts were his, that each question had a
-default, and that one word or the numbers of the sections would do, he answered twenty minutes later,
+seven questions, and they asked what exactly was required of them
+([step 4](../SKILL.md)). Told which parts were theirs, that each question had a
+default, and that one word or the numbers of the sections would do, they answered twenty minutes later,
 point by point. The message for skeleton 02 held the table of sections with what each carries, the
-departures from the genre, one line kept against his word with its evidence and two questions with
-defaults, and no least-sure points; sixteen minutes after his read he agreed: «согласен, стало гораздо
+departures from the genre, one line kept against their word with its evidence and two questions with
+defaults, and no least-sure points; sixteen minutes after their read they agreed: «согласен, стало гораздо
 лучше» — agreed, it has become much better.
