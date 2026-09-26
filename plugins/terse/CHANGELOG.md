@@ -7,6 +7,10 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- The genre notes for a terminal tool advise the options as one table sorted by usefulness: the flag with its
+  long form and what it does, all of them rather than a chosen few under "Frequently used". On the second dust
+  README the owner preferred the control's reference of options to our table of thirteen tasks, and doubted
+  its label: «Возможно, стоило бы их отсортировать по полезности и просто все расписать».
 - The writer's `context.md` names why a reader would choose the thing over what it resembles, in `rewrite`
   and in `rethink`, and the advice on the list of what it gives adds that a quality any thing of its kind
   could claim does not say why this one. On the second dust README the highlights said what dust does —

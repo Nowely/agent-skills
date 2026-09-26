@@ -41,3 +41,10 @@ exists in five words. *owner, 2026-09-26: «то что это du только �
 reader working out how: give the common package managers, each as a line to copy. *owner, 2026-09-26: «dust
 это улитарная утилита, которая должна ставится куда угодно и тебе не нужно было думать как именно». genre,
 place 6.*
+
+**The options as one table, sorted by usefulness.** The flag with its long form and what it does, from the
+one most readers reach for to the rarest — all of them, rather than a chosen few under a label such as
+"Frequently used". Where a long list is folded or deferred, as the genre often does, the order still runs by
+usefulness. *owner, 2026-09-26, of a control's option reference, beside our table of thirteen tasks: «Второй
+момент, это набор доступных опций Frequently used options из 3. Хотя не уверен, что Frequently уместно.
+Возможно, стоило бы их отсортировать по полезности и просто все расписать». genre, place 7.*
