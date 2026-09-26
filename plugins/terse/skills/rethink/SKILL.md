@@ -29,7 +29,7 @@ at the plan: [roles.md](../../references/roles.md), working from
    then each part, what it gives this reader, the device that carries it — the plan's share of a pleasant
    read — and a word budget. One screen.
 4. **Two critics at once on the plan**: form, brief 5, and the rationalizer, brief 4, each asking of every
-   section whether this reader needs it here.
+   part whether this reader needs it here or would want it.
 5. **The hand-over.** The plan with the critics' findings applied or declined, and what is asked of the
    user: their word on it, or the sections that are wrong. Then stop. `rewrite` starts from the plan they
    agreed, given its path.

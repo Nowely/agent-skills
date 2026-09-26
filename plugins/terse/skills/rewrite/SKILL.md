@@ -60,7 +60,7 @@ as `writer-notes.md`. In full mode the harness, brief 12, runs beside it.
 Launch them in one message, on the draft:
 
 - truth, brief 3, one agent per group of sections — a few hundred words each, so each finishes fast;
-- the rationalizer, brief 4: does this reader need it, here;
+- the rationalizer, brief 4: does this reader need it here, or does it make them want the thing;
 - form, brief 5; terms, brief 6; sentences, brief 10;
 - three to five question readers, brief 8; in full mode, one task reader, brief 9.
 
@@ -70,8 +70,9 @@ save it into `critics/` of the run directory. No agent merges them: the writer r
 ## Step 5. One repair, and a check of it
 
 The writer again, sent every report: it applies each finding or declines it with a reason from the
-context in a line — a rule's number is no reason — re-checks every sentence it changed against its world, reads the whole text once for a count or a name
-that disagrees with itself, and writes `02-repaired.md` with that list. Then, in one message: truth,
+context in a line — a rule's number is no reason — re-checks every sentence it changed against its world,
+reads the whole text once for a count or a name that disagrees with itself, and writes `02-repaired.md`
+with that list. Then, in one message: truth,
 brief 3, on the sentences the repair changed; the question readers again; the two cold readers, brief 11.
 Run the script on it too, from this skill's `scripts/`, the directory beside this file — words per section
 against the writer's own plan, a report:
