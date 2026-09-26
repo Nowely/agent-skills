@@ -267,6 +267,9 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- `rewrite` runs its scripts from `${CLAUDE_SKILL_DIR}/scripts`. The page set their directory from a bare
+  `$CLAUDE_PLUGIN_ROOT`, which Claude Code neither substitutes nor exports, so on an installed plugin both
+  commands pointed under `/` and failed. The page test now fails on a bare or defaulted placeholder.
 - An installed `audit` makes its run directory in the plugin's data directory, no longer in
   `$TMPDIR/terse`. Its formula wrote `${CLAUDE_PLUGIN_DATA:-…}`, a form Claude Code does not substitute:
   it replaces only the exact `${CLAUDE_PLUGIN_DATA}` in a skill body and exports nothing to the shell,

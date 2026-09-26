@@ -71,10 +71,18 @@ test("each skill that makes a run carries the same run-directory line, in the ex
   const distinct = new Set(lines.map(([, ls]) => ls[0]));
   if (!problems.length && distinct.size !== 1)
     problems.push(`the lines differ: ${lines.map(([s, ls]) => `${s}: ${ls[0]}`).join(" | ")}`);
-  // The changelog names the old form where it records the fix; it instructs no one.
-  for (const file of pages().filter((f) => path.basename(f) !== "CHANGELOG.md"))
-    if (/\$\{CLAUDE_PLUGIN_DATA\s*:-/.test(fs.readFileSync(file, "utf8")))
-      problems.push(`${path.relative(ROOT, file)} writes \${CLAUDE_PLUGIN_DATA:-...}, which is never substituted`);
+  return problems.length === 0 || problems.join("; ");
+});
+
+test("every Claude Code placeholder is written in the exact ${...} form it substitutes", () => {
+  // A bare $VAR is neither substituted nor exported, and a ${VAR:-default} is never substituted: either
+  // runs on an empty value. The changelog names the old forms where it records the fixes; it instructs no one.
+  const problems = [];
+  for (const file of pages().filter((f) => path.basename(f) !== "CHANGELOG.md")) {
+    const text = fs.readFileSync(file, "utf8");
+    for (const [m] of text.matchAll(/\$(?:CLAUDE_PLUGIN_ROOT|CLAUDE_PLUGIN_DATA|CLAUDE_SKILL_DIR)\b|\$\{(?:CLAUDE_PLUGIN_ROOT|CLAUDE_PLUGIN_DATA|CLAUDE_SKILL_DIR)\s*:-/g))
+      problems.push(`${path.relative(ROOT, file)} writes ${m}`);
+  }
   return problems.length === 0 || problems.join("; ");
 });
 

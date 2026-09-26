@@ -135,23 +135,6 @@ instead of 4/7 (`audit-2026-09-22/audit.md`, Open).
 question and the page leaves it to the scorer. The page should say whether the no-document arm counts a
 correct "cannot tell" as a right answer, and the run-file contract should carry the choice.
 
-## E10. `rewrite` sets its scripts directory from a bare `$CLAUDE_PLUGIN_ROOT`, which Claude Code neither substitutes nor exports
-
-**Evidence, level 2.** `plugins/terse/skills/rewrite/SKILL.md:70-71` (at 829c235) ("installed,
-`$CLAUDE_PLUGIN_ROOT/skills/rewrite/scripts`") and `plugins/terse/skills/audit/SKILL.md:161` ("installed,
-`$CLAUDE_PLUGIN_ROOT/skills/audit/scripts`") tell the executor to set `S` and `A` from a bare variable.
-`plugins/entrust/evals/agent-contract.test.mjs:160-161` states the contract: Claude Code substitutes the
-exact `${...}` placeholder inline in a skill body and exports nothing to the Bash tool; a bare `$VAR` is
-neither, so an agent that follows the line gets `/skills/rewrite/scripts`. `plugins/entrust/CHANGELOG.md:372-375`
-records the same defect fixed on entrust's cleanup page by moving to `${CLAUDE_SKILL_DIR}`, which is
-substituted on both the installed and the clone routes. Found on 2026-09-22 by the writer of the
-run-directory fix (commits `9efef3d`, `3b71b62`); recorded, not fixed. Since 2026-09-25 `audit` runs no script,
-so its line is gone; `rewrite`'s remains.
-
-**Issue text.** On an installed plugin the line that locates `rewrite`'s scripts resolves to a path under
-`/`, so every `node "$S/..."` on the page fails with a missing file. The fix is the form entrust already
-uses: `${CLAUDE_SKILL_DIR}/scripts` for `S`, with the checkout sentence kept.
-
 ## E11. All three run directories are outside the working directory, where the Write tool and shell redirects prompt, and no page says so
 
 **Evidence, level 1.** After `9efef3d`, `plugins/terse/skills/audit/SKILL.md:33` and

@@ -69,11 +69,12 @@ The writer again, sent every report: it applies each finding or declines it with
 re-checks every sentence it changed against the code, reads the whole text once for a count or a name
 that disagrees with itself, and writes `02-repaired.md` with that list. Then, in one message: truth,
 brief 3, on the sentences the repair changed; the question readers again; the two cold readers, brief 11.
-Run the scripts on it too, `S` being this skill's `scripts/` — installed,
-`$CLAUDE_PLUGIN_ROOT/skills/rewrite/scripts`; from a checkout, the directory beside this file:
+Run the scripts on it too, from this skill's `scripts/`, the directory beside this file:
 
-- `node "$S/rule1.mjs" 02-repaired.md --cut "<the technical section>"` — no mechanism before it;
-- `node "$S/sections.mjs" 02-repaired.md budgets.json` — words per section against the plan, a report.
+- `node "${CLAUDE_SKILL_DIR}/scripts/rule1.mjs" 02-repaired.md --cut "<the technical section>"` — no
+  mechanism before it;
+- `node "${CLAUDE_SKILL_DIR}/scripts/sections.mjs" 02-repaired.md budgets.json` — words per section
+  against the plan, a report.
 
 A refuted sentence, a contradiction or a question now answered wrong goes back to the writer for those
 lines only, and the text takes the next number.
