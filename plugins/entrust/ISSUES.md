@@ -103,3 +103,21 @@ handling; the same grep for `idle-silence` shows the close on interrupt.
 **Issue text.** The fixture's slow turn cannot be interrupted, so a case that interrupts it races the timer and passes
 or fails by the machine's speed. Either the scenario ends on `turn/interrupt` like `idle-silence`, or its name says it
 cannot be interrupted and no interrupt case is written against it.
+
+## E49. A `protocol` case fails on CI now and then: the driver cut at `--timeout 0.25` exits 3 and prints no JSON report
+
+**Evidence, level 3 for the failure; no cause established.**
+
+- `plugins/entrust/evals/protocol.test.mjs:97`, `stalled-turn --timeout 0.25 --verify true`, failed CI run 36278638362, job
+  108506115593 (PR #23, macOS, Node 24) with "exit 3 correct, but the report is wrong: expected a JSON report, but stdout
+  was not JSON [no JSON report: ; stderr: entrust: pid=24463 …]", 1 of 147; the same commit passed the case on the
+  other three legs and on the job's rerun, and the three green runs of main before it (36251602999, 36257762767,
+  36268663359) show no such failure. That leg's job took 6 min 7 s against 4 min 58 s for its Node 22 twin.
+
+**Check.** `gh run view 36278638362 --repo Nowely/agent-skills --job 108506115593 --log-failed | grep 'FAIL  stalled-turn'`
+prints the failure; the rerun of the same job prints none.
+
+**Issue text.** With the turn budget at 250 ms, a driver on a loaded runner exits 3 as the case expects and publishes
+no report, so the exit code is right and the file the coordinator reads is missing. Either the driver still owes a
+report on that path and does not write it, or the case's budget is too tight for a cold start on a slow runner; which
+it is has not been established. Until it is, a red main on this case cannot be read.
