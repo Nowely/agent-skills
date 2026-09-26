@@ -159,8 +159,10 @@ const initializeParams = () => ({
   }
 });
 
+// Set by --check-prompt-file, whose refusals are one line in a shape its caller reads.
+let checkOnly = false;
 function fail(code, msg) {
-  process.stderr.write(`entrust: ${msg}\n`);
+  process.stderr.write(checkOnly ? `entrust: refused: ${msg.replace(/\s*\n\s*/g, " ")}\n` : `entrust: ${msg}\n`);
   // A caller waiting on the report file is waiting on it for refusals too: an empty path reads as
   // "unknown", and a refusal that left nothing behind is indistinguishable from an agent still starting.
   preTurnReport(code, msg);
@@ -349,6 +351,7 @@ const HELP = [
                      must come FIRST; a file with none is a read agent in the
                      current directory. Explicit flags override the file. Fields:
                      ${wrapJoined([...PROMPT_FIELDS], "/", 21)}
+  --check-prompt-file F  exit 2 on what --prompt-file F would refuse offline
   --attach FILE      attach a local image (${attachExts("localImage").join("/")}) or audio
                      file (${attachExts("localAudio").join("/")}) to the prompt; repeatable
   --answer-json      demand one bare JSON object as the answer; the report then
@@ -549,6 +552,9 @@ ${stateSubdirHelp()}
                                 little to start --verify in (default ${LIMITS.VERIFY_FLOOR_MS}).
                                 Also a test seam: the branch is otherwise
                                 reachable only by landing inside a ${LIMITS.VERIFY_FLOOR_MS} ms window
+  ENTRUST_POLICY_SEAM           a test seam: a plist read like the device's
+                                managed Codex policy, beside it; a --web-search
+                                mode must pass both, so it narrows and never widens
   ENTRUST_LOCK_SEAM_MS          a test seam: how long to pause between the
                                 lock's ownership check and the act it guards,
                                 touching <lock>.seam while it pauses. The lock
@@ -792,6 +798,7 @@ function parseArgs(argv) {
   if (o.worktree && o.cwd) fail(EXIT.USAGE, "--worktree and --cwd are contradictory: the created worktree becomes the cwd");
   if (o.worktree && o.levelExplicit && o.level === "read") fail(EXIT.USAGE, "--worktree requires --level write");
   if (o.worktree) o.level = "write";
+  if (o.level === "read" && o.writable.length) fail(EXIT.USAGE, "--writable belongs to --level write");
   // --cwd is a GRANT at write level and must be named there. At read level it only says which tree to
   // read, and the current directory is what a native subagent reads when nobody says otherwise.
   if (!o.cwd && !o.worktree) {
@@ -1161,9 +1168,9 @@ async function inheritedConfig() {
 const MANAGED_PREFS = "/Library/Managed Preferences/com.openai.codex.plist";
 // Return permitted modes, null when no policy narrows them, or throw when a present policy cannot be read.
 // An unreadable or malformed policy must fail closed.
-function managedWebSearchModes() {
-  if (!fs.existsSync(MANAGED_PREFS)) return null;
-  const r = spawnSync("plutil", ["-extract", "requirements_toml_base64", "raw", "-o", "-", MANAGED_PREFS],
+function managedWebSearchModes(file = MANAGED_PREFS) {
+  if (!fs.existsSync(file)) return null;
+  const r = spawnSync("plutil", ["-extract", "requirements_toml_base64", "raw", "-o", "-", file],
     { encoding: "utf8", timeout: LIMITS.SPAWN_TIMEOUT_MS, killSignal: "SIGKILL" });
   // No such key is a real answer: the profile constrains other things and says nothing about search.
   if (r.status !== 0) return /does not exist|Could not extract/i.test(String(r.stderr ?? "")) ? null : undefined;
@@ -1178,6 +1185,23 @@ function managedWebSearchModes() {
   if (!m) return null;
   const modes = [...m[1].matchAll(/["']([^"']+)["']/g)].map((x) => x[1]);
   return modes.length ? modes : undefined;   // an empty list permits nothing, which is not "unrestricted"
+}
+// The one refusal of a web-search mode, for the run and for --check-prompt-file alike. ENTRUST_POLICY_SEAM
+// names a second plist read the same way, and a mode must pass both, so the seam can narrow the modes and
+// never widen them. The last clauses are there because coordinators read a user's "the network is allowed"
+// as this field and, refused, swapped in a mode nobody asked for (2026-09-17 and 2026-09-25).
+function refuseWebSearchMode(mode, network) {
+  if (!mode) return;
+  const unaffected = network
+    ? "the network is unaffected: the agent's own commands reach it with no WEB_SEARCH: line"
+    : "the network is unaffected: NETWORK: no denies it either way, and WEB_SEARCH: does not grant it";
+  for (const file of [MANAGED_PREFS, process.env.ENTRUST_POLICY_SEAM].filter(Boolean)) {
+    const allowed = managedWebSearchModes(file);
+    if (allowed === undefined)
+      fail(EXIT.USAGE, `this device has a managed Codex policy at ${file} that could not be read, so whether --web-search ${mode} is permitted cannot be established; the server would substitute a mode silently and no response field would say which; ${unaffected}`);
+    if (allowed && !allowed.includes(mode))
+      fail(EXIT.USAGE, `--web-search ${mode} is not permitted by this device's managed policy, which allows ${allowed.join("|")}; the server would silently apply one of those and no response field would say so; another mode is the user's choice to make, not the coordinator's, and ${unaffected}`);
+  }
 }
 
 // A $TMPDIR of this run's own, made at EITHER level whenever the caller exported none, 0700 so no other
@@ -2208,7 +2232,7 @@ let roots = [];
 
 // Everything the argument layer decides, on its own: --help and every refusal reachable from the
 // command line need `opts` and none of them needs a codex, a lock or a directory.
-function readOpts() {
+function readOpts(argv = process.argv.slice(2), { resolveState = true } = {}) {
   // A prompt file is expanded into ordinary argv and re-parsed, so every flag guard, every mutual
   // exclusion and every value check applies to it unchanged — a second parser would be a second set of
   // rules to keep in sync, which is how a wrapper's rights quietly stop matching the CLI's.
@@ -2216,7 +2240,6 @@ function readOpts() {
   // disagree (--timeout is the common case: the harness bounding an agent it did not author).
   // Scanned for the flag alone, not parsed: a full parse first would reject the command line for
   // missing exactly what the prompt file is about to supply (--cwd).
-  const argv = process.argv.slice(2);
   // Opened FIRST, before any other refusal this function can raise, and off the raw command line: the
   // file the caller waits on has to exist for every refusal, including the ones the --prompt-file checks
   // below raise and the ones the prompt file itself causes. A missing or flag-like value is left to
@@ -2244,10 +2267,26 @@ function readOpts() {
   }
   // The one place the state root is resolved. Here rather than at each use, so a root this driver cannot
   // work with is refused at parse time rather than halfway through the run that needs it.
-  stateDir();
+  if (resolveState) stateDir();
   // Returned rather than assigned from in here: main installs it before anything reads it, which is what
   // lets every reader below say `opts.x` instead of guarding a variable that is always set by then.
   return o;
+}
+
+// --check-prompt-file F: F as the launcher hands it to a run — --prompt-file F and nothing else, stdin
+// closed — put through every refusal that needs no server, no lock and no state directory, by the code
+// the run refuses with. The launcher's --new runs it before an agent is spawned, with neither state
+// variable set. A pass is silent and 0; a refusal is 2 and one line, `entrust: refused: <reason>`. The
+// model catalogue behind MODEL: and EFFORT:, and the directories RIGHTS: and WRITABLE: name, stay the
+// run's to refuse.
+function checkPromptFile(argv) {
+  checkOnly = true;
+  if (argv.length !== 2 || argv[0] !== "--check-prompt-file" || !argv[1] || argv[1].startsWith("--"))
+    fail(EXIT.USAGE, "--check-prompt-file takes one prompt file and no other argument");
+  const o = readOpts(["--prompt-file", argv[1]], { resolveState: false });
+  // The launcher gives the run no stdin, so a file with no body is the run's own "empty prompt".
+  if (o.prompt === undefined) fail(EXIT.USAGE, "empty prompt");
+  refuseWebSearchMode(o.webSearch, o.network);
 }
 
 async function setup() {
@@ -2273,9 +2312,6 @@ async function setup() {
   // to be known, and the read level's promise — your files stay untouched — is unaffected by it: with
   // egress granted, a write outside the temp dir is still "Operation not permitted".
   sandbox = opts.level === "read" ? null : "workspace-write";
-
-  if (opts.level === "read" && opts.writable.length)
-    fail(EXIT.USAGE, "--writable belongs to --level write");
 
   if (opts.worktree) {
     const repo = resolveDir(opts.worktree, "--worktree");
@@ -2332,13 +2368,7 @@ async function setup() {
   // runtimeWorkspaceRoots reports; normalise the request the same way before asserting the response.
   roots = [...new Set(opts.writable.map((d) => checkRoot(resolveDir(d, "--writable"))))]
     .filter((r) => r !== cwd);
-  if (opts.webSearch) {
-    const allowed = managedWebSearchModes();
-    if (allowed === undefined)
-      fail(EXIT.USAGE, `this device has a managed Codex policy at ${MANAGED_PREFS} that could not be read, so whether --web-search ${opts.webSearch} is permitted cannot be established; the server would substitute a mode silently and no response field would say which`);
-    if (allowed && !allowed.includes(opts.webSearch))
-      fail(EXIT.USAGE, `--web-search ${opts.webSearch} is not permitted by this device's managed policy, which allows ${allowed.join("|")}; the server would silently apply one of those and no response field would say so`);
-  }
+  refuseWebSearchMode(opts.webSearch, opts.network);
 
   const config = [
     ["web_search", opts.webSearch ?? "disabled"],
@@ -3983,6 +4013,7 @@ function spawnServer() {
 }
 
 async function main() {
+  if (process.argv.includes("--check-prompt-file")) return checkPromptFile(process.argv.slice(2));
   opts = readOpts();
   // The pid a caller signals to stop this agent, and the identity that says the pid is still this run
   // rather than whatever the OS recycled it into. Before setup(), because an agent killed during its

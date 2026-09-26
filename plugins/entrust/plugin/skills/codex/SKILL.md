@@ -203,7 +203,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>` | the answer must parse as one JSON object |
 | `MODEL:` | `astra`, `sol`, `terra`, `luna`: the newest model of that name the catalogue lists, resolved before the turn; a full slug from the catalogue pins one version | this agent needs a model other than the configured default; in prose the name is capitalised |
 | `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`; `ultra` on Astra, Sol and Terra (the catalogue of 2026-09-17: `none` and `minimal` are on no model and exit 2 before the turn); no line inherits `~/.codex/config.toml` | the task is worth more or less thinking than the configured default; `low` for a one-line task |
-| `WEB_SEARCH:` | `cached`, `indexed`, `live` | the agent needs sources it cannot read locally |
+| `WEB_SEARCH:` | `cached`, `indexed`, `live`: the provider's search tool, not the network, which every level reaches with no line and `NETWORK: no` denies | the user asked for the provider's web search; "the network is allowed" is not that ask. A mode the device refuses goes back to the user as a question, never to another mode |
 | `BRIEF:` | `yes` | a short answer is enough; omit it beside an output schema — it clips only the inline `answer` (`answerJson` is parsed from the whole one) yet still asks the model for 20 lines |
 | `ALLOW_NO_COMMANDS:` | `yes` | the agent is recall-only and will run nothing |
 
