@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Every suite under evals/, in one command.
 //
-//   node evals/run-all.mjs            (or: npm test)
+//   node evals/run-all.mjs
 //
 // Cheapest first, so a red arrives early. It stops at the FIRST red suite: the later ones cost minutes,
 // and a broken driver fails them all with the same cause. Each suite's own output is passed through as it

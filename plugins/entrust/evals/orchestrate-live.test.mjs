@@ -513,14 +513,14 @@ const TAG_TASK =
   + "\"opus\": <second answer>} and nothing else.";
 
 const COUNT_TASK =
-  "Run wc -l on README.md, CHANGELOG.md and package.json in the current directory yourself, on this thread, "
+  "Run wc -l on README.md, LICENSE and package.json in the current directory yourself, on this thread, "
   + "one command each or one command for all three, and RETURN three lines file: count copied from its "
   + "output.";
 
 // The prompt case 4 used to carry, kept for the probe: it is the invitation, and the invitation is what
 // the delegation depends on.
 const DELEGATE_TASK =
-  "Three independent counts: the number of lines in README.md, CHANGELOG.md and package.json in the current "
+  "Three independent counts: the number of lines in README.md, LICENSE and package.json in the current "
   + "directory. If you can delegate to subagents, run each count in its own subagent. RETURN: three lines, "
   + "file: count.";
 
@@ -638,7 +638,7 @@ test("Astra answers on its own thread when not invited to delegate",
   async () => {
     const dir = caseDir(4, "astra-own-thread");
     const scratch = scratchClone(dir);
-    const files = ["README.md", "CHANGELOG.md", "package.json"];
+    const files = ["README.md", "LICENSE", "package.json"];
     const expected = Object.fromEntries(files.map((f) => [f, wcL(path.join(scratch, f))]));
     // No --effort: the page sends no EFFORT: line, so the agent inherits the configured effort and this is
     // the agent the page describes. What the server selected is noted beside the case, never asserted.

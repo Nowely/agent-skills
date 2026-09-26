@@ -11,14 +11,17 @@
 import fs from "node:fs";
 import path from "node:path";
 import { SCENARIOS } from "./fake-app-server.mjs";
-import { DRIVER, PINNED_CODEX, ROOT, codexShim, spawnNode, tempDir } from "./lib/harness.mjs";
+import { DRIVER, EVALS, PINNED_CODEX, codexShim, spawnNode, tempDir } from "./lib/harness.mjs";
+
+// The schemas sit beside the installed plugin, with the suites: the driver reads none of them at run time.
+const HOME = path.dirname(EVALS);
 
 // The upgrade recipe in README.md generates a SECOND schema-<version>/ beside the old one, and
 // readdirSync order is not sorted — so "the first one that matches" could validate the fixture against
 // the version being replaced and say nothing. Pick the newest by version and name it in the output.
 // ENTRUST_SCHEMA_DIR overrides that choice with a directory name, which is how the upgrade
 // recipe validates the newly generated tree before PINNED_CODEX moves to it.
-const schemaDirs = fs.readdirSync(ROOT).filter((n) => /^schema-\d/.test(n))
+const schemaDirs = fs.readdirSync(HOME).filter((n) => /^schema-\d/.test(n))
   .sort((a, b) => {
     const part = (n) => n.slice("schema-".length).split(".").map((x) => Number.parseInt(x, 10) || 0);
     const [pa, pb] = [part(a), part(b)];
@@ -27,9 +30,9 @@ const schemaDirs = fs.readdirSync(ROOT).filter((n) => /^schema-\d/.test(n))
   });
 const override = process.env.ENTRUST_SCHEMA_DIR ?? null;
 const schemaDir = override ?? schemaDirs[0];
-if (!schemaDir) { console.log("FAIL  no schema-<version>/ directory in the repository root"); process.exit(1); }
-if (!fs.existsSync(path.join(ROOT, schemaDir))) {
-  console.log(`FAIL  ENTRUST_SCHEMA_DIR names ${schemaDir}, which is not a directory in the repository root`);
+if (!schemaDir) { console.log(`FAIL  no schema-<version>/ directory in ${HOME}`); process.exit(1); }
+if (!fs.existsSync(path.join(HOME, schemaDir))) {
+  console.log(`FAIL  ENTRUST_SCHEMA_DIR names ${schemaDir}, which is not a directory in ${HOME}`);
   process.exit(1);
 }
 // The pin is what every report calls codexVersionPinned. A regeneration into a newer directory that
@@ -40,7 +43,7 @@ if (!override && schemaDir !== `schema-${PINNED_CODEX}`) {
 }
 if (schemaDirs.length > 1)
   console.log(`note  ${schemaDirs.length} schema directories present; validating against ${schemaDir} (also: ${schemaDirs.filter((d) => d !== schemaDir).join(", ")})`);
-const SCHEMAS = path.join(ROOT, schemaDir);
+const SCHEMAS = path.join(HOME, schemaDir);
 // Recorded as they are loaded, so the check below reads the same list the cases do rather than a copy.
 const loaded = new Set();
 const load = (rel) => { loaded.add(rel); return JSON.parse(fs.readFileSync(path.join(SCHEMAS, rel), "utf8")); };

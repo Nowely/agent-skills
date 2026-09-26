@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { EXIT, FAKE, SCRIPTS, codexShim, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
-import { ACCEPTED, REFUSED, STATUS_LINES, TAKEN, agentDirOf, shortName } from "../skills/codex/scripts/agent-run.mjs";
+import { ACCEPTED, REFUSED, STATUS_LINES, TAKEN, agentDirOf, shortName } from "../plugin/skills/codex/scripts/agent-run.mjs";
 
 const LAUNCHER = path.join(SCRIPTS, "agent-run.mjs");
 const DRIVER_SRC = fs.readFileSync(path.join(SCRIPTS, "driver.mjs"), "utf8");

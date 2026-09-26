@@ -399,7 +399,7 @@ test("G6 the launcher and the driver make the run directory, the coordinator wri
     "A Claude agent's artifact is its returned text, and a file it must leave goes under `$TMPDIR` with the path in that text",
   ));
 
-// ------------------------------------------------------------------ H: the 2026-09-17 research round (research/2026-09-17-orchestration-practices/)
+// ------------------------------------------------------------------ H: the 2026-09-17 research round (plugins/entrust/research/2026-09-17-orchestration-practices/)
 // These cases pin the rule where the words allow it (an alternation over the words that carry it, a
 // negative half where the rule forbids something); they are still text pins, not a reading of the page.
 

@@ -108,14 +108,14 @@ test("V1 two verdicts: the orchestrator's conclusion states no cause the design 
     return true;
   });
 
-test("E1 the record lives under the state directory, is written by the script and never by hand, closes at the verdict, and is exported as research/<date>-<slug>/ with a row in the index",
-  "the owner chose the plugin's data directory as the one predictable place; a coordinator's write there is refused (measured 2026-09-08), so the script is the only pen; and the repository's research layout is research/<date>-<slug>/ with research/README.md as its index, not a second layout",
+test("E1 the record lives under the state directory, is written by the script and never by hand, closes at the verdict, and is exported as plugins/entrust/research/<date>-<slug>/ with a row in the index",
+  "the owner chose the plugin's data directory as the one predictable place; a coordinator's write there is refused (measured 2026-09-08), so the script is the only pen; and the repository's research layout is plugins/entrust/research/<date>-<slug>/ with plugins/entrust/research/README.md as its index, not a second layout",
   () => {
     const prose = says(
       /`experiments\/<date>-<slug>\/` under the state directory, beside the orchestrate runs, written by `scripts\/experiment\.mjs` and never by hand/,
       /\(measured 2026-09-08\)/,
       /after `verdict\.md` the script refuses every change/,
-      /copies the record unchanged, as `research\/<date>-<slug>\/` in a checkout, where a row goes into `research\/README\.md`/,
+      /copies the record unchanged, as `plugins\/entrust\/research\/<date>-<slug>\/` in a checkout, where a row goes into `plugins\/entrust\/research\/README\.md`/,
       /Codex reports stay where the driver put them and are copied in by path/,
       /Cleanup (neither lists nor removes|never lists or removes) a record/,
     );

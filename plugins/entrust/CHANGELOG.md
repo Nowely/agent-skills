@@ -7,6 +7,21 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- **What installs is now `plugins/entrust/plugin/`.** The marketplace entry's `source` is
+  `./plugins/entrust/plugin`: the skills, the agent, the driver and its companions, the README, the
+  LICENSE and `package.json`. The suites, the pinned protocol schema and this changelog no longer install;
+  they stay in the repository beside it, at `plugins/entrust/evals/`, `plugins/entrust/schema-0.153.4/`
+  (516 KB, 45% of the old payload; the driver reads none of it at run time, and its protocol-drift error
+  now names the pinned codex version itself instead of pointing at the directory) and
+  `plugins/entrust/CHANGELOG.md`, with the plugin's
+  defects ledger (`plugins/entrust/ISSUES.md`) and its research runs (`plugins/entrust/research/`).
+  `package.json` has no `test` script and an installed copy has no suites: run them from a checkout with
+  `node plugins/entrust/evals/run-all.mjs`, as CI now does. The README links this
+  changelog on GitHub. A new case in `evals/package.test.mjs` checks that every marketplace entry's
+  `source` is a directory holding that plugin's `plugin.json` and no `evals/`, `research/`, `ISSUES.md`,
+  `CHANGELOG.md` or `schema-*/`. Why: an install copies the whole source directory, so every install carried
+  the suites, the schema and the changelog; the owner's rule is that the installed plugin carries what the plugin needs and the
+  working material lives beside it.
 - **Breaking: `claude plugin install` is the only supported install.** The clone-and-symlink route —
   linking a checkout's `skills/*` into `~/.claude/skills/` and `agents/codex-agent.md` into
   `~/.claude/agents/` — is no longer documented or supported: the README's block and its notes are gone,

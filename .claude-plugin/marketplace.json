@@ -13,7 +13,7 @@
       "author": {
         "name": "Nowely"
       },
-      "source": "./plugins/entrust"
+      "source": "./plugins/entrust/plugin"
     },
     {
       "name": "terse",
@@ -21,7 +21,7 @@
       "author": {
         "name": "Nowely"
       },
-      "source": "./plugins/terse"
+      "source": "./plugins/terse/plugin"
     }
   ]
 }
