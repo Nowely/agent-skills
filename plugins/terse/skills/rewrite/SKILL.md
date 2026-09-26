@@ -73,12 +73,12 @@ The writer again, sent every report: it applies each finding or declines it with
 context in a line — a rule's number is no reason — re-checks every sentence it changed against its world, reads the whole text once for a count or a name
 that disagrees with itself, and writes `02-repaired.md` with that list. Then, in one message: truth,
 brief 3, on the sentences the repair changed; the question readers again; the two cold readers, brief 11.
-Run the scripts on it too, from this skill's `scripts/`, the directory beside this file:
+Run the script on it too, from this skill's `scripts/`, the directory beside this file — words per section
+against the writer's own plan, a report:
 
-- `node "${CLAUDE_SKILL_DIR}/scripts/rule1.mjs" 02-repaired.md --cut "<the technical section>"` — no
-  mechanism before it;
-- `node "${CLAUDE_SKILL_DIR}/scripts/sections.mjs" 02-repaired.md budgets.json` — words per section
-  against the plan, a report.
+```bash
+node "${CLAUDE_SKILL_DIR}/scripts/sections.mjs" 02-repaired.md budgets.json
+```
 
 A refuted sentence, a contradiction or a question now answered wrong goes back to the writer for those
 lines only, and the text takes the next number.

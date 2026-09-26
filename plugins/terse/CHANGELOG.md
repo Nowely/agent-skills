@@ -7,6 +7,11 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- `rewrite` no longer runs `rule1.mjs` on the repaired text; `sections.mjs`, words per section against the
+  writer's own plan, stays as a report. The script made one piece of advice — technical detail below the
+  middle — into a gate: on the dust README it reported 13 violations, every one a flag in the options table,
+  which for a terminal tool is its interface. The script still ships, called by no page, until the old
+  path's scripts are decided on at the release.
 - The critics argue from the reader, and a rule's number is no reason to decline a finding or to demand one.
   The rationalizer asks whether the reader needs a thing or whether it makes them want it, and keeps the
   comparison, the demo and the pitch; form reads the text beside the best texts of its kind and says what the
