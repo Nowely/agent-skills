@@ -62,13 +62,31 @@ Write the text to <OUT>/01-draft.md. Return as your final message the context, t
 notes.
 ```
 
-The repair is the same agent, sent every critic's report: it applies each finding or declines it with a
-reason from the context in a line — a rule is advice, and its number is no reason — re-checks every sentence it changed, then reads the whole text once as its reader, so
-that a count or a name said twice agrees with itself, and writes `02-repaired.md` beside the draft with
-that list. Then, at once: truth, brief 3, on the sentences the repair changed; the question readers
-again; and the two cold readers, brief 11. A refuted sentence, a contradiction or a question now answered
-wrong goes back to the writer for those lines only, and the text takes the next number. No text is called
-final: the user's word makes it so.
+The repair is the same agent, sent every critic's report:
+
+```
+Every critic has read your draft, and each report is a file in <OUT>/critics/. Take a finding where it
+makes the text truer for its reader or easier to read; decline one that adds words this reader does not
+need where they are — a caveat, a rare case, a second route, a detail — with the reason from <CONTEXT> in
+a line. A rule is advice, and its number is no reason; a caveat is seldom a fix (<RULES>, "A qualification
+as a fix"), and the rare cases truth lists stay out of the text. Re-check every sentence you change
+against its world; read, run nothing of what the text describes. Then read the whole text once as its
+reader, so that a count or a name said twice agrees with itself. Write the text to <OUT>/02-repaired.md,
+and to <OUT>/02-repairs.md one line per finding: the critic, the finding, taken or declined, the reason.
+```
+
+Then, at once: truth, brief 3, on the sentences the repair changed; the question readers again; and the two
+cold readers, brief 11. What they find goes back to the writer for those lines only:
+
+```
+A check read <OUT>/02-repaired.md, and its reports are in <OUT>/check/. Fix only these: a sentence truth
+lists as wrong for this reader, a contradiction, a question now answered wrong, a line a cold reader could
+not follow. What a reader wished added is not a fix: it goes to the owner with the text. Re-check every
+sentence you change against its world, then write the text to <OUT>/03-fixed.md and one line per finding
+to <OUT>/03-fixes.md.
+```
+
+No text is called final: the user's word makes it so.
 
 ## 2. The genre scout
 
@@ -90,11 +108,12 @@ kept as the genre's notes; the next text of the same kind is written from them w
 Check every sentence that states a fact in <SECTIONS> of <DOC> — a group of sections, or the sentences a
 repair changed — against its world, <CODE>, as <TRUTH> checks a claim in a light run: read, run nothing of
 what the text describes, and judge each sentence by its levels, its verdicts and its guarantee words.
-Return only the refuted and the overstated sentences, each with its line in <DOC>, the evidence, and the
-plainest sentence that is true for this reader — <CONTEXT> — or "cut" where they lose nothing they need.
-Plain, not shortest: a replacement the reader must read twice is no fix. A rare case that would not
-mislead this reader is noted, not written into the text, and a route the reader takes is not narrowed to
-fit it.
+Return two lists, each sentence with its line in <DOC> and the evidence. Wrong for this reader —
+<CONTEXT>: a refuted sentence, or an overstated one they would act on wrongly; give the plainest sentence
+that is true for them, or "cut" where they lose nothing they need. Plain, not shortest: a replacement the
+reader must read twice is no fix, and a route the reader takes is not narrowed to fit a case they will not
+meet. Rare cases: an exception that would not mislead this reader, named with its evidence and no
+replacement — it stays out of the text.
 ```
 
 In full mode, add to the brief: "You may also run the code in <HARNESS>, the copy built for this run, and

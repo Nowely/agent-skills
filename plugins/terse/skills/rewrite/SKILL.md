@@ -70,20 +70,20 @@ save it into `critics/` of the run directory. No agent merges them: the writer r
 
 ## Step 5. One repair, and a check of it
 
-The writer again, sent every report: it applies each finding or declines it with a reason from the
-context in a line — a rule's number is no reason — re-checks every sentence it changed against its world,
-reads the whole text once for a count or a name that disagrees with itself, and writes `02-repaired.md`
-with that list. Then, in one message: truth,
-brief 3, on the sentences the repair changed; the question readers again; the two cold readers, brief 11.
-Run the script on it too, from this skill's `scripts/`, the directory beside this file — words per section
-against the writer's own plan, a report:
+The writer again, on the repair brief of `roles.md`, sent every report: it takes a finding where the text
+becomes truer for its reader or easier to read, declines one that adds words the reader does not need
+there with a reason from the context, and writes `02-repaired.md` with that list. Then, in one message:
+truth, brief 3, on the sentences the repair changed; the question readers again; the two cold readers,
+brief 11. Run the script on it too, from this skill's `scripts/`, the directory beside this file — words per
+section against the writer's own plan, a report:
 
 ```bash
 node "${CLAUDE_SKILL_DIR}/scripts/sections.mjs" 02-repaired.md budgets.json
 ```
 
-A refuted sentence, a contradiction or a question now answered wrong goes back to the writer for those
-lines only, and the text takes the next number.
+A sentence truth finds wrong for the reader, a contradiction, a question now answered wrong or a line a
+cold reader could not follow goes back to the writer for those lines only, on the fix brief, and the text
+takes the next number; what a reader wished added goes to the user with the text.
 
 ## Step 6. The hand-over
 

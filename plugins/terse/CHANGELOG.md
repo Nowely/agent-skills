@@ -7,6 +7,15 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- The truth critic returns two lists: what is wrong for this reader, each with the plainest true sentence,
+  and the rare cases that would not mislead them, named with no replacement, which stay out of the text. The
+  repair and the fix have briefs of their own in `roles.md`. The repair takes a finding where the text becomes
+  truer for its reader or easier to read, and declines one that adds words the reader does not need there — a
+  caveat, a rare case, a second route, a detail. The fix takes only what the check found wrong: a sentence, a
+  contradiction, an answer, a line a cold reader could not follow; what a reader wished added goes to the user.
+  On the second dust README the repair took 35 of 36 findings, four of the truth critic's caveats among them,
+  and a fix briefed by the coordinator added the installer's architectures and a Troubleshooting section. Not
+  yet measured.
 - The genre notes for a terminal tool advise the options as one table sorted by usefulness: the flag with its
   long form and what it does, all of them rather than a chosen few under "Frequently used". On the second dust
   README the owner preferred the control's reference of options to our table of thirteen tasks, and doubted
