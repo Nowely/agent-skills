@@ -359,8 +359,8 @@ test("1 · the cleanup recipe resolves through clone-style sibling skill links",
     return m.done();
   });
 
-test("2 · the cleanup recipe documents its missing-sibling failure",
-  "a clone layout that links cleanup alone has no agent entry at the lexical sibling path, so this case pins the page's stated install coupling instead of implying that the cleanup symlink itself is enough",
+test("2 · the cleanup recipe fails without its sibling codex skill",
+  "a clone layout that links cleanup alone has no agent entry at the lexical sibling path, so the recipe depends on the codex skill sitting beside cleanup, not on where a cleanup link points",
   async () => {
     const w = makeWorld("recipe-without-sibling");
     const skills = path.join(w.root, "linked-skills");

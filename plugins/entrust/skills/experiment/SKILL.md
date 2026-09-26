@@ -10,7 +10,7 @@ metadata:
 license: MIT
 ---
 
-Load [orchestrate](../orchestrate/SKILL.md) now (Skill tool, `entrust:orchestrate`; bare `orchestrate` on a clone-and-symlink install), which loads codex; every arm runs under those two pages, and this page re-cuts only what an experiment adds: a protocol before any agent, matched material, a judge that does not see the arm, two verdicts, and a record kept by a script. The mode adds no driver change, no header field and no flag; its one script writes the record and nothing else. A run needs no checkout of the repository: the record lives on the machine and is copied into a checkout later.
+Load [orchestrate](../orchestrate/SKILL.md) now (Skill tool, `entrust:orchestrate`), which loads codex; every arm runs under those two pages, and this page re-cuts only what an experiment adds: a protocol before any agent, matched material, a judge that does not see the arm, two verdicts, and a record kept by a script. The mode adds no driver change, no header field and no flag; its one script writes the record and nothing else. A run needs no checkout of the repository: the record lives on the machine and is copied into a checkout later.
 
 ## The protocol
 

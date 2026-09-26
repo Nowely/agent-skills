@@ -71,8 +71,7 @@ vendor and its task, and not the command line. That type is the agent this plugi
 [agents/codex-agent.md](../../agents/codex-agent.md): a relay with the Bash tool alone and its model pinned
 in its own file, so its context is half a `general-purpose` subagent's (measured 2026-09-12: 8.2k against
 15.4k tokens on the same agent). Pass it no `model`; the agent's model is the `MODEL:` line in its prompt
-file. A clone-and-symlink install links that file into `~/.claude/agents/` ([README](../../README.md#install)),
-where its type is the bare `codex-agent`.
+file.
 
 The wrapper's message is the block below with its two placeholders filled in and nothing added or
 removed: the command and the four steps, which the wrapper's own file repeats (measured 2026-09-17: with the
@@ -139,9 +138,7 @@ Every launch forwards that variable under its own name — the plugin's own data
 driver's state and every Codex artifact the report names (`answerPath`, a worktree harvest) live — and
 the launcher hands its environment to the driver as it found it. The
 driver reads `ENTRUST_STATE_DIR` first and that variable second, and with neither it exits 2; only
-`--help` needs none. A clone-and-symlink install substitutes nothing for the placeholder, so the forwarded
-value is empty there and the `ENTRUST_STATE_DIR` the user exports decides ([README](../../README.md)
-says where).
+`--help` needs none.
 
 A read agent's prompt needs no header at all:
 

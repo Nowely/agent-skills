@@ -7,6 +7,19 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- **Breaking: `claude plugin install` is the only supported install.** The clone-and-symlink route —
+  linking a checkout's `skills/*` into `~/.claude/skills/` and `agents/codex-agent.md` into
+  `~/.claude/agents/` — is no longer documented or supported: the README's block and its notes are gone,
+  and the skill pages name only the plugin's spellings (`entrust:codex`, `entrust:orchestrate`,
+  `entrust:codex-agent`), which a linked install does not have. This breaks every machine installed that
+  way. To move: `claude plugin marketplace add Nowely/agent-skills`, then
+  `claude plugin install entrust@nowely`, and remove the old links — `codex`, `orchestrate`, `cleanup`,
+  `experiment`, `advisor` and `swarm` under `~/.claude/skills/`, and `~/.claude/agents/codex-agent.md`.
+  The driver still reads `ENTRUST_STATE_DIR` first, so one still exported keeps the state where it was;
+  unset it to use the plugin's data directory. The README keeps the variable for running the driver by
+  hand. Pinned by the updated page cases in `evals/orchestrate.test.mjs` and
+  `evals/agent-contract.test.mjs`. Why: the owner chose one supported install; the linked route carried
+  its own names, its own state variable and its own warnings through the README and six skill pages.
 - A Codex agent's `MODEL:` line, and the driver's `--model`, take a short name (`astra`, `sol`, `terra`,
   `luna`, in any case) and run the newest model of that name the server's own `model/list` shows: versions
   compare as numbers (6.10 after 6.9), and a hidden model is never chosen. A full slug still pins one

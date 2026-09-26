@@ -184,8 +184,8 @@ test("every driver path and every state directory on both pages is the exact ${.
       }
     }
     // The one call every agent is launched by forwards the data directory under its own name: the driver reads
-    // ENTRUST_STATE_DIR first, so an exported one (the clone route, where nothing substitutes the
-    // placeholder and the forwarded value is empty) still wins, and a plugin install gets the resolved path.
+    // ENTRUST_STATE_DIR first, so an exported one still wins, and without one a plugin install gets the
+    // resolved path.
     if (!/CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs"/.test(skill))
       problems.push("the One call recipe no longer forwards CLAUDE_PLUGIN_DATA=\"${CLAUDE_PLUGIN_DATA}\" ahead of the launcher");
     // The placeholder resolves to the skill directory, so the path below it is the shipped layout's.
@@ -323,7 +323,7 @@ test("the shipped wrapper is the agent the page names: Bash alone, a pinned mode
                           "Call SubagentHandback with exactly the lines that result printed",
                           "After the hand-back result", ": report delivered"])
       if (!body.replace(/\s+/g, " ").includes(phrase)) problems.push(`the agent body no longer says: ${JSON.stringify(phrase)}`);
-    for (const phrase of ["`subagent_type: entrust:codex-agent`", "A clone-and-symlink install links that file into `~/.claude/agents/`", "Pass it no `model`"])
+    for (const phrase of ["`subagent_type: entrust:codex-agent`", "Pass it no `model`"])
       if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
