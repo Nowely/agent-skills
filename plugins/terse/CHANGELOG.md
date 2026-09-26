@@ -7,6 +7,13 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- The writer starts from the text's world: before any plan it writes `context.md` — what the thing is and
+  what it resembles, who reads the text and in what situation, what they need first, what would make them
+  want it, the one thought it carries — and the plan follows from that rather than from a list of sections.
+  The genre scout now runs before the writer and names the two or three best texts of the kind, which the
+  writer reads; `rethink` plans the same way. Its brief no longer assumes a README written from code. On the
+  dust README the scout had counted what the owner valued — the familiar command, a demo, package-manager
+  choices — and its table never reached the writer.
 - `references/rules.md` requires two things of every text — it is pleasant to read, and true within its
   world: the code for documentation, the facts for an essay, what a story has set up for a story, which the
   writer widens only with the user — and everything else in it is advice, taken where it helps this text and

@@ -3,12 +3,13 @@
 Every agent the three skills start, with its model and its brief. `rewrite` runs one writer, then every
 critic at once on the writer's draft, then the writer once more, then a check of what the repair changed;
 `rethink` runs the writer, the genre scout, form and the rationalizer on a plan; `audit` runs the readers,
-and in a full run the harness. Each critic holds one concern and nothing else, so they run in parallel
-and none waits for another. Fill `<DOC>` (the text under review), `<CODE>` (the repository the text
-describes), `<RULES>` (`rules.md` beside this page), `<SENTENCES>` (`writing-rules.md` and
-`curse-of-knowledge.md` beside this page), `<TRUTH>` (`truth.md` beside this page), `<PURPOSE>` (the
-owner's words: what the text is for and who reads it), `<AUDIT>` (an audit's `audit.md`, where one was
-given), `<OUT>` (the run directory); send nothing else.
+and in a full run the harness. Each critic holds one concern and nothing else, so they run in parallel and
+none waits for another. Fill `<DOC>` (the text under review), `<CODE>` (what the text describes: for
+documentation, the repository), `<CONTEXT>` (the `context.md` the writer writes first), `<GENRE>` (the notes
+for this kind of text, or the scout's table and the best documents it fetched), `<RULES>` (`rules.md` beside
+this page), `<SENTENCES>` (`writing-rules.md` and `curse-of-knowledge.md` beside this page), `<TRUTH>`
+(`truth.md` beside this page), `<PURPOSE>` (the owner's words: what the text is for and who reads it),
+`<AUDIT>` (an audit's `audit.md`, where one was given), `<OUT>` (the run directory); send nothing else.
 Every brief ends with: do not modify the repository, write only under `$TMPDIR`, never `cd` inside a
 compound command. Every agent returns its report as its final message, and the coordinator saves it: a
 harness hook refuses a subagent's report file.
@@ -16,7 +17,7 @@ harness hook refuses a subagent's report file.
 | Role | Model | Runs | Brief |
 |---|---|---|---|
 | writer | Claude Opus | first, and again for the repair | 1 |
-| genre scout | Codex Sol | beside the writer, only when the genre has no notes | 2 |
+| genre scout | Codex Sol | before the writer, only when the kind has no notes | 2 |
 | truth, one per group of sections | Claude Opus | on the draft; one more on the sentences the repair changed | 3 |
 | rationalizer | Claude Opus | on the draft | 4 |
 | form | Claude Sonnet | on the draft | 5 |
@@ -38,21 +39,28 @@ a role able to run code names the mode when it announces its agents.
 ## 1. The writer
 
 ```
-Write <DOC> for the repository at <CODE>. Read the code first: what it does, how it is installed and
-started, what a user types, what it writes. Then <RULES>, which you follow from its first section — the
-text is pleasant to read — and <SENTENCES>, applied as written; where a rule does not fit this text, say
-which and why. The purpose, in the owner's words: <PURPOSE>. The genre's order, where it is known:
-<GENRE>. Where a text exists already, it is <EXISTING>: keep what is true and does its job. Where it was
-audited, the run file is <AUDIT>: write for its reader profile, and answer what it found hard to read,
-every failure under What broke and every refuted claim in its ledger.
+Write <DOC>. First know its world: read what it is about — for a text about code, the code at <CODE>:
+what it does, how a user gets it and starts it, what they type, what comes back — and write
+<OUT>/context.md: what the thing is and what it resembles, who reads the text and in what situation, what
+they need first, what would make them want it, and the one thought the text carries. The purpose, in the
+owner's words: <PURPOSE>. Then see how the best texts of its kind are built: <GENRE>. Where a text exists
+already, it is <EXISTING>: keep what is true and does its job. Where it was audited, the run file is
+<AUDIT>: write for its reader profile, and answer what it found hard to read, every failure under What
+broke and every refuted claim in its ledger.
 
-Plan first: each section, what it gives the reader, the device that carries it, a word budget. Write the
-budgets to <OUT>/budgets.json, every `## ` heading mapped to its words, before the text. Every sentence
-about behaviour is true of the code: note beside it the line that shows it. Read the code; run nothing.
-A requirement the owner stated is a claim like any other.
+<RULES> requires two things — the text is pleasant to read, and true within its world — and the rest of it
+is advice: take what helps this text and leave the rest. <SENTENCES> is a measured technique for
+sentences, applied as written.
 
-Write the text to <OUT>/01-draft.md. Return as your final message the plan, the evidence notes, and every
-rule you set aside with the reason.
+Plan from the context, not from a list of sections: each part, what it gives this reader, the device that
+carries it, a word budget. Write the budgets to <OUT>/budgets.json, every `## ` heading mapped to its
+words, before the text. Every statement is true within the text's world: note beside it what shows it.
+Read; run nothing of what the text describes. A fact its world does not hold — a feature the code lacks, a
+requirement of the owner's the code does not meet — goes back to the owner as a question, not into the
+text.
+
+Write the text to <OUT>/01-draft.md. Return as your final message the context, the plan and the evidence
+notes.
 ```
 
 The repair is the same agent, sent every critic's report: it applies each finding or declines it with the
@@ -70,11 +78,12 @@ Find how documents of this kind are written: <KIND>. Fetch five to eight of the 
 downloads or listings — as raw markdown with curl, never through a summarising tool, and save them
 under <OUT>/fetched/. Return one table: each place from the top, what the genre puts there, in N of M
 documents, and how it is formatted there — headings, bold lead-ins, tables, fenced blocks, lists. Then
-what the best openings and quick starts do in their first 150 words. Cite nothing you did not fetch.
+name the two or three best, and what their first 150 words do for their reader. Cite nothing you did not
+fetch.
 ```
 
-Its table is kept as the genre's notes; the next text of the same kind is written from them without a
-scout.
+It runs before the writer, whose brief carries its table and the best documents it named. Its table is
+kept as the genre's notes; the next text of the same kind is written from them without a scout.
 
 ## 3. Truth, one agent per group of sections
 

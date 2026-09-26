@@ -12,7 +12,8 @@ license: MIT
 
 One writer, then every critic at once, then the writer once more and a check of what it changed, then
 your read. Each critic holds one concern, so none waits for another. Every role works from
-[rules.md](../../references/rules.md), a pleasant read first; the briefs are in [roles.md](../../references/roles.md).
+[rules.md](../../references/rules.md) — two requirements, a pleasant read and truth within the text's world,
+and advice taken where it helps; the briefs are in [roles.md](../../references/roles.md).
 
 ## Step 1. One message to the user
 
@@ -43,13 +44,15 @@ Nothing goes into the repository without the user's word.
 
 ## Step 3. The draft
 
-The writer, brief 1 of `roles.md`: from the code, the rules, the purpose, the genre's notes, the
-existing text if any, the plan the user agreed in `rethink` if they give its path, and the audit's run
-file if they gave its directory. It writes its
-plan's word budgets to `budgets.json` before the text, then `01-draft.md`, and returns the plan with its
-evidence; save that as `writer-notes.md`. In full mode the harness, brief 12, runs beside it. Where the
-genre has no notes in [genres/](../../references/genres/), the genre scout, brief 2, runs beside it; its
-table is kept there for the next text of the kind, on the user's word.
+Where the kind of text has no notes in [genres/](../../references/genres/), the genre scout, brief 2,
+runs first; its table is kept there for the next text of the kind, on the user's word. Then the writer,
+brief 1 of `roles.md`. It works out the text's world before its form and writes `context.md`: what the
+thing is and what it resembles, who reads the text and in what situation, what they need first, what would
+make them want it, the one thought it carries. Then it reads the genre's notes and the best texts of the
+kind, and writes its plan's word budgets to `budgets.json` and then `01-draft.md` — from the context, the
+purpose, the existing text if any, the plan the user agreed in `rethink` if they give its path, and the
+audit's run file if they gave its directory. It returns the context, the plan and its evidence; save them
+as `writer-notes.md`. In full mode the harness, brief 12, runs beside it.
 
 ## Step 4. Every critic at once
 
@@ -89,7 +92,7 @@ word.
 
 ## What you return
 
-In the run directory: `purpose.md`; `01-draft.md`, `budgets.json` and `writer-notes.md` with the plan;
+In the run directory: `purpose.md`; `context.md`; `01-draft.md`, `budgets.json` and `writer-notes.md` with the plan;
 `critics/`, every report verbatim, the check's among them; each numbered text after the draft, with the
 applied-and-declined list; the scripts' output; `diff.patch` for a text that existed.
 
@@ -104,6 +107,10 @@ others. Its first run, on 2026-09-25, took 70 minutes, and what it missed — a 
 brought in, sentences no role read, a writer re-running what the truth critics ran — is what step 5's check,
 brief 10 and the reading writer are for. Its second run took 1 h 33 min, and truth critics that each rebuilt
 the same harness held the critical path twice, 24 and 20 minutes: hence light by default, and one shared copy
-when the user asks for full. The measurements behind the rules:
-[measurements.md](../../references/measurements.md); the runs: `research/2026-09-24-terse-benchmark-maestro/`.
+when the user asks for full. On 2026-09-26, on the README of a disk-usage tool, a bare agent's text beat
+this path's: the writer had not been asked what the tool was to its reader, and rules applied as requirements
+cut the demo, the one-line pitch and the install routes the owner valued most — hence the context first,
+the scout before the writer, and rules that are advice. The measurements behind the rules:
+[measurements.md](../../references/measurements.md); the runs: `research/2026-09-24-terse-benchmark-maestro/`
+and `research/2026-09-26-terse-light-trial/`.
 To measure a text before or after, `/terse:audit`.

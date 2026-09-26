@@ -15,18 +15,19 @@ at the plan: [roles.md](../../references/roles.md), working from
 [rules.md](../../references/rules.md), a pleasant read first.
 
 1. **One message to the user**, as `rewrite` step 1: what the text is for and who reads it, what it must
-   and must not say. It names no mode: no role here runs code. Announce the agents
-   below and wait for the word. Keep the answer in `purpose.md` of the run directory, `<slug>` naming the
-   text and ending in `-rethink` ([run.md](../../references/run.md)):
+   and must not say. It names no mode: no role here runs code. Announce the agents below and wait for the
+   word. Keep the answer in `purpose.md` of the run directory, `<slug>` naming the text and ending in
+   `-rethink` ([run.md](../../references/run.md)):
 
    ```bash
    D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
    ```
-2. **The genre's order.** From [genres/](../../references/genres/) where the kind has notes; otherwise
-   the genre scout, brief 2, and its table is kept there on the user's word.
-3. **The plan.** The writer, brief 1, stopped before the text: each section, what it gives the reader,
-   the device that carries it — the plan's share of a pleasant read — and a word budget; where
-   it departs from the genre's order, why. One screen.
+2. **The best texts of its kind.** From [genres/](../../references/genres/) where the kind has notes;
+   otherwise the genre scout, brief 2, first, and its table is kept there on the user's word.
+3. **The context, then the plan.** The writer, brief 1, stopped before the text: `context.md` first —
+   what the thing is, who reads it, what they need first, what would make them want it, the one thought —
+   then each part, what it gives this reader, the device that carries it — the plan's share of a pleasant
+   read — and a word budget. One screen.
 4. **Two critics at once on the plan**: form, brief 5, and the rationalizer, brief 4, each asking of every
    section whether this reader needs it here.
 5. **The hand-over.** The plan with the critics' findings applied or declined, and what is asked of the
