@@ -56,7 +56,7 @@ tag namespace serves every plugin in it, so the plugin's name is part of the tag
    - What the cases prove as they now stand: self-detection reads the right tier out of the system
      prompt in both plan-only sessions, one under Opus and one under Fable; an explicit `model` tag is
      obeyed, read back out of each subagent's own system prompt (the model-tag case) and over the whole
-     fan-out of a real run (the full-run case); and a `gpt-6-astra` agent answers on its own thread when
+     fan-out of a real run (the full-run case); and an Astra agent answers on its own thread when
      it is not invited to delegate, with the commands in its report (the case of that name). Delegation
      is the model's choice, not effort-gated, so no case asserts that it happens; the probe behind
      `ENTRUST_LIVE_ORCHESTRATE_DELEGATE=1` is what checks `subagentThreads` when it does.

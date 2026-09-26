@@ -47,7 +47,7 @@ authenticated home, and its opt-in live-turn case spends a real turn. Absent the
 which makes "portable behaviour passed" and "fidelity was verified" the same code — so the local
 pre-release run passes `--require-live` (or sets `REQUIRE_LIVE_CODEX=1`) and the skip becomes a failure.
 `orchestrate-live.test.mjs` is the second local gate: it drives the real headless `claude` binary against
-`skills/orchestrate/SKILL.md`, spending real sessions, the subagents they spawn and one `gpt-6-astra`
+`skills/orchestrate/SKILL.md`, spending real sessions, the subagents they spawn and one Astra
 Codex turn, a second one when `ENTRUST_LIVE_ORCHESTRATE_DELEGATE=1` adds the delegation probe,
 which checks the `subagentThreads` of an agent that took the invitation. Without
 `ENTRUST_LIVE_ORCHESTRATE=1` it prints one NOT RUN line and exits 0.

@@ -14,7 +14,7 @@ Load [orchestrate](../orchestrate/SKILL.md) now (Skill tool, `entrust:orchestrat
 
 ## The advisor
 
-One top-row agent, chosen by the agreed composition, from the other model family than your own: `gpt-6-astra` under a Claude coordinator, and Fable only when the composition words rule Codex out. It is named in the plan as the advisor, with its expected turns, before "go". It is one thread kept for the run: a Codex thread continued with `RESUME:` under a report path of its own for every question, or a Claude agent continued by message. It holds a slot only while a turn of its runs; between questions it is not alive.
+One top-row agent, chosen by the agreed composition, from the other model family than your own: Astra under a Claude coordinator, and Fable only when the composition words rule Codex out. It is named in the plan as the advisor, with its expected turns, before "go". It is one thread kept for the run: a Codex thread continued with `RESUME:` under a report path of its own for every question, or a Claude agent continued by message. It holds a slot only while a turn of its runs; between questions it is not alive.
 
 ## What it is asked, and what it never does
 

@@ -362,7 +362,9 @@ const HELP = [
                      back inline. The full answer is at answerPath either way:
                      <state>/answers/<threadId>-<startedAtMs>.md, startedAtMs the
                      run's start in epoch milliseconds
-  --model NAME       omit to use whatever config.toml chose
+  --model NAME       a slug from model/list, or a short name (astra, sol, terra,
+                     luna) that becomes the newest listed model ending in it;
+                     omit to use whatever config.toml chose
   --effort LEVEL     low|medium|high|xhigh|max, and ultra where the model
                      advertises it; checked against model/list before the turn
                      (none and minimal are on no current model); omit to
@@ -3731,6 +3733,25 @@ function writeReport(ev, verifySkipped, codeOverride) {
 
 // ---------------------------------------------------------------- run
 
+// A short name, `sol` in any case, is the newest model the catalogue lists under it, so a new generation
+// is taken up without an edit here; hidden models never qualify, and a full slug still pins one version.
+function newestNamed(models, name) {
+  const suffix = `-${name.toLowerCase()}`;
+  const version = (slug) => (/\d+(?:\.\d+)*/.exec(slug)?.[0] ?? "0").split(".").map(Number);
+  const newer = (a, b) => {
+    const x = version(a), y = version(b);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0);
+    return false;
+  };
+  let best = null;
+  for (const m of models) {
+    const slug = m?.model;
+    if (typeof slug !== "string" || m.hidden === true || !slug.toLowerCase().endsWith(suffix)) continue;
+    if (!best || newer(slug, best.model)) best = m;
+  }
+  return best;
+}
+
 // What --model and --effort are checked against before a thread is started: the server's own
 // catalogue, walked to the end. A name or an effort the catalogue does not carry is a usage error
 // the caller can fix, and finding it here costs no turn.
@@ -3748,8 +3769,15 @@ async function preflightModel(request) {
     cursors.add(page.nextCursor);
     cursor = page.nextCursor;
   }
-  const chosen = opts.model === undefined ? null
+  let chosen = opts.model === undefined ? null
     : models.find((m) => m?.model === opts.model || m?.id === opts.model) ?? null;
+  if (!chosen && opts.model !== undefined && /^[a-z]+$/i.test(opts.model)) {
+    chosen = newestNamed(models, opts.model);
+    if (chosen) {
+      process.stderr.write(`entrust: --model ${opts.model} is ${chosen.model}, the newest listed model of that name\n`);
+      opts.model = chosen.model;
+    }
+  }
   if (opts.model !== undefined && !chosen)
     fail(EXIT.USAGE, `--model ${JSON.stringify(opts.model)} is not in model/list; available models: ${models.map((m) => m?.model).filter(Boolean).join(", ") || "none"}`);
   if (opts.effort !== undefined) {

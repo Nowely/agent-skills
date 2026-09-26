@@ -61,6 +61,24 @@ const CASES = [
       return (/model\/list/.test(log) && !/thread\/start/.test(log) && /not in model\/list/.test(e) && ms < 7000)
         || `unknown-model refusal was late or missing: ${JSON.stringify({ ms, log, err: e.slice(0, 180) })}`;
     } },
+  { scenario: "happy",            expect: EXIT.OK, args: ["--model", "sol"],
+    env: { FAKE_MODEL_FAMILIES: "1", FAKE_MODEL_ECHO: "1" },
+    why: "a short name is the newest listed model of that name, so a new generation is taken up without an edit to the plugin; a hidden newer model is not a release",
+    assert: (r) => r.model === "explicit:gpt-6-sol" || `sol did not resolve to gpt-6-sol: ${JSON.stringify(r.model)}`,
+    assertStderr: (e) => /--model sol is gpt-6-sol/.test(e) || `the resolution is not on stderr: ${e.slice(0, 200)}` },
+  { scenario: "happy",            expect: EXIT.OK, args: ["--model", "Luna"],
+    env: { FAKE_MODEL_FAMILIES: "1", FAKE_MODEL_ECHO: "1" },
+    why: "versions compare as numbers and the name in any case: 6.10 is newer than 6.9, which a string comparison or the list's order would get wrong",
+    assert: (r) => r.model === "explicit:gpt-6.10-luna" || `Luna did not resolve to gpt-6.10-luna: ${JSON.stringify(r.model)}` },
+  { scenario: "happy",            expect: EXIT.OK, args: ["--model", "gpt-5.6-sol"],
+    env: { FAKE_MODEL_FAMILIES: "1", FAKE_MODEL_ECHO: "1" },
+    why: "a full slug pins that version even when a newer model of the same name is listed",
+    assert: (r) => r.model === "explicit:gpt-5.6-sol" || `the pinned slug was replaced: ${JSON.stringify(r.model)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, args: ["--model", "nova"],
+    env: { FAKE_MODEL_FAMILIES: "1" },
+    why: "a short name no listed model carries is refused before the turn, with the catalogue in the message",
+    assertStderr: (e) => /--model "nova" is not in model\/list; available models: gpt-6-astra/.test(e)
+      || `the unknown short name was not refused with the list: ${e.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.OK,
     why: "the setup rate-limit snapshot reaches every completed report, so fan-outs can see approaching exhaustion",
     assert: (r) => r.rateLimits?.primary?.usedPercent === 25
