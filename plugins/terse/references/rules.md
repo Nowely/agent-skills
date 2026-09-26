@@ -49,9 +49,9 @@ repaired came from the owner's own answers.*
 ### Start from the context
 
 **Know the text's world before its form.** What the thing is and what it resembles; who reads it, and in what
-situation; what they need first; what would make them want it; the one thought the text carries. The
-structure follows from these: a part is there because this reader needs it there, not because texts of the
-kind have it. *owner, 2026-09-26: «Нужно понимать контекст, собирать его. Понимать, что это за инструмент,
+situation; what they need first; what would make them want it and choose it over what it resembles; the one
+thought the text carries. The structure follows from these: a part is there because this reader needs it
+there, not because texts of the kind have it. *owner, 2026-09-26: «Нужно понимать контекст, собирать его. Понимать, что это за инструмент,
 целевая аудитория, какую мысль хочешь донести, приятность, продающий текст и понятная приятная документация».
 measured, 2026-09-26: on the README of a disk-usage tool a bare agent's text beat ours, which had dropped the
 demo, the tool's one-line pitch and its install routes under rules applied as requirements.*
@@ -96,13 +96,15 @@ often says both at once. *owner, 2026-09-10: «Вместо того, чтобы
 расте - это очень важная информация на самом деле с точки зрения понимания сути, так и маркетинга».*
 
 **Then what it gives, as a short list.** What the thing gives the reader that its alternatives do not — a
-capability and what it means for them — reads fastest as one bold-led item each; a list of its parts, or a
-walk through steps a later part repeats, sells less. *owner, 2026-09-24, of the README they ranked first:
-«отвечает что это за проект, и сразу подчеркивает конкурентные преимущества … используя форматирвание
-список»; 2026-09-25: «почему в самое начало ты ввел действия пользователя, а не то, что предоставляет проект.
-Тот же самый workflow мы описываем в quick start. Возможно, нужно что-то среднее между этими двумя
-вариантами». measured, 2026-09-25: in a blind read, 21 of 37 readers faulted the other README's items for
-listing its parts, while the draft's items walked through the commands its Quick start repeats.*
+capability and what it means for them — reads fastest as one bold-led item each. A quality any thing of its
+kind could claim does not say why this one; a list of its parts, or a walk through steps a later part
+repeats, sells less. *owner, 2026-09-24, of the README they ranked first: «отвечает что это за проект, и сразу
+подчеркивает конкурентные преимущества … используя форматирвание список»; 2026-09-25: «почему в самое начало
+ты ввел действия пользователя, а не то, что предоставляет проект. Тот же самый workflow мы описываем в quick
+start. Возможно, нужно что-то среднее между этими двумя вариантами»; 2026-09-26, of highlights that said what
+dust does, "Focused" and "Readable": «хайлайты - почему именно мы - не раскрыта». measured, 2026-09-25: in a
+blind read, 21 of 37 readers faulted the other README's items for listing its parts, while the draft's items
+walked through the commands its Quick start repeats.*
 
 **Show what the reader will meet.** A demo, a screenshot or real output lets the reader see the thing before
 they install it. *owner, 2026-09-26: «Понравилось, что сразу видится интерфейс благодаря демо, с чем

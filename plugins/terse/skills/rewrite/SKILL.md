@@ -49,11 +49,12 @@ Where the kind of text has no notes in [genres/](../../references/genres/), the 
 runs first; its table is kept there for the next text of the kind, on the user's word. Then the writer,
 brief 1 of `roles.md`. It works out the text's world before its form and writes `context.md`: what the
 thing is and what it resembles, who reads the text and in what situation, what they need first, what would
-make them want it, the one thought it carries. Then it reads the genre's notes and the best texts of the
-kind, and writes its plan's word budgets to `budgets.json` and then `01-draft.md` — from the context, the
-purpose, the existing text if any, the plan the user agreed in `rethink` if they give its path, and the
-audit's run file if they gave its directory. It returns the context, the plan and its evidence; save them
-as `writer-notes.md`. In full mode the harness, brief 12, runs beside it.
+make them want it and choose it over what it resembles, the one thought it carries. Then it reads the
+genre's notes and the best texts of the kind, and writes its plan's word budgets to `budgets.json` and
+then `01-draft.md` — from the context, the purpose, the existing text if any, the plan the user agreed in
+`rethink` if they give its path, and the audit's run file if they gave its directory. It returns the
+context, the plan and its evidence; save them as `writer-notes.md`. In full mode the harness, brief 12,
+runs beside it.
 
 ## Step 4. Every critic at once
 

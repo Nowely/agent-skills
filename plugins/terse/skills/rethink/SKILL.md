@@ -25,9 +25,9 @@ at the plan: [roles.md](../../references/roles.md), working from
 2. **The best texts of its kind.** From [genres/](../../references/genres/) where the kind has notes;
    otherwise the genre scout, brief 2, first, and its table is kept there on the user's word.
 3. **The context, then the plan.** The writer, brief 1, stopped before the text: `context.md` first —
-   what the thing is, who reads it, what they need first, what would make them want it, the one thought —
-   then each part, what it gives this reader, the device that carries it — the plan's share of a pleasant
-   read — and a word budget. One screen.
+   what the thing is, who reads it, what they need first, what would make them want it and choose it over
+   what it resembles, the one thought — then each part, what it gives this reader, the device that carries
+   it — the plan's share of a pleasant read — and a word budget. One screen.
 4. **Two critics at once on the plan**: form, brief 5, and the rationalizer, brief 4, each asking of every
    part whether this reader needs it here or would want it.
 5. **The hand-over.** The plan with the critics' findings applied or declined, and what is asked of the

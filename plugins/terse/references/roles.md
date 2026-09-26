@@ -41,11 +41,11 @@ a role able to run code names the mode when it announces its agents.
 Write <DOC>. First know its world: read what it is about — for a text about code, the code at <CODE>:
 what it does, how a user gets it and starts it, what they type, what comes back — and write
 <OUT>/context.md: what the thing is and what it resembles, who reads the text and in what situation, what
-they need first, what would make them want it, and the one thought the text carries. The purpose, in the
-owner's words: <PURPOSE>. Then see how the best texts of its kind are built: <GENRE>. Where a text exists
-already, it is <EXISTING>: keep what is true and does its job. Where it was audited, the run file is
-<AUDIT>: write for its reader profile, and answer what it found hard to read, every failure under What
-broke and every refuted claim in its ledger.
+they need first, what would make them want it and choose it over what it resembles, and the one thought the
+text carries. The purpose, in the owner's words: <PURPOSE>. Then see how the best texts of its kind are
+built: <GENRE>. Where a text exists already, it is <EXISTING>: keep what is true and does its job. Where it
+was audited, the run file is <AUDIT>: write for its reader profile, and answer what it found hard to read,
+every failure under What broke and every refuted claim in its ledger.
 
 <RULES> requires two things — the text is pleasant to read, and true within its world — and the rest of it
 is advice: take what helps this text and leave the rest. <SENTENCES> is a measured technique for

@@ -7,6 +7,11 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- The writer's `context.md` names why a reader would choose the thing over what it resembles, in `rewrite`
+  and in `rethink`, and the advice on the list of what it gives adds that a quality any thing of its kind
+  could claim does not say why this one. On the second dust README the highlights said what dust does —
+  "Focused", "Readable", "Ready immediately" — and the owner found the case for choosing it missing:
+  «хайлайты - почему именно мы - не раскрыта».
 - `rewrite` no longer runs `rule1.mjs` on the repaired text; `sections.mjs`, words per section against the
   writer's own plan, stays as a report. The script made one piece of advice — technical detail below the
   middle — into a gate: on the dust README it reported 13 violations, every one a flag in the options table,
