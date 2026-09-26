@@ -38,4 +38,4 @@ Measured on 2026-09-11 and again on 2026-09-23: drafts written against a shape n
 rejected for what they said and in what order, not for their phrasing. On 2026-09-24 the sequential
 method this page used to hold — a survey, a synthesis, ten structures under three critics, a skeleton of
 13,000 words — took three hours before a sentence was written; the record of it is in
-[stages.md](references/stages.md).
+`research/2026-09-24-terse-benchmark-maestro/`.

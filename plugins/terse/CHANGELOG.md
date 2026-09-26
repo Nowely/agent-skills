@@ -28,8 +28,7 @@ forensics remain in the repository references and release notes.
 - `rewrite` no longer runs `rule1.mjs` on the repaired text; `sections.mjs`, words per section against the
   writer's own plan, stays as a report. The script made one piece of advice — technical detail below the
   middle — into a gate: on the dust README it reported 13 violations, every one a flag in the options table,
-  which for a terminal tool is its interface. The script still ships, called by no page, until the old
-  path's scripts are decided on at the release.
+  which for a terminal tool is its interface.
 - The critics argue from the reader, and a rule's number is no reason to decline a finding or to demand one.
   The rationalizer asks whether the reader needs a thing or whether it makes them want it, and keeps the
   comparison, the demo and the pitch; form reads the text beside the best texts of its kind and says what the
@@ -58,8 +57,7 @@ forensics remain in the repository references and release notes.
   every refuted claim. The audit no longer writes the `json claims` block or runs `ledger-seed.mjs`, and its run
   file's contract no longer lists two ledgers `rewrite` returned under the sequential path: since the one path,
   nothing read the ratchet the block seeded, so the README's "give it the folder the report names" led nowhere
-  and an audit's findings were lost on the way to `rewrite`. The script still ships, called by no page, until the
-  old path's scripts are decided on at the release.
+  and an audit's findings were lost on the way to `rewrite`.
 - `audit` puts a pleasant read first and runs light by default, as `rewrite` has since 2026-09-25. Two cold
   readers, brief 11, read the entry file in the same launch as the question readers; what they found hard to
   read, each point with its line, opens the report and the run file's new *A pleasant read* heading, with no
@@ -314,6 +312,19 @@ forensics remain in the repository references and release notes.
   the ten structures were one inventory in ten orders, none said what it dropped, and all ten planned the
   files section around a boundary only the owner could settle — failures of the brief, each named by one
   of the three critics.
+
+### Removed
+
+- The sequential method's scripts and pages, which no step has run since the one path replaced the rounds on
+  2026-09-24. The scripts: `ledger-seed.mjs`, which seeded `rewrite`'s ledger from an audit's `json claims`
+  block that the audit no longer writes; `ledger.mjs`, the ratchet that kept a verified claim in every later
+  round; `round.mjs`, which built each round from checked edits; `dup.mjs`, which flagged an idea found in
+  three sections or more; `rule1.mjs`, which kept flags and paths out of the sections before How it works and on
+  the dust README counted a terminal tool's options as violations. The pages: `loop.md`, `critic-briefs.md`,
+  `bake-off.md`, and `rethink`'s `stages.md` and `briefs.md`, 13,289 words describing that method. The installed
+  plugin now carries only what runs; the record stays in the tag `terse@0.1.1` and in `research/`, and
+  `selftest.mjs` keeps the checks of `sections.mjs`. Closes E3, E8, E16, E18, E23, E30, E31 and E34 of
+  `ISSUES.md`.
 
 ### Fixed
 

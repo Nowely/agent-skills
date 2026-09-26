@@ -61,10 +61,11 @@ Every text gets the same measurements; where a ruler can be blind it is.
 3. **Tasks.** The audit's two task readers per text, in an isolated profile, from the text alone:
    achieved, partly, not.
 4. **Form.** The genre's order and sub-blocks from B's survey applied to all three; `rule1.mjs`,
-   `dup.mjs` with the plan's concepts, `sections.mjs`; lens 2's counts.
+   `dup.mjs` with the plan's concepts, `sections.mjs`; lens 2's counts. The first two left the plugin
+   in 0.2.0 and are in the tag `terse@0.1.1`.
 5. **Blind ranking.** Three judges — Claude Fable, Codex Astra, Claude Opus — on the bake-off's judging
-   sheet ([bake-off.md](../skills/rewrite/references/bake-off.md#the-judging-sheet)), the texts shuffled,
-   one reason per rank, a veto where the sheet gives one.
+   sheet (`bake-off.md` in the tag `terse@0.1.1`), the texts shuffled, one reason per rank, a veto where
+   the sheet gives one.
 6. **The owner's read.** The three texts in a random order; the owner ranks them, says which they would
    send and why, verbatim into the record. This is the verdict; the rulers above explain it.
 7. **Cost.** Tokens and minutes per text, agents by count and model.

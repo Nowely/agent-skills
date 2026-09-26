@@ -56,23 +56,6 @@ sentence have no pin, so an edit that drops any of them leaves the suite green. 
 bullet of the verification list and say how many there are, and each unpinned sentence should get a
 case. The 2026-09-17 change added pins only for its own sentences and the bullets it rewrote.
 
-## E3. `round.mjs`'s provisional mark tests the claim's name and pattern, so a lifecycle claim worded without one of its eight words is never marked
-
-**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/round.mjs:155` tests
-`/lifecycle|stays|removed|continu|resum|reclaim|kept|prun/i` against `c.name + " " + c.pattern` and
-nothing else. The record's R08-8 is a pruning claim named `"retention numbers"` with pattern
-`"14 days or 400 entries"`: no word matches, no mark
-(`research/2026-09-22-terse-process/d1-regression-autopsy.md:578-582`). Replaying
-`research/2026-09-11-markup-round-0/edits/04.json`…`09.json` through the script on 2026-09-22 produces
-40 ledger entries and zero marked provisional.
-
-**Issue text.** A level-2 claim about a lifecycle is meant to be marked provisional, because three such
-claims were pinned as true and each fell to a run in the next wave. The mark is decided by a regex over
-the claim's own name and pattern, which are the writer's words, so a claim about retention, expiry,
-eviction or cleanup written in any other vocabulary is pinned as settled. The `new` text of the edit —
-the sentence the claim is about — is never read. Either the test reads the sentence, or the mark is
-declared by the writer and the regex only warns.
-
 ## E6. `writing-rules.md` and `measurements.md` repeat two counts from 2026-09-10 that the run's own prompts and judge contradict
 
 **Evidence, level 2.** `plugins/terse/references/writing-rules.md:37-40` and
@@ -102,25 +85,6 @@ found the before-records this entry had said did not exist.
 **Issue text.** The sentence overstates the record: the bake-off returns are there, the reader run's
 before-records are in the chain's source prompt and its after-records are nowhere, and the claim should
 name what traces and what does not.
-
-## E8. `rule1.mjs` misses an exit code written in Russian, because its exit-code pattern is English; paths and flags are caught in either language
-
-**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/rule1.mjs:26-31` matches absolute paths,
-flags, environment variables, exit codes, protocol names and header fields; the exit-code pattern is
-`/\bexits?\s+\d+\b|\bexit\s+(?:code|status)\b|\bexit\s+ladder\b/gi`, English words. Four probes on
-2026-09-22 and 2026-09-23: three (the bake-off writers WA and WB, the judge J1, each in a scratch copy)
-ran the script on an English line carrying a path, a flag and "exits 2" and on the same line in Russian
-with «завершается с кодом 2» — the path and the flag were flagged in both languages, the exit code only in
-English; the truth-pass agent's earlier probe reported the whole Russian line passing, which the three later
-probes do not reproduce (`research/2026-09-22-terse-process/rewrite-2026-09-22/j1-opus-sheets.md`,
-`audit-2026-09-22/audit.md` What broke). The owner's stated intent is that `terse` works on any text in
-any language.
-
-**Issue text.** Rule 1 — mechanism stays out of the sections a reader meets first — is checked by a script
-whose path, flag, variable and header patterns are language-neutral and whose exit-code words are English,
-so a document in another language that names an exit code in its own words passes that part of the check.
-Either the exit-code pattern takes a word list per language, or the page says which of rule 1's six kinds
-are checked for English text only.
 
 ## E9. `measure.md` does not say how the planted unanswerable question scores in the no-document arm
 
@@ -200,34 +164,6 @@ At 829c235 it prints the reader and re-audit rules, the run directory outside th
 
 _From research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D1._
 
-## E16. A retired phrase is matched case-sensitively, because `ledger.mjs` reads a `flags` field that no script writes
-
-**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/ledger.mjs:3-4` (at d7a1f37) documents an optional `"flags": "i"` per entry, and `plugins/terse/skills/rewrite/scripts/ledger.mjs:18-20` builds each pattern as `new RegExp(pattern, flags ?? "")`. The two scripts that write ledger entries never set it: `plugins/terse/skills/rewrite/scripts/round.mjs:149-156` writes a retirement with no flags, and `plugins/terse/skills/audit/scripts/ledger-seed.mjs:61-62` writes `{ name, pattern, want, level, how }`. Every retired phrase in a ledger those scripts built is therefore matched with its case as written. `plugins/terse/skills/rewrite/references/measurements.md:44-46` records the miss once already: a retired phrase "survived in a table cell with a capital letter; the ledger's pattern did not match".
-
-**Check.** From any directory:
-
-    sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-03/d-probes.sh
-
-On HEAD it exited 0 and printed `D2 retired phrase with a capital: ledger.mjs exit 0; retired row: retired L? - - -`, `D2 retired phrase in lower case: ledger.mjs exit 1; retired row: retired L? - - YES`, and `D2 scripts that write a flags field: 0 of 2`. The script is kept at `research/2026-09-22-terse-process/rewrite-2026-09-22/run/probe-03/d-probes.sh`; its line 5 names the temporary run directory it was written for.
-
-**Issue text.** `ledger.mjs` supports a `flags` field on a ledger entry, but neither `round.mjs` nor `ledger-seed.mjs` writes one, so every retired phrase is matched case-sensitively. A round that brings a retired wording back with a capital letter — the first word of a sentence, a table cell — passes the ratchet with exit 0, the miss M8 already records. Retirements should be matched without regard to case (`round.mjs` and `ledger-seed.mjs` writing `flags: "i"` on `want: false` entries, or `ledger.mjs` defaulting them to it), and `selftest.mjs` should plant a capitalised revival.
-
-_From research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D2._
-
-## E18. `rule1.mjs` does not report a bare environment-variable name or the braced `${VAR:-default}` form
-
-**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/rule1.mjs:28` (at d7a1f37), the environment-variable pattern, is `/\$[A-Z_]{2,}|(?<![\w$])[A-Z][A-Z0-9]*_[A-Z0-9_]+(?![\w])/g`: it matches `$TMPDIR` and a name with an underscore, and neither a bare name without one (`PATH`) nor the braced form `${TMPDIR:-/tmp}`. `plugins/terse/skills/rewrite/scripts/selftest.mjs:11-13` plants only a flag and a tilde path.
-
-**Check.** The same command as D2 was run exactly:
-
-    sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-03/d-probes.sh
-
-On HEAD it exited 0 and printed `D4 rule1 on planted lines 1-4: exit 1; reported: ! line 3 env var $TMPDIR;! line 4 flag name --keep-data;`, omitting planted `PATH` and `${TMPDIR:-/tmp}` lines 1 and 2. The script is kept at `research/2026-09-22-terse-process/rewrite-2026-09-22/run/probe-03/d-probes.sh`; its line 5 names the temporary run directory it was written for.
-
-**Issue text.** Rule 1 keeps environment variables out of the sections a reader meets first, and `rule1.mjs` checks it with a pattern that needs either `$NAME` or an underscore in the name. A bare `PATH`, `HOME` or `EDITOR` and the braced `${TMPDIR:-/tmp}` pass unreported, and the self-test plants neither, so a clean result on those forms is not evidence. The pattern should cover `${…}` and a backticked bare upper-case name, and `selftest.mjs` should plant both.
-
-_From research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D4._
-
 ## E19. A checkout loaded with `claude --plugin-dir` puts its runs in a data directory the pages do not name, and `claude plugin uninstall` cannot remove it
 
 **Evidence, level 3.** `plugins/terse/skills/audit/SKILL.md:36-42` (at d7a1f37) says `D` is empty for a source checkout and gives only an installed-plugin data directory and a temporary-directory fallback. `plugins/terse/skills/rewrite/SKILL.md:31-43` (at 829c235) uses the same formula and gives the same two lifetime cases. A checkout loaded with `claude --plugin-dir plugins/terse` is neither: Claude Code loads it as `terse@inline`, writes a configuration-local `plugins/data/terse-inline` into the line, and `claude plugin uninstall terse@inline` refuses it because it has no marketplace backing. Since 2026-09-25 the three skills link one statement of it, `plugins/terse/references/run.md:9-13`.
@@ -270,20 +206,6 @@ On HEAD it exited 0 and printed all four expected states: A absent after uninsta
 
 _From research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D7._
 
-## E23. A pinned claim's evidence is run once, when its round is written, and never again
-
-**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/round.mjs:120-132` (at d7a1f37) executes every edit's `check.run`, refuses the round when an `expect` finds nothing, and keeps the output as `saw`; `plugins/terse/skills/rewrite/scripts/round.mjs:149-155` stores `run`, `expect` and `saw` in the ledger. `plugins/terse/skills/rewrite/scripts/ledger.mjs:18-24` reads only `pattern` and `want` of every entry against the round files and never executes `run`. The edits format in the header of `round.mjs` recommends line-based `sed -n 'A,Bp'` checks, so a pin can stay green after its evidence citation moves; since 829c235 no step of `rewrite` runs the two scripts, which still ship.
-
-**Check.** From any directory:
-
-    node /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-04/rot-check.mjs
-
-On HEAD it exited 0 and printed `R02e as written in round 02, run today: expect matches: false` followed by `ledger.mjs over the ledger that holds that entry, rounds 00-03: exit 0 | 0 failure(s)`. The script is kept at `research/2026-09-22-terse-process/rewrite-2026-09-22/run/probe-04/rot-check.mjs`; its line 4 names the temporary run directory it was written for.
-
-**Issue text.** `round.mjs` runs a claim's check once, when the round that declares it is written, and `ledger.mjs` afterwards checks only that the pinned sentence is still present. The evidence behind a pin can therefore stop resolving — the cited file edited, its lines shifted by a commit above them — and nothing reports it: the pin stays green while its `saw` describes a file that no longer says that at those lines. The script's own advice to cite by `sed -n 'A,Bp'` makes this the common case. `ledger.mjs`, or `round.mjs` at every round, should re-run every pinned entry's `run` and report the entries whose `expect` no longer matches, as a report before it is a gate; and the page should prefer anchors that survive a line shift — a heading, a phrase — over line numbers wherever the cited file is one that changes.
-
-_From research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D9._
-
 ## E25. `sections.mjs` drops a renamed section from its over-budget count and says nothing when a budgeted section disappears
 
 **Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/sections.mjs:19-24` (at d7a1f37) reports each heading it finds against `budgets.json` and counts over-budget sections only among those rows; a heading absent from the budget is printed as "(no budget)" and leaves the count, and a budgeted heading absent from the document is never mentioned.
@@ -325,48 +247,6 @@ On HEAD it exited 0; grep printed only line 96's baseline-arm "same questions", 
 **Issue text.** `measure.md` requires a re-audit to reuse the questions, the key, the entry file and the model of the first audit, and the audit page has no step that takes a first audit's run as input: step 1 makes a fresh run directory and step 4 writes fresh questions from the profile. A user who audits again after a rewrite gets a new measurement, not a comparison, unless they carry the questions over by hand. Step 1 should accept a previous run directory and steps 4 and 5 should reuse its questions, key and baseline when one is given.
 
 _From research/2026-09-22-terse-process/rewrite-2026-09-24/run/code-defects.md, D15._
-
-## E30. `rule1.mjs` misses a one-dash flag, a header field inside a code span and "status 127", and flags a document name before a colon
-
-**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/rule1.mjs:27` (at d7a1f37) matches flags with two dashes only; `plugins/terse/skills/rewrite/scripts/rule1.mjs:31` excludes a header field preceded by a backtick even though `plugins/terse/skills/rewrite/scripts/rule1.mjs:9-10` says fences are not skipped; `plugins/terse/skills/rewrite/scripts/rule1.mjs:29` needs "exit" before a code; and the line-31 pattern reports `README:` as a header field.
-
-**Check.** From any directory, with `S=/Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/scripts`:
-
-    T=$(mktemp -d); printf '# t\n\nRun it with -p and read `X-Api-Key:` in the header; on failure it ends with status 127, as README: says.\n\n## How it works\n\nmechanism\n' > "$T/plant.md"; node "$S/rule1.mjs" "$T/plant.md" --cut "How it works"; echo "exit $?"
-
-On HEAD it exited 0 as a compound check and printed only `! line 3  header field   README:`, `1 violation(s), 0 excused`, and `exit 1`, missing the other three planted forms.
-
-**Issue text.** Rule 1 keeps mechanism out of the sections a reader meets first, and `rule1.mjs` checks it with patterns that need a double-dash flag, a header field outside a code span and the word "exit" before a code, while it reports a document name followed by a colon as a header field. A section that says `-p`, names a header in backticks or writes "status 127" passes; a sentence that says "as README: shows" fails. The patterns should cover the one-dash flag, the code-span field and "status <code>", and a capitalised word before a colon should count as a header field only when it looks like one (a hyphenated or lower-case name), with the self-test planting all four.
-
-_From research/2026-09-22-terse-process/rewrite-2026-09-24/run/code-defects.md, D16._
-
-## E31. `dup.mjs` never compares a concept with the section its name gives, so a concept outside its home passes short of three
-
-**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/dup.mjs:2-6` (at d7a1f37) says it counts the sections a concept matches and flags only three or more; `plugins/terse/skills/rewrite/scripts/dup.mjs:17-25` implements that threshold without interpreting the home carried in a concept's name. A concept named "a fix is not undone — How it works" that also matches the opening therefore prints two sections and zero flagged concepts.
-
-**Check.** From any directory, with `S=/Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/scripts` and `R=/Users/ruliny/Git/agent-skills/research/2026-09-22-terse-process/rewrite-2026-09-24/run`:
-
-    node "$S/dup.mjs" "$R/02-grafts.md" "$R/concepts.01.json"
-
-On HEAD it exited 0 and printed `2   a fix is not undone — How it works (opening) | How it works` and `0 concept(s) in three or more sections`.
-
-**Issue text.** The skeleton names a home for every concept ("one idea, one home"), and `dup.mjs` reports only a concept found in three or more sections: a concept that appears in its home and one other section passes, which is the duplication the rule forbids. Where a concept's name carries its home section, the script should report any match outside it; where it does not, the threshold should be two.
-
-_From research/2026-09-22-terse-process/rewrite-2026-09-24/run/code-defects.md, D17._
-
-## E34. `round.mjs`'s qualification signal is an English word list, so the same clause in another language is written without a reason
-
-**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/round.mjs:92-101` (at d7a1f37) detects qualifying forms with an English-only regular expression (`unless`, `except when`, `only if`, and kin). The Russian clause «если только вы не передадите --prune» adds no matching form and is written with exit 0.
-
-**Check.** From any directory, with `S=/Users/ruliny/Git/agent-skills/plugins/terse/skills/rewrite/scripts`:
-
-    T=$(mktemp -d); printf 'The tool keeps runs.\n' > "$T/00.md"; printf '[{"name":"ru","old":"The tool keeps runs.","new":"The tool keeps runs, если только вы не передадите --prune.","claims":[{"name":"k","pattern":"keeps runs","asks":"runs are kept"}],"check":{"level":1,"run":"echo x","expect":"x"}}]' > "$T/e.json"; echo "[]" > "$T/l.json"; node "$S/round.mjs" "$T/00.md" "$T/01.md" "$T/e.json" --ledger "$T/l.json"; echo "exit $?"
-
-On HEAD it exited 0 and printed `ran  ru`, `ok  ru`, the ledger write, and `exit 0`.
-
-**Issue text.** `round.mjs` refuses an edit that adds a qualifying clause without a reason, and recognises the clause by an English word list, so a caveat written in any other language passes unseen. The list should carry the common forms of the languages the plugin claims, or the check should be handed to the verifier's fifth duty with the script marking every edit whose `new` grew a subordinate clause, in any language, by structure rather than by words.
-
-_From research/2026-09-22-terse-process/rewrite-2026-09-24/run/code-defects.md, D20._
 
 ## E36. `prior-art.md` overstates its own body: "every practice marked measured, argued or asserted" and "the curated forty"
 

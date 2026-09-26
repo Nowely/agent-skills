@@ -18,8 +18,8 @@ the index.
 | [2026-09-26-terse-light-trial](2026-09-26-terse-light-trial/) | does the one path, light, write a better README than a bare agent for another project, the terminal tool dust? | no: the owner ranked the bare agent's text first, ours second, the original third — rules applied as requirements had cut the demo, the "du, written in Rust" pitch and the install routes; the rules became two requirements and advice, and the writer starts from the text's world |
 | [2026-09-26-terse-second-checks](2026-09-26-terse-second-checks/) | after the rules became advice: the same README against the same bare text, and a text of another kind, the comments of dust's directory walker | the owner named ours "much better", not yet selling — the case for choosing it and the options reference missing; the comments have no owner read, their question readers answered 3 of 3 and the code stayed byte-identical; the writer applied 35 of 36 substantive findings, the truth critics' qualifications among them |
 
-What carried over into the plugin: the content rules and their measurements in
-`plugins/terse/skills/rethink/references/stages.md`, the loop and its measurements in
-`plugins/terse/skills/rewrite/references/`, the scripts and their self-test in
-`plugins/terse/skills/rewrite/scripts/`. What did not: `calibrate`, kept at
+What carried over into the plugin: the rules and their measurements, in `plugins/terse/references/rules.md`
+and `measurements.md`, and one script with its self-test, `plugins/terse/skills/rewrite/scripts/sections.mjs`.
+The sequential method's pages and scripts — the stages, the loop, the ledger, the rounds — shipped until
+`terse@0.1.1` and left the plugin in 0.2.0. What did not: `calibrate`, kept at
 `2026-09-11-calibration-bank/tool/` with its result.
