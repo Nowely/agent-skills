@@ -71,7 +71,7 @@ test("an entrust@ tag on HEAD is the version the tree claims",
     const onHead = named.filter((t) => /^entrust@\d+\.\d+\.\d+$/.test(t));
     const malformed = named.filter((t) => !onHead.includes(t));
     if (malformed.length) return `HEAD carries ${malformed.join(", ")}, which is not <plugin>@<version>`;
-    // Only the tag ON HEAD, because RELEASING.md cuts it at step 8 and runs `npm test` at step 4: the
+    // Only the tag ON HEAD, because RELEASING.md tags after the merge and the suites run before it: the
     // newest tag in the repository names the PREVIOUS release for the whole of a release preparation,
     // and comparing against that makes every such run red. A shallow clone (actions/checkout's default)
     // fetches no tags and lands here too. Announced rather than silently counted as agreement, so a
