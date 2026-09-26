@@ -2,9 +2,10 @@
 // Runs one Codex agent's driver for the entrust wrapper in one foreground call, and reads its status back.
 //
 //   node agent-run.mjs --new --report-file REPORT  < prompt      make the agent's directory beside REPORT, prompt from stdin
-//   node agent-run.mjs --run --report-file REPORT                launch, wait, print the status lines
+//   node agent-run.mjs --run --report-file REPORT                start the run, wait, print the status lines
 //   node agent-run.mjs --status --report-file REPORT             the status lines of a run, whatever its state
 //   node agent-run.mjs --report-file REPORT                      launch only (the exit status is the driver's)
+//   node agent-run.mjs --orphan --dir DIR --report-file REPORT   --run's own step: launch only, outside its caller's tree
 //   --dir DIR names the agent's directory explicitly; without it, it is `agent/` beside REPORT
 //   node agent-run.mjs --help
 //
@@ -12,25 +13,38 @@
 // subagent that runs one command shows one Bash card and its return. The earlier shape showed three
 // (a background launch, a polling wait, a status read) because a foreground call has a ten-minute
 // ceiling and agents longer than that were lost (incidents.md, "Five of seven agents lost to the wall
-// clock"). `--run` keeps the ceiling from costing anything: it is idempotent. On a fresh directory it
-// launches the driver and waits; on a directory whose driver is still running (the harness moved the
-// first call into the background at the ceiling and the wrapper ran the same command again) it waits;
-// on a finished one it prints. Every path ends by printing the same nine lines to stdout, which is the
-// tool result the wrapper hands back, so nothing has to open a file.
+// clock"). `--run` keeps the ceiling from costing anything: it is idempotent, and it returns on its own
+// before the ceiling. On a fresh directory it starts the launch-only mode as a keeper and waits; on a
+// directory whose run is still going it waits; on a finished one it prints. A call that has waited
+// RETURN_MS prints RUNNING= where REPORT= would be and exits 0, and the wrapper runs the same command
+// again. Every path ends by printing the same nine lines to stdout, which is the tool result the wrapper
+// hands back, so nothing has to open a file.
 //
-// What it keeps: it NEVER opens prompt.txt except as the driver's --prompt-file argument, because a
-// relay that reads a prompt can rewrite it (incidents.md, "A relay on a small model"); it passes the
-// driver exactly the two flags the page used to and the environment as it found it, CLAUDE_PLUGIN_DATA
-// included; the driver's own stderr, its pid line first, is what lands in DIR/err.txt. DIR is `agent/`
-// beside the report, made by --new at 0700 with the prompt it read on stdin at 0600, so one run's four
-// files (prompt.txt on entry, out.json, err.txt and exit on the way out) sit next to its report and
-// nothing is left in $TMPDIR; exit is written last, after both output files are closed. A coordinator
-// may issue --new and the Agent call in one turn: --run waits a few seconds for the prompt to appear. One launch per DIR: a second
-// launch into a directory that already ran is refused, because it would overwrite the first run's record
-// (measured 2026-09-17 on the earlier shape); under --run a directory that ran for THIS report path is a
-// status read, which the ceiling's second call needs, and one that ran for another path is refused.
+// Why a keeper, and why the early return: when a foreground subagent ends, the harness sends SIGTERM to
+// its backgrounded command's process group and to every descendant it finds by ppid, then SIGKILL
+// (measured 2026-09-26: a wrapper that handed back at the ceiling instead of rerunning ended, and the
+// SIGTERM its launcher forwarded cut a ten-minute turn). Only a process in a session of its own whose
+// parent has already exited is out of that reach, so the keeper is started through a step that exits at
+// once, and the driver is the keeper's child. A launcher cannot tell that teardown from a Stop on the
+// card, which it has to forward, so none may still be running when a teardown comes: RETURN_MS is below
+// the tool's ten-minute timeout, and a signal after it is not forwarded.
+//
+// What it keeps: it NEVER opens prompt.txt except as the driver's argument, because a relay that reads a
+// prompt can rewrite it (incidents.md, "A relay on a small model"); it passes the driver exactly the two
+// flags the page used to and the environment as it found it, CLAUDE_PLUGIN_DATA included; the driver's
+// own stderr, its pid line first, is what lands in DIR/err.txt. DIR is `agent/` beside the report, made
+// by --new at 0700 with the prompt it read on stdin at 0600, so one run's four files (prompt.txt on
+// entry, out.json, err.txt and exit on the way out) sit next to its report and nothing is left in
+// $TMPDIR; exit is written last, after both output files are closed. --new puts the prompt through the
+// driver's --check-prompt-file before it is prompt.txt, so a refusal the run would make offline reaches
+// the coordinator before an agent is spawned. A coordinator may issue --new and the Agent call in one
+// turn: --run waits a few seconds for the prompt to appear. One launch per DIR: a second launch into a
+// directory that already ran is refused, because it would overwrite the first run's record (measured
+// 2026-09-17 on the earlier shape), and a launch claims err.txt exclusively, so two racing for one
+// directory start one driver; under --run a directory that ran for THIS report path is a status read,
+// which the ceiling's second call needs, and one that ran for another path is refused.
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -38,6 +52,7 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DRIVER = path.join(HERE, "driver.mjs");
+const SELF = fileURLToPath(import.meta.url);
 
 // The driver's own words, looked for in DIR/err.txt to tell whose run the file at REPORT is: its pid
 // line names the path it accepted, and its two refusals name a path it did not publish to.
@@ -58,32 +73,51 @@ export const STATUS_LINES = ["DRIVER_EXIT", "PATH", "EXIT", "FIRST", "ANSWER", "
 const POLL_MS = 500;
 // How long --run waits for a prompt that a --new issued in the same turn has not written yet.
 export const PROMPT_WAIT_MS = 10000;
+// How long --run waits for the run before it prints RUNNING= and exits 0: under the 600 s timeout the
+// wrapper's message pins, with 30 s for the launcher's own start after the tool call. The variable is
+// for the suites.
+export const RETURN_MS = Number(process.env.AGENT_RUN_RETURN_MS) || 570000;
+const SIGNALS = ["SIGTERM", "SIGINT", "SIGHUP"];
 export const agentDirOf = (report) => path.join(path.dirname(report), "agent");
 
 const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
 
   node agent-run.mjs --new --report-file REPORT  < prompt
-      Makes the agent's directory, agent/ beside REPORT (or --dir DIR), at 0700, and writes the prompt read on stdin
-      to its prompt.txt at 0600. Refuses (exit 2) a REPORT that is not absolute, an empty prompt, and a
-      directory that already holds a prompt: a relaunch gets a fresh report path.
+      Makes the agent's directory, agent/ beside REPORT (or --dir DIR), at 0700, puts the prompt read on
+      stdin through driver.mjs --check-prompt-file, and only on a pass makes it DIR/prompt.txt at 0600
+      and prints PROMPT=<path>. A refusal prints ERROR=<the driver's reason> and no PROMPT= line, exits
+      2 and leaves no prompt.txt: a --run finds nothing to start, and the same command with the prompt
+      corrected is the retry. A check that neither passes nor refuses is a fault in the driver, and
+      ERROR= says so, exit 2 the same way. Refuses (exit 2) a REPORT that is not absolute, an empty
+      prompt, and a directory that already holds a prompt: a relaunch gets a fresh report path. A
+      directory that holds a launch's exit, err.txt or out.json and no prompt (a --run came after a
+      refused --new) is refused the same way, with ERROR= naming the file: the path is spent.
   node agent-run.mjs --run --report-file REPORT
       One foreground call, idempotent; DIR is agent/ beside REPORT unless --dir names it, and a prompt
       not there yet is waited for up to ${PROMPT_WAIT_MS / 1000} s (a --new issued in the same turn).
-      A fresh DIR: runs driver.mjs --prompt-file DIR/prompt.txt
-      --report-file REPORT with stdout in DIR/out.json and stderr in DIR/err.txt, writes the driver's
-      exit status to DIR/exit last, then prints the status lines. A DIR whose driver is still running
-      (the harness moved the first call into the background at its ceiling and the wrapper ran the same
-      command again): waits for the marker, then prints. A DIR that already ran for this REPORT: prints.
-      A DIR that ran for another report path is refused and the lines say so. Always exits 0 once the
-      lines are printed, a missing DIR included; the driver's own status is the DRIVER_EXIT line. A
-      signal it receives (SIGTERM, SIGINT, SIGHUP) goes to the driver, its own or the one it waits for,
-      which cuts the turn and publishes.
+      A fresh DIR: starts the launch-only mode below as a keeper in a session of its own, outside this
+      call's process tree, so the run outlives the call. Every call, the first and a rerun alike, then
+      waits for DIR's run: for the driver's pid line (up to ${PROMPT_WAIT_MS / 1000} s, or the lines say
+      ERROR=the driver did not start), then for the exit marker, and prints the status lines. A call
+      that has waited ${RETURN_MS / 1000} s prints them with RUNNING=pid <pid>, <n> s so far; run the same
+      command again in place of REPORT=, DRIVER_EXIT=running, and exits 0: this is the early return,
+      before the tool's ten-minute ceiling, the run goes on, and the same command again waits for it.
+      A DIR that already ran for this REPORT: prints. A DIR that ran for another report path is refused
+      and the lines say so. Always exits 0 once the lines are printed, a missing DIR included; the
+      driver's own status is the DRIVER_EXIT line. A signal it receives (SIGTERM, SIGINT, SIGHUP) goes
+      to the driver, the pid on DIR/err.txt's first line, which cuts the turn and publishes; one that
+      arrives before that line is delivered when it appears, and one after the early return's deadline
+      is not forwarded.
   node agent-run.mjs --report-file REPORT [--dir DIR]
-      Launch only: the same run without the wait's printing, exiting with the driver's status. Refuses,
-      exit 2 with the reason in DIR/err.txt and DIR/exit where DIR is a directory: a DIR that is not
-      one, a prompt.txt that is not a regular file, a REPORT that is not absolute, and a DIR whose exit
-      marker already exists (that refusal leaves the earlier run's files as they were and appends its
-      reason to err.txt).
+      Launch only, the keeper --run starts: the same run without the wait's printing, exiting with the
+      driver's status. Refuses, exit 2 with the reason in DIR/err.txt and DIR/exit where DIR is a
+      directory: a DIR that is not one, a prompt.txt that is not a regular file, a REPORT that is not
+      absolute, and a DIR whose exit marker already exists (that refusal leaves the earlier run's files
+      as they were and appends its reason to err.txt). A DIR/err.txt already there is another launch's
+      claim: exit 2, nothing written.
+  node agent-run.mjs --orphan --dir DIR --report-file REPORT
+      --run's own step: starts the launch-only mode in a session of its own and exits at once, so the
+      keeper's parent is gone before anything looks for it.
   node agent-run.mjs --status --report-file REPORT [--dir DIR]
       Prints nine lines: ${STATUS_LINES.join(", ")}. PATH is own where the
       driver's pid line names REPORT, taken where the driver refused a path already there or could not
@@ -95,13 +129,14 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
 `;
 
 function parse(argv) {
-  const o = { run: false, status: false, isNew: false, dir: null, report: null, help: false };
+  const o = { run: false, status: false, isNew: false, orphan: false, dir: null, report: null, help: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--help" || a === "-h") o.help = true;
     else if (a === "--run") o.run = true;
     else if (a === "--new") o.isNew = true;
     else if (a === "--status") o.status = true;
+    else if (a === "--orphan") o.orphan = true;
     else if (a === "--dir") o.dir = argv[++i];
     else if (a === "--report-file") o.report = argv[++i];
     else return { error: `unknown argument: ${a}` };
@@ -115,6 +150,13 @@ const read = (p) => { try { return fs.readFileSync(p, "utf8"); } catch { return 
 const markerOf = (dir) => (read(path.join(dir, "exit")) ?? "").trim();
 const pidOf = (dir) => { const m = /^entrust: pid=(\d+) /.exec((read(path.join(dir, "err.txt")) ?? "").split("\n")[0]); return m ? Number(m[1]) : null; };
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === "EPERM"; } };
+
+// This script again, in a session of its own with no stdio, and not waited for.
+function spawnDetached(args) {
+  const child = spawn(process.execPath, [SELF, ...args], { detached: true, stdio: "ignore", env: process.env });
+  child.on("error", () => {});
+  child.unref();
+}
 
 // Launch the driver on DIR/prompt.txt. `onExit(status)` runs after the marker is written; `onRefuse()`
 // after a refusal has been recorded. Neither returns.
@@ -138,11 +180,15 @@ function launch(dir, report, { onExit, onRefuse }) {
   const promptPath = path.join(dir, "prompt.txt");
   if (!isRegularFile(promptPath)) return refuse(`${promptPath} is not a regular file`);
   if (!report || !path.isAbsolute(report)) return refuse(`--report-file ${JSON.stringify(report ?? "")} is not an absolute path`);
+  // The claim on DIR, before out.json is truncated: a second keeper racing this one (a --run and its
+  // rerun each starting one) finds err.txt there and leaves with nothing written.
+  let errFd;
+  try { errFd = fs.openSync(path.join(dir, "err.txt"), "wx"); }
+  catch (e) { if (e.code === "EEXIST") return onRefuse(); throw e; }
   const outFd = fs.openSync(path.join(dir, "out.json"), "w");
-  const errFd = fs.openSync(path.join(dir, "err.txt"), "w");
   const child = spawn(process.execPath, [DRIVER, "--prompt-file", promptPath, "--report-file", report],
     { stdio: ["ignore", outFd, errFd], env: process.env });
-  for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"]) process.on(sig, () => { try { child.kill(sig); } catch {} });
+  for (const sig of SIGNALS) process.on(sig, () => { try { child.kill(sig); } catch {} });
   child.on("error", (e) => {
     fs.closeSync(outFd); fs.closeSync(errFd);
     fs.appendFileSync(path.join(dir, "err.txt"), `${REFUSED}: the driver could not be spawned: ${e.message}\n`);
@@ -197,11 +243,36 @@ function newAgent(report, dirOverride) {
   const dir = dirOverride ?? agentDirOf(report);
   const promptPath = path.join(dir, "prompt.txt");
   if (fs.existsSync(promptPath)) refuse(`${promptPath} already exists: one prompt per report path, a relaunch gets a fresh one`);
+  // A launch's own files with no prompt beside them: a --run came to this path after a refused --new and
+  // its keeper refused in turn. A prompt written here now would be read as that launch's, and the next
+  // --run would print the old refusal as this prompt's result.
+  const earlier = ["exit", "err.txt", "out.json"].map((f) => path.join(dir, f)).find((f) => fs.existsSync(f));
+  if (earlier) {
+    process.stdout.write(`ERROR=${earlier} is an earlier launch's: this report path is spent, and a corrected prompt goes under a fresh report path\n`);
+    process.exit(2);
+  }
   let body;
   try { body = fs.readFileSync(0); } catch (e) { refuse(`could not read the prompt on stdin: ${e.message}`); }
   if (!body || body.length === 0) refuse("the prompt on stdin is empty");
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-  fs.writeFileSync(promptPath, body, { mode: 0o600 });
+  // The driver's own offline check, run as the driver is, on the file under another name: a --run in the
+  // same turn waits for prompt.txt, so the name appears only once the check has passed, and no driver
+  // starts on a prompt the run would refuse. The refusal used to arrive at --run, after the agent was
+  // spawned, and coordinators swapped in the mode it named (2026-09-17 and 2026-09-25).
+  const checked = `${promptPath}.check`;
+  fs.writeFileSync(checked, body, { mode: 0o600 });
+  const c = spawnSync(process.execPath, [DRIVER, "--check-prompt-file", checked],
+    { stdio: ["ignore", "pipe", "pipe"], encoding: "utf8", env: process.env, timeout: 30000 });
+  if (c.status !== 0) {
+    fs.rmSync(checked, { force: true });
+    const said = String(c.stderr ?? "").trim();
+    const refusal = /^entrust: refused: (.+)$/.exec(said);
+    const how = c.error ? c.error.message : c.signal ? `signal ${c.signal}` : `exit ${c.status}`;
+    process.stdout.write(`ERROR=${c.status === 2 && refusal ? refusal[1]
+      : `the driver's --check-prompt-file ended with ${how}, a fault in the driver and no verdict on the prompt${said ? `: ${oneLine(said).slice(0, ERROR_MAX)}` : ""}`}\n`);
+    process.exit(2);
+  }
+  fs.renameSync(checked, promptPath);
   process.stdout.write(`PROMPT=${promptPath}\n`);
   process.exit(0);
 }
@@ -217,44 +288,69 @@ function waitForPrompt(dir, cb) {
   tick();
 }
 
-// The one foreground call. Ends, on every path, by printing the status lines and exiting 0: the wrapper
-// runs the command again while a result has no REPORT= line, so a refusal that printed none would be an
-// endless retry.
+// The one foreground call. Ends, on every path, by printing nine lines and exiting 0: the wrapper runs
+// the command again while a result has no REPORT= line, so a refusal that printed none would be an
+// endless retry, and the early return prints RUNNING= in its place for exactly that rerun.
 function run(dir, report) {
-  const finish = () => { process.stdout.write(`${statusLines(dir, report).join("\n")}\n`); process.exit(0); };
-  if (!isDirectory(dir)) {
-    const why = `${REFUSED}: ${JSON.stringify(dir)} is not a directory`;
-    process.stderr.write(`${why}\n`);
-    const lines = ["DRIVER_EXIT=unknown", "PATH=none", "EXIT=unknown", "FIRST=", "ANSWER=", `ERROR=${why.slice(0, ERROR_MAX)}`, "RECEIPT=",
-      `FILE=${report && fs.existsSync(report) ? "exists" : "missing"}`, `REPORT=${report ?? ""}`];
-    process.stdout.write(`${lines.join("\n")}\n`);
-    process.exit(0);
-  }
-  const err = read(path.join(dir, "err.txt")) ?? "";
-  const started = /^entrust: pid=/.test(err.split("\n")[0]);
-  // A directory that already started a run for ANOTHER report path is a reused directory, which is the
-  // one launch this script refuses: reading it would print the earlier run's lines as this run's.
-  if (started && !err.includes(ACCEPTED + report) && !err.includes(REFUSED)) {
-    try { fs.appendFileSync(path.join(dir, "err.txt"), `${REFUSED}: this directory already ran for another report path; a relaunch gets a fresh one\n`); } catch {}
-    return finish();
-  }
-  if (markerOf(dir)) return finish();
-  const pid = pidOf(dir);
-  if (pid !== null) {
-    // A driver this directory already started: the first call was moved into the background at the
-    // tool's ceiling and this is the wrapper running the same command again. Wait for its marker; a
-    // driver that died without one ends the wait too, and the lines then say DRIVER_EXIT=unknown. A
-    // signal to this call is a Stop on the card, and it has to reach the driver it did not start.
-    for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"]) process.on(sig, () => { try { process.kill(pid, sig); } catch {} });
+  const t0 = Date.now();
+  let pid = null, kept = null;
+  // A Stop on the card, whichever call is in flight: no call is the driver's parent, so the signal goes to
+  // the pid on err.txt's first line. One that comes before that line is kept until it appears; one after
+  // RETURN_MS is dropped, because a call past its deadline can only be receiving the teardown the early
+  // return is there to keep away from the run.
+  for (const sig of SIGNALS) process.on(sig, () => {
+    if (Date.now() - t0 >= RETURN_MS) return;
+    if (pid === null) kept = sig;
+    else { try { process.kill(pid, sig); } catch {} }
+  });
+  const print = (lines) => { process.stdout.write(`${lines.join("\n")}\n`); process.exit(0); };
+  const finish = () => print(statusLines(dir, report));
+  waitForPrompt(dir, () => {
+    if (!isDirectory(dir)) {
+      const why = `${REFUSED}: ${JSON.stringify(dir)} is not a directory`;
+      process.stderr.write(`${why}\n`);
+      print(["DRIVER_EXIT=unknown", "PATH=none", "EXIT=unknown", "FIRST=", "ANSWER=", `ERROR=${why.slice(0, ERROR_MAX)}`, "RECEIPT=",
+        `FILE=${report && fs.existsSync(report) ? "exists" : "missing"}`, `REPORT=${report ?? ""}`]);
+    }
+    const err = read(path.join(dir, "err.txt")) ?? "";
+    const started = /^entrust: pid=/.test(err.split("\n")[0]);
+    // A directory that already started a run for ANOTHER report path is a reused directory, which is the
+    // one launch this script refuses: reading it would print the earlier run's lines as this run's.
+    if (started && !err.includes(ACCEPTED + report) && !err.includes(REFUSED)) {
+      try { fs.appendFileSync(path.join(dir, "err.txt"), `${REFUSED}: this directory already ran for another report path; a relaunch gets a fresh one\n`); } catch {}
+      return finish();
+    }
+    if (markerOf(dir)) return finish();
+    // A fresh directory: the keeper, through the orphaning step. A directory whose err.txt exists has a
+    // launch already, and a second keeper would only lose the claim on it.
+    if (!fs.existsSync(path.join(dir, "err.txt"))) spawnDetached(["--orphan", "--dir", dir, "--report-file", report]);
+    // Then the same wait for the first call and a rerun: the driver's pid line, then its marker. A driver
+    // that died without one ends the wait too, and the lines then say DRIVER_EXIT=unknown.
+    const startBy = Date.now() + PROMPT_WAIT_MS;
     let gone = 0;
     const tick = () => {
       if (markerOf(dir)) return finish();
+      if (pid === null) {
+        pid = pidOf(dir);
+        if (pid === null) {
+          if (Date.now() < startBy) return setTimeout(tick, 100);
+          const lines = statusLines(dir, report);
+          lines[STATUS_LINES.indexOf("ERROR")] = "ERROR=the driver did not start";
+          return print(lines);
+        }
+        if (kept) { try { process.kill(pid, kept); } catch {} }
+      }
       if (!alive(pid) && ++gone > 4) return finish();
+      if (Date.now() - t0 >= RETURN_MS) {
+        const lines = statusLines(dir, report);
+        lines[0] = "DRIVER_EXIT=running";
+        lines[STATUS_LINES.indexOf("REPORT")] = `RUNNING=pid ${pid}, ${Math.round((Date.now() - t0) / 1000)} s so far; run the same command again`;
+        return print(lines);
+      }
       setTimeout(tick, POLL_MS);
     };
-    return tick();
-  }
-  launch(dir, report, { onExit: finish, onRefuse: finish });
+    tick();
+  });
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
@@ -267,6 +363,8 @@ if (isMain) {
   const dir = o.dir ?? (path.isAbsolute(o.report) ? agentDirOf(o.report) : null);
   if (dir === null) { process.stderr.write(`${REFUSED}: --report-file ${JSON.stringify(o.report)} is not an absolute path\n`); process.exit(2); }
   if (o.status) { process.stdout.write(`${statusLines(dir, o.report).join("\n")}\n`); process.exit(0); }
-  if (o.run) waitForPrompt(dir, () => run(dir, o.report));
+  // The orphaning step: its child's parent is gone as soon as it is started.
+  if (o.orphan) { spawnDetached(["--dir", dir, "--report-file", o.report]); process.exit(0); }
+  if (o.run) run(dir, o.report);
   else launch(dir, o.report, { onExit: (status) => process.exit(status), onRefuse: () => process.exit(2) });
 }
