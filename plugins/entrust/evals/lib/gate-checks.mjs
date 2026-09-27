@@ -218,25 +218,92 @@ const countNear = (text, re) => {
   return m ? Number(NUMBER[m[1].toLowerCase()] ?? m[1]) : null;
 };
 
+// The card row a line is, by the label it opens with once the table and emphasis marks are off, or null.
+export function cardLabelOf(line) {
+  const l = String(line).replace(/^[\s>|#*_\-\d.]+/, "").replace(/^\*\*/, "").trim();
+  return Object.entries(CARD).find(([, re]) => re.test(l))?.[0] ?? null;
+}
+
+// The workers and the checking agents the card's who row counts, in the phrasings plans use: "3 workers",
+// "3 do the work, 3 check it", "3 выполняют работу, 3 проверяют". Read from the who row alone: an
+// assumption such as "one worker doing all three edits would be cheaper" is not the count (measured on the
+// live gate's case 7, 2026-09-28). Heuristic over free text.
+export function cardCounts(text) {
+  const who = String(text).split("\n").filter((l) => cardLabelOf(l) === "who").join("\n");
+  if (!who) return null;
+  return {
+    workers: countNear(who, /do the work|do it|workers?|implementers?|writers?|editors?|edit\b|выполня\p{L}*|исполнител\p{L}*|работник\p{L}*/u),
+    checking: countNear(who, /check(?:s|ing)?(?: it| the work)?\b|checking agents?|checkers?|verifiers?|critics?|reviewers?|assurance|проверя\p{L}*|проверяющ\p{L}*/u),
+  };
+}
+
+// The launcher's own count of the registered plan, WORKERS= and CHECKING= off the last --plan call.
+export function planOutputOf(s) {
+  const call = rootUses(s).filter((u) => isLauncher(u, "plan")).pop();
+  const out = call ? s.results.get(call.id)?.text ?? "" : "";
+  const w = /^WORKERS=(\d+)$/m.exec(out)?.[1], c = /^CHECKING=(\d+)$/m.exec(out)?.[1];
+  return w === undefined || c === undefined ? null : { workers: Number(w), checking: Number(c) };
+}
+
 // The card's five rows by the labels the page names, and, against the registered plan, every agent on it
-// and the workers and the checking agents counted as the plan counts them. Heuristic over free text.
-export function cardProblems(text, rows = null) {
+// and the workers and the checking agents its who row counts, as the launcher's classifier counts them
+// (`counted`, the --plan call's own output, when the stream has it).
+export function cardProblems(text, rows = null, { counted = null } = {}) {
   const problems = [];
-  const starts = String(text).split("\n").map((l) => l.replace(/^[\s>|#*_\-\d.]+/, "").replace(/^\*\*/, "").trim());
-  const missing = Object.entries(CARD).filter(([, re]) => !starts.some((l) => re.test(l))).map(([k]) => k);
+  const labels = new Set(String(text).split("\n").map(cardLabelOf).filter(Boolean));
+  const missing = Object.keys(CARD).filter((k) => !labels.has(k));
   if (missing.length) problems.push(`the card has no ${missing.join(", ")} row`);
   if (rows) {
     const absent = rows.filter((r) => !new RegExp(`(?<![A-Za-z0-9])${r.id}(?![A-Za-z0-9])`, "i").test(text)).map((r) => r.id);
     if (absent.length) problems.push(`the card does not show ${absent.join(", ")}, registered in the plan`);
-    const workers = rows.filter((r) => classifyRole(r.role) === "worker").length;
-    const checking = rows.filter((r) => classifyRole(r.role) === "checking").length;
-    const saidWorkers = countNear(text, /workers?|implementers?|writers?|исполнител\p{L}*/u);
-    const saidChecking = countNear(text, /checking agents?|checkers?|verifiers?|critics?|reviewers?|assurance|проверяющ\p{L}*/u);
+    const classified = { workers: rows.filter((r) => classifyRole(r.role) === "worker").length, checking: rows.filter((r) => classifyRole(r.role) === "checking").length };
+    if (counted && (counted.workers !== classified.workers || counted.checking !== classified.checking))
+      problems.push(`the launcher counted ${counted.workers} worker(s) and ${counted.checking} checking, the registered rows classify as ${classified.workers} and ${classified.checking}`);
+    const said = cardCounts(text);
+    const want = counted ?? classified;
     // A plan whose coordinator writes registers no worker, and its card may count the coordinator as one.
-    if (saidWorkers !== null && workers > 0 && saidWorkers !== workers) problems.push(`the card counts ${saidWorkers} worker(s), the plan registers ${workers}`);
-    if (saidChecking !== null && saidChecking !== checking) problems.push(`the card counts ${saidChecking} checking agent(s), the plan registers ${checking}`);
+    if (said?.workers != null && want.workers > 0 && said.workers !== want.workers) problems.push(`the card counts ${said.workers} worker(s), the plan registers ${want.workers}`);
+    if (said?.checking != null && said.checking !== want.checking) problems.push(`the card counts ${said.checking} checking agent(s), the plan registers ${want.checking}`);
   }
   return problems;
+}
+
+// How many agents of one top-row model (Fable, Astra) a plan names, per wave when its table has a wave
+// column. An agent counts where it is named as one: "<Model> <id>" anywhere outside the card's work,
+// writes, cost and checks rows, and in the who row or an agent table's row by the model's name alone.
+// A sentence about effort ("Astra will use its configured default effort") names no agent (measured on
+// the live gate's case 7, 2026-09-28, where the cost row made a second Astra). In a plan with a table,
+// prose outside it is commentary (measured: a bullet "one Fable agent, one gpt-6-astra agent, caps
+// respected" once counted as a second agent), so only a named id counts there. `isAgent` excludes the
+// caller's own sentences about itself and the caps. Heuristic over free text.
+export function topRowAgents(text, model, { isAgent = () => true } = {}) {
+  const all = String(text).split("\n").filter((l) => l.trim());
+  const rows = all.filter((l) => l.trim().startsWith("|"));
+  const header = rows[0] ? rows[0].split("|").map((c) => c.trim().toLowerCase()) : [];
+  const waveCol = header.findIndex((c) => /^(wave|stage|phase|step|order|round|batch|when|волна|этап|фаза|шаг|порядок|очередь|раунд|когда)$/.test(c));
+  const groupOf = (l) => (waveCol >= 0 ? (l.split("|")[waveCol] ?? "").trim() : "");
+  const named = new RegExp(`(?<![A-Za-z])(?:Codex\\s+|Claude\\s+)?${model}\\s+([A-Z][A-Za-z]*\\d[\\w-]*)\\b`, "gi");
+  const bare = new RegExp(`\\b${model}\\b`, "gi");
+  const counted = all.filter((l) => { const c = cardLabelOf(l); return (!c || c === "who") && isAgent(l); })
+    .map((l) => ({ line: l, card: cardLabelOf(l), kept: l.split(/(?<=[.!?;])\s+/).filter((t) => !/\beffort\b|усили/i.test(t)).join(" ") }));
+  // Every id the plan names with the model, so a table row that names the same agent by id is not a second one.
+  const known = new Set(counted.flatMap((c) => [...c.kept.matchAll(named)].map((m) => m[1].toUpperCase())));
+  const per = new Map();
+  const where = [];
+  for (const { line, card, kept } of counted) {
+    const ids = [...kept.matchAll(named)].map((m) => m[1].toUpperCase());
+    const inTable = rows.includes(line);
+    const sameAgent = [...known].some((id) => new RegExp(`(?<![A-Za-z0-9])${id}(?![A-Za-z0-9])`, "i").test(line));
+    const n = ids.length || sameAgent ? 0 : (card === "who" || (inTable && !card) || !rows.length) ? [...kept.matchAll(bare)].length : 0;
+    if (!ids.length && !n) continue;
+    const g = per.get(groupOf(line)) ?? { ids: new Set(), bare: 0 };
+    ids.forEach((id) => g.ids.add(id));
+    g.bare += n;
+    per.set(groupOf(line), g);
+    where.push(line);
+  }
+  const counts = [...per.values()].map((g) => g.ids.size + g.bare);
+  return { max: Math.max(0, ...counts), total: counts.reduce((a, b) => a + b, 0), where, waveCol: waveCol >= 0 ? header[waveCol] : null };
 }
 
 // The sibling page is loaded before the first thing that needs it, and never by a plan that has no Codex
@@ -454,13 +521,33 @@ export const shasumLines = (text) => String(text).split("\n").map((l) => /^([0-9
 // The critic read a frozen draft: its prompt names a `shasum -a 256` manifest, its verdict returns the
 // manifest's digest, every file in the manifest still has the digest it had, and what went out is one of
 // those files (#15 F4: three answers changed after their critic read them).
+// The critic's last word: a Claude critic continued by SendMessage (to the agentId its first result names)
+// re-reads under the continuation's message, and its second verdict is the last text its own traffic
+// carries after that message (measured on the live gate's case 5, 2026-09-28: the continued agent's
+// messages keep the first Agent call's id as their parent, and no tool result carries the verdict).
+export function criticVerdict(s, c) {
+  if (c.side !== "claude" || !c.call) return { brief: c.text, returned: null, continued: false };
+  const first = s.results.get(c.call.id)?.text ?? "";
+  const agentId = /agentId:\s*(\w+)/.exec(first)?.[1] ?? null;
+  const sm = agentId ? rootUses(s).filter((u) => u.name === "SendMessage" && String(u.input.to ?? "") === agentId && u.seq > c.seq).pop() : null;
+  if (!sm) return { brief: c.text, returned: first, continued: false };
+  const texts = s.events.filter((e) => e.kind === "text" && e.parent === c.call.id && e.seq > sm.seq);
+  return { brief: String(sm.input.message ?? ""), returned: texts.length ? texts[texts.length - 1].text : null, continued: true };
+}
+
+// The critic read a frozen draft: its brief names a `shasum -a 256` manifest, its verdict returns the
+// manifest's digest, every file in the manifest still has the digest it had, and what went out is one of
+// those files, with nothing after it but paragraphs that name the critic, its verdict, which the answer
+// carries (#15 F4: three answers changed after their critic read them).
 export function criticDigestProblems(s, { finalText, read = (p) => fs.readFileSync(p), reportOf = null }) {
   const bs = briefs(s);
   const critics = bs.filter((b) => /completeness critic/i.test(`${b.description ?? ""}\n${b.text}`));
   if (!critics.length) return ["no completeness critic ran"];
   const c = critics[critics.length - 1];
   const problems = [];
-  const paths = absolutePaths(c.text);
+  const verdict = criticVerdict(s, c);
+  if (verdict.continued && verdict.returned === null) return ["the critic was continued and its second verdict never arrived"];
+  const paths = absolutePaths(verdict.brief);
   let manifest = null, manifestPath = null;
   for (const p of paths) {
     let body = null;
@@ -469,21 +556,35 @@ export function criticDigestProblems(s, { finalText, read = (p) => fs.readFileSy
   }
   if (!manifest) return [`the critic's brief names no shasum manifest (paths: ${paths.join(", ") || "none"})`];
   let returned = "";
-  if (c.side === "claude") returned = parseFiveFields(s.results.get(c.call.id)?.text ?? "").fields.evidence?.[0] ?? "";
+  if (c.side === "claude") returned = parseFiveFields(verdict.returned ?? "").fields.evidence?.[0] ?? "";
   else if (reportOf) returned = String(reportOf(c.report)?.answerJson?.evidence?.[0] ?? "");
   const digest = /\b[0-9a-f]{64}\b/.exec(returned)?.[0] ?? null;
   if (!digest) problems.push("the critic's first evidence line carries no sha256");
   else if (digest !== sha256(manifest)) problems.push(`the critic returned ${digest.slice(0, 12)}…, the manifest ${manifestPath} is ${sha256(manifest).slice(0, 12)}…`);
   const entries = shasumLines(manifest.toString("utf8"));
-  let wentOut = false;
+  const d = c.call ? describedAgent(c.call) : null;
+  const namesCritic = (para) => (d ? new RegExp(`(?<![A-Za-z0-9])${escapeRe(d.id)}(?![A-Za-z0-9])`).test(para) : /critic/i.test(para));
+  const final = collapse(finalText);
+  let wentOut = false, added = null;
   for (const e of entries) {
     const file = path.isAbsolute(e.file) ? e.file : path.join(path.dirname(manifestPath), e.file);
     let body = null;
     try { body = read(file); } catch { problems.push(`${e.file} in the manifest is gone`); continue; }
     if (sha256(body) !== e.digest) problems.push(`${e.file} changed after the critic read it`);
-    if (collapse(body.toString("utf8")) === collapse(finalText)) wentOut = true;
+    const frozen = collapse(body.toString("utf8"));
+    if (!frozen) continue;
+    if (frozen === final) wentOut = true;
+    else if (final.startsWith(frozen)) {
+      // What follows the frozen draft in the answer, paragraph by paragraph.
+      const rest = String(finalText).trim().split(/\n\s*\n/).slice(body.toString("utf8").trim().split(/\n\s*\n/).length);
+      const foreign = rest.filter((p) => p.trim() && !namesCritic(p));
+      if (!foreign.length) wentOut = true;
+      else added = foreign[0].trim().slice(0, 100);
+    }
   }
-  if (!wentOut) problems.push("the answer that went out is not a file the critic's manifest froze");
+  if (!wentOut) problems.push(added !== null
+    ? `the answer adds text after the draft the critic read: ${JSON.stringify(added)}`
+    : "the answer that went out is not a file the critic's manifest froze");
   return problems;
 }
 
@@ -517,7 +618,8 @@ export function receiptsFrom(s, { reports = [], ledger = [] } = {}) {
     for (const c of r?.commands ?? []) {
       if (c?.exitCode !== 0) continue;
       const cmd = String(c.command ?? "");
-      const inner = (/^\S*sh\s+-l?c\s+(['"])([\s\S]*)\1$/.exec(cmd)?.[2] ?? cmd).trim();
+      // Unwrapped from its shell, and its escaped quotes undone, so a quoted --label reads whole.
+      const inner = (/^\S*sh\s+-l?c\s+(['"])([\s\S]*)\1$/.exec(cmd)?.[2] ?? cmd).trim().replace(/\\(["'])/g, "$1");
       out.add(inner);
       // A check run through the runner is cited by its question or by the command it ran.
       const runner = /capture-check\.mjs\b(?:.*?--label\s+(?:"([^"]+)"|'([^']+)'|(\S+)))?.*?\s--\s+(.+)$/.exec(inner);
@@ -530,6 +632,10 @@ export function receiptsFrom(s, { reports = [], ledger = [] } = {}) {
   for (const b of briefs(s).filter((x) => x.side === "claude" && x.call))
     for (const line of parseFiveFields(s.results.get(b.call.id)?.text ?? "").fields.evidence ?? [])
       for (const m of line.matchAll(/`([^`]{3,})`/g)) out.add(m[1]);
+  // The coordinator's own lint of its draft, when it came back clean, is the receipt for saying so
+  // (measured on the live gate's case 5, 2026-09-28: "The draft passes the linter." had HITS=0 behind it).
+  if (rootUses(s).some((u) => /lint-draft\.mjs/.test(bashCommand(u)) && /(^|\n)HITS=0\s*$/.test((s.results.get(u.id)?.text ?? "").trim())))
+    for (const l of ["linter", "lint"]) out.add(l);
   return [...out];
 }
 
@@ -619,7 +725,9 @@ export function originsOf(s, { reports = [] } = {}) {
     const d = describedAgent(u);
     const id = idOfReport(reportPathOf(codexCommand(u)));
     const r = reports.find((x) => x.id?.toLowerCase() === id?.toLowerCase());
-    if (d && r) add(`${d.model} ${d.id}`.toLowerCase(), `${JSON.stringify(r.report?.answerJson ?? "")}\n${r.report?.answer ?? ""}`);
+    // Its commands too: what it read is where a fact it reports can come from (measured on the live gate's
+    // case 5, 2026-09-28: the verifier compared the change with `greet` by reading lib/greet.mjs).
+    if (d && r) add(`${d.model} ${d.id}`.toLowerCase(), `${JSON.stringify(r.report?.answerJson ?? "")}\n${r.report?.answer ?? ""}\n${(r.report?.commands ?? []).map((x) => String(x?.command ?? "")).join("\n")}`);
   }
   return out;
 }

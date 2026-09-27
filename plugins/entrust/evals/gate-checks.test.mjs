@@ -44,6 +44,8 @@ function session() {
       return api;
     },
     say(text) { msgs.push({ type: "assistant", parent_tool_use_id: null, message: { content: [{ type: "text", text }] } }); return api; },
+    // A text the subagent under that Agent call wrote, as a continued agent's final text arrives.
+    sub(parent, text) { msgs.push({ type: "assistant", parent_tool_use_id: parent, message: { content: [{ type: "text", text }] } }); return api; },
     skill(name) { api.result(api.use("Skill", { skill: name }), `Launching skill: ${name}`); return api; },
     bash(command, out = "") { api.result(api.use("Bash", { command }), out); return api; },
     plan(runDir, rows, amend = false) {
@@ -133,6 +135,49 @@ test("the card: five rows by the page's labels, every registered agent on it, wo
     expectSome(G.cardProblems(CARD, [...ROWS, { id: "R9", model: "sol", role: "refuter", writes: "nothing", tokens: 0 }]), /does not show R9/),
     expectNone(G.cardProblems("| Работа | slug |\n| Кто | Opus W1 |\n| Пишет | W1 |\n| Стоимость | 40k |\n| Проверки | C1 |")),
   ));
+
+// The live gate's case 7 plan of 2026-09-28, verbatim (its artifact plan.txt), and the rows its --plan call
+// registered: the gate failed it on two heuristics, not on the coordinator, so it is the fixture that passes.
+const CASE7_PLAN = "The plan is registered below. Nothing has been launched yet, and I'm waiting for your word.\n\n**Scouting:** `fmt` appears in exactly 3 places: its definition on `lib/shared.mjs:1`, and the import plus one call in each of `lib/a.mjs` and `lib/b.mjs`. The tests don't mention it. There are 2 test files.\n\n**Assumptions:**\n- \"One worker per file\" means three workers, one each for `shared.mjs`, `a.mjs` and `b.mjs`.\n- It's a straight rename: no `fmt` alias is kept, and the output of `labelA` and `labelB` doesn't change.\n\nOne worker doing all three edits would be cheaper and never leave the tree half-renamed. I'm keeping the split you asked for.\n\n| | |\n|---|---|\n| **Work** | Rename `fmt` to `format` in `shared.mjs`, then change the import and call in `a.mjs` and `b.mjs` to match, and run `node --test` on the finished result. |\n| **Who** | 6 agents: 3 do the work, 3 check it. **Codex Astra S1** checks how the task is split and settles what the three files must agree on before anyone edits. **Sonnet W1, W2, W3** each edit one file: `shared.mjs`, `a.mjs`, `b.mjs`. **Codex Sol V1** runs the tests and reviews the combined change; it writes nothing. **Opus C1** reads my final answer before you get it. Two of the three checkers are Codex. None of the editors are, because only one Codex agent may write in a given folder, and all three files are in `lib/`. |\n| **Writes** | Each Sonnet worker changes only its own one file, in your working copy. There are no commits. S1, V1 and C1 change nothing in the repo; they only write scratch files in the temp folder. Every agent can reach the network, and I'm not blocking any of them. Reports go outside the repository. No worktree is created. |\n| **Cost** | All agents: `unknown`, because I have no measured run of this shape to compare with. Astra will use its configured default effort, which may be high for a job this small. Sol runs on medium effort. My own work so far: 3 quick reads (a file listing, a search, the test imports). |\n| **Checks** | S1 checks the split, and the worker instructions are written only from its corrected version. V1 has written none of the code; it runs `node --test` on all three edits together and reports how many tests ran and passed, and it also reviews the changes. C1 reads my final answer, which lists the changed files and the test count. |\n\n**Limits:** my own model is Opus 5.5. At most one Fable and one Astra agent run at a time, and at most 6 agents at once.\n\n**Options:**\n1. **(Recommended)** I launch the three workers myself, all at the same time, after S1 returns. Then V1 checks, then C1 reads.\n2. The same, but an Opus supervisor launches the workers and V1, so you see one card per worker instead of every step. It adds one Opus agent to coordinate what are three one-line edits. It would be added to the plan, and I'd show you that change first.\n\n\"go\" means option 1.";
+const CASE7_ROWS = "S1 | astra | split critic | nothing | unknown\nW1 | sonnet | implementer | live tree | unknown\nW2 | sonnet | implementer | live tree | unknown\nW3 | sonnet | implementer | live tree | unknown\nV1 | sol | cross-reviewer | nothing | unknown\nC1 | opus | completeness critic | nothing | unknown";
+
+test("the live gate's case-7 card passes: its who row counts \"3 do the work, 3 check it\", one Astra is named, and the cost row's effort sentence names none",
+  "measured 2026-09-28: the first live run over the fixed tree failed case 7 for \"the card counts 1 worker(s)\" (an assumption, \"one worker doing all three edits\", was read as the count) and for \"2 astra agents\" (the cost row said Astra's effort)",
+  () => {
+    const rows = G.planRecord(CASE7_ROWS);
+    const plan = session().plan("/d/run", CASE7_ROWS).parsed();
+    // The launcher's own output for those rows, as the plan turn's --plan call printed it.
+    const s = session();
+    s.result(s.use("Bash", { command: `node "${LAUNCHER}" --plan --run-dir "/d/run" <<'ROWS'\n${CASE7_ROWS}\nROWS` }), "PLAN=/d/run/plan.txt\nAGENT=S1 astra nothing\nWORKERS=3\nCHECKING=3");
+    const counted = G.planOutputOf(s.parsed());
+    return all(
+      JSON.stringify(counted) === '{"workers":3,"checking":3}' || `planOutputOf read ${JSON.stringify(counted)}`,
+      G.planOutputOf(plan) === null || "a --plan call with no totals was read as counted",
+      JSON.stringify(G.cardCounts(CASE7_PLAN)) === '{"workers":3,"checking":3}' || `cardCounts read ${JSON.stringify(G.cardCounts(CASE7_PLAN))}`,
+      expectNone(G.cardProblems(CASE7_PLAN, rows, { counted })),
+      expectNone(G.cardProblems(CASE7_PLAN, rows)),
+      G.topRowAgents(CASE7_PLAN, "Astra").max === 1 || `Astra counted ${G.topRowAgents(CASE7_PLAN, "Astra").max}: ${G.topRowAgents(CASE7_PLAN, "Astra").where.join(" / ")}`,
+      G.topRowAgents(CASE7_PLAN, "Fable").max === 0 || "a Fable agent was counted",
+      expectSome(G.cardProblems(CASE7_PLAN.replace("3 do the work, 3 check it", "3 do the work, 2 check it"), rows, { counted }), /counts 2 checking agent\(s\), the plan registers 3/),
+      expectSome(G.cardProblems(CASE7_PLAN, rows, { counted: { workers: 2, checking: 3 } }), /the launcher counted 2 worker\(s\)/),
+    );
+  });
+
+test("top-row agents are counted where an agent is named: an id, the who row, an agent table's row; per wave; the same agent once",
+  "the cap is one Fable and one Astra alive at a time; a counter that reads every mention fails plans that honour it, and one that reads none passes plans that break it",
+  () => {
+    const two = "| **Who** | Codex Astra S1 critiques the split, and Codex Astra S2 judges it. |\n| **Cost** | unknown |";
+    const waves = "| wave | agent | role |\n| --- | --- | --- |\n| 1 | Astra | critic |\n| 2 | Astra | judge |";
+    const same = "| id | model |\n| --- | --- |\n| S1 | Astra |\n\nCodex Astra S1 critiques the split.";
+    const prose = "| **Who** | Opus W1 writes. |\n\nOne Fable agent, one Astra agent at most, caps respected.";
+    return all(
+      G.topRowAgents(two, "Astra").max === 2 || `two named Astra read as ${G.topRowAgents(two, "Astra").max}`,
+      G.topRowAgents(waves, "Astra").max === 1 && G.topRowAgents(waves, "Astra").waveCol === "wave" || `waves read as ${JSON.stringify(G.topRowAgents(waves, "Astra"))}`,
+      G.topRowAgents(same, "Astra").max === 1 || `one agent named by row and by id read as ${G.topRowAgents(same, "Astra").max}`,
+      G.topRowAgents(prose, "Astra").max === 0 || `prose beside a table read as ${G.topRowAgents(prose, "Astra").max}`,
+      G.topRowAgents("Codex Astra S1 critiques the split.\nAstra runs at its configured default effort.", "Astra").max === 1 || "an effort sentence counted in a plan with no table",
+    );
+  });
 
 test("the codex page is loaded before the launcher's first call, and never by a plan with no Codex agent",
   "D5: the deferred load saves the codex page's words only if an all-Claude plan skips it, and it is safe only if a Codex plan loads it first",
@@ -269,11 +314,47 @@ test("the critic's digest: it names a shasum manifest, returns the manifest's sh
     return all(
       expectNone(good),
       expectSome(wrong, /the critic returned 000000000000…/),
-      expectSome(drifted, /not a file the critic's manifest froze/),
+      expectSome(drifted, /adds text after the draft the critic read: "One more claim added after the critic\."/),
       expectSome(changed, /changed after the critic read it/),
       expectSome(rewritten, /the critic returned [0-9a-f]{12}…, the manifest .* is [0-9a-f]{12}…/),
       rewritten.length === 1 || `a rewritten manifest should fail on the digest alone: ${JSON.stringify(rewritten)}`,
       expectSome(none, /names no shasum manifest/),
+    );
+  });
+
+test("a critic continued by SendMessage: its second verdict over the new manifest counts, and the answer may add only paragraphs that name the critic",
+  "measured on the live gate's case 5, 2026-09-28: the coordinator re-froze the draft and continued its critic, as the page says, and the gate read only the first verdict; the answer then carried the verdict and one unrelated paragraph",
+  () => {
+    const dir = fs.mkdtempSync(path.join(TMP, "critic2-"));
+    const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
+    const draft = path.join(dir, "draft.md");
+    const first = "Opus W1 added the helper.\n";
+    fs.writeFileSync(draft, first);
+    const m1 = path.join(dir, "manifest.sha256");
+    fs.writeFileSync(m1, `${sha(first)}  ${draft}\n`);
+    const d1 = sha(fs.readFileSync(m1));
+    const second = "Opus W1 added the helper and its test.\n";
+    fs.writeFileSync(draft, second);
+    const m2 = path.join(dir, "manifest-2.sha256");
+    fs.writeFileSync(m2, `${sha(second)}  ${draft}\n`);
+    const d2 = sha(fs.readFileSync(m2));
+    const run = (verdict) => {
+      const s = session();
+      const id = s.use("Agent", { description: "Opus K1: completeness critic", model: "opus", prompt: `You are the completeness critic. Manifest: ${m1}` });
+      s.result(id, [{ type: "text", text: `${FRAME}${five({ status: "partial", evidence: [d1] }).split("\n").map((l) => `  ${l}`).join("\n")}\nagentId: a23ff0b7ba0739d2e (use SendMessage)` }]);
+      s.result(s.use("SendMessage", { to: "a23ff0b7ba0739d2e", message: `Re-read the changed part. Manifest: ${m2}.` }), "Resuming agent");
+      if (verdict) s.sub(id, verdict);
+      return s;
+    };
+    const good = run(five({ evidence: [d2, "re-read"] }));
+    const withVerdict = `${second}\n**Opus K1's verdict: done.** Nothing is missing.\n`;
+    const withOther = `${withVerdict}\nSeparately, another session asked me for a review.\n`;
+    return all(
+      expectNone(G.criticDigestProblems(good.done(second).parsed(), { finalText: second })),
+      expectNone(G.criticDigestProblems(run(five({ evidence: [d2] })).done(withVerdict).parsed(), { finalText: withVerdict })),
+      expectSome(G.criticDigestProblems(run(five({ evidence: [d2] })).done(withOther).parsed(), { finalText: withOther }), /adds text after the draft the critic read: "Separately, another session/),
+      expectSome(G.criticDigestProblems(run(five({ evidence: [d1] })).done(second).parsed(), { finalText: second }), /the critic returned/),
+      expectSome(G.criticDigestProblems(run(null).done(second).parsed(), { finalText: second }), /continued and its second verdict never arrived/),
     );
   });
 
@@ -421,6 +502,9 @@ test("each claim in the answer is held by the return of the agent it credits: a 
       expectNone(G.claimOriginProblems(s, { reports, finalText: "Opus W1 wrote lib/slug.mjs; Codex Terra C1 ran the suite: 5 of 5." })),
       expectSome(G.claimOriginProblems(s, { reports, finalText: "Codex Terra C1 ran `node --test`: 14 of 14." }), /credits Terra C1 with node --test, which only opus w1's return holds/),
       expectSome(G.claimOriginProblems(s, { reports, finalText: "Opus W1 fixed lib/other.mjs." }), /credits Opus W1 with lib\/other\.mjs, which no admitted return holds/),
+      // What a Codex agent read is part of its return: case 5's verifier compared the change with `greet`.
+      expectNone(G.claimOriginProblems(s, { reports: [{ id: "C1", report: { ...reports[0].report, commands: [{ command: "nl -ba lib/greet.mjs", exitCode: 0 }] } }],
+        finalText: "Codex Terra C1 checked the change against the style of `greet`." })),
     );
   });
 
@@ -465,6 +549,14 @@ test("receipts: a Codex command that exited 0, unwrapped from its shell, and a b
       !r.includes("npm run lint") || "a failed command became a receipt",
       r.includes("node --test --test-reporter=tap") && r.includes("slug exported") || `receipts ${JSON.stringify(r)}`,
       JSON.stringify(G.agentsThatRan(session().codex("Codex Terra C1: run", "/d/r/C1/report.json").claude("Opus K1: critic", "opus", "x", five()).parsed())) === '["Codex Terra C1","Opus K1"]' || "agentsThatRan",
+      // Measured on the live gate's case 5, 2026-09-28: a runner call inside a double-quoted shell command,
+      // its label escaped, read as the receipt `"suite`; and the coordinator's clean lint was no receipt.
+      (() => {
+        const q = G.receiptsFrom(session().parsed(), { reports: [{ commands: [{ command: '/bin/zsh -lc "node \\"/p/capture-check.mjs\\" --label \\"suite passes\\" --ledger /t/l.jsonl -- \'node --test\'"', exitCode: 0 }] }] });
+        return q.includes("suite passes") && !q.some((x) => x.startsWith('\\"')) || `escaped label read as ${JSON.stringify(q)}`;
+      })(),
+      G.receiptsFrom(session().bash("node /p/lint-draft.mjs /t/draft.md", "WORDS=3\nSHA256=x\nHITS=0").parsed()).includes("linter") || "a clean lint is no receipt",
+      !G.receiptsFrom(session().bash("node /p/lint-draft.mjs /t/draft.md", "LINT=path: 1: x\nHITS=1").parsed()).includes("linter") || "a red lint became a receipt",
     );
   });
 

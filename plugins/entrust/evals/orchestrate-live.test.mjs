@@ -100,7 +100,7 @@ import { DRIVER, ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
 import {
   CODEX_SLUG, advisorBriefs, advisorPromptProblems, activationRecord, agentCalls, cardProblems, codexCalls,
   codexCommand, codexLoadProblems, isCodexCall, isTierModel, parseStream, planRecord, runProblems as checkRun,
-  skillCalls, splitAdmissionProblems, workflowCalls,
+  planOutputOf, skillCalls, splitAdmissionProblems, topRowAgents, workflowCalls,
 } from "./lib/gate-checks.mjs";
 import { parseReceipts } from "../plugin/skills/orchestrate/scripts/lint-draft.mjs";
 
@@ -437,7 +437,7 @@ function planProblems({ s, scratch, head0, codexPlanned = true }) {
   if (codexPlanned && !reg) problems.push("a plan with a Codex agent registered nothing with the launcher's --plan");
   if (!codexPlanned && reg) problems.push(`an all-Claude plan registered ${reg.file}`);
   // D6/D9: the card of five rows, every registered agent on it, workers and checking agents counted apart.
-  problems.push(...cardProblems(text, reg?.rows ?? null));
+  problems.push(...cardProblems(text, reg?.rows ?? null, { counted: planOutputOf(s) }));
   // The plan no longer prints the run directory. A resolved path is machinery aimed at the one reader who
   // cannot act on it, and the page now asks for the fact in ordinary words instead, so there is nothing
   // language-independent left to match: measured, every natural phrasing of "outside the repository" fails
@@ -454,12 +454,6 @@ function planProblems({ s, scratch, head0, codexPlanned = true }) {
   // "no codex" is zero Codex agents: a plan that names one by model has not honoured it.
   if (!codexPlanned && (CODEX_SLUG.test(text) || /\bCodex\s+(Astra|Sol|Terra|Luna)\b/.test(text)))
     problems.push("an all-Claude plan names a Codex agent");
-  // Where the plan has an agent table, the rows ARE the agents and everything else is commentary about them:
-  // measured, a plan that listed one Fable agent in a row and then wrote "one Fable agent, one gpt-6-astra
-  // agent, caps respected" in a bullet counted its own summary as a second agent. A plan with no table is
-  // judged on every line, as before.
-  const rows = lines(text).filter((l) => l.trim().startsWith("|"));
-  const agentLines = rows.length ? rows : lines(text);
   // No Claude-agent requirement: the page lets the coordinator take a quick targeted edit itself, and
   // measured, an Opus plan for the slug task did exactly that with one Codex verifier beside it. Whether
   // every Claude Agent call that does run carries a tag is judged after "go", on the calls themselves.
@@ -481,25 +475,16 @@ function planProblems({ s, scratch, head0, codexPlanned = true }) {
   // Fable nor Astra") is not an agent either. Measured 2026-09-27 on that day's release candidate: a plan that used
   // neither and said so was failed for two Fable agents in one wave, both of them that sentence's words.
   const isAgent = (l) => !/under fable|fable session|orchestrator|coordinator|powered by|you are|координ|оркестр|под fable|сам работаю|эта сессия|текущая сессия|я на fable|вне пула|limits? (are|is)|caps? (are|is)|at a time|neither fable|ни fable|предел|лимит/i.test(l);
-  const header = rows[0] ? rows[0].split("|").map((c) => c.trim().toLowerCase()) : [];
-  const waveCol = header.findIndex((c) => /^(wave|stage|phase|step|order|round|batch|when|волна|этап|фаза|шаг|порядок|очередь|раунд|когда)$/.test(c));
-  const groupOf = (l) => (waveCol >= 0 ? (l.split("|")[waveCol] ?? "").trim() : "");
-  const capMax = (re) => {
-    const per = new Map();
-    for (const l of agentLines.filter(isAgent)) {
-      const n = [...l.matchAll(re)].length;
-      if (n) per.set(groupOf(l), (per.get(groupOf(l)) ?? 0) + n);
-    }
-    return Math.max(0, ...per.values());
-  };
-  const tagged = agentLines.filter((l) => /\bfable\b/i.test(l) && isAgent(l));
-  const count = tagged.reduce((n, l) => n + [...l.matchAll(/\bfable\b/gi)].length, 0);
+  // Counted by lib/gate-checks.mjs topRowAgents: where an agent is named as one ("<Model> <id>", the who
+  // row, an agent table's row), never the card's work, writes, cost or checks rows or a sentence about
+  // effort; measured on case 7 of 2026-09-28, the cost row's "Astra will use its configured default effort"
+  // made a second Astra of the one the who row named.
   const sequenced = /alive at a time|one at a time|one after the other|sequential|runs after|then the (second|other)|по очереди|последовательн|не одновременно|друг за другом|после (перв|первого)|сначала .{0,40}(затем|потом)/i.test(text);
-  for (const [name, re] of [["fable", /\bfable\b/gi], ["astra", /\bastra\b/gi]]) {
-    const max = capMax(re);
-    if (max > 1 && !sequenced)
-      problems.push(`${max} ${name} agents in one wave with no sequencing stated, and the cap is one alive at a time: ${agentLines.filter((l) => re.test(l) && isAgent(l)).slice(0, 3).map(quote).join(" ")}`);
-    else note(`${name} agents in the plan: ${count && name === "fable" ? count : capMax(re)}${waveCol >= 0 ? `, at most ${max} per ${header[waveCol]}` : sequenced && max > 1 ? ", sequenced by the plan's own words" : ""}`);
+  for (const name of ["Fable", "Astra"]) {
+    const t = topRowAgents(text, name, { isAgent });
+    if (t.max > 1 && !sequenced)
+      problems.push(`${t.max} ${name.toLowerCase()} agents in one wave with no sequencing stated, and the cap is one alive at a time: ${t.where.slice(0, 3).map(quote).join(" ")}`);
+    else note(`${name.toLowerCase()} agents in the plan: ${t.total}${t.waveCol ? `, at most ${t.max} per ${t.waveCol}` : sequenced && t.max > 1 ? ", sequenced by the plan's own words" : ""}`);
   }
   return problems;
 }
