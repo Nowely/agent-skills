@@ -1,15 +1,21 @@
 ---
 name: clarity
 description: >-
-  Reader-side checks Claude can apply while writing an answer, plan, report, commit, PR, code comment,
-  team message, agent brief, or an agent's result for a person. It can be invoked automatically or as
-  /terse:clarity. No agents or run directory. Skip a one-word acknowledgement or a purely instrumental
-  step. For a standalone document requested by its owner, use rethink, rewrite, or audit.
+  Reader-side checks when drafting or revising text for a person or another agent, even a single
+  line written during coding: commit titles, changelog entries, docstrings, code and review
+  comments, PR descriptions, captions, messages, plans, reports, and summaries in your own words of
+  what agents, tests, or tools found, including replies to the user in chat. Claude can choose it
+  automatically, or you can call /terse:clarity. It starts no agents or run directory. Apply the
+  checks silently when asked for only the finished text; keep the requested format. Skip bare
+  acknowledgements and steps that only run tools, change identifiers, or copy existing output
+  verbatim on request. For a standalone document requested by its owner, suggest rethink, rewrite,
+  or audit; the user starts them.
 when_to_use: >-
-  Before writing or revising text for a person or another agent, including chat replies, plans,
-  reports, code comments in files, commits, PRs, messages to colleagues, tasks for agents, and
-  summaries of their results. Apply it to the next text without imposing a template; read a genre
-  note only when that genre is at hand.
+  Before drafting or revising words a reader will use to understand, decide, or act, including a
+  direct chat reply to the user that explains in your own words what an agent, test, or tool found.
+  Short artifacts and comments still qualify when the reply must contain only the artifact. Check
+  what the text says, what supports it, and how it fits its destination. This includes feedback on a
+  diff, text beside code, and a change note. Read a genre note only when that genre is at hand.
 metadata:
   version: "0.2.0"
 license: MIT

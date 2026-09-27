@@ -9,8 +9,12 @@ forensics remain in the repository references and release notes.
 
 - `clarity` can be chosen by Claude or invoked as `/terse:clarity` for everyday text. It applies reader-side
   questions without agents or a run, and links six genre notes with their own examples; general examples
-  live in `examples.md`.
-  Automatic selection still needs a live check before release.
+  live in `examples.md`. Its description names short texts written during coding, such as commit titles
+  and code or review comments, and a reply that tells the user what an agent, test or tool found; the first
+  description missed those. On 2026-09-27 Claude chose it before answering in 78 of 78 runs of fourteen
+  everyday cases and two held-out sets in a clean `claude plugin eval` (Opus 5.5), in 32 of 33 counted runs
+  in the owner's ordinary environment (Fable 5.1), and in none of 18 runs where it does not fit. Whether
+  the texts improve when it loads is not yet measured.
 
 ### Changed
 
