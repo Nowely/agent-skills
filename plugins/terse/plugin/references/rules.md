@@ -1,161 +1,69 @@
 # The rules
 
-Two things are required of every text, and everything else here is advice. The advice helps a writer find the
-best structure, wording and form for the text in front of them: take what helps this text and leave the rest,
-with no apology owed. Each piece says what it helps with, where it came from and, where that is known, when it
-does not fit. Advice for one kind of text — the README of a plugin, of a terminal tool — is in
-[genres/](genres/). The sentence layer, [writing-rules.md](writing-rules.md) and
-[curse-of-knowledge.md](curse-of-knowledge.md), is a measured technique the writer and the sentence critic
-apply as written. *owner, 2026-09-26: «Правила должны нести рекомендательный характер. Они должны направлять и
-помогать найти и составить лучшую структуру, лучший текст, лучшее оформление. При этом стоит понимать, что нет
-однозначных правил которые следует требовать (может за некоторыми исключениями как приятность)»; «Будем мы
-писать код, комментарии, или поэму. Мы там тоже будем вставлять How it works? Это даже смешно».*
-
-Each piece names its source, so that a later edit can see what it rests on:
-
-- **owner** — said by the owner of this plugin, with the date; their judgement, not a count;
-- **genre** — counted in documents of a kind, N of M, on the date given;
-- **measured** — a failure recorded in `plugins/terse/research/`, which the advice exists to prevent.
+Two requirements hold for every text: a pleasant read and truth within its world. Everything else is advice. Take it where it helps this reader; a critic should explain the reader's gain or loss, not cite a rule number as a verdict. The dated evidence and its limits live in [measurements.md](measurements.md). The [sentence rules](writing-rules.md) and [curse of knowledge](curse-of-knowledge.md) are techniques to judge against the reader, not templates to apply without judgment.
 
 ## Required of every text
 
 ### A pleasant read
 
-The text is pleasant to read. A pleasant text sells: the reader settles into it and works with it gladly, and
-it reads naturally, not as everything true about its subject. Formatting is one of its properties; so are
-sentences taken in at one reading, the reader's own words, and no detail the reader does not need where they
-are. It never excuses a false sentence: a hard one is said more simply, or cut. No model's score stands in for
-it: on 2026-09-25 two cold readers gave the owner's first and second choice the same mark, so the owner's read
-decides. *owner, 2026-09-25: «Текст должен быть приятным для чтения. На самом деле, это критерий номер 1.
-Приятный текст - продающий текст. В него легче погрузиться, с ним приятнее работать. Одним из свойств такого
-текста является оформление»; «весь текст должно смотреть естетственно и оганично»; earlier the same day:
-«Текст должен быть легким для чтения и понимания».*
+A text should invite reading and be easy to take in. Shape, spacing, sentences and familiar words all contribute; a complete account of a subject does not automatically make a pleasant one. Simplify or remove a hard sentence without hiding a fact the reader needs. A model's mark can find a defect, but the owner's read decides whether this text is pleasant. This applies to a code comment as much as a README, though their useful shapes differ. See [M26](measurements.md#m26).
 
 ### True within its world
 
-Every statement holds in the world the text describes: the code, for documentation; the facts, for an essay;
-for a story, the rules the story has set — a sword may talk where the world allows it. The writer does not
-widen that world alone: a fact, a feature or a rule the world has not set up goes to the user as a question,
-and so does a requirement of the user's that the world does not hold, because what appears from nowhere — a
-feature the code lacks, a rescue the plot never prepared — breaks the reader's trust. How a claim is checked
-against its world, and when a guarantee word holds: [truth.md](truth.md). *owner, 2026-09-10: «двадцать с
-лишним мест, где текст утверждает о поведении кода то, чего код не делает»; 2026-09-26: «в рамках мира или
-контекста … Их можно расширять, но тут требуется взаимодействие с пользователем … защищало бы от роялей в
-кустах». measured, 2026-09-10 and 09-22; 2026-09-24: three of the six sentences a round of the maestro run
-repaired came from the owner's own answers.*
+A claim should hold in the world the text describes: code for documentation, evidence for a report, and established facts within a story. Check its exact scope; a fact, feature or story rule the world has not established goes to the owner as a question rather than entering as a claim. An unsupported feature or unprepared turn in a story breaks the reader's trust. Fiction can invent within its established world; a proposed expansion of that world still needs the owner's decision. For evidence levels and guarantee words, see [truth.md](truth.md). *Owner, 2026-09-10 and 2026-09-26.*
 
 ## Advice
 
 ### Start from the context
 
-**Know the text's world before its form.** What the thing is and what it resembles; who reads it, and in what
-situation; what they need first; what would make them want it and choose it over what it resembles; the one
-thought the text carries. The structure follows from these: a part is there because this reader needs it
-there, not because texts of the kind have it. *owner, 2026-09-26: «Нужно понимать контекст, собирать его. Понимать, что это за инструмент,
-целевая аудитория, какую мысль хочешь донести, приятность, продающий текст и понятная приятная документация».
-measured, 2026-09-26: on the README of a disk-usage tool a bare agent's text beat ours, which had dropped the
-demo, the tool's one-line pitch and its install routes under rules applied as requirements.*
+**Know the text's world before choosing its form.** Learn what the thing is, what it resembles, who reads this text, what they need first, and the one thought it carries. Then look at strong examples of its kind before choosing a form, so a convention serves this reader rather than displacing their purpose. A routine reply needs only the relevant parts of that picture. See [M30](measurements.md#m30).
 
-**Look at the best texts of the kind.** Before inventing a structure, see what the most-used texts of the same
-kind do; their notes are in [genres/](genres/), or a scout counts them. It spares the reader a shape they did
-not expect. Leave it where the context calls for what the kind does not do. *owner, 2026-09-12: «не всегда
-имеет смысл выдумывать структуру с нуля, всегда хорошо подглядеть у коллег».*
+**Look at strong examples of the kind.** Nearby good texts and [genre notes](genres/) show what readers expect; use the convention as a starting point, then let this text's purpose decide where to depart. A genre with no useful precedent is a reason to investigate, not to invent a fixed section list. *Source: owner, 2026-09-12.*
 
 ### The reader
 
-**Every word carries weight for the reader who arrives here.** A sentence or a block earns its place by what it
-gives that reader; nothing stays "just in case". *owner, 2026-09-10 and 09-11: «В ней не должно содержаться
-нерелевантной информации и что-то просто на всякий случай»; «каждое слово … имеет вес … как в задаче о
-рюкзаке».*
+**Give each part a job for this reader.** Ask what someone with their experience learns, decides or does because it is here; remove material irrelevant to that task. This cuts speculative filler while retaining a long explanation, full deletion list or concrete example when it serves a real decision. Word count alone cannot decide. Use their terms where those terms are exact. *Owner, 2026-09-10 and 2026-09-11.*
 
-**Write for the reader's actual experience.** Do not explain what that reader already knows, and do not
-assume they know what only the author knows. In documentation for developers that means their own editor,
-their AI tool, what a command line is — and, the other way, the project's internals. *owner, 2026-09-24, on a
-README that explained setup «Будто он впервый раз в жизни открыл для себя ии, vs code и прочее»; 2026-09-10:
-«$TMPDIR - серьезно? Что это скажет человеку, который впервые сюда зашел».*
+**Meet the reader at their actual knowledge.** Explain what they lack, not what any imagined beginner might lack; equally, do not assume they know the author's internal context. Leave out facts they already know or cannot use here, while keeping a prerequisite they would otherwise miss. Ordinary editor use may be familiar to developers while a project's hidden configuration is not. See [curse of knowledge](curse-of-knowledge.md).
 
-**A fact the reader already has, or cannot act on, is noise.** In documentation: a runtime or editor version
-any reader of this audience has, `PATH`, credential files, internal paths, exit codes, protocol names. Keep a
-prerequisite where a reader of this audience would otherwise fail and not know why. *owner, 2026-09-11:
-«Когда говорят как установить codex никто не говорит, что нужна нода и path»; 2026-09-24: «Зависимость от
-Node 20 и тд, тоже нелепа».*
+**Keep a fact when it changes a decision.** Versions, prerequisites, paths, protocol names and machine fields need space when compatibility, reproduction or the next action depends on them. Otherwise they distract from the task; that includes routine runtime and editor versions, PATH, credential files and internal paths for a reader who can already act without them. Keep a prerequisite when its absence would make the reader fail without knowing why. Avoid duplicating a changing value in prose unless the reader needs it; see [M31](measurements.md#m31).
 
-**The reader's word for a thing, not the author's.** A name only the project uses makes the reader translate.
-*owner, 2026-09-11, on "seat".*
+**Use the reader's name for a thing.** A private label makes an outside reader translate; an exact public or internal term can stay when they must search or act on it, with a brief explanation at first use. A label carried from an earlier thread needs its meaning when the new reader lacks that thread. *Source: owner, 2026-09-11.*
+
+**Comments carry what code alone cannot.** Apply the reader's task and knowledge to the edit point; the full definition and its boundaries live in [code comments](genres/code-comments.md). *P21 in `plugins/terse/research/2026-09-26-writing-replication/publication/issue-comment.md`.*
 
 ### Winning the reader
 
-For a text that introduces something and must win its reader — a README, a proposal, a page that sells —
-rather than tell a story or document an interface.
+These suggestions apply to a text that introduces something and asks a reader to want or choose it, such as a README or proposal. They need not shape a status message or code comment.
 
-**Say early what it is and what it is for.** The first lines name the thing and the job it does for the
-reader, in the reader's words; the mission, not a definition. A comparison with what the reader already knows
-often says both at once. *owner, 2026-09-10: «Вместо того, чтобы сказать самое важное - про его миссию, цель
-или задачу … ты начинаешь перегружать терминами»; 2026-09-23: «Оно неотвечает на вопрос об задаче этого
-плагина, его предназначении»; 2026-09-26, of the text they ranked first: «то что это du только написанное на
-расте - это очень важная информация на самом деле с точки зрения понимания сути, так и маркетинга».*
+**Say early what it is and what it is for.** The opening gives the reader a recognizable job for the thing, often through a comparison they understand. This prevents a definition or process tour from hiding the purpose. A story or reference page may need a different opening. *Source: owner, 2026-09-10, 2026-09-23 and 2026-09-26.*
 
-**Then what it gives, as a short list.** What the thing gives the reader that its alternatives do not — a
-capability and what it means for them — reads fastest as one bold-led item each. A quality any thing of its
-kind could claim does not say why this one; a list of its parts, or a walk through steps a later part
-repeats, sells less. *owner, 2026-09-24, of the README they ranked first: «отвечает что это за проект, и сразу
-подчеркивает конкурентные преимущества … используя форматирвание список»; 2026-09-25: «почему в самое начало
-ты ввел действия пользователя, а не то, что предоставляет проект. Тот же самый workflow мы описываем в quick
-start. Возможно, нужно что-то среднее между этими двумя вариантами»; 2026-09-26, of highlights that said what
-dust does, "Focused" and "Readable": «хайлайты - почему именно мы - не раскрыта». measured, 2026-09-25: in a
-blind read, 21 of 37 readers faulted the other README's items for listing its parts, while the draft's items
-walked through the commands its Quick start repeats.*
+**Show what distinguishes it.** A short list can make distinct benefits easy to scan; each item should connect a real capability to what this reader gains. Qualities any alternative could claim and a tour of later steps seldom help a choice. Use another form if the reader needs a narrative or one decisive example. See [M32](measurements.md#m32).
 
-**Show what the reader will meet.** A demo, a screenshot or real output lets the reader see the thing before
-they install it. *owner, 2026-09-26: «Понравилось, что сразу видится интерфейс благодаря демо, с чем
-столкнешься». genre, 2026-09-26: visual proof in 7 of 8 READMEs of terminal tools.*
+**Let the reader see the thing.** Real output, a demo or an image can make an unfamiliar interface tangible before installation. Use the form that fits the thing; an invented command or screenshot that no longer matches it breaks trust. *Source: owner and genre count, 2026-09-26.*
 
-**The opening sells; it does not warn or define.** It may name the reader's problem that the thing solves, in
-the reader's words — that is a reason to read on — but a warning about the thing itself, a protocol's name or
-talk about the document itself makes the reader hesitate. *owner, 2026-09-11: «вводный блок призванный
-продать, а не напугать»; 2026-09-23: «Оно начинается с вопроса. Оно привязывется к readme»; 2026-09-25:
-«Правило можно поправить». measured, 2026-09-25: in a blind read of two openings, a reader called the other
-README's problem line «the strongest selling line in either file», and the rules critic had cut the draft's
-own under "no failure modes".*
+**Open with value, and place cautions where choices occur.** A problem the thing solves can invite reading, while an early inventory of mechanisms or warnings can obscure why to continue. The opening should normally establish value; a limit belongs there only when the reader must know it before the first action. See [M33](measurements.md#m33).
 
 ### Where the reader acts
 
-**Say what to do, not everything that is true.** Give the routes this reader will take, in the form that
-runs; which routes those are is the context's question — one line for a plugin, every common package manager
-for a tool that installs anywhere. A route few readers take gets its own place further on, or a link. *owner,
-2026-09-24: «Getting started честен, но бессмысленен … нужно просто сказать, что нужно сделать»; 2026-09-23:
-«крайне многословно идет описание секции install»; 2026-09-25: «нет необходимости грузить пользователя
-техническими деталями. Можно просто не использовать мсп в быстром старте»; 2026-09-26: «dust это улитарная
-утилита, которая должна ставится куда угодно и тебе не нужно было думать как именно».*
+**Give the usable route.** Name the action in a form the reader can follow. Choose routes by audience: one plugin command may suffice, while a tool distributed through several common package managers may need each route. Link less common paths when detail would interrupt the main action. *Source: owner, 2026-09-23 to 2026-09-26; [M30](measurements.md#m30).*
 
-**Detail waits for the reader who wants it.** Spread through the opening, mechanism reads as a warning; where
-a text has technical detail worth telling, gather it for the reader who came for it. A part kept for its own
-sake — a How it works with one sentence in it — is a rudiment. *owner, 2026-09-11: «Если хочешь рассказать
-про технические детали, то нужна отдельная секция из разряда "как это работает"»; 2026-09-25: «Нет
-потребности прям все донести до пользователя, всю техническую подноготную, каждый технический камушек»;
-2026-09-26: «How it works в 1 тоже какой-то рудимент».*
+**Place detail where it earns its space.** A mechanism belongs near an action only if it changes that action; otherwise give it a later home for the reader who wants it. A dedicated “How it works” section is useful when it answers a real question, not because the genre seems to require it. *Source: owner, 2026-09-11 and 2026-09-25 to 2026-09-26.*
+
+**Offer alternatives when there is a real choice.** Explain the meaningful options, their consequences, and the recommendation you can support; the owner still chooses. If one missing fact alone blocks progress, ask for that fact directly. This adds judgment inputs to the usable route without inventing decisions. *P16 in `plugins/terse/research/2026-09-26-writing-replication/publication/issue-comment.md`.*
+
+**Make warnings proportionate.** Label a change by its actual effect on the affected reader and say what action it requires. A private new script with one consumer and a published interface with integrators have different consequences; a real failure can still matter to one consumer. This supplements route and detail advice where action depends on severity. *P06 in `plugins/terse/research/2026-09-26-writing-replication/publication/issue-comment.md`.*
 
 ### Form
 
-**Formatting serves the reading.** Headings for parts a reader looks for; a list for parallel items; a table
-where rows differ, each row saying what tells it from the one beside it; a fenced block with a language for
-anything to copy. Rows that say the same thing need no table. *owner, 2026-09-11: «удобно иметь их в
-codeblock … с укзанием языка»; «про паритет думаю, нужна таблица»; 2026-09-24: «Оформление. В 2 оно все
-равно уступает». measured, 2026-09-11: a table whose rows were identical was cut; 2026-09-25: a cold reader
-could not tell two neighbouring rows of a table apart.*
+**Format for the way the text is read.** Headings help navigation, lists help parallel points, tables help compare genuinely distinct rows, and fenced blocks help copy anything meant to be pasted, with a useful language tag when it is code. A short answer may need none of these; a table of repeated rows adds work without distinction. *Owner, 2026-09-11 and 2026-09-24.*
 
 ### What seldom helps
 
-**The project's own history.** Measured numbers, dated report lines, excerpts of the project's records, and
-the story of how the text was made rarely help a reader decide. *owner, 2026-09-24: «What was measured … не
-нужна readme … Ему главное результат»; 2026-09-11: «описываешь их с точки зрения наратива - почему ты их
-создал».*
+**The project's own history.** Dates, measured counts and editing stories matter in a report, changelog or audit, but usually distract a new user deciding what to do. Put them where the reader needs provenance rather than in every opening. *Source: owner, 2026-09-11 and 2026-09-24.*
 
-**A text bound to a version.** A text about something real describes it as it is now. *owner, 2026-09-24:
-«REAMDE всегда должен соответствовать коду».*
+**A version-bound description of something current.** Describe present behavior from the present source. Pin a version when compatibility or reproducibility depends on it; otherwise a stale number makes a current text misleading. *Source: owner, 2026-09-24.*
 
-**An invented example in a text about something real.** A fabricated path or command is water: a real one, or
-none. A story invents by right. *measured, 2026-09-11.*
+**An invented example presented as real.** A fabricated path or command can misdirect a reader. Use a checked example or omit it in practical documentation; fiction and clearly hypothetical proposals have different worlds. The inherited 2026-09-11 provenance is limited; see [M34](measurements.md#m34).
 
-**A qualification as a fix.** A sentence that needs a caveat to be true says too much: say less, or link the
-source. *owner, 2026-09-12; measured: five rounds of caveats raised regressions from one to ten.*
+**A qualification used as a repair.** When a sentence overstates its case, choose by the meaning this reader needs: remove the claim if it does no work, replace it with a narrower claim, or clarify it with a substantive limit, honest range or trade-off. A needed qualification is content, not an apology. Avoid a string of caveats that leaves the broad impression standing or invents false edges; link the detailed source when the reader needs that detail elsewhere. See [M23](measurements.md#m23).
