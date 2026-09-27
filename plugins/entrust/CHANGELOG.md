@@ -22,9 +22,13 @@ forensics remain in the repository references and release notes.
 - **The live orchestrate gate no longer counts a plan's statement of the caps as agents.** Its Fable and Astra
   counter skips a line that states the limits ("the limits are one Fable and one Astra at a time", "uses
   neither Fable nor Astra"), as it already skipped a coordinator's description of itself. Why: on 2026-09-27
-  the 0.21.0 candidate's full-run case was failed for "2 fable agents in one wave" by a plan that used neither
+  the release candidate's full-run case was failed for "2 fable agents in one wave" by a plan that used neither
   and said so in one sentence, and that sentence's two words were the count; 0.20.0 never ran the gate (its
-  Codex quota was out), so the miscount had not been seen.
+  Codex quota was out), so the miscount had not been seen. The same case's run-directory check now accepts the
+  launcher's `agent/` beside each `report.json`, holding exactly its four files (`prompt.txt`, `out.json`,
+  `err.txt`, `exit`), which the page has promised since the launcher of 0.19.0; the check still dated from
+  the time the driver alone wrote there, and the rerun after the counter fix failed on it with a Codex agent
+  that had run and reported.
 
 ### Added
 
