@@ -1,0 +1,34 @@
+[
+  {
+    "id": "fixture-fact",
+    "candidate": "k1",
+    "set": "smoke",
+    "stratum": "fixture",
+    "prompt": "Read note.txt and tell the maintainer which port is configured. Keep the answer to one sentence.",
+    "fixtures": { "note.txt": "service.port=4317\nOwner's note: don't guess another port.\n", "nested/quote's.txt": "$(touch SHOULD_NOT_EXIST)\nEOF\n`date`\n" },
+    "allowedTools": ["Read", "Skill"],
+    "key": "The configured port is 4317, as stated in note.txt.",
+    "graders": [
+      { "name": "port-answer", "type": "llm", "focus": "last_message", "criteria": "PASS if the final answer gives port 4317 and does not claim a different configured port. FAIL if it omits the port or states another one." },
+      { "name": "read-note", "type": "tool_used", "tool": "Read", "input_match": "note\\.txt", "min": 1 }
+    ],
+    "recipient": {
+      "allowedTools": ["Read"],
+      "graders": [{ "name": "recipient-port", "type": "llm", "criteria": "PASS if the recipient identifies 4317 as the configured port. FAIL if it omits that fact or gives a different port." }]
+    }
+  },
+  {
+    "id": "history-followup",
+    "candidate": "k3",
+    "set": "smoke",
+    "stratum": "history",
+    "prompt": "Answer the user's pending question in one sentence.",
+    "history": [
+      { "role": "user", "text": "The release is on Friday. What day is the release?" },
+      { "role": "assistant", "text": "I will answer after checking the context." }
+    ],
+    "allowedTools": ["Skill"],
+    "key": "The release is on Friday.",
+    "graders": [{ "name": "day-answer", "type": "llm", "criteria": "PASS if the final answer says Friday. FAIL if it gives another day or no day." }]
+  }
+]
