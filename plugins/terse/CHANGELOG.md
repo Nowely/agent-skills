@@ -39,6 +39,9 @@ forensics remain in the repository references and release notes.
 - E6: corrected the writing-standards account in `writing-rules.md` and M19. The comparison had four
   standards, including an unpublished owner draft, plus a control pair; on the selected 116-word opening,
   six entrants left its length unchanged, three lengthened it, and one shortened it.
+- E54: `practices-full.md` no longer repeats the refuted 2026-09-10 counts or reads that one run as evidence that
+  published standards lose to unguided controls; thirteen passages now say what the run's prompts and judge show
+  and no more. The fix came from a brief written with the new agent-brief note and carried out by a fresh agent.
 
 ## 0.2.0 — 2026-09-26
 
