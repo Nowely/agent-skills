@@ -1,0 +1,10 @@
+{'NORMALIZED_ONLY': 2, 'OK': 85, 'OUTROLE': 2, 'ORDER': 3, 'TOOLONG': 1, 'MISS': 1}
+pilot-P017-A-01 draft_quote S007-T0311 NORMALIZED_ONLY
+pilot-P065-A-02 outcome_quote S074-T0096 OUTROLE
+pilot-P065-B-01 outcome_quote S074-T0092 ORDER
+pilot-P065-B-02 draft_quote S074-T0114 ORDER
+pilot-P091-B-01 draft_quote S088-T0160 NORMALIZED_ONLY
+pilot-P091-B-04 draft_quote S088-T0189 TOOLONG
+pilot-P091-B-07 outcome_quote S088-T0200 OUTROLE
+pilot-P093-A-01 draft_quote S088-T0325 ORDER
+pilot-P093-B-02 more_quotes[0] S093-T0022 MISS
