@@ -95,3 +95,39 @@ ends at the line's end as well as at a sentence end reports none.
 **Issue text.** The gate's attribution reading treats a line break as part of the sentence, so a list whose items
 end with "(Model id)" credits each agent with the path of the item below it and reports a misattribution the
 answer does not make. The stretch an agent is the subject of should end at the end of its line.
+
+## E57. The draft linter reads a sentence about what will happen as a success claim
+
+**Evidence, level 3.**
+
+- `plugins/entrust/plugin/skills/orchestrate/scripts/lint-draft.mjs:94` (`SUCCESS`) matches `passes` and its kin
+  anywhere in a sentence, and `:165` reports the sentence as `unsupported-success` when no receipt label is in it;
+  tense and mood are not read.
+- 2026-09-28, the live gate's final run of case 5 (artifacts `$TMPDIR/orchestrate-live-2026-09-27T22-21-50-483Z/5-full-run`,
+  log `orchestrate-live-fixrun-3.log:4`): the coordinator's phase paragraph "The final answer goes out once its new
+  verdict arrives and the digest check passes." was reported as "an update claims success with no receipt".
+
+**Check.** `printf 'The answer goes out once the check passes.\n' | node lint-draft.mjs -` reports
+`unsupported-success`; the sentence claims nothing.
+
+**Issue text.** The linter's success rule matches the verb alone, so a sentence that says what will happen once a
+check passes is reported as an unsupported success claim. The rule should skip a clause introduced by `once`,
+`when`, `if`, `until` or `after`, or read the sentence's tense, and the gate's phase check inherits whichever the
+linter does.
+
+## E58. The gate's plan record turns `unknown` tokens into NaN
+
+**Evidence, level 1.**
+
+- `plugins/entrust/evals/lib/gate-checks.mjs:203` builds each plan row with `tokens: Number(tokens)`; the launcher
+  admits `unknown` in that column since 2026-09-28 (Codex Sol W3b's fix round, 13c-writer-w3b.md), and
+  `Number("unknown")` is `NaN`.
+- Opus R3 named it among its fourteen findings (12c-reviewer-r3.md); W3b left it as the gate's, and the gate's
+  fix round did not take it (rounds.md, "W2 fix round returns").
+
+**Check.** `node -e 'import("./plugins/entrust/evals/lib/gate-checks.mjs").then(m => console.log(m.planRecord("A1 | opus | worker | lib/a.mjs | unknown")))'`
+prints `tokens: NaN`.
+
+**Issue text.** The gate reads a registered plan's tokens column with `Number`, so a row the launcher admits with
+`unknown` carries `NaN` into every check that sums or compares tokens. The record should keep `null` for
+`unknown` and the checks should skip it.
