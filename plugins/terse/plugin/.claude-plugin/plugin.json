@@ -1,7 +1,7 @@
 {
   "name": "terse",
-  "version": "0.2.0",
-  "description": "Three skills you invoke to assess and improve any text: a README, code comments, an essay. `audit` finds where readers stumble and checks each claim against the code or facts behind it. `rethink` agrees what the text says and in what order before it is written. `rewrite` writes it: one writer who first works out who reads it, every critic at once, one repair and a check. Nothing touches your files without your word.",
+  "version": "0.3.0",
+  "description": "Three skills you invoke to assess and improve a standalone text: `audit` measures it, `rethink` agrees its shape, and `rewrite` writes it. `clarity` is reader-side guidance Claude may choose while writing an answer, plan, commit, PR, comment, message, or agent brief; it starts no agents. The deep skills use agents, work in a run directory and ask before applying a text to your files.",
   "author": {
     "name": "Nowely"
   },

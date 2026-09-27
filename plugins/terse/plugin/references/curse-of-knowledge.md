@@ -1,7 +1,7 @@
 # The curse of knowledge
 
 The second half of the sentence layer under [rules.md](rules.md), for the writer and the sentence critic.
-The text below is fixed. Run the three numbered steps in order.
+The text below is fixed as evidence; use its three steps where they reveal a real reader's missing frame.
 
 Camerer, Loewenstein & Weber (1989) and Newton (1990): once you know something you cannot accurately
 simulate the mind of someone who does not. Tappers tapping a song predicted listeners would name it half

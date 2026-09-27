@@ -1,0 +1,22 @@
+[
+ {
+  "agent": "cx-P048-r2",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P048/page-01.md,corpus/parts/P048/page-02.md,corpus/parts/P048/page-03.md,corpus/parts/P048/page-04.md,corpus/parts/P048/page-05.md",
+  "thread": "01a0df89-bd80-7de0-ba20-730357046280",
+  "rollout_files": 1,
+  "pages": 7,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P048/page-01.md",
+   "P048/page-02.md",
+   "P048/page-03.md",
+   "P048/page-04.md",
+   "P048/page-05.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ }
+]

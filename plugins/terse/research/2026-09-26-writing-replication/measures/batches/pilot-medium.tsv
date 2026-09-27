@@ -1,0 +1,13 @@
+id	exit	turn	tokens	cached	used	wall	n_episodes	status	launcher_rc
+pilot-P022-A	0	completed	126900	89088	3	35	2	done	0
+pilot-P022-B	0	completed	127383	69888	3	31	0	done	0
+pilot-P017-A	0	completed	127219	88064	3	68	5	done	0
+pilot-P017-B	0	completed	127856	91136	3	51	1	done	0
+pilot-P091-A	0	completed	163741	122624	3	42	2	done	0
+pilot-P091-B	0	completed	165674	123648	3	71	7	done	0
+pilot-P093-A	0	completed	126453	94976	3	52	2	done	0
+pilot-P093-B	0	completed	127401	100096	3	69	3	done	0
+pilot-P066-A	0	completed	126218	87040	3	36	1	done	0
+pilot-P066-B	0	completed	126721	88064	3	32	0	done	0
+pilot-P065-A	0	completed	124870	94976	3	34	2	done	0
+pilot-P065-B	0	completed	126649	87040	3	49	3	done	0

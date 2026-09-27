@@ -6,21 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with entrust's ledger, `plugins/entrust/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E6. `writing-rules.md` and `measurements.md` repeat two counts from 2026-09-10 that the run's own prompts and judge contradict
-
-**Evidence, level 2.** `plugins/terse/plugin/references/writing-rules.md:37-40` and
-`plugins/terse/plugin/references/measurements.md:97-99` (M19) say five published writing
-standards were put against two unguided controls and that seven of ten seats proposed nothing. The run's
-prompts under `plugins/terse/research/2026-09-10-chain/run-2x5/` (`v04PR6HL.prompt.txt:13-20`) describe a 2×5 design —
-four standards, one of them an unpublished CLAUDE.md draft, plus one control pair — and the judge's own
-count on the 116-word passage (`o8eHzS6U.answer.md:10-19`) reaches six at most, with three seats
-lengthening it. Found by the 2026-09-22 truth pass (entries C39, C41, both refuted at README.md:76-78). The research
-index repeated them until `29ae657`, which rewrote its row from the judges' own words.
-
-**Issue text.** The two reference pages restate the README's refuted numbers. `writing-rules.md` carries
-the SHA-256 of its own text, so the correction changes the measurement it was made under and the SHA line
-and the note beside it move together with the text, per the repository's rule on frozen blocks.
-
 ## E7. `prior-art.md` says every 2026-09-10 number traces to the bake-off directory, and the reader numbers do not
 
 **Evidence, level 2.** `plugins/terse/plugin/references/prior-art.md:910-911` calls `run-2x5/` "forty Codex seat
@@ -276,3 +261,18 @@ files and rebuilt the table's places for comments by itself.
 notes do not cover yet; its brief asks for them "as raw markdown with curl". For the comments of a source file, a
 man page or a story there is no markdown to fetch, and the coordinator has to rewrite the brief before the scout can
 run. The brief should ask for each document's raw text, fetched with curl and never through a summarising tool.
+
+## E55. The live trigger probe cannot score `agent-chat-brief` in an environment with agent-messaging tools
+
+**Evidence, level 3.** `plugins/terse/evals/clarity-trigger.live.mjs:34` blocks a fixed list of tools
+that has no `ListAgents` or `SendMessage`, and `:108` excludes a run that tries any tool outside its
+case's policy. In the owner's profile, where both tools exist, the case "Brief an agent in chat" tried to
+send the brief to a real agent in 5 of its 10 runs on 2026-09-27 and 2026-09-28, 3 of 3 under the final
+description, so the case went unscored there
+(`plugins/terse/research/2026-09-26-writing-replication/measures/clarity-trigger/live-final.json`,
+`live-second.json` and `live-first.json`, field `toolPolicyViolations`). Each excluded run with the
+plugin had called `clarity` before it answered.
+
+**Issue text.** The live probe should keep the model from messaging real agents, by blocking the
+messaging tools or by asking for the brief as text, so that `agent-chat-brief` is scored in every
+environment instead of being excluded where those tools exist.

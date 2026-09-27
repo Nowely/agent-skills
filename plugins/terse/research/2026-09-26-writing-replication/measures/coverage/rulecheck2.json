@@ -1,0 +1,520 @@
+[
+ {
+  "agent": "lr2-V01",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V01.md",
+  "thread": "01a0e401-fc1d-75b0-8d9a-1fed4fb1c29b",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V01.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V02",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V02.md",
+  "thread": "01a0e401-fdf9-7f01-a5d2-f067339f8943",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V02.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V03",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V03.md",
+  "thread": "01a0e401-fac7-7932-b2cc-7562132268ea",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V04",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V04.md",
+  "thread": "01a0e401-fc73-7eb0-9ab7-c92b4c6d4a06",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V05",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V05.md",
+  "thread": "01a0e401-fa94-7fb2-b1ae-dca0dde27734",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V05.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V06",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V06.md",
+  "thread": "01a0e401-fdf9-7640-80a9-021da74ba6e8",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V06.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V07",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V07.md",
+  "thread": "01a0e401-fd6c-7293-b392-c0c933fc2e2b",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V07.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V08",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V08.md",
+  "thread": "01a0e401-fa94-7f91-81cb-de51cf4b1255",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V08.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V09",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V09.md",
+  "thread": "01a0e401-faa7-7290-8d8a-23e751206a54",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V09.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V10",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V10.md",
+  "thread": "01a0e401-faea-7431-bc89-f05793b37e4e",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V10.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V11",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V11.md",
+  "thread": "01a0e401-fc55-7c90-bc85-164c741bd15e",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V11.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V12",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V12.md",
+  "thread": "01a0e401-faa0-7d63-90ae-ef8b1141fae9",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V12.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V13",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V13.md",
+  "thread": "01a0e402-3a70-7ff3-b579-d83b1e72652f",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V13.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V14",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V14.md",
+  "thread": "01a0e402-3bbc-77f3-b7d9-6e6b9815e7ce",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V14.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V15",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V15.md",
+  "thread": "01a0e402-3e62-7c11-9e24-49c76e5fb8da",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V15.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V16",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V16.md",
+  "thread": "01a0e402-4044-7723-bed6-1353243f3cf7",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V16.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V17",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V17.md",
+  "thread": "01a0e402-4116-7ee0-af7d-e72993ed8c7c",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V17.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V18",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V18.md",
+  "thread": "01a0e402-42cd-7732-a845-e0fa7fa10ae3",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V18.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V19",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V19.md",
+  "thread": "01a0e402-44d4-7282-839e-ff48fa356dad",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V19.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V20",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V20.md",
+  "thread": "01a0e402-4d3c-7222-92ab-48548d1aefae",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V20.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V21",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V21.md",
+  "thread": "01a0e402-4f66-77a3-a094-385d1d224947",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V21.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V22",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V22.md",
+  "thread": "01a0e402-58fb-7a41-9a18-93c71bdbf779",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V22.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V23",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V23.md",
+  "thread": "01a0e402-8625-72a1-9a3e-9a3f13d2b77a",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V23.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V24",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V24.md",
+  "thread": "01a0e402-88ef-7e33-8fd0-743bc30687ab",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V24.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V25",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V25.md",
+  "thread": "01a0e402-8abd-7351-8817-4f4530539dde",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V25.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V26",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V26.md",
+  "thread": "01a0e402-8d46-7681-81e5-4d3d8d66f36d",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V26.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V27",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V27.md",
+  "thread": "01a0e402-9235-7c72-bc2b-4a3a13091f18",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V27.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V28",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V28.md",
+  "thread": "01a0e402-95c7-7432-867c-a670e2e822fe",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V28.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V29",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V29.md",
+  "thread": "01a0e402-9994-7842-aad7-555212e949ec",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V29.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V30",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V30.md",
+  "thread": "01a0e402-99e1-7f33-b96e-a872f4d24d00",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V30.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V31",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V31.md",
+  "thread": "01a0e402-a051-7921-83cd-c46576d17f70",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V31.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V32",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V32.md",
+  "thread": "01a0e402-ac91-7082-9ca9-9a4dc0d56308",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V32.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V33",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V33.md",
+  "thread": "01a0e402-ada4-7071-a60e-55ed65826bc2",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V33.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V34",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V34.md",
+  "thread": "01a0e402-c79b-76b0-8557-e449ebffbd95",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V34.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V35",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V35.md",
+  "thread": "01a0e402-d207-7ec0-b7c3-5de15ffd16db",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V35.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V36",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V36.md",
+  "thread": "01a0e402-d4d3-7e11-8c9d-7f848d0f882b",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V36.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "lr2-V37",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/rulecheck2/pages/V37.md",
+  "thread": "01a0e402-d489-7282-8833-836faba2d7bc",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "V37.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ }
+]

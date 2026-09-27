@@ -1,0 +1,322 @@
+[
+ {
+  "agent": "h1-S085",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P081/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P081/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P081/page-03.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P081/page-04.md",
+  "thread": "01a0e436-c3e0-7c82-903e-b0c8922c3488",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "P081/page-01.md",
+   "P081/page-02.md",
+   "P081/page-03.md",
+   "P081/page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S126",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P147/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P147/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P147/page-03.md",
+  "thread": "01a0e436-c3e4-7c23-bbef-b3f7d7ae6075",
+  "rollout_files": 1,
+  "pages": 3,
+  "read": [
+   "P147/page-01.md",
+   "P147/page-02.md",
+   "P147/page-03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S120",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P143/page-01.md",
+  "thread": "01a0e436-ca27-7b23-890f-d60fb85a88c7",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "P143/page-01.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S065",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P056/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P056/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P056/page-03.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P056/page-04.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P056/page-05.md",
+  "thread": "01a0e436-c67d-7340-b022-fd9fe4248216",
+  "rollout_files": 1,
+  "pages": 5,
+  "read": [
+   "P056/page-01.md",
+   "P056/page-02.md",
+   "P056/page-03.md",
+   "P056/page-04.md",
+   "P056/page-05.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S125",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P147/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P147/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P147/page-03.md",
+  "thread": "01a0e436-c4a0-7d70-aaca-fe193f3b615b",
+  "rollout_files": 1,
+  "pages": 3,
+  "read": [
+   "P147/page-01.md",
+   "P147/page-02.md",
+   "P147/page-03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S132",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P171/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P171/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P171/page-03.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P171/page-04.md",
+  "thread": "01a0e436-c3eb-7e11-89a0-6945a2a993e2",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "P171/page-01.md",
+   "P171/page-02.md",
+   "P171/page-03.md",
+   "P171/page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S134",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P172/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P172/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P172/page-03.md",
+  "thread": "01a0e436-c703-7c90-aa40-0e46229e9796",
+  "rollout_files": 1,
+  "pages": 3,
+  "read": [
+   "P172/page-01.md",
+   "P172/page-02.md",
+   "P172/page-03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S077",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P067/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P067/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P067/page-03.md",
+  "thread": "01a0e436-c420-72f0-812c-8303c9831dcc",
+  "rollout_files": 1,
+  "pages": 3,
+  "read": [
+   "P067/page-01.md",
+   "P067/page-02.md",
+   "P067/page-03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S080",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P072/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P072/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P072/page-03.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P072/page-04.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P072/page-05.md",
+  "thread": "01a0e436-c431-7853-ba78-82aff0e14409",
+  "rollout_files": 1,
+  "pages": 5,
+  "read": [
+   "P072/page-01.md",
+   "P072/page-02.md",
+   "P072/page-03.md",
+   "P072/page-04.md",
+   "P072/page-05.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S108",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P127/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P127/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P127/page-03.md",
+  "thread": "01a0e436-c40a-77e3-a677-1d24550a25c3",
+  "rollout_files": 1,
+  "pages": 3,
+  "read": [
+   "P127/page-01.md",
+   "P127/page-02.md",
+   "P127/page-03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S099",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P115/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P115/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P115/page-03.md",
+  "thread": "01a0e436-c3eb-7862-9509-5a90a60edbd8",
+  "rollout_files": 1,
+  "pages": 3,
+  "read": [
+   "P115/page-01.md",
+   "P115/page-02.md",
+   "P115/page-03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S011",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P028/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P028/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P028/page-03.md",
+  "thread": "01a0e436-c413-70a3-8882-3ca85e5f8072",
+  "rollout_files": 1,
+  "pages": 3,
+  "read": [
+   "P028/page-01.md",
+   "P028/page-02.md",
+   "P028/page-03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S054",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P052/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P052/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P052/page-03.md",
+  "thread": "01a0e437-1631-7692-83c1-59faadf67153",
+  "rollout_files": 1,
+  "pages": 3,
+  "read": [
+   "P052/page-01.md",
+   "P052/page-02.md",
+   "P052/page-03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S110",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P127/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P127/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P127/page-03.md",
+  "thread": "01a0e437-3142-7d51-923c-778c16c70e92",
+  "rollout_files": 1,
+  "pages": 3,
+  "read": [
+   "P127/page-01.md",
+   "P127/page-02.md",
+   "P127/page-03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S103",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P119/page-01.md",
+  "thread": "01a0e437-33f7-76c2-a2b9-97a74a18559b",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "P119/page-01.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S070",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P061/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P061/page-02.md",
+  "thread": "01a0e437-38e3-7bc2-b315-6e10dc6007a9",
+  "rollout_files": 1,
+  "pages": 2,
+  "read": [
+   "P061/page-01.md",
+   "P061/page-02.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S068",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P060/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P060/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P060/page-03.md",
+  "thread": "01a0e437-47c5-7700-9416-b7df9c60b5b3",
+  "rollout_files": 1,
+  "pages": 3,
+  "read": [
+   "P060/page-01.md",
+   "P060/page-02.md",
+   "P060/page-03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S012",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P029/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P029/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P029/page-03.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P029/page-04.md",
+  "thread": "01a0e437-4a3e-7df2-842b-7d424c982160",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "P029/page-01.md",
+   "P029/page-02.md",
+   "P029/page-03.md",
+   "P029/page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S071",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P062/page-01.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P062/page-02.md,~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P062/page-03.md",
+  "thread": "01a0e437-51a4-7e82-a7cb-112036b3b200",
+  "rollout_files": 1,
+  "pages": 3,
+  "read": [
+   "P062/page-01.md",
+   "P062/page-02.md",
+   "P062/page-03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "h1-S113",
+  "part": "~/Git/agent-skills-writing-replication/plugins/terse/research/2026-09-26-writing-replication/corpus/parts/P131/page-01.md",
+  "thread": "01a0e437-5f5a-7ae3-819e-03a575def894",
+  "rollout_files": 1,
+  "pages": 1,
+  "read": [
+   "P131/page-01.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ }
+]

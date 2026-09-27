@@ -1,0 +1,52 @@
+[
+  {
+    "id": "commit-title-h1",
+    "positive": true,
+    "prompt": "Our web API now rejects expired password-reset tokens before loading the account record. The staged change adds a 410 response for expired tokens, while preserving the existing 404 response for unknown tokens. Write a concise, one-line commit title that captures the staged change. Return only the title; do not include a body or explanation."
+  },
+  {
+    "id": "commit-title-h2",
+    "positive": true,
+    "prompt": "In the data pipeline, the staged change replaces a full refresh of the daily currency table with an incremental update keyed by date and currency code. It also keeps the prior day's values when today's source file omits a currency. There is no recent commit history to follow. Suggest a clear one-line commit title for this change."
+  },
+  {
+    "id": "code-comment-h1",
+    "positive": true,
+    "prompt": "Add a short comment above this web API check to explain the non-obvious constraint: `if (token.expiresAt <= now) return response(410);`. Expiry is checked before the account lookup because looking up an account for an expired token would expose whether that account exists. Give me only the source comment, with no surrounding code."
+  },
+  {
+    "id": "code-comment-h2",
+    "positive": true,
+    "prompt": "In our mobile app, this code deliberately keeps the screen awake while a large offline map is being saved: `if (download.active && download.bytesRemaining > 0) keepScreenOn();`. Users may lock the screen after the save completes, and we turn the setting off elsewhere. Write a brief comment for this line explaining why the constraint exists. A comment and nothing else is enough."
+  },
+  {
+    "id": "review-comment-h1",
+    "positive": true,
+    "prompt": "A pull request changes the CLI export command to write its CSV directly to the destination file, truncating it before all records have been fetched. The command can fail midway on a network timeout, leaving a partial export that looks complete by filename. Write a concise, constructive review comment on that line, describing the issue and a safer approach."
+  },
+  {
+    "id": "review-comment-h2",
+    "positive": true,
+    "prompt": "On this infrastructure pull request, a new cleanup job deletes every object under `archive/` older than 30 days. That prefix also contains the monthly compliance bundles, which must be retained for seven years. Write a short review comment for the deletion line that identifies the risk and asks for an appropriate fix. Keep the tone collaborative."
+  },
+  {
+    "id": "agent-result-h1",
+    "positive": true,
+    "prompt": "The automated test agent reports: 42 API tests passed, 3 were skipped because staging credentials were unavailable, and it found one failing test for the new retry path. The failure reproduces twice; the agent did not determine whether the cause is code or a flaky fixture. Tell the user what this run established and what remains open, in a brief status update."
+  },
+  {
+    "id": "agent-result-h2",
+    "positive": true,
+    "prompt": "A deployment checker says version 2.8.1 is running on 6 of 8 workers in the north region. Two workers still report 2.8.0 after a restart; the checker could not inspect the south region because its service account was denied access. Summarize for the user what the checker confirmed and which deployment questions remain unresolved. Keep it short and clear."
+  },
+  {
+    "id": "identifier-rename-h1",
+    "positive": false,
+    "prompt": "In this fictional CLI tool, the variable `tmp` holds the destination directory for a backup. Rename only that identifier to `backupDir` and return only the updated code, preserving all spacing and punctuation: `const tmp = args.output;\nawait copySnapshot(source, tmp);\nconsole.log(tmp);` Do not add a comment, explanation, or markdown fence."
+  },
+  {
+    "id": "verbatim-output-h1",
+    "positive": false,
+    "prompt": "Return the following fictional command output exactly as given, with nothing added before or after it. Preserve capitalization, punctuation, spacing, and line breaks; do not summarize or format it in a code fence. The output is: `scan: started\nfiles checked: 18\nsecrets found: 0\nscan: complete`"
+  }
+]
