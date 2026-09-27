@@ -1,0 +1,3 @@
+{"name":"q4","dir":"/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/entrust-p1.54JBSVGo09","cwd":"/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/entrust-p1.54JBSVGo09/scratch-q4","model":"gpt-5.6-terra","effort":"low","mode":"accept","maxRunSec":300,
+"allowFilePath":"/tmp/entrust-fc-probe-0467e13c.txt",
+"prompt":"This is a sandbox probe. Using your file-editing tool (apply_patch), NOT the shell, create the file /tmp/entrust-fc-probe-0467e13c.txt (absolute path, exactly this) containing the single line: probe\nRun no shell command at all. If the edit is refused or needs approval, request it through the edit tool. Finally report the outcome in one line: whether the file was created, and any error text you saw."}
