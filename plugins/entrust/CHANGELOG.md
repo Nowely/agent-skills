@@ -5,6 +5,13 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Fixed
+
+- **The experiment page no longer counts its protocols.** `skills/experiment/SKILL.md` said "the four registered
+  first are in protocols.md" while the file registered five, and now six with E6; it says "those registered so far".
+  Why: ledger entry E51, found twice in passing during the 2026-09-27 triage; the count had drifted at every
+  registration.
+
 ### Changed
 
 - **The Codex CLI pin moves to 0.155.1.** `PINNED_CODEX`, the pinned schema directory (`schema-0.155.1/`, the
