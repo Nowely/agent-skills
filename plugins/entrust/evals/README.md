@@ -72,8 +72,9 @@ behaviour: offline, where a script owns the behaviour, and in the live gate, whe
 A `says` or `shows` pin on the page stays as the cheap layer, and is never the only check on a recurring
 finding. The index below is the offline half, for the findings of #15 and #16 fixed on 2026-09-27; the live
 half is the header of `orchestrate-live.test.mjs`, beside the cases it names. A case added is not a case run:
-the offline ones run on every `run-all`, the live ones only when the owner arms the gate, and until then
-they are specified, not measured.
+the offline ones run on every `run-all`, the live ones only when the owner arms the gate. All nine live cases
+ran on 2026-09-28 over the fix run's tree; the gate's header says how each ended, and the research run
+`plugins/entrust/research/2026-09-27-field-audit-triage/rounds.md` holds the record.
 
 | Finding | What recurred | The regression |
 | --- | --- | --- |

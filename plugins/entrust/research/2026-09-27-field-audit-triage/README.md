@@ -92,8 +92,11 @@ rows against the analyst. Its standing probes are the behaviour it made happen: 
 
 ## Not decided here
 
-- Checks no worker ran: a live advisor lifecycle; Stop, hand-back and notifications under the Bash-only wrapper in
-  each client; whether the server enforces `maxLength` and `maxItems`; the paid orchestrate-live gate.
+- Checks no worker ran at triage time: a live advisor lifecycle; Stop, hand-back and notifications under the Bash-only
+  wrapper in each client; whether the server enforces `maxLength` and `maxItems`; the paid orchestrate-live gate.
+  The fix run settled three of them: the advisor lifecycle (gate case 8, green), the server's caps (it accepts them
+  and cuts at them, two probes), and F2 for the headless client (gate case 9: the command last in a message does
+  not expand the page); the VS Code half of F2 stays a protocol run by hand.
 - The issues' own measurements (tokens, minutes, the replay and the overlap simulation) were cited as reported and
   never reproduced; the owner's local corpora were not read.
 - Three suites failed inside the Codex read sandbox. Settled after the answer, by the orchestrator, outside the
@@ -156,6 +159,29 @@ orchestrator's own session tokens are not counted here, and #15 says that is the
 from "go" by the files' times. The plan's Max estimate was 10–30M on each side: the Codex figure sits below it and
 the Claude figure far below; the hypothesis is that the harness's per-subagent count is not the cache-inclusive
 total #15 used, which no file here measures.
+
+## The fixes
+
+The owner asked, the same day, for the fixes («Сделай их»; «Реши проблемы, обнови пр. По итогу мы должны закрыть 15 и
+16»). The branch took the Codex-pin branch by merge first (PR #26), then: Codex Sol D0 read the 24 deltas against the
+judge's 42 reasons and the owner's nine decisions (09-delta-review.md: 2 kept, 22 amended, F18 and P5 left open under
+decision 6); three writers by file ownership on the live worktree, Opus W1 (the orchestrate, advisor and swarm pages
+and their pins), Opus W2 (capture-check, lint-draft, fragments and the generated composition reference, the gate's
+new cases and its offline reading library, protocol E6, the evals README) and Codex Sol W3 then W3b (the driver, the
+launcher's plan and continuations, cleanup, the codex page, the shipped schema); three cross-reviews of the other
+family (12a–c: 8, 11 and 14 findings, each reproduced) and one fix round (10-fix-round-decisions.md); a fresh Sonnet
+verifier outside the sandbox (19 of 20 suites green, five mechanisms shown); an Opus changelog editor; the full live
+gate; the completeness critic. Two probes settled decision 5: codex 0.155.1 accepts `maxLength` and `maxItems` and
+cuts a field at its cap while generating, so the driver enforces the caps and strips them from the server's copy.
+
+Of the 42 fix-now rows, 25 are done whole and 17 have their mechanism and offline pin in with a live proof or fixture
+named as pending (the roles rows D19–D23 and D11, the runner's later-read receipts, the gate's follow-up after a
+`not done` verdict, per-claim attribution, the capsule against staged inputs). The 19 fix-after-measurement, 8
+do-not-fix and 2 unknown rows stand as the judge ruled; the pull request body maps all 72. Found in passing: E52 and
+E53 (the launcher silent under a symlinked path; the wrapper's unbounded rerun), E54 (the generated reference names a
+script the install lacks), E55 and E56 (two readings of the live gate's own, shown by the rerun of case 7), in the ledger.
+
+The live gate after the fixes: nine cases in three runs on 2026-09-28 (artifacts `orchestrate-live-2026-09-27T21-14-32-517Z`, `…T21-56-26-891Z`, `…T22-21-50-483Z`). Green by sum, 7 of 9: cases 1–4, 8 (the advisor's lifecycle) and 9 (activation by position, F2 measured for the headless client) in the first run, 6 once the page's first step became an explicit read of the generated reference (f475c99). Red: 7, whose ordering check passed (no worker brief before Codex Astra X1 returned) and whose twenty lines are eighteen readings of the gate's own, recorded as E55 and E56, and one coordinator claim without its receipt; 5, where in all three runs the Opus coordinator changed the answer's text after the critic's freeze (the frozen file intact and its last manifest verified 9 of 9, the delivered text reworded in four to seven places), wrote more phase paragraphs than the bound and claimed a success without its receipt. Between runs three readings of the gate were repaired with the sessions as fixtures (0784e43, d39552c) and the page gained the critic's verdict-line rule (f6029d4). Case 5 is the page rule not holding for an Opus coordinator, which the gate is there to catch; a mechanism that prints the frozen file instead of retyping it is the next delta, not built here.
 
 ## Files
 

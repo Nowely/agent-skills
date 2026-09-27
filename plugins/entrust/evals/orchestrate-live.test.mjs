@@ -16,7 +16,12 @@
 //
 // The recurring findings of #15 and #16 whose regression only a session shows, and the case that holds
 // each (evals/README.md indexes the offline half). Cases 6 to 9 were added on 2026-09-27, as were the
-// assertions named here in cases 1 and 5; none has run live yet, and a case added is not a case run:
+// assertions named here in cases 1 and 5, and all nine ran on 2026-09-28 over the fix run's tree (the record is
+// plugins/entrust/research/2026-09-27-field-audit-triage/rounds.md): 1 to 4, 8 and 9 green at once, 6 green once
+// the page's first step became an explicit read, 7 red on two readings of this gate's own (ISSUES.md E55, E56)
+// with its ordering check green, 5 red on the Opus coordinator's deviations from the page (the draft changed
+// after the critic's freeze, phase paragraphs over the bound, a success claim with no receipt) in three runs.
+// A case added is not a case run:
 //   F1, P1       the advisor advises before any stop, again later on its one thread, not after "no advisor"   8
 //   F12c         the advisor's assembled prompts: MODEL astra, the shipped schema, no EFFORT line            8
 //   F2, P14a     a slash command first expands the page; the command last is recorded, not judged          9
