@@ -509,8 +509,12 @@ function runEvidence(dirs, s) {
       if (r) reports.push({ id, report: r });
     }
   }
+  // A ledger named through $TMPDIR (measured on the rerun of 2026-09-28: `--ledger $TMPDIR/v1-ledger.jsonl`
+  // in a brief) is this machine's temporary directory, which the agents share.
+  const tmp = (process.env.TMPDIR || os.tmpdir()).replace(/\/+$/, "");
   const ledgers = new Set(s.toolUses.filter((u) => u.parent === null && /capture-check\.mjs/.test(String(u.input.command ?? "")))
-    .map((u) => /--ledger\s+"?([^"\s]+)"?/.exec(String(u.input.command))?.[1]).filter(Boolean));
+    .map((u) => /--ledger\s+"?([^"\s]+)"?/.exec(String(u.input.command))?.[1]).filter(Boolean)
+    .map((f) => f.replace(/^\$\{?TMPDIR\}?/, tmp)));
   const ledger = [...ledgers].flatMap((f) => { try { return parseReceipts(fs.readFileSync(f, "utf8")); } catch { return []; } });
   return { prompts, reports, ledger, ledgers: [...ledgers] };
 }

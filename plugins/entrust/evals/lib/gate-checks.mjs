@@ -499,11 +499,12 @@ export function splitAdmissionProblems(s, { units, shared, reportOf = null, read
 
 // One paragraph per phase, not per return: the root texts after "go", counted. And none of them turns an
 // unverified return into a success claim.
-export function phaseProblems(s, { max, receipts = [] }) {
+// The answer itself is one of those texts; its claims are the final lint's, so they are not reported twice.
+export function phaseProblems(s, { max, receipts = [], finalText = null }) {
   const texts = root(s).filter((e) => e.kind === "text");
   const problems = [];
   if (texts.length > max) problems.push(`${texts.length} paragraphs of the coordinator's own after "go", more than ${max}`);
-  for (const t of texts) {
+  for (const t of texts.filter((x) => finalText === null || x.text !== finalText)) {
     const hits = lintDraft(t.text, { receipts, maxWords: Infinity }).hits.filter((h) => h.rule === "unsupported-success");
     for (const h of hits) problems.push(`an update claims success with no receipt: ${JSON.stringify(h.text)}`);
   }
@@ -521,6 +522,16 @@ export const shasumLines = (text) => String(text).split("\n").map((l) => /^([0-9
 // The critic read a frozen draft: its prompt names a `shasum -a 256` manifest, its verdict returns the
 // manifest's digest, every file in the manifest still has the digest it had, and what went out is one of
 // those files (#15 F4: three answers changed after their critic read them).
+// A lint that passed, by the linter's own last HITS= line, or, when a runner clipped that away, by the
+// runner's EXIT=0 last line, whatever the label (measured on the live gate's case 5 of 2026-09-28: the
+// coordinator echoed LINT_EXIT=0 after HITS=0, and the old reading wanted HITS=0 as the last line).
+export const lintPassed = (text) => {
+  const t = String(text ?? "").trim();
+  const hits = [...t.matchAll(/^HITS=(\d+)\s*$/gm)].map((m) => Number(m[1]));
+  if (hits.length) return hits[hits.length - 1] === 0;
+  return /(^|\n)EXIT=0$/.test(t);
+};
+
 // The critic's last word: a Claude critic continued by SendMessage (to the agentId its first result names)
 // re-reads under the continuation's message, and its second verdict is the last text its own traffic
 // carries after that message (measured on the live gate's case 5, 2026-09-28: the continued agent's
@@ -537,8 +548,8 @@ export function criticVerdict(s, c) {
 
 // The critic read a frozen draft: its brief names a `shasum -a 256` manifest, its verdict returns the
 // manifest's digest, every file in the manifest still has the digest it had, and what went out is one of
-// those files, with nothing after it but paragraphs that name the critic, its verdict, which the answer
-// carries (#15 F4: three answers changed after their critic read them).
+// those files and at most one line after it, the critic's verdict in the page's form (#15 F4: three
+// answers changed after their critic read them).
 export function criticDigestProblems(s, { finalText, read = (p) => fs.readFileSync(p), reportOf = null }) {
   const bs = briefs(s);
   const critics = bs.filter((b) => /completeness critic/i.test(`${b.description ?? ""}\n${b.text}`));
@@ -562,10 +573,11 @@ export function criticDigestProblems(s, { finalText, read = (p) => fs.readFileSy
   if (!digest) problems.push("the critic's first evidence line carries no sha256");
   else if (digest !== sha256(manifest)) problems.push(`the critic returned ${digest.slice(0, 12)}…, the manifest ${manifestPath} is ${sha256(manifest).slice(0, 12)}…`);
   const entries = shasumLines(manifest.toString("utf8"));
+  // The one line the orchestrate page lets follow the draft: "<Model> <id>: done", "partial" or "not done".
   const d = c.call ? describedAgent(c.call) : null;
-  const namesCritic = (para) => (d ? new RegExp(`(?<![A-Za-z0-9])${escapeRe(d.id)}(?![A-Za-z0-9])`).test(para) : /critic/i.test(para));
+  const verdictLine = d ? new RegExp(`^(?:Codex\\s+|Claude\\s+)?${escapeRe(d.model)}\\s+${escapeRe(d.id)}: (?:done|partial|not done)\\.?$`, "i") : null;
   const final = collapse(finalText);
-  let wentOut = false, added = null;
+  let wentOut = false, added = null, differs = null;
   for (const e of entries) {
     const file = path.isAbsolute(e.file) ? e.file : path.join(path.dirname(manifestPath), e.file);
     let body = null;
@@ -573,18 +585,20 @@ export function criticDigestProblems(s, { finalText, read = (p) => fs.readFileSy
     if (sha256(body) !== e.digest) problems.push(`${e.file} changed after the critic read it`);
     const frozen = collapse(body.toString("utf8"));
     if (!frozen) continue;
-    if (frozen === final) wentOut = true;
-    else if (final.startsWith(frozen)) {
-      // What follows the frozen draft in the answer, paragraph by paragraph.
-      const rest = String(finalText).trim().split(/\n\s*\n/).slice(body.toString("utf8").trim().split(/\n\s*\n/).length);
-      const foreign = rest.filter((p) => p.trim() && !namesCritic(p));
-      if (!foreign.length) wentOut = true;
-      else added = foreign[0].trim().slice(0, 100);
+    if (frozen === final) { wentOut = true; continue; }
+    const lines = String(finalText).trim().split("\n");
+    const last = lines[lines.length - 1].trim();
+    if (verdictLine && verdictLine.test(last) && collapse(lines.slice(0, -1).join("\n")) === frozen) { wentOut = true; continue; }
+    if (final.startsWith(frozen)) added = final.slice(frozen.length).trim().slice(0, 100);
+    else if (differs === null && e.file.endsWith(".md")) {
+      let i = 0;
+      while (i < frozen.length && frozen[i] === final[i]) i++;
+      differs = final.slice(Math.max(0, i - 20), i + 60);
     }
   }
   if (!wentOut) problems.push(added !== null
     ? `the answer adds text after the draft the critic read: ${JSON.stringify(added)}`
-    : "the answer that went out is not a file the critic's manifest froze");
+    : `the answer that went out is not a file the critic's manifest froze${differs !== null ? `; it departs from the draft at ${JSON.stringify(differs)}` : ""}`);
   return problems;
 }
 
@@ -595,7 +609,7 @@ export function lintCallProblems(s) {
   const lints = uses.filter((u) => /lint-draft\.mjs/.test(bashCommand(u)) && (!critic || u.seq < critic.seq));
   if (!lints.length) return ["the draft was never linted before the critic read it"];
   const last = s.results.get(lints[lints.length - 1].id)?.text ?? "";
-  return /(^|\n)HITS=0\s*$/.test(last.trim()) ? [] : [`the last lint before the critic did not pass: ${JSON.stringify(last.trim().split("\n").pop())}`];
+  return lintPassed(last) ? [] : [`the last lint before the critic did not pass: ${JSON.stringify(last.trim().split("\n").pop())}`];
 }
 
 // "<Model> <id>" for every agent that ran: a Claude agent by its tag and its description's id, a Codex
@@ -634,7 +648,7 @@ export function receiptsFrom(s, { reports = [], ledger = [] } = {}) {
       for (const m of line.matchAll(/`([^`]{3,})`/g)) out.add(m[1]);
   // The coordinator's own lint of its draft, when it came back clean, is the receipt for saying so
   // (measured on the live gate's case 5, 2026-09-28: "The draft passes the linter." had HITS=0 behind it).
-  if (rootUses(s).some((u) => /lint-draft\.mjs/.test(bashCommand(u)) && /(^|\n)HITS=0\s*$/.test((s.results.get(u.id)?.text ?? "").trim())))
+  if (rootUses(s).some((u) => /lint-draft\.mjs/.test(bashCommand(u)) && !/--help/.test(bashCommand(u)) && lintPassed(s.results.get(u.id)?.text)))
     for (const l of ["linter", "lint"]) out.add(l);
   return [...out];
 }
@@ -890,7 +904,7 @@ export function runProblems({ s1, s2, prompts = [], reports = [], rows = [], led
   const cost = inlineCost(s2);
   problems.push(...cost.floods);
   problems.push(...criticDigestProblems(s2, { finalText, read, reportOf }));
-  problems.push(...phaseProblems(s2, { max: phases, receipts }));
+  problems.push(...phaseProblems(s2, { max: phases, receipts, finalText }));
   problems.push(...lintCallProblems(s2));
   const lint = lintDraft(finalText, { agents, receipts, request });
   problems.push(...lint.hits.map((h) => `the answer lints red, ${h.rule}: ${h.text}`));

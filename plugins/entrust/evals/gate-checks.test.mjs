@@ -283,6 +283,8 @@ test("one paragraph per phase, and no update turns an unverified return into suc
       expectNone(G.phaseProblems(three, { max: 4, receipts: ["node --test"] })),
       expectSome(G.phaseProblems(six, { max: 4 }), /6 paragraphs/),
       expectSome(G.phaseProblems(claim, { max: 4 }), /claims success with no receipt/),
+      // The answer's own claims are the final lint's: reported once, not also as an update.
+      expectNone(G.phaseProblems(claim, { max: 4, finalText: "The helper works." })),
     );
   });
 
@@ -322,7 +324,7 @@ test("the critic's digest: it names a shasum manifest, returns the manifest's sh
     );
   });
 
-test("a critic continued by SendMessage: its second verdict over the new manifest counts, and the answer may add only paragraphs that name the critic",
+test("a critic continued by SendMessage: its second verdict over the new manifest counts, and after the draft the answer carries one line, the critic's verdict in the page's form",
   "measured on the live gate's case 5, 2026-09-28: the coordinator re-froze the draft and continued its critic, as the page says, and the gate read only the first verdict; the answer then carried the verdict and one unrelated paragraph",
   () => {
     const dir = fs.mkdtempSync(path.join(TMP, "critic2-"));
@@ -347,12 +349,21 @@ test("a critic continued by SendMessage: its second verdict over the new manifes
       return s;
     };
     const good = run(five({ evidence: [d2, "re-read"] }));
-    const withVerdict = `${second}\n**Opus K1's verdict: done.** Nothing is missing.\n`;
-    const withOther = `${withVerdict}\nSeparately, another session asked me for a review.\n`;
+    // The orchestrate page (f6029d4): the draft's text and one line after it, "<Model> <id>: done",
+    // "partial" or "not done"; nothing else follows the lint.
+    const check = (text) => G.criticDigestProblems(run(five({ evidence: [d2] })).done(text).parsed(), { finalText: text });
+    const withVerdict = `${second}\nOpus K1: done`;
     return all(
       expectNone(G.criticDigestProblems(good.done(second).parsed(), { finalText: second })),
-      expectNone(G.criticDigestProblems(run(five({ evidence: [d2] })).done(withVerdict).parsed(), { finalText: withVerdict })),
-      expectSome(G.criticDigestProblems(run(five({ evidence: [d2] })).done(withOther).parsed(), { finalText: withOther }), /adds text after the draft the critic read: "Separately, another session/),
+      expectNone(check(withVerdict)),
+      expectNone(check(`${second}\n\nOpus K1: partial\n`)),
+      expectNone(check(`${second}\nOpus K1: not done`)),
+      expectSome(check(`${second}\n**Opus K1's verdict: done.** Nothing is missing.\n`), /adds text after the draft the critic read: "\*\*Opus K1's verdict/),
+      expectSome(check(`${second}\nOpus K1: done, nothing missing`), /adds text after the draft the critic read/),
+      expectSome(check(`${withVerdict}\nSeparately, another session asked me for a review.`), /adds text after the draft the critic read: "Opus K1: done Separately, another session/),
+      expectSome(check(`${second}\nSonnet W5: done`), /adds text after the draft the critic read: "Sonnet W5: done"/),
+      // The rerun of 2026-09-28 reworded the frozen draft after the critic and then added the verdict line.
+      expectSome(check("Opus W1 added the helper and a test for it.\nOpus K1: done"), /not a file the critic's manifest froze; it departs from the draft at/),
       expectSome(G.criticDigestProblems(run(five({ evidence: [d1] })).done(second).parsed(), { finalText: second }), /the critic returned/),
       expectSome(G.criticDigestProblems(run(null).done(second).parsed(), { finalText: second }), /continued and its second verdict never arrived/),
     );
@@ -363,8 +374,17 @@ test("the draft was linted before the critic read it, and the last lint passed",
   () => {
     const lint = (s, hits) => s.bash(`node "/p/skills/orchestrate/scripts/lint-draft.mjs" --agents "Opus W1" /t/draft.md`, `WORDS=12\nSHA256=${"a".repeat(64)}\nHITS=${hits}`);
     const critic = (s) => s.claude("Opus K1: completeness critic", "opus", "completeness critic", five());
+    const echoed = (s) => s.bash(`node "/p/lint-draft.mjs" /t/draft.md; echo "LINT_EXIT=$?"`, `WORDS=12\nSHA256=${"a".repeat(64)}\nHITS=0\nLINT_EXIT=0`);
+    const echoedRed = (s) => s.bash(`node "/p/lint-draft.mjs" /t/draft.md; echo "LINT_EXIT=$?"`, "LINT=path: 1: x\nWORDS=12\nHITS=1\nLINT_EXIT=1");
+    const runner = (s) => s.bash(`node /p/capture-check.mjs --label "any label" -- 'node /p/lint-draft.mjs /t/draft.md'`, "LABEL=any label\nLOG=/t/x.log\nLINES=3\nBYTES=90\nWORDS=12\nSHA256=x\nEXIT=0");
     return all(
       expectNone(G.lintCallProblems(critic(lint(session(), 0)).parsed())),
+      // Measured on the rerun of 2026-09-28: HITS=0 and then the coordinator's own LINT_EXIT=0 line.
+      expectNone(G.lintCallProblems(critic(echoed(session())).parsed())),
+      expectSome(G.lintCallProblems(critic(echoedRed(session())).parsed()), /did not pass/),
+      expectNone(G.lintCallProblems(critic(runner(session())).parsed())),
+      G.receiptsFrom(echoed(session()).parsed()).includes("linter") || "an echoed clean lint is no receipt",
+      !G.receiptsFrom(echoedRed(session()).parsed()).includes("linter") || "an echoed red lint became a receipt",
       expectSome(G.lintCallProblems(lint(critic(session()), 0).parsed()), /never linted before the critic/),
       expectSome(G.lintCallProblems(critic(lint(session(), 2)).parsed()), /did not pass/),
     );
@@ -586,7 +606,7 @@ test("one coherent good run passes every check at once, and the pre-fix shape of
       .bash(`node /p/skills/orchestrate/scripts/lint-draft.mjs --agents "Opus W1, Codex Terra C1, Opus K1" ${draft}`, `WORDS=30\nSHA256=${sha(answer)}\nHITS=0`)
       .claude("Opus K1: completeness critic", "opus", `You are the completeness critic. The request, and the frozen draft with its manifest ${manifest}.`,
         five({ result: "Opus K1: done, nothing missing.", evidence: [sha(fs.readFileSync(manifest)), "read the draft whole"] }))
-      .done(answer).parsed();
+      .done(`${answer}Opus K1: done`).parsed();
     const reports = [{ id: "C1", report: { answerJson: { status: "done", result: "Terra C1: done, 5 of 5.", evidence: ["node --test: EXIT=0"], artifacts: [], open: [] },
       commands: [{ command: `/bin/zsh -lc "node ${runner} --label suite -- 'node --test'"`, exitCode: 0 }] } }];
     const inputs = { s1, prompts: [{ id: "C1", text: c1 }], reports, rows, schema: SCHEMA, request, phases: 4, cwd: dir, tmp: [TMP] };

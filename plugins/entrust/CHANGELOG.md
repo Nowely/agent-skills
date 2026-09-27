@@ -397,7 +397,13 @@ forensics remain in the repository references and release notes.
   `planRowOf` and `classifyRole`, and the new `evals/gate-checks.test.mjs` runs it on fixture streams in the shape
   of the gate's saved sessions: per check one stream built to pass and one built to fail (a rewritten manifest, a
   malformed critic return, an out-of-scope write, a misattributed fact and a capsule that omits a staged input
-  among them), and one whole good run that passes them all at once. None of the new live cases has been run. The VS
+  among them), and one whole good run that passes them all at once. The first live run over the fixed tree
+  (2026-09-28) corrected four readings of the gate's own, each since pinned by a fixture from that run: the card's
+  worker and checker counts are read from its who row and compared with the launcher's WORKERS= and CHECKING=
+  lines; a Fable or Astra agent counts only where the plan names one as an agent, never in a cost row; a critic
+  continued by message is judged by its second verdict, and after the frozen draft the answer may carry one line,
+  the critic's verdict in the page's form; a lint passed by the linter's last HITS=0 line or by the runner's
+  EXIT=0, and a passed lint of the coordinator's own is a receipt. The VS
   Code half of the activation measurement is a manual protocol in
   `plugins/entrust/research/2026-09-27-field-audit-triage/activation-position.md`, which also corrects the drafted
   check: the session file's expansion record does not carry the page's frontmatter. Why: the findings that came
