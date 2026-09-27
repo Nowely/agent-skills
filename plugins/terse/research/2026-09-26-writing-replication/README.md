@@ -45,5 +45,9 @@ user's global instructions and memory index loaded; the Codex agents did not.
 
 ## What carries over
 
-The terse upgrade built on these principles — a light everyday writing skill and edits to the existing pages —
-is designed on the branch `terse-writing-replication`; nothing of it is in the plugin yet.
+The principles became terse's `clarity` skill, which Claude may choose while writing an everyday text, with its
+genre notes, and the edits to the other skills' pages, all on the branch `terse-writing-replication`. A first
+official trigger run behaved as intended in 8 of 9 runs — it chose `clarity` in 5 of 6 runs where it should and in
+none of 3 where it should not
+([`measures/clarity-trigger-official-2026-09-27.json`](measures/clarity-trigger-official-2026-09-27.json)): three
+cases, three runs each; the counts over real sessions and the live set are still to run.
