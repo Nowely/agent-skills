@@ -973,6 +973,34 @@ flow("--check-prompt-file refuses a WEB_SEARCH: mode the managed policy does not
       || `--run did not refuse with the check's reason: exit ${ran.code} ${ran.err.trim().slice(-300)}`;
   });
 
+flow("a policy file that is no plist dictionary refuses every WEB_SEARCH: mode as unreadable, and a prompt without the line still passes",
+  "plutil answers \"Could not extract value\" both for a policy without the search key and for a file holding one bare word, which it parses as a one-string plist and -lint calls OK; read as the missing key, a corrupt policy opened every mode on the device (E46). `cached` is asked because a managed policy on the machine running this suite may allow it and nothing else",
+  () => {
+    const tool = spawnSync("plutil", ["-help"], { encoding: "utf8" });
+    if (tool.error?.code === "ENOENT") return skip("no plutil here, and the policy reader asks plutil");
+    const policy = path.join(flowState(), "policy.plist");
+    fs.writeFileSync(policy, "garbage\n");
+    const env = { ENTRUST_POLICY_SEAM: policy };
+    const escaped = policy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const verdict = refusal(checkRun(`RIGHTS: read ${shimDir}\nWEB_SEARCH: cached\nTASK: find the release notes\n`, { env }),
+      new RegExp(`^entrust: refused: this device has a managed Codex policy at ${escaped} that could not be read, so whether --web-search cached is permitted cannot be established; `));
+    if (verdict !== true) return verdict;
+    const plain = passed(checkRun(`RIGHTS: read ${shimDir}\nTASK: find the release notes\n`, { env }));
+    return plain === true || `without a WEB_SEARCH: line: ${plain}`;
+  });
+
+flow("a policy dictionary without the search key narrows no WEB_SEARCH: mode",
+  "the other half of the rule above: a managed profile that constrains other things says nothing about search, and refusing there would take every mode from a device whose policy never mentions one",
+  () => {
+    const tool = spawnSync("plutil", ["-help"], { encoding: "utf8" });
+    if (tool.error?.code === "ENOENT") return skip("no plutil here, and the policy reader asks plutil");
+    const policy = path.join(flowState(), "policy.plist");
+    fs.writeFileSync(policy, `<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>`
+      + `<key>other_setting</key><string>x</string></dict></plist>\n`);
+    return passed(checkRun(`RIGHTS: read ${shimDir}\nWEB_SEARCH: cached\nTASK: find the release notes\n`,
+      { env: { ENTRUST_POLICY_SEAM: policy } }));
+  });
+
 flow("--check-prompt-file refuses an unknown upper-case field",
   "a typo in a header is a different agent, and the check is what stops it before one is spawned",
   () => {

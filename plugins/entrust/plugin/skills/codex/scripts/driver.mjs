@@ -1170,10 +1170,16 @@ const MANAGED_PREFS = "/Library/Managed Preferences/com.openai.codex.plist";
 // An unreadable or malformed policy must fail closed.
 function managedWebSearchModes(file = MANAGED_PREFS) {
   if (!fs.existsSync(file)) return null;
-  const r = spawnSync("plutil", ["-extract", "requirements_toml_base64", "raw", "-o", "-", file],
-    { encoding: "utf8", timeout: LIMITS.SPAWN_TIMEOUT_MS, killSignal: "SIGKILL" });
-  // No such key is a real answer: the profile constrains other things and says nothing about search.
-  if (r.status !== 0) return /does not exist|Could not extract/i.test(String(r.stderr ?? "")) ? null : undefined;
+  const opts = { encoding: "utf8", timeout: LIMITS.SPAWN_TIMEOUT_MS, killSignal: "SIGKILL" };
+  const r = spawnSync("plutil", ["-extract", "requirements_toml_base64", "raw", "-o", "-", file], opts);
+  if (r.status !== 0) {
+    if (!/does not exist|Could not extract/i.test(String(r.stderr ?? ""))) return undefined;
+    // No such key is a real answer: the profile constrains other things and says nothing about search.
+    // plutil gives the same message for a file that is no dictionary at all, and a bare word parses as a
+    // one-string plist in the old text format, which -lint calls OK; so the root has to be a dictionary.
+    const x = spawnSync("plutil", ["-convert", "xml1", "-o", "-", file], opts);
+    return x.status === 0 && /<plist\b[^>]*>\s*<dict\s*\/?>/.test(String(x.stdout ?? "")) ? null : undefined;
+  }
   if (!r.stdout) return undefined;
   // Buffer.from salvages malformed base64, so re-encode to detect corruption and fail closed
   // instead of treating binary noise as an unconstrained policy.
