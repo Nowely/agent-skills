@@ -130,8 +130,8 @@ test("the ONE call is agent-run.mjs --run with --report-file in one foreground c
     // The launcher's own spawn: exactly the two driver flags, prompt.txt as an argument only, the
     // environment untouched. agent-run.test.mjs runs it; this reads the promise off the source.
     const launcher = fs.readFileSync(path.join(SCRIPTS, "agent-run.mjs"), "utf8");
-    if (!/\[DRIVER, "--prompt-file", promptPath, "--report-file", report\]/.test(launcher))
-      problems.push("the launcher does not spawn the driver with exactly --prompt-file and --report-file");
+    if (!/\[DRIVER, "--prompt-file", promptPath, "--report-file", report, \.\.\.approvalArgs\]/.test(launcher))
+      problems.push("the launcher does not spawn the driver with exactly --prompt-file, --report-file and the approval arguments");
     if (/(readFileSync|openSync|createReadStream|readFile)\([^)]*prompt/i.test(launcher)) problems.push("the launcher reads prompt.txt");
     if (!/env: process\.env/.test(launcher)) problems.push("the launcher does not pass its environment to the driver untouched");
     // And the driver has to offer exactly those two flags.
@@ -325,6 +325,74 @@ test("the shipped wrapper is the agent the page names: Bash alone, a pinned mode
       if (!body.replace(/\s+/g, " ").includes(phrase)) problems.push(`the agent body no longer says: ${JSON.stringify(phrase)}`);
     for (const phrase of ["`subagent_type: entrust:codex-agent`", "Pass it no `model`"])
       if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("the Rights table's read row names the WRITABLE: exception for a tool's own store, and never a repository",
+  "read level is the level with no lock and the narrowest default write root; the one thing it may gain beyond $TMPDIR is a settled root for a tool's own store, and a page that dropped arc's example or the never-a-repository clause would leave a coordinator guessing what counts",
+  () => {
+    const problems = [];
+    for (const phrase of [
+      "write `$TMPDIR` and a settled `WRITABLE:` root for a tool's own store",
+      "a directory or a regular file, never a repository",
+      "arc's object cache and sync file are the measured example",
+      "under `codex sandbox` only, unmeasured through the app-server",
+    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("a SIGTERM to the wrapper's pid is narrowed to the process group actually swept, not to \"nothing left running\", and the survivor check is the coordinator's own",
+  "E50: the teardown signals and polls the app-server's own process group; a command the server started lives in a process group of its own, and whether it dies with the server was never measured, so the page must not promise more than that group's sweep, and F10 (11-refutation-astra.md) is that this is a check the coordinator runs, never a promise the driver keeps",
+  () => {
+    const problems = [];
+    for (const phrase of [
+      "sweeps the codex app-server's own process group and publishes the report as",
+      "a command still running in its own process group at that moment is not established to end with it (E50)",
+      "An accepted command can outlive the agent, its server and this lock: before a\nsecond writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'`\nyourself and wait for it — no driver code checks this for you.",
+    ]) if (!flat.includes(phrase.replace(/\s+/g, " "))) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    if (/nothing left running/.test(flat)) problems.push("the page still promises \"nothing left running\", which E50 found unproven");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("FILE=missing reads RECEIPT's approvals= count as a decision, not an execution outcome, before any relaunch",
+  "F12 (11-refutation-astra.md): a coordinator that only reads the count and relaunches can repeat an accepted operation whose outcome is unknown, so the page has to send it to the tree and the command's own effects first, and say the count is a decision rather than a result",
+  () => {
+    const problems = [];
+    for (const phrase of [
+      "an `approvals=` token whose first number is not 0 says a command ran with",
+      "that count is a decision, not an execution outcome",
+      "check the tree and whatever the command touched before any relaunch",
+      "never relaunch a prompt that would ask for the same thing again",
+    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("exit 6 is a request declined or expired unanswered, never one accepted, and escalations carries decision, cause and unclipped detail",
+  "an auto-yes must never surface as a gate failure, and a coordinator reading `detail` clipped at 200 characters cannot judge the very command it is asked to approve",
+  () => {
+    const problems = [];
+    for (const phrase of [
+      "`exitCode: 6` is a request declined or expired unanswered, never one accepted",
+      "`detail` is the server's own wording whole",
+      "never clipped",
+      "`cause` (`rights`: a file change the writable roots cover, which the driver accepted itself and never shows anyone",
+      "`outside`: a file change not shown to lie inside them",
+      "`sandbox`: the same command had just failed in this turn",
+      "`policy`: no attempt was seen, so Codex asked by its own rule",
+    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("an auto-yes's why is re-checked at send time, and the page names the symlink-swap residual",
+  "the driver re-runs its own containment check the instant it answers, not only when the request first arrived, so the page's why string has to be the current one; the residual is what a race between that check and the server's own write can still do, and it is unmeasured, not fixed",
+  () => {
+    const problems = [];
+    for (const phrase of [
+      "\"rights cover it (checked as the answer was sent)\"",
+      "the check runs again at that moment, not only when the request arrived",
+      "a plain directory the driver walked that becomes a symlink before the server\n  writes is followed by the server, not caught here",
+      "whether the server itself re-resolves the swap is\n  unmeasured",
+    ]) if (!flat.includes(phrase.replace(/\s+/g, " "))) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
 

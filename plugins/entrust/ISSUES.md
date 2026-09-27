@@ -146,26 +146,6 @@ Astra turn was lost with its tokens. Measured on 2026-09-17 the same step held t
 reliable. A turn that reaches the ceiling should survive the wrapper that started it, or the rerun should not
 depend on the model's compliance.
 
-## E46. The driver's refusal-shape comment points at `schema-<version>/*ApprovalResponse.json`, files the pinned tree does not hold
-
-**Evidence, level 1.**
-
-- `plugins/entrust/plugin/skills/codex/scripts/driver.mjs:2726` (at `b3872b4`): "Refusal shapes differ per method;
-  they are taken from the pinned schema-<version>/*ApprovalResponse.json."
-- `plugins/entrust/schema-0.153.4/` holds `ServerRequest.json`, `ServerNotification.json`, `JSONRPCError.json`,
-  `v1/InitializeResponse.json` and nine `v2/*Response.json`, none of them an approval response.
-- The enum the comment means is pinned inside `ServerRequest.json`: `CommandExecutionApprovalDecision` at
-  `:266-343`, with `decline` at `:332`. `codex app-server generate-json-schema` on 0.155.1 writes ten separate
-  `*Approval*.json` files, which is the layout the comment describes and the tree never had.
-
-**Check.** `find plugins/entrust/schema-0.153.4 -iname '*Approval*'` prints nothing;
-`grep -n '"decline"' plugins/entrust/schema-0.153.4/ServerRequest.json` prints 332.
-
-**Issue text.** The comment that justifies the driver's five refusal shapes names files that are not in the tree, so
-a reader who follows the pointer finds nothing and cannot tell whether the shapes were checked against the pin.
-The enums are in `ServerRequest.json`; the comment should say so, or the generator's per-method files should be
-pinned beside it.
-
 ## E47. The server's `availableDecisions` never offers `decline`, the shape every refusal of this driver sends
 
 **Evidence, level 3 for the list and for the refusal being honoured today, level 1 for the schema.**
@@ -210,30 +190,6 @@ fixture carry the server's list, and let the live fidelity gate compare the two.
 attempt that raised the request produced no item at all. The help's "can differ" covers it by accident; the report's
 reader has no way to tell this case from a request raised with no attempt. Name the cause in the help, and let the
 entry carry what the request itself says about the command, since the item may never come.
-
-## E49. A writable root between the home and the state directory grants the plugin's data directory, locks and answer log included
-
-**Evidence, level 1 for the walk's direction, level 2 for the consequence.**
-
-- `plugins/entrust/plugin/skills/codex/scripts/driver.mjs:900-936` (at `b3872b4`): `checkRoot` refuses the passwd home
-  and every ancestor of it, an exact `$HOME`, and any candidate whose ancestor walk reaches `~/.codex` or the state
-  directory by inode. A candidate that *contains* the state directory without being the home or above it, `~/.claude`
-  on a plugin install, hits none of the three walks.
-- `plugins/entrust/plugin/skills/codex/references/environment-and-internals.md:72-74` names `~/.claude` a legitimate
-  root, and the state directory on a plugin install is `~/.claude/plugins/data/entrust-nowely` (orchestrate page, the
-  run directory paragraph).
-- Found by Fable D1 while designing the approval channel (`plugins/entrust/research/2026-09-27-approval-channel/02-design-v3.md`,
-  "Found in passing"), independent of that channel.
-
-**Check.** Read the three loops at `driver.mjs:902-936`: the first walks the home's ancestors, the second is an exact
-`$HOME` match, the third walks the candidate's ancestors against the protected inodes; none walks the candidate's
-descendants. A `lock.test.mjs` case that grants `--writable <parent of the state directory>` and writes a lock file
-from inside the sandbox would make it level 3.
-
-**Issue text.** `--writable ~/.claude` (or any root between the home and the state directory) is accepted, and the
-sandbox it produces can write the driver's locks, answer log, isolated home and every agent's report directory,
-which the same guard refuses when named directly. The guard should refuse a root that is, or is an ancestor of, a
-protected root, as it already refuses an ancestor of the home.
 
 ## E50. "Nothing left running" after `SIGTERM` is not established for a command executing at the signal
 

@@ -26,11 +26,49 @@ codex 0.153.4 (measured 2026-09-15); to cost a thread, sum one report per turn. 
 **API request**, not the whole turn — measured on a rollout, one turn emitted `last: 13584 / total: 13584`
 then `last: 14273 / total: 27857`, so `last` is only the turn's tail.
 
-The report's `escalations` array has one `{method, detail, thread, subagent}` entry per approval request
-the driver declined, whichever thread asked. `detail` is the server's wording clipped to 200 characters
-and may be empty; a sandbox-denied command need not raise a request, so an empty array does not prove
-that no command was denied. An entry does not diagnose rights that were too narrow. Exit 6 means this
-rung won the ordered ladder; a cut run can carry entries and still exit 3.
+The report's `escalations` array has one entry per approval request, whichever thread asked — not only the
+ones the driver declined: `id`, `method`, `kind`, `detail`, `thread`, `subagent`, `agentPath`, `cause`
+(`rights`: a file change the writable roots cover, which the driver accepted itself; `outside`: a file
+change not shown to lie inside them; `sandbox`: the same command had just failed in this turn; `policy`:
+no attempt was seen, so Codex asked by its own rule), `offered`, `decision` (`accepted`, `declined` or
+`expired`), `by` (`driver` for an auto-yes, an expiry or a request never offered, `coordinator` otherwise),
+`why`, `askedAt`, `settledAt`, `waitMs`, `resolved`, `outcome` (the matching item's own completion, or null
+where none came), `cwd`, `reason` and `fileChanges`. `detail` is the server's own wording whole — never
+clipped — and may still be empty where it sent none; a sandbox-denied command need not raise a request, so
+an empty array does not prove that no command was denied. An entry does not diagnose rights that were too
+narrow. Exit 6 means a request was declined or expired unanswered, never one accepted; a cut run can carry
+entries and still exit 3. Beside the array, `approvalsAccepted`, `approvalsAutoAccepted`, `approvalsStale`
+and `approvalsLate` count what their names say, and `approvalsDuplicate` counts a request id the server
+sent twice — the driver answers it once and the report counts the repeat, not a second request.
+
+An auto-yes carries `why: "rights cover it (checked as the answer was sent)"`: every component of the
+resolved path between the writable root and the file must be an existing plain directory, never a symlink,
+and the file itself regular or not there yet, with nothing under a `.git`, `.codex` or `.agents` directory
+in any spelling — matched by inode and by a case-folded name, so `.Git` and `.GIT` are caught too — and the
+whole check runs again, fresh, at the moment the driver sends the answer, not only when the request first
+arrived. A writer that swaps one of those plain directories for a symlink between the driver's check and
+the server's own write is followed by the server, not the driver; whether the server re-resolves that swap
+before it writes is unmeasured.
+
+## Approval mailbox
+
+`--approval-dir D` (`agent-run.mjs --new --approvals` makes it at `<DIR>/approvals`) has to lie inside the
+driver's own state directory, and so does `--report-file` beside it: `--new --approvals` checks both paths
+strictly inside that directory, and refuses a mailbox placed under one of the driver's own subtrees there —
+`tmp/`, `home/`, `locks/`, `answers/`, `jobs/`, `worktrees/` or `pasted/` — where `tmp/` alone holds every
+run's private `$TMPDIR`; `reports/<run>` and an orchestrate run directory are both fine, being neither. The
+driver also refuses any writable root that is, or is an ancestor of, the state directory or `~/.codex` —
+the inverse of the ancestor walk [Only those are protected](#what-is-protected-and-what-is-not) already
+runs — so no sandbox the driver grants can reach in and write a decision itself. `D/owner.json` claims the
+mailbox by `link(2)`; a second driver over the same `D` exits 2 while that owner is alive, and a dead
+owner's claim is taken over under a reclaim marker, so two drivers never both own `D`. A request the
+mailbox itself cannot write — its file, or its entry in `pending` — is settled at once as expired,
+`why: "mailbox write failed: <error>"`, and an accept reaches the server only after that settlement record
+landed; a request's own `settled` object then carries `decisionFile`, what the decision file held as it
+settled: `taken`, `none`, `stale` or `late`. A subagent thread's request is offered, and its file change
+auto-accepted, only while that thread's own turn is still open: once it closes, a further request from it
+is declined at once, `why: "turn ended"` for one whose turn had been open and closed, `"not the current
+turn"` for one from a turn never open at all.
 
 Codex delegates to subagent threads of its own whenever the model chooses to, at any effort. Measured on
 0.153.4 a child never sends `thread/started` to the client: the ROOT announces it as a `subAgentActivity`
@@ -69,9 +107,12 @@ verified by, the second this driver's locks and answer log. The private `<state>
 the driver is the narrow exception: its owner record binds it to that run. The driver also refuses your
 home directory itself and every ancestor of it, up to `/`.
 
-**Only those are protected.** `~/.ssh`, `~/.aws`, `~/.claude`, `~/Library` and the rest of your home
-are legitimate write roots as far as the driver is concerned. It stops you handing over *everything*;
-it does not curate what inside your home is precious. Choose the blast radius deliberately.
+**Only those are protected, and what is above them.** The guard also refuses a candidate that is `~/.codex`
+or the state directory itself, or an ancestor of either (E49): `~/.claude` is refused on a plugin install,
+whose state directory sits under it, while `~/.ssh`, `~/.aws`, `~/.arc`, `~/Library` and the rest of your
+home remain legitimate write roots as far as the driver is concerned. It stops you handing over
+*everything* above what it protects; it does not curate what inside your home is precious otherwise.
+Choose the blast radius deliberately.
 
 ## The isolated home
 

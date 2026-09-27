@@ -89,8 +89,11 @@ and waits for it (measured 2026-09-17: an eighteen-minute agent took two calls, 
 once it has accepted the report path, and a refusal before that point prints none; a launch the launcher
 itself refused (no `prompt.txt`, a relative report path, an `exit` marker already there) puts its reason
 there instead, with an exit of 2 and `PATH=none`. A `SIGTERM` to that
-pid cuts the turn, sweeps its codex and publishes the report as `turnStatus: interrupted`, exit 1,
-nothing left running.
+pid cuts the turn, sweeps the codex app-server's own process group and publishes the report as
+`turnStatus: interrupted`, exit 1; a command still running in its own process group at that moment is not
+established to end with it (E50). An accepted command can outlive the agent, its server and this lock: before a
+second writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'`
+yourself and wait for it — no driver code checks this for you.
 
 The prompt, one Bash call, the heredoc quoted so nothing in it expands:
 
@@ -100,6 +103,11 @@ The prompt, one Bash call, the heredoc quoted so nothing in it expands:
     CHECK: …
     RETURN: …
     PROMPT
+
+An agent the plan lets ask for approval is made with `--new --approvals` in place of plain `--new`, which
+arms the channel and prints `APPROVALS=<dir>`; that call also needs `CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}"`
+set ahead of it on the command line, the way the run call below already carries it, because arming checks the
+mailbox's containment against that variable before the agent's directory exists, where plain `--new` never needed it.
 
 The Agent call, its message this block:
 
@@ -162,7 +170,7 @@ Choose the smallest `RIGHTS` that can complete and check the work:
 
 | Prompt header | Codex may | Settle first? |
 | --- | --- | --- |
-| `RIGHTS: read [<dir>]` or no header | read any readable path, reach the network, run commands, write only `$TMPDIR`; the sandbox refuses a write anywhere else, and an approval request in its place is declined and recorded in `escalations` | no |
+| `RIGHTS: read [<dir>]` or no header | read any readable path, reach the network, run commands, write `$TMPDIR` and a settled `WRITABLE:` root for a tool's own store — a directory or a regular file, never a repository; arc's object cache and sync file are the measured example, under `codex sandbox` only, unmeasured through the app-server; the sandbox refuses every other write, and an approval request in its place is declined and recorded in `escalations` | no |
 | `RIGHTS: worktree <repo>` | write in a driver-managed detached tree | say that a worktree will be made |
 | `RIGHTS: write <dir>` | write under the live directory | yes; this chooses the blast radius |
 
@@ -173,7 +181,8 @@ Every level reaches the network, as a native subagent does, and `NETWORK: no` de
 not the provider's web search, which is `WEB_SEARCH:`'s own channel. Egress moves nothing on disk:
 whatever an agent can read it can send, which at read level is every readable path. Each `WRITABLE: <dir>`
 widens a write agent, as does removing a `NETWORK: no` the user settled: settle each with the user before
-adding it, and never translate a refusal into broader rights. Every field is in
+adding it, and never translate a refusal into broader rights: an approval under the plan is a decision on
+one request, not a rights change. Every field is in
 [Header fields](#header-fields) below; model, effort, gates, continuation and answer-shape choices
 belong in that header, and the agent's rights in its `RIGHTS:` line, which is why the prompt is copied
 into the file rather than rewritten: measured, a wrapper that rewrote one widened malformed rights and
@@ -197,7 +206,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | --- | --- | --- |
 | `RIGHTS:` | `read [<dir>]`, `worktree <repo>`, `write <dir>` | first, or not at all: no header is a read agent in the current directory |
 | `NETWORK:` | `no` | this agent's own commands must not reach the network; no line leaves it the egress every level has, and `WEB_SEARCH:` is untouched either way |
-| `WRITABLE:` | `<dir>`, repeatable | a write agent needs one more root than the directory it was given |
+| `WRITABLE:` | `<dir>`, repeatable | a write agent needs one more root than the directory it was given; at read level, only for a tool's own store, never a repository |
 | `RESUME:` | `<threadId>`, `last` | this agent continues an earlier thread instead of opening one |
 | `EXPECT:` | `<regex>` | the answer is only evidence if a command matching it ran AND succeeded; a matching command that exited non-zero does not count, and none matching is exit 5. Do not point it at a check whose failure IS the finding |
 | `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>` | the answer must parse as one JSON object |
@@ -257,8 +266,12 @@ write its own would be grading itself. Declare gates on the command line instead
   `{ok: false, exitCode, turnStatus: null, error}`, while `out.json` stays empty.
 - `FILE=missing` beside a `DRIVER_EXIT` is a run that ended without a report of its own: read
   `<DIR>/err.txt` for the reason and `<DIR>/out.json` for the report a turn wrote where publication
-  failed; otherwise treat the result as unknown, and relaunch under a fresh report path where the work
-  still needs doing.
+  failed. Read `RECEIPT=` first: an `approvals=` token whose first number is not 0 says a command ran with
+  your rights and no report says how it ended — that count is a decision, not an execution outcome; `outcome`
+  in `escalations` is the execution record, where a report exists to read it from. Read `<DIR>/approvals/`
+  and check the tree and whatever the command touched before any relaunch, and never relaunch a prompt that
+  would ask for the same thing again. Only once that is clear, treat the rest as unknown and relaunch under
+  a fresh report path where the work still needs doing.
 - `exitCode: 0` means the completed turn passed its declared evidence gates. `answer` is the agent's text;
   with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed.
 - `exitCode: 3` is a cut; read the retained answer or partial and the `RESUME:` hint. Give the continuation a
@@ -275,11 +288,21 @@ write its own would be grading itself. Declare gates on the command line instead
   it means the thread had started and its rollout is the only record. With any other `turnStatus` — the
   server died mid-turn, or the report could not be published — the report is complete: read it like any
   post-turn code (commands, `answer`, `answerPath`, receipt).
-- `escalations` is one entry per approval request the driver declined, whichever thread asked, and
-  `exitCode: 6` is its rung — below timeout and the other cuts, so a cut run carries its entries and
-  exits 3. An entry says a request was made and refused and no more: `detail` is the server's own wording
-  clipped to 200 characters and is empty where it sent none, a command the sandbox denied outright need
-  not raise one, and an entry is neither evidence that work was lost nor a reason to widen the rights.
+- `escalations` is one entry per approval request, whichever thread asked, root or a grandchild's: `decision`
+  (`accepted`, `declined` or `expired`), `by` (`driver` for an auto-yes, an expiry or a request never offered,
+  `coordinator` otherwise), `cause` (`rights`: a file change the writable roots cover, which the driver
+  accepted itself and never shows anyone; `outside`: a file change not shown to lie inside them; `sandbox`:
+  the same command had just failed in this turn; `policy`: no attempt was seen, so Codex asked by its own
+  rule), and `outcome` (the item's own completion, or null where none came). `detail` is the server's own
+  wording whole — the command, else the reason, else the message, or the joined file-change list — never
+  clipped, and may still be empty where the server sent none. `exitCode: 6` is a request declined or expired
+  unanswered, never one accepted — below timeout and the other cuts, so a cut run carries entries and exits
+  3. A command the sandbox denied outright need not raise a request, and an entry is neither evidence that
+  work was lost nor a reason to widen the rights. An auto-yes's own `why` is
+  `"rights cover it (checked as the answer was sent)"`: the check runs again at that moment, not only when
+  the request arrived, and a plain directory the driver walked that becomes a symlink before the server
+  writes is followed by the server, not caught here — whether the server itself re-resolves the swap is
+  unmeasured.
 - Any other non-zero is a gate verdict on the run; read the answer before deciding what to do.
 - `receiptOk: false` on a run that claims success is a red flag; what the receipt proves and does not
   prove is in

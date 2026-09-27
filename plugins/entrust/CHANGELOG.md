@@ -5,7 +5,74 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Added
+
+- **An approval channel.** `agent-run.mjs --new --approvals` makes `<DIR>/approvals`, and `--run` passes it
+  to the driver as `--approval-dir`; a command request or a file change the agent's rights do not cover is
+  then written whole to the mailbox instead of declined at once, from the root thread's own turn or from a
+  subagent thread the root announced (Codex's own "внуки", the owner's principle 4), and the turn waits with
+  no deadline by default until `--decide ID --accept|--decline` answers it or the agent is stopped;
+  `--approval-timeout S` stays as an optional bound for headless runs and the suites. `--pending` prints
+  each open request whole — thread, cause, cwd, reason, the writable roots, the command or the file-change
+  list — between markers, so the coordinator reads it before deciding: the command itself sits between
+  `COMMAND<<TOKEN` and `COMMAND>>TOKEN`, a fresh twelve-hex-character token drawn for that one print and
+  never present in the command, and every other field is escaped onto its own line; `--pending` also lists
+  `STALE=<id>` beside `LATE=` and `ORPHANED=`, for a decision file that was not its request's own.
+  `--decide` refuses an id `pending` does not list ("is not waiting") and a stale decision already in the
+  way, and never runs a second time on the coordinator's word. `--new --approvals` checks that both
+  `--report-file` and the agent directory lie strictly inside the state directory, and refuses a mailbox
+  placed under one of the driver's own subtrees there (`tmp/`, `home/`, `locks/`, `answers/`, `jobs/`,
+  `worktrees/`, `pasted/`); a mailbox writing itself under `reports/<run>` or an orchestrate run directory
+  is fine, since neither is one of those. A request the mailbox itself cannot write is settled at once as
+  expired, `why: "mailbox write failed: <error>"`, and an accept reaches the server only once that
+  settlement record has landed. The orchestrate page's `## Approvals`
+  section states the owner's rule: approve what is non-destructive and in the plan's direction, take the
+  rest to the owner while the turn waits, decline and name it in a headless run, approve nothing unread. Why:
+  every request was declined by default, so a plan that needed `arc status` or a script the agent wrote for
+  its own task failed silently, and the owner's principle is that a non-destructive request in the plan's
+  direction should not need a second turn to ask for it by hand.
+
 ### Changed
+
+- **The driver answers yes itself to a file change whose every path lies inside the agent's writable
+  roots**, recorded with `by: "driver"` and `cause: "rights"`, and never shown to anyone. All ten declined
+  file changes measured on this machine before this change were writes into the agent's own `$TMPDIR`
+  (06-owner-round, level 3), because Codex's edit tool asks for approval by comparing the patch path's
+  spelling against the granted root's spelling: a `/private/var/…` path inside `$TMPDIR` asked and the
+  `/var/…` spelling for the same file did not (P1, level 3). Auto-yes runs with or without a mailbox armed,
+  compares resolved paths through symlinks on both sides, and offers the request instead where a path
+  resolves outside the roots or no `item/started` named one, so the coordinator still sees it. The guard
+  that contains a mailbox now also refuses a writable root that is, or is an ancestor of, `~/.codex` or the
+  state directory (E49): `--writable ~/.claude` is refused on a plugin install, where it used to grant the
+  plugin's own locks and answer log. The auto-yes's own `why` is now
+  `"rights cover it (checked as the answer was sent)"`: every directory the resolved path crosses must be a
+  plain one, never a symlink, nothing under a `.git`, `.codex` or `.agents` in any spelling (matched by
+  inode and by a case-folded name), and the whole check runs again, fresh, at the moment the answer is
+  sent rather than only when the request arrived — a directory swapped for a symlink in between is
+  followed by the server, not caught here, and whether the server itself re-resolves that swap is
+  unmeasured. A subagent thread's own request, offer or auto-yes alike, lives only while that thread's own
+  turn stays open; once it closes, a further request from it is declined at once as `"turn ended"` or
+  `"not the current turn"`.
+- **`WRITABLE:` at read level, for a tool's own store.** A read agent's `--writable` may now name a
+  directory or a regular file the way a write agent's already could, and the driver adds it to the read
+  profile beside `$TMPDIR`. Measured for `arc`: under the read profile it opens its object store read-write
+  and fails outright; granting write on `~/.arc/store/.arc/objects/objectdb` and `~/.arc/store/.arc/sync`
+  makes `status`, `log`, `show --stat` and `diff --stat` exit 0 with the unsandboxed baseline's shape
+  (01-probe-2.md, Q6, level 3) — measured only under `codex sandbox`, not through the app-server or under
+  this machine's managed configuration. The codex page's Rights and header-field tables name the shape;
+  never a repository.
+- **The report's `escalations` array, per entry.** Exit 6 is now "a request was declined or expired
+  unanswered", never one that was accepted, matching the help's own wording; `detail` carries the server's
+  wording, the command, or the joined file-change list whole, no longer clipped to 200 characters; every
+  entry gains `cause` (`rights`, `outside`, `sandbox` or `policy`) so a coordinator's synthesis can say why
+  approvals were needed and what avoids them next time, and `by` now also reads `driver` for an auto-yes.
+  `RECEIPT=` gains `stale=N` beside `late=N`; the report gains `approvalsDuplicate` (a request id the
+  server sent twice is answered once, and the repeat is counted, not treated as a second request) and each
+  request's own `settled.decisionFile` (`taken`, `none`, `stale` or `late`: what the decision file held as
+  the request settled). Why: a clipped `detail` hid the very command a coordinator had to read before approving it, and an
+  unnamed cause left every approval's synthesis guessing.
+- **E46 fixed**: the driver's refusal-shape comment now names `ServerRequest.json`, where the enum it means
+  actually lives, instead of a `schema-<version>/*ApprovalResponse.json` layout the pinned tree never had.
 
 - **What installs is now `plugins/entrust/plugin/`.** The marketplace entry's `source` is
   `./plugins/entrust/plugin`: the skills, the agent, the driver and its companions, the README, the
