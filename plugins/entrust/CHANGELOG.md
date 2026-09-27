@@ -12,31 +12,6 @@ forensics remain in the repository references and release notes.
   Why: ledger entry E51, found twice in passing during the 2026-09-27 triage; the count had drifted at every
   registration.
 
-### Changed
-
-- **The Codex CLI pin moves to 0.155.1.** `PINNED_CODEX`, the pinned schema directory (`schema-0.155.1/`, the
-  twelve files conformance loads; the full 312-file tree is commit `b5c1b81`, which the README's upgrade recipe now
-  names) and the fixtures' server version (the fake app-server's default, the cli case and the receipt scenario)
-  move together. The 0.155.1 protocol against 0.153.4, in the twelve files the driver's conformance loads, only
-  adds: `originator` and `ThreadEnvironment` on thread responses, `normalModelSlug` and `ordinaryUsageAllowed` on
-  rate limits, thread-attachment notifications, and the path type `AbsolutePathBuf` renamed `LegacyAppPathString`;
-  nothing removed, no type changed (8 files new, 27 changed, none removed across the whole tree). Measured on
-  2026-09-27: 89 conformance scenarios, the live fidelity gate "all 15 agree" with one real turn, cli 123 and
-  protocol 147 green. parity.md's dated figures were not re-measured, as its header already says of the 0.153.4
-  pin. Why: this machine's codex-cli had been 0.155.1 against a 0.153.4 pin since the CLI moved, the driver warned
-  on every run, seven Codex turns of the 2026-09-27 triage ran on the mismatch, and RELEASING.md makes the move a
-  prerequisite of the release.
-- **The live orchestrate gate no longer counts a plan's statement of the caps as agents.** Its Fable and Astra
-  counter skips a line that states the limits ("the limits are one Fable and one Astra at a time", "uses
-  neither Fable nor Astra"), as it already skipped a coordinator's description of itself. Why: on 2026-09-27
-  the release candidate's full-run case was failed for "2 fable agents in one wave" by a plan that used neither
-  and said so in one sentence, and that sentence's two words were the count; 0.20.0 never ran the gate (its
-  Codex quota was out), so the miscount had not been seen. The same case's run-directory check now accepts the
-  launcher's `agent/` beside each `report.json`, holding exactly its four files (`prompt.txt`, `out.json`,
-  `err.txt`, `exit`), which the page has promised since the launcher of 0.19.0; the check still dated from
-  the time the driver alone wrote there, and the rerun after the counter fix failed on it with a Codex agent
-  that had run and reported.
-
 ### Added
 
 - **`/entrust:orchestrate` can hand a run to a foreman.** A plan with three workers or more now proposes one
@@ -140,6 +115,28 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- **The Codex CLI pin moves to 0.155.1.** `PINNED_CODEX`, the pinned schema directory (`schema-0.155.1/`, the
+  twelve files conformance loads; the full 312-file tree is commit `b5c1b81`, which the README's upgrade recipe now
+  names) and the fixtures' server version (the fake app-server's default, the cli case and the receipt scenario)
+  move together. The 0.155.1 protocol against 0.153.4, in the twelve files the driver's conformance loads, only
+  adds: `originator` and `ThreadEnvironment` on thread responses, `normalModelSlug` and `ordinaryUsageAllowed` on
+  rate limits, thread-attachment notifications, and the path type `AbsolutePathBuf` renamed `LegacyAppPathString`;
+  nothing removed, no type changed (8 files new, 27 changed, none removed across the whole tree). Measured on
+  2026-09-27: 89 conformance scenarios, the live fidelity gate "all 15 agree" with one real turn, cli 123 and
+  protocol 147 green. parity.md's dated figures were not re-measured, as its header already says of the 0.153.4
+  pin. Why: this machine's codex-cli had been 0.155.1 against a 0.153.4 pin since the CLI moved, the driver warned
+  on every run, seven Codex turns of the 2026-09-27 triage ran on the mismatch, and RELEASING.md makes the move a
+  prerequisite of the release.
+- **The live orchestrate gate no longer counts a plan's statement of the caps as agents.** Its Fable and Astra
+  counter skips a line that states the limits ("the limits are one Fable and one Astra at a time", "uses
+  neither Fable nor Astra"), as it already skipped a coordinator's description of itself. Why: on 2026-09-27
+  the release candidate's full-run case was failed for "2 fable agents in one wave" by a plan that used neither
+  and said so in one sentence, and that sentence's two words were the count; 0.20.0 never ran the gate (its
+  Codex quota was out), so the miscount had not been seen. The same case's run-directory check now accepts the
+  launcher's `agent/` beside each `report.json`, holding exactly its four files (`prompt.txt`, `out.json`,
+  `err.txt`, `exit`), which the page has promised since the launcher of 0.19.0; the check still dated from
+  the time the driver alone wrote there, and the rerun after the counter fix failed on it with a Codex agent
+  that had run and reported.
 - **What installs is now `plugins/entrust/plugin/`.** The marketplace entry's `source` is
   `./plugins/entrust/plugin`: the skills, the agent, the driver and its companions, the README, the
   LICENSE and `package.json`. The suites, the pinned protocol schema and this changelog no longer install;
