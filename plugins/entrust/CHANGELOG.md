@@ -19,6 +19,12 @@ forensics remain in the repository references and release notes.
   pin. Why: this machine's codex-cli had been 0.155.1 against a 0.153.4 pin since the CLI moved, the driver warned
   on every run, seven Codex turns of the 2026-09-27 triage ran on the mismatch, and RELEASING.md makes the move a
   prerequisite of the release.
+- **The live orchestrate gate no longer counts a plan's statement of the caps as agents.** Its Fable and Astra
+  counter skips a line that states the limits ("the limits are one Fable and one Astra at a time", "uses
+  neither Fable nor Astra"), as it already skipped a coordinator's description of itself. Why: on 2026-09-27
+  the 0.21.0 candidate's full-run case was failed for "2 fable agents in one wave" by a plan that used neither
+  and said so in one sentence, and that sentence's two words were the count; 0.20.0 never ran the gate (its
+  Codex quota was out), so the miscount had not been seen.
 
 ### Added
 

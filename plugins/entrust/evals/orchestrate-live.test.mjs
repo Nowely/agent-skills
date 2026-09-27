@@ -471,7 +471,10 @@ function planProblems({ text, toolUses, scratch, head0 }) {
   // reads nothing at all on a Russian plan and silently changes its own verdict. Measured: "Я сам работаю
   // на Fable как координатор." was not excluded here and counted as a second Fable agent, failing a cap the
   // plan honoured. Each alternation therefore carries the stems of the languages this plugin is used in.
-  const isAgent = (l) => !/under fable|fable session|orchestrator|coordinator|powered by|you are|координ|оркестр|под fable|сам работаю|эта сессия|текущая сессия|я на fable|вне пула/i.test(l);
+  // A plan's own statement of the caps ("the limits are one Fable and one Astra at a time", "uses neither
+  // Fable nor Astra") is not an agent either. Measured 2026-09-27 on the 0.21.0 candidate: a plan that used
+  // neither and said so was failed for two Fable agents in one wave, both of them that sentence's words.
+  const isAgent = (l) => !/under fable|fable session|orchestrator|coordinator|powered by|you are|координ|оркестр|под fable|сам работаю|эта сессия|текущая сессия|я на fable|вне пула|limits? (are|is)|caps? (are|is)|at a time|neither fable|ни fable|предел|лимит/i.test(l);
   const header = rows[0] ? rows[0].split("|").map((c) => c.trim().toLowerCase()) : [];
   const waveCol = header.findIndex((c) => /^(wave|stage|phase|step|order|round|batch|when|волна|этап|фаза|шаг|порядок|очередь|раунд|когда)$/.test(c));
   const groupOf = (l) => (waveCol >= 0 ? (l.split("|")[waveCol] ?? "").trim() : "");
