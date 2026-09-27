@@ -262,7 +262,7 @@ notes do not cover yet; its brief asks for them "as raw markdown with curl". For
 man page or a story there is no markdown to fetch, and the coordinator has to rewrite the brief before the scout can
 run. The brief should ask for each document's raw text, fetched with curl and never through a summarising tool.
 
-## E49. `practices-full.md` still repeats the two 2026-09-10 counts that E6 corrected elsewhere
+## E54. `practices-full.md` still repeats the two 2026-09-10 counts that E6 corrected elsewhere
 
 **Evidence, level 1.** `plugins/terse/plugin/references/practices-full.md:355` says the 2026-09-10 bake-off had
 "seven of ten seats proposed nothing", and `:387` that "the 2026-09-10 run put five published standards against two

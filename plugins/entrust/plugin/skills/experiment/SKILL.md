@@ -1,33 +1,33 @@
 ---
 name: experiment
 description: >-
-  Runs one registered experiment on the orchestrator's own rules: arms under the orchestrate mode on
-  matched material, a judge that does not see which arm it reads, the orchestrator's conclusion and the
-  user's verdict, recorded under the plugin's data directory by a script and copied into the repository later.
+  Runs one registered experiment on the orchestrator's own rules: arms on matched material,
+  a judge that does not see which arm it reads, the orchestrator's conclusion and the
+  user's verdict. A script records them under the plugin's data directory; the repository gets a copy later.
 disable-model-invocation: true
 metadata:
   version: "0.20.0"
 license: MIT
 ---
 
-Load [orchestrate](../orchestrate/SKILL.md) now (Skill tool, `entrust:orchestrate`), which loads codex; every arm runs under those two pages, and this page re-cuts only what an experiment adds: a protocol before any agent, matched material, a judge that does not see the arm, two verdicts, and a record kept by a script. The mode adds no driver change, no header field and no flag; its one script writes the record and nothing else. A run needs no checkout of the repository: the record lives on the machine and is copied into a checkout later.
+Load the sibling [codex](../codex/SKILL.md) now (Skill tool, `entrust:codex`); every arm runs under that page and this one. This page holds the rules an arm needs. An experiment adds a protocol before any agent, matched material, a judge that does not see the arm, two verdicts, and a record kept by a script. The mode adds no driver change, no header field and no flag; its one script writes the record and nothing else. A run needs no checkout of the repository: the record lives on the machine and is copied into a checkout later.
 
 ## The protocol
 
 Register the experiment before any agent, in a protocol the user reads as the plan:
 
 1. Hypothesis: an id and one sentence that can be false, from the research round's list of 2026-09-17 or written the same way; the four registered first are in [protocols.md](references/protocols.md).
-2. Arms: each a composition under the orchestrate page, named by model, tier, count and rights; one arm is the comparator the hypothesis calls for, a single agent or no delegation where the question is whether delegation pays. Each arm's plan is in the protocol, so one "go" covers every arm and no arm stops for a plan of its own.
+2. Arms: each a composition named by model, tier, effort, count and rights. One arm is the comparator the hypothesis calls for, a single agent or no delegation where the question is whether delegation pays. The tiers are top Fable and Astra, strong Opus and Sol, cheap Sonnet and Terra, bulk Haiku and Luna. Each arm's plan is in the protocol, so one "go" covers every arm and no arm stops for a plan of its own.
 3. Material: the same tasks or claims for every arm, frozen before the run, with the ground truth or the acceptance check written down before any arm sees it; the arms never see each other's returns.
 4. Metrics: what the research's ruler names, unique coordinator incidents by stage with their severity, owner corrections, outcomes verified independently, and agents and paid turns counted per outcome so that arms of different cost compare; for a bulk hypothesis, correctness per claim; n stated, with an interval where n is under fifty, and paired where the material is the same across arms.
-5. Judge: cross-family or human. It gets each arm's returns with their first line removed, the line that names the agent's model and id, and the arms named by letters; where the returns name the model in their body, the judge is cross-family with the arm named and the protocol says so. Its verdict names the check it ran or is `unknown`.
+5. Judge: cross-family or human. It gets each arm's returns with their first line removed, the line every brief asks to name the agent's model and id, and the arms named by letters. Where the returns name the model in their body, the judge is cross-family with the arm named and the protocol says so. Its verdict names the check it ran or is `unknown`.
 6. Stop rule and budget: the tokens and paid turns each arm may spend, and what ends the run early.
 
 Show the protocol and stop; "go" covers the arms as listed and nothing else.
 
 ## The run
 
-Each arm is one orchestrated run with a run directory of its own, the same brief text in every arm except the composition, and the plan's cap for that arm. The coordinator keeps the material's ground truth out of every brief that must not see it. A failed arm is reported with its reason and never re-run to a better number; a repeat is a new experiment with the first in its record.
+Each arm is one run with a run directory of its own, `<state>/orchestrate/<project-slug>/<run>/`, the same brief text in every arm except the composition, and the plan's cap for that arm. `<run>` is unique; `<project-slug>` is the working directory's absolute path with every character but letters and digits replaced by `-`. An arm keeps six alive at most, one Fable and one Astra among them; its bulk agents are a pool of their own, fifty at most, outside that cap. Tag every Claude Agent call with its `model`. The coordinator keeps the material's ground truth out of every brief that must not see it. A failed arm is reported with its reason and never re-run to a better number; a repeat is a new experiment with the first in its record.
 
 ## The two verdicts
 

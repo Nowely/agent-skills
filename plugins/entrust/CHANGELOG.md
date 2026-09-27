@@ -5,6 +5,29 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Added
+
+- **`/entrust:orchestrate` can hand a run to a foreman.** A plan with three workers or more now proposes one
+  Opus subagent, the foreman, that briefs and launches the workers, has their work verified, handles their
+  failures and hands back one report; the orchestrator keeps the user, the plan, the synthesis and the
+  completeness critic. In the timeline each worker then shows as one card inside the foreman's, with its task
+  and its report, instead of every call it makes; the agent map still shows every agent. The user's approval
+  words travel down verbatim, and an action approved mid-run is run by a fresh worker. The rules are in
+  `skills/orchestrate/references/foreman.md`, with a foreman row in `references/roles.md`, and the page lets a
+  foreman launch the one Fable agent the cap allows. `evals/orchestrate.test.mjs` pins them (I1–I8, D7
+  widened). Why: on 2026-09-26 the owner saw every worker's Bash cards in the timeline and asked for a
+  coordinator one level down; a probe on extension 2.1.280 showed a subagent's foreground worker stays out of
+  the timeline while a background one comes in whole, and Anthropic's own coordinator prompt inside Claude Code
+  2.1.280 supplied the rules on approvals and briefs. The run is in
+  `plugins/entrust/research/2026-09-26-coordinator-practices/`.
+- `driver.mjs --check-prompt-file <path>`: the run's own header parsing and the web-search policy refusal,
+  offline, with no state directory, no lock and no codex: exit 0 and silent, or exit 2 with one stderr line
+  `entrust: refused: <reason>`. `agent-run.mjs --new` runs it after writing the prompt: on a pass `PROMPT=`, on
+  a refusal `ERROR=<reason>`, no `PROMPT=`, exit 2 and no prompt left to run; a report path that a `--run` has
+  already launched in is spent, and `--new` refuses it and names the earlier launch's file. Why: the refusal now comes before an agent is spawned (E1).
+- `ENTRUST_POLICY_SEAM`: a second plist read like the device's, which a mode must also pass; it narrows the
+  allowed modes and never widens them, so a suite can exercise the policy path on any macOS machine.
+
 ### Changed
 
 - **What installs is now `plugins/entrust/plugin/`.** The marketplace entry's `source` is
@@ -50,6 +73,91 @@ forensics remain in the repository references and release notes.
   Sol and GPT-6 Luna while every page, the status line's table and the tests still named `gpt-5.6-sol`
   and `gpt-5.6-luna`, so a coordinator asked for Sol kept launching the older model; the Claude names
   beside them (Opus, Sonnet, Haiku) had moved on their own.
+- **A Codex agent's run outlives the wrapper that started it, and the launcher returns before the tool's
+  ceiling.** `agent-run.mjs --run` starts the driver under a keeper orphaned into its own session, waits, and
+  after 570 s prints its nine lines with `DRIVER_EXIT=running` and `RUNNING=pid <pid>, <n> s so far; run the
+  same command again` where `REPORT=` would be, exit 0; the same command run again reads the run it started.
+  Every call in flight forwards SIGTERM, SIGINT and SIGHUP to the driver's pid, a signal that arrives before
+  the pid line is kept until the line appears, and a signal after the return deadline is dropped. The wrapper's
+  step 2 and the codex page's block say "it ends with RUNNING= instead". Why: measured 2026-09-27, 45 ms after a
+  foreground subagent's final response the harness sends SIGTERM to the backgrounded command's process group
+  and to every descendant it finds by a ppid walk, then SIGKILL, and only a process in its own session and
+  already orphaned survives; on 2026-09-26 a ten-minute Astra turn was lost that way when the Haiku wrapper
+  handed back the harness notice instead of rerunning (E45). Measured after: the teardown check leaves the
+  driver alive and its report published, and a live eleven-minute Luna turn under a foreground wrapper took two
+  calls, one driver, one report. Pinned by eight cases in `evals/agent-run.test.mjs`.
+- **The agent-run SIGTERM case no longer flaps on CI.** It waits for `turn/start` in the fake server's RPC log
+  on the idle-silence scenario instead of the pid line plus 500 ms on a 1200 ms turn, which left a margin of
+  one Node spawn (E43; three CI failures on three OS and Node pairs). 20 of 20 loop runs.
+- **The lock concurrency case holds one run in a slow turn.** "two concurrent runs: exactly one wins" starts
+  the contender only once the holder's lock is on disk and checks the roles, not the sorted codes; two fast
+  turns could run one after the other and both exit 0 (E44's second case, CI run 35320724153). 100 runs under
+  load, 0 failures; a copy without the wait fails 21 of 40. E44 now names the first case's cause, an
+  ownership check followed by an action on the shared pathname, with the fix on hand and its cost.
+- **`WEB_SEARCH:` is the provider's search tool, and the row says so.** The Header fields row now says the
+  network needs no line and every level has it, that the field is set only when the user asks for the
+  provider's search, and that a mode the device refuses goes back to the user as a question, never to another
+  mode. The driver's refusal of a mode the managed policy narrows ends with "another mode is the user's
+  choice to make, not the coordinator's, and the network is unaffected". The read-level `--writable`
+  refusal moved from setup into argument parsing, so it comes first among the refusals and prints no pid line. Why: twice, 2026-09-17 and
+  2026-09-25, a coordinator read "the network is allowed" as this field, the device refused `live` after an
+  agent was spawned, and the coordinator swapped in `cached` (E1).
+- **`advisor`, `experiment` and `swarm` load `codex` alone.** Each page opens by loading the codex page
+  through the Skill tool and carries the orchestrate rules it relies on: the caps, the run directory, the
+  plan-and-stop, the five-field return, and for swarm protocol E4 with its link. None asks the Skill tool for
+  `orchestrate`, which is marked `disable-model-invocation` and refused (E39; the advisor did not start on
+  2026-09-25). Pinned by an A0 case in each suite, which fails on the previous text and names the load.
+- **`orchestrate.test.mjs` pins every rule.** F2 pins the nine Verification bullets and their count; D12 and
+  D13 pin the bulk-unit sentence and "announce its count before spawning" (E2). 12 of 12 mutations red.
+- The stray `evals/orchestrate.test.mjs.orig`, a patch leftover that came in with #14, is gone.
+- **Breaking: the lock's on-disk shape changes.** `<state>/locks/<hash>.lock` is now a relative symlink, created
+  exclusively, to a 0600 owner file beside it; the run keeps a descriptor on that file and records its identity,
+  an update writes through the descriptor and never renames over a path, and a release removes the link and the
+  file under the reclaim marker, so nothing is left after a normal run (three `--worktree` runs leave no entry, as
+  with the previous shape) at a cost of about one millisecond per release. A lock in the previous shape is
+  still honoured live and reclaimed dead. A driver from before this change that meets the link exits 2 with "is a
+  symbolic link, not a lock file; remove it and retry": do not follow that advice while the holder lives; upgrade
+  every driver that shares a state directory together. Why: update and release checked the owner and then acted
+  on the shared pathname, so a peer's lock written between the two steps was what they renamed or unlinked,
+  proven on an instrumented copy (10 of 10 update runs and 10 of 10 release runs; E44), and the same window
+  between the check and the act on the owner file is closed by the identity check. The reclaim marker is taken
+  over by a rename checked before use and dropped only when its body is this run's, so two takers cannot both
+  hold it. Pinned by twelve cases in `evals/lock.test.mjs`, two of them through `evals/lib/lock-window.mjs`,
+  which pauses a temporary copy of the driver before the lock's act. Residual, documented in the driver and in
+  `references/environment-and-internals.md`: a process that ignores the marker can still lose a file between
+  the release's check and its unlink, because POSIX has no unlink by inode. An owner file whose
+  body does not parse now refuses the directory with exit 10 naming both files, where the previous shape reclaimed
+  it: the run cannot know whether the writer is alive.
+- **The managed-policy reader fails closed on a file that is not a plist.** A failed key extraction reads as
+  "no policy" only when `plutil -convert xml1` succeeds on the file and its root is a dictionary; anything else
+  refuses every `WEB_SEARCH:` mode as unreadable. `plutil -lint` accepts a file holding `garbage`, and the
+  no-key message is the same for that file and for a dictionary without the key, so neither remedy the ledger
+  named works (E46). Pinned by two cli cases through `ENTRUST_POLICY_SEAM`.
+- **A `--run` for another report path never writes into the directory it refuses.** The refusal goes to the
+  caller alone, on its own nine lines; a launch claims `err.txt` exclusively before it records any refusal; a
+  call decides whose run a directory holds from the driver's pid line, whose report path must match the call's
+  whole, and forwards no signal before that line names its own report (E47 and two defects found beside it: a
+  prefix of the report path read as the same run, and a foreign call arriving before the pid line waited on
+  another run and forwarded its signals to it). Pinned by seven cases in `evals/agent-run.test.mjs`; a
+  relative-report launch into a live directory once appended to its `err.txt` and overwrote its exit marker.
+- The fake server's `slow-turn` scenario ends on `turn/interrupt` as `idle-silence` does (E48: SIGTERM 200 ms
+  into the turn now reports `interrupted` 58 ms later), and the protocol `stalled-turn` row's budget is 1 s
+  instead of 0.25 s (E49: the 250 ms budget expired before the driver had processed `thread/start` on a loaded
+  runner, 1 failure in 120 loaded runs at 0.25 s and 0 at 1 s, which does not separate the two by itself; the
+  mechanism does, the failing run having no thread id, and a pre-thread abort publishes no stdout JSON by the
+  driver's own contract; the rate at 1 s on CI is unmeasured).
+- **The orchestrate page waits for completion notifications, never on `TaskOutput`**, which Claude Code 2.1.277
+  removed: a background agent's return arrives as a message and its notification, the Codex poll's `DONE=` line
+  is the signal that a run ended, an interactive session may end its turn with agents alive, and a headless
+  session launches every agent in the foreground, the foreman included (E50). The live gate recognises the
+  `entrust:codex-agent` wrapper, finds a run's pid in `agent/err.txt` beside its report, and fails a wrapper
+  launched in the background. Pinned by F6, F9 and I4 in `evals/orchestrate.test.mjs`.
+- **`/entrust:cleanup` understands the lock's shape.** It tells apart a held lock, a released link, an abandoned
+  pair, a stray record and the record of a running agent, proposes the released and the stray, removes an
+  abandoned pair by number, removes anything only under the driver's own reclaim marker (imported from the
+  driver) with the identity re-checked just before each unlink, and reads records through a descriptor opened
+  under a pinned directory handle, so a record swapped for a link is listed as unrecognised and kept. Row names
+  pluralise the noun. Pinned by cases 42 to 45 in `evals/cleanup.test.mjs`.
 
 ## 0.20.0 — 2026-09-18
 
