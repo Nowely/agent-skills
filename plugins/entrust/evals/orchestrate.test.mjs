@@ -479,7 +479,7 @@ test("F2 the nine verification bullets, one line each",
       /^- Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters\.$/m,
       /^- Read a unanimous fan-out as evidence about the prompt first: open one return whole before you trust the tally \(measured [\d-]+: nineteen of twenty verdicts answered one broken path in every prompt\)\.$/m,
       /^- Judge panel for a design task: a verdict (missing|without|lacking) its decisive check is `unknown` in `result`; name the missing check in `open`\. Use the sibling's `EXPECT:` rule for a Codex check\.$/m,
-      /^- Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. What it reads is the linted draft, frozen with a manifest beside it: `shasum -a 256` over the draft and every artifact it cites\. The critic returns the manifest's sha256 as the first line of its `evidence`\. Before the answer goes out, compute the manifest's sha256 again and compare it with the critic's, and run `shasum -a 256 -c` on the manifest: a different digest or a failed check voids the verdict, and the critic reads the changed part again\. What goes out is the draft's text\. A `not done` verdict means you fix the answer or name the gap in it\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
+      /^- Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. What it reads is the linted draft, frozen with a manifest beside it: `shasum -a 256` over the draft and every artifact it cites\. The critic returns the manifest's sha256 as the first line of its `evidence`\. Before the answer goes out, compute the manifest's sha256 again and compare it with the critic's, and run `shasum -a 256 -c` on the manifest: a different digest or a failed check voids the verdict, and the critic reads the changed part again\. What goes out is the draft's text and one line after it, the critic's verdict, "<Model> <id>: done", "partial" or "not done", counted in the draft's word bound\. Nothing else follows the lint, no paragraph on the critic's return included: anything you must add is linted and frozen again, and the critic reads again\. A `not done` verdict means you fix the answer or name the gap in it\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
       /^- No silent caps: name every agent, check or item you dropped\.$/m,
     );
   });
@@ -568,6 +568,28 @@ test("F11 a continuation or a relaunch goes under the agent's next report path, 
     fs.writeFileSync(path.join(runDir, "S1", "agent", "exit"), "0\n");
     const later = next(2);
     if (later.status !== 0 || !/^PROMPT=/m.test(later.stdout)) problems.push(`S1-2 after S1 ended: exit ${later.status}, ${later.stdout.trim().split("\n").at(-1)}`);
+    fs.rmSync(dir, { recursive: true, force: true });
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("F12 what follows the frozen draft is one verdict line, counted in the draft's word bound, and the page's linter holds that bound over the draft and the line together",
+  "the live gate, 2026-09-27 (case 5): the page said both that the answer carries the critic's verdict and that the frozen, linted draft goes out, and the coordinator appended a verdict paragraph and an unrelated one after the lint, so 474 words went out against the linter's 400 and the critic had read neither",
+  () => {
+    const said = says(
+      "What goes out is the draft's text and one line after it, the critic's verdict, \"<Model> <id>: done\", \"partial\" or \"not done\", counted in the draft's word bound.",
+      "Nothing else follows the lint, no paragraph on the critic's return included: anything you must add is linted and frozen again, and the critic reads again.",
+    );
+    if (said !== true) return said;
+    const cmd = recipe("lint-draft.mjs");
+    if (!cmd || !fs.existsSync(cmd.file)) return "the page's linter is not there to hold the bound";
+    const dir = tempDir("orchestrate-verdict.");
+    const problems = [];
+    // "Opus C1: not done" is the longest verdict line, four words; the linter's default bound is 400.
+    const answer = (words) => { const f = path.join(dir, `a${words}.md`); fs.writeFileSync(f, `${Array(words).fill("word").join(" ")}\n\nOpus C1: not done\n`); return f; };
+    const fits = run(cmd.file, ["--agents", "Opus C1", answer(396)]);
+    if (fits.status !== 0) problems.push(`396 words and the verdict line exited ${fits.status}: ${fits.stdout.trim().split("\n")[0]}`);
+    const over = run(cmd.file, ["--agents", "Opus C1", answer(397)]);
+    if (over.status !== 1 || !/^LINT=length:/m.test(over.stdout)) problems.push(`397 words and the verdict line exited ${over.status} with no LINT=length: line`);
     fs.rmSync(dir, { recursive: true, force: true });
     return problems.length === 0 || problems.join("; ");
   });
