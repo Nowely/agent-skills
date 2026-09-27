@@ -261,3 +261,15 @@ files and rebuilt the table's places for comments by itself.
 notes do not cover yet; its brief asks for them "as raw markdown with curl". For the comments of a source file, a
 man page or a story there is no markdown to fetch, and the coordinator has to rewrite the brief before the scout can
 run. The brief should ask for each document's raw text, fetched with curl and never through a summarising tool.
+
+## E49. `practices-full.md` still repeats the two 2026-09-10 counts that E6 corrected elsewhere
+
+**Evidence, level 1.** `plugins/terse/plugin/references/practices-full.md:355` says the 2026-09-10 bake-off had
+"seven of ten seats proposed nothing", and `:387` that "the 2026-09-10 run put five published standards against two
+unguided controls across ten seats; both controls won, seven seats proposed nothing". E6 showed from the run's own
+prompts and judge that the design was four standards plus one control pair and that the judge's count reaches six at
+most; its fix corrected `writing-rules.md` after Provenance and M19 in `measurements.md`, not this page. Found by
+the cross-review of the `clarity` upgrade (2026-09-27).
+
+**Issue text.** The field library repeats the refuted counts of the 2026-09-10 bake-off at lines 355 and 387; restate
+them from the run's prompts and judge, as E6's fix did on the reference pages.
