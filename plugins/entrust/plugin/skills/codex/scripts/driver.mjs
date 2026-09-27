@@ -1363,14 +1363,28 @@ async function isolatedHome() {
 const sleepSync = (ms) => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
 
 // Classify the lock without trusting its type: O_NOFOLLOW rejects symlinks, O_NONBLOCK avoids FIFO
-// hangs, and fstat catches directories before reading.
+// hangs, and fstat catches directories before reading. The one symlink accepted is acquireLock's
+// pointer to its owner file, which is then read under the same rules.
 // Return {gone:true} for a vanished lock (retry), or {held} with null for an unparsable lock (reclaim).
-function inspectLock(p, dir) {
+// A pointer adds {owner}, the owner file's path, and {unreadable} when that file's body does not parse:
+// an owner file is rewritten in place, so such a body may be one caught mid-write, and it is left alone.
+function inspectLock(p, dir, ownerLink = true) {
   let fd;
   try { fd = fs.openSync(p, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | fs.constants.O_NOFOLLOW); }
   catch (e) {
     if (e.code === "ENOENT") return { gone: true };
-    if (e.code === "ELOOP") fail(EXIT.USAGE, `cannot lock ${dir}: ${p} is a symbolic link, not a lock file; remove it and retry`);
+    if (e.code === "ELOOP") {
+      // Only our versioned, same-directory owner link is a lock. Never follow arbitrary links.
+      const { target } = linkTarget(p), prefix = `${path.basename(p)}.`;
+      // Gone, or no longer a link, between the open and the readlink: a peer reclaimed it. Retry.
+      if (target === null) return { gone: true };
+      if (ownerLink && target.startsWith(prefix) && /^[a-f0-9]{32}\.owner$/.test(target.slice(prefix.length))) {
+        const owner = path.join(path.dirname(p), target), seen = inspectLock(owner, dir, false);
+        if (seen.gone) return { held: null, owner };   // a link naming nothing is stale
+        return { held: seen.held, owner, unreadable: !seen.parsed };
+      }
+      fail(EXIT.USAGE, `cannot lock ${dir}: ${p} is a symbolic link, not a lock file; remove it and retry`);
+    }
     fail(EXIT.USAGE, `cannot lock ${dir}: ${p} exists but cannot be read (${e.code}); fix its permissions and retry. Do not remove it: a lock that cannot be read cannot be shown to be stale`);
   }
   try {
@@ -1379,9 +1393,9 @@ function inspectLock(p, dir) {
       const kind = st.isDirectory() ? "a directory" : st.isFIFO() ? "a named pipe" : st.isSocket() ? "a socket" : "not a regular file";
       fail(EXIT.USAGE, `cannot lock ${dir}: ${p} is ${kind}, not a lock file; remove it and retry`);
     }
-    let held = null;
-    try { held = JSON.parse(fs.readFileSync(fd, "utf8")); } catch {}
-    return { held };
+    let held = null, parsed = true;
+    try { held = JSON.parse(fs.readFileSync(fd, "utf8")); } catch { parsed = false; }
+    return { held, parsed };
   } finally { fs.closeSync(fd); }
 }
 
@@ -1439,47 +1453,116 @@ function holderGroupAlive(held) {
 // app-server group are both gone.
 const reclaimable = (held) => !holderAlive(held) && !holderGroupAlive(held);
 
-// Remove a still-stale lock under an exclusive reclaim marker; another marker owner means retry acquisition.
-// Owner liveness decides abandonment, with RECLAIM_BACKSTOP_MS only as a backstop for a recycled pid:
-// a stalled live owner keeps its marker, while a dead owner's marker can be reclaimed immediately.
-function reclaimStale(p, dir) {
+// The reclaim marker, <lock>.reclaim: whoever holds it may remove the lock's link or its owner file, and
+// nobody else may. A marker is abandoned when the process it names is gone; RECLAIM_BACKSTOP_MS is only a
+// backstop for a recycled pid, so a stalled live owner keeps its marker while a dead owner's can be taken
+// over at once. cleanup.mjs imports this predicate, the three functions below and the constant rather than
+// carrying a copy of the rule.
+const RECLAIM_BACKSTOP_MS = LIMITS.RECLAIM_BACKSTOP_MS;
+const reclaimMarkerAbandoned = (pid, mtimeMs) => !holderAlive({ pid }) || Date.now() - mtimeMs > RECLAIM_BACKSTOP_MS;
+// The file at a marker path, read without following a link: dev:ino and the pid in it, or null.
+function markerAt(file) {
+  let fd;
+  try { fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | fs.constants.O_NOFOLLOW); }
+  catch { return null; }
+  try {
+    const st = fs.fstatSync(fd, { bigint: true });
+    return { dev: st.dev, ino: st.ino, mtimeMs: Number(st.mtimeMs), body: fs.readFileSync(fd, "utf8").trim() };
+  } catch { return null; } finally { fs.closeSync(fd); }
+}
+// dev:ino of each marker this process created, by lock path, for holdsReclaimMarker and dropReclaimMarker.
+const heldMarkers = new Map();
+// True when this process now holds the marker; false when a peer does. Throws when the marker cannot be
+// written at all.
+//
+// An abandoned marker is taken over by renaming it to a name of this run's own and then creating a new one
+// exclusively. Removing it by path instead let two takers that had both judged it abandoned both remove
+// it, the second removing the first one's fresh marker, and both then held it. A rename moves one file
+// once: the second taker gets ENOENT, or moves a marker that is not the one it judged, which it tells by
+// dev:ino and body and links back. If a third taker has created a marker in that instant, the link back
+// fails and the moved marker is removed: exactly one marker stands, and the run whose marker was moved
+// finds out from holdsReclaimMarker before it acts.
+function takeReclaimMarker(p) {
   const rp = `${p}.reclaim`;
   // Random, not the pid, for the reason the config temp is: two runs in different PID namespaces over one
-  // mounted state dir share a pid and would write the same name.
+  // mounted state dir share a pid and would write the same name. The moved marker takes the same shape.
   const tmp = `${p}.${crypto.randomBytes(8).toString("hex")}.rtmp`;
+  const moved = `${p}.${crypto.randomBytes(8).toString("hex")}.rtmp`;
   try {
     fs.writeFileSync(tmp, String(process.pid));
-    try { fs.linkSync(tmp, rp); }
-    catch (e) {
-      if (e.code !== "EEXIST") fail(EXIT.USAGE, `cannot reclaim the stale lock ${p}: ${e.message}`);
-      // Someone is reclaiming right now — unless the process named in their marker is gone.
-      try {
-        const owner = Number(fs.readFileSync(rp, "utf8").trim());
-        const abandoned = !holderAlive({ pid: owner }) || Date.now() - fs.statSync(rp).mtimeMs > LIMITS.RECLAIM_BACKSTOP_MS;
-        if (abandoned) fs.rmSync(rp, { force: true });
-      } catch {}
+    const st = fs.lstatSync(tmp, { bigint: true }), mine = { dev: st.dev, ino: st.ino };
+    const create = () => {
+      try { fs.linkSync(tmp, rp); heldMarkers.set(p, mine); return true; }
+      catch (e) { if (e.code !== "EEXIST") throw e; return false; }
+    };
+    if (create()) return true;
+    const seen = markerAt(rp);
+    if (!seen || !reclaimMarkerAbandoned(Number(seen.body), seen.mtimeMs)) return false;
+    try { fs.renameSync(rp, moved); } catch { return false; }
+    const got = markerAt(moved);
+    if (!got || got.dev !== seen.dev || got.ino !== seen.ino || got.body !== seen.body) {
+      try { fs.linkSync(moved, rp); } catch {}
       return false;
     }
-  } finally { fs.rmSync(tmp, { force: true }); }
+    return create();
+  } finally {
+    fs.rmSync(tmp, { force: true });
+    fs.rmSync(moved, { force: true });
+  }
+}
+// Is the marker at <p>.reclaim still the one this process created? Asked immediately before each act
+// under it, because a taker that moved it and could not put it back has removed it.
+function holdsReclaimMarker(p) {
+  const mine = heldMarkers.get(p), now = markerAt(`${p}.reclaim`);
+  return !!mine && !!now && now.dev === mine.dev && now.ino === mine.ino;
+}
+// Only OUR marker, and never by reading it and then removing the path: the marker is renamed to a name of
+// this run's own first and removed only if the moved file is this process's (its pid, and the dev:ino it
+// was created with). Anything else is linked back and false returned; if a fresh marker already stands
+// there, the moved one is removed, by the rule takeReclaimMarker keeps. The backstop above lets a peer
+// take a marker whose owner looks abandoned, and removing that peer's marker would reopen the
+// multi-holder window this serialisation exists to close.
+function dropReclaimMarker(p) {
+  const rp = `${p}.reclaim`, mine = heldMarkers.get(p);
+  heldMarkers.delete(p);
+  const moved = `${p}.${crypto.randomBytes(8).toString("hex")}.rtmp`;
+  try { fs.renameSync(rp, moved); } catch { return false; }
+  try {
+    const got = markerAt(moved);
+    if (got && got.body === String(process.pid) && (!mine || (got.dev === mine.dev && got.ino === mine.ino))) return true;
+    try { fs.linkSync(moved, rp); } catch {}
+    return false;
+  } finally { fs.rmSync(moved, { force: true }); }
+}
+
+// Remove a still-stale lock under the reclaim marker; another marker owner means retry acquisition.
+function reclaimStale(p, dir) {
+  let held;
+  try { held = takeReclaimMarker(p); }
+  catch (e) { fail(EXIT.USAGE, `cannot reclaim the stale lock ${p}: ${e.message}`); }
+  if (!held) return false;
+  let ours = true;
   try {
     // Ask again, under the reclaim lock. The lock may have been reclaimed by someone else and retaken by
     // a live process since we last looked; deleting it then is exactly the bug this exists to prevent.
     const now = inspectLock(p, dir);
-    if (!now.gone && reclaimable(now.held)) fs.rmSync(p, { force: true });
-  } finally {
-    // Only OUR marker. The backstop above lets a peer take a marker whose owner looks
-    // abandoned, and an unconditional remove here then deletes the marker that peer is reclaiming under —
-    // reopening the multi-holder window this serialisation exists to close.
-    try { if (fs.readFileSync(rp, "utf8").trim() === String(process.pid)) fs.rmSync(rp, { force: true }); } catch {}
-  }
-  return true;
+    if (!now.gone && !now.unreadable && reclaimable(now.held) && (ours = holdsReclaimMarker(p))) {
+      // unlink also removes a dangling owner link; rm(force) can leave it in place on Node/macOS.
+      try { fs.unlinkSync(p); } catch (e) { if (e.code !== "ENOENT") throw e; }
+      if (now.owner) fs.rmSync(now.owner, { force: true });
+    }
+  } finally { if (ours) dropReclaimMarker(p); else heldMarkers.delete(p); }
+  return ours;
 }
 
 // Hash the directory's dev:ino identity so case variants and symlinks share a lock.
 // Accept the caller's stat to avoid another lookup; export the key so tests use the same rule.
 const lockKey = (st) => `${crypto.createHash("sha256").update(`${st.dev}:${st.ino}`).digest("hex")}.lock`;
 
-let lockPath = null;
+// The lock this run holds: the shared link, the owner file it names, a descriptor kept open on that file
+// and the file's dev:ino at publication. The open descriptor pins the inode number, so no later file can
+// be given it while this run lives, and the update writes through it rather than by path.
+let lockPath = null, lockOwnerPath = null, lockOwnerFd = null, lockOwnerId = null, lockBody = null;
 function acquireLock(dir) {
   let st;
   try { st = fs.statSync(dir); }
@@ -1491,30 +1574,36 @@ function acquireLock(dir) {
   catch (e) { fail(EXIT.USAGE, `cannot create the lock directory ${LOCK_DIR}: ${e.message}`); }
   // The file name is a hash, so the contents have to say what it locks — for the message below and for a
   // human who finds a stale one.
-  // selfIdentity(), not a second processIdentity() call: what is written here is what lockIsOurs()
-  // compares the file against later, and two reads of `ps` are two answers that can differ — one of
-  // them a transient failure, which would leave this run unable to update or release its own lock.
-  const body = JSON.stringify({ pid: process.pid, identity: selfIdentity(), cwd: dir,
-                                started: new Date().toISOString() });
-  // Publish a fully written private temp file with link(2), which fails EEXIST if a peer won.
-  // Creating an empty lock before writing its body would expose it as abandoned and admit another writer.
-  const tmp = `${p}.${crypto.randomBytes(8).toString("hex")}.tmp`;
+  // Record the cached start-time identity so a recycled pid can still be reclaimed.
+  const body = { pid: process.pid, identity: selfIdentity(), cwd: dir, started: new Date().toISOString() };
+  // Publish a fully written owner file with an exclusive symlink; retain its unique name for release.
+  const tmp = `${p}.${crypto.randomBytes(16).toString("hex")}.owner`;
+  let unreadable = null;
   for (let attempt = 0; attempt < LIMITS.LOCK_ATTEMPTS; attempt++) {
-    let linked = false;
+    let linked = false, fd = null, id = null;
     try {
-      fs.writeFileSync(tmp, body);
-      fs.linkSync(tmp, p);
+      fd = fs.openSync(tmp, "wx", 0o600);
+      fs.writeFileSync(fd, JSON.stringify(body));
+      const st = fs.fstatSync(fd, { bigint: true });
+      id = { dev: st.dev, ino: st.ino };
+      fs.symlinkSync(path.basename(tmp), p);
       linked = true;
     } catch (e) {
       if (e.code !== "EEXIST") fail(EXIT.USAGE, `cannot lock ${dir} (${p}): ${e.message}`);
     } finally {
-      fs.rmSync(tmp, { force: true });
+      if (!linked && fd !== null) { try { fs.closeSync(fd); } catch {} fs.rmSync(tmp, { force: true }); }
     }
-    if (linked) { lockPath = p; return; }
+    if (linked) {
+      lockPath = p; lockOwnerPath = tmp; lockOwnerFd = fd; lockOwnerId = id; lockBody = body;
+      return;
+    }
     {
       const seen = inspectLock(p, dir);
       // A lock that vanished between create and read was released by a peer; retry acquisition.
       if (seen.gone) { sleepSync(LIMITS.LOCK_RETRY_MS); continue; }
+      // Asked again rather than reclaimed; if it never parses, the run is refused below.
+      unreadable = seen.unreadable ? seen.owner : null;
+      if (unreadable) { sleepSync(LIMITS.LOCK_RETRY_MS); continue; }
       // An unparsable lock names no live pid, so it cannot be honoured. Since creation is atomic this is
       // no longer a half-written file from a peer — it is a hand-made or corrupted one — but treating it
       // as held would wedge the directory forever, so it is reclaimed like any other stale lock.
@@ -1539,6 +1628,9 @@ function acquireLock(dir) {
       if (!reclaimStale(p, dir)) { sleepSync(LIMITS.LOCK_RETRY_MS); continue; }
     }
   }
+  if (unreadable) fail(EXIT.BUSY,
+    `${dir} is locked by ${p}, whose owner file ${unreadable} does not hold a body that can be read, so whether its run is alive cannot be established; ` +
+    `leave both files while any entrust run may be using ${dir}. If none is, remove ${p} and ${unreadable} and retry`);
   fail(EXIT.BUSY, `${dir} is contended: the lock at ${p} changed hands ${LIMITS.LOCK_ATTEMPTS} times without settling`);
 }
 // A test seam and nothing else: pause between an ownership check and the act it guards, so a suite can
@@ -1554,66 +1646,66 @@ function lockSeam(p) {
   sleepSync(ms);
   try { fs.rmSync(mark, { force: true }); } catch {}
 }
-// Is the body now at the lock path still OURS? The pid alone does not say so: a lock file outlives the
-// run that wrote it, and a recycled pid — or a peer in another pid namespace over one mounted state
-// directory, which acquireLock's temp naming already reasons about — carries this run's number without
-// being this run. So the start-time identity beside it is compared too, by the rule holderAlive uses,
-// and the three answers are:
-//   pid differs                        -> not ours, whatever the identities say;
-//   both identities present, differing -> not ours; this is the only positive proof of a stranger;
-//   either identity missing            -> OURS, on the pid alone.
-// That last line is deliberate and it is the only one that can be wrong in our favour. It is what a body
-// written by an older driver, one whose `ps` failed at acquisition, and one read by a run whose own `ps`
-// fails at exit all look like — and a rule that refused there would leave those runs unable to update or
-// release the lock they hold, wedging the directory until the next run reclaims it as stale. A missing
-// identity proves nothing in either direction, so it may not be read as proof of a stranger.
-function lockIsOurs(held) {
-  if (Number(held?.pid) !== process.pid) return false;
-  const mine = selfIdentity();
-  return !(typeof held?.identity === "string" && typeof mine === "string" && held.identity !== mine);
+// Is the file at the owner path still the one this run created? Its name can be read through the link,
+// so a process can put another file there; dev:ino, taken from the descriptor at publication, tells them
+// apart. Opened without following a link and without blocking, as inspectLock opens a lock.
+function ownerFileIsOurs() {
+  let fd;
+  try { fd = fs.openSync(lockOwnerPath, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | fs.constants.O_NOFOLLOW); }
+  catch { return false; }
+  try {
+    const st = fs.fstatSync(fd, { bigint: true });
+    return st.dev === lockOwnerId.dev && st.ino === lockOwnerId.ino;
+  } finally { fs.closeSync(fd); }
 }
-// The lock body gains what could not be known when it was taken: the app-server's process group exists
-// only after the spawn. Replaced by rename, so a reader sees one whole body or the other; only ever our
-// own lock, and never fatal — a lock that cannot be updated is still a lock.
-//
-// Both acts below address the PATH while the check addresses the body that was READ, so between the two
-// a peer that reclaimed this lock and put its own there loses it — to a rename it never saw, or to an
-// unlink by a run that owns nothing any more. POSIX has no conditional rename and no conditional
-// unlink, so the window is NARROWED and never closed: asking again immediately before acting, and never
-// acting on a body read earlier, leaves the gap between that last check and the one syscall that acts,
-// and a peer whose lock lands in THAT gap is still clobbered or deleted.
+const notOurs = (what) => process.stderr.write(
+  `entrust: the lock's owner file ${lockOwnerPath} is no longer the file this run created, so ${what}\n`);
+// The body gains what could not be known at acquisition: the app-server's process group exists only after
+// the spawn. Written through the descriptor, so no path is renamed over and a file put at the owner path
+// meanwhile is never touched. The new body goes in over the old before the file is cut to its length, so a
+// reader sees the old body, the new one, or one that does not parse, which inspectLock leaves alone. Never
+// fatal: a lock that cannot be updated is still a lock.
 function updateLock(fields) {
-  if (!lockPath) return;
+  if (lockOwnerFd === null) return;
   try {
-    const cur = readJson(lockPath);
-    if (!lockIsOurs(cur)) return;
-    const tmp = `${lockPath}.${crypto.randomBytes(8).toString("hex")}.tmp`;
-    try {
-      // The body is built first so the re-read is the LAST thing before the rename, not the second to
-      // last: a writeFileSync between them is a window of its own.
-      fs.writeFileSync(tmp, JSON.stringify({ ...cur, ...fields }));
-      lockSeam(lockPath);
-      // A body that cannot be read here reads as not-ours and the update is dropped, which is the right
-      // way to be wrong: what is left behind is our own lock WITHOUT appServerPgid, so a later reclaimer
-      // asks only about this driver's pid and not about the codex group it started — a lock held too
-      // long, never a peer's lock destroyed.
-      if (!lockIsOurs(readJson(lockPath))) return;
-      fs.renameSync(tmp, lockPath);
-    } finally { fs.rmSync(tmp, { force: true }); }
+    lockSeam(lockPath);
+    if (!ownerFileIsOurs()) return notOurs("it was left as it is and the app-server group is not recorded in it");
+    lockBody = { ...lockBody, ...fields };
+    const buf = Buffer.from(JSON.stringify(lockBody));
+    fs.writeSync(lockOwnerFd, buf, 0, buf.length, 0);
+    fs.ftruncateSync(lockOwnerFd, buf.length);
+    fs.fsyncSync(lockOwnerFd);
   } catch {}
 }
+// Under the reclaim marker no run that follows these rules can remove the link or make a new one, so the
+// check that the link and the owner file are still this run's and the unlinks that follow cannot be split
+// by one. The link goes first, then the owner file. A marker held by a live peer leaves the link, naming
+// nothing, for the next run on this directory to reclaim; the owner file, checked the same way, still goes.
+// A process that ignores the marker can still land between the check and an unlink: POSIX has no unlink
+// that names an inode.
 function releaseLock() {
-  if (!lockPath) return;
+  if (lockOwnerFd === null) return;
   try {
-    if (lockIsOurs(readJson(lockPath))) {
-      lockSeam(lockPath);
-      // Same rule, same direction: a read that fails leaves the file where it is, and the directory is
-      // then held by a lock whose run has exited — which the next run reclaims as stale once it finds
-      // this pid and its app-server group gone, without anyone's help.
-      if (lockIsOurs(readJson(lockPath))) fs.rmSync(lockPath, { force: true });
+    lockSeam(lockPath);
+    let held = false;
+    // Twice: the first attempt may only have removed a marker whose owner is gone. A marker that cannot
+    // be written at all counts as busy.
+    for (let attempt = 0; attempt < 2 && !held; attempt++) {
+      try { held = takeReclaimMarker(lockPath); } catch { break; }
     }
+    let mine = held;
+    try {
+      if (!ownerFileIsOurs()) notOurs("it and the lock's link were left where they are");
+      else {
+        mine = held && holdsReclaimMarker(lockPath);
+        if (mine && linkTarget(lockPath).target === path.basename(lockOwnerPath)) try { fs.unlinkSync(lockPath); } catch {}
+        fs.unlinkSync(lockOwnerPath);
+        if (!mine) process.stderr.write(`entrust: ${lockPath}.reclaim is held by another process, so the lock's link was left for the next run on this directory to reclaim\n`);
+      }
+    } finally { if (mine) dropReclaimMarker(lockPath); else heldMarkers.delete(lockPath); }
   } catch {}
-  lockPath = null;
+  try { fs.closeSync(lockOwnerFd); } catch {}
+  lockPath = lockOwnerPath = lockOwnerFd = lockOwnerId = lockBody = null;
 }
 
 // ---------------------------------------------------------------- git
@@ -4169,8 +4261,9 @@ const RUN_AS_MAIN = (() => {
 // and a second copy of "is this pid still the holder" is a second answer that can disagree with the
 // lock it is about. Every name here is already a module-scope binding, so exporting them changes no
 // behaviour, and RUN_AS_MAIN above keeps an import from starting a turn, a handler or a state directory.
-export { EXIT, FIELDS, LADDER, PINNED_CODEX, PROMPT_FIELDS, VERSION, canonPath, holderAlive, lockKey,
-         processIdentity, reclaimable };
+export { EXIT, FIELDS, LADDER, PINNED_CODEX, PROMPT_FIELDS, RECLAIM_BACKSTOP_MS, VERSION, canonPath,
+         dropReclaimMarker, holderAlive, holdsReclaimMarker, lockKey, processIdentity, reclaimMarkerAbandoned,
+         reclaimable, takeReclaimMarker };
 
 if (RUN_AS_MAIN) {
   process.stdout.on("error", stdoutFailed);

@@ -36,7 +36,9 @@ is the one result that reads as evidence and is not.
 re-exports the driver's own constants — exit codes, the agent-field table, the exit ladder, the pinned
 codex version, the lock key — rather than letting a suite restate them. `evals/lib/scenarios.mjs` holds
 what `cli.test.mjs` and `protocol.test.mjs` share: the shim, every file a case points the driver at, and
-the runner that gives each case its own state root. `driver.mjs` runs `main()` only when it IS the entry
+the runner that gives each case its own state root. `evals/lib/lock-window.mjs` instruments a temporary
+copy of the driver with a pause before the lock's one rename or unlink, for the two cases of
+`lock.test.mjs` that land a peer's lock in that gap (E44). `driver.mjs` runs `main()` only when it IS the entry
 point, which is what makes importing it safe.
 
 `.github/workflows/ci.yml` runs `node evals/run-all.mjs` on every leg of its OS × Node matrix; the suites
