@@ -360,7 +360,8 @@ const HELP = [
                      server constrains generation, the driver checks the result
                      independently, and one corrective turn is spent on a mismatch
                      before exit 13. Implies --answer-json, and takes a STRICT
-                     schema only — see --help-all
+                     schema only. maxLength and maxItems are local caps; set them
+                     in a per-run schema file to change the shipped defaults — see --help-all
   --brief            ask for a summary, not a working note, and cap what comes
                      back inline. The full answer is at answerPath either way:
                      <state>/answers/<threadId>-<startedAtMs>.md, startedAtMs the
@@ -383,6 +384,14 @@ const HELP = [
   carry "additionalProperties": false and list every one of its properties in
   "required" (use "type": ["string","null"] where you wanted optional). Both are
   checked here, before the turn, because the server rejects them after it.
+  maxLength (string characters) and maxItems (array entries) are validated here,
+  removed from the copy sent to the server and checked locally. Codex 0.155.1
+  accepts both keywords (two Luna turns, 2026-09-27); Luna P6 returned exactly
+  40 characters when asked for about 400 under maxLength 40: the server cuts a
+  field at its cap, which would pass the local check with nothing kept. A final
+  overflow keeps the complete answer at answerPath and clips answerJson to its
+  caps. Copy the shipped schema under $TMPDIR for one run and edit only its caps;
+  the original file remains the default.
   A prompt file's header lines are NAME: at column 0, upper-case; a blank, a # or
   any other line ends the header, and what follows is body even if it looks like
   a field. A TASK:, CHECK: or RETURN: line always opens the body. An ALL-CAPS
@@ -814,7 +823,8 @@ function parseArgs(argv) {
   }
   // Read and sanity-check the schema now, for the same reason as the regex above.
   if (o.outputSchemaFile !== undefined) {
-    ({ schema: o.outputSchema, unchecked: o.schemaUnchecked } = validateOutputSchema(o.outputSchemaFile));
+    ({ schema: o.outputSchema, serverSchema: o.serverSchema, caps: o.schemaSizeCaps,
+      unchecked: o.schemaUnchecked } = validateOutputSchema(o.outputSchemaFile));
     o.answerJson = true;   // the schema subsumes the bare-JSON demand
   }
   return o;
@@ -864,7 +874,7 @@ function validateOutputSchema(file) {
   // additionalProperties is in the SUPPORTED set because the strict rule above makes it mandatory:
   // listing a keyword as unchecked on every single schema would be noise, so the validator honours it
   // instead.
-  const SUPPORTED = new Set(["type", "required", "properties", "enum", "items", "additionalProperties",
+  const SUPPORTED = new Set(["type", "required", "properties", "enum", "items", "maxLength", "maxItems", "additionalProperties",
     "description", "title", "$schema", "$id", "default", "examples"]);
   const unchecked = new Set();
   (function walk(s) {
@@ -877,9 +887,27 @@ function validateOutputSchema(file) {
     }
   })(schema);
   if (Array.isArray(schema.items)) unchecked.add("items(tuple form)");
+  const caps = [];
+  (function collect(s, at = "$") {
+    if (!s || typeof s !== "object" || Array.isArray(s)) return;
+    for (const key of ["maxLength", "maxItems"]) if (Object.hasOwn(s, key)) {
+      if (!Number.isSafeInteger(s[key]) || s[key] < 0)
+        fail(EXIT.USAGE, `--output-schema ${at}.${key} must be a nonnegative integer`);
+      caps.push({ path: at, keyword: key, limit: s[key] });
+    }
+    for (const [k, v] of Object.entries(s.properties ?? {})) collect(v, `${at}.${k}`);
+    if (s.items && !Array.isArray(s.items)) collect(s.items, `${at}[]`);
+  })(schema);
+  const serverSchema = JSON.parse(JSON.stringify(schema));
+  (function strip(s) {
+    if (!s || typeof s !== "object" || Array.isArray(s)) return;
+    delete s.maxLength; delete s.maxItems;
+    for (const v of Object.values(s.properties ?? {})) strip(v);
+    if (s.items && !Array.isArray(s.items)) strip(s.items);
+  })(serverSchema);
   // Returned, never written here: this runs inside readOpts, and a line printed from there would come
   // out ahead of the pid line every page tells a caller to read off stderr first. main() says it.
-  return { schema, unchecked: unchecked.size ? [...unchecked].sort() : null };
+  return { schema, serverSchema, caps, unchecked: unchecked.size ? [...unchecked].sort() : null };
 }
 
 function resolveDir(p, what) {
@@ -2770,6 +2798,7 @@ let tokenUsage = null;      // the latest thread/tokenUsage/updated payload: wha
 let rateLimits = null;      // the account snapshot read once before any thread is started
 let turnDiffPath = null;    // where the last turn/diff/updated payload was persisted, or null when it could not be written
 let outputAttempts = 0;     // turns STARTED under --output-schema; at most one corrective retry
+let sizeAttemptPath = null;  // the complete size-failed first answer, before a corrective turn overwrites it
 let requestFn = null;       // main()'s request closure, hoisted so the corrective turn can reach it
 let lastTurnParams = null;  // the original turn/start params, so a transient retry replays them exactly
 const transientRetries = [];  // {cause, delayMs} per retry taken, for the report
@@ -3098,7 +3127,11 @@ function handleMessage(msg, bytes = 0) {
     // turn cut off by the deadline is still an attempt the report admits to.
     if (opts.outputSchema && turnStatus === "completed") {
       const errs = answerSchemaErrors(currentFinalAnswer());
-      if (errs.length && outputAttempts < 2) { startCorrectiveTurn(errs); return; }
+      if (errs.length && outputAttempts < 2) {
+        if (errs.some((e) => /maxLength|maxItems/.test(e)))
+          sizeAttemptPath = persistAnswer(currentFinalAnswer(), ".attempt1");
+        startCorrectiveTurn(errs); return;
+      }
     }
     finish();
   }
@@ -3121,7 +3154,7 @@ function currentFinalMsg() {
 }
 const currentFinalAnswer = () => currentFinalMsg()?.text ?? "";
 
-// A deliberately SHALLOW validator — type, required, properties, enum, items — not a JSON Schema
+// A deliberately SHALLOW validator — type, required, properties, enum, items and size caps — not a JSON Schema
 // implementation. The server already constrains generation with the full schema; this is the driver's
 // independent check of the load-bearing subset, kept small enough to trust without a dependency.
 // Unknown keywords are ignored, which fails OPEN for exotic schemas: say so rather than pretend.
@@ -3138,6 +3171,10 @@ function schemaErrors(value, schema, at = "$") {
   // Compare enum members structurally so object key order does not change validity.
   if (Array.isArray(schema?.enum) && !schema.enum.some((e) => deepEqual(e, value)))
     errs.push(`${at}: not one of the permitted values`);
+  if (typeOf(value) === "string" && schema?.maxLength !== undefined && [...value].length > schema.maxLength)
+    errs.push(`${at}: ${[...value].length} characters, maxLength ${schema.maxLength}`);
+  if (typeOf(value) === "array" && schema?.maxItems !== undefined && value.length > schema.maxItems)
+    errs.push(`${at}: ${value.length} entries, maxItems ${schema.maxItems}`);
   if (typeOf(value) === "object") {
     // Use hasOwn so an inherited Object.prototype property cannot satisfy required.
     for (const k of schema?.required ?? []) if (!Object.hasOwn(value, k)) errs.push(`${at}.${k}: required and missing`);
@@ -3214,10 +3251,10 @@ function startCorrectiveTurn(errs) {
     threadId: rootThreadId,
     input: [{ type: "text", text:
       `Your final answer did not match the required JSON schema. Errors:\n- ${errs.slice(0, 8).join("\n- ")}\n` +
-      "Reply again with ONE corrected JSON object and nothing else — no prose before or after, no code fence.",
+      "If a field is too long, put its whole content in a file under $TMPDIR and name that file in artifacts; leave a summary of every material finding in the field. Reply again with ONE corrected JSON object and nothing else — no prose before or after, no code fence.",
       text_elements: [] }],
     model: opts.model ?? null, effort: null,
-    outputSchema: opts.outputSchema
+    outputSchema: opts.serverSchema
   }).catch((e) => {
     // If corrective turn/start is refused, report the first turn's answer and schemaErrors with exit 13;
     // its completed evidence must not be lost to a transport-only abort.
@@ -3239,6 +3276,25 @@ function parseAnswerJson(text) {
   const body = fenced ? fenced[1] : text.trim();
   try { return { answerJson: JSON.parse(body), answerJsonError: null }; }
   catch (e) { return { answerJson: null, answerJsonError: e.message }; }
+}
+
+function clipToSchema(value, schema, at = "$") {
+  const clipped = [];
+  const walk = (v, s, p) => {
+    if (typeof v === "string" && Number.isInteger(s?.maxLength) && [...v].length > s.maxLength) {
+      clipped.push({ path: p, limit: s.maxLength, length: [...v].length });
+      return [...v].slice(0, s.maxLength).join("");
+    }
+    if (Array.isArray(v)) {
+      const max = Number.isInteger(s?.maxItems) ? s.maxItems : v.length;
+      if (v.length > max) clipped.push({ path: p, limit: max, length: v.length });
+      return v.slice(0, max).map((item, i) => walk(item, s?.items, `${p}[${i}]`));
+    }
+    if (v && typeof v === "object") return Object.fromEntries(Object.entries(v)
+      .map(([key, item]) => [key, walk(item, s?.properties?.[key], `${p}.${key}`)]));
+    return v;
+  };
+  return { value: walk(value, schema, at), clipped };
 }
 
 // The rollout under ~/.codex/sessions carries the originator, the model provider and the whole turn —
@@ -3495,7 +3551,12 @@ function classifyEvidence() {
   const answerPartial = partialText ? (opts.brief ? clip(partialText, LIMITS.BRIEF_LINES, LIMITS.BRIEF_BYTES, answerPartialPath) : partialText) : null;
   // Capped only when asked. A caller who did not ask for --brief gets exactly what the model said, because
   // silently truncating an answer is how a coordinator ends up acting on half a sentence.
-  const answer = opts.brief ? clip(fullAnswer, LIMITS.BRIEF_LINES, LIMITS.BRIEF_BYTES, answerPath) : fullAnswer;
+  const sizeOverflow = schemaErrs?.some((e) => /maxLength|maxItems/.test(e)) ?? false;
+  const parsed = sizeOverflow ? parseAnswerJson(fullAnswer) : null;
+  const bounded = sizeOverflow && parsed?.answerJson && typeof parsed.answerJson === "object"
+    ? clipToSchema(parsed.answerJson, opts.outputSchema) : null;
+  const answer = bounded ? JSON.stringify(bounded.value)
+    : opts.brief ? clip(fullAnswer, LIMITS.BRIEF_LINES, LIMITS.BRIEF_BYTES, answerPath) : fullAnswer;
   const commentaryOnly = !final && messages.length > 0;
   // A turn that said things but answered nothing: the rollout at receiptPath holds every message, and
   // this is the same text one open away. Convenience, not recovery.
@@ -3503,7 +3564,7 @@ function classifyEvidence() {
     ? persistAnswer(messages.map((m) => `## ${m.phase ?? "unphased"}\n\n${m.text}`).join("\n\n"), ".commentary")
     : null;
   return { ran, commandsRan, blocked, probeNegatives, failedCmds, declinedCmds, failedPatches, expected, pipedToPager, final,
-           fullAnswer, schemaErrs, answerPath, answer, commentaryOnly, commentaryPath,
+           fullAnswer, schemaErrs, answerPath, answer, sizeOverflow, bounded, commentaryOnly, commentaryPath,
            answerPartial, answerPartialPath: answerPartial ? answerPartialPath : null };
 }
 
@@ -3709,7 +3770,7 @@ function writeReport(ev, verifySkipped, codeOverride) {
   const receiptPath = receipt?.path ?? null;
   const code = codeOverride ?? decideExitCode(ev, verifySkipped);
   const { ran, blocked, probeNegatives, failedCmds, declinedCmds, failedPatches, expected, pipedToPager, final,
-          fullAnswer, schemaErrs, answerPath, answer, commentaryOnly, commentaryPath,
+          fullAnswer, schemaErrs, answerPath, answer, sizeOverflow, bounded, commentaryOnly, commentaryPath,
           answerPartial, answerPartialPath } = ev;
   // Where the wall clock went. commandMs is the server's own per-command measurement, so modelMs is the
   // remainder after setup and the work the model ordered — the part a budget must size. A remainder, not a
@@ -3749,9 +3810,11 @@ function writeReport(ev, verifySkipped, codeOverride) {
     tokenUsage, rateLimits, turnDiffPath,
     ...(opts.outputSchema ? { outputAttempts, outputSchemaOk: schemaErrs.length === 0,
         schemaErrors: schemaErrs.length ? schemaErrs.slice(0, 12) : null,
-        // What the driver's shallow validator could NOT re-verify; the server still enforced these
-        // during generation. Null means the whole schema was within the checked subset.
-        schemaKeywordsUnchecked: opts.schemaUnchecked } : {}),
+        // What the driver's shallow validator could NOT re-verify; server enforcement of these
+        // keywords is unknown. Null means the whole schema was within the checked subset.
+        schemaKeywordsUnchecked: opts.schemaUnchecked, schemaSizeCaps: opts.schemaSizeCaps,
+        schemaOverflow: sizeOverflow ? { completeAnswerPath: answerPath, clipped: bounded?.clipped ?? [] } : null,
+        answerAttemptPaths: sizeAttemptPath ? [sizeAttemptPath] : [] } : {}),
     commandsSucceeded: ran.length, commandsMatchingExpectation: expected.length,
     // commandsFailed excludes the commands counted in commandsDeclined.
     // commandsDeclined counts commands and escalations counts approval requests; the exit ladder reads
@@ -3832,7 +3895,8 @@ function writeReport(ev, verifySkipped, codeOverride) {
     answer, answerPath, answerTruncated: answer !== fullAnswer,
     // Include answerJson only when requested, distinguishing a parse failure from a flag that was not given.
     // Parse the full answer before BRIEF_LINES / BRIEF_BYTES clipping so the cap cannot corrupt JSON.
-    ...(opts.answerJson ? parseAnswerJson(fullAnswer) : {})
+    ...(opts.answerJson ? bounded ? { answerJson: bounded.value, answerJsonError: null }
+      : parseAnswerJson(fullAnswer) : {})
   };
 
   const out = `${JSON.stringify({ ...report, commands }, null, 2)}\n`;
@@ -3948,6 +4012,8 @@ function developerInstructions() {
     opts.network
       ? "You have network access: use it for what is not in this checkout, keep to the hosts this task names, and cite what you fetched."
       : "You have no network access; cite files you actually read.",
+    `Your writable roots are: ${[canonPath(process.env.TMPDIR), ...(opts.level === "write" ? [cwd, ...roots] : [])].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ")}; /tmp is not one. Put generated files under a granted root and name their paths.`,
+    "If a task says a daemon, socket, or mounted checkout is unavailable, use its staged inputs and named alternative commands; record an unavailable command's exact diagnostic instead of guessing.",
     "If a command cannot run, record it in one line — the command, whether it started, its exit status if there was one, and the exact diagnostic — then continue. Write \"unknown\" for what you could not observe rather than inferring it.",
     "Never report a test as passing unless you ran it and saw the count in this turn.",
     "State uncertainty plainly rather than guessing; an honest 'I could not determine this' is useful.",
@@ -4119,7 +4185,7 @@ async function main() {
   process.stderr.write(`entrust: pid=${process.pid} identity=${selfIdentity() ?? "unknown"}`
     + `${reportFilePath === null ? "" : ` reportPath=${reportFilePath}`}\n`);
   if (opts.schemaUnchecked)
-    process.stderr.write(`entrust: --output-schema uses keywords the driver's validator does not check (${opts.schemaUnchecked.join(", ")}); the server still enforces them during generation, and the report lists them as schemaKeywordsUnchecked\n`);
+    process.stderr.write(`entrust: --output-schema uses keywords the driver's validator does not check (${opts.schemaUnchecked.join(", ")}); server enforcement is unknown, and the report lists them as schemaKeywordsUnchecked\n`);
   await setup();
   setupDoneMs = Date.now();
   armWallClock();
@@ -4234,7 +4300,7 @@ async function main() {
     // coordinator saw.
     input: [...(opts.attachments ?? []), { type: "text", text: prompt, text_elements: [] }],
     model: opts.model ?? null, effort: null,
-    ...(opts.outputSchema ? { outputSchema: opts.outputSchema } : {})
+    ...(opts.outputSchema ? { outputSchema: opts.serverSchema } : {})
   };
   await conn.request("turn/start", lastTurnParams);
 }

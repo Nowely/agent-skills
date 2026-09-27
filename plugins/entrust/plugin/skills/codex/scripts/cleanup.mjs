@@ -429,8 +429,14 @@ function launcherRecord(agentDir) {
 // A run's own liveness, taken from the run directory and from the agent items that name it. Separate
 // from the row so a removal can take it again immediately before it acts.
 function runLiveness(runPath, agents) {
-  const out = { inUse: false, readable: true, agents: 0, reports: 0, liveAgent: null,
+  const out = { inUse: false, readable: true, agents: 0, reports: 0, plan: false, liveAgent: null,
                 liveAgentItem: false, cwds: [] };
+  const plan = statAt(path.join(runPath, "plan.txt"));
+  if (!plan.ok) out.readable = false;
+  else if (plan.value !== null) {
+    out.plan = plan.value.isFile() && !plan.value.isSymbolicLink();
+    if (!out.plan) out.readable = false;
+  }
   const kids = entriesAt(runPath);
   if (!kids.ok || kids.value === null) out.readable = false;
   else for (const s of kids.value.sort()) {
@@ -477,13 +483,13 @@ function listRuns(roots, agents) {
     for (const runName of namesIn(path.join(roots.ORCH, slugName)).sort()) {
       const row = scratchRow("run", roots.S, ["orchestrate", slugName, runName],
         path.join(roots.ORCH, slugName, runName),
-        { key: `${slugName}/${runName}`, run: runName, named: false, agents: 0, reports: 0,
+        { key: `${slugName}/${runName}`, run: runName, named: false, agents: 0, reports: 0, plan: false,
           liveAgent: null, liveAgentItem: false });
       rows.push(row);
       if (!row.chainOk) continue;
       const live = runLiveness(row.path, agents);
       Object.assign(row, { inUse: live.inUse, readable: row.readable && live.readable,
-                           agents: live.agents, reports: live.reports, liveAgent: live.liveAgent,
+                           agents: live.agents, reports: live.reports, plan: live.plan, liveAgent: live.liveAgent,
                            liveAgentItem: live.liveAgentItem });
       // The slug says which project the coordinator ran in, and a slug is never proof: `a-b` and
       // `a_b` share one. A cwd a report actually carries is the proof, and every one of them must
@@ -982,7 +988,8 @@ function reasonRow(row, many) {
           : "An agent of this run is still running.";
       // Said of what this reads and of nothing else: a run's own notes may name agents this layout
       // does not, so the sentence speaks of agent directories and reports, never of all its contents.
-      return (row.agents === 0 ? "No agent directory sits in it; only its own files remain"
+      return (row.agents === 0 ? row.plan ? "The approved plan remains; no agent directory sits in it"
+                                      : "No agent directory sits in it; only its own files remain"
         : row.reports === 1 ? "The one agent returned its report"
         : row.reports === 2 ? "Both agents returned reports"
         : `All ${countWord(row.reports)} agents returned reports`)

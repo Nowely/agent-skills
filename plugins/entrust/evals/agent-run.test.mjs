@@ -10,8 +10,8 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { EXIT, FAKE, SCRIPTS, codexShim, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
-import { ACCEPTED, REFUSED, STATUS_LINES, TAKEN, agentDirOf, shortName } from "../plugin/skills/codex/scripts/agent-run.mjs";
+import { DRIVER, EXIT, FAKE, SCRIPTS, codexShim, registry, runCases, skip, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
+import { ACCEPTED, REFUSED, STATUS_LINES, TAKEN, agentDirOf, classifyRole, planRowOf, shortName } from "../plugin/skills/codex/scripts/agent-run.mjs";
 
 const LAUNCHER = path.join(SCRIPTS, "agent-run.mjs");
 const DRIVER_SRC = fs.readFileSync(path.join(SCRIPTS, "driver.mjs"), "utf8");
@@ -86,12 +86,12 @@ const preload = (file) => ({ NODE_OPTIONS: `--require "${file}"` });
 
 const { cases: CASES, test } = registry();
 
-test("--help names both modes and exits 0",
+test("--help names the plan, new and run modes and exits 0",
   "the page sends a reader here for what the launcher does; a script with no help is a promise nobody can check",
   async () => {
     const { code, out } = await spawnNode([LAUNCHER, "--help"], { killAfterMs: 10000 }).done;
     if (code !== 0) return `--help exited ${code}`;
-    for (const s of ["--new --report-file REPORT", "--run --report-file REPORT", "--status", "RUNNING=", "--check-prompt-file", ...STATUS_LINES]) if (!out.includes(s)) return `--help does not mention ${s}`;
+    for (const s of ["--plan --run-dir RUN", "--plan --amend", "--new --report-file REPORT", "--run --report-file REPORT", "--status", "RUNNING=", "--check-prompt-file", "planRowOf", "classifyRole", "unknown", "<absolute dir>", ...STATUS_LINES]) if (!out.includes(s)) return `--help does not mention ${s}`;
     return true;
   });
 
@@ -705,6 +705,98 @@ const newAgent = (report, body = PROMPT, env = {}) => {
   h.child.stdin.end(body);
   return h.done;
 };
+
+test("D6 --plan registers rows, --new refuses an unlisted id, and an explicit amendment admits it",
+  "the plan stop binds Codex launches before a prompt file can appear",
+  async () => {
+    const runDir = tempDir("agent-run-plan.");
+    const plan = (rows, amend = false) => {
+      const h = spawnNode([LAUNCHER, "--plan", ...(amend ? ["--amend"] : []), "--run-dir", runDir],
+        { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 10000 });
+      h.child.stdin.end(rows);
+      return h.done;
+    };
+    const first = await plan("id | model | role | writes | tokens\nA | sol | writer | worktree | 1000\n");
+    const expected = `PLAN=${path.join(runDir, "plan.txt")}\nAGENT=A sol worktree\nWORKERS=1\nCHECKING=0\n`;
+    if (first.code !== 0 || first.out !== expected) return `registration: exit ${first.code}, ${JSON.stringify(first.out)}`;
+    const outsider = path.join(runDir, "B", "report.json");
+    const refused = await newAgent(outsider);
+    const reason = `ERROR=B is not in the approved plan at ${path.join(runDir, "plan.txt")}; amend it with --plan --amend and show the amendment\n`;
+    if (refused.code !== 2 || refused.out !== reason || fs.existsSync(path.join(runDir, "B", "agent", "prompt.txt")))
+      return `unlisted: exit ${refused.code}, ${JSON.stringify(refused.out)}`;
+    const amendment = await plan("B | luna | verifier | nothing | 400\n", true);
+    if (amendment.code !== 0 || amendment.out !== `AMENDED=${path.join(runDir, "plan.txt")}\nAGENT=B luna nothing\nWORKERS=1\nCHECKING=1\n`
+      || !/# amended \d{4}-\d\d-\d\dT/.test(read(path.join(runDir, "plan.txt")) ?? ""))
+      return `amendment: exit ${amendment.code}, ${JSON.stringify(amendment.out)}`;
+    const admitted = await newAgent(outsider);
+    if (admitted.code !== 0 || !fs.existsSync(path.join(runDir, "B", "agent", "prompt.txt")))
+      return `amended agent: exit ${admitted.code}, ${JSON.stringify(admitted.out)}`;
+    const bad = await plan("C | alien | writer | worktree | 100\n", true);
+    if (bad.code !== 2 || !bad.out.startsWith("ERROR=invalid model")) return `bad model: exit ${bad.code}, ${JSON.stringify(bad.out)}`;
+    const duplicate = await plan("A | sol | writer | worktree | 100\n", true);
+    if (duplicate.code !== 2 || !duplicate.out.startsWith("ERROR=duplicate agent id")) return `duplicate: exit ${duplicate.code}, ${JSON.stringify(duplicate.out)}`;
+    const scope = await plan("C | sol | writer | everywhere | 100\n", true);
+    return scope.code === 2 && scope.out.startsWith("ERROR=invalid writes") || `bad scope: exit ${scope.code}, ${JSON.stringify(scope.out)}`;
+  });
+
+test("D6 plan continuations, Claude rows, report shape, case, roles and unknown tokens",
+  "a plan approves one agent through sequential links and a Codex launch cannot occupy a Claude row or escape the report form",
+  async () => {
+    const runDir = tempDir("agent-run-links.");
+    const plan = (body, amend = false) => {
+      const h = spawnNode([LAUNCHER, "--plan", ...(amend ? ["--amend"] : []), "--run-dir", runDir],
+        { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 10000 });
+      h.child.stdin.end(body);
+      return h.done;
+    };
+    const rows = "id | model | role | writes | tokens\nSol-W3 | sol | writer | worktree | unknown\nOpus-R3 | opus | reviewer | nothing | 300\n";
+    const first = await plan(rows);
+    if (first.code !== 0 || !first.out.includes("WORKERS=1\nCHECKING=1")) return `plan exit=${first.code}: ${first.out}`;
+    if (classifyRole("writer") !== "worker" || classifyRole("reviewer") !== "checking" || classifyRole("misc") !== null)
+      return "role classifier disagrees";
+    const registered = [{ id: "Sol-W3", model: "sol" }, { id: "Opus-R3", model: "opus" }];
+    if (planRowOf("sol-w3-2", registered, runDir)?.previous !== "Sol-W3") return "exported matcher missed the continuation";
+    const launch = (name, tail = "report.json") => newAgent(path.join(runDir, name, tail));
+    const before = await launch("Sol-W3-2");
+    if (before.code !== 2 || !before.out.includes("has not ended")) return `continuation before exit: ${before.code} ${before.out}`;
+    const base = await launch("Sol-W3");
+    if (base.code !== 0) return `base: ${base.code} ${base.out} ${base.err}`;
+    fs.writeFileSync(path.join(runDir, "Sol-W3", "agent", "exit"), "0\n");
+    const second = await launch("Sol-W3-2");
+    if (second.code !== 0) return `continuation after exit: ${second.code} ${second.out}`;
+    const third = await launch("Sol-W3-3");
+    if (third.code !== 2 || !third.out.includes("Sol-W3-2, which has not ended")) return `third before exit: ${third.code} ${third.out}`;
+    for (const name of ["Sol-W3-1", "Sol-W3-02", "Sol-W3-x"]) {
+      const r = await launch(name);
+      if (r.code !== 2 || !r.out.includes("not in the approved plan")) return `bad suffix ${name}: ${r.code} ${r.out}`;
+    }
+    const claude = await launch("Opus-R3");
+    if (claude.code !== 2 || !claude.out.includes("is a Claude agent")) return `Claude row: ${claude.code} ${claude.out}`;
+    const wrong = await launch("B", "other.json");
+    const deep = await newAgent(path.join(runDir, "C", "x", "report.json"));
+    if (wrong.code !== 2 || deep.code !== 2 || !wrong.out.includes("/<row id or continuation>/report.json")
+      || !deep.out.includes("/<row id or continuation>/report.json")) return `report form: ${wrong.out} ${deep.out}`;
+    const duplicate = await plan("sol-w3 | sol | writer | nothing | 1\n", true);
+    const reserved = await plan("A-2 | sol | writer | nothing | 1\n", true);
+    const unknown = await plan("X | sol | other | nothing | 1\n", true);
+    return duplicate.code === 2 && reserved.code === 2 && unknown.code === 2
+      && duplicate.out.includes("duplicate agent id") && reserved.out.includes("form names a continuation")
+      && unknown.out.includes("invalid role") || `plan refusals: ${duplicate.out} ${reserved.out} ${unknown.out}`;
+  });
+
+test("D16 --new registers a prompt with maxLength and the driver's offline check accepts it",
+  "size keywords are a valid schema declaration before launch, regardless of server support",
+  async () => {
+    const schema = path.join(tempDir("agent-run-schema."), "caps.json");
+    fs.writeFileSync(schema, JSON.stringify({ type: "object", properties: { result: { type: "string", maxLength: 1 } }, required: ["result"], additionalProperties: false }));
+    const report = path.join(tempDir("agent-run-cap."), "A", "report.json");
+    const prompt = `RIGHTS: read ${shimDir}\nOUTPUT_SCHEMA: ${schema}\nTASK: return result\n`;
+    const added = await newAgent(report, prompt);
+    if (added.code !== 0) return `--new exit ${added.code}: ${added.out} ${added.err}`;
+    const checked = spawnSync(process.execPath, [DRIVER, "--check-prompt-file", path.join(agentDirOf(report), "prompt.txt")], { encoding: "utf8" });
+    return checked.status === 0 && checked.stdout === "" && checked.stderr === ""
+      || `--check-prompt-file exit ${checked.status}: ${checked.stderr}`;
+  });
 
 test("--new makes agent/ beside the report at 0700 with the prompt from stdin at 0600, and refuses a second prompt, an empty one and a relative report path",
   "the coordinator cannot expand $TMPDIR and cannot Write under the data directory; the launcher, handed the report path, is what makes the directory, and the prompt arrives byte for byte through stdin",

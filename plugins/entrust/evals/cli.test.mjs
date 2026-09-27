@@ -1020,6 +1020,119 @@ flow("--help lists --check-prompt-file in one line",
     return lines.length === 1 || `--help mentions --check-prompt-file on ${lines.length} lines: ${JSON.stringify(lines)}`;
   });
 
+flow("D4 developer instructions name only effective writable roots and the staged-input rule",
+  "the model needs its actual sandbox grants and must use staged alternatives for a known daemon constraint",
+  async () => {
+    const readTurn = await run({ scenario: "echo-instructions" });
+    const readReport = JSON.parse(readTurn.out);
+    if (readTurn.code !== 0 || !readReport.answer.includes(`Your writable roots are: ${readReport.sandbox?.writableRoots?.[0]}; /tmp is not one.`))
+      return `read capsule: exit ${readTurn.code}, ${readReport.answer?.slice(0, 300)}`;
+    const writable = flowState(), cwd = shimDir;
+    const writeTurn = await run({ scenario: "echo-instructions", args: ["--level", "write", "--cwd", cwd, "--writable", writable] });
+    const writeReport = JSON.parse(writeTurn.out);
+    const capsule = writeReport.answer;
+    if (!(writeTurn.code === 0 && capsule.includes(cwd) && capsule.includes(writable)
+      && capsule.includes("daemon, socket, or mounted checkout") && capsule.includes("staged inputs")
+      && capsule.includes("; /tmp is not one.")))
+      return `write capsule: exit ${writeTurn.code}, ${capsule?.slice(0, 400)}`;
+    const repo = path.join(flowState(), "repo"), extra = flowState();
+    fs.mkdirSync(repo);
+    let git = spawnSync("git", ["init", "-q", repo], { encoding: "utf8" });
+    if (git.status !== 0) return `git init started, exit ${git.status}: ${git.stderr}`;
+    git = spawnSync("git", ["-C", repo, "-c", "user.name=Eval", "-c", "user.email=eval@example.invalid", "commit", "--allow-empty", "-qm", "seed"], { encoding: "utf8" });
+    if (git.status !== 0) return `git commit started, exit ${git.status}: ${git.stderr}`;
+    const wt = await run({ scenario: "echo-instructions", noCwd: true,
+      args: ["--level", "write", "--worktree", repo, "--writable", extra] });
+    const wr = JSON.parse(wt.out);
+    const expected = `Your writable roots are: ${fs.realpathSync(os.tmpdir())}, ${wr.worktreePath}, ${fs.realpathSync(extra)}; /tmp is not one.`;
+    return wt.code === 0 && wr.answer.includes(expected)
+      || `worktree capsule exit ${wt.code}: expected ${expected}; got ${wr.answer?.slice(0, 500)}`;
+  });
+
+flow("D16 maxLength and maxItems use a corrective turn, strip server keywords, and preserve overflow",
+  "the server can ignore size keywords, so the local validator must spend its retry and retain the original",
+  async () => {
+    const state = flowState(), schema = path.join(state, "caps.schema.json"), rpc = path.join(state, "rpc.log");
+    fs.writeFileSync(schema, JSON.stringify({ type: "object", properties: {
+      result: { type: "string", maxLength: 10 },
+      evidence: { type: "array", items: { type: "string" }, maxItems: 1 }
+    }, required: ["result", "evidence"], additionalProperties: false }));
+    const r = await run({ scenario: "schema-size", args: ["--output-schema", schema], env: { FAKE_RPC_LOG: rpc } });
+    const report = JSON.parse(r.out);
+    if (r.code !== 13 || report.outputAttempts !== 2 || !report.schemaErrors?.some((e) => e.includes("maxLength")))
+      return `cap retry: exit ${r.code}, ${JSON.stringify({ attempts: report.outputAttempts, errors: report.schemaErrors })}`;
+    if (report.schemaKeywordsUnchecked?.includes("maxLength") || report.schemaKeywordsUnchecked?.includes("maxItems"))
+      return `caps still unchecked: ${JSON.stringify(report.schemaKeywordsUnchecked)}`;
+    if (!report.schemaSizeCaps?.some((c) => c.keyword === "maxLength")) return "schemaSizeCaps missing";
+    if (!report.schemaErrors?.some((e) => e.includes("maxItems"))) return "maxItems was not enforced";
+    if (!report.schemaOverflow?.completeAnswerPath || !fs.readFileSync(report.answerPath, "utf8").includes('"result":"material finding'))
+      return "the complete overflow was not preserved";
+    if (report.answer !== JSON.stringify(report.answerJson) || report.answerJson.result !== "material f"
+      || report.answerJson.evidence.length !== 1 || report.schemaOverflow.clipped.length !== 2)
+      return `clipped answer: ${report.answer}`;
+    if (!report.schemaErrors.includes("$.result: 33 characters, maxLength 10")
+      || !report.schemaErrors.includes("$.evidence: 2 entries, maxItems 1"))
+      return `size errors: ${JSON.stringify(report.schemaErrors)}`;
+    const logged = fs.readFileSync(rpc, "utf8").split("\n").filter((x) => /^(thread|turn)\/start/.test(x));
+    return logged.length >= 3 && logged.every((x) => !/schema=.*(?:maxLength|maxItems)/.test(x.split(":input=")[0]))
+      && logged.some((x) => x.includes("put its whole content in a file under $TMPDIR"))
+      || `server RPC still carried caps: ${JSON.stringify(logged)}`;
+  });
+
+flow("D16 a large final overflow keeps the whole answer and clips every inline field",
+  "a late material finding and 45 evidence items need a recoverable answerPath and a bounded answerJson",
+  async () => {
+    const schema = path.join(flowState(), "large.schema.json");
+    fs.writeFileSync(schema, JSON.stringify({ type: "object", additionalProperties: false,
+      required: ["status", "result", "evidence", "artifacts", "open"], properties: {
+        status: { type: "string" }, result: { type: "string", maxLength: 1200 },
+        evidence: { type: "array", items: { type: "string", maxLength: 80 }, maxItems: 40 },
+        artifacts: { type: "array", items: { type: "string" } }, open: { type: "array", items: { type: "string" } }
+      } }));
+    const r = await run({ scenario: "schema-large", args: ["--output-schema", schema] });
+    const report = JSON.parse(r.out), whole = fs.readFileSync(report.answerPath, "utf8");
+    return r.code === 13 && report.outputAttempts === 2 && whole.length > 3000
+      && report.answerJson.result.includes("[material finding at 1000]")
+      && report.answerJson.result.length === 1200 && report.answerJson.evidence.length === 40
+      && report.answerJson.evidence.every((x) => x.length <= 80)
+      && report.answer === JSON.stringify(report.answerJson)
+      && report.schemaOverflow.clipped.some((x) => x.path === "$.evidence" && x.length === 45)
+      || `large overflow: exit ${r.code}, ${JSON.stringify({ answer: report.answerJson?.result?.length, evidence: report.answerJson?.evidence?.length, cuts: report.schemaOverflow?.clipped })}`;
+  });
+
+flow("D16 a repaired size attempt stays beside the corrected answer",
+  "a successful corrective turn must not overwrite the complete first attempt",
+  async () => {
+    const schema = path.join(flowState(), "retry.schema.json");
+    fs.writeFileSync(schema, JSON.stringify({ type: "object", additionalProperties: false,
+      required: ["verdict", "count"], properties: { verdict: { type: "string", maxLength: 2 }, count: { type: "integer" } } }));
+    const r = await run({ scenario: "schema-size-repair", args: ["--output-schema", schema] });
+    const report = JSON.parse(r.out);
+    return r.code === 0 && report.answerAttemptPaths?.length === 1
+      && fs.readFileSync(report.answerAttemptPaths[0], "utf8").includes("long verdict")
+      && fs.readFileSync(report.answerPath, "utf8").includes('"verdict":"ok"')
+      || `retry: exit ${r.code}, attempts ${JSON.stringify(report.answerAttemptPaths)}`;
+  });
+
+flow("D16 invalid size limits are refused before a turn",
+  "a fractional or negative limit has no JSON Schema size meaning and must not silently disable enforcement",
+  () => {
+    const schema = path.join(flowState(), "bad-caps.schema.json");
+    fs.writeFileSync(schema, JSON.stringify({ type: "object", properties: { result: { type: "string", maxLength: -1 } }, required: ["result"], additionalProperties: false }));
+    const r = checkRun(`RIGHTS: read ${shimDir}\nOUTPUT_SCHEMA: ${schema}\nTASK: return result\n`);
+    return refusal(r, /maxLength must be a nonnegative integer/);
+  });
+
+flow("D16 help documents both local size keywords and per-run schema copies",
+  "a coordinator can set a smaller limit without guessing which server keywords are safe",
+  () => {
+    const brief = helpRun("--help"), full = helpRun("--help-all");
+    return brief.status === 0 && full.status === 0
+      && brief.stdout.includes("maxLength and maxItems")
+      && full.stdout.includes("Copy the shipped schema under")
+      || `size help missing: ${JSON.stringify({ brief: brief.status, full: full.status })}`;
+  });
+
 failed += await runCases(FLOWS);
 
 fs.rmSync(shimDir, { recursive: true, force: true });

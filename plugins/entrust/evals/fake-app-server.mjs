@@ -86,8 +86,8 @@ export const SCENARIOS = {
   // thread/start is never answered, so the deadline fires with no thread to report.
   "no-thread": { timeout: 0.5 },
   "resume-active": { resume: "thr_root" },
-  "schema-good": { outputSchema: true }, "schema-retry": { outputSchema: true },
-  "schema-never": { outputSchema: true }, "schema-retry-refused": { outputSchema: true },
+  "schema-good": { outputSchema: true }, "schema-size": { outputSchema: true }, "schema-large": { outputSchema: true }, "schema-retry": { outputSchema: true },
+  "schema-never": { outputSchema: true }, "schema-retry-refused": { outputSchema: true }, "schema-size-repair": { outputSchema: true },
   "model-unknown": { effort: "minimal" }, "rate-limited": {},
   "turn-diff": {},
   "late-completion": { outputSchema: true, timeout: 0.4 },
@@ -320,7 +320,9 @@ function onLine(line) {
     // The steer TEXT rides along: for a channel whose failure mode is losing one correction, which ones
     // arrived and in what order is the whole question.
     const detail = m.method === "turn/steer"
-      ? `:${String(m.params?.input?.[0]?.text ?? "").replace(/\s+/g, " ").slice(0, 200)}` : "";
+      ? `:${String(m.params?.input?.[0]?.text ?? "").replace(/\s+/g, " ").slice(0, 200)}`
+      : ["thread/start", "turn/start"].includes(m.method)
+        ? `:schema=${JSON.stringify(m.params?.outputSchema ?? null)}${m.method === "turn/start" ? `:input=${String(m.params?.input?.[0]?.text ?? "").replace(/\s+/g, " ").slice(0, 700)}` : ""}` : "";
     try { fs.appendFileSync(process.env.FAKE_RPC_LOG, `${m.method}${detail}\n`); } catch {}
   }
   if (m.method) answering = m.method;
@@ -602,6 +604,20 @@ function onLine(line) {
         w(R, cmd(TURN, THREAD), msg(TURN, THREAD, schemaAnswer('{"verdict":"ok","count":3}')), done(TURN, THREAD));
         break;
 
+      case "schema-size":
+        w(R, cmd(thisTurn, THREAD), msg(thisTurn, THREAD,
+          schemaAnswer('{"result":"material finding survives the cap","evidence":["source one","source two"]}')),
+          done(thisTurn, THREAD));
+        break;
+
+      case "schema-large": {
+        const result = `${"r".repeat(995)}[material finding at 1000]${"z".repeat(2000)}`;
+        const evidence = Array.from({ length: 45 }, (_, i) => `evidence ${i}: ${"e".repeat(90)}`);
+        const body = JSON.stringify({ status: "partial", result, evidence, artifacts: ["/artifact"], open: ["open issue"] });
+        w(R, cmd(thisTurn, THREAD), msg(thisTurn, THREAD, schemaAnswer(body)), done(thisTurn, THREAD));
+        break;
+      }
+
       // --output-schema: PHASED prose first, an UNPHASED valid object on the corrective turn.
       // The retry's answer must supersede the first turn's answer regardless of phase.
       case "schema-retry":
@@ -609,6 +625,12 @@ function onLine(line) {
           turnStarts === 1
             ? msg(thisTurn, THREAD, "I think the verdict is ok.")
             : msg(thisTurn, THREAD, schemaAnswer('{"verdict":"ok","count":3}'), null),
+          done(thisTurn, THREAD));
+        break;
+
+      case "schema-size-repair":
+        w(R, cmd(thisTurn, THREAD), msg(thisTurn, THREAD,
+          schemaAnswer(turnStarts === 1 ? '{"verdict":"long verdict","count":3}' : '{"verdict":"ok","count":3}')),
           done(thisTurn, THREAD));
         break;
 
