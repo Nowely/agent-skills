@@ -52,6 +52,84 @@ forensics remain in the repository references and release notes.
   already launched in is spent, and `--new` refuses it and names the earlier launch's file. Why: the refusal now comes before an agent is spawned (E1).
 - `ENTRUST_POLICY_SEAM`: a second plist read like the device's, which a mode must also pass; it narrows the
   allowed modes and never widens them, so a suite can exercise the policy path on any macOS machine.
+- **The coordinator's own checks run through `skills/orchestrate/scripts/capture-check.mjs`, and every brief names
+  it.** After scouting, an inline check is one command through the runner answering one yes-or-no or one number in
+  at most twenty lines read back, and a second command on the same question goes to an agent. The page prices what
+  the coordinator reads inline as its size times the calls left in the session, and the answer shows the runner's
+  `--summary` of the run's ledger beside the agents' tokens. Every brief, Claude or Codex, the foreman's included,
+  names the runner by its absolute path for any command whose output can pass twenty lines, and the return quotes
+  each run's `EXIT=` line; the sentence that redirected a check into a `mktemp` file and read back a 5-line tail is
+  gone. The runner runs one command under `bash -o pipefail -c`, writes its whole output to a log under `$TMPDIR`
+  (0600) and prints twenty lines at most in all: five receipt lines, `LABEL=`, `LOG=`, `LINES=`, `BYTES=` and
+  `EXIT=` last (the command's status or `signal <NAME>`), around a tail of fifteen lines at most (`--lines` takes 1
+  to 15), each clipped to 200 characters; its own exit is the command's. With `--ledger <file>` each run's receipt
+  is appended as one JSON line, a second command on a label the ledger already holds is refused with `ERROR=` and
+  runs nothing, and `--summary` totals what was logged and what was shown, with `LATER_READS=unknown`, since what a
+  shown tail costs depends on the calls after it. `--help` is the reference. `evals/capture-check.test.mjs` pins
+  it: a 100,000-line flood prints 20 lines, fifteen of them the tail; `--lines 15` and a multi-line command stay at
+  twenty; `sh -c 'echo failing; exit 1' | tail -1` reads `EXIT=1` beside a plain `bash -c` control that says 0; a
+  signal reads `EXIT=signal SIGTERM` and exit 143; a SIGTERM to the runner still prints the receipt; a 2 MB
+  unterminated line prints 200 characters and the bytes cut; the ledger's refusal runs nothing. In
+  `evals/orchestrate.test.mjs`, B4 and B8 pin the page's rule and its pricing, B9 runs the page's own command line
+  on a 5,000-line flood, a failing pipeline and a repeated question, and I9 pins the runner's path in the foreman's
+  brief; the live gate checks that every brief asking for a check names the runner. Measured on 2026-09-27: a 64 MB
+  flood took 0.44 s and printed 20 lines, 833 bytes. Why: #15 recorded a grep over 64 MB in T3's coordinator, 23.5
+  MB for one key in a T2 subagent and a critic's 31.1 MB grep in T7 (F9), a Playwright run through `tail` that read
+  exit 0 while reporting a failed test and a 14-error typecheck shown as exit 0 (F10); "bounded" was never a number
+  and inline work was never priced (F15, F21), and #15 asked for this runner by name (P2, P3).
+- **A Codex agent names the five-field schema the codex skill ships, and a field past its cap goes to a file.**
+  `skills/codex/schemas/five-fields.schema.json` is strict (`status`, `result`, `evidence`, `artifacts` and `open`,
+  all required, `additionalProperties: false`) and capped: `result` at 4,800 characters, each `evidence` and `open`
+  item at 1,000, each `artifacts` item at 300, and at most 40 `evidence`, 40 `artifacts` and 20 `open` items. The
+  codex page's `OUTPUT_SCHEMA:` row names it, and the orchestrate and swarm pages' schema lines are that file, caps
+  included. A field past its cap goes whole into a file under the agent's temporary directory, named in
+  `artifacts`, and the field keeps a summary with every material finding; a brief that wants a longer return names
+  a per-run copy of the file with larger caps. The driver enforces `maxLength` and `maxItems` itself: a size error
+  states the observed length and the limit and spends the existing corrective turn, which asks for the complete
+  field in a file under `$TMPDIR`, named in `artifacts`; the first answer is kept as `.attempt1.md` and listed in
+  `answerAttemptPaths`; on a final overflow `answerJson` and `answer` are clipped to the caps, `schemaOverflow`
+  lists each cut, and `answerPath` holds the whole object. The copy sent to the server carries neither keyword:
+  Codex 0.155.1 accepted both in two Luna turns and cut a field at its cap (a Luna probe returned exactly 40
+  characters against a request for about 400 under `maxLength` 40, 2026-09-27), so a cut would pass the local check
+  with nothing kept, and `--help` states that measurement. Pinned by the package case "the shipped five-field
+  schema is strict and carries the default size caps", G8 in `evals/orchestrate.test.mjs`, U3 in
+  `evals/swarm.test.mjs`, the `five-field-schema` case of `evals/fragments.test.mjs` (both pages' lines against the
+  file), five D16 flows in `evals/cli.test.mjs` (no `turn/start` carries the keywords, a large overflow keeps the
+  whole answer and clips every inline field, a repaired attempt stays beside the corrected answer, invalid limits
+  are refused before a turn, the help) and a D16 case in `evals/agent-run.test.mjs`. Why: #15 F20b: coordinators
+  wrote the schema by hand each run and once used the review schema instead; P11a: returns overran "at most 30
+  lines", and a limit in prose bounds no structured return.
+- **The answer is a draft linted by `skills/orchestrate/scripts/lint-draft.mjs`, and it names every agent that
+  ran.** Before the synthesis the coordinator reads every return, Claude or Codex, into the five fields, each claim
+  keeping the agent it came from; a return that does not parse is continued once, and after that its result is
+  `unknown`. The answer is drafted into a file and linted with every agent that ran (`--agents`) and the runner's
+  ledger (`--receipts`) until it exits 0: it names every agent that ran, or names it as dropped, and each success
+  claim rests on a receipt or says it is unverified. The linter prints one `LINT=<rule>: <line>: <text>` per hit,
+  then `WORDS=`, `SHA256=` (the draft digest, one line of the completeness critic's manifest; the digest the critic
+  returns is the manifest's own, another number) and `HITS=`, and exits 1 on any hit. The rules: an absolute
+  machine path, a header field name from the driver's own field table or a launcher status key, a pasted five-field
+  block, the driver's vocabulary (wrapper, driver, `report.json`, `threadId`, `exit <n>`), a model slug, a harness
+  or thread id, more than 400 words, an agent from `--agents` never named or named by its id alone, and a success
+  claim that neither contains a receipt's label (`--receipt`, or `--receipts` with a capture-check ledger, where a
+  check that failed or was refused supports nothing) nor says it is unverified. The user's quoted lines and the
+  words of their own request (`--request`) are not machinery. `--help` lists the rules. `evals/lint-draft.test.mjs`
+  pins the shapes #15 recorded as red and their false positives as green; in `evals/orchestrate.test.mjs`, C14 pins
+  the page's rule and C15 runs the page's lint command on a clean draft and on three failing ones. The live gate
+  checks that the draft is linted before the critic, that every return, the critic's included, is in the five
+  fields against its schema (the shipped file, or a per-run copy equal to it apart from its caps, whose caps then
+  apply) before the synthesis, that the answer lints clean and names every agent that ran, and that each fact the
+  answer credits to an agent is held by that agent's return. Why: the page's sentence against machinery in
+  user-facing text dates from 0.20.0, and #15 counted agent ids, report paths, exit mechanics, a RESUME id and a
+  3,000-word wall in eight later sessions (F16, P13b); agents that ran went unnamed (F20a), and returns reached the
+  synthesis unparsed (F20b).
+- **Protocol E6 in `skills/experiment/references/protocols.md`: one strong reader against the full policy.** A
+  preregistered, blinded comparison on held-out review tasks: one Sol strong reader, the orchestrate page's full
+  policy, and one Opus strong reader as the same-family control, with material frozen before any arm, an
+  independent key of material findings, two cross-family judges and a refuter for lost findings; a cheaper arm wins
+  only on the preregistered coverage and false-alarm criteria, and a trade of cost against quality is the owner's
+  word. The reference now registers six protocols, and the plugin README's layout says so.
+  `evals/experiment.test.mjs` F1 holds E1 to E6 with the seven fields each. Why: #16 asks for a prospective pilot
+  the recorded overlap simulation cannot replace (Q7b).
 
 ### Changed
 
@@ -183,6 +261,148 @@ forensics remain in the repository references and release notes.
   driver) with the identity re-checked just before each unlink, and reads records through a descriptor opened
   under a pinned directory handle, so a record swapped for a link is listed as unrecognised and kept. Row names
   pluralise the noun. Pinned by cases 42 to 45 in `evals/cleanup.test.mjs`.
+- **The orchestrate plan is a card of five rows, and an agent off the card is not launched.** Work; who, each agent
+  by model and role, with the workers and the checking agents counted apart; writes, where a worktree agent's tree
+  is "made and removed inside the repository, in a hidden folder" and the driver and `.claude` are no longer named;
+  cost, the tokens by agent with the coordinator's own inline work beside them; checks, who verifies what, the
+  critic, and in a design round the criterion that picks the survivors. The simple-task row counts one worker, with
+  the completeness critic beside it and its verifier named. With a Codex agent in the plan, every agent, Claude or
+  Codex, is first registered through the launcher's `agent-run.mjs --plan --run-dir <run>`, and the card is built
+  from what it prints: an `AGENT=` line per row and the `WORKERS=` and `CHECKING=` counts, which its role
+  classifier derives. The launcher writes the rows (`id | model | role | writes | tokens`) to `<run>/plan.txt` at
+  0600 and rejects a duplicate id or one that differs only in case, an id shaped like a continuation, an unknown
+  model, a role it cannot class as worker or checking, and bad writes or tokens (a number or `unknown`); the plan
+  records the declared scope and checks neither the caps nor the cost figures. Under a registered plan, `--new`
+  admits only `<run>/<listed id>/report.json`, or a continuation `<run>/<id>-<n>/report.json` (n from 2, no leading
+  zero) once the previous link's `agent/exit` exists; a continuation inherits the listed row's model, so a Claude
+  row cannot launch a Codex agent, and a `RESUME:` after a cut, a relaunch and each advisor question after the
+  first need no amendment. An agent added later is a `--plan --amend`, marked as an amendment in the file, shown,
+  and launched only after a word. A Claude agent off the card is not launched, and its description carries the
+  card's id ("<Model> <id>: <task in a few words>"). An all-Claude plan skips the registration and still shows the
+  card. Before the answer, the coordinator checks the run against the card: every launch, every write and every
+  dropped agent. `/entrust:cleanup` reads the plan file as run evidence: a run holding only a plan is listed and
+  kept until a published report proves whose it is, and a finished owned run with a plan stays selectable. Pinned
+  by C13, E5 and F11 in `evals/orchestrate.test.mjs` (F11 registers a plan and shows `-2` refused while the first
+  run is going and admitted after), two D6 cases in `evals/agent-run.test.mjs` and two in `evals/cleanup.test.mjs`;
+  the live gate checks the card against the registered plan with the launcher's own `classifyRole`, every launch
+  against that plan with its `planRowOf`, and each agent's writes against its row's writes column. Why: #15 F13 and
+  F14 (P9a, P9b): a plan of ten elements was approved unread and agents it never listed ran anyway (T7, 1.38M
+  tokens unplanned); F3: the simple-task row said "1 agent" beside a critic and a verifier; #16 Q3j: no criterion
+  was declared before blind proposers ran.
+- **The orchestrate page plans from a generated composition reference and loads the codex skill only when the plan
+  has a Codex agent.** Its first step no longer loads the codex page on every run: it plans from
+  `skills/orchestrate/references/codex-composition.md` and loads `entrust:codex` before the launcher's `--plan`, so
+  an all-Claude run never reads the codex page and a run with a Codex agent reads it as before. The reference holds
+  the codex page's `## Composition` section and its `## Rights` table with the paragraph after it, between markers
+  naming each source, generated by `evals/fragments.mjs`, which also keeps the five-field schema's inline copies in
+  the orchestrate and swarm pages equal to `skills/codex/schemas/five-fields.schema.json` and the run-directory
+  path equal in the three pages that name it; `node evals/fragments.mjs --write` regenerates the copies.
+  `evals/fragments.test.mjs` fails on drift and on a mutation per fragment, and `run-all` runs it before `package`,
+  so a release stops on it. A3 in `evals/orchestrate.test.mjs` pins the page's order, and the live gate's case 6
+  runs a plan under "no codex" that never loads the codex page, registers nothing and still shows the card. Why:
+  #15 F18 and P5: the page ordered the whole codex page loaded, 4,511 words, before a plan with no Codex agent in
+  it; P12b: hand copies of shared page text drift. A plan with a Codex agent still loads the codex page, later: the
+  reduction #15 targets for that route, 4,308 to 7,044 words, is not made here.
+- **`/entrust:advisor` advises from the first decision, on the invocation's word, and its prompt names Astra and
+  the shipped five-field schema with no effort line.** The page no longer stops for "go" before the advisor's first
+  question: the user's invocation is the word for its turns, the composition included, and a stop stays for what
+  the invocation did not grant (the workers' plan, an edit, a commit, a publication). "No advisor" (без советника)
+  ends the thread for the run and "ask the advisor" (спроси советника) starts it again. The advisor is no longer
+  "chosen by the agreed composition" it was meant to advise on. The page shows the prompt block, `MODEL: astra`, an
+  `OUTPUT_SCHEMA:` line naming the schema file the codex skill ships and no `EFFORT:` line, since a top-row agent
+  inherits the configured effort; a continuation is the same block under `RESUME:`, at the next report path
+  (`<run>/<id>-<n>/report.json`). `evals/advisor.test.mjs` D1 pins the start with the removed sentences as its
+  negative half, D3 the prompt's lines, and D4 fills the block the way a coordinator does and registers it, and a
+  continuation's `RESUME:` header, through the launcher's `--new`, which runs the driver's own prompt check. The
+  live gate's case 8 runs a four-turn advisor session: advice before any stop, a later consultation on the same
+  thread, silence after "no advisor" and a return on "ask the advisor", every advisor prompt with `MODEL: astra`,
+  the shipped schema and no `EFFORT:` line. Why: #15 F1 and #16's advisor section (P1, which includes Q1): the
+  advisor never advised the first decision, because the page stopped for a word the invocation had already given;
+  #15 F12c: the advisor page loads codex alone, so orchestrate's top-row effort rule never reached it, and an
+  advisor with no schema once answered in 111 lines of prose.
+- **A Codex agent is told its writable roots, and its brief carries what the plan found about its environment.**
+  The driver's developer instructions name the effective writable roots, the temporary directory and, at write
+  level, the working tree and every extra write grant, and say that `/tmp` is not one; they add the staged-input
+  rule: where a task says a daemon, socket or mounted checkout is unavailable, use its staged inputs and the named
+  alternative commands, and record the exact diagnostic of a command that cannot run. The plan's first step writes
+  what the coordinator found into the agent's `ENVIRONMENT:` line, a body line after `TASK:` and not a header
+  field: what is staged and where, and the daemon or socket a tool needs with the command to run instead. Pinned by
+  the D4 flow in `evals/cli.test.mjs`, which runs through a real git worktree with `--writable` and checks the
+  whole sentence, "/tmp is not one" included; the live gate checks that a write agent's `ENVIRONMENT:` line names
+  every staged input and every daemon tool with what to run instead, and `evals/gate-checks.test.mjs` runs that
+  check on a staged fixture. Why: #15 F11 and F19 (P10a): agents guessed at unavailable mounts, wrote to `/tmp` and
+  fought a VCS daemon the coordinator already knew about.
+- **The one Codex agent the coordinator waits for is a foreground call.** The orchestrate page now says what the
+  codex page says: background when agents run side by side, foreground for the one agent waited for and for every
+  agent in a headless session. F6 in `evals/orchestrate.test.mjs` pins it. Why: #15 F12a: the two pages
+  contradicted each other.
+- **The split critic's correction is a file every worker brief is written from.** It names each unit's owner and
+  every shared interface's one owner; no worker brief exists before it, each brief is written from it and names its
+  path, and each is checked against it before its worker launches. The foreman's brief carries the file
+  (`skills/orchestrate/references/foreman.md`), and the split critic's row in `references/roles.md` says the same.
+  Pinned by F2 and I9 in `evals/orchestrate.test.mjs`; the live gate's case 7 runs two units sharing one interface
+  and reads the corrected split file itself: a worker brief written before the critic returns, an interface the
+  file omits, one its owner's brief omits and a file a brief takes from its owner are each a failure. Why: #15 F6
+  and #16 Q3a: a fan-out started before the critique finished (T5), and ownership of a shared interface escaped the
+  implementer, the reviewer and the critic.
+- **The roles reference asks each brief for what #16 found missing.** A cross-review brief names the requirement,
+  the unit that owns the change and its consumers, and a valid change in the wrong unit is a finding (Q3c); a
+  strong reader's brief names the source, its revision, the decision it feeds and the evidence that ends the read,
+  and its return tells a negative from an input it could not reach (Q3e); a live prober freezes its baseline
+  capture, with its digest, revision, mode, platform and control, before any write (Q3g); the judge rules by the
+  criterion the plan named before the proposers ran (Q3j); measurers and retrospective analysts work from inputs
+  fixed by path and digest and write `unknown` for what those inputs lack (Q3k). E10 in
+  `evals/orchestrate.test.mjs` pins them. Why: #16's role table: each was a clause a brief writer could act on and
+  the row did not have.
+- **A refuter answers `unknown` when its decisive check could not run.** `refuted` now means a check ran and
+  contradicted the claim, never "uncertain"; claims reach refuters as the dedup-and-rank's one-claim clusters with
+  their origins kept, and a prerequisite the refuters share runs once, its receipt in each brief. F2 in
+  `evals/orchestrate.test.mjs` pins the bullet and fails on the old default. Why: the owner's decision of
+  2026-09-27 on #16's "preserve unknown"; #15 F5 and P8d: duplicate claims were refuted over and over (T5, T2), and
+  "could not check" was folded into "false".
+- **The user hears one paragraph per phase, of verified work.** At the end of a fan-out, a verification round or
+  the synthesis, one paragraph carries what a verifier confirmed, what is pending and what blocks; a return
+  arriving alone earns one only when it failed or asks the user something. C7 in `evals/orchestrate.test.mjs` pins
+  it, and the live gate checks one paragraph per phase. Why: #15 F16 (P13a): fourteen paragraphs a run.
+- **The completeness critic's verdict is bound to the draft it read.** The critic reads the linted draft, frozen
+  with a `shasum -a 256` manifest over the draft and every artifact it cites, and returns the manifest's digest
+  first in its `evidence`. Before the answer goes out, the manifest's digest is computed again and compared with
+  the critic's, and `shasum -a 256 -c` runs on the manifest: a different digest or a failed check voids the
+  verdict, and the changed part is read again. A `not done` verdict means fixing the answer or naming the gap, and
+  what goes out is the draft's text. `evals/orchestrate.test.mjs` F10 shows the page's check catching a changed
+  cited artifact, and the digest comparison catching a manifest rewritten after the change, which `-c` alone
+  passes; the live gate recomputes the manifest's digest, compares it with the one the critic returned and checks
+  that the answer is the draft the manifest froze. Why: #15 F4 and P8b: the critic read one version and another
+  went out (T3, T8).
+- **The orchestrate page no longer calls itself prompt only.** The sentence says what holds now: the mode adds no
+  header field or flag, what it asks of the driver and the launcher is the codex skill's and changes there, and its
+  own two scripts, the runner and the linter, write only under `$TMPDIR`. The plugin README's layout lists them and
+  the generated reference. `evals/orchestrate.test.mjs` A1 changes with it. Why: the owner's decision of
+  2026-09-27; the fixes for #15 and #16 add the runner and the linter and change the driver and the launcher.
+- **The live orchestrate gate checks what the fix run changed, and its reading of a session is tested offline.**
+  Four cases join `evals/orchestrate-live.test.mjs`: a plan under "no codex" (case 6), the split critic (7), a
+  four-turn advisor session (8), and activation by position (9), a pair of cheap Sonnet sessions with
+  `/entrust:orchestrate` first and last, read from their session files, the first required to expand the page and
+  the last recorded. The plan and full-run cases gain the checks the entries above name: the card and every launch
+  against the registered plan, each agent's writes, a write agent's `ENVIRONMENT:` line, the runner, the draft
+  linted before the critic, the critic's digest, one paragraph per phase, every return in the five fields, and the
+  answer's attribution. The gate's logic moved to `evals/lib/gate-checks.mjs`, which imports the launcher's
+  `planRowOf` and `classifyRole`, and the new `evals/gate-checks.test.mjs` runs it on fixture streams in the shape
+  of the gate's saved sessions: per check one stream built to pass and one built to fail (a rewritten manifest, a
+  malformed critic return, an out-of-scope write, a misattributed fact and a capsule that omits a staged input
+  among them), and one whole good run that passes them all at once. None of the new live cases has been run. The VS
+  Code half of the activation measurement is a manual protocol in
+  `plugins/entrust/research/2026-09-27-field-audit-triage/activation-position.md`, which also corrects the drafted
+  check: the session file's expansion record does not carry the page's frontmatter. Why: the findings that came
+  back after a page sentence (M1) need a regression that watches the behaviour, and the command's position is F2
+  and P14a.
+- **`evals/README.md` states the regression rule and indexes the recurring findings to their cases.** A finding
+  that came back after a page sentence gets a regression that observes the behaviour, offline where a script owns
+  it and in the live gate where only a session shows it; a wording pin is never its only check. The offline half of
+  the index is in the README, the live half in the gate's header, and each says which cases have run. `run-all.mjs`
+  lists twenty suites, the four new ones among them. Why: M1 showed eight findings answered by a sentence in
+  0.16.0–0.20.0 and back in 0.20.0 sessions, and P12a asked for behavioural regressions instead of wording pins; F7
+  is listed as fixed before this round and F8 as waiting on its measurement, not as repaired.
 
 ## 0.20.0 — 2026-09-18
 
