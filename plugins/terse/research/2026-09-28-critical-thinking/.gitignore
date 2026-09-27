@@ -1,0 +1,7 @@
+# source/ and agents/ quote private sessions and stay on the owner's machine untracked.
+/*
+!/.gitignore
+!/README.md
+!/candidates-*.md
+!/rounds.md
+!/literature.md
