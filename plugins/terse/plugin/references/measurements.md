@@ -1,10 +1,11 @@
 # The measurements behind the rules
 
-Every rule in `rules.md` and the skills' pages rests on something that happened, dated. This file keeps
-those events so the rules can be re-examined and so the skill's own text does not have to carry them.
-M1 to M23 are from one README and one owner, 2026-09-10 to 2026-09-12, `plugins/terse/research/2026-09-11-markup-round-0/`;
-M24 and M25 from the run of 2026-09-22/23 on this plugin's README, `plugins/terse/research/2026-09-22-terse-process/`. One
-document is enough to justify a rule; it is not enough to state a rate.
+These entries keep dated observations and inherited provenance behind the advice. A principle drawn
+from owner feedback is identified as such; it is not a measured rate. M1–M23 concern one README and one
+owner in 2026-09-10 to 2026-09-12 (`plugins/terse/research/2026-09-11-markup-round-0/`). M24–M25
+cover the 2026-09-22/23 terse README run; M26–M33 cover the maestro, light-trial, second-checks and
+writing-replication work of 2026-09-24 to 2026-09-27. M34 records inherited provenance whose primary
+event has not been isolated. One document can motivate advice; it cannot establish a general rate.
 
 <a id="m1"></a>**M1. No block-local critic can see across blocks.** A water critic reading an assembled
 draft end to end found one claim stated four times in four sections, each defensible where it stood —
@@ -94,12 +95,7 @@ younger one, the survey's, won as a stated exception.
 knew what the tool was, and both remarked on it: position is not repaired by truth. And a stronger claim
 beats a truer one when a reader meets both, so a weakened claim has to be the only claim left standing.
 
-<a id="m19"></a>**M19. Writing standards lost to no standard.** On 2026-09-10 five published writing
-standards were put against two unguided controls, on one README, across ten seats, models hidden from
-the judges. Both controls beat both entries of both standards; seven seats of ten proposed nothing. One
-observation per cell — enough not to adopt a standard, not enough to state a rate. The chain that moved
-that README from 3/6 to 6/6 ran once, one trial per question, and its result is not distinguishable from
-chance; which of its four parts produced the gain was not measured.
+<a id="m19"></a>**M19. Four standards and a control pair.** On 2026-09-10 a two-by-five comparison gave two agents each of Diataxis, implementation verification, a draft rule block for the owner's CLAUDE.md, a published technical-writing house style, and no standard. The models were hidden from the judges. Both controls beat both entries of both published standards, while one entrant using the unpublished owner draft outranked both controls. This single run gives no general rate. On the selected 116-word README opening, six entrants left its length at 116, three lengthened it, and one control shortened it to 97. These counts concern that opening, not the whole README. Sources: `plugins/terse/research/2026-09-10-chain/run-2x5/v04PR6HL.prompt.txt:13-20` and `plugins/terse/research/2026-09-10-chain/run-2x5/o8eHzS6U.answer.md:10-19`; the latter's word counts are a judge's analysis, evidence level 2. The chain that moved a README from 3/6 to 6/6 ran once, one trial per question; its parts were not isolated.
 
 <a id="m20"></a>**M20. A reader seat told not to run commands reads nothing.** Five Codex `gpt-5.6-luna`
 readers briefed "do not run commands" returned "I could not read the document": Codex reads files
@@ -152,3 +148,21 @@ one: twice on a sentence that regressed (G3a here, R06-5 there), once beside one
 R08-5), once on none — a signal, not a rate. A hypothesis the run did not separate: the same verifier
 model held 23 of 24 claims on round 03's thread and refused 9 of 16 on round 04's, and the two writers
 worded their `asks` differently. The run is `plugins/terse/research/2026-09-22-terse-process/` in this repository.
+
+<a id="m26"></a>**M26. Shape, speed and pleasantness.** On 2026-09-24 the sequential maestro README path took 6 h 38 min; the owner rated its result around parity with the repository README and above a bare agent's 14-minute version. A later one-path run took 70 minutes. The first run's cold readers found a contradiction introduced by repair and two indistinct table rows; their pleasantness marks did not separate the owner's first and second choices. This supports checking a repair and treating cold readers as defect finders, not human preference judges. Sources: `plugins/terse/research/2026-09-24-terse-benchmark-maestro/` and its `one-path/` run.
+
+<a id="m27"></a>**M27. Reader evidence changes the diagnosis.** On 2026-09-10 two readers who reported no confusion answered wrongly, while one who called a section confusing answered correctly. Two of six audited failures were refuted claims, not path-to-answer failures; a true sentence under Prerequisites was read as a requirement. Answer and quoted source were more useful than self-report. The task-gate case has its own home in [M11](#m11). Source: `plugins/terse/research/2026-09-10-chain/`.
+
+<a id="m28"></a>**M28. A one-path repair needs a check.** The 2026-09-25 first run took 70 minutes; its writer spent 33 minutes running code truth critics ran again, while the repair brought in a contradiction no role read for. Sentence rules had no assigned reader. The second run took 1 h 33 min; separate truth critics rebuilt the same harness and held the critical path for 24 and 20 minutes. These observations motivated a sentence critic, check after repair, reading-only light mode and one shared full-mode harness. Sources: `plugins/terse/research/2026-09-24-terse-benchmark-maestro/one-path/` and `one-path-2/`.
+
+<a id="m29"></a>**M29. A draft can polish the wrong shape.** On 2026-09-11 and 2026-09-23 the owner rejected drafts for their content and order rather than phrasing when nobody had agreed the shape. On 2026-09-24 the sequential rethink stages took about three hours before prose and produced a 13,000-word skeleton. The measured scope is those documents and runs. Sources: `plugins/terse/research/2026-09-22-terse-process/` and `plugins/terse/research/2026-09-24-terse-benchmark-maestro/`.
+
+<a id="m30"></a>**M30. Context outranks a rule checklist.** On 2026-09-26, for a disk-usage tool README, a bare agent's text beat the one-path text in the owner's read. The writer lacked a clear picture of what the tool was to its reader; rules treated as requirements removed the demo, one-line pitch and installation routes the owner valued. That case motivated context first, genre precedent and advice rather than mandatory forms. Source: `plugins/terse/research/2026-09-26-terse-light-trial/`.
+
+<a id="m31"></a>**M31. A changing number can burden the next maintainer.** In feedback collected for the 2026-09-26 writing study, the owner objected that a number repeated in a comment must be edited separately whenever its source changes. Avoid that duplicate when it gives the reader nothing new. Keep a number when compatibility, reproduction or the reader's decision depends on it, with its scope or source. This is owner feedback, not an observed rate. See P29 in `plugins/terse/research/2026-09-26-writing-replication/publication/issue-comment.md`.
+
+<a id="m32"></a>**M32. A benefits list can lose the choice.** In a blind read of two maestro README openings on 2026-09-25, 21 of 37 readers objected to badges, stats and navigation before the tool's purpose; 21 of 37 also objected to bullets that listed parts instead of what a reader could do. The counts concern those openings, not all benefit lists. Source: `plugins/terse/research/2026-09-24-terse-benchmark-maestro/one-path-2/README.md:63-71`.
+
+<a id="m33"></a>**M33. A problem line can help an opening.** In the same blind read, readers praised the reference README's problem line, including one judge who called it the strongest selling line in either file. The rule critic had cut the draft's own problem line under a broad ban on failure modes. This supports judging an opening by what it gives its reader, not banning mention of a problem. Source: `plugins/terse/research/2026-09-24-terse-benchmark-maestro/one-path-2/README.md:69-72`.
+
+<a id="m34"></a>**M34. Inherited example rule, limited provenance.** The earlier `rules.md` marked “no invented examples” as measured on 2026-09-11. The exact triggering event was not isolated in this round; do not treat this label as a measured rate or proof that every hypothetical example is harmful. A fabricated command presented as real can still misdirect a practical reader. Prior form: `plugins/terse/research/2026-09-24-terse-benchmark-maestro/one-path-2/in/rules.md:113`.

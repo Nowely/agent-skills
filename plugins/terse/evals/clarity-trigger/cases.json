@@ -1,0 +1,72 @@
+[
+  {
+    "id": "issue-answer",
+    "positive": true,
+    "prompt": "Answer both questions from this issue: what changed, and what should I do next? Fictional issue from Mira: 'Did the export fix land, and may I retry the 18 August order?' The change moves CSV escaping before the upload step; a local check exported 12 sample orders, including one with a comma in its name, with no malformed rows. The production retry has not run. Mira can retry only after the release is deployed."
+  },
+  {
+    "id": "failed-check",
+    "positive": true,
+    "prompt": "Explain this failed check to the person who requested the change. Fictional check: ArchiveLink verified 27 of 28 example links; the last link returned 404 because the draft points to /guide/keys while the preview contains /guides/keys. The check did not test the deployed site. The requester, Noor, can update the draft link and rerun the preview check."
+  },
+  {
+    "id": "plan",
+    "positive": true,
+    "prompt": "Write a short plan for adding this option; the maintainer will approve it. Fictional feature: add --quiet to a local report command. Today it prints a summary and warnings; --quiet should suppress the summary but keep warnings and a nonzero exit code. The command has one output formatter, and its current tests cover normal output and exit codes. The maintainer, Ivo, needs to approve behavior before implementation."
+  },
+  {
+    "id": "owner-report",
+    "positive": true,
+    "prompt": "Report today's outcome, evidence and remaining uncertainty to the owner. Fictional work: the import preview now labels duplicate rows. A fixture with 64 rows, including 3 duplicates, displayed all 3 labels; a second fixture with 11 unique rows displayed none. The owner is Lena. No large-file timing was measured, and the change has not reached production."
+  },
+  {
+    "id": "commit-title",
+    "positive": true,
+    "prompt": "Write the title for this staged commit using the repository's recent commits. Fictional staged change: the parser accepts a trailing newline in a config value; it adds one regression test and changes no other behavior. Recent titles are 'fix: keep empty labels in imports', 'test: cover quoted values', and 'docs: update config examples'. Return only the proposed commit title."
+  },
+  {
+    "id": "pr-diff",
+    "positive": true,
+    "prompt": "Describe this diff for reviewers in a PR. Fictional diff: `- if (age > 30) expire(key);` becomes `+ if (age >= 30) expire(key);`; a test now expects expiry at exactly 30 days. The public contract says keys expire after 30 full days. A targeted test passed (8 cases); the full suite was not run. Write a short PR description for reviewers."
+  },
+  {
+    "id": "code-comment",
+    "positive": true,
+    "prompt": "Write a comment beside this branch in the source file explaining the constraint. Fictional TypeScript snippet: `if (headers['x-legacy-id']) return parseLegacy(headers);` then `return parseCurrent(headers);`. The migration contract requires legacy IDs to win when both headers are present until clients finish migrating in October. Write only the code comment that belongs immediately above the branch."
+  },
+  {
+    "id": "team-message",
+    "positive": true,
+    "prompt": "Send the API team a message asking for the one decision this change needs. Fictional context: the new /receipts response has an optional `issuedAt` field; old clients omit it. The implementation can return null or omit the field when the date is unknown. The API team owns the wire contract, and the client release is scheduled for Thursday. Draft the message; do not actually send it."
+  },
+  {
+    "id": "agent-chat-brief",
+    "positive": true,
+    "prompt": "Brief an agent in chat to review this draft against its source. Fictional draft claim: 'All 40 sample invoices imported with no warnings.' Fictional source report: 40 files were submitted, 38 imported, 2 were skipped because currency codes were blank, and 3 of the imported files emitted rounding warnings. Ask the agent to identify unsupported claims and propose corrected wording; give the source facts in the brief."
+  },
+  {
+    "id": "agent-task-file",
+    "positive": true,
+    "prompt": "Write that agent brief into the task file in the fixture. The task file is `task.md` in the current temporary working directory; create it if file tools are available, otherwise return the exact contents for it. Fictional draft: 'The search index is fresh for every item.' Fictional source: an index job finished at 09:15 for 117 of 120 items; 3 items were deferred after a timeout, and no later job result is available. Ask an agent to check the draft against these facts and supply corrected wording."
+  },
+  {
+    "id": "agent-result",
+    "positive": true,
+    "prompt": "Tell me what this agent's report established and what remains uncertain. Fictional agent report: 'I compared 22 translated button labels with the source list. Twenty-one match. The French label for Remove is missing from the translation file. I did not inspect labels outside this list or run the app.' The owner needs to decide whether to request a fix before review."
+  },
+  {
+    "id": "review-comment",
+    "positive": true,
+    "prompt": "Write a review comment on the line that contradicts the API contract. Fictional contract: `retryAfter` is an integer number of seconds and is absent when no retry is advised. Diff line: `retryAfter: retryAt ? retryAt.toISOString() : null`. The reviewer can request a conversion to whole seconds and omission when absent. Write only the review comment."
+  },
+  {
+    "id": "acknowledge",
+    "positive": false,
+    "prompt": "Reply only OK to acknowledge receipt"
+  },
+  {
+    "id": "status-done",
+    "positive": false,
+    "prompt": "Run the specified read-only status command, then reply only done. Command: `pwd`."
+  }
+]

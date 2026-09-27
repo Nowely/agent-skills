@@ -1,7 +1,7 @@
 # The writing rules
 
 The sentence layer under [rules.md](rules.md), for the writer and the sentence critic. The text below is
-fixed. Apply it as written; do not restate it in your own words or extend it. It was measured in this form.
+fixed as evidence, but its suggestions serve this reader; use a line where it helps and keep a useful exception.
 
 Default: no sentence that carries nothing. One earns its place by carrying a
 contract, a constraint, or a reason the code cannot state.
@@ -34,12 +34,11 @@ above becomes false.
 
 ## Where these rules came from
 
-A run on 2026-09-10 put five writing standards against two unguided controls, on one README, across ten
-seats with the models hidden from the judges. Both controls beat both entries of both published
-standards. On the first 116 words, seven of the ten proposed nothing at all, two produced a longer text,
-and the only seat that shortened it (116 to 97 words) was a control. One observation per cell, one
-passage, one run — enough to justify not adopting a standard, not enough to state a rate. The lesson is
-in the last rule above: standards that read as checklists produce audits, not rewriting.
+The 2026-09-10 comparison used four standards, one an unpublished draft of the owner's CLAUDE.md, and
+an unguided control pair. Both controls outranked both entrants of the two published standards; one
+draft-standard entrant outranked the controls. On the selected 116-word opening, six of ten left its
+length at 116, three lengthened it, and one control shortened it to 97. These are one run and one
+passage, not a rate or proof that a standard is generally harmful. See [M19](measurements.md#m19).
 
 These rules were themselves written against models as they behaved in September 2026. Anthropic's own
 guidance now warns that anti-formatting instructions written for earlier models push newer ones the wrong

@@ -1,0 +1,14 @@
+id	exit	turn	tokens	cached	used	wall	n_episodes	status	launcher_rc
+cx-P032-r1	0	completed	183708	148736	9	58		done	0
+cx-P043-r1	0	completed	279962	238336	9	53		done	0
+cx-P048-r1	0	completed	199214	158208	9	62		done	0
+cx-P060-r1	0	completed	146473	117248	9	85		done	0
+cx-P099-r1	0	completed	276713	231168	9	82		partial	0
+cx-P101-r1	0	completed	266572	224000	9	65		partial	0
+cx-P102-r1	0	completed	227779	190464	9	35		done	0
+cx-P103-r1	0	completed	219742	185344	9	49		done	0
+cx-P106-r1	0	completed	223156	187392	9	83		done	0
+cx-P109-r1	0	completed	223780	185344	9	94		done	0
+cx-P110-r1	0	completed	232566	193536	9	63		done	0
+cx-P171-r1	0	completed	188631	154880	9	61		done	0
+cx-P186-r1	0	completed	388089	336128	9	60		partial	0

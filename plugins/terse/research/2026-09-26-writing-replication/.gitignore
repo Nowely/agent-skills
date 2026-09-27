@@ -1,0 +1,10 @@
+# Everything here quotes private sessions except the files below, which stay on the owner's machine untracked.
+/*
+!/.gitignore
+!/README.md
+!/tools/
+!/measures/
+!/publication/
+/publication/*
+!/publication/issue-comment.md
+__pycache__/

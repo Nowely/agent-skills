@@ -1,0 +1,181 @@
+{
+ "overall": {
+  "G": 2,
+  "matched_G": 2,
+  "recall": 1.0,
+  "luna": 22,
+  "extra": 12,
+  "extra_share": 0.545,
+  "missed": [],
+  "extra_ids": [
+   "pilot-P017-A-04",
+   "pilot-P022-A-02",
+   "pilot-P065-A-01",
+   "pilot-P091-A-01",
+   "pilot-P091-A-02",
+   "pilot-P065-B-02",
+   "pilot-P065-B-03",
+   "pilot-P091-B-02",
+   "pilot-P091-B-03",
+   "pilot-P091-B-06",
+   "pilot-P091-B-07",
+   "pilot-P093-B-01"
+  ]
+ },
+ "overall_no_low": {
+  "G": 2,
+  "matched_G": 2,
+  "recall": 1.0,
+  "luna": 22,
+  "extra": 12,
+  "extra_share": 0.545,
+  "missed": [],
+  "extra_ids": [
+   "pilot-P017-A-04",
+   "pilot-P022-A-02",
+   "pilot-P065-A-01",
+   "pilot-P091-A-01",
+   "pilot-P091-A-02",
+   "pilot-P065-B-02",
+   "pilot-P065-B-03",
+   "pilot-P091-B-02",
+   "pilot-P091-B-03",
+   "pilot-P091-B-06",
+   "pilot-P091-B-07",
+   "pilot-P093-B-01"
+  ]
+ },
+ "angle_A": {
+  "G": 2,
+  "matched_G": 2,
+  "recall": 1.0,
+  "luna": 13,
+  "extra": 5,
+  "extra_share": 0.385,
+  "missed": [],
+  "extra_ids": [
+   "pilot-P017-A-04",
+   "pilot-P022-A-02",
+   "pilot-P065-A-01",
+   "pilot-P091-A-01",
+   "pilot-P091-A-02"
+  ]
+ },
+ "angle_B": {
+  "G": 0,
+  "matched_G": 0,
+  "recall": null,
+  "luna": 14,
+  "extra": 10,
+  "extra_share": 0.714,
+  "missed": [],
+  "extra_ids": [
+   "pilot-P017-B-01",
+   "pilot-P065-B-02",
+   "pilot-P065-B-03",
+   "pilot-P091-B-02",
+   "pilot-P091-B-03",
+   "pilot-P091-B-04",
+   "pilot-P091-B-05",
+   "pilot-P091-B-06",
+   "pilot-P091-B-07",
+   "pilot-P093-B-01"
+  ]
+ },
+ "runs": [
+  {
+   "id": "pilot-P017-A",
+   "tokens": 127219,
+   "episodes": 5,
+   "exit": 0,
+   "wall": 68
+  },
+  {
+   "id": "pilot-P017-B",
+   "tokens": 127856,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 51
+  },
+  {
+   "id": "pilot-P022-A",
+   "tokens": 126900,
+   "episodes": 2,
+   "exit": 0,
+   "wall": 35
+  },
+  {
+   "id": "pilot-P022-B",
+   "tokens": 127383,
+   "episodes": 0,
+   "exit": 0,
+   "wall": 31
+  },
+  {
+   "id": "pilot-P065-A",
+   "tokens": 124870,
+   "episodes": 2,
+   "exit": 0,
+   "wall": 34
+  },
+  {
+   "id": "pilot-P065-B",
+   "tokens": 126649,
+   "episodes": 3,
+   "exit": 0,
+   "wall": 49
+  },
+  {
+   "id": "pilot-P066-A",
+   "tokens": 126218,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 36
+  },
+  {
+   "id": "pilot-P066-B",
+   "tokens": 126721,
+   "episodes": 0,
+   "exit": 0,
+   "wall": 32
+  },
+  {
+   "id": "pilot-P091-A",
+   "tokens": 163741,
+   "episodes": 2,
+   "exit": 0,
+   "wall": 42
+  },
+  {
+   "id": "pilot-P091-B",
+   "tokens": 165674,
+   "episodes": 7,
+   "exit": 0,
+   "wall": 71
+  },
+  {
+   "id": "pilot-P093-A",
+   "tokens": 126453,
+   "episodes": 2,
+   "exit": 0,
+   "wall": 52
+  },
+  {
+   "id": "pilot-P093-B",
+   "tokens": 127401,
+   "episodes": 3,
+   "exit": 0,
+   "wall": 69
+  }
+ ],
+ "tokens": {
+  "n": 12,
+  "total": 1597085,
+  "median": 127059,
+  "max": 165674
+ },
+ "gates": {
+  "recall_ok": true,
+  "extra_ok": false
+ }
+}

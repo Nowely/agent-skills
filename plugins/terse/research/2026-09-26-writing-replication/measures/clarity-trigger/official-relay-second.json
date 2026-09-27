@@ -1,0 +1,593 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.280",
+  "startedAt": "2026-09-27T21:14:36.526Z",
+  "durationSeconds": 63,
+  "costUsd": 1.7888782000000003,
+  "partial": false,
+  "suite": {
+    "root": "/private/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse-clarity-eval-NfBiMo/plugin",
+    "ablation": "none",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "terse",
+        "version": "0.2.0",
+        "path": "/private/var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T/terse-clarity-eval-NfBiMo/plugin"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "relay-third-h1",
+      "dir": "evals/clarity-trigger/relay-third-h1",
+      "source": "prose",
+      "promptMarkdown": "The migration dry-run reports 1,260 records ready to move, 14 rejected for missing account IDs, and 9 with duplicate timestamps that need review. It did not check whether downstream exports accept the new field names. Write release manager Priya a concise update explaining what the run found and what remains open before she approves the migration.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "invoked",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:terse:)?clarity\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.0976926,
+            "judgeCostUsd": 0,
+            "durationSeconds": 7,
+            "startedAt": "2026-09-27T21:14:36.542Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-yNMKeB/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.09763459999999999,
+            "judgeCostUsd": 0,
+            "durationSeconds": 8,
+            "startedAt": "2026-09-27T21:14:36.542Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-oSihMp/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.09797700000000001,
+            "judgeCostUsd": 0,
+            "durationSeconds": 9,
+            "startedAt": "2026-09-27T21:14:36.542Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-lCrLeN/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "relay-third-h2",
+      "dir": "evals/clarity-trigger/relay-third-h2",
+      "source": "prose",
+      "promptMarkdown": "A linter report shows 31 warnings reduced from 46, with 6 remaining in generated files and 25 in handwritten modules. It did not inspect runtime behavior or decide which warnings are safe to suppress. Draft an update for customer-support lead Mateo explaining the progress and open questions so he can set expectations with the team.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "invoked",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:terse:)?clarity\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.10150980000000001,
+            "judgeCostUsd": 0,
+            "durationSeconds": 10,
+            "startedAt": "2026-09-27T21:14:44.041Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-UPCRLs/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.10158740000000001,
+            "judgeCostUsd": 0,
+            "durationSeconds": 10,
+            "startedAt": "2026-09-27T21:14:44.784Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-jaimuW/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.1031772,
+            "judgeCostUsd": 0,
+            "durationSeconds": 13,
+            "startedAt": "2026-09-27T21:14:45.284Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-bGdFqn/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "relay-third-h3",
+      "dir": "evals/clarity-trigger/relay-third-h3",
+      "source": "prose",
+      "promptMarkdown": "The benchmark tool measured median startup at 1.8 seconds, down from 2.4, across 20 runs; the slowest run was 3.6 seconds. It did not measure performance on older laptops, and the sample used a warm local cache. Write QA manager Lin a short update on what the benchmark found and what is still unknown before the release decision.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "invoked",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:terse:)?clarity\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.0956986,
+            "judgeCostUsd": 0,
+            "durationSeconds": 7,
+            "startedAt": "2026-09-27T21:14:53.720Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-BkGAHN/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.09646940000000001,
+            "judgeCostUsd": 0,
+            "durationSeconds": 7,
+            "startedAt": "2026-09-27T21:14:55.087Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-tEBv0N/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.095558,
+            "judgeCostUsd": 0,
+            "durationSeconds": 6,
+            "startedAt": "2026-09-27T21:14:58.426Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-z5L9jg/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "relay-user-h1",
+      "dir": "evals/clarity-trigger/relay-user-h1",
+      "source": "prose",
+      "promptMarkdown": "A subagent reviewing our API change reports 18 routes checked, 2 returning inconsistent error codes, and 1 route skipped because its schema was unavailable. It says the inconsistencies affect only invalid-request responses; it did not test authentication behavior. Explain to me what the report found and what is still open, in plain language, so I can decide what to fix before merge.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "invoked",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:terse:)?clarity\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.10566120000000001,
+            "judgeCostUsd": 0,
+            "durationSeconds": 14,
+            "startedAt": "2026-09-27T21:15:00.300Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-FbHeSQ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.10507039999999998,
+            "judgeCostUsd": 0,
+            "durationSeconds": 14,
+            "startedAt": "2026-09-27T21:15:02.458Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-AInYaD/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.1036158,
+            "judgeCostUsd": 0,
+            "durationSeconds": 11,
+            "startedAt": "2026-09-27T21:15:04.764Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-BtVmCW/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "relay-user-h2",
+      "dir": "evals/clarity-trigger/relay-user-h2",
+      "source": "prose",
+      "promptMarkdown": "The test runner says 243 tests passed and 7 failed after the cache update. Five failures are timeouts in the retry suite; two are snapshot mismatches. It did not run the browser tests, which are currently disabled in CI. Could you briefly explain to me what this result tells us and what remains unresolved?",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "invoked",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:terse:)?clarity\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.1060498,
+            "judgeCostUsd": 0,
+            "durationSeconds": 11,
+            "startedAt": "2026-09-27T21:15:14.207Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-xg1TWQ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.08983840000000001,
+            "judgeCostUsd": 0,
+            "durationSeconds": 11,
+            "startedAt": "2026-09-27T21:15:15.444Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-4w8STe/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.10089880000000001,
+            "judgeCostUsd": 0,
+            "durationSeconds": 9,
+            "startedAt": "2026-09-27T21:15:16.555Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-U5tp9Q/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.6666666666666666,
+        "passRate": 0.6666666666666666
+      }
+    },
+    {
+      "name": "relay-user-h3",
+      "dir": "evals/clarity-trigger/relay-user-h3",
+      "source": "prose",
+      "promptMarkdown": "Our security scanner found 3 medium-severity dependency alerts, including one package used by the image upload path. The other two are in development-only tooling. It could not determine whether the upload endpoint is reachable without login. Tell me what the scan found and what is still open, without overstating what we know.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "invoked",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:terse:)?clarity\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.0867344,
+            "judgeCostUsd": 0,
+            "durationSeconds": 10,
+            "startedAt": "2026-09-27T21:15:25.500Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-2Zje3p/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.10144639999999999,
+            "judgeCostUsd": 0,
+            "durationSeconds": 10,
+            "startedAt": "2026-09-27T21:15:25.566Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-UF3sjL/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.1022584,
+            "judgeCostUsd": 0,
+            "durationSeconds": 13,
+            "startedAt": "2026-09-27T21:15:26.000Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-MR5M2D/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "invoked",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.6666666666666666,
+        "passRate": 0.6666666666666666
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 6,
+    "casesPassed": 4,
+    "overallScore": 0.888888888888889,
+    "overallPassRate": 0.888888888888889
+  }
+}
