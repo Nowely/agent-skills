@@ -102,8 +102,7 @@ In a full run, beside the question readers, two readers carrying a task, brief 9
 outcome they want, acting from the documentation alone, with no answer key and no source. Check the state
 they produce, not what they say. It is the only evidence at level 3 about the reader's path, and it finds
 the failure a question cannot: a recipe whose every sentence is true and whose sequence leaves the reader
-worse off — measured on 2026-09-12, "commit or stash first" reverted a reader's tree and showed the agent
-nothing. Report beside the result which sections no task reached; a gate that passes everything has
+worse off ([M11](../../references/measurements.md#m11)). Report beside the result which sections no task reached; a gate that passes everything has
 described the tasks, not the document. The readers' forced guesses are the yield: ask for every place the
 text made them invent something, and treat a guess that turned out right exactly like one that turned out
 wrong.
@@ -123,10 +122,8 @@ Give every wrong answer a cause, because the cause decides what a rewrite must d
 | findability | true, in the right place, not found | change the path to it |
 | harmful | every sentence true, the sequence leaves the reader worse off | repair the recipe, and test it by running it |
 
-Keep the causes apart. Two of six failures on 2026-09-10 were refuted claims, and a rewrite aimed at
-findability would have carried both forward in cleaner prose. A true sentence under the wrong heading is
-not fixed by making it truer: readers turned "you need not create this file" into a requirement because
-it sat under Prerequisites.
+Keep the causes apart: a findability repair cannot correct a refuted claim, and a sentence under the
+wrong heading needs its placement fixed ([M27](../../references/measurements.md#m27)).
 
 **Missing is the largest class, not the rarest.** In the one study that counted — 805,939 candidates
 mined, 878 classified by hand — the answer being absent accounted for 268 of 485 documentation defects,
@@ -153,9 +150,9 @@ only on the user's word: that they agree to a named plan (`rethink` step 5), who
 into the run file, or, quoted, that the document's current shape stands. A plan they read without saying
 they agree to it is not agreement; anything short of their word is `shape: not agreed`. Agreed, offer
 `rewrite` as the next step, given this run's directory. Not agreed, offer `/terse:rethink`, and say why
-not `rewrite` alone: on 2026-09-11, and on 2026-09-23 after four rounds of `rewrite` on this plugin's own
-README, a document written on a shape nobody agreed was rejected for its content, not its phrasing
-(`plugins/terse/research/2026-09-22-terse-process/`). Run neither.
+not `rewrite` alone: a polished text can still have the wrong shape
+([M29](../../references/measurements.md#m29)). Run neither. For the human hand-over, follow
+[relayed results](../../references/genres/relayed-result.md).
 
 ## Reference
 

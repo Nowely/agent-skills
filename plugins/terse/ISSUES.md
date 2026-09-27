@@ -6,21 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with entrust's ledger, `plugins/entrust/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E6. `writing-rules.md` and `measurements.md` repeat two counts from 2026-09-10 that the run's own prompts and judge contradict
-
-**Evidence, level 2.** `plugins/terse/plugin/references/writing-rules.md:37-40` and
-`plugins/terse/plugin/references/measurements.md:97-99` (M19) say five published writing
-standards were put against two unguided controls and that seven of ten seats proposed nothing. The run's
-prompts under `plugins/terse/research/2026-09-10-chain/run-2x5/` (`v04PR6HL.prompt.txt:13-20`) describe a 2×5 design —
-four standards, one of them an unpublished CLAUDE.md draft, plus one control pair — and the judge's own
-count on the 116-word passage (`o8eHzS6U.answer.md:10-19`) reaches six at most, with three seats
-lengthening it. Found by the 2026-09-22 truth pass (entries C39, C41, both refuted at README.md:76-78). The research
-index repeated them until `29ae657`, which rewrote its row from the judges' own words.
-
-**Issue text.** The two reference pages restate the README's refuted numbers. `writing-rules.md` carries
-the SHA-256 of its own text, so the correction changes the measurement it was made under and the SHA line
-and the note beside it move together with the text, per the repository's rule on frozen blocks.
-
 ## E7. `prior-art.md` says every 2026-09-10 number traces to the bake-off directory, and the reader numbers do not
 
 **Evidence, level 2.** `plugins/terse/plugin/references/prior-art.md:910-911` calls `run-2x5/` "forty Codex seat
