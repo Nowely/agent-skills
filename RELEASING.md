@@ -69,10 +69,17 @@ and do not publish from an unclean tree. The entrust series starts at `entrust@0
 
 ## terse
 
-- **Version**: `plugin/.claude-plugin/plugin.json`.
+- **Version**: `plugin/.claude-plugin/plugin.json` and `metadata.version` in all four `plugin/skills/*/SKILL.md`
+  files; keep them equal.
 - **Tag check**: `jq -r .version plugins/terse/plugin/.claude-plugin/plugin.json` prints the tag's `X.Y.Z`; terse has no
   package suite.
-- **Pages**: after any edit to a page, `node plugins/terse/evals/pages.test.mjs` checks the run-directory line,
-  every relative link and the frozen digests; CI runs it by path, with the rewrite scripts' selftest.
+- **Pages**: after any edit to a page, `node plugins/terse/evals/pages.test.mjs` checks relative links and anchors,
+  the shared run-directory line, frozen digests, skill frontmatter and versions, README Skills rows, and skill-page
+  links to genre notes; CI also runs the rewrite scripts' selftest by path.
+- **Clarity trigger**: when `plugins/terse/plugin/skills/clarity/SKILL.md` or its discovery metadata changes, before
+  release follow `plugins/terse/evals/clarity-trigger.count.mjs` with 20 hand-labelled sessions,
+  `plugins/terse/evals/clarity-trigger.live.md`, and `node plugins/terse/evals/clarity-trigger.official.mjs --run`.
+  The live and official runs spend Claude tokens and stay out of CI. Record model, Claude Code version, settings and
+  trigger fractions; the owner sets the release threshold after the first run.
 - **Cross-plugin**: terse's briefs launch entrust agents, so an entrust release that changes how an agent is
   launched runs one terse brief through it before its tag.
