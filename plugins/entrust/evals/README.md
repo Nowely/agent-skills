@@ -11,7 +11,7 @@ node evals/run-all.mjs        # every suite, cheapest first, stopping at the fir
 node evals/cli.test.mjs       # one suite, when it is the thing being worked on
 ```
 
-`run-all.mjs` lists the sixteen, cheapest first: orchestrate, advisor, package, agent-contract, agent-run, swarm, attach-pasted, experiment, cleanup, worktree, cli, conformance, lock, protocol, fidelity, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
+`run-all.mjs` lists the twenty, cheapest first: orchestrate, advisor, fragments, lint-draft, gate-checks, package, capture-check, agent-contract, agent-run, swarm, attach-pasted, experiment, cleanup, worktree, cli, conformance, lock, protocol, fidelity, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
 listed cannot go unrun. A suite killed by a signal is a failure, not a pass: a killed child reports
 `code` null and `process.exit(null)` exits 0. A suite that skipped or never ran is deducted from the
 green count and named in the last line, which is the line to read.
@@ -23,6 +23,15 @@ SERVER's events; `worktree.test.mjs` owns the managed tree and its ledger, `lock
 path, signals and teardown, and `cleanup.test.mjs` what the cleanup script inventories, keeps and removes —
 it drives `scripts/cleanup.mjs`, never the driver, and every fixture it plants lives under a scratch state
 directory, config directory and `TMPDIR` of its own.
+
+`fragments.test.mjs` checks the text two pages share against its one source, through `fragments.mjs`, which
+holds the fragments and regenerates their copies (`node evals/fragments.mjs --write`): the codex page's
+composition and rights sections, generated into `orchestrate/references/codex-composition.md`; the
+five-field schema file, copied inline into the orchestrate and swarm pages; the run-directory path three
+pages name. It runs before `package`, so a release run stops on drift. `capture-check.test.mjs` and
+`lint-draft.test.mjs` drive the orchestrate mode's two scripts. `gate-checks.test.mjs` runs the live gate's
+reading of a session, `lib/gate-checks.mjs`, against fixture streams, so what the paid gate concludes is
+checked on every run.
 
 The counts are deliberately not written down here — the last one was wrong twice in two days. The
 `CASES` arrays are the inventory, and each suite states its own count in its last line. A case that
@@ -49,10 +58,39 @@ authenticated home, and its opt-in live-turn case spends a real turn. Absent the
 which makes "portable behaviour passed" and "fidelity was verified" the same code — so the local
 pre-release run passes `--require-live` (or sets `REQUIRE_LIVE_CODEX=1`) and the skip becomes a failure.
 `orchestrate-live.test.mjs` is the second local gate: it drives the real headless `claude` binary against
-`plugin/skills/orchestrate/SKILL.md`, spending real sessions, the subagents they spawn and one Astra
-Codex turn, a second one when `ENTRUST_LIVE_ORCHESTRATE_DELEGATE=1` adds the delegation probe,
-which checks the `subagentThreads` of an agent that took the invitation. Without
+`plugin/skills/orchestrate/SKILL.md` and `plugin/skills/advisor/SKILL.md`, spending real sessions, the
+subagents they spawn, two cheap Sonnet sessions for the activation pair, and Codex turns: one Astra turn,
+a second one when `ENTRUST_LIVE_ORCHESTRATE_DELEGATE=1` adds the delegation probe, which checks the
+`subagentThreads` of an agent that took the invitation, and the Codex agents the plans of the full-run,
+split-critic and advisor cases choose. Its header lists the cases and what each spends. Without
 `ENTRUST_LIVE_ORCHESTRATE=1` it prints one NOT RUN line and exits 0.
+
+## Regressions for recurring findings
+
+A finding that came back after a page sentence was written for it gets a regression that observes the
+behaviour: offline, where a script owns the behaviour, and in the live gate, where only a session shows it.
+A `says` or `shows` pin on the page stays as the cheap layer, and is never the only check on a recurring
+finding. The index below is the offline half, for the findings of #15 and #16 fixed on 2026-09-27; the live
+half is the header of `orchestrate-live.test.mjs`, beside the cases it names. A case added is not a case run:
+the offline ones run on every `run-all`, the live ones only when the owner arms the gate, and until then
+they are specified, not measured.
+
+| Finding | What recurred | The regression |
+| --- | --- | --- |
+| F9, F10 | checks flooding the context; a `\| tail` turning a failing suite into exit 0 | `capture-check.test.mjs`: a 100,000-line flood, the masked pipeline beside its control, a compiler's error list, a signal, a SIGTERM to the runner |
+| F15, F21 | "bounded" never a number, and inline work never priced | `capture-check.test.mjs`: the ledger refuses a second command on one question, and `--summary` totals what the runner showed |
+| F16, P13b | machinery, walls and unsupported success in what the user reads | `lint-draft.test.mjs`: the shapes #15 recorded red, their false positives green |
+| F20a | agents missing from the answer, or named by an id alone | `lint-draft.test.mjs`: every agent in `--agents` named by model and id |
+| F18, P5, P12b | the codex page loaded for every plan; hand copies of shared text drifting | `fragments.test.mjs`: the copies against their sources, and a mutation per fragment |
+| F11, F19, P10a | writes outside the writable roots; daemons that crash in the sandbox | `cli.test.mjs`: the thread's developer instructions name the effective writable roots and the staged-input rule |
+| F14, P9b | agents launched that the plan never listed | `agent-run.test.mjs`: `--new` refuses an id the registered plan lacks until an explicit amendment; `cleanup.test.mjs`: the plan file is a run's own |
+| P11a | returns past their size | `cli.test.mjs`: `maxLength` and `maxItems` spend the corrective turn and keep the overflow |
+| every live case | the gate misreading a session | `gate-checks.test.mjs`: each check the gate makes, on a session that should pass and one that should not |
+
+Two recurring findings have no regression here, on purpose. F7, waiting on a background agent, was fixed on
+main before this round, by the completion-notification rule; the headless-foreground assertion in the gate's
+full run checks something else, that a headless turn launches its agents in the foreground. F8, running a
+single waited-on Codex turn without the relay, is behind a measurement (#15 proposal 6) and is not fixed.
 
 ## Why the trigger cases exist
 

@@ -1,6 +1,6 @@
 # Protocols registered first
 
-Five experiments the 2026-09-17 research round left as hypotheses, each with the six protocol fields the page requires and the one thing it cannot show. A run fills what a protocol leaves blank, the material above all, and records the filled protocol as its own `protocol.md`.
+Six experiments, five the 2026-09-17 research round left as hypotheses and one the 2026-09-27 field audit asked for, each with the six protocol fields the page requires and the one thing it cannot show. A run fills what a protocol leaves blank, the material above all, and records the filled protocol as its own `protocol.md`.
 
 ## E1 Width: one Sol against thirty-four Luna
 
@@ -51,3 +51,13 @@ Five experiments the 2026-09-17 research round left as hypotheses, each with the
 **Judge.** The acceptance check, run by an agent that wrote nothing; the arm named, since the check reads the tree.
 **Budget and stop rule.** B capped at twice the tokens A spent; the run stops at the cap or the check.
 **What it cannot show.** Whether a different split of the same task would have helped the team; the split is the coordinator's and is recorded.
+
+## E6 One strong reader against the full policy
+
+**Hypothesis.** On a held-out review task, one strong reader over the whole subject reaches the material findings the full policy reaches (bounded readers or scouts, a split critic, refuters, a completeness critic), at fewer tokens and less owner time.
+**Arms.** A: one Sol strong reader over the whole subject, its return in the five fields. B: the full policy under the orchestrate page, composition by the page's defaults. C: one Opus strong reader, the same-family control for A.
+**Material.** Tasks not in the usefulness journal of #16; for each, the runnable revision, dependencies, sources, complete bodies and grants frozen before any arm; an independent key of material findings built before the run, later comments supplementary; a task whose decisive checks cannot run is marked infeasible and dropped, never rerun.
+**Metrics.** Unique valid findings, clustered; severity; false alarms; missed requirements; completeness; coordinator, agent and relay tokens per arm; elapsed time; retries; corrections; owner-active minutes observed directly. Validity, adoption and origin recorded separately; n stated with an interval, paired by task.
+**Judge.** Two blinded judges, cross-family, over lettered arms with first lines removed; a refuter settles disputes and reports every lost material finding by arm.
+**Budget and stop rule.** Preregistered before the first task: the role, model and effort allocation of B, the budget per arm, the stopping rule, the material-error threshold and the sample size; a cheaper arm is accepted only if the preregistered coverage and false-alarm criteria hold, and any cost-against-quality trade is the owner's word, not the conclusion's.
+**What it cannot show.** The value of any one role inside B, and any task class other than review; a disjoint-area variant of B (Q3f) is a fourth arm only if its ownership and interfaces are frozen before findings.
