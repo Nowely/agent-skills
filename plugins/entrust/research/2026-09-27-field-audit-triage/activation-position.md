@@ -1,6 +1,6 @@
 # Activation by command position (D18, #15 F2, P14a)
 
-Does `/entrust:orchestrate` activate when it is the last thing in a message rather than the first? #15 left F2 as `unknown`: in T8 (`be1f1d1e:24`) the command stood at the end of the message and the coordinator reported the skill as absent. This note is the protocol that settles it, per client. Nothing here has been run yet.
+Does `/entrust:orchestrate` activate when it is the last thing in a message rather than the first? #15 left F2 as `unknown`: in T8 (`be1f1d1e:24`) the command stood at the end of the message and the coordinator reported the skill as absent. This note is the protocol that settles it, per client. The headless half ran once on 2026-09-28 through the live gate's case 9; the VS Code half has not run.
 
 ## What counts as activation
 
@@ -37,8 +37,8 @@ The extension cannot be driven headless, so these runs are the owner's. Per posi
 
 | Client | Position | Runs | Expanded | Skill calls refused | First action | Measured on |
 | --- | --- | --- | --- | --- | --- | --- |
-| headless `claude -p` | first | 0 | unmeasured | unmeasured | unmeasured | — |
-| headless `claude -p` | last | 0 | unmeasured | unmeasured | unmeasured | — |
+| headless `claude -p` | first | 1 | yes: the page's body follows the command in the session file | 0 | Bash | 2026-09-28, the live gate's case 9 (`orchestrate-live-2026-09-27T21-14-32-517Z/9-activation/activation.json`), one pair of Sonnet sessions |
+| headless `claude -p` | last | 1 | no: no command record, plain text | 0 | Bash | the same record; the gate records this half and does not judge it |
 | VS Code extension | first | 0 | unmeasured | unmeasured | unmeasured | — |
 | VS Code extension | last | 0 | unmeasured | unmeasured | unmeasured | — |
 
