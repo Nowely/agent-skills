@@ -145,3 +145,112 @@ did not follow it: it narrated, read the output file, and handed back the "moved
 Astra turn was lost with its tokens. Measured on 2026-09-17 the same step held three runs of three; it is not
 reliable. A turn that reaches the ceiling should survive the wrapper that started it, or the rerun should not
 depend on the model's compliance.
+
+## E46. The driver's refusal-shape comment points at `schema-<version>/*ApprovalResponse.json`, files the pinned tree does not hold
+
+**Evidence, level 1.**
+
+- `plugins/entrust/plugin/skills/codex/scripts/driver.mjs:2726` (at `b3872b4`): "Refusal shapes differ per method;
+  they are taken from the pinned schema-<version>/*ApprovalResponse.json."
+- `plugins/entrust/schema-0.153.4/` holds `ServerRequest.json`, `ServerNotification.json`, `JSONRPCError.json`,
+  `v1/InitializeResponse.json` and nine `v2/*Response.json`, none of them an approval response.
+- The enum the comment means is pinned inside `ServerRequest.json`: `CommandExecutionApprovalDecision` at
+  `:266-343`, with `decline` at `:332`. `codex app-server generate-json-schema` on 0.155.1 writes ten separate
+  `*Approval*.json` files, which is the layout the comment describes and the tree never had.
+
+**Check.** `find plugins/entrust/schema-0.153.4 -iname '*Approval*'` prints nothing;
+`grep -n '"decline"' plugins/entrust/schema-0.153.4/ServerRequest.json` prints 332.
+
+**Issue text.** The comment that justifies the driver's five refusal shapes names files that are not in the tree, so
+a reader who follows the pointer finds nothing and cannot tell whether the shapes were checked against the pin.
+The enums are in `ServerRequest.json`; the comment should say so, or the generator's per-method files should be
+pinned beside it.
+
+## E47. The server's `availableDecisions` never offers `decline`, the shape every refusal of this driver sends
+
+**Evidence, level 3 for the list and for the refusal being honoured today, level 1 for the schema.**
+
+- 2026-09-27, Opus P1's probe on codex 0.155.1
+  (`plugins/entrust/research/2026-09-27-approval-channel/01-probe.md`, transcripts under `01-probe/`): five
+  `item/commandExecution/requestApproval` requests each carried `availableDecisions: ["accept",
+  {acceptWithExecpolicyAmendment: …}, "cancel"]` and never `decline`; the field is absent from the generated
+  0.155.1 `CommandExecutionRequestApprovalParams.json`.
+- `driver.mjs:2729-2730` answers both `item/*` methods with `{ decision: "decline" }`; the 27 reports with exit 6 on
+  this machine (`00-escalations.md` in the same run) each went on to `turnStatus: completed` after it, so the server
+  honours it.
+- A JSON-RPC error in place of a decision is honoured as a rejection too, but the model reads
+  `exec_command failed: … Rejected("approval request failed")` and the item completes `status: "failed",
+  exitCode: null` (P1, Q3 error), which the classifier counts under `commandsFailed` (`:3318`, `:3336`).
+
+**Check.** `grep -o 'availableDecisions[^]]*]' plugins/entrust/research/2026-09-27-approval-channel/01-probe/transcript-q12.jsonl | head -1`
+prints the list without `decline`.
+
+**Issue text.** The refusal the driver sends is not among the decisions the server advertises for the request. It is
+honoured on 0.153.4 and 0.155.1, but nothing promises it: a server that enforced its own list would turn every
+refusal into an error the model reads as a broken tool while the report counts a failed command, and the offline
+fixture, which accepts any decision, would stay green. Record the fact where the refusal shapes are chosen, make the
+fixture carry the server's list, and let the live fidelity gate compare the two.
+
+## E48. `escalations` can hold an entry with no declined or failed command beside it, because a sandboxed attempt can emit no item notifications
+
+**Evidence, level 3 for the gap (seen once), level 2 for the consequence.**
+
+- P1's 180 s hold thread (`plugins/entrust/research/2026-09-27-approval-channel/01-probe/transcript-q3a.jsonl`, and
+  the rollout it names): the rollout shows the sandboxed first attempt run and fail (`exec_command`, exit 1,
+  `Operation not permitted`), while the transcript's only `commandExecution` item is the escalated one, `item/started`
+  at line 58, the request at line 60, `item/completed` with `status: "completed"` at line 70 after the accept.
+- `driver.mjs:3318` and `:3336` count `commandsFailed` and `commandsDeclined` from `item/completed`; the help at
+  `:427-432` says `commandsDeclined` and `escalations` "can differ" and names one cause, a refused request with no
+  command, not this one.
+
+**Check.** `grep -n -o 'item/started\|requestApproval\|"type\\":\\"commandExecution\\"' <that transcript> | head` shows no
+`commandExecution` item before the request.
+
+**Issue text.** A report can show one escalation beside zero declined and zero failed commands, because the sandboxed
+attempt that raised the request produced no item at all. The help's "can differ" covers it by accident; the report's
+reader has no way to tell this case from a request raised with no attempt. Name the cause in the help, and let the
+entry carry what the request itself says about the command, since the item may never come.
+
+## E49. A writable root between the home and the state directory grants the plugin's data directory, locks and answer log included
+
+**Evidence, level 1 for the walk's direction, level 2 for the consequence.**
+
+- `plugins/entrust/plugin/skills/codex/scripts/driver.mjs:900-936` (at `b3872b4`): `checkRoot` refuses the passwd home
+  and every ancestor of it, an exact `$HOME`, and any candidate whose ancestor walk reaches `~/.codex` or the state
+  directory by inode. A candidate that *contains* the state directory without being the home or above it, `~/.claude`
+  on a plugin install, hits none of the three walks.
+- `plugins/entrust/plugin/skills/codex/references/environment-and-internals.md:72-74` names `~/.claude` a legitimate
+  root, and the state directory on a plugin install is `~/.claude/plugins/data/entrust-nowely` (orchestrate page, the
+  run directory paragraph).
+- Found by Fable D1 while designing the approval channel (`plugins/entrust/research/2026-09-27-approval-channel/02-design-v3.md`,
+  "Found in passing"), independent of that channel.
+
+**Check.** Read the three loops at `driver.mjs:902-936`: the first walks the home's ancestors, the second is an exact
+`$HOME` match, the third walks the candidate's ancestors against the protected inodes; none walks the candidate's
+descendants. A `lock.test.mjs` case that grants `--writable <parent of the state directory>` and writes a lock file
+from inside the sandbox would make it level 3.
+
+**Issue text.** `--writable ~/.claude` (or any root between the home and the state directory) is accepted, and the
+sandbox it produces can write the driver's locks, answer log, isolated home and every agent's report directory,
+which the same guard refuses when named directly. The guard should refuse a root that is, or is an ancestor of, a
+protected root, as it already refuses an ancestor of the home.
+
+## E50. "Nothing left running" after `SIGTERM` is not established for a command executing at the signal
+
+**Evidence, level 3 for the process groups, level 1 for the kill, level 2 for the consequence.**
+
+- `plugins/entrust/plugin/skills/codex/SKILL.md:93` (at `b3872b4`): a `SIGTERM` to the driver's pid "cuts the turn,
+  sweeps its codex and publishes the report … nothing left running".
+- `driver.mjs:2400-2403`: `killGroup` signals `-child.pid`, the app-server's own process group, and `groupAlive`
+  asks the same group.
+- 2026-09-27, Opus P1's probe on codex 0.155.1 (`plugins/entrust/research/2026-09-27-approval-channel/01-probe.md`,
+  Q2): each command the server runs shows "directly under the app-server pid, each in its own process group, with no
+  sandbox-exec or codex wrapper". Whether the server ends those groups on its own exit or abort was not measured.
+
+**Check.** `grep -n 'process.kill(-' plugins/entrust/plugin/skills/codex/scripts/driver.mjs` prints the two calls on
+`child.pid` alone; the probe's process-list observation is at the line the entry cites.
+
+**Issue text.** The teardown signals and polls the app-server's process group, while the commands the server runs
+live in groups of their own. Whether they die with the server is unmeasured, so the page's promise is a guess for
+any command still executing at the signal, a long test run first of all. Measure it (a `sleep` run through a live
+turn, then `SIGTERM`, then `pgrep`), and either sweep the children or narrow the sentence.
