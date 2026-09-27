@@ -14,12 +14,34 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { DRIVER, EXIT, FAKE, readJson, registry, runCases, summarize } from "./lib/harness.mjs";
+import { DRIVER, EXIT, FAKE, readJson, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
 import { SHIM, assertKnownScenarios, explicitTmp, flowState, laxSchemaFile, looseNestedSchemaFile,
          looseSchemaFile, mismatchSessions, notExec, oneOfSchemaFile, optionalSchemaFile, protectedState, protectedTmp,
          run, runTable, sessionsDir, survivorPidName, unknownModelLog, until } from "./lib/scenarios.mjs";
 
 const shimDir = SHIM;
+
+// A tool's own store, as arc keeps one: a directory it opens read-write and a single file beside it. A
+// read agent may be granted both and nothing else, which is what a read-level --writable is for.
+const store = tempDir("entrust-store-");
+const storeDir = path.join(store, "objectdb");
+const storeFile = path.join(store, "sync");
+fs.mkdirSync(storeDir);
+fs.writeFileSync(storeFile, "");
+// A state directory whose path the cases know before they run, for the refusals that name it; and one
+// holding a mailbox, as --new --approvals makes it.
+const guardState = path.join(tempDir("entrust-guard-"), "state");
+fs.mkdirSync(guardState);
+const armedState = tempDir("entrust-armed-");
+const armedBox = path.join(armedState, "run", "agent", "approvals");
+fs.mkdirSync(armedBox, { recursive: true, mode: 0o700 });
+// A mailbox inside another run's private $TMPDIR under the same state directory.
+const mailUnderRunTmp = path.join(armedState, "tmp", "another-run", "approvals");
+fs.mkdirSync(mailUnderRunTmp, { recursive: true, mode: 0o700 });
+// A mailbox under the $TMPDIR every driver here is handed, which the read level may write.
+const mailUnderTmp = path.join(process.env.TMPDIR ? process.env.TMPDIR : tempDir("entrust-mail-"), "entrust-mail-under-tmp");
+fs.mkdirSync(mailUnderTmp, { recursive: true });
+const realOf = (p) => fs.realpathSync(p);
 
 // The two roots the state-directory cases below measure: one stands in for the plugin's own data
 // directory, the other for a home the run must leave untouched. Both live under the shim so the suite's
@@ -226,14 +248,64 @@ const CASES = [
   { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nRIGHTS: write /tmp\n",
     why: "a repeated RIGHTS is a contradiction about rights; last-wins would let an appended line quietly upgrade the agent",
     assertStderr: (t) => /RIGHTS appears more than once/.test(t) || `stderr did not reject the duplicate: ${t.slice(0, 120)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nWRITABLE: /tmp\n",
-    why: "the file goes through the same flag guards as the CLI, so a read agent asking for a second writable root fails exactly as --level read --writable does",
-    assertStderr: (t) => /--writable belongs to --level write/.test(t) || `the level guard did not fire: ${t.slice(0, 120)}` },
+  { scenario: "happy",            expect: EXIT.OK, agent: `RIGHTS: read <CWD>\nWRITABLE: ${storeFile}\n`,
+    why: "the file goes through the same flag guards as the CLI, so a read agent's WRITABLE: is a read-level --writable: a tool's own store, here a single file arc opens read-write, reaching the profile and the sandbox the server reports",
+    assert: (r) => (r.level === "read" && (r.sandbox?.writableRoots ?? []).includes(realOf(storeFile))
+        && (r.promptFileFields ?? []).join(",") === "RIGHTS,WRITABLE")
+      || `the file root did not reach the read sandbox: ${JSON.stringify({ roots: r.sandbox?.writableRoots, fields: r.promptFileFields })}` },
 
   // --- egress: on at both levels, off only where the caller says so ---
-  { scenario: "happy",            expect: EXIT.USAGE, args: ["--writable", "/tmp"],
-    why: "--writable grants a second root to WRITE in, and read level has none; the flag egress used to be paired with is now a default, and this half of the rule is untouched by that",
-    assertStderr: (t) => /--writable belongs to --level write/.test(t) || `the level guard did not fire: ${t.slice(0, 140)}` },
+  { scenario: "happy",            expect: EXIT.OK, args: ["--writable", storeDir, "--writable", storeFile],
+    why: "at read level --writable adds one more key to the profile's filesystem table beside $TMPDIR, a directory or a regular file; the sandbox the server reports is asserted to be exactly those, resolved",
+    assert: (r) => {
+      const want = [realOf(r.tmpDir ?? process.env.TMPDIR), realOf(storeDir), realOf(storeFile)].sort();
+      const got = (r.sandbox?.writableRoots ?? []).map(realOf).sort();
+      return (JSON.stringify(got) === JSON.stringify(want) && JSON.stringify(r.writableRootsRequested) === JSON.stringify([realOf(storeDir), realOf(storeFile)]))
+        || `the read sandbox is not $TMPDIR plus the two roots: ${JSON.stringify({ got, requested: r.writableRootsRequested })}`;
+    } },
+  { scenario: "profile-root-dropped", expect: EXIT.TRANSPORT, args: ["--writable", storeDir],
+    why: "a read-level root the server did not apply is a narrower sandbox than the one the agent was told it has: the tool fails inside it and the agent reports the failure as a finding, so the whole set is compared, not only $TMPDIR",
+    assertStderr: (t) => /writable roots are .* expected exactly/.test(t) || `the dropped root was not refused: ${t.slice(0, 200)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, args: ["--writable", "/nonexistent/entrust-store"],
+    why: "a read-level root is resolved like any other, so a store that is not there is the caller's error before the turn",
+    assertStderr: (t) => /--writable does not exist/.test(t) || `a missing root was not refused: ${t.slice(0, 160)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, args: ["--level", "write", "--writable", storeFile],
+    why: "at write level a root stays a directory: the file form is measured for the read profile's table and nothing else",
+    assertStderr: (t) => /--writable is not a directory:/.test(t) || `a file root was accepted at write level: ${t.slice(0, 160)}` },
+
+  // --- the approval channel's two flags: command-line only, and refused before anything is spawned ---
+  { scenario: "happy",            expect: EXIT.USAGE, args: ["--approval-dir", "mailbox"],
+    why: "a relative mailbox resolves against whatever cwd the driver was started in",
+    assertStderr: (t) => /--approval-dir must be an absolute path/.test(t) || `a relative mailbox was accepted: ${t.slice(0, 160)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, args: ["--approval-dir", "/nonexistent/entrust-mailbox"],
+    why: "the launcher makes the mailbox; one that is not there was never armed",
+    assertStderr: (t) => /--approval-dir does not exist/.test(t) || `a missing mailbox was accepted: ${t.slice(0, 160)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, args: ["--approval-dir", shimDir],
+    why: "a mailbox outside the state directory is a place some sandbox may be able to write, and then an agent can publish its own decision",
+    assertStderr: (t) => /is not inside this driver's state directory/.test(t) || `a mailbox outside the state directory was accepted: ${t.slice(0, 200)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, args: ["--approval-dir", mailUnderTmp],
+    why: "the same refusal for a mailbox under the $TMPDIR the read agent writes, the one place it would be most tempting to put one",
+    assertStderr: (t) => /is not inside this driver's state directory/.test(t) || `a mailbox under $TMPDIR was accepted: ${t.slice(0, 200)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, env: { ENTRUST_STATE_DIR: guardState }, args: ["--approval-dir", guardState],
+    why: "inside means inside: the state directory itself holds the locks and the answer log, and a mailbox is a directory of its own below it",
+    assertStderr: (t) => /is not inside this driver's state directory/.test(t) || `the state directory itself was accepted as a mailbox: ${t.slice(0, 200)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, env: { ENTRUST_STATE_DIR: armedState }, args: ["--approval-dir", mailUnderRunTmp],
+    why: "<state>/tmp/<run> is another run's private $TMPDIR, which that run's sandbox writes: this run's own roots do not cover it, so the driver's own subdirectories are refused as a whole",
+    assertStderr: (t) => /lies inside .*\/tmp, which this driver keeps for itself or hands to agents as a writable root/.test(t)
+      || `a mailbox under another run's private $TMPDIR was accepted: ${t.slice(0, 240)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, args: ["--approval-timeout", "30"],
+    why: "a bound on a wait that cannot start is a caller who believes requests will wait: without --approval-dir every one is declined at once",
+    assertStderr: (t) => /--approval-timeout bounds the wait --approval-dir starts/.test(t) || `a lone --approval-timeout was accepted: ${t.slice(0, 200)}` },
+  { scenario: "happy",            expect: EXIT.USAGE, env: { ENTRUST_STATE_DIR: armedState }, args: ["--approval-dir", armedBox, "--approval-timeout", "-1"],
+    why: "0 is the default, no deadline; a negative one bounds nothing",
+    assertStderr: (t) => /--approval-timeout must be a number of seconds, 0 for no deadline/.test(t) || `a negative timeout was accepted: ${t.slice(0, 200)}` },
+  { scenario: "happy",            expect: EXIT.OK, env: { ENTRUST_STATE_DIR: armedState }, args: ["--approval-dir", armedBox, "--approval-timeout", "0"],
+    why: "--approval-timeout 0 is the default spelled out, and legal; an armed run with nothing to ask reports its mailbox and no entries",
+    assert: (r) => (r.approvalDir === realOf(armedBox) && r.escalations.length === 0 && r.approvalsAccepted === 0 && r.approvalsStale === 0 && r.approvalsLate === 0)
+      || `the armed run's report is wrong: ${JSON.stringify({ dir: r.approvalDir, esc: r.escalations, acc: r.approvalsAccepted })}` },
+  { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nAPPROVAL_DIR: /tmp\n",
+    why: "the mailbox is the coordinator's own command line: a header able to name one would let a copied line choose where decisions come from",
+    assertStderr: (t) => /APPROVAL_DIR is command-line-only; pass --approval-dir/.test(t) || `a prompt file armed the channel: ${t.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.OK,
     why: "an agent that names no network gets one, as a Claude subagent does: a grant the coordinator has to know to ask for is a rule to be told, and the whole claim of this level is that there is none",
     assert: (r) => (r.network === true && r.sandbox?.networkAccess === true)
@@ -856,9 +928,87 @@ flow("a private $TMPDIR outlives its run and is reaped on the answer log's bound
     return fs.existsSync(dir) || `an earlier run's kept $TMPDIR was reaped inside the bounds: ${dir}`;
   });
 
+flow("a read-level --writable takes the guard every writable root takes: ~/.codex, the state directory, every directory above either, the home and its ancestors are refused",
+  "a tool's store is the narrow thing the read level may now write; the same flag pointed at the receipts, at this driver's state or at a directory holding either would hand a read agent what the write level is refused",
+  async () => {
+    const home = realOf(os.userInfo().homedir);
+    const targets = [[guardState, "inside"], [path.dirname(guardState), "an ancestor of this driver's state directory"],
+                     [path.join(home, ".codex"), "inside ~/.codex"], [home, "your home directory"],
+                     [path.dirname(home), "an ancestor of your home directory"]];
+    const problems = [];
+    for (const [t, why] of targets) {
+      if (!fs.existsSync(t)) continue;   // a machine with no ~/.codex has nothing there to protect
+      const { code, err } = await run({ scenario: "happy", args: ["--writable", t], env: { ENTRUST_STATE_DIR: guardState } });
+      if (code !== EXIT.USAGE) problems.push(`--writable ${t} at read level exited ${code}`);
+      else if (!err.includes(`refusing to grant write access to ${realOf(t)}: it is ${why}`)) problems.push(`--writable ${t}: ${err.trim().slice(0, 200)}`);
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("one driver per mailbox: a second exits 2 naming the owner's pid, and a dead owner's claim is taken over",
+  "pending is rewritten whole by whoever owns the mailbox, so two drivers on one would erase each other's requests; a claim whose driver is gone would otherwise wedge the directory",
+  async () => {
+    const state = flowState();
+    const box = path.join(state, "run", "agent", "approvals");
+    fs.mkdirSync(box, { recursive: true, mode: 0o700 });
+    const first = run({ scenario: "slow-turn", args: ["--approval-dir", box], env: { ENTRUST_STATE_DIR: state } });
+    const owner = await until(() => readJson(path.join(box, "owner.json")));
+    if (!owner) return "the first driver never claimed the mailbox";
+    const second = await run({ scenario: "happy", args: ["--approval-dir", box], env: { ENTRUST_STATE_DIR: state } });
+    const a = await first;
+    const problems = [];
+    if (second.code !== EXIT.USAGE || !second.err.includes(`belongs to entrust pid ${owner.pid}, which is still running`))
+      problems.push(`a second driver on a live mailbox: exit ${second.code}, ${second.err.trim().slice(-200)}`);
+    if (a.code !== EXIT.OK) problems.push(`the owner exited ${a.code}`);
+    if (readJson(path.join(box, "owner.json"))?.threadId !== "thr_root") problems.push("the owner file does not name the thread once it exists");
+    const third = await run({ scenario: "happy", args: ["--approval-dir", box], env: { ENTRUST_STATE_DIR: state } });
+    if (third.code !== EXIT.OK || !third.err.includes(`was left by entrust pid ${owner.pid}, which is gone`))
+      problems.push(`a dead owner's mailbox: exit ${third.code}, ${third.err.trim().slice(-200)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("two drivers that both find a mailbox's owner dead: one takes it over, the other exits 2 naming it",
+  "a takeover by rename lets both racers replace the dead claim and both rewrite pending from maps of their own, erasing each other's requests (reproduced offline); the claim is a link(2) and the takeover happens under a marker, so exactly one owns the mailbox",
+  async () => {
+    const state = flowState();
+    const box = path.join(state, "run", "agent", "approvals");
+    fs.mkdirSync(box, { recursive: true, mode: 0o700 });
+    const gone = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
+    const deadPid = Number(gone.stdout);
+    fs.writeFileSync(path.join(box, "owner.json"), JSON.stringify({ pid: deadPid, identity: "lstart:long gone", startedAtMs: 1, threadId: null }));
+    // Both pause between finding the owner dead and taking it over, so both are past that check at once.
+    const env = { ENTRUST_STATE_DIR: state, ENTRUST_LOCK_SEAM_MS: "800" };
+    const [a, b] = await Promise.all([run({ scenario: "slow-turn", args: ["--approval-dir", box], env }),
+                                      run({ scenario: "slow-turn", args: ["--approval-dir", box], env })]);
+    const codes = [a.code, b.code].sort();
+    const loser = a.code === EXIT.USAGE ? a : b;
+    const problems = [];
+    if (JSON.stringify(codes) !== JSON.stringify([EXIT.OK, EXIT.USAGE])) problems.push(`the two drivers exited ${JSON.stringify([a.code, b.code])}, not one 0 and one 2`);
+    if (!/belongs to entrust pid \d+, which is still running/.test(loser.err)) problems.push(`the loser does not name the owner: ${loser.err.trim().slice(-200)}`);
+    const takeovers = [a.err, b.err].filter((e) => e.includes(`was left by entrust pid ${deadPid}, which is gone`)).length;
+    if (takeovers !== 1) problems.push(`${takeovers} drivers announced a takeover`);
+    if (fs.existsSync(path.join(box, "owner.json.reclaim"))) problems.push("the reclaim marker was left behind");
+    return problems.length === 0 || problems.join("; ");
+  });
+
 let failed = await runTable(CASES);
 
 // --- the help surface: what a coordinator is shown, and what the parser will actually take ---
+
+flow("--help says what a read-level root is for, what the approval flags do and what exit 6 now means, and --help-all names the mailbox and the entry",
+  "the pages quote this text: a read-level --writable handed to a repository is the widening the flag exists to avoid, a caller who thinks a request waits has to know it needs --approval-dir, and a coordinator reading exit 6 has to know an accepted request is never one",
+  () => {
+    const core = helpRun("--help").stdout.replace(/\s+/g, " "), all = helpRun("--help-all").stdout.replace(/\s+/g, " ");
+    const problems = [];
+    for (const s of ["only for a tool's own store", "never a repository", "--approval-dir D", "--approval-timeout S",
+                     "default 0, no deadline", "accepted by the driver itself, armed or not",
+                     "an approval request was declined or expired unanswered", "refuses ~/.codex, <state> and every directory above either"])
+      if (!core.includes(s)) problems.push(`--help lacks ${JSON.stringify(s)}`);
+    for (const s of ["owner.json", "is stale: counted, left in place", "counted late", "approvalsAutoAccepted",
+                     "outcome ({status, exitCode, durationMs}", "ENTRUST_APPROVAL_POLL_MS"])
+      if (!all.includes(s)) problems.push(`--help-all lacks ${JSON.stringify(s)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
 
 const helpRun = (flag) => spawnSync(process.execPath, [DRIVER, flag], { encoding: "utf8" });
 

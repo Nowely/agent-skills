@@ -11,14 +11,18 @@
 //
 // Exit 0 if every case matches its expected exit code.
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { EXIT, FAKE, LADDER, registry, runCases, summarize } from "./lib/harness.mjs";
+import { EXIT, FAKE, LADDER, readJson, registry, runCases, summarize } from "./lib/harness.mjs";
 import { SHIM, REVIEW_SCHEMA, assertKnownScenarios, attachFile, attachFile2, flowState, interruptLog,
          modelListLog, oneOfSchemaFile, protoSchemaFile, rateLimitLog, recordOf, run, runTable,
-         schemaFile, until } from "./lib/scenarios.mjs";
+         schemaFile, until, wait } from "./lib/scenarios.mjs";
 
 const shimDir = SHIM;
+const approvalErrorLog = path.join(shimDir, "rpc-approval-error.log");
+const duplicateLog = path.join(shimDir, "rpc-approval-duplicate.log");
+const entry0 = (r) => (r.escalations ?? [])[0] ?? {};
 
 // The prompt the stalled-reader row echoes back, sized past what a paused pipe holds: the pipe itself
 // (64 KB by default), the reader's own buffer and the chunks libuv has in flight when pause() lands,
@@ -627,6 +631,80 @@ const CASES = [
     assertStderr: (e) => /still has a turn running/.test(e)
       || `the refusal does not say the thread is busy: ${e.slice(0, 200)}`,
     assertText: (out) => out.trim() === "" || `a pre-turn refusal printed ${out.length} bytes on stdout` },
+
+  // --- approval requests with no mailbox: declined at once, every one recorded whole ---
+  { scenario: "approval-wait",    expect: EXIT.ESCALATED,
+    why: "without --approval-dir nothing can answer, so the request is declined at once as before; the entry now says so in its own fields, and its detail is the command whole — a clipped one is a command nobody can judge",
+    assert: (r) => {
+      const e = entry0(r);
+      if (e.offered !== false || e.id !== null || e.decision !== "declined" || e.by !== "driver" || e.why !== "no channel")
+        return `the refusal is not recorded as one nobody offered: ${JSON.stringify(e)}`;
+      if (!/\n/.test(e.detail) || e.detail.length <= 200) return `the detail is not the whole command: ${JSON.stringify(e.detail)}`;
+      if (e.kind !== "command" || e.cause !== "policy" || e.waitMs !== 0 || typeof e.askedAt !== "string") return `the entry's fields are wrong: ${JSON.stringify(e)}`;
+      return (r.approvalDir === null && r.approvalsAccepted === 0 && e.resolved === true && e.outcome?.status === "declined")
+        || `the counts, the receipt or the outcome are wrong: ${JSON.stringify({ dir: r.approvalDir, acc: r.approvalsAccepted, resolved: e.resolved, outcome: e.outcome })}`;
+    } },
+  { scenario: "approval-wait-error", expect: EXIT.ESCALATED, env: { FAKE_RPC_LOG: approvalErrorLog },
+    why: "the refusal is a decision, never a JSON-RPC error: the server honours an error too, but the model then reads a broken tool and the item completes failed, which the report counts as a failed command (P1 Q3 error)",
+    assert: () => {
+      const log = fs.existsSync(approvalErrorLog) ? fs.readFileSync(approvalErrorLog, "utf8") : "";
+      return (/^answer:9401:decline$/m.test(log) && !/^answer:\d+:error/m.test(log)) || `the refusal did not go out as a decline: ${JSON.stringify(log.split("\n").filter((l) => l.startsWith("answer:")))}`;
+    } },
+  { scenario: "escalated-subagent", expect: EXIT.ESCALATED,
+    why: "a thread the root never announced is nobody this run can answer for: declined at once, whether or not a mailbox is armed",
+    assert: (r) => (entry0(r).why === "unknown thread" && entry0(r).subagent === true && entry0(r).offered === false)
+      || `an unannounced thread's request was not refused as one: ${JSON.stringify(entry0(r))}` },
+  { scenario: "approval-after-failed-attempt", expect: EXIT.ESCALATED,
+    why: "the same command failing inside the sandbox just before the request is the sandbox having stopped it (P1 Q1), and the cause says so: that one is fixed by a right or a setting",
+    assert: (r) => entry0(r).cause === "sandbox" || `cause is ${JSON.stringify(entry0(r).cause)}, not sandbox` },
+  { scenario: "approval-no-attempt", expect: EXIT.ESCALATED,
+    why: "a request with no attempt before it is Codex asking by its own rule, as it does for rm -rf; nothing on the plugin's side changes it, and the cause has to tell the two apart",
+    assert: (r) => entry0(r).cause === "policy" || `cause is ${JSON.stringify(entry0(r).cause)}, not policy` },
+  { scenario: "approval-writestdin", expect: EXIT.ESCALATED,
+    why: "input to a terminal already running cannot be read as a command, so it is never offered; the kind is checked before the mailbox is",
+    assert: (r) => (entry0(r).why === "kind writeStdin" && entry0(r).kind === "writeStdin")
+      || `a writeStdin request was not refused by its kind: ${JSON.stringify(entry0(r))}` },
+  { scenario: "approval-then-transient", expect: EXIT.ESCALATED,
+    why: "the control for the retry guard: a request declined at once did nothing, so the transient failure after it is retried as before, and the declined entry still reads 6",
+    assert: (r) => r.transientRetries?.length === 1 || `the declined request suppressed the retry: ${JSON.stringify(r.transientRetries)}` },
+  { scenario: "filechange-child", expect: EXIT.OK,
+    why: "a subagent the root announced writing inside $TMPDIR is covered by the same rights, and the driver answers it the same way; it stays the child's, never root evidence",
+    assert: (r) => {
+      const e = entry0(r);
+      return (e.decision === "accepted" && e.by === "driver" && e.subagent === true && e.agentPath === "/root/writer"
+          && e.cause === "rights" && r.approvalsAutoAccepted === 1 && (r.filesTouched ?? []).length === 0)
+        || `the child's covered write was not accepted by the driver: ${JSON.stringify({ e, touched: r.filesTouched })}`;
+    } },
+  { scenario: "filechange-no-started", expect: EXIT.ESCALATED,
+    why: "a file change whose item/started never came names no path, and the driver does not guess one: not shown inside the roots, so never answered yes",
+    assert: (r) => (entry0(r).fileChanges === null && entry0(r).cause === "outside" && entry0(r).decision === "declined")
+      || `a pathless file change was treated as covered: ${JSON.stringify(entry0(r))}` },
+  { scenario: "approval-duplicate", expect: EXIT.ESCALATED, env: { FAKE_RPC_LOG: duplicateLog },
+    why: "one request id is one request: a copy the server sends again must not become a second entry or draw a second response to an id the server matches once",
+    assert: (r) => {
+      const log = answers(duplicateLog).filter((l) => l.startsWith("answer:9430:"));
+      return (r.escalations?.length === 1 && r.approvalsDuplicate === 1 && log.length === 1)
+        || `the duplicate was not one request: ${JSON.stringify({ entries: r.escalations?.length, dup: r.approvalsDuplicate, answers: log })}`;
+    } },
+  { scenario: "filechange-at",    expect: EXIT.OK,
+    env: { FAKE_FILECHANGE_PATH: path.join(process.env.TMPDIR, "rename-from.md"), FAKE_FILECHANGE_MOVE: path.join(process.env.TMPDIR, "rename-to.md") },
+    why: "a rename names two paths and both are judged; inside $TMPDIR at both ends it is a write the rights cover",
+    assert: (r) => (entry0(r).decision === "accepted" && entry0(r).by === "driver" && entry0(r).fileChanges?.[0]?.move?.endsWith("rename-to.md"))
+      || `a covered rename was not accepted by the driver: ${JSON.stringify(entry0(r))}` },
+  { scenario: "filechange-at",    expect: EXIT.ESCALATED,
+    env: { FAKE_FILECHANGE_PATH: path.join(process.env.TMPDIR, "rename-out.md"), FAKE_FILECHANGE_MOVE: `/etc/entrust-rename-${process.pid}.md` },
+    why: "a rename from inside the roots to outside them moves a file where the rights do not reach: the destination is judged as well as the source",
+    assert: (r) => (entry0(r).cause === "outside" && entry0(r).decision === "declined" && / -> \/etc\/entrust-rename-/.test(entry0(r).detail))
+      || `a rename out of the roots was treated as covered: ${JSON.stringify(entry0(r))}` },
+  { scenario: "filechange-child-late", expect: EXIT.ESCALATED,
+    why: "a subagent's request that arrives after its own turn completed answers to nobody, whatever its paths: a request is answered only inside the turn that asked, a child's as the root's",
+    assert: (r) => (entry0(r).why === "turn ended" && entry0(r).decision === "declined" && entry0(r).subagent === true && r.approvalsAutoAccepted === 0)
+      || `a request for a finished child turn was answered: ${JSON.stringify(entry0(r))}` },
+  { scenario: "filechange-at",    expect: EXIT.OK, args: ["--level", "write"],
+    env: { FAKE_FILECHANGE_PATH: path.join(shimDir, "notes.md") },
+    why: "at write level the cwd is a root the rights cover, so a write there is answered by the driver like one in $TMPDIR",
+    assert: (r) => (entry0(r).decision === "accepted" && entry0(r).cause === "rights")
+      || `a write in the write-level cwd was not accepted by the driver: ${JSON.stringify(entry0(r))}` },
 ];
 
 assertKnownScenarios(CASES);
@@ -736,6 +814,471 @@ flow("the report's tokenUsage is the root thread's total, and no record carries 
     return rec.tokensSpent === undefined || `the record carries tokensSpent ${JSON.stringify(rec.tokensSpent)} beside the report's own`;
   });
 
+// --- the approval channel: a mailbox inside the state root, as --new --approvals makes one ---
+
+const requestsIn = (box) => {
+  let names = [];
+  try { names = fs.readdirSync(box); } catch { return []; }
+  return names.filter((n) => n.endsWith(".request.json")).map((n) => readJson(path.join(box, n))).filter(Boolean)
+    .sort((a, b) => Number.parseInt(a.id, 10) - Number.parseInt(b.id, 10));
+};
+const openIn = (box) => requestsIn(box).filter((q) => !q.settled);
+// The nth request the driver offers, once it is on disk and still open.
+const offered = async (box, n = 1) => (await until(() => { const o = openIn(box); return o.length >= n ? o : null; }))?.[n - 1] ?? null;
+function armed(scenario, { args = [], env = {}, onSpawn } = {}) {
+  const state = flowState();
+  const box = path.join(state, "run", "agent", "approvals");
+  fs.mkdirSync(box, { recursive: true, mode: 0o700 });
+  const log = path.join(state, "rpc.log");
+  const done = run({ scenario, args: ["--approval-dir", box, ...args], onSpawn,
+    env: { ENTRUST_STATE_DIR: state, FAKE_RPC_LOG: log, ...env } });
+  return { state, box, log, done };
+}
+// A decision as --decide writes one: the run's identity copied out of the request, published whole.
+// `identity` overrides part of that identity, which is how a stale one is made.
+function decide(box, q, decision, { why = "the plan covers it", identity = {} } = {}) {
+  const p = path.join(box, `${q.id}.decision.json`);
+  const tmp = `${p}.${crypto.randomBytes(4).toString("hex")}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify({ id: q.id,
+    run: { pid: q.run.pid, startedAtMs: q.run.startedAtMs, turnId: q.run.turnId, ...identity },
+    decision, by: "coordinator", why, decidedAt: new Date().toISOString() }), { mode: 0o600 });
+  fs.renameSync(tmp, p);
+}
+const answers = (log) => (fs.existsSync(log) ? fs.readFileSync(log, "utf8") : "").split("\n").filter(Boolean);
+const parsed = (out) => { try { return JSON.parse(out); } catch { return null; } };
+
+flow("with no deadline a request waits: still open after 3 s, listed in pending, and a SIGTERM settles it before the interrupt",
+  "the owner's rule: a request waits until it is answered or the agent is stopped, and no timer declines a question nobody answered; the signal path is how an abandoned run ends, and it has to answer the server before it interrupts the turn",
+  async () => {
+    let child = null;
+    const a = armed("approval-wait", { onSpawn: (p) => { child = p; } });
+    const q = await offered(a.box);
+    if (!q) return `no request was offered: ${(await a.done).err.slice(-300)}`;
+    await wait(3000);
+    const problems = [];
+    if (openIn(a.box).length !== 1) problems.push(`the request did not stay open for 3 s: ${openIn(a.box).length} open`);
+    const pending = fs.existsSync(path.join(a.box, "pending")) ? fs.readFileSync(path.join(a.box, "pending"), "utf8") : "";
+    if (pending !== `${q.id}\n`) problems.push(`pending is ${JSON.stringify(pending)}, not the open id`);
+    child.kill("SIGTERM");
+    const { code, out, err } = await a.done;
+    const r = parsed(out);
+    if (code !== EXIT.TURN_NOT_COMPLETED) problems.push(`exit ${code}, not 1`);
+    if (!r) return [...problems, "no report"].join("; ");
+    const e = entry0(r);
+    if (e.id !== q.id || e.offered !== true || e.decision !== "expired" || e.by !== "driver" || e.why !== "signal SIGTERM")
+      problems.push(`the entry does not say the signal settled it: ${JSON.stringify(e)}`);
+    const log = answers(a.log);
+    const [said, cut] = [log.indexOf("answer:9401:decline"), log.indexOf("turn/interrupt")];
+    if (said < 0 || cut < 0 || said > cut) problems.push(`the decline did not go out before the interrupt: ${JSON.stringify(log)}`);
+    if (fs.existsSync(path.join(a.box, "pending"))) problems.push("pending outlived the last open request");
+    const after = readJson(path.join(a.box, `${q.id}.request.json`));
+    if (after?.settled?.decision !== "expired" || after.settled.why !== "signal SIGTERM" || after.settled.decisionFile !== "none")
+      problems.push(`the request file was not settled: ${JSON.stringify(after?.settled)}`);
+    // The request file is what the caller reads: the command whole, the run's identity, the agent's footing.
+    if (!/\n/.test(q.command) || q.command.length <= 200) problems.push(`the request file clipped the command: ${JSON.stringify(q.command)}`);
+    if (typeof q.run?.pid !== "number" || typeof q.run?.startedAtMs !== "number" || q.run?.turnId !== "turn_root" || q.run?.threadId !== "thr_root")
+      problems.push(`the run identity is incomplete: ${JSON.stringify(q.run)}`);
+    if (q.level !== "read" || q.deadlineAt !== null || !Array.isArray(q.roots) || !q.roots.length || !q.sandbox || typeof q.askedAt !== "string"
+        || !Array.isArray(q.availableDecisions) || q.cause !== "policy")
+      problems.push(`the request file lacks the agent's footing: ${JSON.stringify({ level: q.level, deadline: q.deadlineAt, roots: q.roots, cause: q.cause })}`);
+    if (!err.includes(`approval request ${q.id}`) || !/with no deadline/.test(err)) problems.push("stderr did not name the request and its open wait");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("an accepted request runs, and the entry says who accepted it, that the server received it and what the command did",
+  "decision, receipt and outcome are three facts: the caller decided, the server acknowledged, and the item's own completion said what ran — a retelling reads the outcome, never the decision alone",
+  async () => {
+    const a = armed("approval-wait");
+    const q = await offered(a.box);
+    if (!q) return "no request was offered";
+    decide(a.box, q, "accept");
+    const { code, out } = await a.done;
+    const r = parsed(out);
+    if (code !== EXIT.OK || !r) return `exit ${code}: ${out.slice(0, 200)}`;
+    const e = entry0(r);
+    const problems = [];
+    if (e.decision !== "accepted" || e.by !== "coordinator" || e.why !== "the plan covers it" || typeof e.waitMs !== "number")
+      problems.push(`the decision is not the caller's: ${JSON.stringify(e)}`);
+    if (e.resolved !== true) problems.push("the server's receipt was not recorded");
+    if (JSON.stringify(e.outcome) !== JSON.stringify({ status: "completed", exitCode: 0, durationMs: 1 })) problems.push(`the outcome is ${JSON.stringify(e.outcome)}`);
+    if (r.approvalsAccepted !== 1 || r.approvalsAutoAccepted !== 0 || r.approvalDir !== fs.realpathSync(a.box))
+      problems.push(`the counts are wrong: ${JSON.stringify({ acc: r.approvalsAccepted, auto: r.approvalsAutoAccepted, dir: r.approvalDir })}`);
+    const settledAs = readJson(path.join(a.box, `${q.id}.request.json`))?.settled;
+    if (settledAs?.by !== "coordinator" || settledAs.decisionFile !== "taken") problems.push(`the request file was not settled as the caller's: ${JSON.stringify(settledAs)}`);
+    if (!answers(a.log).includes("answer:9401:accept")) problems.push("accept never reached the server");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("an accepted request whose item never completes has outcome null",
+  "the server acknowledging an accept is not the command having run: with no completion the honest record of what ran is none",
+  async () => {
+    const a = armed("approval-wait-no-outcome");
+    const q = await offered(a.box);
+    if (!q) return "no request was offered";
+    decide(a.box, q, "accept");
+    const { code, out } = await a.done;
+    const e = entry0(parsed(out) ?? {});
+    return (code === EXIT.OK && e.decision === "accepted" && e.resolved === true && e.outcome === null)
+      || `exit ${code}, entry ${JSON.stringify(e)}`;
+  });
+
+flow("a request the caller declines is exit 6, declined by the caller, with the reason it gave",
+  "a declined request is the same evidence whoever declined it; what the entry adds is who, and why",
+  async () => {
+    const a = armed("approval-wait");
+    const q = await offered(a.box);
+    if (!q) return "no request was offered";
+    decide(a.box, q, "decline", { why: "outside the plan" });
+    const { code, out } = await a.done;
+    const e = entry0(parsed(out) ?? {});
+    return (code === EXIT.ESCALATED && e.decision === "declined" && e.by === "coordinator" && e.why === "outside the plan")
+      || `exit ${code}, entry ${JSON.stringify(e)}`;
+  });
+
+flow("--approval-timeout still expires an unanswered request when one is set",
+  "a headless run may want a floor; where it asked for one the request is declined at it, as expired, and the deadline is in the request file for the reader",
+  async () => {
+    const a = armed("approval-wait", { args: ["--approval-timeout", "1"] });
+    const q = await offered(a.box);
+    if (!q) return "no request was offered";
+    const { code, out } = await a.done;
+    const e = entry0(parsed(out) ?? {});
+    if (typeof q.deadlineAt !== "string") return `the request file carries no deadline: ${JSON.stringify(q.deadlineAt)}`;
+    return (code === EXIT.ESCALATED && e.decision === "expired" && e.why === "deadline" && answers(a.log).includes("answer:9401:decline"))
+      || `exit ${code}, entry ${JSON.stringify(e)}, log ${JSON.stringify(answers(a.log))}`;
+  });
+
+flow("a decision on disk when the deadline fires is the caller's, not an expiry",
+  "the file can land between the last poll and the deadline's tick; the deadline reads it first, or a decision published in time is thrown away as late",
+  async () => {
+    const a = armed("approval-wait", { args: ["--approval-timeout", "2"], env: { ENTRUST_APPROVAL_POLL_MS: "60000" } });
+    const q = await offered(a.box);
+    if (!q) return "no request was offered";
+    decide(a.box, q, "accept");
+    const { code, out } = await a.done;
+    const e = entry0(parsed(out) ?? {});
+    return (code === EXIT.OK && e.decision === "accepted" && e.by === "coordinator" && e.waitMs >= 1500)
+      || `exit ${code}, entry ${JSON.stringify(e)}`;
+  });
+
+flow("a decision for another run or another turn is stale: counted once each, left in place, and the request keeps waiting",
+  "the mailbox is a directory any process of the user's can write; a decision the driver takes has to name this run's pid, start and turn, and one that does not is someone else's",
+  async () => {
+    const a = armed("approval-wait");
+    const q = await offered(a.box);
+    if (!q) return "no request was offered";
+    const file = path.join(a.box, `${q.id}.decision.json`);
+    decide(a.box, q, "accept", { identity: { startedAtMs: q.run.startedAtMs + 1 } });
+    const first = fs.readFileSync(file, "utf8");
+    await wait(700);
+    const problems = [];
+    if (!fs.existsSync(file) || fs.readFileSync(file, "utf8") !== first) problems.push("a stale decision was not left in place");
+    if (openIn(a.box).length !== 1) problems.push("a stale decision settled the request");
+    decide(a.box, q, "accept", { identity: { turnId: "turn_other" } });
+    await wait(700);
+    decide(a.box, q, "accept");
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    if (code !== EXIT.OK || entry0(r).decision !== "accepted") problems.push(`the valid decision did not settle it: exit ${code}, ${JSON.stringify(entry0(r))}`);
+    if (r.approvalsStale !== 2) problems.push(`approvalsStale is ${r.approvalsStale}, not 2`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("a request open when the root turn ends is settled then, a decision for it afterwards is late, and the next turn's request is offered under its own turn",
+  "a corrective turn follows on the same thread, so 'a turn this run owns' is not 'the turn now running': the old request is answered before the new turn starts, and whatever arrives for it later belongs to a turn that is over",
+  async () => {
+    const a = armed("approval-turn-end", { args: ["--output-schema", schemaFile] });
+    const q1 = await offered(a.box);
+    if (!q1) return "no request was offered in the first turn";
+    const settled = await until(() => readJson(path.join(a.box, `${q1.id}.request.json`))?.settled ?? null);
+    if (!settled) return "the first request was never settled";
+    decide(a.box, q1, "accept");
+    const q2 = await until(() => openIn(a.box).find((q) => q.id !== q1.id) ?? null);
+    if (!q2) return "the corrective turn's request was never offered";
+    decide(a.box, q2, "accept");
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    const [e1, e2] = r.escalations ?? [];
+    const problems = [];
+    if (code !== EXIT.ESCALATED) problems.push(`exit ${code}, not 6 for the first turn's expired request`);
+    if (e1?.decision !== "expired" || e1?.why !== "turn ended" || settled.why !== "turn ended") problems.push(`the first request: ${JSON.stringify(e1)}`);
+    if (e2?.decision !== "accepted" || q2.run.turnId !== "turn_root_retry" || q1.run.turnId !== "turn_root")
+      problems.push(`the second request: ${JSON.stringify({ e2, turns: [q1.run.turnId, q2.run.turnId] })}`);
+    if (r.approvalsLate !== 1) problems.push(`approvalsLate is ${r.approvalsLate}, not 1`);
+    if (answers(a.log).filter((l) => l.startsWith("answer:9408:")).length !== 1) problems.push(`the first request was answered other than once: ${JSON.stringify(answers(a.log))}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("a request open at the wall-clock cut is settled before the interrupt",
+  "the server reads its stdin in order, so the decline sent first is what it acts on; an interrupt with a request still owed leaves the server waiting on an answer nobody will send",
+  async () => {
+    const a = armed("approval-wait", { args: ["--timeout", "3"] });
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    const log = answers(a.log);
+    const [said, cut] = [log.indexOf("answer:9401:decline"), log.indexOf("turn/interrupt")];
+    return (code === EXIT.TIMEOUT && r.cut?.kind === "wall" && entry0(r).why === "cut wall" && said >= 0 && cut > said)
+      || `exit ${code}, cut ${JSON.stringify(r.cut)}, entry ${JSON.stringify(entry0(r))}, log ${JSON.stringify(log)}`;
+  });
+
+flow("the idle guard is paused while a request is open and re-armed when it settles",
+  "a waiting request is the caller's time, not the thread's silence: a 1 s idle budget must not cut a 3 s wait, and must cut a server that goes silent once it is answered",
+  async () => {
+    const a = armed("approval-wait", { args: ["--idle-timeout", "1", "--approval-timeout", "3"], env: { FAKE_AFTER_ANSWER: "silent" } });
+    const { code, out, ms } = await a.done;
+    const r = parsed(out) ?? {};
+    const e = entry0(r);
+    return (code === EXIT.TIMEOUT && r.cut?.kind === "idle" && e.why === "deadline" && e.waitMs >= 2900 && ms > 3500)
+      || `exit ${code} after ${ms} ms, cut ${JSON.stringify(r.cut)}, entry ${JSON.stringify(e)}`;
+  });
+
+flow("a request open when the server exits without turn/completed is settled by the run's end",
+  "a server that aborts with a request pending sends no completion (P1 Q3); the collected report still has to say the request was left unanswered, and why",
+  async () => {
+    const a = armed("approval-stdin-close");
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    return (code === EXIT.TRANSPORT && r.turnStatus === "failed" && entry0(r).decision === "expired" && entry0(r).why === "run ended")
+      || `exit ${code}, turnStatus ${r.turnStatus}, entry ${JSON.stringify(entry0(r))}`;
+  });
+
+flow("a writeStdin request is not offered even with a mailbox",
+  "the kind is decided before the mailbox is consulted: input to a running terminal is never shown to a caller as a command to approve",
+  async () => {
+    const a = armed("approval-writestdin");
+    const { code, out } = await a.done;
+    const e = entry0(parsed(out) ?? {});
+    return (code === EXIT.ESCALATED && e.offered === false && e.why === "kind writeStdin" && requestsIn(a.box).length === 0)
+      || `exit ${code}, entry ${JSON.stringify(e)}, ${requestsIn(a.box).length} request file(s)`;
+  });
+
+flow("a file change inside $TMPDIR is accepted by the driver, spelled either way, and never reaches the mailbox",
+  "the edit tool asks by spelling — /private/var/… asks and /var/… does not (P1 Q5) — while the sandbox would let a shell write the same bytes; the driver compares resolved paths, answers yes, and wakes nobody",
+  async () => {
+    const problems = [];
+    for (const spelling of ["private", "given"]) {
+      const a = armed("filechange-in-tmpdir", { env: { FAKE_FILECHANGE_SPELLING: spelling } });
+      const { code, out } = await a.done;
+      const r = parsed(out) ?? {};
+      const e = entry0(r);
+      if (code !== EXIT.OK) problems.push(`${spelling}: exit ${code}`);
+      if (e.decision !== "accepted" || e.by !== "driver" || e.why !== "rights cover it (checked as the answer was sent)" || e.cause !== "rights" || r.approvalsAutoAccepted !== 1)
+        problems.push(`${spelling}: ${JSON.stringify(e)}`);
+      if (!e.fileChanges?.[0]?.path?.endsWith(".md")) problems.push(`${spelling}: the paths were not recorded: ${JSON.stringify(e.fileChanges)}`);
+      if (requestsIn(a.box).length || fs.existsSync(path.join(a.box, "pending"))) problems.push(`${spelling}: the mailbox was written`);
+      if (!answers(a.log).includes("answer:9420:accept")) problems.push(`${spelling}: accept never reached the server`);
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("a file change outside the roots is offered with its paths, and one with no item/started is offered with none",
+  "the caller decides whether a write the rights do not cover was justified, so it has to see where the write goes; and a path the driver never saw is not guessed",
+  async () => {
+    const problems = [];
+    for (const [scenario, want] of [["filechange-outside", (fc) => fc?.[0]?.path?.startsWith("/etc/entrust-fixture-")],
+                                    ["filechange-no-started", (fc) => fc === null]]) {
+      const a = armed(scenario);
+      const q = await offered(a.box);
+      if (!q) { problems.push(`${scenario}: not offered`); continue; }
+      if (q.method !== "item/fileChange/requestApproval" || q.cause !== "outside" || !want(q.fileChanges))
+        problems.push(`${scenario}: ${JSON.stringify({ method: q.method, cause: q.cause, files: q.fileChanges })}`);
+      decide(a.box, q, "decline", { why: "not in the plan" });
+      const { code, out } = await a.done;
+      const e = entry0(parsed(out) ?? {});
+      if (code !== EXIT.ESCALATED || e.by !== "coordinator" || !want(e.fileChanges)) problems.push(`${scenario}: exit ${code}, ${JSON.stringify(e)}`);
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("a link inside $TMPDIR that points outside is outside",
+  "the comparison is on resolved paths, so a link the agent planted in its own temp root does not carry a write past it",
+  async () => {
+    const link = path.join(process.env.TMPDIR, `entrust-link-${crypto.randomBytes(4).toString("hex")}`);
+    fs.symlinkSync(shimDir, link);
+    try {
+      const a = armed("filechange-symlink", { env: { FAKE_LINK: link } });
+      const q = await offered(a.box);
+      if (!q) return `the write through the link was not offered: ${JSON.stringify(entry0(parsed((await a.done).out) ?? {}))}`;
+      decide(a.box, q, "decline");
+      const { code } = await a.done;
+      return (code === EXIT.ESCALATED && q.cause === "outside") || `exit ${code}, cause ${q.cause}`;
+    } finally { fs.unlinkSync(link); }
+  });
+
+flow("a subagent's request is offered, and its acceptance is not root evidence",
+  "whose request the caller may answer and whose success counts are two questions: the child the root announced may ask, and what it then runs is liveness, never the agent's evidence",
+  async () => {
+    const a = armed("approval-child-command");
+    const q = await offered(a.box);
+    if (!q) return "the child's request was not offered";
+    const problems = [];
+    if (q.run.threadId !== "thr_sub" || q.run.turnId !== "turn_sub" || q.subagent !== true || q.agentPath !== "/root/asker")
+      problems.push(`the request is not the child's: ${JSON.stringify({ run: q.run, subagent: q.subagent, path: q.agentPath })}`);
+    decide(a.box, q, "accept");
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    const e = entry0(r);
+    if (code !== EXIT.OK || e.decision !== "accepted" || e.subagent !== true || e.outcome?.exitCode !== 0) problems.push(`exit ${code}, entry ${JSON.stringify(e)}`);
+    if (r.commandsSucceeded !== 1 || r.subagentThreads?.[0]?.commands !== 1)
+      problems.push(`the child's command leaked into the root's evidence: ${JSON.stringify({ root: r.commandsSucceeded, child: r.subagentThreads })}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("a subagent's own turn ending settles the requests it left open",
+  "a request whose turn is over is owed to nobody: the child's turn/completed settles it under the child's thread, while the root's turn goes on",
+  async () => {
+    const a = armed("approval-subagent-wait");
+    const { code, out } = await a.done;
+    const e = entry0(parsed(out) ?? {});
+    return (code === EXIT.ESCALATED && e.offered === true && e.decision === "expired" && e.why === "turn ended" && e.thread === "thr_sub")
+      || `exit ${code}, entry ${JSON.stringify(e)}`;
+  });
+
+flow("a file change under .git, .codex or .agents inside a root is not the driver's to accept, at either level",
+  "the workspace sandbox keeps those read-only inside a writable root, so a shell could not have written there: the one argument for answering yes does not hold, and the caller is asked instead",
+  async () => {
+    const problems = [];
+    for (const [level, root] of [["read", process.env.TMPDIR], ["write", shimDir]])
+      for (const sub of [".git", ".codex", ".agents"]) {
+        const target = path.join(root, sub, "config");
+        const { code, out } = await run({ scenario: "filechange-at", args: level === "write" ? ["--level", "write"] : [],
+          env: { FAKE_FILECHANGE_PATH: target } });
+        const e = entry0(parsed(out) ?? {});
+        if (code !== EXIT.ESCALATED || e.decision !== "declined" || e.cause !== "outside" || e.fileChanges?.[0]?.path !== target)
+          problems.push(`${level} ${sub}: exit ${code}, ${JSON.stringify(e)}`);
+      }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("a guarded directory is guarded under every spelling: .GIT where .git exists, and .CODEX where nothing does",
+  "on a case-insensitive volume .GIT is .git, and the sandbox keeps it read-only whatever it is called; a string comparison let the other spelling through, so the check is by inode where the directory exists and by folded name where it does not",
+  async () => {
+    const root = process.env.TMPDIR;
+    const git = path.join(root, ".git");
+    const made = !fs.existsSync(git);
+    if (made) fs.mkdirSync(git);
+    const problems = [];
+    try {
+      for (const target of [path.join(root, ".GIT", "config"), path.join(root, ".CODEX", "config"), path.join(root, "sub", ".Agents", "x")]) {
+        const { code, out } = await run({ scenario: "filechange-at", env: { FAKE_FILECHANGE_PATH: target } });
+        const e = entry0(parsed(out) ?? {});
+        if (code !== EXIT.ESCALATED || e.decision !== "declined" || e.cause !== "outside") problems.push(`${target}: exit ${code}, ${JSON.stringify(e)}`);
+      }
+    } finally { if (made) fs.rmSync(git, { recursive: true, force: true }); }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("below the root only existing plain directories and a regular or absent file are answered yes: a link, even one that stays inside, and a directory still to be made are offered",
+  "the path is checked now and written later, by a server that follows links: a link the agent owns, or a directory it has yet to make, is one it can aim outside in between, so neither is the driver's to accept whatever it resolves to now",
+  async () => {
+    const root = process.env.TMPDIR;
+    const tag = crypto.randomBytes(4).toString("hex");
+    const real = path.join(root, `entrust-real-${tag}`), link = path.join(root, `entrust-link-${tag}`);
+    const file = path.join(real, "real.md"), fileLink = path.join(root, `entrust-file-link-${tag}.md`);
+    fs.mkdirSync(real);
+    fs.writeFileSync(file, "x");
+    fs.symlinkSync(real, link);
+    fs.symlinkSync(file, fileLink);
+    const problems = [];
+    try {
+      const control = await run({ scenario: "filechange-at", env: { FAKE_FILECHANGE_PATH: path.join(real, "new.md") } });
+      if (entry0(parsed(control.out) ?? {}).decision !== "accepted") problems.push(`the control, a new file in a plain directory, was not accepted: ${JSON.stringify(entry0(parsed(control.out) ?? {}))}`);
+      for (const target of [path.join(link, "x.md"), path.join(root, `entrust-not-made-${tag}`, "x.md"), fileLink]) {
+        const { code, out } = await run({ scenario: "filechange-at", env: { FAKE_FILECHANGE_PATH: target } });
+        const e = entry0(parsed(out) ?? {});
+        if (code !== EXIT.ESCALATED || e.decision !== "declined" || e.cause !== "outside") problems.push(`${target}: exit ${code}, ${JSON.stringify(e)}`);
+      }
+    } finally {
+      for (const p of [link, fileLink]) fs.unlinkSync(p);
+      fs.rmSync(real, { recursive: true, force: true });
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("a pending marker that cannot be written settles the request at once as expired, declined, and the turn goes on",
+  "a request nobody is woken for, with no deadline and the idle guard paused, is a wait with no end; the failure is the answer, said in why and on stderr",
+  async () => {
+    const state = flowState();
+    const box = path.join(state, "run", "agent", "approvals");
+    fs.mkdirSync(path.join(box, "pending", "in-the-way"), { recursive: true });
+    const log = path.join(state, "rpc.log");
+    const { code, out, err } = await run({ scenario: "approval-wait", args: ["--approval-dir", box, "--idle-timeout", "5"],
+      env: { ENTRUST_STATE_DIR: state, FAKE_RPC_LOG: log } });
+    const r = parsed(out) ?? {};
+    const e = entry0(r);
+    return (code === EXIT.ESCALATED && e.decision === "expired" && /^mailbox write failed: /.test(e.why ?? "") && r.cut === null
+        && answers(log).includes("answer:9401:decline") && /mailbox write failed/.test(err))
+      || `exit ${code}, ${JSON.stringify({ e, cut: r.cut, log: answers(log) })}, ${err.slice(-200)}`;
+  });
+
+flow("an accept whose settlement cannot be written goes out as a decline, and the entry says why",
+  "an accept sent with no record behind it is a command run as the user that the status lines, read after a lost report, cannot show: persist first, and when that fails the safe answer is the one that runs nothing",
+  async () => {
+    const a = armed("approval-wait", { env: { ENTRUST_APPROVAL_POLL_MS: "1500" } });
+    const q = await offered(a.box);
+    if (!q) return "no request was offered";
+    decide(a.box, q, "accept");
+    fs.chmodSync(a.box, 0o500);
+    let res;
+    try { res = await a.done; } finally { fs.chmodSync(a.box, 0o700); }
+    const r = parsed(res.out) ?? {};
+    const e = entry0(r);
+    const said = answers(a.log).filter((l) => l.startsWith("answer:9401:"));
+    return (res.code === EXIT.ESCALATED && e.decision === "expired" && /^mailbox write failed: /.test(e.why ?? "")
+        && JSON.stringify(said) === JSON.stringify(["answer:9401:decline"]) && r.approvalsAccepted === 0
+        && !readJson(path.join(a.box, `${q.id}.request.json`))?.settled)
+      || `exit ${res.code}, ${JSON.stringify({ e, said, accepted: r.approvalsAccepted })}`;
+  });
+
+flow("a request delivered twice under one id is offered once and answered once",
+  "the mailbox would otherwise hold two requests for one server request, and the caller's two decisions two responses to an id the server matches once",
+  async () => {
+    const a = armed("approval-duplicate");
+    const q = await offered(a.box);
+    if (!q) return "no request was offered";
+    await wait(600);
+    const problems = [];
+    if (requestsIn(a.box).length !== 1) problems.push(`${requestsIn(a.box).length} request files for one request`);
+    const pending = fs.existsSync(path.join(a.box, "pending")) ? fs.readFileSync(path.join(a.box, "pending"), "utf8") : "";
+    if (pending !== `${q.id}\n`) problems.push(`pending is ${JSON.stringify(pending)}`);
+    decide(a.box, q, "accept");
+    const { code, out, err } = await a.done;
+    const r = parsed(out) ?? {};
+    if (code !== EXIT.OK || r.escalations?.length !== 1 || r.approvalsDuplicate !== 1) problems.push(`exit ${code}, ${JSON.stringify({ entries: r.escalations?.length, dup: r.approvalsDuplicate })}`);
+    const said = answers(a.log).filter((l) => l.startsWith("answer:9430:"));
+    if (JSON.stringify(said) !== JSON.stringify(["answer:9430:accept"])) problems.push(`the server got ${JSON.stringify(said)}`);
+    if (!/approval request id 9430 .* arrived again/.test(err)) problems.push("the duplicate was not said on stderr");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("a stale decision on disk when the deadline fires is stale, not late, and the request file says what the driver found",
+  "a decision that is not this run's is a forgery or a leftover whenever it arrived, and calling it late tells the caller its own answer came too slowly; the settlement records what the driver saw so nobody reading the files after the run has to guess",
+  async () => {
+    const a = armed("approval-wait", { args: ["--approval-timeout", "2"] });
+    const q = await offered(a.box);
+    if (!q) return "no request was offered";
+    decide(a.box, q, "accept", { identity: { pid: q.run.pid + 1 } });
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    const settledAs = readJson(path.join(a.box, `${q.id}.request.json`))?.settled;
+    return (code === EXIT.ESCALATED && entry0(r).decision === "expired" && r.approvalsStale === 1 && r.approvalsLate === 0
+        && settledAs?.decisionFile === "stale")
+      || `exit ${code}, ${JSON.stringify({ e: entry0(r), stale: r.approvalsStale, late: r.approvalsLate, settled: settledAs })}`;
+  });
+
+flow("an accepted request blocks the transient retry",
+  "replaying the prompt after an accepted request asks again for what already ran with the user's rights; nothing else in the stream may say so, since an accepted command can complete with no item",
+  async () => {
+    const a = armed("approval-then-transient");
+    const q = await offered(a.box);
+    if (!q) return "no request was offered";
+    decide(a.box, q, "accept");
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    return (code === EXIT.TURN_NOT_COMPLETED && r.transientRetries?.length === 0 && entry0(r).decision === "accepted")
+      || `exit ${code}, retries ${JSON.stringify(r.transientRetries)}, entry ${JSON.stringify(entry0(r))}`;
+  });
+
 let failed = await runTable(CASES);
 
 // --- the exit ladder, one rung at a time ---
@@ -767,9 +1310,12 @@ const RUNGS = [
   { at: 3, code: EXIT.INTERACTION, ctx: { interactions: [{ q: "which branch?" }] },
     what: "a turn that asked for input",
     why: "no sandbox change answers a question that needed a human, so this must outrank the escalation rung below it" },
-  { at: 4, code: EXIT.ESCALATED, ctx: { escalations: [{ cmd: "rm" }] },
+  { at: 4, code: EXIT.ESCALATED, ctx: { escalations: [{ decision: "declined" }] },
     what: "a refused approval",
     why: "a refused escalation explains the missing command; below NO_COMMANDS it would be reported as 'nothing ran', which hides why" },
+  { at: 4, code: EXIT.ESCALATED, ctx: { escalations: [{ decision: "accepted" }, { decision: "expired" }] },
+    what: "an approval that expired beside one that was accepted",
+    why: "a request nobody answered in time is a refusal nobody made, and one acceptance beside it does not answer it" },
   { at: 5, code: EXIT.VERIFY_UNMEASURABLE, ctx: { verifySkipped: "budget-exhausted" },
     what: "a --verify the budget left no room for",
     why: "a declared check that never ran leaves verifyResult null, which every gate below reads as 'nothing to complain about' — the run would reach 0 with its verifier unrun" },
@@ -807,6 +1353,13 @@ flow("a completed turn that tripped no rung exits 0",
   async () => {
     const i = rungHit(ladderCtx());
     return i < 0 || `a clean completed turn matched rung ${i} (exit ${LADDER[i].code})`;
+  });
+
+flow("accepted approvals alone trip no rung",
+  "exit 6 is a request declined or expired, never one accepted: the command ran, and the report counts it like any other — by the caller or by the driver alike",
+  async () => {
+    const i = rungHit(ladderCtx({ escalations: [{ decision: "accepted", by: "coordinator" }, { decision: "accepted", by: "driver" }] }));
+    return i < 0 || `accepted approvals matched rung ${i} (exit ${LADDER[i].code})`;
   });
 
 for (const r of RUNGS)

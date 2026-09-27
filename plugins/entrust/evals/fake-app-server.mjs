@@ -98,6 +98,23 @@ export const SCENARIOS = {
   // 0.153.0: a question for a human arrives as a MESSAGE carrying `questions`, phased final_answer, then
   // the turn's real answer. Measured live on 0.153.4 with gpt-6-astra.
   "async-question": {},
+  // The approval channel. Each asks and then waits for the client's answer, however long it takes, as
+  // the live server does (P1: 180 s held, nothing sent meanwhile); a driver with no mailbox answers at
+  // once, which is what this suite and conformance see without --approval-dir.
+  "approval-wait": {}, "approval-wait-error": {}, "approval-wait-no-outcome": {},
+  "approval-subagent-wait": {}, "approval-child-command": {}, "approval-stdin-close": {},
+  "approval-writestdin": {}, "approval-then-transient": {}, "approval-turn-end": { outputSchema: true },
+  "approval-after-failed-attempt": {}, "approval-no-attempt": {},
+  "filechange-in-tmpdir": {}, "filechange-outside": {}, "filechange-no-started": {},
+  "filechange-symlink": {}, "filechange-child": {},
+  // One request delivered twice under one id; and a file change at whatever path a case names, a rename
+  // when it names a destination too.
+  "approval-duplicate": {}, "filechange-at": {},
+  // A subagent's file change whose item/started and request arrive after that subagent's turn completed.
+  "filechange-child-late": {},
+  // A read-level --writable root the server did not apply, while $TMPDIR's did: the assertion has to
+  // compare the whole set, not just find $TMPDIR in it.
+  "profile-root-dropped": {},
 };
 if (!Object.hasOwn(SCENARIOS, SCENARIO)) {
   process.stderr.write(`fake-app-server: ${JSON.stringify(SCENARIO)} is not in SCENARIOS; an uninventoried name would answer as the default scenario and measure nothing\n`);
@@ -212,10 +229,10 @@ const actionsFor = (command) => command.split("|").map((s) => s.trim()).map((par
 // needs the server's parse to DISAGREE with the script it parsed — a server whose parse is optimistic is
 // the threat the driver's single-action exemption has to survive.
 const cmd = (turnId, threadId, { exitCode = 0, status = "completed", command = "echo hi",
-                                 actions = actionsFor(command) } = {}) =>
+                                 actions = actionsFor(command), id = null } = {}) =>
   note("item/completed", {
     threadId, turnId, completedAtMs: now(),
-    item: { id: `item_${seq}`, type: "commandExecution", command: wrap(command), exitCode, status,
+    item: { id: id ?? `item_${seq}`, type: "commandExecution", command: wrap(command), exitCode, status,
             cwd: "/tmp", commandActions: actions, aggregatedOutput: null,
             processId: String(50000 + seq), durationMs: 1,
             source: "unifiedExecStartup", pluginId: null, scriptPath: null }
@@ -300,6 +317,48 @@ export const sampleItems = () => [
 const done = (turnId, threadId, status = "completed", error = null) =>
   note("turn/completed", { threadId, turn: { id: turnId, status, error, items: [] } });
 
+// A command approval request as codex 0.155.1 sent it (P1, transcript-q12): kind and environmentId, the
+// model's reason, the wrapper the server would run and its parse, the prefix it proposes to remember, and
+// the decisions it advertises — which never include `decline`, the refusal every driver sends.
+const approvalRequest = (id, threadId, turnId, itemId, command, kind = "command") => {
+  const prefix = command.split(/\s+/).slice(0, 2);
+  return { jsonrpc: "2.0", id, method: "item/commandExecution/requestApproval",
+    params: { kind, threadId, turnId, itemId, startedAtMs: now(), environmentId: "local",
+      reason: "The sandbox refused this command, so this retries it outside the sandbox.",
+      command: wrap(command), cwd: requestedThread?.cwd ?? "/tmp", commandActions: actionsFor(command),
+      proposedExecpolicyAmendment: prefix,
+      availableDecisions: ["accept", { acceptWithExecpolicyAmendment: { execpolicy_amendment: prefix } }, "cancel"] } };
+};
+// A file-change request carries no path at all (P1 Q4, Q5a): the paths are on the item/started before it.
+const fileChangeRequest = (id, threadId, turnId, itemId) => ({ jsonrpc: "2.0", id, method: "item/fileChange/requestApproval",
+  params: { threadId, turnId, itemId, startedAtMs: now(), reason: null, grantRoot: null } });
+const fileChangeStarted = (turnId, threadId, id, changes) => note("item/started",
+  { threadId, turnId, startedAtMs: now(), item: { id, type: "fileChange", status: "inProgress", changes } });
+const fileChangeDone = (turnId, threadId, id, changes, status) => note("item/completed",
+  { threadId, turnId, completedAtMs: now(), item: { id, type: "fileChange", status, changes } });
+// The server's receipt of an answer, 1 to 3 ms after it (P1).
+const resolvedNote = (threadId, requestId) => note("serverRequest/resolved", { threadId, requestId });
+// Long enough that a clipped detail or a clipped request file shows, and a script: the newline has to
+// survive every hop to the reader who approves it.
+const APPROVAL_COMMAND = `sleep 1; touch /tmp/entrust-accept-probe-0ea4d218\necho ${"approval-padding-".repeat(14)}end`;
+const tmpRoot = () => process.env.TMPDIR ?? os.tmpdir();
+
+// The approval requests a scenario is waiting on, by request id, each with what it emits once answered,
+// and every id ever asked, so an answer that comes twice is logged twice.
+const awaiting = new Map();
+const everAsked = new Set();
+const ask = (request, onAnswer) => { awaiting.set(request.id, onAnswer); everAsked.add(request.id); return request; };
+// What the command's own item says after each answer: run and exit 0 on accept, declined on decline, and
+// failed with no exit code on an error frame, which the live server did with one (P1 Q3 error).
+// FAKE_AFTER_ANSWER=silent stops there, with no message and no completion, so a case can watch the idle
+// guard come back once the wait is over.
+const commandAnswered = (a, turnId, threadId, itemId, command) => w(resolvedNote(threadId, a.requestId),
+  a.error ? cmd(turnId, threadId, { id: itemId, command, exitCode: null, status: "failed" })
+    : a.decision === "accept" ? cmd(turnId, threadId, { id: itemId, command })
+      : cmd(turnId, threadId, { id: itemId, command, exitCode: null, status: "declined" }),
+  ...(process.env.FAKE_AFTER_ANSWER === "silent" ? []
+    : [msg(turnId, threadId, `the request was answered ${a.error ? "with an error" : a.decision}`), done(turnId, threadId)]));
+
 let requestedThread = null;
 let pendingApproval = null;
 let turnStarts = 0;
@@ -321,6 +380,17 @@ function onLine(line) {
     try { fs.appendFileSync(process.env.FAKE_RPC_LOG, `${m.method}${detail}\n`); } catch {}
   }
   if (m.method) answering = m.method;
+  // The client's answer to a server request, in the order it arrived among the requests above: whether
+  // a refusal went out as a decision or as an error, and whether it went out before a turn/interrupt.
+  if (!m.method && process.env.FAKE_RPC_LOG && (everAsked.has(m.id) || pendingApproval?.id === m.id)) {
+    try { fs.appendFileSync(process.env.FAKE_RPC_LOG, `answer:${m.id}:${m.error ? `error ${m.error.code}` : m.result?.decision ?? JSON.stringify(m.result)}\n`); } catch {}
+  }
+  if (!m.method && awaiting.has(m.id)) {
+    const onAnswer = awaiting.get(m.id);
+    awaiting.delete(m.id);
+    onAnswer({ requestId: m.id, decision: m.result?.decision ?? null, error: m.error ?? null });
+    return;
+  }
   if (!m.method) {
     if (!pendingApproval || m.id !== pendingApproval.id) return;
     const p = pendingApproval;
@@ -357,7 +427,7 @@ function onLine(line) {
     // A turn that CLOSES on the interrupt without flushing anything: the cut is recorded and the report
     // lands inside the grace. cut-partial deliberately does neither, so the grace expires there.
     if (SCENARIO === "idle-silence" || SCENARIO === "idle-subagent" || SCENARIO === "idle-delegation"
-        || SCENARIO === "many-commands")
+        || SCENARIO === "many-commands" || SCENARIO === "approval-wait" || SCENARIO === "approval-wait-error")
       w(done(TURN, THREAD, "interrupted"));
     return;
   }
@@ -457,7 +527,12 @@ function onLine(line) {
     // while write-level roots are echoed verbatim and compared as strings. A matching cwd is omitted from
     // writableRoots and reported under runtimeWorkspaceRoots; canonicalising both sides would hide the
     // difference between /var/... and /private/var/... spellings.
-    const readRoots = (!granted || canon(tmp) === m.params?.cwd) ? [] : [canon(tmp)];
+    // A read-level --writable root is one more key of the same filesystem table, echoed resolved beside
+    // $TMPDIR; profile-root-dropped loses them and keeps $TMPDIR.
+    const extraRoots = [...(CFG[`permissions.${wantId}.filesystem`] ?? "").matchAll(/"((?:[^"\\]|\\.)*)"\s*=\s*"write"/g)]
+      .map((k) => JSON.parse(`"${k[1]}"`)).filter((k) => k !== ":tmpdir").map(canon);
+    const readRoots = !granted ? []
+      : [...(canon(tmp) === m.params?.cwd ? [] : [canon(tmp)]), ...(SCENARIO === "profile-root-dropped" ? [] : extraRoots)];
     const writeRoots = [...new Set(JSON.parse(CFG["sandbox_workspace_write.writable_roots"] ?? "[]"))]
       .filter((r) => r !== m.params?.cwd);
     // At read level egress is the profile's own `network` table, as the $TMPDIR grant is its `filesystem`
@@ -636,6 +711,8 @@ function onLine(line) {
       // the directory the explicit root already names — so at read level this runs a healthy turn and
       // only --level write refuses it.
       case "write-tmpdir-excluded":
+      // Harmless without a read-level --writable, which is how conformance drives it.
+      case "profile-root-dropped":
         w(R, cmd(TURN, m.params.threadId), msg(TURN, m.params.threadId, "the answer"), done(TURN, m.params.threadId));
         break;
 
@@ -1139,6 +1216,168 @@ function onLine(line) {
       case "null-phase":
         w(R, cmd(TURN, THREAD), msg(TURN, THREAD, "unphased but real", null), done(TURN, THREAD));
         break;
+
+      // --- the approval channel ---
+
+      // A command request with P1's live params and no item/started before it, then the wait. The error
+      // variant is the same request under another command, for the case that reads how a refusal went out.
+      case "approval-wait":
+      case "approval-wait-error": {
+        const command = SCENARIO === "approval-wait" ? APPROVAL_COMMAND : "touch /tmp/entrust-error-probe";
+        w(R, ask(approvalRequest(9401, THREAD, TURN, "exec-approval-1", command),
+          (a) => commandAnswered(a, TURN, THREAD, "exec-approval-1", command)));
+        break;
+      }
+
+      // Accepted, acknowledged, and then no item at all: what an accepted command did is unknown.
+      case "approval-wait-no-outcome":
+        w(R, cmd(TURN, THREAD, { command: "ls" }), ask(approvalRequest(9402, THREAD, TURN, "exec-approval-2", APPROVAL_COMMAND),
+          (a) => w(resolvedNote(THREAD, a.requestId), msg(TURN, THREAD, `answered ${a.decision}`), done(TURN, THREAD))));
+        break;
+
+      // The same text asked for right after it failed inside the sandbox, the order P1 measured (Q1).
+      case "approval-after-failed-attempt":
+        w(R, cmd(TURN, THREAD, { command: "arc status --short", exitCode: 1, status: "failed" }),
+          ask(approvalRequest(9403, THREAD, TURN, "exec-arc-2", "arc status --short"),
+            (a) => commandAnswered(a, TURN, THREAD, "exec-arc-2", "arc status --short")));
+        break;
+
+      // Asked with no attempt before it: Codex's own rule, as for an rm -rf of its own temp directory.
+      case "approval-no-attempt": {
+        const command = "rm -rf /tmp/entrust-scratch-dir";
+        w(R, cmd(TURN, THREAD, { command: "ls" }), ask(approvalRequest(9404, THREAD, TURN, "exec-rm-1", command),
+          (a) => commandAnswered(a, TURN, THREAD, "exec-rm-1", command)));
+        break;
+      }
+
+      // Input to a terminal already running, which no rule can read as a command.
+      case "approval-writestdin":
+        w(R, cmd(TURN, THREAD, { command: "ls" }), ask(approvalRequest(9405, THREAD, TURN, "exec-stdin-1", "y", "writeStdin"),
+          (a) => w(resolvedNote(THREAD, a.requestId), msg(TURN, THREAD, `stdin ${a.decision}`), done(TURN, THREAD))));
+        break;
+
+      // Answered, and then the turn fails on a transient cause with nothing else in the stream: only the
+      // answer itself says work was done, so a retry would ask again for what already ran.
+      case "approval-then-transient":
+        if (turnStarts === 1)
+          w(R, ask(approvalRequest(9406, THREAD, TURN, "exec-transient-1", APPROVAL_COMMAND),
+            (a) => w(resolvedNote(THREAD, a.requestId),
+              done(TURN, THREAD, "failed", { codexErrorInfo: { responseStreamDisconnected: { httpStatusCode: null } }, message: "stream lost" }))));
+        else
+          w(R, cmd(thisTurn, THREAD), msg(thisTurn, THREAD, "the replayed turn"), done(thisTurn, THREAD));
+        break;
+
+      // The server aborts the turn with a request open and exits 0 with no turn/completed: the shape P1
+      // measured when stdin closed on a pending request (Q3), here reached without the client's help.
+      case "approval-stdin-close":
+        w(R, ask(approvalRequest(9407, THREAD, TURN, "exec-abort-1", APPROVAL_COMMAND), () => {}));
+        setTimeout(() => process.exit(0), 400);
+        break;
+
+      // The first turn completes with its request still open, and the corrective turn asks again under its
+      // own id: whatever the first request is answered with afterwards belongs to a turn that is over.
+      case "approval-turn-end":
+        if (turnStarts === 1) {
+          w(R, ask(approvalRequest(9408, THREAD, TURN, "exec-first-1", APPROVAL_COMMAND), () => {}));
+          setTimeout(() => w(msg(TURN, THREAD, "not the object yet"), done(TURN, THREAD)), 400);
+        } else {
+          w(R, ask(approvalRequest(9409, THREAD, thisTurn, "exec-second-1", APPROVAL_COMMAND),
+            (a) => w(resolvedNote(THREAD, a.requestId),
+              cmd(thisTurn, THREAD, { id: "exec-second-1", command: APPROVAL_COMMAND,
+                ...(a.decision === "accept" ? {} : { exitCode: null, status: "declined" }) }),
+              msg(thisTurn, THREAD, schemaAnswer('{"verdict":"ok","count":1}'), null), done(thisTurn, THREAD))));
+        }
+        break;
+
+      // A subagent the root announced asks; left unanswered, the child's own turn ends first, and the
+      // root answers once its child is done either way.
+      case "approval-subagent-wait":
+      case "approval-child-command": {
+        const [annStart, annStartEnd] = subAgentItem(TURN, THREAD, "call_sub", "started", OTHER_THREAD, "/root/asker");
+        const childTurn = "turn_sub", command = "ls /Users/someone/private";
+        let answered = false;
+        w(R, cmd(TURN, THREAD), annStart, annStartEnd, ...childTurnStart(childTurn, OTHER_THREAD),
+          ask(approvalRequest(9410, OTHER_THREAD, childTurn, "exec-child-1", command), (a) => {
+            if (answered) { w(resolvedNote(OTHER_THREAD, a.requestId), msg(TURN, THREAD, "the child gave up"), done(TURN, THREAD)); return; }
+            answered = true;
+            w(resolvedNote(OTHER_THREAD, a.requestId),
+              cmd(childTurn, OTHER_THREAD, { id: "exec-child-1", command,
+                ...(a.decision === "accept" ? {} : { exitCode: null, status: "declined" }) }),
+              done(childTurn, OTHER_THREAD),
+              ...subAgentItem(TURN, THREAD, "subagent-completed-1", "completed", OTHER_THREAD, "/root/asker"),
+              msg(TURN, THREAD, `the child's request was answered ${a.decision}`), done(TURN, THREAD));
+          }));
+        if (SCENARIO === "approval-subagent-wait")
+          setTimeout(() => { if (!answered) { answered = true; w(done(childTurn, OTHER_THREAD, "interrupted")); } }, 800);
+        break;
+      }
+
+      // A file change whose item/started names a path 4 ms before the request that names none (P1 Q4,
+      // Q5a). In $TMPDIR under either spelling — FAKE_FILECHANGE_SPELLING=private asks by the resolved
+      // one, which is the spelling the live edit tool asked by — under /etc, or through a link a case
+      // planted at FAKE_LINK.
+      case "filechange-in-tmpdir":
+      case "filechange-outside":
+      case "filechange-symlink":
+      case "filechange-no-started": {
+        const target = SCENARIO === "filechange-outside" ? `/etc/entrust-fixture-${process.pid}.md`
+          : SCENARIO === "filechange-symlink" ? path.join(process.env.FAKE_LINK ?? path.join(tmpRoot(), "no-link-planted"), "x.md")
+            : path.join(process.env.FAKE_FILECHANGE_SPELLING === "private" ? canon(tmpRoot()) : tmpRoot(), `entrust-fixture-${process.pid}.md`);
+        const changes = [{ path: target, kind: { type: "add" }, diff: "fixture\n" }];
+        const itemId = "call_patch_1";
+        w(R, cmd(TURN, THREAD), ...(SCENARIO === "filechange-no-started" ? [] : [fileChangeStarted(TURN, THREAD, itemId, changes)]));
+        setTimeout(() => w(ask(fileChangeRequest(9420, THREAD, TURN, itemId), (a) => w(resolvedNote(THREAD, a.requestId),
+          fileChangeDone(TURN, THREAD, itemId, changes, a.decision === "accept" ? "completed" : "declined"),
+          msg(TURN, THREAD, `the patch was answered ${a.decision}`), done(TURN, THREAD)))), 4);
+        break;
+      }
+
+      // The same request twice under one id, as a server resending it would: one answer is owed.
+      case "approval-duplicate": {
+        const request = approvalRequest(9430, THREAD, TURN, "exec-dup-1", "arc log -n 1");
+        w(R, cmd(TURN, THREAD, { command: "ls" }),
+          ask(request, (a) => commandAnswered(a, TURN, THREAD, "exec-dup-1", "arc log -n 1")), request);
+        break;
+      }
+
+      // A file change at FAKE_FILECHANGE_PATH, a rename to FAKE_FILECHANGE_MOVE when that is set: the
+      // shapes the containment has to judge path by path — a destination outside, a .git inside a root.
+      case "filechange-at": {
+        const target = process.env.FAKE_FILECHANGE_PATH ?? path.join(tmpRoot(), `entrust-fixture-at-${process.pid}.md`);
+        const move = process.env.FAKE_FILECHANGE_MOVE ?? null;
+        const changes = [{ path: target, kind: move ? { type: "update", move_path: move } : { type: "add" }, diff: "fixture\n" }];
+        const itemId = "call_patch_at";
+        w(R, cmd(TURN, THREAD), fileChangeStarted(TURN, THREAD, itemId, changes),
+          ask(fileChangeRequest(9422, THREAD, TURN, itemId), (a) => w(resolvedNote(THREAD, a.requestId),
+            fileChangeDone(TURN, THREAD, itemId, changes, a.decision === "accept" ? "completed" : "declined"),
+            msg(TURN, THREAD, `the patch was answered ${a.decision}`), done(TURN, THREAD))));
+        break;
+      }
+
+      // The child's turn opens and completes, and only then does its file change start and ask: a request
+      // for a turn that is over, whose paths would otherwise be covered.
+      case "filechange-child-late": {
+        const childTurn = "turn_sub", itemId = "call_patch_late";
+        const changes = [{ path: path.join(tmpRoot(), `entrust-late-${process.pid}.md`), kind: { type: "add" }, diff: "late\n" }];
+        w(R, cmd(TURN, THREAD), ...subAgentItem(TURN, THREAD, "call_sub", "started", OTHER_THREAD, "/root/late"),
+          ...childTurnStart(childTurn, OTHER_THREAD), done(childTurn, OTHER_THREAD),
+          fileChangeStarted(childTurn, OTHER_THREAD, itemId, changes),
+          ask(fileChangeRequest(9423, OTHER_THREAD, childTurn, itemId), (a) => w(resolvedNote(OTHER_THREAD, a.requestId),
+            msg(TURN, THREAD, `the late patch was answered ${a.decision}`), done(TURN, THREAD))));
+        break;
+      }
+
+      // The same file change inside $TMPDIR, made by a subagent the root announced.
+      case "filechange-child": {
+        const childTurn = "turn_sub", itemId = "call_patch_child";
+        const changes = [{ path: path.join(tmpRoot(), `entrust-child-${process.pid}.md`), kind: { type: "add" }, diff: "child\n" }];
+        w(R, cmd(TURN, THREAD), ...subAgentItem(TURN, THREAD, "call_sub", "started", OTHER_THREAD, "/root/writer"),
+          ...childTurnStart(childTurn, OTHER_THREAD), fileChangeStarted(childTurn, OTHER_THREAD, itemId, changes),
+          ask(fileChangeRequest(9421, OTHER_THREAD, childTurn, itemId), (a) => w(resolvedNote(OTHER_THREAD, a.requestId),
+            fileChangeDone(childTurn, OTHER_THREAD, itemId, changes, a.decision === "accept" ? "completed" : "declined"),
+            done(childTurn, OTHER_THREAD), msg(TURN, THREAD, `the child's patch was answered ${a.decision}`), done(TURN, THREAD))));
+        break;
+      }
 
       // An inventoried scenario with no handler here: a deleted case label, or one whose name drifted
       // from the inventory. The generic response-and-completion this used to send is success-shaped, so

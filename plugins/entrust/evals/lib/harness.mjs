@@ -33,11 +33,17 @@ process.on("exit", () => {
 
 // Removed on EXIT, not only at the happy end of a suite: a crashed run left the whole tree behind, and
 // they accumulate silently in $TMPDIR.
+const SYSTEM_TMP = os.tmpdir();
 export function tempDir(prefix) {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  const d = fs.mkdtempSync(path.join(SYSTEM_TMP, prefix));
   temps.push(d);
   return d;
 }
+// Every process a suite spawns inherits a $TMPDIR BESIDE the suite's directories rather than above them:
+// the driver refuses a $TMPDIR that is an ancestor of its state directory, and the inherited one is an
+// ancestor of every state directory made above. Set where the parent had none too, so a case that plants
+// something in the agent's own $TMPDIR runs on every machine; a case about an unset one unsets it itself.
+process.env.TMPDIR = tempDir("entrust-agent-tmp-");
 
 // The driver spawns `codex` from PATH, so the shim has to be called exactly that.
 export function codexShim(dir, target = FAKE) {
