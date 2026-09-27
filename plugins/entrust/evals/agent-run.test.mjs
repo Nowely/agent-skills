@@ -10,7 +10,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { DRIVER, EXIT, FAKE, SCRIPTS, codexShim, registry, runCases, skip, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
+import { DRIVER, EXIT, FAKE, SCRIPTS, codexShim, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
 import { ACCEPTED, REFUSED, STATUS_LINES, TAKEN, agentDirOf, classifyRole, planRowOf, shortName } from "../plugin/skills/codex/scripts/agent-run.mjs";
 
 const LAUNCHER = path.join(SCRIPTS, "agent-run.mjs");
