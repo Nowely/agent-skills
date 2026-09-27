@@ -1,0 +1,62 @@
+{
+ "1": {
+  "case": "agent-result",
+  "A": "with",
+  "B": "without"
+ },
+ "2": {
+  "case": "code-comment",
+  "A": "with",
+  "B": "without"
+ },
+ "3": {
+  "case": "commit-title",
+  "A": "without",
+  "B": "with"
+ },
+ "4": {
+  "case": "plan",
+  "A": "with",
+  "B": "without"
+ },
+ "5": {
+  "case": "agent-task-file",
+  "A": "with",
+  "B": "without"
+ },
+ "6": {
+  "case": "review-comment",
+  "A": "with",
+  "B": "without"
+ },
+ "7": {
+  "case": "issue-answer",
+  "A": "without",
+  "B": "with"
+ },
+ "8": {
+  "case": "agent-chat-brief",
+  "A": "without",
+  "B": "with"
+ },
+ "9": {
+  "case": "failed-check",
+  "A": "without",
+  "B": "with"
+ },
+ "10": {
+  "case": "pr-diff",
+  "A": "with",
+  "B": "without"
+ },
+ "11": {
+  "case": "team-message",
+  "A": "with",
+  "B": "without"
+ },
+ "12": {
+  "case": "owner-report",
+  "A": "without",
+  "B": "with"
+ }
+}
