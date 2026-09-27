@@ -96,7 +96,7 @@ test("A1 the mode adds no header field or flag, what it asks of the driver and t
     return !/The mode is prompt only/.test(flat) || "the page still says the mode is prompt only";
   });
 
-test("A3 the plan is made from the generated composition page, the sibling is loaded once the plan has a Codex agent, and this page re-cuts only what the mode changes",
+test("A3 step 1 reads the generated composition page first, the sibling is loaded once the plan has a Codex agent, and this page re-cuts only what the mode changes",
   "rights, header fields, the worktree lifecycle and the exit ladder have exactly one home; a copy here is a second copy to drift, so the page has to send the reader there and say what it does not restate. #15 F18: the page loaded the sibling's 4,500 words on every run, an all-Claude one included; the composition rules and the rights table it plans from are generated into a reference, and the load waits for a Codex agent, before the launcher's --plan, which is the first command that needs it",
   () => {
     const problems = [];
@@ -106,9 +106,17 @@ test("A3 the plan is made from the generated composition page, the sibling is lo
       "Plan from [codex-composition.md](references/codex-composition.md), the sibling's composition rules and rights table generated into this page's references.",
       "Load [codex](../codex/SKILL.md) (Skill tool, `entrust:codex`) once the plan has a Codex agent, before its launcher's `--plan`",
       "this page re-cuts only what the mode changes",
-      "1. Scout, then decide the composition and the agents from the generated composition page; load the sibling skill with the Skill tool once the plan has a Codex agent.",
+      "1. First read `${CLAUDE_SKILL_DIR}/references/codex-composition.md` whole with the Read tool, before any decision: it holds the composition rules and the rights table the plan is made from.",
+      "Scout, then decide the composition and the agents from it; load the sibling skill with the Skill tool once the plan has a Codex agent.",
     );
     if (prose !== true) problems.push(prose);
+    // The live gate, 2026-09-27 (case 6): with the reference only linked, an Opus coordinator scouted and showed
+    // the card without reading it. The read is step 1's first action, and its path is the file the link names.
+    const step1 = lines.find((l) => l.startsWith("1. ")) ?? "";
+    const read = /^1\. First read `\$\{CLAUDE_SKILL_DIR\}\/([^`]+)` whole with the Read tool, before any decision/.exec(step1)?.[1];
+    if (!read) problems.push(`step 1 does not open with the read: ${step1.slice(0, 80)}`);
+    else if (!fs.existsSync(path.join(SKILL_DIR, read))) problems.push(`step 1 reads ${read}, which is not in the skill's directory`);
+    else if (path.join(SKILL_DIR, read) !== path.join(SKILL_DIR, "references", "codex-composition.md")) problems.push(`step 1 reads ${read}, not the page line 12 links`);
     // The negative half: the unconditional load the deferral replaced.
     if (/Load \[codex\]\(\.\.\/codex\/SKILL\.md\) now/.test(text)) problems.push("the page loads the sibling unconditionally again");
     if (/if it is not loaded yet/.test(flat)) problems.push("step 1 loads the sibling before the composition again");
