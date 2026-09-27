@@ -18,7 +18,7 @@
 // each (evals/README.md indexes the offline half). Cases 6 to 9 were added on 2026-09-27, as were the
 // assertions named here in cases 1 and 5, and all nine ran on 2026-09-28 over the fix run's tree (the record is
 // plugins/entrust/research/2026-09-27-field-audit-triage/rounds.md): 1 to 4, 8 and 9 green at once, 6 green once
-// the page's first step became an explicit read, 7 red on two readings of this gate's own (ISSUES.md E55, E56)
+// the page's first step became an explicit read, 7 red on two readings of this gate's own (ISSUES.md E59, E60)
 // with its ordering check green, 5 red on the Opus coordinator's deviations from the page (the draft changed
 // after the critic's freeze, phase paragraphs over the bound, a success claim with no receipt) in three runs.
 // A case added is not a case run:

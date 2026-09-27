@@ -9,7 +9,7 @@ forensics remain in the repository references and release notes.
 
 - **The experiment page no longer counts its protocols.** `skills/experiment/SKILL.md` said "the four registered
   first are in protocols.md" while the file registered five, and now six with E6; it says "those registered so far".
-  Why: ledger entry E51, found twice in passing during the 2026-09-27 triage; the count had drifted at every
+  Why: a ledger entry of this branch (its E51, which never reached main and left the ledger on this fix), found twice in passing during the 2026-09-27 triage; the count had drifted at every
   registration.
 
 ### Added

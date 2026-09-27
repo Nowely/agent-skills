@@ -6,7 +6,7 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E52. The launcher runs nothing and exits 0 when its own path goes through a symlink
+## E56. The launcher runs nothing and exits 0 when its own path goes through a symlink
 
 **Evidence, level 3.**
 
@@ -15,20 +15,20 @@ pinned to a commit is that commit's address, with today's beside it.
 
 **Check.** `node <a copy of scripts/ under $TMPDIR, whose path starts with /var/>/agent-run.mjs --help | wc -l` prints `0`; the same through `$(realpath …)` prints `57`.
 
-**Issue text.** The launcher decides whether it was run as a program by comparing the path it was invoked with against its module's real path, so an invocation through a symlink — `$TMPDIR` on macOS, any linked checkout — is a silent no-op with exit 0: no lines, no prompt, no run, and a wrapper told to run the command again "until a result has a REPORT= line" runs it again without end (E53). The comparison should resolve both sides with `fs.realpathSync`, or the launcher should refuse loudly when it is not the main module.
+**Issue text.** The launcher decides whether it was run as a program by comparing the path it was invoked with against its module's real path, so an invocation through a symlink — `$TMPDIR` on macOS, any linked checkout — is a silent no-op with exit 0: no lines, no prompt, no run, and a wrapper told to run the command again "until a result has a REPORT= line" runs it again without end (E57). The comparison should resolve both sides with `fs.realpathSync`, or the launcher should refuse loudly when it is not the main module.
 
-## E53. The wrapper loops without bound on a command that prints nothing
+## E57. The wrapper loops without bound on a command that prints nothing
 
 **Evidence, level 3.**
 
 - `plugins/entrust/plugin/agents/codex-agent.md:13-16` and the message block in `plugins/entrust/plugin/skills/codex/SKILL.md` (step 2): "If its result has no REPORT= line — it ends with RUNNING= instead, or it was cut — run the very same command again at once, as many times as needed, until a result has one." No bound, and no rule for a result that is empty.
-- 2026-09-27: a wrapper given the launcher through a `/var` path (E52) ran it 64 times over 352 s, then handed back "(no output produced by command after 75+ attempts)"; the harness ended the loop, not the rule.
+- 2026-09-27: a wrapper given the launcher through a `/var` path (E56) ran it 64 times over 352 s, then handed back "(no output produced by command after 75+ attempts)"; the harness ended the loop, not the rule.
 
 **Check.** Give the wrapper a command that prints nothing and exits 0 (`true`): step 2 as written never ends.
 
-**Issue text.** The wrapper's rerun rule has no bound and no case for an empty result, so a launcher that prints nothing (E52, or any refusal that reaches neither stdout nor the report) is rerun until the harness gives up, at one tool call every few seconds. The rule should stop after a small fixed number of reruns, and hand back an empty result as its own line, so the coordinator reads the refusal instead of a hung card.
+**Issue text.** The wrapper's rerun rule has no bound and no case for an empty result, so a launcher that prints nothing (E56, or any refusal that reaches neither stdout nor the report) is rerun until the harness gives up, at one tool call every few seconds. The rule should stop after a small fixed number of reruns, and hand back an empty result as its own line, so the coordinator reads the refusal instead of a hung card.
 
-## E54. The generated composition reference tells its reader to run a script the plugin does not install
+## E58. The generated composition reference tells its reader to run a script the plugin does not install
 
 **Evidence, level 1.**
 
@@ -47,7 +47,7 @@ prints the note; `ls plugins/entrust/plugin/evals` fails.
 The note should say the file is generated in the repository and name nothing a user cannot run, or the generator
 should live under the installed tree.
 
-## E55. The live gate takes the split critic's own report for the corrected split and reads ownership from any line that quotes a path
+## E59. The live gate takes the split critic's own report for the corrected split and reads ownership from any line that quotes a path
 
 **Evidence, level 3.**
 
@@ -78,7 +78,7 @@ reading counts any line that holds a path beside a verb like `rename` or `update
 user's request owns every file the request names. The check should read the file the critic's `artifacts` name
 and count ownership only from a line whose subject is the brief's own agent.
 
-## E56. The live gate's attribution check credits an agent with the next list item's path
+## E60. The live gate's attribution check credits an agent with the next list item's path
 
 **Evidence, level 3.**
 
@@ -96,7 +96,7 @@ ends at the line's end as well as at a sentence end reports none.
 end with "(Model id)" credits each agent with the path of the item below it and reports a misattribution the
 answer does not make. The stretch an agent is the subject of should end at the end of its line.
 
-## E57. The draft linter reads a sentence about what will happen as a success claim
+## E61. The draft linter reads a sentence about what will happen as a success claim
 
 **Evidence, level 3.**
 
@@ -115,7 +115,7 @@ check passes is reported as an unsupported success claim. The rule should skip a
 `when`, `if`, `until` or `after`, or read the sentence's tense, and the gate's phase check inherits whichever the
 linter does.
 
-## E58. The gate's plan record turns `unknown` tokens into NaN
+## E62. The gate's plan record turns `unknown` tokens into NaN
 
 **Evidence, level 1.**
 
