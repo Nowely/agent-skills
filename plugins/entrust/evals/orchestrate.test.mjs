@@ -217,9 +217,9 @@ test("D5 the pool does not depend on the orchestrator's model, and the top pair 
     return prose === true && row === true || [prose, row].filter((r) => r !== true).join("; ");
   });
 
-test("D7 a Fable agent never spawns Fable, and only the orchestrator launches Fable agents",
-  "a top agent that may spawn its own top agent makes the cap of one unenforceable one level down, where nothing is counting; stated without \"agent\" the rule also read as forbidding a Fable orchestrator the one Fable agent the pool promises it",
-  () => says("a Fable agent never spawns Fable", "only you launch Fable agents"));
+test("D7 a Fable agent never spawns Fable, and only the orchestrator or a foreman it launched launches Fable agents",
+  "a top agent that may spawn its own top agent makes the cap of one unenforceable one level down, where nothing is counting; stated without \"agent\" the rule also read as forbidding a Fable orchestrator the one Fable agent the pool promises it; the foreman, an Opus agent that runs the plan, may take that one Fable agent (the owner, 2026-09-26)",
+  () => says("a Fable agent never spawns Fable", "only you, or a foreman you launched, launch Fable agents"));
 
 test("D8 effort is chosen per agent below the top row, and low effort only for mechanical Sonnet stages in a Workflow",
   "measured 2026-09-17: two Luna read agents at an inherited xhigh took 480 and 557 s and 1.2M and 2.3M tokens for a ledger and a grep task. The earlier rule inherited the user's effort everywhere because, measured on codex-cli 0.153.4, no effort level bought the evidence guarantee an exception once claimed; this rule claims cost, not evidence",
@@ -538,6 +538,62 @@ test("E9 the roles reference exists with its seven columns, at least fifteen rol
       else if (/repository|run directory|live tree|worktree|state directory|data directory|owned files/i.test(row.split("|")[3])) problems.push(`the ${r} row grants a write right on a tree or the data directory`);
     }
     if (!/No role is a phase of one piece of work/.test(roles)) problems.push("the phase-pipeline sentence is gone");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+// ------------------------------------------------------------------ I: the foreman (plugins/entrust/research/2026-09-26-coordinator-practices/)
+
+const FOREMAN = "skills/orchestrate/references/foreman.md";
+const foreman = fs.existsSync(path.join(ROOT, FOREMAN)) ? read(FOREMAN) : "";
+const foremanFlat = foreman.replace(/\s+/g, " ");
+const foremanSays = (...phrases) => {
+  if (!foreman) return `${FOREMAN} is missing`;
+  const missing = phrases.filter((p) => !foremanFlat.includes(p));
+  return missing.length === 0 || `foreman.md no longer says: ${missing.map((p) => JSON.stringify(p)).join(" | ")}`;
+};
+
+test("I1 a plan with three workers or more proposes a foreman, and the bounds paragraph links its reference",
+  "the owner saw every worker's calls in the timeline (2026-09-26); a page that never proposes the foreman leaves that noise in place, and below three workers the extra agent costs more coordination than it saves",
+  () => {
+    const said = says("A plan with three workers or more proposes a foreman");
+    return said !== true ? said : shows(/\[foreman\.md\]\(references\/foreman\.md\)/);
+  });
+
+test("I2 the foreman launches every worker in the foreground, and the page says why",
+  "a background worker's calls reach the user's timeline past the foreman (measured 2026-09-26: two Bash cards, a hand-back and a text), so a foreman that backgrounds its workers removes none of the noise it exists to remove",
+  () => foremanSays("Launch every worker in the foreground", "A worker in the background writes its calls into the user's timeline past you (measured 2026-09-26)"));
+
+test("I3 the user's approval goes down verbatim, and an action approved mid-run goes to a fresh worker",
+  "an agent's auto-mode check sees only its own transcript and no agent message is consent (Anthropic's coordinator prompt, Claude Code 2.1.280): two levels below the user a paraphrased or relayed approval is no approval at all",
+  () => foremanSays("Quote the user's approval exactly", "an approval you paraphrase does not exist for it", "run it in a fresh worker whose first brief holds the quote and the literal command"));
+
+test("I4 the foreman is Opus in the background, may launch the one Fable agent, and never changes the plan",
+  "the owner's decisions of 2026-09-26: Opus, not Sonnet, and not Fable, which would hold the one Fable slot for the whole run; the background keeps the orchestrator free for the user; a foreman that changes the plan spends the user's \"go\" on work they never saw",
+  () => foremanSays("The foreman is Opus", "launched in the background so you stay free for the user", "It may launch the one Fable agent the cap allows", "Never change the plan", "is a hand-back with `status: blocked`"));
+
+test("I5 the foreman cannot load the skill, so its brief names the pages by path",
+  "the Skill tool refuses a skill marked disable-model-invocation (E39), so a foreman told to load orchestrate starts without the rules it runs under",
+  () => foremanSays("It cannot load this skill", "Name this file, the page and the sibling's page by absolute path in its brief"));
+
+test("I6 a foreman's brief says why and what done looks like, and never hands understanding back",
+  "\"based on your findings\" hands the synthesis to the worker (Anthropic's coordinator prompt); a brief without its purpose or its \"done\" leaves the worker to guess how deep to go",
+  () => foremanSays("with why the work is needed and what \"done\" looks like", "Never \"based on your findings\""));
+
+test("I7 the foreman's return carries the deviations, the concerns and every artifact path",
+  "the orchestrator sees the workers only through this report; a report of what was done alone hides what went differently (Cursor's handoff carries notes, concerns, deviations, findings)",
+  () => foremanSays("every deviation from the plan and why", "every concern", "every path the workers' work left"));
+
+test("I8 the roles reference has a foreman row in the strong tier that writes nothing itself and links its page",
+  "the roles table is where a coordinator picks a role by its rights; a foreman without a row is a role the table does not know, and one granted a write right would be a writer no one verifies",
+  () => {
+    const roles = read("skills/orchestrate/references/roles.md");
+    const row = roles.split("\n").find((l) => l.startsWith("| foreman |"));
+    if (!row) return "no row for foreman";
+    const cells = row.split("|").map((c) => c.trim());
+    const problems = [];
+    if (!cells[3].startsWith("nothing")) problems.push(`may write: ${cells[3]}`);
+    if (!/^strong/.test(cells[6])) problems.push(`tier: ${cells[6]}`);
+    if (!/\[foreman\.md\]\(foreman\.md\)/.test(row)) problems.push("no link to foreman.md");
     return problems.length === 0 || problems.join("; ");
   });
 

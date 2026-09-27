@@ -5,6 +5,22 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Added
+
+- **`/entrust:orchestrate` can hand a run to a foreman.** A plan with three workers or more now proposes one
+  Opus subagent, the foreman, that briefs and launches the workers, has their work verified, handles their
+  failures and hands back one report; the orchestrator keeps the user, the plan, the synthesis and the
+  completeness critic. In the timeline each worker then shows as one card inside the foreman's, with its task
+  and its report, instead of every call it makes; the agent map still shows every agent. The user's approval
+  words travel down verbatim, and an action approved mid-run is run by a fresh worker. The rules are in
+  `skills/orchestrate/references/foreman.md`, with a foreman row in `references/roles.md`, and the page lets a
+  foreman launch the one Fable agent the cap allows. `evals/orchestrate.test.mjs` pins them (I1–I8, D7
+  widened). Why: on 2026-09-26 the owner saw every worker's Bash cards in the timeline and asked for a
+  coordinator one level down; a probe on extension 2.1.280 showed a subagent's foreground worker stays out of
+  the timeline while a background one comes in whole, and Anthropic's own coordinator prompt inside Claude Code
+  2.1.280 supplied the rules on approvals and briefs. The run is in
+  `plugins/entrust/research/2026-09-26-coordinator-practices/`.
+
 ### Changed
 
 - **What installs is now `plugins/entrust/plugin/`.** The marketplace entry's `source` is

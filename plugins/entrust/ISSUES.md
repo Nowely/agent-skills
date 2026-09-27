@@ -121,3 +121,31 @@ prints the failure; the rerun of the same job prints none.
 no report, so the exit code is right and the file the coordinator reads is missing. Either the driver still owes a
 report on that path and does not write it, or the case's budget is too tight for a cold start on a slow runner; which
 it is has not been established. Until it is, a red main on this case cannot be read.
+
+## E50. `orchestrate` waits on its background agents with `TaskOutput`, a tool Claude Code 2.1.277 removed
+
+**Evidence, level 1 for the page and the changelog, level 3 for the missing tool.**
+
+- `plugins/entrust/plugin/skills/orchestrate/SKILL.md:107` (at `b3872b4`): "For a Codex agent, launch
+  `until [ -s "<DIR>/exit" ]; do sleep 5; done; echo DONE=<id>` as a background Bash task and call
+  `TaskOutput(<poll_task_id>, block: true, timeout: 600000)` on that task, again while it runs; … For a Claude
+  agent, call the same `TaskOutput` on its Agent task, again while it runs".
+- Claude Code's changelog, embedded in the 2.1.280 binary
+  (`~/.cursor/extensions/anthropic.claude-code-2.1.280-darwin-arm64/resources/native-binary/claude`), under
+  2.1.277: "Removed the deprecated TaskOutput tool; Claude reads a background task's output file with Read
+  instead, and the `taskOutputMaxChars` setting and `TASK_MAX_OUTPUT_LENGTH` no longer have any effect".
+- 2026-09-26, session `3a3ed58f` on extension 2.1.280: the session's tool list has no `TaskOutput`. The launch
+  result of a background Agent call says of the output file the changelog points to: "Do NOT Read or tail this
+  file via the shell tool — it is the full subagent JSONL transcript and reading it will overflow your
+  context." The same agent's report reached the session as a message followed by its completion
+  notification, with nothing called to wait for it.
+
+**Check.** `/usr/bin/grep -a -c 'Removed the deprecated TaskOutput tool' <that binary>` prints `1`; a session on
+2.1.277 or later lists no `TaskOutput` among its tools.
+
+**Issue text.** The orchestrate page tells the orchestrator to wait for every background agent by calling
+`TaskOutput`, blocking, again and again. Claude Code removed that tool in 2.1.277, and the replacement its
+changelog names, reading the task's output file, is for an agent its whole transcript, which the harness says
+not to read. An orchestrator that follows the page calls a tool it does not have. Completion notifications
+arrive on their own and carry the return: a Claude agent's report, a Codex wrapper's lines, the poll loop's
+`DONE=` line. The rule should wait on those.
