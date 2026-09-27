@@ -232,12 +232,12 @@ carries no stability promise — hence the pinned schema and the fidelity suite.
 
 ```bash
 codex app-server generate-json-schema --out <tmp-new>/
-git archive 6bf21e6 plugins/codex-delegate/schema-<old-version> | tar -x --strip-components=2 -C <tmp-old>/
+git archive b5c1b81 plugins/entrust/schema-<old-version> | tar -x --strip-components=2 -C <tmp-old>/
 diff -r <tmp-old>/schema-<old-version>/ <tmp-new>/
 ```
 
 Read the diff for anything structural. Commit `<tmp-new>/` as `plugins/entrust/schema-<new-version>/` in a commit of its
-own: that commit holds the full tree the next upgrade diffs against, so replace `6bf21e6` above with its
+own: that commit holds the full tree the next upgrade diffs against, so replace `b5c1b81` above with its
 hash — and the path beside it, which commits made before the plugin was renamed spell differently.
 `ENTRUST_SCHEMA_DIR=schema-<new-version> node plugins/entrust/evals/conformance.test.mjs` validates it
 while `schema-<old-version>/` is still the pinned one; once that is green, move `PINNED_CODEX`, prune the
@@ -252,11 +252,14 @@ re-check [the dated parity reference](skills/codex/references/parity.md).
 ```
 skills/codex/                    the main skill: SKILL.md (the operating manual), scripts/ (the driver
                                  and its companions, each self-describing under --help), references/
-skills/orchestrate/SKILL.md      the orchestrator mode: a delta over the codex skill, prompt only
+skills/orchestrate/              the orchestrator mode: SKILL.md (a delta over the codex skill), scripts/
+                                 (capture-check.mjs, the check runner; lint-draft.mjs, the answer's linter;
+                                 each self-describing under --help), references/ (roles, the foreman, and
+                                 codex-composition.md, generated from the codex page by ../evals/fragments.mjs)
 skills/cleanup/SKILL.md          the cleanup mode: runs scripts/cleanup.mjs, shows its listing and
                                  deletes what the user chose
 skills/experiment/               the experiment mode: SKILL.md (protocol, arms, two verdicts), scripts/experiment.mjs
-                                 (the record under the data directory), references/protocols.md (the first five)
+                                 (the record under the data directory), references/protocols.md (the six registered)
 skills/advisor/SKILL.md          the advisor mode: one standing top-row thread per run, prompt only
 skills/swarm/                    the swarm mode: SKILL.md (units, launch, reducer, arms), scripts/swarm.mjs (the launcher)
 .claude-plugin/                  plugin + marketplace manifests
@@ -269,7 +272,7 @@ package.json                     private; the Node floor
                                  pinned protocol schema; the driver reads none of them at run time, it
                                  names the pinned version itself. The full generated tree is not kept
                                  here: the commit named in the upgrade recipe holds the last one
-                                 (6bf21e6 for 0.153.4), and the recipe diffs the next regeneration
+                                 (b5c1b81 for 0.155.1), and the recipe diffs the next regeneration
                                  against it.
 ```
 

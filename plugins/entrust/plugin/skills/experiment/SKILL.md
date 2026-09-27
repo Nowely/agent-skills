@@ -16,7 +16,7 @@ Load the sibling [codex](../codex/SKILL.md) now (Skill tool, `entrust:codex`); e
 
 Register the experiment before any agent, in a protocol the user reads as the plan:
 
-1. Hypothesis: an id and one sentence that can be false, from the research round's list of 2026-09-17 or written the same way; the four registered first are in [protocols.md](references/protocols.md).
+1. Hypothesis: an id and one sentence that can be false, from the research round's list of 2026-09-17 or written the same way; those registered so far are in [protocols.md](references/protocols.md).
 2. Arms: each a composition named by model, tier, effort, count and rights. One arm is the comparator the hypothesis calls for, a single agent or no delegation where the question is whether delegation pays. The tiers are top Fable and Astra, strong Opus and Sol, cheap Sonnet and Terra, bulk Haiku and Luna. Each arm's plan is in the protocol, so one "go" covers every arm and no arm stops for a plan of its own.
 3. Material: the same tasks or claims for every arm, frozen before the run, with the ground truth or the acceptance check written down before any arm sees it; the arms never see each other's returns.
 4. Metrics: what the research's ruler names, unique coordinator incidents by stage with their severity, owner corrections, outcomes verified independently, and agents and paid turns counted per outcome so that arms of different cost compare; for a bulk hypothesis, correctness per claim; n stated, with an interval where n is under fifty, and paired where the material is the same across arms.

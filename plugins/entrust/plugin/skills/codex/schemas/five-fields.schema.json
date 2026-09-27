@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "properties": {
+    "status": { "type": "string", "enum": ["done", "partial", "blocked"] },
+    "result": { "type": "string", "maxLength": 4800 },
+    "evidence": { "type": "array", "items": { "type": "string", "maxLength": 1000 }, "maxItems": 40 },
+    "artifacts": { "type": "array", "items": { "type": "string", "maxLength": 300 }, "maxItems": 40 },
+    "open": { "type": "array", "items": { "type": "string", "maxLength": 1000 }, "maxItems": 20 }
+  },
+  "required": ["status", "result", "evidence", "artifacts", "open"],
+  "additionalProperties": false
+}
