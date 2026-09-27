@@ -5,6 +5,21 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Changed
+
+- **The Codex CLI pin moves to 0.155.1.** `PINNED_CODEX`, the pinned schema directory (`schema-0.155.1/`, the
+  twelve files conformance loads; the full 312-file tree is commit `b5c1b81`, which the README's upgrade recipe now
+  names) and the fixtures' server version (the fake app-server's default, the cli case and the receipt scenario)
+  move together. The 0.155.1 protocol against 0.153.4, in the twelve files the driver's conformance loads, only
+  adds: `originator` and `ThreadEnvironment` on thread responses, `normalModelSlug` and `ordinaryUsageAllowed` on
+  rate limits, thread-attachment notifications, and the path type `AbsolutePathBuf` renamed `LegacyAppPathString`;
+  nothing removed, no type changed (8 files new, 27 changed, none removed across the whole tree). Measured on
+  2026-09-27: 89 conformance scenarios, the live fidelity gate "all 15 agree" with one real turn, cli 123 and
+  protocol 147 green. parity.md's dated figures were not re-measured, as its header already says of the 0.153.4
+  pin. Why: this machine's codex-cli had been 0.155.1 against a 0.153.4 pin since the CLI moved, the driver warned
+  on every run, seven Codex turns of the 2026-09-27 triage ran on the mismatch, and RELEASING.md makes the move a
+  prerequisite of the release.
+
 ### Added
 
 - **`/entrust:orchestrate` can hand a run to a foreman.** A plan with three workers or more now proposes one

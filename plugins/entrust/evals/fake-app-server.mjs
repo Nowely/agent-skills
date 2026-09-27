@@ -18,7 +18,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
-const CODEX_VERSION = process.env.FAKE_CODEX_VERSION ?? "0.153.4";
+const CODEX_VERSION = process.env.FAKE_CODEX_VERSION ?? "0.155.1";
 const SCENARIO = process.env.FAKE_SCENARIO ?? "happy";
 
 // Every scenario this fixture implements, and how the driver has to be invoked to reach it. Many of

@@ -384,7 +384,7 @@ const CASES = [
   // --- what the report says about the run's own footing ---
   { scenario: "happy",            expect: EXIT.OK,
     why: "the initialize response carries the server version in userAgent; the report must preserve it so protocol drift is diagnosable",
-    assert: (r) => (r.codexVersion === "0.153.4" && r.codexVersionPinned === "0.153.4")
+    assert: (r) => (r.codexVersion === "0.155.1" && r.codexVersionPinned === "0.155.1")
       || `codexVersion was not read out of the userAgent: ${JSON.stringify({ v: r.codexVersion, pinned: r.codexVersionPinned })}` },
   { scenario: "happy",            expect: EXIT.OK, env: { FAKE_CODEX_VERSION: "9.9.9" },
     why: "a codex that is not the one the protocol facts were measured against is the first thing to know when behaviour contradicts the docs; it must be said on stderr and in the report, not inferred from a later failure",
