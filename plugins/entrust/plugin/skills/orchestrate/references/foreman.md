@@ -16,8 +16,9 @@ background grandchild's came in whole, and the map drew the tree). The run behin
   them yourself: a foreman is one more agent, and teams split by the phases of one piece of work have spent more
   tokens on coordination than on the work (Anthropic, 2026-01).
 - The foreman is Opus: `subagent_type: "general-purpose"`, `model: "opus"`, launched in the background so you stay
-  free for the user, with a description of the form "Foreman, Opus: <task in a few words>". Its thinking rows,
-  its Agent cards and any line it writes between calls show in the timeline.
+  free for the user (in the foreground in a headless session, whose turn would otherwise end with it alive), with
+  a description of the form "Foreman, Opus: <task in a few words>". Its thinking rows, its Agent cards and any
+  line it writes between calls show in the timeline.
 - It counts against the alive cap while it runs, and so does each worker it has running. It may launch the one
   Fable agent the cap allows; a Fable agent it launched still never spawns Fable.
 - It cannot load this skill: the Skill tool refuses a skill marked `disable-model-invocation`. Name this file, the

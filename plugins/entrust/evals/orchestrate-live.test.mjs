@@ -25,10 +25,9 @@
 //   - the init line's tool list names the subagent tool `Task` while the tool_use blocks in the same
 //     build's stream carry `Agent`, so both spellings count and neither alone is safe;
 //   - the last line is {type:"result"} and its `result` is the final text;
-//   - --plugin-dir loaded entrust:codex and entrust:orchestrate. There is no
-//     codex-agent agent: a Codex agent is a general-purpose wrapper (an Agent call) whose prompt runs the
-//     driver as a background Bash task, so an agent is counted here as an Agent/Task tool_use whose prompt
-//     names driver.mjs and --prompt-file;
+//   - --plugin-dir loaded entrust:codex and entrust:orchestrate. A Codex agent is an Agent call to the
+//     entrust:codex-agent relay, which runs the launcher in one foreground Bash call and reruns it while
+//     the call returns RUNNING= at 570 s; isCodexCall below counts that call, and the older driver shape;
 //   - this machine's managed settings set disableBypassPermissionsMode: "disable", so
 //     --dangerously-skip-permissions is accepted and then ignored, and in -p mode there is no prompt to
 //     answer: every write and every non-trivial Bash is auto-denied. --permission-mode acceptEdits with an
@@ -51,9 +50,8 @@
 //     else: no .gitignore, no prompt file, no out.json — those are under $TMPDIR now;
 //   - a background Bash task does not keep a headless session alive: when the coordinator ends its turn
 //     Claude Code exits and SIGTERMs the task, and the first full run's agent was interrupted at the
-//     second the session ended. TaskOutput(task_id, block: true, timeout: 600000) blocks the turn until
-//     the task ends, ten minutes per call and repeated while it still runs, so it is in --allowedTools
-//     below; in an interactive session the notification arrives first and the call returns at once.
+//     second the session ended. This gate's coordinator is a headless session, so under the page's rule
+//     it launches every agent in the foreground, and its turn returns only when they have.
 //
 // Two things outlive a run on purpose. Case 5's session file stays under ~/.claude/projects: --resume
 // reads it, and the CLI has no delete for it. And a FAILING case keeps its scratch tree, which its
@@ -109,10 +107,18 @@ const note = (line) => console.log(`      ${line}`);
 const CODEX_SLUG = /\bgpt-\d+(?:\.\d+)*-(astra|sol|terra)\b/i;
 const isTierModel = (m) => typeof m === "string" && CODEX_SLUG.exec(m)?.[0] === m;
 const SIBLING_SKILLS = ["entrust:codex", "codex"];
-// A Codex agent is one Agent call whose prompt carries the driver, a prompt file and a report file. Both
-// flags, because a prompt that merely mentions the driver is a probe or the coordinator reading a report.
+// A Codex agent is one Agent call: of the shipped wrapper's type, or whose message carries the launcher's
+// command with --run and --report-file. The driver with --prompt-file, the shape before the wrapper, still
+// counts, so an older transcript reads the same. Every flag, because a prompt that merely mentions a script
+// is a probe or the coordinator reading a report.
 const codexCommand = (u) => (u.name === "Agent" || u.name === "Task" ? String(u.input.prompt ?? "") : "");
-const isCodexCall = (u) => /driver\.mjs/.test(codexCommand(u)) && /--prompt-file/.test(codexCommand(u));
+const isCodexCall = (u) => {
+  if (u.name !== "Agent" && u.name !== "Task") return false;
+  const c = codexCommand(u);
+  return /^(entrust:)?codex-agent$/.test(String(u.input?.subagent_type ?? ""))
+    || (/agent-run\.mjs/.test(c) && /--run\b/.test(c) && /--report-file/.test(c))
+    || (/driver\.mjs/.test(c) && /--prompt-file/.test(c));
+};
 const codexCalls = (toolUses) => toolUses.filter(isCodexCall);
 // Both, because one build answers with both: `Task` in the init line's tool list, `Agent` in the tool_use
 // blocks. A rename must not silently empty the checks that count subagent calls.
@@ -187,12 +193,11 @@ function scratchClone(dir) {
 
 // Not --dangerously-skip-permissions: managed settings disable that mode on this machine, and a -p
 // session that inherits the denial writes nothing and runs no command. The rules are the tools the page's
-// coordinator uses, both spellings of the subagent tool among them, and TaskOutput, which is how a
-// coordinator waits on a background agent without ending the turn that owns it; acceptEdits is what lets a
-// agent write without a prompt no headless run could answer.
+// coordinator uses, both spellings of the subagent tool among them; acceptEdits is what lets a agent write
+// without a prompt no headless run could answer.
 const CLAUDE_FLAGS = ["--plugin-dir", ROOT, "--output-format", "stream-json", "--verbose",
                       "--permission-mode", "acceptEdits",
-                      "--allowedTools", "Bash,Write,Edit,Read,Glob,Grep,Skill,Agent,Task,TaskOutput,Workflow"];
+                      "--allowedTools", "Bash,Write,Edit,Read,Glob,Grep,Skill,Agent,Task,Workflow"];
 
 // --no-session-persistence is the default here and is DROPPED for case 5: a session it disables is not
 // saved to disk and cannot be resumed, and case 5's whole shape is one plan turn and one "go" turn on the
@@ -333,19 +338,33 @@ const runDirReports = (dirs) => dirs.flatMap((run) => {
     .filter((p) => fs.existsSync(p));
 });
 
-// An agent is a background task of the session's, and a task can outlive the SIGKILL aimed at the session's
-// group. Nothing under the run directory names a pid any more — the driver publishes a report there and
-// nothing else — so an agent is found two ways, in this order:
+// An agent is a task of the session's (background in an interactive session, foreground under the headless gate), and a task can outlive the SIGKILL aimed at the session's
+// group. An agent is found two ways, in this order:
 //   1. the driver's own job records. Every agent writes `<state>/jobs/<threadId>.json` with its pid, the
 //      process identity that says the pid was not recycled, and the `cwd` (a worktree agent: the `repo`)
 //      it ran in. The state is the plugin data directory the agent was handed, so the scan is jobs/ under
 //      every id, and a record naming this case's scratch whose pid is still alive is this case's agent.
-//   2. the stderr file the agent call redirected to, which is under $TMPDIR now: `pid=` is the driver's
-//      first line there. This is what answers for an agent killed before its thread existed, since
-//      writeJob returns without a threadId and no record was ever written.
+//   2. the driver's stderr file, whose first line is `entrust: pid=<n> identity=…`. The wrapper's shape
+//      names only its report, and the launcher keeps that file at `agent/err.txt` beside it; the driver's
+//      shape redirected stderr on its own command, `2> <file>`, and that redirect is read first. This is
+//      what answers for an agent killed before its thread existed, since writeJob returns without a
+//      threadId and no record was ever written.
 // SIGTERM, never SIGKILL: the driver's own handler is what interrupts the turn, writes the report the run
 // had earned and sweeps the codex process group it started. Best-effort by construction — an agent neither
 // route can see is left to its own bounds, which is what --idle-timeout is for.
+function codexPid(u, scratch) {
+  const c = codexCommand(u);
+  const redirect = /2>\s*"?([^"\s]+)"?/.exec(c)?.[1];
+  const report = /--report-file\s+"?([^"\s]+)"?/.exec(c)?.[1];
+  const f = redirect ?? (report ? path.join(path.dirname(report), "agent", "err.txt") : null);
+  if (!f) return null;
+  const file = path.isAbsolute(f) ? f : path.join(scratch, f);
+  let head = "";
+  try { head = fs.readFileSync(file, "utf8").slice(0, 8192); } catch { return null; }
+  const m = /^entrust: pid=(\d+)\b/m.exec(head);
+  const label = redirect ? path.basename(file) : path.join(path.basename(path.dirname(report)), "agent", "err.txt");
+  return m ? { label, pid: Number(m[1]) } : null;
+}
 function stopAgents(scratch, dir, toolUses = []) {
   const stopped = [];
   const seen = new Set();
@@ -370,15 +389,11 @@ function stopAgents(scratch, dir, toolUses = []) {
       stop(`job ${n}`, Number(rec?.pid));
     }
   }
-  // The paths the agent calls named, not a directory listing: the stderr file is outside the run
-  // directory now, and only the command line says where it went.
+  // The paths the agent calls named, not a directory listing: only a call's command says where its
+  // driver's stderr went.
   for (const u of codexCalls(toolUses)) {
-    const f = /2>\s*"?([^"\s]+)"?/.exec(codexCommand(u))?.[1];
-    if (!f) continue;
-    let head = "";
-    try { head = fs.readFileSync(path.isAbsolute(f) ? f : path.join(scratch, f), "utf8").slice(0, 8192); } catch { continue; }
-    const m = /^entrust: pid=(\d+)\b/m.exec(head);
-    if (m) stop(path.basename(f), Number(m[1]));
+    const p = codexPid(u, scratch);
+    if (p) stop(p.label, p.pid);
   }
   save(dir, "stopped.txt", stopped.join("\n"));
   return stopped.length;
@@ -393,7 +408,7 @@ function stoppedAtPlan(toolUses, scratch, head0) {
   // A Codex agent is a wrapper Agent call, counted twice here (as an Agent call and as a Codex call) so a
   // plan turn that launched one reads as not stopped whichever list a reader checks.
   const fanned = [...agentCalls(toolUses), ...workflowCalls(toolUses), ...codexCalls(toolUses)];
-  if (fanned.length) problems.push(`the plan did not stop: ${fanned.map((u) => (isCodexCall(u) ? "Bash(codex)" : u.name)).join(", ")} ran before "go"`);
+  if (fanned.length) problems.push(`the plan did not stop: ${fanned.map((u) => (isCodexCall(u) ? `${u.name}(codex)` : u.name)).join(", ")} ran before "go"`);
   const dirty = git(scratch, "status", "--porcelain").trim();
   if (dirty) problems.push(`the scratch was written to: ${dirty.split("\n").slice(0, 5).join(" | ")}`);
   // A clean tree is also what a commit leaves behind, so HEAD is compared as well as the porcelain.
@@ -837,10 +852,10 @@ test("the full run under Opus: plan, go, run",
     // where to look and the files answer for what ran.
     const codexCallsRan = codexCalls(s2.toolUses);
     if (!codexCallsRan.length)
-      problems.push(`no Codex agent ran: ${agentCalls(s2.toolUses).length} Agent call(s), none whose prompt names driver.mjs with --prompt-file`);
-    const noBackground = codexCallsRan.filter((u) => u.input.run_in_background !== true);
-    if (noBackground.length)
-      problems.push(`${noBackground.length} agent wrapper(s) ran in the foreground, so the coordinator waited on the call instead of the notification`);
+      problems.push(`no Codex agent ran: ${agentCalls(s2.toolUses).length} Agent call(s), none of type entrust:codex-agent or carrying agent-run.mjs --run --report-file or driver.mjs --prompt-file`);
+    const inBackground = codexCallsRan.filter((u) => u.input.run_in_background === true);
+    if (inBackground.length)
+      problems.push(`${inBackground.length} agent wrapper(s) ran in the background, where the headless turn could end with them alive`);
     const noReportFlag = codexCallsRan.filter((u) => !/--report-file/.test(codexCommand(u)));
     if (noReportFlag.length)
       problems.push(`${noReportFlag.length} agent call(s) name no --report-file, so their report is only in a task's output`);
