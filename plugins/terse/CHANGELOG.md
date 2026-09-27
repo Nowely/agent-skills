@@ -3,7 +3,11 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.3.0 — 2026-09-28
+
+terse gets `clarity`, a light skill for everyday texts that Claude may choose on its own while writing, and its
+rules and deep skills follow a replication of the writing-feedback study behind issue #20 on a second machine's
+sessions: `research/2026-09-26-writing-replication/`.
 
 ### Added
 
