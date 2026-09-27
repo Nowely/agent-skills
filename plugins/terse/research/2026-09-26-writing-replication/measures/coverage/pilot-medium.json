@@ -1,0 +1,208 @@
+[
+ {
+  "agent": "pilot-P022-A",
+  "part": "P022",
+  "thread": "01a0df00-2e51-7e02-80cb-0339b4ffd702",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "pilot-P022-B",
+  "part": "P022",
+  "thread": "01a0df00-2e52-7332-87c3-3a136b5571ff",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "pilot-P017-A",
+  "part": "P017",
+  "thread": "01a0df00-2e07-7e60-aa75-fb366b06acb3",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "pilot-P017-B",
+  "part": "P017",
+  "thread": "01a0df00-2e00-7a51-991f-ff492f279e0a",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "pilot-P091-A",
+  "part": "P091",
+  "thread": "01a0df00-2fd1-7663-9ba0-9a02c1c814e3",
+  "rollout_files": 1,
+  "pages": 5,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md",
+   "page-05.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "pilot-P091-B",
+  "part": "P091",
+  "thread": "01a0df00-2e50-74d2-81ca-f80b53eee817",
+  "rollout_files": 1,
+  "pages": 5,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md",
+   "page-05.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "pilot-P093-A",
+  "part": "P093",
+  "thread": "01a0df00-2e0e-7510-b544-20d11712d22c",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "pilot-P093-B",
+  "part": "P093",
+  "thread": "01a0df00-31d8-71c2-9965-13da48b98345",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "pilot-P066-A",
+  "part": "P066",
+  "thread": "01a0df00-2e3c-7de0-93c2-766f4b2544ec",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "pilot-P066-B",
+  "part": "P066",
+  "thread": "01a0df00-2e7e-7ce2-8fbd-202a0ada06a8",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "pilot-P065-A",
+  "part": "P065",
+  "thread": "01a0df00-313e-7b73-86b5-9f6739816e6e",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "pilot-P065-B",
+  "part": "P065",
+  "thread": "01a0df00-2e26-7200-8a25-61acf99825af",
+  "rollout_files": 1,
+  "pages": 4,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ }
+]

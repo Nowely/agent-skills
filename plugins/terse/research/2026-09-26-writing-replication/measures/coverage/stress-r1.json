@@ -1,0 +1,262 @@
+[
+ {
+  "agent": "cx-P032-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P032/page-01.md,corpus/parts/P032/page-02.md,corpus/parts/P032/page-03.md,corpus/parts/P032/page-04.md",
+  "thread": "01a0df88-2376-7ff3-917e-2b964a5be9a7",
+  "rollout_files": 1,
+  "pages": 6,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P032/page-01.md",
+   "P032/page-02.md",
+   "P032/page-03.md",
+   "P032/page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "cx-P043-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P043/page-01.md,corpus/parts/P043/page-02.md,corpus/parts/P043/page-03.md,corpus/parts/P043/page-04.md,corpus/parts/P043/page-05.md,corpus/parts/P043/page-06.md",
+  "thread": "01a0df88-23c6-7b22-b550-e8abd3406782",
+  "rollout_files": 1,
+  "pages": 8,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P043/page-01.md",
+   "P043/page-02.md",
+   "P043/page-03.md",
+   "P043/page-04.md",
+   "P043/page-05.md",
+   "P043/page-06.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "cx-P048-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P048/page-01.md,corpus/parts/P048/page-02.md,corpus/parts/P048/page-03.md,corpus/parts/P048/page-04.md,corpus/parts/P048/page-05.md",
+  "thread": "01a0df88-24bd-7ee3-9ca5-23ecba19e221",
+  "rollout_files": 1,
+  "pages": 7,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P048/page-01.md",
+   "P048/page-02.md",
+   "P048/page-03.md"
+  ],
+  "partial": [
+   "P048/page-04.md",
+   "P048/page-05.md"
+  ],
+  "unread": [],
+  "changed": [],
+  "full": false
+ },
+ {
+  "agent": "cx-P060-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P060/page-01.md,corpus/parts/P060/page-02.md,corpus/parts/P060/page-03.md",
+  "thread": "01a0df88-24be-73b0-8e77-a368a4c40fc2",
+  "rollout_files": 1,
+  "pages": 5,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P060/page-01.md",
+   "P060/page-02.md",
+   "P060/page-03.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "cx-P099-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P099/page-01.md,corpus/parts/P099/page-02.md,corpus/parts/P099/page-03.md,corpus/parts/P099/page-04.md,corpus/parts/P099/page-05.md",
+  "thread": "01a0df88-239c-7541-b9cd-db2ec68913f7",
+  "rollout_files": 1,
+  "pages": 7,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P099/page-01.md",
+   "P099/page-02.md",
+   "P099/page-03.md",
+   "P099/page-04.md",
+   "P099/page-05.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "cx-P101-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P101/page-01.md,corpus/parts/P101/page-02.md,corpus/parts/P101/page-03.md,corpus/parts/P101/page-04.md,corpus/parts/P101/page-05.md,corpus/parts/P101/page-06.md",
+  "thread": "01a0df88-2369-7e33-8346-9619ffb82295",
+  "rollout_files": 1,
+  "pages": 8,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P101/page-01.md",
+   "P101/page-02.md",
+   "P101/page-03.md",
+   "P101/page-04.md",
+   "P101/page-05.md",
+   "P101/page-06.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "cx-P102-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P102/page-01.md,corpus/parts/P102/page-02.md,corpus/parts/P102/page-03.md,corpus/parts/P102/page-04.md,corpus/parts/P102/page-05.md",
+  "thread": "01a0df88-2381-7663-9b8e-0b9ca898358f",
+  "rollout_files": 1,
+  "pages": 7,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P102/page-01.md",
+   "P102/page-02.md",
+   "P102/page-03.md",
+   "P102/page-04.md",
+   "P102/page-05.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "cx-P103-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P103/page-01.md,corpus/parts/P103/page-02.md,corpus/parts/P103/page-03.md,corpus/parts/P103/page-04.md,corpus/parts/P103/page-05.md",
+  "thread": "01a0df88-25c1-7c43-9faf-778b73265f41",
+  "rollout_files": 1,
+  "pages": 7,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P103/page-01.md",
+   "P103/page-02.md",
+   "P103/page-03.md",
+   "P103/page-04.md",
+   "P103/page-05.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "cx-P106-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P106/page-01.md,corpus/parts/P106/page-02.md,corpus/parts/P106/page-03.md,corpus/parts/P106/page-04.md,corpus/parts/P106/page-05.md",
+  "thread": "01a0df88-23aa-7693-a760-af2750937d4c",
+  "rollout_files": 1,
+  "pages": 7,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P106/page-01.md",
+   "P106/page-02.md",
+   "P106/page-03.md",
+   "P106/page-04.md",
+   "P106/page-05.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "cx-P109-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P109/page-01.md,corpus/parts/P109/page-02.md,corpus/parts/P109/page-03.md,corpus/parts/P109/page-04.md,corpus/parts/P109/page-05.md",
+  "thread": "01a0df88-24b4-7381-afa0-7c1449750c0a",
+  "rollout_files": 1,
+  "pages": 7,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P109/page-01.md",
+   "P109/page-02.md",
+   "P109/page-03.md",
+   "P109/page-04.md",
+   "P109/page-05.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "cx-P110-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P110/page-01.md,corpus/parts/P110/page-02.md,corpus/parts/P110/page-03.md,corpus/parts/P110/page-04.md,corpus/parts/P110/page-05.md",
+  "thread": "01a0df88-23c3-7d22-9e1e-114cc2fc4111",
+  "rollout_files": 1,
+  "pages": 7,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P110/page-01.md",
+   "P110/page-02.md",
+   "P110/page-03.md",
+   "P110/page-04.md",
+   "P110/page-05.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "cx-P171-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P171/page-01.md,corpus/parts/P171/page-02.md,corpus/parts/P171/page-03.md,corpus/parts/P171/page-04.md",
+  "thread": "01a0df88-23aa-7fa1-aea1-fca52d771fa3",
+  "rollout_files": 1,
+  "pages": 6,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P171/page-01.md",
+   "P171/page-02.md",
+   "P171/page-03.md",
+   "P171/page-04.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ },
+ {
+  "agent": "cx-P186-r1",
+  "part": "stress/principles-page-01.md,stress/principles-page-02.md,corpus/parts/P186/page-01.md,corpus/parts/P186/page-02.md,corpus/parts/P186/page-03.md,corpus/parts/P186/page-04.md,corpus/parts/P186/page-05.md,corpus/parts/P186/page-06.md",
+  "thread": "01a0df88-abad-7bd3-919f-37d23c7b40b3",
+  "rollout_files": 1,
+  "pages": 8,
+  "read": [
+   "principles-page-01.md",
+   "principles-page-02.md",
+   "P186/page-01.md",
+   "P186/page-02.md",
+   "P186/page-03.md",
+   "P186/page-04.md",
+   "P186/page-05.md",
+   "P186/page-06.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ }
+]

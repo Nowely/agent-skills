@@ -1,0 +1,155 @@
+{
+ "overall": {
+  "G": 2,
+  "matched_G": 2,
+  "recall": 1.0,
+  "luna": 13,
+  "extra": 4,
+  "extra_share": 0.308,
+  "missed": [],
+  "extra_ids": [
+   "pilot2h-P091-A-01",
+   "pilot2h-P091-B-01",
+   "pilot2h-P093-B-05",
+   "pilot2h-P093-B-06"
+  ]
+ },
+ "overall_no_low": {
+  "G": 2,
+  "matched_G": 2,
+  "recall": 1.0,
+  "luna": 12,
+  "extra": 3,
+  "extra_share": 0.25,
+  "missed": [],
+  "extra_ids": [
+   "pilot2h-P091-A-01",
+   "pilot2h-P093-B-05",
+   "pilot2h-P093-B-06"
+  ]
+ },
+ "angle_A": {
+  "G": 2,
+  "matched_G": 2,
+  "recall": 1.0,
+  "luna": 5,
+  "extra": 1,
+  "extra_share": 0.2,
+  "missed": [],
+  "extra_ids": [
+   "pilot2h-P091-A-01"
+  ]
+ },
+ "angle_B": {
+  "G": 0,
+  "matched_G": 0,
+  "recall": null,
+  "luna": 11,
+  "extra": 5,
+  "extra_share": 0.455,
+  "missed": [],
+  "extra_ids": [
+   "pilot2h-P017-B-01",
+   "pilot2h-P022-B-01",
+   "pilot2h-P091-B-01",
+   "pilot2h-P093-B-05",
+   "pilot2h-P093-B-06"
+  ]
+ },
+ "runs": [
+  {
+   "id": "pilot2h-P017-A",
+   "tokens": 127029,
+   "episodes": 0,
+   "exit": 0,
+   "wall": 35
+  },
+  {
+   "id": "pilot2h-P017-B",
+   "tokens": 129961,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 65
+  },
+  {
+   "id": "pilot2h-P022-A",
+   "tokens": 129786,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 62
+  },
+  {
+   "id": "pilot2h-P022-B",
+   "tokens": 130303,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 61
+  },
+  {
+   "id": "pilot2h-P065-A",
+   "tokens": 127593,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 47
+  },
+  {
+   "id": "pilot2h-P065-B",
+   "tokens": 129166,
+   "episodes": 2,
+   "exit": 0,
+   "wall": 65
+  },
+  {
+   "id": "pilot2h-P066-A",
+   "tokens": 127607,
+   "episodes": 0,
+   "exit": 0,
+   "wall": 40
+  },
+  {
+   "id": "pilot2h-P066-B",
+   "tokens": 129482,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 169
+  },
+  {
+   "id": "pilot2h-P091-A",
+   "tokens": 166344,
+   "episodes": 2,
+   "exit": 0,
+   "wall": 84
+  },
+  {
+   "id": "pilot2h-P091-B",
+   "tokens": 168260,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 97
+  },
+  {
+   "id": "pilot2h-P093-A",
+   "tokens": 127159,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 60
+  },
+  {
+   "id": "pilot2h-P093-B",
+   "tokens": 134160,
+   "episodes": 7,
+   "exit": 0,
+   "wall": 166
+  }
+ ],
+ "tokens": {
+  "n": 12,
+  "total": 1626850,
+  "median": 129634,
+  "max": 168260
+ },
+ "gates": {
+  "recall_ok": true,
+  "extra_ok": false
+ }
+}

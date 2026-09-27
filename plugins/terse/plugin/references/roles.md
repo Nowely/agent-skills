@@ -48,12 +48,14 @@ was audited, the run file is <AUDIT>: write for its reader profile, and answer w
 every failure under What broke and every refuted claim in its ledger.
 
 <RULES> requires two things — the text is pleasant to read, and true within its world — and the rest of it
-is advice: take what helps this text and leave the rest. <SENTENCES> is a measured technique for
-sentences, applied as written.
+is advice: take what helps this text and leave the rest. <SENTENCES> preserves measured text;
+use its suggestions when they serve this reader, not as a compulsory shape.
 
 Plan from the context, not from a list of sections: each part, what it gives this reader, the device that
 carries it, a word budget. Write the budgets to <OUT>/budgets.json, every `## ` heading mapped to its
 words, before the text. Every statement is true within the text's world: note beside it what shows it.
+Where the owner has a real choice, follow <RULES>, "Offer alternatives when there is a real choice";
+ask for one missing fact directly when that is all that blocks the work.
 Read; run nothing of what the text describes. A fact its world does not hold — a feature the code lacks, a
 requirement of the owner's the code does not meet — goes back to the owner as a question, not into the
 text.
@@ -62,15 +64,18 @@ Write the text to <OUT>/01-draft.md. Return as your final message the context, t
 notes.
 ```
 
-The repair is the same agent, sent every critic's report:
+The repair is the same agent, sent every critic's report. For owner feedback after hand-over, use brief 13. The repair brief follows.
 
 ```
 Every critic has read your draft, and each report is a file in <OUT>/critics/. Take a finding where it
 makes the text truer for its reader or easier to read; decline one that adds words this reader does not
-need where they are — a caveat, a rare case, a second route, a detail — with the reason from <CONTEXT> in
-a line. A rule is advice, and its number is no reason; a caveat is seldom a fix (<RULES>, "A qualification
-as a fix"), and the rare cases truth lists stay out of the text. Re-check every sentence you change
-against its world; read, run nothing of what the text describes. Then read the whole text once as its
+need where they are — a rare case, a second route, a detail — with the reason from <CONTEXT> in
+a line. A rule is advice, and its number is no reason. For a broad claim, choose deletion, replacement
+or a substantive qualification by the meaning this reader needs (<RULES>, "A qualification used as a repair");
+keep a limit, range or trade-off they need to decide. Keep the truth critic's rare-case list out of the
+text. Re-check every sentence you change
+against its world and, where the change affects the owner's action, against the choice and warning
+advice in <RULES>; read, run nothing of what the text describes. Then read the whole text once as its
 reader, so that a count or a name said twice agrees with itself. Write the text to <OUT>/02-repaired.md,
 and to <OUT>/02-repairs.md one line per finding: the critic, the finding, applied or declined, the reason.
 ```
@@ -151,11 +156,10 @@ twice under two names. Return each with its line and the word to use.
 
 ## 8. A question reader
 
-One reader per question: a reader that answers two has learned the text from the first. Never ask a
-reader whether the text was clear: on 2026-09-10 the self-report ran against the truth — two readers who
-reported no confusion answered wrong, and the one who called a section scattered and confusing answered
-right. A judgement a reader volunteers is a hint, kept out of any score. The quote is what makes a wrong
-answer diagnosable: it names the line that misled the reader, and that line is where the repair goes.
+One reader per question: a reader that answers two has learned the text from the first. Do not ask a
+reader whether the text was clear; self-report can disagree with the answer ([M27](measurements.md#m27)).
+A judgement a reader volunteers is a hint, kept out of any score. A quote makes a wrong answer
+diagnosable: it names the line that misled the reader and where the repair goes.
 
 For one text, as `rewrite` sends it:
 
@@ -199,7 +203,7 @@ were there, and every sentence that turned out untrue. End with one line: GOAL: 
 ## 10. Sentences
 
 ```
-Read <DOC> against <SENTENCES>, applied as written, and against the pleasant-read requirement of
+Read <DOC> against <SENTENCES>, judged for this reader, and against the pleasant-read requirement of
 <RULES>. Find every sentence its reader would have to read twice: too long, conditions stacked, a path, a
 flag or a name in the middle of prose, a term before the reader needs it. Return each with its line and a
 plainer sentence that says the same, or "cut" where it carries nothing.
@@ -212,10 +216,8 @@ You are a fresh reader. Read ONE file, with cat, and nothing else: <DOC>. Assess
 <KIND>. Quote the line for every point you make.
 ```
 
-Its findings are weighed against the context like any critic's. On 2026-09-25 two cold readers of the
-one path's first text found a contradiction the repair had brought in and two rows no reader could
-tell apart; in the same round, marks for pleasantness from cold readers did not separate the owner's first
-choice from the second, so a cold reader finds defects and gives no mark.
+Its findings are weighed against the context like any critic's. A cold reader finds defects and gives
+no mark: a past mark did not separate the owner's choices ([M26](measurements.md#m26)).
 
 ## 12. The harness, full mode only
 
@@ -226,19 +228,17 @@ cannot run outside its host. Change nothing in <CODE>. Return as your final mess
 start each part, and what could not be built and why; give the path as <HARNESS> to every truth check.
 ```
 
+## 13. Owner feedback
+
+When the owner responds to a draft, plan, reply or report, check each point against the next version: applied,
+answered, or declined with a reason. One sentence may cover several points. Keep a separate ledger only
+for a complex iteration where a point could be lost. Recheck a disputed fact; do not attribute a
+decision to the owner that they did not make, or call a draft final before their word. For a real choice, use
+[the choice advice](rules.md#where-the-reader-acts); for the hand-over, use
+[relayed results](genres/relayed-result.md).
+
 ## Why this shape
 
-Measured on 2026-09-24, on the README of sharpdeveye/maestro written from scratch: the sequential path —
-a survey, a synthesis, a terms stage, ten structures under three critics, a skeleton, a bake-off of
-three writers under three judges, a verified round, a wave and its dedup — took 6 h 38 min, and on the
-owner's read the result sat at parity with the repository's own README and above a bare agent's, which
-took 14 minutes. What changed the text for the better was the truth checked by running the code and the
-rules where they were applied; the rest was process. Here each of those concerns is kept as one role,
-run at the same time as the others (`plugins/terse/research/2026-09-24-terse-benchmark-maestro/`). The first run of
-this path, on 2026-09-25, took 70 minutes: the writer spent 33 of them running code the truth critics ran
-again, the repair brought in a contradiction nobody read for, and the sentence rules were in no role —
-hence the writer who reads, the check after the repair, and the sentence critic
-(`plugins/terse/research/2026-09-24-terse-benchmark-maestro/one-path/`). The second, on 2026-09-25, took 1 h 33 min: three
-truth critics and the check's each built the same harness and held the critical path twice, 24 and 20
-minutes, while every finding they reached by running named the code lines that cause it — hence truth by
-reading in a light run, and one shared copy in a full one (`…/one-path-2/`).
+The roles keep distinct concerns in parallel, then check the repair, because earlier runs duplicated
+work and let a repair introduce a contradiction. Dated observations and limits:
+[M26–M29](measurements.md#m26).

@@ -5,18 +5,120 @@
 //
 // A definition two skills use lives once, under references/, and every page links it. What moving text
 // cannot keep in agreement, these cases check: that every link still opens after a page moves; that the
-// run-directory line, which each skill carries in its own body because Claude Code substitutes
+// run-directory line, which each skill that makes a run carries in its own body because Claude Code substitutes
 // ${CLAUDE_PLUGIN_DATA} only in a skill body and exports nothing to Bash, is one line in all of them; and
 // that a frozen block still hashes to the digest its page records.
 
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "plugin");
 const FROZEN = ["references/writing-rules.md", "references/curse-of-knowledge.md"];
 const RUN_SKILLS = ["audit", "rethink", "rewrite"];
+
+// Strict subset of YAML used by these skill frontmatters. Reject unsupported syntax rather than
+// silently misreading a longer value as a short one.
+function frontmatterYaml(file) {
+  const lines = fs.readFileSync(file, "utf8").split("\n");
+  if (lines[0] !== "---") throw new Error(`${file}: no YAML frontmatter`);
+  const end = lines.indexOf("---", 1);
+  if (end < 0) throw new Error(`${file}: unterminated YAML frontmatter`);
+  const data = {};
+  for (let i = 1; i < end; i++) {
+    const line = lines[i];
+    if (!line.trim() || /^\s*#/.test(line)) continue;
+    if (/^\s/.test(line)) throw new Error(`${file}:${i + 1}: unexpected indented YAML line`);
+    const m = line.match(/^([A-Za-z][\w-]*):(?:\s*(.*))?$/);
+    if (!m) throw new Error(`${file}:${i + 1}: unsupported YAML line`);
+    const [, key, raw = ""] = m;
+    if (Object.hasOwn(data, key)) throw new Error(`${file}:${i + 1}: duplicate YAML key ${key}`);
+    if (raw === ">-" || raw === ">") {
+      const block = [];
+      while (i + 1 < end && (/^\s/.test(lines[i + 1]) || lines[i + 1] === "")) {
+        if (lines[i + 1] && !/^ {2}\S/.test(lines[i + 1]))
+          throw new Error(`${file}:${i + 2}: unsupported block indentation`);
+        block.push(lines[++i]);
+      }
+      if (!block.some(Boolean)) throw new Error(`${file}:${i + 1}: empty folded scalar`);
+      const indent = Math.min(...block.filter(Boolean).map((s) => s.match(/^ */)[0].length));
+      const rows = block.map((s) => s ? s.slice(indent) : "");
+      data[key] = rows.join("\n").replace(/([^\n])\n([^\n])/g, "$1 $2").replace(/\n+$/, raw === ">" ? "\n" : "");
+    } else if (raw === "" && key === "metadata") {
+      const nested = {};
+      while (i + 1 < end && /^ {2,}\S/.test(lines[i + 1])) {
+        const child = lines[++i].match(/^  ([A-Za-z][\w-]*):\s*(.*)$/);
+        if (!child || child[1] !== "version" || Object.hasOwn(nested, child[1]))
+          throw new Error(`${file}:${i + 1}: unsupported metadata YAML`);
+        nested[child[1]] = scalar(child[2], file, i + 1);
+      }
+      if (!nested.version) throw new Error(`${file}:${i + 1}: missing metadata.version`);
+      data[key] = nested;
+    } else if (raw === "true" || raw === "false") data[key] = raw === "true";
+    else data[key] = scalar(raw, file, i + 1);
+  }
+  return data;
+}
+
+function scalar(raw, file, line) {
+  if (!raw || /^[>|\[{]/.test(raw) || /[\]}]$/.test(raw))
+    throw new Error(`${file}:${line}: unsupported YAML scalar`);
+  if (raw.startsWith('"')) {
+    try { return JSON.parse(raw); } catch { throw new Error(`${file}:${line}: invalid quoted YAML scalar`); }
+  }
+  if (raw.startsWith("'")) {
+    if (!raw.endsWith("'")) throw new Error(`${file}:${line}: invalid quoted YAML scalar`);
+    return raw.slice(1, -1).replace(/''/g, "'");
+  }
+  if (/[:#]|\s{2,}/.test(raw)) throw new Error(`${file}:${line}: unsupported plain YAML scalar`);
+  return raw;
+}
+
+function clarityProblems(file) {
+  const fm = frontmatterYaml(file);
+  const problems = [];
+  if (Object.hasOwn(fm, "disable-model-invocation")) problems.push("disable-model-invocation is present");
+  if (fm["user-invocable"] === false || fm["user-invocable"] === "false") problems.push("user-invocable is false");
+  if (fm.name !== "clarity") problems.push(`name is ${fm.name}`);
+  const manifestVersion = JSON.parse(fs.readFileSync(path.join(ROOT, ".claude-plugin/plugin.json"), "utf8")).version;
+  if (fm.metadata?.version !== manifestVersion) problems.push(`metadata.version ${fm.metadata?.version} != ${manifestVersion}`);
+  if (typeof fm.description !== "string" || !fm.description || typeof fm.when_to_use !== "string" || !fm.when_to_use)
+    problems.push("description or when_to_use is missing or not a string");
+  const length = (fm.description ?? "").length + (fm.when_to_use ?? "").length;
+  if (length > 1536) problems.push(`folded description + when_to_use is ${length} characters`);
+  return problems;
+}
+
+function readmeRows(readme) {
+  const table = readme.split(/^## Skills\s*$/m)[1]?.split(/^## /m)[0] ?? "";
+  return table.split("\n").map((line) => line.match(/^\|\s*`\/terse:([a-z-]+)`\s*\|/))
+    .filter(Boolean).map((m) => m[1]);
+}
+
+function missingSkills(readme) {
+  const rows = readmeRows(readme);
+  return fs.readdirSync(path.join(ROOT, "skills"), { withFileTypes: true })
+    .filter((e) => e.isDirectory()).map((e) => e.name)
+    .filter((s) => rows.filter((r) => r === s).length !== 1);
+}
+
+function missingGenres(clarityOverride) {
+  const notes = pages(path.join(ROOT, "references/genres"));
+  const linked = new Set();
+  for (const file of pages(path.join(ROOT, "skills")).filter((f) => path.basename(f) === "SKILL.md")) {
+    const source = file.endsWith("/clarity/SKILL.md") && clarityOverride !== undefined ? clarityOverride : fs.readFileSync(file, "utf8");
+    for (const [, target] of prose(source).matchAll(/\]\(([^)\s]+)\)/g)) {
+      const rel = target.split("#")[0];
+      if (rel && !/^[a-z][a-z0-9+.-]*:/i.test(rel)) {
+        const dest = path.resolve(path.dirname(file), decodeURIComponent(rel));
+        if (dest !== file) linked.add(dest);
+      }
+    }
+  }
+  return notes.filter((n) => !linked.has(n)).map((n) => path.relative(ROOT, n));
+}
 
 function pages(dir = ROOT) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -103,6 +205,87 @@ test("each frozen block hashes to the SHA-256 its page records", () => {
     else if (actual !== recorded) problems.push(`${rel}: lines ${start + 1}-${end + 1} hash to ${actual}, the page records ${recorded}`);
   }
   return problems.length === 0 || problems.join("; ");
+});
+
+test("clarity frontmatter permits model invocation and fits the listing limit", () => {
+  try {
+    const problems = clarityProblems(path.join(ROOT, "skills/clarity/SKILL.md"));
+    return problems.length === 0 || problems.join("; ");
+  } catch (e) { return e.message; }
+});
+
+test("eight damaged frontmatter copies fail closed", () => {
+  const original = fs.readFileSync(path.join(ROOT, "skills/clarity/SKILL.md"), "utf8");
+  const version = JSON.parse(fs.readFileSync(path.join(ROOT, ".claude-plugin/plugin.json"), "utf8")).version;
+  const versionLine = `version: ${JSON.stringify(version)}`;
+  const unchanged = [];
+  const damageVersion = (name, replacement) => {
+    const damaged = original.replace(versionLine, replacement);
+    if (damaged === original) unchanged.push(`${name}: version damage did not change the copy`);
+    return damaged;
+  };
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "terse-pages-yaml-"));
+  const file = path.join(dir, "SKILL.md");
+  const variants = [
+    ["literal block", original.replace("description: >-", "description: |")],
+    ["chomping plus", original.replace("description: >-", "description: >+")],
+    ["nested array", damageVersion("nested array", "version: [broken")],
+    ["nested folded line", original.replace("  Reader-side checks", "    Reader-side checks")],
+    ["plain continuation", original.replace("name: clarity", "name: clarity\n  surprise continuation")],
+    ["manual invocation disabled", original.replace("license: MIT", "user-invocable: false\nlicense: MIT")],
+    ["model invocation disabled", original.replace("license: MIT", "disable-model-invocation: true\nlicense: MIT")],
+    ["version mismatch", damageVersion("version mismatch", `version: ${JSON.stringify(`${version}.invalid`)}`)],
+  ];
+  const escaped = [...unchanged];
+  try {
+    for (const [name, damaged] of variants) {
+      fs.writeFileSync(file, damaged);
+      try { if (clarityProblems(file).length === 0) escaped.push(name); }
+      catch { /* malformed YAML is correctly rejected */ }
+    }
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  return escaped.length === 0 || `damaged copies passed: ${escaped.join(", ")}`;
+});
+
+test("all skill metadata versions match the plugin manifest", () => {
+  const version = JSON.parse(fs.readFileSync(path.join(ROOT, ".claude-plugin/plugin.json"), "utf8")).version;
+  const problems = fs.readdirSync(path.join(ROOT, "skills"), { withFileTypes: true })
+    .filter((e) => e.isDirectory()).flatMap((e) => {
+      try {
+        const got = frontmatterYaml(path.join(ROOT, "skills", e.name, "SKILL.md")).metadata?.version;
+        return got === version ? [] : [`${e.name}: ${got} != ${version}`];
+      } catch (err) { return [`${e.name}: ${err.message}`]; }
+    });
+  return problems.length === 0 || problems.join("; ");
+});
+
+test("README Skills table has a row for every skill directory", () => {
+  const readme = fs.readFileSync(path.join(ROOT, "README.md"), "utf8");
+  const missing = missingSkills(readme);
+  return missing.length === 0 || `missing or duplicate README rows: ${missing.join(", ")}`;
+});
+
+test("each genre note has an incoming link from a skill page", () => {
+  const missing = missingGenres();
+  return missing.length === 0 || `unlinked genre notes: ${missing.join(", ")}`;
+});
+
+test("three damaged README and genre-link copies fail their catalogue checks", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "terse-pages-catalogue-"));
+  const readme = fs.readFileSync(path.join(ROOT, "README.md"), "utf8");
+  const clarity = fs.readFileSync(path.join(ROOT, "skills/clarity/SKILL.md"), "utf8");
+  const readmeCopy = path.join(dir, "README.md"), clarityCopy = path.join(dir, "SKILL.md");
+  try {
+    fs.writeFileSync(readmeCopy, readme.replace(/^\| `\/terse:clarity`.*\n/m, ""));
+    fs.writeFileSync(clarityCopy, clarity.replace(/\]\(\.\.\/\.\.\/references\/genres\/[^)]+\.md\)/g, "](#removed)"));
+    const rowCaught = missingSkills(fs.readFileSync(readmeCopy, "utf8")).includes("clarity");
+    fs.writeFileSync(readmeCopy, readme.replace(/^\| `\/terse:clarity`.*\n/m, "")
+      .replace("| `/terse:audit` |", "| `/terse:audit`, `/terse:clarity` |"));
+    const combinedRowCaught = missingSkills(fs.readFileSync(readmeCopy, "utf8")).includes("clarity");
+    const linksCaught = missingGenres(fs.readFileSync(clarityCopy, "utf8")).some((n) => n.endsWith("code-comments.md"));
+    return rowCaught && combinedRowCaught && linksCaught ||
+      `damaged copy escaped: missing row=${rowCaught}, combined row=${combinedRowCaught}, genres=${linksCaught}`;
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 let failed = 0;
