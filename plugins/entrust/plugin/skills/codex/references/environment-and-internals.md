@@ -237,7 +237,8 @@ was. A reader can catch that body mid-write: an owner file whose body does not p
 asked again, and the run refused with exit 10, never reclaimed. The release takes the reclaim marker,
 checks that the link still names this run's owner file and that the owner file is still the one it made,
 then unlinks the link and the owner file. Under the marker no run that follows these rules can remove the
-link or make one, so the check and the unlinks cannot be split by one; a process that ignores the marker
+link or make one for the marker's hour (the backstop after which a marker is taken over regardless), so the check
+and the unlinks cannot be split by one within it; a process that ignores the marker
 still can, because POSIX has no unlink that names an inode. On a mismatch the run says so on stderr and
 leaves both where they are.
 

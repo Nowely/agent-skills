@@ -113,8 +113,8 @@ forensics remain in the repository references and release notes.
 - **Breaking: the lock's on-disk shape changes.** `<state>/locks/<hash>.lock` is now a relative symlink, created
   exclusively, to a 0600 owner file beside it; the run keeps a descriptor on that file and records its identity,
   an update writes through the descriptor and never renames over a path, and a release removes the link and the
-  file under the reclaim marker, so nothing is left after a normal run (three `--worktree` runs leave no entry
-  where they left three links) at a cost of about one millisecond per release. A lock in the previous shape is
+  file under the reclaim marker, so nothing is left after a normal run (three `--worktree` runs leave no entry, as
+  with the previous shape) at a cost of about one millisecond per release. A lock in the previous shape is
   still honoured live and reclaimed dead. A driver from before this change that meets the link exits 2 with "is a
   symbolic link, not a lock file; remove it and retry": do not follow that advice while the holder lives; upgrade
   every driver that shares a state directory together. Why: update and release checked the owner and then acted
@@ -125,7 +125,9 @@ forensics remain in the repository references and release notes.
   hold it. Pinned by twelve cases in `evals/lock.test.mjs`, two of them through `evals/lib/lock-window.mjs`,
   which pauses a temporary copy of the driver before the lock's act. Residual, documented in the driver and in
   `references/environment-and-internals.md`: a process that ignores the marker can still lose a file between
-  the release's check and its unlink, because POSIX has no unlink by inode.
+  the release's check and its unlink, because POSIX has no unlink by inode. An owner file whose
+  body does not parse now refuses the directory with exit 10 naming both files, where the previous shape reclaimed
+  it: the run cannot know whether the writer is alive.
 - **The managed-policy reader fails closed on a file that is not a plist.** A failed key extraction reads as
   "no policy" only when `plutil -convert xml1` succeeds on the file and its root is a dictionary; anything else
   refuses every `WEB_SEARCH:` mode as unreadable. `plutil -lint` accepts a file holding `garbage`, and the
@@ -141,8 +143,9 @@ forensics remain in the repository references and release notes.
 - The fake server's `slow-turn` scenario ends on `turn/interrupt` as `idle-silence` does (E48: SIGTERM 200 ms
   into the turn now reports `interrupted` 58 ms later), and the protocol `stalled-turn` row's budget is 1 s
   instead of 0.25 s (E49: the 250 ms budget expired before the driver had processed `thread/start` on a loaded
-  runner, 1 failure in 120 loaded runs at 0.25 s and 0 at 1 s; a pre-thread abort publishes no stdout JSON by
-  the driver's own contract).
+  runner, 1 failure in 120 loaded runs at 0.25 s and 0 at 1 s, which does not separate the two by itself; the
+  mechanism does, the failing run having no thread id, and a pre-thread abort publishes no stdout JSON by the
+  driver's own contract; the rate at 1 s on CI is unmeasured).
 - **The orchestrate page waits for completion notifications, never on `TaskOutput`**, which Claude Code 2.1.277
   removed: a background agent's return arrives as a message and its notification, the Codex poll's `DONE=` line
   is the signal that a run ended, an interactive session may end its turn with agents alive, and a headless
@@ -155,9 +158,6 @@ forensics remain in the repository references and release notes.
   driver) with the identity re-checked just before each unlink, and reads records through a descriptor opened
   under a pinned directory handle, so a record swapped for a link is listed as unrecognised and kept. Row names
   pluralise the noun. Pinned by cases 42 to 45 in `evals/cleanup.test.mjs`.
-- The codex page's Traps say to write `$TMPDIR` and never `/tmp` in a brief, not even as a fallback: the
-  sandbox refuses a command for the literal (measured 2026-09-27 on a read agent whose first command carried
-  it).
 
 ## 0.20.0 — 2026-09-18
 

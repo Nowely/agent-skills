@@ -337,8 +337,6 @@ what an agent may write, and where, in ordinary words, because that is what the 
 - Treat `commandsPipedToPager` as sliced evidence: `head`, `tail`, and `less` can hide a failure and supply
   the pipeline status.
 - Arm cleanup before background load and record each pid as it starts; trailing cleanup can orphan load.
-- Write `$TMPDIR` in a brief and never `/tmp`, not even as a fallback in `${TMPDIR:-/tmp}`: the sandbox refuses a
-  command for the literal, and a read agent whose first command carried it did nothing else (measured 2026-09-27).
 
 ## References
 

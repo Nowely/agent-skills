@@ -1460,9 +1460,9 @@ function holderGroupAlive(held) {
 const reclaimable = (held) => !holderAlive(held) && !holderGroupAlive(held);
 
 // The reclaim marker, <lock>.reclaim: whoever holds it may remove the lock's link or its owner file, and
-// nobody else may. A marker is abandoned when the process it names is gone; RECLAIM_BACKSTOP_MS is only a
-// backstop for a recycled pid, so a stalled live owner keeps its marker while a dead owner's can be taken
-// over at once. cleanup.mjs imports this predicate, the three functions below and the constant rather than
+// nobody else may. A marker is abandoned when the process it names is gone, or when it is older than
+// RECLAIM_BACKSTOP_MS, which bounds how long a stalled live owner (or a recycled pid) can hold it: after that
+// hour a marker can be taken over from a live owner, the one window two conforming runs can meet in. cleanup.mjs imports this predicate, the three functions below and the constant rather than
 // carrying a copy of the rule.
 const RECLAIM_BACKSTOP_MS = LIMITS.RECLAIM_BACKSTOP_MS;
 const reclaimMarkerAbandoned = (pid, mtimeMs) => !holderAlive({ pid }) || Date.now() - mtimeMs > RECLAIM_BACKSTOP_MS;
