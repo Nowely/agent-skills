@@ -252,11 +252,14 @@ re-check [the dated parity reference](skills/codex/references/parity.md).
 ```
 skills/codex/                    the main skill: SKILL.md (the operating manual), scripts/ (the driver
                                  and its companions, each self-describing under --help), references/
-skills/orchestrate/SKILL.md      the orchestrator mode: a delta over the codex skill, prompt only
+skills/orchestrate/              the orchestrator mode: SKILL.md (a delta over the codex skill), scripts/
+                                 (capture-check.mjs, the check runner; lint-draft.mjs, the answer's linter;
+                                 each self-describing under --help), references/ (roles, the foreman, and
+                                 codex-composition.md, generated from the codex page by ../evals/fragments.mjs)
 skills/cleanup/SKILL.md          the cleanup mode: runs scripts/cleanup.mjs, shows its listing and
                                  deletes what the user chose
 skills/experiment/               the experiment mode: SKILL.md (protocol, arms, two verdicts), scripts/experiment.mjs
-                                 (the record under the data directory), references/protocols.md (the first five)
+                                 (the record under the data directory), references/protocols.md (the six registered)
 skills/advisor/SKILL.md          the advisor mode: one standing top-row thread per run, prompt only
 skills/swarm/                    the swarm mode: SKILL.md (units, launch, reducer, arms), scripts/swarm.mjs (the launcher)
 .claude-plugin/                  plugin + marketplace manifests
