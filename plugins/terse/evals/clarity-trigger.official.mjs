@@ -19,15 +19,12 @@ const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 manifest.experimental = { ...manifest.experimental, evals: "evals/clarity-trigger" };
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
 
-const cases = [
-  ["answer", "Explain to a teammate what this means and what to do next: a file upload failed before the rename, so the previous file is still in place. The retry check has not run.", true],
-  ["report", "Write a short report to the owner: the link checker read 12 Markdown pages and found no broken relative links; it did not test whether those links open in the owner's client.", true],
-  ["acknowledge", "Reply with the single word OK to acknowledge receipt.", false],
-];
-for (const [name, prompt, positive] of cases) {
-  const dir = path.join(plugin, "evals", "clarity-trigger", name);
+const cases = JSON.parse(fs.readFileSync(path.join(root, "evals", "clarity-trigger", "cases.json"), "utf8"));
+for (const { id, prompt, positive } of cases) {
+  const dir = path.join(plugin, "evals", "clarity-trigger", id);
   fs.mkdirSync(path.join(dir, "graders"), { recursive: true });
-  fs.writeFileSync(path.join(dir, "prompt.md"), `---\nmax_turns: 5\nallowed_tools: [Skill]\n---\n\n${prompt}\n`);
+  const allowedTools = id === "status-done" ? "[Skill, Bash]" : id === "agent-task-file" ? "[Skill, Write]" : "[Skill]";
+  fs.writeFileSync(path.join(dir, "prompt.md"), `---\nmax_turns: 5\nallowed_tools: ${allowedTools}\n---\n\n${prompt}\n`);
   fs.writeFileSync(path.join(dir, "graders", "invoked.md"),
     `---\ntype: tool_used\ntool: Skill\ninput_match: '\"skill\"\\s*:\\s*\"(?:terse:)?clarity\"'\n${positive ? "" : "min: 0\nmax: 0\n"}---\n`);
 }
@@ -37,7 +34,8 @@ if (!process.argv.includes("--run")) {
   process.exit(0);
 }
 const result = spawnSync("claude", ["plugin", "eval", plugin, "--trust-plugin", "--ablation", "none", "--no-publish",
-  "--output-dir", path.join(stage, "results"), "--json", path.join(stage, "result.json")],
+  "--allow-tools", "Bash(pwd)", "Write", "--output-dir", path.join(stage, "results"),
+  "--json", path.join(stage, "result.json")],
   { stdio: "inherit" });
 if (result.error) { console.error(result.error.message); process.exit(2); }
 process.exit(result.status ?? 2);
