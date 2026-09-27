@@ -48,6 +48,6 @@ try {
   if (!cases.length) fail('no recipient cases');
   const { stage, plugin, suite } = stagePlugin({ stub: true });
   const out = newOutput(stage, o['--out']);
-  for (const c of cases) writeCase(suite, c, { recipient: true });
+  for (const c of cases) writeCase(suite, c, { recipient: true, criterionOnly: true });
   printOrRun(plugin, out, command(plugin, out, cases, o), o['--run']);
 } catch (error) { console.error(error.message); process.exit(2); }

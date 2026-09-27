@@ -146,11 +146,11 @@ function historyTranscript(history) {
     return JSON.stringify(record);
   }).join('\n') + '\n';
 }
-function writeGrader(dir, g, key) {
+function writeGrader(dir, g, key, criterionOnly = false) {
   const header = [`type: ${g.type}`];
   if (g.type === 'llm') {
     if (g.focus) header.push(`focus: ${g.focus}`);
-    fs.writeFileSync(path.join(dir, `${g.name}.md`), `---\n${header.join('\n')}\n---\n\n${g.criteria.trim()}\n\n## Answer key\n\n${key.trim()}\n\nPASS if the response meets the criteria using the answer key.\nFAIL if it omits or contradicts a required fact in the answer key.\n`);
+    fs.writeFileSync(path.join(dir, `${g.name}.md`), `---\n${header.join('\n')}\n---\n\n${g.criteria.trim()}\n\n## Answer key\n\n${key.trim()}\n\n${criterionOnly ? 'Judge only the criterion above. Use the answer key for the facts that criterion needs; do not fail the response for leaving out facts the criterion does not ask for.' : 'PASS if the response meets the criteria using the answer key.\nFAIL if it omits or contradicts a required fact in the answer key.'}\n`);
   } else {
     header.push(`tool: ${yamlString(g.tool)}`);
     if (g.input_match !== undefined) header.push(`input_match: ${yamlString(g.input_match)}`);
@@ -187,7 +187,7 @@ export function writeCase(suite, c, options = {}) {
   let prompt = c.prompt;
   if (inline) prompt = `${c.history.map(h => `> ${h.role.toUpperCase()}: ${h.text.replaceAll('\n', '\n> ')}`).join('\n>\n')}\n\n${prompt}`;
   fs.writeFileSync(path.join(dir, 'prompt.md'), prompt + (prompt.endsWith('\n') ? '' : '\n'));
-  for (const g of c.graders) writeGrader(path.join(dir, 'graders'), g, c.key);
+  for (const g of c.graders) writeGrader(path.join(dir, 'graders'), g, c.key, options.criterionOnly);
   if (!options.recipient) writeGrader(path.join(dir, 'graders'), { name: 'clarity_loaded', type: 'tool_used', tool: 'Skill', input_match: '"skill"\\s*:\\s*"(?:[\\w-]+:)?clarity"' }, c.key);
 }
 export function stagePlugin({ variant, stub = false }) {
