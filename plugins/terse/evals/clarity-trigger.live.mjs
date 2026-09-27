@@ -31,7 +31,7 @@ const arms = options.withoutPlugin ? ["without-plugin"] : ["with-plugin"];
 const candidate = path.resolve(options.candidate);
 const tempRoot = fs.realpathSync(process.env.TMPDIR || os.tmpdir());
 const hookSettings = JSON.stringify({ disableAllHooks: true });
-const blockedTools = ["Read", "Glob", "Grep", "WebFetch", "WebSearch", "Agent", "Task", "NotebookEdit", "PowerShell", "REPL"];
+const blockedTools = ["Read", "Glob", "Grep", "WebFetch", "WebSearch", "Agent", "Task", "ListAgents", "SendMessage", "NotebookEdit", "PowerShell", "REPL"];
 // Claude Code checks Write paths against Edit(path) rules; task.md is relative to cwd.
 const allowedFor = (id) => id === "status-done" ? "Skill,Bash(pwd)" : id === "agent-task-file" ?
   "Skill,Edit(task.md)" : "Skill";

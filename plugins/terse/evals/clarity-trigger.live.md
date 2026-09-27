@@ -54,7 +54,8 @@ grants are case-specific: `Edit(task.md)` permits the Write tool for `task.md` r
 temporary working directory, and Bash only for `pwd` in the status case. [Claude Code's permission
 rules](https://code.claude.com/docs/en/permissions) check Write file paths against `Edit(path)`;
 `Write(path)` does not grant access. Other file, code, web, and agent tools are
-disallowed. The relative `Edit(task.md)` rule is the documented form chosen here. Its action has
+disallowed; the blocked list includes `ListAgents` and `SendMessage` so the agent-brief case cannot
+message a real agent where those tools exist. The relative `Edit(task.md)` rule is the documented form chosen here. Its action has
 not been checked in a model run; the documented absolute alternative is
 `Edit(//<absolute cwd without its leading slash>/task.md)`, for example
 `Edit(//private/var/tmp/task.md)`. The coordinator can compare these forms if the relative rule

@@ -261,18 +261,3 @@ files and rebuilt the table's places for comments by itself.
 notes do not cover yet; its brief asks for them "as raw markdown with curl". For the comments of a source file, a
 man page or a story there is no markdown to fetch, and the coordinator has to rewrite the brief before the scout can
 run. The brief should ask for each document's raw text, fetched with curl and never through a summarising tool.
-
-## E55. The live trigger probe cannot score `agent-chat-brief` in an environment with agent-messaging tools
-
-**Evidence, level 3.** `plugins/terse/evals/clarity-trigger.live.mjs:34` blocks a fixed list of tools
-that has no `ListAgents` or `SendMessage`, and `:108` excludes a run that tries any tool outside its
-case's policy. In the owner's profile, where both tools exist, the case "Brief an agent in chat" tried to
-send the brief to a real agent in 5 of its 10 runs on 2026-09-27 and 2026-09-28, 3 of 3 under the final
-description, so the case went unscored there
-(`plugins/terse/research/2026-09-26-writing-replication/measures/clarity-trigger/live-final.json`,
-`live-second.json` and `live-first.json`, field `toolPolicyViolations`). Each excluded run with the
-plugin had called `clarity` before it answered.
-
-**Issue text.** The live probe should keep the model from messaging real agents, by blocking the
-messaging tools or by asking for the brief as text, so that `agent-chat-brief` is scored in every
-environment instead of being excluded where those tools exist.

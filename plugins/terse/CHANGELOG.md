@@ -3,6 +3,13 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Fixed
+
+- E55: the live trigger probe blocks `ListAgents` and `SendMessage`, so the agent-brief case is scored where
+  agent-messaging tools exist instead of being excluded because the model tried to send the brief to a real agent.
+
 ## 0.3.0 — 2026-09-28
 
 terse gets `clarity`, a light skill for everyday texts that Claude may choose on its own while writing, and its
