@@ -39,7 +39,7 @@ test("the frontmatter names the mode, forbids model invocation, and carries a ve
   });
 
 test("the page stays inside its budget: 40 lines, one heading level, no fence",
-  "the mode is loaded on top of two pages; a page that doubled is the advisor costing before it answers",
+  "the mode is loaded on top of the codex page; a page that doubled is the advisor costing before it answers",
   () => {
     const problems = [];
     if (lines.length > 40) problems.push(`${lines.length} lines`);
@@ -48,26 +48,40 @@ test("the page stays inside its budget: 40 lines, one heading level, no fence",
     return problems.length === 0 || problems.join("; ");
   });
 
-test("A1 the orchestrate page is loaded first, the mode adds one thread and is prompt only",
-  "the advisor lives inside an orchestrated run; a page that re-stated the pool or the rights would drift from the page that owns them",
+test("A0 the page loads codex through the Skill tool, and no sentence asks it to load orchestrate",
+  "orchestrate is `disable-model-invocation`, so the Skill tool refuses to load it: on 2026-09-25 the advisor did not start because its first sentence asked for that load (E39)",
+  () => {
+    const problems = [];
+    const asks = /\bload\b[^.;]*\borchestrate\b/i.exec(flat) ?? /Skill tool[^)]*entrust:orchestrate/.exec(flat);
+    if (asks) problems.push(`a sentence asks to load orchestrate: ${asks[0].slice(0, 120)}`);
+    const loads = [...flat.matchAll(/Skill tool, `entrust:([a-z-]+)`/g)].map((m) => m[1]);
+    if (loads.join() !== "codex") problems.push(`the Skill-tool loads the page asks for: ${loads.join(", ") || "none"}`);
+    const prose = says("Load [codex](../codex/SKILL.md) now (Skill tool, `entrust:codex`)");
+    if (prose !== true) problems.push(prose);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("A1 the mode adds one thread of the other family to whatever run it is invoked in, needs no other page, and is prompt only",
+  "the owner, 2026-09-25: the advisor does not pull orchestrate; it adds one thread of the other model family to whatever run it is invoked in (E39)",
   () => says(
-    "Load [orchestrate](../orchestrate/SKILL.md) now",
-    /adds one standing thread to the run it is invoked for and re-cuts nothing else/,
+    /Adds a standing advisor to the run it is invoked in/,
+    /adds one standing thread of the other model family to whatever run it is invoked in, and needs no other page/,
     /The mode is prompt only: no driver change, no new header field or flag/,
   ));
 
-test("D1 the advisor is a top-row agent of the other family by the agreed composition, named in the plan with its turns",
-  "the value the sources claim for an advisor is a different lineage (Amp's oracle); one the coordinator picks on the fly is a thread the plan never priced",
+test("D1 the advisor is a top-row agent of the other family by the agreed composition, named in a plan with its turns, and the run stops for \"go\" before its first question",
+  "the value the sources claim for an advisor is a different lineage (Amp's oracle); one the coordinator picks on the fly is a thread the plan never priced; the page carries orchestrate's plan-and-stop itself, since it loads codex alone",
   () => says(
     /One top-row agent, chosen by the agreed composition, from the other model family than your own/,
-    /named in the plan as the advisor, with its expected turns, before "go"/,
+    /Before its first question, show a plan that names it as the advisor, with its expected turns, and stop until "go"/,
   ));
 
-test("D2 the advisor is one thread kept for the run and holds a slot only while a turn of its runs",
-  "the owner's reading of the pool on 2026-09-17: the caps count turns in progress, and an idle thread uses no slot",
+test("D2 the advisor is one thread kept for the run, holds a slot only while a turn of its runs, and the slot is one of six alive and its family's only top-row agent",
+  "the owner's reading of the pool on 2026-09-17: the caps count turns in progress, and an idle thread uses no slot; the caps are orchestrate's, stated here because the page loads codex alone",
   () => says(
     /one thread kept for the run/,
     /holds a slot only while (a turn of its runs|one of its turns runs); between questions it is not alive/,
+    /That slot is one of six alive at a time, and the only Astra or the only Fable among them/,
   ));
 
 test("Q1 the decision points are named, one question per message carries the coordinator's own decision, and the return is a recommendation with reasons, an alternative and what would change its mind",
@@ -75,6 +89,7 @@ test("Q1 the decision points are named, one question per message carries the coo
   () => says(
     /the split before a fan-out, the composition, a verdict you are about to adopt, a stall, and any point the plan names/,
     /One question per message, carrying the decision you would take without advice and the evidence in a few lines/,
+    /Its return is five fields: `status` \(done, partial or blocked\), `result`, `evidence`, `artifacts` and `open`/,
     /a recommendation with the reasons that decide it, one alternative, and what it would need to see to change its mind/,
   ));
 
@@ -101,7 +116,7 @@ test("R1 every decision point is recorded before and after in a notes file the s
   ));
 
 test("every relative link resolves, inside this repository, to a file and to a heading that exists",
-  "the page delegates its whole mechanism to the orchestrate page by link; a moved file turns the mode into a 404 only a reader notices",
+  "the page delegates its whole mechanism to the codex page by link; a moved file turns the mode into a 404 only a reader notices",
   () => {
     const dir = path.dirname(path.join(ROOT, PAGE));
     const problems = [];

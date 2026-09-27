@@ -306,6 +306,9 @@ let turnStarts = 0;
 // Set by turn/interrupt: a scenario emitting on a timer must stop when the turn is cut, or it keeps
 // writing items into a turn the client has already ended.
 let interrupted = false;
+// slow-turn's completion timer: turn/interrupt must cancel it, or the 1200 ms fire still lands as
+// "completed" after the turn was already closed as "interrupted".
+let slowTurnTimer = null;
 const TURN2 = "turn_root_retry";
 
 function onLine(line) {
@@ -359,6 +362,12 @@ function onLine(line) {
     if (SCENARIO === "idle-silence" || SCENARIO === "idle-subagent" || SCENARIO === "idle-delegation"
         || SCENARIO === "many-commands")
       w(done(TURN, THREAD, "interrupted"));
+    // slow-turn: cancel the pending completion so the timer cannot still land as "completed", and close
+    // the turn right away the same way idle-silence does.
+    if (SCENARIO === "slow-turn") {
+      if (slowTurnTimer) { clearTimeout(slowTurnTimer); slowTurnTimer = null; }
+      w(done(TURN, THREAD, "interrupted"));
+    }
     return;
   }
   if (m.method === "turn/steer") {
@@ -1031,7 +1040,10 @@ function onLine(line) {
       // this: with a fast turn, several runs acquire and release in SEQUENCE and all exit 0, which is
       // correct behaviour and indistinguishable — by exit code alone — from the concurrency bug.
       case "slow-turn":
-        setTimeout(() => w(cmd(TURN, THREAD), msg(TURN, THREAD, "slow but fine"), done(TURN, THREAD)), 1200);
+        slowTurnTimer = setTimeout(() => {
+          slowTurnTimer = null;
+          w(cmd(TURN, THREAD), msg(TURN, THREAD, "slow but fine"), done(TURN, THREAD));
+        }, 1200);
         w(R);
         break;
 

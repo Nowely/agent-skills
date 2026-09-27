@@ -199,11 +199,25 @@ state, so two runs under different values do NOT exclude each other), **not**
 in the directory it protects — a lock inside the cwd
 gets staged by a turn running `git add -A`. It is keyed on the directory's
 identity (`dev:ino`), not on how the path was spelled, so a symlink, a rename or a case-variant cannot
-produce a second lock for one directory. Each file holds the pid, a **second identity** for that pid (its
-process start time, from `ps -o lstart=` or `/proc/<pid>/stat`), the cwd it locks, and a start time. A pid
+produce a second lock for one directory. The lock is two entries: `<key>.lock`, a symbolic link created
+exclusively, and the owner file it names beside it, `<key>.lock.<32 hex>.owner`, mode 0600. The owner file
+holds the pid, a **second identity** for that pid (its
+process start time, from `ps -o lstart=` or `/proc/<pid>/stat`), the cwd it locks, a start time and, once
+the app-server runs, its process group. A pid
 alone is not an identity: lock files outlive reboots and `SIGKILL`, so a recycled pid otherwise makes a
 directory busy forever. A mismatched identity is stale; one that cannot be read proves nothing, so the
-lock is honoured. The exit-10 message names the file to delete if the holder is really gone. `$TMPDIR` was rejected as a home
+lock is honoured. A release removes both. When it cannot take the reclaim marker, or its owner file is not
+the one it made, it leaves what it could not verify and says so on stderr; a link left naming nothing is
+reclaimed by the next run in that directory, and the link of a directory no run comes back to, such as a
+finished `--worktree` tree, stays.
+The lock's exit-10 messages differ: a live holder's names the link and says to leave it; a gone driver
+whose codex group still runs names that group and the `kill` that stops it, not the files; an owner file
+whose body does not parse is named with its link, and both may be removed only when no run can be using
+the directory; a lock that keeps changing hands names the link. Deleting the
+link by hand while its holder lives lets a second run into the directory and leaves the holder's owner
+file named by no link. `/entrust:cleanup` removes a released
+link, a lock whose holder is gone together with its owner file, and an owner file no link names once its
+run is gone. `$TMPDIR` was rejected as a home
 for it: it is a mutable environment variable, so two runs on one cwd under different values would take two
 different locks and both proceed, and it is the one place a `--level read` turn can write.
 
@@ -215,12 +229,18 @@ That marker is abandoned when its **owner** is gone: liveness, not a clock, ends
 backstop survives for the case where the pid is more likely recycled than stalled. The driver's comment
 at that code carries the two ways a deadline got it wrong.
 
-The driver asks that question again immediately before it acts on the lock — before it records the
-app-server's process group, and before it releases — so a peer that reclaimed the lock and put its own
-there keeps it: by pid and by the second identity beside it, and where either side has no identity the
-pid alone decides, so an older driver's lock stays releasable by its owner. It cannot make that question
-and that act one operation: POSIX has no conditional rename and no conditional unlink, so a peer whose
-lock lands between the last check and the system call is still clobbered or deleted.
+Update and release act only on what the run made. The owner file is told from any other file put at its
+name by the `dev:ino` it had when it was published, and the run keeps it open throughout, so no other
+file can be given that number meanwhile. The update, which records the app-server's process group, writes
+through that open file and renames over no path, so a file put at the owner file's name is left as it
+was. A reader can catch that body mid-write: an owner file whose body does not parse is left alone,
+asked again, and the run refused with exit 10, never reclaimed. The release takes the reclaim marker,
+checks that the link still names this run's owner file and that the owner file is still the one it made,
+then unlinks the link and the owner file. Under the marker no run that follows these rules can remove the
+link or make one for the marker's hour (the backstop after which a marker is taken over regardless), so the check
+and the unlinks cannot be split by one within it; a process that ignores the marker
+still can, because POSIX has no unlink that names an inode. On a mismatch the run says so on stderr and
+leaves both where they are.
 
 The lock covers the whole run, not just the turn: the job record is written and read inside it. The
 isolated Codex home is written

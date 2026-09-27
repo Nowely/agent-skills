@@ -304,16 +304,24 @@ test("F1 a Codex agent is a background Agent call of the shipped codex-agent typ
     return prose;
   });
 
-test("F2 the six verification bullets, one line each",
-  "the list is read while composing a fan-out, so each bullet has to be one glance; a bullet that grew into a paragraph is a bullet that stops being read",
-  () => shows(
-    /^- Scout inline first: the work-list is yours, before any fan-out\.$/m,
-    /^- Adversarial verify: a refuter defaults to `refuted` when it is uncertain, and a finding is (one|what) that changes correctness or a stated requirement, the rest (its|in) `open`\.$/m,
-    /^- Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters\.$/m,
-    /^- Judge panel for a design task: a verdict (missing|without|lacking) its decisive check is `unknown` in `result`; name the missing check in `open`\. Use the sibling's `EXPECT:` rule for a Codex check\.$/m,
-    /^- Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
-    /^- No silent caps: name every agent, check or item you dropped\.$/m,
-  ));
+test("F2 the nine verification bullets, one line each",
+  "the list is read while composing a fan-out, so each bullet has to be one glance; a bullet that grew into a paragraph is a bullet that stops being read, and a bullet added or dropped changes the count the fan-out is checked against (measured 2026-09-17: five sentences, three of them bullets here, were deleted from the page in memory and 45 registered cases stayed green)",
+  () => {
+    const section = text.split("## Verification")[1]?.split("\n## ")[0] ?? "";
+    const bullets = section.split("\n").filter((l) => l.startsWith("- "));
+    if (bullets.length !== 9) return `the Verification list has ${bullets.length} bullets, not nine`;
+    return shows(
+      /^- Scout inline first: the work-list is yours, before any fan-out\.$/m,
+      /^- Critique the split before the fan-out: a top-row agent reads the decomposition, not the subject, for what the cut lost, what the wording added, which items are two and which the fan-out's rights cannot decide; twenty agents on a bad split agree and are all wrong \(measured [\d-]+: it caught two claims true at one release and false at the next, and they never reached the fan-out\)\.$/m,
+      /^- (Open|Read) one assembled brief whole before (the|any) fan-out; check its input paths in the agent's planned tree, its item count and each quoted claim against its source\.$/m,
+      /^- Adversarial verify: a refuter defaults to `refuted` when it is uncertain, and a finding is (one|what) that changes correctness or a stated requirement, the rest (its|in) `open`\.$/m,
+      /^- Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters\.$/m,
+      /^- Read a unanimous fan-out as evidence about the prompt first: open one return whole before you trust the tally \(measured [\d-]+: nineteen of twenty verdicts answered one broken path in every prompt\)\.$/m,
+      /^- Judge panel for a design task: a verdict (missing|without|lacking) its decisive check is `unknown` in `result`; name the missing check in `open`\. Use the sibling's `EXPECT:` rule for a Codex check\.$/m,
+      /^- Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
+      /^- No silent caps: name every agent, check or item you dropped\.$/m,
+    );
+  });
 
 test("F3 two rounds of fix and cross-review, then escalate",
   "without a bound the fix loop is where a run spends its budget; the escalation names where the round after the second one goes, the top pair first and the user last",
@@ -336,14 +344,23 @@ test("F5 the wrapper's description names the agent by its model",
   "a Codex agent surfaces as the wrapper's card, so without a description the user reads a generic agent where a Claude agent shows its task; the two sides stop looking like one run, which is the whole point of naming it there, and the model is the name a person can use, where the word this page calls it by is one they cannot",
   () => says("The Agent call carries a `description` of the form \"Codex <short name> <id>: <task in a few words>\", so the card the user sees names the agent, its vendor and its task, not the command line."));
 
-test("F6 a Codex agent is waited on by a poll of its exit marker, a Claude agent by its Agent task, and no turn ends with an agent alive",
-  "ending the coordinator's turn kills its background agents in a headless session (measured 2026-09-08); a blocking TaskOutput on a running wrapper returned 32 KB of its transcript at the timeout, seven of seven (2026-09-15/16), where a poll on the driver's exit marker returned one line, so the Codex wait goes on the poll task, the Claude wait stays on the Agent task, and the timeout stays named",
+test("F6 background agents are waited for by their notifications and never blocked on, a Codex run's end is its poll's DONE= line, and a headless turn never ends with an agent alive",
+  "Claude Code 2.1.277 removed the tool the page used to block on (E50), and the replacement its changelog names, the task's output file, is an agent's whole transcript; a background agent's return arrives as its message and then its notification with nothing called (measured 2026-09-26), a poll on the driver's exit marker notifies with one DONE= line even after a wrapper handed back RUNNING= (2026-09-27), an interactive session takes each completion as a new turn (2026-09-27), and a headless session kills its background tasks with the turn (2026-09-08), so there the wait is a foreground call, whose hand-back arrives inside the turn (2026-09-17)",
   () => says(
-    "Wait on every agent you launch in the background, Claude or Codex, and never end your turn with an agent alive: a headless session ends with the turn and the task is killed with it",
-    "until [ -s \"<DIR>/exit\" ]; do sleep 5; done; echo DONE=<id>",
-    "call `TaskOutput(<poll_task_id>, block: true, timeout: 600000)` on that task, again while it runs; then read the wrapper's own lines at its completion notification",
-    "For a Claude agent, call the same `TaskOutput` on its Agent task, again while it runs, and read its return when it finishes",
+    "Wait for the agents you launch in the background, Claude or Codex, never on them: each one's return arrives on its own, its message first and its completion notification after (measured 2026-09-26).",
+    "Never read an Agent task's output file for that return: it is the agent's whole transcript.",
+    "For a Codex agent in the background, also launch the poll `until [ -s \"<DIR>/exit\" ]; do sleep 5; done; echo DONE=<id>` as a background Bash task: the wrapper's hand-back and the poll's `DONE=<id>` line both arrive as notifications, the poll's says the run has ended even after a `RUNNING=` hand-back, and you read the report file after it (measured 2026-09-27).",
+    "In an interactive session you may end your turn with agents alive: they go on, and each completion arrives as a turn of its own (measured 2026-09-27).",
+    "A headless session ends with the turn and its background tasks are killed with it (measured 2026-09-08), so there never end a turn with an agent alive: launch each agent in the foreground, and its hand-back arrives inside the same turn (measured 2026-09-17).",
+    "because agents run side by side and you work while they do (in a headless session every agent call is foreground):",
   ));
+
+test("F9 the page names no TaskOutput",
+  "Claude Code 2.1.277 removed TaskOutput and a session on it or later lists no such tool (E50; measured 2026-09-26 and 2026-09-27), so any sentence that names it sends the orchestrator to a tool it does not have",
+  () => {
+    const hits = lines.flatMap((l, i) => (l.includes("TaskOutput") ? [i + 1] : []));
+    return hits.length === 0 || `the page names TaskOutput on line ${hits.join(", ")}`;
+  });
 
 // ------------------------------------------------------------------ G: the agent's return, the run directory
 
@@ -452,6 +469,17 @@ test("D10 Luna over Haiku carries no price claim",
     return true;
   });
 
+test("D12 the bulk unit is one claim, one address, a verbatim quote, and a closed-set verdict about the subject, never the brief",
+  "a bulk verifier scored on its own prompt agrees with itself for the wrong reason (measured 2026-09-12: a broken path in every brief drew the same verdict from nineteen of twenty agents); this sentence is what keeps a bulk verdict about the input rather than the ask, and the 2026-09-17 mutation baseline deleted it with the suite staying green",
+  () => says(
+    "The unit of a bulk fan-out is one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief",
+    "whether an address moved or was wrong is a judgement about your own input, and it stays out of the set",
+  ));
+
+test("D13 the bulk row announces its count before spawning, like any other fan-out",
+  "the bulk row sits outside the alive cap, which is exactly the row a count could grow in unannounced; the clause was deleted alongside the Luna preference in the 2026-09-17 mutation baseline and the suite stayed green",
+  () => says("announce its count before spawning, like any other fan-out"));
+
 test("E7 a decisive check runs before any panel, dependent execution stays in one agent, and its verification stays independent",
   "sixteen agents over two naming rounds proposed, reviewed and judged before the check that decided was run (426:973, 426:1208, 2026-09-17), while the two tasks the coordinator kept in its own hands (2026-09-12, 2026-09-16) landed with critics only; the rule orders the check first and keeps the fresh verifier, it does not ban a panel",
   () => shows(
@@ -548,9 +576,9 @@ test("I3 the user's approval goes down verbatim, and an action approved mid-run 
   "an agent's auto-mode check sees only its own transcript and no agent message is consent (Anthropic's coordinator prompt, Claude Code 2.1.280): two levels below the user a paraphrased or relayed approval is no approval at all",
   () => foremanSays("Quote the user's approval exactly", "an approval you paraphrase does not exist for it", "run it in a fresh worker whose first brief holds the quote and the literal command"));
 
-test("I4 the foreman is Opus in the background, may launch the one Fable agent, and never changes the plan",
-  "the owner's decisions of 2026-09-26: Opus, not Sonnet, and not Fable, which would hold the one Fable slot for the whole run; the background keeps the orchestrator free for the user; a foreman that changes the plan spends the user's \"go\" on work they never saw",
-  () => foremanSays("The foreman is Opus", "launched in the background so you stay free for the user", "It may launch the one Fable agent the cap allows", "Never change the plan", "is a hand-back with `status: blocked`"));
+test("I4 the foreman is Opus in the background, in the foreground in a headless session, may launch the one Fable agent, and never changes the plan",
+  "the owner's decisions of 2026-09-26: Opus, not Sonnet, and not Fable, which would hold the one Fable slot for the whole run; the background keeps the orchestrator free for the user, except in a headless session, which kills its background tasks with the turn (measured 2026-09-08); a foreman that changes the plan spends the user's \"go\" on work they never saw",
+  () => foremanSays("The foreman is Opus", "launched in the background so you stay free for the user", "(in the foreground in a headless session, whose turn would otherwise end with it alive)", "It may launch the one Fable agent the cap allows", "Never change the plan", "is a hand-back with `status: blocked`"));
 
 test("I5 the foreman cannot load the skill, so its brief names the pages by path",
   "the Skill tool refuses a skill marked disable-model-invocation (E39), so a foreman told to load orchestrate starts without the rules it runs under",

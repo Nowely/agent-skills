@@ -1,8 +1,8 @@
 ---
 name: advisor
 description: >-
-  Adds a standing advisor to one orchestrated run: a top-row agent of the other model family, kept for
-  the run and asked one question at each decision point; the run records every decision point and what
+  Adds a standing advisor to the run it is invoked in: a top-row agent of the other model family, kept for
+  the run and asked one question per decision point. The run records every decision point and what
   the advice changed, because the advisor is an experiment until measured.
 disable-model-invocation: true
 metadata:
@@ -10,15 +10,15 @@ metadata:
 license: MIT
 ---
 
-Load [orchestrate](../orchestrate/SKILL.md) now (Skill tool, `entrust:orchestrate`), which loads codex; this page adds one standing thread to the run it is invoked for and re-cuts nothing else. The mode is prompt only: no driver change, no new header field or flag.
+Load [codex](../codex/SKILL.md) now (Skill tool, `entrust:codex`); this page adds one standing thread of the other model family to whatever run it is invoked in, and needs no other page. The mode is prompt only: no driver change, no new header field or flag.
 
 ## The advisor
 
-One top-row agent, chosen by the agreed composition, from the other model family than your own: Astra under a Claude coordinator, and Fable only when the composition words rule Codex out. It is named in the plan as the advisor, with its expected turns, before "go". It is one thread kept for the run: a Codex thread continued with `RESUME:` under a report path of its own for every question, or a Claude agent continued by message. It holds a slot only while a turn of its runs; between questions it is not alive.
+One top-row agent, chosen by the agreed composition, from the other model family than your own: Astra under a Claude coordinator, and Fable only when the composition words rule Codex out. Before its first question, show a plan that names it as the advisor, with its expected turns, and stop until "go". It is one thread kept for the run: a Codex thread continued with `RESUME:` under a report path of its own for every question, or a Claude agent continued by message. It holds a slot only while a turn of its runs; between questions it is not alive. That slot is one of six alive at a time, and the only Astra or the only Fable among them.
 
 ## What it is asked, and what it never does
 
-Ask it at the decision points: the split before a fan-out, the composition, a verdict you are about to adopt, a stall, and any point the plan names. One question per message, carrying the decision you would take without advice and the evidence in a few lines; its return is the five fields, and its `result` is a recommendation with the reasons that decide it, one alternative, and what it would need to see to change its mind. The advisor never implements, never writes under the repository, never judges a result it advised on, and never spawns agents; a question it cannot answer from what it was given returns `unknown` with the missing check named.
+Ask it at the decision points: the split before a fan-out, the composition, a verdict you are about to adopt, a stall, and any point the plan names. One question per message, carrying the decision you would take without advice and the evidence in a few lines. Its return is five fields: `status` (done, partial or blocked), `result`, `evidence`, `artifacts` and `open`. Its `result` is a recommendation with the reasons that decide it, one alternative, and what it would need to see to change its mind. The advisor never implements, never writes under the repository, never judges a result it advised on, and never spawns agents; a question it cannot answer from what it was given returns `unknown` with the missing check named.
 
 ## The record, because the advisor is an experiment
 
