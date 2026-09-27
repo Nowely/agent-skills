@@ -46,3 +46,52 @@ prints the note; `ls plugins/entrust/plugin/evals` fails.
 `evals/`, and its header tells a reader to regenerate it with that module, which an installed plugin does not carry.
 The note should say the file is generated in the repository and name nothing a user cannot run, or the generator
 should live under the installed tree.
+
+## E55. The live gate takes the split critic's own report for the corrected split and reads ownership from any line that quotes a path
+
+**Evidence, level 3.**
+
+- `plugins/entrust/evals/lib/gate-checks.mjs:466` takes as the corrected split the first absolute path ending in
+  `.md`, `.txt` or `.json` in the critic's hand-back and report text; a Codex critic's hand-back opens with its
+  status lines, whose `REPORT=` names its own `report.json`, so that file is what the gate reads as the split, and
+  the file the critic published in `artifacts` (`corrected-split.md`) is never opened.
+- `plugins/entrust/evals/lib/gate-checks.mjs:420-422` (`ownsPath`) counts a brief as owning a path when any one
+  line holds the path and a verb from a list (`own`, `rename`, `update`, …) without a negation; a brief's "Why"
+  line quoting the user's request ("rename fmt in lib/shared.mjs … and update lib/a.mjs") qualifies.
+- 2026-09-28, the live gate's case 7 rerun (artifacts `$TMPDIR/orchestrate-live-2026-09-27T21-56-26-891Z/7-split-critic`):
+  Codex Astra X1 returned exit 0 with `corrected-split.md` and `validate-split.py` in `artifacts`, and the split
+  gives U1–U3 and interface I1 to Sonnet W1, W2 and W3; every worker brief names that file. The gate reported
+  "4 worker brief(s) do not name the corrected split …/X1/report.json", three interfaces with 0 owners
+  (`corrected-split.md`, `./shared.mjs`, `validate-split.py`: the report's artifact paths and an import string),
+  nine lines "W<n>'s brief owns lib/…, which the corrected split gives to V1" (the report's result text says V1
+  owns the review and the test run), and "4 worker briefs own lib/shared.mjs" where W2's and W3's briefs say
+  "Write no file other than lib/a.mjs" and quote the request in their "Why" line. The case's ordering check
+  itself passed: no worker brief before the critic returned.
+
+**Check.** Run `splitAdmissionProblems` over that case's `turn2.jsonl` with its report reader: the problems above
+appear; replace the file lookup with the critic's `artifacts` entry ending in `.md` and they go, except the
+ownership count, which needs `ownsPath` to skip a line that quotes the request or names another agent as the owner.
+
+**Issue text.** The gate's split check reads the critic's report file as the corrected split whenever the critic
+is a Codex agent, because its hand-back's `REPORT=` line is the first absolute path it finds, and its ownership
+reading counts any line that holds a path beside a verb like `rename` or `update`, so a brief that quotes the
+user's request owns every file the request names. The check should read the file the critic's `artifacts` name
+and count ownership only from a line whose subject is the brief's own agent.
+
+## E56. The live gate's attribution check credits an agent with the next list item's path
+
+**Evidence, level 3.**
+
+- `plugins/entrust/evals/lib/gate-checks.mjs:757-760` cuts the answer at each "<Model> <id>" mention and reads
+  the stretch up to the next mention or the next sentence end (`[.!?]` followed by whitespace); a list whose
+  items end with the attribution in parentheses and no period runs the stretch into the next item's path.
+- 2026-09-28, the live gate's case 7 rerun (same artifacts): the answer's list "`lib/shared.mjs`: … (Sonnet W1)
+  / `lib/a.mjs`: … (Sonnet W2) / `lib/b.mjs`: … (Sonnet W3)" drew "the answer credits Sonnet W1 with lib/a.mjs,
+  which only sonnet w2's return holds" and the same for W2 and `lib/b.mjs`, each twice.
+
+**Check.** `claimOriginProblems` over a three-item list in that shape reports the shifted paths; a stretch that
+ends at the line's end as well as at a sentence end reports none.
+
+**Issue text.** The gate's attribution reading treats a line break as part of the sentence, so a list whose items
+end with "(Model id)" credits each agent with the path of the item below it and reports a misattribution the
+answer does not make. The stretch an agent is the subject of should end at the end of its line.
