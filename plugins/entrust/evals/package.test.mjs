@@ -151,10 +151,12 @@ test("every file the plugin needs to run is in the payload",
     const required = [
       ".claude-plugin/plugin.json",
       "skills/codex/schemas/review-output.schema.json",
+      "skills/codex/schemas/five-fields.schema.json",
       "LICENSE", "README.md",
       ...skillPages,
       ...under(path.relative(ROOT, SCRIPTS)),
       ...under("skills/experiment/scripts"), ...under("skills/swarm/scripts"),
+      ...under("skills/orchestrate/scripts"),
     ];
     // The suites are not in that list: they sit beside ROOT, and what installs is ROOT alone.
     const have = new Set(tracked ?? []);
@@ -175,6 +177,23 @@ test("every file the plugin needs to run is in the payload",
     const beside = spawnSync("git", ["-C", path.dirname(EVALS), "ls-files", "-z"], { encoding: "utf8" }).stdout.split("\0");
     if (!beside.some((f) => /^schema-\d[^/]*\/.+\.json$/.test(f))) problems.push("no schema-<version>/ directory is tracked beside the plugin");
     return problems.length === 0 || problems.join("; ");
+  });
+
+test("the shipped five-field schema is strict and carries the default size caps",
+  "an orchestrated return gets one installed contract, with local limits the driver can enforce",
+  () => {
+    const file = path.join(ROOT, "skills/codex/schemas/five-fields.schema.json");
+    const s = JSON.parse(fs.readFileSync(file, "utf8"));
+    const names = ["status", "result", "evidence", "artifacts", "open"];
+    if (s.type !== "object" || s.additionalProperties !== false || JSON.stringify(s.required) !== JSON.stringify(names)
+      || JSON.stringify(Object.keys(s.properties)) !== JSON.stringify(names)) return "five-field strict shape differs";
+    if (JSON.stringify(s.properties.status.enum) !== JSON.stringify(["done", "partial", "blocked"])) return "status enum differs";
+    if (s.properties.result.maxLength !== 4800 || s.properties.evidence.maxItems !== 40
+      || s.properties.artifacts.maxItems !== 40 || s.properties.open.maxItems !== 20
+      || s.properties.evidence.items.maxLength !== 1000 || s.properties.artifacts.items.maxLength !== 300
+      || s.properties.open.items.maxLength !== 1000) return "default caps differ";
+    return names.slice(2).every((k) => s.properties[k].type === "array" && s.properties[k].items.type === "string")
+      || "an array does not contain strings";
   });
 
 test("no local artifact is in the payload",

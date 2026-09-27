@@ -1878,6 +1878,32 @@ test("41 · an agent directory with no report is decided by the launcher's recor
     return m.done();
   });
 
+test("D6 · a plan manifest is recognised as a run file, without inventing project ownership",
+  "a plan alone has no report cwd, so cleanup may name it but must keep the run until ownership is proven",
+  async () => {
+    const w = makeWorld("plan-manifest");
+    const dir = plantRun(w, w.slug, "run-plan", {});
+    fs.writeFileSync(path.join(dir, "plan.txt"), "id | model | role | writes | tokens\nA | sol | writer | worktree | 1000\n");
+    const s = await snapshot(w);
+    const bad = need(w, s); if (bad) return bad;
+    const row = rowAt(s.j, dir);
+    return row?.proposed === false && row?.selectable === false && /approved plan remains/.test(row?.reason ?? "")
+      || `manifest listing: ${JSON.stringify(row)}`;
+  });
+
+test("D6 · a finished owned run with a plan stays selectable",
+  "the plan file is ordinary run evidence once a published report establishes ownership",
+  async () => {
+    const w = makeWorld("plan-finished");
+    const dir = plantRun(w, w.slug, "run-plan-finished", { A: report(w.project) });
+    fs.writeFileSync(path.join(dir, "plan.txt"), "id | model | role | writes | tokens\nA | sol | writer | worktree | unknown\n");
+    const s = await snapshot(w);
+    const bad = need(w, s); if (bad) return bad;
+    const row = rowAt(s.j, dir);
+    return row?.selectable === true && row?.proposed === false
+      || `finished manifest listing: ${JSON.stringify(row)}`;
+  });
+
 test("40 · the data directory left by this plugin's previous name is offered by number; another copy's is not",
   "the rename left one data directory behind that nothing writes to any more. It is this plugin's own, so it is named as such and removed on a number, while the data of a copy that is not this plugin stays what it was: listed, kept, and a command the user runs by hand",
   async () => {

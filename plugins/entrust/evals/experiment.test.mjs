@@ -142,13 +142,13 @@ test("E1 the record lives under the state directory, is written by the script an
     return shows(/^ {4}CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/experiment\.mjs" <command>/m);
   });
 
-test("F1 the protocols reference holds E1 to E5 with the seven fields each, and E2's escalation fires on `unknown` alone",
+test("F1 the protocols reference holds E1 to E6 with the seven fields each, and E2's escalation fires on `unknown` alone",
   "the hypotheses the research left first are the reason the mode exists; a reference missing a field is a protocol a run cannot fill, and a cascade that escalates on a non-empty `open` escalates every return",
   () => {
     let ref;
     try { ref = read(REF); } catch (e) { return `${REF} is missing: ${e.message}`; }
     const problems = [];
-    for (const id of ["E1", "E2", "E3", "E4", "E5"]) {
+    for (const id of ["E1", "E2", "E3", "E4", "E5", "E6"]) {
       const m = new RegExp(`^## ${id} [^\\n]+\\n([\\s\\S]*?)(?=^## |$(?![\\s\\S]))`, "m").exec(ref);
       if (!m) { problems.push(`no section for ${id}`); continue; }
       for (const f of ["Hypothesis", "Arms", "Material", "Metrics", "Judge", "Budget and stop rule", "What it cannot show"])

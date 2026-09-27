@@ -2,6 +2,7 @@
 // Runs one Codex agent's driver for the entrust wrapper in one foreground call, and reads its status back.
 //
 //   node agent-run.mjs --new --report-file REPORT  < prompt      make the agent's directory beside REPORT, prompt from stdin
+//   node agent-run.mjs --plan --run-dir RUN < rows             register the approved agent rows
 //   node agent-run.mjs --run --report-file REPORT                start the run, wait, print the status lines
 //   node agent-run.mjs --status --report-file REPORT             the status lines of a run, whatever its state
 //   node agent-run.mjs --report-file REPORT                      launch only (the exit status is the driver's)
@@ -93,6 +94,16 @@ export const agentDirOf = (report) => path.join(path.dirname(report), "agent");
 
 const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
 
+  node agent-run.mjs --plan --run-dir RUN < rows
+      Register rows id | model | role | writes | tokens in RUN/plan.txt at 0600; RUN is 0700.
+      Models: astra, sol, terra, luna, opus, sonnet, haiku, fable. Writes: nothing,
+      worktree, live tree, or write <absolute dir>. Ids start with a letter and then
+      use letters, digits, _ or -; each is unique ignoring case and cannot end in -<digits>.
+      Tokens are a nonnegative integer or unknown. classifyRole derives the
+      WORKERS/CHECKING counts. --plan --amend appends new rows explicitly; show the
+      amendment and wait for approval before launching them. Prints PLAN= and an
+      AGENT= line per row and WORKERS=/CHECKING= totals, or AMENDED= for an amendment. A plan
+      records declared scope; it does not certify actual cost or live caps.
   node agent-run.mjs --new --report-file REPORT  < prompt
       Makes the agent's directory, agent/ beside REPORT (or --dir DIR), at 0700, puts the prompt read on
       stdin through driver.mjs --check-prompt-file, and only on a pass makes it DIR/prompt.txt at 0600
@@ -103,6 +114,11 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       prompt, and a directory that already holds a prompt: a relaunch gets a fresh report path. A
       directory that holds a launch's exit, err.txt or out.json and no prompt (a --run came after a
       refused --new) is refused the same way, with ERROR= naming the file: the path is spent.
+      When RUN/plan.txt exists, REPORT must be RUN/<id>/report.json for a listed agent.
+      RUN/<id>-<n>/report.json, n from 2 with no leading zero, continues listed <id>
+      (a RESUME:, relaunch, or advisor's next question) once the previous link's
+      agent/exit exists. planRowOf matches the listed row and its continuation.
+      A second agent needs a row of its own.
   node agent-run.mjs --run --report-file REPORT
       One foreground call, idempotent; DIR is agent/ beside REPORT unless --dir names it, and a prompt
       not there yet is waited for up to ${PROMPT_WAIT_MS / 1000} s (a --new issued in the same turn).
@@ -151,12 +167,15 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
 `;
 
 function parse(argv) {
-  const o = { run: false, status: false, isNew: false, orphan: false, dir: null, report: null, help: false };
+  const o = { run: false, status: false, isNew: false, isPlan: false, amend: false, runDir: null, orphan: false, dir: null, report: null, help: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--help" || a === "-h") o.help = true;
     else if (a === "--run") o.run = true;
     else if (a === "--new") o.isNew = true;
+    else if (a === "--plan") o.isPlan = true;
+    else if (a === "--amend") o.amend = true;
+    else if (a === "--run-dir") o.runDir = argv[++i];
     else if (a === "--status") o.status = true;
     else if (a === "--orphan") o.orphan = true;
     else if (a === "--dir") o.dir = argv[++i];
@@ -239,6 +258,68 @@ function launch(dir, report, { onExit, onRefuse }) {
 
 const oneLine = (s) => String(s).replace(/\s*\n\s*/g, " / ");
 
+const PLAN_MODELS = new Set(["astra", "sol", "terra", "luna", "opus", "sonnet", "haiku", "fable"]);
+const CLAUDE_MODELS = new Set(["opus", "sonnet", "haiku", "fable"]);
+const PLAN_HEADER = "id | model | role | writes | tokens";
+const planError = (why) => { process.stdout.write(`ERROR=${why}\n`); process.exit(2); };
+export function classifyRole(role) {
+  const worker = /implement|writ|worker|build|fix|исполн|писат/i.test(role);
+  const assurance = /critic|verif|review|refut|judge|check|test|advis|критик|провер|ревью/i.test(role);
+  return worker && !assurance ? "worker" : assurance ? "checking" : null;
+}
+// Return the registered row and the preceding link for a launch, or null for an unlisted name.
+// A gate may use the row without probing the marker; the launcher requires it before creating a prompt.
+export function planRowOf(name, rows, runDir) {
+  const exact = rows.find((r) => r.id.toLowerCase() === name.toLowerCase());
+  if (exact) return { row: exact, previous: null, ended: true };
+  const m = /^(.*)-([2-9]|[1-9][0-9]+)$/.exec(name);
+  if (!m) return null;
+  const row = rows.find((r) => r.id.toLowerCase() === m[1].toLowerCase());
+  if (!row) return null;
+  const number = Number(m[2]);
+  const previous = number === 2 ? row.id : `${row.id}-${number - 1}`;
+  return { row, previous, ended: !runDir || fs.existsSync(path.join(runDir, previous, "agent", "exit")) };
+}
+const planRows = (body) => {
+  const lines = body.split(/\r?\n/).map((s) => s.trim()).filter((s) => s && !s.startsWith("#"));
+  if (lines[0] === PLAN_HEADER) lines.shift();
+  if (!lines.length) planError("the plan has no agent rows");
+  const rows = lines.map((line) => {
+    const fields = line.split("|").map((s) => s.trim());
+    if (fields.length !== 5) planError(`expected ${PLAN_HEADER}: ${line}`);
+    const [id, model, role, writes, tokens] = fields;
+    if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(id)) planError(`invalid agent id: ${id}`);
+    if (/-\d+$/.test(id)) planError(`invalid agent id ${id}: the -<n> form names a continuation`);
+    if (!PLAN_MODELS.has(model.toLowerCase())) planError(`invalid model for ${id}: ${model}`);
+    if (!classifyRole(role)) planError(`invalid role for ${id}: ${role}`);
+    if (!/^(nothing|worktree|live tree|write \/\S.*)$/.test(writes)) planError(`invalid writes for ${id}: ${writes}`);
+    if (!/^(unknown|0|[1-9]\d*)$/.test(tokens)) planError(`invalid tokens for ${id}: ${tokens}`);
+    return { id, model, role, writes, tokens };
+  });
+  if (new Set(rows.map((r) => r.id.toLowerCase())).size !== rows.length) planError("duplicate agent id");
+  return rows;
+};
+
+function registerPlan(runDir, amend) {
+  if (!runDir || !path.isAbsolute(runDir)) planError("--run-dir must be absolute");
+  const file = path.join(runDir, "plan.txt");
+  let prior = [];
+  if (amend) {
+    if (!isRegularFile(file)) planError(`cannot amend missing plan at ${file}`);
+    prior = planRows(read(file));
+  } else if (fs.existsSync(file)) planError(`plan already exists at ${file}; use --plan --amend`);
+  let body;
+  try { body = fs.readFileSync(0, "utf8"); } catch (e) { planError(`could not read plan: ${e.message}`); }
+  const rows = planRows(body);
+  if (rows.some((r) => prior.some((p) => p.id.toLowerCase() === r.id.toLowerCase()))) planError("duplicate agent id in amendment");
+  fs.mkdirSync(runDir, { recursive: true, mode: 0o700 });
+  const all = [...prior, ...rows];
+  const serialized = rows.map((r) => [r.id, r.model, r.role, r.writes, r.tokens].join(" | ")).join("\n");
+  if (amend) fs.appendFileSync(file, `# amended ${new Date().toISOString()}\n${serialized}\n`);
+  else fs.writeFileSync(file, `${PLAN_HEADER}\n${serialized}\n`, { mode: 0o600, flag: "wx" });
+  process.stdout.write(`${amend ? "AMENDED" : "PLAN"}=${file}\n${rows.map((r) => `AGENT=${r.id} ${r.model} ${r.writes}`).join("\n")}\nWORKERS=${all.filter((r) => classifyRole(r.role) === "worker").length}\nCHECKING=${all.filter((r) => classifyRole(r.role) === "checking").length}\n`);
+}
+
 export function statusLines(dir, report) {
   const err = read(path.join(dir, "err.txt")) ?? "";
   let where = "none";
@@ -249,7 +330,8 @@ export function statusLines(dir, report) {
   let r = null;
   try { r = JSON.parse(read(report) ?? ""); } catch {}
   if (r && typeof r === "object") {
-    const a = r.answerJson && typeof r.answerJson.result === "string" ? r.answerJson.result : r.answer;
+    const a = r.schemaOverflow ? r.answer
+      : r.answerJson && typeof r.answerJson.result === "string" ? r.answerJson.result : r.answer;
     const s = String(a ?? "");
     const t = r.turnError;
     const e = r.error || (t && (typeof t === "string" ? t : (t.message || t.codexErrorInfo || JSON.stringify(t)))) || "";
@@ -274,6 +356,22 @@ function newAgent(report, dirOverride) {
   const refuse = (why) => { process.stderr.write(`${REFUSED}: ${why}\n`); process.exit(2); };
   if (!report || !path.isAbsolute(report)) refuse(`--report-file ${JSON.stringify(report ?? "")} is not an absolute path`);
   if (dirOverride !== null && dirOverride !== undefined && !path.isAbsolute(dirOverride)) refuse(`--dir ${JSON.stringify(dirOverride)} is not an absolute path`);
+  const runDir = path.dirname(path.dirname(report));
+  const id = path.basename(path.dirname(report));
+  const ancestors = [path.dirname(report), runDir, path.dirname(runDir)];
+  const planDir = ancestors.find((d) => fs.existsSync(path.join(d, "plan.txt")));
+  if (planDir) {
+    const plan = path.join(planDir, "plan.txt");
+    if (path.basename(report) !== "report.json" || path.dirname(path.dirname(report)) !== planDir)
+      planError(`REPORT must be ${planDir}/<row id or continuation>/report.json`);
+    const rows = planRows(read(plan) ?? "");
+    const matched = planRowOf(id, rows, planDir);
+    if (!matched) planError(`${id} is not in the approved plan at ${plan}; amend it with --plan --amend and show the amendment`);
+    if (CLAUDE_MODELS.has(matched.row.model.toLowerCase()))
+      planError(`${id} is a Claude agent in the plan at ${plan}; a Codex agent needs a row of its own: amend it with --plan --amend and show the amendment`);
+    if (!matched.ended)
+      planError(`${id} continues ${matched.previous}, which has not ended; wait for it, or amend the plan and show the amendment`);
+  }
   const dir = dirOverride ?? agentDirOf(report);
   const promptPath = path.join(dir, "prompt.txt");
   if (fs.existsSync(promptPath)) refuse(`${promptPath} already exists: one prompt per report path, a relaunch gets a fresh one`);
@@ -398,6 +496,8 @@ if (isMain) {
   const o = parse(process.argv.slice(2));
   if (o.error) { process.stderr.write(`agent-run: ${o.error}\n${USAGE}`); process.exit(2); }
   if (o.help) { process.stdout.write(USAGE); process.exit(0); }
+  if (o.isPlan) { if (o.report || o.dir || o.run || o.status || o.isNew || o.orphan) planError("--plan cannot be combined with agent modes"); registerPlan(o.runDir, o.amend); process.exit(0); }
+  if (o.amend || o.runDir) { process.stderr.write("agent-run: --amend and --run-dir require --plan\n"); process.exit(2); }
   if (!o.report) { process.stderr.write(`agent-run: --report-file is required\n${USAGE}`); process.exit(2); }
   if (o.isNew) newAgent(o.report, o.dir);
   const dir = o.dir ?? (path.isAbsolute(o.report) ? agentDirOf(o.report) : null);

@@ -120,7 +120,8 @@ The Agent call, its message this block:
     4. After the hand-back result, and whenever the harness asks you for a visible response, write exactly one line, "<DESCRIPTION>: report delivered", and nothing else.
 
 Both calls may go in one turn: the launcher waits ten seconds for a prompt a `--new` has not written yet. A
-wrapper started beside a refused `--new` spends that report path: relaunch under a fresh one.
+wrapper started beside a refused `--new` spends that report path: relaunch under `<run>/<id>-2/report.json`
+after `<run>/<id>/agent/exit` exists (then `-3` after `-2` ends, and so on).
 `<DESCRIPTION>` is the Agent call's own description. `<DIR>`, where this page names it, is the agent's directory,
 `agent/` beside `<REPORT>`, which `--new` makes at 0700 with the prompt at 0600: one per report path, so a
 relaunch gets a fresh report path and the earlier run's four files stay where they were (the launcher refuses a
@@ -128,7 +129,9 @@ directory that ran for another report; measured 2026-09-17 on the earlier shape,
 while the same command run again for the same report reads the run it started, which is what the ceiling's
 second call is. None of the launcher's files is left in `$TMPDIR`; a read agent's own writable root stays there. `<REPORT>` is an absolute path of this agent's own: put it under
 the driver's state directory, `<state>/reports/<run>/report.json` with `<run>` unique, or, under the orchestrate
-mode, `<run>/<agent>/report.json` in the run directory that page names, one directory per agent; the launcher and
+mode, `<run>/<agent>/report.json` in the run directory that page names, one directory per agent; a
+continuation uses `<run>/<agent>-<n>/report.json`, n from 2 with no leading zero, only after the
+previous link's `agent/exit` exists. The launcher and
 the driver make every directory those paths need, at 0700, so they may name a root your own Write and `mkdir`
 are refused.
 The wrapper's completion notification is the agent's completion: read the wrapper's own lines first —
@@ -137,7 +140,7 @@ where it is short and its first line where it is not, the refusal where no turn 
 read the file itself after a `PATH=own` when those lines leave a question (measured 2026-09-17: on a one-line
 task and on a pre-turn refusal, a hand-back without the answer and the refusal cost the coordinator one more
 turn each). To continue an agent, write a second
-prompt file with `RESUME: <threadId>` and send the wrapper one more command of the same shape; it runs it the same way and notifies again (measured 2026-09-12). A session with no
+prompt file with `RESUME: <threadId>` at `<run>/<agent>-<n>/report.json` and send the wrapper one more command of the same shape after the previous link ends; it runs it the same way and notifies again (measured 2026-09-12). A session with no
 message tool, headless `-p` among them, continues the thread with a second wrapper given the same file,
 at the cost of a second card (measured: the thread held both ways).
 
@@ -207,11 +210,11 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | `WRITABLE:` | `<dir>`, repeatable | a write agent needs one more root than the directory it was given |
 | `RESUME:` | `<threadId>`, `last` | this agent continues an earlier thread instead of opening one |
 | `EXPECT:` | `<regex>` | the answer is only evidence if a command matching it ran AND succeeded; a matching command that exited non-zero does not count, and none matching is exit 5. Do not point it at a check whose failure IS the finding |
-| `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>` | the answer must parse as one JSON object |
+| `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>`; the five-field schema for orchestrated agents ships at `${CLAUDE_SKILL_DIR}/schemas/five-fields.schema.json` | the answer must parse as one JSON object |
 | `MODEL:` | `astra`, `sol`, `terra`, `luna`: the newest model of that name the catalogue lists, resolved before the turn; a full slug from the catalogue pins one version | this agent needs a model other than the configured default; in prose the name is capitalised |
 | `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`; `ultra` on Astra, Sol and Terra (the catalogue of 2026-09-17: `none` and `minimal` are on no model and exit 2 before the turn); no line inherits `~/.codex/config.toml` | the task is worth more or less thinking than the configured default; `low` for a one-line task |
 | `WEB_SEARCH:` | `cached`, `indexed`, `live`: the provider's search tool, not the network, which every level reaches with no line and `NETWORK: no` denies | the user asked for the provider's web search; "the network is allowed" is not that ask. A mode the device refuses goes back to the user as a question, never to another mode |
-| `BRIEF:` | `yes` | a short answer is enough; omit it beside an output schema — it clips only the inline `answer` (`answerJson` is parsed from the whole one) yet still asks the model for 20 lines |
+| `BRIEF:` | `yes` | a short answer is enough; omit it beside an output schema — it clips only the inline `answer` on a valid return and still asks the model for 20 lines |
 | `ALLOW_NO_COMMANDS:` | `yes` | the agent is recall-only and will run nothing |
 
 One field is missing from that table on purpose. `VERIFY` is refused in a prompt file without `--allow-prompt-verify`,
@@ -270,9 +273,11 @@ write its own would be grading itself. Declare gates on the command line instead
   again with the same message — the launcher waits for the run it started and hands back its lines — or
   wait on `<DIR>/exit` yourself; nothing was lost.
 - `exitCode: 0` means the completed turn passed its declared evidence gates. `answer` is the agent's text;
-  with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed.
+  with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed. On a final size overflow,
+  both are clipped to the schema caps; `schemaOverflow.clipped` names each cut, and `answerPath`
+  holds the complete answer. If a size correction succeeds, `answerAttemptPaths` retains the first attempt.
 - `exitCode: 3` is a cut; read the retained answer or partial and the `RESUME:` hint. Give the continuation a
-  report path of its own: the driver refuses one already taken and exits 2 without publishing, which
+  `<run>/<agent>-<n>/report.json` after the previous link's `agent/exit` exists: the driver refuses one already taken and exits 2 without publishing, which
   reaches you as `PATH=taken` over the earlier run's file.
 - `exitCode: 10` is a held lock or a busy resumed thread: the report says `ok: false` and carries the
   refusal in `error`, and `<DIR>/err.txt` has it in full.
@@ -305,8 +310,9 @@ Write a concrete, checkable body:
     TASK:   what to do
     CHECK:  the ground truth, preferably something the agent cannot guess
     RETURN: exactly what to hand back
+    ENVIRONMENT: staged inputs and their paths; known daemon or socket limits and runnable alternatives; flags that avoid an unwritable cache
 
-Give one deliverable per agent. Split a return that asks for unrelated artifacts or decisions. Write `TASK:` in the
+For a write agent, or where repository tools need a daemon, fill `ENVIRONMENT:` with observed facts and staged paths, including the diff and trunk files when supplied. It is a body line after `TASK:`, not a header field. Give one deliverable per agent. Split a return that asks for unrelated artifacts or decisions. Write `TASK:` in the
 user's language: the agent answers in the language it is asked in (measured 2026-09-17: a task written in English
 about a Russian «хай» came back in English). Whatever `RETURN:`
 asks for, its first line is one sentence a reader can take on its own: the name you gave the agent in the prompt
@@ -314,7 +320,7 @@ asks for, its first line is one sentence a reader can take on its own: the name 
 answers with whatever it calls itself (measured 2026-09-17: «GPT-5 Codex, id T1»). That line is what the coordinator
 retells, and not itself a message to the user; the rest is the return's own shape.
 
-The standing rules are already on the thread — unattended, its egress and its web search each named
+The standing rules are already on the thread — unattended, its effective writable roots and that `/tmp` is not one, its egress and its web search each named
 whichever way they went, a one-line record for a step that cannot run (the command, whether it started, its
 exit status if any, the exact diagnostic), never claim a test passed without the count — so do not repeat them. A follow-up continues a thread with `RESUME: <threadId>`; a
 recall-only one runs no commands, so it also needs `ALLOW_NO_COMMANDS: yes` (`--allow-no-commands` on a

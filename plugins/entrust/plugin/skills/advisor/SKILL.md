@@ -14,7 +14,13 @@ Load [codex](../codex/SKILL.md) now (Skill tool, `entrust:codex`); this page add
 
 ## The advisor
 
-One top-row agent, chosen by the agreed composition, from the other model family than your own: Astra under a Claude coordinator, and Fable only when the composition words rule Codex out. Before its first question, show a plan that names it as the advisor, with its expected turns, and stop until "go". It is one thread kept for the run: a Codex thread continued with `RESUME:` under a report path of its own for every question, or a Claude agent continued by message. It holds a slot only while a turn of its runs; between questions it is not alive. That slot is one of six alive at a time, and the only Astra or the only Fable among them.
+One top-row agent from the other model family than your own: Astra under a Claude coordinator, and Fable only when the user's composition words rule Codex out. Its prompt carries `MODEL: astra` (or the Fable agent's `model: "fable"` tag), an `OUTPUT_SCHEMA:` line naming the five-field schema file the sibling ships, and no `EFFORT:` line: a top-row agent inherits the configured effort, as the orchestrate page's tier rule says. Your user's invocation of this command is the word for its turns: consult it before the first decision, the composition included, with no plan stop of its own. The plan the run shows for its workers names it as the advisor, with its expected turns; a stop is for authority the invocation did not grant — the workers' plan, an edit, a commit, a publication — under the rules of the run it joins. "No advisor" (без советника) from the user ends the thread for the run, and "ask the advisor" (спроси советника) starts it again. It is one thread kept for the run: a Codex thread continued with `RESUME:` for every question, each under the next report path, the agent's id with `-2`, then `-3`, added (`<run>/<id>-<n>/report.json`), or a Claude agent continued by message. It holds a slot only while a turn of its runs; between questions it is not alive. That slot is one of six alive at a time, and the only Astra or the only Fable among them.
+
+The Codex advisor's first prompt, through the sibling's `--new`; each continuation is the same prompt with `RESUME: <threadId>` above it, the `threadId` of its first report:
+
+    MODEL: astra
+    OUTPUT_SCHEMA: <the five-field schema file the sibling ships>
+    TASK: <one question, the decision you would take without advice, and the evidence in a few lines>
 
 ## What it is asked, and what it never does
 
