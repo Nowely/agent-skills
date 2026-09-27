@@ -38,7 +38,11 @@ const status = async (dir, report) => {
 };
 const read = (p) => { try { return fs.readFileSync(p, "utf8"); } catch { return null; } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const pidOf = (dir) => { const m = /^entrust: pid=(\d+) /.exec((read(path.join(dir, "err.txt")) ?? "").split("\n")[0]); return m ? Number(m[1]) : null; };
+// The driver's pid line wherever it stands in err.txt: the first complete line of its whole shape.
+const pidOf = (dir) => {
+  const m = (read(path.join(dir, "err.txt")) ?? "").split("\n").slice(0, -1).map((l) => /^entrust: pid=(\d+) identity=\S.*? reportPath=.+$/.exec(l)).find(Boolean);
+  return m ? Number(m[1]) : null;
+};
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === "EPERM"; } };
 // The state that proves the driver is in its turn: turn/start in the fake server's own log. The pid line
 // comes tens of milliseconds before it, and a case timed from that line had no margin of its own and
@@ -62,13 +66,18 @@ const inspect = (cmd, args, { none = false } = {}) => {
 };
 const descendants = (pid) => inspect("pgrep", ["-P", String(pid)], { none: true }).flatMap((k) => [k, ...descendants(k)]);
 // Preloads for what a case cannot reach from outside, each by NODE_OPTIONS=--require: the driver held back
-// 1.5 s before its pid line, its --check-prompt-file held back 1 s, the check faulting, and a record of
-// the checks --new ran.
+// 1.5 s (or 3 s) before its pid line, a line on the driver's stderr before its main, its
+// --check-prompt-file held back 1 s, the check faulting, and a record of the checks --new ran.
 const preloads = tempDir("agent-run-preload.");
-const HOLD = path.join(preloads, "hold.cjs"), SLOW_CHECK = path.join(preloads, "slow-check.cjs");
-const FAULT = path.join(preloads, "fault.cjs"), SPY = path.join(preloads, "spy.cjs");
+const HOLD = path.join(preloads, "hold.cjs"), HOLD_LONG = path.join(preloads, "hold-long.cjs"), SLOW_CHECK = path.join(preloads, "slow-check.cjs");
+const FAULT = path.join(preloads, "fault.cjs"), SPY = path.join(preloads, "spy.cjs"), NOISE = path.join(preloads, "noise.cjs");
+const NOISE_LINE = "preload: a line before the driver's main";
+fs.writeFileSync(NOISE, `if (/driver\\.mjs$/.test(process.argv[1] ?? "") && !process.argv.includes("--check-prompt-file"))
+  require("node:fs").writeSync(2, ${JSON.stringify(NOISE_LINE + "\n")});\n`);
 fs.writeFileSync(HOLD, `if (/driver\\.mjs$/.test(process.argv[1] ?? "") && !process.argv.includes("--check-prompt-file"))
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500);\n`);
+fs.writeFileSync(HOLD_LONG, `if (/driver\\.mjs$/.test(process.argv[1] ?? "") && !process.argv.includes("--check-prompt-file"))
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);\n`);
 fs.writeFileSync(SLOW_CHECK, `if (process.argv.includes("--check-prompt-file")) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);\n`);
 fs.writeFileSync(FAULT, `if (process.argv.includes("--check-prompt-file")) { process.stderr.write("boom: the check broke\\n"); process.exit(3); }\n`);
 fs.writeFileSync(SPY, `if (process.argv.includes("--check-prompt-file"))
@@ -191,8 +200,8 @@ test("the three strings PATH is sorted by are the driver's own, and a taken path
     return problems.length === 0 || problems.join("; ");
   });
 
-test("a refused launch leaves an exit marker of 2 and its reason in err.txt, and a reused directory is refused without touching the earlier run's files",
-  "the wrapper's wait reads the exit marker, so a refusal that left none would wait for a driver that never started; and the whole point of one launch per directory is that the earlier record survives",
+test("a refused launch leaves an exit marker of 2 and its reason in err.txt, and a reused directory is refused on stderr alone, without touching the earlier run's files",
+  "the wrapper's wait reads the exit marker, so a refusal that left none would wait for a driver that never started; and the whole point of one launch per directory is that the earlier record survives, which a reason appended to its err.txt did not: the run read PATH=none after it",
   async () => {
     const problems = [];
     // No prompt file.
@@ -214,17 +223,20 @@ test("a refused launch leaves an exit marker of 2 and its reason in err.txt, and
     // A reused directory: one real run, then a second launch with another report path.
     ({ dir, state, report } = fresh());
     await launch(dir, report, state).done;
-    const before = { out: read(path.join(dir, "out.json")), exit: read(path.join(dir, "exit")), errFirst: (read(path.join(dir, "err.txt")) ?? "").split("\n")[0] };
+    const before = { out: read(path.join(dir, "out.json")), exit: read(path.join(dir, "exit")), err: read(path.join(dir, "err.txt")) };
     const second = path.join(path.dirname(report), "second.json");
-    r = await launch(dir, second, state).done;
-    if (r.code !== 2) problems.push(`a reused directory exited ${r.code}`);
+    for (const again of [second, report]) {
+      r = await launch(dir, again, state).done;
+      if (r.code !== 2) problems.push(`a reused directory exited ${r.code}`);
+      if (!r.err.includes(`${REFUSED}: ${path.join(dir, "exit")} already exists`)) problems.push(`the reused-directory refusal is not on stderr: ${r.err.slice(0, 120)}`);
+    }
     if (read(path.join(dir, "out.json")) !== before.out || read(path.join(dir, "exit")) !== before.exit) problems.push("a refused relaunch changed the earlier run's out.json or exit");
-    const errNow = read(path.join(dir, "err.txt")) ?? "";
-    if (errNow.split("\n")[0] !== before.errFirst) problems.push("a refused relaunch changed the earlier run's pid line");
-    if (!errNow.includes(`${REFUSED}: ${path.join(dir, "exit")} already exists`)) problems.push("the reused-directory refusal is not in err.txt");
+    if (read(path.join(dir, "err.txt")) !== before.err) problems.push(`a refused relaunch changed the earlier run's err.txt: ${JSON.stringify((read(path.join(dir, "err.txt")) ?? "").slice((before.err ?? "").length))}`);
     if (fs.existsSync(second)) problems.push("the refused relaunch produced a report");
     s = await status(dir, second);
     if (!s.lines.includes("PATH=none") || !s.lines.includes("FILE=missing")) problems.push(`the refused relaunch reads as ${JSON.stringify(s.lines)}`);
+    s = await status(dir, report);
+    if (!s.lines.includes("PATH=own")) problems.push(`the earlier run reads as ${JSON.stringify(s.lines.slice(0, 2))} after a refused relaunch`);
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -332,7 +344,9 @@ test("--run refuses a directory that ran for another report path, prints the nin
     let { dir, state, report } = fresh();
     await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 60000 }).done;
     const other = path.join(path.dirname(report), "other.json");
+    const errBefore = read(path.join(dir, "err.txt"));
     const r = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", other], { env: env(state), killAfterMs: 20000 }).done;
+    if (read(path.join(dir, "err.txt")) !== errBefore) problems.push("a foreign report path changed the ended run's err.txt");
     const lines = r.out.split("\n").filter(Boolean);
     if (r.code !== 0 || lines.length !== STATUS_LINES.length) problems.push(`a foreign report path: exit ${r.code}, ${lines.length} lines`);
     if (!lines.includes("PATH=none") || !lines.includes("FILE=missing")) problems.push(`a foreign report path read as ${JSON.stringify(lines.slice(0, 2))}`);
@@ -364,6 +378,172 @@ test("--run refuses a directory that ran for another report path, prints the nin
     if (!rep || rep.turnStatus !== "interrupted") problems.push(`the driver did not report an interrupted turn: ${rep && rep.turnStatus}`);
     await sleep(300);
     if (alive(pid)) { problems.push(`the driver (pid ${pid}) is still alive`); stopRun(dir); }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--run for another report path while the directory's run is in flight prints its own nine lines with the refusal on ERROR=, exit 0, leaves err.txt byte for byte, and the run's rerun, its own call and the same command again read PATH=own",
+  "the refusal used to be appended to the run's err.txt, which every call reads its lines from, so a rerun after the early return printed PATH=none for a run publishing to its own path, and the driver's next stderr line, written at its own offset, overwrote the appended one (measured 2026-09-27)",
+  async () => {
+    const { dir, state, report } = fresh();
+    const rpc = path.join(dir, "rpc.log");
+    const held = { ...env(state, "idle-silence"), FAKE_RPC_LOG: rpc };
+    const h = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: held, killAfterMs: 60000 });
+    if (!await turnStarted(rpc)) { h.child.kill("SIGKILL"); stopRun(dir); return "the driver never started its turn"; }
+    const pid = pidOf(dir);
+    const problems = [];
+    // The foreign call, while the turn is held open: the driver writes nothing to err.txt until the turn
+    // ends, so any byte that changes here is the foreign call's.
+    const other = path.join(path.dirname(report), "other.json");
+    const before = fs.readFileSync(path.join(dir, "err.txt"));
+    const f = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", other], { env: held, killAfterMs: 20000 }).done;
+    const after = fs.readFileSync(path.join(dir, "err.txt"));
+    const flines = f.out.split("\n").filter(Boolean);
+    if (f.code !== 0 || flines.length !== STATUS_LINES.length) problems.push(`the foreign call: exit ${f.code}, ${JSON.stringify(flines)}`);
+    STATUS_LINES.forEach((name, i) => { if (!(flines[i] ?? "").startsWith(`${name}=`)) problems.push(`the foreign call's line ${i + 1} is ${JSON.stringify(flines[i])}, not ${name}=`); });
+    for (const want of ["DRIVER_EXIT=unknown", "PATH=none", "FILE=missing", `REPORT=${other}`]) if (!flines.includes(want)) problems.push(`the foreign call lacks ${want}`);
+    if (!(flines.find((l) => l.startsWith("ERROR=")) ?? "").includes("another report path")) problems.push("the foreign call's refusal is not on its ERROR line");
+    if (!before.equals(after)) problems.push(`the foreign call changed the run's err.txt: ${JSON.stringify(after.subarray(before.length).toString())}`);
+    if (!alive(pid)) problems.push("the run did not survive the foreign call");
+    // The rerun after an early return, read while the turn is still held open.
+    const early = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: { ...held, AGENT_RUN_RETURN_MS: "300" }, killAfterMs: 20000 }).done;
+    const elines = early.out.split("\n").filter(Boolean);
+    if (early.code !== 0 || elines[0] !== "DRIVER_EXIT=running" || elines[1] !== "PATH=own") problems.push(`the rerun in flight: exit ${early.code}, ${JSON.stringify(elines.slice(0, 2))}`);
+    // The run's own call, ended by the Stop it forwards, and the same command again on the ended run.
+    h.child.kill("SIGTERM");
+    const r = await h.done;
+    const lines = r.out.split("\n").filter(Boolean);
+    if (r.code !== 0 || !lines.includes("PATH=own") || !lines.includes(`REPORT=${report}`)) problems.push(`the run's own call: exit ${r.code}, ${JSON.stringify(lines)}`);
+    const again = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: held, killAfterMs: 20000 }).done;
+    const alines = again.out.split("\n").filter(Boolean);
+    if (again.code !== 0 || !alines.includes("PATH=own") || !alines.includes(`REPORT=${report}`)) problems.push(`the same command again: exit ${again.code}, ${JSON.stringify(alines.slice(0, 2))}`);
+    if (fs.existsSync(other)) problems.push("the foreign call produced a report");
+    await sleep(300);
+    if (alive(pid)) { problems.push(`the driver (pid ${pid}) is still alive`); stopRun(dir); }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--run for another report path that arrives while the directory's run is being born waits for the pid line, then refuses on its own nine lines, exit 0, forwarding nothing, a SIGTERM kept meanwhile included",
+  "the ownership check read only a directory whose pid line was already there, so a call that came between the keeper's claim on err.txt and that line waited on the other run and forwarded its signals to that driver: a Stop on the stray card cut another report's run (measured 2026-09-27)",
+  async () => {
+    const { dir, state, report } = fresh();
+    const rpc = path.join(dir, "rpc.log");
+    // The run's own call, its driver held back 3 s before its pid line; the foreign call comes once the
+    // keeper has claimed err.txt, and its SIGTERM a second later, after it has installed its handler.
+    const h = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: { ...env(state, "idle-silence"), ...preload(HOLD_LONG), FAKE_RPC_LOG: rpc }, killAfterMs: 60000 });
+    for (const until = Date.now() + 10000; Date.now() < until && !fs.existsSync(path.join(dir, "err.txt"));) await sleep(20);
+    const problems = [];
+    const other = path.join(path.dirname(report), "other.json");
+    const f = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", other], { env: env(state, "idle-silence"), killAfterMs: 30000 });
+    await sleep(1000);
+    if (pidOf(dir) !== null) problems.push("the pid line was already there when the signal was sent: the case measured nothing");
+    f.child.kill("SIGTERM");
+    const fr = await f.done;
+    const flines = fr.out.split("\n").filter(Boolean);
+    if (fr.code !== 0 || flines.length !== STATUS_LINES.length) problems.push(`the foreign call: exit ${fr.code}, ${JSON.stringify(flines)}`);
+    STATUS_LINES.forEach((name, i) => { if (!(flines[i] ?? "").startsWith(`${name}=`)) problems.push(`the foreign call's line ${i + 1} is ${JSON.stringify(flines[i])}, not ${name}=`); });
+    for (const want of ["DRIVER_EXIT=unknown", "PATH=none", "FILE=missing", `REPORT=${other}`]) if (!flines.includes(want)) problems.push(`the foreign call lacks ${want}`);
+    if (!(flines.find((l) => l.startsWith("ERROR=")) ?? "").includes("another report path")) problems.push("the foreign call's refusal is not on its ERROR line");
+    // The run goes on: its turn starts, its driver is alive, and err.txt holds the driver's lines alone.
+    if (!await turnStarted(rpc)) problems.push("the run never reached its turn");
+    const pid = pidOf(dir);
+    await sleep(300);
+    if (pid === null || !alive(pid)) problems.push("the run did not go on");
+    const err = read(path.join(dir, "err.txt")) ?? "";
+    if (err.includes("interrupted by")) problems.push("the foreign call's SIGTERM reached the driver");
+    const alien = err.split("\n").filter((l) => l && !l.startsWith("entrust: "));
+    if (alien.length) problems.push(`err.txt holds lines that are not the driver's: ${JSON.stringify(alien)}`);
+    // The run's own call, ended by the Stop it forwards.
+    h.child.kill("SIGTERM");
+    const r = await h.done;
+    const lines = r.out.split("\n").filter(Boolean);
+    if (r.code !== 0 || !lines.includes("PATH=own") || !lines.includes(`REPORT=${report}`)) problems.push(`the run's own call: exit ${r.code}, ${JSON.stringify(lines)}`);
+    if (fs.existsSync(other)) problems.push("the foreign call produced a report");
+    await sleep(300);
+    if (pid !== null && alive(pid)) { problems.push(`the driver (pid ${pid}) is still alive`); stopRun(dir); }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--run whose report path is a prefix of the one the directory ran for is refused, and --status reads it as none",
+  "the ownership test was a substring match on the pid line, so REPORT read as its own run in a directory that ran for REPORT.old, PATH=own over a report that was never written",
+  async () => {
+    const { dir, state, report } = fresh();
+    const old = `${report}.old`;
+    await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", old], { env: env(state), killAfterMs: 60000 }).done;
+    if (!fs.existsSync(old)) return "the run for REPORT.old published nothing";
+    const problems = [];
+    const before = read(path.join(dir, "err.txt"));
+    const r = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 20000 }).done;
+    const lines = r.out.split("\n").filter(Boolean);
+    if (r.code !== 0 || lines.length !== STATUS_LINES.length) problems.push(`exit ${r.code}, ${lines.length} lines`);
+    for (const want of ["PATH=none", "FILE=missing", `REPORT=${report}`]) if (!lines.includes(want)) problems.push(`--run lacks ${want}: ${JSON.stringify(lines.slice(0, 2))}`);
+    if (!(lines.find((l) => l.startsWith("ERROR=")) ?? "").includes("another report path")) problems.push("the refusal is not on the ERROR line");
+    if (read(path.join(dir, "err.txt")) !== before) problems.push("err.txt changed");
+    if (fs.existsSync(report)) problems.push("a report was published at the prefix path");
+    const s = await status(dir, report);
+    if (!s.lines.includes("PATH=none")) problems.push(`--status for the prefix path reads ${JSON.stringify(s.lines.slice(0, 2))}`);
+    const own = await status(dir, old);
+    if (!own.lines.includes("PATH=own")) problems.push(`--status for REPORT.old reads ${JSON.stringify(own.lines.slice(0, 2))}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("a launch with a relative REPORT into a directory whose run is in flight is refused on stderr alone: err.txt byte for byte, no exit marker, and the run ends PATH=own",
+  "the prompt and report checks ran before the claim on err.txt, so a refused launch into a directory another run held appended to that run's err.txt and wrote its exit marker, and the run's own call printed DRIVER_EXIT=2 and PATH=none while its driver was still in its turn (measured 2026-09-27)",
+  async () => {
+    const { dir, state, report } = fresh();
+    const rpc = path.join(dir, "rpc.log");
+    const held = { ...env(state, "idle-silence"), FAKE_RPC_LOG: rpc };
+    const h = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: held, killAfterMs: 60000 });
+    if (!await turnStarted(rpc)) { h.child.kill("SIGKILL"); stopRun(dir); return "the driver never started its turn"; }
+    const pid = pidOf(dir);
+    const problems = [];
+    const before = fs.readFileSync(path.join(dir, "err.txt"));
+    const r = await spawnNode([LAUNCHER, "--dir", dir, "--report-file", "reports/report.json"], { env: held, killAfterMs: 20000 }).done;
+    const after = fs.readFileSync(path.join(dir, "err.txt"));
+    if (r.code !== 2) problems.push(`the relative-REPORT launch exited ${r.code}`);
+    if (!r.err.includes(`${REFUSED}: --report-file "reports/report.json" is not an absolute path`)) problems.push(`the refusal is not on stderr: ${JSON.stringify(r.err.slice(0, 160))}`);
+    if (!before.equals(after)) problems.push(`err.txt changed: ${JSON.stringify(after.subarray(before.length).toString())}`);
+    if (fs.existsSync(path.join(dir, "exit"))) problems.push(`an exit marker was written: ${JSON.stringify(read(path.join(dir, "exit")))}`);
+    // Longer than the run's own call polls, so a marker written by the refusal would have been read.
+    await sleep(700);
+    if (pid === null || !alive(pid)) problems.push("the run did not go on");
+    h.child.kill("SIGTERM");
+    const hr = await h.done;
+    const lines = hr.out.split("\n").filter(Boolean);
+    if (hr.code !== 0 || !lines.includes("DRIVER_EXIT=1") || !lines.includes("PATH=own") || !lines.includes(`REPORT=${report}`)) problems.push(`the run's own call: exit ${hr.code}, ${JSON.stringify(lines.slice(0, 2))}`);
+    await sleep(300);
+    if (pid !== null && alive(pid)) { problems.push(`the driver (pid ${pid}) is still alive`); stopRun(dir); }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("a run whose err.txt starts with a line written before the driver's main reads PATH=own and has its signals forwarded, and only a complete line of the whole pid-line shape counts",
+  "the launcher took err.txt's first line for the pid line, so anything on stderr before the driver's own first write, a preload's line or a warning, made a finished run read PATH=none and left a Stop with no pid to go to (measured 2026-09-27)",
+  async () => {
+    const { dir, state, report } = fresh();
+    const rpc = path.join(dir, "rpc.log");
+    const h = spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: { ...env(state, "idle-silence"), ...preload(NOISE), FAKE_RPC_LOG: rpc }, killAfterMs: 60000 });
+    if (!await turnStarted(rpc)) { h.child.kill("SIGKILL"); stopRun(dir); return "the driver never started its turn"; }
+    const problems = [];
+    const first = (read(path.join(dir, "err.txt")) ?? "").split("\n")[0];
+    if (first !== NOISE_LINE) problems.push(`err.txt's first line is ${JSON.stringify(first)}, not the preload's: the case measured nothing`);
+    const pid = pidOf(dir);
+    h.child.kill("SIGTERM");
+    const r = await h.done;
+    const lines = r.out.split("\n").filter(Boolean);
+    if (r.code !== 0 || !lines.includes("DRIVER_EXIT=1") || !lines.includes("PATH=own") || !lines.includes(`REPORT=${report}`)) problems.push(`after SIGTERM: exit ${r.code}, ${JSON.stringify(lines)}`);
+    let rep = null; try { rep = JSON.parse(read(report) ?? ""); } catch {}
+    if (!rep || rep.turnStatus !== "interrupted") problems.push(`the driver did not report an interrupted turn: ${rep && rep.turnStatus}`);
+    await sleep(300);
+    if (pid === null || alive(pid)) { problems.push(`the driver (pid ${pid}) was not found or is still alive`); stopRun(dir); }
+    // The shape, on lines handed to the status read: a line of it in part ahead of the whole one is passed
+    // over, and a whole one with no newline after it is not a line yet.
+    const d2 = tempDir("codex-agent.");
+    fs.writeFileSync(path.join(d2, "exit"), "0\n");
+    fs.writeFileSync(path.join(d2, "err.txt"), `entrust: pid=4000000 identity=x\nentrust: pid=4000001 identity=x ${ACCEPTED}${report}\n`);
+    let s = await status(d2, report);
+    if (!s.lines.includes("PATH=own")) problems.push(`a partial pid line ahead of the whole one: ${JSON.stringify(s.lines.slice(0, 2))}`);
+    fs.writeFileSync(path.join(d2, "err.txt"), `${NOISE_LINE}\nentrust: pid=4000001 identity=x ${ACCEPTED}${report}`);
+    s = await status(d2, report);
+    if (!s.lines.includes("PATH=none")) problems.push(`a pid line with no newline yet: ${JSON.stringify(s.lines.slice(0, 2))}`);
     return problems.length === 0 || problems.join("; ");
   });
 

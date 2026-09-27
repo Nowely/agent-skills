@@ -92,8 +92,9 @@ The driver runs under a keeper of its own, outside the wrapper's process tree, s
 harness ends a foreground subagent's leftover commands with SIGTERM to their tree (measured 2026-09-26) — leaves
 the run going and its report to come. The driver prints its pid on the first line of `<DIR>/err.txt`
 once it has accepted the report path, and a refusal before that point prints none; a launch the launcher
-itself refused (no `prompt.txt`, a relative report path, an `exit` marker already there) puts its reason
-there instead, with an exit of 2 and `PATH=none`. A `SIGTERM` to that
+itself refused (no `prompt.txt`, a relative report path) puts its reason there instead, under its own claim of the
+directory, with an exit of 2 and `PATH=none`; a refusal for a directory another run owns (an `exit` marker already there, a report path that is
+not the directory's) goes to the caller alone and leaves that directory's files untouched. A `SIGTERM` to that
 pid cuts the turn, sweeps its codex and publishes the report as `turnStatus: interrupted`, exit 1,
 nothing left running.
 

@@ -32,7 +32,8 @@
 // What it keeps: it NEVER opens prompt.txt except as the driver's argument, because a relay that reads a
 // prompt can rewrite it (incidents.md, "A relay on a small model"); it passes the driver exactly the two
 // flags the page used to and the environment as it found it, CLAUDE_PLUGIN_DATA included; the driver's
-// own stderr, its pid line first, is what lands in DIR/err.txt. DIR is `agent/` beside the report, made
+// own stderr is what lands in DIR/err.txt, its pid line the first line of the whole pid-line shape (a preload's
+// output may stand before it). DIR is `agent/` beside the report, made
 // by --new at 0700 with the prompt it read on stdin at 0600, so one run's four files (prompt.txt on
 // entry, out.json, err.txt and exit on the way out) sit next to its report and nothing is left in
 // $TMPDIR; exit is written last, after both output files are closed. --new puts the prompt through the
@@ -42,7 +43,17 @@
 // directory that already ran is refused, because it would overwrite the first run's record (measured
 // 2026-09-17 on the earlier shape), and a launch claims err.txt exclusively, so two racing for one
 // directory start one driver; under --run a directory that ran for THIS report path is a status read,
-// which the ceiling's second call needs, and one that ran for another path is refused.
+// which the ceiling's second call needs, and one that ran for another path is refused. That refusal, and
+// a launch's into a directory whose run has ended, goes to its caller alone: a line added to that run's
+// err.txt is read by the run's own calls, which then printed PATH=none for a run that had published to
+// its own path (measured 2026-09-27). Whose run a directory holds is decided on the driver's pid line,
+// the first complete line of its whole shape wherever it stands in err.txt, by the whole path it names,
+// so a call that comes while the run is being born, err.txt claimed and the line not yet there, waits
+// for the line and forwards nothing to a driver that is not its own. A launch claims DIR by creating
+// err.txt before it writes anything there: a refusal is recorded in DIR only under the refusing launch's
+// own claim, and one made where the claim is another launch's, or where no DIR is named at all (a REPORT
+// that is not absolute and no --dir), goes to stderr alone (measured 2026-09-27: a relative REPORT
+// launched into a live run's directory appended to its err.txt and wrote its exit marker).
 
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -102,30 +113,41 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       that has waited ${RETURN_MS / 1000} s prints them with RUNNING=pid <pid>, <n> s so far; run the same
       command again in place of REPORT=, DRIVER_EXIT=running, and exits 0: this is the early return,
       before the tool's ten-minute ceiling, the run goes on, and the same command again waits for it.
-      A DIR that already ran for this REPORT: prints. A DIR that ran for another report path is refused
-      and the lines say so. Always exits 0 once the lines are printed, a missing DIR included; the
-      driver's own status is the DRIVER_EXIT line. A signal it receives (SIGTERM, SIGINT, SIGHUP) goes
-      to the driver, the pid on DIR/err.txt's first line, which cuts the turn and publishes; one that
-      arrives before that line is delivered when it appears, and one after the early return's deadline
-      is not forwarded.
+      A DIR that already ran for this REPORT: prints. A DIR whose run is for another report path,
+      being born, running or ended, is refused on this call's own lines, the reason on ERROR=, and
+      nothing is written to DIR: the driver's pid line decides, by the whole path it names, and a run
+      whose line is not there yet is waited for. Always exits 0 once the lines are printed, a missing
+      DIR included; the driver's own status is the DRIVER_EXIT line. A signal it receives (SIGTERM,
+      SIGINT, SIGHUP) goes to the driver, the pid on its pid line in DIR/err.txt, which cuts the turn
+      and publishes; one that arrives before that line is delivered when it appears and names this
+      REPORT, and is dropped when it names another; one after the early return's deadline is not
+      forwarded.
   node agent-run.mjs --report-file REPORT [--dir DIR]
       Launch only, the keeper --run starts: the same run without the wait's printing, exiting with the
-      driver's status. Refuses, exit 2 with the reason in DIR/err.txt and DIR/exit where DIR is a
-      directory: a DIR that is not one, a prompt.txt that is not a regular file, a REPORT that is not
-      absolute, and a DIR whose exit marker already exists (that refusal leaves the earlier run's files
-      as they were and appends its reason to err.txt). A DIR/err.txt already there is another launch's
-      claim: exit 2, nothing written.
+      driver's status. It claims DIR by creating DIR/err.txt before it writes anything there. Under its
+      own claim it refuses, exit 2 with the reason in DIR/err.txt and a DIR/exit of 2: a prompt.txt
+      that is not a regular file, and a REPORT that is not absolute (with --dir). Without a claim it
+      refuses on stderr alone, exit 2, nothing written: a DIR that is not one; a DIR whose exit marker
+      already exists, whose files are an earlier run's; and a DIR whose err.txt is already there, which
+      is another launch's claim, with the reason this launch would have recorded, if it had one.
   node agent-run.mjs --orphan --dir DIR --report-file REPORT
       --run's own step: starts the launch-only mode in a session of its own and exits at once, so the
       keeper's parent is gone before anything looks for it.
   node agent-run.mjs --status --report-file REPORT [--dir DIR]
       Prints nine lines: ${STATUS_LINES.join(", ")}. PATH is own where the
-      driver's pid line names REPORT, taken where the driver refused a path already there or could not
-      publish, none otherwise or where the launch was refused. ANSWER is the whole answer on one line
-      when it is at most ${ANSWER_MAX} characters, else a pointer to the report; ERROR is the report's
+      driver's pid line names REPORT, the whole path, taken where the driver refused a path already
+      there or could not publish, none otherwise or where the launch was refused. ANSWER is the whole
+      answer on one line when it is at most ${ANSWER_MAX} characters, else a pointer to the report; ERROR is the report's
       error, else its turnError, else the launcher's own refusal; RECEIPT is turnStatus, receiptOk and
       the model by its short name. Always exits 0; a missing report reads as unknown, never success.
   node agent-run.mjs --help
+
+  A REPORT that is not absolute, in each form:
+      without --dir it names no DIR, and every mode refuses it on stderr alone, exit 2, before anything
+      is read or written: --run and --status print no lines. With --dir, --new refuses it the same way;
+      launch-only refuses it as above, under its claim or on stderr alone; --run on a fresh DIR prints
+      the lines of its keeper's recorded refusal, and on a DIR whose run is another's refuses it as
+      another report path; --status prints DIR's lines for it.
 `;
 
 function parse(argv) {
@@ -148,7 +170,17 @@ const isRegularFile = (p) => { try { return fs.statSync(p).isFile(); } catch { r
 const isDirectory = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
 const read = (p) => { try { return fs.readFileSync(p, "utf8"); } catch { return null; } };
 const markerOf = (dir) => (read(path.join(dir, "exit")) ?? "").trim();
-const pidOf = (dir) => { const m = /^entrust: pid=(\d+) /.exec((read(path.join(dir, "err.txt")) ?? "").split("\n")[0]); return m ? Number(m[1]) : null; };
+// The driver's pid line: the first complete line in err.txt, wherever it stands, of the whole shape
+// `entrust: pid=<n> identity=<id> reportPath=<path>`. Taken as the first line, anything on stderr before
+// the driver's own first write (a preload's line, a warning) made a run read PATH=none and stopped the
+// forwarding of its signals (measured 2026-09-27); a line of the shape in part, or with no newline yet, is
+// not it.
+const PID_LINE = new RegExp(`^entrust: pid=(\\d+) identity=(\\S.*?) ${ACCEPTED}(.+)$`);
+const pidLineIn = (err) => err.split("\n").slice(0, -1).map((l) => PID_LINE.exec(l)).find(Boolean) ?? null;
+const pidIn = (err) => { const m = pidLineIn(err); return m ? Number(m[1]) : null; };
+// The report path the driver accepted, compared whole: a substring test read REPORT as its own run in a
+// directory that ran for REPORT.old.
+const acceptedIn = (err) => pidLineIn(err)?.[3] ?? null;
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === "EPERM"; } };
 
 // This script again, in a session of its own with no stdio, and not waited for.
@@ -159,32 +191,34 @@ function spawnDetached(args) {
 }
 
 // Launch the driver on DIR/prompt.txt. `onExit(status)` runs after the marker is written; `onRefuse()`
-// after a refusal has been recorded. Neither returns.
+// after a refusal. Neither returns.
 function launch(dir, report, { onExit, onRefuse }) {
-  const refuse = (why, { marker = true } = {}) => {
-    const line = `${REFUSED}: ${why}\n`;
-    process.stderr.write(line);
-    if (isDirectory(dir)) {
-      // The reason goes beside the run it belongs to, appended so an earlier run's pid line stays first;
-      // and the wrapper's wait reads the exit marker, so a refusal has to leave one or the wrapper waits
-      // for a driver that never started — unless a marker is already there, which is the refusal that
-      // must leave the earlier run's files as they were.
-      try { fs.appendFileSync(path.join(dir, "err.txt"), line); } catch {}
-      if (marker) { try { fs.writeFileSync(path.join(dir, "exit"), "2\n"); } catch {} }
-    }
-    onRefuse();
-  };
+  // Without the claim DIR is not this launch's, and a refusal is said on stderr alone: a line added to
+  // err.txt or a marker written there would be read by the run that holds the directory.
+  const refuse = (why) => { process.stderr.write(`${REFUSED}: ${why}\n`); onRefuse(); };
   if (!dir || !isDirectory(dir)) return refuse(`--dir ${JSON.stringify(dir ?? "")} is not a directory`);
+  // A marker already there makes DIR an earlier run's: its files are that run's record, and a line added
+  // to its err.txt would turn the run's PATH=own into PATH=none on every later read.
   if (fs.existsSync(path.join(dir, "exit")))
-    return refuse(`${path.join(dir, "exit")} already exists: one launch per directory, a relaunch gets a fresh one`, { marker: false });
+    return refuse(`${path.join(dir, "exit")} already exists: one launch per directory, a relaunch gets a fresh one`);
   const promptPath = path.join(dir, "prompt.txt");
-  if (!isRegularFile(promptPath)) return refuse(`${promptPath} is not a regular file`);
-  if (!report || !path.isAbsolute(report)) return refuse(`--report-file ${JSON.stringify(report ?? "")} is not an absolute path`);
-  // The claim on DIR, before out.json is truncated: a second keeper racing this one (a --run and its
+  const why = !isRegularFile(promptPath) ? `${promptPath} is not a regular file`
+    : !report || !path.isAbsolute(report) ? `--report-file ${JSON.stringify(report ?? "")} is not an absolute path` : null;
+  // The claim on DIR, before anything is written there: a second keeper racing this one (a --run and its
   // rerun each starting one) finds err.txt there and leaves with nothing written.
   let errFd;
   try { errFd = fs.openSync(path.join(dir, "err.txt"), "wx"); }
-  catch (e) { if (e.code === "EEXIST") return onRefuse(); throw e; }
+  catch (e) { if (e.code === "EEXIST") return refuse(why ?? `${path.join(dir, "err.txt")} already exists: another launch holds this directory`); throw e; }
+  // Under its own claim a refusal is recorded beside the launch, with a marker, because the wrapper's wait
+  // reads the marker and would otherwise wait for a driver that never started.
+  if (why) {
+    const line = `${REFUSED}: ${why}\n`;
+    process.stderr.write(line);
+    try { fs.writeSync(errFd, line); } catch {}
+    try { fs.closeSync(errFd); } catch {}
+    try { fs.writeFileSync(path.join(dir, "exit"), "2\n"); } catch {}
+    return onRefuse();
+  }
   const outFd = fs.openSync(path.join(dir, "out.json"), "w");
   const child = spawn(process.execPath, [DRIVER, "--prompt-file", promptPath, "--report-file", report],
     { stdio: ["ignore", outFd, errFd], env: process.env });
@@ -208,7 +242,7 @@ const oneLine = (s) => String(s).replace(/\s*\n\s*/g, " / ");
 export function statusLines(dir, report) {
   const err = read(path.join(dir, "err.txt")) ?? "";
   let where = "none";
-  if (err.includes(ACCEPTED + report)) where = "own";
+  if (acceptedIn(err) === report) where = "own";
   if (TAKEN.some((t) => err.includes(t))) where = "taken";
   if (err.includes(REFUSED)) where = "none";
   const lines = [`DRIVER_EXIT=${markerOf(dir) || "unknown"}`, `PATH=${where}`];
@@ -295,9 +329,9 @@ function run(dir, report) {
   const t0 = Date.now();
   let pid = null, kept = null;
   // A Stop on the card, whichever call is in flight: no call is the driver's parent, so the signal goes to
-  // the pid on err.txt's first line. One that comes before that line is kept until it appears; one after
-  // RETURN_MS is dropped, because a call past its deadline can only be receiving the teardown the early
-  // return is there to keep away from the run.
+  // the pid on the driver's pid line. One that comes before that line is kept until it appears, and
+  // dropped if the line names another report path; one after RETURN_MS is dropped, because a call past its
+  // deadline can only be receiving the teardown the early return is there to keep away from the run.
   for (const sig of SIGNALS) process.on(sig, () => {
     if (Date.now() - t0 >= RETURN_MS) return;
     if (pid === null) kept = sig;
@@ -305,21 +339,21 @@ function run(dir, report) {
   });
   const print = (lines) => { process.stdout.write(`${lines.join("\n")}\n`); process.exit(0); };
   const finish = () => print(statusLines(dir, report));
+  // A refusal that reads no run: this call's own lines, and nothing written to DIR.
+  const refused = (why) => print(["DRIVER_EXIT=unknown", "PATH=none", "EXIT=unknown", "FIRST=", "ANSWER=", `ERROR=${why.slice(0, ERROR_MAX)}`,
+    "RECEIPT=", `FILE=${report && fs.existsSync(report) ? "exists" : "missing"}`, `REPORT=${report ?? ""}`]);
+  const foreign = () => refused(`${REFUSED}: this directory's run is for another report path; a relaunch gets a fresh one`);
   waitForPrompt(dir, () => {
     if (!isDirectory(dir)) {
       const why = `${REFUSED}: ${JSON.stringify(dir)} is not a directory`;
       process.stderr.write(`${why}\n`);
-      print(["DRIVER_EXIT=unknown", "PATH=none", "EXIT=unknown", "FIRST=", "ANSWER=", `ERROR=${why.slice(0, ERROR_MAX)}`, "RECEIPT=",
-        `FILE=${report && fs.existsSync(report) ? "exists" : "missing"}`, `REPORT=${report ?? ""}`]);
+      return refused(why);
     }
     const err = read(path.join(dir, "err.txt")) ?? "";
-    const started = /^entrust: pid=/.test(err.split("\n")[0]);
-    // A directory that already started a run for ANOTHER report path is a reused directory, which is the
-    // one launch this script refuses: reading it would print the earlier run's lines as this run's.
-    if (started && !err.includes(ACCEPTED + report) && !err.includes(REFUSED)) {
-      try { fs.appendFileSync(path.join(dir, "err.txt"), `${REFUSED}: this directory already ran for another report path; a relaunch gets a fresh one\n`); } catch {}
-      return finish();
-    }
+    // A directory whose driver started for ANOTHER report path, running or ended, is another run's:
+    // reading it would print that run's lines as this call's, and a refusal added to its err.txt is read
+    // by that run's own calls as theirs.
+    if (pidIn(err) !== null && acceptedIn(err) !== report) return foreign();
     if (markerOf(dir)) return finish();
     // A fresh directory: the keeper, through the orphaning step. A directory whose err.txt exists has a
     // launch already, and a second keeper would only lose the claim on it.
@@ -329,9 +363,15 @@ function run(dir, report) {
     const startBy = Date.now() + PROMPT_WAIT_MS;
     let gone = 0;
     const tick = () => {
+      // Until the pid line is there the run is being born and whose it is is unknown: the line decides,
+      // read once for both, so a call for another path refuses on it with nothing forwarded, a signal kept
+      // meanwhile included.
+      const err = pid === null ? read(path.join(dir, "err.txt")) ?? "" : "";
+      const born = pid === null ? pidIn(err) : null;
+      if (born !== null && acceptedIn(err) !== report) return foreign();
       if (markerOf(dir)) return finish();
       if (pid === null) {
-        pid = pidOf(dir);
+        pid = born;
         if (pid === null) {
           if (Date.now() < startBy) return setTimeout(tick, 100);
           const lines = statusLines(dir, report);
