@@ -20,7 +20,9 @@ forensics remain in the repository references and release notes.
   remain frozen as evidence but are applied with judgment for the current reader.
 - README and the manifest distinguish manually started deep skills from optional model selection of
   `clarity`. The page checks reject malformed or disabling frontmatter, compare all skill versions with
-  the manifest, and require separate README rows and skill-page links for every genre note.
+  the manifest, and require separate README rows and skill-page links for every genre note. The official
+  trigger eval takes another case file with `--cases` and keeps each run's trace, the only record of its
+  model; two held-out sets, written without sight of the description, sit beside the fourteen cases.
 - **What installs is now `plugins/terse/plugin/`.** The marketplace entry's `source` is
   `./plugins/terse/plugin`: the skills, the references, the README, the LICENSE and `package.json`. The
   page check and this changelog no longer install; they stay in the repository beside it, at
