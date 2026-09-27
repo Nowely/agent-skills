@@ -3,15 +3,17 @@
 //
 //   node evals/orchestrate.test.mjs
 //
-// The orchestrate mode is prompt only, so these cases pin its decisions as sentences, rows and template
-// lines. Prose is whitespace-collapsed to allow rewrapping; rows and templates are anchored to preserve
-// the layout an agent copies.
+// The orchestrate mode's rules are sentences, so these cases pin its decisions as sentences, rows and
+// template lines; where the page hands out a command (the runner, the linter, the launcher's --plan, the
+// critic's manifest), a case runs it as the page writes it. Prose is whitespace-collapsed to allow
+// rewrapping; rows and templates are anchored to preserve the layout an agent copies.
 //
 // The page is the approved text. A pin that disagrees with it is a wrong pin.
 
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
+import { spawnSync } from "node:child_process";
+import { ROOT, SCRIPTS, registry, runCases, skip, summarize, tempDir } from "./lib/harness.mjs";
 
 const { cases: CASES, test } = registry();
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
@@ -32,6 +34,14 @@ const shows = (...res) => {
   const missing = res.filter((r) => !r.test(text));
   return missing.length === 0 || `no line matches: ${missing.map(String).join(" | ")}`;
 };
+// A command the page hands out, as written there, with `${CLAUDE_SKILL_DIR}` resolved the way Claude Code
+// resolves it in this skill's body: to the orchestrate skill's own directory.
+const SKILL_DIR = path.dirname(path.join(ROOT, PAGE));
+const recipe = (script) => {
+  const m = new RegExp(`\`node "\\$\\{CLAUDE_SKILL_DIR\\}/scripts/${script.replace(".", "\\.")}"([^\`]*)\``).exec(text);
+  return m && { file: path.join(SKILL_DIR, "scripts", script), args: m[1].trim() };
+};
+const run = (file, args, opts = {}) => spawnSync(process.execPath, [file, ...args], { encoding: "utf8", timeout: 60000, ...opts });
 
 test("the page was read (every case below is sound)",
   "every case here searches one string; if the read had returned an empty page they would report a hundred separate failures instead of one cause, or worse, pass vacuously once a pin is inverted",
@@ -78,22 +88,30 @@ test("the tier table pairs all eight model names, one tier per row",
 
 // ------------------------------------------------------------------ A: what the mode is
 
-test("A1 the mode is prompt only",
-  "the mode adds no mechanism to maintain; asking for a new header field or driver flag would change its scope",
-  () => says("The mode is prompt only: no driver change, no new header field or flag, the agent's own prompt file and the driver's state directory unchanged."));
+test("A1 the mode adds no header field or flag, what it asks of the driver and the launcher is the sibling's, and its own scripts write only under $TMPDIR",
+  "the owner, 2026-09-27: the \"prompt only\" sentence goes, because the fixes for #15 and #16 change the driver and the launcher and add the runner and the linter; a header field of the mode's own would still change its scope, and a script of its own that wrote beside the repository would be a second state directory",
+  () => {
+    const said = says("The mode adds no header field or flag and leaves the agent's own prompt file where the sibling puts it; what it asks of the driver and the launcher is the sibling's and is changed there under its own changelog line, and its own scripts, the runner and the linter, run a command or read a draft and write only under `$TMPDIR`.");
+    if (said !== true) return said;
+    return !/The mode is prompt only/.test(flat) || "the page still says the mode is prompt only";
+  });
 
-test("A3 the sibling is loaded first and this page re-cuts only what the mode changes",
-  "rights, header fields, the worktree lifecycle and the exit ladder have exactly one home; a copy here is a second copy to drift, so the page has to send the reader there and say what it does not restate",
+test("A3 the plan is made from the generated composition page, the sibling is loaded once the plan has a Codex agent, and this page re-cuts only what the mode changes",
+  "rights, header fields, the worktree lifecycle and the exit ladder have exactly one home; a copy here is a second copy to drift, so the page has to send the reader there and say what it does not restate. #15 F18: the page loaded the sibling's 4,500 words on every run, an all-Claude one included; the composition rules and the rights table it plans from are generated into a reference, and the load waits for a Codex agent, before the launcher's --plan, which is the first command that needs it",
   () => {
     const problems = [];
-    const raw = shows(/\[codex\]\(\.\.\/codex\/SKILL\.md\)/);
+    const raw = shows(/\[codex\]\(\.\.\/codex\/SKILL\.md\)/, /\[codex-composition\.md\]\(references\/codex-composition\.md\)/);
     if (raw !== true) problems.push(raw);
     const prose = says(
-      "(Skill tool, `entrust:codex`)",
+      "Plan from [codex-composition.md](references/codex-composition.md), the sibling's composition rules and rights table generated into this page's references.",
+      "Load [codex](../codex/SKILL.md) (Skill tool, `entrust:codex`) once the plan has a Codex agent, before its launcher's `--plan`",
       "this page re-cuts only what the mode changes",
-      "1. Load the sibling skill with the Skill tool if it is not loaded yet, scout, then decide the composition and the agents.",
+      "1. Scout, then decide the composition and the agents from the generated composition page; load the sibling skill with the Skill tool once the plan has a Codex agent.",
     );
     if (prose !== true) problems.push(prose);
+    // The negative half: the unconditional load the deferral replaced.
+    if (/Load \[codex\]\(\.\.\/codex\/SKILL\.md\) now/.test(text)) problems.push("the page loads the sibling unconditionally again");
+    if (/if it is not loaded yet/.test(flat)) problems.push("step 1 loads the sibling before the composition again");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -103,7 +121,7 @@ test("B1 scouting is the only exploration the orchestrator does",
   "the mode's one economy is that the big reads happen in an agent's context; an orchestrator that keeps exploring after the scout has spent the context the fan-out was meant to save",
   () => says(
     "scout the work-list with cheap commands (`ls`, `git status`, targeted `grep`) before any fan-out",
-    "Scouting is the only repository exploration you do, and targeted bounded checks stay allowed inline after it",
+    "Scouting is the only repository exploration you do. After it, an inline check is one command through the runner, answering one yes-or-no or one number in at most twenty lines read back; a second command on the same question goes to an agent.",
   ));
 
 test("B2 the verbose work is an agent's",
@@ -114,18 +132,75 @@ test("B3 a quick targeted edit stays in the orchestrator's hands",
   "the counterweight to B1: without it the mode fans out a one-line fix and pays an agent's latency for something already known",
   () => says("a quick targeted edit that needs no exploration"));
 
-test("B4 a check run inline is redirected and read back as a 5-line tail",
-  "the escape hatch that keeps B1 affordable: a suite run inline pastes thousands of lines into the context the mode exists to protect",
-  () => says("read back only a 5-line tail with the counts"));
+test("B4 a check run inline goes through the runner, read back as its tail and its EXIT= line, and every brief names the runner",
+  "the escape hatch that keeps B1 affordable: a suite run inline pastes thousands of lines into the context the mode exists to protect. #15 F9 and F10: the 5-line-tail sentence was on the page and coordinators and agents still read whole floods, and a `| tail` returned tail's exit 0 over a failing suite; the runner prints the exit itself, and the Codex half is in the rule because its exclusion rested on an unmeasured clipping hypothesis (09, D7)",
+  () => {
+    const said = says(
+      "Redirect every check you run yourself through the runner, `node \"${CLAUDE_SKILL_DIR}/scripts/capture-check.mjs\" --label <question> --ledger <file> -- '<command>'`, one ledger file under `$TMPDIR` for the run (its `--help` has the rest)",
+      "the whole output goes to a log under `$TMPDIR`, you read back its tail and its `EXIT=` line, and a pipeline's status is its failing stage's, not `tail`'s.",
+      "Every brief, Claude or Codex, names the runner by the path above for any command whose output may pass twenty lines, and the return quotes each run's `EXIT=` line.",
+    );
+    if (said !== true) return said;
+    return !/5-line tail/.test(flat) || "the page still asks for a 5-line tail read by hand";
+  });
 
 test("B5 the orchestrator never grades its own work",
   "self-review is the failure the whole composition is built against, and the orchestrator is the one agent with no one above it",
   () => says("verify: you never grade your own work, a fresh agent does"));
 
+test("B8 inline work is priced as its size times the calls left, and the section carries no tariff",
+  "#15 F21: the page priced agents and never the coordinator's own reads, which every later call re-reads; the price is a rule of proportion, and a token figure here would be a pooled median the page cannot keep true (C10)",
+  () => {
+    const said = says(
+      "What you read inline is re-read by every call after it: its cost is its size times the calls left in the session",
+      "so a 500-line diff read at the twentieth call of a hundred is read eighty more times, where an agent reads it once and returns thirty lines.",
+    );
+    if (said !== true) return said;
+    const section = text.split("## Your own hands")[1]?.split("\n## ")[0] ?? "";
+    const tariff = /\d[\d.,]*\s*[kKM]?\s*tokens\b/.exec(section);
+    return !tariff || `the section carries a token figure: ${tariff[0]}`;
+  });
+
+test("B9 the runner the page hands out runs as written: a flood comes back as a bounded tail with EXIT= last, a failing pipeline's exit is its failing stage's, and a second command on the same question is refused",
+  "#15 F9, F10 and F15 are behaviours, so the regression runs the page's own command line: a 5,000-line output read back whole, an exit 0 printed over a failing stage, or a second inline command on a question already asked, is the failure the sentence exists to stop",
+  () => {
+    const cmd = recipe("capture-check.mjs");
+    if (!cmd) return "the page names no `node \"${CLAUDE_SKILL_DIR}/scripts/capture-check.mjs\"` command";
+    if (!fs.existsSync(cmd.file)) return `the page names ${cmd.file}, which does not exist`;
+    for (const flag of ["--label", "--ledger"]) if (!cmd.args.includes(flag)) return `the page's runner command carries no ${flag}`;
+    const problems = [];
+    const ledgerDir = tempDir("orchestrate-ledger.");
+    const ledger = path.join(ledgerDir, "ledger.jsonl");
+    const flood = run(cmd.file, ["--label", "flood", "--ledger", ledger, "--", "seq 1 5000"]);
+    const again = run(cmd.file, ["--label", "flood", "--ledger", ledger, "--", "seq 1 3"]);
+    if (!/^ERROR=/m.test(again.stdout) || /^LOG=/m.test(again.stdout)) problems.push(`a second command on the same question ran: ${again.stdout.trim().split("\n").at(-1)}`);
+    const summary = run(cmd.file, ["--summary", "--ledger", ledger]);
+    if (!/^CHECKS=/m.test(summary.stdout)) problems.push(`--summary printed no CHECKS= line: ${summary.stdout.slice(0, 120)}`);
+    fs.rmSync(ledgerDir, { recursive: true, force: true });
+    const out = flood.stdout.replace(/\n+$/, "").split("\n");
+    // The page's bound is twenty lines read back in all, the runner's own lines included.
+    if (out.length > 20) problems.push(`a 5,000-line command printed ${out.length} lines, over the page's twenty`);
+    if (out.at(-1) !== "EXIT=0") problems.push(`the flood's last line is ${JSON.stringify(out.at(-1))}, not EXIT=0`);
+    const pipe = run(cmd.file, ["--label", "pipe", "--", "sh -c 'echo failing; exit 3' | tail -1"]);
+    const last = pipe.stdout.replace(/\n+$/, "").split("\n").at(-1);
+    if (last !== "EXIT=3") problems.push(`a pipeline whose first stage exits 3 ended ${JSON.stringify(last)}`);
+    if (pipe.status !== 3) problems.push(`the runner exited ${pipe.status} for a failing stage, not 3`);
+    const log = /^LOG=(.+)$/m.exec(flood.stdout)?.[1];
+    if (!log || !fs.existsSync(log)) problems.push(`no LOG= line naming a file: ${JSON.stringify(log)}`);
+    else {
+      if (fs.readFileSync(log, "utf8").split("\n").filter(Boolean).length !== 5000) problems.push("the log does not hold the whole output");
+      if (process.env.TMPDIR && !fs.realpathSync(log).startsWith(fs.realpathSync(process.env.TMPDIR))) problems.push(`the log is outside $TMPDIR: ${log}`);
+      fs.rmSync(log, { force: true });
+    }
+    const pipeLog = /^LOG=(.+)$/m.exec(pipe.stdout)?.[1];
+    if (pipeLog) fs.rmSync(pipeLog, { force: true });
+    return problems.length === 0 || problems.join("; ");
+  });
+
 test("B6 a failed agent is reported, never backfilled, and every finding keeps its author",
   "a silently reissued agent turns a measured composition into a claim, and an unattributed finding cannot be weighed against the agent that made it",
   () => says(
-    "report a failed agent and never backfill it",
+    "Report a failed agent and never backfill it.",
     "attributing every finding to the agent that produced it",
   ));
 
@@ -138,7 +213,7 @@ test("C1 one plan, or all of them",
 test("C2 the plan is shown and the run stops, with every right an agent needs, in words and not as field names",
   "rights declared per call are the sibling's guarantee, and they are worth nothing if the user first sees them in the transcript of an agent that already wrote; but a plan that recites `RIGHTS: write` and a run directory path at a person is machinery pointed at the one reader who cannot act on it (the owner read one and called it uninformative, 2026-09-09), so the rights have to survive in ordinary words and the field names have to go",
   () => says(
-    "Show the plan and stop",
+    "show the plan as a card of five rows and stop",
     "what each may write, that the agents reach the network and any you are keeping off it",
     "reports and artifacts land outside the repository, except a worktree agent's own tree",
     "Name no path and no header field",
@@ -173,9 +248,85 @@ test("C6 the plan states the pool and the user overrides it in words",
     "A cap the user sets in words (\"two Fable\"), or agrees to when the plan proposes one with its reason, replaces the default for this run; composition words (\"only codex\", \"no codex\") follow the sibling's table.",
   ));
 
-test("C7 every agent's return is retold to the user in one short paragraph, the same shape for both sides",
+test("C7 each phase is retold to the user in one short paragraph of verified changes, pending work and blockers, the same shape for both sides",
   "the five fields are the orchestrator's input, not the user's: pasted whole they read in the transcript as the coordinator's own words (observed on 0.10.0, and again on 0.11.1 after this rule shipped), and a Codex agent, whose only visible row is a Bash call and an exit code, otherwise reaches the user having said nothing at all; the retelling is written, not forwarded, which is why the ban names the field names and the paths that rode in with the block",
-  () => says("After any agent returns, Claude or Codex, write one short paragraph of your own, in the user's language and naming the agent by its model, in the same shape for both sides, the agent by name as the subject and what it did as the verb; the five fields are your own input, so never paste a five-field block, a header field name or a path into user-facing text."));
+  () => {
+    // #15 F16: a paragraph after every return is fourteen paragraphs a run; the cadence is the phase, and a
+    // paragraph carries only what a verifier confirmed, so an unverified return never reads as a success.
+    const said = says("At the end of each phase — a fan-out's returns, a verification round, the synthesis — write one short paragraph of your own, in the user's language, naming each agent by its model, in the same shape for both sides, the agent by name as the subject and what it did as the verb, carrying what a verifier confirmed, what is pending and what blocks; a return arriving alone earns no paragraph unless it is a failure or a question for the user; the five fields are your own input, so never paste a five-field block, a header field name or a path into user-facing text.");
+    if (said !== true) return said;
+    return !/After any agent returns/.test(flat) || "the page still asks for a paragraph after every return";
+  });
+
+test("C13 the plan is a card of five rows over agents the launcher registered, and an agent off the card is refused or not launched until an amendment is approved",
+  "#15 F13 and F14: the plan's ten elements were read as a wall and approved unread, and agents the plan never listed ran anyway (T7: 1.38M tokens unplanned); the card's five headings are what the user and the gate check, the launcher's refusal holds the Codex half without compliance, and the Claude half is the id in the description. The owner, 2026-09-27: an all-Claude plan skips the registration and still shows the card",
+  () => {
+    const problems = [];
+    const said = says(
+      "With a Codex agent in the plan, register every agent, Claude or Codex, through the sibling's launcher, `--plan --run-dir <run>` (its `--help` gives the rows), and build the card from what it prints: the rows and the `WORKERS=` and `CHECKING=` counts. An all-Claude plan skips the registration.",
+      "— work: what will be done; who: each agent by model name and role, and how many are workers and how many check their work; writes: what each may write",
+      "except a worktree agent's own tree, which is made and removed inside the repository, in a hidden folder;",
+      "; cost: the tokens by agent, and your own inline work beside them; checks: which agent verifies what, the critic, and for a design round the criterion that picks the survivors.",
+      "The launcher refuses a Codex agent the registered plan does not list, and a Claude agent the card does not list is one you do not launch: amend the plan (`--plan --amend` when it was registered), show the amendment and wait for a word, as for the plan.",
+      "Give it a description of the form \"<Model> <id>: <task in a few words>\", the id the card gave it, as a Codex agent's card carries \"Codex <short name> <id>\".",
+    );
+    if (said !== true) problems.push(said);
+    // The card is read by the user: the sentence that tells what it says carries no machinery (R1, 2026-09-27).
+    const card = flat.split("Then show the plan as a card of five rows")[1]?.split("Name no path and no header field")[0] ?? "";
+    for (const word of ["driver", ".claude"]) if (card.includes(word)) problems.push(`the card's sentence says ${JSON.stringify(word)}`);
+    // The flags the page hands over are the launcher's: a renamed or dropped one is a plan step that exits 2.
+    const launcher = path.join(SCRIPTS, "agent-run.mjs");
+    const help = run(launcher, ["--help"]).stdout ?? "";
+    for (const flag of ["--plan", "--run-dir", "--amend"]) if (!help.includes(flag)) problems.push(`the launcher's --help does not advertise ${flag}`);
+    // The counts the card shows are what --plan prints, not the coordinator's own tally.
+    const dir = tempDir("orchestrate-plan.");
+    const rows = "W1 | opus | implementer | live tree | 300000\nR1 | sol | cross-reviewer | nothing | 200000\nC1 | opus | completeness critic | nothing | unknown\n";
+    const plan = run(launcher, ["--plan", "--run-dir", path.join(dir, "run")], { input: rows });
+    const count = (k) => new RegExp(`^${k}=(\\d+)$`, "m").exec(plan.stdout)?.[1];
+    if (plan.status !== 0) problems.push(`--plan exited ${plan.status}: ${plan.stdout.trim().split("\n").at(-1)}`);
+    else if (count("WORKERS") !== "1" || count("CHECKING") !== "2") problems.push(`--plan printed WORKERS=${count("WORKERS")} CHECKING=${count("CHECKING")} for one implementer and two checkers`);
+    fs.rmSync(dir, { recursive: true, force: true });
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("C14 every return is read into the five fields before the synthesis, the answer is a linted draft naming every agent that ran, and the run is checked against the card",
+  "#15 F20a and F20b: returns reached the synthesis in shapes nobody parsed and agents that ran were never named; P13b: the answer carried paths, ids and exit mechanics (T5, T9); the linter reads the draft without reading intent, and an unparsed return stays unknown rather than becoming a finding",
+  () => says(
+    "Before the synthesis, read every return, Claude or Codex, into the five fields, each claim keeping the agent it came from; a return that does not parse is continued once for them, and after that its result is `unknown`.",
+    "Draft the answer into a file under your temporary directory and lint it with `node \"${CLAUDE_SKILL_DIR}/scripts/lint-draft.mjs\" --agents \"<Model> <id>, …\" --receipts <ledger> <file>` until it exits 0, `--agents` naming every agent that ran and `--receipts` the run's ledger (its `--help` lists the rules).",
+    "The answer names every agent that ran, or names it as dropped, and a success claim names the evidence behind it or says it is unverified.",
+    "Before it goes out, check the run against the card: every launch, every write and every dropped agent.",
+    "Your own inline reads, the runner's `--summary` of the run's ledger, stand beside the agents' tokens, and `unknown` where nothing counted them.",
+  ));
+
+test("C15 the linter the page hands out runs as written: a clean draft passes, and a path, an agent left unnamed or a success claim with no receipt fails",
+  "the page points at the linter's --help instead of restating its rules, so the regression is that the command the page writes exists and refuses what #15 names: machinery in the answer (P13b), an agent that ran and is never named (F20a), and a success claim resting on nothing (09, D14)",
+  () => {
+    const cmd = recipe("lint-draft.mjs");
+    if (!cmd) return "the page names no `node \"${CLAUDE_SKILL_DIR}/scripts/lint-draft.mjs\"` command";
+    if (!fs.existsSync(cmd.file)) return `the page names ${cmd.file}, which does not exist`;
+    for (const flag of ["--agents", "--receipts"]) if (!cmd.args.includes(flag)) return `the page's linter command carries no ${flag}`;
+    const problems = [];
+    const dir = tempDir("orchestrate-lint.");
+    const draft = (name, body) => { const f = path.join(dir, name); fs.writeFileSync(f, body); return f; };
+    const ledger = draft("ledger.jsonl", `${JSON.stringify({ label: "the orchestrate suite", exit: 0 })}\n`);
+    const agents = ["--agents", "Opus W1, Codex Sol W3", "--receipts", ledger];
+    const lint = (f) => run(cmd.file, [...agents, f]);
+    const clean = lint(draft("clean.md", "Opus W1 changed the two pages, Codex Sol W3 the launcher, and the orchestrate suite passed.\n"));
+    if (clean.status !== 0) problems.push(`a clean draft exited ${clean.status}: ${clean.stdout.trim()}`);
+    for (const [name, body, rule] of [
+      ["path.md", "Opus W1 and Codex Sol W3 left their notes in /Users/someone/Library/entrust/report.json.\n", "path"],
+      ["unnamed.md", "Opus W1 changed the two pages.\n", "agent-not-named"],
+      ["unsupported.md", "Opus W1 and Codex Sol W3 changed the pages, and everything passed.\n", "unsupported-success"],
+    ]) {
+      const red = lint(draft(name, body));
+      if (red.status !== 1 || !new RegExp(`^LINT=${rule}:`, "m").test(red.stdout)) problems.push(`${name}: exit ${red.status}, no LINT=${rule}: line`);
+    }
+    const help = run(cmd.file, ["--help"]);
+    if (help.status !== 0 || help.stdout.length < 200) problems.push(`--help exited ${help.status} with ${help.stdout.length} bytes`);
+    fs.rmSync(dir, { recursive: true, force: true });
+    return problems.length === 0 || problems.join("; ");
+  });
 
 test("C8 browser and end-to-end runs go to a Claude agent or a write agent with the browser grants",
   "Chromium needs rights a read agent does not have — the grants are a file written INTO the tree, which is the one thing that level never does, and egress being on at both levels now does not change it; the grants that do work are one section of parity.md and not something to rediscover per run",
@@ -249,7 +400,7 @@ test("E2 cross-review runs both directions, and each agent is a prompt agent wit
   "one-directional cross-review checks only one side's bias, and a reviewer given no schema answers in prose, which is not the five fields the synthesis reads",
   () => says(
     "a Claude implementer's diff to a Codex agent and a Codex agent's diff to a Claude agent",
-    "a cross-review agent is a prompt agent with the diff's path in `TASK:` and the template below in `OUTPUT_SCHEMA:`",
+    "a cross-review agent is a prompt agent with the diff's path in `TASK:`, beside it the requirement the diff answers, the unit that owns the change and the consumers of what it touched, and the template below in `OUTPUT_SCHEMA:`; a valid change in the wrong unit is a finding.",
   ));
 
 test("E3 the composition table is linked at its anchor",
@@ -267,7 +418,7 @@ test("E4 the three bound rows: alive at once, the top pair, the Codex write agen
 test("E5 the three scaling rows: simple, comparison, complex",
   "the agent count is the decision a coordinator makes first and reasons about least; without the bands a simple task gets a panel and a complex one gets a single agent",
   () => shows(
-    /^\| simple task \| 1 agent \|$/m,
+    /^\| simple task \| 1 worker; the completeness critic beside it, not counted, and its verifier is you under the redirect rule or one agent when the check cannot run there \|$/m,
     /^\| comparison or design \| 2 to 4 agents \|$/m,
     /^\| complex \| 5 agents or more, launched in batches inside the alive cap \|$/m,
   ));
@@ -283,12 +434,12 @@ test("E6 the writer may run the suite, but the deciding evidence comes from else
 
 // ------------------------------------------------------------------ F: mechanism and verification
 
-test("F1 a Codex agent is a background Agent call of the shipped codex-agent type, and the Workflow signature names what a script may still do",
+test("F1 a Codex agent is one Agent call of the shipped codex-agent type, and the Workflow signature names what a script may still do",
   "Workflow is for the chain a script must decide; a batch of independent Claude agents runs as Agent calls so each agent's end reaches the orchestrator (measured 2026-09-08: a Workflow hid an agent's exit for nine minutes); and the wrapper is the shipped agent entrust:codex-agent, which is what the agent map shows (measured 2026-09-12: only an Agent call has a card there, Stop on it reaches the driver, a message continues it), so a page that sent the agent anywhere else would lose the card or double the wrapper's context",
   () => {
     const prose = says(
       "authorises Workflow",
-      "A Codex agent is one background Agent call, the sibling's `One call` verbatim",
+      "A Codex agent is one Agent call, the sibling's `One call` verbatim",
       "`<DIR>` is the agent's directory the launcher makes beside the report, `agent/` next to `<REPORT>`, holding `prompt.txt`, `out.json`, `err.txt` and the driver's `exit` marker, and `<REPORT>` is `<run>/<agent>/report.json` under the run directory above, which the launcher and the driver create",
       "The wrapper's completion notification is when you read its status lines, and the report after a `PATH=own`",
       "The wrapper is an `agentType` of its own, `entrust:codex-agent`",
@@ -310,15 +461,17 @@ test("F2 the nine verification bullets, one line each",
     const section = text.split("## Verification")[1]?.split("\n## ")[0] ?? "";
     const bullets = section.split("\n").filter((l) => l.startsWith("- "));
     if (bullets.length !== 9) return `the Verification list has ${bullets.length} bullets, not nine`;
+    // The owner, 2026-09-27 (option B): "could not check" is not "false", so the old default must not return.
+    if (/defaults to `refuted`|`refuted` when (it is )?uncertain/.test(section)) return "a refuter defaults to refuted when uncertain again";
     return shows(
       /^- Scout inline first: the work-list is yours, before any fan-out\.$/m,
-      /^- Critique the split before the fan-out: a top-row agent reads the decomposition, not the subject, for what the cut lost, what the wording added, which items are two and which the fan-out's rights cannot decide; twenty agents on a bad split agree and are all wrong \(measured [\d-]+: it caught two claims true at one release and false at the next, and they never reached the fan-out\)\.$/m,
+      /^- Critique the split before the fan-out: a top-row agent reads the decomposition, not the subject, for what the cut lost, what the wording added, which items are two and which the fan-out's rights cannot decide; twenty agents on a bad split agree and are all wrong \(measured [\d-]+: it caught two claims true at one release and false at the next, and they never reached the fan-out\)\. It returns the corrected split as a file under its temporary directory, naming each unit's owner and every interface two units share with its one owner\. No worker brief exists before that file: each is written from it and names its path, and before a worker launches you check the files and interfaces its brief touches against the file's owners\.$/m,
       /^- (Open|Read) one assembled brief whole before (the|any) fan-out; check its input paths in the agent's planned tree, its item count and each quoted claim against its source\.$/m,
-      /^- Adversarial verify: a refuter defaults to `refuted` when it is uncertain, and a finding is (one|what) that changes correctness or a stated requirement, the rest (its|in) `open`\.$/m,
+      /^- Adversarial verify: a refuter returns `refuted` when its check ran and contradicted the claim and `unknown` when its decisive check could not run, never `refuted` for want of evidence\. It attacks one of the dedup-and-rank's one-claim clusters and keeps its origins, and a prerequisite the refuters share runs once, its receipt in each brief\. A finding is (one|what) that changes correctness or a stated requirement, the rest (its|in) `open`\.$/m,
       /^- Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters\.$/m,
       /^- Read a unanimous fan-out as evidence about the prompt first: open one return whole before you trust the tally \(measured [\d-]+: nineteen of twenty verdicts answered one broken path in every prompt\)\.$/m,
       /^- Judge panel for a design task: a verdict (missing|without|lacking) its decisive check is `unknown` in `result`; name the missing check in `open`\. Use the sibling's `EXPECT:` rule for a Codex check\.$/m,
-      /^- Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
+      /^- Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. What it reads is the linted draft, frozen with a manifest beside it: `shasum -a 256` over the draft and every artifact it cites\. The critic returns the manifest's sha256 as the first line of its `evidence`\. Before the answer goes out, compute the manifest's sha256 again and compare it with the critic's, and run `shasum -a 256 -c` on the manifest: a different digest or a failed check voids the verdict, and the critic reads the changed part again\. What goes out is the draft's text\. A `not done` verdict means you fix the answer or name the gap in it\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
       /^- No silent caps: name every agent, check or item you dropped\.$/m,
     );
   });
@@ -330,9 +483,9 @@ test("F3 two rounds of fix and cross-review, then escalate",
 test("F4 every row of the Result table",
   "this table is read at the one moment judgement is worst, when an agent has just failed; a missing row is a relaunch that duplicates a live run, or a gate verdict retried until it costs real money",
   () => shows(
-    /^\| `FILE=missing`, or `PATH=taken` \| `DRIVER_EXIT` is the driver's own status: with one, this run is over and `<DIR>\/err\.txt` says why — a refused report path, an unusable parent, a path another run published to first — so read `<DIR>\/out\.json` for a report a turn wrote where publication failed, otherwise treat the result as unknown and relaunch once, same rights, under a fresh report path where work remains\. With `DRIVER_EXIT=unknown` nothing ended it: `kill -0 <pid>` with the pid on the first line of the stderr file says whether it is still running \|$/m,
+    /^\| `FILE=missing`, or `PATH=taken` \| `DRIVER_EXIT` is the driver's own status: with one, this run is over and `<DIR>\/err\.txt` says why — a refused report path, an unusable parent, a path another run published to first — so read `<DIR>\/out\.json` for a report a turn wrote where publication failed, otherwise treat the result as unknown and relaunch once, same rights, under the agent's next report path where work remains\. With `DRIVER_EXIT=unknown` nothing ended it: `kill -0 <pid>` with the pid on the first line of the stderr file says whether it is still running \|$/m,
     /^\| a stderr file naming no driver \| report it; no relaunch fixes an install \|$/m,
-    /^\| `exitCode: 3`, a cut \| read the partial; if the work is unfinished, continue that thread once with `RESUME:`, under a report path of its own \|$/m,
+    /^\| `exitCode: 3`, a cut \| read the partial; if the work is unfinished, continue that thread once with `RESUME:`, under the agent's next report path \|$/m,
     /^\| `exitCode: 10` \| a held lock or a busy thread: read `error` and the stderr file, wait for the holder, then run again; not a retry \|$/m,
     /^\| exit 2 or 4 \| with `turnStatus: null` no turn ran, or it was aborted: read `error` and the stderr file\. Exit 2 WITH a `turnStatus` is a turn the server rejected: read `turnError`, the commands and any answer before relaunching, or a paid turn is thrown away\. A `DRIVER_EXIT=2` beside `PATH=taken` is neither: the path was already taken, nothing of this run reached the file, and the report there is an earlier run's \|$/m,
     /^\| exit 4 with a `turnStatus` \| the server died mid-turn or the report was not delivered: the report is complete, read it as a gate verdict \|$/m,
@@ -344,7 +497,7 @@ test("F5 the wrapper's description names the agent by its model",
   "a Codex agent surfaces as the wrapper's card, so without a description the user reads a generic agent where a Claude agent shows its task; the two sides stop looking like one run, which is the whole point of naming it there, and the model is the name a person can use, where the word this page calls it by is one they cannot",
   () => says("The Agent call carries a `description` of the form \"Codex <short name> <id>: <task in a few words>\", so the card the user sees names the agent, its vendor and its task, not the command line."));
 
-test("F6 background agents are waited for by their notifications and never blocked on, a Codex run's end is its poll's DONE= line, and a headless turn never ends with an agent alive",
+test("F6 the one agent you wait for is a foreground call, background agents are waited for by their notifications and never blocked on, a Codex run's end is its poll's DONE= line, and a headless turn never ends with an agent alive",
   "Claude Code 2.1.277 removed the tool the page used to block on (E50), and the replacement its changelog names, the task's output file, is an agent's whole transcript; a background agent's return arrives as its message and then its notification with nothing called (measured 2026-09-26), a poll on the driver's exit marker notifies with one DONE= line even after a wrapper handed back RUNNING= (2026-09-27), an interactive session takes each completion as a new turn (2026-09-27), and a headless session kills its background tasks with the turn (2026-09-08), so there the wait is a foreground call, whose hand-back arrives inside the turn (2026-09-17)",
   () => says(
     "Wait for the agents you launch in the background, Claude or Codex, never on them: each one's return arrives on its own, its message first and its completion notification after (measured 2026-09-26).",
@@ -352,8 +505,64 @@ test("F6 background agents are waited for by their notifications and never block
     "For a Codex agent in the background, also launch the poll `until [ -s \"<DIR>/exit\" ]; do sleep 5; done; echo DONE=<id>` as a background Bash task: the wrapper's hand-back and the poll's `DONE=<id>` line both arrive as notifications, the poll's says the run has ended even after a `RUNNING=` hand-back, and you read the report file after it (measured 2026-09-27).",
     "In an interactive session you may end your turn with agents alive: they go on, and each completion arrives as a turn of its own (measured 2026-09-27).",
     "A headless session ends with the turn and its background tasks are killed with it (measured 2026-09-08), so there never end a turn with an agent alive: launch each agent in the foreground, and its hand-back arrives inside the same turn (measured 2026-09-17).",
-    "because agents run side by side and you work while they do (in a headless session every agent call is foreground):",
+    "in the background when agents run side by side and you work while they do, in the foreground for the one agent you wait for and for every agent in a headless session.",
   ));
+
+test("F10 the critic's manifest, made as the page writes it, catches a changed cited artifact, and the digest comparison catches a manifest rewritten after the change",
+  "#15 F4 and P8b: the critic read one version and another went out (T3, T8 post-critic corrections); a digest over the draft and every artifact it cites is the version link. `shasum -c` alone passes a manifest rewritten over the changed files, so the send rule also compares the manifest's digest with the one the critic returned (R1, 2026-09-27), and this case shows why both are needed",
+  () => {
+    // The two commands are read out of the critic bullet, so a page that changed them is what runs here.
+    const bullet = lines.find((l) => l.startsWith("- Completeness critic")) ?? "";
+    const spans = [...bullet.matchAll(/`([^`]+)`/g)].map((m) => m[1].trim().split(/\s+/));
+    const make = spans.find((a) => /sum$/.test(a[0]) && !a.includes("-c"));
+    const check = spans.find((a) => /sum$/.test(a[0]) && a.includes("-c"));
+    if (!make || !check) return "the critic bullet names no digest command and no check of it";
+    if (spawnSync(make[0], [...make.slice(1), "/dev/null"]).status !== 0) return skip(`no ${make[0]} on this machine`);
+    const dir = tempDir("orchestrate-critic.");
+    const draft = path.join(dir, "draft.md"), cited = path.join(dir, "evidence.txt"), manifest = path.join(dir, "manifest.sha256");
+    fs.writeFileSync(draft, "Opus W1 changed two pages.\n");
+    fs.writeFileSync(cited, "all 70 passed\n");
+    const made = spawnSync(make[0], [...make.slice(1), draft, cited], { encoding: "utf8" });
+    fs.writeFileSync(manifest, made.stdout);
+    const problems = [];
+    if (made.stdout.trim().split("\n").length !== 2) problems.push(`the digest command made ${made.stdout.trim().split("\n").length} manifest lines for two files`);
+    if (spawnSync(check[0], [...check.slice(1), manifest]).status !== 0) problems.push("the manifest does not verify the draft it was made on");
+    const digest = () => spawnSync(make[0], [...make.slice(1), manifest], { encoding: "utf8" }).stdout.split(/\s/)[0];
+    const critics = digest();
+    fs.appendFileSync(cited, "one more line\n");
+    if (spawnSync(check[0], [...check.slice(1), manifest]).status === 0) problems.push("a changed cited artifact passed the manifest check");
+    // The manifest rewritten over the changed files: its own check passes, and only the digest comparison sees it.
+    fs.writeFileSync(manifest, spawnSync(make[0], [...make.slice(1), draft, cited], { encoding: "utf8" }).stdout);
+    if (spawnSync(check[0], [...check.slice(1), manifest]).status !== 0) problems.push("the rewritten manifest does not pass its own check, so this case no longer shows the gap");
+    if (digest() === critics) problems.push("the rewritten manifest has the digest the critic returned");
+    if (!/compare it with the critic's/.test(bullet)) problems.push("the critic bullet no longer compares the manifest's digest with the critic's");
+    fs.rmSync(dir, { recursive: true, force: true });
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("F11 a continuation or a relaunch goes under the agent's next report path, and the launcher admits that path for a listed agent once the run before it has ended",
+  "#15 F14's refusal must not stop the listed agent's own continuation: with a plan registered, a RESUME: after a cut, a relaunch after PATH=taken and every advisor question after the first would each have become a stop for an amendment (R3, 2026-09-27, reproduced); the page's path form and the launcher's matcher have to be the same form",
+  () => {
+    const said = says("A continuation or a relaunch of the same agent goes under its next report path, `<run>/<agent>-<n>/report.json` with n counting from 2, once the run before it has ended; under a registered plan the launcher admits that form for a listed Codex agent and refuses it while the run before it is still going.");
+    if (said !== true) return said;
+    if (/report path of its own|a fresh report path/.test(flat)) return "the page still sends a continuation to a report path of its own";
+    const launcher = path.join(SCRIPTS, "agent-run.mjs");
+    const dir = tempDir("orchestrate-next.");
+    const runDir = path.join(dir, "run");
+    const problems = [];
+    const plan = run(launcher, ["--plan", "--run-dir", runDir], { input: "S1 | sol | cross-reviewer | nothing | 200000\n" });
+    if (plan.status !== 0) { fs.rmSync(dir, { recursive: true, force: true }); return `--plan exited ${plan.status}: ${plan.stdout.trim()}`; }
+    const prompt = "MODEL: sol\nTASK: review the diff\n";
+    const next = (n) => run(launcher, ["--new", "--report-file", path.join(runDir, n === 1 ? "S1" : `S1-${n}`, "report.json")], { input: n === 1 ? prompt : `RESUME: last\n${prompt}` });
+    if (next(1).status !== 0) problems.push("the listed agent's first report path was refused");
+    const early = next(2);
+    if (early.status === 0) problems.push("S1-2 was admitted while S1 had not ended");
+    fs.writeFileSync(path.join(runDir, "S1", "agent", "exit"), "0\n");
+    const later = next(2);
+    if (later.status !== 0 || !/^PROMPT=/m.test(later.stdout)) problems.push(`S1-2 after S1 ended: exit ${later.status}, ${later.stdout.trim().split("\n").at(-1)}`);
+    fs.rmSync(dir, { recursive: true, force: true });
+    return problems.length === 0 || problems.join("; ");
+  });
 
 test("F9 the page names no TaskOutput",
   "Claude Code 2.1.277 removed TaskOutput and a session on it or later lists no such tool (E50; measured 2026-09-26 and 2026-09-27), so any sentence that names it sends the orchestrator to a tool it does not have",
@@ -374,12 +583,33 @@ test("G1 the five template lines, their indentation, the inline schema, and no B
       /^ {4}evidence: {2}what ran, with counts; a test without its count is not evidence$/m,
       /^ {4}artifacts: paths$/m,
       /^ {4}open: {6}questions and risks$/m,
-      /^ {4}\{"type":"object","additionalProperties":false,"required":\["status","result","evidence","artifacts","open"\],"properties":\{"status":\{"type":"string","enum":\["done","partial","blocked"\]\},"result":\{"type":"string"\},"evidence":\{"type":"array","items":\{"type":"string"\}\},"artifacts":\{"type":"array","items":\{"type":"string"\}\},"open":\{"type":"array","items":\{"type":"string"\}\}\}\}$/m,
     );
     if (raw !== true) problems.push(raw);
+    // The schema line is the file the sibling ships, byte for byte once minified: a coordinator copies either.
+    const file = path.join(SCRIPTS, "..", "schemas", "five-fields.schema.json");
+    if (!fs.existsSync(file)) problems.push(`the shipped schema ${file} does not exist`);
+    else {
+      const shipped = JSON.stringify(JSON.parse(fs.readFileSync(file, "utf8")));
+      const line = /^ {4}(\{"type":"object".*)$/m.exec(text)?.[1];
+      if (line !== shipped) problems.push(`the page's schema line differs from ${path.basename(file)}: ${line} against ${shipped}`);
+    }
     const prose = says("and send no `BRIEF:` line");
     if (prose !== true) problems.push(prose);
     return problems.length === 0 || problems.join("; ");
+  });
+
+test("G8 a Codex agent names the shipped five-field schema file, and a field past its cap goes whole into a file with a summary left in the field",
+  "#15 F20b: a coordinator wrote the schema by hand each run and once handed the review schema instead; P11a: returns overran \"at most 30 lines\"; the shipped file is the easy path, its caps are checked by the driver, and the overflow keeps the whole text recoverable (09, D16)",
+  () => {
+    const said = says(
+      "A Codex agent's `OUTPUT_SCHEMA:` line names the five-field schema file the sibling ships, the path its `OUTPUT_SCHEMA:` row gives, and you read the fields from `answerJson` in its report file.",
+      "A field past the schema's cap goes whole into a file under the agent's temporary directory, named in `artifacts`, and the field keeps a summary with every material finding.",
+      "A brief that wants a longer return names a copy of the schema file with larger caps.",
+    );
+    if (said !== true) return said;
+    const schema = JSON.parse(/^ {4}(\{"type":"object".*)$/m.exec(text)?.[1] ?? "{}");
+    const caps = ["result", "evidence", "artifacts", "open"].filter((f) => !("maxLength" in (schema.properties?.[f] ?? {}) || "maxItems" in (schema.properties?.[f] ?? {})));
+    return caps.length === 0 || `the schema line caps no size on: ${caps.join(", ")}`;
   });
 
 test("G3 the run directory: its path, why it needs no .gitignore, kept after the task, and what a Codex agent's artifacts are",
@@ -411,7 +641,7 @@ test("G5 a read agent is never asked to write: its artifact is its report",
 test("G6 the launcher and the driver make the run directory, the coordinator writes nothing there, and a Claude agent's artifact is its text",
   "a headless session refuses a Write, a `mkdir` and a redirect under the plugin's data directory as a sensitive file, with no prompt anyone can answer, so a coordinator told to create the directory itself stops at the first agent; the driver, handed the path as an argument, is not refused (measured 2026-09-08), and a Claude agent pointed at that directory hits the same wall the coordinator did",
   () => says(
-    "The launcher and the driver create it, through `--report-file`, and it is what they make of it: a report per agent and, beside it, the launcher's `agent/` with the four files of the run; nothing else is written there",
+    "The launcher and the driver create it, through `--report-file`, and it is what they make of it: a report per agent and, beside it, the launcher's `agent/` with the four files of the run, and the plan the launcher registered; nothing else is written there",
     "Never run `mkdir`, Write or a shell redirect under that data directory yourself, because a headless session refuses each of them as a sensitive file with no prompt anyone can answer, while a subprocess handed the same path as an argument writes it unopposed (measured 2026-09-08)",
     "A Claude agent's artifact is its returned text, and a file it must leave goes under `$TMPDIR` with the path in that text",
   ));
@@ -450,10 +680,16 @@ test("C10 the plan states expected tokens by tier and role, from comparable runs
 
 test("C11 the commands each check needs are checked against planned rights and environment before the plan, and unmet prerequisites go into the plan",
   "a review turn spent 2.65 M tokens and left its decisive check unrun because the sandbox could not complete it (sol-n2, 2026-09-17), and ten of thirteen agents in one run ended at exit 6 on declined requests; a prerequisite found before launch is a line in the plan, one found after it is a paid turn; the wording reassigns nothing after a refusal, which the sibling forbids",
-  () => shows(
-    /For (each|every) agent, (check|match|list) the required commands against its planned rights and environment/,
-    /Probe uncertain prerequisites cheaply; put unmet prerequisites in the plan/,
-  ));
+  () => {
+    const found = shows(
+      /For (each|every) agent, (check|match|list) the required commands against its planned rights and environment/,
+      /Probe uncertain prerequisites cheaply; put unmet prerequisites in the plan/,
+    );
+    if (found !== true) return found;
+    // #15 F11 and F19: what the coordinator found reached no brief, and Codex agents wrote to /tmp and fought a
+    // VCS daemon; the finding goes into the body line the sibling's Prompt shape defines.
+    return says("and write what you found into a Codex agent's `ENVIRONMENT:` line: what is staged and where, and the daemon or socket a tool needs with the command to run instead.");
+  });
 
 test("D9 the bulk count is derived from the units and the plan says why that many",
   "eighty agents were launched on the word \"bigger\" against a page that already said six alive (2026-09-11) and a wave of fifty-one was stopped by the user for its cost (2026-09-07, before any cap); a derived count is one the user can weigh before the launch, and the rule claims nothing about yield, which no run has measured",
@@ -550,6 +786,40 @@ test("E9 the roles reference exists with its seven columns, at least fifteen rol
     return problems.length === 0 || problems.join("; ");
   });
 
+test("E10 the roles reference carries what #15 and #16 asked of each role's brief and return",
+  "the fix run of 2026-09-27 (07b D7, D10-D12, D19-D23, as amended by 09): each clause is what a brief writer reads off the row — the runner for a verbose command (F9), the split as a file every brief names (F6, Q3a), refuters on clusters with unknown for an unrun check (F5, P8d, the owner's option B), the critic's digest (F4), the cross-review's owning unit (Q3c), the strong reader's stop and its missing-input state (Q3e), the prober's frozen capture (Q3g), the criterion declared before the proposers (Q3j), fixed inputs and unknowns for measurers (Q3k), and the standing advisor from the first decision (F1)",
+  () => {
+    const roles = read("skills/orchestrate/references/roles.md");
+    const flatRoles = roles.replace(/\s+/g, " ");
+    const row = (name) => roles.split("\n").find((l) => l.startsWith(`| ${name} |`)) ?? "";
+    const problems = [];
+    const want = [
+      [null, "Every brief whose commands may print more than twenty lines names the runner, the page's `scripts/capture-check.mjs`, by its absolute path, and the agent quotes each run's `EXIT=` line in its `evidence`."],
+      ["split critic", "the corrected split as a file under its temporary directory, naming each unit's owner and every shared interface's one owner; every worker brief names that file"],
+      ["advisor, standing", "under `/entrust:advisor`, before the run's first decision; the workers' plan names it"],
+      ["cross-reviewer", "against the requirement, the owning unit and its consumers, all named in the brief; a valid change in the wrong unit is a finding"],
+      ["refuter", "`refuted` when its check ran and contradicted the claim, `unknown` when its decisive check could not run"],
+      ["refuter", "a shared prerequisite runs once, by one agent, and its receipt goes into every refuter's brief"],
+      ["strong reader", "the decision the answer feeds and the evidence that ends the read; it stops at that evidence"],
+      ["strong reader", "a negative result told apart from an input it could not reach"],
+      ["live prober", "it takes its baseline capture before any write and never while a writer runs, and freezes it as a file with its sha256, the revision, the mode, the platform, the control it is compared with and the time"],
+      ["blind proposer", "after the plan has named the criterion that selects the survivors"],
+      ["judge", "the final verdict by the criterion the plan named, which its brief quotes"],
+      ["dedup-and-rank", "merges a wave's returns into clusters of one claim each, keeps every origin on its cluster"],
+      ["dedup-and-rank", "before the refutation of a wave's claims"],
+      ["completeness critic", "the verdict, the manifest's sha256 and the missing items"],
+      ["measurer", "a script over inputs fixed by path and digest, re-runnable by anyone who has them"],
+      ["retrospective analyst", "each incident with its trace address, and `unknown` where the trace has none"],
+    ];
+    for (const [name, phrase] of want) {
+      const where = name ? row(name) : flatRoles;
+      if (!where) problems.push(`no row for ${name}`);
+      else if (!where.includes(phrase)) problems.push(`${name ?? "the preamble"} no longer says: ${JSON.stringify(phrase)}`);
+    }
+    if (/`refuted` when uncertain/.test(roles)) problems.push("the refuter row still defaults to refuted when uncertain");
+    return problems.length === 0 || problems.join("; ");
+  });
+
 // ------------------------------------------------------------------ I: the foreman (plugins/entrust/research/2026-09-26-coordinator-practices/)
 
 const FOREMAN = "skills/orchestrate/references/foreman.md";
@@ -605,6 +875,14 @@ test("I8 the roles reference has a foreman row in the strong tier that writes no
     if (!/\[foreman\.md\]\(foreman\.md\)/.test(row)) problems.push("no link to foreman.md");
     return problems.length === 0 || problems.join("; ");
   });
+
+test("I9 the foreman's brief carries the corrected split's file and the runner's path, and every worker brief names both",
+  "the foreman writes the worker briefs, so the split critic's file (#16 Q3a: no brief before the critique) and the runner (#15 F9: floods read whole) reach a worker only if the foreman's own brief carries them",
+  () => foremanSays(
+    "the run directory, the corrected split's file, the runner's absolute path and what you want back",
+    "Write every brief self-contained, from the corrected split's file and naming its path",
+    "Name the runner by its absolute path in every worker brief, Claude or Codex, for any command whose output may pass twenty lines, and read the worker's `EXIT=` line as that command's verdict.",
+  ));
 
 // ------------------------------------------------------------------ the schema, and the links
 

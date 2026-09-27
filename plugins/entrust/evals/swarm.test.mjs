@@ -116,6 +116,20 @@ test("U2 the five fields' schema on the page parses, is strict, and names the fi
     return problems.length === 0 || problems.join("; ");
   });
 
+test("U3 the page's schema line is the five-field file the codex skill ships, byte for byte once minified, caps included",
+  "#15 P11a: returns overran their bound, so the shipped schema caps each field and the driver enforces the caps (D16); a swarm brief copies this line into its OUTPUT_SCHEMA: file, and an uncapped copy here is a swarm whose returns nothing bounds",
+  () => {
+    const file = path.join(ROOT, "skills", "codex", "schemas", "five-fields.schema.json");
+    if (!fs.existsSync(file)) return `the shipped schema ${file} does not exist`;
+    const shipped = JSON.stringify(JSON.parse(fs.readFileSync(file, "utf8")));
+    const line = /^ {4}(\{"type":"object".*)$/m.exec(text)?.[1];
+    if (line !== shipped) return `the page's schema line differs from ${path.basename(file)}: ${line} against ${shipped}`;
+    // The negative half: the file and the line drifting back to uncapped together would still be equal.
+    const props = JSON.parse(line).properties ?? {};
+    const uncapped = ["result", "evidence", "artifacts", "open"].filter((f) => !("maxLength" in (props[f] ?? {}) || "maxItems" in (props[f] ?? {})));
+    return uncapped.length === 0 || `the schema line caps no size on: ${uncapped.join(", ")}`;
+  });
+
 test("L1 the launch line, the run layout the cleanup expects, the summary outside the run, the cap of fifty, the background task off the agent map, and the queue mode",
   "a swarm whose agents sat one level below the run left the run kept forever by the cleanup, and a summary inside the run broke the orchestrate page's promise that only the launcher and the driver write there (both shown 2026-09-18); the run layout is orchestrate's, carried here because the page loads codex alone",
   () => {
