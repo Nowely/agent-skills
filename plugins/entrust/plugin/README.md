@@ -232,12 +232,12 @@ carries no stability promise — hence the pinned schema and the fidelity suite.
 
 ```bash
 codex app-server generate-json-schema --out <tmp-new>/
-git archive 6bf21e6 plugins/codex-delegate/schema-<old-version> | tar -x --strip-components=2 -C <tmp-old>/
+git archive b5c1b81 plugins/entrust/schema-<old-version> | tar -x --strip-components=2 -C <tmp-old>/
 diff -r <tmp-old>/schema-<old-version>/ <tmp-new>/
 ```
 
 Read the diff for anything structural. Commit `<tmp-new>/` as `plugins/entrust/schema-<new-version>/` in a commit of its
-own: that commit holds the full tree the next upgrade diffs against, so replace `6bf21e6` above with its
+own: that commit holds the full tree the next upgrade diffs against, so replace `b5c1b81` above with its
 hash — and the path beside it, which commits made before the plugin was renamed spell differently.
 `ENTRUST_SCHEMA_DIR=schema-<new-version> node plugins/entrust/evals/conformance.test.mjs` validates it
 while `schema-<old-version>/` is still the pinned one; once that is green, move `PINNED_CODEX`, prune the
@@ -269,7 +269,7 @@ package.json                     private; the Node floor
                                  pinned protocol schema; the driver reads none of them at run time, it
                                  names the pinned version itself. The full generated tree is not kept
                                  here: the commit named in the upgrade recipe holds the last one
-                                 (6bf21e6 for 0.153.4), and the recipe diffs the next regeneration
+                                 (b5c1b81 for 0.155.1), and the recipe diffs the next regeneration
                                  against it.
 ```
 

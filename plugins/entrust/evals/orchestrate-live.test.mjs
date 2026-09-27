@@ -303,8 +303,9 @@ const runDirs = (scratch) => {
   return out;
 };
 
-// What the page now promises a run directory is: agent directories, one report.json in each, and nothing
-// else — the driver publishes those files and the coordinator writes there at all. Every deviation is
+// What the page now promises a run directory is: agent directories, one report.json in each and, beside it,
+// the launcher's agent/ with the four files of the run (prompt.txt, out.json, err.txt, exit), and nothing
+// else — the launcher and the driver publish those files and the coordinator writes there not at all. Every deviation is
 // named rather than counted, because each has a different cause: a file at the run level is a
 // coordinator that wrote where its own tools are refused, an agent directory with no report.json is an agent
 // that never published, and a file beside a report is a redirect the page sends to $TMPDIR.
@@ -321,8 +322,14 @@ function runDirProblems(dirs) {
       let inner = [];
       try { inner = fs.readdirSync(path.join(run, s.name)); } catch (e) { problems.push(`${path.basename(run)}/${s.name} cannot be read: ${e.message}`); continue; }
       if (!inner.includes("report.json")) problems.push(`${path.basename(run)}/${s.name} has no report.json: ${inner.join(", ") || "empty"}`);
-      const beside = inner.filter((n) => n !== "report.json");
+      const beside = inner.filter((n) => n !== "report.json" && n !== "agent");
       if (beside.length) problems.push(`${path.basename(run)}/${s.name} holds ${beside.join(", ")} beside report.json`);
+      if (inner.includes("agent")) {
+        let four = [];
+        try { four = fs.readdirSync(path.join(run, s.name, "agent")); } catch (e) { problems.push(`${path.basename(run)}/${s.name}/agent cannot be read: ${e.message}`); continue; }
+        const extra = four.filter((n) => !["prompt.txt", "out.json", "err.txt", "exit"].includes(n));
+        if (extra.length) problems.push(`${path.basename(run)}/${s.name}/agent holds ${extra.join(", ")} beside the launcher's four files`);
+      }
     }
   }
   return problems;
@@ -471,7 +478,10 @@ function planProblems({ text, toolUses, scratch, head0 }) {
   // reads nothing at all on a Russian plan and silently changes its own verdict. Measured: "Я сам работаю
   // на Fable как координатор." was not excluded here and counted as a second Fable agent, failing a cap the
   // plan honoured. Each alternation therefore carries the stems of the languages this plugin is used in.
-  const isAgent = (l) => !/under fable|fable session|orchestrator|coordinator|powered by|you are|координ|оркестр|под fable|сам работаю|эта сессия|текущая сессия|я на fable|вне пула/i.test(l);
+  // A plan's own statement of the caps ("the limits are one Fable and one Astra at a time", "uses neither
+  // Fable nor Astra") is not an agent either. Measured 2026-09-27 on that day's release candidate: a plan that used
+  // neither and said so was failed for two Fable agents in one wave, both of them that sentence's words.
+  const isAgent = (l) => !/under fable|fable session|orchestrator|coordinator|powered by|you are|координ|оркестр|под fable|сам работаю|эта сессия|текущая сессия|я на fable|вне пула|limits? (are|is)|caps? (are|is)|at a time|neither fable|ни fable|предел|лимит/i.test(l);
   const header = rows[0] ? rows[0].split("|").map((c) => c.trim().toLowerCase()) : [];
   const waveCol = header.findIndex((c) => /^(wave|stage|phase|step|order|round|batch|when|волна|этап|фаза|шаг|порядок|очередь|раунд|когда)$/.test(c));
   const groupOf = (l) => (waveCol >= 0 ? (l.split("|")[waveCol] ?? "").trim() : "");
