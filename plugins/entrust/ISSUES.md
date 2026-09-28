@@ -337,3 +337,93 @@ with `"waitMs":1`.
 does not guarantee: a refusal that spans a clock tick records 1 ms, and the macOS jobs fail intermittently with
 nothing wrong in the driver. It should assert that the refusal did not wait, for example that `waitMs` is far below
 the approval timeout, rather than an exact 0.
+
+## E77. After a compaction, Claude Code keeps only the first 5,000 tokens of `codex` and `orchestrate`, and their last sections are lost for the rest of the session
+
+**Evidence, level 3.** Claude Code's skills page: after auto-compaction it "re-attaches the most recent invocation of
+each skill after the summary, keeping the first 5,000 tokens of each". `plugins/entrust/plugin/skills/codex/SKILL.md`
+is 5,510 words in 414 lines and `orchestrate/SKILL.md` 5,516 words in 165 lines. In the session of
+`plugins/terse/research/2026-09-28-vendor-guides/` both were re-attached marked "skill content truncated for
+compaction": `codex` 0.21.0 ended at line 269 after 3,415 words, so "Prompt shape" (`codex/SKILL.md:357`), "What the
+user reads" (`:380`), "Traps" (`:390`) and "References" (`:398`) were not in context; `orchestrate` 0.20.0 ended at
+line 143 of 156 after 3,416 words. At HEAD `orchestrate` has grown, and "Verification" (`orchestrate/SKILL.md:124`)
+and "The agent's return" (`:150`) lie past the same word count (level 2 for HEAD).
+
+**Check.** `wc -w plugins/entrust/plugin/skills/{codex,orchestrate}/SKILL.md` prints 5510 and 5516; a page past about
+3,400 words loses its tail after a compaction.
+
+**Issue text.** The two skills a coordinator relies on for the whole of a long session are longer than what Claude
+Code keeps of a skill after compaction. Past the first compaction, the coordinator writes briefs and relays returns
+without the sections that define them: the prompt shape, what the user reads, the traps and the reference list in
+`codex`, verification and the agent's return in `orchestrate`. Each page should keep its standing rules within the
+first 5,000 tokens and move the rest into the files it links.
+
+## E78. Four of `codex`'s reference files are over 100 lines and open with no list of their contents
+
+**Evidence, level 2.** `plugins/entrust/plugin/skills/codex/references/environment-and-internals.md` (447 lines),
+`incidents.md` (223), `parity.md` (203) and `why-not-the-plugin.md` (131) open without a contents list; `codex/SKILL.md:402-411`
+routes to sections deep in the first two by anchor. Anthropic's skill authoring page: a reference file longer than 100
+lines opens with its contents, because a model may preview it with `head -100`.
+
+**Check.** `head -100 plugins/entrust/plugin/skills/codex/references/environment-and-internals.md | grep -c '^## '`
+shows the sections a preview reaches; the locks, the git grant and the receipt come after it.
+
+**Issue text.** A model that previews a long reference file sees only its opening sections and cannot tell what the
+rest holds. Each reference file over 100 lines should open with a list of its sections.
+
+## E79. `codex` and `orchestrate` carry 27 inline "measured …" asides that the vendor would move off the page (tension)
+
+**Evidence, level 1.** `grep -c measured` gives 18 on `plugins/entrust/plugin/skills/codex/SKILL.md` and 9 on
+`orchestrate/SKILL.md`, for example `codex/SKILL.md:56-57` "(measured 2026-09-12 against the VS Code extension 2.1.269,
+whose map lists `local_agent` tasks alone)". Claude Code's skills page: "State what to do rather than narrating how or
+why". The repository's `CLAUDE.md` asks for an evidence level on every behavioural claim, and
+`codex/references/incidents.md:3` already holds "the measured failures that produced SKILL.md's imperatives". A tension
+with the vendor's guidance, recorded for the owner's audit; each aside also counts toward E77.
+
+**Issue text.** The skill pages give the measurement behind an instruction on the instruction's own line. The vendor
+advises stating what to do and keeping the story elsewhere; the repository's rule asks for the evidence. Decide whether
+the line keeps its level and the incident moves to `incidents.md`.
+
+## E80. `codex/SKILL.md:231` uses a dated catalogue snapshot as the instruction for `EFFORT:` values (tension)
+
+**Evidence, level 1.** `plugins/entrust/plugin/skills/codex/SKILL.md:231`: "(the catalogue of 2026-09-17: `none` and
+`minimal` are on no model and exit 2 before the turn)". Anthropic's skill authoring page advises against time-sensitive
+information, and its example is an instruction that turns false when a date passes. This line tells the reader which
+values to write, from a snapshot of an external catalogue; when the catalogue changes, the line is wrong and the reader
+cannot tell. Unlike a dated measurement, which stays a true record, this one is used as a rule.
+
+**Issue text.** The page's list of effort values rests on a catalogue read on 2026-09-17 and presented as current. It
+should name where the current values come from, and move the snapshot to an old-patterns note.
+
+## E81. `orchestrate` sends verification to a fresh agent, and Anthropic's page for Opus 5 says not to verify with subagents (tension)
+
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:24` "verify: you never grade your own work, a
+fresh agent does" and `:133` the completeness critic. Anthropic's Opus 5 page lists "use a subagent to verify" among
+instructions to remove and says not to use subagents to verify or double-check; its Fable 5 page says fresh-context
+verifier subagents tend to outperform self-critique. The page pins no coordinator model (`:23` "whatever your own
+model"). The rule is the owner's; the vendor's advice is measured per model.
+
+**Issue text.** On an Opus 5 coordinator the page's verification rule and the vendor's guidance for that model collide;
+on Fable 5 they agree. Decide whether the rule stands for every coordinator model, as the owner's, or names the model it
+holds for.
+
+## E82. The foreman is told to read `orchestrate`, a user-only skill, by path, and Claude Code tells a model not to reproduce a user-only skill another way (tension)
+
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/foreman.md:24-26`: "It cannot load this skill:
+the Skill tool refuses a skill marked `disable-model-invocation`. Name this file, the page and the sibling's page by
+absolute path in its brief". Claude Code's skills page: when Claude tries a user-only skill, it is instructed not to
+reproduce the steps another way. The user invoked `/entrust:orchestrate` and approved a plan naming the foreman
+(`foreman.md:15`), so the host's block does not describe this case, but the page does not say so.
+
+**Issue text.** A foreman that meets Claude Code's rule for user-only skills could refuse to follow the page it was
+given by path. The brief should say that the user started the skill and approved this plan.
+
+## E83. `codex` names neither the `codex` CLI nor Node as something that must be installed (tension)
+
+**Evidence, level 1.** `plugins/entrust/plugin/skills/codex/SKILL.md:414` "Installation and upgrades:
+[README.md](../../README.md)." and no other line names what must be installed. Anthropic's skill authoring page lists
+required packages in SKILL.md and advises against assuming them. A refused launch reaches the coordinator as
+`DRIVER_EXIT` and `err.txt` (`codex/SKILL.md:279-281`), so the page has a path for the failure but not for its cause.
+
+**Issue text.** A coordinator on a machine without the `codex` CLI or Node meets a failed launch the page does not
+explain. The page should name its dependencies in one line.

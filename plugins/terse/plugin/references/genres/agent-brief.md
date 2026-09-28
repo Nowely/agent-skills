@@ -1,6 +1,6 @@
 # Agent brief (provisional)
 
-Start with a successful nearby brief and the receiving agent's tools and permissions. Give only the context it cannot reasonably recover, then the task, boundaries, and return format. The example below shows a handoff that can leave the chat.
+Start with a successful nearby brief and the receiving agent's tools and permissions. Give only the context it cannot reasonably recover, then the task, boundaries, and return format. The receiving model's vendor guidance is the authority on its conventions: Anthropic's [prompting guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) with the page for that model, or OpenAI's [prompting guide](https://learn.chatgpt.com/docs/prompting). The example below shows a handoff that can leave the chat.
 
 The agent uses this text to decide what to inspect, what may be changed, and what counts as completion. Make the objective and evidence standard explicit enough for it to work in a fresh context. Name source files and expected artifacts where they matter. If one fact is genuinely missing, ask it directly; where the owner must choose among real paths, follow [the choice advice](../rules.md#where-the-reader-acts).
 
