@@ -535,11 +535,11 @@ test("F7 the approval rule: run as you with no sandbox, approve nothing unread, 
     "When you retell an approval, say what the entry's `outcome` says",
   ));
 
-test("F7b an accept restates the command between the request's own token, a refused restatement is copied again from --pending, and a blocked accept is declined",
-  "the accept restates the command so that the call the classifier or the owner judges carries it; the heredoc's delimiter is the print's fresh token because a fixed word lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell (both verifications of 2026-09-28 made it happen); a blocked accept publishes nothing, and without a sentence the turn would wait out the thirty minutes",
+test("F7b an accept restates the command in a heredoc on a delimiter of the coordinator's own, a refused restatement is copied again from --pending, and a blocked accept is declined",
+  "the accept restates the command so that the call the classifier or the owner judges carries it; the heredoc's delimiter is one the coordinator makes up and checks is no line of the command, not the relayed token, because a fixed word or a relayed one lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell (both verifications of 2026-09-28 made it happen); a blocked accept publishes nothing, and without a sentence the turn would wait out the thirty minutes",
   () => says(
     "Decide from the waiting result the wrapper handed back and copy its command block into the sibling's accept call",
-    "`--decide ID --accept` reads the command on stdin, in a quoted heredoc whose delimiter is the fresh token of that request's `COMMAND<<TOKEN` line, never a fixed word, since a line of the command equal to a fixed word would end the heredoc and run the rest in your shell",
+    "`--decide ID --accept` reads the command on stdin, in a quoted heredoc whose delimiter you make up at that moment and check is no line of the command, never a fixed word and never the printed token, since a line of the command equal to the delimiter would end the heredoc and run the rest in your shell, and the token reached you through the wrapper",
     "If the launcher refuses the restatement as different, print `--pending` and copy from that",
     "An accept the permission check or the classifier blocks publishes nothing, so decline the request with `--decide ID --decline`, or ask the owner when the session is interactive",
   ));

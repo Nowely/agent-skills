@@ -3424,9 +3424,9 @@ function handleServerRequest(msg) {
       : settled || pendingCut ? "turn closing"
       : null;
     const covered = why === null && isFileChange && entry.fileChanges !== null ? coveredByRights(entry.fileChanges) : null;
-    // A permissions request asks the sandbox to hold more: the sandbox in the way by definition.
+    // A permissions request asks for rights beyond those set at launch, which only a WRITABLE: line grants.
     entry.cause = covered !== null ? "rights"
-      : isPermissions ? "sandbox"
+      : isPermissions ? "outside"
       : isCommand || msg.method === "execCommandApproval"
         ? (commandTexts(p.command, p.commandActions).some((t) => failedAttempts.has(attemptKey(t))) ? "sandbox" : "policy")
         : "outside";

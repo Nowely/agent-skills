@@ -119,13 +119,15 @@ pending, and it returns at once with what `--pending` would print for it, ending
 and `REPORT=`. The wrapper hands it back exactly as it hands back any result — step 2 reruns only while a
 result has no `REPORT=` line, and the waiting result carries one — so read it whole and decide under the plan's
 own rule. An accept restates the command it approves, so the call that gets judged carries the command and not
-an id: a quoted heredoc whose delimiter is the fresh token of that request's `COMMAND<<TOKEN` line, never a
-fixed word, because a line of the command equal to a fixed word would end the heredoc and run the rest in your
-shell:
+an id: copy the lines between `COMMAND<<TOKEN` and `COMMAND>>TOKEN` as printed into a quoted heredoc whose
+delimiter you make up at that moment, `ACCEPT_` and twelve hex characters of your own, and check it is no line of
+the command. Never a fixed word and never the printed token: a line of the command equal to the delimiter would end
+the heredoc and run the rest in your shell, and the token reached you through the wrapper, which could have
+changed it:
 
-    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --decide <ID> --accept --report-file "<REPORT>" <<'<TOKEN>'
+    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --decide <ID> --accept --report-file "<REPORT>" <<'<DELIMITER>'
     <the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, exactly as printed>
-    <TOKEN>
+    <DELIMITER>
 
 The launcher compares what it reads with the request's command, one trailing newline tolerated, and publishes
 nothing on an empty stdin or any difference; when it refuses the restatement as different, print `--pending`
@@ -226,6 +228,10 @@ sandbox refusal.
 A write agent sharing a live tree must not change what the tree shares: no stash, branch switch, reset,
 clean or rebase while another writer holds part of it. Those move or discard work the other agent is
 still editing, and no sandbox refuses them.
+
+An accepted escape runs as the user, so two hazards ride with every accept, as they do with your own Bash:
+a version-control query runs the repository's configured hooks, monitors and pagers, and a script runs the
+bytes at its path when it runs, not the bytes you read.
 
 ## Header fields
 

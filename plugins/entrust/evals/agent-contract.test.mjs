@@ -362,19 +362,20 @@ test("the waiting result ends in REPORT=, the constant is thirty minutes, and ne
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the accept the page shows restates the command in a quoted heredoc whose delimiter is the request's own token, and Stop's reach stops at the server's group",
-  "a fixed delimiter lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell before the launcher compares anything (both verifications of 2026-09-28 made it happen), so the block the coordinator copies must end on the print's token; and an accepted command in a process group of its own is E67, which the Stop line has to say rather than promise",
+test("the accept the page shows restates the command in a quoted heredoc on a delimiter the coordinator makes up, and Stop's reach stops at the server's group",
+  "a fixed delimiter lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell before the launcher compares anything (both verifications of 2026-09-28 made it happen), so the block the coordinator copies ends on a delimiter it made up and checked, never the relayed token; and an accepted command in a process group of its own is E67, which the Stop line has to say rather than promise",
   () => {
     const problems = [];
-    const at = skill.search(/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --decide <ID> --accept --report-file "<REPORT>" <<'<TOKEN>'$/m);
-    if (at < 0) return "the page shows no accept call ending in <<'<TOKEN>'";
+    const at = skill.search(/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --decide <ID> --accept --report-file "<REPORT>" <<'<DELIMITER>'$/m);
+    if (at < 0) return "the page shows no accept call ending in <<'<DELIMITER>'";
     const block = skill.slice(at).split("\n").slice(0, 3);
-    if (!/^ {4}<the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, exactly as printed>$/.test(block[1] ?? "") || block[2] !== "    <TOKEN>")
+    if (!/^ {4}<the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, exactly as printed>$/.test(block[1] ?? "") || block[2] !== "    <DELIMITER>")
       problems.push(`the accept block: ${JSON.stringify(block)}`);
     if (/<<'?(COMMAND|EOF|CMD)'?\s*$/m.test(skill.split("\n").filter((l) => l.includes("--decide")).join("\n")))
       problems.push("an accept on the page ends its heredoc on a fixed word");
     for (const phrase of [
-      "a quoted heredoc whose delimiter is the fresh token of that request's `COMMAND<<TOKEN` line, never a fixed word",
+      "a quoted heredoc whose delimiter you make up at that moment",
+      "Never a fixed word and never the printed token",
       "one trailing newline tolerated, and publishes nothing on an empty stdin or any difference",
       "An accept the permission check or the classifier blocks publishes nothing either",
       "a command you accepted may run in a process group of its own, which is not established to end with it (E67)",

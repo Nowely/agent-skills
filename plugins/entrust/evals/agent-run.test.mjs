@@ -7,6 +7,7 @@
 // in shell — the redirects, the exit marker written last, the three driver strings that sort a report,
 // the fixed status lines — is now this script's promise, measured here against the fake app server.
 
+import crypto from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -1289,6 +1290,23 @@ test("--decide --accept refuses a restatement that differs, carries a second tra
     return problems.length === 0 || problems.join("; ");
   });
 
+test("--decide --accept refuses a request that carries no command, whatever stdin holds, and publishes nothing",
+  "an accept restates the command so that the call that gets judged carries it; a request whose command is null or empty would take one empty line as its restatement and pass with nothing judged (Opus R1, 2026-09-28)",
+  async () => {
+    const problems = [];
+    for (const [label, command] of [["a null command", null], ["an empty command", ""]]) {
+      const { dir, report, box, put, request, pend } = handMailbox();
+      put("1-aaaaaaaa.request.json", request("1-aaaaaaaa", { command }));
+      pend("1-aaaaaaaa");
+      for (const input of ["\n", "", "x\n"]) {
+        const r = await launcherLines(["--decide", "1-aaaaaaaa", "--accept", "--dir", dir, "--report-file", report], { input });
+        if (r.code !== 2 || !/^REFUSED=1-aaaaaaaa the request carries no command to restate/.test(r.out)) problems.push(`${label}, stdin ${JSON.stringify(input)}: exit ${r.code}, ${r.out.trim()}`);
+      }
+      if (fs.existsSync(path.join(box, "1-aaaaaaaa.decision.json"))) problems.push(`${label}: a decision was published`);
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
 test("--decide --decline reads no stdin: with a stdin nobody ever closes, it publishes and exits at once",
   "a decline restates nothing, so it has no reason to wait on stdin; a decline that blocked on an open stdin would hang the very call that stops a run",
   async () => {
@@ -1304,7 +1322,7 @@ test("--decide --decline reads no stdin: with a stdin nobody ever closes, it pub
       || `exit ${r.code} signal ${r.signal} after ${r.ms} ms: ${r.out.trim()}`;
   });
 
-test("the accept the pages show — a quoted heredoc whose delimiter is the token of the COMMAND<< line the launcher printed — carries a command holding a COMMAND line whole and runs none of it in the caller's shell",
+test("the accept the pages show — a quoted heredoc on a delimiter the caller makes up, the block copied from the print — carries a command holding a COMMAND line whole and runs none of it in the caller's shell",
   "the command's bytes are the agent's: a fixed delimiter such as COMMAND ends the heredoc at the agent's own line and runs the rest in the coordinator's shell before any comparison (both verifications made this happen); the print's fresh token never occurs in the command, so it cannot",
   async () => {
     const { dir, report, box, put, request, pend } = handMailbox();
@@ -1317,7 +1335,9 @@ test("the accept the pages show — a quoted heredoc whose delimiter is the toke
     if (!token) return `no token in the print: ${printed.out.slice(0, 200)}`;
     const block = printed.out.slice(printed.out.indexOf(`COMMAND<<${token}\n`) + `COMMAND<<${token}\n`.length, printed.out.indexOf(`\nCOMMAND>>${token}\n`));
     const q = (s) => `'${s.replace(/'/g, "'\\''")}'`;
-    const call = `${q(process.execPath)} ${q(LAUNCHER)} --decide 1-aaaaaaaa --accept --dir ${q(dir)} --report-file ${q(report)} <<'${token}'\n${block}\n${token}\n`;
+    const own = `ACCEPT_${crypto.randomBytes(6).toString("hex")}`;
+    if (block.split("\n").includes(own)) return "the made-up delimiter is a line of the command";
+    const call = `${q(process.execPath)} ${q(LAUNCHER)} --decide 1-aaaaaaaa --accept --dir ${q(dir)} --report-file ${q(report)} <<'${own}'\n${block}\n${own}\n`;
     const r = spawnSync("/bin/sh", ["-c", call], { encoding: "utf8", timeout: 20000 });
     const problems = [];
     if (r.status !== 0 || r.stdout !== "DECIDED=1-aaaaaaaa accept\n") problems.push(`exit ${r.status}: ${r.stdout.trim()} ${r.stderr.trim().slice(0, 200)}`);
