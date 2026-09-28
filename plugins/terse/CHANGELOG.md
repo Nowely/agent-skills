@@ -3,7 +3,12 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.4.0 — 2026-09-28
+
+terse closes its ledger of defects in `audit`, `rewrite` and their shared pages, makes each audit stand alone,
+and gives `clarity` its own line for pushback and three more genre notes. **Compatibility:** `audit` now asks at
+its first step where its report goes, a folder of the audited repository (`audits/` by default) or its run
+directory, and `rewrite` is given the report's path instead of the audit's run directory.
 
 ### Added
 
@@ -11,7 +16,6 @@ forensics remain in the repository references and release notes.
   what a text says instead of only whether a skill loaded: it stages a variant of the pages, seeds fixture files
   and an earlier exchange, and has a judge score the answer against a hidden key. The runs spend Claude tokens
   and stay out of CI; `evals/content.md` is the protocol.
-
 - E70: genre notes for a review comment, a ticket or issue, and interface text and error messages, each linked
   from `clarity` and each with an example paraphrased from the anonymized episodes. A before-and-after
   comparison gets no note of its own: it is a device, and `clarity` already asks whether the recipient can tell
