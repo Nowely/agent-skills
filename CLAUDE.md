@@ -31,3 +31,6 @@ are `<name>@X.Y.Z`.
   `${CLAUDE_PLUGIN_DATA}` only in a skill's body. After any edit to terse's pages, run
   `node plugins/terse/evals/pages.test.mjs`: it checks that line, every relative link and the frozen digests.
 - **Fan-outs**: state the agent count and the models before spawning, and wait for the word.
+- **Flags**: a new flag, header field or option is born only with a sentence that names who sets it, why the
+  default cannot decide, and what breaks without it; when that sentence cannot be written, the default decides.
+  Flags are forgotten, misused and maintained.
