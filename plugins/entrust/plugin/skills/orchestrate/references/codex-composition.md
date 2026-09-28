@@ -37,7 +37,7 @@ Choose the smallest `RIGHTS` that can complete and check the work:
 
 | Prompt header | Codex may | Settle first? |
 | --- | --- | --- |
-| `RIGHTS: read [<dir>]` or no header | read any readable path, reach the network, run commands, write `$TMPDIR`; the sandbox refuses every other write, and a command escape, a file change or a widening for named paths in its place is offered or declined and recorded in `escalations` | no |
+| `RIGHTS: read [<dir>]` or no header | read any readable path, reach the network, run commands, write `$TMPDIR`; the sandbox bounds what the agent does itself: a command it cannot run there is offered to you and, approved, runs as you with no sandbox, and a file change not shown to lie inside its writable roots is declined at once, which makes the run exit 6; each is recorded in `escalations` | no |
 | `RIGHTS: worktree <repo>` | write in a driver-managed detached tree | say that a worktree will be made |
 | `RIGHTS: write <dir>` | write under the live directory | yes; this chooses the blast radius |
 

@@ -20,6 +20,25 @@ forensics remain in the repository references and release notes.
   whose parentage `ps` cannot show, and a nested Codex agent still go to the owner. Why: of the 37 requests the
   driver declined on this machine before 0.21.0, one `kill` and both nested `codex` runs were of this kind, and
   the owner's rule sends to them only what is destructive or outside the plan.
+- **A file change the driver cannot show inside the agent's writable roots is declined at once, never offered.**
+  Its `why` is "not shown to lie inside the writable roots; a WRITABLE: line grants a root", and like every
+  declined request it makes the run exit 6; the codex page's rights row says so. A permissions request, which the
+  driver no longer invites, is declined the same way with the empty profile, `why: "rights are set at launch"`.
+  `initialize` asks `experimentalApi: false` again. Why: a yes would grant a path mid-run that no settled
+  `WRITABLE:` line granted, and none of the 37 requests declined on this machine before 0.21.0 was of this kind.
+
+### Removed
+
+- **The widening.** The driver no longer asks `codex features list`, no longer switches on Codex's
+  `request_permissions_tool` and `exec_permission_approvals` features, and no longer tells the model to ask for
+  the state or cache files a failing tool names; the orchestrate page no longer approves such a write, and its
+  synthesis for cause `sandbox` says the tool needed the user's own environment. Contracts: the report loses
+  `sandboxWidened`, `experimentalApi`, `featuresRequested` and `serverWarnings`, an `escalations` entry loses
+  `permissions`, `granted` and `repeatOf`, and `--pending` and the waiting result lose `ACCESS=`, `NETWORK=`,
+  `REPEAT_OF=`, `FILES=` and `KIND=`. Why: a request names the path a tool failed on first, not its whole state,
+  so grants made one at a time left arc able to write part of its cache and arc deleted its own index (E77, now
+  closed); through the plain escape the same arc commands ran as in the terminal and deleted nothing
+  (`research/2026-09-28-command-gate/06-arc-escape.md`).
 
 ## 0.21.0 — 2026-09-28
 

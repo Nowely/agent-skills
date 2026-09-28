@@ -187,7 +187,7 @@ Choose the smallest `RIGHTS` that can complete and check the work:
 
 | Prompt header | Codex may | Settle first? |
 | --- | --- | --- |
-| `RIGHTS: read [<dir>]` or no header | read any readable path, reach the network, run commands, write `$TMPDIR`; the sandbox refuses every other write, and a command escape, a file change or a widening for named paths in its place is offered or declined and recorded in `escalations` | no |
+| `RIGHTS: read [<dir>]` or no header | read any readable path, reach the network, run commands, write `$TMPDIR`; the sandbox bounds what the agent does itself: a command it cannot run there is offered to you and, approved, runs as you with no sandbox, and a file change not shown to lie inside its writable roots is declined at once, which makes the run exit 6; each is recorded in `escalations` | no |
 | `RIGHTS: worktree <repo>` | write in a driver-managed detached tree | say that a worktree will be made |
 | `RIGHTS: write <dir>` | write under the live directory | yes; this chooses the blast radius |
 
@@ -313,35 +313,19 @@ write its own would be grading itself. Declare gates on the command line instead
 - `escalations` is one entry per approval request, whichever thread asked, root or a grandchild's: `decision`
   (`accepted`, `declined` or `expired`), `by` (`driver` for an auto-yes, an expiry or a request never offered,
   `coordinator` otherwise), `cause` (`rights`: a file change the writable roots cover, which the driver
-  accepted itself and never shows anyone; `outside`: a file change not shown to lie inside them; `sandbox`:
-  the same command had just failed in this turn; `policy`: no attempt was seen, so Codex asked by its own
-  rule), and `outcome` (the item's own completion, or null where none came). `detail` is the server's own
-  wording whole — the command, else the reason, else the message, or the joined file-change list — never
-  clipped, and may still be empty where the server sent none. `exitCode: 6` is a request declined or expired
-  unanswered, never one accepted — below timeout and the other cuts, so a cut run carries entries and exits
-  3. A command the sandbox denied outright need not raise a request, and an entry is neither evidence that
-  work was lost nor a reason to widen the rights. An auto-yes's own `why` is
-  `"rights cover it (checked as the answer was sent)"`: the check runs again at that moment, not only when
-  the request arrived, and a plain directory the driver walked that becomes a symlink before the server
-  writes is followed by the server, not caught here — whether the server itself re-resolves the swap is
-  unmeasured.
-- A widening — a permissions request, or a command approval carrying the paths it would add — is a third
-  kind of request beside a command escape and a file change: `--pending` prints its `ACCESS=` and
-  `NETWORK=` lines after the usual fields. The driver's own words for what an accept does are exact: "An
-  accepted command runs with no sandbox, as you; an accepted widening — a request for paths or the network
-  rather than to leave the sandbox — runs the command inside the sandbox with the paths added." An accepted
-  widening adds to `sandboxWidened`, one `{itemId, permissions, scope, at}` per grant, `scope` `turn` for a
-  permissions request and `command` for a command widening; `escalations` carries `permissions` (what was
-  asked), `granted` (whether it was given) and `repeatOf` (the earlier request a re-ask follows, where its
-  paths are not wholly inside it). Declining a permissions request is not the end of it: the model re-issues
-  the same need as a command approval, and the driver itself declines one whose paths lie wholly inside a
-  permissions request you declined in the same turn — that turn only, a later turn's re-ask is offered
-  fresh — naming that decision in `why`. A request nobody
-  answers is declined as expired after thirty minutes and the turn goes on. A widening only arrives at all
-  where the run's codex advertises both permission features: short of that the model is never told to ask
-  for a path, so the standing instructions are as they were before this channel and the escape is the only
-  path there is. An entry naming a glob pattern, or any special kind other than a root, is refused unoffered
-  like a protected root, but with its own reason, `why: "unsupported entry kind"`.
+  accepted itself and never shows anyone; `outside`: a file change not shown to lie inside them, which the
+  driver declines itself, its `why` naming `WRITABLE:`; `sandbox`: the same command had just failed in this
+  turn; `policy`: no attempt was seen, so Codex asked by its own rule), and `outcome` (the item's own
+  completion, or null where none came). `detail` is the server's own wording whole — the command, else the
+  reason, else the message, or the joined file-change list — never clipped, and may still be empty where the
+  server sent none. `exitCode: 6` is a request declined or expired unanswered, never one accepted — below
+  timeout and the other cuts, so a cut run carries entries and exits 3. A command the sandbox denied outright
+  need not raise a request, and an entry is neither evidence that work was lost nor a reason to widen the
+  rights. An auto-yes's own `why` is `"rights cover it (checked as the answer was sent)"`: the check runs
+  again at that moment, not only when the request arrived, and a plain directory the driver walked that
+  becomes a symlink before the server writes is followed by the server, not caught here — whether the server
+  itself re-resolves the swap is unmeasured. A request nobody answers is declined as expired after thirty
+  minutes and the turn goes on.
 - Any other non-zero is a gate verdict on the run; read the answer before deciding what to do.
 - `receiptOk: false` on a run that claims success is a red flag; what the receipt proves and does not
   prove is in

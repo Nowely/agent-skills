@@ -334,22 +334,3 @@ with `"waitMs":1`.
 does not guarantee: a refusal that spans a clock tick records 1 ms, and the macOS jobs fail intermittently with
 nothing wrong in the driver. It should assert that the refusal did not wait, for example that `waitMs` is far below
 the approval timeout, rather than an exact 0.
-
-## E77. The orchestrate page approves a tool's state write one request at a time, and a partial grant made arc delete its own cache index
-
-**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:116` tells the coordinator to "approve a
-write into a tool's own state or cache under the home when the path is not a repository, not `~/.codex` and not
-the state directory". On 2026-09-28 a Codex Luna read agent under 0.21.0 ran `arc status` in an Arcadia checkout and
-asked, in turn, for `~/.arc/store/.arc/objects/objectdb/data.dat` with `index.dat`, then `lookup.dat`, then
-`objectdb.dat`. The coordinator accepted the first two under that rule. Between them arc, still unable to open
-`lookup.dat`, printed "All attempts opening server cache failed; it will be re-created" and deleted `index.dat`,
-now writable, replacing it with an empty file; after the second grant it did the same to `lookup.dat`. The running
-`arc mount` daemon keeps the old inodes open, so the mount still reads, while any new arc process opens the empty
-files. The run is `plugins/entrust/research/2026-09-27-approval-channel/21-arc-measure.md`; a grant of the whole
-`objectdb` directory at once deleted nothing (`01-probe-2.md`).
-
-**Wording for the issue.** A widening request names the path a tool failed on first, not the tool's whole state.
-Accepting such requests one at a time leaves the tool able to write part of its state, and a tool that resets
-state it cannot open then deletes the part it can. The orchestrate page's approval rule should not approve a
-write into a tool's own state file by file; what replaces it is the design question the arc measurement was run to
-answer.

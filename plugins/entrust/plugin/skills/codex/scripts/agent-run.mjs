@@ -199,22 +199,15 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       report reads as unknown, never success.
   node agent-run.mjs --pending --report-file REPORT [--dir DIR]
       Prints each request waiting on a decision — one DIR/approvals/pending lists — as REQUEST=<id>,
-      THREAD=root or the subagent's path, METHOD=, KIND=, CAUSE= (sandbox: the same command had just
-      failed inside the sandbox, or the request is a widening; policy: no attempt was seen; outside: a
-      file change not shown inside the agent's roots), CWD=, REASON= (the agent's own), ROOTS= (the roots
-      the agent may write, "; " between them), DEADLINE= (an ISO time, or none), REPEAT_OF=<id> where a
-      command widening follows a permissions request you declined in the same turn, then FILES= for a
-      file change ("add /a; update /b -> /c", or unknown where no item named them) or the command: whole,
-      newlines kept, on the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, TOKEN drawn fresh for each
-      print and never in the command. A widening — a permissions request (no command block), or a
-      command carrying the paths it would add — then prints one ACCESS=<access> <type>:<value> per entry
-      (write path:/abs, read glob_pattern:<pattern>, write special:project_roots) and NETWORK=on, off or
-      none: a yes grants exactly those, the command running inside the sandbox with them added, for the
-      rest of the turn for a permissions request and for that command for the other. Every value outside
-      that block is one line: a backslash, a line break and every other control character in it written
-      as \\\\, \\n, \\r, \\t or \\uXXXX, and a ; inside a ROOTS or FILES item as \\;. Then LATE=<id> and
-      STALE=<id> as counted above and, once DIR/exit exists, ORPHANED=<id> for each request the run left
-      unanswered, then REQUESTS=<n>, the number still waiting. Always exits 0.
+      THREAD=root or the subagent's path, METHOD=, CAUSE= (sandbox: the same command had just failed
+      inside the sandbox; policy: no attempt was seen), CWD=, REASON= (the agent's own), ROOTS= (the
+      roots the agent may write, "; " between them), DEADLINE= (an ISO time, or none), then the command:
+      whole, newlines kept, on the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, TOKEN drawn fresh for
+      each print and never in the command. Every value outside that block is one line: a backslash, a
+      line break and every other control character in it written as \\\\, \\n, \\r, \\t or \\uXXXX, and a
+      ; inside a ROOTS item as \\;. Then LATE=<id> and STALE=<id> as counted above and, once DIR/exit
+      exists, ORPHANED=<id> for each request the run left unanswered, then REQUESTS=<n>, the number still
+      waiting. Always exits 0.
   node agent-run.mjs --decide ID --accept|--decline [--why TEXT] --report-file REPORT [--dir DIR]
       Publishes the decision for request ID as DIR/approvals/ID.decision.json at 0600, by link(2) over a
       temp file, carrying the run identity copied from the request. Refuses (exit 2, REFUSED=ID and the
@@ -587,35 +580,14 @@ function newAgent(report, dirOverride) {
 // this print and absent from the command, so no command can end its own block or forge a field after it:
 // a script-shaped command read on one clipped line is a command approved unread. A request is waiting when
 // `pending` lists it, the driver's own open set.
-// A widening's profile as the lines the coordinator reads: one ACCESS= per filesystem entry, `write
-// path:/abs`, `read glob_pattern:**/*.lock` or `write special:project_roots`, the legacy read and write
-// lists standing in only where `entries` is absent, then NETWORK= on, off or none.
-function accessLines(perm) {
-  const fsys = perm?.fileSystem ?? null;
-  const entries = Array.isArray(fsys?.entries) && fsys.entries.length ? fsys.entries.map((e) => [e?.access, e?.path])
-    : [...(fsys?.write ?? []).map((x) => ["write", { type: "path", path: x }]), ...(fsys?.read ?? []).map((x) => ["read", { type: "path", path: x }])];
-  const where = (x) => x?.type === "path" ? `path:${x.path}` : x?.type === "glob_pattern" ? `glob_pattern:${x.pattern}`
-    : x?.type === "special" ? `special:${x?.value?.kind ?? "unknown"}${x?.value?.subpath ? `:${x.value.subpath}` : x?.value?.path ? `:${x.value.path}` : ""}`
-    : `${x?.type ?? "unknown"}:${JSON.stringify(x)}`;
-  const net = perm?.network == null || perm.network.enabled == null ? "none" : perm.network.enabled ? "on" : "off";
-  return [...entries.map(([access, x]) => `ACCESS=${field(access)} ${field(where(x))}`), `NETWORK=${net}`];
-}
-
 function requestLines(q) {
-  const out = [`REQUEST=${q.id}`, `THREAD=${q.subagent ? field(q.agentPath ?? q.run?.threadId ?? "unknown") : "root"}`,
-    `METHOD=${field(q.method)}`, `KIND=${field(q.kind ?? "none")}`, `CAUSE=${field(q.cause ?? "unknown")}`, `CWD=${field(q.cwd)}`,
+  const command = String(q.command ?? "");
+  let token;
+  do token = crypto.randomBytes(6).toString("hex"); while (command.includes(token));
+  return [`REQUEST=${q.id}`, `THREAD=${q.subagent ? field(q.agentPath ?? q.run?.threadId ?? "unknown") : "root"}`,
+    `METHOD=${field(q.method)}`, `CAUSE=${field(q.cause ?? "unknown")}`, `CWD=${field(q.cwd)}`,
     `REASON=${field(q.reason)}`, `ROOTS=${(q.roots ?? []).map(item).join("; ")}`, `DEADLINE=${field(q.deadlineAt ?? "none")}`,
-    ...(q.repeatOf ? [`REPEAT_OF=${field(q.repeatOf)}`] : [])];
-  if (q.method === "item/fileChange/requestApproval") out.push(`FILES=${Array.isArray(q.fileChanges)
-    ? q.fileChanges.map((c) => `${item(c.kind)} ${item(c.path)}${c.move ? ` -> ${item(c.move)}` : ""}`).join("; ") : "unknown"}`);
-  else if (q.method !== "item/permissions/requestApproval") {
-    const command = String(q.command ?? "");
-    let token;
-    do token = crypto.randomBytes(6).toString("hex"); while (command.includes(token));
-    out.push(`COMMAND<<${token}`, command, `COMMAND>>${token}`);
-  }
-  if (q.permissions) out.push(...accessLines(q.permissions));
-  return out;
+    `COMMAND<<${token}`, command, `COMMAND>>${token}`];
 }
 
 function pendingRequests(dir) {
