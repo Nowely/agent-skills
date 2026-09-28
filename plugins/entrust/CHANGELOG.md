@@ -3,6 +3,18 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- **The coordinator approves a signal to a process its agent started, and a `codex sandbox` check the plan
+  named.** The orchestrate page used to send every signal and every nested `codex` to the owner. Now a `kill`
+  whose target `ps` shows below the agent's own driver, and a `codex sandbox` run the plan names, which runs one
+  command under Codex's sandbox and ends with it, are the coordinator's; a signal to any other process, or one
+  whose parentage `ps` cannot show, and a nested Codex agent still go to the owner. Why: of the 37 requests the
+  driver declined on this machine before 0.21.0, one `kill` and both nested `codex` runs were of this kind, and
+  the owner's rule sends to them only what is destructive or outside the plan.
+
 ## 0.21.0 — 2026-09-28
 
 Contracts that change in this release, each detailed in its entry below. The lock's on-disk shape is a symlink to
