@@ -192,21 +192,6 @@ indent removed", and the SHA line stays as it is.
 
 _From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-24/run/code-defects.md, D24._
 
-## E42. The genre scout's brief asks for "raw markdown", which a kind of text that is not markdown does not have
-
-**Evidence, level 1.** `plugins/terse/references/roles.md:76-78` (at `e38699a`; now `plugins/terse/plugin/references/roles.md`), brief 2, asks for five to eight
-documents of the kind "as raw markdown with curl, never through a summarising tool". On 2026-09-26 the kind was the
-comments of a Rust source file, and the coordinator filled the brief as "raw text"
-(`plugins/terse/research/2026-09-26-terse-second-checks/dir-walker-comments/briefs/G1.codex.txt`); the scout fetched eight source
-files and rebuilt the table's places for comments by itself.
-
-**Check.** `grep -n 'raw markdown' /Users/ruliny/Git/agent-skills/plugins/terse/plugin/references/roles.md` prints line 77.
-
-**Issue text.** `rules.md` is for any text, and the genre scout is how a writer sees the best texts of a kind the
-notes do not cover yet; its brief asks for them "as raw markdown with curl". For the comments of a source file, a
-man page or a story there is no markdown to fetch, and the coordinator has to rewrite the brief before the scout can
-run. The brief should ask for each document's raw text, fetched with curl and never through a summarising tool.
-
 ## E69. `clarity` sends an objection to a deep-skill brief, and "recheck before conceding" has no line of its own
 
 **Evidence, level 1.** `plugins/terse/plugin/skills/clarity/SKILL.md:58` says only "For a later objection,

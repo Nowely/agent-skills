@@ -24,6 +24,8 @@ forensics remain in the repository references and release notes.
   writer's plan.
 - E26: the section report counts words with `Intl.Segmenter`, so a section in Chinese, Japanese or Thai is
   counted in words rather than as one word per run of text between spaces.
+- E42: the genre scout's brief asks for each document's raw text, not "raw markdown", which the comments of a
+  source file, a man page or a story do not have; the coordinator no longer rewrites the brief for them.
 
 ## 0.3.0 — 2026-09-28
 

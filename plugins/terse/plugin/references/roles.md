@@ -96,7 +96,7 @@ No text is called final: the user's word makes it so.
 
 ```
 Find how documents of this kind are written: <KIND>. Fetch five to eight of the most used — by stars,
-downloads or listings — as raw markdown with curl, never through a summarising tool, and save them
+downloads or listings — as raw text with curl, never through a summarising tool, and save them
 under <OUT>/fetched/. Return one table: each place from the top, what the genre puts there, in N of M
 documents, and how it is formatted there — headings, bold lead-ins, tables, fenced blocks, lists. Then
 name the two or three best, and what their first 150 words do for their reader. Cite nothing you did not
