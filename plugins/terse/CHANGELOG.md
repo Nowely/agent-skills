@@ -16,8 +16,8 @@ forensics remain in the repository references and release notes.
 
 - `audit` and `rewrite`: each audit stands alone, and a before and after on the same questions happens inside
   one `rewrite` run. `audit` settles in its first step where its report goes — a folder of the audited
-  repository, `audits/` unless the user names another, or the chat alone — writes nothing else there and
-  commits nothing; a summary comes to the chat either way, and the report names paths relative to the
+  repository, `audits/` unless the user names another, or the run directory outside it — writes nothing else
+  there and commits nothing; a summary and the report's path come to the chat either way, and the report names paths relative to the
   repository. `rewrite`, given the report's path, asks the audit's questions of the existing text and of its
   own, one file each, and shows both scores; without a report it writes three to five questions and their
   answers first. The pages no longer promise a second audit with the same questions or a stored score as a

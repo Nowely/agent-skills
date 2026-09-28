@@ -180,7 +180,8 @@ tests or configuration, and you may not search the web.
 Answer this question: <QUESTION>
 
 Return:
-  answer:    your answer, in your own words
+  answer:    your answer, in your own words; if the documentation does not answer it, say so, then
+             give your best guess
   files:     every file you opened, in the order you opened them
   steps:     how many files you opened before you could answer
   departed:  yes if you needed anything outside the .md files, no otherwise

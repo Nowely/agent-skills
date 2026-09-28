@@ -28,7 +28,7 @@ Settle five things with the user in one exchange, not six:
   runs in its weaker form, described in [truth.md](../../references/truth.md).
 - Where a reader arrives. Usually `README.md`. This is the entry file for every reader.
 - Where the report goes: a folder in the audited repository, `audits/` at its root unless they name
-  another, or the chat alone. A summary comes to the chat either way.
+  another, or the run directory outside it. A summary and the report's path come to the chat either way.
 - The mode: [light, or full](../../references/roles.md#light-and-full) on their word. In a full run, start
   the harness, brief 12, as soon as the run directory exists: the truth pass runs the code in its copy.
 
@@ -143,14 +143,14 @@ stop: an instrument with no room above cannot register an improvement, and a rew
 questions will show nothing. A zero can rise; report it and go on.
 
 Write the report using the section contract in [ledgers.md](references/ledgers.md), to the folder they
-named as `<date>-<slug>.md`, or to `$RUN/audit.md` when they chose the chat alone: `rewrite` is given its
+named as `<date>-<slug>.md`, or to `$RUN/audit.md` when they chose the run directory: `rewrite` is given its
 path, and its writer and readers work from that file.
 
 Report to the user, first, what the cold readers found hard to read, with its lines; then the score, the
 failures with their causes, the refuted claims, the report's path, and the shape verdict; in a light run,
 also that nothing was run, so no claim is above level 2 and no recipe was tried. It is `shape: agreed`
-only on the user's word: that they agree to a named plan (`rethink` step 5), whose path and SHA-256 go
-into the report, or, quoted, that the document's current shape stands. A plan they read without saying
+only on the user's word: that they agree to a named plan (`rethink` step 5), whose file name and SHA-256
+go into the report, or, quoted, that the document's current shape stands. A plan they read without saying
 they agree to it is not agreement; anything short of their word is `shape: not agreed`. Agreed, offer
 `rewrite` as the next step, given the report's path. Not agreed, offer `/terse:rethink`, and say why
 not `rewrite` alone: a polished text can still have the wrong shape

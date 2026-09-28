@@ -53,7 +53,9 @@ control. Save them to `questions.md` before the writer starts.
 
 For a text that exists, send the question readers on it now, one per question: their score is the before.
 An audit's own score sits beside it and is not the before, because the audit's readers walk the repository
-and these read one file.
+and these read one file. Score the answers as the audit's [scoring](../audit/references/measure.md#scoring)
+does, GUESSED standing for cannot tell; once the text gives the key's true answer, a reader who quotes it
+is right.
 
 ## Step 3. The draft
 
@@ -102,8 +104,8 @@ takes the next number; what a reader wished added goes to the user with the text
 ## Step 6. The hand-over
 
 Give the user the latest numbered text, the plan, the list of findings applied and declined, the check's
-reports, and the question readers' score on the repaired text beside the before, question by question, all
-in the run directory, and for a text that existed, the diff against it. A control that passed before and
+reports, and the question readers' score on the repaired text, question by question, all in the run
+directory; for a text that existed, also the diff against it and the score before beside the one after. A control that passed before and
 fails now, or a lower score, comes first. Nothing is
 final until the user says so: if they would not send it as it is, their words go to the writer for the
 next numbered text, and new critics run only if they ask. Applying the text to their files needs their

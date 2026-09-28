@@ -7,7 +7,8 @@ is one file, the audit's report, so the file has a contract: fixed headings, fix
 ## The report
 
 Path: `<folder>/<date>-<slug>.md` in the audited repository, the folder settled in the audit's Step 1, or
-`$RUN/audit.md` when the user chose the chat alone. Every path inside it is relative to the repository.
+`$RUN/audit.md` when the user chose the run directory. Every path into the repository is relative to it,
+and a file outside it is named by its file name alone.
 Headings exactly as below, in this order.
 
 ```markdown
@@ -34,7 +35,7 @@ One row per reader.
 
 ## Score
 Right answers over questions, steps, departures, on a single line.
-Then `shape: agreed` or `shape: not agreed`, and what an agreement rests on: the path and SHA-256 of the
+Then `shape: agreed` or `shape: not agreed`, and what an agreement rests on: the file name and SHA-256 of the
 plan the user said they agree to, or their words that the current shape stands, quoted.
 
 ## What broke

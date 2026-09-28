@@ -43,7 +43,7 @@ spawning. A measurement the user did not agree to pay for is not a measurement t
 
 ## The no-document arm
 
-The baseline runs every question twice: once through the documentation, once with no files at all, same
+Every audit runs every question twice: once through the documentation, once with no files at all, same
 model, same brief minus the corpus. **The score this audit reports is the difference.**
 
 Without it a document that teaches cannot be told from a document about something the reader has already
@@ -68,7 +68,7 @@ in Step 6 of [SKILL.md](../SKILL.md), the evidence rules behind `refuted` are in
 `missing` is the one most easily mistaken for `findability`: if the answer is nowhere in the `.md` files,
 no path leads to it and no rewrite of the path will help.
 
-**Say when the instrument has no room.** A baseline of every question right cannot register an
+**Say when the instrument has no room.** A score of every question right cannot register an
 improvement; report that and stop rather than producing a number that cannot move. A zero can rise.
 
 ## Establishing this instrument's own noise floor

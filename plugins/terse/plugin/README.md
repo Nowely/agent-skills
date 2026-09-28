@@ -21,7 +21,7 @@ In Claude Code:
 /terse:audit
 ```
 
-It asks for the scope — which files to check, every tracked `.md` by default — where your readers start, and whether its report goes into a folder of your repository or stays in the chat. Before starting agents, `rethink`, `rewrite`, and `audit` say how many and on which model, and wait until you say so. Its report starts with what makes your text hard to read, then lists the questions it answers wrong, why, and where — file and line when a sentence is at fault.
+It asks for the scope — which files to check, every tracked `.md` by default — where your readers start, and whether its report goes into a folder of your repository or stays in its own folder outside it. Before starting agents, `rethink`, `rewrite`, and `audit` say how many and on which model, and wait until you say so. Its report starts with what makes your text hard to read, then lists the questions it answers wrong, why, and where — file and line when a sentence is at fault.
 
 If every answer from your text is already right, stop. Otherwise say whether the document's shape — what it says, in what order — stands. If it does, run this and, when it asks, give it the report's path:
 
@@ -59,7 +59,7 @@ Restart Claude Code to apply it.
 
 | Command | When to run it | What you get back |
 |---|---|---|
-| `/terse:audit` | You cannot tell whether your document is fine | A report, in the chat and, if you choose, as a file in your repository: what makes the text hard to read, then which questions it answers wrong, why, and where — file and line when a sentence is at fault; no rewording |
+| `/terse:audit` | You cannot tell whether your document is fine | A summary in the chat and the report as a file, in your repository if you choose: what makes the text hard to read, then which questions it answers wrong, why, and where — file and line when a sentence is at fault; no rewording |
 | `/terse:rethink` | No document yet, or it says the wrong things in the wrong order | A plan: the sections, each with what it gives the reader and its size, to agree to before the text is written |
 | `/terse:rewrite` | You want the text written or rewritten | A new draft of the whole document, and its diff |
 | `/terse:clarity` | Claude may choose it while writing for a person or agent; you may call it yourself | Reader-side questions and genre notes applied to the text at hand; no run |
