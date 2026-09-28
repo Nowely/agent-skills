@@ -1,0 +1,12 @@
+# Rounds: the command gate
+
+Each row is one step of the run: who, what it produced, and the errors the round found in what came before it.
+Costs are the harness's per-subagent counters.
+
+| # | Who | What | Regressions found |
+|---|---|---|---|
+| 1 | coordinator | [00-brief.md](00-brief.md): the owner's words, 0.21.0's shape, the arc incident, the two ways; the experimental-only `dynamicTools` field checked in the generated schemas | |
+| 2 | Fable D2 (0.28M tokens, 21 min; two dry handshakes and four Luna turns at effort low) | [01-design-v1.md](01-design-v1.md): both ways share the subtraction of the widening layer; way 2 measured possible on 0.155.1 (the tool call arrives with the exact command, the model uses it instead of its escape in three of three turns, the turn continues on the client's output); recommends way 2 with the wrapper as executor, after the subtraction | |
+| 3 | Opus C1, safety and parity (0.12M, 10 min) | [02-critique-c1.md](02-critique-c1.md): ten findings; the gate judges the line's text, not the act: rephrasing after a refusal with no cap, a script authored in the writable root then named, no tie to a sandbox refusal, model bytes live inside double quotes, the output file in the agent's writable `$TMPDIR` followed through a planted symlink (checked), the relay executing text from a tool result | 10 against v1 |
+| 4 | Opus C2, simplicity and lifecycle (0.16M, 15 min) | [02-critique-c2.md](02-critique-c2.md): twelve findings; the composed line breaks on `a; b`, a trailing comment, a heredoc and `&` (checked, grouping fixes all six); the wrapper stops being safe to rerun; the poll's `ASK=` fires on tool calls; the steering sentence is the arm that made no call; the coordinator as executor keeps the gate without the wrapper's problems; the subtraction list misses three pages | 12 against v1 |
+| 5 | Fable D2, round two (0.34M cumulative, 10 min; no Codex turn, local shell checks) | [03-design-v2.md](03-design-v2.md): 22 dispositions (20 accepted, 2 rejected with evidence, 2 merged); the recommendation turns to way 1 with the accept restating the command ("Y"): with the wrapper withdrawn as executor, way 2's executor is the coordinator and costs the same one turn per refused command while adding an experimental field and hundreds of lines, and a grouped line the owner's prefix rules cannot match; way 2 with the coordinator executing ("X") kept designed behind one measurement | the critics' 22 against v1, answered |
