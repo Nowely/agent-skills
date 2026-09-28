@@ -973,7 +973,7 @@ test("--writable refuses ~/.codex and the state directory in use, which hold the
   });
 
 test("a root ABOVE the state directory is refused like one inside it: --writable and --cwd at write level, $TMPDIR at both",
-  "the plugin's data directory sits at ~/.claude/plugins/data/entrust-nowely, so `--writable ~/.claude` granted its locks, answer log and every agent's mailbox while the guard refused the directory itself; the walk has to go both ways (ISSUES E49)",
+  "the plugin's data directory sits at ~/.claude/plugins/data/entrust-nowely, so `--writable ~/.claude` granted its locks, answer log and every agent's mailbox while the guard refused the directory itself; the walk has to go both ways (ISSUES E66)",
   async () => {
     // The shape of a plugin install, in miniature: a parent standing in for ~/.claude, the state directory
     // three levels under it, not yet created, as on a first run. Beside the $TMPDIR the drivers here are

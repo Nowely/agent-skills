@@ -390,15 +390,15 @@ test("the orchestrate page prefers a widening to an escape and names REPEAT_OF",
   });
 
 test("a SIGTERM to the wrapper's pid is narrowed to the process group actually swept, not to \"nothing left running\", and the survivor check is the coordinator's own",
-  "E50: the teardown signals and polls the app-server's own process group; a command the server started lives in a process group of its own, and whether it dies with the server was never measured, so the page must not promise more than that group's sweep, and F10 (11-refutation-astra.md) is that this is a check the coordinator runs, never a promise the driver keeps",
+  "E67: the teardown signals and polls the app-server's own process group; a command the server started lives in a process group of its own, and whether it dies with the server was never measured, so the page must not promise more than that group's sweep, and F10 (11-refutation-astra.md) is that this is a check the coordinator runs, never a promise the driver keeps",
   () => {
     const problems = [];
     for (const phrase of [
       "sweeps the codex app-server's own process group and publishes the report as",
-      "a command still running in its own process group at that moment is not established to end with it (E50)",
+      "a command still running in its own process group at that moment is not established to end with it (E67)",
       "An accepted command can outlive the agent, its server and this lock: before a\nsecond writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'`\nyourself and wait for it — no driver code checks this for you.",
     ]) if (!flat.includes(phrase.replace(/\s+/g, " "))) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
-    if (/nothing left running/.test(flat)) problems.push("the page still promises \"nothing left running\", which E50 found unproven");
+    if (/nothing left running/.test(flat)) problems.push("the page still promises \"nothing left running\", which E67 found unproven");
     return problems.length === 0 || problems.join("; ");
   });
 

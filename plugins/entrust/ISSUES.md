@@ -6,7 +6,7 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E47. The server's `availableDecisions` never offers `decline`, the shape every refusal of this driver sends
+## E64. The server's `availableDecisions` never offers `decline`, the shape every refusal of this driver sends
 
 **Evidence, level 3 for the list and for the refusal being honoured today, level 1 for the schema.**
 
@@ -31,7 +31,7 @@ refusal into an error the model reads as a broken tool while the report counts a
 fixture, which accepts any decision, would stay green. Record the fact where the refusal shapes are chosen, make the
 fixture carry the server's list, and let the live fidelity gate compare the two.
 
-## E48. `escalations` can hold an entry with no declined or failed command beside it, because a sandboxed attempt can emit no item notifications
+## E65. `escalations` can hold an entry with no declined or failed command beside it, because a sandboxed attempt can emit no item notifications
 
 **Evidence, level 3 for the gap (seen once), level 2 for the consequence.**
 
@@ -51,7 +51,7 @@ attempt that raised the request produced no item at all. The help's "can differ"
 reader has no way to tell this case from a request raised with no attempt. Name the cause in the help, and let the
 entry carry what the request itself says about the command, since the item may never come.
 
-## E50. "Nothing left running" after `SIGTERM` is not established for a command executing at the signal
+## E67. "Nothing left running" after `SIGTERM` is not established for a command executing at the signal
 
 **Evidence, level 3 for the process groups, level 1 for the kill, level 2 for the consequence.**
 
@@ -251,3 +251,29 @@ prints `tokens: NaN`.
 **Issue text.** The gate reads a registered plan's tokens column with `Number`, so a row the launcher admits with
 `unknown` carries `NaN` into every check that sums or compares tokens. The record should keep `null` for
 `unknown` and the checks should skip it.
+
+## E68. The mailbox's owner reclaim checks the holder is dead and then removes the owner file by path, the pattern E44 removed from the lock
+
+**Evidence, level 2.**
+
+- `driver.mjs:3435-3441` (`claimOwner`, reached through `claimMailbox`): under the reclaim marker, `const now =
+  readJson(owner); if (!holderAlive(now)) { fs.rmSync(owner, { force: true }); … }` reads `owner.json`, decides
+  liveness, and unlinks it by its shared pathname — not the descriptor-held, identity-checked act that update and
+  release now use for the lock's own link after E44.
+- `driver.mjs:1887` documents the same shape as residual for the *lock's* owner file even after the E44 fix ("the
+  owner file, checked the same way, still goes"), because POSIX has no unlink by inode: a file swapped in between
+  the check and the unlink is not the one removed. The mailbox's `owner.json` reclaim has no rename or identity
+  check between its liveness read and its `rmSync`, so the same window is open here, one level up from where E44
+  closed it for the lock's link.
+
+**Check.** `grep -n "now = readJson(owner)" plugins/entrust/plugin/skills/codex/scripts/driver.mjs` shows the read
+and the `rmSync` a few lines apart, both keyed on the shared path `owner`, with nothing that binds the removal to
+the value just read.
+
+**Issue text.** `claimOwner`'s takeover path reads `owner.json`, decides its holder is dead, and then unlinks that
+path — the check-then-act-on-the-pathname shape E44's fix removed from the lock's own update and release, and for
+the same reason: a peer that replaces the file between the read and the unlink loses its claim to a taker that
+never looked at what it removed. The reclaim marker serialises two takers against each other, not the owner
+file's removal against a fresh write from the holder it just pronounced dead. Mitigating: the launcher claims one
+launch per agent directory through `err.txt` (`wx`, `agent-run.mjs:367`), so two `claimOwner` calls racing on the
+very same mailbox path is not the ordinary case this driver runs today.

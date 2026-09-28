@@ -507,7 +507,7 @@ forensics remain in the repository references and release notes.
   compares resolved paths through symlinks on both sides, and offers the request instead where a path
   resolves outside the roots or no `item/started` named one, so the coordinator still sees it. The guard
   that contains a mailbox now also refuses a writable root that is, or is an ancestor of, `~/.codex` or the
-  state directory (E49): `--writable ~/.claude` is refused on a plugin install, where it used to grant the
+  state directory (E66): `--writable ~/.claude` is refused on a plugin install, where it used to grant the
   plugin's own locks and answer log. The auto-yes's own `why` is now
   `"rights cover it (checked as the answer was sent)"`: every directory the resolved path crosses must be a
   plain one, never a symlink, nothing under a `.git`, `.codex` or `.agents` in any spelling (matched by
@@ -527,7 +527,7 @@ forensics remain in the repository references and release notes.
   request's own `settled.decisionFile` (`taken`, `none`, `stale` or `late`: what the decision file held as
   the request settled). Why: a clipped `detail` hid the very command a coordinator had to read before approving it, and an
   unnamed cause left every approval's synthesis guessing.
-- **E46 fixed**: the driver's refusal-shape comment now names `ServerRequest.json`, where the enum it means
+- **E63 fixed**: the driver's refusal-shape comment now names `ServerRequest.json`, where the enum it means
   actually lives, instead of a `schema-<version>/*ApprovalResponse.json` layout the pinned tree never had.
 
 ## 0.20.0 — 2026-09-18

@@ -148,7 +148,7 @@ the driver is the narrow exception: its owner record binds it to that run. The d
 home directory itself and every ancestor of it, up to `/`.
 
 **Only those are protected, and what is above them.** The guard also refuses a candidate that is `~/.codex`
-or the state directory itself, or an ancestor of either (E49): `~/.claude` is refused on a plugin install,
+or the state directory itself, or an ancestor of either (E66): `~/.claude` is refused on a plugin install,
 whose state directory sits under it, while `~/.ssh`, `~/.aws`, `~/.arc`, `~/Library` and the rest of your
 home remain legitimate write roots as far as the driver is concerned. It stops you handing over
 *everything* above what it protects; it does not curate what inside your home is precious otherwise.

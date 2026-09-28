@@ -97,7 +97,7 @@ directory, with an exit of 2 and `PATH=none`; a refusal for a directory another 
 not the directory's) goes to the caller alone and leaves that directory's files untouched. A `SIGTERM` to that
 pid cuts the turn, sweeps the codex app-server's own process group and publishes the report as
 `turnStatus: interrupted`, exit 1; a command still running in its own process group at that moment is not
-established to end with it (E50). An accepted command can outlive the agent, its server and this lock: before a
+established to end with it (E67). An accepted command can outlive the agent, its server and this lock: before a
 second writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'`
 yourself and wait for it — no driver code checks this for you.
 
