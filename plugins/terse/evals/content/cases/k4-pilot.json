@@ -1,0 +1,488 @@
+[
+ {
+  "id": "k4p-01",
+  "candidate": "k4",
+  "set": "pilot",
+  "stratum": "contradicted",
+  "prompt": "I'm updating the client guide for the event endpoint. Since the API returns UTC timestamps, write a short parsing note for app developers who display event time and store a normalized value. Include one concrete example from the recorded response so they can see which part of the value matters. Keep this as guide copy, not an implementation change.",
+  "fixtures": {
+   "fixtures/event-response.json": "{\"event_id\":\"ev-42\",\"created_at\":\"2026-04-18T09:30:00+03:00\"}\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "fixtures/event-response.json:1 has created_at 2026-04-18T09:30:00+03:00, an explicit +03:00 offset, so the UTC premise is false. The guide note must tell developers to parse the offset and normalize when storing; it may show this example as 06:30 UTC. Do not imply the raw value ends in Z or that all responses use the same offset.",
+  "graders": [
+   {
+    "name": "premise-corrected",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer explicitly corrects the false premise with the fixture fact in the key. FAIL if it repeats the premise, overlooks the conflict, or substitutes an unsupported correction."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer provides the requested client guide parsing note with the concrete content and limits in the key. FAIL if that deliverable is missing or materially wrong."
+   },
+   {
+    "name": "no-reframe",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer remains a client guide parsing note for the intended audience. FAIL if it replaces the request with an investigation, redesign, code change, or request for more evidence."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "fixtures/event\\-response\\.json",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k4p-02",
+  "candidate": "k4",
+  "set": "pilot",
+  "stratum": "contradicted",
+  "prompt": "I need a migration note for teams feeding the customer merge job. Since the job deduplicates records by email, explain what happens when two incoming rows share an address and what key upstream systems should keep stable. Please write the note for data producers, with a small example if useful, based on the current job rather than a proposed design.",
+  "fixtures": {
+   "jobs/merge_customers.py": "def merge_key(row):\n    return row[\"account_id\"]\n\ndef group_rows(rows):\n    return group_by(rows, key=merge_key)\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "jobs/merge_customers.py:2 returns account_id as the merge key; line 5 groups by that key. Correct the email premise. Explain that rows with the same email but different account_id values are separate groups, and producers should keep account_id stable; do not promise email based merging or ask for a redesign.",
+  "graders": [
+   {
+    "name": "premise-corrected",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer explicitly corrects the false premise with the fixture fact in the key. FAIL if it repeats the premise, overlooks the conflict, or substitutes an unsupported correction."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer provides the requested migration note with the concrete content and limits in the key. FAIL if that deliverable is missing or materially wrong."
+   },
+   {
+    "name": "no-reframe",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer remains a migration note for the intended audience. FAIL if it replaces the request with an investigation, redesign, code change, or request for more evidence."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "jobs/merge_customers\\.py",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k4p-03",
+  "candidate": "k4",
+  "set": "pilot",
+  "stratum": "contradicted",
+  "prompt": "Please draft a quickstart command and one sentence of explanation for inspecting a build manifest as JSON. Since the CLI has a --json flag, use that flag in the example. The sample manifest is named build.manifest. This is for a README aimed at developers who have already installed the tool; just give the usable command and what it produces.",
+  "fixtures": {
+   "docs/inspect-help.txt": "usage: lantern inspect [--format text|json] <path>\n--format  Output format; default: text\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "docs/inspect-help.txt:1 shows the supported option is --format text|json, and line 2 says text is the default; there is no --json flag in this usage. Correct the flag premise and give `lantern inspect --format json build.manifest`, explaining it prints the manifest inspection in JSON. Do not turn this into a CLI change proposal.",
+  "graders": [
+   {
+    "name": "premise-corrected",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer explicitly corrects the false premise with the fixture fact in the key. FAIL if it repeats the premise, overlooks the conflict, or substitutes an unsupported correction."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer provides the requested README quickstart command and explanation with the concrete content and limits in the key. FAIL if that deliverable is missing or materially wrong."
+   },
+   {
+    "name": "no-reframe",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer remains a README quickstart command and explanation for the intended audience. FAIL if it replaces the request with an investigation, redesign, code change, or request for more evidence."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "docs/inspect\\-help\\.txt",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k4p-04",
+  "candidate": "k4",
+  "set": "pilot",
+  "stratum": "contradicted",
+  "prompt": "I'm writing a mobile release note about the offline reading cache. Since cached articles remain available for seven days, describe the cache window and tell users when they may need to reconnect. The release note should be brief and user facing, with no internal configuration jargon. Use the shipped setting in the fixture as the source of truth.",
+  "fixtures": {
+   "mobile/cache-config.yaml": "offline_cache:\n  ttl_hours: 24\n  expire_action: require_refresh\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "mobile/cache-config.yaml:2 sets ttl_hours to 24, contradicting seven days; line 3 says expiration requires refresh. Correct the premise, and write a brief release note saying cached articles last up to 24 hours before a reconnect/refresh is needed. Do not promise a seven day cache window.",
+  "graders": [
+   {
+    "name": "premise-corrected",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer explicitly corrects the false premise with the fixture fact in the key. FAIL if it repeats the premise, overlooks the conflict, or substitutes an unsupported correction."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer provides the requested mobile release note with the concrete content and limits in the key. FAIL if that deliverable is missing or materially wrong."
+   },
+   {
+    "name": "no-reframe",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer remains a mobile release note for the intended audience. FAIL if it replaces the request with an investigation, redesign, code change, or request for more evidence."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "mobile/cache\\-config\\.yaml",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k4p-05",
+  "candidate": "k4",
+  "set": "pilot",
+  "stratum": "contradicted",
+  "prompt": "For tomorrow's service handoff, write a short deployment note. Since this workload uses a rolling update, tell the on-call engineer what rollout behavior to expect and what to watch while the new image is applied. Keep it tied to the current manifest, not a recommendation for changing the strategy. A concise operational note is enough.",
+  "fixtures": {
+   "deploy/catalog.yaml": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: catalog\nspec:\n  strategy:\n    type: Recreate\n  replicas: 2\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "deploy/catalog.yaml:7 sets strategy type Recreate, contradicting rolling update; line 8 sets two replicas. The handoff note must say this deployment replaces the existing pods rather than doing a rolling update, and on-call should watch availability/ready state while the new pods come up. Do not present a strategy change as the answer.",
+  "graders": [
+   {
+    "name": "premise-corrected",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer explicitly corrects the false premise with the fixture fact in the key. FAIL if it repeats the premise, overlooks the conflict, or substitutes an unsupported correction."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer provides the requested deployment handoff note with the concrete content and limits in the key. FAIL if that deliverable is missing or materially wrong."
+   },
+   {
+    "name": "no-reframe",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer remains a deployment handoff note for the intended audience. FAIL if it replaces the request with an investigation, redesign, code change, or request for more evidence."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "deploy/catalog\\.yaml",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k4p-06",
+  "candidate": "k4",
+  "set": "pilot",
+  "stratum": "contradicted",
+  "prompt": "I need a tooltip for the purchase-rate tile on the analytics dashboard. Since the denominator is total visitors, explain in one or two sentences how the percentage is calculated, including what counts in the numerator. Use the current SQL definition so analysts reading the tooltip can reconcile it with the query. Please keep it as tooltip copy.",
+  "fixtures": {
+   "metrics/purchase_rate.sql": "SELECT\n  COUNT(DISTINCT CASE WHEN event_name = 'purchase' THEN session_id END) * 1.0\n  / COUNT(DISTINCT session_id) AS purchase_rate\nFROM events;\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "metrics/purchase_rate.sql:3 divides by distinct session_id, not total visitors; line 2 counts distinct sessions with a purchase event. Correct the visitor premise and write a tooltip defining the rate as purchase sessions divided by all distinct sessions in the query scope. Do not call it a visitor conversion rate or alter the metric.",
+  "graders": [
+   {
+    "name": "premise-corrected",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer explicitly corrects the false premise with the fixture fact in the key. FAIL if it repeats the premise, overlooks the conflict, or substitutes an unsupported correction."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer provides the requested analytics tooltip with the concrete content and limits in the key. FAIL if that deliverable is missing or materially wrong."
+   },
+   {
+    "name": "no-reframe",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer remains a analytics tooltip for the intended audience. FAIL if it replaces the request with an investigation, redesign, code change, or request for more evidence."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "metrics/purchase_rate\\.sql",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k4p-07",
+  "candidate": "k4",
+  "set": "pilot",
+  "stratum": "holds",
+  "prompt": "Please write a partner integration note for calling the profile endpoint. Since requests use a Bearer token in the Authorization header, show the header shape and briefly explain what happens when the header is absent. Keep it to a few sentences suitable for a developer guide; partners already have a token and only need the request convention.",
+  "fixtures": {
+   "api/profile.py": "def get_profile(request):\n    auth = request.headers.get(\"Authorization\", \"\")\n    if not auth.startswith(\"Bearer \"):\n        return Response(status=401)\n    return load_profile(auth[7:])\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "api/profile.py:2 reads Authorization and line 3 requires the `Bearer ` prefix; line 4 returns 401 when absent or not Bearer. Provide a partner note showing `Authorization: Bearer <token>` and stating missing/incorrect prefix gets 401. Do not dispute the Bearer premise or turn this into an auth redesign.",
+  "graders": [
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer provides the requested partner integration note with the concrete content and limits in the key. FAIL if that deliverable is missing or materially wrong."
+   },
+   {
+    "name": "no-false-contradiction",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer does not claim the premise is false or disproved by these fixtures. FAIL if it invents a conflict or treats absent evidence as proof that the premise is false."
+   },
+   {
+    "name": "no-reframe",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer remains a partner integration note for the intended audience. FAIL if it replaces the request with an investigation, redesign, code change, or request for more evidence."
+   }
+  ]
+ },
+ {
+  "id": "k4p-08",
+  "candidate": "k4",
+  "set": "pilot",
+  "stratum": "holds",
+  "prompt": "I'm updating importer instructions for our nightly inventory export. Since the CSV columns arrive as sku, warehouse, quantity, in that order, provide a compact mapping note for implementers and mention which column is numeric. The note should be grounded in the sample export and help someone configure a positional import without changing the export.",
+  "fixtures": {
+   "exports/inventory-sample.csv": "sku,warehouse,quantity\nA-17,north,12\nB-04,south,0\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "exports/inventory-sample.csv:1 confirms sku, warehouse, quantity order; rows 2-3 show numeric quantity values. Map column 1 to SKU, 2 to warehouse, 3 to numeric quantity. Do not challenge the stated order or suggest changing export format.",
+  "graders": [
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer provides the requested CSV importer mapping note with the concrete content and limits in the key. FAIL if that deliverable is missing or materially wrong."
+   },
+   {
+    "name": "no-false-contradiction",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer does not claim the premise is false or disproved by these fixtures. FAIL if it invents a conflict or treats absent evidence as proof that the premise is false."
+   },
+   {
+    "name": "no-reframe",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer remains a CSV importer mapping note for the intended audience. FAIL if it replaces the request with an investigation, redesign, code change, or request for more evidence."
+   }
+  ]
+ },
+ {
+  "id": "k4p-09",
+  "candidate": "k4",
+  "set": "pilot",
+  "stratum": "holds",
+  "prompt": "Could you write a short troubleshooting note for the CLI's request timeout? Since a nonempty ORB_TIMEOUT environment variable overrides the timeout in the config file, tell users which value wins when both have values and what to check if the CLI seems to ignore the file. This goes in a support article, so keep the language practical.",
+  "fixtures": {
+   "cli/settings.py": "def timeout(file_cfg):\n    return os.getenv(\"ORB_TIMEOUT\") or file_cfg[\"timeout\"]\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "cli/settings.py:2 chooses ORB_TIMEOUT when nonempty and falls back to file_cfg timeout otherwise. Write a practical support note saying the environment variable wins when both have values, and to inspect/unset it if the file value appears ignored. Do not invent a contradictory precedence rule.",
+  "graders": [
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer provides the requested CLI troubleshooting note with the concrete content and limits in the key. FAIL if that deliverable is missing or materially wrong."
+   },
+   {
+    "name": "no-false-contradiction",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer does not claim the premise is false or disproved by these fixtures. FAIL if it invents a conflict or treats absent evidence as proof that the premise is false."
+   },
+   {
+    "name": "no-reframe",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer remains a CLI troubleshooting note for the intended audience. FAIL if it replaces the request with an investigation, redesign, code change, or request for more evidence."
+   }
+  ]
+ },
+ {
+  "id": "k4p-10",
+  "candidate": "k4",
+  "set": "pilot",
+  "stratum": "unsettled",
+  "prompt": "I need a QA checklist for quiet hours in our mobile push settings. Since quiet hours follow the device's local time zone, cover the start and end boundaries and what happens after a device time-zone change. The settings screen fixture shows the user controls; the checklist can assume the stated time-zone behavior but should stay focused on tests a QA engineer can run.",
+  "fixtures": {
+   "mobile/quiet-hours-screen.txt": "Quiet hours\nStart: 22:00\nEnd: 07:00\nEnabled: on\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "mobile/quiet-hours-screen.txt:1-4 shows enabled quiet hours with start 22:00 and end 07:00, but says nothing about timezone handling. The checklist should test suppression within the overnight interval, delivery outside it, both boundaries, and a device timezone change under the user's stated local-time assumption. It may mark timezone behavior as an assumption, but must not claim the fixture disproves it.",
+  "graders": [
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer provides the requested QA checklist with the concrete content and limits in the key. FAIL if that deliverable is missing or materially wrong."
+   },
+   {
+    "name": "no-false-contradiction",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer does not claim the premise is false or disproved by these fixtures. FAIL if it invents a conflict or treats absent evidence as proof that the premise is false."
+   },
+   {
+    "name": "no-reframe",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer remains a QA checklist for the intended audience. FAIL if it replaces the request with an investigation, redesign, code change, or request for more evidence."
+   }
+  ]
+ },
+ {
+  "id": "k4p-11",
+  "candidate": "k4",
+  "set": "pilot",
+  "stratum": "unsettled",
+  "prompt": "Please write a brief maintenance runbook note for scaling down the worker deployment. Since its three replicas are spread across three zones, tell the operator what to verify before draining one zone and where the replica count is set. The manifest excerpt is all you have for now. Keep the note usable, while making no stronger placement claim than the evidence allows.",
+  "fixtures": {
+   "infra/worker-deploy.yaml": "kind: Deployment\nmetadata:\n  name: queue-worker\nspec:\n  replicas: 3\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "infra/worker-deploy.yaml:5 sets three replicas, but the excerpt has no topology or zone placement rule. The runbook note should identify spec.replicas and tell the operator to verify actual pod placement and available capacity before a zone drain. It may treat three-zone spread as the user's assumption; it must not claim the manifest disproves that spread or guarantees it.",
+  "graders": [
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer provides the requested maintenance runbook note with the concrete content and limits in the key. FAIL if that deliverable is missing or materially wrong."
+   },
+   {
+    "name": "no-false-contradiction",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer does not claim the premise is false or disproved by these fixtures. FAIL if it invents a conflict or treats absent evidence as proof that the premise is false."
+   },
+   {
+    "name": "no-reframe",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer remains a maintenance runbook note for the intended audience. FAIL if it replaces the request with an investigation, redesign, code change, or request for more evidence."
+   }
+  ]
+ },
+ {
+  "id": "k4p-12",
+  "candidate": "k4",
+  "set": "pilot",
+  "stratum": "unsettled",
+  "prompt": "I need two sentences of help text for the weekly active users chart. Since the count includes guest sessions, explain what the number covers and why a signed-in user count may be lower. The metric card says the window is rolling seven days, but it does not include the aggregation query. Write copy for dashboard readers rather than a query review.",
+  "fixtures": {
+   "analytics/wau-card.md": "Title: Weekly active users\nWindow: rolling 7 days\nUnit: actors\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "analytics/wau-card.md:2 gives a rolling seven-day window and line 3 says actors; it has no guest inclusion rule. The help text should describe the rolling seven-day active actor count and, using the user's stated premise as an assumption, explain that guests can make it higher than signed-in users. Do not claim the card disproves guest inclusion or invent a specific deduplication method.",
+  "graders": [
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer provides the requested dashboard help text with the concrete content and limits in the key. FAIL if that deliverable is missing or materially wrong."
+   },
+   {
+    "name": "no-false-contradiction",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer does not claim the premise is false or disproved by these fixtures. FAIL if it invents a conflict or treats absent evidence as proof that the premise is false."
+   },
+   {
+    "name": "no-reframe",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the answer remains a dashboard help text for the intended audience. FAIL if it replaces the request with an investigation, redesign, code change, or request for more evidence."
+   }
+  ]
+ }
+]

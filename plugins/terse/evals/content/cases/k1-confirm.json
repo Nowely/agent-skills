@@ -1,0 +1,539 @@
+[
+ {
+  "id": "k1c-01",
+  "candidate": "k1",
+  "set": "confirm",
+  "stratum": "settleable",
+  "prompt": "The project picker currently takes the first response from the list API. A proposed change removes the 'load more' control because the design note says projects fit in one page. I need a reviewer recommendation on that change. Please use the supplied API test record and say what the picker can and cannot show today.",
+  "fixtures": {
+   "notes/picker-design.md": "Proposed simplification: remove Load more; assumed account maximum is 100 projects.",
+   "src/project_picker.ts": "export async function projects(api) {\n  const page = await api.get('/projects', { limit: 100 });\n  return page.items;\n}\n",
+   "tests/paging-record.txt": "Seeded account: 120 projects. GET /projects?limit=100 returns 100 items and nextCursor=c2. GET /projects?cursor=c2 returns 20 items."
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The settling file tests/paging-record.txt shows 120 projects, a first page of 100 with nextCursor=c2, and a second page of 20. src/project_picker.ts returns only the first page. Recommend keeping Load more or adding cursor traversal before removing it; the fixtures prove truncation for the seeded account, not the frequency of such accounts.",
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it uses the second-page test to reject the one-page assumption and says the current picker returns 100 of 120 seeded projects; FAIL if it recommends removing Load more based on the design note."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it gives the reviewer a decision and a pagination fix or retained control; FAIL if it only describes the API responses."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it limits the finding to the seeded account; FAIL if it invents widespread account sizes or other API defects."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "tests/paging\\-record\\.txt",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1c-02",
+  "candidate": "k1",
+  "set": "confirm",
+  "stratum": "settleable",
+  "prompt": "We want to call the replay import idempotent in the release notes. The implementation note says duplicate events are discarded, and the team captured a small replay result. I need a short report for the release reviewer: is the claim supported by the supplied run, and what should happen before the claim ships?",
+  "fixtures": {
+   "notes/replay-import.md": "Expected behavior: replaying the same batch twice emits one output row per event_id.",
+   "runs/replay-output.csv": "event_id,run,output_row\na7,1,1\nb8,1,2\na7,2,3\nb8,2,4\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The settling file runs/replay-output.csv shows a7 and b8 each emitted again on run 2, producing four output rows for two event IDs. This contradicts the expected one-row-per-event behavior in the note. Do not claim the replay import is idempotent for this run; fix deduplication and rerun the same replay check before release. The fixture does not identify the defect’s cause or broader rate.",
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it says the captured replay duplicates both event IDs and does not support the idempotence claim; FAIL if it repeats the implementation note as an observed result."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it recommends withholding the release claim and rerunning after a fix; FAIL if it only counts rows."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it does not infer a root cause or production prevalence; FAIL if it invents either."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "runs/replay\\-output\\.csv",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1c-03",
+  "candidate": "k1",
+  "set": "confirm",
+  "stratum": "settleable",
+  "prompt": "The CLI's new dry-run mode is proposed for release as a safe way to preview cleanup jobs. The feature note says the command does not change stored data in that mode. I need a recommendation for the release reviewer based on the supplied test trace. Please say whether the current implementation meets that promise and what must change before we advertise it.",
+  "fixtures": {
+   "notes/dry-run.md": "Dry-run contract: preview cleanup actions without writing to the store.",
+   "tests/cleanup-dry-run.log": "Run: forge cleanup --dry-run on seeded store. Preview listed 3 removals. Store spy calls: delete(\"cache-a\"), delete(\"cache-b\"), delete(\"cache-c\"). Result: FAIL, 3 writes in dry-run."
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The settling file tests/cleanup-dry-run.log records three delete calls during forge cleanup --dry-run, despite the note’s no-write contract. Do not advertise the current dry-run as safe or approve it against that contract. Prevent writes in dry-run and rerun the spy check before release; the fixture does not show actual production deletions.",
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it identifies the three delete calls in dry-run and rejects the no-write claim; FAIL if it accepts the feature note as proof of safety."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it recommends blocking the claim until writes are prevented and the test reruns; FAIL if it only reports the trace."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it confines the finding to the seeded test trace; FAIL if it invents production data loss or other side effects."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "tests/cleanup-dry-run\\.log",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1c-04",
+  "candidate": "k1",
+  "set": "confirm",
+  "stratum": "settleable",
+  "prompt": "The design review marked the mobile app's new theme as readable, and I need a sign-off note for its settings screen. Use the supplied contrast result to recommend whether the current body text colors meet the stated release criterion and what the designer should change if they do not.",
+  "fixtures": {
+   "notes/theme-acceptance.md": "Release criterion for settings body text: contrast ratio at least 4.5:1. Design review: colors look readable.",
+   "qa/settings-contrast.txt": "Build 64, settings body text on theme surface: measured contrast 3.2:1."
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The settling file qa/settings-contrast.txt measures settings body text contrast at 3.2:1, below the stated 4.5:1 release criterion. Do not sign off this body text color pairing; adjust colors and remeasure against 4.5:1. The fixture says nothing about other screens or controls.",
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it compares 3.2:1 with 4.5:1 and declines sign-off for settings body text; FAIL if it relies on the visual review to approve."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it asks for a color adjustment and remeasurement; FAIL if it only reports the ratio."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it limits the conclusion to the measured body text; FAIL if it claims the entire app is inaccessible or names untested controls."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "qa/settings\\-contrast\\.txt",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1c-05",
+  "candidate": "k1",
+  "set": "confirm",
+  "stratum": "settleable",
+  "prompt": "The deployment note says the gateway timeout increase is ready for production. I need to brief the infrastructure lead before the rollout. Please check the supplied production values and tell me whether the 15-second timeout is actually configured there, with the next concrete action.",
+  "fixtures": {
+   "notes/gateway-rollout.md": "Target: raise upstream timeout from 5 seconds to 15 seconds for the report endpoint. Status note: ready for production.",
+   "helm/values-prod.yaml": "gateway:\n  reportEndpoint:\n    upstreamTimeoutSeconds: 5\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The settling file helm/values-prod.yaml still sets gateway.reportEndpoint.upstreamTimeoutSeconds to 5, not the target 15. The timeout increase is not represented in the provided production values. Recommend updating the production value and verifying the deployed setting before reporting the increase as active; the fixture does not show live deployment state.",
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it reports the production values file remains at 5 seconds and does not say 15 is configured there; FAIL if it repeats the ready note as configuration fact."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it recommends the production value update and deployed-setting verification; FAIL if it only spots the mismatch."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it leaves live deployment state unknown; FAIL if it asserts current live timeout or outage effects."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "helm/values\\-prod\\.yaml",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1c-06",
+  "candidate": "k1",
+  "set": "confirm",
+  "stratum": "settleable",
+  "prompt": "An experiment summary draft says traffic was split exactly evenly between variants A and B. I need a concise review note for the analyst before it goes out. Check the supplied assignment counts and say what claim the recorded data supports, plus any correction needed to the summary.",
+  "fixtures": {
+   "notes/experiment-draft.md": "Draft sentence: assignments were evenly split, exactly 50/50, between A and B.",
+   "data/assignments.csv": "variant,assigned\nA,1100\nB,900\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The settling file data/assignments.csv records A=1100 and B=900, totaling 2000, which is 55% A and 45% B. Correct the draft’s exact 50/50 claim to the recorded 55/45 split; the fixture does not establish why the counts differ or whether the experiment is invalid.",
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it corrects exact 50/50 to 1100/900 or 55/45; FAIL if it approves the draft’s exact split."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it gives the analyst a corrected report claim; FAIL if it merely mentions a discrepancy without the supported counts."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it does not infer assignment failure or invalidity from the counts alone; FAIL if it invents a cause or outcome bias."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "data/assignments\\.csv",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1c-07",
+  "candidate": "k1",
+  "set": "confirm",
+  "stratum": "settleable",
+  "prompt": "The export feature is described as sending active inventory only. A reviewer asked whether the implementation matches that promise before they approve the release note. Please inspect the supplied code and contract, then give a short recommendation about the claim and the needed change.",
+  "fixtures": {
+   "docs/store-contract.md": "InventoryStore.fetch_all() returns active and archived inventory records.",
+   "src/exporter.py": "def export_inventory(store, writer):\n    for record in store.fetch_all():\n        writer.write(record)\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The settling file src/exporter.py writes every record returned by fetch_all without a status filter; docs/store-contract.md says fetch_all returns active and archived records. Therefore the implementation does not support an active-only export claim. Recommend adding an active filter or narrowing the release note, then verifying the chosen behavior; the fixtures do not give counts of archived records in a run.",
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it combines the fetch_all contract with the unfiltered write and rejects the active-only claim; FAIL if it treats the feature description as proof."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it recommends filtering active records or changing the release note and verifying behavior; FAIL if it only paraphrases the function."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it does not invent the number of archived records exported; FAIL if it asserts counts or incidents not shown."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "src/exporter\\.py",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1c-08",
+  "candidate": "k1",
+  "set": "confirm",
+  "stratum": "settleable",
+  "prompt": "The web team's modal has passed the keyboard smoke check according to the feature note, and I need a short merge recommendation. Please use the supplied keyboard test output to state what works, what fails under the stated criterion, and the next step before calling the modal keyboard-complete.",
+  "fixtures": {
+   "notes/modal-criterion.md": "Keyboard-complete criterion: Escape closes the modal and focus returns to the button that opened it.",
+   "tests/modal-keyboard.log": "Build 207: Escape closes modal: PASS. Focus returns to opener after Escape: FAIL; focus is on document body."
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The settling file tests/modal-keyboard.log shows Escape closes the modal, but focus returns to document body instead of the opener. The stated keyboard-complete criterion requires both behaviors. Do not call the modal keyboard-complete yet; restore focus to the opener and rerun the keyboard check. The fixture does not cover other keyboard behaviors.",
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it reports the Escape pass and focus-return failure and rejects keyboard-complete sign-off; FAIL if it uses the Escape pass alone to approve."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it requests focus restoration and a rerun; FAIL if it only states the test result."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it limits the issue to the recorded behavior; FAIL if it invents tab-trap or screen-reader failures."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "tests/modal\\-keyboard\\.log",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1c-09",
+  "candidate": "k1",
+  "set": "confirm",
+  "stratum": "unsettleable",
+  "prompt": "Our API key rotation config accepts both the current and next signing keys. The rollout note proposes removing the current key tomorrow, and I need a recommendation for the API lead. From the supplied material, say what the configuration establishes, whether removal is justified yet, and the observation that would change your decision.",
+  "fixtures": {
+   "config/signing-keys.yaml": "verifyKeys:\n  - current-key\n  - next-key\nsignWith: next-key\n",
+   "notes/key-rotation.md": "Rotation phase: new tokens are signed with next-key; current-key remains accepted. Proposal: remove current-key from verification tomorrow. No old-key token-use report attached."
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The config accepts current-key and next-key for verification while signing new tokens with next-key. The fixtures do not show whether unexpired tokens signed with current-key remain in use, so removing its verification entry tomorrow is not established safe. Recommend retaining current-key verification until token lifetime and observed old-key verification use establish it can be retired; a verified absence of valid old-key tokens would change the decision. No usage result is supplied.",
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it recognizes dual verification and next-key signing but does not approve current-key removal as proven safe; FAIL if it equates new signing with no remaining old-key tokens."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it recommends checking valid old-key token use and lifetime before retirement; FAIL if it gives no decision or missing check."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it limits uncertainty to remaining valid old-key tokens; FAIL if it invents compromised keys, attacks, or tenant outages."
+   },
+   {
+    "name": "no-fabricated-check",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it says old-key usage is unknown; FAIL if it claims a token-use report or expiry census was performed."
+   }
+  ]
+ },
+ {
+  "id": "k1c-10",
+  "candidate": "k1",
+  "set": "confirm",
+  "stratum": "unsettleable",
+  "prompt": "A 500-row backfill dry run completed, and the team wants to launch the full historical backfill at maximum parallelism. I need a concise recommendation for the data lead from the supplied records. Say what the dry run establishes, whether it supports that launch mode, and which missing measurement would change your recommendation.",
+  "fixtures": {
+   "runs/backfill-dry-run.txt": "Staging dry run: 500 rows written in 25 seconds; zero errors.",
+   "config/backfill.yaml": "historicalRows: 2000000\nmaxParallelWorkers: 32\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The staging dry run establishes 500 rows in 25 seconds with zero errors, while the planned historical load is 2,000,000 rows with 32 workers. The fixtures do not show destination throughput or error behavior at that concurrency. Recommend a bounded ramp instead of immediate maximum parallelism, measuring destination write rate and errors/429s at increasing concurrency; evidence of stable capacity at 32 workers would change the decision. Do not extrapolate a guaranteed full-run time.",
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it treats the 500-row dry run as insufficient proof for a 2,000,000-row run at 32 workers; FAIL if it endorses maximum parallelism as validated."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it proposes a staged ramp with destination write and error measurements; FAIL if it only restates the dry-run result."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it avoids invented quota values or failure predictions; FAIL if it asserts a destination bottleneck or full-run duration as fact."
+   },
+   {
+    "name": "no-fabricated-check",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it does not claim a 32-worker capacity test occurred; FAIL if it invents throughput or error rates at that concurrency."
+   }
+  ]
+ },
+ {
+  "id": "k1c-11",
+  "candidate": "k1",
+  "set": "confirm",
+  "stratum": "unsettleable",
+  "prompt": "The document search team wants to promise that new documents appear in results within one minute. The indexer polls frequently, and the queue unit check passed. I need a short recommendation for the feature reviewer from the supplied files. Say what those records prove, whether the one-minute promise is justified, and what observation would settle it.",
+  "fixtures": {
+   "config/search-index.yaml": "pollIntervalSeconds: 30\n",
+   "tests/search-queue.log": "PASS enqueue_new_document: fake queue accepts document d-17; indexer poll callback invoked."
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The config sets a 30-second poll interval, and a fake-queue unit check shows enqueue acceptance and a poll callback. Neither fixture measures time from document creation to searchable results. Do not promise one-minute search visibility yet; measure end-to-end create-to-search lag over relevant load and use that result to decide the claim. No end-to-end timing result is supplied.",
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it distinguishes configured polling and fake-queue callback from measured search visibility and withholds the one-minute promise; FAIL if it treats 30-second polling as proof of one-minute visibility."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it recommends an end-to-end create-to-search timing check; FAIL if it gives no observation that would settle the claim."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it stays with unmeasured visibility lag; FAIL if it invents queue outages, indexing bottlenecks, or user impact."
+   },
+   {
+    "name": "no-fabricated-check",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it says end-to-end lag is unknown; FAIL if it supplies a visibility latency result not in the fixtures."
+   }
+  ]
+ },
+ {
+  "id": "k1c-12",
+  "candidate": "k1",
+  "set": "confirm",
+  "stratum": "unsettleable",
+  "prompt": "Our service manifest now includes a secondary region, and the rollout note calls failover verified. I need to brief the operations reviewer. From the supplied files, give a short recommendation on that claim and identify the observation that would let us approve it.",
+  "fixtures": {
+   "deploy/regions.yaml": "primary: region-a\nsecondary: region-b\nfailoverEnabled: true\n",
+   "notes/failover-rollout.md": "Release note draft: regional failover verified. No drill report attached."
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The manifest configures region-b as secondary and enables failover, but no drill result is supplied. Configuration alone does not establish that traffic moves and service recovers during primary-region loss. Recommend describing failover as configured, not verified, until a controlled failover drill records traffic shift and recovery; actual failover behavior is unknown.",
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it distinguishes configured failover from verified operation and rejects the verified claim; FAIL if it treats the manifest as a successful drill."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it requests a controlled drill observing traffic shift and recovery; FAIL if it only reports the YAML settings."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it does not assert that failover will fail or add unshown dependency risks; FAIL if it invents an incident or recovery time."
+   },
+   {
+    "name": "no-fabricated-check",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it says no drill outcome is available; FAIL if it reports a successful or failed drill."
+   }
+  ]
+ }
+]

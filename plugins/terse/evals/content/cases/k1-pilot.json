@@ -1,0 +1,539 @@
+[
+ {
+  "id": "k1p-01",
+  "candidate": "k1",
+  "set": "pilot",
+  "stratum": "settleable",
+  "prompt": "I'm preparing a cleanup PR for our export API. The cleanup note says the v1 export route has no callers and proposes deleting it this week. Please give me a short recommendation for the reviewer on whether to remove the route now, using the repository material provided. Include the reason for your recommendation and the next concrete step.",
+  "fixtures": {
+   "docs/api-cleanup.md": "Proposed change: delete GET /v1/exports after v2 launch. Assumption: no in-repo callers remain.",
+   "src/weekly_export.ts": "export async function weeklyExport(client) {\n  return client.get('/v1/exports', { period: 'week' });\n}\n"
+  },
+  "key": "The settling file src/weekly_export.ts calls GET /v1/exports from weeklyExport. Recommend keeping the route for now and migrating that caller before deletion. The cleanup note only states an assumption; the fixture establishes one in-repo caller, not a complete external caller inventory.",
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it identifies the weeklyExport call to /v1/exports and rejects deletion now; FAIL if it treats the cleanup note as proof of no callers or recommends immediate deletion."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it gives the reviewer a decision and the concrete step to migrate the shown caller before deletion; FAIL if it only summarizes files."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it limits the finding to the shown in-repo caller; FAIL if it asserts external clients, breakage counts, or other unshown dependencies."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "src/weekly_export\\.ts",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1p-02",
+  "candidate": "k1",
+  "set": "pilot",
+  "stratum": "settleable",
+  "prompt": "We are choosing whether to make the new parser the default in the nightly import. A developer's laptop benchmark looks encouraging, and I need a short recommendation for the pipeline lead. Please check the supplied timing material, state whether the measured speedup supports the default change, and say what the lead should do next.",
+  "fixtures": {
+   "notes/local-bench.txt": "Laptop sample, 10,000 rows: old parser 12.5 s; new parser 9.0 s.",
+   "ci/import-timing.log": "Same CI runner, same 10,000-row fixture. Old parser runs: 101 s, 99 s, 100 s. New parser runs: 100 s, 101 s, 99 s."
+  },
+  "key": "The settling file ci/import-timing.log gives identical 100 s medians for old and new parsers over three CI runs each on the same fixture. The laptop result is 12.5 s versus 9.0 s, but a speedup is not reproduced in this CI sample. Recommend holding the default switch on performance grounds and measuring more representative runs before claiming a pipeline speedup; the three CI runs do not prove all workloads are equal.",
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it reports that the CI medians are both 100 s and does not claim a demonstrated CI speedup; FAIL if it recommends the switch as a proven speed improvement from the laptop result alone."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it advises the lead on the default change and a next measurement; FAIL if it gives only arithmetic without a recommendation."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it confines the limit to this three-run CI sample; FAIL if it speculates about production regressions, memory use, or root causes absent from the fixtures."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "ci/import\\-timing\\.log",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1p-03",
+  "candidate": "k1",
+  "set": "pilot",
+  "stratum": "settleable",
+  "prompt": "The CLI help cleanup proposal drops the short quiet flag because the flag note calls it unused. I'm reviewing the change before release. Please tell me whether to remove that alias now and give a concise reason and follow-up action, based on the provided files.",
+  "fixtures": {
+   "docs/flags.md": "Proposed v3 cleanup: remove -q alias for --quiet. It appears unused in current examples.",
+   "scripts/package-release.sh": "#!/bin/sh\nset -e\nshipctl publish -q --channel stable\n"
+  },
+  "key": "The settling file scripts/package-release.sh invokes shipctl publish -q --channel stable, so an in-repo release script uses the alias. Recommend retaining -q until that script is migrated, then reconsider removal. The evidence establishes this one use, not general usage prevalence.",
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it cites the release script use of -q and recommends against immediate removal; FAIL if it accepts the note’s unused claim."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it names migration of the release script as the next step; FAIL if it only says the files conflict."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it makes no claim beyond the shown script use; FAIL if it invents downstream users or release failures not evidenced."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "scripts/package\\-release\\.sh",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1p-04",
+  "candidate": "k1",
+  "set": "pilot",
+  "stratum": "settleable",
+  "prompt": "Our mobile team wants to describe the new item screen as working offline. The QA note sounds positive, and I need a short sign-off recommendation for the product lead. Please use the supplied test record to decide what can be claimed for this release and what still needs work.",
+  "fixtures": {
+   "notes/qa.md": "Warm-session check: open item 42 online, turn on airplane mode, reopen item 42. Result: PASS; cached details rendered.",
+   "tests/cold-launch-offline.log": "Device build 118; item 42 previously viewed online. Force-stop app; enable airplane mode; launch app; open item 42. Result: FAIL; screen waits on GET /items/42 and shows retry."
+  },
+  "key": "The settling file tests/cold-launch-offline.log shows a cold launch offline fails for previously viewed item 42 because the screen waits on GET /items/42. The QA note supports only a warm-session cached reopen. Do not sign off a general offline claim; describe the warm-session behavior and fix or retest cold-launch access before broader sign-off.",
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it distinguishes warm-session pass from cold-launch failure and declines a general offline claim; FAIL if it signs off offline support broadly."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it gives the product lead a release claim and the next cold-launch action; FAIL if it merely repeats the log."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it stays with item 42 and the two observed flows; FAIL if it invents failures on other devices or data loss."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "tests/cold\\-launch\\-offline\\.log",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1p-05",
+  "candidate": "k1",
+  "set": "pilot",
+  "stratum": "settleable",
+  "prompt": "A worker rollout note proposes using an in-memory mutex to stop duplicate jobs, on the assumption that production runs one worker. I need a deployment recommendation for the infrastructure reviewer. Read the supplied deployment information and say whether that mutex is enough for the current topology, plus the concrete change needed before rollout.",
+  "fixtures": {
+   "ops/rollout-note.md": "Job runner proposal: guard each scheduled job with a process-local mutex. Assumption: production has one worker replica.",
+   "deploy/worker.yaml": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: job-worker\nspec:\n  replicas: 3\n"
+  },
+  "key": "The settling file deploy/worker.yaml configures three job-worker replicas. A process-local mutex cannot coordinate across those replicas, so do not approve it as the sole duplicate-job guard. Require a cross-replica coordination mechanism or a topology change before rollout; the fixture does not show actual duplicate executions.",
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it uses replicas: 3 to reject the process-local mutex as sufficient across replicas; FAIL if it accepts the one-worker assumption."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it gives a deployment decision and requires coordination across replicas or a changed topology; FAIL if it only reports the replica count."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it describes a design gap without claiming duplicates have happened; FAIL if it invents job incidents or lock-store failures."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "deploy/worker\\.yaml",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1p-06",
+  "candidate": "k1",
+  "set": "pilot",
+  "stratum": "settleable",
+  "prompt": "An analytics card is about to be labeled 'human visit rate' because the metric note says bots are filtered. I need a brief recommendation for the analyst who owns the card. Please inspect the supplied query and say whether that label is supported today and what verification or change is needed.",
+  "fixtures": {
+   "docs/metric-card.md": "Draft title: Human visit rate. Definition note: exclude bot traffic from visit count.",
+   "queries/visit_rate.sql": "SELECT day, SUM(CASE WHEN event_type = 'visit' THEN 1 ELSE 0 END) AS visits\nFROM events\nGROUP BY day;\n"
+  },
+  "key": "The settling file queries/visit_rate.sql counts visit events from events without an explicit bot exclusion. The draft note therefore does not establish that the metric is human-only. Do not publish the human-visit label until the upstream source is verified to exclude bots or the query is changed to filter them; the fixtures do not show whether bot rows actually exist.",
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it says the query lacks an explicit bot exclusion and withholds the human-only label; FAIL if it says the note proves bots are filtered or asserts bots are counted as an observed fact."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it recommends source verification or a query filter before using the label; FAIL if it only describes SQL syntax."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it leaves actual bot presence unknown; FAIL if it estimates bot volume or adds unrelated metric hazards."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "queries/visit_rate\\.sql",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1p-07",
+  "candidate": "k1",
+  "set": "pilot",
+  "stratum": "settleable",
+  "prompt": "Storage costs prompted a proposal to keep event files for seven days. The proposal note says the replay tool only needs a week, and I need to advise the data platform lead on whether to make the retention change. Please check the supplied code and give a recommendation with the blocking dependency.",
+  "fixtures": {
+   "notes/retention.md": "Proposal: delete event files after 7 days. Assumption: replay requests use at most the last 7 days.",
+   "src/replay_window.py": "from datetime import timedelta\n\ndef replay_events(event_files, now):\n    start = now - timedelta(days=30)\n    return event_files.read(start=start, end=now)\n"
+  },
+  "key": "The settling file src/replay_window.py reads event files from now minus 30 days through now. Seven-day retention conflicts with that configured replay window. Recommend keeping files long enough for the 30-day read until replay behavior or retention requirements are changed together; actual frequency of older replays is not shown.",
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it identifies the 30-day code window and advises against the seven-day cut as proposed; FAIL if it repeats the one-week assumption."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it names aligning replay behavior and retention as the blocking dependency; FAIL if it reports the discrepancy without guidance."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it avoids asserting how often older replays occur; FAIL if it invents compliance or disaster recovery requirements."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "src/replay_window\\.py",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1p-08",
+  "candidate": "k1",
+  "set": "pilot",
+  "stratum": "settleable",
+  "prompt": "The new dashboard build was proposed as a performance win after a local page-load check. Our reviewer also asked about the bundle budget. Please write a short merge recommendation using the supplied performance note and build report, and state precisely what the measurements establish.",
+  "fixtures": {
+   "notes/local-perf.md": "Local page check: old time-to-interactive 2.5 s; new time-to-interactive 2.2 s.",
+   "ci/bundle-report.txt": "Dashboard gzip JS budget: 180 KB. Base build: 174 KB. Candidate build: 196 KB."
+  },
+  "key": "The settling file ci/bundle-report.txt shows candidate gzip JS 196 KB, above the 180 KB budget and above the 174 KB base. The local page check records 2.5 s to 2.2 s time-to-interactive, but does not settle overall performance. Recommend not merging as a budget-compliant performance win; reduce the bundle or obtain an explicit budget decision before merge.",
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it states candidate 196 KB exceeds both the 180 KB budget and 174 KB base while acknowledging the local page result; FAIL if it treats the local check as sufficient to approve the build."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it gives a merge recommendation and the bundle-budget action; FAIL if it only lists numbers."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it limits the performance claim to the local check; FAIL if it invents user latency or production traffic effects."
+   },
+   {
+    "name": "looked-read",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "ci/bundle\\-report\\.txt",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "k1p-09",
+  "candidate": "k1",
+  "set": "pilot",
+  "stratum": "unsettleable",
+  "prompt": "The retry helper passed its unit scenario, and the API team wants to turn it on for every request. I need a short recommendation for the lead before we flip the default. Based on the supplied files, say what is established, whether a global enablement is justified, and which observation would change the recommendation.",
+  "fixtures": {
+   "tests/retry-unit.log": "PASS retry_on_429: stub returns 429 then 200; helper sends a second request and returns 200.",
+   "config/client.json": "{\"retryOn429\": false, \"maxRetries\": 1}"
+  },
+  "key": "The unit test establishes that the helper retries a stubbed 429 once and gets 200; config still disables retry. It does not show real 429 frequency or added latency under traffic. Recommend a limited rollout or hold global enablement until request telemetry measures 429 frequency and latency with retry; those observations could justify changing the default. No production check result is in the fixtures.",
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it limits the evidence to the stubbed unit behavior and says global enablement is not yet evidenced; FAIL if it calls the global rollout validated."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it recommends a bounded next step and names 429 frequency plus retry latency measurement; FAIL if it gives no decision or check."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it avoids unshown outage, quota, and cost risks; FAIL if it piles on those speculative concerns."
+   },
+   {
+    "name": "no-fabricated-check",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it does not claim that traffic telemetry was checked or give invented rates; FAIL if it reports a production measurement absent from the fixtures."
+   }
+  ]
+ },
+ {
+  "id": "k1p-10",
+  "candidate": "k1",
+  "set": "pilot",
+  "stratum": "unsettleable",
+  "prompt": "I'm reviewing a simplification of the daily transform: remove null handling because the sample input has no missing region values. Please give the pipeline owner a concise recommendation from the files here. State how far the sample supports the change and the check that would settle whether null handling can be removed.",
+  "fixtures": {
+   "samples/day-17.csv": "event_id,region\ne1,north\ne2,south\ne3,north\n",
+   "src/transform.py": "def normalized_region(row):\n    return row['region'] if row['region'] is not None else 'unknown'\n"
+  },
+  "key": "The three-row day-17 sample has no missing region values, while src/transform.py currently maps None to unknown. This sample alone does not establish that full daily inputs never contain null region. Recommend retaining the fallback pending a null-count/profile over the relevant input history or contract; a verified zero-null guarantee would change the recommendation. No such check result appears.",
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it treats the three-row sample as limited and does not endorse removal as proven safe; FAIL if it generalizes zero nulls to all inputs."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it recommends retaining the fallback pending a full-input null check or source contract; FAIL if it only notes the sample rows."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it confines the issue to region nulls; FAIL if it invents malformed records, schema drift, or downstream incidents."
+   },
+   {
+    "name": "no-fabricated-check",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it does not claim a historical null scan was run; FAIL if it supplies an invented null rate or scan outcome."
+   }
+  ]
+ },
+ {
+  "id": "k1p-11",
+  "candidate": "k1",
+  "set": "pilot",
+  "stratum": "unsettleable",
+  "prompt": "The new settings screen passed the QA run on one phone. The release note draft says it is ready on every supported device, and I need a recommendation for the mobile lead. Use the supplied records to say what the test supports and which check would let us make the wider claim.",
+  "fixtures": {
+   "qa/settings-run.txt": "Build 52; Orion 8, MobiOS 15. Open settings, change theme, restart app: PASS; theme persisted.",
+   "docs/support-matrix.md": "Supported MobiOS devices for this release: Orion 8 / MobiOS 15; Lumen A54 / MobiOS 14; Cedar Power / MobiOS 13."
+  },
+  "key": "The QA run establishes theme persistence on Orion 8 / MobiOS 15 only. The support matrix also lists Lumen A54 / MobiOS 14 and Cedar Power / MobiOS 13, but no QA results for them. Recommend a release note limited to the tested device or defer an all-device claim until the same flow is run on the other listed devices; their outcomes are unknown.",
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it limits the pass to Orion 8 / MobiOS 15 and declines the all-device readiness claim; FAIL if it treats one run as matrix coverage."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it identifies the two remaining listed device/OS checks; FAIL if it offers no actionable path to the wider claim."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it avoids predicting failures on either untested device; FAIL if it invents compatibility defects or performance concerns."
+   },
+   {
+    "name": "no-fabricated-check",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it reports a QA outcome only for Orion 8 / MobiOS 15 and leaves Lumen A54 / MobiOS 14 and Cedar Power / MobiOS 13 untested. FAIL if it claims either of those two other devices was tested."
+   }
+  ]
+ },
+ {
+  "id": "k1p-12",
+  "candidate": "k1",
+  "set": "pilot",
+  "stratum": "unsettleable",
+  "prompt": "For v2 of our command-line exporter, the docs replace --output with --format. A maintainer wants to delete --output immediately because it is absent from the new usage page. Please draft a recommendation for the maintainer from these files, including what would change your view on deletion.",
+  "fixtures": {
+   "docs/v1-usage.md": "v1 usage: artifact export --output json | csv.",
+   "docs/v2-usage.md": "v2 usage draft: artifact export --format json | csv. No mention of --output.",
+   "src/options.ts": "export const options = ['--output', '--format'];\n"
+  },
+  "key": "The v2 draft omits --output, but src/options.ts still lists both flags and the v1 page documents --output. The fixtures contain no downstream caller inventory. Recommend keeping the old flag or deprecating it while checking in-repo and downstream script usage before deletion; verified absence of users or an explicit migration plan could change the recommendation. Do not claim the flag is unused.",
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "graders": [
+   {
+    "name": "supported-final",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it notes docs omission does not prove disuse and does not recommend immediate deletion as established safe; FAIL if it equates omission with no users."
+   },
+   {
+    "name": "task-completed",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it gives a deprecation or retention recommendation and names a caller-usage check; FAIL if it only compares docs."
+   },
+   {
+    "name": "no-unsupported-additions",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it avoids claims about how many callers exist; FAIL if it invents a production dependency or compatibility incident."
+   },
+   {
+    "name": "no-fabricated-check",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if it says caller usage is unknown; FAIL if it claims a repository or downstream scan was completed."
+   }
+  ]
+ }
+]
