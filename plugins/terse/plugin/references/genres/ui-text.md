@@ -8,4 +8,4 @@ Do not blame the user, show a code or stack trace as the whole message, or end o
 
 ## Example
 
-The owner first asked to keep a panel's tab labels unchanged, then approved short English labels once the mock-up renamed the tabs, and pointed out that the rest of the interface labels had to follow the mock-up too. Paraphrased from episodes E0080, E0109 and E0111 in `plugins/terse/research/2026-09-26-writing-replication/anonymized/episodes.jsonl`.
+The owner first asked to keep the tab labels unchanged, in the next session approved short English labels for them, and pointed out that the other interface labels had to follow the mock-up too. Paraphrased from episodes E0080, E0109 and E0111 in `plugins/terse/research/2026-09-26-writing-replication/anonymized/episodes.jsonl`.

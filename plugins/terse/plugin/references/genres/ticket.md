@@ -8,4 +8,4 @@ Do not add estimates, parent tickets or internal task references unless the owne
 
 ## Example
 
-Before: feedback for another project's issue that described the local repository at length and left out the plugin version. After: one line with the version, then expected against actual behaviour and a suggested fix, with no internal tool named. The owner asked for each of those changes. Paraphrased from episodes E0069, E0071 and E0072 in `plugins/terse/research/2026-09-26-writing-replication/anonymized/episodes.jsonl`.
+Before: feedback for another project's issue that described the local repository at length and left out the plugin version. After: one line with the version, then expected against actual behaviour and a suggested fix, with no internal tool named. The owner asked for each of those changes, and in other tickets asked for a trade-off to be stated and for estimates and a parent ticket to be left out. Paraphrased from episodes E0069, E0071, E0072, E0016 and E0227 in `plugins/terse/research/2026-09-26-writing-replication/anonymized/episodes.jsonl`.
