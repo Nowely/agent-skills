@@ -60,6 +60,11 @@ forensics remain in the repository references and release notes.
 - E69: `clarity` carries its own line for pushback: when the reader disputes a fact, recheck it at its source
   before conceding or holding, and say what the recheck showed. Before, it reached that rule only through a
   link to a deep-skill brief.
+- E71: interface text and error messages are already in `clarity`'s scope, so its description stays as it was.
+  On 2026-09-28 the unchanged description called `clarity` for them in 12 of 12 runs, the same as a description
+  that named them (`research/2026-09-28-clarity-scope/`). Names and test titles stay out, so the skill does not
+  load on every code edit. The held-out set that measured it, `evals/clarity-trigger/holdout-ui.json`, joins the
+  trigger runs.
 
 ## 0.3.0 — 2026-09-28
 

@@ -6,17 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with entrust's ledger, `plugins/entrust/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E71. `clarity`'s description leaves out names, test titles and user-facing strings, and excludes changing identifiers
-
-**Evidence, level 1.** Issue #20 ("Trigger") says the skill "should also cover the human-readable parts of code:
-names, test titles, user-facing strings and comments". `plugins/terse/plugin/skills/clarity/SKILL.md:3-18`
-names comments but not names, test titles or user-facing strings, and line 10 skips "steps that only run tools,
-change identifiers, or copy existing output".
-
-**Issue text.** Decide whether choosing a name, a test title or a user-facing string is in `clarity`'s scope. If
-it is, name those texts in the description and narrow the exclusion to mechanical renames; a description change
-needs the trigger measurement in `RELEASING.md`.
-
 ## E73. Whether `clarity` reduces objections, or improves the texts, is not measured
 
 **Evidence, level 1.** Issue #20 ("How to measure it") sets a baseline of 115 records, 73 of them objections,
