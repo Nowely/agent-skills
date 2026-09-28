@@ -17,7 +17,7 @@ when_to_use: >-
   what the text says, what supports it, and how it fits its destination. This includes feedback on a
   diff, text beside code, and a change note. Read a genre note only when that genre is at hand.
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
 license: MIT
 ---
 

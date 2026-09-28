@@ -3,7 +3,10 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.5.0 — 2026-09-28
+
+terse gets a genre note for skill pages and standing agent instructions, text whose reader is the model that
+loads it, so the note sends the writer to that model's vendor guidance first.
 
 ### Added
 
