@@ -141,20 +141,6 @@ On HEAD it exited 0 and printed all four expected states: A absent after uninsta
 
 _From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D7._
 
-## E25. `sections.mjs` drops a renamed section from its over-budget count and says nothing when a budgeted section disappears
-
-**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/sections.mjs:19-24` (at d7a1f37; now `plugins/terse/plugin/skills/rewrite/scripts/sections.mjs`) reports each heading it finds against `budgets.json` and counts over-budget sections only among those rows; a heading absent from the budget is printed as "(no budget)" and leaves the count, and a budgeted heading absent from the document is never mentioned.
-
-**Check.** The same command as D10 was run exactly:
-
-    sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-04/d10-d13-check.sh
-
-On HEAD it exited 0 and printed `D11 sections.mjs on a copy whose Install heading is renamed: 119 Installing (no budget); 1140 TOTAL, 3 section(s) over budget;` and `D11 sections.mjs on a copy without the Licence section, lines naming Licence or a missing section: 0`. The script is kept at `plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/probe-04/d10-d13-check.sh`; its line 4 names the temporary run directory it was written for.
-
-**Issue text.** `sections.mjs` is the report that shows a section swelling round by round. It loses a section from the over-budget count the moment its heading changes, and it is silent when a budgeted section is gone. It should print every budgeted heading the document lacks, and count a "(no budget)" heading as a section the writer must map or the coordinator must budget, so that a rename cannot hide growth.
-
-_From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D11._
-
 ## E26. `sections.mjs` counts space-separated words, so its budgets and growth mean nothing for text without spaces
 
 **Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/sections.mjs:13` (at d7a1f37; now `plugins/terse/plugin/skills/rewrite/scripts/sections.mjs`) counts words as `buf.join(" ").split(/\s+/).filter(Boolean).length`. A Chinese sentence of twenty-six characters with no spaces counts as one word, so a section written in such a script is never measured by the intended unit.
@@ -219,33 +205,6 @@ SHA line and the note move together and the text never alone: the note should sa
 indent removed", and the SHA line stays as it is.
 
 _From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-24/run/code-defects.md, D24._
-
-## E41. `sections.mjs` finds no budget when `budgets.json` keys carry the `## ` that brief 1 names
-
-**Evidence, level 3.**
-
-- `plugins/terse/skills/rewrite/scripts/sections.mjs:15` (at `e38699a`; now `plugins/terse/plugin/skills/rewrite/scripts/sections.mjs`) keeps a heading's text without its `## `,
-  and `sections.mjs:20` looks the budget up by that text alone; its usage line, `sections.mjs:3`, reads
-  `BUDGETS.json = {"<heading text>": <words>, ...}`.
-- `plugins/terse/plugin/references/roles.md:55-56`, brief 1, tells the writer to write the budgets "to <OUT>/budgets.json,
-  every `## ` heading mapped to its words".
-- 2026-09-26: both writers of the second checks keyed the file as `"## Install"`
-  (`plugins/terse/research/2026-09-26-terse-second-checks/dust-readme/budgets.json`, `…/dir-walker-comments/budgets.json`). On the
-  repaired README the script printed "(no budget)" beside every section and "0 section(s) over budget"
-  (`…/dust-readme/check/scripts.txt`).
-
-**Check.**
-
-    T=$(mktemp -d); printf '# t\n\n## Install\n\none two three\n' > "$T/t.md"; printf '{"## Install": 1}' > "$T/b.json"; node /Users/ruliny/Git/agent-skills/plugins/terse/plugin/skills/rewrite/scripts/sections.mjs "$T/t.md" "$T/b.json"
-
-prints `3 Install   (no budget)` and `0 section(s) over budget`; with the key `"Install"` the same section prints
-`+2` and `1 section(s) over budget`.
-
-**Issue text.** `rewrite` runs `sections.mjs` to report the words of each section against the writer's own
-budgets, and the script looks each budget up by the heading's text. Brief 1 asks the writer for "every `## `
-heading mapped to its words", and writers key the file as `"## Install"`; the script then finds no budget for any
-section and reports none over, with nothing to say it matched nothing. It should strip the leading `#`s from a key
-and name any key that matches no heading, and brief 1 should ask for each heading's text.
 
 ## E42. The genre scout's brief asks for "raw markdown", which a kind of text that is not markdown does not have
 

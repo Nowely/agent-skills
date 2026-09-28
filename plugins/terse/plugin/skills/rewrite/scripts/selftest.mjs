@@ -12,9 +12,13 @@ const d = path.join(tmp, "d.md");
 fs.writeFileSync(d, "## A\nan agent that ran\nnothing\n## B\nran nothing\n## C\nran nothing\n## D\nunrelated\n");
 const s = run("sections.mjs", [d]);
 check("sections counts per heading", /^\s*2 B$/m.test(s.out) && /TOTAL/.test(s.out));
-const bj = path.join(tmp, "b.json"); fs.writeFileSync(bj, JSON.stringify({ A: 10, B: 1, C: 5, D: 5 }));
-const sb = run("sections.mjs", [d, bj]);
-check("sections reports a section over its budget and still exits 0", /\+1\s+B/.test(sb.out) && sb.code === 0);
+const d2 = path.join(tmp, "d2.md");
+fs.writeFileSync(d2, "## A\nan agent that ran\nnothing\n## B\nran nothing at all\n## C renamed\nran nothing\n");
+const s2 = run("sections.mjs", [d, d2]);
+check("sections shows a section that grew and still exits 0", /\+2\s+B$/m.test(s2.out) && s2.code === 0);
+check("sections marks a renamed and a removed section", /C renamed\s+\(only after\)/.test(s2.out)
+  && /^\s*2\s+-\s+C\s+\(only before\)/m.test(s2.out) && /D\s+\(only before\)/.test(s2.out)
+  && /1 section\(s\) grew, 3 in one version only/.test(s2.out));
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(failed ? `\n${failed} check(s) MISSED` : "\nall checks caught their planted violation");
 process.exit(failed ? 1 : 0);

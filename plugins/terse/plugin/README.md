@@ -81,7 +81,7 @@ For a README, there are genre notes for [plugin or skill libraries](references/g
 |---|---|---|
 | The writing rules | Filler, an argument restated, editing history; a condition, a limit or a warning cut or weakened where your readers decide | Part two of a four-part rewrite, measured on one README: [the rules](references/writing-rules.md) |
 | The rules | Two things required of every text — it is pleasant to read, and true within its world — and advice for finding its best structure, words and form, taken where it helps | One owner's feedback and counts of documents of a kind, each piece marked with its source: [the rules](references/rules.md); advice for one kind of text, such as a README, in [its genre notes](references/genres/) |
-| The scripted check | Words per section against the writer's own plan, as a report; tested against a deliberate violation | [The measurements behind the scripts](references/measurements.md) |
+| The scripted check | Words per section of the draft and the repair, side by side, as a report; tested against a deliberate violation | [The measurements behind the scripts](references/measurements.md) |
 
 [The field's practices, each marked measured, argued or asserted](references/prior-art.md), gathered and ranked.
 

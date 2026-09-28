@@ -1,25 +1,45 @@
 #!/usr/bin/env node
-// Word count per `## ` section, against a budget when one is given.
-// Usage: node sections.mjs FILE [BUDGETS.json]      BUDGETS.json = {"<heading text>": <words>, ...}
-// With budgets: prints budget, actual and the difference per section. A report, not a gate: exit 0 either way.
+// Words per `## ` section of one text, or of two versions side by side.
+// Usage: node sections.mjs FILE            words per section
+//        node sections.mjs BEFORE AFTER    both counts and the difference; a section one version lacks is marked
+// A report, not a gate: exit 0 either way.
 import fs from "node:fs";
-const [file, budgetsFile] = process.argv.slice(2);
-if (!file) { console.error("usage: node sections.mjs FILE [BUDGETS.json]"); process.exit(2); }
-if (budgetsFile && !fs.existsSync(budgetsFile)) { console.error(`sections.mjs: ${budgetsFile} does not exist; write it once per document (every ## heading mapped to a budget)`); process.exit(2); }
-const budgets = budgetsFile ? JSON.parse(fs.readFileSync(budgetsFile, "utf8")) : null;
-const lines = fs.readFileSync(file, "utf8").split("\n");
-let cur = "(opening)", buf = [], total = 0, over = 0;
-const rows = [];
-const flush = () => { const w = buf.join(" ").split(/\s+/).filter(Boolean).length; rows.push([cur, w]); total += w; };
-for (const l of lines) {
-  if (/^##\s/.test(l)) { flush(); cur = l.replace(/^##\s*/, ""); buf = []; }
-  else buf.push(l);
+const files = process.argv.slice(2);
+if (files.length < 1 || files.length > 2) { console.error("usage: node sections.mjs FILE | BEFORE AFTER"); process.exit(2); }
+const words = (text) => text.split(/\s+/).filter(Boolean).length;
+const sections = (file) => {
+  const out = new Map();
+  let cur = "(opening)", buf = [];
+  const flush = () => { let key = cur, n = 2; while (out.has(key)) key = `${cur} (${n++})`; out.set(key, words(buf.join("\n"))); };
+  for (const l of fs.readFileSync(file, "utf8").split("\n")) {
+    if (/^##\s/.test(l)) { flush(); cur = l.replace(/^##\s*/, "").trim(); buf = []; }
+    else buf.push(l);
+  }
+  flush();
+  return out;
+};
+const col = (v) => String(v).padStart(6);
+const signed = (d) => (d > 0 ? "+" : "") + d;
+if (files.length === 1) {
+  let total = 0;
+  for (const [s, w] of sections(files[0])) { console.log(col(w), s); total += w; }
+  console.log(col(total), "TOTAL");
+  process.exit(0);
 }
-flush();
-for (const [s, w] of rows) {
-  const b = budgets ? budgets[s] ?? budgets[s.replace(/`/g, "")] : undefined;
-  if (b === undefined) console.log(String(w).padStart(5), s + (budgets ? "   (no budget)" : ""));
-  else { const d = w - b; if (d > 0) over++; console.log(String(w).padStart(5), `/ ${String(b).padEnd(4)}`, (d > 0 ? "+" : "") + d, " ", s); }
+const [before, after] = files.map(sections);
+const names = [...after.keys(), ...[...before.keys()].filter((s) => !after.has(s))];
+let tb = 0, ta = 0, grew = 0, one = 0;
+console.log(col("before"), col("after"), col("diff"), " section");
+for (const s of names) {
+  const b = before.get(s), a = after.get(s);
+  tb += b ?? 0; ta += a ?? 0;
+  if (b === undefined || a === undefined) {
+    one++;
+    console.log(col(b ?? "-"), col(a ?? "-"), col(""), s, b === undefined ? "  (only after)" : "  (only before)");
+    continue;
+  }
+  if (a > b) grew++;
+  console.log(col(b), col(a), col(signed(a - b)), s);
 }
-console.log(String(total).padStart(5), "TOTAL" + (budgets ? `, ${over} section(s) over budget` : ""));
+console.log(col(tb), col(ta), col(signed(ta - tb)), ` TOTAL, ${grew} section(s) grew, ${one} in one version only`);
 process.exit(0);

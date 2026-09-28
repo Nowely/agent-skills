@@ -52,8 +52,7 @@ is advice: take what helps this text and leave the rest. <SENTENCES> preserves m
 use its suggestions when they serve this reader, not as a compulsory shape.
 
 Plan from the context, not from a list of sections: each part, what it gives this reader, the device that
-carries it, a word budget. Write the budgets to <OUT>/budgets.json, every `## ` heading mapped to its
-words, before the text. Every statement is true within the text's world: note beside it what shows it.
+carries it, a word budget. Every statement is true within the text's world: note beside it what shows it.
 Where the owner has a real choice, follow <RULES>, "Offer alternatives when there is a real choice";
 ask for one missing fact directly when that is all that blocks the work.
 Read; run nothing of what the text describes. A fact its world does not hold — a feature the code lacks, a

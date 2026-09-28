@@ -52,8 +52,7 @@ runs first; its table is kept there for the next text of the kind, on the user's
 brief 1 of `roles.md`. It works out the text's world before its form and writes `context.md`: what the
 thing is and what it resembles, who reads the text and in what situation, what they need first, what would
 make them want it and choose it over what it resembles, the one thought it carries. Then it reads the
-genre's notes and the best texts of the kind, and writes its plan's word budgets to `budgets.json` and
-then `01-draft.md` — from the context, the purpose, the existing text if any, the plan the user agreed in
+genre's notes and the best texts of the kind, and writes `01-draft.md` — from the context, the purpose, the existing text if any, the plan the user agreed in
 `rethink` if they give its path, and the audit's run file if they gave its directory. It returns the
 context, the plan and its evidence; save them as `writer-notes.md`. In full mode the harness, brief 12,
 runs beside it.
@@ -77,10 +76,11 @@ becomes truer for its reader or easier to read, declines one that adds words the
 there with a reason from the context, and writes `02-repaired.md` with that list. Then, in one message:
 truth, brief 3, on the sentences the repair changed; the question readers again; the two cold readers,
 brief 11. Run the script on it too, from this skill's `scripts/`, the directory beside this file — words per
-section against the writer's own plan, a report:
+section of the draft and the repair side by side, a report: a section that grew, or one only one of them has,
+is where the repair added or lost text:
 
 ```bash
-node "${CLAUDE_SKILL_DIR}/scripts/sections.mjs" 02-repaired.md budgets.json
+node "${CLAUDE_SKILL_DIR}/scripts/sections.mjs" 01-draft.md 02-repaired.md
 ```
 
 A sentence truth finds wrong for the reader, a contradiction, a question now answered wrong or a line a
@@ -99,7 +99,7 @@ over as a [relayed result](../../references/genres/relayed-result.md).
 
 ## What you return
 
-In the run directory: `purpose.md`; `context.md`; `01-draft.md`, `budgets.json` and `writer-notes.md` with the plan;
+In the run directory: `purpose.md`; `context.md`; `01-draft.md` and `writer-notes.md` with the plan;
 `critics/`, every report verbatim, the check's among them; each numbered text after the draft, with the
 applied-and-declined list; the scripts' output; `diff.patch` for a text that existed.
 

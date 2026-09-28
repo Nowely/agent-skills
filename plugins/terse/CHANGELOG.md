@@ -17,6 +17,11 @@ forensics remain in the repository references and release notes.
 - E55: the live trigger probe blocks `ListAgents` and `SendMessage`, so the agent-brief case is scored where
   agent-messaging tools exist instead of being excluded because the model tried to send the brief to a real agent;
   three live runs on 2026-09-28 were all scored, with `clarity` called before the answer.
+- E41, E25: `rewrite`'s section report compares the draft with the repair instead of reading a `budgets.json`
+  the writer typed by hand. Keys written as brief 1 asked, `"## Install"`, matched no heading, so the report said
+  "0 section(s) over budget" having checked nothing, and a renamed or removed section vanished from it. Now a
+  section that grew shows its difference, and one that only one version has is marked; the budgets stay in the
+  writer's plan.
 
 ## 0.3.0 — 2026-09-28
 
