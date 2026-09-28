@@ -6,7 +6,8 @@
 import fs from "node:fs";
 const files = process.argv.slice(2);
 if (files.length < 1 || files.length > 2) { console.error("usage: node sections.mjs FILE | BEFORE AFTER"); process.exit(2); }
-const words = (text) => text.split(/\s+/).filter(Boolean).length;
+const segmenter = new Intl.Segmenter(undefined, { granularity: "word" });
+const words = (text) => { let n = 0; for (const s of segmenter.segment(text)) if (s.isWordLike) n++; return n; };
 const sections = (file) => {
   const out = new Map();
   let cur = "(opening)", buf = [];

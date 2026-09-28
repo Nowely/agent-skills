@@ -22,6 +22,8 @@ forensics remain in the repository references and release notes.
   "0 section(s) over budget" having checked nothing, and a renamed or removed section vanished from it. Now a
   section that grew shows its difference, and one that only one version has is marked; the budgets stay in the
   writer's plan.
+- E26: the section report counts words with `Intl.Segmenter`, so a section in Chinese, Japanese or Thai is
+  counted in words rather than as one word per run of text between spaces.
 
 ## 0.3.0 — 2026-09-28
 

@@ -141,20 +141,6 @@ On HEAD it exited 0 and printed all four expected states: A absent after uninsta
 
 _From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D7._
 
-## E26. `sections.mjs` counts space-separated words, so its budgets and growth mean nothing for text without spaces
-
-**Evidence, level 3.** `plugins/terse/skills/rewrite/scripts/sections.mjs:13` (at d7a1f37; now `plugins/terse/plugin/skills/rewrite/scripts/sections.mjs`) counts words as `buf.join(" ").split(/\s+/).filter(Boolean).length`. A Chinese sentence of twenty-six characters with no spaces counts as one word, so a section written in such a script is never measured by the intended unit.
-
-**Check.** The same command as D10 was run exactly:
-
-    sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-04/d10-d13-check.sh
-
-On HEAD it exited 0 and printed `D12 sections.mjs on a Chinese sentence with no spaces: 1 介绍 (no budget)` and the whitespace-splitting implementation at `plugins/terse/plugin/skills/rewrite/scripts/sections.mjs:13`. The script is kept at `plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/probe-04/d10-d13-check.sh`; its line 4 names the temporary run directory it was written for.
-
-**Issue text.** The plugin says its scope is Markdown in any language, and its budget report counts words by splitting on whitespace, which counts a sentence in Chinese, Japanese or Thai as one word. `sections.mjs` should count by a unit that exists in every script — characters, or graphemes by `Intl.Segmenter` — or the pages should say the budgets are measured in space-separated words and hold for such languages only.
-
-_From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D12._
-
 ## E29. A re-audit "with the same questions" is required by `measure.md` and no audit step takes an earlier run as input
 
 **Evidence, level 2.** `plugins/terse/skills/audit/references/measure.md:106-109` (at d7a1f37; now `plugins/terse/plugin/skills/audit/references/measure.md`) requires the same questions, key, entry file and model. `plugins/terse/plugin/skills/audit/SKILL.md:23-34` makes a new run directory and `plugins/terse/plugin/skills/audit/SKILL.md:71-77` writes questions and the key without reading an earlier run. The only "same questions" line on the audit page is the no-document baseline at `plugins/terse/plugin/skills/audit/SKILL.md:96-102`, not a previous audit input.
