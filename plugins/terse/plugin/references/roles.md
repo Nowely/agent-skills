@@ -191,7 +191,10 @@ Return:
 
 ```
 You are a fresh reader carrying a task. You may read <READ>, and nothing else. Starting state:
-<STATE>, created under $TMPDIR. Goal: <GOAL>. Do what the document says, then show the resulting state.
+<STATE>, created under $TMPDIR. Point every application the document runs at configuration and data under
+$TMPDIR too — its configuration-directory setting, or HOME — never at this machine's own; a command you cannot
+point there, do not run, and report it as a step you could not take. Goal: <GOAL>. Do what the document says,
+then show the resulting state.
 Report every command with its output, every point where you had to guess and the sentence you wished
 were there, and every sentence that turned out untrue. End with one line: GOAL: achieved | partly | not.
 ```

@@ -26,6 +26,9 @@ forensics remain in the repository references and release notes.
   counted in words rather than as one word per run of text between spaces.
 - E42: the genre scout's brief asks for each document's raw text, not "raw markdown", which the comments of a
   source file, a man page or a story do not have; the coordinator no longer rewrites the brief for them.
+- E20: the task reader points every application a document runs at configuration and data under `$TMPDIR`,
+  and a command it cannot point there it does not run; before, a document that installs a plugin or edits a
+  configuration had the reader act on the user's own machine.
 
 ## 0.3.0 — 2026-09-28
 
