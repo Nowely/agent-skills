@@ -85,6 +85,6 @@ For a README, there are genre notes for [plugin or skill libraries](references/g
 
 [The field's practices, each marked measured, argued or asserted](references/prior-art.md), gathered and ranked.
 
-**How the deep skills work:** An installed run goes in the plugin's data directory; a source-checkout run uses a temporary directory. In `rewrite`, a sentence the truth critics refute goes back to the writer before you see the text. The skills ask for your word before applying a draft to your repository.
+**How the deep skills work:** A run goes in the plugin's data directory when Claude Code gives the plugin one, and in a temporary directory otherwise; [how long it stays and what asks for permission](references/run.md). In `rewrite`, a sentence the truth critics refute goes back to the writer before you see the text. The skills ask for your word before applying a draft to your repository.
 
 **Not guaranteed:** that a person reads the result better; what is measured is what AI readers get from the text.

@@ -34,23 +34,6 @@ instead of 4/7 (`audit-2026-09-22/audit.md`, Open).
 question and the page leaves it to the scorer. The page should say whether the no-document arm counts a
 correct "cannot tell" as a right answer, and the run-file contract should carry the choice.
 
-## E11. All three run directories are outside the working directory, where the Write tool and shell redirects prompt, and no page says so
-
-**Evidence, level 1.** After `9efef3d`, `plugins/terse/plugin/skills/audit/SKILL.md:33` and
-`plugins/terse/skills/rewrite/SKILL.md:37` (at 829c235; now `plugins/terse/plugin/skills/rewrite/SKILL.md`) place every run under the plugin's data directory or
-`$TMPDIR/terse`, outside the repository and outside the session's working directory; `plugins/terse/skills/rethink/SKILL.md:19-20` (at
-829c235; now `plugins/terse/plugin/skills/rethink/SKILL.md`) does the same for `rethink`'s run.
-`plugins/entrust/plugin/README.md:137-138`: "In every permission mode but auto and bypass, a write outside the
-working directory prompts, so add that directory to `permissions.additionalDirectories` once". The two
-terse pages tell the coordinator to `mkdir -p "$RUN"` and to write the run file, the rounds, the edits and
-the reviews there, and say nothing about the prompts or the setting. Found on 2026-09-22 by the writer of
-the run-directory fix; the audit's placement predates it.
-
-**Issue text.** A coordinator following either page in the default permission mode meets a permission
-prompt for every file the run writes. The pages should say where the run lands, that writes there prompt
-outside auto and bypass, and name `permissions.additionalDirectories` as the one-time setting, as
-entrust's README does for its own data directory.
-
 ## E12. `measure.md` lets the audit store its score in the audited repository on the user's word, and the audit page says it writes nothing there
 
 **Evidence, level 2.** `plugins/terse/plugin/skills/audit/SKILL.md:44`: "Write nothing into the audited
@@ -98,34 +81,6 @@ At 829c235 it prints the reader and re-audit rules, the run directory outside th
 **Issue text.** `rewrite` keeps its final text outside the user's repository and applies it only on their word. `audit` re-measures with the same entry file and lets its readers open only the repository's `.md` files. Between the two, no page says how a candidate is re-audited before it is applied: where it must stand, and what keeps its relative links pointing where the original's did. A user who re-audits the text where `rewrite` leaves it gives the readers a file outside the repository, with relative links that resolve against the run directory. The pages should say where a candidate stands for its re-audit (for example, at the original's path in a copy of the repository's Markdown tree), and `rewrite`'s hand-over should say so next to the diff.
 
 _From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D1._
-
-## E19. A checkout loaded with `claude --plugin-dir` puts its runs in a data directory the pages do not name, and `claude plugin uninstall` cannot remove it
-
-**Evidence, level 3.** `plugins/terse/skills/audit/SKILL.md:36-42` (at d7a1f37; now `plugins/terse/plugin/skills/audit/SKILL.md`) says `D` is empty for a source checkout and gives only an installed-plugin data directory and a temporary-directory fallback. `plugins/terse/skills/rewrite/SKILL.md:31-43` (at 829c235; now `plugins/terse/plugin/skills/rewrite/SKILL.md`) uses the same formula and gives the same two lifetime cases. A checkout loaded with `claude --plugin-dir plugins/terse/plugin` is neither: Claude Code loads it as `terse@inline`, writes a configuration-local `plugins/data/terse-inline` into the line, and `claude plugin uninstall terse@inline` refuses it because it has no marketplace backing. Since 2026-09-25 the three skills link one statement of it, `plugins/terse/plugin/references/run.md:9-13`.
-
-**Check.** From any directory:
-
-    sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-03/plugindir-probe.sh; sed -n '9,13p' /Users/ruliny/Git/agent-skills/plugins/terse/plugin/references/run.md
-
-On HEAD it exited 0 under a freshly reset signed-out profile, printed `"source":"terse@inline"`, `D="<probe>/config-pdir/plugins/data/terse-inline"`, `data directory terse-inline: exists; temporary directory runs: absent`, uninstall exit 1 with "it cannot be uninstalled", and `stub run after that uninstall: present`; the moved `rewrite` lifetime lines are now 76-87. The script is kept at `plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/probe-03/plugindir-probe.sh`; its line 6 names the temporary run directory it was written for.
-
-**Issue text.** `audit` and `rewrite` tell the agent where a run lives and how long it lasts in two cases: an installed plugin, whose data directory `claude plugin uninstall` deletes unless `--keep-data`, and a source checkout, whose data directory is empty so the run falls back to the temporary directory. A checkout loaded with `claude --plugin-dir` is a third case the pages call the second: Claude Code writes `plugins/data/terse-inline` under its configuration directory into the run line, the run lands there, and `claude plugin uninstall` refuses that plugin, so the run outlives the session and no command the pages name removes it. The pages should state the rule by what the line does — the data directory when Claude Code supplies one, the temporary directory otherwise — and say that a `--plugin-dir` run is the user's to remove.
-
-_From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D5._
-
-## E21. The pages give a run's lifetime as deleted by `claude plugin uninstall` unless `--keep-data`, and it is not
-
-**Evidence, level 3.** `plugins/terse/skills/audit/SKILL.md:39-42` (at d7a1f37; now `plugins/terse/plugin/skills/audit/SKILL.md`) and `plugins/terse/skills/rewrite/SKILL.md:40-43` (at 829c235; now `plugins/terse/plugin/skills/rewrite/SKILL.md`) state that a run under the plugin data directory survives updates and is deleted by `claude plugin uninstall` unless `--keep-data`. Neither page names scope, the last installation, or `claude plugin marketplace remove`. In fresh signed-out Claude configurations, uninstalling one of two installations kept the data and run until the last installation was removed, while `claude plugin marketplace remove nowely` deleted them and offered no `--keep-data` option. Since 2026-09-25 the three skills link one statement of it, `plugins/terse/plugin/references/run.md:9-13`.
-
-**Check.** From any directory:
-
-    sh /var/folders/mf/9v804k_57lq30kwtlr7468xr0000gn/T//terse/runs/20260922-233021-terse-readme/probe-04/lifetime-probe.sh; sed -n '9,13p' /Users/ruliny/Git/agent-skills/plugins/terse/plugin/references/run.md; echo "page lines naming marketplace remove, a scope or the last installation: $(cat /Users/ruliny/Git/agent-skills/plugins/terse/plugin/references/run.md | grep -c -E 'marketplace remove|last (installation|scope)|--scope')"
-
-On HEAD it exited 0 and printed all four expected states: A absent after uninstall, B present after `--keep-data`, C present after uninstalling one scope then absent after the last, D absent after marketplace removal, plus `marketplace remove options: --help --scope` and the final page count `0`; the moved `rewrite` lifetime text is at lines 84-87. The script is kept at `plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/probe-04/lifetime-probe.sh`; its line 8 names the temporary run directory it was written for.
-
-**Issue text.** `audit` and `rewrite` tell the agent that a run under the plugin's data directory is deleted by `claude plugin uninstall` unless `--keep-data` is passed, and the agent passes that on as the run's lifetime. Measured on Claude Code 2.1.280, it is wrong in two directions. With the plugin installed at two scopes, uninstalling one keeps the data directory and its runs; they go only when the last installation is removed. And `claude plugin marketplace remove` deletes them as well, with no `--keep-data` to stop it. A user who removes the marketplace to tidy up loses every run without being warned, and a user who reads "uninstall deletes it" while a second installation remains expects a deletion that does not happen. `references/run.md`, which both pages link, should say that the runs are deleted when the plugin's last installation is removed, by `claude plugin uninstall` without `--keep-data` or by `claude plugin marketplace remove`, which has no such option.
-
-_From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/code-defects.md, D7._
 
 ## E29. A re-audit "with the same questions" is required by `measure.md` and no audit step takes an earlier run as input
 

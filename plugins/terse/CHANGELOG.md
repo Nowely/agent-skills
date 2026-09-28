@@ -29,6 +29,12 @@ forensics remain in the repository references and release notes.
 - E20: the task reader points every application a document runs at configuration and data under `$TMPDIR`,
   and a command it cannot point there it does not run; before, a document that installs a plugin or edits a
   configuration had the reader act on the user's own machine.
+- E21, E19, E11: `references/run.md` gives a run's real lifetime and cost in prompts. Runs go when the plugin's
+  last installation is removed, and `claude plugin marketplace remove` deletes them with no `--keep-data`
+  (measured 2026-09-22 on Claude Code 2.1.280); a `claude --plugin-dir` checkout keeps its runs in a data
+  directory of its own that no uninstall removes; and the data directory is under `~/.claude`, a protected path
+  where each write asks in the `default` and `acceptEdits` modes until edits there are allowed for the session.
+  The README no longer says every source-checkout run uses the temporary directory.
 
 ## 0.3.0 — 2026-09-28
 
