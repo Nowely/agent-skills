@@ -27,7 +27,11 @@ draft genre note.
 - **Eighteen principles both vendors state** for text an agent executes (§5a), what only one states, where they
   conflict, and fourteen things a genre note would need that terse does not say (§5e).
 - **A draft** of a genre note for skill pages and standing agent instructions, a sentence for `agent-brief.md` and
-  the line in `clarity`'s genre list ([d1-genre-note-draft.md](d1-genre-note-draft.md)), awaiting the owner's read.
+  the line in `clarity`'s genre list ([d1-genre-note-draft.md](d1-genre-note-draft.md)). The owner took it as it
+  stands: `references/genres/skill-page.md`, with its example pointing to E77 instead of the finding's number.
+- **Recorded, on the owner's word:** the four defects and eight of the nine tensions as E77–E83 (entrust) and E84–E88
+  (terse), to be fixed in a separate audit. Tension 4.5 was left out: M1 decided a dated measurement is a record,
+  not the time-sensitive instruction the vendor warns against, and the one line that is such an instruction is E80.
 
 Nothing here shows that any practice improves a text for human readers, and no page was run against a model.
 
