@@ -56,7 +56,7 @@ Ask when it matters; no line has to satisfy all six.
   unexplained internal label?
 
 When the reader disputes a fact, recheck it at its source before you concede or hold, and say what the
-recheck showed. For a longer exchange of objections, follow the
+recheck showed. For an exchange of objections, follow the
 [owner-feedback brief](../../references/roles.md#13-owner-feedback).
 
 ## Genres and larger texts
