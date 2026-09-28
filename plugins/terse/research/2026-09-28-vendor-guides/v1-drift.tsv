@@ -1,0 +1,105 @@
+S1-1	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	If you've been using agents like Codex for your projects over the last year, you've likely
+S1-2	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	But many descriptions are far too long, and when you add too many skills, Codex starts sho
+S1-3	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	What's worse is that descriptions can often contradict each other or over-emphasize when s
+S1-4	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	Here, the bad skill description can push the model to use it anytime it touches anything r
+S1-5	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	Second, one of the key markers of a useful skill is progressive disclosure.
+S1-6	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	Models have gotten much better at understanding nuance and ambiguity, so overly specific g
+S1-7	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	Repository skills also guide other contributors' agents, which may use different models. G
+S1-8	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	Because AGENTS.md applies whenever the model works in your repository, you should frequent
+S1-9	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	Requiring a stack of docs or a full repo map before every edit is excessive for a typo fix
+S1-10	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	Prompting the model to read files before every edit is a great way to burn context and slo
+S1-11	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	Previous models needed encouragement to run tests and check their work. GPT-6 Astra does t
+S1-12	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	GPT-6 Astra is thorough, but it can be more tentative about how far to take a task. Someti
+S1-13	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	The local tests use disposable fixtures and have no production access. Run them, fix failu
+S1-14	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	That can be useful, but GPT-6 Astra, as our most aligned model, has much better judgment a
+S1-15	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	If you stated boundaries previously because you wanted to prevent other models from going 
+S1-16	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	If you're used to GPT-5.6 Sol taking a request and continuing for long stretches, GPT-6 As
+S1-17	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	This is where it helps to define completion before starting. You might need to push Astra 
+S1-18	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	A requirement to stop for review after the first implementation will pull the model toward
+S1-19	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	If you want it to keep exploring beyond a first pass, say what you want explored and where
+S1-20	present	01-rethinking-skills-and-prompts-for-gpt-6-astra.txt	A new model is a good opportunity to clean your house, but you don't need to review everyt
+S1-21	not-found	-	Because implicit matching depends on description, write concise descriptions with clear sc
+S1-22	present	02-build-skills.txt	Front-load the key use case and trigger words so a host can still match the skill if descr
+S1-23	present	02-build-skills.txt	To avoid crowding out the rest of the prompt, this list uses at most 2% of the model's con
+S1-24	present	02-build-skills.txt	Keep each skill focused on one job.
+S1-25	present	02-build-skills.txt	Prefer instructions over scripts unless you need deterministic behavior or external toolin
+S1-26	present	02-build-skills.txt	Write imperative steps with explicit inputs and outputs.
+S1-27	present	02-build-skills.txt	Test prompts against the skill description to confirm the right trigger behavior.
+S1-28	present	03-skills-and-plugins.txt	Skills are most useful when good results depend on a repeatable approach.
+S1-29	present	03-skills-and-plugins.txt	Explain the goal, the steps to follow, the expected format, and anything the skill should 
+S1-30	present	03-skills-and-plugins.txt	Check the instructions, test the skill with a realistic request, and refine it if the resu
+S1-31	present	04-prompting.txt	A short prompt is often enough. For larger or more important tasks, include the parts that
+S1-32	present	04-prompting.txt	Use only the parts that help. You don't need to fill in every item or follow a required fo
+S1-33	present	04-prompting.txt	Start with the result, not a detailed list of steps. Include the audience or format when t
+S1-34	present	04-prompting.txt	Describe a process when the process itself matters. Otherwise, leave ChatGPT room to searc
+S1-35	present	04-prompting.txt	Share the information that could change the result. Add only the sources that matter, and 
+S1-36	present	04-prompting.txt	Focus on the one or two boundaries that matter most. You don't need to control every step 
+S1-37	present	04-prompting.txt	For important work, ask ChatGPT for a final check, such as confirming every action item ha
+S1-38	present	04-prompting.txt	Your first prompt doesn't need to be perfect. Review the result, then ask for the specific
+S1-39	present	04-prompting.txt	A useful Codex prompt names the behavior you want, points to the relevant code or reproduc
+S1-40	present	05-agents-md.txt	Codex skips empty files and stops adding files once the combined size reaches the limit de
+S1-41	present	05-agents-md.txt	Raise the limit or split instructions across nested directories when you hit the cap.
+S1-42	present	05-agents-md.txt	Codex stops searching once it reaches your current directory, so place overrides as close 
+S1-43	present	05-agents-md.txt	Keep rules concise, explain the behavior to flag and any safe path or exception, and reser
+S1-44	present	06-prompt-engineering.txt	GPT models like gpt-6-astra benefit from precise instructions that explicitly provide the 
+S1-45	present	06-prompt-engineering.txt	Prompting gpt-6-astra for coding tasks is most effective when following a few best practic
+S1-46	present	06-prompt-engineering.txt	Frame the model as a software engineering agent with well-defined responsibilities. Provid
+S1-47	present	06-prompt-engineering.txt	Instruct the model to test changes with unit tests or Python commands, and validate patche
+S1-48	present	06-prompt-engineering.txt	Include concrete examples of how to invoke commands with the provided functions, which imp
+S1-49	present	06-prompt-engineering.txt	Guide the model to generate clean, semantically correct markdown using inline code, code f
+S1-50	present	06-prompt-engineering.txt	For front-end engineering work in larger codebases, we've found that adding these categori
+S1-51	not-found	-	For agentic and long-running rollouts with gpt-6-astra, focus your prompts on three core p
+S1-52	present	06-prompt-engineering.txt	Instruct the model to resolve the full query before yielding control, decomposing it into 
+S1-53	present	06-prompt-engineering.txt	Ask the model to explain why it is calling a tool, but only at notable steps.
+S1-54	present	06-prompt-engineering.txt	Use a TODO list tool or rubric to enforce structured planning and avoid missed steps.
+S1-55	present	06-prompt-engineering.txt	Generally speaking, reasoning models will provide better results on tasks with only high-l
+S1-56	present	06-prompt-engineering.txt	A GPT model is like a junior coworker. They'll perform best with explicit instructions to 
+S1-57	present	07-tools-skills.txt	Write a description that explains both what the skill does and when to use it. For example
+S1-58	present	07-tools-skills.txt	Keep the main instructions in SKILL.md and link to supporting files as needed:
+S1-59	present	07-tools-skills.txt	Once a skill is mounted, the model can decide when to use it. If you want more determinist
+S2-1	not-found	-	This guide assumes that you have: 1. A clear definition of the success criteria for your u
+S2-2	present	08-overview.txt	Not every success criteria or failing eval is best solved by prompt engineering. For examp
+S2-3	present	09-claude-prompting-best-practices.txt	Claude responds well to clear, explicit instructions. Being specific about your desired ou
+S2-4	present	09-claude-prompting-best-practices.txt	Provide instructions as sequential steps using numbered lists or bullet points when the or
+S2-5	present	09-claude-prompting-best-practices.txt	Providing context or motivation behind your instructions, such as explaining to Claude why
+S2-6	present	09-claude-prompting-best-practices.txt	Examples are one of the most reliable ways to steer Claude's output format, tone, and stru
+S2-7	present	09-claude-prompting-best-practices.txt	Include 3–5 examples for best results. You can also ask Claude to evaluate your examples f
+S2-9	present	09-claude-prompting-best-practices.txt	XML tags help Claude parse complex prompts unambiguously, especially when your prompt mixe
+S2-10	present	09-claude-prompting-best-practices.txt	Use consistent, descriptive tag names across your prompts. Nest tags when content has a na
+S2-11	present	09-claude-prompting-best-practices.txt	Setting a role in the system prompt focuses Claude's behavior and tone for your use case. 
+S2-12	present	09-claude-prompting-best-practices.txt	Put longform data at the top: Place your long documents and inputs near the top of your pr
+S2-13	present	09-claude-prompting-best-practices.txt	Queries at the end can improve response quality by up to 30 percent in tests, especially w
+S2-15	not-found	-	If you prefer more visibility into its reasoning: After completing a task that involves to
+S2-16	present	09-claude-prompting-best-practices.txt	Claude Opus 5 is an exception on verbosity: its default user-facing responses run longer t
+S2-17	present	09-claude-prompting-best-practices.txt	Tell Claude what to do instead of what not to do.
+S2-18	present	09-claude-prompting-best-practices.txt	The formatting style used in your prompt may influence Claude's response style. If you are
+S2-19	present	09-claude-prompting-best-practices.txt	Starting with Claude 4.6 models and Claude Mythos Preview, prefilled responses (providing 
+S2-20	present	09-claude-prompting-best-practices.txt	Try asking the model to conform to your output structure first, as newer models can reliab
+S2-21	present	09-claude-prompting-best-practices.txt	Claude's latest models are trained for precise instruction following and benefit from expl
+S2-22	present	09-claude-prompting-best-practices.txt	While the model has a high success rate in parallel tool calling without prompting, you ca
+S2-23	present	09-claude-prompting-best-practices.txt	Replace blanket defaults with more targeted instructions. Instead of "Default to using [to
+S2-24	present	09-claude-prompting-best-practices.txt	In internal evaluations, adaptive thinking reliably drives better performance than extende
+S2-25	present	09-claude-prompting-best-practices.txt	Prefer general instructions over prescriptive steps. A prompt like "think thoroughly" ofte
+S2-26	present	09-claude-prompting-best-practices.txt	Manual chain-of-thought (CoT) prompting as a fallback. When thinking is off, you can still
+S2-28	present	09-claude-prompting-best-practices.txt	Claude Opus 5 is the exception: it verifies its own work well without explicit instruction
+S2-29	present	09-claude-prompting-best-practices.txt	Your context window will be automatically compacted as it approaches its limit, allowing y
+S2-31	present	09-claude-prompting-best-practices.txt	Use subagents when tasks can run in parallel, require isolated context, or involve indepen
+S2-32	present	09-claude-prompting-best-practices.txt	Explicit prompt chaining (breaking a task into sequential API calls) is still useful when 
+S2-33	present	09-claude-prompting-best-practices.txt	Avoid over-engineering. Only make changes that are directly requested or clearly necessary
+S2-34	present	09-claude-prompting-best-practices.txt	Never speculate about code you have not opened. If the user references a specific file, yo
+S2-35	present	09-claude-prompting-best-practices.txt	Testing has shown consistent uplift on image evaluations when Claude is able to "zoom" in 
+S2-36	present	11-prompting-claude-fable-5.txt	In Anthropic's testing, this nearly eliminated fabricated status reports even on tasks des
+S2-37	present	11-prompting-claude-fable-5.txt	Define explicit constraints on what Claude Fable 5 should and should not do.
+S2-38	present	11-prompting-claude-fable-5.txt	Provide context about why you're asking, especially for long-running agents drawing on mul
+S2-39	present	11-prompting-claude-fable-5.txt	Skills developed for prior models are often too prescriptive for Claude Fable 5 and can de
+S2-40	present	11-prompting-claude-fable-5.txt	Don't instruct Claude to reproduce its reasoning in the response. Prompts, skills, or harn
+S2-43	present	09-claude-prompting-best-practices.txt	Batch independent tool calls in agent loops.
+S2-45	present	10-prompting-claude-fable-5-1.txt	Tell the model what to preserve in compaction summaries.
+S2-46	present	10-prompting-claude-fable-5-1.txt	Keep changes and tests to what the task asks for.
+S2-48	present	10-prompting-claude-fable-5-1.txt	Leave room for long outputs at xhigh and max effort.
+S2-49	present	12-prompting-claude-opus-4-8.txt	If you observe shallow reasoning on complex problems, raise effort to `high` or `xhigh` ra
+S2-50	present	12-prompting-claude-opus-4-8.txt	If you need Claude to apply an instruction broadly, state the scope explicitly.
+S2-51	present	12-prompting-claude-opus-4-8.txt	Report every issue you find, including ones you are uncertain about or consider low-severi
+S2-57	present	12-prompting-claude-opus-4-8.txt	Positive examples showing how Claude can communicate with the appropriate level of concisi
+S2-58	present	14-prompting-claude-sonnet-5.txt	When benchmarking, match by observed thinking length rather than effort name.
+S2-59	present	12-prompting-claude-opus-4-8.txt	If you observe shallow reasoning on complex problems, raise effort to `high` or `xhigh` ra
