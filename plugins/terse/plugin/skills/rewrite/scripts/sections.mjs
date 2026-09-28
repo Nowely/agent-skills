@@ -6,14 +6,16 @@
 import fs from "node:fs";
 const files = process.argv.slice(2);
 if (files.length < 1 || files.length > 2) { console.error("usage: node sections.mjs FILE | BEFORE AFTER"); process.exit(2); }
+for (const f of files) if (!fs.existsSync(f)) { console.error(`sections.mjs: ${f} does not exist`); process.exit(2); }
 const segmenter = new Intl.Segmenter(undefined, { granularity: "word" });
 const words = (text) => { let n = 0; for (const s of segmenter.segment(text)) if (s.isWordLike) n++; return n; };
 const sections = (file) => {
   const out = new Map();
-  let cur = "(opening)", buf = [];
+  let cur = "(opening)", buf = [], fence = false;
   const flush = () => { let key = cur, n = 2; while (out.has(key)) key = `${cur} (${n++})`; out.set(key, words(buf.join("\n"))); };
   for (const l of fs.readFileSync(file, "utf8").split("\n")) {
-    if (/^##\s/.test(l)) { flush(); cur = l.replace(/^##\s*/, "").trim(); buf = []; }
+    if (/^\s{0,3}(```|~~~)/.test(l)) fence = !fence;
+    if (!fence && /^##\s/.test(l)) { flush(); cur = l.replace(/^##\s*/, "").trim(); buf = []; }
     else buf.push(l);
   }
   flush();

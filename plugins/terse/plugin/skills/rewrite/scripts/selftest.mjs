@@ -14,6 +14,8 @@ const s = run("sections.mjs", [d]);
 check("sections counts per heading", /^\s*2 B$/m.test(s.out) && /TOTAL/.test(s.out));
 const zh = path.join(tmp, "zh.md"); fs.writeFileSync(zh, "## 介绍\n这是一个没有空格的中文句子。\n");
 check("sections counts words in a script without spaces", /^\s*([2-9]|\d{2,}) 介绍$/m.test(run("sections.mjs", [zh]).out));
+const fe = path.join(tmp, "fe.md"); fs.writeFileSync(fe, "## A\none two\n```\n## Not a heading\n```\n## B\nthree\n");
+check("sections takes no heading from inside a fenced block", !/Not a heading$/m.test(run("sections.mjs", [fe]).out));
 const d2 = path.join(tmp, "d2.md");
 fs.writeFileSync(d2, "## A\nan agent that ran\nnothing\n## B\nran nothing at all\n## C renamed\nran nothing\n");
 const s2 = run("sections.mjs", [d, d2]);
