@@ -19,11 +19,13 @@ const LAUNCHER_SRC = fs.readFileSync(LAUNCHER, "utf8");
 const shimDir = tempDir("agent-run-shim.");
 codexShim(shimDir, FAKE);
 let seq = 0;
-// One state root and one agent directory per case, as one coordinator launch has.
+// One state root and one agent directory per case, as one coordinator launch has: the report and the
+// directory inside the state root, where --new puts them and where the driver admits a mailbox.
 function fresh() {
-  const dir = tempDir("codex-agent.");
   const state = tempDir("agent-run-state.");
-  const report = path.join(tempDir("agent-run-report."), `run-${seq++}`, "report.json");
+  const report = path.join(state, "reports", `run-${seq++}`, "report.json");
+  const dir = path.join(state, "reports", `agent-${seq}`);
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   fs.writeFileSync(path.join(dir, "prompt.txt"), `RIGHTS: read ${shimDir}\nTASK: irrelevant, the server is scripted\n`);
   return { dir, state, report };
 }
@@ -46,7 +48,7 @@ test("--help names both modes and exits 0",
     const { code, out } = await spawnNode([LAUNCHER, "--help"], { killAfterMs: 10000 }).done;
     if (code !== 0) return `--help exited ${code}`;
     for (const s of ["--new --report-file REPORT", "--run --report-file REPORT", "--status", ...STATUS_LINES,
-                     "--new --approvals --report-file REPORT", "APPROVALS=", "--approval-timeout S", "--pending --report-file REPORT",
+                     "APPROVALS=", "WAITING=<id>[,<id>]", "waiting —", "ended —", "refused —", "--pending --report-file REPORT",
                      "--decide ID --accept|--decline [--why TEXT]", "COMMAND<<", "COMMAND>>", "REQUESTS=", "ORPHANED=",
                      "DECIDED=", "LATE=", "STALE=", "REFUSED=", "approvals=A/D/E/O", "auto=N", "late=N", "stale=N"])
       if (!out.includes(s)) return `--help does not mention ${s}`;
@@ -229,7 +231,6 @@ test("the launcher never opens prompt.txt except as the driver's argument, and h
     const problems = [];
     if (/(readFileSync|openSync|createReadStream|readFile)\([^)]*prompt/i.test(LAUNCHER_SRC)) problems.push("the launcher reads prompt.txt");
     if (!/\[DRIVER, "--prompt-file", promptPath, "--report-file", report, \.\.\.approvalArgs\]/.test(LAUNCHER_SRC)) problems.push("the driver is not spawned with exactly --prompt-file, --report-file and the approval arguments");
-    if (!/const approvalArgs = \[\.\.\.\(isDirectory\(path\.join\(dir, "approvals"\)\)/.test(LAUNCHER_SRC)) problems.push("the approval arguments no longer come from the mailbox --new --approvals made");
     if (!/env: process\.env/.test(LAUNCHER_SRC)) problems.push("the driver does not get the launcher's environment untouched");
     return problems.length === 0 || problems.join("; ");
   });
@@ -334,8 +335,11 @@ test("--run refuses a directory that ran for another report path, prints the nin
   });
 
 const PROMPT = `RIGHTS: read ${shimDir}\nTASK: irrelevant, the server is scripted\n`;
-const newAgent = (report, body = PROMPT, { approvals = false, env: e = {}, unsetEnv = [] } = {}) => {
-  const h = spawnNode([LAUNCHER, "--new", ...(approvals ? ["--approvals"] : []), "--report-file", report],
+// The state root every --new below makes its agents in, unless a case names its own.
+const newState = tempDir("agent-run-new-state.");
+const underState = (name) => path.join(newState, name, `${seq++}`, "report.json");
+const newAgent = (report, body = PROMPT, { env: e = { ENTRUST_STATE_DIR: newState }, unsetEnv = [], dir = null } = {}) => {
+  const h = spawnNode([LAUNCHER, "--new", ...(dir ? ["--dir", dir] : []), "--report-file", report],
     { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 20000, env: e, unsetEnv });
   h.child.stdin.end(body);
   return h.done;
@@ -345,7 +349,7 @@ test("--new makes agent/ beside the report at 0700 with the prompt from stdin at
   "the coordinator cannot expand $TMPDIR and cannot Write under the data directory; the launcher, handed the report path, is what makes the directory, and the prompt arrives byte for byte through stdin",
   async () => {
     const problems = [];
-    const report = path.join(tempDir("agent-run-new."), "run", "report.json");
+    const report = underState("new");
     const r = await newAgent(report);
     const dir = agentDirOf(report);
     if (r.code !== 0) problems.push(`--new exited ${r.code}: ${r.err.slice(0, 120)}`);
@@ -355,14 +359,12 @@ test("--new makes agent/ beside the report at 0700 with the prompt from stdin at
     if ((fs.statSync(path.join(dir, "prompt.txt")).mode & 0o777) !== 0o600) problems.push(`prompt.txt mode is ${(fs.statSync(path.join(dir, "prompt.txt")).mode & 0o777).toString(8)}`);
     const again = await newAgent(report, "TASK: other\n");
     if (again.code !== 2 || read(path.join(dir, "prompt.txt")) !== PROMPT) problems.push(`a second --new: exit ${again.code}, prompt ${read(path.join(dir, "prompt.txt")) === PROMPT ? "kept" : "REPLACED"}`);
-    const empty = await newAgent(path.join(tempDir("agent-run-new."), "run", "report.json"), "");
+    const empty = await newAgent(underState("new"), "");
     if (empty.code !== 2 || !/empty/.test(empty.err)) problems.push(`an empty prompt: exit ${empty.code}, ${empty.err.slice(0, 80)}`);
     const rel = await newAgent("reports/report.json");
     if (rel.code !== 2 || !/absolute/.test(rel.err)) problems.push(`a relative report path: exit ${rel.code}, ${rel.err.slice(0, 80)}`);
-    const elsewhere = tempDir("agent-run-newdir.");
-    const withDir = spawnNode([LAUNCHER, "--new", "--dir", elsewhere, "--report-file", path.join(tempDir("agent-run-new."), "run", "report.json")], { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 20000 });
-    withDir.child.stdin.end(PROMPT);
-    const wd = await withDir.done;
+    const elsewhere = path.join(newState, `newdir-${seq++}`);
+    const wd = await newAgent(underState("new"), PROMPT, { dir: elsewhere });
     if (wd.code !== 0 || read(path.join(elsewhere, "prompt.txt")) !== PROMPT) problems.push(`--new --dir: exit ${wd.code}, prompt ${read(path.join(elsewhere, "prompt.txt")) === PROMPT ? "there" : "MISSING"}`);
     return problems.length === 0 || problems.join("; ");
   });
@@ -371,8 +373,8 @@ test("--run and --status without --dir use agent/ beside the report, and a --run
   "the wrapper's command names only the report path, so the launcher has to find the directory itself; and a coordinator may issue --new and the Agent call in one turn, so the run must not refuse a prompt that is a second away",
   async () => {
     const problems = [];
-    const state = tempDir("agent-run-state.");
-    let report = path.join(tempDir("agent-run-derived."), "run", "report.json");
+    const state = newState;
+    let report = underState("derived");
     await newAgent(report);
     const r = await spawnNode([LAUNCHER, "--run", "--report-file", report], { env: env(state), killAfterMs: 60000 }).done;
     const lines = r.out.split("\n").filter(Boolean);
@@ -381,7 +383,7 @@ test("--run and --status without --dir use agent/ beside the report, and a --run
     const s = await spawnNode([LAUNCHER, "--status", "--report-file", report], { killAfterMs: 20000 }).done;
     if (s.code !== 0 || !s.out.includes("PATH=own")) problems.push(`--status without --dir: ${s.out.slice(0, 60)}`);
     // The race: --run first, --new one second later.
-    report = path.join(tempDir("agent-run-race."), "run", "report.json");
+    report = underState("race");
     const early = spawnNode([LAUNCHER, "--run", "--report-file", report], { env: env(state), killAfterMs: 60000 });
     await sleep(1000);
     await newAgent(report);
@@ -391,7 +393,7 @@ test("--run and --status without --dir use agent/ beside the report, and a --run
     return problems.length === 0 || problems.join("; ");
   });
 
-// --- the approval channel: the mailbox --new --approvals makes, and the caller's two hands on it ---
+// --- the approval channel: the mailbox --new makes for every agent, the hand-back, and the caller's two hands on it ---
 
 const launcherLines = async (args, opts = {}) => {
   const r = await spawnNode([LAUNCHER, ...args], { killAfterMs: 20000, ...opts }).done;
@@ -417,25 +419,26 @@ function handMailbox() {
       decision: decided, by: "coordinator", why: "the plan", decidedAt });
   return { dir, report, box, put, request, pend, decision, run };
 }
+// A --run's result, read the way the coordinator reads it: which of the three it is by its first line.
+const shapeOf = (lines) => (lines[0] ?? "").startsWith("REQUEST=") ? "waiting" : (lines[0] ?? "").startsWith("DRIVER_EXIT=") ? "ended" : "other";
+const runOnce = (report, state, scenario, extraEnv = {}) =>
+  launcherLines(["--run", "--report-file", report], { env: { ...env(state, scenario), ...extraEnv }, killAfterMs: 60000 });
 
-test("--new --approvals makes approvals/ at 0700 inside the state directory and says where; without the flag there is none, and a directory outside the state directory is refused",
-  "the mailbox is what arms the driver, and its guarantee is that no sandbox under that state directory can write it; the launcher's refusal is the early one in the caller's own call, the driver's inode check is the wall",
+test("--new makes the mailbox for every agent and says where; it refuses no state directory, and a report or a directory outside it",
+  "every agent has a mailbox, and a mailbox is only safe inside the state directory, which no agent's sandbox can write; no flag arms it, so --new needs the variable that names the state directory and checks both paths against it — the launcher's refusal is the early one in the caller's own call, the driver's inode check is the wall",
   async () => {
     const problems = [];
     const state = tempDir("agent-run-state.");
     const report = path.join(state, "run-a", "report.json");
-    const r = await newAgent(report, PROMPT, { approvals: true, env: { ENTRUST_STATE_DIR: state } });
+    const r = await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
     const box = path.join(agentDirOf(report), "approvals");
-    if (r.code !== 0) problems.push(`--new --approvals exited ${r.code}: ${r.err.slice(0, 160)}`);
+    if (r.code !== 0) problems.push(`--new exited ${r.code}: ${r.err.slice(0, 160)}`);
     else {
-      if (!r.out.includes(`APPROVALS=${box}\n`)) problems.push(`the mailbox was not announced: ${r.out}`);
+      if (r.out !== `PROMPT=${path.join(agentDirOf(report), "prompt.txt")}\nAPPROVALS=${box}\n`) problems.push(`--new did not print PROMPT= then APPROVALS=: ${r.out}`);
       if ((fs.statSync(box).mode & 0o777) !== 0o700) problems.push(`approvals/ is mode ${(fs.statSync(box).mode & 0o777).toString(8)}`);
     }
-    const plain = path.join(state, "run-b", "report.json");
-    await newAgent(plain, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
-    if (fs.existsSync(path.join(agentDirOf(plain), "approvals"))) problems.push("--new without --approvals made a mailbox");
     const outside = path.join(tempDir("agent-run-elsewhere."), "run", "report.json");
-    const o = await newAgent(outside, PROMPT, { approvals: true, env: { ENTRUST_STATE_DIR: state } });
+    const o = await newAgent(outside, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
     if (o.code !== 2 || !/inside the state directory/.test(o.err)) problems.push(`a report outside the state directory: exit ${o.code}, ${o.err.slice(0, 160)}`);
     if (fs.existsSync(agentDirOf(outside))) problems.push("the refused --new made the directory anyway");
     // Each half on its own: a --dir inside the state directory does not carry a report outside it, and a
@@ -443,45 +446,150 @@ test("--new --approvals makes approvals/ at 0700 inside the state directory and 
     for (const [label, dirArg, rep] of [
       ["--dir inside, report outside", path.join(state, "split-a", "agent"), path.join(tempDir("agent-run-elsewhere."), "report.json")],
       ["report inside, --dir outside", path.join(tempDir("agent-run-elsewhere."), "agent"), path.join(state, "split-b", "report.json")]]) {
-      const h = spawnNode([LAUNCHER, "--new", "--approvals", "--dir", dirArg, "--report-file", rep],
-        { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 20000, env: { ENTRUST_STATE_DIR: state } });
-      h.child.stdin.end(PROMPT);
-      const s = await h.done;
+      const s = await newAgent(rep, PROMPT, { env: { ENTRUST_STATE_DIR: state }, dir: dirArg });
       if (s.code !== 2 || !/inside the state directory/.test(s.err)) problems.push(`${label}: exit ${s.code}, ${s.err.slice(0, 160)}`);
       if (fs.existsSync(dirArg)) problems.push(`${label}: the refused --new made the directory anyway`);
     }
-    const none = await newAgent(path.join(state, "run-c", "report.json"), PROMPT, { approvals: true, unsetEnv: ["ENTRUST_STATE_DIR", "CLAUDE_PLUGIN_DATA"] });
-    if (none.code !== 2 || !/needs the state directory/.test(none.err)) problems.push(`no state directory named: exit ${none.code}, ${none.err.slice(0, 160)}`);
-    const plugin = await newAgent(path.join(state, "run-d", "report.json"), PROMPT, { approvals: true, unsetEnv: ["ENTRUST_STATE_DIR"], env: { CLAUDE_PLUGIN_DATA: state } });
-    if (plugin.code !== 0) problems.push(`CLAUDE_PLUGIN_DATA as the state directory: exit ${plugin.code}, ${plugin.err.slice(0, 160)}`);
+    const none = await newAgent(path.join(state, "run-c", "report.json"), PROMPT, { env: {}, unsetEnv: ["ENTRUST_STATE_DIR", "CLAUDE_PLUGIN_DATA"] });
+    if (none.code !== 2 || !/--new needs the driver's state directory/.test(none.err) || !/CLAUDE_PLUGIN_DATA/.test(none.err))
+      problems.push(`no state directory named: exit ${none.code}, ${none.err.slice(0, 200)}`);
+    if (fs.existsSync(path.join(state, "run-c"))) problems.push("the refused --new made the directory anyway");
+    const plugin = await newAgent(path.join(state, "run-d", "report.json"), PROMPT, { unsetEnv: ["ENTRUST_STATE_DIR"], env: { CLAUDE_PLUGIN_DATA: state } });
+    if (plugin.code !== 0 || !fs.existsSync(path.join(state, "run-d", "agent", "approvals"))) problems.push(`CLAUDE_PLUGIN_DATA as the state directory: exit ${plugin.code}, ${plugin.err.slice(0, 160)}`);
+    for (const gone of ["--approvals", "--approval-timeout"]) {
+      const g = await launcherLines(["--new", gone, "--report-file", path.join(state, "run-e", "report.json")], { env: { ENTRUST_STATE_DIR: state } });
+      if (g.code !== 2 || !g.err.includes(`unknown argument: ${gone}`)) problems.push(`${gone} was not refused as unknown: exit ${g.code}`);
+    }
     return problems.length === 0 || problems.join("; ");
   });
 
-test("--run hands the driver --approval-dir exactly when approvals/ exists, and --approval-timeout exactly when it was given one",
-  "the arming is the directory --new made and nothing else, so an unarmed agent runs as it always did; a timeout is the caller's opt-in, and the driver refuses one with no mailbox for it to bound",
+test("--run always hands the driver its mailbox, making one for a directory an older --new left without it; the launch-only form hands it none",
+  "no flag decides the arming: the wrapper's call is where a caller is waiting to answer, so its runs always have a mailbox, while the launch-only form swarm uses has nobody to answer and declines at once as before",
+  async () => {
+    const problems = [];
+    const { dir, state, report } = fresh();
+    const res = await launcherLines(["--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 60000 });
+    const rep = readJson(report);
+    if (valueOf(res.lines, "EXIT") !== "0" || rep?.approvalDir !== fs.realpathSync(path.join(dir, "approvals")))
+      problems.push(`an older directory under --run: ${JSON.stringify({ lines: res.lines.slice(0, 3), dir: rep?.approvalDir })}`);
+    if ((fs.statSync(path.join(dir, "approvals")).mode & 0o777) !== 0o700) problems.push("the mailbox --run made is not 0700");
+    const plain = fresh();
+    await launch(plain.dir, plain.report, plain.state, "approval-wait").done;
+    const p = readJson(plain.report);
+    if (p?.approvalDir !== null || p?.escalations?.[0]?.why !== "no channel") problems.push(`the launch-only form: ${JSON.stringify({ dir: p?.approvalDir, e: p?.escalations?.[0] })}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("a --run whose agent asks hands the request back: the --pending block for it, REQUESTS=, WAITING= and REPORT= last, while the run goes on",
+  "the wrapper hands back whatever its one call printed, and its rerun step keys on a REPORT= line: ending the call on a request, with REPORT= last, is what puts the question in front of the coordinator as an agent's return, in the foreground case where no poll exists",
   async () => {
     const problems = [];
     const state = tempDir("agent-run-state.");
-    const armed = path.join(state, "armed", "report.json");
-    await newAgent(armed, PROMPT, { approvals: true, env: { ENTRUST_STATE_DIR: state } });
-    let res = await launcherLines(["--run", "--approval-timeout", "1", "--report-file", armed], { env: env(state, "approval-wait"), killAfterMs: 60000 });
-    let rep = readJson(armed);
-    if (valueOf(res.lines, "DRIVER_EXIT") !== "6" || rep?.approvalDir !== fs.realpathSync(path.join(agentDirOf(armed), "approvals"))
-        || rep?.escalations?.[0]?.why !== "deadline")
-      problems.push(`the armed run: ${JSON.stringify({ lines: res.lines.slice(0, 3), dir: rep?.approvalDir, e: rep?.escalations?.[0] })}`);
-    if (!valueOf(res.lines, "RECEIPT").endsWith(" approvals=0/0/1/0")) problems.push(`the armed receipt: ${valueOf(res.lines, "RECEIPT")}`);
-    const plain = path.join(state, "plain", "report.json");
-    await newAgent(plain, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
-    res = await launcherLines(["--run", "--report-file", plain], { env: env(state, "approval-wait"), killAfterMs: 60000 });
-    rep = readJson(plain);
-    if (rep?.approvalDir !== null || rep?.escalations?.[0]?.why !== "no channel" || / approvals=/.test(valueOf(res.lines, "RECEIPT")))
-      problems.push(`the unarmed run: ${JSON.stringify({ dir: rep?.approvalDir, e: rep?.escalations?.[0], receipt: valueOf(res.lines, "RECEIPT") })}`);
-    const lone = path.join(state, "lone", "report.json");
-    await newAgent(lone, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
-    res = await launcherLines(["--run", "--approval-timeout", "5", "--report-file", lone], { env: env(state), killAfterMs: 60000 });
-    if (valueOf(res.lines, "DRIVER_EXIT") !== "2" || !/--approval-timeout bounds/.test(valueOf(res.lines, "ERROR")))
-      problems.push(`a timeout with no mailbox: ${JSON.stringify(res.lines.slice(0, 6))}`);
+    const report = path.join(state, "run", "report.json");
+    await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
+    const first = await runOnce(report, state, "approval-wait");
+    const lines = first.lines;
+    if (first.code !== 0 || shapeOf(lines) !== "waiting") return `the first --run did not hand a request back: exit ${first.code}, ${JSON.stringify(lines.slice(0, 3))}`;
+    const id = valueOf(lines, "REQUEST");
+    if (lines.at(-1) !== `REPORT=${report}` || lines.at(-2) !== `WAITING=${id}` || lines.at(-3) !== "REQUESTS=1")
+      problems.push(`the tail is not REQUESTS=, WAITING=, REPORT=: ${JSON.stringify(lines.slice(-3))}`);
+    for (const [name, want] of [["THREAD", "root"], ["METHOD", "item/commandExecution/requestApproval"], ["KIND", "command"], ["CAUSE", "policy"]])
+      if (valueOf(lines, name) !== want) problems.push(`${name}=${valueOf(lines, name)}, not ${want}`);
+    if (!/^20\d\d-/.test(valueOf(lines, "DEADLINE"))) problems.push(`DEADLINE=${valueOf(lines, "DEADLINE")}, not a time`);
+    const token = /^COMMAND<<([0-9a-f]{12})$/m.exec(first.out)?.[1] ?? "none";
+    const command = first.out.slice(first.out.indexOf(`COMMAND<<${token}\n`) + `COMMAND<<${token}\n`.length, first.out.indexOf(`\nCOMMAND>>${token}`));
+    const q = readJson(path.join(agentDirOf(report), "approvals", `${id}.request.json`));
+    if (command !== q?.command || !command.includes("\n")) problems.push(`the command in the hand-back is not the request's, whole: ${JSON.stringify(command)}`);
+    const pid = q?.run?.pid;
+    let running = false; try { process.kill(pid, 0); running = true; } catch {}
+    if (!running) problems.push("the driver did not outlive the call that handed its request back");
+    if (fs.existsSync(path.join(agentDirOf(report), "exit"))) problems.push("the run was marked over while its request waited");
+    // A rerun before any decision hands the same request back, as the ceiling's second call would.
+    const again = await runOnce(report, state, "approval-wait");
+    if (shapeOf(again.lines) !== "waiting" || valueOf(again.lines, "REQUEST") !== id) problems.push(`a rerun before the decision: ${JSON.stringify(again.lines.slice(0, 2))}`);
+    const decided = await launcherLines(["--decide", id, "--accept", "--why", "plan: the probe", "--report-file", report]);
+    if (decided.out !== `DECIDED=${id} accept\n`) problems.push(`--decide: ${decided.out}`);
+    const ended = await runOnce(report, state, "approval-wait");
+    const el = ended.lines;
+    if (shapeOf(el) !== "ended" || el.length !== STATUS_LINES.length || valueOf(el, "EXIT") !== "0" || !valueOf(el, "RECEIPT").endsWith(" approvals=1/0/0/0") || el.at(-1) !== `REPORT=${report}`)
+      problems.push(`the continued --run did not end with the nine lines: ${JSON.stringify(el)}`);
     return problems.length === 0 || problems.join("; ");
+  });
+
+test("a driver signalled while its request waits ends under the keeper: SIGTERM is the driver's own exit 1 with the request settled, SIGKILL is 128 + 9 in DIR/exit, and --run hands back the ended lines either way",
+  "the keeper, not the call that handed the request back, is what writes the exit marker once the call has returned; a driver that dies while nobody waits on it must still leave a marker, or every later --run would wait on a run that is over",
+  async () => {
+    const problems = [];
+    const waitingDriver = async (scenario) => {
+      const state = tempDir("agent-run-state.");
+      const report = path.join(state, "run", "report.json");
+      await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
+      const first = await runOnce(report, state, scenario);
+      const pid = Number(/^entrust: pid=(\d+) /.exec((read(path.join(agentDirOf(report), "err.txt")) ?? "").split("\n")[0])?.[1]);
+      return { state, report, first, pid };
+    };
+    for (const [sig, want] of [["SIGTERM", "1"], ["SIGKILL", "137"]]) {
+      const { state, report, first, pid } = await waitingDriver("approval-wait");
+      if (shapeOf(first.lines) !== "waiting" || !pid) { problems.push(`${sig}: no waiting request or no pid: ${JSON.stringify(first.lines.slice(0, 2))}`); continue; }
+      const id = valueOf(first.lines, "REQUEST");
+      process.kill(pid, sig);
+      const ended = await runOnce(report, state, "approval-wait");
+      const marker = (read(path.join(agentDirOf(report), "exit")) ?? "").trim();
+      if (marker !== want) problems.push(`${sig}: DIR/exit holds ${JSON.stringify(marker)}, not ${want}`);
+      if (shapeOf(ended.lines) !== "ended" || ended.lines.length !== STATUS_LINES.length || valueOf(ended.lines, "DRIVER_EXIT") !== want
+          || ended.lines.at(-1) !== `REPORT=${report}`)
+        problems.push(`${sig}: the continued --run did not end with the nine lines: ${JSON.stringify(ended.lines)}`);
+      const settled = readJson(path.join(agentDirOf(report), "approvals", `${id}.request.json`))?.settled ?? null;
+      if (sig === "SIGTERM" && (settled?.why !== "signal SIGTERM" || readJson(report)?.turnStatus !== "interrupted"))
+        problems.push(`SIGTERM: the driver did not settle and report: ${JSON.stringify({ settled, turn: readJson(report)?.turnStatus })}`);
+      if (sig === "SIGKILL") {
+        if (settled !== null) problems.push(`SIGKILL: a killed driver settled its request: ${JSON.stringify(settled)}`);
+        const p = await launcherLines(["--pending", "--report-file", report]);
+        if (!p.lines.includes(`ORPHANED=${id}`)) problems.push(`SIGKILL: --pending does not name the orphan: ${JSON.stringify(p.lines)}`);
+      }
+      let alive = false; try { process.kill(pid, 0); alive = true; } catch {}
+      if (alive) { problems.push(`${sig}: the driver (pid ${pid}) is still alive`); try { process.kill(pid, "SIGKILL"); } catch {} }
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("a --run continued while a published decision is not yet taken does not hand that request back, and waits for the run's end",
+  "the wrapper is continued a moment after --decide, before the driver has read the decision; handing the same request back then would ask the coordinator a question it has already answered",
+  async () => {
+    const state = tempDir("agent-run-state.");
+    const report = path.join(state, "run", "report.json");
+    await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
+    // The driver looks for decisions every 4 s here, so the continued call starts well before it takes one.
+    const slow = { ENTRUST_APPROVAL_POLL_MS: "4000" };
+    const first = await runOnce(report, state, "approval-wait", slow);
+    if (shapeOf(first.lines) !== "waiting") return `no request was handed back: ${JSON.stringify(first.lines.slice(0, 3))}`;
+    const id = valueOf(first.lines, "REQUEST");
+    await launcherLines(["--decide", id, "--decline", "--why", "outside the plan", "--report-file", report]);
+    const settledBefore = readJson(path.join(agentDirOf(report), "approvals", `${id}.request.json`))?.settled ?? null;
+    const next = await runOnce(report, state, "approval-wait", slow);
+    const rep = readJson(report);
+    return (settledBefore === null && shapeOf(next.lines) === "ended" && valueOf(next.lines, "EXIT") === "6"
+        && rep?.escalations?.[0]?.by === "coordinator" && rep?.escalations?.[0]?.decision === "declined")
+      || `${JSON.stringify({ settledBefore, next: next.lines.slice(0, 3), e: rep?.escalations?.[0] })}`;
+  });
+
+test("the deadline is the only clock on a wait: a request nobody answers expires, the run ends and its lines say so",
+  "a run whose coordinator is gone must still report instead of waiting forever; the constant is thirty minutes, and the suites reach its expiry through ENTRUST_APPROVAL_TIMEOUT_S",
+  async () => {
+    const state = tempDir("agent-run-state.");
+    const report = path.join(state, "run", "report.json");
+    await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
+    const seam = { ENTRUST_APPROVAL_TIMEOUT_S: "1" };
+    const first = await runOnce(report, state, "approval-wait", seam);
+    const q = readJson(path.join(agentDirOf(report), "approvals", `${valueOf(first.lines, "REQUEST")}.request.json`));
+    // Nobody answers; a continuation after the deadline finds the request settled and the run over.
+    await sleep(1600);
+    const next = await runOnce(report, state, "approval-wait", seam);
+    const rep = readJson(report);
+    return (shapeOf(first.lines) === "waiting" && Date.parse(q?.deadlineAt) - Date.parse(q?.askedAt) === 1000
+        && shapeOf(next.lines) === "ended" && valueOf(next.lines, "EXIT") === "6" && valueOf(next.lines, "RECEIPT").endsWith(" approvals=0/0/1/0")
+        && rep?.escalations?.[0]?.why === "deadline")
+      || `${JSON.stringify({ first: first.lines.slice(0, 2), deadline: [q?.askedAt, q?.deadlineAt], next: next.lines, why: rep?.escalations?.[0]?.why })}`;
   });
 
 test("a decision naming another run, on disk before the deadline settles its request, reads as stale on RECEIPT= and in the settlement, never as late",
@@ -489,53 +597,38 @@ test("a decision naming another run, on disk before the deadline settles its req
   async () => {
     const state = tempDir("agent-run-state.");
     const report = path.join(state, "run", "report.json");
-    await newAgent(report, PROMPT, { approvals: true, env: { ENTRUST_STATE_DIR: state } });
+    await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
     const box = path.join(agentDirOf(report), "approvals");
-    const running = spawnNode([LAUNCHER, "--run", "--approval-timeout", "2", "--report-file", report], { env: env(state, "approval-wait"), killAfterMs: 60000 });
-    let q = null;
-    for (const end = Date.now() + 15000; Date.now() < end && !q; ) {
-      const n = (fs.existsSync(box) ? fs.readdirSync(box) : []).find((f) => f.endsWith(".request.json"));
-      if (n) q = readJson(path.join(box, n)); else await sleep(100);
-    }
-    if (!q) { running.child.kill("SIGTERM"); await running.done; return "no request was offered"; }
+    const seam = { ENTRUST_APPROVAL_TIMEOUT_S: "2" };
+    const first = await runOnce(report, state, "approval-wait", seam);
+    if (shapeOf(first.lines) !== "waiting") return `no request was handed back: ${JSON.stringify(first.lines.slice(0, 3))}`;
+    const q = readJson(path.join(box, `${valueOf(first.lines, "REQUEST")}.request.json`));
     fs.writeFileSync(path.join(box, `${q.id}.decision.json`), JSON.stringify({ id: q.id,
       run: { pid: q.run.pid + 1, startedAtMs: q.run.startedAtMs, turnId: q.run.turnId }, decision: "accept", by: "coordinator", why: "forged",
       decidedAt: new Date().toISOString() }));
-    const res = await running.done;
-    const lines = res.out.split("\n").filter(Boolean);
+    const res = await runOnce(report, state, "approval-wait", seam);
     const settled = readJson(path.join(box, `${q.id}.request.json`))?.settled;
     const rep = readJson(report);
-    return (valueOf(lines, "RECEIPT").endsWith(" approvals=0/0/1/0 stale=1") && settled?.decisionFile === "stale"
+    return (shapeOf(res.lines) === "ended" && valueOf(res.lines, "RECEIPT").endsWith(" approvals=0/0/1/0 stale=1") && settled?.decisionFile === "stale"
         && Date.parse(settled.settledAt) > Date.parse(readJson(path.join(box, `${q.id}.decision.json`)).decidedAt)
         && rep?.approvalsStale === 1 && rep?.approvalsLate === 0)
-      || `${JSON.stringify({ receipt: valueOf(lines, "RECEIPT"), settled, stale: rep?.approvalsStale, late: rep?.approvalsLate })}`;
+      || `${JSON.stringify({ lines: res.lines.slice(0, 2), receipt: valueOf(res.lines, "RECEIPT"), settled, stale: rep?.approvalsStale, late: rep?.approvalsLate })}`;
   });
 
-test("an armed agent end to end: --pending shows the request whole, --decide publishes it at 0600 and says DECIDED=, the run ends 0 and the receipt counts it",
-  "this is the caller's whole servicing loop — read every word, decide once, see the agent finish — measured against the fixture through the same launcher the wrapper runs",
+test("--pending shows the waiting request whole, --decide publishes it at 0600 with the run's identity and refuses a second, and after the run --decide refuses",
+  "this is the caller's reading and answering outside a wrapper — every word read, one decision, the agent seen to finish — through the same launcher the wrapper runs",
   async () => {
     const problems = [];
     const state = tempDir("agent-run-state.");
     const report = path.join(state, "run", "report.json");
-    await newAgent(report, PROMPT, { approvals: true, env: { ENTRUST_STATE_DIR: state } });
-    const running = spawnNode([LAUNCHER, "--run", "--report-file", report], { env: env(state, "approval-wait"), killAfterMs: 60000 });
-    let pending = null;
-    for (const end = Date.now() + 15000; Date.now() < end && !pending; ) {
-      const p = await launcherLines(["--pending", "--report-file", report]);
-      if (p.lines.some((l) => l.startsWith("REQUEST="))) pending = p; else await sleep(200);
-    }
-    if (!pending) { running.child.kill("SIGTERM"); await running.done; return "--pending never listed the request"; }
+    await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
+    const first = await runOnce(report, state, "approval-wait");
+    const pending = await launcherLines(["--pending", "--report-file", report]);
     const id = valueOf(pending.lines, "REQUEST");
-    for (const [name, want] of [["THREAD", "root"], ["METHOD", "item/commandExecution/requestApproval"], ["KIND", "command"],
-                                ["CAUSE", "policy"], ["DEADLINE", "none"], ["REQUESTS", "1"]])
-      if (valueOf(pending.lines, name) !== want) problems.push(`${name}=${valueOf(pending.lines, name)}, not ${want}`);
-    if (!valueOf(pending.lines, "ROOTS") || !valueOf(pending.lines, "CWD") || !/sandbox refused/.test(valueOf(pending.lines, "REASON")))
-      problems.push(`ROOTS, CWD or REASON is empty: ${JSON.stringify(pending.lines)}`);
-    const text = pending.out;
-    const token = /^COMMAND<<([0-9a-f]{12})$/m.exec(text)?.[1] ?? "none";
-    const command = text.slice(text.indexOf(`COMMAND<<${token}\n`) + `COMMAND<<${token}\n`.length, text.indexOf(`\nCOMMAND>>${token}`));
+    if (!id || id !== valueOf(first.lines, "REQUEST")) return `--pending does not list the request handed back: ${JSON.stringify(pending.lines.slice(0, 2))}`;
+    if (valueOf(pending.lines, "REQUESTS") !== "1" || !valueOf(pending.lines, "ROOTS") || !/sandbox refused/.test(valueOf(pending.lines, "REASON")))
+      problems.push(`the --pending fields: ${JSON.stringify(pending.lines)}`);
     const q = readJson(path.join(agentDirOf(report), "approvals", `${id}.request.json`));
-    if (command !== q?.command || !command.includes("\n")) problems.push(`the command between the markers is not the request's, whole: ${JSON.stringify(command)}`);
     const decided = await launcherLines(["--decide", id, "--accept", "--why", "plan: the probe", "--report-file", report]);
     if (decided.code !== 0 || decided.out !== `DECIDED=${id} accept\n`) problems.push(`--decide: exit ${decided.code}, ${decided.out}`);
     const decisionPath = path.join(agentDirOf(report), "approvals", `${id}.decision.json`);
@@ -545,10 +638,7 @@ test("an armed agent end to end: --pending shows the request whole, --decide pub
         || d?.decision !== "accept" || d?.why !== "plan: the probe") problems.push(`the decision does not carry the run's identity: ${JSON.stringify(d)}`);
     const again = await launcherLines(["--decide", id, "--decline", "--report-file", report]);
     if (again.code !== 2 || !again.out.startsWith(`REFUSED=${id} was already`)) problems.push(`a second decision: exit ${again.code}, ${again.out}`);
-    const res = await running.done;
-    const lines = res.out.split("\n").filter(Boolean);
-    if (lines.length !== STATUS_LINES.length || valueOf(lines, "EXIT") !== "0" || !valueOf(lines, "RECEIPT").endsWith(" approvals=1/0/0/0"))
-      problems.push(`the run's lines: ${JSON.stringify(lines)}`);
+    await runOnce(report, state, "approval-wait");
     const after = await launcherLines(["--pending", "--report-file", report]);
     if (after.out !== "REQUESTS=0\n") problems.push(`--pending after the run: ${after.out}`);
     const over = await launcherLines(["--decide", id, "--accept", "--report-file", report]);
@@ -605,6 +695,95 @@ test("--pending escapes every field to one line and fences the command with a fr
     if (valueOf(lines, "REASON") !== "a\\\\nb\\r\\nc") problems.push(`REASON=${valueOf(lines, "REASON")}`);
     if (valueOf(lines, "ROOTS") !== "/tmp/a\\; /etc; /tmp/b\\nROOTS=/") problems.push(`ROOTS=${valueOf(lines, "ROOTS")}`);
     if (valueOf(lines, "FILES") !== "add /tmp/x\\; update /etc/passwd; update /tmp/y\\nFILES=unknown -> /tmp/z\\u2028w") problems.push(`FILES=${valueOf(lines, "FILES")}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--pending prints one ACCESS= per entry and NETWORK= for a widening: alone for a permissions request, after the command block for a command's, with REPEAT_OF= where a declined request came first",
+  "what the caller grants is the paths and the network, so each is a line it reads; a command widening is read as both the command and what it would gain, and a re-ask says which no it follows",
+  async () => {
+    const { dir, report, put, request, pend } = handMailbox();
+    const tool = "/home/u/.tool";
+    put("1-aaaaaaaa.request.json", request("1-aaaaaaaa", { method: "item/permissions/requestApproval", kind: null, cause: "sandbox", command: undefined,
+      permissions: { network: { enabled: true }, fileSystem: { read: null, write: [`${tool}/state.log`], entries: [
+        { path: { type: "path", path: `${tool}/state.log` }, access: "write" },
+        { path: { type: "glob_pattern", pattern: "**/*.lock" }, access: "read" },
+        { path: { type: "special", value: { kind: "project_roots", subpath: "build" } }, access: "write" },
+        { path: { type: "path", path: "/x\nACCESS=write path:/" }, access: "write" }] } } }));
+    put("2-bbbbbbbb.request.json", request("2-bbbbbbbb", { cause: "sandbox", command: "entrust-fixture-tool status", repeatOf: "1-aaaaaaaa",
+      permissions: { network: null, fileSystem: { entries: [{ path: { type: "path", path: `${tool}/cache.db` }, access: "write" }] } } }));
+    put("3-cccccccc.request.json", request("3-cccccccc", { method: "item/permissions/requestApproval", kind: null, cause: "sandbox", command: undefined,
+      permissions: { network: { enabled: false }, fileSystem: { write: ["/a"], read: ["/b"] } } }));
+    pend("1-aaaaaaaa", "2-bbbbbbbb", "3-cccccccc");
+    const { code, lines } = await launcherLines(["--pending", "--dir", dir, "--report-file", report]);
+    const block = (id) => lines.slice(lines.indexOf(`REQUEST=${id}`), lines.findIndex((l, i) => i > lines.indexOf(`REQUEST=${id}`) && /^(REQUEST|REQUESTS)=/.test(l)));
+    const problems = [];
+    if (code !== 0) problems.push(`exit ${code}`);
+    const one = block("1-aaaaaaaa");
+    if (JSON.stringify(one.slice(one.indexOf("DEADLINE=none") + 1)) !== JSON.stringify([`ACCESS=write path:${tool}/state.log`, "ACCESS=read glob_pattern:**/*.lock",
+      "ACCESS=write special:project_roots:build", "ACCESS=write path:/x\\nACCESS=write path:/", "NETWORK=on"]))
+      problems.push(`the permissions request: ${JSON.stringify(one)}`);
+    const two = block("2-bbbbbbbb");
+    const closer = two.findIndex((l) => /^COMMAND>>[0-9a-f]{12}$/.test(l));
+    if (two[two.indexOf("DEADLINE=none") + 1] !== "REPEAT_OF=1-aaaaaaaa" || closer < 0
+        || JSON.stringify(two.slice(closer + 1)) !== JSON.stringify([`ACCESS=write path:${tool}/cache.db`, "NETWORK=none"]))
+      problems.push(`the command widening: ${JSON.stringify(two)}`);
+    const three = block("3-cccccccc");
+    if (JSON.stringify(three.slice(three.indexOf("DEADLINE=none") + 1)) !== JSON.stringify(["ACCESS=write path:/a", "ACCESS=read path:/b", "NETWORK=off"]))
+      problems.push(`the legacy lists: ${JSON.stringify(three)}`);
+    if (lines.some((l) => l.startsWith("REPEAT_OF=") && !two.includes(l))) problems.push("REPEAT_OF= on a request that repeats nothing");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("a --run whose agent asks for a widening hands back its ACCESS= lines, and --decide --accept on it ends the run with exit 0 and the grant in the report",
+  "the widening reaches the coordinator the way every request does, and its yes is the request's profile for the turn",
+  async () => {
+    const problems = [];
+    const state = tempDir("agent-run-state.");
+    const report = path.join(state, "run", "report.json");
+    await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
+    const first = await runOnce(report, state, "widening-wait");
+    const lines = first.lines;
+    if (shapeOf(lines) !== "waiting") return `no request was handed back: exit ${first.code}, ${JSON.stringify(lines.slice(0, 3))}`;
+    const id = valueOf(lines, "REQUEST");
+    const access = lines.filter((l) => l.startsWith("ACCESS="));
+    if (valueOf(lines, "METHOD") !== "item/permissions/requestApproval" || valueOf(lines, "CAUSE") !== "sandbox" || valueOf(lines, "NETWORK") !== "none"
+        || access.length !== 1 || !/^ACCESS=write path:\/.*state\.log$/.test(access[0]) || lines.some((l) => l.startsWith("COMMAND<<")))
+      problems.push(`the hand-back: ${JSON.stringify(lines)}`);
+    const decided = await launcherLines(["--decide", id, "--accept", "--why", "plan: the tool's own state", "--report-file", report]);
+    if (decided.out !== `DECIDED=${id} accept\n`) problems.push(`--decide: ${decided.out}`);
+    const ended = await runOnce(report, state, "widening-wait");
+    if (shapeOf(ended.lines) !== "ended" || valueOf(ended.lines, "EXIT") !== "0") problems.push(`the continued --run: ${JSON.stringify(ended.lines)}`);
+    const r = readJson(report);
+    if (r?.sandboxWidened?.length !== 1 || r.sandboxWidened[0].scope !== "turn" || r.escalations?.[0]?.granted !== true)
+      problems.push(`the report: ${JSON.stringify({ widened: r?.sandboxWidened, e: r?.escalations?.[0] })}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("a command widening is handed back with its command and then its ACCESS= lines, and --decide --decline sends decline and ends the run with exit 6",
+  "a no to a command widening is a decline, never the cancel its availableDecisions offers, which would interrupt the turn",
+  async () => {
+    const problems = [];
+    const state = tempDir("agent-run-state.");
+    const report = path.join(state, "run", "report.json");
+    const log = path.join(state, "rpc.log");
+    await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
+    const first = await runOnce(report, state, "widening-command", { FAKE_RPC_LOG: log });
+    const lines = first.lines;
+    if (shapeOf(lines) !== "waiting") return `no request was handed back: exit ${first.code}, ${JSON.stringify(lines.slice(0, 3))}`;
+    const id = valueOf(lines, "REQUEST");
+    const closer = lines.findIndex((l) => /^COMMAND>>[0-9a-f]{12}$/.test(l));
+    const after = lines.slice(closer + 1, lines.indexOf("REQUESTS=1"));
+    if (valueOf(lines, "METHOD") !== "item/commandExecution/requestApproval" || closer < 0
+        || after.length !== 2 || !/^ACCESS=write path:\/.*state\.log$/.test(after[0]) || after[1] !== "NETWORK=none")
+      problems.push(`the hand-back: ${JSON.stringify(lines)}`);
+    const decided = await launcherLines(["--decide", id, "--decline", "--why", "not in the plan", "--report-file", report]);
+    if (decided.out !== `DECIDED=${id} decline\n`) problems.push(`--decide: ${decided.out}`);
+    const ended = await runOnce(report, state, "widening-command");
+    if (shapeOf(ended.lines) !== "ended" || valueOf(ended.lines, "EXIT") !== "6") problems.push(`the continued --run: ${JSON.stringify(ended.lines)}`);
+    const said = (read(log) ?? "").split("\n").filter((l) => l.startsWith("answer:"));
+    if (JSON.stringify(said) !== JSON.stringify(["answer:9443:decline"])) problems.push(`the server got ${JSON.stringify(said)}`);
+    const r = readJson(report);
+    if (r?.escalations?.[0]?.granted !== false || r?.sandboxWidened?.length !== 0) problems.push(`the report: ${JSON.stringify({ e: r?.escalations?.[0], widened: r?.sandboxWidened })}`);
     return problems.length === 0 || problems.join("; ");
   });
 

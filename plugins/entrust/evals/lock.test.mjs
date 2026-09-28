@@ -640,8 +640,8 @@ test("a root ABOVE the state directory is refused like one inside it: --writable
     return problems.length === 0 || problems.join("; ");
   });
 
-test("a write run waiting on a decision with no timeout holds its lock until SIGTERM, and a peer exits 10 meanwhile",
-  "the owner chose no deadline: a request waits until it is answered or the agent is stopped, so the lock is held for as long as the question is open, and a peer has to be told so at once rather than queue behind it",
+test("a write run waiting on a decision holds its lock until it is answered or stopped, and a peer exits 10 meanwhile",
+  "a request waits until it is answered, stopped or the thirty-minute deadline declines it, so the lock is held for as long as the question is open, and a peer has to be told so at once rather than queue behind it",
   async () => {
     const d = freshDir("approval-lock");
     const box = path.join(STATE_DIR, `mailbox-${crypto.randomBytes(4).toString("hex")}`);

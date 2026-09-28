@@ -18,10 +18,11 @@
 //     elicitation share the same channel and take different responses.
 //
 // Escalation policy: granting an approval steps outside the sandbox the caller chose, which is the
-// caller's call and not this driver's. So a request is DECLINED at once unless the caller armed a mailbox
-// with --approval-dir; then a command request, or a file change the rights do not cover, from the root
-// thread's current turn or a subagent thread the root announced, is written there and waits for the
-// caller's decision. The one request the driver answers yes itself is a file change whose every path
+// caller's call and not this driver's. So a request is DECLINED at once unless the launcher handed the
+// driver a mailbox with --approval-dir, as it does for every agent it runs; then a command request, or a
+// file change the rights do not cover, from the root thread's current turn or a subagent thread the root
+// announced, is written there and waits for the caller's decision, thirty minutes at most. The one request
+// the driver answers yes itself is a file change whose every path
 // resolves inside the agent's writable roots, because the sandbox would have let a shell write the same
 // bytes. Every request is recorded in `escalations`, whichever thread asked and whatever became of it. A
 // command the sandbox denied outright need not raise one, and exit 6 — a request declined or expired,
@@ -141,7 +142,28 @@ const LIMITS = {
   // decision's publication and the server's answer. ENTRUST_APPROVAL_POLL_MS overrides it, which is the
   // only way a suite can land a decision on a deadline's own tick.
   APPROVAL_POLL_MS: 250,
+  // How long an approval request waits for the coordinator before the driver declines it as expired. The
+  // server waits without bound (P1, 180 s held); the idle guard is paused while a request is open; so
+  // this is the ONLY clock on a wait. Not a flag: nobody could say who would set it or why the default
+  // cannot decide. Thirty minutes is the owner's figure: three times the coordinator's longest blind
+  // spot (one 600 s TaskOutput block, then the decision), and short enough that an agent whose
+  // coordinator is gone still delivers its report within the hour instead of never.
+  // ENTRUST_APPROVAL_TIMEOUT_S overrides it for the suites, which cannot wait half an hour for an expiry.
+  APPROVAL_TIMEOUT_S: 1800,
+  // The `codex features list` asked once at startup, before the permission features are switched on: a
+  // listing, measured at 40 ms, and bounded like the config probe so a codex that hangs on it costs the
+  // run five seconds and the widening, never the run.
+  FEATURES_PROBE_MS: 5000,
+  // How many of the server's `warning` notifications the report keeps: one per run in practice (the
+  // under-development features), and a server that repeats itself must not grow the report.
+  SERVER_WARNINGS_MAX: 20,
 };
+// The two Codex features the widening needs: the model's request_permissions tool, and approvals that
+// run a command with paths added rather than outside the sandbox. Under development on 0.155.1 and off
+// by default; without them the model has no way to ask for a path at all (P1 Q7a–c, three turns, zero
+// requests). Sent only where `codex features list` names both, because --strict-config refuses a key the
+// server does not know and the spawn would die before its thread.
+const PERMISSION_FEATURES = ["request_permissions_tool", "exec_permission_approvals"];
 // Not a limit: where to look for codex when PATH does not have it.
 const CODEX_FALLBACK_DIRS = ["/opt/homebrew/bin", "/usr/local/bin", "~/.local/bin"];
 // --timeout is the caller's whole budget, so anything the driver spends after the turn — the verifier —
@@ -153,7 +175,10 @@ const startedAtMs = Date.now();
 const initializeParams = () => ({
   clientInfo: { name: "Claude Code", title: "entrust", version: VERSION },
   capabilities: {
-    experimentalApi: false, requestAttestation: false,
+    // On so that a command approval carrying added paths says so in `additionalPermissions`; off, those
+    // paths are invisible and the approval cannot be told from an escape (P1 Q10a/b). The experimental
+    // methods it also admits are ones the driver drops or already classifies as interactions.
+    experimentalApi: true, requestAttestation: false,
     // Every one of these is parsed and dropped: the driver reads item/completed and turn/completed and
     // nothing else. Left empty, a `pnpm test` streams its whole output through the pipe line by line for
     // no reader. The list is taken from ServerNotification in the pinned schema rather than guessed.
@@ -214,7 +239,6 @@ const FIELDS = [
   { name: "MAX_COMMANDS", kind: "cli-only", flag: "--max-commands" },
   { name: "REPORT_FILE", kind: "cli-only", flag: "--report-file" },
   { name: "APPROVAL_DIR", kind: "cli-only", flag: "--approval-dir" },
-  { name: "APPROVAL_TIMEOUT", kind: "cli-only", flag: "--approval-timeout" },
 ];
 const flagsOfKind = (k) => Object.fromEntries(FIELDS.filter((f) => f.kind === k).map((f) => [f.name, f.flag]));
 const PROMPT_FIELDS = new Set(FIELDS.filter((f) => f.kind !== "cli-only").map((f) => f.name));
@@ -314,10 +338,9 @@ function wrapJoined(items, sep, indent, width = 79) {
 // with `more` beneath it and adds the blocks marked `all`, so a flag cannot reach one tier alone.
 const HELP = [
   { s: "Rights",
-    text: `  --level read       the default: read anything, write only $TMPDIR and any
-                     --writable root; no lock is taken, so read agents run in
-                     parallel over one directory. An unset $TMPDIR is not an
-                     error — see --help-all
+    text: `  --level read       the default: read anything, write only $TMPDIR; no lock is
+                     taken, so read agents run in parallel over one directory. An
+                     unset $TMPDIR is not an error — see --help-all
   --level write      write under --cwd, each --writable root and $TMPDIR, and
                      nothing else — /tmp is excluded; takes a per-directory lock
   --cwd DIR          where the turn runs. Required at --level write: the writable
@@ -332,10 +355,7 @@ const HELP = [
                      progress finds an empty diff and reports success. A stash
                      reaches neither. Commit first, or run on the live tree with
                      --level write --cwd REPO
-  --writable PATH    grant one more root, repeatable. At write level a directory.
-                     At read level a directory or a regular file, and only for a
-                     tool's own store (arc's object cache and sync file), never a
-                     repository
+  --writable DIR     grant one more root (write level only, repeatable)
   --no-network       deny egress. BOTH levels have it by default, as Claude's own
                      subagents do; --network says so explicitly. There is no host
                      allowlist — name the hosts in the prompt
@@ -451,25 +471,37 @@ const HELP = [
   can end with no item at all.` },
 
   { s: "Approvals",
-    text: `  --approval-dir D   hand approval requests to the caller instead of declining
-                     them. Each is written whole to D/<id>.request.json and its id
+    text: `  --approval-dir D   the agent's mailbox, set by the launcher (agent-run.mjs
+                     --run) and never by a person: every agent it runs has one.
+                     A request is written whole to D/<id>.request.json and its id
                      listed in D/pending; the turn waits until D/<id>.decision.json
-                     says accept or decline (agent-run.mjs --decide writes it). D
-                     is absolute, exists, lies inside <state> and inside no root
-                     the agent can write; one driver per D. Without it every
-                     request is declined at once
-  --approval-timeout S  default 0, no deadline: a request waits until it is
-                     answered or the agent is stopped. S > 0 declines a request
-                     left unanswered for S seconds, as expired. Needs
-                     --approval-dir
+                     says accept or decline (agent-run.mjs --decide writes it), or
+                     for ${LIMITS.APPROVAL_TIMEOUT_S / 60} minutes, after which it is declined as expired and
+                     the turn goes on. D is absolute, exists, lies inside <state>
+                     and inside no root the agent can write; one driver per D.
+                     Without it every request is declined at once
   a file change whose every path lies inside the agent's writable roots is
-  accepted by the driver itself, armed or not. An accepted command runs with no
-  sandbox, as you. Exit 6 is a request declined or expired, never one accepted`,
-    more: `  Offered through D: a command request (kind command) and a file change the
-  rights do not cover, from the root thread's current turn or from the current
-  turn of a subagent thread the root announced. Declined at once, with offered
-  false and the reason in why: every other request (kind writeStdin, the legacy
-  pair, a permissions request, a thread nobody announced, a turn that is over or
+  accepted by the driver itself, with or without D. An accepted command runs
+  with no sandbox, as you; an accepted widening — a request for paths or the
+  network rather than to leave the sandbox — runs the command inside the
+  sandbox with the paths added. Exit 6 is a request declined or expired, never
+  one accepted`,
+    more: `  Offered through D, from the root thread's current turn or from the current
+  turn of a subagent thread the root announced: a command request (kind
+  command); a file change the rights do not cover; a permissions request, the
+  model's request_permissions tool, which a yes answers with exactly the paths
+  and network it asked for, for the rest of the turn, and a no with the empty
+  profile; and a command request carrying additionalPermissions, the same
+  widening asked on the command itself, whose yes runs that command sandboxed
+  with the paths added. A widening naming ~/.codex, <state>, anything inside or
+  above either, the home, the filesystem root, or a deny on a root the agent
+  holds is declined at once, why "protected root"; one naming a glob pattern or
+  any other special kind, why "unsupported entry kind". A command widening whose
+  paths all lie within a permissions request you declined in the same turn is
+  declined by the driver, why "the coordinator declined these paths at <id>";
+  one naming other paths is offered with repeatOf naming that request. Declined
+  at once, with offered false and the reason in why: every other request (kind
+  writeStdin, the legacy pair, a thread nobody announced, a turn that is over or
   closing), and all of them when --approval-dir is absent. D may not lie in one
   of this driver's own subdirectories of <state> (tmp/, home/ and the rest):
   tmp/ holds every run's private $TMPDIR.
@@ -572,8 +604,11 @@ const HELP = [
   own rule), offered, decision (accepted, declined or expired), by (driver or
   coordinator), why, askedAt, settledAt, waitMs, resolved (the server
   acknowledged the answer), outcome ({status, exitCode, durationMs} from the
-  item's own completion, or null when none came), cwd, reason and fileChanges
-  ({path, kind, move} each, or null where no item named them); beside it
+  item's own completion, or null when none came), cwd, reason, fileChanges
+  ({path, kind, move} each, or null where no item named them), permissions (the
+  profile a widening asked for, or null), granted (whether it was given; null
+  where nothing was asked) and repeatOf (the permissions request you declined
+  that a command widening follows); beside it
   approvalsAccepted (by the caller), approvalsAutoAccepted (by the driver),
   approvalsStale (decision files not this run's or not their request's),
   approvalsLate (valid ones the driver did not take, the request's turn or the
@@ -581,7 +616,13 @@ const HELP = [
   once) and approvalDir. A command the sandbox denied
   need not raise a request; exit 6 sits below timeout, so a cut run carries
   entries and exits 3. interactions, the requests that needed a human and no
-  sandbox change could answer.
+  sandbox change could answer. sandbox is the server's echo at thread/start;
+  sandboxWidened beside it lists what the turn then held, one {itemId,
+  permissions, scope, at} per widening granted, scope turn for a permissions
+  request and command for a command widening. experimentalApi is what
+  initialize asked for, featuresRequested the permission-feature keys this run
+  sent (empty where this codex has not both), and serverWarnings the server's
+  own warning notifications, twenty at most, kept unsuppressed.
   tokenUsage is the server's own accounting: total is the root thread's token use
   for the current turn, per turn as of codex 0.153.4 (measured 2026-09-15); to cost
   a thread, sum one report per turn. last is the most recent API request within it.
@@ -614,7 +655,18 @@ const HELP = [
   resolve to, which costs one short process before the turn: bounded by
   ${LIMITS.CONFIG_PROBE_MAX_MS / 1000} s, or min(${LIMITS.CONFIG_PROBE_MAX_MS / 1000} s, max(${LIMITS.CONFIG_PROBE_MIN_MS / 1000} s, --timeout)) where a wall clock was declared, and
   normally ~120 ms. It counts against that one budget, which is anchored at
-  process start` },
+  process start
+  every run also asks \`codex features list\` once, bounded by ${LIMITS.FEATURES_PROBE_MS / 1000} s, and where it
+  names both ${PERMISSION_FEATURES.join(" and ")}
+  (under development on 0.155.1, off by default) sends
+  -c features.request_permissions_tool=true and
+  -c features.exec_permission_approvals=true, at both levels: without them the
+  model has no way to ask for a path and a failing tool can only fail or ask to
+  leave the sandbox. Where the listing lacks either, or fails, neither is sent and
+  no widening arrives. Only with both sent do the standing instructions tell the
+  model to ask for the exact path a failing tool names, and to ask to leave the
+  sandbox only when no path would do. initialize asks for experimentalApi, which
+  is what makes a command approval show the paths it adds` },
 
   { s: "Environment", all: true,
     text: `  ENTRUST_STATE_DIR             where everything this driver owns lives, and the
@@ -651,7 +703,12 @@ ${stateSubdirHelp()}
                                 decision file is looked for (default ${LIMITS.APPROVAL_POLL_MS}). The
                                 protocol suite raises it so a decision lands on
                                 a deadline's own tick; a larger value is only a
-                                slower answer` },
+                                slower answer
+  ENTRUST_APPROVAL_TIMEOUT_S    a test seam: how many seconds an approval request
+                                waits before it is declined as expired (default
+                                ${LIMITS.APPROVAL_TIMEOUT_S}). The suites set it so an expiry lands in
+                                seconds; it is no setting for a real run, which
+                                the default is sized for` },
 
   { s: "Exit codes. Raised the moment they happen, before any turn could run:",
     text: `  2  bad arguments
@@ -806,8 +863,7 @@ function parseArgs(argv) {
   // It is a definite boolean from here on, so every reader downstream states the effective grant rather
   // than an option nobody set. --no-network is the whole of the opt-out; there is no host allowlist,
   // because the hosts a task may reach are the task's to name.
-  const o = { level: "read", network: true, timeout: 0, idleTimeout: LIMITS.DEFAULT_IDLE_TIMEOUT_S, maxCommands: LIMITS.DEFAULT_MAX_COMMANDS, writable: [], attach: [],
-              approvalTimeout: 0 };
+  const o = { level: "read", network: true, timeout: 0, idleTimeout: LIMITS.DEFAULT_IDLE_TIMEOUT_S, maxCommands: LIMITS.DEFAULT_MAX_COMMANDS, writable: [], attach: [] };
   const need = (i, flag) => {
     const v = argv[i];
     if (v === undefined || v === "" || v.startsWith("--")) fail(EXIT.USAGE, `${flag} requires a non-empty value`);
@@ -830,7 +886,6 @@ function parseArgs(argv) {
       case "--idle-timeout": o.idleTimeout = Number(need(++i, a)); break;
       case "--max-commands": o.maxCommands = Number(need(++i, a)); break;
       case "--approval-dir": o.approvalDir = need(++i, a); break;
-      case "--approval-timeout": o.approvalTimeout = Number(need(++i, a)); o.approvalTimeoutGiven = true; break;
       // need() rejects a missing value or another flag; a prompt starting with "--" belongs on stdin.
       case "--prompt": o.prompt = need(++i, a); break;
       case "--writable": o.writable.push(need(++i, a)); break;
@@ -870,12 +925,10 @@ function parseArgs(argv) {
   // 0 is the documented "off", so the floor is 0 rather than a positive number.
   if (!Number.isFinite(o.idleTimeout) || o.idleTimeout < 0)
     fail(EXIT.USAGE, "--idle-timeout must be a number of seconds, 0 to disable");
-  // 0, the default, is no deadline: the server itself waits without one (measured, 180 s held), so a
-  // request waits until the caller answers or stops the agent.
-  if (!Number.isFinite(o.approvalTimeout) || o.approvalTimeout < 0)
-    fail(EXIT.USAGE, "--approval-timeout must be a number of seconds, 0 for no deadline");
-  if (o.approvalTimeoutGiven && o.approvalDir === undefined)
-    fail(EXIT.USAGE, "--approval-timeout bounds the wait --approval-dir starts, and there is none without it: every request is declined at once");
+  // The deadline on a waiting approval request is the constant; the seam replaces it for the suites and
+  // is read here, once, so every request of a run waits under one clock.
+  const seam = Number(process.env.ENTRUST_APPROVAL_TIMEOUT_S);
+  o.approvalTimeoutS = seam > 0 ? seam : LIMITS.APPROVAL_TIMEOUT_S;
   if (o.approvalDir !== undefined && !path.isAbsolute(o.approvalDir))
     fail(EXIT.USAGE, `--approval-dir must be an absolute path, got ${JSON.stringify(o.approvalDir)}`);
   // MAX_PROMPT_BYTES caps --prompt, stdin and the prompt file before the server sees them.
@@ -982,12 +1035,10 @@ function validateOutputSchema(file) {
 }
 
 // `file` admits a regular file as well: a read-level root may be one file a tool opens read-write.
-function resolveDir(p, what, { file = false } = {}) {
+function resolveDir(p, what) {
   const real = canonPath(p);
   if (real === null) fail(EXIT.USAGE, `${what} does not exist: ${p}`);
-  const st = fs.statSync(real);
-  if (!st.isDirectory() && !(file && st.isFile()))
-    fail(EXIT.USAGE, `${what} is not a directory${file ? " or a regular file" : ""}: ${real}`);
+  if (!fs.statSync(real).isDirectory()) fail(EXIT.USAGE, `${what} is not a directory: ${real}`);
   return real;
 }
 
@@ -2217,8 +2268,7 @@ function worktreeLastResort() {
           : "the run ended before disposition with a codex still running in the tree; harvest it, then remove it" });
 }
 
-// The read level's whole safety argument is "$TMPDIR and the roots named with --writable are writable and
-// nothing else is" — /tmp included,
+// The read level's whole safety argument is "$TMPDIR is writable and nothing else is" — /tmp included,
 // which is a field of its own rather than an entry in the root list — so that is what gets checked: the
 // EFFECT the server reports, not the NAME of the profile meant to produce it. A
 // misspelt field inside permissions.<id> makes the grant vanish (sandbox flips to readOnly,
@@ -2322,21 +2372,64 @@ function assertReadSandbox(thread) {
   if (!tmp) refuse("TMPDIR is unset, so the server grants no temp directory at all");
   const want = canonPath(tmp);
   if (!want) refuse(`TMPDIR is set to ${JSON.stringify(tmp)}, which does not resolve to a real directory`);
-  const got = (sb.writableRoots ?? []).map(canonPath).sort();
-  // Expect exactly TMPDIR and each --writable root, except TMPDIR when it is the cwd and the server
-  // reports it in runtimeWorkspaceRoots, which is what the shared check below establishes.
+  const got = (sb.writableRoots ?? []).map(canonPath);
+  // Expect exactly TMPDIR, except when it is the cwd and the server reports it in runtimeWorkspaceRoots,
+  // which is what the shared check below establishes.
   assertWorkspaceRoot(thread, refuse);
   const cwdIsTmp = canonPath(cwd) === want;
   // When --cwd IS the tmpdir the server subtracts it from writableRoots and reports it in the workspace
-  // roots instead — already verified just above — so its absence there is correct, not a dropped grant.
-  const expected = [...new Set([...(cwdIsTmp ? [] : [want]), ...roots.map(canonPath)])].sort();
-  if (got.length !== expected.length || got.some((r, i) => r !== expected[i]))
-    refuse(`writable roots are ${JSON.stringify(sb.writableRoots ?? [])}, expected exactly ${JSON.stringify(expected)}`);
+  // roots instead — already verified just above — so an empty root list is correct there, not a dropped
+  // grant.
+  const ok = cwdIsTmp ? got.length === 0 : (got.length === 1 && got[0] === want);
+  if (!ok)
+    refuse(`writable roots are ${JSON.stringify(sb.writableRoots ?? [])}, expected exactly [${JSON.stringify(want)}]`);
 }
 
 // Assigned by setup(), which runs inside main()'s try — a Bail thrown at module top level would be an
 // uncaught exception and would print a stack trace instead of the intended usage error.
 let opts, cwd, sandbox, spawnArgs;
+// The config keys for PERMISSION_FEATURES this run sends, and the server's own warnings, for the report.
+let featuresRequested = [];
+const serverWarnings = [];
+
+// Which of PERMISSION_FEATURES this codex has, asked of the codex itself: one row per feature, its name
+// first, then its stage and its value (`request_permissions_tool  under development  false` on
+// 0.155.1). A feature whose stage is `removed` is not there. Both named, both keys; anything else — one
+// of them, neither, a probe that failed or ran out its bound — no key, and the widening simply never
+// arrives: a failing tool then takes the escape, and the report's empty featuresRequested says why.
+// Detached, like the config probe, and its group killed once it exits or runs out its bound: a descendant
+// it left would otherwise outlive the run, beyond every sweep, holding the listing's pipe open.
+let featuresProbe = null;
+function permissionFeatures() {
+  return new Promise((resolve) => {
+    let out = "", why = null, settled = false, bell = null;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(bell);
+      featuresProbe = null;
+      if (why !== null) {
+        process.stderr.write(`entrust: \`${codexBin} features list\` failed (${why}); `
+          + "the permission features are not switched on, so no widening can be asked for this run\n");
+        resolve([]);
+        return;
+      }
+      const named = new Set(out.split("\n").map((l) => l.trim().split(/\s+/))
+        .filter((cols) => cols.length >= 2 && cols[1] !== "removed").map((cols) => cols[0]));
+      resolve(PERMISSION_FEATURES.every((f) => named.has(f)) ? PERMISSION_FEATURES.map((f) => `features.${f}`) : []);
+    };
+    let probe;
+    try { probe = spawn(codexBin, ["features", "list"], { stdio: ["ignore", "pipe", "pipe"], detached: true }); }
+    catch (e) { why = String(e.code ?? e.message); settle(); return; }
+    featuresProbe = probe;
+    probe.stdout.on("data", (d) => { if (out.length < LIMITS.PROBE_MAX_LINE_BYTES) out += d; });
+    probe.stderr.resume();
+    bell = setTimeout(() => { why ??= `no answer in ${LIMITS.FEATURES_PROBE_MS / 1000} s`; killGroupOf(probe, "SIGKILL"); }, LIMITS.FEATURES_PROBE_MS);
+    probe.on("error", (e) => { why ??= String(e.code ?? e.message); killGroupOf(probe, "SIGKILL"); settle(); });
+    probe.on("exit", (code, signal) => { if (code !== 0) why ??= signal ? `signal ${signal}` : `exit ${code}`; killGroupOf(probe, "SIGKILL"); });
+    probe.on("close", settle);
+  });
+}
 let codexHome = null;   // null means the caller's own ~/.codex, which --host-home asks for
 let roots = [];
 
@@ -2408,6 +2501,9 @@ async function setup() {
   // egress granted, a write outside the temp dir is still "Operation not permitted".
   sandbox = opts.level === "read" ? null : "workspace-write";
 
+  if (opts.level === "read" && opts.writable.length)
+    fail(EXIT.USAGE, "--writable belongs to --level write");
+
   if (opts.worktree) {
     const repo = resolveDir(opts.worktree, "--worktree");
     // Resolved against the REPOSITORY, before the tree exists: "the last agent here" for a worktree agent
@@ -2454,19 +2550,17 @@ async function setup() {
       fail(EXIT.USAGE, `--verify-sandboxed needs \`${codexBin} sandbox\`, which this installation does not provide (${r.error ? String(r.error.code ?? r.error.message) : `exit ${r.status}`}); drop the flag to run the verifier unsandboxed, or upgrade codex`);
   }
 
+  featuresRequested = await permissionFeatures();
+
   // Probe the caller's settings before taking the write lock so a stalled config request does not occupy the directory.
   codexHome = opts.hostHome ? null : await isolatedHome();
 
   if (opts.level !== "read") acquireLock(cwd);
 
-  // The server deduplicates writable roots and, at write level, subtracts cwd, which workspaceWrite
-  // implies and runtimeWorkspaceRoots reports; normalise the request the same way before asserting the
-  // response. At read level a root is an entry in the profile's filesystem table beside $TMPDIR, for a
-  // tool that opens its own store read-write (arc's object cache is a directory, its sync file a file),
-  // so a regular file is a root there too; the cwd is not implied writable at that level and is not
-  // subtracted.
-  roots = [...new Set(opts.writable.map((d) => checkRoot(resolveDir(d, "--writable", { file: opts.level === "read" }))))]
-    .filter((r) => opts.level === "read" || r !== cwd);
+  // The server deduplicates writable roots and subtracts cwd, which workspaceWrite implies and
+  // runtimeWorkspaceRoots reports; normalise the request the same way before asserting the response.
+  roots = [...new Set(opts.writable.map((d) => checkRoot(resolveDir(d, "--writable"))))]
+    .filter((r) => r !== cwd);
   if (opts.approvalDir !== undefined) approvalDir = claimMailbox(opts.approvalDir);
   if (opts.webSearch) {
     const allowed = managedWebSearchModes();
@@ -2478,6 +2572,9 @@ async function setup() {
 
   const config = [
     ["web_search", opts.webSearch ?? "disabled"],
+    // The driver's own default, like web_search above: nobody sets it, and it is sent at both levels
+    // wherever this codex has both features, so a failing tool can ask for its path.
+    ...featuresRequested.map((k) => [k, "true"]),
     // A reader that cannot write $TMPDIR cannot start vitest at all (it mkdirs there before running).
     // Extending ":read-only" opens exactly that and nothing else — /tmp stays excluded.
     // The `network` entry is a TABLE: `network=true` is rejected as `expected struct NetworkToml`. It is
@@ -2485,7 +2582,7 @@ async function setup() {
     // declared flag and not on a profile of this name in the caller's own config.
     ...(opts.level === "read" ? [
       [`permissions.${READ_PROFILE}.extends`, '":read-only"'],
-      [`permissions.${READ_PROFILE}.filesystem`, `{${[":tmpdir", ...roots].map((r) => `${tomlString(r)}="write"`).join(",")}}`],
+      [`permissions.${READ_PROFILE}.filesystem`, '{":tmpdir"="write"}'],
       [`permissions.${READ_PROFILE}.network`, `{enabled=${opts.network}}`],
       ["default_permissions", `"${READ_PROFILE}"`]
     ] : []),
@@ -2662,6 +2759,7 @@ function shutdown() {
   if (shutdownDone) return shutdownDone;
   shutdownDone = (async () => {
     if (probeConn) probeConn.close({ kill: "SIGKILL" });   // kills the group once and settles the probe
+    if (featuresProbe) killGroupOf(featuresProbe, "SIGKILL");
     killVerifier();                   // the verifier is a child too, and it must never outlive the driver
     clearInterval(approvalPoll);
     for (const o of openApprovals.values()) clearTimeout(o.timer);
@@ -2866,6 +2964,7 @@ const openApprovals = new Map();      // id -> {rpcId, entry, record, timer}
 const consumedDecisions = new Set();  // ids whose decision file this run acted on
 const staleSeen = new Set();          // the text of each decision file refused as stale, so each counts once
 const offeredRecords = new Map();     // id -> the request record, for every request this run offered
+const sandboxWidened = [];            // {itemId, permissions, scope, at} per widening granted, in order
 let approvalSeq = 0, approvalPoll = null, approvalsStale = 0, approvalsLate = 0, approvalsDuplicate = 0;
 // The paths a file change names arrive only on its item/started: the request itself carries none (P1,
 // three observations). Keyed by thread and item, dropped at that item's completion.
@@ -2945,8 +3044,8 @@ const writeMailbox = (name, value) =>
 // `pending` is the caller's wake-up: one open id per line, and no file at all when none is open, so
 // `[ -s pending ]` is the whole test.
 // Returns the failure, or null. A marker that could not be written leaves a request nobody will be woken
-// for, and with no deadline and the idle guard paused that is a wait with no end: so every request still
-// open is settled at once as expired, declined, with the failure in why.
+// for, and with the idle guard paused that is a wait only the deadline ends: so every request still open
+// is settled at once as expired, declined, with the failure in why.
 let syncingPending = false;
 function writePending() {
   let failure = null;
@@ -2967,11 +3066,12 @@ function writePending() {
 function offerApproval(msg, entry) {
   const p = msg.params ?? {};
   const id = `${++approvalSeq}-${crypto.randomBytes(4).toString("hex")}`;
-  const deadlineMs = opts.approvalTimeout > 0 ? opts.approvalTimeout * 1000 : 0;
+  const deadlineMs = opts.approvalTimeoutS * 1000;
   const record = { ...p, id, method: msg.method, rpcId: msg.id,
     run: { pid: process.pid, identity: selfIdentity(), startedAtMs, threadId: entry.thread, turnId: p.turnId ?? null },
     kind: entry.kind, subagent: entry.subagent, agentPath: entry.agentPath, cause: entry.cause,
-    fileChanges: entry.fileChanges, level: opts.level, sandbox: effectiveSandbox, roots: agentRoots(),
+    fileChanges: entry.fileChanges, permissions: entry.permissions, repeatOf: entry.repeatOf,
+    level: opts.level, sandbox: effectiveSandbox, roots: agentRoots(),
     askedAt: entry.askedAt, deadlineAt: deadlineMs ? new Date(Date.parse(entry.askedAt) + deadlineMs).toISOString() : null };
   try {
     if (!ownsMailbox()) throw new Error("the mailbox's owner.json no longer names this run");
@@ -2981,7 +3081,7 @@ function offerApproval(msg, entry) {
     const why = `mailbox write failed: ${e.code ?? e.message}`;
     process.stderr.write(`entrust: ${why} in ${approvalDir}; request declined, since no caller can be told of it\n`);
     settleEntry(entry, "expired", "driver", why);
-    conn.send({ jsonrpc: "2.0", id: msg.id, result: { decision: "decline" } });
+    conn.send({ jsonrpc: "2.0", id: msg.id, result: answerFor(msg.method, "decline") });
     return;
   }
   entry.id = id;
@@ -3024,9 +3124,30 @@ function closeApproval(id, answer, decision, by, why, decisionFile) {
       + `${answer === "accept" ? "; declined instead of accepted, since nothing would record that it ran" : ""}\n`);
     if (answer === "accept") { answer = "decline"; settleEntry(o.entry, "expired", "driver", failed); }
   }
-  conn.send({ jsonrpc: "2.0", id: o.rpcId, result: { decision: answer } });
+  const result = answerFor(o.record.method, answer, o.record.permissions);
+  conn.send({ jsonrpc: "2.0", id: o.rpcId, result });
+  if (o.entry.permissions !== null) {
+    o.entry.granted = answer === "accept";
+    if (answer === "accept")
+      sandboxWidened.push({ itemId: o.record.itemId ?? null,
+        permissions: result.permissions ?? o.record.permissions, scope: result.scope ?? "command", at: o.entry.settledAt });
+    else if (o.record.method === "item/permissions/requestApproval" && o.entry.by === "coordinator") rememberDecline(o.record);
+  }
   writePending();
   if (openApprovals.size === 0) { clearInterval(approvalPoll); approvalPoll = null; touchIdle(); }
+}
+
+// The answer a request's method takes. A permissions request is answered with a profile: on yes, exactly
+// what it asked for, its fileSystem and network copied, for the turn — never `session`, which outlives
+// the turn and hides later requests from the record, the acceptForSession defect — and nothing more,
+// since a grant no request names cannot be traced to a need; on no, the empty profile. Every other
+// method takes a decision, `decline` whatever availableDecisions lists (a widening's command approval
+// lists only accept and cancel, and cancel interrupts the turn, which a no to one path is not).
+function answerFor(method, answer, perm) {
+  if (method !== "item/permissions/requestApproval") return { decision: answer };
+  return answer === "accept"
+    ? { permissions: { fileSystem: perm?.fileSystem ?? null, network: perm?.network ?? null }, scope: "turn" }
+    : { permissions: { fileSystem: null, network: null } };
 }
 
 // What the decision file for request `record` holds. A decision counts only for a request of THIS run:
@@ -3177,15 +3298,125 @@ function approvalEntry(msg, owner, foreign) {
   const fileChanges = msg.method === "item/fileChange/requestApproval" && Array.isArray(started)
     ? started.map((ch) => ({ path: String(ch?.path), kind: ch?.kind?.type ?? String(ch?.kind), move: ch?.kind?.move_path ?? null }))
     : null;
+  const permissions = requestedPermissions(msg);
   const detail = fileChanges?.length
     ? fileChanges.map((c) => `${c.kind} ${c.path}${c.move ? ` -> ${c.move}` : ""}`).join("; ")
+    : msg.method === "item/permissions/requestApproval" ? accessClauses(permissions).join("; ")
     : Array.isArray(p.command) ? p.command.join(" ") : String(p.command ?? p.reason ?? p.message ?? "");
   return { id: null, method: msg.method,
     kind: msg.method === "item/commandExecution/requestApproval" ? (p.kind ?? "command") : null,
     detail, thread: owner, subagent: foreign, agentPath: subagentThreads.get(owner ?? "")?.agentPath ?? null,
     cause: null, offered: false, decision: null, by: null, why: null,
     askedAt: new Date().toISOString(), settledAt: null, waitMs: null, resolved: false, outcome: null,
-    cwd: p.cwd ?? null, reason: p.reason ?? null, fileChanges };
+    cwd: p.cwd ?? null, reason: p.reason ?? null, fileChanges,
+    permissions, granted: permissions === null ? null : false, repeatOf: null };
+}
+
+// ---------------------------------------------------------------- widenings
+//
+// A widening asks for the sandbox to hold more, rather than to run outside it: write or read access to
+// named paths, or the network, for a command that then runs under Seatbelt with those added (P1 Q7d,
+// Q10b: a nested sandbox-exec still exits 71). It comes two ways: a permissions request, the model's
+// request_permissions tool, answered with a granted profile; and a command approval that carries
+// `additionalPermissions` (visible only under experimentalApi), answered like any command approval.
+
+// The profile a request asks for, or null: a permissions request's `permissions`, a command approval's
+// `additionalPermissions`. Copied, so what the record says is what was asked.
+function requestedPermissions(msg) {
+  const p = msg.params ?? {};
+  const asked = msg.method === "item/permissions/requestApproval" ? p.permissions
+    : msg.method === "item/commandExecution/requestApproval" ? p.additionalPermissions : null;
+  return asked && typeof asked === "object" ? JSON.parse(JSON.stringify(asked)) : null;
+}
+// Each filesystem entry a profile names, as {access, path} with `path` the protocol's own object. The
+// legacy read and write lists stand in only where `entries` is absent: the server sends both, one a
+// copy of the other (P1 Q7d).
+function profileEntries(perm) {
+  const fsys = perm?.fileSystem ?? null;
+  if (!fsys) return [];
+  if (Array.isArray(fsys.entries) && fsys.entries.length)
+    return fsys.entries.map((e) => ({ access: String(e?.access ?? ""), path: e?.path ?? {} }));
+  return [...(fsys.write ?? []).map((x) => ({ access: "write", path: { type: "path", path: String(x) } })),
+          ...(fsys.read ?? []).map((x) => ({ access: "read", path: { type: "path", path: String(x) } }))];
+}
+// `write path:/Users/…/state.log`, `read glob_pattern:**/*.lock`, `write special:project_roots`: the
+// form --pending prints and the entry's detail carries.
+const pathClause = (x) => x?.type === "path" ? `path:${x.path}`
+  : x?.type === "glob_pattern" ? `glob_pattern:${x.pattern}`
+  : x?.type === "special" ? `special:${x?.value?.kind ?? "unknown"}${x?.value?.subpath ? `:${x.value.subpath}` : x?.value?.path ? `:${x.value.path}` : ""}`
+  : `${x?.type ?? "unknown"}:${JSON.stringify(x)}`;
+// Every entry a grant would copy, for the filters: the entries and both legacy lists, since a yes sends
+// the request's fileSystem whole and a path in one list alone would otherwise pass unread.
+const checkedEntries = (perm) => {
+  const fsys = perm?.fileSystem ?? null;
+  return [...(Array.isArray(fsys?.entries) ? fsys.entries.map((e) => ({ access: String(e?.access ?? ""), path: e?.path ?? {} })) : []),
+    ...(fsys?.write ?? []).map((x) => ({ access: "write", path: { type: "path", path: String(x) } })),
+    ...(fsys?.read ?? []).map((x) => ({ access: "read", path: { type: "path", path: String(x) } }))];
+};
+// A glob pattern or a special kind other than the root: no measured request used one, and neither a
+// pattern nor a kind the server resolves is something the coordinator can judge path by path.
+const unsupportedWidening = (perm) => checkedEntries(perm).some((e) => e.path?.type !== "path"
+  && !(e.path?.type === "special" && e.path?.value?.kind === "root"));
+const networkWord = (perm) => perm?.network == null || perm.network.enabled == null ? "none" : perm.network.enabled ? "on" : "off";
+const accessClauses = (perm) => [...profileEntries(perm).map((e) => `${e.access} ${pathClause(e.path)}`),
+  ...(networkWord(perm) === "none" ? [] : [`network ${networkWord(perm)}`])];
+
+// What no widening may name, whoever would approve it: ~/.codex and the state directory, anything inside
+// either, anything above either (the home and its ancestors among them), the filesystem's root, and a
+// `deny` on a root the agent holds, which narrows its own grant and is nobody's question. By inode, as
+// checkRoot compares, walked from the longest existing prefix; a path whose existing part will not
+// resolve is refused, since what it reaches is not knowable.
+function protectedWidening(perm) {
+  const home = canonPath(passwdHome("the widening guard")) ?? passwdHome("the widening guard");
+  const stat = (p) => { try { return fs.statSync(p); } catch { return null; } };
+  const protectedSt = [path.join(home, ".codex"), stateDir()].map(stat).filter(Boolean);
+  const same = (a, b) => a.dev === b.dev && a.ino === b.ino;
+  const held = agentRoots().map(stat).filter(Boolean);
+  const ancestry = (from) => { const out = []; for (let cur = from; ; ) { const st = stat(cur); if (st) out.push(st); const up = path.dirname(cur); if (up === cur) return out; cur = up; } };
+  return checkedEntries(perm).some((e) => {
+    if (e.path?.type === "special") return e.path?.value?.kind === "root";
+    if (e.path?.type !== "path") return false;
+    const p = String(e.path.path ?? "");
+    if (!path.isAbsolute(p)) return true;
+    const real = canonLoose(p);
+    if (real === null) return true;
+    let existing = real;
+    while (!stat(existing)) { const up = path.dirname(existing); if (up === existing) return true; existing = up; }
+    const chain = ancestry(existing);
+    if (chain.some((st) => protectedSt.some((pr) => same(st, pr)))) return true;
+    if (existing === real) {
+      const self = stat(real);
+      for (const pr of [path.join(home, ".codex"), stateDir()])
+        if (ancestry(canonLoose(pr) ?? pr).some((st) => same(st, self))) return true;
+    }
+    return e.access === "deny" && chain.some((st) => held.some((h) => same(st, h)));
+  });
+}
+
+// The paths the coordinator declined as a permissions request, per thread and turn: the model asks for
+// the same need again as a command approval with the same paths added (P1 Q10a/b), and that is a
+// question already answered.
+const declinedWidenings = new Map();   // itemKey(thread, turnId) -> [{id, entries, network}]
+function rememberDecline(record) {
+  const key = itemKey(record.run.threadId, record.run.turnId);
+  const entries = profileEntries(record.permissions).filter((e) => e.path?.type === "path")
+    .map((e) => ({ access: e.access, real: canonLoose(String(e.path.path)) ?? path.resolve(String(e.path.path)) }));
+  declinedWidenings.set(key, [...(declinedWidenings.get(key) ?? []), { id: record.id, entries, network: networkWord(record.permissions) === "on" }]);
+}
+// The declined request a re-ask falls inside, if one does: every entry a path within a declined path of
+// the same or a wider access (write covers read), and no network unless the declined request asked for it.
+function declinedCovering(thread, turnId, perm) {
+  const declined = declinedWidenings.get(itemKey(thread, turnId)) ?? [];
+  const rank = (a) => (a === "write" ? 2 : a === "read" ? 1 : 0);
+  const inside = (p, d) => p === d || p.startsWith(`${d}${path.sep}`);
+  const asked = profileEntries(perm);
+  for (const d of [...declined].reverse()) {
+    const pathsIn = asked.length > 0 && asked.every((e) => e.path?.type === "path" && d.entries.some((de) =>
+      rank(de.access) >= rank(e.access) && rank(e.access) > 0
+      && inside(canonLoose(String(e.path.path)) ?? path.resolve(String(e.path.path)), de.real)));
+    if (pathsIn && (networkWord(perm) !== "on" || d.network)) return { id: d.id, within: true };
+  }
+  return declined.length ? { id: declined.at(-1).id, within: false } : null;
 }
 
 function handleServerRequest(msg) {
@@ -3238,14 +3469,14 @@ function handleServerRequest(msg) {
     if (owner !== null && p.itemId != null) entryByItem.set(itemKey(owner, p.itemId), entry);
     const isCommand = msg.method === "item/commandExecution/requestApproval";
     const isFileChange = msg.method === "item/fileChange/requestApproval";
+    const isPermissions = msg.method === "item/permissions/requestApproval";
     // Whose request may be answered: the root's, in the turn now running — not merely one this invocation
     // ever owned, since a corrective turn follows on the same thread — and a subagent's the root
     // announced, in its own turn. Whose success counts as evidence is a different question, answered by
     // isRoot and unchanged. A `kind` other than command is input to a terminal already running, which no
     // rule can read as a command.
     const childTurn = itemKey(owner, p.turnId ?? null);
-    let why = !isCommand && !isFileChange
-        ? (msg.method === "item/permissions/requestApproval" ? "permission profile" : "legacy method")
+    let why = !isCommand && !isFileChange && !isPermissions ? "legacy method"
       : isCommand && p.kind != null && p.kind !== "command" ? `kind ${p.kind}`
       : owner === null || (owner !== rootThreadId && !subagentThreads.has(owner)) ? "unknown thread"
       : owner === rootThreadId && (p.turnId ?? null) !== rootTurnId ? "not the current turn"
@@ -3254,8 +3485,22 @@ function handleServerRequest(msg) {
       : owner !== rootThreadId && !childTurnsOpen.has(childTurn) ? (childTurnsDone.has(childTurn) ? "turn ended" : "not the current turn")
       : settled || pendingCut ? "turn closing"
       : null;
+    // A widening names paths, and some paths are nobody's to grant; refused here, before anyone reads it.
+    const widening = entry.permissions !== null;
+    if (why === null && widening && protectedWidening(entry.permissions)) why = "protected root";
+    if (why === null && widening && unsupportedWidening(entry.permissions)) why = "unsupported entry kind";
+    // The same need asked again as a command after the coordinator declined it as a permissions request:
+    // inside what was declined, the answer is the one already given; beyond it, a new question that says
+    // which decision it follows.
+    if (why === null && isCommand && widening) {
+      const prior = declinedCovering(owner, p.turnId ?? null, entry.permissions);
+      if (prior?.within) why = `the coordinator declined these paths at ${prior.id}`;
+      else if (prior) entry.repeatOf = prior.id;
+    }
     const covered = why === null && isFileChange && entry.fileChanges !== null ? coveredByRights(entry.fileChanges) : null;
+    // A widening is the sandbox in the way by definition: the answer to what avoids it is the widening.
     entry.cause = covered !== null ? "rights"
+      : widening ? "sandbox"
       : isCommand || msg.method === "execCommandApproval"
         ? (commandTexts(p.command, p.commandActions).some((t) => failedAttempts.has(attemptKey(t))) ? "sandbox" : "policy")
         : "outside";
@@ -3462,6 +3707,8 @@ function handleMessage(msg, bytes = 0) {
     if (msg.method === "turn/started" && !childTurnsDone.has(key)) childTurnsOpen.add(key);
     if (msg.method === "turn/completed") { childTurnsOpen.delete(key); childTurnsDone.add(key); }
   }
+  // What the coordinator declined answers re-asks in that turn only, and goes with it, root's or child's.
+  if (msg.method === "turn/completed" && p?.threadId && p.turn?.id != null) declinedWidenings.delete(itemKey(p.threadId, p.turn.id));
   // A subagent's own turn ending settles the requests it left open; the root's ending is below.
   if (msg.method === "turn/completed" && subagentThreads.has(p?.threadId ?? ""))
     settleOpenApprovals("turn ended", (o) => o.entry.thread === p.threadId
@@ -3485,6 +3732,12 @@ function handleMessage(msg, bytes = 0) {
   // turn. `last` is the most recent API request within it.
   if (msg.method === "thread/tokenUsage/updated" && rootThreadId !== null && (p?.threadId ?? null) === rootThreadId)
     tokenUsage = p?.tokenUsage ?? null;
+
+  // Kept, never suppressed: under the permission features the server names them here on every thread,
+  // and it is the one record of which under-development features the run held.
+  if (msg.method === "warning" && serverWarnings.length < LIMITS.SERVER_WARNINGS_MAX
+      && (p?.threadId == null || p.threadId === rootThreadId || subagentThreads.has(p.threadId)))
+    serverWarnings.push(String(p?.message ?? ""));
 
   // Only our unsettled turn's completion may end the run; late or foreign completions must not
   // change its status or start a corrective turn after it has reported.
@@ -4162,7 +4415,10 @@ function writeReport(ev, verifySkipped, codeOverride) {
     process.stderr.write(`entrust: the agent left files in its private $TMPDIR ${tmpDir}; it outlives the run and is pruned with the run directories\n`);
 
   const report = {
-    ok: code === EXIT.OK, exitCode: code, level: opts.level, sandbox: effectiveSandbox, cwd,
+    ok: code === EXIT.OK, exitCode: code, level: opts.level, sandbox: effectiveSandbox,
+    // `sandbox` is the server's echo at thread/start, which the sandbox assertions compared; what the turn
+    // then held beyond it, one entry per widening granted, is here.
+    sandboxWidened, cwd,
     // Report requested roots separately from sandbox.writableRoots, which is the grant the server applied;
     // assertWriteSandbox refuses any difference. `network` is the effective grant, not a flag someone
     // passed: it is on unless the agent denied it, and sandbox.networkAccess is asserted to agree.
@@ -4175,6 +4431,9 @@ function writeReport(ev, verifySkipped, codeOverride) {
     resumedFrom: opts.resume ?? null,
     // Report the server version parsed from initialize.userAgent; null means the version could not be read.
     driverVersion: VERSION, codexHome, codexVersion, codexVersionPinned: PINNED_CODEX,
+    // What this run asked of the server beyond the pin: the experimental API, the permission features it
+    // switched on (empty where this codex has not both), and every warning the server gave about them.
+    experimentalApi: initializeParams().capabilities.experimentalApi, featuresRequested, serverWarnings,
     // Report whether model and effort came from a fresh probe, stale config or account defaults;
     // null under --host-home means the caller's config is used directly.
     configInherited,
@@ -4395,6 +4654,19 @@ function developerInstructions() {
     "If a command cannot run, record it in one line — the command, whether it started, its exit status if there was one, and the exact diagnostic — then continue. Write \"unknown\" for what you could not observe rather than inferring it.",
     "Never report a test as passing unless you ran it and saw the count in this turn.",
     "State uncertainty plainly rather than guessing; an honest 'I could not determine this' is useful.",
+    // P1's text, the one form measured to make the model ask for a path (Q7d, with the permission features
+    // on); its last sentence softened from "never request to run outside the sandbox" so that a tool whose
+    // need no path can express still reaches the coordinator as an escape. Sent only where both features
+    // are on for this run: without them the model is told to ask for a path it has no way to ask for, and
+    // to escape only when no path would help, and the tool just fails and is reported (P1 Q7c).
+    ...(featuresRequested.length === PERMISSION_FEATURES.length
+      ? ["A tool failing with 'Operation not permitted' on its own state file is not an answer: you must make it succeed. "
+        + "When a tool you run fails because it cannot write its own state or cache files outside your writable roots, "
+        + "you MUST immediately issue a permissions request (the request_permissions tool, or a command with sandbox_permissions "
+        + "\"with_additional_permissions\" and additional_permissions) asking for file_system write access to exactly the path in the "
+        + "error message, and after it is granted run the same command again inside the sandbox. "
+        + "Ask to run outside the sandbox only when no path would make the command succeed."]
+      : []),
     // The coordinator machine-reads this answer. Saying so is what makes the JSON arrive bare; without it
     // the model reaches for a fenced block, and a fence is not JSON.
     ...(opts.answerJson
@@ -4760,6 +5032,7 @@ if (RUN_AS_MAIN) {
     if (child) killGroup("SIGKILL");
     killVerifier();
     if (probeConn) probeConn.close({ kill: "SIGKILL" });
+    if (featuresProbe) killGroupOf(featuresProbe, "SIGKILL");
     releaseLock();
     worktreeLastResort();
   });

@@ -12,6 +12,7 @@
 // Exit 0 if every case matches its expected exit code.
 
 import crypto from "node:crypto";
+import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
 import { EXIT, FAKE, LADDER, readJson, registry, runCases, summarize } from "./lib/harness.mjs";
@@ -22,6 +23,20 @@ import { SHIM, REVIEW_SCHEMA, assertKnownScenarios, attachFile, attachFile2, flo
 const shimDir = SHIM;
 const approvalErrorLog = path.join(shimDir, "rpc-approval-error.log");
 const duplicateLog = path.join(shimDir, "rpc-approval-duplicate.log");
+// One log per case that reads the feature keys or the widening's answer, for the reason the others are one each.
+const featuresBothLog = path.join(shimDir, "rpc-features-both.log");
+const featuresOneLog = path.join(shimDir, "rpc-features-one.log");
+const featuresFailLog = path.join(shimDir, "rpc-features-fail.log");
+const featuresNoneLog = path.join(shimDir, "rpc-features-none.log");
+const wideningProtectedLog = path.join(shimDir, "rpc-widening-protected.log");
+const wideningGlobLog = path.join(shimDir, "rpc-widening-glob.log");
+const logLines = (log) => (fs.existsSync(log) ? fs.readFileSync(log, "utf8") : "").split("\n").filter(Boolean);
+const STEERING = "A tool failing with 'Operation not permitted' on its own state file is not an answer: you must make it succeed. "
+  + "When a tool you run fails because it cannot write its own state or cache files outside your writable roots, "
+  + "you MUST immediately issue a permissions request (the request_permissions tool, or a command with sandbox_permissions "
+  + "\"with_additional_permissions\" and additional_permissions) asking for file_system write access to exactly the path in the "
+  + "error message, and after it is granted run the same command again inside the sandbox. "
+  + "Ask to run outside the sandbox only when no path would make the command succeed.";
 const entry0 = (r) => (r.escalations ?? [])[0] ?? {};
 
 // The prompt the stalled-reader row echoes back, sized past what a paused pipe holds: the pipe itself
@@ -700,6 +715,76 @@ const CASES = [
     why: "a subagent's request that arrives after its own turn completed answers to nobody, whatever its paths: a request is answered only inside the turn that asked, a child's as the root's",
     assert: (r) => (entry0(r).why === "turn ended" && entry0(r).decision === "declined" && entry0(r).subagent === true && r.approvalsAutoAccepted === 0)
       || `a request for a finished child turn was answered: ${JSON.stringify(entry0(r))}` },
+  // --- the permission features, the steering text, and widenings with no mailbox ---
+  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_FEATURES: "both", FAKE_RPC_LOG: featuresBothLog },
+    why: "where codex features list names both permission features the driver switches them on itself, at the level the run has, exactly these two rows; the server's warning about them is kept, and initialize asks for the experimental API that shows a command widening's paths",
+    assert: (r) => {
+      const rows = logLines(featuresBothLog).filter((l) => l.startsWith("feature:"));
+      if (JSON.stringify(rows) !== JSON.stringify(["feature:features.request_permissions_tool=true", "feature:features.exec_permission_approvals=true"]))
+        return `the feature rows sent: ${JSON.stringify(rows)}`;
+      if (JSON.stringify(r.featuresRequested) !== JSON.stringify(["features.request_permissions_tool", "features.exec_permission_approvals"]))
+        return `featuresRequested: ${JSON.stringify(r.featuresRequested)}`;
+      if (!(r.serverWarnings ?? []).some((w) => /Under-development features enabled: exec_permission_approvals, request_permissions_tool/.test(w)))
+        return `the server's warning was not kept: ${JSON.stringify(r.serverWarnings)}`;
+      return (r.experimentalApi === true && logLines(featuresBothLog).includes("initialize:experimentalApi=true"))
+        || `experimentalApi: report ${r.experimentalApi}, sent ${JSON.stringify(logLines(featuresBothLog).find((l) => l.startsWith("initialize")))}`;
+    } },
+  { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"], env: { FAKE_FEATURES: "one", FAKE_RPC_LOG: featuresOneLog },
+    why: "a codex that names only one of the two gets neither: --strict-config refuses a key the server does not know, so a guess would kill the spawn, and the widening simply never arrives",
+    assert: (r) => (logLines(featuresOneLog).every((l) => !l.startsWith("feature:")) && r.featuresRequested?.length === 0 && r.serverWarnings?.length === 0)
+      || `keys were sent to a codex without both: ${JSON.stringify({ rows: logLines(featuresOneLog).filter((l) => l.startsWith("feature:")), req: r.featuresRequested })}` },
+  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_RPC_LOG: featuresNoneLog },
+    why: "a codex whose listing names neither, as every release before the features existed, gets neither and no warning",
+    assert: (r) => (logLines(featuresNoneLog).every((l) => !l.startsWith("feature:")) && r.featuresRequested?.length === 0 && r.experimentalApi === true)
+      || `keys were sent to a codex without them: ${JSON.stringify(r.featuresRequested)}` },
+  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_FEATURES: "fail", FAKE_RPC_LOG: featuresFailLog },
+    why: "a features listing that fails costs the run the widening, never the run: no key is sent",
+    assert: (r) => (r.featuresRequested?.length === 0 && logLines(featuresFailLog).every((l) => !l.startsWith("feature:")))
+      || `a failed listing still sent keys: ${JSON.stringify(r.featuresRequested)}` },
+  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_FEATURES: "fail" },
+    why: "and stderr says why no widening can arrive, since the report's empty featuresRequested alone does not say whether codex was asked",
+    assertStderr: (t) => /features list` failed \(exit 1\).*no widening can be asked/.test(t) || `stderr did not name the failed listing: ${JSON.stringify(t.slice(0, 300))}` },
+  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_FEATURES: "hang" },
+    why: "a listing that never answers is killed at its five-second bound and costs the run the widening, never the run",
+    assertStderr: (t, ms) => (/features list` failed \(no answer in 5 s\)/.test(t) && ms >= 5000 && ms < 15000)
+      || `the bound did not hold: ${ms}ms, ${JSON.stringify(t.slice(0, 300))}` },
+  { scenario: "echo-instructions", expect: EXIT.OK, env: { FAKE_FEATURES: "both" },
+    why: "with both features on, the standing instructions carry P1's measured steering text, its last sentence softened so a tool whose need no path can express still reaches the coordinator as an escape",
+    assert: (r) => (String(r.answer).includes(STEERING) && !/Never request to run outside the sandbox/.test(String(r.answer)))
+      || `the steering text is not the one sent: ${String(r.answer).slice(-700)}` },
+  { scenario: "echo-instructions", expect: EXIT.OK, env: { FAKE_FEATURES: "one" },
+    why: "without both features the model has no way to ask for a path, and a text that tells it to, and to escape only when no path would help, leaves a state-writing tool to fail and be reported (P1 Q7c): the instructions stay as before the channel",
+    assert: (r) => (!/Operation not permitted|permissions request|outside the sandbox/.test(String(r.answer)))
+      || `the steering text was sent with the features off: ${String(r.answer).slice(-700)}` },
+  { scenario: "widening-protected", expect: EXIT.ESCALATED, env: { FAKE_RPC_LOG: wideningProtectedLog },
+    why: "a widening naming ~/.codex is nobody's to grant: declined at once, with the empty profile, whether or not a mailbox is armed",
+    assert: (r) => {
+      const e = entry0(r);
+      if (e.method !== "item/permissions/requestApproval" || e.why !== "protected root" || e.offered !== false || e.granted !== false || e.cause !== "sandbox")
+        return `the protected widening's entry: ${JSON.stringify(e)}`;
+      return logLines(wideningProtectedLog).includes('answer:9440:{"permissions":{"fileSystem":null,"network":null}}')
+        || `the refusal was not the empty profile: ${JSON.stringify(logLines(wideningProtectedLog).filter((l) => l.startsWith("answer:")))}`;
+    } },
+  { scenario: "widening-root",    expect: EXIT.ESCALATED,
+    why: "a grant of the filesystem's root is every path at once: declined at once",
+    assert: (r) => (entry0(r).why === "protected root" && /special:root/.test(entry0(r).detail))
+      || `a root widening was not refused: ${JSON.stringify(entry0(r))}` },
+  { scenario: "widening-glob",    expect: EXIT.ESCALATED, env: { FAKE_RPC_LOG: wideningGlobLog },
+    why: "a glob pattern is not a path anyone can judge one by one — this one covers ~/.codex whole — and no measured request used one: declined at once, with the empty profile",
+    assert: (r) => (entry0(r).why === "unsupported entry kind" && entry0(r).offered === false && /glob_pattern:/.test(entry0(r).detail)
+        && logLines(wideningGlobLog).includes('answer:9440:{"permissions":{"fileSystem":null,"network":null}}'))
+      || `a glob widening was not refused: ${JSON.stringify({ e: entry0(r), said: logLines(wideningGlobLog).filter((l) => l.startsWith("answer:")) })}` },
+  { scenario: "widening-special", expect: EXIT.ESCALATED,
+    why: "a special kind other than the root is resolved by the server, not read by the caller: declined at once",
+    assert: (r) => (entry0(r).why === "unsupported entry kind" && /special:unknown/.test(entry0(r).detail))
+      || `a special:unknown widening was not refused: ${JSON.stringify(entry0(r))}` },
+  { scenario: "widening-legacy-split", expect: EXIT.ESCALATED,
+    why: "a yes copies the request's fileSystem whole, legacy lists and all, so a path the write list names alone is checked like an entry: ~/.codex there is refused",
+    assert: (r) => entry0(r).why === "protected root" || `a protected path in the legacy list passed: ${JSON.stringify(entry0(r))}` },
+  { scenario: "widening-command", expect: EXIT.ESCALATED, env: { FAKE_WIDEN_PATH: path.join(os.userInfo().homedir, ".codex", "x") },
+    why: "the same filter holds for paths a command approval would add: ~/.codex is refused on the command as on the tool",
+    assert: (r) => (entry0(r).why === "protected root" && entry0(r).kind === "command" && entry0(r).permissions?.fileSystem?.entries?.length === 1)
+      || `a command widening into ~/.codex was not refused: ${JSON.stringify(entry0(r))}` },
   { scenario: "filechange-at",    expect: EXIT.OK, args: ["--level", "write"],
     env: { FAKE_FILECHANGE_PATH: path.join(shimDir, "notes.md") },
     why: "at write level the cwd is a root the rights cover, so a write there is answered by the driver like one in $TMPDIR",
@@ -814,7 +899,7 @@ flow("the report's tokenUsage is the root thread's total, and no record carries 
     return rec.tokensSpent === undefined || `the record carries tokensSpent ${JSON.stringify(rec.tokensSpent)} beside the report's own`;
   });
 
-// --- the approval channel: a mailbox inside the state root, as --new --approvals makes one ---
+// --- the approval channel: a mailbox inside the state root, as --new makes one for every agent ---
 
 const requestsIn = (box) => {
   let names = [];
@@ -847,8 +932,8 @@ function decide(box, q, decision, { why = "the plan covers it", identity = {} } 
 const answers = (log) => (fs.existsSync(log) ? fs.readFileSync(log, "utf8") : "").split("\n").filter(Boolean);
 const parsed = (out) => { try { return JSON.parse(out); } catch { return null; } };
 
-flow("with no deadline a request waits: still open after 3 s, listed in pending, and a SIGTERM settles it before the interrupt",
-  "the owner's rule: a request waits until it is answered or the agent is stopped, and no timer declines a question nobody answered; the signal path is how an abandoned run ends, and it has to answer the server before it interrupts the turn",
+flow("a request waits for the caller under the thirty-minute deadline: still open after 3 s, listed in pending, and a SIGTERM settles it before the interrupt",
+  "a request waits for the caller, and the only clock on it is the thirty-minute constant, which the request file states; the signal path is how an abandoned run ends, and it has to answer the server before it interrupts the turn",
   async () => {
     let child = null;
     const a = armed("approval-wait", { onSpawn: (p) => { child = p; } });
@@ -878,10 +963,10 @@ flow("with no deadline a request waits: still open after 3 s, listed in pending,
     if (!/\n/.test(q.command) || q.command.length <= 200) problems.push(`the request file clipped the command: ${JSON.stringify(q.command)}`);
     if (typeof q.run?.pid !== "number" || typeof q.run?.startedAtMs !== "number" || q.run?.turnId !== "turn_root" || q.run?.threadId !== "thr_root")
       problems.push(`the run identity is incomplete: ${JSON.stringify(q.run)}`);
-    if (q.level !== "read" || q.deadlineAt !== null || !Array.isArray(q.roots) || !q.roots.length || !q.sandbox || typeof q.askedAt !== "string"
+    if (q.level !== "read" || Date.parse(q.deadlineAt) - Date.parse(q.askedAt) !== 1800000 || !Array.isArray(q.roots) || !q.roots.length || !q.sandbox || typeof q.askedAt !== "string"
         || !Array.isArray(q.availableDecisions) || q.cause !== "policy")
       problems.push(`the request file lacks the agent's footing: ${JSON.stringify({ level: q.level, deadline: q.deadlineAt, roots: q.roots, cause: q.cause })}`);
-    if (!err.includes(`approval request ${q.id}`) || !/with no deadline/.test(err)) problems.push("stderr did not name the request and its open wait");
+    if (!err.includes(`approval request ${q.id}`) || !err.includes(`until ${q.deadlineAt}`)) problems.push("stderr did not name the request and its open wait");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -935,10 +1020,10 @@ flow("a request the caller declines is exit 6, declined by the caller, with the 
       || `exit ${code}, entry ${JSON.stringify(e)}`;
   });
 
-flow("--approval-timeout still expires an unanswered request when one is set",
-  "a headless run may want a floor; where it asked for one the request is declined at it, as expired, and the deadline is in the request file for the reader",
+flow("the deadline expires an unanswered request as declined, and the turn goes on",
+  "a run nobody attends must still report: at the deadline the request is declined as expired, the turn goes on, and the deadline is in the request file for the reader; the seam makes the thirty minutes one second here",
   async () => {
-    const a = armed("approval-wait", { args: ["--approval-timeout", "1"] });
+    const a = armed("approval-wait", { env: { ENTRUST_APPROVAL_TIMEOUT_S: "1" } });
     const q = await offered(a.box);
     if (!q) return "no request was offered";
     const { code, out } = await a.done;
@@ -951,7 +1036,7 @@ flow("--approval-timeout still expires an unanswered request when one is set",
 flow("a decision on disk when the deadline fires is the caller's, not an expiry",
   "the file can land between the last poll and the deadline's tick; the deadline reads it first, or a decision published in time is thrown away as late",
   async () => {
-    const a = armed("approval-wait", { args: ["--approval-timeout", "2"], env: { ENTRUST_APPROVAL_POLL_MS: "60000" } });
+    const a = armed("approval-wait", { env: { ENTRUST_APPROVAL_TIMEOUT_S: "2", ENTRUST_APPROVAL_POLL_MS: "60000" } });
     const q = await offered(a.box);
     if (!q) return "no request was offered";
     decide(a.box, q, "accept");
@@ -1024,7 +1109,7 @@ flow("a request open at the wall-clock cut is settled before the interrupt",
 flow("the idle guard is paused while a request is open and re-armed when it settles",
   "a waiting request is the caller's time, not the thread's silence: a 1 s idle budget must not cut a 3 s wait, and must cut a server that goes silent once it is answered",
   async () => {
-    const a = armed("approval-wait", { args: ["--idle-timeout", "1", "--approval-timeout", "3"], env: { FAKE_AFTER_ANSWER: "silent" } });
+    const a = armed("approval-wait", { args: ["--idle-timeout", "1"], env: { ENTRUST_APPROVAL_TIMEOUT_S: "3", FAKE_AFTER_ANSWER: "silent" } });
     const { code, out, ms } = await a.done;
     const r = parsed(out) ?? {};
     const e = entry0(r);
@@ -1196,7 +1281,7 @@ flow("below the root only existing plain directories and a regular or absent fil
   });
 
 flow("a pending marker that cannot be written settles the request at once as expired, declined, and the turn goes on",
-  "a request nobody is woken for, with no deadline and the idle guard paused, is a wait with no end; the failure is the answer, said in why and on stderr",
+  "a request nobody is woken for, with the idle guard paused, is a wait only the thirty-minute deadline ends; the failure is the answer, said in why and on stderr",
   async () => {
     const state = flowState();
     const box = path.join(state, "run", "agent", "approvals");
@@ -1254,7 +1339,7 @@ flow("a request delivered twice under one id is offered once and answered once",
 flow("a stale decision on disk when the deadline fires is stale, not late, and the request file says what the driver found",
   "a decision that is not this run's is a forgery or a leftover whenever it arrived, and calling it late tells the caller its own answer came too slowly; the settlement records what the driver saw so nobody reading the files after the run has to guess",
   async () => {
-    const a = armed("approval-wait", { args: ["--approval-timeout", "2"] });
+    const a = armed("approval-wait", { env: { ENTRUST_APPROVAL_TIMEOUT_S: "2" } });
     const q = await offered(a.box);
     if (!q) return "no request was offered";
     decide(a.box, q, "accept", { identity: { pid: q.run.pid + 1 } });
@@ -1277,6 +1362,182 @@ flow("an accepted request blocks the transient retry",
     const r = parsed(out) ?? {};
     return (code === EXIT.TURN_NOT_COMPLETED && r.transientRetries?.length === 0 && entry0(r).decision === "accepted")
       || `exit ${code}, retries ${JSON.stringify(r.transientRetries)}, entry ${JSON.stringify(entry0(r))}`;
+  });
+
+// --- widenings: the sandbox asked to hold more, rather than to be left ---
+
+const emptyProfile = (id) => `answer:${id}:{"permissions":{"fileSystem":null,"network":null}}`;
+const nextOpen = (box, seen) => until(() => openIn(box).find((q) => !seen.includes(q.id)) ?? null);
+
+flow("a widening is offered with cause sandbox and its entries on the request, and an accept sends exactly the request's profile for the turn; sandboxWidened records it and the run exits 0",
+  "a grant no request names cannot be traced to a need, and one for the session outlives the turn and hides later requests from the record; a run whose only request was a widening the caller accepted is a success like any accepted request",
+  async () => {
+    const a = armed("widening-wait");
+    const q = await offered(a.box);
+    if (!q) return `no widening was offered: ${(await a.done).err.slice(-300)}`;
+    const problems = [];
+    const [ent] = q.permissions?.fileSystem?.entries ?? [];
+    if (q.method !== "item/permissions/requestApproval" || q.cause !== "sandbox" || q.permissions?.network !== null
+        || ent?.access !== "write" || ent?.path?.type !== "path" || !String(ent?.path?.path).endsWith("state.log"))
+      problems.push(`the request file does not carry the widening: ${JSON.stringify({ method: q.method, cause: q.cause, permissions: q.permissions })}`);
+    decide(a.box, q, "accept");
+    const { code, out } = await a.done;
+    const r = parsed(out);
+    if (code !== EXIT.OK || !r) return [...problems, `exit ${code}: ${out.slice(0, 200)}`].join("; ");
+    const e = entry0(r);
+    if (e.decision !== "accepted" || e.granted !== true || e.cause !== "sandbox" || e.detail !== `write path:${ent.path.path}`)
+      problems.push(`the entry: ${JSON.stringify(e)}`);
+    const grant = { permissions: { fileSystem: q.permissions.fileSystem, network: null }, scope: "turn" };
+    if (!answers(a.log).includes(`answer:9440:${JSON.stringify(grant)}`))
+      problems.push(`the server did not get the request's profile for the turn: ${JSON.stringify(answers(a.log).filter((l) => l.startsWith("answer:")))}`);
+    const w = r.sandboxWidened ?? [];
+    if (w.length !== 1 || w[0].itemId !== "call_perm_1" || w[0].scope !== "turn" || w[0].at !== e.settledAt
+        || JSON.stringify(w[0].permissions) !== JSON.stringify(grant.permissions))
+      problems.push(`sandboxWidened: ${JSON.stringify(w)}`);
+    if (!r.sandbox || JSON.stringify(r.sandbox).includes("state.log")) problems.push(`the sandbox field took the widening: ${JSON.stringify(r.sandbox)}`);
+    if (!/the widening was granted/.test(String(r.answer))) problems.push(`the fixture did not see the grant: ${JSON.stringify(r.answer)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("a widening the caller declines is answered with the empty profile, exit 6, granted false, and nothing widened",
+  "the permissions request takes a profile, not a decision: a `decline` would be invalid, and the empty profile is the refusal the live server honoured",
+  async () => {
+    const a = armed("widening-wait");
+    const q = await offered(a.box);
+    if (!q) return "no widening was offered";
+    decide(a.box, q, "decline", { why: "outside the plan" });
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    const e = entry0(r);
+    return (code === EXIT.ESCALATED && e.decision === "declined" && e.by === "coordinator" && e.granted === false
+        && r.sandboxWidened?.length === 0 && answers(a.log).includes(emptyProfile(9440)))
+      || `exit ${code}, ${JSON.stringify({ e, widened: r.sandboxWidened, said: answers(a.log).filter((l) => l.startsWith("answer:")) })}`;
+  });
+
+flow("a second widening in the same turn is a second decision, and both grants stand",
+  "a tool that needs a sibling file after the first grant asks again: each request is its own question, and the record keeps both grants",
+  async () => {
+    const a = armed("widening-twice");
+    const q1 = await offered(a.box);
+    if (!q1) return "no first widening was offered";
+    decide(a.box, q1, "accept");
+    const q2 = await nextOpen(a.box, [q1.id]);
+    if (!q2) return `no second widening was offered: ${(await a.done).err.slice(-300)}`;
+    decide(a.box, q2, "accept");
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    const w = r.sandboxWidened ?? [];
+    return (code === EXIT.OK && r.escalations?.length === 2 && r.escalations.every((e) => e.granted === true)
+        && JSON.stringify(w.map((g) => [g.itemId, g.scope])) === JSON.stringify([["call_perm_1", "turn"], ["call_perm_2", "turn"]])
+        && String(w[1].permissions?.fileSystem?.entries?.[0]?.path?.path).endsWith("state.lock"))
+      || `exit ${code}, ${JSON.stringify({ entries: r.escalations?.map((e) => [e.decision, e.granted]), widened: w })}`;
+  });
+
+flow("a network widening is offered, and its entry says network on",
+  "the network is a widening like a path: the caller reads it and decides; nothing in the filter makes it the driver's call",
+  async () => {
+    const a = armed("widening-network");
+    const q = await offered(a.box);
+    if (!q) return "no network widening was offered";
+    decide(a.box, q, "decline");
+    const { code, out } = await a.done;
+    const e = entry0(parsed(out) ?? {});
+    return (q.permissions?.network?.enabled === true && q.permissions.fileSystem === null && e.detail === "network on"
+        && code === EXIT.ESCALATED && answers(a.log).includes(emptyProfile(9440)))
+      || `exit ${code}, ${JSON.stringify({ permissions: q.permissions, detail: e.detail })}`;
+  });
+
+flow("a command approval carrying additionalPermissions is a widening: offered with its paths, accept sends accept and sandboxWidened says scope command",
+  "the same need asked on the command itself runs inside the sandbox with the paths added, which is not the escape an unwidened accept is; the record says which it was",
+  async () => {
+    const a = armed("widening-command");
+    const q = await offered(a.box);
+    if (!q) return "no command widening was offered";
+    const problems = [];
+    if (q.method !== "item/commandExecution/requestApproval" || q.kind !== "command" || q.cause !== "sandbox"
+        || !String(q.permissions?.fileSystem?.entries?.[0]?.path?.path).endsWith("state.log")
+        || JSON.stringify(q.permissions) !== JSON.stringify(q.additionalPermissions))
+      problems.push(`the request file: ${JSON.stringify({ method: q.method, kind: q.kind, cause: q.cause, permissions: q.permissions })}`);
+    decide(a.box, q, "accept");
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    const e = entry0(r);
+    const w = r.sandboxWidened ?? [];
+    if (code !== EXIT.OK || e.granted !== true || e.decision !== "accepted") problems.push(`exit ${code}, entry ${JSON.stringify(e)}`);
+    if (!answers(a.log).includes("answer:9443:accept")) problems.push(`the server got ${JSON.stringify(answers(a.log).filter((l) => l.startsWith("answer:")))}`);
+    if (w.length !== 1 || w[0].itemId !== "exec-widen-1" || w[0].scope !== "command" || JSON.stringify(w[0].permissions) !== JSON.stringify(q.permissions))
+      problems.push(`sandboxWidened: ${JSON.stringify(w)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("a command widening the caller declines is sent decline, never cancel",
+  "the server offers only accept and cancel on a widening's command, and cancel interrupts the turn: a no to one path is not a no to the task",
+  async () => {
+    const a = armed("widening-command");
+    const q = await offered(a.box);
+    if (!q) return "no command widening was offered";
+    decide(a.box, q, "decline");
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    const said = answers(a.log).filter((l) => l.startsWith("answer:9443:"));
+    return (code === EXIT.ESCALATED && JSON.stringify(said) === JSON.stringify(["answer:9443:decline"]) && entry0(r).granted === false
+        && r.sandboxWidened?.length === 0)
+      || `exit ${code}, ${JSON.stringify({ said, e: entry0(r), widened: r.sandboxWidened })}`;
+  });
+
+flow("a command re-asking paths the caller declined as a permissions request in this turn is declined by the driver, which names the decision it follows",
+  "the model asks the same need again on the command after the empty profile (P1 Q10a/b); inside what was declined it is a question already answered, and offering it again would ask the caller twice",
+  async () => {
+    const a = armed("widening-declined-reask");
+    const q = await offered(a.box);
+    if (!q) return "no widening was offered";
+    decide(a.box, q, "decline");
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    const second = r.escalations?.[1] ?? {};
+    const said = answers(a.log).filter((l) => l.startsWith("answer:"));
+    return (code === EXIT.ESCALATED && r.escalations?.length === 2 && requestsIn(a.box).length === 1
+        && second.offered === false && second.by === "driver" && second.why === `the coordinator declined these paths at ${q.id}`
+        && second.decision === "declined" && second.granted === false && second.permissions?.fileSystem?.entries?.length === 1
+        && said.includes(emptyProfile(9444)) && said.includes("answer:9445:decline"))
+      || `exit ${code}, ${JSON.stringify({ second, files: requestsIn(a.box).length, said })}`;
+  });
+
+flow("a command re-asking a declined path and one more is offered, and says which decision it follows",
+  "a path the caller never saw is a new question; REPEAT_OF tells the caller it said no to part of it already",
+  async () => {
+    const a = armed("widening-reask-other");
+    const q1 = await offered(a.box);
+    if (!q1) return "no widening was offered";
+    decide(a.box, q1, "decline");
+    const q2 = await nextOpen(a.box, [q1.id]);
+    if (!q2) return `the re-ask was not offered: ${(await a.done).err.slice(-300)}`;
+    decide(a.box, q2, "decline");
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    const second = r.escalations?.[1] ?? {};
+    return (code === EXIT.ESCALATED && q2.repeatOf === q1.id && second.repeatOf === q1.id && second.offered === true
+        && q2.permissions?.fileSystem?.entries?.length === 2 && answers(a.log).includes("answer:9445:decline"))
+      || `exit ${code}, ${JSON.stringify({ repeatOf: q2.repeatOf, second, said: answers(a.log).filter((l) => l.startsWith("answer:")) })}`;
+  });
+
+flow("a decline answers re-asks in its own turn only: the same paths asked by a child in its next turn are offered, with no REPEAT_OF",
+  "a new turn is a new question — the coordinator's no was to that turn's work — and a decline kept past its turn would answer for the caller in turns it never saw",
+  async () => {
+    const a = armed("widening-next-turn");
+    const q1 = await offered(a.box);
+    if (!q1) return `no widening was offered: ${(await a.done).err.slice(-300)}`;
+    decide(a.box, q1, "decline");
+    const q2 = await nextOpen(a.box, [q1.id]);
+    if (!q2) return `the next turn's re-ask was not offered: ${JSON.stringify(parsed((await a.done).out)?.escalations?.[1] ?? null)}`;
+    decide(a.box, q2, "accept");
+    const { code, out } = await a.done;
+    const r = parsed(out) ?? {};
+    const second = r.escalations?.[1] ?? {};
+    return (q1.run.turnId === "turn_sub_1" && q2.run.turnId === "turn_sub_2" && q2.repeatOf === null
+        && second.offered === true && second.by === "coordinator" && second.granted === true
+        && answers(a.log).includes("answer:9447:accept") && r.sandboxWidened?.[0]?.scope === "command")
+      || `exit ${code}, ${JSON.stringify({ turns: [q1.run.turnId, q2.run.turnId], repeatOf: q2.repeatOf, second, widened: r.sandboxWidened })}`;
   });
 
 let failed = await runTable(CASES);
