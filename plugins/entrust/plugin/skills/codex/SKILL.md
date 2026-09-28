@@ -117,10 +117,23 @@ against the state directory before the agent's directory exists; without it `--n
 `--run`'s one call may hand back a **waiting result** instead of the nine status lines: a request is
 pending, and it returns at once with what `--pending` would print for it, ending in `REQUESTS=`, `WAITING=`
 and `REPORT=`. The wrapper hands it back exactly as it hands back any result — step 2 reruns only while a
-result has no `REPORT=` line, and the waiting result carries one — so read it whole, decide under the plan's
-own rule with `--decide ID --accept|--decline`, then send the wrapper the very same message block again:
-`--run` picks the run back up and waits for the next request or the run's own end. A session with no message
-tool continues the same way with a second wrapper given the same command.
+result has no `REPORT=` line, and the waiting result carries one — so read it whole and decide under the plan's
+own rule. An accept restates the command it approves, so the call that gets judged carries the command and not
+an id: a quoted heredoc whose delimiter is the fresh token of that request's `COMMAND<<TOKEN` line, never a
+fixed word, because a line of the command equal to a fixed word would end the heredoc and run the rest in your
+shell:
+
+    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --decide <ID> --accept --report-file "<REPORT>" <<'<TOKEN>'
+    <the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, exactly as printed>
+    <TOKEN>
+
+The launcher compares what it reads with the request's command, one trailing newline tolerated, and publishes
+nothing on an empty stdin or any difference; when it refuses the restatement as different, print `--pending`
+and copy from that. An accept the permission check or the classifier blocks publishes nothing either: decline
+the request with `--decide <ID> --decline`, which reads no stdin, or ask the user when the session is
+interactive. Then send the wrapper the very same message block again: `--run` picks the run back up and waits
+for the next request or the run's own end. A session with no message tool continues the same way with a second
+wrapper given the same command.
 
 The Agent call, its message this block:
 
@@ -332,8 +345,9 @@ write its own would be grading itself. Declare gates on the command line instead
   [environment-and-internals.md](references/environment-and-internals.md#receipt-validation-and-reporting).
 - Evidence of success is root-thread-only: a Codex subagent thread's commands are liveness, not evidence.
 - To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or send `SIGTERM` to the pid on the first line of `<DIR>/err.txt`:
-  the driver interrupts the turn, writes the report it had earned and sweeps the codex process group. The
-  driver runs under a detached keeper, so a hand-back's waiting result does not end it: a hard kill of the
+  the driver interrupts the turn, writes the report it had earned and sweeps the codex process group; a
+  command you accepted may run in a process group of its own, which is not established to end with it (E67).
+  The driver runs under a detached keeper, so a hand-back's waiting result does not end it: a hard kill of the
   wrapper's task, or a `SIGKILL` of the launcher, no longer reaches it, only the forwarded signal does. After
   a waiting result nothing else holds the driver: stop it with `--decide ID --decline` and the same `--run`
   again, or `kill -TERM` that same pid.

@@ -517,7 +517,7 @@ test("F6 the one agent you wait for is a foreground call, background agents are 
     "while :; do for d in <DIR>...; do [ -s \"$d/exit\" ] && { echo \"DONE=<id>\"; exit 0; }; [ -s \"$d/approvals/pending\" ] && { echo \"ASK=<id>\"; exit 0; }; done; sleep 5; done",
     "one task for the whole batch, not one per agent, and it exits the moment it prints either marker rather than looping on",
     "`DONE=<id>` is that agent's own exit marker: it says the run has ended even after a `RUNNING=` hand-back, and you read the report file after it (measured 2026-09-27).",
-    "`ASK=<id>` is that agent's own request waiting on your decision, and the wrapper's own hand-back may carry the same waiting block instead of the nine lines: read it whole with `--pending` or from that hand-back, decide it with `--decide ID --accept|--decline`, send the wrapper the very same message block again, then launch the poll again over the agents still alive and keep waiting",
+    "`ASK=<id>` is that agent's own request waiting on your decision, and the wrapper's own hand-back may carry the same waiting block instead of the nine lines: read it whole from that hand-back or with `--pending`, decide it as Approvals below says, send the wrapper the very same message block again, then launch the poll again over the agents still alive and keep waiting",
     "an armed agent is launched and waited for like any other",
     "In an interactive session you may end your turn with agents alive: they go on, and each completion arrives as a turn of its own (measured 2026-09-27).",
     "A headless session ends with the turn and its background tasks are killed with it (measured 2026-09-08), so there never end a turn with an agent alive: launch each agent in the foreground, and its hand-back arrives inside the same turn (measured 2026-09-17).",
@@ -533,6 +533,15 @@ test("F7 the approval rule: run as you with no sandbox, approve nothing unread, 
     "Take to the owner, while the turn waits, a request that is destructive or irreversible, or outside the plan",
     "In a headless run decline it and name it in the answer",
     "When you retell an approval, say what the entry's `outcome` says",
+  ));
+
+test("F7b an accept restates the command between the request's own token, a refused restatement is copied again from --pending, and a blocked accept is declined",
+  "the accept restates the command so that the call the classifier or the owner judges carries it; the heredoc's delimiter is the print's fresh token because a fixed word lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell (both verifications of 2026-09-28 made it happen); a blocked accept publishes nothing, and without a sentence the turn would wait out the thirty minutes",
+  () => says(
+    "Decide from the waiting result the wrapper handed back and copy its command block into the sibling's accept call",
+    "`--decide ID --accept` reads the command on stdin, in a quoted heredoc whose delimiter is the fresh token of that request's `COMMAND<<TOKEN` line, never a fixed word, since a line of the command equal to a fixed word would end the heredoc and run the rest in your shell",
+    "If the launcher refuses the restatement as different, print `--pending` and copy from that",
+    "An accept the permission check or the classifier blocks publishes nothing, so decline the request with `--decide ID --decline`, or ask the owner when the session is interactive",
   ));
 
 test("F8 the synthesis rule: one sentence per cause and what avoids it next time",

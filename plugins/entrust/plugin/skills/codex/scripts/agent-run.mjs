@@ -6,7 +6,7 @@
 //   node agent-run.mjs --run --report-file REPORT                start the run, wait, print the status lines or the request waiting
 //   node agent-run.mjs --status --report-file REPORT             the status lines of a run, whatever its state
 //   node agent-run.mjs --pending --report-file REPORT            the approval requests waiting on a decision
-//   node agent-run.mjs --decide ID --accept|--decline [--why TEXT] --report-file REPORT   answer one
+//   node agent-run.mjs --decide ID --accept|--decline [--why TEXT] --report-file REPORT   answer one (--accept: the command on stdin)
 //   node agent-run.mjs --report-file REPORT                      launch only (the exit status is the driver's)
 //   node agent-run.mjs --orphan --dir DIR --report-file REPORT   --run's own step: launch only, with the mailbox, outside its caller's tree
 //   --dir DIR names the agent's directory explicitly; without it, it is `agent/` beside REPORT
@@ -209,12 +209,23 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       exists, ORPHANED=<id> for each request the run left unanswered, then REQUESTS=<n>, the number still
       waiting. Always exits 0.
   node agent-run.mjs --decide ID --accept|--decline [--why TEXT] --report-file REPORT [--dir DIR]
+      --accept reads on stdin the command it approves, restated: the lines between COMMAND<<TOKEN and
+      COMMAND>>TOKEN as the waiting result or --pending printed them for ID, in a quoted heredoc whose
+      delimiter is that TOKEN, never a fixed word, since a line of the command equal to a fixed word
+      would end the heredoc and run the rest in your shell:
+        node agent-run.mjs --decide ID --accept --report-file REPORT <<'TOKEN'
+        <the command, as printed>
+        TOKEN
+      It is compared with the request's command byte for byte, one trailing newline tolerated and nothing
+      else normalised; an empty stdin or any difference is refused, REFUSED=ID with the two lengths and
+      the first byte where they differ, and nothing is published. --decline reads no stdin.
       Publishes the decision for request ID as DIR/approvals/ID.decision.json at 0600, by link(2) over a
       temp file, carrying the run identity copied from the request. Refuses (exit 2, REFUSED=ID and the
       reason) an ID with no request, a run that is over, a request already settled, a request pending
-      does not list, a request already decided, naming that decision, and one with a stale decision in
-      the way. Then reads the request again: DECIDED=ID accept|decline and exit 0 while it was still
-      open, or LATE=ID and exit 3 when the driver settled it first — nothing ran on your word.
+      does not list, an accept whose restatement is empty or differs, a request already decided, naming
+      that decision, and one with a stale decision in the way. Then reads the request again:
+      DECIDED=ID accept|decline and exit 0 while it was still open, or LATE=ID and exit 3 when the
+      driver settled it first — nothing ran on your word.
   node agent-run.mjs --help
 
   A REPORT that is not absolute, in each form:
@@ -632,6 +643,22 @@ function decideRequest(dir, id, decision, why) {
   // `pending` is the driver's own list of what it is waiting on; a request file it does not list is not
   // one it will read a decision for.
   if (!mailbox(dir).pending.includes(id)) refuse(`is not waiting: ${path.join(box, "pending")} does not list it`);
+  // An accept restates the command it approves, so the call a classifier or the owner judges carries the
+  // command and not an id. What runs is the request's own command, never stdin: so the comparison is on
+  // bytes and exact, the heredoc's one trailing newline aside. A decline restates nothing and never reads
+  // stdin.
+  if (decision === "accept") {
+    let said = Buffer.alloc(0);
+    try { said = fs.readFileSync(0); } catch {}
+    const want = Buffer.from(String(q.command ?? ""), "utf8");
+    if (said.length === 0) refuse("the restated command is empty: an accept reads the command it approves on stdin, a quoted heredoc whose delimiter is the TOKEN of this request's COMMAND<<TOKEN line; nothing was published");
+    if (!said.equals(want) && !said.equals(Buffer.concat([want, Buffer.from("\n")]))) {
+      const body = said.at(-1) === 0x0a ? said.subarray(0, -1) : said;
+      let at = 0;
+      while (at < body.length && at < want.length && body[at] === want[at]) at++;
+      refuse(`the restated command differs from the request's: ${body.length} bytes against ${want.length}, the first difference at byte ${at + 1}; copy the lines between COMMAND<<TOKEN and COMMAND>>TOKEN as printed, or print --pending and copy from that; nothing was published`);
+    }
+  }
   const target = path.join(box, `${id}.decision.json`);
   const tmp = `${target}.${crypto.randomBytes(8).toString("hex")}.tmp`;
   const record = { id: q.id, run: { pid: q.run?.pid ?? null, startedAtMs: q.run?.startedAtMs ?? null, turnId: q.run?.turnId ?? null },

@@ -861,8 +861,11 @@ test("--run and --status without --dir use agent/ beside the report, and a --run
 
 // --- the approval channel: the mailbox --new makes for every agent, the hand-back, and the caller's two hands on it ---
 
-const launcherLines = async (args, opts = {}) => {
-  const r = await spawnNode([LAUNCHER, ...args], { killAfterMs: 20000, ...opts }).done;
+// `input` is written to the launcher's stdin and closed, the way a heredoc hands --decide --accept its command.
+const launcherLines = async (args, { input, ...opts } = {}) => {
+  const run = spawnNode([LAUNCHER, ...args], { killAfterMs: 20000, ...opts, ...(input === undefined ? {} : { stdio: ["pipe", "pipe", "pipe"] }) });
+  if (input !== undefined) run.child.stdin.end(input);
+  const r = await run.done;
   return { ...r, lines: r.out.split("\n").filter((l) => l !== "") };
 };
 const valueOf = (lines, name) => (lines.find((l) => l.startsWith(`${name}=`)) ?? "").slice(name.length + 1);
@@ -973,7 +976,7 @@ test("a --run whose agent asks hands the request back: the --pending block for i
     // A rerun before any decision hands the same request back, as the ceiling's second call would.
     const again = await runOnce(report, state, "approval-wait");
     if (shapeOf(again.lines) !== "waiting" || valueOf(again.lines, "REQUEST") !== id) problems.push(`a rerun before the decision: ${JSON.stringify(again.lines.slice(0, 2))}`);
-    const decided = await launcherLines(["--decide", id, "--accept", "--why", "plan: the probe", "--report-file", report]);
+    const decided = await launcherLines(["--decide", id, "--accept", "--why", "plan: the probe", "--report-file", report], { input: `${command}\n` });
     if (decided.out !== `DECIDED=${id} accept\n`) problems.push(`--decide: ${decided.out}`);
     const ended = await runOnce(report, state, "approval-wait");
     const el = ended.lines;
@@ -1095,7 +1098,7 @@ test("--pending shows the waiting request whole, --decide publishes it at 0600 w
     if (valueOf(pending.lines, "REQUESTS") !== "1" || !valueOf(pending.lines, "ROOTS") || !/sandbox refused/.test(valueOf(pending.lines, "REASON")))
       problems.push(`the --pending fields: ${JSON.stringify(pending.lines)}`);
     const q = readJson(path.join(agentDirOf(report), "approvals", `${id}.request.json`));
-    const decided = await launcherLines(["--decide", id, "--accept", "--why", "plan: the probe", "--report-file", report]);
+    const decided = await launcherLines(["--decide", id, "--accept", "--why", "plan: the probe", "--report-file", report], { input: `${q?.command}\n` });
     if (decided.code !== 0 || decided.out !== `DECIDED=${id} accept\n`) problems.push(`--decide: exit ${decided.code}, ${decided.out}`);
     const decisionPath = path.join(agentDirOf(report), "approvals", `${id}.decision.json`);
     const d = readJson(decisionPath);
@@ -1107,7 +1110,7 @@ test("--pending shows the waiting request whole, --decide publishes it at 0600 w
     await runOnce(report, state, "approval-wait");
     const after = await launcherLines(["--pending", "--report-file", report]);
     if (after.out !== "REQUESTS=0\n") problems.push(`--pending after the run: ${after.out}`);
-    const over = await launcherLines(["--decide", id, "--accept", "--report-file", report]);
+    const over = await launcherLines(["--decide", id, "--accept", "--report-file", report], { input: `${q?.command}\n` });
     if (over.code !== 2 || !/run that is over/.test(over.out)) problems.push(`--decide after the run: exit ${over.code}, ${over.out}`);
     return problems.length === 0 || problems.join("; ");
   });
@@ -1201,7 +1204,7 @@ test("--decide refuses what it cannot publish, and prints LATE= and exits 3 when
   async () => {
     const problems = [];
     const refusedWith = async (dir, report, id, want) => {
-      const r = await launcherLines(["--decide", id, "--accept", "--dir", dir, "--report-file", report]);
+      const r = await launcherLines(["--decide", id, "--accept", "--dir", dir, "--report-file", report], { input: "/bin/zsh -c 'arc status'\n" });
       if (r.code !== 2 || !r.out.startsWith(`REFUSED=${id} `) || !want.test(r.out)) problems.push(`${id}: exit ${r.code}, ${r.out.trim()}`);
     };
     const m = handMailbox();
@@ -1232,6 +1235,94 @@ test("--decide refuses what it cannot publish, and prints LATE= and exits 3 when
     fs.writeFileSync(path.join(m.dir, "exit"), "0\n");
     m.put("4-dddddddd.request.json", m.request("4-dddddddd"));
     await refusedWith(m.dir, m.report, "4-dddddddd", /run that is over/);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--decide --accept reads the restated command on stdin and publishes on an exact match, with one trailing newline or none",
+  "the accept restates what it approves so that the Bash call a classifier or the owner judges carries the command, not an id; the heredoc that carries it ends in a newline, and that one newline is the only difference the comparison forgives",
+  async () => {
+    const { dir, report, box, put, request, pend } = handMailbox();
+    const command = "/bin/zsh -lc 'printf \"%s\\n\" a\tb  \nCOMMAND\ntouch x; echo done '";
+    put("1-aaaaaaaa.request.json", request("1-aaaaaaaa", { command }));
+    put("2-bbbbbbbb.request.json", request("2-bbbbbbbb", { command }));
+    pend("1-aaaaaaaa", "2-bbbbbbbb");
+    const problems = [];
+    for (const [id, input] of [["1-aaaaaaaa", `${command}\n`], ["2-bbbbbbbb", command]]) {
+      const r = await launcherLines(["--decide", id, "--accept", "--dir", dir, "--report-file", report], { input });
+      if (r.code !== 0 || r.out !== `DECIDED=${id} accept\n`) problems.push(`${id}: exit ${r.code}, ${r.out.trim()}`);
+      if (readJson(path.join(box, `${id}.decision.json`))?.decision !== "accept") problems.push(`${id}: no accept was published`);
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--decide --accept refuses a restatement that differs, carries a second trailing newline or other line endings, and an empty stdin, and publishes nothing",
+  "the restatement binds the text a classifier judged to what the server runs, which is the request's own command and never stdin; anything normalised would let one text be judged and another run",
+  async () => {
+    const { dir, report, box, put, request, pend } = handMailbox();
+    const command = "/bin/zsh -lc 'ls -la\necho two'";
+    put("1-aaaaaaaa.request.json", request("1-aaaaaaaa", { command }));
+    pend("1-aaaaaaaa");
+    const problems = [];
+    for (const [label, input, want] of [
+      ["a changed byte", `${command.replace("ls -la", "ls -lA")}\n`, /^REFUSED=1-aaaaaaaa the restated command differs from the request's/],
+      ["a second trailing newline", `${command}\n\n`, /^REFUSED=1-aaaaaaaa the restated command differs from the request's/],
+      ["CRLF line endings", `${command.replace(/\n/g, "\r\n")}\r\n`, /^REFUSED=1-aaaaaaaa the restated command differs from the request's/],
+      ["trailing spaces trimmed from the first line", `${command.replace("ls -la", "ls -la ")}\n`, /^REFUSED=1-aaaaaaaa the restated command differs from the request's/],
+      ["a truncated command", "/bin/zsh -lc 'ls -la\n", /^REFUSED=1-aaaaaaaa the restated command differs from the request's/],
+      ["an empty stdin", "", /^REFUSED=1-aaaaaaaa the restated command is empty/],
+    ]) {
+      const r = await launcherLines(["--decide", "1-aaaaaaaa", "--accept", "--dir", dir, "--report-file", report], { input });
+      if (r.code !== 2 || !want.test(r.out)) problems.push(`${label}: exit ${r.code}, ${r.out.trim()}`);
+      if (r.out.includes("echo two")) problems.push(`${label}: the refusal echoes the command`);
+    }
+    const none = await launcherLines(["--decide", "1-aaaaaaaa", "--accept", "--dir", dir, "--report-file", report]);
+    if (none.code !== 2 || !/the restated command is empty/.test(none.out)) problems.push(`no stdin at all: exit ${none.code}, ${none.out.trim()}`);
+    // Compared as bytes: a byte that is not UTF-8 decodes to U+FFFD, and a text comparison would take it for one.
+    put("2-bbbbbbbb.request.json", request("2-bbbbbbbb", { command: "echo \uFFFD" }));
+    pend("1-aaaaaaaa", "2-bbbbbbbb");
+    const raw = await launcherLines(["--decide", "2-bbbbbbbb", "--accept", "--dir", dir, "--report-file", report],
+      { input: Buffer.concat([Buffer.from("echo "), Buffer.from([0xff, 0x0a])]) });
+    if (raw.code !== 2 || !/differs from the request's: 6 bytes against 8, the first difference at byte 6/.test(raw.out)) problems.push(`a byte that is not UTF-8: exit ${raw.code}, ${raw.out.trim()}`);
+    for (const id of ["1-aaaaaaaa", "2-bbbbbbbb"])
+      if (fs.existsSync(path.join(box, `${id}.decision.json`))) problems.push(`a refused restatement published a decision for ${id}`);
+    if (fs.readdirSync(box).some((n) => n.includes(".tmp"))) problems.push(`a refused restatement left a temp file: ${JSON.stringify(fs.readdirSync(box))}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--decide --decline reads no stdin: with a stdin nobody ever closes, it publishes and exits at once",
+  "a decline restates nothing, so it has no reason to wait on stdin; a decline that blocked on an open stdin would hang the very call that stops a run",
+  async () => {
+    const { dir, report, box, put, request, pend } = handMailbox();
+    put("1-aaaaaaaa.request.json", request("1-aaaaaaaa"));
+    pend("1-aaaaaaaa");
+    const run = spawnNode([LAUNCHER, "--decide", "1-aaaaaaaa", "--decline", "--dir", dir, "--report-file", report],
+      { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 10000 });
+    const r = await run.done;
+    try { run.child.stdin.destroy(); } catch {}
+    return (r.code === 0 && r.out === "DECIDED=1-aaaaaaaa decline\n" && r.ms < 5000
+        && readJson(path.join(box, "1-aaaaaaaa.decision.json"))?.decision === "decline")
+      || `exit ${r.code} signal ${r.signal} after ${r.ms} ms: ${r.out.trim()}`;
+  });
+
+test("the accept the pages show — a quoted heredoc whose delimiter is the token of the COMMAND<< line the launcher printed — carries a command holding a COMMAND line whole and runs none of it in the caller's shell",
+  "the command's bytes are the agent's: a fixed delimiter such as COMMAND ends the heredoc at the agent's own line and runs the rest in the coordinator's shell before any comparison (both verifications made this happen); the print's fresh token never occurs in the command, so it cannot",
+  async () => {
+    const { dir, report, box, put, request, pend } = handMailbox();
+    const marker = path.join(tempDir("agent-run-heredoc."), "ran");
+    const command = `/bin/zsh -lc 'cat <<COMMAND\nx\nCOMMAND\ntouch ${marker}\n'`;
+    put("1-aaaaaaaa.request.json", request("1-aaaaaaaa", { command }));
+    pend("1-aaaaaaaa");
+    const printed = await launcherLines(["--pending", "--dir", dir, "--report-file", report]);
+    const token = /^COMMAND<<([0-9a-f]{12})$/m.exec(printed.out)?.[1];
+    if (!token) return `no token in the print: ${printed.out.slice(0, 200)}`;
+    const block = printed.out.slice(printed.out.indexOf(`COMMAND<<${token}\n`) + `COMMAND<<${token}\n`.length, printed.out.indexOf(`\nCOMMAND>>${token}\n`));
+    const q = (s) => `'${s.replace(/'/g, "'\\''")}'`;
+    const call = `${q(process.execPath)} ${q(LAUNCHER)} --decide 1-aaaaaaaa --accept --dir ${q(dir)} --report-file ${q(report)} <<'${token}'\n${block}\n${token}\n`;
+    const r = spawnSync("/bin/sh", ["-c", call], { encoding: "utf8", timeout: 20000 });
+    const problems = [];
+    if (r.status !== 0 || r.stdout !== "DECIDED=1-aaaaaaaa accept\n") problems.push(`exit ${r.status}: ${r.stdout.trim()} ${r.stderr.trim().slice(0, 200)}`);
+    if (fs.existsSync(marker)) problems.push("a line of the command ran in the caller's shell");
+    if (readJson(path.join(box, "1-aaaaaaaa.decision.json"))?.decision !== "accept") problems.push("no accept was published");
     return problems.length === 0 || problems.join("; ");
   });
 

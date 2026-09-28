@@ -26,6 +26,16 @@ forensics remain in the repository references and release notes.
   driver no longer invites, is declined the same way with the empty profile, `why: "rights are set at launch"`.
   `initialize` asks `experimentalApi: false` again. Why: a yes would grant a path mid-run that no settled
   `WRITABLE:` line granted, and none of the 37 requests declined on this machine before 0.21.0 was of this kind.
+- **An accept restates the command it approves.** `agent-run.mjs --decide ID --accept` reads the command on stdin
+  and compares it with the request's `command` byte for byte, one trailing newline tolerated and nothing else
+  normalised; an empty stdin or any difference publishes nothing and prints `REFUSED=ID` with the two lengths and
+  the first byte where they differ. `--decline` reads no stdin. The codex and orchestrate pages show the call as a quoted
+  heredoc whose delimiter is the fresh token of the request's `COMMAND<<TOKEN` line, and say that an accept the
+  permission check or the classifier blocks is followed by a decline, or by the owner's word in an interactive
+  session; the codex page's Stop line now says an accepted command in a process group of its own is E67.
+  Contract: `--decide ID --accept` with no command on stdin is refused. Why: the auto-mode classifier judged the
+  accept and saw only an id, and a fixed delimiter would let a line of the agent's command end the heredoc and
+  run the rest in the coordinator's shell, which both verifications of the design made happen.
 
 ### Removed
 
