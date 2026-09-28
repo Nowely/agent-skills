@@ -3,7 +3,19 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.21.0 — 2026-09-28
+
+Contracts that change in this release, each detailed in its entry below. The lock's on-disk shape is a symlink to
+an owner file, and a driver from before this release that meets it exits 2. Exit 6 now means an approval request
+was declined or expired, never one accepted; `escalations` entries carry the request whole with its decision,
+cause and outcome, and `detail` is no longer clipped. The launcher's `--run` prints one of three results and the
+last line of each is `REPORT=`: the waiting one is an approval request handed back to the caller. Every agent the
+wrapper runs has an approval mailbox, so `--new` needs the state directory on its command line, and a mailbox
+request waits thirty minutes at most. The driver switches on Codex's `request_permissions_tool` and
+`exec_permission_approvals` features where the installed codex lists them and sends `experimentalApi: true`. A
+writable root at or above `~/.codex` or the state directory is refused, so `--writable ~/.claude` on a plugin
+install exits 2 where it used to pass, and a state directory that is `$TMPDIR` or lies under it refuses every run.
+Measured with codex-cli 0.155.1 and Node 24.11.0.
 
 ### Fixed
 
