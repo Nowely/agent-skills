@@ -48,7 +48,7 @@ forensics remain in the repository references and release notes.
   where each write asks in the `default` and `acceptEdits` modes until edits there are allowed for the session.
   The README no longer says every source-checkout run uses the temporary directory.
 - E7, E36: `references/prior-art.md` and the README stop overstating the survey's record: not every practice is
-  marked measured, argued or asserted (34 lines of 115 entries carry a mark), the curated section ranks 108
+  marked measured, argued or asserted, the curated section ranks 108
   entries rather than "forty", and not every 2026-09-10 number traces to the bake-off directory.
 - E38: the note beside the writing rules' frozen block says the block is `PART 2` of the measured prompt with
   the source's four-space indent removed, not "byte for byte"; the block and its SHA-256 are unchanged.
