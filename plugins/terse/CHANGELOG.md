@@ -15,7 +15,8 @@ forensics remain in the repository references and release notes.
 ### Fixed
 
 - E55: the live trigger probe blocks `ListAgents` and `SendMessage`, so the agent-brief case is scored where
-  agent-messaging tools exist instead of being excluded because the model tried to send the brief to a real agent.
+  agent-messaging tools exist instead of being excluded because the model tried to send the brief to a real agent;
+  three live runs on 2026-09-28 were all scored, with `clarity` called before the answer.
 
 ## 0.3.0 — 2026-09-28
 
