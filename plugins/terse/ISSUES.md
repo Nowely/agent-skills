@@ -298,15 +298,6 @@ change identifiers, or copy existing output".
 it is, name those texts in the description and narrow the exclusion to mechanical renames; a description change
 needs the trigger measurement in `RELEASING.md`.
 
-## E72. terse has no place for one user's or one project's conventions
-
-**Evidence, level 1.** Issue #20 ("Structure") asks for a separate file for conventions specific to a user or a
-project, such as CI owning the PR description or the repository's commit format, kept out of the general
-guidance. No such file exists under `plugins/terse/plugin/references/` or `plugins/terse/plugin/skills/clarity/`.
-
-**Issue text.** Project and user conventions have no home, so they either stay out of terse or leak into its
-general advice. Give them one: a file the skill reads when present, which the general pages never restate.
-
 ## E73. Whether `clarity` reduces objections, or improves the texts, is not measured
 
 **Evidence, level 1.** Issue #20 ("How to measure it") sets a baseline of 115 records, 73 of them objections,
