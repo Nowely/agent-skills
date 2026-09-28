@@ -1,18 +1,21 @@
-# The run file and its claim ledger
+# The report and its claim ledger
 
-`audit` and `rewrite` are two skills and two invocations, possibly two sessions. Nothing passes between
-them except one file, so the file has a contract: fixed headings, fixed order, no renaming. `rewrite` is
-given the directory, and its writer reads the file.
+`audit` and `rewrite` are two skills and two invocations, possibly two sessions. What passes between them
+is one file, the audit's report, so the file has a contract: fixed headings, fixed order, no renaming.
+`rewrite` is given its path; its writer reads the file, and its readers take their questions and key from it.
 
-## The run file
+## The report
 
-Path: `$RUN/audit.md`. Headings exactly as below, in this order.
+Path: `<folder>/<date>-<slug>.md` in the audited repository, the folder settled in the audit's Step 1, or
+`$RUN/audit.md` when the user chose the run directory. Every path into the repository is relative to it,
+and a file outside it is named by its file name alone.
+Headings exactly as below, in this order.
 
 ```markdown
 # Audit of <what was audited> at <commit or date>
 
 ## Scope
-Files audited, the entry file, the repository that backs them, the mode, and the absolute run directory.
+Files audited, the entry file, the repository that backs them, and the mode.
 
 ## A pleasant read
 What the cold readers found hard or unpleasant to read, each point with its line; no mark.
@@ -24,14 +27,15 @@ The nine sections, as confirmed by the user; the last, what the document is for,
 Entries C01, C02, … in document order.
 
 ## Questions and answer key
-Each question, its correct answer, the ledger entries that support it, and whether it is a control.
+Each question, its correct answer, whether the documentation gives that answer, the ledger entries that
+support it, and whether it is a control.
 
 ## Reader results
 One row per reader.
 
 ## Score
-Right answers over questions, steps, departures. Written as a single line that can be compared later.
-Then `shape: agreed` or `shape: not agreed`, and what an agreement rests on: the path and SHA-256 of the
+Right answers over questions, steps, departures, on a single line.
+Then `shape: agreed` or `shape: not agreed`, and what an agreement rests on: the file name and SHA-256 of the
 plan the user said they agree to, or their words that the current shape stands, quoted.
 
 ## What broke
@@ -47,8 +51,7 @@ What could not be settled, and anything the steps contradicted each other about.
 
 ## Claim ledger entry
 
-One entry per sentence that states what the software does. Number them in document order so a later run
-can be diffed against this one.
+One entry per sentence that states what the software does, numbered in document order.
 
 ```markdown
 ### C07 — README.md:46

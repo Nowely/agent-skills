@@ -1,0 +1,28 @@
+{
+  "date": "2026-09-28",
+  "claudeCode": "2.1.280",
+  "model": "claude-opus-5-5",
+  "runsPerCase": 3,
+  "cell": "runs where Skill terse:clarity was called before the answer / runs; for negatives, runs where it was not called / runs",
+  "new": {
+    "description": "0.3.0's, plus 'interface text and error messages' (commit 7d08748)",
+    "official": {
+      "cases.json":         {"positives": "36/36", "negativesNotCalled": "6/6", "costUsd": 4.35},
+      "holdout.json":       {"positives": "22/24", "negativesNotCalled": "6/6", "costUsd": 2.82, "misses": {"commit-title-h1": "1/3"}},
+      "holdout.json again": {"positives": "24/24", "negativesNotCalled": "6/6", "costUsd": 2.84},
+      "holdout-relay.json": {"positives": "18/18", "costUsd": 1.84},
+      "holdout-ui.json":    {"positives": "12/12", "negativesNotCalled": "6/6", "costUsd": 1.86}
+    },
+    "live": {"cases.json": {"positives": "36/36", "positivesBeforeAnyText": "36/36", "negativesNotCalled": "6/6", "counted": "42/42", "costUsd": 5.37}}
+  },
+  "old": {
+    "description": "terse 0.3.0's, unchanged since 9241e79",
+    "official": {
+      "holdout.json":    {"positives": "24/24", "negativesNotCalled": "6/6", "costUsd": 2.80},
+      "holdout-ui.json": {"positives": "12/12", "negativesNotCalled": "6/6", "costUsd": 1.79, "note": "one rename-h3 run ended at the five-turn limit without calling clarity"}
+    }
+  },
+  "probeIsolation": "two single sessions with --plugin-dir and terse@nowely 0.3.0 installed and enabled listed one terse plugin in init.plugins, at the candidate's path, with and without enabledPlugins set to false for the installed copy",
+  "probeIsolationCostUsd": 0.15,
+  "totalCostUsd": 23.82
+}

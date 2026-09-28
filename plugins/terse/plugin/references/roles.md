@@ -9,7 +9,7 @@ documentation, the repository), `<CONTEXT>` (the `context.md` the writer writes 
 for this kind of text, or the scout's table and the best documents it fetched), `<RULES>` (`rules.md` beside
 this page), `<SENTENCES>` (`writing-rules.md` and `curse-of-knowledge.md` beside this page), `<TRUTH>`
 (`truth.md` beside this page), `<PURPOSE>` (the owner's words: what the text is for and who reads it),
-`<AUDIT>` (an audit's `audit.md`, where one was given), `<OUT>` (the run directory); send nothing else.
+`<AUDIT>` (an audit's report, where one was given), `<OUT>` (the run directory); send nothing else.
 Every brief ends with: do not modify the repository, write only under `$TMPDIR`, never `cd` inside a
 compound command. Every agent returns its report as its final message, and the coordinator saves it: a
 harness hook refuses a subagent's report file.
@@ -23,7 +23,7 @@ harness hook refuses a subagent's report file.
 | form | Claude Sonnet | on the draft | 5 |
 | terms | Claude Sonnet | on the draft | 6 |
 | sentences | Claude Sonnet | on the draft | 10 |
-| question readers | Codex Luna | `rewrite`: three to five, on the draft and again on the repaired text; `audit`: one per question | 8 |
+| question readers | Codex Luna | `rewrite`: one per question, on the existing text, the draft and the repaired text; `audit`: one per question | 8 |
 | task reader | Codex Sol | `rewrite`: one, on the draft; `audit`: two, on the documentation; full mode only | 9 |
 | harness | Claude Sonnet | beside the writer, or from the audit's first step; full mode only | 12 |
 | cold readers, two | Codex Astra and Codex Sol | `rewrite`: on the repaired text; `audit`: on the entry file | 11 |
@@ -44,7 +44,7 @@ what it does, how a user gets it and starts it, what they type, what comes back 
 they need first, what would make them want it and choose it over what it resembles, and the one thought the
 text carries. The purpose, in the owner's words: <PURPOSE>. Then see how the best texts of its kind are
 built: <GENRE>. Where a text exists already, it is <EXISTING>: keep what is true and does its job. Where it
-was audited, the run file is <AUDIT>: write for its reader profile, and answer what it found hard to read,
+was audited, the report is <AUDIT>: write for its reader profile, and answer what it found hard to read,
 every failure under What broke and every refuted claim in its ledger.
 
 <RULES> requires two things — the text is pleasant to read, and true within its world — and the rest of it
@@ -52,8 +52,7 @@ is advice: take what helps this text and leave the rest. <SENTENCES> preserves m
 use its suggestions when they serve this reader, not as a compulsory shape.
 
 Plan from the context, not from a list of sections: each part, what it gives this reader, the device that
-carries it, a word budget. Write the budgets to <OUT>/budgets.json, every `## ` heading mapped to its
-words, before the text. Every statement is true within the text's world: note beside it what shows it.
+carries it, a word budget. Every statement is true within the text's world: note beside it what shows it.
 Where the owner has a real choice, follow <RULES>, "Offer alternatives when there is a real choice";
 ask for one missing fact directly when that is all that blocks the work.
 Read; run nothing of what the text describes. A fact its world does not hold — a feature the code lacks, a
@@ -97,7 +96,7 @@ No text is called final: the user's word makes it so.
 
 ```
 Find how documents of this kind are written: <KIND>. Fetch five to eight of the most used — by stars,
-downloads or listings — as raw markdown with curl, never through a summarising tool, and save them
+downloads or listings — as raw text with curl, never through a summarising tool, and save them
 under <OUT>/fetched/. Return one table: each place from the top, what the genre puts there, in N of M
 documents, and how it is formatted there — headings, bold lead-ins, tables, fenced blocks, lists. Then
 name the two or three best, and what their first 150 words do for their reader. Cite nothing you did not
@@ -181,7 +180,8 @@ tests or configuration, and you may not search the web.
 Answer this question: <QUESTION>
 
 Return:
-  answer:    your answer, in your own words
+  answer:    your answer, in your own words; if the documentation does not answer it, say so, then
+             give your best guess
   files:     every file you opened, in the order you opened them
   steps:     how many files you opened before you could answer
   departed:  yes if you needed anything outside the .md files, no otherwise
@@ -192,7 +192,10 @@ Return:
 
 ```
 You are a fresh reader carrying a task. You may read <READ>, and nothing else. Starting state:
-<STATE>, created under $TMPDIR. Goal: <GOAL>. Do what the document says, then show the resulting state.
+<STATE>, created under $TMPDIR. Point every application the document runs at configuration and data under
+$TMPDIR too — its configuration-directory setting, or HOME — never at this machine's own; a command you cannot
+point there, do not run, and report it as a step you could not take. Goal: <GOAL>. Do what the document says,
+then show the resulting state.
 Report every command with its output, every point where you had to guess and the sentence you wished
 were there, and every sentence that turned out untrue. End with one line: GOAL: achieved | partly | not.
 ```

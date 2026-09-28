@@ -26,7 +26,7 @@ Counts - sentence length, repeated phrases - prompt a review. They are not gates
 
 ## Provenance
 
-The twenty lines above are reproduced byte for byte from `PART 2` of the prompt that was measured, kept
+The twenty lines above are `PART 2` of the prompt that was measured, with the source's four-space indent removed, kept
 at `plugins/terse/research/2026-09-10-chain/chain-source-prompt.txt` in this repository. Their SHA-256 is
 `7a577b29aff3a255de1f7b2418f8c16cb8246d78e03bb31d1ea64ced772f635d`, computed over the block alone and not
 over this file. If an edit ever lands inside them, that digest stops matching and the reproduction claim
