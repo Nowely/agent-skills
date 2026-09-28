@@ -3,6 +3,14 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Fixed
+
+- The README's update step is one command, `claude plugin update entrust@nowely`. It refreshes the marketplace
+  itself: on 2026-09-28 it found terse 0.4.0 with no separate `claude plugin marketplace update nowely`, which the
+  README asked for first.
+
 ## 0.21.0 — 2026-09-28
 
 Contracts that change in this release, each detailed in its entry below. The lock's on-disk shape is a symlink to
