@@ -20,7 +20,8 @@ are `<name>@X.Y.Z`.
 - **Research runs** live under `plugins/<name>/research/<date>-<slug>/`, and a run about the repository as
   a whole under `research/<date>-<slug>/`. Every iteration of a document is its own numbered file, never
   overwritten; a round is frozen once its critics launch; `rounds.md` beside them records the findings and
-  the regression count of each round.
+  the regression count of each round; a script resolves paths from its own location, the home or the temp
+  directory.
 - **Everything gathered for research is private by default.** A tracked file carries only what the owner has
   already made public or would publish on this repository's front page; a detail private only in combination
   with public ones is private.
