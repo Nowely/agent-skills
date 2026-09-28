@@ -12,6 +12,11 @@ forensics remain in the repository references and release notes.
   and an earlier exchange, and has a judge score the answer against a hidden key. The runs spend Claude tokens
   and stay out of CI; `evals/content.md` is the protocol.
 
+- E70: genre notes for a review comment, a ticket or issue, and interface text and error messages, each linked
+  from `clarity` and each with an example paraphrased from the anonymized episodes. A before-and-after
+  comparison gets no note of its own: it is a device, and `clarity` already asks whether the recipient can tell
+  what changed, from what to what.
+
 ### Changed
 
 - `audit` and `rewrite`: each audit stands alone, and a before and after on the same questions happens inside

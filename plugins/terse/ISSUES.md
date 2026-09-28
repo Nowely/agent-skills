@@ -6,17 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with entrust's ledger, `plugins/entrust/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E70. terse has no genre notes for review comments, tickets or issues, UI strings, or before/after comparisons
-
-**Evidence, level 1.** `plugins/terse/plugin/references/genres/` holds notes for agent briefs, code comments,
-commit titles, PR descriptions, READMEs, relayed results and team messages. Issue #20 ("Structure") lists as
-genre notes a PR description, a review comment, a before/after comparison, a commit message, a ticket or issue,
-a UI string and a brief for an agent.
-
-**Issue text.** Four genres #20 names have no note: review comments, tickets or issues, UI strings, and
-before/after comparisons. Each would be an application of the core with one or two confirmed examples, not a new
-rule set.
-
 ## E71. `clarity`'s description leaves out names, test titles and user-facing strings, and excludes changing identifiers
 
 **Evidence, level 1.** Issue #20 ("Trigger") says the skill "should also cover the human-readable parts of code:

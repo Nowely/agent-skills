@@ -63,8 +63,11 @@ recheck showed. For a longer exchange of objections, follow the
 
 Open the relevant note when writing a [code comment](../../references/genres/code-comments.md),
 [commit title](../../references/genres/commit-title.md),
+[review comment](../../references/genres/review-comment.md),
 [PR description](../../references/genres/pr-description.md),
 [team message](../../references/genres/team-message.md),
+[ticket or issue](../../references/genres/ticket.md),
+[interface text or error message](../../references/genres/ui-text.md),
 [relayed result](../../references/genres/relayed-result.md), or
 [agent brief](../../references/genres/agent-brief.md).
 
