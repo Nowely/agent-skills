@@ -12,8 +12,7 @@ else rests on — whether a model reader stands in for a human one. Together the
 hundred primary sources.
 
 **Evidence discipline used here.** Every entry says what was *opened* against what was reached by search
-only. Practices are marked **measured**, **argued**, or **asserted**, and one never stands in for
-another. A line reference is a place to look, not a proven fact: round two showed five round-one
+only. A line reference is a place to look, not a proven fact: round two showed five round-one
 judgements to be wrong, all in the direction of dismissal, so treat a verdict without an opened file as a
 guess. Licences are recorded wherever taking the text would be the point.
 
@@ -299,7 +298,7 @@ worth taking is the declared-type field, which makes a claimed type mechanically
 Ranked within each group by what it buys. Every line names where it lives and what it costs. The numbers
 are labels for reference; ranking runs within a group, not across the whole list.
 
-This is the curated forty. All 271 practices the survey returned are in
+This is the curated selection. All 271 practices the survey returned are in
 [practices-full.md](practices-full.md), unedited and unranked, because a practice that reads as taste
 today is sometimes the one that turns out to carry a defect.
 
@@ -899,7 +898,7 @@ ruler itself, one `gpt-5.6-sol` on procedure writing, eight `gpt-5.6-terra` on t
 compared. That second writing found an arithmetic error neither the first writer nor the returning agent
 had caught, corrected an overstated census, and is kept whole in the archive.
 
-Round two's structured returns hold **271 practices**; about forty are ranked above and all 271 are kept
+Round two's structured returns hold **271 practices**; the ones worth taking are ranked above and all 271 are kept
 in [practices-full.md](practices-full.md). The raw returns — eleven Codex seat reports and sixteen agent
 returns including the critic's — are preserved under `plugins/terse/research/2026-09-11-terse-survey/` at the repository
 root, outside every plugin payload, together with round one's twelve returns and round three's eleven
@@ -908,7 +907,7 @@ seats. Every raw return from all three rounds is in the repository.
 **The evidence this plugin was built on is one directory over:** `plugins/terse/research/2026-09-10-chain/` holds the
 four-pass rewrite stage by stage, the claim ledger C01–C67 that the plugin's ledger format comes from, the
 cut ledger, the prerequisite inventory, and forty Codex seat returns from the bake-off whose result
-decided most of the plugin's shape. Every 2026-09-10 number quoted anywhere in this file traces there. It
+decided most of the plugin's shape. It
 was living outside version control until 2026-09-11, and the two reproduced blocks in `rewrite` now carry
 the SHA-256 of their own text so the reproduction claim is checkable even without it.
 

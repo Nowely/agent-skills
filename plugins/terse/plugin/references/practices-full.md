@@ -1,7 +1,7 @@
 # Every practice the survey found
 
 Two hundred and seventy-one practices, as returned, grouped by the source they came from and
-otherwise unedited. [prior-art.md](prior-art.md) is the curated view: it ranks about forty of these
+otherwise unedited. [prior-art.md](prior-art.md) is the curated view: it ranks the ones worth taking
 and says what each would cost. This file is the complete one, kept because a practice that looks
 like taste today is sometimes the one that turns out to carry a defect, and because a judgement to
 drop something should be reversible.

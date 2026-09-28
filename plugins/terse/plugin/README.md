@@ -83,7 +83,7 @@ For a README, there are genre notes for [plugin or skill libraries](references/g
 | The rules | Two things required of every text — it is pleasant to read, and true within its world — and advice for finding its best structure, words and form, taken where it helps | One owner's feedback and counts of documents of a kind, each piece marked with its source: [the rules](references/rules.md); advice for one kind of text, such as a README, in [its genre notes](references/genres/) |
 | The scripted check | Words per section of the draft and the repair, side by side, as a report; tested against a deliberate violation | [The measurements behind the scripts](references/measurements.md) |
 
-[The field's practices, each marked measured, argued or asserted](references/prior-art.md), gathered and ranked.
+[The field's practices](references/prior-art.md), gathered and ranked.
 
 **How the deep skills work:** A run goes in the plugin's data directory when Claude Code gives the plugin one, and in a temporary directory otherwise; [how long it stays and what asks for permission](references/run.md). In `rewrite`, a sentence the truth critics refute goes back to the writer before you see the text. The skills ask for your word before applying a draft to your repository.
 

@@ -6,21 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with entrust's ledger, `plugins/entrust/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E7. `prior-art.md` says every 2026-09-10 number traces to the bake-off directory, and the reader numbers do not
-
-**Evidence, level 2.** `plugins/terse/plugin/references/prior-art.md:910-911` calls `run-2x5/` "forty Codex seat
-returns from the bake-off" and says "Every 2026-09-10 number quoted anywhere in this file traces there".
-`plugins/terse/research/2026-09-10-chain/README.md` and `chain/` hold summaries of the reader run; the six readers of
-the *before* measurement are recorded one by one, with verdicts, quoted lines and the one departure, in
-`plugins/terse/research/2026-09-10-chain/chain-source-prompt.txt:103-132` — not under `run-2x5/` — and no per-reader
-record of the *after* measurement (6/6) exists anywhere in the repository. Found by the 2026-09-22 truth
-pass (entries C31, C32, C36, C37 unconfirmed) and corrected on 2026-09-23 by the wave's lens 1, which
-found the before-records this entry had said did not exist.
-
-**Issue text.** The sentence overstates the record: the bake-off returns are there, the reader run's
-before-records are in the chain's source prompt and its after-records are nowhere, and the claim should
-name what traces and what does not.
-
 ## E9. `measure.md` does not say how the planted unanswerable question scores in the no-document arm
 
 **Evidence, level 2.** `plugins/terse/plugin/skills/audit/references/measure.md:22-24` keys the planted question
@@ -95,20 +80,6 @@ On HEAD it exited 0; grep printed only line 96's baseline-arm "same questions", 
 **Issue text.** `measure.md` requires a re-audit to reuse the questions, the key, the entry file and the model of the first audit, and the audit page has no step that takes a first audit's run as input: step 1 makes a fresh run directory and step 4 writes fresh questions from the profile. A user who audits again after a rewrite gets a new measurement, not a comparison, unless they carry the questions over by hand. Step 1 should accept a previous run directory and steps 4 and 5 should reuse its questions, key and baseline when one is given.
 
 _From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-24/run/code-defects.md, D15._
-
-## E36. `prior-art.md` overstates its own body: "every practice marked measured, argued or asserted" and "the curated forty"
-
-**Evidence, level 2.** `plugins/terse/references/prior-art.md:14-18` (at d7a1f37; now `plugins/terse/plugin/references/prior-art.md`) says practices are marked measured, argued or asserted, and `plugins/terse/plugin/references/prior-art.md:299-304` calls the curated section "the curated forty". The check counts 115 numbered entries and only 34 lines carrying one of the marks, which supports neither "every" nor "forty".
-
-**Check.** From any directory:
-
-    sed -n '14,15p;302p' /Users/ruliny/Git/agent-skills/plugins/terse/plugin/references/prior-art.md; grep -c -E '^\s*[0-9]+\. \*\*' /Users/ruliny/Git/agent-skills/plugins/terse/plugin/references/prior-art.md; grep -c -i -E '\b(measured|argued|asserted)\b' /Users/ruliny/Git/agent-skills/plugins/terse/plugin/references/prior-art.md
-
-On HEAD it exited 0 and printed the two self-descriptions followed by counts `115` and `34`.
-
-**Issue text.** `prior-art.md` describes itself as a list in which every practice is marked measured, argued or asserted, and as a curated forty; its body carries neither: not every entry has a mark and the curated section is not forty entries. A README that repeats the page's self-description repeats the overstatement. The page should say what its body does — how many entries, how many marked, how many curated — or its body should be brought to what it says.
-
-_From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-24/run/code-defects.md, D22._
 
 ## E38. `writing-rules.md:29` says "byte for byte" of a block that differs from its source by an indent
 
