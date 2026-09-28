@@ -2,14 +2,14 @@
 name: clarity
 description: >-
   Reader-side checks when drafting or revising text for a person or another agent, even a single
-  line written during coding: commit titles, changelog entries, docstrings, code and review
-  comments, PR descriptions, captions, messages, plans, reports, and summaries in your own words of
-  what agents, tests, or tools found, including replies to the user in chat. Claude can choose it
-  automatically, or you can call /terse:clarity. It starts no agents or run directory. Apply the
-  checks silently when asked for only the finished text; keep the requested format. Skip bare
-  acknowledgements and steps that only run tools, change identifiers, or copy existing output
-  verbatim on request. For a standalone document requested by its owner, suggest rethink, rewrite,
-  or audit; the user starts them.
+  line written during coding: commit titles, changelog entries, docstrings, interface text and error
+  messages, code and review comments, PR descriptions, captions, messages, plans, reports, and
+  summaries in your own words of what agents, tests, or tools found, including replies to the user in
+  chat. Claude can choose it automatically, or you can call /terse:clarity. It starts no agents or run
+  directory. Apply the checks silently when asked for only the finished text; keep the requested
+  format. Skip bare acknowledgements and steps that only run tools, change identifiers, or copy
+  existing output verbatim on request. For a standalone document requested by its owner, suggest
+  rethink, rewrite, or audit; the user starts them.
 when_to_use: >-
   Before drafting or revising words a reader will use to understand, decide, or act, including a
   direct chat reply to the user that explains in your own words what an agent, test, or tool found.
