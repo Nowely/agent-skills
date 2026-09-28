@@ -52,6 +52,9 @@ forensics remain in the repository references and release notes.
   entries rather than "forty", and not every 2026-09-10 number traces to the bake-off directory.
 - E38: the note beside the writing rules' frozen block says the block is `PART 2` of the measured prompt with
   the source's four-space indent removed, not "byte for byte"; the block and its SHA-256 are unchanged.
+- E69: `clarity` carries its own line for pushback: when the reader disputes a fact, recheck it at its source
+  before conceding or holding, and say what the recheck showed. Before, it reached that rule only through a
+  link to a deep-skill brief.
 
 ## 0.3.0 — 2026-09-28
 

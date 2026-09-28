@@ -6,20 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with entrust's ledger, `plugins/entrust/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E69. `clarity` sends an objection to a deep-skill brief, and "recheck before conceding" has no line of its own
-
-**Evidence, level 1.** `plugins/terse/plugin/skills/clarity/SKILL.md:58` says only "For a later objection,
-follow the owner-feedback brief", and that brief, `plugins/terse/plugin/references/roles.md:235`, says
-"Recheck a disputed fact". Issue #20 ("How it should work", item 4) asks that on pushback the agent re-verify the
-disputed point first, say plainly what changed, and never concede without re-checking. The 2026-09-28 pilot
-(`plugins/terse/research/2026-09-28-critical-thinking/pilots.md`, K2) found the current pages holding a correct
-answer under pressure in 24 of 24 runs, but its sets were invalid because `clarity` loaded in only 24 of 42
-resumed sessions, so whether a line of its own helps is not measured.
-
-**Issue text.** Everyday pushback reaches the recheck rule only through a link to a deep-skill brief. Decide, on
-a measurement that loads the skill in resumed sessions, whether `clarity` needs its own line for re-verifying a
-disputed point and saying what the recheck showed.
-
 ## E70. terse has no genre notes for review comments, tickets or issues, UI strings, or before/after comparisons
 
 **Evidence, level 1.** `plugins/terse/plugin/references/genres/` holds notes for agent briefs, code comments,
