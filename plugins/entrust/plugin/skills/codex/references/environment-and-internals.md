@@ -32,7 +32,7 @@ then `last: 14273 / total: 27857`, so `last` is only the turn's tail.
 The report's `escalations` array has one entry per approval request, whichever thread asked — not only the
 ones the driver declined: `id`, `method`, `kind`, `detail`, `thread`, `subagent`, `agentPath`, `cause`
 (`rights`: a file change the writable roots cover, which the driver accepted itself; `outside`: a file
-change not shown to lie inside them, which the driver declined itself; `sandbox`: the same command had just
+change not shown to lie inside them, or a permissions request, which the driver declined itself; `sandbox`: the same command had just
 failed in this turn; `policy`: no attempt was seen, so Codex asked by its own rule), `offered`, `decision`
 (`accepted`, `declined` or `expired`), `by` (`driver` for an auto-yes, an expiry or a request never offered,
 `coordinator` otherwise), `why`, `askedAt`, `settledAt`, `waitMs`, `resolved`, `outcome` (the matching

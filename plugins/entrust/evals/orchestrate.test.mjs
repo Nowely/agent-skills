@@ -539,9 +539,10 @@ test("F7b an accept restates the command in a heredoc on a delimiter of the coor
   "the accept restates the command so that the call the classifier or the owner judges carries it; the heredoc's delimiter is one the coordinator makes up and checks is no line of the command, not the relayed token, because a fixed word or a relayed one lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell (both verifications of 2026-09-28 made it happen); a blocked accept publishes nothing, and without a sentence the turn would wait out the thirty minutes",
   () => says(
     "Decide from the waiting result the wrapper handed back and copy its command block into the sibling's accept call",
-    "`--decide ID --accept` reads the command on stdin, in a quoted heredoc whose delimiter you make up at that moment and check is no line of the command, never a fixed word and never the printed token, since a line of the command equal to the delimiter would end the heredoc and run the rest in your shell, and the token reached you through the wrapper",
+    "`--decide 'ID' --accept` reads the command on stdin, in a quoted heredoc whose delimiter you build at that moment from `ACCEPT_`, the printed token and hex of your own and check is no line of the command, never a fixed word and never the printed token alone",
+    "Quote the ID, which reached you the same way, and use it only in the launcher's shape, digits, a hyphen and eight hex characters",
     "If the launcher refuses the restatement as different, print `--pending` and copy from that",
-    "An accept the permission check or the classifier blocks publishes nothing, so decline the request with `--decide ID --decline`, or ask the owner when the session is interactive",
+    "An accept the permission check or the classifier blocks publishes nothing, so decline the request with `--decide 'ID' --decline`, or ask the owner when the session is interactive",
   ));
 
 test("F8 the synthesis rule: one sentence per cause and what avoids it next time",

@@ -366,16 +366,18 @@ test("the accept the page shows restates the command in a quoted heredoc on a de
   "a fixed delimiter lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell before the launcher compares anything (both verifications of 2026-09-28 made it happen), so the block the coordinator copies ends on a delimiter it made up and checked, never the relayed token; and an accepted command in a process group of its own is E67, which the Stop line has to say rather than promise",
   () => {
     const problems = [];
-    const at = skill.search(/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --decide <ID> --accept --report-file "<REPORT>" <<'<DELIMITER>'$/m);
+    const at = skill.search(/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'$/m);
     if (at < 0) return "the page shows no accept call ending in <<'<DELIMITER>'";
     const block = skill.slice(at).split("\n").slice(0, 3);
     if (!/^ {4}<the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, exactly as printed>$/.test(block[1] ?? "") || block[2] !== "    <DELIMITER>")
       problems.push(`the accept block: ${JSON.stringify(block)}`);
+    for (const l of skill.split("\n").filter((x) => /--decide /.test(x) && !/--decide '(<ID>|ID)'/.test(x))) problems.push(`an unquoted ID: ${l.trim()}`);
     if (/<<'?(COMMAND|EOF|CMD)'?\s*$/m.test(skill.split("\n").filter((l) => l.includes("--decide")).join("\n")))
       problems.push("an accept on the page ends its heredoc on a fixed word");
     for (const phrase of [
-      "a quoted heredoc whose delimiter you make up at that moment",
-      "Never a fixed word and never the printed token",
+      "a quoted heredoc whose delimiter you build at that moment from `ACCEPT_`, the printed token and six hex characters of your own",
+      "Never a fixed word and never the printed token alone",
+      "The ID reached you the same way: quote it, and use it only in the shape the launcher prints",
       "one trailing newline tolerated, and publishes nothing on an empty stdin or any difference",
       "An accept the permission check or the classifier blocks publishes nothing either",
       "a command you accepted may run in a process group of its own, which is not established to end with it (E67)",
@@ -418,7 +420,7 @@ test("exit 6 is a request declined or expired unanswered, never one accepted, an
       "`detail` is the server's own wording whole",
       "never clipped",
       "`cause` (`rights`: a file change the writable roots cover, which the driver accepted itself and never shows anyone",
-      "`outside`: a file change not shown to lie inside them, which the driver declines itself, its `why` naming `WRITABLE:`",
+      "`outside`: a file change not shown to lie inside them, or a permissions request, which the driver declines itself, its `why` naming `WRITABLE:` for a file change and \"rights are set at launch\" for a permissions request",
       "`sandbox`: the same command had just failed in this turn",
       "`policy`: no attempt was seen, so Codex asked by its own rule",
     ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);

@@ -583,7 +583,8 @@ const HELP = [
   method, kind, detail (the command whole, else the reason, else the message; a
   file change's paths as "add /a; update /b"), thread, subagent, agentPath, cause
   (rights: a file change the writable roots cover, which the driver accepted;
-  outside: a file change not shown to lie inside them, which it declined;
+  outside: a file change not shown to lie inside them, or a permissions
+  request, which it declined;
   sandbox: the same command had just failed on that turn; policy: no attempt
   was seen, so Codex asked by its own rule), offered, decision (accepted,
   declined or expired), by (driver or coordinator), why, askedAt, settledAt,

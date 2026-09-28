@@ -211,12 +211,13 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
   node agent-run.mjs --decide ID --accept|--decline [--why TEXT] --report-file REPORT [--dir DIR]
       --accept reads on stdin the command it approves, restated: the lines between COMMAND<<TOKEN and
       COMMAND>>TOKEN as the waiting result or --pending printed them for ID, in a quoted heredoc whose
-      delimiter you make up at that moment and check is no line of the command, never a fixed word and
-      never the printed token, since a line of the command equal to the delimiter would end the heredoc
-      and run the rest in your shell, and a printed token may have passed through a relay:
-        node agent-run.mjs --decide ID --accept --report-file REPORT <<'ACCEPT_<twelve hex of yours>'
+      delimiter you build at that moment from ACCEPT_, the printed token and hex of your own and check
+      is no line of the command, never a fixed word and never the printed token alone, since a line of
+      the command equal to the delimiter would end the heredoc and run the rest in your shell, and a
+      printed token may have passed through a relay; quote the ID for the same reason:
+        node agent-run.mjs --decide 'ID' --accept --report-file REPORT <<'ACCEPT_<token><hex of yours>'
         <the command, as printed>
-        ACCEPT_<twelve hex of yours>
+        ACCEPT_<token><hex of yours>
       It is compared with the request's command byte for byte, one trailing newline tolerated and nothing
       else normalised; an empty stdin or any difference is refused, REFUSED=ID with the two lengths and
       the first byte where they differ, and nothing is published. --decline reads no stdin.
@@ -654,7 +655,7 @@ function decideRequest(dir, id, decision, why) {
     const want = Buffer.from(String(q.command ?? ""), "utf8");
     // A request with no command has nothing to restate, and an accept of it would carry no command to judge.
     if (want.length === 0) refuse("the request carries no command to restate: decline it with --decline; nothing was published");
-    if (said.length === 0) refuse("the restated command is empty: an accept reads the command it approves on stdin, a quoted heredoc whose delimiter you make up and check is no line of the command; nothing was published");
+    if (said.length === 0) refuse("the restated command is empty: an accept reads the command it approves on stdin, a quoted heredoc whose delimiter you build from ACCEPT_, the printed token and hex of your own and check is no line of the command; nothing was published");
     if (!said.equals(want) && !said.equals(Buffer.concat([want, Buffer.from("\n")]))) {
       const body = said.at(-1) === 0x0a ? said.subarray(0, -1) : said;
       let at = 0;

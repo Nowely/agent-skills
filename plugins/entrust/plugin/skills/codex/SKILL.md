@@ -120,19 +120,20 @@ and `REPORT=`. The wrapper hands it back exactly as it hands back any result —
 result has no `REPORT=` line, and the waiting result carries one — so read it whole and decide under the plan's
 own rule. An accept restates the command it approves, so the call that gets judged carries the command and not
 an id: copy the lines between `COMMAND<<TOKEN` and `COMMAND>>TOKEN` as printed into a quoted heredoc whose
-delimiter you make up at that moment, `ACCEPT_` and twelve hex characters of your own, and check it is no line of
-the command. Never a fixed word and never the printed token: a line of the command equal to the delimiter would end
-the heredoc and run the rest in your shell, and the token reached you through the wrapper, which could have
-changed it:
+delimiter you build at that moment from `ACCEPT_`, the printed token and six hex characters of your own, and
+check it is no line of the command. Never a fixed word and never the printed token alone: a line of the command
+equal to the delimiter would end the heredoc and run the rest in your shell, and the token reached you through the
+wrapper, which could have changed it. The ID reached you the same way: quote it, and use it only in the shape the
+launcher prints, digits, a hyphen and eight hex characters; for anything else print `--pending`:
 
-    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --decide <ID> --accept --report-file "<REPORT>" <<'<DELIMITER>'
+    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'
     <the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, exactly as printed>
     <DELIMITER>
 
 The launcher compares what it reads with the request's command, one trailing newline tolerated, and publishes
 nothing on an empty stdin or any difference; when it refuses the restatement as different, print `--pending`
 and copy from that. An accept the permission check or the classifier blocks publishes nothing either: decline
-the request with `--decide <ID> --decline`, which reads no stdin, or ask the user when the session is
+the request with `--decide '<ID>' --decline`, which reads no stdin, or ask the user when the session is
 interactive. Then send the wrapper the very same message block again: `--run` picks the run back up and waits
 for the next request or the run's own end. A session with no message tool continues the same way with a second
 wrapper given the same command.
@@ -332,8 +333,9 @@ write its own would be grading itself. Declare gates on the command line instead
 - `escalations` is one entry per approval request, whichever thread asked, root or a grandchild's: `decision`
   (`accepted`, `declined` or `expired`), `by` (`driver` for an auto-yes, an expiry or a request never offered,
   `coordinator` otherwise), `cause` (`rights`: a file change the writable roots cover, which the driver
-  accepted itself and never shows anyone; `outside`: a file change not shown to lie inside them, which the
-  driver declines itself, its `why` naming `WRITABLE:`; `sandbox`: the same command had just failed in this
+  accepted itself and never shows anyone; `outside`: a file change not shown to lie inside them, or a
+  permissions request, which the driver declines itself, its `why` naming `WRITABLE:` for a file change and
+  "rights are set at launch" for a permissions request; `sandbox`: the same command had just failed in this
   turn; `policy`: no attempt was seen, so Codex asked by its own rule), and `outcome` (the item's own
   completion, or null where none came). `detail` is the server's own wording whole — the command, else the
   reason, else the message, or the joined file-change list — never clipped, and may still be empty where the
@@ -355,7 +357,7 @@ write its own would be grading itself. Declare gates on the command line instead
   command you accepted may run in a process group of its own, which is not established to end with it (E67).
   The driver runs under a detached keeper, so a hand-back's waiting result does not end it: a hard kill of the
   wrapper's task, or a `SIGKILL` of the launcher, no longer reaches it, only the forwarded signal does. After
-  a waiting result nothing else holds the driver: stop it with `--decide ID --decline` and the same `--run`
+  a waiting result nothing else holds the driver: stop it with `--decide 'ID' --decline` and the same `--run`
   again, or `kill -TERM` that same pid.
 
 ## Prompt shape

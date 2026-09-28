@@ -1335,7 +1335,7 @@ test("the accept the pages show — a quoted heredoc on a delimiter the caller m
     if (!token) return `no token in the print: ${printed.out.slice(0, 200)}`;
     const block = printed.out.slice(printed.out.indexOf(`COMMAND<<${token}\n`) + `COMMAND<<${token}\n`.length, printed.out.indexOf(`\nCOMMAND>>${token}\n`));
     const q = (s) => `'${s.replace(/'/g, "'\\''")}'`;
-    const own = `ACCEPT_${crypto.randomBytes(6).toString("hex")}`;
+    const own = `ACCEPT_${token}${crypto.randomBytes(3).toString("hex")}`;
     if (block.split("\n").includes(own)) return "the made-up delimiter is a line of the command";
     const call = `${q(process.execPath)} ${q(LAUNCHER)} --decide 1-aaaaaaaa --accept --dir ${q(dir)} --report-file ${q(report)} <<'${own}'\n${block}\n${own}\n`;
     const r = spawnSync("/bin/sh", ["-c", call], { encoding: "utf8", timeout: 20000 });

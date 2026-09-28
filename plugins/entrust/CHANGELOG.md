@@ -31,14 +31,16 @@ forensics remain in the repository references and release notes.
   and compares it with the request's `command` byte for byte, one trailing newline tolerated and nothing else
   normalised; an empty stdin or any difference publishes nothing and prints `REFUSED=ID` with the two lengths and
   the first byte where they differ. `--decline` reads no stdin. The codex and orchestrate pages show the call as a
-  quoted heredoc on a delimiter the coordinator makes up at that moment and checks is no line of the command, never
-  the printed token, which reaches it through the wrapper; a request with no command is refused for a decline. They
-  say that an accept the permission check or the classifier blocks is followed by a decline, or by the owner's word
-  in an interactive session; the codex page's Stop line now says an accepted command in a process group of its own
-  is E67, and its Rights section names the two hazards every accept carries, as the orchestrate page does, now in
-  words that name no tool. Contract: `--decide ID --accept` with no command on stdin is refused. Why: the auto-mode
-  classifier judged the accept and saw only an id, and a fixed delimiter would let a line of the agent's command
-  end the heredoc and run the rest in the coordinator's shell, which both verifications of the design made happen.
+  quoted heredoc on a delimiter the coordinator builds at that moment from `ACCEPT_`, the printed token and hex of
+  its own and checks is no line of the command, never the printed token alone, which reaches it through the
+  wrapper; the request ID is quoted and used only in the shape the launcher prints; a request with no command is
+  refused, and the pages say to decline it. They say that an accept the permission check or the classifier blocks
+  is followed by a decline, or by the owner's word in an interactive session; the codex page's Stop line now says
+  an accepted command in a process group of its own is E67, and its Rights section names the two hazards every
+  accept carries, as the orchestrate page does, now in words that name no tool. Contract: `--decide ID --accept`
+  with no command on stdin is refused. Why: the auto-mode classifier judged the accept and saw only an id, and a
+  fixed delimiter would let a line of the agent's command end the heredoc and run the rest in the coordinator's
+  shell, which both verifications of the design made happen.
 
 ### Removed
 
