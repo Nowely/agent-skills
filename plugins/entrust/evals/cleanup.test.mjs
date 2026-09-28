@@ -2,10 +2,11 @@
 // The suite for scripts/cleanup.mjs — the script behind /entrust:cleanup.
 //
 // The script inventories what this plugin leaves behind, says which of it can go, and removes only the
-// rows the user picks BY NUMBER against the snapshot `--list --json` wrote. Five kinds can be removed —
+// rows the user picks BY NUMBER against the snapshot `--list --json` wrote. Six kinds can be removed —
 // an orchestrate run, a standalone report run, an agent's scratch, the eval suites' scratch, a saved test
-// conversation — and five are reported and never removed: saved answers, a managed worktree, a lock,
-// the shared Codex home, another data directory of this plugin. A row is `removable` or `kept`, and
+// conversation, a write lock nobody holds — and five are reported and never removed: saved answers, a
+// managed worktree, a lock still held or in the previous shape, the shared Codex home, another data
+// directory of this plugin. A row is `removable` or `kept`, and
 // there is no third value. These cases pin
 // that contract, one case per rule a wrong implementation could break.
 //
@@ -27,6 +28,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { EXIT, PINNED_CODEX, ROOT, SCRIPTS, registry, runCases, skip, spawnNode, summarize,
          tempDir } from "./lib/harness.mjs";
 // A NAMESPACE import, not named bindings: the liveness helpers are the driver's, and a named import of
@@ -97,13 +99,13 @@ async function stopChild(c) {
 // Every run of the script. A missing cleanup.mjs THROWS rather than skipping: runCases turns a throw into
 // a failed case with its message, so an unwritten script reads as a wall of failures naming the file,
 // which is what it is — never as a green suite that measured nothing.
-function runCleanup(w, args, { cwd, env = {}, unsetEnv = [], killAfterMs = 120_000 } = {}) {
+function runCleanup(w, args, { cwd, env = {}, unsetEnv = [], killAfterMs = 120_000, script = CLEANUP } = {}) {
   if (!fs.existsSync(CLEANUP)) throw new Error(`${CLEANUP} does not exist yet`);
   const base = { HOME: w.home, CLAUDE_CONFIG_DIR: w.config, TMPDIR: w.tmp,
                  ENTRUST_STATE_DIR: w.state, ENTRUST_CLEANUP_PS: w.ps };
   // A variable the case names itself is the case's to set or to unset; the rest are pointed at the world.
   const unset = ["CLAUDE_PLUGIN_DATA", ...unsetEnv].filter((k) => !(k in env));
-  return spawnNode([CLEANUP, ...args], { cwd: cwd ?? w.project, env: { ...base, ...env },
+  return spawnNode([script, ...args], { cwd: cwd ?? w.project, env: { ...base, ...env },
                                        unsetEnv: unset, killAfterMs }).done;
 }
 const mkfifo = (p) => spawnSync("mkfifo", [p]).status === 0;
@@ -1876,6 +1878,32 @@ test("41 · an agent directory with no report is decided by the launcher's recor
     return m.done();
   });
 
+test("D6 · a plan manifest is recognised as a run file, without inventing project ownership",
+  "a plan alone has no report cwd, so cleanup may name it but must keep the run until ownership is proven",
+  async () => {
+    const w = makeWorld("plan-manifest");
+    const dir = plantRun(w, w.slug, "run-plan", {});
+    fs.writeFileSync(path.join(dir, "plan.txt"), "id | model | role | writes | tokens\nA | sol | writer | worktree | 1000\n");
+    const s = await snapshot(w);
+    const bad = need(w, s); if (bad) return bad;
+    const row = rowAt(s.j, dir);
+    return row?.proposed === false && row?.selectable === false && /approved plan remains/.test(row?.reason ?? "")
+      || `manifest listing: ${JSON.stringify(row)}`;
+  });
+
+test("D6 · a finished owned run with a plan stays selectable",
+  "the plan file is ordinary run evidence once a published report establishes ownership",
+  async () => {
+    const w = makeWorld("plan-finished");
+    const dir = plantRun(w, w.slug, "run-plan-finished", { A: report(w.project) });
+    fs.writeFileSync(path.join(dir, "plan.txt"), "id | model | role | writes | tokens\nA | sol | writer | worktree | unknown\n");
+    const s = await snapshot(w);
+    const bad = need(w, s); if (bad) return bad;
+    const row = rowAt(s.j, dir);
+    return row?.selectable === true && row?.proposed === false
+      || `finished manifest listing: ${JSON.stringify(row)}`;
+  });
+
 test("40 · the data directory left by this plugin's previous name is offered by number; another copy's is not",
   "the rename left one data directory behind that nothing writes to any more. It is this plugin's own, so it is named as such and removed on a number, while the data of a copy that is not this plugin stays what it was: listed, kept, and a command the user runs by hand",
   async () => {
@@ -1914,6 +1942,265 @@ test("40 · the data directory left by this plugin's previous name is offered by
       m.ok(!fs.existsSync(previous), "the previous name's data directory survived the number that chose it");
     }
     m.ok(fs.existsSync(other), "another copy's data went with it");
+    return m.done();
+  });
+
+test("42 · a write lock is a link and the record it names: released links and stray records are suggested, an abandoned pair goes by number, a held lock stays",
+  "a normal release removes the link and its record, but a release that cannot take the reclaim marker, a crashed run and an older driver leave the link, which only a later run in the same directory reclaims, so a directory nobody runs in again — each --worktree run has a fresh one — keeps it for good. A listing that read every link as a lock the driver reclaims could never offer one, and one that read the record beside a live link as an unknown entry could not tell a held lock from a stray record",
+  async () => {
+    const w = makeWorld("lock-shape");
+    const locks = path.join(w.state, "locks");
+    fs.mkdirSync(locks, { recursive: true });
+    let seq = 0;
+    // The driver's names: `<64 hex>.lock` linked to `<64 hex>.lock.<32 hex>.owner` beside it.
+    const plant = (body, { link = true } = {}) => {
+      const hex = (++seq).toString(16).padStart(2, "0");
+      const key = `${hex.repeat(32)}.lock`, owner = `${key}.${hex.repeat(16)}.owner`;
+      if (body) fs.writeFileSync(path.join(locks, owner), JSON.stringify(body), { mode: 0o600 });
+      if (link) fs.symlinkSync(owner, path.join(locks, key));
+      return { link: path.join(locks, key), owner: path.join(locks, owner) };
+    };
+    // Spawned and reaped, so the number was a real process and is one no longer; the identity beside it
+    // is not this pid's in any case, so a pid recycled since still reads as that run gone.
+    const dead = spawnSync(process.execPath, ["-e", ""]).pid;
+    const record = (pid, name, identity) => ({ pid, identity, cwd: path.join(w.root, name),
+                                               started: "2026-09-27T00:00:00.000Z" });
+    const released = [plant(null), plant(null), plant(null)];
+    const held = plant(record(process.pid, "heldproj", processIdentity(process.pid)));
+    const abandoned = plant(record(dead, "abandonedproj", DEAD_IDENTITY));
+    const stray = plant(record(dead, "strayproj", DEAD_IDENTITY), { link: false });
+    const there = (p) => { try { fs.lstatSync(p); return true; } catch { return false; } };
+    const m = misses();
+    const s = await snapshot(w);
+    let bad = need(w, s); if (bad) return bad;
+    m.eq(kindRows(s.j, "lock").length, 4, `the lock rows are not one each for the released, held, abandoned and stray kinds: ${shown(s.j)}`);
+    const rel = rowAt(s.j, released[0].link), h = rowAt(s.j, held.link);
+    const a = rowAt(s.j, abandoned.link), o = rowAt(s.j, stray.owner);
+    m.ok(rel, `no row names the released links: ${shown(s.j)}`);
+    if (rel) {
+      m.re(rel.name, /released write locks/, "the released links' row");
+      m.eq(rel.count, 3, "the released links the row stands for");
+      m.ok(saysNumber(rel.name, 3), `the released row does not say how many: ${rel.name}`);
+      m.eq(rel.proposed, true, "released links suggested");
+      for (const r of released) m.ok(rel.paths.includes(r.link), `the released row does not carry ${path.basename(r.link)}`);
+    }
+    m.ok(h, `no row names the held lock: ${shown(s.j)}`);
+    if (h) {
+      m.re(h.name, /held write lock for heldproj/, "the held lock's row");
+      m.eq(h.status, "kept", "a lock whose run is alive");
+      m.eq(h.selectable, false, "a held lock selectable");
+      m.ok(h.paths.includes(held.owner), "the held lock's row does not carry its record");
+    }
+    m.ok(a, `no row names the abandoned lock: ${shown(s.j)}`);
+    if (a) {
+      m.re(a.name, /abandoned write lock for abandonedproj/, "the abandoned lock's row");
+      m.eq(a.status, "removable", "a lock whose run is gone");
+      m.eq(a.selectable, true, "an abandoned lock selectable");
+      m.eq(a.proposed, false, "an abandoned lock suggested, where the driver reclaims it itself");
+      m.ok(a.paths.includes(abandoned.owner), "the abandoned lock's row does not carry its record");
+    }
+    m.ok(o, `no row names the stray record: ${shown(s.j)}`);
+    if (o) {
+      m.re(o.name, /stray lock record for strayproj/, "the stray record's row");
+      m.eq(o.proposed, true, "a stray record whose run is gone suggested");
+    }
+    m.ok(!(s.j.rows ?? []).some((r) => /unrecognised/.test(r.name)), `a lock entry reads as unrecognised: ${shown(s.j)}`);
+    if (!rel || !a || !o) return m.done();
+    const d = await pick(w, s.file, [rel.n, a.n, o.n]);
+    m.eq(d.code, EXIT.OK, `removing the released links, the abandoned pair and the stray record exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+    for (const r of released) m.ok(!there(r.link), `a released link survived: ${path.basename(r.link)}`);
+    m.ok(!there(abandoned.link) && !there(abandoned.owner), "the abandoned link or its record survived");
+    m.ok(!there(stray.owner), "the stray record survived");
+    m.ok(there(held.link) && there(held.owner), "the held lock went with them");
+    const after = await list(w);
+    bad = need(w, after); if (bad) return bad;
+    const left = kindRows(after.j, "lock");
+    m.eq(left.length, 1, `the lock rows after the removal: ${shown(after.j)}`);
+    m.re(left[0]?.name, /held write lock for heldproj/, "the one lock row left");
+    m.eq(left[0]?.status, "kept", "the held lock after the removal");
+    m.eq(JSON.stringify(fs.readdirSync(locks).sort()),
+      JSON.stringify([path.basename(held.link), path.basename(held.owner)].sort()), "what is left in the locks directory");
+    return m.done();
+  });
+
+test("43 · a row standing for several lock entries puts its plural on the noun",
+  "the lock rows were named by appending an s to the whole phrase, so three unknown entries read \"3 unrecognised entry among the write lockss\" and two locks for one project \"2 write lock for projs\"",
+  async () => {
+    const w = makeWorld("lock-plural");
+    const locks = path.join(w.state, "locks");
+    fs.mkdirSync(locks, { recursive: true });
+    for (const n of ["notes-1", "notes-2", "notes-3"]) fs.writeFileSync(path.join(locks, n), "?\n");
+    const r = await list(w);
+    const bad = need(w, r); if (bad) return bad;
+    const m = misses();
+    const rows = kindRows(r.j, "lock");
+    m.eq(rows.length, 1, `the three unrecognised entries are not one row: ${shown(r.j)}`);
+    m.eq(rows[0]?.name, "3 unrecognised entries among the write locks", "the row's name");
+    m.eq(rows[0]?.status, "kept", "unrecognised entries");
+    m.has(r.j.text, " 1  3 unrecognised entries among the write locks\n", "the listing");
+    return m.done();
+  });
+
+// A copy of cleanup.mjs whose `fs` changes the disk at the one moment a case needs, entered on the first
+// try rather than by timing. Armed by a JSON file the case writes, one-shot, so only the call that meets it
+// sees the change:
+//   record  the first time the script opens or reads the named record by name — after its lstat, the
+//           window a record read by pathname leaves open — a prepared link is renamed over it;
+//   marker  the first time the script reads the named link while that link's reclaim marker carries this
+//           process's pid — after the take, before the checks under it — the marker is replaced by
+//           another file carrying the same pid.
+// The copy imports the real driver by URL, and a script whose two import lines are not the ones this
+// rewrites is refused aloud.
+function swappingCleanup(w) {
+  const dir = path.join(w.root, "swapping-cleanup");
+  fs.mkdirSync(dir, { recursive: true });
+  const shim = path.join(dir, "fs-swap.mjs");
+  fs.writeFileSync(shim, `import real from "node:fs";
+import path from "node:path";
+const ARM = process.env.CLEANUP_TEST_SWAP;
+const armed = (p, mode) => {
+  if (!ARM || typeof p !== "string") return null;
+  let spec;
+  try { spec = JSON.parse(real.readFileSync(ARM, "utf8")); } catch { return null; }
+  return spec.mode === mode && path.basename(p) === spec.name ? spec : null;
+};
+function onRead(p) {
+  const spec = armed(p, "record");
+  if (!spec) return;
+  real.rmSync(ARM, { force: true });
+  real.renameSync(spec.link, spec.at);
+}
+function onReadlink(p) {
+  if (!armed(p, "marker")) return;
+  const marker = p + ".reclaim";
+  let body;
+  try { body = real.readFileSync(marker, "utf8"); } catch { return; }
+  if (body.trim() !== String(process.pid)) return;
+  real.rmSync(ARM, { force: true });
+  real.writeFileSync(marker + ".swap", body);
+  real.renameSync(marker + ".swap", marker);
+}
+export default { ...real,
+  openSync: (p, ...a) => { onRead(p); return real.openSync(p, ...a); },
+  readFileSync: (p, ...a) => { onRead(p); return real.readFileSync(p, ...a); },
+  readlinkSync: (p, ...a) => { onReadlink(p); return real.readlinkSync(p, ...a); } };
+`);
+  let text = fs.readFileSync(CLEANUP, "utf8");
+  for (const [from, to] of [[`import fs from "node:fs";`, `import fs from ${JSON.stringify(pathToFileURL(shim).href)};`],
+                            [`from "./driver.mjs"`, `from ${JSON.stringify(pathToFileURL(path.join(SCRIPTS, "driver.mjs")).href)}`]]) {
+    if (text.split(from).length !== 2) throw new Error(`cleanup.mjs does not carry ${from} exactly once, so it cannot be instrumented`);
+    text = text.replace(from, to);
+  }
+  const copy = path.join(dir, "cleanup.mjs");
+  fs.writeFileSync(copy, text);
+  return copy;
+}
+
+test("44 · a released link under a reclaim marker: one whose pid is gone or older than the backstop is taken over, a live one refuses",
+  "the driver takes a marker whose pid is not alive or whose age passed its hour-long backstop, and a cleanup that refused every marker it met kept a crashed run's link for good; a marker a live run took this instant still refuses, since that run may be reclaiming the link",
+  async () => {
+    const w = makeWorld("lock-marker");
+    const locks = path.join(w.state, "locks");
+    fs.mkdirSync(locks, { recursive: true });
+    const plant = (hex, markerPid, ageMs = 0) => {
+      const key = `${hex.repeat(32)}.lock`, link = path.join(locks, key), marker = `${link}.reclaim`;
+      fs.symlinkSync(`${key}.${hex.repeat(16)}.owner`, link);
+      fs.writeFileSync(marker, String(markerPid));
+      if (ageMs) { const t = (Date.now() - ageMs) / 1000; fs.utimesSync(marker, t, t); }
+      return { link, marker };
+    };
+    const dead = spawnSync(process.execPath, ["-e", ""]).pid;
+    const deadMarker = plant("0a", dead);
+    // This runner's own pid, so only the age can make the marker abandoned: two hours past a one-hour backstop.
+    const oldMarker = plant("0b", process.pid, 2 * 3_600_000);
+    const liveMarker = plant("0c", process.pid);
+    const there = (p) => { try { fs.lstatSync(p); return true; } catch { return false; } };
+    const m = misses();
+    const s = await snapshot(w);
+    const bad = need(w, s); if (bad) return bad;
+    const rel = rowAt(s.j, deadMarker.link);
+    m.ok(rel, `no row names the released links: ${shown(s.j)}`);
+    if (!rel) return m.done();
+    m.eq(rel.count, 3, "the released links the row stands for");
+    const d = await pick(w, s.file, [rel.n]);
+    m.eq(d.code, REFUSED, `removing three links, one under a live marker, exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+    m.ok(!there(deadMarker.link), "the link under a marker whose pid is gone survived");
+    m.ok(!there(oldMarker.link), "the link under a marker older than the backstop survived");
+    m.ok(!there(deadMarker.marker) && !there(oldMarker.marker), "a marker cleanup took over was left behind");
+    m.ok(there(liveMarker.link), "the link under a live run's marker was removed");
+    m.eq(there(liveMarker.marker) ? fs.readFileSync(liveMarker.marker, "utf8") : null, String(process.pid), "the live run's marker");
+    // The listing wraps at the terminal's width, so the words are compared with their spacing folded.
+    const said = String(d.out ?? "").replace(/\s+/g, " ");
+    m.has(said, "I deleted 2 of 3 released write locks.", "the outcome");
+    m.has(said, "because a run is reclaiming it right now.", "the refusal");
+    return m.done();
+  });
+
+test("45 · a record swapped for a link after its lstat is unrecognised, and nothing is removed",
+  "a record read by its name after the lstat reads whatever stands there by then: a link swapped in to a file outside the locks directory made cleanup judge that file, and a live lock was offered as an abandoned one on a stranger's pid",
+  async () => {
+    const w = makeWorld("lock-swap");
+    const locks = path.join(w.state, "locks");
+    fs.mkdirSync(locks, { recursive: true });
+    const key = `${"0d".repeat(32)}.lock`, ownerName = `${key}.${"0d".repeat(16)}.owner`;
+    const link = path.join(locks, key), owner = path.join(locks, ownerName);
+    // In place: a live lock, this runner's own. Outside: a record that reads as a dead one.
+    fs.writeFileSync(owner, JSON.stringify({ pid: process.pid, identity: processIdentity(process.pid),
+      cwd: path.join(w.root, "heldproj"), started: "2026-09-27T00:00:00.000Z" }), { mode: 0o600 });
+    fs.symlinkSync(ownerName, link);
+    const outside = path.join(w.outside, "record.json");
+    const outsideBody = JSON.stringify({ pid: spawnSync(process.execPath, ["-e", ""]).pid, identity: DEAD_IDENTITY,
+      cwd: path.join(w.root, "elsewhere"), started: "2026-09-27T00:00:00.000Z" });
+    fs.writeFileSync(outside, outsideBody);
+    const prepared = path.join(w.root, "swap-link");
+    fs.symlinkSync(outside, prepared);
+    const arm = path.join(w.root, "swap.json");
+    fs.writeFileSync(arm, JSON.stringify({ mode: "record", name: ownerName, link: prepared, at: owner }));
+    const s = await snapshot(w, { script: swappingCleanup(w), env: { CLEANUP_TEST_SWAP: arm } });
+    const bad = need(w, s); if (bad) return bad;
+    const m = misses();
+    // Without the swap this case measured nothing.
+    m.ok(!fs.existsSync(arm) && fs.lstatSync(owner).isSymbolicLink(), "the listing never opened the record, so no swap happened");
+    const row = rowAt(s.j, link);
+    m.ok(row, `no row names the link: ${shown(s.j)}`);
+    if (row) {
+      m.eq(row.name, "the unrecognised entry among the write locks", "the row of a record swapped for a link");
+      m.eq(row.status, "kept", "a record swapped for a link");
+    }
+    m.ok(!kindRows(s.j, "lock").some((r) => r.selectable), `a lock row is offered: ${shown(s.j)}`);
+    if (row) {
+      const d = await pick(w, s.file, [row.n]);
+      m.eq(d.code, REFUSED, `picking it exited ${d.code}: ${(d.err || d.out).trim().slice(0, 200)}`);
+    }
+    m.ok(fs.lstatSync(link).isSymbolicLink() && fs.lstatSync(owner).isSymbolicLink(), "the link or the swapped-in record was removed");
+    m.eq(fs.existsSync(outside) ? fs.readFileSync(outside, "utf8") : null, outsideBody, "the file outside the locks directory");
+    return m.done();
+  });
+
+test("46 · a reclaim marker replaced after the take by another carrying the same pid is not cleanup's, and the link stays",
+  "the pid in a marker is text anyone can write: a marker put in place of cleanup's own after the take, carrying the same number, read as cleanup's to a comparison of that text while the driver, which compares the dev:ino it created, knew it was not, so the link was unlinked under a marker that was someone else's",
+  async () => {
+    const w = makeWorld("lock-marker-swap");
+    const locks = path.join(w.state, "locks");
+    fs.mkdirSync(locks, { recursive: true });
+    const key = `${"0e".repeat(32)}.lock`, link = path.join(locks, key), marker = `${link}.reclaim`;
+    fs.symlinkSync(`${key}.${"0e".repeat(16)}.owner`, link);
+    const there = (p) => { try { fs.lstatSync(p); return true; } catch { return false; } };
+    const m = misses();
+    const s = await snapshot(w);
+    const bad = need(w, s); if (bad) return bad;
+    const row = rowAt(s.j, link);
+    m.ok(row, `no row names the released link: ${shown(s.j)}`);
+    if (!row) return m.done();
+    const arm = path.join(w.root, "swap.json");
+    fs.writeFileSync(arm, JSON.stringify({ mode: "marker", name: key }));
+    const d = await pick(w, s.file, [row.n], { script: swappingCleanup(w), env: { CLEANUP_TEST_SWAP: arm } });
+    // Without the swap this case measured nothing.
+    m.ok(!fs.existsSync(arm), "the removal never read the link under its own marker, so no swap happened");
+    m.eq(d.code, REFUSED, `removing the link under a replaced marker exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+    m.has(String(d.out ?? "").replace(/\s+/g, " "), "because another process took over its reclaim marker.", "the refusal");
+    m.ok(there(link), "the link was unlinked under a marker that was not cleanup's");
+    m.ok(there(marker), "the marker that replaced cleanup's was removed as cleanup's own");
     return m.done();
   });
 

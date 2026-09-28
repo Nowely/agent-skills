@@ -6,7 +6,7 @@ description: >-
   stops; `rewrite` writes from it. Use when you want to agree the shape first.
 disable-model-invocation: true
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 license: MIT
 ---
 
@@ -32,10 +32,8 @@ at the plan: [roles.md](../../references/roles.md), working from
    part whether this reader needs it here or would want it.
 5. **The hand-over.** The plan with the critics' findings applied or declined, and what is asked of the
    user: their word on it, or the sections that are wrong. Then stop. `rewrite` starts from the plan they
-   agreed, given its path.
+   agreed, given its path. Use the [relayed-result note](../../references/genres/relayed-result.md), and
+   account for later objections through the [owner-feedback brief](../../references/roles.md#13-owner-feedback).
 
-Measured on 2026-09-11 and again on 2026-09-23: drafts written against a shape nobody had agreed were
-rejected for what they said and in what order, not for their phrasing. On 2026-09-24 the sequential
-method this page used to hold — a survey, a synthesis, ten structures under three critics, a skeleton of
-13,000 words — took three hours before a sentence was written; the record of it is in
-`plugins/terse/research/2026-09-24-terse-benchmark-maestro/`.
+Agreeing the shape first reduces the risk of polishing a draft that solves the wrong problem; the dated record is
+[M26](../../references/measurements.md#m26) and [M29](../../references/measurements.md#m29).

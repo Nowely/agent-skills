@@ -14,7 +14,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { DRIVER, EXIT, FAKE, readJson, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
+import { DRIVER, EXIT, FAKE, readJson, registry, runCases, skip, summarize, tempDir } from "./lib/harness.mjs";
 import { SHIM, assertKnownScenarios, explicitTmp, flowState, laxSchemaFile, looseNestedSchemaFile,
          looseSchemaFile, mismatchSessions, notExec, oneOfSchemaFile, optionalSchemaFile, protectedState, protectedTmp,
          run, runTable, sessionsDir, survivorPidName, unknownModelLog, until } from "./lib/scenarios.mjs";
@@ -433,7 +433,7 @@ const CASES = [
   // --- what the report says about the run's own footing ---
   { scenario: "happy",            expect: EXIT.OK,
     why: "the initialize response carries the server version in userAgent; the report must preserve it so protocol drift is diagnosable",
-    assert: (r) => (r.codexVersion === "0.153.4" && r.codexVersionPinned === "0.153.4")
+    assert: (r) => (r.codexVersion === "0.155.1" && r.codexVersionPinned === "0.155.1")
       || `codexVersion was not read out of the userAgent: ${JSON.stringify({ v: r.codexVersion, pinned: r.codexVersionPinned })}` },
   { scenario: "happy",            expect: EXIT.OK, env: { FAKE_CODEX_VERSION: "9.9.9" },
     why: "a codex that is not the one the protocol facts were measured against is the first thing to know when behaviour contradicts the docs; it must be said on stderr and in the report, not inferred from a later failure",
@@ -1037,6 +1037,229 @@ flow("--json and --footer are refused like any other unknown flag",
       if (out.trim()) problems.push(`${flag} printed ${out.length} bytes on stdout; an argument error prints no report`);
     }
     return problems.length === 0 || problems.join("; ");
+  });
+
+// --- --check-prompt-file: what the launcher's --new asks before an agent is spawned ---
+
+// One prompt file per call, checked with no stdin, the way --new runs it; `unset` deletes a variable
+// outright, because a spawn env stringifies undefined.
+const checkRun = (agent, { env = {}, unset = [] } = {}) => {
+  const file = path.join(flowState(), "prompt.txt");
+  fs.writeFileSync(file, agent);
+  const e = { ...process.env, ...env };
+  for (const k of unset) delete e[k];
+  const r = spawnSync(process.execPath, [DRIVER, "--check-prompt-file", file],
+    { env: e, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 20000 });
+  return { code: r.status, out: r.stdout, err: r.stderr, file };
+};
+// The contract the launcher reads: exit 2, nothing on stdout, and exactly one stderr line in this shape.
+const refusal = (r, re) => r.code !== EXIT.USAGE ? `exit ${r.code}, expected 2: ${r.err.slice(0, 200)}`
+  : r.out !== "" ? `a refusal printed ${r.out.length} bytes on stdout`
+    : !/^entrust: refused: [^\n]+\n$/.test(r.err) ? `stderr is not one refusal line: ${JSON.stringify(r.err.slice(0, 300))}`
+      : re.test(r.err) || `the refusal does not give the run's reason: ${r.err.slice(0, 300)}`;
+const passed = (r) => (r.code === EXIT.OK && r.out === "" && r.err === "")
+  || `expected a silent 0, got exit ${r.code}, stdout ${JSON.stringify(r.out.slice(0, 120))}, stderr ${JSON.stringify(r.err.slice(0, 200))}`;
+const GOOD_HEADER = "RIGHTS: read <DIR>\nEFFORT: high\nNETWORK: no\nBRIEF: yes\nTASK: count the exit codes\n";
+
+flow("--check-prompt-file passes a sound header silently, and spawns no codex and writes no state",
+  "the launcher runs the check before every agent, so a pass must cost nothing and say nothing: a codex spawned here would be a turn nobody launched, and a file under the state directory would be state no run owns",
+  () => {
+    const state = flowState(), probe = flowState();
+    const marker = path.join(probe, "codex-ran");
+    fs.writeFileSync(path.join(probe, "codex"), `#!/bin/sh\necho ran >> "${marker}"\nexit 1\n`, { mode: 0o755 });
+    const r = checkRun(GOOD_HEADER.replace("<DIR>", shimDir),
+      { env: { ENTRUST_STATE_DIR: state, PATH: `${probe}:${process.env.PATH}` } });
+    const verdict = passed(r);
+    if (verdict !== true) return verdict;
+    if (fs.existsSync(marker)) return "the check spawned a codex";
+    const left = fs.readdirSync(state);
+    return left.length === 0 || `the check wrote into the state directory: ${left.join(", ")}`;
+  });
+
+flow("--check-prompt-file needs no state directory",
+  "the launcher's --new runs with neither ENTRUST_STATE_DIR nor CLAUDE_PLUGIN_DATA set, and a check that asked for one would refuse every agent before it was spawned",
+  () => passed(checkRun(GOOD_HEADER.replace("<DIR>", shimDir),
+    { unset: ["ENTRUST_STATE_DIR", "CLAUDE_PLUGIN_DATA"] })));
+
+flow("--check-prompt-file refuses a WEB_SEARCH: mode the managed policy does not allow, with the run's own reason and the network left out of it",
+  "the refusal used to arrive at --run, after an agent was spawned, and the coordinator swapped in the mode it named — twice, on a user's 'the network is allowed', which needed no line at all. Said before the spawn, and saying that the network is not what was refused, it goes back to the user as a question",
+  async () => {
+    const tool = spawnSync("plutil", ["-help"], { encoding: "utf8" });
+    if (tool.error?.code === "ENOENT") return skip("no plutil here, and the policy reader asks plutil");
+    // A plist in the managed profile's own shape: the requirements TOML, base64, under one key.
+    const policy = path.join(flowState(), "policy.plist");
+    const toml = Buffer.from('allowed_web_search_modes = ["cached"]\n').toString("base64");
+    fs.writeFileSync(policy, `<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>`
+      + `<key>requirements_toml_base64</key><string>${toml}</string></dict></plist>\n`);
+    const agent = `RIGHTS: read ${shimDir}\nWEB_SEARCH: live\nTASK: find the release notes\n`;
+    const r = checkRun(agent, { env: { ENTRUST_POLICY_SEAM: policy }, unset: ["ENTRUST_STATE_DIR", "CLAUDE_PLUGIN_DATA"] });
+    const verdict = refusal(r, /^entrust: refused: --web-search live is not permitted by this device's managed policy, which allows cached; the server would silently apply one of those and no response field would say so; another mode is the user's choice to make, not the coordinator's, and the network is unaffected: the agent's own commands reach it with no WEB_SEARCH: line\n$/);
+    if (verdict !== true) return verdict;
+    // The same file under --run gives the same reason, so the launcher's ERROR= line is the run's.
+    const reason = r.err.slice("entrust: refused: ".length);
+    const ran = await run({ scenario: "happy", noPrompt: true, agent, env: { ENTRUST_POLICY_SEAM: policy } });
+    return (ran.code === EXIT.USAGE && ran.err.includes(`entrust: ${reason}`))
+      || `--run did not refuse with the check's reason: exit ${ran.code} ${ran.err.trim().slice(-300)}`;
+  });
+
+flow("a policy file that is no plist dictionary refuses every WEB_SEARCH: mode as unreadable, and a prompt without the line still passes",
+  "plutil answers \"Could not extract value\" both for a policy without the search key and for a file holding one bare word, which it parses as a one-string plist and -lint calls OK; read as the missing key, a corrupt policy opened every mode on the device (E46). `cached` is asked because a managed policy on the machine running this suite may allow it and nothing else",
+  () => {
+    const tool = spawnSync("plutil", ["-help"], { encoding: "utf8" });
+    if (tool.error?.code === "ENOENT") return skip("no plutil here, and the policy reader asks plutil");
+    const policy = path.join(flowState(), "policy.plist");
+    fs.writeFileSync(policy, "garbage\n");
+    const env = { ENTRUST_POLICY_SEAM: policy };
+    const escaped = policy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const verdict = refusal(checkRun(`RIGHTS: read ${shimDir}\nWEB_SEARCH: cached\nTASK: find the release notes\n`, { env }),
+      new RegExp(`^entrust: refused: this device has a managed Codex policy at ${escaped} that could not be read, so whether --web-search cached is permitted cannot be established; `));
+    if (verdict !== true) return verdict;
+    const plain = passed(checkRun(`RIGHTS: read ${shimDir}\nTASK: find the release notes\n`, { env }));
+    return plain === true || `without a WEB_SEARCH: line: ${plain}`;
+  });
+
+flow("a policy dictionary without the search key narrows no WEB_SEARCH: mode",
+  "the other half of the rule above: a managed profile that constrains other things says nothing about search, and refusing there would take every mode from a device whose policy never mentions one",
+  () => {
+    const tool = spawnSync("plutil", ["-help"], { encoding: "utf8" });
+    if (tool.error?.code === "ENOENT") return skip("no plutil here, and the policy reader asks plutil");
+    const policy = path.join(flowState(), "policy.plist");
+    fs.writeFileSync(policy, `<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>`
+      + `<key>other_setting</key><string>x</string></dict></plist>\n`);
+    return passed(checkRun(`RIGHTS: read ${shimDir}\nWEB_SEARCH: cached\nTASK: find the release notes\n`,
+      { env: { ENTRUST_POLICY_SEAM: policy } }));
+  });
+
+flow("--check-prompt-file refuses an unknown upper-case field",
+  "a typo in a header is a different agent, and the check is what stops it before one is spawned",
+  () => {
+    const r = checkRun(`RIGHTS: read ${shimDir}\nBOGUS: x\nTASK: do it\n`);
+    return refusal(r, new RegExp(`^entrust: refused: unknown header field BOGUS at line 2 of ${r.file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} — `));
+  });
+
+flow("--check-prompt-file refuses an EFFORT: outside the driver's set",
+  "an effort no server accepts is knowable from the file alone; the ones only the model catalogue refuses need the server, which the check never starts",
+  () => refusal(checkRun(`RIGHTS: read ${shimDir}\nEFFORT: turbo\nTASK: do it\n`),
+    /^entrust: refused: --effort must be one of none\|minimal\|low\|medium\|high\|xhigh\|max\|ultra\n$/));
+
+flow("--help lists --check-prompt-file in one line",
+  "the launcher's owner and a coordinator reading --help find the check there, or they find it nowhere",
+  () => {
+    const lines = helpRun("--help").stdout.split("\n").filter((l) => l.includes("--check-prompt-file"));
+    return lines.length === 1 || `--help mentions --check-prompt-file on ${lines.length} lines: ${JSON.stringify(lines)}`;
+  });
+
+flow("D4 developer instructions name only effective writable roots and the staged-input rule",
+  "the model needs its actual sandbox grants and must use staged alternatives for a known daemon constraint",
+  async () => {
+    const readTurn = await run({ scenario: "echo-instructions" });
+    const readReport = JSON.parse(readTurn.out);
+    if (readTurn.code !== 0 || !readReport.answer.includes(`Your writable roots are: ${readReport.sandbox?.writableRoots?.[0]}; /tmp is not one.`))
+      return `read capsule: exit ${readTurn.code}, ${readReport.answer?.slice(0, 300)}`;
+    const writable = flowState(), cwd = shimDir;
+    const writeTurn = await run({ scenario: "echo-instructions", args: ["--level", "write", "--cwd", cwd, "--writable", writable] });
+    const writeReport = JSON.parse(writeTurn.out);
+    const capsule = writeReport.answer;
+    if (!(writeTurn.code === 0 && capsule.includes(cwd) && capsule.includes(writable)
+      && capsule.includes("daemon, socket, or mounted checkout") && capsule.includes("staged inputs")
+      && capsule.includes("; /tmp is not one.")))
+      return `write capsule: exit ${writeTurn.code}, ${capsule?.slice(0, 400)}`;
+    const repo = path.join(flowState(), "repo"), extra = flowState();
+    fs.mkdirSync(repo);
+    let git = spawnSync("git", ["init", "-q", repo], { encoding: "utf8" });
+    if (git.status !== 0) return `git init started, exit ${git.status}: ${git.stderr}`;
+    git = spawnSync("git", ["-C", repo, "-c", "user.name=Eval", "-c", "user.email=eval@example.invalid", "commit", "--allow-empty", "-qm", "seed"], { encoding: "utf8" });
+    if (git.status !== 0) return `git commit started, exit ${git.status}: ${git.stderr}`;
+    const wt = await run({ scenario: "echo-instructions", noCwd: true,
+      args: ["--level", "write", "--worktree", repo, "--writable", extra] });
+    const wr = JSON.parse(wt.out);
+    const expected = `Your writable roots are: ${fs.realpathSync(os.tmpdir())}, ${wr.worktreePath}, ${fs.realpathSync(extra)}; /tmp is not one.`;
+    return wt.code === 0 && wr.answer.includes(expected)
+      || `worktree capsule exit ${wt.code}: expected ${expected}; got ${wr.answer?.slice(0, 500)}`;
+  });
+
+flow("D16 maxLength and maxItems use a corrective turn, strip server keywords, and preserve overflow",
+  "the server can ignore size keywords, so the local validator must spend its retry and retain the original",
+  async () => {
+    const state = flowState(), schema = path.join(state, "caps.schema.json"), rpc = path.join(state, "rpc.log");
+    fs.writeFileSync(schema, JSON.stringify({ type: "object", properties: {
+      result: { type: "string", maxLength: 10 },
+      evidence: { type: "array", items: { type: "string" }, maxItems: 1 }
+    }, required: ["result", "evidence"], additionalProperties: false }));
+    const r = await run({ scenario: "schema-size", args: ["--output-schema", schema], env: { FAKE_RPC_LOG: rpc } });
+    const report = JSON.parse(r.out);
+    if (r.code !== 13 || report.outputAttempts !== 2 || !report.schemaErrors?.some((e) => e.includes("maxLength")))
+      return `cap retry: exit ${r.code}, ${JSON.stringify({ attempts: report.outputAttempts, errors: report.schemaErrors })}`;
+    if (report.schemaKeywordsUnchecked?.includes("maxLength") || report.schemaKeywordsUnchecked?.includes("maxItems"))
+      return `caps still unchecked: ${JSON.stringify(report.schemaKeywordsUnchecked)}`;
+    if (!report.schemaSizeCaps?.some((c) => c.keyword === "maxLength")) return "schemaSizeCaps missing";
+    if (!report.schemaErrors?.some((e) => e.includes("maxItems"))) return "maxItems was not enforced";
+    if (!report.schemaOverflow?.completeAnswerPath || !fs.readFileSync(report.answerPath, "utf8").includes('"result":"material finding'))
+      return "the complete overflow was not preserved";
+    if (report.answer !== JSON.stringify(report.answerJson) || report.answerJson.result !== "material f"
+      || report.answerJson.evidence.length !== 1 || report.schemaOverflow.clipped.length !== 2)
+      return `clipped answer: ${report.answer}`;
+    if (!report.schemaErrors.includes("$.result: 33 characters, maxLength 10")
+      || !report.schemaErrors.includes("$.evidence: 2 entries, maxItems 1"))
+      return `size errors: ${JSON.stringify(report.schemaErrors)}`;
+    const logged = fs.readFileSync(rpc, "utf8").split("\n").filter((x) => /^(thread|turn)\/start/.test(x));
+    return logged.length >= 3 && logged.every((x) => !/schema=.*(?:maxLength|maxItems)/.test(x.split(":input=")[0]))
+      && logged.some((x) => x.includes("put its whole content in a file under $TMPDIR"))
+      || `server RPC still carried caps: ${JSON.stringify(logged)}`;
+  });
+
+flow("D16 a large final overflow keeps the whole answer and clips every inline field",
+  "a late material finding and 45 evidence items need a recoverable answerPath and a bounded answerJson",
+  async () => {
+    const schema = path.join(flowState(), "large.schema.json");
+    fs.writeFileSync(schema, JSON.stringify({ type: "object", additionalProperties: false,
+      required: ["status", "result", "evidence", "artifacts", "open"], properties: {
+        status: { type: "string" }, result: { type: "string", maxLength: 1200 },
+        evidence: { type: "array", items: { type: "string", maxLength: 80 }, maxItems: 40 },
+        artifacts: { type: "array", items: { type: "string" } }, open: { type: "array", items: { type: "string" } }
+      } }));
+    const r = await run({ scenario: "schema-large", args: ["--output-schema", schema] });
+    const report = JSON.parse(r.out), whole = fs.readFileSync(report.answerPath, "utf8");
+    return r.code === 13 && report.outputAttempts === 2 && whole.length > 3000
+      && report.answerJson.result.includes("[material finding at 1000]")
+      && report.answerJson.result.length === 1200 && report.answerJson.evidence.length === 40
+      && report.answerJson.evidence.every((x) => x.length <= 80)
+      && report.answer === JSON.stringify(report.answerJson)
+      && report.schemaOverflow.clipped.some((x) => x.path === "$.evidence" && x.length === 45)
+      || `large overflow: exit ${r.code}, ${JSON.stringify({ answer: report.answerJson?.result?.length, evidence: report.answerJson?.evidence?.length, cuts: report.schemaOverflow?.clipped })}`;
+  });
+
+flow("D16 a repaired size attempt stays beside the corrected answer",
+  "a successful corrective turn must not overwrite the complete first attempt",
+  async () => {
+    const schema = path.join(flowState(), "retry.schema.json");
+    fs.writeFileSync(schema, JSON.stringify({ type: "object", additionalProperties: false,
+      required: ["verdict", "count"], properties: { verdict: { type: "string", maxLength: 2 }, count: { type: "integer" } } }));
+    const r = await run({ scenario: "schema-size-repair", args: ["--output-schema", schema] });
+    const report = JSON.parse(r.out);
+    return r.code === 0 && report.answerAttemptPaths?.length === 1
+      && fs.readFileSync(report.answerAttemptPaths[0], "utf8").includes("long verdict")
+      && fs.readFileSync(report.answerPath, "utf8").includes('"verdict":"ok"')
+      || `retry: exit ${r.code}, attempts ${JSON.stringify(report.answerAttemptPaths)}`;
+  });
+
+flow("D16 invalid size limits are refused before a turn",
+  "a fractional or negative limit has no JSON Schema size meaning and must not silently disable enforcement",
+  () => {
+    const schema = path.join(flowState(), "bad-caps.schema.json");
+    fs.writeFileSync(schema, JSON.stringify({ type: "object", properties: { result: { type: "string", maxLength: -1 } }, required: ["result"], additionalProperties: false }));
+    const r = checkRun(`RIGHTS: read ${shimDir}\nOUTPUT_SCHEMA: ${schema}\nTASK: return result\n`);
+    return refusal(r, /maxLength must be a nonnegative integer/);
+  });
+
+flow("D16 help documents both local size keywords and per-run schema copies",
+  "a coordinator can set a smaller limit without guessing which server keywords are safe",
+  () => {
+    const brief = helpRun("--help"), full = helpRun("--help-all");
+    return brief.status === 0 && full.status === 0
+      && brief.stdout.includes("maxLength and maxItems")
+      && full.stdout.includes("Copy the shipped schema under")
+      || `size help missing: ${JSON.stringify({ brief: brief.status, full: full.status })}`;
   });
 
 failed += await runCases(FLOWS);

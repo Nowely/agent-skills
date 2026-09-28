@@ -1,0 +1,107 @@
+{
+ "overall": {
+  "G": 21,
+  "matched_G": 21,
+  "recall": 1.0,
+  "luna": 31,
+  "extra": 1,
+  "extra_share": 0.032,
+  "missed": [],
+  "extra_ids": [
+   "pilot2h-P178-B-08"
+  ]
+ },
+ "overall_no_low": {
+  "G": 21,
+  "matched_G": 21,
+  "recall": 1.0,
+  "luna": 31,
+  "extra": 1,
+  "extra_share": 0.032,
+  "missed": [],
+  "extra_ids": [
+   "pilot2h-P178-B-08"
+  ]
+ },
+ "angle_A": {
+  "G": 10,
+  "matched_G": 9,
+  "recall": 0.9,
+  "luna": 14,
+  "extra": 0,
+  "extra_share": 0.0,
+  "missed": [
+   "R-P178-27"
+  ],
+  "extra_ids": []
+ },
+ "angle_B": {
+  "G": 11,
+  "matched_G": 11,
+  "recall": 1.0,
+  "luna": 25,
+  "extra": 4,
+  "extra_share": 0.16,
+  "missed": [],
+  "extra_ids": [
+   "pilot2h-P178-B-05",
+   "pilot2h-P178-B-08",
+   "pilot2h-P178-B-17",
+   "pilot2h-P178-B-18"
+  ]
+ },
+ "runs": [
+  {
+   "id": "pilot2h-P120-A",
+   "tokens": 170193,
+   "episodes": 2,
+   "exit": 0,
+   "wall": 72
+  },
+  {
+   "id": "pilot2h-P120-B",
+   "tokens": 170964,
+   "episodes": 2,
+   "exit": 0,
+   "wall": 92
+  },
+  {
+   "id": "pilot2h-P164-A",
+   "tokens": 170269,
+   "episodes": 2,
+   "exit": 0,
+   "wall": 110
+  },
+  {
+   "id": "pilot2h-P164-B",
+   "tokens": 170417,
+   "episodes": 3,
+   "exit": 0,
+   "wall": 91
+  },
+  {
+   "id": "pilot2h-P178-A",
+   "tokens": 99668,
+   "episodes": 10,
+   "exit": 0,
+   "wall": 146
+  },
+  {
+   "id": "pilot2h-P178-B",
+   "tokens": 103280,
+   "episodes": 20,
+   "exit": 0,
+   "wall": 203
+  }
+ ],
+ "tokens": {
+  "n": 6,
+  "total": 884791,
+  "median": 170231,
+  "max": 170964
+ },
+ "gates": {
+  "recall_ok": true,
+  "extra_ok": true
+ }
+}

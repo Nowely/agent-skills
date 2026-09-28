@@ -59,7 +59,9 @@ wrapper is what makes a Codex agent read like a Claude agent: one card under its
 card, one completion notification, and a message to continue it.
 
 Write the prompt with one Bash call, the launcher's `--new`, which makes the agent's directory beside the
-report and takes the prompt on stdin; then spawn the wrapper with the Agent tool:
+report, takes the prompt on stdin and puts it through the driver's own check. A refusal prints its reason on an
+`ERROR=` line and no `PROMPT=`: spawn no wrapper on that result, and take a mode the device refuses back to the
+user as a question, never to another mode. On `PROMPT=`, spawn the wrapper with the Agent tool:
 `subagent_type: entrust:codex-agent`, `run_in_background: false` for the one agent you wait for and `true`
 for agents that run side by side or while you work (measured 2026-09-17: a foreground call brings the
 hand-back message inside the same turn and no task notification after it, so you answer once — the owner's
@@ -82,13 +84,17 @@ launcher `scripts/agent-run.mjs`, one foreground call and no `&` of your own: it
 as the driver's argument, passes the driver `--prompt-file` and `--report-file` and its own environment
 untouched, writes the driver's exit status to a file of its own beside the two output files, last, and
 prints the nine status lines, which are what the wrapper hands back, so a Codex agent's card shows one Bash
-and its return, as a native subagent's does. The launcher is idempotent, which is what the tool's ten-minute
-ceiling needs: this harness moves a foreground command that reaches it into the background instead of ending
-it, the wrapper runs the same command again, and the second call finds the driver its directory already started
-and waits for it (measured 2026-09-17: an eighteen-minute agent took two calls, one driver, one report). The driver prints its pid on the first line of `<DIR>/err.txt`
+and its return, as a native subagent's does. The launcher is idempotent and returns on its own before the tool's
+ten-minute ceiling: a call that has waited nine and a half minutes prints its lines with `RUNNING=` in place of
+`REPORT=`, the wrapper runs the same command again, and the second call finds the run its directory already
+started and waits for it (measured 2026-09-17: an eighteen-minute agent took two calls, one driver, one report).
+The driver runs under a keeper of its own, outside the wrapper's process tree, so a wrapper that ends early — the
+harness ends a foreground subagent's leftover commands with SIGTERM to their tree (measured 2026-09-26) — leaves
+the run going and its report to come. The driver prints its pid on the first line of `<DIR>/err.txt`
 once it has accepted the report path, and a refusal before that point prints none; a launch the launcher
-itself refused (no `prompt.txt`, a relative report path, an `exit` marker already there) puts its reason
-there instead, with an exit of 2 and `PATH=none`. A `SIGTERM` to that
+itself refused (no `prompt.txt`, a relative report path) puts its reason there instead, under its own claim of the
+directory, with an exit of 2 and `PATH=none`; a refusal for a directory another run owns (an `exit` marker already there, a report path that is
+not the directory's) goes to the caller alone and leaves that directory's files untouched. A `SIGTERM` to that
 pid cuts the turn, sweeps the codex app-server's own process group and publishes the report as
 `turnStatus: interrupted`, exit 1; a command still running in its own process group at that moment is not
 established to end with it (E50). An accepted command can outlive the agent, its server and this lock: before a
@@ -122,13 +128,15 @@ The Agent call, its message this block:
 
     CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --report-file "<REPORT>"
 
-    2. If its result has no REPORT= line — the harness moved the command into the background at its ceiling, or it was cut — run the very same command again at once, as many times as needed, until a result has one. Each run is safe: the command waits for the run it already started. Do not open, tail or wait on the output file the harness's notice names, and write nothing in between.
+    2. If its result has no REPORT= line — it ends with RUNNING= instead, or it was cut — run the very same command again at once, as many times as needed, until a result has one. Each run is safe: the command waits for the run it already started. Do not open, tail or wait on the output file the harness's notice names, and write nothing in between.
 
     3. Call SubagentHandback with exactly the lines that result printed, nothing added, nothing removed.
 
     4. After the hand-back result, and whenever the harness asks you for a visible response, write exactly one line, "<DESCRIPTION>: report delivered", and nothing else.
 
-Both calls may go in one turn: the launcher waits ten seconds for a prompt a `--new` has not written yet.
+Both calls may go in one turn: the launcher waits ten seconds for a prompt a `--new` has not written yet. A
+wrapper started beside a refused `--new` spends that report path: relaunch under `<run>/<id>-2/report.json`
+after `<run>/<id>/agent/exit` exists (then `-3` after `-2` ends, and so on).
 `<DESCRIPTION>` is the Agent call's own description. `<DIR>`, where this page names it, is the agent's directory,
 `agent/` beside `<REPORT>`, which `--new` makes at 0700 with the prompt at 0600: one per report path, so a
 relaunch gets a fresh report path and the earlier run's four files stay where they were (the launcher refuses a
@@ -136,7 +144,9 @@ directory that ran for another report; measured 2026-09-17 on the earlier shape,
 while the same command run again for the same report reads the run it started, which is what the ceiling's
 second call is. None of the launcher's files is left in `$TMPDIR`; a read agent's own writable root stays there. `<REPORT>` is an absolute path of this agent's own: put it under
 the driver's state directory, `<state>/reports/<run>/report.json` with `<run>` unique, or, under the orchestrate
-mode, `<run>/<agent>/report.json` in the run directory that page names, one directory per agent; the launcher and
+mode, `<run>/<agent>/report.json` in the run directory that page names, one directory per agent; a
+continuation uses `<run>/<agent>-<n>/report.json`, n from 2 with no leading zero, only after the
+previous link's `agent/exit` exists. The launcher and
 the driver make every directory those paths need, at 0700, so they may name a root your own Write and `mkdir`
 are refused.
 The wrapper's completion notification is the agent's completion: read the wrapper's own lines first —
@@ -145,7 +155,7 @@ where it is short and its first line where it is not, the refusal where no turn 
 read the file itself after a `PATH=own` when those lines leave a question (measured 2026-09-17: on a one-line
 task and on a pre-turn refusal, a hand-back without the answer and the refusal cost the coordinator one more
 turn each). To continue an agent, write a second
-prompt file with `RESUME: <threadId>` and send the wrapper one more command of the same shape; it runs it the same way and notifies again (measured 2026-09-12). A session with no
+prompt file with `RESUME: <threadId>` at `<run>/<agent>-<n>/report.json` and send the wrapper one more command of the same shape after the previous link ends; it runs it the same way and notifies again (measured 2026-09-12). A session with no
 message tool, headless `-p` among them, continues the thread with a second wrapper given the same file,
 at the cost of a second card (measured: the thread held both ways).
 
@@ -216,11 +226,11 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | `WRITABLE:` | `<dir>`, repeatable | a write agent needs one more root than the directory it was given |
 | `RESUME:` | `<threadId>`, `last` | this agent continues an earlier thread instead of opening one |
 | `EXPECT:` | `<regex>` | the answer is only evidence if a command matching it ran AND succeeded; a matching command that exited non-zero does not count, and none matching is exit 5. Do not point it at a check whose failure IS the finding |
-| `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>` | the answer must parse as one JSON object |
+| `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>`; the five-field schema for orchestrated agents ships at `${CLAUDE_SKILL_DIR}/schemas/five-fields.schema.json` | the answer must parse as one JSON object |
 | `MODEL:` | `astra`, `sol`, `terra`, `luna`: the newest model of that name the catalogue lists, resolved before the turn; a full slug from the catalogue pins one version | this agent needs a model other than the configured default; in prose the name is capitalised |
 | `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`; `ultra` on Astra, Sol and Terra (the catalogue of 2026-09-17: `none` and `minimal` are on no model and exit 2 before the turn); no line inherits `~/.codex/config.toml` | the task is worth more or less thinking than the configured default; `low` for a one-line task |
-| `WEB_SEARCH:` | `cached`, `indexed`, `live` | the agent needs sources it cannot read locally |
-| `BRIEF:` | `yes` | a short answer is enough; omit it beside an output schema — it clips only the inline `answer` (`answerJson` is parsed from the whole one) yet still asks the model for 20 lines |
+| `WEB_SEARCH:` | `cached`, `indexed`, `live`: the provider's search tool, not the network, which every level reaches with no line and `NETWORK: no` denies | the user asked for the provider's web search; "the network is allowed" is not that ask. A mode the device refuses goes back to the user as a question, never to another mode |
+| `BRIEF:` | `yes` | a short answer is enough; omit it beside an output schema — it clips only the inline `answer` on a valid return and still asks the model for 20 lines |
 | `ALLOW_NO_COMMANDS:` | `yes` | the agent is recall-only and will run nothing |
 
 One field is missing from that table on purpose. `VERIFY` is refused in a prompt file without `--allow-prompt-verify`,
@@ -279,10 +289,15 @@ write its own would be grading itself. Declare gates on the command line instead
   and check the tree and whatever the command touched before any relaunch, and never relaunch a prompt that
   would ask for the same thing again. Only once that is clear, treat the rest as unknown and relaunch under
   a fresh report path where the work still needs doing.
+- `RUNNING=` in place of `REPORT=` is a run still going whose wrapper handed back early: spawn the wrapper
+  again with the same message — the launcher waits for the run it started and hands back its lines — or
+  wait on `<DIR>/exit` yourself; nothing was lost.
 - `exitCode: 0` means the completed turn passed its declared evidence gates. `answer` is the agent's text;
-  with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed.
+  with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed. On a final size overflow,
+  both are clipped to the schema caps; `schemaOverflow.clipped` names each cut, and `answerPath`
+  holds the complete answer. If a size correction succeeds, `answerAttemptPaths` retains the first attempt.
 - `exitCode: 3` is a cut; read the retained answer or partial and the `RESUME:` hint. Give the continuation a
-  report path of its own: the driver refuses one already taken and exits 2 without publishing, which
+  `<run>/<agent>-<n>/report.json` after the previous link's `agent/exit` exists: the driver refuses one already taken and exits 2 without publishing, which
   reaches you as `PATH=taken` over the earlier run's file.
 - `exitCode: 10` is a held lock or a busy resumed thread: the report says `ok: false` and carries the
   refusal in `error`, and `<DIR>/err.txt` has it in full.
@@ -346,8 +361,9 @@ Write a concrete, checkable body:
     TASK:   what to do
     CHECK:  the ground truth, preferably something the agent cannot guess
     RETURN: exactly what to hand back
+    ENVIRONMENT: staged inputs and their paths; known daemon or socket limits and runnable alternatives; flags that avoid an unwritable cache
 
-Give one deliverable per agent. Split a return that asks for unrelated artifacts or decisions. Write `TASK:` in the
+For a write agent, or where repository tools need a daemon, fill `ENVIRONMENT:` with observed facts and staged paths, including the diff and trunk files when supplied. It is a body line after `TASK:`, not a header field. Give one deliverable per agent. Split a return that asks for unrelated artifacts or decisions. Write `TASK:` in the
 user's language: the agent answers in the language it is asked in (measured 2026-09-17: a task written in English
 about a Russian «хай» came back in English). Whatever `RETURN:`
 asks for, its first line is one sentence a reader can take on its own: the name you gave the agent in the prompt
@@ -355,7 +371,7 @@ asks for, its first line is one sentence a reader can take on its own: the name 
 answers with whatever it calls itself (measured 2026-09-17: «GPT-5 Codex, id T1»). That line is what the coordinator
 retells, and not itself a message to the user; the rest is the return's own shape.
 
-The standing rules are already on the thread — unattended, its egress and its web search each named
+The standing rules are already on the thread — unattended, its effective writable roots and that `/tmp` is not one, its egress and its web search each named
 whichever way they went, a one-line record for a step that cannot run (the command, whether it started, its
 exit status if any, the exact diagnostic), never claim a test passed without the count — so do not repeat them. A follow-up continues a thread with `RESUME: <threadId>`; a
 recall-only one runs no commands, so it also needs `ALLOW_NO_COMMANDS: yes` (`--allow-no-commands` on a

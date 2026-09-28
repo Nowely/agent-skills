@@ -7,7 +7,7 @@ description: >-
   on your word.
 disable-model-invocation: true
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 license: MIT
 ---
 
@@ -45,6 +45,8 @@ Nothing goes into the repository without the user's word.
 
 ## Step 3. The draft
 
+For a README, start with the [plugin library](../../references/genres/readme-tools.md) or
+[terminal tool](../../references/genres/readme-terminal-tools.md) note when it fits.
 Where the kind of text has no notes in [genres/](../../references/genres/), the genre scout, brief 2,
 runs first; its table is kept there for the next text of the kind, on the user's word. Then the writer,
 brief 1 of `roles.md`. It works out the text's world before its form and writes `context.md`: what the
@@ -91,7 +93,9 @@ Give the user the latest numbered text, the plan, the list of findings applied a
 check's reports, all in the run directory, and for a text that existed, the diff against it. Nothing is
 final until the user says so: if they would not send it as it is, their words go to the writer for the
 next numbered text, and new critics run only if they ask. Applying the text to their files needs their
-word.
+word. Account for each point they raise, briefly where a sentence can cover several; for a complex
+iteration use the [owner-feedback brief](../../references/roles.md#13-owner-feedback). Hand the result
+over as a [relayed result](../../references/genres/relayed-result.md).
 
 ## What you return
 
@@ -101,19 +105,7 @@ applied-and-declined list; the scripts' output; `diff.patch` for a text that exi
 
 ## Why this shape
 
-On 2026-09-24 the same README was written by a sequential path — a survey, a synthesis, a terms stage,
-ten structures under three critics, a skeleton, a bake-off, a verified round, a wave and its dedup —
-in 6 h 38 min. On the owner's read it sat at parity with the repository's own README and above a bare
-agent's; what changed the text for the better was the truth checked by running the code and the rules
-where they were applied, and here each of those concerns is one role run at the same time as the
-others. Its first run, on 2026-09-25, took 70 minutes, and what it missed — a contradiction the repair
-brought in, sentences no role read, a writer re-running what the truth critics ran — is what step 5's check,
-brief 10 and the reading writer are for. Its second run took 1 h 33 min, and truth critics that each rebuilt
-the same harness held the critical path twice, 24 and 20 minutes: hence light by default, and one shared copy
-when the user asks for full. On 2026-09-26, on the README of a disk-usage tool, a bare agent's text beat
-this path's: the writer had not been asked what the tool was to its reader, and rules applied as requirements
-cut the demo, the one-line pitch and the install routes the owner valued most — hence the context first,
-the scout before the writer, and rules that are advice. The measurements behind the rules:
-[measurements.md](../../references/measurements.md); the runs: `plugins/terse/research/2026-09-24-terse-benchmark-maestro/`
-and `plugins/terse/research/2026-09-26-terse-light-trial/`.
+The writer starts from context because a rule-led draft once lost the demo and routes its reader needed;
+the repair check catches what the repair itself breaks. The dated runs and limits are
+[M26–M30](../../references/measurements.md#m26).
 To measure a text before or after, `/terse:audit`.

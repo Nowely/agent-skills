@@ -113,8 +113,8 @@ const CASES = [
     why: "one retry is the whole budget: a cause that persists reports the failure instead of looping",
     assert: (r) => (r.transientRetries?.length === 1 && r.turnStatus === "failed")
       || `the retry budget was not one: ${JSON.stringify({ retries: r.transientRetries, status: r.turnStatus })}` },
-  { scenario: "stalled-turn",     expect: EXIT.TIMEOUT, args: ["--timeout", "0.25", "--verify", "true"],
-    why: "an expired turn budget is exit 3 and cannot verify a tree the model may still be writing",
+  { scenario: "stalled-turn",     expect: EXIT.TIMEOUT, args: ["--timeout", "1", "--verify", "true"],
+    why: "an expired turn budget is exit 3 and cannot verify a tree the model may still be writing; 1s, not 0.25s (E49) — a budget under about 0.25s can expire before the driver has even processed thread/start, on a loaded machine, which is a pre-turn refusal (exit 3, no stdout) rather than the timed-out turn this case means to measure",
     assert: (r) => r.ok === false && r.exitCode === EXIT.TIMEOUT && r.turnStatus === "timedOut"
         && r.verify === null && r.verifySkipped === "turn-timed-out"
       || `timeout report lost its verdict or verify skip: ${JSON.stringify({ ok: r.ok, exitCode: r.exitCode, turnStatus: r.turnStatus, verify: r.verify, verifySkipped: r.verifySkipped })}` },

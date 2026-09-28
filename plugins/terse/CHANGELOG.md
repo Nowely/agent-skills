@@ -3,10 +3,34 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.3.0 — 2026-09-28
+
+terse gets `clarity`, a light skill for everyday texts that Claude may choose on its own while writing, and its
+rules and deep skills follow a replication of the writing-feedback study behind issue #20 on a second machine's
+sessions: `research/2026-09-26-writing-replication/`.
+
+### Added
+
+- `clarity` can be chosen by Claude or invoked as `/terse:clarity` for everyday text. It applies reader-side
+  questions without agents or a run, and links six genre notes with their own examples; general examples
+  live in `examples.md`. Its description names short texts written during coding, such as commit titles
+  and code or review comments, and a reply that tells the user what an agent, test or tool found; the first
+  description missed those. On 2026-09-27 Claude chose it before answering in 78 of 78 runs of fourteen
+  everyday cases and two held-out sets in a clean `claude plugin eval` (Opus 5.5), in 32 of 33 counted runs
+  in the owner's ordinary environment (Fable 5.1), and in none of 18 runs where it does not fit. Whether
+  the texts improve when it loads is not yet measured.
 
 ### Changed
 
+- The deep skills hand results over with a conclusion and grounds, account for later owner feedback, and
+  link their dated rationale in `measurements.md`. The rules now state their principle, reason and scope;
+  choices, proportional warnings and meaningful qualifications are handled where readers act. Sentence techniques
+  remain frozen as evidence but are applied with judgment for the current reader.
+- README and the manifest distinguish manually started deep skills from optional model selection of
+  `clarity`. The page checks reject malformed or disabling frontmatter, compare all skill versions with
+  the manifest, and require separate README rows and skill-page links for every genre note. The official
+  trigger eval takes another case file with `--cases` and keeps each run's trace, the only record of its
+  model; two held-out sets, written without sight of the description, sit beside the fourteen cases.
 - **What installs is now `plugins/terse/plugin/`.** The marketplace entry's `source` is
   `./plugins/terse/plugin`: the skills, the references, the README, the LICENSE and `package.json`. The
   page check and this changelog no longer install; they stay in the repository beside it, at
@@ -16,6 +40,18 @@ forensics remain in the repository references and release notes.
   scripts' selftest by path. Why: an install copies the whole source directory, so every install carried
   the page check and the changelog; the owner's rule is that the installed plugin carries what the plugin
   needs and the working material lives beside it.
+
+### Fixed
+
+- Corrected M31's account of a changing number in a comment, links to misplaced measurements, and the
+  README's claims about skill overrides, run storage and approval. The H1 counter excludes agent sidechains
+  and requires the successful Skill result before the target event; H3 trusts its own temporary plugin copy.
+- E6: corrected the writing-standards account in `writing-rules.md` and M19. The comparison had four
+  standards, including an unpublished owner draft, plus a control pair; on the selected 116-word opening,
+  six entrants left its length unchanged, three lengthened it, and one shortened it.
+- E54: `practices-full.md` no longer repeats the refuted 2026-09-10 counts or reads that one run as evidence that
+  published standards lose to unguided controls; thirteen passages now say what the run's prompts and judge show
+  and no more. The fix came from a brief written with the new agent-brief note and carried out by a fresh agent.
 
 ## 0.2.0 — 2026-09-26
 

@@ -77,7 +77,7 @@ fs.mkdirSync(rolloutDay, { recursive: true });
 const rolloutLine = (id) => JSON.stringify({
   timestamp: new Date().toISOString(), type: "session_meta",
   payload: { session_id: id, id, cwd: shimDir, originator: "Claude Code",
-             cli_version: "0.153.4", source: "vscode", model_provider: "openai" }
+             cli_version: "0.155.1", source: "vscode", model_provider: "openai" }
 });
 fs.writeFileSync(path.join(rolloutDay, "rollout-2026-01-01T00-00-00-thr_root.jsonl"), `${rolloutLine("thr_root")}\n`);
 // Same filename convention, a session_meta naming a DIFFERENT thread: the file exists, the receipt is

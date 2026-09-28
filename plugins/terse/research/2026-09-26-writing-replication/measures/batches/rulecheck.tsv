@@ -1,0 +1,23 @@
+id	exit	turn	tokens	cached	used	wall	n_episodes	status	launcher_rc
+lr-U01	0	completed	28038	13056	22	37		done	0
+lr-U02	0	completed	28062	24064	22	26		done	0
+lr-U03	0	completed	28742	13056	22	37		done	0
+lr-U04	0	completed	28073	13056	22	23		done	0
+lr-U05	0	completed	28886	13056	22	39		done	0
+lr-U06	0	completed	28204	13056	22	21		done	0
+lr-U07	0	completed	28368	13056	22	32		done	0
+lr-U08	0	completed	27834	12032	22	20		done	0
+lr-U09	0	completed	28165	13056	22	21		done	0
+lr-U10	0	completed	28141	12032	22	16		done	0
+lr-U11	0	completed	28314	24064	22	17		done	0
+lr-U12	0	completed	28428	13056	22	24		done	0
+lr-U13	0	completed	28340	20992	22	28		done	0
+lr-U14	0	completed	28126	24064	22	22		done	0
+lr-U15	0	completed	28042	13056	22	21		done	0
+lr-U16	0	completed	28307	24064	22	39		done	0
+lr-U17	0	completed	28023	24064	22	16		done	0
+lr-U18	0	completed	27896	24064	22	22		done	0
+lr-U19	0	completed	27837	13056	22	15		done	0
+lr-U20	0	completed	27903	13056	22	17		done	0
+lr-U21	0	completed	27735	13056	22	19		done	0
+lr-U22	0	completed	27899	24064	22	34		done	0

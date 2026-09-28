@@ -1,0 +1,32 @@
+[
+  {
+    "id": "relay-user-h1",
+    "positive": true,
+    "prompt": "A subagent reviewing our API change reports 18 routes checked, 2 returning inconsistent error codes, and 1 route skipped because its schema was unavailable. It says the inconsistencies affect only invalid-request responses; it did not test authentication behavior. Explain to me what the report found and what is still open, in plain language, so I can decide what to fix before merge."
+  },
+  {
+    "id": "relay-user-h2",
+    "positive": true,
+    "prompt": "The test runner says 243 tests passed and 7 failed after the cache update. Five failures are timeouts in the retry suite; two are snapshot mismatches. It did not run the browser tests, which are currently disabled in CI. Could you briefly explain to me what this result tells us and what remains unresolved?"
+  },
+  {
+    "id": "relay-user-h3",
+    "positive": true,
+    "prompt": "Our security scanner found 3 medium-severity dependency alerts, including one package used by the image upload path. The other two are in development-only tooling. It could not determine whether the upload endpoint is reachable without login. Tell me what the scan found and what is still open, without overstating what we know."
+  },
+  {
+    "id": "relay-third-h1",
+    "positive": true,
+    "prompt": "The migration dry-run reports 1,260 records ready to move, 14 rejected for missing account IDs, and 9 with duplicate timestamps that need review. It did not check whether downstream exports accept the new field names. Write release manager Priya a concise update explaining what the run found and what remains open before she approves the migration."
+  },
+  {
+    "id": "relay-third-h2",
+    "positive": true,
+    "prompt": "A linter report shows 31 warnings reduced from 46, with 6 remaining in generated files and 25 in handwritten modules. It did not inspect runtime behavior or decide which warnings are safe to suppress. Draft an update for customer-support lead Mateo explaining the progress and open questions so he can set expectations with the team."
+  },
+  {
+    "id": "relay-third-h3",
+    "positive": true,
+    "prompt": "The benchmark tool measured median startup at 1.8 seconds, down from 2.4, across 20 runs; the slowest run was 3.6 seconds. It did not measure performance on older laptops, and the sample used a warm local cache. Write QA manager Lin a short update on what the benchmark found and what is still unknown before the release decision."
+  }
+]

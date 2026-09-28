@@ -5,12 +5,119 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Fixed
+
+- **The experiment page no longer counts its protocols.** `skills/experiment/SKILL.md` said "the four registered
+  first are in protocols.md" while the file registered five, and now six with E6; it says "those registered so far".
+  Why: a ledger entry of this branch (its E51, which never reached main and left the ledger on this fix), found twice in passing during the 2026-09-27 triage; the count had drifted at every
+  registration.
+
 ### Added
 
+- **`/entrust:orchestrate` can hand a run to a foreman.** A plan with three workers or more now proposes one
+  Opus subagent, the foreman, that briefs and launches the workers, has their work verified, handles their
+  failures and hands back one report; the orchestrator keeps the user, the plan, the synthesis and the
+  completeness critic. In the timeline each worker then shows as one card inside the foreman's, with its task
+  and its report, instead of every call it makes; the agent map still shows every agent. The user's approval
+  words travel down verbatim, and an action approved mid-run is run by a fresh worker. The rules are in
+  `skills/orchestrate/references/foreman.md`, with a foreman row in `references/roles.md`, and the page lets a
+  foreman launch the one Fable agent the cap allows. `evals/orchestrate.test.mjs` pins them (I1–I8, D7
+  widened). Why: on 2026-09-26 the owner saw every worker's Bash cards in the timeline and asked for a
+  coordinator one level down; a probe on extension 2.1.280 showed a subagent's foreground worker stays out of
+  the timeline while a background one comes in whole, and Anthropic's own coordinator prompt inside Claude Code
+  2.1.280 supplied the rules on approvals and briefs. The run is in
+  `plugins/entrust/research/2026-09-26-coordinator-practices/`.
+- `driver.mjs --check-prompt-file <path>`: the run's own header parsing and the web-search policy refusal,
+  offline, with no state directory, no lock and no codex: exit 0 and silent, or exit 2 with one stderr line
+  `entrust: refused: <reason>`. `agent-run.mjs --new` runs it after writing the prompt: on a pass `PROMPT=`, on
+  a refusal `ERROR=<reason>`, no `PROMPT=`, exit 2 and no prompt left to run; a report path that a `--run` has
+  already launched in is spent, and `--new` refuses it and names the earlier launch's file. Why: the refusal now comes before an agent is spawned (E1).
+- `ENTRUST_POLICY_SEAM`: a second plist read like the device's, which a mode must also pass; it narrows the
+  allowed modes and never widens them, so a suite can exercise the policy path on any macOS machine.
+- **The coordinator's own checks run through `skills/orchestrate/scripts/capture-check.mjs`, and every brief names
+  it.** After scouting, an inline check is one command through the runner answering one yes-or-no or one number in
+  at most twenty lines read back, and a second command on the same question goes to an agent. The page prices what
+  the coordinator reads inline as its size times the calls left in the session, and the answer shows the runner's
+  `--summary` of the run's ledger beside the agents' tokens. Every brief, Claude or Codex, the foreman's included,
+  names the runner by its absolute path for any command whose output can pass twenty lines, and the return quotes
+  each run's `EXIT=` line; the sentence that redirected a check into a `mktemp` file and read back a 5-line tail is
+  gone. The runner runs one command under `bash -o pipefail -c`, writes its whole output to a log under `$TMPDIR`
+  (0600) and prints twenty lines at most in all: five receipt lines, `LABEL=`, `LOG=`, `LINES=`, `BYTES=` and
+  `EXIT=` last (the command's status or `signal <NAME>`), around a tail of fifteen lines at most (`--lines` takes 1
+  to 15), each clipped to 200 characters; its own exit is the command's. With `--ledger <file>` each run's receipt
+  is appended as one JSON line, a second command on a label the ledger already holds is refused with `ERROR=` and
+  runs nothing, and `--summary` totals what was logged and what was shown, with `LATER_READS=unknown`, since what a
+  shown tail costs depends on the calls after it. `--help` is the reference. `evals/capture-check.test.mjs` pins
+  it: a 100,000-line flood prints 20 lines, fifteen of them the tail; `--lines 15` and a multi-line command stay at
+  twenty; `sh -c 'echo failing; exit 1' | tail -1` reads `EXIT=1` beside a plain `bash -c` control that says 0; a
+  signal reads `EXIT=signal SIGTERM` and exit 143; a SIGTERM to the runner still prints the receipt; a 2 MB
+  unterminated line prints 200 characters and the bytes cut; the ledger's refusal runs nothing. In
+  `evals/orchestrate.test.mjs`, B4 and B8 pin the page's rule and its pricing, B9 runs the page's own command line
+  on a 5,000-line flood, a failing pipeline and a repeated question, and I9 pins the runner's path in the foreman's
+  brief; the live gate checks that every brief asking for a check names the runner. Measured on 2026-09-27: a 64 MB
+  flood took 0.44 s and printed 20 lines, 833 bytes. Why: #15 recorded a grep over 64 MB in T3's coordinator, 23.5
+  MB for one key in a T2 subagent and a critic's 31.1 MB grep in T7 (F9), a Playwright run through `tail` that read
+  exit 0 while reporting a failed test and a 14-error typecheck shown as exit 0 (F10); "bounded" was never a number
+  and inline work was never priced (F15, F21), and #15 asked for this runner by name (P2, P3).
+- **A Codex agent names the five-field schema the codex skill ships, and a field past its cap goes to a file.**
+  `skills/codex/schemas/five-fields.schema.json` is strict (`status`, `result`, `evidence`, `artifacts` and `open`,
+  all required, `additionalProperties: false`) and capped: `result` at 4,800 characters, each `evidence` and `open`
+  item at 1,000, each `artifacts` item at 300, and at most 40 `evidence`, 40 `artifacts` and 20 `open` items. The
+  codex page's `OUTPUT_SCHEMA:` row names it, and the orchestrate and swarm pages' schema lines are that file, caps
+  included. A field past its cap goes whole into a file under the agent's temporary directory, named in
+  `artifacts`, and the field keeps a summary with every material finding; a brief that wants a longer return names
+  a per-run copy of the file with larger caps. The driver enforces `maxLength` and `maxItems` itself: a size error
+  states the observed length and the limit and spends the existing corrective turn, which asks for the complete
+  field in a file under `$TMPDIR`, named in `artifacts`; the first answer is kept as `.attempt1.md` and listed in
+  `answerAttemptPaths`; on a final overflow `answerJson` and `answer` are clipped to the caps, `schemaOverflow`
+  lists each cut, and `answerPath` holds the whole object. The copy sent to the server carries neither keyword:
+  Codex 0.155.1 accepted both in two Luna turns and cut a field at its cap (a Luna probe returned exactly 40
+  characters against a request for about 400 under `maxLength` 40, 2026-09-27), so a cut would pass the local check
+  with nothing kept, and `--help` states that measurement. Pinned by the package case "the shipped five-field
+  schema is strict and carries the default size caps", G8 in `evals/orchestrate.test.mjs`, U3 in
+  `evals/swarm.test.mjs`, the `five-field-schema` case of `evals/fragments.test.mjs` (both pages' lines against the
+  file), five D16 flows in `evals/cli.test.mjs` (no `turn/start` carries the keywords, a large overflow keeps the
+  whole answer and clips every inline field, a repaired attempt stays beside the corrected answer, invalid limits
+  are refused before a turn, the help) and a D16 case in `evals/agent-run.test.mjs`. Why: #15 F20b: coordinators
+  wrote the schema by hand each run and once used the review schema instead; P11a: returns overran "at most 30
+  lines", and a limit in prose bounds no structured return.
+- **The answer is a draft linted by `skills/orchestrate/scripts/lint-draft.mjs`, and it names every agent that
+  ran.** Before the synthesis the coordinator reads every return, Claude or Codex, into the five fields, each claim
+  keeping the agent it came from; a return that does not parse is continued once, and after that its result is
+  `unknown`. The answer is drafted into a file and linted with every agent that ran (`--agents`) and the runner's
+  ledger (`--receipts`) until it exits 0: it names every agent that ran, or names it as dropped, and each success
+  claim rests on a receipt or says it is unverified. The linter prints one `LINT=<rule>: <line>: <text>` per hit,
+  then `WORDS=`, `SHA256=` (the draft digest, one line of the completeness critic's manifest; the digest the critic
+  returns is the manifest's own, another number) and `HITS=`, and exits 1 on any hit. The rules: an absolute
+  machine path, a header field name from the driver's own field table or a launcher status key, a pasted five-field
+  block, the driver's vocabulary (wrapper, driver, `report.json`, `threadId`, `exit <n>`), a model slug, a harness
+  or thread id, more than 400 words, an agent from `--agents` never named or named by its id alone, and a success
+  claim that neither contains a receipt's label (`--receipt`, or `--receipts` with a capture-check ledger, where a
+  check that failed or was refused supports nothing) nor says it is unverified. The user's quoted lines and the
+  words of their own request (`--request`) are not machinery. `--help` lists the rules. `evals/lint-draft.test.mjs`
+  pins the shapes #15 recorded as red and their false positives as green; in `evals/orchestrate.test.mjs`, C14 pins
+  the page's rule and C15 runs the page's lint command on a clean draft and on three failing ones. The live gate
+  checks that the draft is linted before the critic, that every return, the critic's included, is in the five
+  fields against its schema (the shipped file, or a per-run copy equal to it apart from its caps, whose caps then
+  apply) before the synthesis, that the answer lints clean and names every agent that ran, and that each fact the
+  answer credits to an agent is held by that agent's return. Why: the page's sentence against machinery in
+  user-facing text dates from 0.20.0, and #15 counted agent ids, report paths, exit mechanics, a RESUME id and a
+  3,000-word wall in eight later sessions (F16, P13b); agents that ran went unnamed (F20a), and returns reached the
+  synthesis unparsed (F20b).
+- **Protocol E6 in `skills/experiment/references/protocols.md`: one strong reader against the full policy.** A
+  preregistered, blinded comparison on held-out review tasks: one Sol strong reader, the orchestrate page's full
+  policy, and one Opus strong reader as the same-family control, with material frozen before any arm, an
+  independent key of material findings, two cross-family judges and a refuter for lost findings; a cheaper arm wins
+  only on the preregistered coverage and false-alarm criteria, and a trade of cost against quality is the owner's
+  word. The reference now registers six protocols, and the plugin README's layout says so.
+  `evals/experiment.test.mjs` F1 holds E1 to E6 with the seven fields each. Why: #16 asks for a prospective pilot
+  the recorded overlap simulation cannot replace (Q7b).
 - **An approval channel, with no flag of its own.** `agent-run.mjs --new` makes `<DIR>/approvals` beside the
   prompt for every agent it launches, not only ones asked for by a flag, and `--run` always hands the driver
-  `--approval-dir` for it; the launch-only form still gets no mailbox, so a run nobody attends (swarm's own
-  launches) is declined at once as before. `--new` needs the state directory to check the mailbox's
+  `--approval-dir` for it; the launch-only form a caller runs itself still gets no mailbox, so a run nobody
+  attends (swarm's own launches) is declined at once as before. The keeper `--run` starts is that same form in
+  a session of its own, and the orphan step that starts it marks it `--keeper`, set by that step alone, so it
+  is the one launch-only run that hands the driver the mailbox. `--new` needs the state directory to check the mailbox's
   containment before the agent's directory even exists — `CLAUDE_PLUGIN_DATA` on the call, or
   `ENTRUST_STATE_DIR` — and refuses without it. `--approval-timeout` is gone with it: the driver's own
   `LIMITS.APPROVAL_TIMEOUT_S` is a constant, 1800 seconds, the owner's figure of thirty minutes — three
@@ -43,7 +150,10 @@ forensics remain in the repository references and release notes.
   `locks/`, `answers/`, `jobs/`, `worktrees/`, `pasted/`); a mailbox writing itself under `reports/<run>` or
   an orchestrate run directory is fine, since neither is one of those. A request the mailbox itself cannot
   write is settled at once as expired, `why: "mailbox write failed: <error>"`, and an accept reaches the
-  server only once that settlement record has landed. The orchestrate page's `## Approvals` section states
+  server only once that settlement record has landed. The orchestrate page's poll is one background task over
+  every alive Codex agent's `exit` and `approvals/pending` markers, and its `ASK=<id>` line arrives as a
+  notification beside `DONE=<id>`, because a request that comes after a `RUNNING=` hand-back has no call in
+  flight to hand it back. The orchestrate page's `## Approvals` section states
   the owner's rule: approve what is non-destructive and in the plan's direction, prefer a widening to an
   escape when either would do, take the rest to the owner while the turn waits, decline and name it in a
   headless run, approve nothing unread. Why: every request was declined by default, so a plan that needed a
@@ -90,38 +200,28 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
-- **The driver answers yes itself to a file change whose every path lies inside the agent's writable
-  roots**, recorded with `by: "driver"` and `cause: "rights"`, and never shown to anyone. All ten declined
-  file changes measured on this machine before this change were writes into the agent's own `$TMPDIR`
-  (06-owner-round, level 3), because Codex's edit tool asks for approval by comparing the patch path's
-  spelling against the granted root's spelling: a `/private/var/…` path inside `$TMPDIR` asked and the
-  `/var/…` spelling for the same file did not (P1, level 3). Auto-yes runs with or without a mailbox armed,
-  compares resolved paths through symlinks on both sides, and offers the request instead where a path
-  resolves outside the roots or no `item/started` named one, so the coordinator still sees it. The guard
-  that contains a mailbox now also refuses a writable root that is, or is an ancestor of, `~/.codex` or the
-  state directory (E49): `--writable ~/.claude` is refused on a plugin install, where it used to grant the
-  plugin's own locks and answer log. The auto-yes's own `why` is now
-  `"rights cover it (checked as the answer was sent)"`: every directory the resolved path crosses must be a
-  plain one, never a symlink, nothing under a `.git`, `.codex` or `.agents` in any spelling (matched by
-  inode and by a case-folded name), and the whole check runs again, fresh, at the moment the answer is
-  sent rather than only when the request arrived — a directory swapped for a symlink in between is
-  followed by the server, not caught here, and whether the server itself re-resolves that swap is
-  unmeasured. A subagent thread's own request, offer or auto-yes alike, lives only while that thread's own
-  turn stays open; once it closes, a further request from it is declined at once as `"turn ended"` or
-  `"not the current turn"`.
-- **The report's `escalations` array, per entry.** Exit 6 is now "a request was declined or expired
-  unanswered", never one that was accepted, matching the help's own wording; `detail` carries the server's
-  wording, the command, or the joined file-change list whole, no longer clipped to 200 characters; every
-  entry gains `cause` (`rights`, `outside`, `sandbox` or `policy`) so a coordinator's synthesis can say why
-  approvals were needed and what avoids them next time, and `by` now also reads `driver` for an auto-yes.
-  `RECEIPT=` gains `stale=N` beside `late=N`; the report gains `approvalsDuplicate` (a request id the
-  server sent twice is answered once, and the repeat is counted, not treated as a second request) and each
-  request's own `settled.decisionFile` (`taken`, `none`, `stale` or `late`: what the decision file held as
-  the request settled). Why: a clipped `detail` hid the very command a coordinator had to read before approving it, and an
-  unnamed cause left every approval's synthesis guessing.
-- **E46 fixed**: the driver's refusal-shape comment now names `ServerRequest.json`, where the enum it means
-  actually lives, instead of a `schema-<version>/*ApprovalResponse.json` layout the pinned tree never had.
-
+- **The Codex CLI pin moves to 0.155.1.** `PINNED_CODEX`, the pinned schema directory (`schema-0.155.1/`, the
+  twelve files conformance loads; the full 312-file tree is commit `b5c1b81`, which the README's upgrade recipe now
+  names) and the fixtures' server version (the fake app-server's default, the cli case and the receipt scenario)
+  move together. The 0.155.1 protocol against 0.153.4, in the twelve files the driver's conformance loads, only
+  adds: `originator` and `ThreadEnvironment` on thread responses, `normalModelSlug` and `ordinaryUsageAllowed` on
+  rate limits, thread-attachment notifications, and the path type `AbsolutePathBuf` renamed `LegacyAppPathString`;
+  nothing removed, no type changed (8 files new, 27 changed, none removed across the whole tree). Measured on
+  2026-09-27: 89 conformance scenarios, the live fidelity gate "all 15 agree" with one real turn, cli 123 and
+  protocol 147 green. parity.md's dated figures were not re-measured, as its header already says of the 0.153.4
+  pin. Why: this machine's codex-cli had been 0.155.1 against a 0.153.4 pin since the CLI moved, the driver warned
+  on every run, seven Codex turns of the 2026-09-27 triage ran on the mismatch, and RELEASING.md makes the move a
+  prerequisite of the release.
+- **The live orchestrate gate no longer counts a plan's statement of the caps as agents.** Its Fable and Astra
+  counter skips a line that states the limits ("the limits are one Fable and one Astra at a time", "uses
+  neither Fable nor Astra"), as it already skipped a coordinator's description of itself. Why: on 2026-09-27
+  the release candidate's full-run case was failed for "2 fable agents in one wave" by a plan that used neither
+  and said so in one sentence, and that sentence's two words were the count; 0.20.0 never ran the gate (its
+  Codex quota was out), so the miscount had not been seen. The same case's run-directory check now accepts the
+  launcher's `agent/` beside each `report.json`, holding exactly its four files (`prompt.txt`, `out.json`,
+  `err.txt`, `exit`), which the page has promised since the launcher of 0.19.0; the check still dated from
+  the time the driver alone wrote there, and the rerun after the counter fix failed on it with a Codex agent
+  that had run and reported.
 - **What installs is now `plugins/entrust/plugin/`.** The marketplace entry's `source` is
   `./plugins/entrust/plugin`: the skills, the agent, the driver and its companions, the README, the
   LICENSE and `package.json`. The suites, the pinned protocol schema and this changelog no longer install;
@@ -165,6 +265,270 @@ forensics remain in the repository references and release notes.
   Sol and GPT-6 Luna while every page, the status line's table and the tests still named `gpt-5.6-sol`
   and `gpt-5.6-luna`, so a coordinator asked for Sol kept launching the older model; the Claude names
   beside them (Opus, Sonnet, Haiku) had moved on their own.
+- **A Codex agent's run outlives the wrapper that started it, and the launcher returns before the tool's
+  ceiling.** `agent-run.mjs --run` starts the driver under a keeper orphaned into its own session, waits, and
+  after 570 s prints its nine lines with `DRIVER_EXIT=running` and `RUNNING=pid <pid>, <n> s so far; run the
+  same command again` where `REPORT=` would be, exit 0; the same command run again reads the run it started.
+  Every call in flight forwards SIGTERM, SIGINT and SIGHUP to the driver's pid, a signal that arrives before
+  the pid line is kept until the line appears, and a signal after the return deadline is dropped. The wrapper's
+  step 2 and the codex page's block say "it ends with RUNNING= instead". Why: measured 2026-09-27, 45 ms after a
+  foreground subagent's final response the harness sends SIGTERM to the backgrounded command's process group
+  and to every descendant it finds by a ppid walk, then SIGKILL, and only a process in its own session and
+  already orphaned survives; on 2026-09-26 a ten-minute Astra turn was lost that way when the Haiku wrapper
+  handed back the harness notice instead of rerunning (E45). Measured after: the teardown check leaves the
+  driver alive and its report published, and a live eleven-minute Luna turn under a foreground wrapper took two
+  calls, one driver, one report. Pinned by eight cases in `evals/agent-run.test.mjs`.
+- **The agent-run SIGTERM case no longer flaps on CI.** It waits for `turn/start` in the fake server's RPC log
+  on the idle-silence scenario instead of the pid line plus 500 ms on a 1200 ms turn, which left a margin of
+  one Node spawn (E43; three CI failures on three OS and Node pairs). 20 of 20 loop runs.
+- **The lock concurrency case holds one run in a slow turn.** "two concurrent runs: exactly one wins" starts
+  the contender only once the holder's lock is on disk and checks the roles, not the sorted codes; two fast
+  turns could run one after the other and both exit 0 (E44's second case, CI run 35320724153). 100 runs under
+  load, 0 failures; a copy without the wait fails 21 of 40. E44 now names the first case's cause, an
+  ownership check followed by an action on the shared pathname, with the fix on hand and its cost.
+- **`WEB_SEARCH:` is the provider's search tool, and the row says so.** The Header fields row now says the
+  network needs no line and every level has it, that the field is set only when the user asks for the
+  provider's search, and that a mode the device refuses goes back to the user as a question, never to another
+  mode. The driver's refusal of a mode the managed policy narrows ends with "another mode is the user's
+  choice to make, not the coordinator's, and the network is unaffected". The read-level `--writable`
+  refusal moved from setup into argument parsing, so it comes first among the refusals and prints no pid line. Why: twice, 2026-09-17 and
+  2026-09-25, a coordinator read "the network is allowed" as this field, the device refused `live` after an
+  agent was spawned, and the coordinator swapped in `cached` (E1).
+- **`advisor`, `experiment` and `swarm` load `codex` alone.** Each page opens by loading the codex page
+  through the Skill tool and carries the orchestrate rules it relies on: the caps, the run directory, the
+  plan-and-stop, the five-field return, and for swarm protocol E4 with its link. None asks the Skill tool for
+  `orchestrate`, which is marked `disable-model-invocation` and refused (E39; the advisor did not start on
+  2026-09-25). Pinned by an A0 case in each suite, which fails on the previous text and names the load.
+- **`orchestrate.test.mjs` pins every rule.** F2 pins the nine Verification bullets and their count; D12 and
+  D13 pin the bulk-unit sentence and "announce its count before spawning" (E2). 12 of 12 mutations red.
+- The stray `evals/orchestrate.test.mjs.orig`, a patch leftover that came in with #14, is gone.
+- **Breaking: the lock's on-disk shape changes.** `<state>/locks/<hash>.lock` is now a relative symlink, created
+  exclusively, to a 0600 owner file beside it; the run keeps a descriptor on that file and records its identity,
+  an update writes through the descriptor and never renames over a path, and a release removes the link and the
+  file under the reclaim marker, so nothing is left after a normal run (three `--worktree` runs leave no entry, as
+  with the previous shape) at a cost of about one millisecond per release. A lock in the previous shape is
+  still honoured live and reclaimed dead. A driver from before this change that meets the link exits 2 with "is a
+  symbolic link, not a lock file; remove it and retry": do not follow that advice while the holder lives; upgrade
+  every driver that shares a state directory together. Why: update and release checked the owner and then acted
+  on the shared pathname, so a peer's lock written between the two steps was what they renamed or unlinked,
+  proven on an instrumented copy (10 of 10 update runs and 10 of 10 release runs; E44), and the same window
+  between the check and the act on the owner file is closed by the identity check. The reclaim marker is taken
+  over by a rename checked before use and dropped only when its body is this run's, so two takers cannot both
+  hold it. Pinned by twelve cases in `evals/lock.test.mjs`, two of them through `evals/lib/lock-window.mjs`,
+  which pauses a temporary copy of the driver before the lock's act. Residual, documented in the driver and in
+  `references/environment-and-internals.md`: a process that ignores the marker can still lose a file between
+  the release's check and its unlink, because POSIX has no unlink by inode. An owner file whose
+  body does not parse now refuses the directory with exit 10 naming both files, where the previous shape reclaimed
+  it: the run cannot know whether the writer is alive.
+- **The managed-policy reader fails closed on a file that is not a plist.** A failed key extraction reads as
+  "no policy" only when `plutil -convert xml1` succeeds on the file and its root is a dictionary; anything else
+  refuses every `WEB_SEARCH:` mode as unreadable. `plutil -lint` accepts a file holding `garbage`, and the
+  no-key message is the same for that file and for a dictionary without the key, so neither remedy the ledger
+  named works (E46). Pinned by two cli cases through `ENTRUST_POLICY_SEAM`.
+- **A `--run` for another report path never writes into the directory it refuses.** The refusal goes to the
+  caller alone, on its own nine lines; a launch claims `err.txt` exclusively before it records any refusal; a
+  call decides whose run a directory holds from the driver's pid line, whose report path must match the call's
+  whole, and forwards no signal before that line names its own report (E47 and two defects found beside it: a
+  prefix of the report path read as the same run, and a foreign call arriving before the pid line waited on
+  another run and forwarded its signals to it). Pinned by seven cases in `evals/agent-run.test.mjs`; a
+  relative-report launch into a live directory once appended to its `err.txt` and overwrote its exit marker.
+- The fake server's `slow-turn` scenario ends on `turn/interrupt` as `idle-silence` does (E48: SIGTERM 200 ms
+  into the turn now reports `interrupted` 58 ms later), and the protocol `stalled-turn` row's budget is 1 s
+  instead of 0.25 s (E49: the 250 ms budget expired before the driver had processed `thread/start` on a loaded
+  runner, 1 failure in 120 loaded runs at 0.25 s and 0 at 1 s, which does not separate the two by itself; the
+  mechanism does, the failing run having no thread id, and a pre-thread abort publishes no stdout JSON by the
+  driver's own contract; the rate at 1 s on CI is unmeasured).
+- **The orchestrate page waits for completion notifications, never on `TaskOutput`**, which Claude Code 2.1.277
+  removed: a background agent's return arrives as a message and its notification, the Codex poll's `DONE=` line
+  is the signal that a run ended, an interactive session may end its turn with agents alive, and a headless
+  session launches every agent in the foreground, the foreman included (E50). The live gate recognises the
+  `entrust:codex-agent` wrapper, finds a run's pid in `agent/err.txt` beside its report, and fails a wrapper
+  launched in the background. Pinned by F6, F9 and I4 in `evals/orchestrate.test.mjs`.
+- **`/entrust:cleanup` understands the lock's shape.** It tells apart a held lock, a released link, an abandoned
+  pair, a stray record and the record of a running agent, proposes the released and the stray, removes an
+  abandoned pair by number, removes anything only under the driver's own reclaim marker (imported from the
+  driver) with the identity re-checked just before each unlink, and reads records through a descriptor opened
+  under a pinned directory handle, so a record swapped for a link is listed as unrecognised and kept. Row names
+  pluralise the noun. Pinned by cases 42 to 45 in `evals/cleanup.test.mjs`.
+- **The orchestrate plan is a card of five rows, and an agent off the card is not launched.** Work; who, each agent
+  by model and role, with the workers and the checking agents counted apart; writes, where a worktree agent's tree
+  is "made and removed inside the repository, in a hidden folder" and the driver and `.claude` are no longer named;
+  cost, the tokens by agent with the coordinator's own inline work beside them; checks, who verifies what, the
+  critic, and in a design round the criterion that picks the survivors. The simple-task row counts one worker, with
+  the completeness critic beside it and its verifier named. With a Codex agent in the plan, every agent, Claude or
+  Codex, is first registered through the launcher's `agent-run.mjs --plan --run-dir <run>`, and the card is built
+  from what it prints: an `AGENT=` line per row and the `WORKERS=` and `CHECKING=` counts, which its role
+  classifier derives. The launcher writes the rows (`id | model | role | writes | tokens`) to `<run>/plan.txt` at
+  0600 and rejects a duplicate id or one that differs only in case, an id shaped like a continuation, an unknown
+  model, a role it cannot class as worker or checking, and bad writes or tokens (a number or `unknown`); the plan
+  records the declared scope and checks neither the caps nor the cost figures. Under a registered plan, `--new`
+  admits only `<run>/<listed id>/report.json`, or a continuation `<run>/<id>-<n>/report.json` (n from 2, no leading
+  zero) once the previous link's `agent/exit` exists; a continuation inherits the listed row's model, so a Claude
+  row cannot launch a Codex agent, and a `RESUME:` after a cut, a relaunch and each advisor question after the
+  first need no amendment. An agent added later is a `--plan --amend`, marked as an amendment in the file, shown,
+  and launched only after a word. A Claude agent off the card is not launched, and its description carries the
+  card's id ("<Model> <id>: <task in a few words>"). An all-Claude plan skips the registration and still shows the
+  card. Before the answer, the coordinator checks the run against the card: every launch, every write and every
+  dropped agent. `/entrust:cleanup` reads the plan file as run evidence: a run holding only a plan is listed and
+  kept until a published report proves whose it is, and a finished owned run with a plan stays selectable. Pinned
+  by C13, E5 and F11 in `evals/orchestrate.test.mjs` (F11 registers a plan and shows `-2` refused while the first
+  run is going and admitted after), two D6 cases in `evals/agent-run.test.mjs` and two in `evals/cleanup.test.mjs`;
+  the live gate checks the card against the registered plan with the launcher's own `classifyRole`, every launch
+  against that plan with its `planRowOf`, and each agent's writes against its row's writes column. Why: #15 F13 and
+  F14 (P9a, P9b): a plan of ten elements was approved unread and agents it never listed ran anyway (T7, 1.38M
+  tokens unplanned); F3: the simple-task row said "1 agent" beside a critic and a verifier; #16 Q3j: no criterion
+  was declared before blind proposers ran.
+- **The orchestrate page plans from a generated composition reference and loads the codex skill only when the plan
+  has a Codex agent.** Its first step no longer loads the codex page on every run: it plans from
+  `skills/orchestrate/references/codex-composition.md` and loads `entrust:codex` before the launcher's `--plan`, so
+  an all-Claude run never reads the codex page and a run with a Codex agent reads it as before. The reference holds
+  the codex page's `## Composition` section and its `## Rights` table with the paragraph after it, between markers
+  naming each source, generated by `evals/fragments.mjs`, which also keeps the five-field schema's inline copies in
+  the orchestrate and swarm pages equal to `skills/codex/schemas/five-fields.schema.json` and the run-directory
+  path equal in the three pages that name it; `node evals/fragments.mjs --write` regenerates the copies.
+  `evals/fragments.test.mjs` fails on drift and on a mutation per fragment, and `run-all` runs it before `package`,
+  so a release stops on it. A3 in `evals/orchestrate.test.mjs` pins the page's order, and the live gate's case 6
+  runs a plan under "no codex" that never loads the codex page, registers nothing and still shows the card. Why:
+  #15 F18 and P5: the page ordered the whole codex page loaded, 4,511 words, before a plan with no Codex agent in
+  it; P12b: hand copies of shared page text drift. A plan with a Codex agent still loads the codex page, later: the
+  reduction #15 targets for that route, 4,308 to 7,044 words, is not made here.
+- **`/entrust:advisor` advises from the first decision, on the invocation's word, and its prompt names Astra and
+  the shipped five-field schema with no effort line.** The page no longer stops for "go" before the advisor's first
+  question: the user's invocation is the word for its turns, the composition included, and a stop stays for what
+  the invocation did not grant (the workers' plan, an edit, a commit, a publication). "No advisor" (без советника)
+  ends the thread for the run and "ask the advisor" (спроси советника) starts it again. The advisor is no longer
+  "chosen by the agreed composition" it was meant to advise on. The page shows the prompt block, `MODEL: astra`, an
+  `OUTPUT_SCHEMA:` line naming the schema file the codex skill ships and no `EFFORT:` line, since a top-row agent
+  inherits the configured effort; a continuation is the same block under `RESUME:`, at the next report path
+  (`<run>/<id>-<n>/report.json`). `evals/advisor.test.mjs` D1 pins the start with the removed sentences as its
+  negative half, D3 the prompt's lines, and D4 fills the block the way a coordinator does and registers it, and a
+  continuation's `RESUME:` header, through the launcher's `--new`, which runs the driver's own prompt check. The
+  live gate's case 8 runs a four-turn advisor session: advice before any stop, a later consultation on the same
+  thread, silence after "no advisor" and a return on "ask the advisor", every advisor prompt with `MODEL: astra`,
+  the shipped schema and no `EFFORT:` line. Why: #15 F1 and #16's advisor section (P1, which includes Q1): the
+  advisor never advised the first decision, because the page stopped for a word the invocation had already given;
+  #15 F12c: the advisor page loads codex alone, so orchestrate's top-row effort rule never reached it, and an
+  advisor with no schema once answered in 111 lines of prose.
+- **A Codex agent is told its writable roots, and its brief carries what the plan found about its environment.**
+  The driver's developer instructions name the effective writable roots, the temporary directory and, at write
+  level, the working tree and every extra write grant, and say that `/tmp` is not one; they add the staged-input
+  rule: where a task says a daemon, socket or mounted checkout is unavailable, use its staged inputs and the named
+  alternative commands, and record the exact diagnostic of a command that cannot run. The plan's first step writes
+  what the coordinator found into the agent's `ENVIRONMENT:` line, a body line after `TASK:` and not a header
+  field: what is staged and where, and the daemon or socket a tool needs with the command to run instead. Pinned by
+  the D4 flow in `evals/cli.test.mjs`, which runs through a real git worktree with `--writable` and checks the
+  whole sentence, "/tmp is not one" included; the live gate checks that a write agent's `ENVIRONMENT:` line names
+  every staged input and every daemon tool with what to run instead, and `evals/gate-checks.test.mjs` runs that
+  check on a staged fixture. Why: #15 F11 and F19 (P10a): agents guessed at unavailable mounts, wrote to `/tmp` and
+  fought a VCS daemon the coordinator already knew about.
+- **The one Codex agent the coordinator waits for is a foreground call.** The orchestrate page now says what the
+  codex page says: background when agents run side by side, foreground for the one agent waited for and for every
+  agent in a headless session. F6 in `evals/orchestrate.test.mjs` pins it. Why: #15 F12a: the two pages
+  contradicted each other.
+- **The split critic's correction is a file every worker brief is written from.** It names each unit's owner and
+  every shared interface's one owner; no worker brief exists before it, each brief is written from it and names its
+  path, and each is checked against it before its worker launches. The foreman's brief carries the file
+  (`skills/orchestrate/references/foreman.md`), and the split critic's row in `references/roles.md` says the same.
+  Pinned by F2 and I9 in `evals/orchestrate.test.mjs`; the live gate's case 7 runs two units sharing one interface
+  and reads the corrected split file itself: a worker brief written before the critic returns, an interface the
+  file omits, one its owner's brief omits and a file a brief takes from its owner are each a failure. Why: #15 F6
+  and #16 Q3a: a fan-out started before the critique finished (T5), and ownership of a shared interface escaped the
+  implementer, the reviewer and the critic.
+- **The roles reference asks each brief for what #16 found missing.** A cross-review brief names the requirement,
+  the unit that owns the change and its consumers, and a valid change in the wrong unit is a finding (Q3c); a
+  strong reader's brief names the source, its revision, the decision it feeds and the evidence that ends the read,
+  and its return tells a negative from an input it could not reach (Q3e); a live prober freezes its baseline
+  capture, with its digest, revision, mode, platform and control, before any write (Q3g); the judge rules by the
+  criterion the plan named before the proposers ran (Q3j); measurers and retrospective analysts work from inputs
+  fixed by path and digest and write `unknown` for what those inputs lack (Q3k). E10 in
+  `evals/orchestrate.test.mjs` pins them. Why: #16's role table: each was a clause a brief writer could act on and
+  the row did not have.
+- **A refuter answers `unknown` when its decisive check could not run.** `refuted` now means a check ran and
+  contradicted the claim, never "uncertain"; claims reach refuters as the dedup-and-rank's one-claim clusters with
+  their origins kept, and a prerequisite the refuters share runs once, its receipt in each brief. F2 in
+  `evals/orchestrate.test.mjs` pins the bullet and fails on the old default. Why: the owner's decision of
+  2026-09-27 on #16's "preserve unknown"; #15 F5 and P8d: duplicate claims were refuted over and over (T5, T2), and
+  "could not check" was folded into "false".
+- **The user hears one paragraph per phase, of verified work.** At the end of a fan-out, a verification round or
+  the synthesis, one paragraph carries what a verifier confirmed, what is pending and what blocks; a return
+  arriving alone earns one only when it failed or asks the user something. C7 in `evals/orchestrate.test.mjs` pins
+  it, and the live gate checks one paragraph per phase. Why: #15 F16 (P13a): fourteen paragraphs a run.
+- **The completeness critic's verdict is bound to the draft it read.** The critic reads the linted draft, frozen
+  with a `shasum -a 256` manifest over the draft and every artifact it cites, and returns the manifest's digest
+  first in its `evidence`. Before the answer goes out, the manifest's digest is computed again and compared with
+  the critic's, and `shasum -a 256 -c` runs on the manifest: a different digest or a failed check voids the
+  verdict, and the changed part is read again. A `not done` verdict means fixing the answer or naming the gap, and
+  what goes out is the draft's text. `evals/orchestrate.test.mjs` F10 shows the page's check catching a changed
+  cited artifact, and the digest comparison catching a manifest rewritten after the change, which `-c` alone
+  passes; the live gate recomputes the manifest's digest, compares it with the one the critic returned and checks
+  that the answer is the draft the manifest froze. Why: #15 F4 and P8b: the critic read one version and another
+  went out (T3, T8).
+- **The orchestrate page no longer calls itself prompt only.** The sentence says what holds now: the mode adds no
+  header field or flag, what it asks of the driver and the launcher is the codex skill's and changes there, and its
+  own two scripts, the runner and the linter, write only under `$TMPDIR`. The plugin README's layout lists them and
+  the generated reference. `evals/orchestrate.test.mjs` A1 changes with it. Why: the owner's decision of
+  2026-09-27; the fixes for #15 and #16 add the runner and the linter and change the driver and the launcher.
+- **The live orchestrate gate checks what the fix run changed, and its reading of a session is tested offline.**
+  Four cases join `evals/orchestrate-live.test.mjs`: a plan under "no codex" (case 6), the split critic (7), a
+  four-turn advisor session (8), and activation by position (9), a pair of cheap Sonnet sessions with
+  `/entrust:orchestrate` first and last, read from their session files, the first required to expand the page and
+  the last recorded. The plan and full-run cases gain the checks the entries above name: the card and every launch
+  against the registered plan, each agent's writes, a write agent's `ENVIRONMENT:` line, the runner, the draft
+  linted before the critic, the critic's digest, one paragraph per phase, every return in the five fields, and the
+  answer's attribution. The gate's logic moved to `evals/lib/gate-checks.mjs`, which imports the launcher's
+  `planRowOf` and `classifyRole`, and the new `evals/gate-checks.test.mjs` runs it on fixture streams in the shape
+  of the gate's saved sessions: per check one stream built to pass and one built to fail (a rewritten manifest, a
+  malformed critic return, an out-of-scope write, a misattributed fact and a capsule that omits a staged input
+  among them), and one whole good run that passes them all at once. The first live run over the fixed tree
+  (2026-09-28) corrected four readings of the gate's own, each since pinned by a fixture from that run: the card's
+  worker and checker counts are read from its who row and compared with the launcher's WORKERS= and CHECKING=
+  lines; a Fable or Astra agent counts only where the plan names one as an agent, never in a cost row; a critic
+  continued by message is judged by its second verdict, and after the frozen draft the answer may carry one line,
+  the critic's verdict in the page's form; a lint passed by the linter's last HITS=0 line or by the runner's
+  EXIT=0, and a passed lint of the coordinator's own is a receipt. The VS
+  Code half of the activation measurement is a manual protocol in
+  `plugins/entrust/research/2026-09-27-field-audit-triage/activation-position.md`, which also corrects the drafted
+  check: the session file's expansion record does not carry the page's frontmatter. Why: the findings that came
+  back after a page sentence (M1) need a regression that watches the behaviour, and the command's position is F2
+  and P14a.
+- **`evals/README.md` states the regression rule and indexes the recurring findings to their cases.** A finding
+  that came back after a page sentence gets a regression that observes the behaviour, offline where a script owns
+  it and in the live gate where only a session shows it; a wording pin is never its only check. The offline half of
+  the index is in the README, the live half in the gate's header, and each says which cases have run. `run-all.mjs`
+  lists twenty suites, the four new ones among them. Why: M1 showed eight findings answered by a sentence in
+  0.16.0–0.20.0 and back in 0.20.0 sessions, and P12a asked for behavioural regressions instead of wording pins; F7
+  is listed as fixed before this round and F8 as waiting on its measurement, not as repaired.
+- **The driver answers yes itself to a file change whose every path lies inside the agent's writable
+  roots**, recorded with `by: "driver"` and `cause: "rights"`, and never shown to anyone. All ten declined
+  file changes measured on this machine before this change were writes into the agent's own `$TMPDIR`
+  (06-owner-round, level 3), because Codex's edit tool asks for approval by comparing the patch path's
+  spelling against the granted root's spelling: a `/private/var/…` path inside `$TMPDIR` asked and the
+  `/var/…` spelling for the same file did not (P1, level 3). Auto-yes runs with or without a mailbox armed,
+  compares resolved paths through symlinks on both sides, and offers the request instead where a path
+  resolves outside the roots or no `item/started` named one, so the coordinator still sees it. The guard
+  that contains a mailbox now also refuses a writable root that is, or is an ancestor of, `~/.codex` or the
+  state directory (E49): `--writable ~/.claude` is refused on a plugin install, where it used to grant the
+  plugin's own locks and answer log. The auto-yes's own `why` is now
+  `"rights cover it (checked as the answer was sent)"`: every directory the resolved path crosses must be a
+  plain one, never a symlink, nothing under a `.git`, `.codex` or `.agents` in any spelling (matched by
+  inode and by a case-folded name), and the whole check runs again, fresh, at the moment the answer is
+  sent rather than only when the request arrived — a directory swapped for a symlink in between is
+  followed by the server, not caught here, and whether the server itself re-resolves that swap is
+  unmeasured. A subagent thread's own request, offer or auto-yes alike, lives only while that thread's own
+  turn stays open; once it closes, a further request from it is declined at once as `"turn ended"` or
+  `"not the current turn"`.
+- **The report's `escalations` array, per entry.** Exit 6 is now "a request was declined or expired
+  unanswered", never one that was accepted, matching the help's own wording; `detail` carries the server's
+  wording, the command, or the joined file-change list whole, no longer clipped to 200 characters; every
+  entry gains `cause` (`rights`, `outside`, `sandbox` or `policy`) so a coordinator's synthesis can say why
+  approvals were needed and what avoids them next time, and `by` now also reads `driver` for an auto-yes.
+  `RECEIPT=` gains `stale=N` beside `late=N`; the report gains `approvalsDuplicate` (a request id the
+  server sent twice is answered once, and the repeat is counted, not treated as a second request) and each
+  request's own `settled.decisionFile` (`taken`, `none`, `stale` or `late`: what the decision file held as
+  the request settled). Why: a clipped `detail` hid the very command a coordinator had to read before approving it, and an
+  unnamed cause left every approval's synthesis guessing.
+- **E46 fixed**: the driver's refusal-shape comment now names `ServerRequest.json`, where the enum it means
+  actually lives, instead of a `schema-<version>/*ApprovalResponse.json` layout the pinned tree never had.
 
 ## 0.20.0 — 2026-09-18
 

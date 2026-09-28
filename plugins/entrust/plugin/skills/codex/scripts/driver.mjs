@@ -42,7 +42,7 @@ const LEVELS = new Set(["read", "write"]);
 const READ_PROFILE = "entrust_read";
 // The codex-cli release the protocol facts were measured against, matching schema-<version>/.
 // The initialize response's userAgent reports the running server's version so drift is visible.
-const PINNED_CODEX = "0.153.4";
+const PINNED_CODEX = "0.155.1";
 // This plugin's version, printed by --help and carried as driverVersion, must agree with
 // every place plugins/entrust/evals/package.test.mjs compares.
 const VERSION = "0.20.0";
@@ -192,8 +192,10 @@ const initializeParams = () => ({
   }
 });
 
+// Set by --check-prompt-file, whose refusals are one line in a shape its caller reads.
+let checkOnly = false;
 function fail(code, msg) {
-  process.stderr.write(`entrust: ${msg}\n`);
+  process.stderr.write(checkOnly ? `entrust: refused: ${msg.replace(/\s*\n\s*/g, " ")}\n` : `entrust: ${msg}\n`);
   // A caller waiting on the report file is waiting on it for refusals too: an empty path reads as
   // "unknown", and a refusal that left nothing behind is indistinguishable from an agent still starting.
   preTurnReport(code, msg);
@@ -386,6 +388,7 @@ const HELP = [
                      must come FIRST; a file with none is a read agent in the
                      current directory. Explicit flags override the file. Fields:
                      ${wrapJoined([...PROMPT_FIELDS], "/", 21)}
+  --check-prompt-file F  exit 2 on what --prompt-file F would refuse offline
   --attach FILE      attach a local image (${attachExts("localImage").join("/")}) or audio
                      file (${attachExts("localAudio").join("/")}) to the prompt; repeatable
   --answer-json      demand one bare JSON object as the answer; the report then
@@ -394,7 +397,8 @@ const HELP = [
                      server constrains generation, the driver checks the result
                      independently, and one corrective turn is spent on a mismatch
                      before exit 13. Implies --answer-json, and takes a STRICT
-                     schema only — see --help-all
+                     schema only. maxLength and maxItems are local caps; set them
+                     in a per-run schema file to change the shipped defaults — see --help-all
   --brief            ask for a summary, not a working note, and cap what comes
                      back inline. The full answer is at answerPath either way:
                      <state>/answers/<threadId>-<startedAtMs>.md, startedAtMs the
@@ -417,6 +421,14 @@ const HELP = [
   carry "additionalProperties": false and list every one of its properties in
   "required" (use "type": ["string","null"] where you wanted optional). Both are
   checked here, before the turn, because the server rejects them after it.
+  maxLength (string characters) and maxItems (array entries) are validated here,
+  removed from the copy sent to the server and checked locally. Codex 0.155.1
+  accepts both keywords (two Luna turns, 2026-09-27); Luna P6 returned exactly
+  40 characters when asked for about 400 under maxLength 40: the server cuts a
+  field at its cap, which would pass the local check with nothing kept. A final
+  overflow keeps the complete answer at answerPath and clips answerJson to its
+  caps. Copy the shipped schema under $TMPDIR for one run and edit only its caps;
+  the original file remains the default.
   A prompt file's header lines are NAME: at column 0, upper-case; a blank, a # or
   any other line ends the header, and what follows is body even if it looks like
   a field. A TASK:, CHECK: or RETURN: line always opens the body. An ALL-CAPS
@@ -690,6 +702,9 @@ ${stateSubdirHelp()}
                                 little to start --verify in (default ${LIMITS.VERIFY_FLOOR_MS}).
                                 Also a test seam: the branch is otherwise
                                 reachable only by landing inside a ${LIMITS.VERIFY_FLOOR_MS} ms window
+  ENTRUST_POLICY_SEAM           a test seam: a plist read like the device's
+                                managed Codex policy, beside it; a --web-search
+                                mode must pass both, so it narrows and never widens
   ENTRUST_LOCK_SEAM_MS          a test seam: how long to pause between the
                                 lock's ownership check and the act it guards,
                                 touching <lock>.seam while it pauses, and as
@@ -951,6 +966,7 @@ function parseArgs(argv) {
   if (o.worktree && o.cwd) fail(EXIT.USAGE, "--worktree and --cwd are contradictory: the created worktree becomes the cwd");
   if (o.worktree && o.levelExplicit && o.level === "read") fail(EXIT.USAGE, "--worktree requires --level write");
   if (o.worktree) o.level = "write";
+  if (o.level === "read" && o.writable.length) fail(EXIT.USAGE, "--writable belongs to --level write");
   // --cwd is a GRANT at write level and must be named there. At read level it only says which tree to
   // read, and the current directory is what a native subagent reads when nobody says otherwise.
   if (!o.cwd && !o.worktree) {
@@ -966,7 +982,8 @@ function parseArgs(argv) {
   }
   // Read and sanity-check the schema now, for the same reason as the regex above.
   if (o.outputSchemaFile !== undefined) {
-    ({ schema: o.outputSchema, unchecked: o.schemaUnchecked } = validateOutputSchema(o.outputSchemaFile));
+    ({ schema: o.outputSchema, serverSchema: o.serverSchema, caps: o.schemaSizeCaps,
+      unchecked: o.schemaUnchecked } = validateOutputSchema(o.outputSchemaFile));
     o.answerJson = true;   // the schema subsumes the bare-JSON demand
   }
   return o;
@@ -1016,7 +1033,7 @@ function validateOutputSchema(file) {
   // additionalProperties is in the SUPPORTED set because the strict rule above makes it mandatory:
   // listing a keyword as unchecked on every single schema would be noise, so the validator honours it
   // instead.
-  const SUPPORTED = new Set(["type", "required", "properties", "enum", "items", "additionalProperties",
+  const SUPPORTED = new Set(["type", "required", "properties", "enum", "items", "maxLength", "maxItems", "additionalProperties",
     "description", "title", "$schema", "$id", "default", "examples"]);
   const unchecked = new Set();
   (function walk(s) {
@@ -1029,9 +1046,27 @@ function validateOutputSchema(file) {
     }
   })(schema);
   if (Array.isArray(schema.items)) unchecked.add("items(tuple form)");
+  const caps = [];
+  (function collect(s, at = "$") {
+    if (!s || typeof s !== "object" || Array.isArray(s)) return;
+    for (const key of ["maxLength", "maxItems"]) if (Object.hasOwn(s, key)) {
+      if (!Number.isSafeInteger(s[key]) || s[key] < 0)
+        fail(EXIT.USAGE, `--output-schema ${at}.${key} must be a nonnegative integer`);
+      caps.push({ path: at, keyword: key, limit: s[key] });
+    }
+    for (const [k, v] of Object.entries(s.properties ?? {})) collect(v, `${at}.${k}`);
+    if (s.items && !Array.isArray(s.items)) collect(s.items, `${at}[]`);
+  })(schema);
+  const serverSchema = JSON.parse(JSON.stringify(schema));
+  (function strip(s) {
+    if (!s || typeof s !== "object" || Array.isArray(s)) return;
+    delete s.maxLength; delete s.maxItems;
+    for (const v of Object.values(s.properties ?? {})) strip(v);
+    if (s.items && !Array.isArray(s.items)) strip(s.items);
+  })(serverSchema);
   // Returned, never written here: this runs inside readOpts, and a line printed from there would come
   // out ahead of the pid line every page tells a caller to read off stderr first. main() says it.
-  return { schema, unchecked: unchecked.size ? [...unchecked].sort() : null };
+  return { schema, serverSchema, caps, unchecked: unchecked.size ? [...unchecked].sort() : null };
 }
 
 // `file` admits a regular file as well: a read-level root may be one file a tool opens read-write.
@@ -1331,12 +1366,18 @@ async function inheritedConfig() {
 const MANAGED_PREFS = "/Library/Managed Preferences/com.openai.codex.plist";
 // Return permitted modes, null when no policy narrows them, or throw when a present policy cannot be read.
 // An unreadable or malformed policy must fail closed.
-function managedWebSearchModes() {
-  if (!fs.existsSync(MANAGED_PREFS)) return null;
-  const r = spawnSync("plutil", ["-extract", "requirements_toml_base64", "raw", "-o", "-", MANAGED_PREFS],
-    { encoding: "utf8", timeout: LIMITS.SPAWN_TIMEOUT_MS, killSignal: "SIGKILL" });
-  // No such key is a real answer: the profile constrains other things and says nothing about search.
-  if (r.status !== 0) return /does not exist|Could not extract/i.test(String(r.stderr ?? "")) ? null : undefined;
+function managedWebSearchModes(file = MANAGED_PREFS) {
+  if (!fs.existsSync(file)) return null;
+  const opts = { encoding: "utf8", timeout: LIMITS.SPAWN_TIMEOUT_MS, killSignal: "SIGKILL" };
+  const r = spawnSync("plutil", ["-extract", "requirements_toml_base64", "raw", "-o", "-", file], opts);
+  if (r.status !== 0) {
+    if (!/does not exist|Could not extract/i.test(String(r.stderr ?? ""))) return undefined;
+    // No such key is a real answer: the profile constrains other things and says nothing about search.
+    // plutil gives the same message for a file that is no dictionary at all, and a bare word parses as a
+    // one-string plist in the old text format, which -lint calls OK; so the root has to be a dictionary.
+    const x = spawnSync("plutil", ["-convert", "xml1", "-o", "-", file], opts);
+    return x.status === 0 && /<plist\b[^>]*>\s*<dict\s*\/?>/.test(String(x.stdout ?? "")) ? null : undefined;
+  }
   if (!r.stdout) return undefined;
   // Buffer.from salvages malformed base64, so re-encode to detect corruption and fail closed
   // instead of treating binary noise as an unconstrained policy.
@@ -1348,6 +1389,23 @@ function managedWebSearchModes() {
   if (!m) return null;
   const modes = [...m[1].matchAll(/["']([^"']+)["']/g)].map((x) => x[1]);
   return modes.length ? modes : undefined;   // an empty list permits nothing, which is not "unrestricted"
+}
+// The one refusal of a web-search mode, for the run and for --check-prompt-file alike. ENTRUST_POLICY_SEAM
+// names a second plist read the same way, and a mode must pass both, so the seam can narrow the modes and
+// never widen them. The last clauses are there because coordinators read a user's "the network is allowed"
+// as this field and, refused, swapped in a mode nobody asked for (2026-09-17 and 2026-09-25).
+function refuseWebSearchMode(mode, network) {
+  if (!mode) return;
+  const unaffected = network
+    ? "the network is unaffected: the agent's own commands reach it with no WEB_SEARCH: line"
+    : "the network is unaffected: NETWORK: no denies it either way, and WEB_SEARCH: does not grant it";
+  for (const file of [MANAGED_PREFS, process.env.ENTRUST_POLICY_SEAM].filter(Boolean)) {
+    const allowed = managedWebSearchModes(file);
+    if (allowed === undefined)
+      fail(EXIT.USAGE, `this device has a managed Codex policy at ${file} that could not be read, so whether --web-search ${mode} is permitted cannot be established; the server would substitute a mode silently and no response field would say which; ${unaffected}`);
+    if (allowed && !allowed.includes(mode))
+      fail(EXIT.USAGE, `--web-search ${mode} is not permitted by this device's managed policy, which allows ${allowed.join("|")}; the server would silently apply one of those and no response field would say so; another mode is the user's choice to make, not the coordinator's, and ${unaffected}`);
+  }
 }
 
 // A $TMPDIR of this run's own, made at EITHER level whenever the caller exported none, 0700 so no other
@@ -1509,14 +1567,28 @@ async function isolatedHome() {
 const sleepSync = (ms) => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
 
 // Classify the lock without trusting its type: O_NOFOLLOW rejects symlinks, O_NONBLOCK avoids FIFO
-// hangs, and fstat catches directories before reading.
+// hangs, and fstat catches directories before reading. The one symlink accepted is acquireLock's
+// pointer to its owner file, which is then read under the same rules.
 // Return {gone:true} for a vanished lock (retry), or {held} with null for an unparsable lock (reclaim).
-function inspectLock(p, dir) {
+// A pointer adds {owner}, the owner file's path, and {unreadable} when that file's body does not parse:
+// an owner file is rewritten in place, so such a body may be one caught mid-write, and it is left alone.
+function inspectLock(p, dir, ownerLink = true) {
   let fd;
   try { fd = fs.openSync(p, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | fs.constants.O_NOFOLLOW); }
   catch (e) {
     if (e.code === "ENOENT") return { gone: true };
-    if (e.code === "ELOOP") fail(EXIT.USAGE, `cannot lock ${dir}: ${p} is a symbolic link, not a lock file; remove it and retry`);
+    if (e.code === "ELOOP") {
+      // Only our versioned, same-directory owner link is a lock. Never follow arbitrary links.
+      const { target } = linkTarget(p), prefix = `${path.basename(p)}.`;
+      // Gone, or no longer a link, between the open and the readlink: a peer reclaimed it. Retry.
+      if (target === null) return { gone: true };
+      if (ownerLink && target.startsWith(prefix) && /^[a-f0-9]{32}\.owner$/.test(target.slice(prefix.length))) {
+        const owner = path.join(path.dirname(p), target), seen = inspectLock(owner, dir, false);
+        if (seen.gone) return { held: null, owner };   // a link naming nothing is stale
+        return { held: seen.held, owner, unreadable: !seen.parsed };
+      }
+      fail(EXIT.USAGE, `cannot lock ${dir}: ${p} is a symbolic link, not a lock file; remove it and retry`);
+    }
     fail(EXIT.USAGE, `cannot lock ${dir}: ${p} exists but cannot be read (${e.code}); fix its permissions and retry. Do not remove it: a lock that cannot be read cannot be shown to be stale`);
   }
   try {
@@ -1525,9 +1597,9 @@ function inspectLock(p, dir) {
       const kind = st.isDirectory() ? "a directory" : st.isFIFO() ? "a named pipe" : st.isSocket() ? "a socket" : "not a regular file";
       fail(EXIT.USAGE, `cannot lock ${dir}: ${p} is ${kind}, not a lock file; remove it and retry`);
     }
-    let held = null;
-    try { held = JSON.parse(fs.readFileSync(fd, "utf8")); } catch {}
-    return { held };
+    let held = null, parsed = true;
+    try { held = JSON.parse(fs.readFileSync(fd, "utf8")); } catch { parsed = false; }
+    return { held, parsed };
   } finally { fs.closeSync(fd); }
 }
 
@@ -1585,47 +1657,116 @@ function holderGroupAlive(held) {
 // app-server group are both gone.
 const reclaimable = (held) => !holderAlive(held) && !holderGroupAlive(held);
 
-// Remove a still-stale lock under an exclusive reclaim marker; another marker owner means retry acquisition.
-// Owner liveness decides abandonment, with RECLAIM_BACKSTOP_MS only as a backstop for a recycled pid:
-// a stalled live owner keeps its marker, while a dead owner's marker can be reclaimed immediately.
-function reclaimStale(p, dir) {
+// The reclaim marker, <lock>.reclaim: whoever holds it may remove the lock's link or its owner file, and
+// nobody else may. A marker is abandoned when the process it names is gone, or when it is older than
+// RECLAIM_BACKSTOP_MS, which bounds how long a stalled live owner (or a recycled pid) can hold it: after that
+// hour a marker can be taken over from a live owner, the one window two conforming runs can meet in. cleanup.mjs imports this predicate, the three functions below and the constant rather than
+// carrying a copy of the rule.
+const RECLAIM_BACKSTOP_MS = LIMITS.RECLAIM_BACKSTOP_MS;
+const reclaimMarkerAbandoned = (pid, mtimeMs) => !holderAlive({ pid }) || Date.now() - mtimeMs > RECLAIM_BACKSTOP_MS;
+// The file at a marker path, read without following a link: dev:ino and the pid in it, or null.
+function markerAt(file) {
+  let fd;
+  try { fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | fs.constants.O_NOFOLLOW); }
+  catch { return null; }
+  try {
+    const st = fs.fstatSync(fd, { bigint: true });
+    return { dev: st.dev, ino: st.ino, mtimeMs: Number(st.mtimeMs), body: fs.readFileSync(fd, "utf8").trim() };
+  } catch { return null; } finally { fs.closeSync(fd); }
+}
+// dev:ino of each marker this process created, by lock path, for holdsReclaimMarker and dropReclaimMarker.
+const heldMarkers = new Map();
+// True when this process now holds the marker; false when a peer does. Throws when the marker cannot be
+// written at all.
+//
+// An abandoned marker is taken over by renaming it to a name of this run's own and then creating a new one
+// exclusively. Removing it by path instead let two takers that had both judged it abandoned both remove
+// it, the second removing the first one's fresh marker, and both then held it. A rename moves one file
+// once: the second taker gets ENOENT, or moves a marker that is not the one it judged, which it tells by
+// dev:ino and body and links back. If a third taker has created a marker in that instant, the link back
+// fails and the moved marker is removed: exactly one marker stands, and the run whose marker was moved
+// finds out from holdsReclaimMarker before it acts.
+function takeReclaimMarker(p) {
   const rp = `${p}.reclaim`;
   // Random, not the pid, for the reason the config temp is: two runs in different PID namespaces over one
-  // mounted state dir share a pid and would write the same name.
+  // mounted state dir share a pid and would write the same name. The moved marker takes the same shape.
   const tmp = `${p}.${crypto.randomBytes(8).toString("hex")}.rtmp`;
+  const moved = `${p}.${crypto.randomBytes(8).toString("hex")}.rtmp`;
   try {
     fs.writeFileSync(tmp, String(process.pid));
-    try { fs.linkSync(tmp, rp); }
-    catch (e) {
-      if (e.code !== "EEXIST") fail(EXIT.USAGE, `cannot reclaim the stale lock ${p}: ${e.message}`);
-      // Someone is reclaiming right now — unless the process named in their marker is gone.
-      try {
-        const owner = Number(fs.readFileSync(rp, "utf8").trim());
-        const abandoned = !holderAlive({ pid: owner }) || Date.now() - fs.statSync(rp).mtimeMs > LIMITS.RECLAIM_BACKSTOP_MS;
-        if (abandoned) fs.rmSync(rp, { force: true });
-      } catch {}
+    const st = fs.lstatSync(tmp, { bigint: true }), mine = { dev: st.dev, ino: st.ino };
+    const create = () => {
+      try { fs.linkSync(tmp, rp); heldMarkers.set(p, mine); return true; }
+      catch (e) { if (e.code !== "EEXIST") throw e; return false; }
+    };
+    if (create()) return true;
+    const seen = markerAt(rp);
+    if (!seen || !reclaimMarkerAbandoned(Number(seen.body), seen.mtimeMs)) return false;
+    try { fs.renameSync(rp, moved); } catch { return false; }
+    const got = markerAt(moved);
+    if (!got || got.dev !== seen.dev || got.ino !== seen.ino || got.body !== seen.body) {
+      try { fs.linkSync(moved, rp); } catch {}
       return false;
     }
-  } finally { fs.rmSync(tmp, { force: true }); }
+    return create();
+  } finally {
+    fs.rmSync(tmp, { force: true });
+    fs.rmSync(moved, { force: true });
+  }
+}
+// Is the marker at <p>.reclaim still the one this process created? Asked immediately before each act
+// under it, because a taker that moved it and could not put it back has removed it.
+function holdsReclaimMarker(p) {
+  const mine = heldMarkers.get(p), now = markerAt(`${p}.reclaim`);
+  return !!mine && !!now && now.dev === mine.dev && now.ino === mine.ino;
+}
+// Only OUR marker, and never by reading it and then removing the path: the marker is renamed to a name of
+// this run's own first and removed only if the moved file is this process's (its pid, and the dev:ino it
+// was created with). Anything else is linked back and false returned; if a fresh marker already stands
+// there, the moved one is removed, by the rule takeReclaimMarker keeps. The backstop above lets a peer
+// take a marker whose owner looks abandoned, and removing that peer's marker would reopen the
+// multi-holder window this serialisation exists to close.
+function dropReclaimMarker(p) {
+  const rp = `${p}.reclaim`, mine = heldMarkers.get(p);
+  heldMarkers.delete(p);
+  const moved = `${p}.${crypto.randomBytes(8).toString("hex")}.rtmp`;
+  try { fs.renameSync(rp, moved); } catch { return false; }
+  try {
+    const got = markerAt(moved);
+    if (got && got.body === String(process.pid) && (!mine || (got.dev === mine.dev && got.ino === mine.ino))) return true;
+    try { fs.linkSync(moved, rp); } catch {}
+    return false;
+  } finally { fs.rmSync(moved, { force: true }); }
+}
+
+// Remove a still-stale lock under the reclaim marker; another marker owner means retry acquisition.
+function reclaimStale(p, dir) {
+  let held;
+  try { held = takeReclaimMarker(p); }
+  catch (e) { fail(EXIT.USAGE, `cannot reclaim the stale lock ${p}: ${e.message}`); }
+  if (!held) return false;
+  let ours = true;
   try {
     // Ask again, under the reclaim lock. The lock may have been reclaimed by someone else and retaken by
     // a live process since we last looked; deleting it then is exactly the bug this exists to prevent.
     const now = inspectLock(p, dir);
-    if (!now.gone && reclaimable(now.held)) fs.rmSync(p, { force: true });
-  } finally {
-    // Only OUR marker. The backstop above lets a peer take a marker whose owner looks
-    // abandoned, and an unconditional remove here then deletes the marker that peer is reclaiming under —
-    // reopening the multi-holder window this serialisation exists to close.
-    try { if (fs.readFileSync(rp, "utf8").trim() === String(process.pid)) fs.rmSync(rp, { force: true }); } catch {}
-  }
-  return true;
+    if (!now.gone && !now.unreadable && reclaimable(now.held) && (ours = holdsReclaimMarker(p))) {
+      // unlink also removes a dangling owner link; rm(force) can leave it in place on Node/macOS.
+      try { fs.unlinkSync(p); } catch (e) { if (e.code !== "ENOENT") throw e; }
+      if (now.owner) fs.rmSync(now.owner, { force: true });
+    }
+  } finally { if (ours) dropReclaimMarker(p); else heldMarkers.delete(p); }
+  return ours;
 }
 
 // Hash the directory's dev:ino identity so case variants and symlinks share a lock.
 // Accept the caller's stat to avoid another lookup; export the key so tests use the same rule.
 const lockKey = (st) => `${crypto.createHash("sha256").update(`${st.dev}:${st.ino}`).digest("hex")}.lock`;
 
-let lockPath = null;
+// The lock this run holds: the shared link, the owner file it names, a descriptor kept open on that file
+// and the file's dev:ino at publication. The open descriptor pins the inode number, so no later file can
+// be given it while this run lives, and the update writes through it rather than by path.
+let lockPath = null, lockOwnerPath = null, lockOwnerFd = null, lockOwnerId = null, lockBody = null;
 function acquireLock(dir) {
   let st;
   try { st = fs.statSync(dir); }
@@ -1637,30 +1778,36 @@ function acquireLock(dir) {
   catch (e) { fail(EXIT.USAGE, `cannot create the lock directory ${LOCK_DIR}: ${e.message}`); }
   // The file name is a hash, so the contents have to say what it locks — for the message below and for a
   // human who finds a stale one.
-  // selfIdentity(), not a second processIdentity() call: what is written here is what lockIsOurs()
-  // compares the file against later, and two reads of `ps` are two answers that can differ — one of
-  // them a transient failure, which would leave this run unable to update or release its own lock.
-  const body = JSON.stringify({ pid: process.pid, identity: selfIdentity(), cwd: dir,
-                                started: new Date().toISOString() });
-  // Publish a fully written private temp file with link(2), which fails EEXIST if a peer won.
-  // Creating an empty lock before writing its body would expose it as abandoned and admit another writer.
-  const tmp = `${p}.${crypto.randomBytes(8).toString("hex")}.tmp`;
+  // Record the cached start-time identity so a recycled pid can still be reclaimed.
+  const body = { pid: process.pid, identity: selfIdentity(), cwd: dir, started: new Date().toISOString() };
+  // Publish a fully written owner file with an exclusive symlink; retain its unique name for release.
+  const tmp = `${p}.${crypto.randomBytes(16).toString("hex")}.owner`;
+  let unreadable = null;
   for (let attempt = 0; attempt < LIMITS.LOCK_ATTEMPTS; attempt++) {
-    let linked = false;
+    let linked = false, fd = null, id = null;
     try {
-      fs.writeFileSync(tmp, body);
-      fs.linkSync(tmp, p);
+      fd = fs.openSync(tmp, "wx", 0o600);
+      fs.writeFileSync(fd, JSON.stringify(body));
+      const st = fs.fstatSync(fd, { bigint: true });
+      id = { dev: st.dev, ino: st.ino };
+      fs.symlinkSync(path.basename(tmp), p);
       linked = true;
     } catch (e) {
       if (e.code !== "EEXIST") fail(EXIT.USAGE, `cannot lock ${dir} (${p}): ${e.message}`);
     } finally {
-      fs.rmSync(tmp, { force: true });
+      if (!linked && fd !== null) { try { fs.closeSync(fd); } catch {} fs.rmSync(tmp, { force: true }); }
     }
-    if (linked) { lockPath = p; return; }
+    if (linked) {
+      lockPath = p; lockOwnerPath = tmp; lockOwnerFd = fd; lockOwnerId = id; lockBody = body;
+      return;
+    }
     {
       const seen = inspectLock(p, dir);
       // A lock that vanished between create and read was released by a peer; retry acquisition.
       if (seen.gone) { sleepSync(LIMITS.LOCK_RETRY_MS); continue; }
+      // Asked again rather than reclaimed; if it never parses, the run is refused below.
+      unreadable = seen.unreadable ? seen.owner : null;
+      if (unreadable) { sleepSync(LIMITS.LOCK_RETRY_MS); continue; }
       // An unparsable lock names no live pid, so it cannot be honoured. Since creation is atomic this is
       // no longer a half-written file from a peer — it is a hand-made or corrupted one — but treating it
       // as held would wedge the directory forever, so it is reclaimed like any other stale lock.
@@ -1685,6 +1832,9 @@ function acquireLock(dir) {
       if (!reclaimStale(p, dir)) { sleepSync(LIMITS.LOCK_RETRY_MS); continue; }
     }
   }
+  if (unreadable) fail(EXIT.BUSY,
+    `${dir} is locked by ${p}, whose owner file ${unreadable} does not hold a body that can be read, so whether its run is alive cannot be established; ` +
+    `leave both files while any entrust run may be using ${dir}. If none is, remove ${p} and ${unreadable} and retry`);
   fail(EXIT.BUSY, `${dir} is contended: the lock at ${p} changed hands ${LIMITS.LOCK_ATTEMPTS} times without settling`);
 }
 // A test seam and nothing else: pause between an ownership check and the act it guards, so a suite can
@@ -1700,66 +1850,66 @@ function lockSeam(p) {
   sleepSync(ms);
   try { fs.rmSync(mark, { force: true }); } catch {}
 }
-// Is the body now at the lock path still OURS? The pid alone does not say so: a lock file outlives the
-// run that wrote it, and a recycled pid — or a peer in another pid namespace over one mounted state
-// directory, which acquireLock's temp naming already reasons about — carries this run's number without
-// being this run. So the start-time identity beside it is compared too, by the rule holderAlive uses,
-// and the three answers are:
-//   pid differs                        -> not ours, whatever the identities say;
-//   both identities present, differing -> not ours; this is the only positive proof of a stranger;
-//   either identity missing            -> OURS, on the pid alone.
-// That last line is deliberate and it is the only one that can be wrong in our favour. It is what a body
-// written by an older driver, one whose `ps` failed at acquisition, and one read by a run whose own `ps`
-// fails at exit all look like — and a rule that refused there would leave those runs unable to update or
-// release the lock they hold, wedging the directory until the next run reclaims it as stale. A missing
-// identity proves nothing in either direction, so it may not be read as proof of a stranger.
-function lockIsOurs(held) {
-  if (Number(held?.pid) !== process.pid) return false;
-  const mine = selfIdentity();
-  return !(typeof held?.identity === "string" && typeof mine === "string" && held.identity !== mine);
+// Is the file at the owner path still the one this run created? Its name can be read through the link,
+// so a process can put another file there; dev:ino, taken from the descriptor at publication, tells them
+// apart. Opened without following a link and without blocking, as inspectLock opens a lock.
+function ownerFileIsOurs() {
+  let fd;
+  try { fd = fs.openSync(lockOwnerPath, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | fs.constants.O_NOFOLLOW); }
+  catch { return false; }
+  try {
+    const st = fs.fstatSync(fd, { bigint: true });
+    return st.dev === lockOwnerId.dev && st.ino === lockOwnerId.ino;
+  } finally { fs.closeSync(fd); }
 }
-// The lock body gains what could not be known when it was taken: the app-server's process group exists
-// only after the spawn. Replaced by rename, so a reader sees one whole body or the other; only ever our
-// own lock, and never fatal — a lock that cannot be updated is still a lock.
-//
-// Both acts below address the PATH while the check addresses the body that was READ, so between the two
-// a peer that reclaimed this lock and put its own there loses it — to a rename it never saw, or to an
-// unlink by a run that owns nothing any more. POSIX has no conditional rename and no conditional
-// unlink, so the window is NARROWED and never closed: asking again immediately before acting, and never
-// acting on a body read earlier, leaves the gap between that last check and the one syscall that acts,
-// and a peer whose lock lands in THAT gap is still clobbered or deleted.
+const notOurs = (what) => process.stderr.write(
+  `entrust: the lock's owner file ${lockOwnerPath} is no longer the file this run created, so ${what}\n`);
+// The body gains what could not be known at acquisition: the app-server's process group exists only after
+// the spawn. Written through the descriptor, so no path is renamed over and a file put at the owner path
+// meanwhile is never touched. The new body goes in over the old before the file is cut to its length, so a
+// reader sees the old body, the new one, or one that does not parse, which inspectLock leaves alone. Never
+// fatal: a lock that cannot be updated is still a lock.
 function updateLock(fields) {
-  if (!lockPath) return;
+  if (lockOwnerFd === null) return;
   try {
-    const cur = readJson(lockPath);
-    if (!lockIsOurs(cur)) return;
-    const tmp = `${lockPath}.${crypto.randomBytes(8).toString("hex")}.tmp`;
-    try {
-      // The body is built first so the re-read is the LAST thing before the rename, not the second to
-      // last: a writeFileSync between them is a window of its own.
-      fs.writeFileSync(tmp, JSON.stringify({ ...cur, ...fields }));
-      lockSeam(lockPath);
-      // A body that cannot be read here reads as not-ours and the update is dropped, which is the right
-      // way to be wrong: what is left behind is our own lock WITHOUT appServerPgid, so a later reclaimer
-      // asks only about this driver's pid and not about the codex group it started — a lock held too
-      // long, never a peer's lock destroyed.
-      if (!lockIsOurs(readJson(lockPath))) return;
-      fs.renameSync(tmp, lockPath);
-    } finally { fs.rmSync(tmp, { force: true }); }
+    lockSeam(lockPath);
+    if (!ownerFileIsOurs()) return notOurs("it was left as it is and the app-server group is not recorded in it");
+    lockBody = { ...lockBody, ...fields };
+    const buf = Buffer.from(JSON.stringify(lockBody));
+    fs.writeSync(lockOwnerFd, buf, 0, buf.length, 0);
+    fs.ftruncateSync(lockOwnerFd, buf.length);
+    fs.fsyncSync(lockOwnerFd);
   } catch {}
 }
+// Under the reclaim marker no run that follows these rules can remove the link or make a new one, so the
+// check that the link and the owner file are still this run's and the unlinks that follow cannot be split
+// by one. The link goes first, then the owner file. A marker held by a live peer leaves the link, naming
+// nothing, for the next run on this directory to reclaim; the owner file, checked the same way, still goes.
+// A process that ignores the marker can still land between the check and an unlink: POSIX has no unlink
+// that names an inode.
 function releaseLock() {
-  if (!lockPath) return;
+  if (lockOwnerFd === null) return;
   try {
-    if (lockIsOurs(readJson(lockPath))) {
-      lockSeam(lockPath);
-      // Same rule, same direction: a read that fails leaves the file where it is, and the directory is
-      // then held by a lock whose run has exited — which the next run reclaims as stale once it finds
-      // this pid and its app-server group gone, without anyone's help.
-      if (lockIsOurs(readJson(lockPath))) fs.rmSync(lockPath, { force: true });
+    lockSeam(lockPath);
+    let held = false;
+    // Twice: the first attempt may only have removed a marker whose owner is gone. A marker that cannot
+    // be written at all counts as busy.
+    for (let attempt = 0; attempt < 2 && !held; attempt++) {
+      try { held = takeReclaimMarker(lockPath); } catch { break; }
     }
+    let mine = held;
+    try {
+      if (!ownerFileIsOurs()) notOurs("it and the lock's link were left where they are");
+      else {
+        mine = held && holdsReclaimMarker(lockPath);
+        if (mine && linkTarget(lockPath).target === path.basename(lockOwnerPath)) try { fs.unlinkSync(lockPath); } catch {}
+        fs.unlinkSync(lockOwnerPath);
+        if (!mine) process.stderr.write(`entrust: ${lockPath}.reclaim is held by another process, so the lock's link was left for the next run on this directory to reclaim\n`);
+      }
+    } finally { if (mine) dropReclaimMarker(lockPath); else heldMarkers.delete(lockPath); }
   } catch {}
-  lockPath = null;
+  try { fs.closeSync(lockOwnerFd); } catch {}
+  lockPath = lockOwnerPath = lockOwnerFd = lockOwnerId = lockBody = null;
 }
 
 // ---------------------------------------------------------------- git
@@ -2435,7 +2585,7 @@ let roots = [];
 
 // Everything the argument layer decides, on its own: --help and every refusal reachable from the
 // command line need `opts` and none of them needs a codex, a lock or a directory.
-function readOpts() {
+function readOpts(argv = process.argv.slice(2), { resolveState = true } = {}) {
   // A prompt file is expanded into ordinary argv and re-parsed, so every flag guard, every mutual
   // exclusion and every value check applies to it unchanged — a second parser would be a second set of
   // rules to keep in sync, which is how a wrapper's rights quietly stop matching the CLI's.
@@ -2443,7 +2593,6 @@ function readOpts() {
   // disagree (--timeout is the common case: the harness bounding an agent it did not author).
   // Scanned for the flag alone, not parsed: a full parse first would reject the command line for
   // missing exactly what the prompt file is about to supply (--cwd).
-  const argv = process.argv.slice(2);
   // Opened FIRST, before any other refusal this function can raise, and off the raw command line: the
   // file the caller waits on has to exist for every refusal, including the ones the --prompt-file checks
   // below raise and the ones the prompt file itself causes. A missing or flag-like value is left to
@@ -2471,10 +2620,26 @@ function readOpts() {
   }
   // The one place the state root is resolved. Here rather than at each use, so a root this driver cannot
   // work with is refused at parse time rather than halfway through the run that needs it.
-  stateDir();
+  if (resolveState) stateDir();
   // Returned rather than assigned from in here: main installs it before anything reads it, which is what
   // lets every reader below say `opts.x` instead of guarding a variable that is always set by then.
   return o;
+}
+
+// --check-prompt-file F: F as the launcher hands it to a run — --prompt-file F and nothing else, stdin
+// closed — put through every refusal that needs no server, no lock and no state directory, by the code
+// the run refuses with. The launcher's --new runs it before an agent is spawned, with neither state
+// variable set. A pass is silent and 0; a refusal is 2 and one line, `entrust: refused: <reason>`. The
+// model catalogue behind MODEL: and EFFORT:, and the directories RIGHTS: and WRITABLE: name, stay the
+// run's to refuse.
+function checkPromptFile(argv) {
+  checkOnly = true;
+  if (argv.length !== 2 || argv[0] !== "--check-prompt-file" || !argv[1] || argv[1].startsWith("--"))
+    fail(EXIT.USAGE, "--check-prompt-file takes one prompt file and no other argument");
+  const o = readOpts(["--prompt-file", argv[1]], { resolveState: false });
+  // The launcher gives the run no stdin, so a file with no body is the run's own "empty prompt".
+  if (o.prompt === undefined) fail(EXIT.USAGE, "empty prompt");
+  refuseWebSearchMode(o.webSearch, o.network);
 }
 
 async function setup() {
@@ -2500,9 +2665,6 @@ async function setup() {
   // to be known, and the read level's promise — your files stay untouched — is unaffected by it: with
   // egress granted, a write outside the temp dir is still "Operation not permitted".
   sandbox = opts.level === "read" ? null : "workspace-write";
-
-  if (opts.level === "read" && opts.writable.length)
-    fail(EXIT.USAGE, "--writable belongs to --level write");
 
   if (opts.worktree) {
     const repo = resolveDir(opts.worktree, "--worktree");
@@ -2562,13 +2724,7 @@ async function setup() {
   roots = [...new Set(opts.writable.map((d) => checkRoot(resolveDir(d, "--writable"))))]
     .filter((r) => r !== cwd);
   if (opts.approvalDir !== undefined) approvalDir = claimMailbox(opts.approvalDir);
-  if (opts.webSearch) {
-    const allowed = managedWebSearchModes();
-    if (allowed === undefined)
-      fail(EXIT.USAGE, `this device has a managed Codex policy at ${MANAGED_PREFS} that could not be read, so whether --web-search ${opts.webSearch} is permitted cannot be established; the server would substitute a mode silently and no response field would say which`);
-    if (allowed && !allowed.includes(opts.webSearch))
-      fail(EXIT.USAGE, `--web-search ${opts.webSearch} is not permitted by this device's managed policy, which allows ${allowed.join("|")}; the server would silently apply one of those and no response field would say so`);
-  }
+  refuseWebSearchMode(opts.webSearch, opts.network);
 
   const config = [
     ["web_search", opts.webSearch ?? "disabled"],
@@ -2879,6 +3035,7 @@ let tokenUsage = null;      // the latest thread/tokenUsage/updated payload: wha
 let rateLimits = null;      // the account snapshot read once before any thread is started
 let turnDiffPath = null;    // where the last turn/diff/updated payload was persisted, or null when it could not be written
 let outputAttempts = 0;     // turns STARTED under --output-schema; at most one corrective retry
+let sizeAttemptPath = null;  // the complete size-failed first answer, before a corrective turn overwrites it
 let requestFn = null;       // main()'s request closure, hoisted so the corrective turn can reach it
 let lastTurnParams = null;  // the original turn/start params, so a transient retry replays them exactly
 const transientRetries = [];  // {cause, delayMs} per retry taken, for the report
@@ -3781,7 +3938,11 @@ function handleMessage(msg, bytes = 0) {
     // turn cut off by the deadline is still an attempt the report admits to.
     if (opts.outputSchema && turnStatus === "completed") {
       const errs = answerSchemaErrors(currentFinalAnswer());
-      if (errs.length && outputAttempts < 2) { startCorrectiveTurn(errs); return; }
+      if (errs.length && outputAttempts < 2) {
+        if (errs.some((e) => /maxLength|maxItems/.test(e)))
+          sizeAttemptPath = persistAnswer(currentFinalAnswer(), ".attempt1");
+        startCorrectiveTurn(errs); return;
+      }
     }
     finish();
   }
@@ -3804,7 +3965,7 @@ function currentFinalMsg() {
 }
 const currentFinalAnswer = () => currentFinalMsg()?.text ?? "";
 
-// A deliberately SHALLOW validator — type, required, properties, enum, items — not a JSON Schema
+// A deliberately SHALLOW validator — type, required, properties, enum, items and size caps — not a JSON Schema
 // implementation. The server already constrains generation with the full schema; this is the driver's
 // independent check of the load-bearing subset, kept small enough to trust without a dependency.
 // Unknown keywords are ignored, which fails OPEN for exotic schemas: say so rather than pretend.
@@ -3821,6 +3982,10 @@ function schemaErrors(value, schema, at = "$") {
   // Compare enum members structurally so object key order does not change validity.
   if (Array.isArray(schema?.enum) && !schema.enum.some((e) => deepEqual(e, value)))
     errs.push(`${at}: not one of the permitted values`);
+  if (typeOf(value) === "string" && schema?.maxLength !== undefined && [...value].length > schema.maxLength)
+    errs.push(`${at}: ${[...value].length} characters, maxLength ${schema.maxLength}`);
+  if (typeOf(value) === "array" && schema?.maxItems !== undefined && value.length > schema.maxItems)
+    errs.push(`${at}: ${value.length} entries, maxItems ${schema.maxItems}`);
   if (typeOf(value) === "object") {
     // Use hasOwn so an inherited Object.prototype property cannot satisfy required.
     for (const k of schema?.required ?? []) if (!Object.hasOwn(value, k)) errs.push(`${at}.${k}: required and missing`);
@@ -3897,10 +4062,10 @@ function startCorrectiveTurn(errs) {
     threadId: rootThreadId,
     input: [{ type: "text", text:
       `Your final answer did not match the required JSON schema. Errors:\n- ${errs.slice(0, 8).join("\n- ")}\n` +
-      "Reply again with ONE corrected JSON object and nothing else — no prose before or after, no code fence.",
+      "If a field is too long, put its whole content in a file under $TMPDIR and name that file in artifacts; leave a summary of every material finding in the field. Reply again with ONE corrected JSON object and nothing else — no prose before or after, no code fence.",
       text_elements: [] }],
     model: opts.model ?? null, effort: null,
-    outputSchema: opts.outputSchema
+    outputSchema: opts.serverSchema
   }).catch((e) => {
     // If corrective turn/start is refused, report the first turn's answer and schemaErrors with exit 13;
     // its completed evidence must not be lost to a transport-only abort.
@@ -3922,6 +4087,25 @@ function parseAnswerJson(text) {
   const body = fenced ? fenced[1] : text.trim();
   try { return { answerJson: JSON.parse(body), answerJsonError: null }; }
   catch (e) { return { answerJson: null, answerJsonError: e.message }; }
+}
+
+function clipToSchema(value, schema, at = "$") {
+  const clipped = [];
+  const walk = (v, s, p) => {
+    if (typeof v === "string" && Number.isInteger(s?.maxLength) && [...v].length > s.maxLength) {
+      clipped.push({ path: p, limit: s.maxLength, length: [...v].length });
+      return [...v].slice(0, s.maxLength).join("");
+    }
+    if (Array.isArray(v)) {
+      const max = Number.isInteger(s?.maxItems) ? s.maxItems : v.length;
+      if (v.length > max) clipped.push({ path: p, limit: max, length: v.length });
+      return v.slice(0, max).map((item, i) => walk(item, s?.items, `${p}[${i}]`));
+    }
+    if (v && typeof v === "object") return Object.fromEntries(Object.entries(v)
+      .map(([key, item]) => [key, walk(item, s?.properties?.[key], `${p}.${key}`)]));
+    return v;
+  };
+  return { value: walk(value, schema, at), clipped };
 }
 
 // The rollout under ~/.codex/sessions carries the originator, the model provider and the whole turn —
@@ -4181,7 +4365,12 @@ function classifyEvidence() {
   const answerPartial = partialText ? (opts.brief ? clip(partialText, LIMITS.BRIEF_LINES, LIMITS.BRIEF_BYTES, answerPartialPath) : partialText) : null;
   // Capped only when asked. A caller who did not ask for --brief gets exactly what the model said, because
   // silently truncating an answer is how a coordinator ends up acting on half a sentence.
-  const answer = opts.brief ? clip(fullAnswer, LIMITS.BRIEF_LINES, LIMITS.BRIEF_BYTES, answerPath) : fullAnswer;
+  const sizeOverflow = schemaErrs?.some((e) => /maxLength|maxItems/.test(e)) ?? false;
+  const parsed = sizeOverflow ? parseAnswerJson(fullAnswer) : null;
+  const bounded = sizeOverflow && parsed?.answerJson && typeof parsed.answerJson === "object"
+    ? clipToSchema(parsed.answerJson, opts.outputSchema) : null;
+  const answer = bounded ? JSON.stringify(bounded.value)
+    : opts.brief ? clip(fullAnswer, LIMITS.BRIEF_LINES, LIMITS.BRIEF_BYTES, answerPath) : fullAnswer;
   const commentaryOnly = !final && messages.length > 0;
   // A turn that said things but answered nothing: the rollout at receiptPath holds every message, and
   // this is the same text one open away. Convenience, not recovery.
@@ -4189,7 +4378,7 @@ function classifyEvidence() {
     ? persistAnswer(messages.map((m) => `## ${m.phase ?? "unphased"}\n\n${m.text}`).join("\n\n"), ".commentary")
     : null;
   return { ran, commandsRan, blocked, probeNegatives, failedCmds, declinedCmds, failedPatches, expected, pipedToPager, final,
-           fullAnswer, schemaErrs, answerPath, answer, commentaryOnly, commentaryPath,
+           fullAnswer, schemaErrs, answerPath, answer, sizeOverflow, bounded, commentaryOnly, commentaryPath,
            answerPartial, answerPartialPath: answerPartial ? answerPartialPath : null };
 }
 
@@ -4399,7 +4588,7 @@ function writeReport(ev, verifySkipped, codeOverride) {
   const receiptPath = receipt?.path ?? null;
   const code = codeOverride ?? decideExitCode(ev, verifySkipped);
   const { ran, blocked, probeNegatives, failedCmds, declinedCmds, failedPatches, expected, pipedToPager, final,
-          fullAnswer, schemaErrs, answerPath, answer, commentaryOnly, commentaryPath,
+          fullAnswer, schemaErrs, answerPath, answer, sizeOverflow, bounded, commentaryOnly, commentaryPath,
           answerPartial, answerPartialPath } = ev;
   // Where the wall clock went. commandMs is the server's own per-command measurement, so modelMs is the
   // remainder after setup and the work the model ordered — the part a budget must size. A remainder, not a
@@ -4445,9 +4634,11 @@ function writeReport(ev, verifySkipped, codeOverride) {
     tokenUsage, rateLimits, turnDiffPath,
     ...(opts.outputSchema ? { outputAttempts, outputSchemaOk: schemaErrs.length === 0,
         schemaErrors: schemaErrs.length ? schemaErrs.slice(0, 12) : null,
-        // What the driver's shallow validator could NOT re-verify; the server still enforced these
-        // during generation. Null means the whole schema was within the checked subset.
-        schemaKeywordsUnchecked: opts.schemaUnchecked } : {}),
+        // What the driver's shallow validator could NOT re-verify; server enforcement of these
+        // keywords is unknown. Null means the whole schema was within the checked subset.
+        schemaKeywordsUnchecked: opts.schemaUnchecked, schemaSizeCaps: opts.schemaSizeCaps,
+        schemaOverflow: sizeOverflow ? { completeAnswerPath: answerPath, clipped: bounded?.clipped ?? [] } : null,
+        answerAttemptPaths: sizeAttemptPath ? [sizeAttemptPath] : [] } : {}),
     commandsSucceeded: ran.length, commandsMatchingExpectation: expected.length,
     // commandsFailed excludes the commands counted in commandsDeclined.
     // commandsDeclined counts commands and escalations counts approval requests; the exit ladder reads
@@ -4535,7 +4726,8 @@ function writeReport(ev, verifySkipped, codeOverride) {
     answer, answerPath, answerTruncated: answer !== fullAnswer,
     // Include answerJson only when requested, distinguishing a parse failure from a flag that was not given.
     // Parse the full answer before BRIEF_LINES / BRIEF_BYTES clipping so the cap cannot corrupt JSON.
-    ...(opts.answerJson ? parseAnswerJson(fullAnswer) : {})
+    ...(opts.answerJson ? bounded ? { answerJson: bounded.value, answerJsonError: null }
+      : parseAnswerJson(fullAnswer) : {})
   };
 
   const out = `${JSON.stringify({ ...report, commands }, null, 2)}\n`;
@@ -4651,6 +4843,8 @@ function developerInstructions() {
     opts.network
       ? "You have network access: use it for what is not in this checkout, keep to the hosts this task names, and cite what you fetched."
       : "You have no network access; cite files you actually read.",
+    `Your writable roots are: ${[canonPath(process.env.TMPDIR), ...(opts.level === "write" ? [cwd, ...roots] : [])].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ")}; /tmp is not one. Put generated files under a granted root and name their paths.`,
+    "If a task says a daemon, socket, or mounted checkout is unavailable, use its staged inputs and named alternative commands; record an unavailable command's exact diagnostic instead of guessing.",
     "If a command cannot run, record it in one line — the command, whether it started, its exit status if there was one, and the exact diagnostic — then continue. Write \"unknown\" for what you could not observe rather than inferring it.",
     "Never report a test as passing unless you ran it and saw the count in this turn.",
     "State uncertainty plainly rather than guessing; an honest 'I could not determine this' is useful.",
@@ -4827,6 +5021,7 @@ function spawnServer() {
 }
 
 async function main() {
+  if (process.argv.includes("--check-prompt-file")) return checkPromptFile(process.argv.slice(2));
   opts = readOpts();
   // The pid a caller signals to stop this agent, and the identity that says the pid is still this run
   // rather than whatever the OS recycled it into. Before setup(), because an agent killed during its
@@ -4834,7 +5029,7 @@ async function main() {
   process.stderr.write(`entrust: pid=${process.pid} identity=${selfIdentity() ?? "unknown"}`
     + `${reportFilePath === null ? "" : ` reportPath=${reportFilePath}`}\n`);
   if (opts.schemaUnchecked)
-    process.stderr.write(`entrust: --output-schema uses keywords the driver's validator does not check (${opts.schemaUnchecked.join(", ")}); the server still enforces them during generation, and the report lists them as schemaKeywordsUnchecked\n`);
+    process.stderr.write(`entrust: --output-schema uses keywords the driver's validator does not check (${opts.schemaUnchecked.join(", ")}); server enforcement is unknown, and the report lists them as schemaKeywordsUnchecked\n`);
   await setup();
   setupDoneMs = Date.now();
   armWallClock();
@@ -4950,7 +5145,7 @@ async function main() {
     // coordinator saw.
     input: [...(opts.attachments ?? []), { type: "text", text: prompt, text_elements: [] }],
     model: opts.model ?? null, effort: null,
-    ...(opts.outputSchema ? { outputSchema: opts.outputSchema } : {})
+    ...(opts.outputSchema ? { outputSchema: opts.serverSchema } : {})
   };
   await conn.request("turn/start", lastTurnParams);
 }
@@ -4983,8 +5178,9 @@ const RUN_AS_MAIN = (() => {
 // and a second copy of "is this pid still the holder" is a second answer that can disagree with the
 // lock it is about. Every name here is already a module-scope binding, so exporting them changes no
 // behaviour, and RUN_AS_MAIN above keeps an import from starting a turn, a handler or a state directory.
-export { EXIT, FIELDS, LADDER, PINNED_CODEX, PROMPT_FIELDS, VERSION, canonPath, holderAlive, lockKey,
-         processIdentity, reclaimable };
+export { EXIT, FIELDS, LADDER, PINNED_CODEX, PROMPT_FIELDS, RECLAIM_BACKSTOP_MS, VERSION, canonPath,
+         dropReclaimMarker, holderAlive, holdsReclaimMarker, lockKey, processIdentity, reclaimMarkerAbandoned,
+         reclaimable, takeReclaimMarker };
 
 if (RUN_AS_MAIN) {
   process.stdout.on("error", stdoutFailed);

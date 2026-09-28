@@ -1,0 +1,164 @@
+{
+ "overall": {
+  "G": 2,
+  "matched_G": 2,
+  "recall": 1.0,
+  "luna": 19,
+  "extra": 7,
+  "extra_share": 0.368,
+  "missed": [],
+  "extra_ids": [
+   "pilot2-P017-B-01",
+   "pilot2-P017-B-03",
+   "pilot2-P017-B-04",
+   "pilot2-P017-B-06",
+   "pilot2-P065-B-03",
+   "pilot2-P065-B-04",
+   "pilot2-P093-B-01"
+  ]
+ },
+ "overall_no_low": {
+  "G": 2,
+  "matched_G": 2,
+  "recall": 1.0,
+  "luna": 17,
+  "extra": 6,
+  "extra_share": 0.353,
+  "missed": [],
+  "extra_ids": [
+   "pilot2-P017-B-01",
+   "pilot2-P017-B-03",
+   "pilot2-P017-B-04",
+   "pilot2-P065-B-03",
+   "pilot2-P065-B-04",
+   "pilot2-P093-B-01"
+  ]
+ },
+ "angle_A": {
+  "G": 2,
+  "matched_G": 2,
+  "recall": 1.0,
+  "luna": 7,
+  "extra": 0,
+  "extra_share": 0.0,
+  "missed": [],
+  "extra_ids": []
+ },
+ "angle_B": {
+  "G": 0,
+  "matched_G": 0,
+  "recall": null,
+  "luna": 15,
+  "extra": 10,
+  "extra_share": 0.667,
+  "missed": [],
+  "extra_ids": [
+   "pilot2-P017-B-01",
+   "pilot2-P017-B-02",
+   "pilot2-P017-B-03",
+   "pilot2-P017-B-04",
+   "pilot2-P017-B-05",
+   "pilot2-P017-B-06",
+   "pilot2-P022-B-01",
+   "pilot2-P065-B-03",
+   "pilot2-P065-B-04",
+   "pilot2-P093-B-01"
+  ]
+ },
+ "runs": [
+  {
+   "id": "pilot2-P017-A",
+   "tokens": 126533,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 35
+  },
+  {
+   "id": "pilot2-P017-B",
+   "tokens": 128411,
+   "episodes": 6,
+   "exit": 0,
+   "wall": 46
+  },
+  {
+   "id": "pilot2-P022-A",
+   "tokens": 127629,
+   "episodes": 2,
+   "exit": 0,
+   "wall": 45
+  },
+  {
+   "id": "pilot2-P022-B",
+   "tokens": 128903,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 43
+  },
+  {
+   "id": "pilot2-P065-A",
+   "tokens": 125906,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 38
+  },
+  {
+   "id": "pilot2-P065-B",
+   "tokens": 130237,
+   "episodes": 4,
+   "exit": 0,
+   "wall": 53
+  },
+  {
+   "id": "pilot2-P066-A",
+   "tokens": 126696,
+   "episodes": 0,
+   "exit": 0,
+   "wall": 32
+  },
+  {
+   "id": "pilot2-P066-B",
+   "tokens": 127461,
+   "episodes": 0,
+   "exit": 0,
+   "wall": 32
+  },
+  {
+   "id": "pilot2-P091-A",
+   "tokens": 164429,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 55
+  },
+  {
+   "id": "pilot2-P091-B",
+   "tokens": 166182,
+   "episodes": 1,
+   "exit": 0,
+   "wall": 50
+  },
+  {
+   "id": "pilot2-P093-A",
+   "tokens": 126195,
+   "episodes": 2,
+   "exit": 0,
+   "wall": 40
+  },
+  {
+   "id": "pilot2-P093-B",
+   "tokens": 130425,
+   "episodes": 4,
+   "exit": 0,
+   "wall": 64
+  }
+ ],
+ "tokens": {
+  "n": 12,
+  "total": 1609007,
+  "median": 128020,
+  "max": 166182
+ },
+ "gates": {
+  "recall_ok": true,
+  "extra_ok": false
+ }
+}

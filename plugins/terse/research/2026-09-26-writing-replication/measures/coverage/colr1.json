@@ -1,0 +1,25 @@
+[
+ {
+  "agent": "colr1-P036-B",
+  "part": "P036",
+  "thread": "01a0df3c-ad9e-71b2-a6c7-06506e84840d",
+  "rollout_files": 1,
+  "pages": 10,
+  "read": [
+   "page-01.md",
+   "page-02.md",
+   "page-03.md",
+   "page-04.md",
+   "page-05.md",
+   "page-06.md",
+   "page-07.md",
+   "page-08.md",
+   "page-09.md",
+   "page-10.md"
+  ],
+  "partial": [],
+  "unread": [],
+  "changed": [],
+  "full": true
+ }
+]

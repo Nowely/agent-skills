@@ -14,8 +14,10 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { DRIVER, EXIT, FAKE, codexShim, lockKey, readJson, registry, runCases, skip, spawnNode,
+import { DRIVER, EVALS, EXIT, FAKE, codexShim, lockKey, readJson, registry, runCases, skip, spawnNode,
          summarize, tempDir } from "./lib/harness.mjs";
+import { MARKER_ENV, MARKER_POINTS_ENV, WINDOW_ENV, instrumentLockWindow, instrumentMarkerTakeover, markerMark,
+         windowAck, windowMark } from "./lib/lock-window.mjs";
 
 // Use a private state directory so planted locks, inherited config and pruning cannot affect real
 // delegations. The moving-HOME case still detects a driver that ignores this override.
@@ -35,10 +37,10 @@ function freshDir(name) {
 }
 
 // --level write, so acquireLock actually runs. A slow scenario is used where a case needs the lock held
-// while a second run tries for it.
-function run(dir, { scenario = "happy", timeout = 30, args = [], env = {} } = {}) {
+// while a second run tries for it. `driver` is for the cases that run another copy of it.
+function run(dir, { scenario = "happy", timeout = 30, args = [], env = {}, driver = DRIVER } = {}) {
   return spawnNode(
-    [DRIVER, "--level", "write", ...(dir === null ? [] : ["--cwd", dir]),
+    [driver, "--level", "write", ...(dir === null ? [] : ["--cwd", dir]),
      "--timeout", String(timeout), "--allow-no-commands", ...args, "--prompt", "irrelevant, the server is scripted"],
     { env: { PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: scenario,
              ENTRUST_STATE_DIR: STATE_DIR, ...env } }).done;
@@ -185,8 +187,8 @@ test("a lock naming this run's own pid, written by something else, is not releas
     return verdict === true ? true : verdict + " — the pid matched and the identity did not";
   });
 
-test("a lock naming this run's pid with NO identity in it is still released",
-  "the other side of the same rule, and the one that can only be wrong in our favour: a body carrying no identity is what an older driver wrote, and what a driver whose `ps` failed at acquisition wrote. A release that demanded the second identity would leave every one of those runs unable to release the lock it holds, wedging its directory until the next run reclaims it as stale — so a missing identity decides on the pid alone",
+test("the lock this run created is released even when its body carries no identity",
+  "the owner file's unique name is what makes the lock this run's, not the body in it: a body without identity is what a driver whose `ps` failed at acquisition writes, and a release that asked the body for it would leave that run's directory held until the next run reclaims it as stale",
   async () => {
     const d = freshDir("release-no-identity");
     const p = lockFor(d);
@@ -195,14 +197,34 @@ test("a lock naming this run's pid with NO identity in it is still released",
       const { code, err } = await pending;
       return "the run never recorded its app-server group in " + p + " (exit " + code + ": " + err.trim().slice(0, 120) + ")";
     }
-    const mine = readJson(p);
-    // The run's own pid and nothing else: plantPeer's body has no identity field at all.
-    plantPeer(p, d, { pid: mine.pid });
+    // The run's own file, edited in place: replacing the pointer instead would make it a peer's lock.
+    const owner = path.join(LOCK_DIR, fs.readlinkSync(p));
+    const mine = readJson(owner);
+    delete mine.identity;
+    fs.writeFileSync(owner, JSON.stringify(mine));
     const { code, err } = await pending;
-    const left = fs.existsSync(p);
-    fs.rmSync(p, { force: true });
+    const left = fs.existsSync(owner);
+    fs.rmSync(owner, { force: true });
     if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 120);
-    return left ? "a lock carrying this run's own pid and no identity outlived the run that owned it" : true;
+    return left ? "the lock this run created, its identity removed, outlived the run" : true;
+  });
+
+test("a replacement lock that borrows this run's pid and carries no identity outlives this run",
+  "before E44 a body naming this run's pid without an identity was taken for this run's own and deleted on release, and that is what a peer in another pid namespace over the same state directory writes. A pid proves nothing about who wrote the file; the run releases only the owner file it created",
+  async () => {
+    const d = freshDir("release-borrowed-pid");
+    const p = lockFor(d);
+    const pending = run(d, { scenario: "slow-turn" });
+    if (!await waitUntil(() => readJson(p)?.appServerPgid)) {
+      const { code, err } = await pending;
+      return "the run never recorded its app-server group in " + p + " (exit " + code + ": " + err.trim().slice(0, 120) + ")";
+    }
+    // plantPeer's body has no identity field at all.
+    const peer = plantPeer(p, d, { pid: readJson(p).pid });
+    const { code, err } = await pending;
+    const verdict = peerVerdict(p, peer);
+    if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 120);
+    return verdict;
   });
 
 test("a peer that replaces the lock inside the UPDATE's window keeps it",
@@ -242,6 +264,79 @@ test("a peer that replaces the lock inside the RELEASE's window keeps it",
     if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 160);
     return verdict;
   });
+
+// The two cases above hold a window open with the shipped seam, which sits BEFORE the last ownership
+// check, so a driver that checks again lands them outside it. The four below pause a copy at the last
+// point a peer can land (evals/lib/lock-window.mjs): on a driver before E44, after its final ownership
+// read and immediately before the rename or unlink, which is the gap E44 names; on this one, before the
+// owner-file check that the release makes under the reclaim marker. LOCK_WINDOW_SOURCE names another
+// driver to instrument in place of this one: pointed at a copy of the driver before E44 the first two
+// fail with their own assertion, and pointed at one without the owner-file check the last two do.
+let windowCopy;
+const windowDriver = () => (windowCopy ??= instrumentLockWindow(process.env.LOCK_WINDOW_SOURCE || DRIVER));
+async function peerAfterLastCheck(phase, fn) {
+  const d = freshDir(`${phase}-last-check`);
+  const p = lockFor(d);
+  const pending = run(d, { driver: windowDriver(), env: { [WINDOW_ENV]: phase } });
+  if (!await waitUntil(() => fs.existsSync(windowMark(p)), 20000)) {
+    const { code, err } = await pending;
+    return `the pause in ${fn} never opened (exit ${code}: ${err.trim().slice(0, 160)})`;
+  }
+  // Published whole, by rename, the way a peer that judged this lock stale would.
+  const peer = JSON.stringify({ pid: process.pid, cwd: fs.realpathSync(d), started: "peer" });
+  fs.writeFileSync(`${p}.peer`, peer);
+  fs.renameSync(`${p}.peer`, p);
+  fs.writeFileSync(windowAck(p), "go");
+  const { code, err } = await pending;
+  const unacknowledged = fs.existsSync(windowAck(p));
+  fs.rmSync(windowAck(p), { force: true });
+  const verdict = peerVerdict(p, peer);
+  if (unacknowledged) return `the pause in ${fn} timed out before the peer was in place, so nothing was measured`;
+  if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 160);
+  return verdict === true ? true : `${fn} removed or changed the peer's replacement lock: ${verdict}`;
+}
+
+test("a peer's lock that lands at the last point before the update acts keeps it",
+  "no second check closes this: the update checks the body and then renames over the PATH, so a peer whose lock lands between the two loses it to a rename it never saw (E44). Only a rename that cannot reach the shared path keeps it",
+  () => peerAfterLastCheck("update", "updateLock"));
+
+test("a peer's lock that lands at the last point before the release acts keeps it",
+  "the release checks the body and then unlinks the PATH, so a peer whose lock lands between the two has it deleted by a run that owns nothing any more, and the next run walks into a directory that peer is writing (E44)",
+  () => peerAfterLastCheck("release", "releaseLock"));
+
+// The owner file's name can be read through the link, so another process can rename its own file over it.
+async function fileOverOwner(phase, fn) {
+  const d = freshDir(`${phase}-owner-swap`);
+  const p = lockFor(d);
+  const pending = run(d, { driver: windowDriver(), env: { [WINDOW_ENV]: phase } });
+  if (!await waitUntil(() => fs.existsSync(windowMark(p)), 20000)) {
+    const { code, err } = await pending;
+    return `the pause in ${fn} never opened (exit ${code}: ${err.trim().slice(0, 160)})`;
+  }
+  const owner = path.join(LOCK_DIR, fs.readlinkSync(p));
+  const peer = JSON.stringify({ pid: process.pid, cwd: fs.realpathSync(d), started: "peer" });
+  fs.writeFileSync(`${owner}.peer`, peer);
+  fs.renameSync(`${owner}.peer`, owner);
+  fs.writeFileSync(windowAck(p), "go");
+  const { code, err } = await pending;
+  const unacknowledged = fs.existsSync(windowAck(p));
+  fs.rmSync(windowAck(p), { force: true });
+  const verdict = peerVerdict(owner, peer);
+  try { fs.unlinkSync(p); } catch {}
+  if (unacknowledged) return `the pause in ${fn} timed out before the file was in place, so nothing was measured`;
+  if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 160);
+  if (verdict !== true) return `${fn} removed or changed the file put at its owner path: ${verdict}`;
+  return err.includes(`the lock's owner file ${owner} is no longer the file this run created`)
+    || `the run did not say that its owner file had been replaced: ${err.trim().slice(-200)}`;
+}
+
+test("a file renamed over the owner file before the update is left as it is, and the run says so",
+  "the update used to rename over the owner path, so a file another process put at that name was replaced by one it never saw. The owner file is now told from any other by the dev:ino it had at publication, and the update writes through the descriptor it kept (Codex Sol V6, E44)",
+  () => fileOverOwner("update", "updateLock"));
+
+test("a file renamed over the owner file before the release is left as it is, and the run says so",
+  "the release used to unlink the owner path, so a file another process put at that name was deleted by a run that had not made it. The release now checks the dev:ino under the reclaim marker and, on a mismatch, leaves the file and the link and releases nothing (Codex Sol V6, E44)",
+  () => fileOverOwner("release", "releaseLock"));
 
 test("a second run in the same directory is refused",
   "two runs in one directory edit, test and clean up over each other",
@@ -349,13 +444,157 @@ test("a symlink at the lock path is refused rather than followed",
     return code === EXIT.USAGE ? true : `expected 2, got ${code}`;
   });
 
+test("the lock is a link to a private owner file, and a release removes both",
+  "update and release act only on the owner file this run created, told apart by its dev:ino (E44). The release also removes the link, under the reclaim marker, where no run that honours the marker can replace or remove it, so a finished run leaves nothing in the locks directory",
+  async () => {
+    const d = freshDir("owner-shape");
+    const p = lockFor(d);
+    const holder = run(d, { scenario: "slow-turn" });
+    if (!await waitUntil(() => readJson(p)?.appServerPgid)) {
+      const { code, err } = await holder;
+      return "the holder never recorded its app-server group in " + p + " (exit " + code + ": " + err.trim().slice(0, 120) + ")";
+    }
+    const target = fs.readlinkSync(p);
+    const mode = fs.statSync(path.join(LOCK_DIR, target)).mode & 0o777;
+    const h = await holder;
+    const left = fs.readdirSync(LOCK_DIR).filter((f) => f.startsWith(path.basename(p)));
+    if (!/^[0-9a-f]{64}\.lock\.[0-9a-f]{32}\.owner$/.test(target) || !target.startsWith(`${path.basename(p)}.`))
+      return `the link names ${JSON.stringify(target)}, not an owner file beside it`;
+    if (mode !== 0o600) return `the owner file is mode ${mode.toString(8)}, not 600`;
+    if (h.code !== EXIT.OK) return `the holder exited ${h.code}: ${h.err.trim().slice(0, 120)}`;
+    return left.length === 0 || `the release left ${left.join(", ")} behind`;
+  });
+
+test("a release that finds the reclaim marker held leaves the link naming nothing, and the next run reclaims it",
+  "the marker is what keeps a peer from replacing the link between the release's check and its unlink. Without it the release removes only its own owner file and says so, and the link it leaves is stale to the next run on that directory, not a symlink it refuses",
+  async () => {
+    const d = freshDir("release-marker-busy");
+    const p = lockFor(d);
+    fs.mkdirSync(LOCK_DIR, { recursive: true, mode: 0o700 });
+    // Held by this suite's own process, so provably alive.
+    fs.writeFileSync(`${p}.reclaim`, String(process.pid));
+    const first = await run(d);
+    let target = null;
+    try { target = fs.readlinkSync(p); } catch {}
+    const ownerLeft = target !== null && fs.existsSync(path.join(LOCK_DIR, target));
+    fs.rmSync(`${p}.reclaim`, { force: true });
+    const next = await run(d);
+    const left = fs.readdirSync(LOCK_DIR).filter((f) => f.startsWith(path.basename(p)));
+    if (first.code !== EXIT.OK) return `the run exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
+    if (!first.err.includes(`${p}.reclaim is held by another process`)) return `the run did not say why it left the link: ${first.err.trim().slice(-200)}`;
+    if (target === null) return "the release removed the link without holding the marker";
+    if (ownerLeft) return "the release left its own owner file behind";
+    if (next.code !== EXIT.OK) return `the next run did not reclaim the link: exit ${next.code} (${next.err.trim().slice(0, 160)})`;
+    return left.length === 0 || `the next run's release left ${left.join(", ")} behind`;
+  });
+
+test("an owner file whose body does not parse is left alone, and the run is refused",
+  "the owner file is rewritten in place, so a body that does not parse may be one read mid-write, and reclaiming it would let a second writer in beside a live run. It is asked again and then refused with exit 10, naming both files; the previous shape, published whole and replaced by rename, still reclaims an unparsable lock",
+  async () => {
+    const d = freshDir("owner-unparsable");
+    const p = lockFor(d);
+    fs.mkdirSync(LOCK_DIR, { recursive: true, mode: 0o700 });
+    const owner = `${p}.${"c".repeat(32)}.owner`;
+    const cut = JSON.stringify({ pid: process.pid, cwd: fs.realpathSync(d), started: "now" }).slice(0, -1);
+    fs.writeFileSync(owner, cut);
+    fs.symlinkSync(path.basename(owner), p);
+    const { code, err } = await run(d);
+    const kept = fs.readlinkSync(p) === path.basename(owner) && fs.readFileSync(owner, "utf8") === cut;
+    for (const f of [p, owner]) try { fs.unlinkSync(f); } catch {}
+    if (code !== EXIT.BUSY) return `expected 10, got ${code} (${err.trim().slice(0, 160)})`;
+    if (!kept) return "the refused run changed the link or the owner file";
+    return err.includes(owner) || `the refusal does not name the owner file: ${err.trim().slice(0, 200)}`;
+  });
+
+test("a pointer whose owner file is itself a symbolic link is refused rather than followed",
+  "the pointer is followed one step, to a name of the owner-file shape beside it, and that file is opened as a lock is: a link there would let a planted pointer steer the driver to a file of someone else's choosing",
+  async () => {
+    const d = freshDir("owner-link");
+    const p = lockFor(d);
+    const victim = path.join(freshDir("owner-link-target"), "victim");
+    fs.writeFileSync(victim, "precious");
+    fs.mkdirSync(LOCK_DIR, { recursive: true, mode: 0o700 });
+    const owner = `${p}.${"a".repeat(32)}.owner`;
+    fs.symlinkSync(victim, owner);
+    fs.symlinkSync(path.basename(owner), p);
+    const { code, err } = await run(d);
+    const survived = fs.readFileSync(victim, "utf8") === "precious";
+    for (const link of [p, owner]) try { fs.unlinkSync(link); } catch {}
+    if (!survived) return "the owner link's target was clobbered";
+    return code === EXIT.USAGE ? true : `expected 2, got ${code} (${err.trim().slice(0, 160)})`;
+  });
+
+test("a lock in the previous shape, a regular file, holds the directory while its holder lives and is reclaimed once it is gone",
+  "a driver from before E44 writes its lock as a regular file at the shared path, and one state directory can hold both while a machine upgrades: honouring it keeps the old run's directory its own, and reclaiming it when dead keeps the directory from wedging",
+  async () => {
+    const d = freshDir("previous-shape");
+    const p = lockFor(d);
+    fs.mkdirSync(LOCK_DIR, { recursive: true, mode: 0o700 });
+    const live = JSON.stringify({ pid: process.pid, identity: selfIdentity(), cwd: fs.realpathSync(d), started: "previous" });
+    fs.writeFileSync(p, live);
+    const busy = await run(d);
+    const kept = fs.lstatSync(p).isFile() && fs.readFileSync(p, "utf8") === live;
+    fs.writeFileSync(p, JSON.stringify({ pid: 2147483646, cwd: fs.realpathSync(d), started: "previous" }));
+    const free = await run(d);
+    let after = null;
+    try { after = fs.lstatSync(p); } catch {}
+    if (busy.code !== EXIT.BUSY) return `a live lock in the previous shape was not honoured: exit ${busy.code} (${busy.err.trim().slice(0, 160)})`;
+    if (!kept) return "the refused run changed the live lock in the previous shape";
+    if (free.code !== EXIT.OK) return `a dead lock in the previous shape was not reclaimed: exit ${free.code} (${free.err.trim().slice(0, 160)})`;
+    return after?.isFile() ? "the dead lock in the previous shape is still at the lock path" : true;
+  });
+
+// The last release whose driver writes the previous shape; its tree kept the plugin one level up.
+const PREVIOUS_RELEASE = "entrust@0.20.0";
+test("a driver from before the link refuses it with exit 2 and leaves it where it is",
+  "a downgrade, or an older copy sharing one state directory, meets the link while a run holds it, or after a release that found the marker busy or a run that was killed: it must refuse the directory rather than read the link as free, and must leave a live run's lock alone. Its message says to remove the link, which is wrong while the holder lives and is why the upgrade needs its own release note",
+  async () => {
+    const shown = spawnSync("git", ["-C", EVALS, "show", `${PREVIOUS_RELEASE}:plugins/entrust/skills/codex/scripts/driver.mjs`],
+      { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+    if (shown.status !== 0) return skip(`${PREVIOUS_RELEASE} is not in this checkout's history, so there is no previous driver to run`);
+    const previous = path.join(tempDir("codex-lock-previous-"), "driver.mjs");
+    fs.writeFileSync(previous, shown.stdout);
+    const d = freshDir("previous-driver");
+    const p = lockFor(d);
+    const holder = run(d, { scenario: "slow-turn" });
+    if (!await waitUntil(() => readJson(p)?.appServerPgid)) {
+      const { code, err } = await holder;
+      return "the holder never recorded its app-server group in " + p + " (exit " + code + ": " + err.trim().slice(0, 120) + ")";
+    }
+    const target = fs.readlinkSync(p);
+    const body = fs.readFileSync(path.join(LOCK_DIR, target), "utf8");
+    const live = await run(d, { driver: previous });
+    const kept = fs.readlinkSync(p) === target && fs.readFileSync(path.join(LOCK_DIR, target), "utf8") === body;
+    const h = await holder;
+    // A clean release leaves nothing at the lock path, so there is nothing for the previous driver to meet.
+    let released = null;
+    try { released = fs.lstatSync(p); } catch {}
+    // A link naming nothing: what a release that found the marker busy, or a killed run, leaves behind.
+    if (!released) fs.symlinkSync(`${path.basename(p)}.${"d".repeat(32)}.owner`, p);
+    const dangling = await run(d, { driver: previous });
+    try { fs.unlinkSync(p); } catch {}
+    const refusal = (r) => r.code === EXIT.USAGE && r.err.includes(`${p} is a symbolic link, not a lock file; remove it and retry`);
+    if (h.code !== EXIT.OK) return `the holder exited ${h.code}: ${h.err.trim().slice(0, 120)}`;
+    if (!refusal(live)) return `the previous driver met a live link with exit ${live.code}: ${live.err.trim().slice(0, 200)}`;
+    if (!kept) return "the previous driver changed the live link or its owner file";
+    if (released) return "the release left something at the lock path for the previous driver to refuse";
+    return refusal(dangling) ? true : `the previous driver met a link naming nothing with exit ${dangling.code}: ${dangling.err.trim().slice(0, 200)}`;
+  });
+
 test("two concurrent runs: exactly one wins",
-  "the natural race is the one that actually happens in a fan-out, and it must not regress",
+  "the natural race is the one that actually happens in a fan-out, and it must not regress. A fast `happy` turn on both sides lets the first run finish and release before the second reaches acquireLock, so [0,0] would be two valid SEQUENTIAL acquisitions rather than the double one this case exists to catch — slow-turn holds the first run's lock on disk long enough that the second is provably a contender, not a second solo runner",
   async () => {
     const d = freshDir("race");
-    const [a, b] = await Promise.all([run(d), run(d)]);
-    const codes = [a.code, b.code].sort((x, y) => x - y);
-    if (codes[0] !== EXIT.OK || codes[1] !== EXIT.BUSY) return `expected one 0 and one 10, got ${JSON.stringify(codes)}`;
+    const p = lockFor(d);
+    const holder = run(d, { scenario: "slow-turn" });
+    if (!await waitUntil(() => readJson(p)?.appServerPgid)) {
+      const { code, err } = await holder;
+      return "the holder never recorded its app-server group in " + p + " (exit " + code + ": " + err.trim().slice(0, 120) + ")";
+    }
+    const contender = run(d);
+    const [h, c] = await Promise.all([holder, contender]);
+    if (h.code !== EXIT.OK) return `the holder exited ${h.code}, expected ${EXIT.OK}: ${h.err.trim().slice(0, 120)}`;
+    if (c.code !== EXIT.BUSY) return `the contender exited ${c.code}, expected ${EXIT.BUSY}: ${c.err.trim().slice(0, 120)}`;
     if (fs.existsSync(lockFor(d))) return "a lock was left behind after both runs finished";
     return true;
   });
@@ -422,6 +661,127 @@ test("while a LIVE process holds the reclaim marker, nothing is touched — howe
     if (!markerSurvived) return "the marker was stolen from a live owner because it looked old";
     if (!lockUntouched) return "the stale lock was reclaimed while another process held the marker";
     return code === EXIT.BUSY ? true : `expected an honest 10 while a live owner holds the marker, got ${code}`;
+  });
+
+// LOCK_WINDOW_SOURCE, as for the window cases: pointed at a driver that removes an abandoned marker by
+// path, the case below fails with its own assertion.
+let markerCopy;
+const markerDriver = () => (markerCopy ??= instrumentMarkerTakeover(process.env.LOCK_WINDOW_SOURCE || DRIVER));
+test("two runs taking over one abandoned reclaim marker at once: one holds it, the other is refused",
+  "both runs judge the marker abandoned before either acts. Removed by path, the second removal took away the marker the first had just created, and both then held it, which is two reclaimers deciding about one lock at once. Taken over by rename, the second finds the marker it moved is not the one it judged, puts it back and waits, and the run is refused once the lock has not settled",
+  async () => {
+    const d = freshDir("marker-takeover");
+    const p = lockFor(d);
+    fs.mkdirSync(LOCK_DIR, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(p, JSON.stringify({ pid: 2147483646, cwd: fs.realpathSync(d), started: "old" }));
+    fs.writeFileSync(`${p}.reclaim`, "2147483645");
+    const copy = markerDriver();
+    const points = "judged,holding";
+    const a = run(d, { driver: copy, env: { [MARKER_ENV]: "A", [MARKER_POINTS_ENV]: points } });
+    const b = run(d, { driver: copy, env: { [MARKER_ENV]: "B", [MARKER_POINTS_ENV]: points } });
+    const at = (tag, point) => markerMark(p, tag, point);
+    const go = (tag, point) => fs.writeFileSync(`${at(tag, point)}.go`, "go");
+    const settle = () => {
+      for (const tag of ["A", "B"]) for (const point of ["judged", "holding"]) go(tag, point);
+      return Promise.all([a, b]);
+    };
+    const tidy = () => {
+      for (const f of fs.readdirSync(LOCK_DIR)) if (f.startsWith(`${path.basename(p)}.reclaim.`)) fs.rmSync(path.join(LOCK_DIR, f), { force: true });
+    };
+    if (!await waitUntil(() => fs.existsSync(at("A", "judged")) && fs.existsSync(at("B", "judged")), 20000)) {
+      await settle(); tidy();
+      return "the two runs never both judged the marker abandoned";
+    }
+    go("A", "judged");
+    if (!await waitUntil(() => fs.existsSync(at("A", "holding")), 20000)) {
+      await settle(); tidy();
+      return "the first run never took the marker over";
+    }
+    go("B", "judged");
+    let second = null;
+    b.then((r) => { second = r; });
+    await waitUntil(() => second !== null || fs.existsSync(at("B", "holding")), 20000);
+    const both = fs.existsSync(at("B", "holding"));
+    const [ra, rb] = await settle();
+    tidy();
+    if (both) return "both runs held the reclaim marker at once";
+    if (ra.code !== EXIT.OK) return `the run that took the marker over exited ${ra.code}: ${ra.err.trim().slice(0, 160)}`;
+    if (rb.code !== EXIT.BUSY) return `the other run exited ${rb.code}, expected 10: ${rb.err.trim().slice(0, 160)}`;
+    return rb.err.includes(`the lock at ${p}`) || `the refusal does not name the lock: ${rb.err.trim().slice(-200)}`;
+  });
+
+test("three runs taking over one abandoned reclaim marker: one acts under it, the other two are refused",
+  "the second taker moves the first one's fresh marker, finds it is not the one it judged and links it back; if a third taker has created a marker in that instant, the link back fails and the moved marker is removed, so one marker stands. The first taker still believed it held one and went on to reclaim beside the third: two runs deciding about one lock. Each now asks holdsReclaimMarker immediately before it acts",
+  async () => {
+    const d = freshDir("marker-three");
+    const p = lockFor(d);
+    fs.mkdirSync(LOCK_DIR, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(p, JSON.stringify({ pid: 2147483646, cwd: fs.realpathSync(d), started: "old" }));
+    fs.writeFileSync(`${p}.reclaim`, "2147483645");
+    const copy = markerDriver();
+    const tags = ["A", "B", "C"];
+    const runs = Object.fromEntries(tags.map((tag) => {
+      const r = { result: null };
+      r.done = run(d, { driver: copy, env: { [MARKER_ENV]: tag } }).then((x) => (r.result = x));
+      return [tag, r];
+    }));
+    const at = (tag, point) => markerMark(p, tag, point);
+    const seen = (tag, point) => fs.existsSync(at(tag, point));
+    const go = (tag, point) => fs.writeFileSync(`${at(tag, point)}.go`, "go");
+    const settle = async () => {
+      for (const tag of tags) for (const point of ["judged", "restoring", "holding", "acting", "dropping"]) go(tag, point);
+      await Promise.all(tags.map((tag) => runs[tag].done));
+      for (const f of fs.readdirSync(LOCK_DIR)) if (f.startsWith(`${path.basename(p)}.reclaim.`)) fs.rmSync(path.join(LOCK_DIR, f), { force: true });
+    };
+    const step = async (ok, what) => { if (await waitUntil(ok, 20000)) return null; await settle(); return what; };
+    let why = await step(() => tags.every((tag) => seen(tag, "judged")), "the three runs never all judged the marker abandoned");
+    if (why) return why;
+    go("A", "judged");
+    if ((why = await step(() => seen("A", "holding"), "the first run never took the marker over"))) return why;
+    go("B", "judged");
+    if ((why = await step(() => seen("B", "restoring"), "the second run never moved the first one's marker"))) return why;
+    go("C", "judged");
+    if ((why = await step(() => seen("C", "holding"), "the third run never created a marker while the first one's was away"))) return why;
+    go("B", "restoring");
+    if ((why = await step(() => runs.B.result !== null, "the second run never finished"))) return why;
+    go("A", "holding");
+    await waitUntil(() => runs.A.result !== null || seen("A", "acting"), 20000);
+    const firstActed = seen("A", "acting");
+    go("C", "holding");
+    const thirdActed = await waitUntil(() => seen("C", "acting"), 20000);
+    await settle();
+    const [ra, rb, rc] = tags.map((tag) => runs[tag].result);
+    if (firstActed) return "the run whose marker had been removed acted under it beside the run holding the one that stands";
+    if (!thirdActed) return "the run holding the marker that stands never acted under it";
+    if (rc.code !== EXIT.OK) return `the run holding the marker exited ${rc.code}: ${rc.err.trim().slice(0, 160)}`;
+    for (const [tag, r] of [["first", ra], ["second", rb]])
+      if (r.code !== EXIT.BUSY || !r.err.includes(p)) return `the ${tag} run exited ${r.code}, expected 10 naming the lock: ${r.err.trim().slice(-160)}`;
+    return true;
+  });
+
+test("a marker replaced by a peer's just before this run drops it is left in place",
+  "the drop read the marker and then removed the path, so a peer's marker that landed between the two was deleted and that peer went on without one. The marker is now moved to a name of the run's own first and removed only if it is this run's; another's is linked back",
+  async () => {
+    const d = freshDir("marker-drop");
+    const p = lockFor(d);
+    const rp = `${p}.reclaim`;
+    const mark = markerMark(p, "D", "dropping");
+    const pending = run(d, { driver: markerDriver(), env: { [MARKER_ENV]: "D", [MARKER_POINTS_ENV]: "dropping" } });
+    if (!await waitUntil(() => fs.existsSync(mark), 20000)) {
+      const { code, err } = await pending;
+      return `the release never reached its drop (exit ${code}: ${err.trim().slice(0, 160)})`;
+    }
+    // A live process's marker, published whole.
+    const peer = String(process.pid);
+    fs.writeFileSync(`${rp}.peer`, peer);
+    fs.renameSync(`${rp}.peer`, rp);
+    fs.writeFileSync(`${mark}.go`, "go");
+    const { code, err } = await pending;
+    let after = null;
+    try { after = fs.readFileSync(rp, "utf8"); } catch {}
+    for (const f of [rp, `${mark}.go`]) fs.rmSync(f, { force: true });
+    if (code !== EXIT.OK) return `the run exited ${code}: ${err.trim().slice(0, 160)}`;
+    return after === peer || (after === null ? "the drop removed the peer's marker" : `the marker now reads ${JSON.stringify(after)}`);
   });
 
 test("the home refusal survives a hostile or absent $HOME",

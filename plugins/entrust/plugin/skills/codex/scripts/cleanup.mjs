@@ -5,11 +5,12 @@
 //   node cleanup.mjs --list [--json]
 //   node cleanup.mjs --delete --from <listing.json> <number>...
 //
-// Five kinds of artifact can be removed here: an orchestrate run directory, a standalone report run
-// directory, an agent's scratch directory, the suites' scratch directories and the saved conversations
-// the suites leave behind. Five more are REPORTED and never touched — the driver's saved answers,
-// managed worktrees, write locks, the shared Codex home and another copy's data directory — because
-// another owner or retention policy is responsible for each of them. Nothing here runs git.
+// Six kinds of artifact can be removed here: an orchestrate run directory, a standalone report run
+// directory, an agent's scratch directory, the suites' scratch directories, the saved conversations
+// the suites leave behind, and a write lock nobody holds any more. Five more are REPORTED and never
+// touched — the driver's saved answers, managed worktrees, write locks still held or in the previous
+// shape, the shared Codex home and another copy's data directory — because another owner or retention
+// policy is responsible for each of them. Nothing here runs git.
 //
 // Three rules decide the rest.
 //   * Evidence, never age. An item is removable only when nothing THIS PLUGIN RECORDS under it is in
@@ -28,7 +29,8 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { EXIT, VERSION, canonPath, holderAlive, reclaimable } from "./driver.mjs";
+import { EXIT, VERSION, canonPath, dropReclaimMarker, holderAlive, holdsReclaimMarker, reclaimable,
+         takeReclaimMarker } from "./driver.mjs";
 
 // A removal that was attempted and failed. The other three codes are the driver's own.
 const EXIT_FAILED = 1;
@@ -83,10 +85,12 @@ finds now is the row the listing showed — same kind, name, status, paths, iden
 last-change times. Everything else is refused untouched, and the fresh listing follows.
 
 It removes orchestrate run directories and agent scratch directories of THIS project, published
-standalone report run directories, the suites' scratch directories, and the saved conversations the
-suites leave behind; it only REPORTS the driver's saved answers, managed worktrees and their ledger,
-write locks, the shared Codex home, and another copy's data directory. It never runs git, and never
-removes anything it could not fully read.
+standalone report run directories, the suites' scratch directories, the saved conversations the
+suites leave behind, and write locks nobody holds: a released lock's leftover link, an abandoned lock
+with its record, and a lock record no link names. It only REPORTS the driver's saved answers, managed
+worktrees and their ledger, write locks still held or in the previous shape, the shared Codex home,
+and another copy's data directory. It never runs git, and never removes anything it could not fully
+read.
 
 An item is in use when a live pid is recorded under it or names it: an agent's startup line, a run's
 agent directory with no report, a standalone report run with no published report.json, a job record
@@ -425,8 +429,14 @@ function launcherRecord(agentDir) {
 // A run's own liveness, taken from the run directory and from the agent items that name it. Separate
 // from the row so a removal can take it again immediately before it acts.
 function runLiveness(runPath, agents) {
-  const out = { inUse: false, readable: true, agents: 0, reports: 0, liveAgent: null,
+  const out = { inUse: false, readable: true, agents: 0, reports: 0, plan: false, liveAgent: null,
                 liveAgentItem: false, cwds: [] };
+  const plan = statAt(path.join(runPath, "plan.txt"));
+  if (!plan.ok) out.readable = false;
+  else if (plan.value !== null) {
+    out.plan = plan.value.isFile() && !plan.value.isSymbolicLink();
+    if (!out.plan) out.readable = false;
+  }
   const kids = entriesAt(runPath);
   if (!kids.ok || kids.value === null) out.readable = false;
   else for (const s of kids.value.sort()) {
@@ -473,13 +483,13 @@ function listRuns(roots, agents) {
     for (const runName of namesIn(path.join(roots.ORCH, slugName)).sort()) {
       const row = scratchRow("run", roots.S, ["orchestrate", slugName, runName],
         path.join(roots.ORCH, slugName, runName),
-        { key: `${slugName}/${runName}`, run: runName, named: false, agents: 0, reports: 0,
+        { key: `${slugName}/${runName}`, run: runName, named: false, agents: 0, reports: 0, plan: false,
           liveAgent: null, liveAgentItem: false });
       rows.push(row);
       if (!row.chainOk) continue;
       const live = runLiveness(row.path, agents);
       Object.assign(row, { inUse: live.inUse, readable: row.readable && live.readable,
-                           agents: live.agents, reports: live.reports, liveAgent: live.liveAgent,
+                           agents: live.agents, reports: live.reports, plan: live.plan, liveAgent: live.liveAgent,
                            liveAgentItem: live.liveAgentItem });
       // The slug says which project the coordinator ran in, and a slug is never proof: `a-b` and
       // `a_b` share one. A cwd a report actually carries is the proof, and every one of them must
@@ -631,19 +641,147 @@ function listWorktrees(roots) {
   return rows;
 }
 
+// The driver's write lock is two entries in `<state>/locks/`: `<key>.lock`, a symbolic link created
+// exclusively, and the file it names beside it, `<key>.lock.<32 hex>.owner`, holding the pid, identity,
+// cwd and start of the run that holds it. A normal release removes both; a release that meets a live peer
+// on the reclaim marker, a crashed run and an older driver leave the link; only a later run in the same
+// directory reclaims it, and a directory nobody runs in again — every `--worktree` run has a fresh one —
+// keeps it for good. A regular file at `<key>.lock` is the lock's previous shape and keeps the reported
+// row it always had.
+//   held      the link names an owner file whose run is alive: reported;
+//   released  the link names nothing: removable, suggested;
+//   abandoned the link names an owner file whose run and codex group are both gone: removable with that
+//             file, by number only, since the driver reclaims it on its own next run there;
+//   stray     an owner file no link names, its run gone (a crash between writing it and linking it, or
+//             a link removed by hand): removable, suggested; with its run alive it is `unlinked`, reported.
+// An owner file that is not a regular file, a body with no pid, a link to anything but an owner file
+// beside it, a record that is not the file its lstat saw: `other`, reported, never removed.
+const OWNER_RE = /^(.+\.lock)\.[0-9a-f]{32}\.owner$/;
+const lockHolder = (body) => (isObj(body) && Number.isInteger(body.pid) && body.pid >= 1 ? body : null);
+const cwdName = (body) => (isObj(body) && typeof body.cwd === "string" && body.cwd !== ""
+  ? path.basename(body.cwd) : null);
+
+// An owner record, read by a name relative to the pinned locks directory: opened without following a
+// link and without blocking on a pipe, and parsed from that descriptor only when it is the regular file
+// the lstat `st` saw. A path read by name after its lstat reads whatever stands there by then — a link
+// swapped in reads a file outside the directory, and that file's pid decided what was offered.
+function readRecord(name, st) {
+  let fd;
+  try { fd = fs.openSync(name, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK); }
+  catch (e) { return e.code === "ENOENT" ? { gone: true } : e.code === "ELOOP" ? { swapped: true } : { unreadable: true }; }
+  try {
+    const f = fs.fstatSync(fd);
+    if (!f.isFile() || f.dev !== st.dev || f.ino !== st.ino) return { swapped: true };
+    let text;
+    try { text = fs.readFileSync(fd, "utf8"); } catch { return { unreadable: true }; }
+    try { return { body: JSON.parse(text) }; } catch { return { unparsed: true }; }
+  } finally { fs.closeSync(fd); }
+}
+
+// A reported lock entry, measured from the lstat its classification used.
+const shownLock = (dir, n, st, extra = {}) => reported("lock", n, path.join(dir, n),
+  st.ok && st.value ? st.value.size : 0, st.ok && st.value ? Math.round(st.value.mtimeMs) : 0,
+  { ident: st.ok ? identOf(st.value) : null, ...extra });
+// A removable lock entry: the chain a removal walks is `<state>/locks`, and the leaf is the entry.
+const lockRow = (roots, dir, n, st, form, extra = {}) =>
+  ({ kind: "lock", key: n, base: roots.S, parts: ["locks", n], path: path.join(dir, n),
+     ident: identOf(st.value), bytes: st.value.size, mtimeMs: Math.round(st.value.mtimeMs), inUse: false,
+     readable: true, chainOk: true, cond: "ok", ours: false, alsoPaths: [], form, where: null, ...extra });
+
+// Every read that decides a lock row is made from a handle on `<state>/locks`, pinned as a removal pins
+// its parent: reached from the canonical state directory with no link on the way, entered, and compared
+// by dev:ino. A locks directory that cannot be pinned so has its entries named by their names alone,
+// read for nothing, and never offered.
 function listLocks(roots) {
   const dir = path.join(roots.state, "locks");
-  const rows = [];
-  for (const n of namesIn(dir).sort()) {
+  const unjudged = () => namesIn(dir).sort().map((n) => {
     const p = path.join(dir, n);
     const form = /\.lock$/.test(n) ? "lock" : /\.reclaim$/.test(n) ? "reclaim"
       : /\.(?:[0-9a-f]+\.)?r?tmp$/.test(n) ? "tmp" : "other";
-    const body = form === "lock" ? jsonAt(p).value : null;
-    const where = isObj(body) && typeof body.cwd === "string" && body.cwd !== ""
-      ? path.basename(body.cwd) : null;
-    rows.push(reported("lock", n, p, sizeOf(p), mtimeOf(p), { form, where }));
+    return reported("lock", n, p, sizeOf(p), mtimeOf(p), { form, where: null });
+  });
+  const chk = chainCheck(roots.S, ["locks"]);
+  if (!chk.ok) return unjudged();
+  const prev = process.cwd();
+  try {
+    try { process.chdir(chk.path); } catch { return unjudged(); }
+    const here = statAt(".");
+    if (!here.ok || here.value === null || here.value.dev !== chk.st.dev || here.value.ino !== chk.st.ino)
+      return unjudged();
+    return lockRows(roots, dir);
+  } finally { try { process.chdir(prev); } catch { /* the old cwd is gone; nothing here needs it */ } }
+}
+
+function lockRows(roots, dir) {
+  const listed = entriesAt(".");
+  if (!listed.ok || listed.value === null) return [];
+  const names = listed.value.sort();
+  const stats = new Map(names.map((n) => [n, statAt(n)]));
+  // The owner files a well-formed link names: shown with their link, never as strays.
+  const named = new Set();
+  const links = new Map();
+  for (const n of names) {
+    const st = stats.get(n);
+    if (!/\.lock$/.test(n) || !st.ok || st.value === null || !st.value.isSymbolicLink()) continue;
+    const t = attempt((x) => fs.readlinkSync(x), n, "it could not be read");
+    links.set(n, t);
+    if (t.ok && t.value !== null && OWNER_RE.exec(t.value)?.[1] === n) named.add(t.value);
+  }
+  const rows = [];
+  for (const n of names) {
+    const st = stats.get(n);
+    if (links.has(n)) { rows.push(...lockLink(roots, dir, n, st, links.get(n))); continue; }
+    if (OWNER_RE.test(n)) {
+      const row = named.has(n) ? null : strayRecord(roots, dir, n, st);
+      if (row !== null) rows.push(row);
+      continue;
+    }
+    const form = /\.lock$/.test(n) ? "lock" : /\.reclaim$/.test(n) ? "reclaim"
+      : /\.(?:[0-9a-f]+\.)?r?tmp$/.test(n) ? "tmp" : "other";
+    const body = form === "lock" ? jsonAt(n).value : null;
+    rows.push(shownLock(dir, n, st, { form, where: cwdName(body) }));
   }
   return rows;
+}
+
+function lockLink(roots, dir, n, st, t) {
+  const shown = (form, extra = {}) => shownLock(dir, n, st, { form, ...extra });
+  if (!t.ok) return [shown("other", { readable: false, cond: "unreadable" })];
+  if (t.value === null) return [];                      // released and reclaimed since it was listed
+  if (OWNER_RE.exec(t.value)?.[1] !== n) return [shown("other")];
+  const owner = path.join(dir, t.value);
+  const ost = statAt(t.value);
+  if (!ost.ok) return [shown("other", { readable: false, cond: "unreadable", alsoPaths: [owner] })];
+  if (ost.value === null) return [lockRow(roots, dir, n, st, "released", { target: t.value })];
+  // A link where the owner file belongs is refused by the driver, and so is anything but a file.
+  if (!ost.value.isFile()) return [shown("other", { alsoPaths: [owner] })];
+  const rec = readRecord(t.value, ost.value);
+  if (rec.gone) return [lockRow(roots, dir, n, st, "released", { target: t.value })];
+  if (rec.swapped) return [shown("other", { alsoPaths: [owner] })];
+  if (!("body" in rec)) return [shown("other", { readable: false, cond: "unreadable", alsoPaths: [owner] })];
+  const held = lockHolder(rec.body);
+  if (held === null) return [shown("other", { alsoPaths: [owner] })];
+  const extra = { where: cwdName(held), alsoPaths: [owner], bytes: st.value.size + ost.value.size,
+                  mtimeMs: Math.max(Math.round(st.value.mtimeMs), Math.round(ost.value.mtimeMs)) };
+  if (!reclaimable(held)) return [shown("held", extra)];
+  return [lockRow(roots, dir, n, st, "abandoned", { ...extra, target: t.value, ownerIdent: identOf(ost.value) })];
+}
+
+function strayRecord(roots, dir, n, st) {
+  const shown = (form, extra = {}) => shownLock(dir, n, st, { form, ...extra });
+  if (!st.ok) return shown("other", { readable: false, cond: "unreadable" });
+  if (st.value === null) return null;
+  if (!st.value.isFile()) return shown("other");
+  // An owner file is created before its body is written, so an empty one may be a run that is taking
+  // its lock this instant: what does not parse is kept, never judged.
+  const rec = readRecord(n, st.value);
+  if (rec.gone) return null;
+  if (rec.swapped) return shown("other");
+  if (!("body" in rec)) return shown("other", { readable: false, cond: "unreadable" });
+  const held = lockHolder(rec.body);
+  if (held === null) return shown("other");
+  if (!reclaimable(held)) return shown("unlinked", { where: cwdName(held) });
+  return lockRow(roots, dir, n, st, "stray", { where: cwdName(held) });
 }
 
 function listHome(roots) {
@@ -794,12 +932,20 @@ function nameRow(roots, row) {
       return `the saved worktree${where}`;
     }
     case "lock": {
-      const what = row.form === "reclaim" ? "lock-reclaim marker"
-        : row.form === "tmp" ? "temporary lock record"
-        : row.form === "lock" ? (row.where ? `write lock for ${row.where}` : "write lock")
-        : "unrecognised entry among the write locks";
-      many((n) => `${n} ${what}s`);
-      return `the ${what}`;
+      // Each form with its own plural: the noun takes it, never the end of the phrase.
+      const at = row.where ? ` for ${row.where}` : "";
+      const [one, more] = {
+        lock: ["write lock", "write locks"],
+        held: ["held write lock", "held write locks"],
+        released: ["released write lock", "released write locks"],
+        abandoned: ["abandoned write lock", "abandoned write locks"],
+        stray: ["stray lock record", "stray lock records"],
+        unlinked: ["unlinked lock record of a running agent", "unlinked lock records of running agents"],
+        reclaim: ["lock-reclaim marker", "lock-reclaim markers"],
+        tmp: ["temporary lock record", "temporary lock records"],
+      }[row.form] ?? ["unrecognised entry among the write locks", "unrecognised entries among the write locks"];
+      many((n) => `${n} ${more}${at}`);
+      return `the ${one}${at}`;
     }
     case "home":
       many((n) => `${n} shared Codex homes`);
@@ -842,7 +988,8 @@ function reasonRow(row, many) {
           : "An agent of this run is still running.";
       // Said of what this reads and of nothing else: a run's own notes may name agents this layout
       // does not, so the sentence speaks of agent directories and reports, never of all its contents.
-      return (row.agents === 0 ? "No agent directory sits in it; only its own files remain"
+      return (row.agents === 0 ? row.plan ? "The approved plan remains; no agent directory sits in it"
+                                      : "No agent directory sits in it; only its own files remain"
         : row.reports === 1 ? "The one agent returned its report"
         : row.reports === 2 ? "Both agents returned reports"
         : `All ${countWord(row.reports)} agents returned reports`)
@@ -865,7 +1012,18 @@ function reasonRow(row, many) {
                   : "The tests leave this saved conversation behind.";
     case "answers": return "The driver prunes these answers itself, so this cleanup never removes them.";
     case "worktree": return "The driver reconciles and removes these itself on its next worktree run.";
-    case "lock": return "The driver reclaims a lock it finds abandoned when it next needs that directory.";
+    case "lock":
+      if (row.form === "held") return many ? "Agents working in those directories hold them; each run releases its own when it ends."
+                                           : "An agent working in that directory holds it; its run releases it when it ends.";
+      if (row.form === "released") return many ? "Finished runs released these locks; only their empty links remain."
+                                               : "A finished run released this lock; only its empty link remains.";
+      if (row.form === "abandoned") return many ? "Their agents stopped without releasing them; the driver reclaims each the next time it works in that directory."
+                                                : "Its agent stopped without releasing it; the driver reclaims it the next time it works in that directory.";
+      if (row.form === "stray") return many ? "No lock names these records, and the agents that wrote them have stopped."
+                                            : "No lock names this record, and the agent that wrote it has stopped.";
+      if (row.form === "unlinked") return many ? "No lock names these records, but the agents that wrote them are still running."
+                                               : "No lock names this record, but the agent that wrote it is still running.";
+      return "The driver reclaims a lock it finds abandoned when it next needs that directory.";
     case "home": return "Every agent of this plugin shares these Codex files, so this cleanup never removes them.";
     case "previous": return many ? "The plugin was renamed, and nothing writes to them any more."
                                  : "The plugin was renamed, and nothing writes to it any more.";
@@ -974,10 +1132,10 @@ function inventory(roots) {
   for (const row of listed) {
     row.removable = !row.inUse && row.readable && row.base !== null && !row.holdsRoot;
     row.proposed = row.removable && ((row.kind === "agent" && row.ours) || row.kind === "eval"
-      || row.kind === "previous");
+      || row.kind === "previous" || (row.kind === "lock" && (row.form === "released" || row.form === "stray")));
     row.selectable = row.proposed
       || (row.removable && ((row.kind === "run" && row.ours) || row.kind === "report"
-        || row.kind === "session"));
+        || row.kind === "session" || (row.kind === "lock" && row.form === "abandoned")));
     row.reason = reasonRow(row, row.count > 1);
   }
   listed.forEach((row, i) => { row.n = i + 1; });
@@ -1045,7 +1203,7 @@ function formA(inv) {
   // A row may stand for many directories, so a count of rows is never presented as a count of things.
   const what = suggested.length === sm ? `${cap(countWord(sm))} item${sm === 1 ? "" : "s"}`
     : `${cap(countWord(suggested.length))} row${suggested.length === 1 ? "" : "s"} above, `
-      + `${sm} directories in all,`;
+      + `${sm} ${suggested.some((r) => r.kind === "lock") ? "entries" : "directories"} in all,`;
   out.push(...wrap(suggested.length === 0 ? "Nothing is suggested for deletion."
     : `${what} ${sm === 1 ? "is" : "are"} suggested for deletion, `
       + `totalling about ${humanBytes(bytes)}.`, width, ""));
@@ -1054,13 +1212,15 @@ function formA(inv) {
     const runs = members(extra.filter((r) => r.kind === "run"));
     const reports = members(extra.filter((r) => r.kind === "report"));
     const talks = members(extra.filter((r) => r.kind === "session"));
+    const locks = members(extra.filter((r) => r.kind === "lock"));
     const parts = [];
     if (runs) parts.push(`${countWord(runs)} finished run${runs === 1 ? "" : "s"} of this project`);
     if (reports) parts.push(`${countWord(reports)} standalone report${reports === 1 ? "" : "s"}`);
     if (talks) parts.push(`${countWord(talks)} saved conversation${talks === 1 ? "" : "s"} from the tests`);
+    if (locks) parts.push(`${countWord(locks)} abandoned write lock${locks === 1 ? "" : "s"}`);
     // The verb follows the things; the imperative follows the NUMBERS, and where one number stands
     // for several directories the sentence says so rather than mixing the two.
-    const things = runs + reports + talks, oneRow = extra.length === 1;
+    const things = runs + reports + talks + locks, oneRow = extra.length === 1;
     out.push(...wrap(`${cap(parts.join(" and "))} ${things === 1 ? "is" : "are"} listed above`
       + `${oneRow && things > 1 ? " as one row" : ""}; say ${oneRow ? "its number" : "their numbers"} `
       + `to delete ${things === 1 ? "it" : "them"}.`, width, ""));
@@ -1118,6 +1278,7 @@ const listJson = (inv, text) => ({
 // swap DURING it is caught too.
 
 function removeOne(roots, m) {
+  if (m.kind === "lock") return removeLock(roots, m);
   const chk = chainCheck(m.base, m.parts);
   if (!chk.ok) return { refused: chk.why };
   if (m.parts.length === 0 || chk.path === m.base || !under(chk.path, m.base))
@@ -1162,6 +1323,106 @@ function removeOne(roots, m) {
     // removed whatever now stood in its place.
     return {};
   } finally { try { process.chdir(prev); } catch { /* the old cwd is gone; nothing here needs it */ } }
+}
+
+// A lock entry is one name in `<state>/locks`, removed from a handle on that directory as a scratch
+// directory is from its parent, and judged again at the last moment. A link is removed only under the
+// driver's own reclaim marker, `<link>.reclaim`, taken and dropped by the driver's own functions: a run
+// removes a link only under that marker and creates one only where none stands, so while the marker is
+// ours no run following those rules can change the link. The marker is not ours for good — a driver
+// takes one older than its backstop — so ownership and the link's target are asked again immediately
+// before each unlink, and a removal that finds either changed leaves the entry and says so.
+function removeLock(roots, m) {
+  const chk = chainCheck(m.base, m.parts.slice(0, -1));
+  if (!chk.ok) return { refused: chk.why };
+  if (roots.S === null || chk.path !== path.join(roots.S, "locks"))
+    return { failed: "it did not resolve inside the directory it was listed from" };
+  const leaf = m.parts[m.parts.length - 1];
+  const prev = process.cwd();
+  try {
+    try { process.chdir(chk.path); }
+    catch (e) { return { failed: `the directory holding it could not be entered (${e.code})` }; }
+    const here = statAt(".");
+    if (!here.ok || here.value === null || here.value.dev !== chk.st.dev || here.value.ino !== chk.st.ino)
+      return { refused: "the directory holding it changed while it was being removed" };
+    if (m.form === "stray") return removeStray(m, leaf);
+    // Twice, as the driver's release tries: a marker released between the failed link and its read
+    // answers false once. The name is relative to the pinned directory, as every name here is.
+    let held = false;
+    for (let attempt = 0; attempt < 2 && !held; attempt++) {
+      try { held = takeReclaimMarker(leaf); }
+      catch (e) { return { failed: `the reclaim marker could not be taken (${e.code ?? e.message})` }; }
+    }
+    if (!held) return { refused: "a run is reclaiming it right now" };
+    try { return removeLink(m, leaf); } finally { dropReclaimMarker(leaf); }
+  } finally { try { process.chdir(prev); } catch { /* the old cwd is gone; nothing here needs it */ } }
+}
+
+// The owner record read again, from the descriptor, and whether its run and codex group are both gone.
+function recordGone(name, st) {
+  const rec = readRecord(name, st);
+  const held = "body" in rec ? lockHolder(rec.body) : null;
+  return held !== null && reclaimable(held);
+}
+
+const MARKER_TAKEN = "another process took over its reclaim marker";
+function removeLink(m, leaf) {
+  const st = statAt(leaf);
+  if (!st.ok) return { refused: st.why };
+  if (st.value === null) return { refused: "it is no longer there" };
+  if (!st.value.isSymbolicLink() || identOf(st.value) !== m.ident) return { refused: "it changed since it was listed" };
+  const t = attempt((x) => fs.readlinkSync(x), leaf, "it could not be read");
+  if (!t.ok) return { refused: t.why };
+  if (t.value !== m.target) return { refused: "it changed since it was listed" };
+  const owner = statAt(m.target);
+  if (!owner.ok) return { refused: owner.why };
+  if (m.form === "released" && owner.value !== null)
+    return { refused: "something started using it since it was listed" };
+  if (m.form === "abandoned") {
+    if (owner.value === null || !owner.value.isFile() || identOf(owner.value) !== m.ownerIdent)
+      return { refused: "it changed since it was listed" };
+    if (!recordGone(m.target, owner.value)) return { refused: "something started using it since it was listed" };
+  }
+  // The last look before the link goes: the marker still the file this process created (its dev:ino, not
+  // the pid it carries, which anyone can write), and the link still naming the record judged above.
+  if (!holdsReclaimMarker(leaf)) return { refused: MARKER_TAKEN };
+  const again = attempt((x) => fs.readlinkSync(x), leaf, "it could not be read");
+  if (!again.ok || again.value !== m.target) return { refused: "it changed while it was being removed" };
+  // The link first, as reclaimStale does: a removal cut between the two leaves a stray record, which
+  // the next listing offers, never a link naming a record that is gone while its run was not.
+  try { fs.unlinkSync(leaf); }
+  catch (e) { if (e.code !== "ENOENT") return { failed: `access was denied (${e.code})` }; }
+  if (m.form === "abandoned") {
+    // And before the record goes, the same two questions of what is left: the marker, and the record
+    // being the file that was judged. Either changed, the record stays, and the next listing names it.
+    if (!holdsReclaimMarker(leaf)) return { refused: `${MARKER_TAKEN} after its link went, so its record was left` };
+    const rst = statAt(m.target);
+    if (!rst.ok || rst.value === null || !rst.value.isFile() || identOf(rst.value) !== m.ownerIdent)
+      return { refused: "its record changed while it was being removed, so the record was left" };
+    try { fs.unlinkSync(m.target); }
+    catch (e) { if (e.code !== "ENOENT") return { failed: `access was denied (${e.code})` }; }
+  }
+  return {};
+}
+
+// A stray record has no link to take a marker for. Only the run that wrote it ever links it, and that
+// run is gone; the one thing that could make it a lock again is a link naming it, looked for last.
+function removeStray(m, leaf) {
+  const st = statAt(leaf);
+  if (!st.ok) return { refused: st.why };
+  if (st.value === null) return { refused: "it is no longer there" };
+  if (!st.value.isFile() || identOf(st.value) !== m.ident) return { refused: "it changed since it was listed" };
+  if (!recordGone(leaf, st.value)) return { refused: "something started using it since it was listed" };
+  const link = OWNER_RE.exec(leaf)[1];
+  const lst = statAt(link);
+  if (!lst.ok) return { refused: lst.why };
+  if (lst.value !== null && lst.value.isSymbolicLink()) {
+    const t = attempt((x) => fs.readlinkSync(x), link, "it could not be read");
+    if (!t.ok || t.value === leaf) return { refused: "something started using it since it was listed" };
+  }
+  try { fs.unlinkSync(leaf); }
+  catch (e) { if (e.code !== "ENOENT") return { failed: `access was denied (${e.code})` }; }
+  return {};
 }
 
 // Is this one member still free to go, at this instant? The facts that could make it in use are

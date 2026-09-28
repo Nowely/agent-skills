@@ -53,8 +53,8 @@ exactly as the command printed it.
    "apply it" or "да" is exactly the numbers in `proposed`. Digits are those
    numbers; an affirmative with digits adds them to the suggestion; "only" or
    "instead" restricts to the digits alone. "All" or "everything": ask "Do you
-   mean the items I suggested, or the runs, standalone reports and saved
-   conversations as well?" and wait. "No": "I'll leave the listed items in
+   mean the items I suggested, or the runs, standalone reports, saved
+   conversations and abandoned locks as well?" and wait. "No": "I'll leave the listed items in
    place." A question: answer
    it, delete nothing. Silence: wait. A number that is not in `selectable` is
    not yours to send — say "<name> is being kept; the listing says why." and
@@ -94,9 +94,16 @@ Use the listing's names; omit outcomes that did not occur.
 
 ## What it never touches
 
-Answers, managed worktrees and their ledger, write locks and the shared Codex
-home are listed and never removed: the driver prunes answers and reconciles
-the next two itself, and the last is shared by every agent. The data directory
+Answers, managed worktrees and their ledger, write locks still held or in the
+older single-file shape, and the shared Codex home are listed and never
+removed: the driver prunes answers and reconciles the next two itself, and the
+last is shared by every agent. A write lock is a link and the record it names.
+A normal release removes both; a release that cannot take the lock's reclaim
+marker, a crashed run and an older driver leave the link, and a release whose owner file is not its own leaves both. A link that
+names nothing is proposed, and so is a record no link names once the run that
+wrote it is gone. A lock whose run stopped without releasing it goes
+with its record by its number; the driver reclaims it anyway on its next run
+in that directory. The data directory
 of another copy of this plugin is the user's own to remove — when they ask
 how, say "This command removes it." and show that row's `command` from
 `manual` in its own block. The one directory this does not cover is the plugin's own under its previous

@@ -49,7 +49,7 @@ test("the frontmatter names the mode, forbids model invocation, and carries a ve
   });
 
 test("the page stays inside its budget: 60 lines, one heading level, no fence",
-  "the mode is loaded on top of two pages that already cost the coordinator its first minutes; a page that doubled, a third heading level or a fence is the mode spending what it should save",
+  "the mode is loaded on top of the codex page, which already costs the coordinator its first minutes; a page that doubled, a third heading level or a fence is the mode spending what it should save",
   () => {
     const problems = [];
     if (lines.length > 60) problems.push(`${lines.length} lines`);
@@ -58,10 +58,23 @@ test("the page stays inside its budget: 60 lines, one heading level, no fence",
     return problems.length === 0 || problems.join("; ");
   });
 
-test("A1 the orchestrate page is loaded first, the mode adds no driver change, and a run needs no checkout",
-  "every arm is an orchestrated run; the owner runs some experiments on machines without the repository",
+test("A0 the page loads codex through the Skill tool, and no sentence asks it to load orchestrate",
+  "orchestrate is `disable-model-invocation`, so the Skill tool refuses to load it and a page that asks for that load does not start (E39)",
+  () => {
+    const problems = [];
+    const asks = /\bload\b[^.;]*\borchestrate\b/i.exec(flat) ?? /Skill tool[^)]*entrust:orchestrate/.exec(flat);
+    if (asks) problems.push(`a sentence asks to load orchestrate: ${asks[0].slice(0, 120)}`);
+    const loads = [...flat.matchAll(/Skill tool, `entrust:([a-z-]+)`/g)].map((m) => m[1]);
+    if (loads.join() !== "codex") problems.push(`the Skill-tool loads the page asks for: ${loads.join(", ") || "none"}`);
+    const prose = says("Load the sibling [codex](../codex/SKILL.md) now (Skill tool, `entrust:codex`)");
+    if (prose !== true) problems.push(prose);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("A1 every arm runs under codex and this page, the mode adds no driver change, and a run needs no checkout",
+  "the page carries the orchestrate rules an arm needs, since it loads codex alone (E39); the owner runs some experiments on machines without the repository",
   () => says(
-    "Load [orchestrate](../orchestrate/SKILL.md) now",
+    /every arm runs under that page and this one\. This page holds the rules an arm needs\. An experiment adds a protocol before any agent, matched material, a judge that does not see the arm, two verdicts, and a record kept by a script/,
     /adds no driver change, no header field and no flag/,
     /A run (needs|requires) no checkout of the repository/,
   ));
@@ -70,13 +83,15 @@ test("P1 the protocol has its six fields: a falsifiable hypothesis, arms with a 
   "an experiment without a comparator or with material an arm has seen measures nothing (S2-48, S2-42, S2-44 in the 2026-09-17 research); a judge that knows the arm is the self-preference bias with a title; a metric per rollout instead of per outcome is what S2-48 rules out",
   () => says(
     /Hypothesis: an id and one sentence that can be (false|falsified|refuted)/,
-    /one arm is the comparator the hypothesis calls for, a single agent or no delegation/,
+    /Arms: each a composition named by model, tier, effort, count and rights/,
+    /[Oo]ne arm is the comparator the hypothesis calls for, a single agent or no delegation/,
+    /The tiers are top Fable and Astra, strong Opus and Sol, cheap Sonnet and Terra, bulk Haiku and Luna/,
     /one "go" covers every arm and no arm stops for a plan of its own/,
     /frozen before the run, with the ground truth or the acceptance check written (down )?before any arm sees it/,
     /unique coordinator incidents by stage with their severity, owner corrections, outcomes verified independently/,
     /agents and paid turns counted per outcome/,
     /n stated, with an interval where n is under fifty/,
-    /returns with their first line removed, the line that names the agent's model and id, and the arms named by letters/,
+    /returns with their first line removed, the line every brief asks to name the agent's model and id, and the arms named by letters/,
     /Its verdict names the check it ran or is `unknown`/,
     /Stop rule and budget: the tokens and paid turns each arm may spend, and what ends the run early/,
   ));
@@ -85,10 +100,13 @@ test("P2 the protocol is shown and the run stops, and \"go\" covers the arms as 
   "the same gate the orchestrate page keeps: the user approves the arms and their cost before any agent runs",
   () => says(/Show the protocol(,| and) (then )?stop/, /"go" covers the arms as listed and nothing else/));
 
-test("R1 each arm is its own orchestrated run with the same brief, and a failed arm is never re-run to a better number",
-  "an arm re-run until it wins is the experiment choosing its result; a brief that differs between arms in more than the composition confounds the comparison",
+test("R1 each arm is its own run in the layout the cleanup lists, with the same brief, orchestrate's caps and the model tag, and a failed arm is never re-run to a better number",
+  "an arm re-run until it wins is the experiment choosing its result; a brief that differs between arms in more than the composition confounds the comparison; the run layout, the caps and the tag are orchestrate's, carried here because the page loads codex alone, and an untagged Claude agent runs the coordinator's model, not the arm's",
   () => says(
-    /Each arm is one orchestrated run with a run directory of its own, the same brief text in every arm except the composition/,
+    /Each arm is one run with a run directory of its own, `<state>\/orchestrate\/<project-slug>\/<run>\/`, the same brief text in every arm except the composition/,
+    /`<run>` is unique; `<project-slug>` is the working directory's absolute path with every character but letters and digits replaced by `-`/,
+    /An arm keeps six alive at most, one Fable and one Astra among them; its bulk agents are a pool of their own, fifty at most, outside that cap/,
+    /Tag every Claude Agent call with its `model`/,
     /A failed arm is reported with its reason and (never|not) re-run to a better number; a repeat is a new experiment with the first in its record/,
   ));
 
@@ -124,13 +142,13 @@ test("E1 the record lives under the state directory, is written by the script an
     return shows(/^ {4}CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/experiment\.mjs" <command>/m);
   });
 
-test("F1 the protocols reference holds E1 to E5 with the seven fields each, and E2's escalation fires on `unknown` alone",
+test("F1 the protocols reference holds E1 to E6 with the seven fields each, and E2's escalation fires on `unknown` alone",
   "the hypotheses the research left first are the reason the mode exists; a reference missing a field is a protocol a run cannot fill, and a cascade that escalates on a non-empty `open` escalates every return",
   () => {
     let ref;
     try { ref = read(REF); } catch (e) { return `${REF} is missing: ${e.message}`; }
     const problems = [];
-    for (const id of ["E1", "E2", "E3", "E4", "E5"]) {
+    for (const id of ["E1", "E2", "E3", "E4", "E5", "E6"]) {
       const m = new RegExp(`^## ${id} [^\\n]+\\n([\\s\\S]*?)(?=^## |$(?![\\s\\S]))`, "m").exec(ref);
       if (!m) { problems.push(`no section for ${id}`); continue; }
       for (const f of ["Hypothesis", "Arms", "Material", "Metrics", "Judge", "Budget and stop rule", "What it cannot show"])
@@ -141,7 +159,7 @@ test("F1 the protocols reference holds E1 to E5 with the seven fields each, and 
   });
 
 test("every relative link resolves, inside this repository, to a file and to a heading that exists",
-  "the page delegates its whole mechanism to the orchestrate page by link; a moved file turns the mode into a 404 only a reader notices",
+  "the page delegates its whole mechanism to the codex page by link; a moved file turns the mode into a 404 only a reader notices",
   () => {
     const dir = path.dirname(path.join(ROOT, PAGE));
     const problems = [];

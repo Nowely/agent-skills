@@ -11,7 +11,33 @@
 // Those are the release gate here, and nothing short of a live session measures them.
 //
 // It spends real model calls, so it is gated exactly like the fidelity suite's live turn: without
-// ENTRUST_LIVE_ORCHESTRATE=1 it says so in one line and exits 0.
+// ENTRUST_LIVE_ORCHESTRATE=1 it says so in one line and exits 0. What it concludes from a session is code in
+// lib/gate-checks.mjs, which gate-checks.test.mjs runs offline against fixture streams on every run-all.
+//
+// The recurring findings of #15 and #16 whose regression only a session shows, and the case that holds
+// each (evals/README.md indexes the offline half). Cases 6 to 9 were added on 2026-09-27, as were the
+// assertions named here in cases 1 and 5, and all nine ran on 2026-09-28 over the fix run's tree (the record is
+// plugins/entrust/research/2026-09-27-field-audit-triage/rounds.md): 1 to 4, 8 and 9 green at once, 6 green once
+// the page's first step became an explicit read, 7 red on two readings of this gate's own (ISSUES.md E59, E60)
+// with its ordering check green, 5 red on the Opus coordinator's deviations from the page (the draft changed
+// after the critic's freeze, phase paragraphs over the bound, a success claim with no receipt) in three runs.
+// A case added is not a case run:
+//   F1, P1       the advisor advises before any stop, again later on its one thread, not after "no advisor"   8
+//   F12c         the advisor's assembled prompts: MODEL astra, the shipped schema, no EFFORT line            8
+//   F2, P14a     a slash command first expands the page; the command last is recorded, not judged          9
+//   F18, P5      the codex page loaded only by a plan with a Codex agent, before the launcher's first call  1, 5, 6
+//   F13, P9a, F3 the card's five rows, every registered agent on it, workers and checkers counted apart     1, 5, 6
+//   F14, P9b     launches and each agent's writes reconciled with its registered row; a dropped one named  5, 7
+//   F6, Q3a      no brief before the split critic returns; each names its file and owns what the file gives 7
+//   F4, P8b      the critic returns its manifest's sha256; nothing changed after; the answer is the draft  5, 7
+//   F16, P13a    one paragraph per phase, none claiming a success no receipt supports                     5, 7
+//   P13b, F20a   the draft linted first; the answer lints clean, names every agent, credits each fact right 5, 7
+//   F20b         every return, the critic's too, in the five fields against its schema, before synthesis  5, 7
+//   F9, F10, F15, F21  briefs name the runner, no check read inline whole, inline reads priced            5, 7
+//   F11, F19, P10a     a write agent's ENVIRONMENT: line says something and names paths that exist        5, 7
+// What it spends: sessions under Opus for cases 1 and 5 to 8, one under Fable for case 2, two cheap Sonnet
+// sessions for case 9, the subagents they spawn, and Codex turns: one Astra in case 4 (two with the
+// delegation probe) and the Codex agents the plans of cases 5, 7 and 8 choose, the advisor's Astra among them.
 //
 // Every case runs in a scratch clone under the artifact directory, never in the checkout, which is only
 // ever the --plugin-dir. Nothing here writes into this repository.
@@ -25,10 +51,9 @@
 //   - the init line's tool list names the subagent tool `Task` while the tool_use blocks in the same
 //     build's stream carry `Agent`, so both spellings count and neither alone is safe;
 //   - the last line is {type:"result"} and its `result` is the final text;
-//   - --plugin-dir loaded entrust:codex and entrust:orchestrate. There is no
-//     codex-agent agent: a Codex agent is a general-purpose wrapper (an Agent call) whose prompt runs the
-//     driver as a background Bash task, so an agent is counted here as an Agent/Task tool_use whose prompt
-//     names driver.mjs and --prompt-file;
+//   - --plugin-dir loaded entrust:codex and entrust:orchestrate. A Codex agent is an Agent call to the
+//     entrust:codex-agent relay, which runs the launcher in one foreground Bash call and reruns it while
+//     the call returns RUNNING= at 570 s; isCodexCall below counts that call, and the older driver shape;
 //   - this machine's managed settings set disableBypassPermissionsMode: "disable", so
 //     --dangerously-skip-permissions is accepted and then ignored, and in -p mode there is no prompt to
 //     answer: every write and every non-trivial Bash is auto-denied. --permission-mode acceptEdits with an
@@ -47,13 +72,12 @@
 //     to a SUBPROCESS as an argument is not refused (probe: `node -e "fs.mkdirSync(argv[1],{recursive:
 //     true})" <plugin-data path>` created the directory, and the driver itself wrote jobs/ and home/
 //     under the data directory during the gate). So the run directory is the DRIVER's to create, through
-//     --report-file, and case 5 expects one holding agent directories with a report.json each and nothing
-//     else: no .gitignore, no prompt file, no out.json — those are under $TMPDIR now;
+//     --report-file, and case 5 expects one holding agent directories with a report.json each, the plan.txt
+//     the launcher's --plan registered, and nothing else: no .gitignore, no prompt file, no out.json;
 //   - a background Bash task does not keep a headless session alive: when the coordinator ends its turn
 //     Claude Code exits and SIGTERMs the task, and the first full run's agent was interrupted at the
-//     second the session ended. TaskOutput(task_id, block: true, timeout: 600000) blocks the turn until
-//     the task ends, ten minutes per call and repeated while it still runs, so it is in --allowedTools
-//     below; in an interactive session the notification arrives first and the call returns at once.
+//     second the session ended. This gate's coordinator is a headless session, so under the page's rule
+//     it launches every agent in the foreground, and its turn returns only when they have.
 //
 // Two things outlive a run on purpose. Case 5's session file stays under ~/.claude/projects: --resume
 // reads it, and the CLI has no delete for it. And a FAILING case keeps its scratch tree, which its
@@ -78,6 +102,12 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { DRIVER, ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
+import {
+  CODEX_SLUG, advisorBriefs, advisorPromptProblems, activationRecord, agentCalls, cardProblems, codexCalls,
+  codexCommand, codexLoadProblems, isCodexCall, isTierModel, parseStream, planRecord, runProblems as checkRun,
+  planOutputOf, skillCalls, splitAdmissionProblems, topRowAgents, workflowCalls,
+} from "./lib/gate-checks.mjs";
+import { parseReceipts } from "../plugin/skills/orchestrate/scripts/lint-draft.mjs";
 
 const { cases: CASES, test } = registry();
 
@@ -105,18 +135,8 @@ const note = (line) => console.log(`      ${line}`);
 
 // --------------------------------------------------------------- the vocabulary the page owns
 
-// The pool's Codex rows by slug, whatever the generation; the page itself names them by short name only.
-const CODEX_SLUG = /\bgpt-\d+(?:\.\d+)*-(astra|sol|terra)\b/i;
-const isTierModel = (m) => typeof m === "string" && CODEX_SLUG.exec(m)?.[0] === m;
-const SIBLING_SKILLS = ["entrust:codex", "codex"];
-// A Codex agent is one Agent call whose prompt carries the driver, a prompt file and a report file. Both
-// flags, because a prompt that merely mentions the driver is a probe or the coordinator reading a report.
-const codexCommand = (u) => (u.name === "Agent" || u.name === "Task" ? String(u.input.prompt ?? "") : "");
-const isCodexCall = (u) => /driver\.mjs/.test(codexCommand(u)) && /--prompt-file/.test(codexCommand(u));
-const codexCalls = (toolUses) => toolUses.filter(isCodexCall);
-// Both, because one build answers with both: `Task` in the init line's tool list, `Agent` in the tool_use
-// blocks. A rename must not silently empty the checks that count subagent calls.
-const AGENT_TOOLS = new Set(["Task", "Agent"]);
+// The vocabulary a session is read in (what a Codex call is, the stream's shape) lives in lib/gate-checks.mjs,
+// where gate-checks.test.mjs runs it offline against fixture streams.
 
 // --------------------------------------------------------------- processes
 
@@ -187,12 +207,11 @@ function scratchClone(dir) {
 
 // Not --dangerously-skip-permissions: managed settings disable that mode on this machine, and a -p
 // session that inherits the denial writes nothing and runs no command. The rules are the tools the page's
-// coordinator uses, both spellings of the subagent tool among them, and TaskOutput, which is how a
-// coordinator waits on a background agent without ending the turn that owns it; acceptEdits is what lets a
-// agent write without a prompt no headless run could answer.
+// coordinator uses, both spellings of the subagent tool among them; acceptEdits is what lets a agent write
+// without a prompt no headless run could answer.
 const CLAUDE_FLAGS = ["--plugin-dir", ROOT, "--output-format", "stream-json", "--verbose",
                       "--permission-mode", "acceptEdits",
-                      "--allowedTools", "Bash,Write,Edit,Read,Glob,Grep,Skill,Agent,Task,TaskOutput,Workflow"];
+                      "--allowedTools", "Bash,Write,Edit,Read,Glob,Grep,Skill,Agent,Task,Workflow"];
 
 // --no-session-persistence is the default here and is DROPPED for case 5: a session it disables is not
 // saved to disk and cannot be resumed, and case 5's whole shape is one plan turn and one "go" turn on the
@@ -208,35 +227,6 @@ function claudeArgs({ model, maxTurns, sessionId, resume, resumable = false }) {
 const session = (opts, { cwd, timeoutMs }) =>
   runProc("claude", claudeArgs(opts), { cwd, timeoutMs, input: opts.prompt });
 
-function parseStream(text) {
-  const msgs = [];
-  for (const line of text.split("\n")) {
-    if (!line.trim()) continue;
-    // A killed run ends mid-line; a half-written object is not a parse failure worth aborting a case for.
-    try { msgs.push(JSON.parse(line)); } catch {}
-  }
-  const init = msgs.find((m) => m.type === "system" && m.subtype === "init") ?? null;
-  const result = [...msgs].reverse().find((m) => m.type === "result") ?? null;
-  const toolUses = [];
-  const texts = [];
-  for (const m of msgs) {
-    if (m.type !== "assistant") continue;
-    // The plan is what the coordinator SAID, across its root-level messages, not the result line alone:
-    // measured, one run put the plan in one message and a closing paragraph in the next, and
-    // result.result held only the closer. A subagent's text is its own return value and stays out.
-    const root = (m.parent_tool_use_id ?? null) === null;
-    for (const b of m.message?.content ?? []) {
-      if (b?.type === "tool_use") toolUses.push({ name: b.name, input: b.input ?? {}, parent: m.parent_tool_use_id ?? null });
-      else if (root && b?.type === "text" && typeof b.text === "string") texts.push(b.text);
-    }
-  }
-  return {
-    msgs, init, result, toolUses,
-    resultText: typeof result?.result === "string" ? result.result : "",
-    planText: texts.join("\n\n"),
-  };
-}
-
 // The alias asked for against the concrete id the session reports. This is also what proves --model beats
 // a settings pin: .claude/settings.local.json in this checkout pins one, and a session started with the
 // flag must not inherit it. (The scratch clones carry no settings of their own: `.claude/` is gitignored
@@ -245,10 +235,6 @@ const modelMismatch = (init, alias) =>
   typeof init?.model === "string" && init.model.toLowerCase().includes(alias)
     ? null : `--model ${alias} was asked for, the session reports ${JSON.stringify(init?.model ?? null)}`;
 
-const agentCalls = (toolUses) => toolUses.filter((u) => AGENT_TOOLS.has(u.name));
-const workflowCalls = (toolUses) => toolUses.filter((u) => u.name === "Workflow");
-const skillCalls = (toolUses) => toolUses.filter((u) => u.name === "Skill")
-  .map((u) => String(u.input.skill ?? u.input.name ?? JSON.stringify(u.input)));
 // The agent() scan wants the script itself, because it reads syntax; the fallback keeps it alive if the
 // field is ever renamed, since JSON.stringify leaves `agent(` and a model key matchable.
 const scriptSource = (u) => (typeof u.input.script === "string" ? u.input.script : JSON.stringify(u.input));
@@ -298,8 +284,10 @@ const runDirs = (scratch) => {
   return out;
 };
 
-// What the page now promises a run directory is: agent directories, one report.json in each, and nothing
-// else — the driver publishes those files and the coordinator writes there at all. Every deviation is
+// What the page now promises a run directory is: agent directories, one report.json in each and, beside it,
+// the launcher's agent/ with the four files of the run (prompt.txt, out.json, err.txt, exit), the plan.txt
+// the launcher's --plan registered, and nothing else — the launcher and the driver publish those files and
+// the coordinator writes there not at all. Every deviation is
 // named rather than counted, because each has a different cause: a file at the run level is a
 // coordinator that wrote where its own tools are refused, an agent directory with no report.json is an agent
 // that never published, and a file beside a report is a redirect the page sends to $TMPDIR.
@@ -308,7 +296,7 @@ function runDirProblems(dirs) {
   for (const run of dirs) {
     let entries = [];
     try { entries = fs.readdirSync(run, { withFileTypes: true }); } catch (e) { problems.push(`${run} cannot be read: ${e.message}`); continue; }
-    const stray = entries.filter((e) => !e.isDirectory()).map((e) => e.name);
+    const stray = entries.filter((e) => !e.isDirectory() && e.name !== "plan.txt").map((e) => e.name);
     if (stray.length) problems.push(`${path.basename(run)} holds ${stray.join(", ")} beside its agent directories, and only the driver writes there`);
     const agents = entries.filter((e) => e.isDirectory());
     if (!agents.length && !stray.length) problems.push(`${path.basename(run)} is empty`);
@@ -316,8 +304,15 @@ function runDirProblems(dirs) {
       let inner = [];
       try { inner = fs.readdirSync(path.join(run, s.name)); } catch (e) { problems.push(`${path.basename(run)}/${s.name} cannot be read: ${e.message}`); continue; }
       if (!inner.includes("report.json")) problems.push(`${path.basename(run)}/${s.name} has no report.json: ${inner.join(", ") || "empty"}`);
-      const beside = inner.filter((n) => n !== "report.json");
+      const beside = inner.filter((n) => n !== "report.json" && n !== "agent");
       if (beside.length) problems.push(`${path.basename(run)}/${s.name} holds ${beside.join(", ")} beside report.json`);
+      if (inner.includes("agent")) {
+        let four = [];
+        try { four = fs.readdirSync(path.join(run, s.name, "agent")); } catch (e) { problems.push(`${path.basename(run)}/${s.name}/agent cannot be read: ${e.message}`); continue; }
+        // approvals/ is the mailbox --new makes beside the prompt for every agent.
+        const extra = four.filter((n) => !["prompt.txt", "out.json", "err.txt", "exit", "approvals"].includes(n));
+        if (extra.length) problems.push(`${path.basename(run)}/${s.name}/agent holds ${extra.join(", ")} beside the launcher's four files`);
+      }
     }
   }
   return problems;
@@ -333,19 +328,33 @@ const runDirReports = (dirs) => dirs.flatMap((run) => {
     .filter((p) => fs.existsSync(p));
 });
 
-// An agent is a background task of the session's, and a task can outlive the SIGKILL aimed at the session's
-// group. Nothing under the run directory names a pid any more — the driver publishes a report there and
-// nothing else — so an agent is found two ways, in this order:
+// An agent is a task of the session's (background in an interactive session, foreground under the headless gate), and a task can outlive the SIGKILL aimed at the session's
+// group. An agent is found two ways, in this order:
 //   1. the driver's own job records. Every agent writes `<state>/jobs/<threadId>.json` with its pid, the
 //      process identity that says the pid was not recycled, and the `cwd` (a worktree agent: the `repo`)
 //      it ran in. The state is the plugin data directory the agent was handed, so the scan is jobs/ under
 //      every id, and a record naming this case's scratch whose pid is still alive is this case's agent.
-//   2. the stderr file the agent call redirected to, which is under $TMPDIR now: `pid=` is the driver's
-//      first line there. This is what answers for an agent killed before its thread existed, since
-//      writeJob returns without a threadId and no record was ever written.
+//   2. the driver's stderr file, whose first line is `entrust: pid=<n> identity=…`. The wrapper's shape
+//      names only its report, and the launcher keeps that file at `agent/err.txt` beside it; the driver's
+//      shape redirected stderr on its own command, `2> <file>`, and that redirect is read first. This is
+//      what answers for an agent killed before its thread existed, since writeJob returns without a
+//      threadId and no record was ever written.
 // SIGTERM, never SIGKILL: the driver's own handler is what interrupts the turn, writes the report the run
 // had earned and sweeps the codex process group it started. Best-effort by construction — an agent neither
 // route can see is left to its own bounds, which is what --idle-timeout is for.
+function codexPid(u, scratch) {
+  const c = codexCommand(u);
+  const redirect = /2>\s*"?([^"\s]+)"?/.exec(c)?.[1];
+  const report = /--report-file\s+"?([^"\s]+)"?/.exec(c)?.[1];
+  const f = redirect ?? (report ? path.join(path.dirname(report), "agent", "err.txt") : null);
+  if (!f) return null;
+  const file = path.isAbsolute(f) ? f : path.join(scratch, f);
+  let head = "";
+  try { head = fs.readFileSync(file, "utf8").slice(0, 8192); } catch { return null; }
+  const m = /^entrust: pid=(\d+)\b/m.exec(head);
+  const label = redirect ? path.basename(file) : path.join(path.basename(path.dirname(report)), "agent", "err.txt");
+  return m ? { label, pid: Number(m[1]) } : null;
+}
 function stopAgents(scratch, dir, toolUses = []) {
   const stopped = [];
   const seen = new Set();
@@ -370,15 +379,11 @@ function stopAgents(scratch, dir, toolUses = []) {
       stop(`job ${n}`, Number(rec?.pid));
     }
   }
-  // The paths the agent calls named, not a directory listing: the stderr file is outside the run
-  // directory now, and only the command line says where it went.
+  // The paths the agent calls named, not a directory listing: only a call's command says where its
+  // driver's stderr went.
   for (const u of codexCalls(toolUses)) {
-    const f = /2>\s*"?([^"\s]+)"?/.exec(codexCommand(u))?.[1];
-    if (!f) continue;
-    let head = "";
-    try { head = fs.readFileSync(path.isAbsolute(f) ? f : path.join(scratch, f), "utf8").slice(0, 8192); } catch { continue; }
-    const m = /^entrust: pid=(\d+)\b/m.exec(head);
-    if (m) stop(path.basename(f), Number(m[1]));
+    const p = codexPid(u, scratch);
+    if (p) stop(p.label, p.pid);
   }
   save(dir, "stopped.txt", stopped.join("\n"));
   return stopped.length;
@@ -393,15 +398,28 @@ function stoppedAtPlan(toolUses, scratch, head0) {
   // A Codex agent is a wrapper Agent call, counted twice here (as an Agent call and as a Codex call) so a
   // plan turn that launched one reads as not stopped whichever list a reader checks.
   const fanned = [...agentCalls(toolUses), ...workflowCalls(toolUses), ...codexCalls(toolUses)];
-  if (fanned.length) problems.push(`the plan did not stop: ${fanned.map((u) => (isCodexCall(u) ? "Bash(codex)" : u.name)).join(", ")} ran before "go"`);
+  if (fanned.length) problems.push(`the plan did not stop: ${fanned.map((u) => (isCodexCall(u) ? `${u.name}(codex)` : u.name)).join(", ")} ran before "go"`);
   const dirty = git(scratch, "status", "--porcelain").trim();
   if (dirty) problems.push(`the scratch was written to: ${dirty.split("\n").slice(0, 5).join(" | ")}`);
   // A clean tree is also what a commit leaves behind, so HEAD is compared as well as the porcelain.
   const head1 = git(scratch, "rev-parse", "HEAD").trim();
   if (head0 && head1 !== head0) problems.push(`HEAD moved from ${head0.slice(0, 12)} to ${head1.slice(0, 12) || "nothing"} before "go"`);
-  const made = runDirs(scratch);
-  if (made.length) problems.push(`a run directory exists before "go": ${made.join(", ")}`);
+  // The one thing a plan turn may leave there is the plan the launcher registered (D6): a run directory
+  // holding anything else was written before "go".
+  const made = runDirs(scratch).filter((d) => {
+    try { return fs.readdirSync(d).some((n) => n !== "plan.txt"); } catch { return true; }
+  });
+  if (made.length) problems.push(`a run directory holds more than the registered plan before "go": ${made.join(", ")}`);
   return problems;
+}
+
+// The plan the launcher registered for this scratch, read from the run directories: the rows, and where.
+function registeredPlan(scratch) {
+  for (const d of runDirs(scratch)) {
+    const f = path.join(d, "plan.txt");
+    if (fs.existsSync(f)) return { file: f, rows: planRecord(fs.readFileSync(f, "utf8")) };
+  }
+  return null;
 }
 
 const quote = (line) => JSON.stringify(line.trim().slice(0, 140));
@@ -415,11 +433,17 @@ const lines = (text) => text.split("\n").filter((l) => l.trim());
 // Everything below the tool checks is a heuristic over free text, and reads as one: a plan can satisfy
 // every line here and still be a bad plan. The artifact plan.txt is what the release reader judges; these
 // catch the plan that never names a tier at all, and each failure quotes the line it judged.
-function planProblems({ text, toolUses, scratch, head0 }) {
+function planProblems({ s, scratch, head0, codexPlanned = true }) {
+  const text = s.planText, toolUses = s.toolUses;
   const problems = stoppedAtPlan(toolUses, scratch, head0);
-  const skills = skillCalls(toolUses);
-  if (!skills.some((s) => SIBLING_SKILLS.includes(s)))
-    problems.push(`the sibling skill was never loaded; Skill calls: ${skills.join(", ") || "none"}`);
+  // D5: the codex page is loaded once the plan has a Codex agent, before the launcher's --plan; a plan
+  // with none never loads it and never registers (D6: an all-Claude plan skips the registration).
+  problems.push(...codexLoadProblems(s, { codexPlanned }));
+  const reg = registeredPlan(scratch);
+  if (codexPlanned && !reg) problems.push("a plan with a Codex agent registered nothing with the launcher's --plan");
+  if (!codexPlanned && reg) problems.push(`an all-Claude plan registered ${reg.file}`);
+  // D6/D9: the card of five rows, every registered agent on it, workers and checking agents counted apart.
+  problems.push(...cardProblems(text, reg?.rows ?? null, { counted: planOutputOf(s) }));
   // The plan no longer prints the run directory. A resolved path is machinery aimed at the one reader who
   // cannot act on it, and the page now asks for the fact in ordinary words instead, so there is nothing
   // language-independent left to match: measured, every natural phrasing of "outside the repository" fails
@@ -431,14 +455,11 @@ function planProblems({ text, toolUses, scratch, head0 }) {
   // Terra T1"), so a plan written for the user names the agent either way; measured, three Opus plans for
   // one task wrote "Terra, `gpt-5.6-terra`", "Codex Terra (cheap tier)" and "One Codex agent — Terra —".
   // The word Codex itself is required a few lines below, so the name alone is what is read here.
-  if (!CODEX_SLUG.test(text) && !/\b(Astra|Sol|Terra|Luna)\b/.test(text))
+  if (codexPlanned && !CODEX_SLUG.test(text) && !/\b(Astra|Sol|Terra|Luna)\b/.test(text))
     problems.push("no agent carries a Codex model from the tier table (Astra, Sol or Terra, by name or slug)");
-  // Where the plan has an agent table, the rows ARE the agents and everything else is commentary about them:
-  // measured, a plan that listed one Fable agent in a row and then wrote "one Fable agent, one gpt-6-astra
-  // agent, caps respected" in a bullet counted its own summary as a second agent. A plan with no table is
-  // judged on every line, as before.
-  const rows = lines(text).filter((l) => l.trim().startsWith("|"));
-  const agentLines = rows.length ? rows : lines(text);
+  // "no codex" is zero Codex agents: a plan that names one by model has not honoured it.
+  if (!codexPlanned && (CODEX_SLUG.test(text) || /\bCodex\s+(Astra|Sol|Terra|Luna)\b/.test(text)))
+    problems.push("an all-Claude plan names a Codex agent");
   // No Claude-agent requirement: the page lets the coordinator take a quick targeted edit itself, and
   // measured, an Opus plan for the slug task did exactly that with one Codex verifier beside it. Whether
   // every Claude Agent call that does run carries a tag is judged after "go", on the calls themselves.
@@ -456,28 +477,70 @@ function planProblems({ text, toolUses, scratch, head0 }) {
   // reads nothing at all on a Russian plan and silently changes its own verdict. Measured: "Я сам работаю
   // на Fable как координатор." was not excluded here and counted as a second Fable agent, failing a cap the
   // plan honoured. Each alternation therefore carries the stems of the languages this plugin is used in.
-  const isAgent = (l) => !/under fable|fable session|orchestrator|coordinator|powered by|you are|координ|оркестр|под fable|сам работаю|эта сессия|текущая сессия|я на fable|вне пула/i.test(l);
-  const header = rows[0] ? rows[0].split("|").map((c) => c.trim().toLowerCase()) : [];
-  const waveCol = header.findIndex((c) => /^(wave|stage|phase|step|order|round|batch|when|волна|этап|фаза|шаг|порядок|очередь|раунд|когда)$/.test(c));
-  const groupOf = (l) => (waveCol >= 0 ? (l.split("|")[waveCol] ?? "").trim() : "");
-  const capMax = (re) => {
-    const per = new Map();
-    for (const l of agentLines.filter(isAgent)) {
-      const n = [...l.matchAll(re)].length;
-      if (n) per.set(groupOf(l), (per.get(groupOf(l)) ?? 0) + n);
-    }
-    return Math.max(0, ...per.values());
-  };
-  const tagged = agentLines.filter((l) => /\bfable\b/i.test(l) && isAgent(l));
-  const count = tagged.reduce((n, l) => n + [...l.matchAll(/\bfable\b/gi)].length, 0);
+  // A plan's own statement of the caps ("the limits are one Fable and one Astra at a time", "uses neither
+  // Fable nor Astra") is not an agent either. Measured 2026-09-27 on that day's release candidate: a plan that used
+  // neither and said so was failed for two Fable agents in one wave, both of them that sentence's words.
+  const isAgent = (l) => !/under fable|fable session|orchestrator|coordinator|powered by|you are|координ|оркестр|под fable|сам работаю|эта сессия|текущая сессия|я на fable|вне пула|limits? (are|is)|caps? (are|is)|at a time|neither fable|ни fable|предел|лимит/i.test(l);
+  // Counted by lib/gate-checks.mjs topRowAgents: where an agent is named as one ("<Model> <id>", the who
+  // row, an agent table's row), never the card's work, writes, cost or checks rows or a sentence about
+  // effort; measured on case 7 of 2026-09-28, the cost row's "Astra will use its configured default effort"
+  // made a second Astra of the one the who row named.
   const sequenced = /alive at a time|one at a time|one after the other|sequential|runs after|then the (second|other)|по очереди|последовательн|не одновременно|друг за другом|после (перв|первого)|сначала .{0,40}(затем|потом)/i.test(text);
-  for (const [name, re] of [["fable", /\bfable\b/gi], ["astra", /\bastra\b/gi]]) {
-    const max = capMax(re);
-    if (max > 1 && !sequenced)
-      problems.push(`${max} ${name} agents in one wave with no sequencing stated, and the cap is one alive at a time: ${agentLines.filter((l) => re.test(l) && isAgent(l)).slice(0, 3).map(quote).join(" ")}`);
-    else note(`${name} agents in the plan: ${count && name === "fable" ? count : capMax(re)}${waveCol >= 0 ? `, at most ${max} per ${header[waveCol]}` : sequenced && max > 1 ? ", sequenced by the plan's own words" : ""}`);
+  for (const name of ["Fable", "Astra"]) {
+    const t = topRowAgents(text, name, { isAgent });
+    if (t.max > 1 && !sequenced)
+      problems.push(`${t.max} ${name.toLowerCase()} agents in one wave with no sequencing stated, and the cap is one alive at a time: ${t.where.slice(0, 3).map(quote).join(" ")}`);
+    else note(`${name.toLowerCase()} agents in the plan: ${t.total}${t.waveCol ? `, at most ${t.max} per ${t.waveCol}` : sequenced && t.max > 1 ? ", sequenced by the plan's own words" : ""}`);
   }
   return problems;
+}
+
+// --------------------------------------------------------------- the run assertions
+
+const SCHEMA_FILE = path.join(ROOT, "skills", "codex", "schemas", "five-fields.schema.json");
+const readJsonFile = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return null; } };
+
+// What a run left: each agent's prompt file and report under the run directories, keyed by the agent's
+// directory name, which is the id the plan registered; and the receipts the coordinator's own runner
+// ledger holds, read from the --ledger its capture-check calls named.
+function runEvidence(dirs, s) {
+  const prompts = [], reports = [];
+  for (const run of dirs) {
+    let names = [];
+    try { names = fs.readdirSync(run, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name); } catch {}
+    for (const id of names) {
+      const p = path.join(run, id, "agent", "prompt.txt");
+      if (fs.existsSync(p)) prompts.push({ id, text: fs.readFileSync(p, "utf8") });
+      const r = readJsonFile(path.join(run, id, "report.json"));
+      if (r) reports.push({ id, report: r });
+    }
+  }
+  // A ledger named through $TMPDIR (measured on the rerun of 2026-09-28: `--ledger $TMPDIR/v1-ledger.jsonl`
+  // in a brief) is this machine's temporary directory, which the agents share.
+  const tmp = (process.env.TMPDIR || os.tmpdir()).replace(/\/+$/, "");
+  const ledgers = new Set(s.toolUses.filter((u) => u.parent === null && /capture-check\.mjs/.test(String(u.input.command ?? "")))
+    .map((u) => /--ledger\s+"?([^"\s]+)"?/.exec(String(u.input.command))?.[1]).filter(Boolean)
+    .map((f) => f.replace(/^\$\{?TMPDIR\}?/, tmp)));
+  const ledger = [...ledgers].flatMap((f) => { try { return parseReceipts(fs.readFileSync(f, "utf8")); } catch { return []; } });
+  return { prompts, reports, ledger, ledgers: [...ledgers] };
+}
+
+// Everything after "go" that the answer and its evidence must show (lib/gate-checks.mjs runProblems, one
+// delta each), and the measurements the page asks the plan to price, saved beside the case, never asserted.
+function runProblems({ s1, s2, dirs, dir, request, phases }) {
+  const { prompts, reports, ledger, ledgers } = runEvidence(dirs, s2);
+  const reg = registeredPlan(path.join(dir, "scratch"));
+  const schema = readJsonFile(SCHEMA_FILE);
+  // The fixtures stage nothing and run no daemon, so the capsule's staged inputs and tools are empty here;
+  // gate-checks.test.mjs pins that half against a staged fixture.
+  const r = checkRun({ s1, s2, prompts, reports, rows: reg?.rows ?? [], ledger, schema, request, phases, reportOf: readJsonFile,
+    cwd: path.join(dir, "scratch"), tmp: [os.tmpdir(), process.env.TMPDIR] });
+  save(dir, "run-evidence.json", JSON.stringify({ plan: reg, agents: r.agents, receipts: r.receipts, ledgers,
+    prompts: prompts.map((p) => p.id), reports: reports.map((x) => x.id) }, null, 2));
+  save(dir, "inline-cost.json", JSON.stringify({ bytes: r.cost.bytes, priced: r.cost.total, rows: r.cost.rows, laterTurns: "unknown" }, null, 2));
+  save(dir, "answer-lint.txt", r.lint.hits.map((h) => `${h.rule}: ${h.line}: ${h.text}`).join("\n"));
+  note(`inline reads after "go": ${r.cost.bytes} bytes, ${r.cost.total} byte-calls priced; agents' tokens are in the reports`);
+  return r.problems;
 }
 
 // A failing case is diagnosed out of its scratch afterwards, so the tree stays and the message says
@@ -550,7 +613,7 @@ test("plan only under Opus: the first attempt stops at a plan",
     if (wrong) problems.push(wrong);
     if (r.killed) problems.push("the session was killed at the timeout");
     if (!s.planText) problems.push(`the session produced no text (result subtype ${JSON.stringify(s.result?.subtype ?? null)})`);
-    problems.push(...planProblems({ text: s.planText, toolUses: s.toolUses, scratch, head0 }));
+    problems.push(...planProblems({ s, scratch, head0 }));
     return settle(dir, problems);
   });
 
@@ -587,7 +650,7 @@ test("plan only under Fable: the top pair is capped",
     if (wrong) problems.push(wrong);
     if (r.killed) problems.push("the session was killed at the timeout");
     if (!s.planText) problems.push(`the session produced no text (result subtype ${JSON.stringify(s.result?.subtype ?? null)})`);
-    problems.push(...planProblems({ text: s.planText, toolUses: s.toolUses, scratch, head0 }));
+    problems.push(...planProblems({ s, scratch, head0 }));
     // The top Codex agent by name, not by tier table membership: planProblems accepts any of the three
     // rows, and for a design task the top row is the whole claim.
     if (!lines(s.planText).some((l) => /\bastra\b/i.test(l)))
@@ -768,7 +831,7 @@ test("the full run under Opus: plan, go, run",
     if (t1.killed) problems.push("turn 1 was killed at the timeout");
     // The whole plan, not only the stop: this is the turn whose plan the run then executes, and a plan
     // that named no agent would make everything measured after "go" a measurement of something else.
-    problems.push(...planProblems({ text: s1.planText, toolUses: s1.toolUses, scratch, head0 })
+    problems.push(...planProblems({ s: s1, scratch, head0 })
       .map((p) => `turn 1: ${p}`));
     if (problems.length) return settle(dir, problems);
 
@@ -837,10 +900,10 @@ test("the full run under Opus: plan, go, run",
     // where to look and the files answer for what ran.
     const codexCallsRan = codexCalls(s2.toolUses);
     if (!codexCallsRan.length)
-      problems.push(`no Codex agent ran: ${agentCalls(s2.toolUses).length} Agent call(s), none whose prompt names driver.mjs with --prompt-file`);
-    const noBackground = codexCallsRan.filter((u) => u.input.run_in_background !== true);
-    if (noBackground.length)
-      problems.push(`${noBackground.length} agent wrapper(s) ran in the foreground, so the coordinator waited on the call instead of the notification`);
+      problems.push(`no Codex agent ran: ${agentCalls(s2.toolUses).length} Agent call(s), none of type entrust:codex-agent or carrying agent-run.mjs --run --report-file or driver.mjs --prompt-file`);
+    const inBackground = codexCallsRan.filter((u) => u.input.run_in_background === true);
+    if (inBackground.length)
+      problems.push(`${inBackground.length} agent wrapper(s) ran in the background, where the headless turn could end with them alive`);
     const noReportFlag = codexCallsRan.filter((u) => !/--report-file/.test(codexCommand(u)));
     if (noReportFlag.length)
       problems.push(`${noReportFlag.length} agent call(s) name no --report-file, so their report is only in a task's output`);
@@ -869,7 +932,193 @@ test("the full run under Opus: plan, go, run",
       problems.push(`${reportPaths.length} report file(s) named by the agent calls or found in the run directories, none a completed turn on a tier model (model:turnStatus:exitCode): ${JSON.stringify(seen)}`);
 
     if (!/\bCodex\b/.test(s2.planText)) problems.push("the final report never names the composition that ran");
+    // The slug task's phases: the fan-out's returns, the verification, the synthesis, and the answer.
+    problems.push(...runProblems({ s1, s2, dirs, dir, request: SLUG_TASK, phases: 4 }));
     return settle(dir, problems);
+  });
+
+// --------------------------------------------------------------- 6
+
+const NO_CODEX_TASK =
+  "/entrust:orchestrate no codex. TASK: add a slug(title) helper to lib/slug.mjs that lowercases, trims and "
+  + "joins words with hyphens, with a test in test/slug.test.mjs. CHECK: node --test passes, run by an agent "
+  + "that did not write the code. RETURN: the files and the test count.";
+
+test("plan only, no codex: the codex page is never loaded, nothing is registered, and the card still shows",
+  "D5 (#15 F18): the codex page is the 4,511 words a plan with no Codex agent never needed, and the generated composition page is what that plan reads instead; D6: an all-Claude plan skips the launcher's registration and still shows the five rows",
+  async () => {
+    const dir = caseDir(6, "plan-no-codex");
+    const scratch = scratchClone(dir);
+    const head0 = git(scratch, "rev-parse", "HEAD").trim();
+    const r = await session({ model: "opus", maxTurns: 40, prompt: NO_CODEX_TASK }, { cwd: scratch, timeoutMs: PLAN_TIMEOUT });
+    const s = parseStream(r.out);
+    if (r.killed) stopAgents(scratch, dir, s.toolUses);
+    save(dir, "session.jsonl", r.out);
+    save(dir, "stderr.txt", r.err);
+    save(dir, "plan.txt", s.planText);
+    if (!s.init) return kept(dir, `no session started (exit ${r.code}${r.killed ? ", killed at the timeout" : ""}): ${r.err.trim().slice(-400)}`);
+    const problems = [];
+    const wrong = modelMismatch(s.init, "opus");
+    if (wrong) problems.push(wrong);
+    if (r.killed) problems.push("the session was killed at the timeout");
+    problems.push(...planProblems({ s, scratch, head0, codexPlanned: false }));
+    // The plan's composition came from the generated page, the one place it can come from without the codex page.
+    const readIt = s.toolUses.some((u) => u.parent === null && /codex-composition\.md/.test(JSON.stringify(u.input)));
+    if (!readIt) problems.push("the plan never read references/codex-composition.md, the composition it plans from");
+    return settle(dir, problems);
+  });
+
+// --------------------------------------------------------------- 7
+
+// Two units that share one interface: the task changes the interface, so exactly one worker must own it,
+// and the split critic is what says so before any worker brief exists.
+function splitProject(dir) {
+  const s = path.join(dir, "scratch");
+  const files = {
+    "package.json": `${JSON.stringify({ name: "scratch", type: "module", private: true, scripts: { test: "node --test" } }, null, 2)}\n`,
+    "lib/shared.mjs": "export const fmt = (n) => `#${n}`;\n",
+    "lib/a.mjs": "import { fmt } from \"./shared.mjs\";\nexport const labelA = (n) => `a ${fmt(n)}`;\n",
+    "lib/b.mjs": "import { fmt } from \"./shared.mjs\";\nexport const labelB = (n) => `b ${fmt(n)}`;\n",
+    "test/a.test.mjs": "import assert from \"node:assert/strict\";\nimport test from \"node:test\";\nimport { labelA } from \"../lib/a.mjs\";\n\ntest(\"labelA\", () => assert.equal(labelA(1), \"a #1\"));\n",
+    "test/b.test.mjs": "import assert from \"node:assert/strict\";\nimport test from \"node:test\";\nimport { labelB } from \"../lib/b.mjs\";\n\ntest(\"labelB\", () => assert.equal(labelB(2), \"b #2\"));\n",
+  };
+  for (const [rel, text] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(s, rel)), { recursive: true });
+    fs.writeFileSync(path.join(s, rel), text);
+  }
+  const id = ["-c", "user.name=orchestrate-live", "-c", "user.email=orchestrate-live@example.invalid"];
+  for (const args of [["-c", "init.defaultBranch=main", "init", "-q"], ["add", "-A"], [...id, "commit", "-q", "-m", "initial"]]) {
+    const r = spawnSync("git", args, { cwd: s, encoding: "utf8" });
+    if (r.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${(r.stderr ?? "").trim().slice(0, 240)}`);
+  }
+  return s;
+}
+
+const SPLIT_TASK =
+  "/entrust:orchestrate TASK: rename fmt in lib/shared.mjs to format, and update lib/a.mjs and lib/b.mjs, which "
+  + "both import it, one worker per file, with every test in test/ still passing. CHECK: node --test passes, run "
+  + "by an agent that wrote none of it. RETURN: the files changed and the test count.";
+
+test("the split critic: no worker brief before it returns, each brief names its file, the shared interface has one owner",
+  "D12 (#16's acceptance check, #15 F6: T5 fanned out before its split critique finished): a brief is written from the critic's corrected split, so none can exist before it",
+  async () => {
+    const dir = caseDir(7, "split-critic");
+    const scratch = splitProject(dir);
+    const head0 = git(scratch, "rev-parse", "HEAD").trim();
+    const sessionId = crypto.randomUUID();
+    const t1 = await session({ model: "opus", maxTurns: 60, prompt: SPLIT_TASK, sessionId, resumable: true }, { cwd: scratch, timeoutMs: PLAN_TIMEOUT });
+    const s1 = parseStream(t1.out);
+    if (t1.killed) stopAgents(scratch, dir, s1.toolUses);
+    save(dir, "turn1.jsonl", t1.out);
+    save(dir, "plan.txt", s1.planText);
+    if (!s1.init) return kept(dir, `turn 1 started no session (exit ${t1.code}): ${t1.err.trim().slice(-400)}`);
+    const problems = planProblems({ s: s1, scratch, head0 }).map((p) => `turn 1: ${p}`);
+    if (problems.length) return settle(dir, problems);
+    const t2 = await session({ model: "opus", maxTurns: 400, prompt: "go", resume: sessionId, resumable: true }, { cwd: scratch, timeoutMs: FULL_TIMEOUT });
+    const s2 = parseStream(t2.out);
+    if (t2.killed) { stopAgents(scratch, dir, s2.toolUses); problems.push("turn 2 was killed at the timeout"); }
+    save(dir, "turn2.jsonl", t2.out);
+    save(dir, "report.txt", s2.planText);
+    problems.push(...splitAdmissionProblems(s2, { units: ["lib/a.mjs", "lib/b.mjs"], shared: "lib/shared.mjs", reportOf: (p) => readJsonFile(p) }));
+    const nodeTest = await runProc(process.execPath, ["--test", "--test-reporter=tap"], { cwd: scratch, timeoutMs: 2 * 60_000 });
+    save(dir, "node-test.txt", `${nodeTest.out}\n${nodeTest.err}`);
+    if (nodeTest.code !== 0) problems.push(`node --test in the scratch exited ${nodeTest.code}`);
+    if (!/export const format\b/.test(fs.readFileSync(path.join(scratch, "lib", "shared.mjs"), "utf8"))) problems.push("lib/shared.mjs does not export format");
+    if (git(scratch, "rev-parse", "HEAD").trim() !== head0) problems.push("HEAD moved, so the run committed");
+    // Split critique, fan-out, verification, synthesis, and the answer.
+    problems.push(...runProblems({ s1, s2, dirs: runDirs(scratch), dir, request: SPLIT_TASK, phases: 5 }));
+    return settle(dir, problems);
+  });
+
+// --------------------------------------------------------------- 8
+
+const ADVISOR_TURNS = [
+  "/entrust:advisor TASK: review lib/a.mjs and lib/b.mjs, which both import lib/shared.mjs, for bugs, one reviewer "
+    + "per file, and settle any disagreement between them; change nothing. RETURN: the findings, each with its file and line.",
+  "go",
+  "no advisor. TASK: count the functions lib/shared.mjs exports, yourself. RETURN: the count.",
+  "ask the advisor whether lib/shared.mjs needs a test of its own. RETURN: its answer in one sentence.",
+];
+
+test("the advisor: consulted before any stop, again at a later decision on its one thread, silent after \"no advisor\", back on \"ask the advisor\"",
+  "D1 (#15 F1, P1: the advisor was chosen by the composition it was to advise on, and a plan stop came before advice the invocation had already asked for); D2 (F12c: the advisor's prompt carried an EFFORT line and no schema): the lifecycle and the assembled prompt are only visible in a session",
+  async () => {
+    const dir = caseDir(8, "advisor");
+    const scratch = splitProject(dir);
+    const head0 = git(scratch, "rev-parse", "HEAD").trim();
+    const sessionId = crypto.randomUUID();
+    const turns = [];
+    for (const [i, prompt] of ADVISOR_TURNS.entries()) {
+      const t = await session({ model: "opus", maxTurns: i === 1 ? 300 : 60, prompt, ...(i === 0 ? { sessionId } : { resume: sessionId }), resumable: true },
+        { cwd: scratch, timeoutMs: i === 1 ? FULL_TIMEOUT : PLAN_TIMEOUT });
+      const s = parseStream(t.out);
+      if (t.killed) stopAgents(scratch, dir, s.toolUses);
+      save(dir, `turn${i + 1}.jsonl`, t.out);
+      turns.push({ s, killed: t.killed, dirty: git(scratch, "status", "--porcelain").trim(), head: git(scratch, "rev-parse", "HEAD").trim() });
+      if (!s.init) return kept(dir, `turn ${i + 1} started no session (exit ${t.code}): ${t.err.trim().slice(-400)}`);
+    }
+    const problems = [];
+    const [t1, t2, t3, t4] = turns;
+    const skills = skillCalls(t1.s.toolUses);
+    if (!skills.some((n) => n === "entrust:codex" || n === "codex")) problems.push(`turn 1 never loaded the codex page; Skill calls: ${skills.join(", ") || "none"}`);
+    if (skills.some((n) => /orchestrate/.test(n))) problems.push("turn 1 loaded the orchestrate page through the Skill tool");
+    const a1 = advisorBriefs(t1.s);
+    const advisorCalls = new Set(a1.map((b) => b.call).filter(Boolean));
+    const others = agentCalls(t1.s.toolUses).filter((u) => u.parent === null && !advisorCalls.has(u));
+    if (!a1.length) problems.push("turn 1 ended with no advice: the invocation was the word for the advisor's turns");
+    else {
+      if (a1[0].done === null) problems.push("the advisor's first turn never returned inside turn 1");
+      if (others.some((u) => u.seq < a1[0].seq)) problems.push("another agent ran before the advisor's first advice");
+    }
+    if (t1.dirty || t1.head !== head0) problems.push("the advice turn changed the repository");
+    // The review's readers need no word of their own under the codex page, so the run may finish inside
+    // turn 1 or wait for "go": the later consultation is looked for in either, after the first.
+    const a2 = advisorBriefs(t2.s);
+    if (a1.length + a2.length < 2) problems.push("the advisor was never consulted again after its first advice");
+    if (advisorBriefs(t3.s).length) problems.push("the advisor was consulted after \"no advisor\"");
+    if (!advisorBriefs(t4.s).length) problems.push("\"ask the advisor\" did not bring it back");
+    for (const [i, t] of turns.entries()) {
+      if (t.dirty) problems.push(`turn ${i + 1} left the tree changed: ${t.dirty.split("\n").slice(0, 3).join(" | ")}`);
+      if (t.head !== head0) problems.push(`turn ${i + 1} moved HEAD`);
+      if (t.killed) problems.push(`turn ${i + 1} was killed at the timeout`);
+    }
+    const first = a1[0] ? readJsonFile(a1[0].report) : null;
+    const texts = [...a1, ...a2, ...advisorBriefs(t4.s)].map((b) => b.text);
+    note(`advisor prompts by turn: ${[a1, a2, advisorBriefs(t3.s), advisorBriefs(t4.s)].map((a) => a.length).join(", ")}; other agents in turn 1: ${others.length}`);
+    save(dir, "advisor-prompts.txt", texts.join("\n\n---\n\n"));
+    problems.push(...advisorPromptProblems(texts, { threadId: first?.threadId ?? null, shipped: readJsonFile(SCHEMA_FILE) }));
+    return settle(dir, problems);
+  });
+
+// --------------------------------------------------------------- 9
+
+const ACTIVATION_TASK = "RETURN: the number of entries in the current directory, as one number.";
+
+test("activation by position: the command first expands the page; the command last is recorded, not judged",
+  "D18 (#15 F2, P14a): whether a slash command at the end of a message activates is unmeasured; the session file, not the model's account, says whether the page arrived",
+  async () => {
+    const dir = caseDir(9, "activation");
+    const records = {};
+    for (const [where, prompt] of [["first", `/entrust:orchestrate ${ACTIVATION_TASK}`], ["last", `${ACTIVATION_TASK} /entrust:orchestrate`]]) {
+      const scratch = path.join(dir, `scratch-${where}`);
+      fs.mkdirSync(scratch, { recursive: true });
+      fs.writeFileSync(path.join(scratch, "one.txt"), "1\n");
+      const sessionId = crypto.randomUUID();
+      const r = await session({ model: "sonnet", maxTurns: 4, prompt, sessionId, resumable: true }, { cwd: scratch, timeoutMs: PLAN_TIMEOUT });
+      const s = parseStream(r.out);
+      save(dir, `${where}.jsonl`, r.out);
+      const projects = path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude"), "projects");
+      const cwd = s.init?.cwd ?? fs.realpathSync(scratch);
+      const file = path.join(projects, projectSlug(cwd), `${sessionId}.jsonl`);
+      let transcript = "";
+      try { transcript = fs.readFileSync(file, "utf8"); } catch {}
+      records[where] = { prompt, file, ...activationRecord({ transcript, stream: s, skill: "orchestrate" }) };
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+    save(dir, "activation.json", JSON.stringify(records, null, 2));
+    note(`command last: ${records.last.transcript ? (records.last.expanded ? "expanded" : "not expanded") : "no session file"}, Skill calls ${JSON.stringify(records.last.skillCalls)}, refusals ${records.last.refusals.length}, first action ${JSON.stringify(records.last.firstAction)}`);
+    if (!records.first.transcript) return `the command-first session left no session file at ${records.first.file}`;
+    return records.first.expanded || `the command-first session never expanded the page: ${JSON.stringify(records.first)}`;
   });
 
 // --------------------------------------------------------------- the gate
