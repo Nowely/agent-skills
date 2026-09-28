@@ -683,7 +683,10 @@ const HELP = [
   { s: "Environment", all: true,
     text: `  ENTRUST_STATE_DIR             where everything this driver owns lives, and the
                                 first place <state> is read from; must be
-                                absolute. For test harnesses: two runs under
+                                absolute, and neither $TMPDIR nor under it:
+                                both levels grant $TMPDIR, and a root at or
+                                above <state> is refused, so every run exits 2.
+                                For test harnesses: two runs under
                                 different values do NOT exclude each other
 ${stateSubdirHelp()}
   CLAUDE_PLUGIN_DATA            <state> where the variable above is unset: the

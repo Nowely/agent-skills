@@ -110,8 +110,9 @@ The driver keeps no default of its own: with neither that variable nor `ENTRUST_
 exits 2. In every permission mode but auto and bypass, a write outside the working directory prompts, so
 add that directory to `permissions.additionalDirectories` once — this plugin adds no rules on your
 behalf. A shell outside Claude Code has no `CLAUDE_PLUGIN_DATA`; to run the driver by hand, as under
-First run, export an absolute path of your own. The driver reads `ENTRUST_STATE_DIR` first, so wherever
-it is set it overrides the plugin's directory:
+First run, export an absolute path of your own — neither `$TMPDIR` nor a directory above it: both levels
+grant `$TMPDIR` to the agent, and a state directory there, or above it, is refused, so the run exits 2. The
+driver reads `ENTRUST_STATE_DIR` first, so wherever it is set it overrides the plugin's directory:
 
 ```bash
 export ENTRUST_STATE_DIR="$HOME/.local/state/entrust"

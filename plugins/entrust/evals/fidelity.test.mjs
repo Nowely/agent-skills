@@ -614,7 +614,9 @@ async function liveTurns() {
     const { code, out, err } = await runDriver(
       ["--level", "read", "--cwd", dir, "--effort", "low", "--timeout", "300",
        "--report-file", reportFile, "--prompt", LIVE_PROMPT],
-      { ...process.env, ENTRUST_CODEX: shim, ENTRUST_STATE_DIR: state }, 330000);
+      // A $TMPDIR beside the state directory, as captureDriver gives each case: the read level grants
+      // $TMPDIR, and the inherited one is an ancestor of `state`, which the driver refuses.
+      { ...process.env, ENTRUST_CODEX: shim, ENTRUST_STATE_DIR: state, TMPDIR: freshDir("live-tmp") }, 330000);
     let r = null;
     try { r = JSON.parse(out); } catch {}
     if (!r) report("live turn", `the driver produced no JSON report (exit ${code}): ${err.trim().slice(-300)}`);

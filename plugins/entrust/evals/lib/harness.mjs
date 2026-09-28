@@ -33,7 +33,7 @@ process.on("exit", () => {
 
 // Removed on EXIT, not only at the happy end of a suite: a crashed run left the whole tree behind, and
 // they accumulate silently in $TMPDIR.
-const SYSTEM_TMP = os.tmpdir();
+export const SYSTEM_TMP = os.tmpdir();
 export function tempDir(prefix) {
   const d = fs.mkdtempSync(path.join(SYSTEM_TMP, prefix));
   temps.push(d);

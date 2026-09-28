@@ -10,7 +10,10 @@ explains environment, state, wrappers, operational bounds, and lifecycle details
 
 The variables, the subdirectories of the state directory `<state>` stands for below, the order the driver
 resolves it in, and what `TMPDIR` grants a read agent are all under `--help-all`. There is no default: the
-intended value is the plugin's own data directory, which the skill recipes pass on every call. What it does not carry: the agent's shell also receives `TMPPREFIX` under
+intended value is the plugin's own data directory, which the skill recipes pass on every call. `<state>`
+must also be absolute, and neither `$TMPDIR` nor a directory above it: both levels grant `$TMPDIR` to the
+agent, and a state directory at or above it would let the sandbox reach its own locks and answers, so a
+value naming either exits 2 before any turn runs. What it does not carry: the agent's shell also receives `TMPPREFIX` under
 the run's `$TMPDIR`, because zsh keeps here-document temp files at `$TMPPREFIX*`, default `/tmp/zsh`,
 which no grant covers ([incidents](incidents.md#here-documents-under-the-grant)).
 
