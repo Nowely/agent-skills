@@ -68,8 +68,9 @@ Open the relevant note when writing a [code comment](../../references/genres/cod
 [team message](../../references/genres/team-message.md),
 [ticket or issue](../../references/genres/ticket.md),
 [interface text or error message](../../references/genres/ui-text.md),
-[relayed result](../../references/genres/relayed-result.md), or
-[agent brief](../../references/genres/agent-brief.md).
+[relayed result](../../references/genres/relayed-result.md),
+[agent brief](../../references/genres/agent-brief.md), or
+[skill page or standing agent instructions](../../references/genres/skill-page.md).
 
 For a standalone document, name the suitable deep skill: [rethink](../rethink/SKILL.md) agrees its shape,
 [rewrite](../rewrite/SKILL.md) writes it, and [audit](../audit/SKILL.md) measures it. The user starts

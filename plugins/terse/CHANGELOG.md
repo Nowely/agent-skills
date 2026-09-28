@@ -5,6 +5,14 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Added
+
+- A genre note for a skill page or standing agent instructions, `references/genres/skill-page.md`, linked from
+  `clarity`: the model that loads such text is its reader, so its vendor's guidance is the authority, and the note
+  carries what OpenAI's and Anthropic's guides agree on and Claude Code's 5,000-token limit on a skill kept after
+  compaction. `agent-brief.md` points to the same vendor guides. From
+  `research/2026-09-28-vendor-guides/`.
+
 ### Fixed
 
 - The README's update step is one command, `claude plugin update terse@nowely`. It refreshes the marketplace
