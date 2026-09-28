@@ -17,7 +17,7 @@ when_to_use: >-
   what the text says, what supports it, and how it fits its destination. This includes feedback on a
   diff, text beside code, and a change note. Read a genre note only when that genre is at hand.
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
 license: MIT
 ---
 
@@ -68,8 +68,9 @@ Open the relevant note when writing a [code comment](../../references/genres/cod
 [team message](../../references/genres/team-message.md),
 [ticket or issue](../../references/genres/ticket.md),
 [interface text or error message](../../references/genres/ui-text.md),
-[relayed result](../../references/genres/relayed-result.md), or
-[agent brief](../../references/genres/agent-brief.md).
+[relayed result](../../references/genres/relayed-result.md),
+[agent brief](../../references/genres/agent-brief.md), or
+[skill page or standing agent instructions](../../references/genres/skill-page.md).
 
 For a standalone document, name the suitable deep skill: [rethink](../rethink/SKILL.md) agrees its shape,
 [rewrite](../rewrite/SKILL.md) writes it, and [audit](../audit/SKILL.md) measures it. The user starts
