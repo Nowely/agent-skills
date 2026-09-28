@@ -7,13 +7,15 @@
                                the per-agent table also goes to measures/batches/NAME.tsv
   batch.py status IDS          the status line of each agent, without launching
 """
-import json, os, subprocess, sys, time
+import re, json, os, subprocess, sys, time
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
-LAUNCHER = '~/.claude/plugins/cache/nowely/entrust/0.20.0/skills/codex/scripts/agent-run.mjs'
-RUN = '~/.claude/plugins/data/entrust-nowely/orchestrate/-Users-user-Git-agent-skills/2026-09-26-writing-replication'
 RESEARCH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ENV = dict(os.environ, CLAUDE_PLUGIN_DATA='~/.claude/plugins/data/entrust-nowely')
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(RESEARCH))))
+RUN = os.path.join(str(Path.home()), '.claude/plugins/data/entrust-nowely/orchestrate', re.sub(r'[^A-Za-z0-9]', '-', REPO), '2026-09-26-writing-replication')
+LAUNCHER = os.path.join(str(Path.home()), '.claude/plugins/cache/nowely/entrust/0.20.0/skills/codex/scripts/agent-run.mjs')
+ENV = dict(os.environ, CLAUDE_PLUGIN_DATA=os.path.join(str(Path.home()), '.claude/plugins/data/entrust-nowely'))
 
 
 def report_path(i):

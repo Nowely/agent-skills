@@ -6,7 +6,7 @@
 # in the Q7 entry, the report's date, the excerpt's size, and the skeleton's must-not words (part 3, rule 7)
 # and its reader-pair rule over the excerpt. Reads only.
 set -u
-P=$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2
+P=${TMPDIR:-/tmp}/terse/runs/20260924-002235-terse-readme-rewrite2
 A="$P/audit.md"; X="$P/probe-02/excerpt.txt"
 n=0; while IFS= read -r l; do n=$((n+1)); echo "excerpt line $n found at audit.md:$(grep -n -F -- "$l" "$A" | cut -d: -f1 | tr '\n' ' ')"; done < "$X"
 j=$(tr '\n' ' ' < "$X" | sed 's/ *$//'); echo "joined, in the normalised report: $(tr '\n' ' ' < "$A" | tr -s ' ' | grep -o -F -- "$j" | wc -l | tr -d ' ') time(s)"

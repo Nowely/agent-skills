@@ -34,8 +34,11 @@
 // `saw` is clipped at 2000 characters; every run here stays under it, so the verifier reads it whole.
 // Long page lines are printed through probe-02/quote.mjs, a grep over a line range.
 import fs from "node:fs";
-const RUN = "$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2";
-const REPO = "~/Git/agent-skills";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const RUN = path.join(os.tmpdir(), "terse/runs/20260924-002235-terse-readme-rewrite2");
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../../..");
 const SK = `${REPO}/plugins/terse/skills`;
 const PR = `${REPO}/plugins/terse/references/prior-art.md`;
 const CH = `${REPO}/research/2026-09-10-chain`;
@@ -50,7 +53,7 @@ const pin = (s) => esc(norm(s));
 const L = (s) => esc(s).replace(/ +/g, "\\s+");          // a page literal; a line the page wraps still matches
 const all = (...parts) => "^" + parts.map((p) => `(?=[\\s\\S]*${p})`).join("");   // every part, in any order
 const sed = (range, file) => `sed -n '${range}' ${file}`;
-const NODE = "~/.nvm/versions/node/v24.11.0/bin/node";
+const NODE = path.join(os.homedir(), ".nvm/versions/node/v24.11.0/bin/node");
 const sq = (s) => "'" + s.replace(/'/g, "'\\''") + "'";
 // quote.mjs over one range, and the expect for each literal it must print as found (line start, not NOT FOUND)
 const shortOf = (f) => f.replace(`${SK}/`, "").replace(`${REPO}/`, "").replace(`${RUN}/`, "R/");

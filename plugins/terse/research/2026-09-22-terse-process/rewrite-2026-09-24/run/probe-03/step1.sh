@@ -5,9 +5,9 @@
 # is compared with this checkout's: the exchange it settles is the same text in both. Then the checkout's
 # lines: the exchange (step 1) and the announcement of agents and model (step 5, after it). Reads only.
 set -u
-R=$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2
-REPO=~/Git/agent-skills
-Q() { ~/.nvm/versions/node/v24.11.0/bin/node "$R/probe-02/quote.mjs" "$@"; }
+R=${TMPDIR:-/tmp}/terse/runs/20260924-002235-terse-readme-rewrite2
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+Q() { "$HOME/.nvm/versions/node/v24.11.0/bin/node" "$R/probe-02/quote.mjs" "$@"; }
 C="$R/reviews/02/c4-1.md"
 Q "$C" 37-37 '"source":"terse@inline","version":"0.1.1"'
 Q "$C" 48-54 "Scope proposal for the audit:" "**Docs**: README.md (only tracked \`.md\` file)." "**Entry file**: README.md." "Confirm this, or correct it, before I build the reader profile."

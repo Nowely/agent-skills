@@ -2,8 +2,10 @@
 // source passages, and rewrites each pair so that exactly one contiguous span differs. Same ids, so the
 // bank keeps one item per source passage and the answer-first items are untouched.
 import fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
+const REPO = fileURLToPath(new URL('../../../../../', import.meta.url)).replace(/\/$/, '')
 
-const bank = JSON.parse(fs.readFileSync('~/Git/agent-skills/research/2026-09-11-calibration-bank/bank.json', 'utf8'))
+const bank = JSON.parse(fs.readFileSync(new URL('../bank.json', import.meta.url), 'utf8'))
 const OUT = '/tmp/bank-build/v2'
 const WORKERS = ['astra', 'sol', 'terraA', 'terraB', 'opusA', 'opusB', 'sonA', 'sonB', 'sonC', 'sonD']
 
@@ -54,7 +56,7 @@ current off: ${i.variants.off.text}`).join('\n\n')
 measured them and they failed: the two sides of a pair were meant to differ in one thing, and they
 differ in several. Rewrite them.
 
-Repository root: ~/Git/agent-skills
+Repository root: ${REPO}
 
 ${RULE}
 

@@ -3,8 +3,9 @@
 // blind check already passed - are not touched. An item that is not replaced keeps its first version and
 // is named, because a silent partial merge would leave the bank measuring two different disciplines.
 import fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
-const BANK = '~/Git/agent-skills/research/2026-09-11-calibration-bank/bank.json'
+const BANK = fileURLToPath(new URL('../bank.json', import.meta.url))
 const V2 = process.env.PASS_DIR || '/tmp/bank-build/v2'
 const bank = JSON.parse(fs.readFileSync(BANK, 'utf8'))
 const words = (s) => s.trim().split(/\s+/).filter(Boolean).length

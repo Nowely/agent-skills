@@ -5,7 +5,7 @@
 # probe-03/guard.sh (five planted rounds judged by the shipped check). Both are run here, not read from a
 # log; their full output is in probe-02/rundir-rewrite.log and probe-03's round-03 record. Reads the checkout only.
 set -u
-R=$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2
+R=${TMPDIR:-/tmp}/terse/runs/20260924-002235-terse-readme-rewrite2
 out=$(sh "$R/probe-02/rundir-rewrite.sh" rewrite audit rethink 2>&1); rc=$?
 echo "rundir-rewrite.sh (rewrite audit rethink): exit $rc"
 echo "  renders stopped at login, cost 0: $(printf '%s\n' "$out" | grep -c 'exit 1, Not logged in, cost 0') of 9"

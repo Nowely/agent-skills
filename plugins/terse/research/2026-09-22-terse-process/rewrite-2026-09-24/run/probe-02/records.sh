@@ -4,13 +4,13 @@
 # in the repository, its run directory still on disk) — then the page's table of ways in and its hand-over.
 # Reads only.
 set -u
-R=$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2
-REPO=~/Git/agent-skills
+R=${TMPDIR:-/tmp}/terse/runs/20260924-002235-terse-readme-rewrite2
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 OLD=$REPO/research/2026-09-22-terse-process/rewrite-2026-09-22/run
-OLDRUN=$TMPDIR/terse/runs/20260922-233021-terse-readme
+OLDRUN=${TMPDIR:-/tmp}/terse/runs/20260922-233021-terse-readme
 AUD=$REPO/research/2026-09-22-terse-process/audit-2026-09-22/audit.md
-Q() { ~/.nvm/versions/node/v24.11.0/bin/node "$R/probe-02/quote.mjs" "$@"; }
-hdr() { sed -n '1,2p' "$1" | cut -d' ' -f1-2 | sed 's#\t.*##; s#$TMPDIR/*terse/runs/#<runs>/#' | tr '\n' ' '; }
+Q() { "$HOME/.nvm/versions/node/v24.11.0/bin/node" "$R/probe-02/quote.mjs" "$@"; }
+hdr() { sed -n '1,2p' "$1" | cut -d' ' -f1-2 | sed -e 's#\t.*##' -e "s#${TMPDIR%/}//*terse/runs/#<runs>/#" | tr '\n' ' '; }
 echo "skeleton route, this run:"
 echo "  R/rounds.md:1: $(sed -n '1p' "$R/rounds.md")"
 echo "  R/skeleton.md sha256 $(shasum -a 256 "$R/skeleton.md" | cut -c1-16)…, the one line 1 records: $(sed -n '1p' "$R/rounds.md" | grep -c "$(shasum -a 256 "$R/skeleton.md" | cut -d' ' -f1)")"

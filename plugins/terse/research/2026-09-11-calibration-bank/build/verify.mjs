@@ -1,6 +1,8 @@
 // Checks a built bank against the properties item-bank.md requires. Every failure it reports is a
 // property that is cheap now and impossible to add once the person has started answering.
 import fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
+const ROOT = fileURLToPath(new URL('../../../../../', import.meta.url))
 
 const bank = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))
 const P = JSON.parse(fs.readFileSync('/tmp/partition.json', 'utf8'))
@@ -24,7 +26,7 @@ const byFile = new Map()
 for (const it of bank.items) {
   const r = parse(it.source)
   if (!r) { fail.push(`${it.id}: source "${it.source}" is not file:line-line`); continue }
-  if (!fs.existsSync('~/Git/agent-skills/' + r.file)) fail.push(`${it.id}: source file does not exist: ${r.file}`)
+  if (!fs.existsSync(ROOT + r.file)) fail.push(`${it.id}: source file does not exist: ${r.file}`)
   const list = byFile.get(r.file) || []
   for (const o of list) if (r.a <= o.b && o.a <= r.b) fail.push(`${it.id} overlaps ${o.id} at ${r.file}:${Math.max(r.a, o.a)}-${Math.min(r.b, o.b)}`)
   list.push({ ...r, id: it.id })

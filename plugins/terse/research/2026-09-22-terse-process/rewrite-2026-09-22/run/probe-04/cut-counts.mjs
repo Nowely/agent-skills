@@ -1,7 +1,9 @@
 // Word counts of the passages the cut ledger names: whitespace-delimited tokens of the quoted sentences,
 // the bullet dash not counted. Each sentence must occur in the file it is said to come from.
 import fs from "node:fs";
-const RUN = "$TMPDIR/terse/runs/20260922-233021-terse-readme";
+import os from "node:os";
+import path from "node:path";
+const RUN = path.join(os.tmpdir(), "terse/runs/20260922-233021-terse-readme");
 const text = (f) => fs.readFileSync(`${RUN}/${f}`, "utf8").replace(/\s+/g, " ");
 const words = (s) => s.split(" ").filter((x) => x && x !== "-").length;
 const P = [

@@ -1,9 +1,9 @@
 #!/bin/sh
 # D10–D13, round 04: page gaps and script misses the wave found, each made to happen or read at its line.
 set -u
-R=$TMPDIR/terse/runs/20260922-233021-terse-readme
-S=~/Git/agent-skills/plugins/terse/skills/rewrite/scripts
-P=~/Git/agent-skills/plugins/terse
+R=${TMPDIR:-/tmp}/terse/runs/20260922-233021-terse-readme
+S=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)/plugins/terse/skills/rewrite/scripts
+P=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)/plugins/terse
 T="$R/probe-04/d10-d13"; case "$T" in "$R"/*) rm -rf "$T"; mkdir -p "$T";; *) echo refused; exit 9;; esac
 echo "D10 rewrite/SKILL.md:190-191:"; sed -n '190,191p' "$P/skills/rewrite/SKILL.md"
 echo "D10 rethink route named at rewrite/SKILL.md:16-21, 'original' mentions there: $(sed -n '16,21p' "$P/skills/rewrite/SKILL.md" | grep -c -i original)"

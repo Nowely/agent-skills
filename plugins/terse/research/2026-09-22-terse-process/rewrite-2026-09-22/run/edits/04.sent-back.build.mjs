@@ -10,8 +10,11 @@
 // the sentences its own claims are about. The edits are applied here as round.mjs applies them, and the
 // result is held to the protected passages and to every ledger entry this round does not re-pin or drop.
 import fs from "node:fs";
-const RUN = "$TMPDIR/terse/runs/20260922-233021-terse-readme";
-const REPO = "~/Git/agent-skills";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const RUN = path.join(os.tmpdir(), "terse/runs/20260922-233021-terse-readme");
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../../..");
 const SK = `${REPO}/plugins/terse/skills`;
 const CH = `${REPO}/research/2026-09-10-chain`;
 const PROBE = `${RUN}/probe-04`;

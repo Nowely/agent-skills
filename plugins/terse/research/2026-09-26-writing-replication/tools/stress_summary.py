@@ -7,9 +7,11 @@
       stress/pairs-verdicts.json, stress/cx-findings.json and stress/summary.md
 """
 import json, os, re, sys, collections
+from pathlib import Path
 
-RUN = '~/.claude/plugins/data/entrust-nowely/orchestrate/-Users-user-Git-agent-skills/2026-09-26-writing-replication'
 R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(R))))
+RUN = os.path.join(str(Path.home()), '.claude/plugins/data/entrust-nowely/orchestrate', re.sub(r'[^A-Za-z0-9]', '-', REPO), '2026-09-26-writing-replication')
 
 
 def latest(ids):

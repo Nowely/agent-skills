@@ -18,8 +18,11 @@
 // are applied here as round.mjs applies them and the result is held to every claim, every retired phrasing
 // and every pin this round leaves alone; the qualifier count is taken as round.mjs takes it.
 import fs from "node:fs";
-const RUN = "$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2";
-const REPO = "~/Git/agent-skills";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const RUN = path.join(os.tmpdir(), "terse/runs/20260924-002235-terse-readme-rewrite2");
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../../..");
 const SK = `${REPO}/plugins/terse/skills`;
 const PR = `${REPO}/plugins/terse/references/prior-art.md`;
 const CH = `${REPO}/research/2026-09-10-chain`;

@@ -5,10 +5,10 @@
 # before any invocation unless the configuration reports "loggedIn": false, so nothing reaches a model.
 # `env -i` keeps this session's variables out. Installed from this checkout's marketplace.
 set -u
-P=$TMPDIR/terse/runs/20260922-233021-terse-readme/probe-03
-REPO=~/Git/agent-skills
+P=${TMPDIR:-/tmp}/terse/runs/20260922-233021-terse-readme/probe-03
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 SK=$REPO/plugins/terse/skills
-CL=~/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+CL=$HOME/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
 NP=/usr/bin:/bin:/usr/sbin:/sbin
 for d in "$P/config-install" "$P/home-install" "$P/work-install"; do case "$d" in "$P"/*) rm -rf "$d"; mkdir -p "$d";; *) echo "refused"; exit 9;; esac; done
 iso() { (cd "$P/work-install" && env -i HOME="$P/home-install" PATH="$NP" CLAUDE_CONFIG_DIR="$P/config-install" "$@" < /dev/null); }

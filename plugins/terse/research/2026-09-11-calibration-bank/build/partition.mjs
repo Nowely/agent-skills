@@ -1,5 +1,6 @@
 import fs from 'node:fs'
-const ROOT = '~/Git/agent-skills/'
+import { fileURLToPath } from 'node:url'
+const ROOT = fileURLToPath(new URL('../../../../../', import.meta.url))
 const prose = [
   'plugins/codex-delegate/CHANGELOG.md','plugins/codex-delegate/README.md','plugins/codex-delegate/RELEASING.md',
   'plugins/codex-delegate/evals/README.md','plugins/codex-delegate/skills/orchestrate/SKILL.md',

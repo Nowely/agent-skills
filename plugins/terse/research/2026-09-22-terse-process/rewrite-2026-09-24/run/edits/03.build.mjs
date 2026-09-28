@@ -39,8 +39,11 @@
 // survey the user sizes smaller (briefs.md:37–38); duty 1: "You decide whether the draft replaces your
 // document." gets its own edit and claim, R03i, and R03b's edit no longer carries that sentence in its `new`.
 import fs from "node:fs";
-const RUN = "$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2";
-const REPO = "~/Git/agent-skills";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const RUN = path.join(os.tmpdir(), "terse/runs/20260924-002235-terse-readme-rewrite2");
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../../..");
 const SK = `${REPO}/plugins/terse/skills`;
 const CH = `${REPO}/research/2026-09-10-chain`;
 const P2 = `${RUN}/probe-02`, P3 = `${RUN}/probe-03`;
@@ -54,7 +57,7 @@ const pin = (s) => esc(norm(s));
 const L = (s) => esc(s).replace(/ +/g, "\\s+");
 const all = (...parts) => "^" + parts.map((p) => `(?=[\\s\\S]*${p})`).join("");
 const sed = (range, file) => `sed -n '${range}' ${file}`;
-const NODE = "~/.nvm/versions/node/v24.11.0/bin/node";
+const NODE = path.join(os.homedir(), ".nvm/versions/node/v24.11.0/bin/node");
 const sq = (s) => "'" + s.replace(/'/g, "'\\''") + "'";
 const shortOf = (f) => f.replace(`${SK}/`, "").replace(`${REPO}/`, "").replace(`${RUN}/`, "R/");
 const q = (file, range, ...lits) => [NODE, sq(`${P2}/quote.mjs`), sq(file), range, ...lits.map(sq)].join(" ");

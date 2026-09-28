@@ -2,8 +2,8 @@
 # Round 03, the code findings D2-D4 of code-defects.md, each reproduced on planted input under this probe
 # directory with the repository's scripts. Nothing is written outside it.
 set -u
-P=$TMPDIR/terse/runs/20260922-233021-terse-readme/probe-03
-REPO=~/Git/agent-skills
+P=${TMPDIR:-/tmp}/terse/runs/20260922-233021-terse-readme/probe-03
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 S=$REPO/plugins/terse/skills/rewrite/scripts
 A=$REPO/plugins/terse/skills/audit/scripts
 for d in "$P/d2" "$P/d3" "$P/d4"; do case "$d" in "$P"/*) rm -rf "$d"; mkdir -p "$d";; *) echo refused; exit 9;; esac; done

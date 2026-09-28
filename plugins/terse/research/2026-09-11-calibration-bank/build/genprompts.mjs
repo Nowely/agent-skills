@@ -1,4 +1,6 @@
 import fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
+const REPO = fileURLToPath(new URL('../../../../../', import.meta.url)).replace(/\/$/, '')
 const P = JSON.parse(fs.readFileSync('/tmp/partition.json', 'utf8'))
 const OUT = '/tmp/bank-build'
 
@@ -21,7 +23,7 @@ function prompt(w, a) {
 one particular person prefers. You are one of five independent writing engines working on disjoint
 source material; you will not see what the others write, and that is deliberate.
 
-Repository root: ~/Git/agent-skills
+Repository root: ${REPO}
 
 YOUR SOURCE BLOCKS. Read these and only these. Every other file in the repository is out of bounds
 for this task, because another engine has been assigned it and two items built on one passage would

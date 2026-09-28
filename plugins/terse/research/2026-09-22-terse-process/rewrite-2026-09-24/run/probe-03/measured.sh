@@ -2,8 +2,8 @@
 # Round 03, R03h: the 2026-09-22 audit's figures, counted now from its reader rows, and which README it
 # measured — the README at 1a24018, the one this draft replaces. Reads only.
 set -u
-R=$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2
-REPO=~/Git/agent-skills
+R=${TMPDIR:-/tmp}/terse/runs/20260924-002235-terse-readme-rewrite2
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 A="$R/audit.md"
 s=$(grep -n -m1 '^## Reader results' "$A" | cut -d: -f1); e=$(grep -n -m1 '^## Score' "$A" | cut -d: -f1)
 sed -n "${s},${e}p" "$A" | awk -F'|' '$2 ~ /^ *[0-9]+ *$/ { a=$3; r=$6; gsub(/^ +| +$/,"",a); gsub(/^ +| +$/,"",r); n[a]++; if (r=="yes") y[a]++ } END { printf "reader rows counted under Reader results: docs %d of %d right, no-doc %d of %d right\n", y["docs"], n["docs"], y["no-doc"], n["no-doc"] }'

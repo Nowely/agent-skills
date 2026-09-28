@@ -3,8 +3,8 @@
 # 2 (headings), 4 (the block budgets), 5 (fences), 6 (items 5, 6, 11) and 7 (words), as a grep reads them.
 # The file is the first argument, 04-shape.md by default. Reads only.
 set -u
-R=$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2
-S=~/Git/agent-skills/plugins/terse/skills/rewrite/scripts
+R=${TMPDIR:-/tmp}/terse/runs/20260924-002235-terse-readme-rewrite2
+S=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)/plugins/terse/skills/rewrite/scripts
 F="${1:-$R/04-shape.md}"
 echo "# round 04 checks, $(date '+%Y-%m-%d %H:%M:%S'); $(basename "$F") sha256 $(shasum -a 256 "$F" | cut -d' ' -f1)"
 [ -f "$R/ledger.04.json" ] && echo "ledger.04.json sha256 $(shasum -a 256 "$R/ledger.04.json" | cut -d' ' -f1) (ledger.json before the round: $(cut -d' ' -f1 "$R/probe-04/ledger-before-04.sha" 2>/dev/null))"

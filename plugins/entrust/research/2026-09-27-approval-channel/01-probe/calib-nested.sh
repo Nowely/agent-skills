@@ -1,6 +1,6 @@
 #!/bin/sh
 # Does codex's seatbelt profile (entrust_read) refuse a nested sandbox-exec? No model call.
-D=$TMPDIR/entrust-p1.54JBSVGo09
+D=${TMPDIR:-/tmp}/entrust-p1.54JBSVGo09
 export CODEX_HOME="$D/home-dry"
 codex sandbox -c 'permissions.entrust_read.extends=":read-only"' \
   -c 'permissions.entrust_read.filesystem={":tmpdir"="write"}' \

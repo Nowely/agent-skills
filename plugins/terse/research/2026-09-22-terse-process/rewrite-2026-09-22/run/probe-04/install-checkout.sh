@@ -10,10 +10,10 @@
 # against its source's plugins/terse and against `git archive 2f29a8f`. Nothing is written outside this
 # directory; the checkout is only read.
 set -u
-P=$TMPDIR/terse/runs/20260922-233021-terse-readme/probe-04
-REPO=~/Git/agent-skills
+P=${TMPDIR:-/tmp}/terse/runs/20260922-233021-terse-readme/probe-04
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 C=2f29a8f
-CL=~/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+CL=$HOME/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
 NP=/usr/bin:/bin:/usr/sbin:/sbin
 for d in "$P/config-A" "$P/home-A" "$P/work-A" "$P/config-B" "$P/home-B" "$P/work-B" "$P/clone-$C" "$P/archive-$C"; do
   case "$d" in "$P"/*) rm -rf "$d"; mkdir -p "$d";; *) echo "refused: $d"; exit 9;; esac

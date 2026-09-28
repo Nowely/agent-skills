@@ -3,10 +3,12 @@
 
   tokens.py            prints the table and writes measures/tokens.md
 """
-import glob, json, os, statistics
+import re, glob, json, os, statistics
+from pathlib import Path
 
-RUN = '~/.claude/plugins/data/entrust-nowely/orchestrate/-Users-user-Git-agent-skills/2026-09-26-writing-replication'
 RESEARCH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(RESEARCH))))
+RUN = os.path.join(str(Path.home()), '.claude/plugins/data/entrust-nowely/orchestrate', re.sub(r'[^A-Za-z0-9]', '-', REPO), '2026-09-26-writing-replication')
 
 rows = []
 for p in sorted(glob.glob(f'{RUN}/*/report.json')):

@@ -9,9 +9,9 @@
 #   e  the retired claim brought back in other words
 # Everything is written under guard/ beside this script and removed at the end. Reads the checkout only.
 set -u
-P=$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-03
-S=~/Git/agent-skills/plugins/terse/skills/rewrite/scripts
-NODE=~/.nvm/versions/node/v24.11.0/bin/node
+P=${TMPDIR:-/tmp}/terse/runs/20260924-002235-terse-readme-rewrite2/probe-03
+S=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)/plugins/terse/skills/rewrite/scripts
+NODE=$HOME/.nvm/versions/node/v24.11.0/bin/node
 G="$P/guard"; case "$G" in "$P"/guard) rm -rf "$G"; mkdir -p "$G";; *) exit 9;; esac
 printf '# demo\n\nEvery run writes a receipt.\n\nThe tool asks before it deletes.\n' > "$G/01-base.md"
 printf '[{"name":"T the tool asks before it deletes","pattern":"The tool asks before it deletes\\\\.","want":true},\n {"name":"F it deletes without asking","pattern":"It deletes without asking\\\\.","want":false}]\n' > "$G/ledger.seed.json"

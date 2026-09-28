@@ -5,10 +5,12 @@
       REFERENCE: JSON array of reference episodes. PREFIX: Luna agent id prefix (e.g. pilot).
       Writes measures/NAME.md and measures/NAME.json.
 """
-import glob, json, os, statistics, sys
+import re, glob, json, os, statistics, sys
+from pathlib import Path
 
-RUN = '~/.claude/plugins/data/entrust-nowely/orchestrate/-Users-user-Git-agent-skills/2026-09-26-writing-replication'
 RESEARCH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(RESEARCH))))
+RUN = os.path.join(str(Path.home()), '.claude/plugins/data/entrust-nowely/orchestrate', re.sub(r'[^A-Za-z0-9]', '-', REPO), '2026-09-26-writing-replication')
 
 
 def match(a, b):

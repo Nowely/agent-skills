@@ -15,10 +15,10 @@
 # "loggedIn": false. `env -i` keeps this session's variables out. Every write is under rd/, which is
 # removed at the end; the checkout is only read, and its status for plugins/ and .claude-plugin/ is printed.
 set -u
-P=$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02
-REPO=~/Git/agent-skills
-CL=~/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
-NODE=~/.nvm/versions/node/v24.11.0/bin/node
+P=${TMPDIR:-/tmp}/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+CL=$HOME/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+NODE=$HOME/.nvm/versions/node/v24.11.0/bin/node
 NP=/usr/bin:/bin:/usr/sbin:/sbin
 PAGES="${*:-rewrite audit rethink}"
 B="$P/rd"

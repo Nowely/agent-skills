@@ -22,8 +22,11 @@
 // claim, every retired phrasing and every pin this round leaves alone; every check is dry-run separately and
 // stays under the ledger's 2000-character `saw`.
 import fs from "node:fs";
-const RUN = "$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2";
-const REPO = "~/Git/agent-skills";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const RUN = path.join(os.tmpdir(), "terse/runs/20260924-002235-terse-readme-rewrite2");
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../../..");
 const SK = `${REPO}/plugins/terse/skills`;
 const PR = `${REPO}/plugins/terse/references/prior-art.md`;
 const P2 = `${RUN}/probe-02`, P3 = `${RUN}/probe-03`, P4 = `${RUN}/probe-04`;
@@ -37,7 +40,7 @@ const pin = (s) => esc(norm(s));
 const L = (s) => esc(s).replace(/ +/g, "\\s+");
 const all = (...parts) => "^" + parts.map((p) => `(?=[\\s\\S]*${p})`).join("");
 const sed = (range, file) => `sed -n '${range}' ${file}`;
-const NODE = "~/.nvm/versions/node/v24.11.0/bin/node";
+const NODE = path.join(os.homedir(), ".nvm/versions/node/v24.11.0/bin/node");
 const sq = (s) => "'" + s.replace(/'/g, "'\\''") + "'";
 const shortOf = (f) => f.replace(`${SK}/`, "").replace(`${REPO}/`, "").replace(`${RUN}/`, "R/");
 const q = (file, range, ...lits) => [NODE, sq(`${P2}/quote.mjs`), sq(file), range, ...lits.map(sq)].join(" ");

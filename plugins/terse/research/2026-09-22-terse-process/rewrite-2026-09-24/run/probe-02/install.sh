@@ -6,11 +6,11 @@
 # binary, called by its path). The install and update commands are the README's, byte for byte, so the
 # marketplace is fetched from GitHub. The checkout is only read.
 set -u
-P=$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02
-REPO=~/Git/agent-skills
+P=${TMPDIR:-/tmp}/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 SK=$REPO/plugins/terse/skills
-CL=~/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
-NODE=~/.nvm/versions/node/v24.11.0/bin/node
+CL=$HOME/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+NODE=$HOME/.nvm/versions/node/v24.11.0/bin/node
 NP=/usr/bin:/bin:/usr/sbin:/sbin
 for d in "$P/config-inst" "$P/home-inst" "$P/work-inst"; do case "$d" in "$P"/*) rm -rf "$d"; mkdir -p "$d";; *) echo "refused"; exit 9;; esac; done
 iso() { (cd "$P/work-inst" && env -i HOME="$P/home-inst" PATH="$NP" CLAUDE_CONFIG_DIR="$P/config-inst" "$CL" "$@" < /dev/null); }

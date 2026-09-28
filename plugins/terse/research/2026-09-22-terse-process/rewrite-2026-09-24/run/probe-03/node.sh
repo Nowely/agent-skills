@@ -4,10 +4,10 @@
 # declares. `env -i` keeps this session's variables out; TMPDIR is a directory under this probe, removed
 # at the end. The checkout is only read.
 set -u
-P=$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-03
-REPO=~/Git/agent-skills
+P=${TMPDIR:-/tmp}/terse/runs/20260924-002235-terse-readme-rewrite2/probe-03
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 SK=$REPO/plugins/terse/skills
-NODE=~/.nvm/versions/node/v24.11.0/bin/node
+NODE=$HOME/.nvm/versions/node/v24.11.0/bin/node
 NP=/usr/bin:/bin:/usr/sbin:/sbin
 T="$P/tmp-node"; case "$T" in "$P"/tmp-node) rm -rf "$T"; mkdir -p "$T";; *) exit 9;; esac
 env -i PATH="$NP" sh -c 'command -v node >/dev/null && echo "node on PATH: yes" || echo "node on PATH: no"'

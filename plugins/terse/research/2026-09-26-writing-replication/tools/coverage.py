@@ -10,10 +10,12 @@ A page whose first line (`# P### page NN/MM`) reached the model but whose whole 
 corpus/measures/corpus-revision.json when it exists: a page whose sha256 differs is reported as
 `changed`. Writes measures/coverage/OUT_NAME.json and prints one line per agent and the totals.
 """
-import glob, hashlib, json, os, sys
+import re, glob, hashlib, json, os, sys
+from pathlib import Path
 
-RUN = '~/.claude/plugins/data/entrust-nowely/orchestrate/-Users-user-Git-agent-skills/2026-09-26-writing-replication'
 RESEARCH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(RESEARCH))))
+RUN = os.path.join(str(Path.home()), '.claude/plugins/data/entrust-nowely/orchestrate', re.sub(r'[^A-Za-z0-9]', '-', REPO), '2026-09-26-writing-replication')
 PARTS = f'{RESEARCH}/corpus/parts'
 REVISION = f'{RESEARCH}/corpus/measures/corpus-revision.json'
 

@@ -7,15 +7,15 @@
 # "loggedIn": false, so nothing reaches a model (each invocation exits 1, "Not logged in").
 # `env -i` keeps this session's variables out.
 set -u
-P=$TMPDIR/terse/runs/20260922-233021-terse-readme/probe-03
-REPO=~/Git/agent-skills
-CL=~/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+P=${TMPDIR:-/tmp}/terse/runs/20260922-233021-terse-readme/probe-03
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+CL=$HOME/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
 iso() { c="$1"; shift; env -i HOME="$P/home-$c" PATH=/usr/bin:/bin:/usr/sbin:/sbin TMPDIR="$P/tmp-$c/" CLAUDE_CONFIG_DIR="$P/config-$c" "$@"; }
 reset() { for d in "$P/config-$1" "$P/home-$1" "$P/tmp-$1" "$P/work-$1"; do case "$d" in "$P"/*) rm -rf "$d"; mkdir -p "$d";; *) echo "refused: $d outside the probe dir"; exit 9;; esac; done; }
 gate() { if iso "$1" "$CL" auth status 2>&1 | grep -q '"loggedIn": false'; then echo "$1: isolated configuration not logged in"; else echo "$1: logged in or unknown, stopping before any invocation"; exit 8; fi; }
 invoke() { c="$1"; shift; out=$(cd "$P/work-$c" && iso "$c" "$CL" -p "$@" --output-format stream-json --verbose < /dev/null 2>&1); rc=$?
   echo "$c: $1 exit $rc, $(printf '%s' "$out" | grep -o 'Not logged in[^"]*' | head -1), cost $(printf '%s' "$out" | grep -o '"total_cost_usd":[0-9.]*' | head -1 | cut -d: -f2)"; }
-seen() { l=$(cat "$P/config-$1"/projects/*/*.jsonl 2>/dev/null | grep -o 'D=\\"[^;]*;' | head -1 | sed 's/\\"/"/g; s#$TMPDIR/*terse/runs/20260922-233021-terse-readme/probe-03#<probe>#g'); echo "$1: the page's line as received begins ${l:-(not found)}"; }
+seen() { l=$(cat "$P/config-$1"/projects/*/*.jsonl 2>/dev/null | grep -o 'D=\\"[^;]*;' | head -1 | sed -e 's/\\"/"/g' -e "s#${TMPDIR%/}/*terse/runs/20260922-233021-terse-readme/probe-03#<probe>#g"); echo "$1: the page's line as received begins ${l:-(not found)}"; }
 dir() { echo "$1: $2 $( [ -d "$P/config-$1/plugins/data/$2" ] && echo exists || echo absent)"; }
 # 1. Installed from this checkout's marketplace.
 reset installed; gate installed

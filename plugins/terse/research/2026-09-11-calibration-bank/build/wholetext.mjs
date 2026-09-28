@@ -1,5 +1,6 @@
 import fs from 'node:fs'
-const R = '~/Git/agent-skills/research/2026-09-10-chain/chain/'
+import { fileURLToPath } from 'node:url'
+const R = fileURLToPath(new URL('../../2026-09-10-chain/chain/', import.meta.url))
 const REL = 'research/2026-09-10-chain/chain/'
 function sec(f, head) {
   const L = fs.readFileSync(R + f, 'utf8').split('\n')

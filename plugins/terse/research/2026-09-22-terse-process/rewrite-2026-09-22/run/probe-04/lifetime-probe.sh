@@ -5,9 +5,9 @@
 # checkout's marketplace. A decoy directory beside terse's shows a deletion is terse's own, not the whole
 # data root. No model is invoked. `env -i` keeps this session's variables out.
 set -u
-P=$TMPDIR/terse/runs/20260922-233021-terse-readme/probe-04
-REPO=~/Git/agent-skills
-CL=~/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+P=${TMPDIR:-/tmp}/terse/runs/20260922-233021-terse-readme/probe-04
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+CL=$HOME/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
 gate() { if (cd "$P/work-life-$1" && env -i HOME="$P/home-life-$1" PATH=/usr/bin:/bin:/usr/sbin:/sbin CLAUDE_CONFIG_DIR="$P/config-life-$1" "$CL" auth status 2>&1 < /dev/null) | grep -q '"loggedIn": false'; then :; else echo "$1 auth status: logged in or unknown, stopping"; exit 8; fi; }
 reset() { for d in "$P/config-life-$1" "$P/home-life-$1" "$P/work-life-$1"; do case "$d" in "$P"/*) rm -rf "$d"; mkdir -p "$d";; *) echo "refused: $d outside the probe dir"; exit 9;; esac; done; gate "$1"; }
 run() { c="$1"; shift; out=$(cd "$P/work-life-$c" && env -i HOME="$P/home-life-$c" PATH=/usr/bin:/bin:/usr/sbin:/sbin CLAUDE_CONFIG_DIR="$P/config-life-$c" "$CL" "$@" 2>&1); rc=$?

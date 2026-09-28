@@ -2,8 +2,8 @@
 # The checks of code-defects.md D7 and D8 (round 04), as written there, with their outputs matched against
 # the regexes written there. Nothing is written outside this probe directory.
 set -u
-R=$TMPDIR/terse/runs/20260922-233021-terse-readme
-SK=~/Git/agent-skills/plugins/terse/skills
+R=${TMPDIR:-/tmp}/terse/runs/20260922-233021-terse-readme
+SK=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)/plugins/terse/skills
 D7=$(sh $R/probe-04/lifetime-probe.sh; sed -n '39,42p' $SK/audit/SKILL.md; sed -n '74,77p' $SK/rewrite/SKILL.md; echo "page lines naming marketplace remove, a scope or the last installation: $(cat $SK/audit/SKILL.md $SK/rewrite/SKILL.md | grep -c -E 'marketplace remove|last (installation|scope)|--scope')")
 printf '%s\n' "$D7" > $R/probe-04/d7-check.out
 D8=$(sed -n '60,62p;108,109p;114p' $SK/rewrite/references/bake-off.md; sed -n '23,25p' $SK/audit/references/truth-pass.md; sed -n '21p' $SK/rewrite/references/writing-rules.md; sed -n '44,47p;212,215p' $SK/rewrite/SKILL.md; echo "page lines on a false or refuted condition, limit or warning: $(grep -rh -i -E '(false|refuted|wrong) (condition|limit|warning)|(condition|limit|warning)[^.]{0,40}(is|are|was) (false|refuted|wrong)' $SK | wc -l | tr -d ' ')")

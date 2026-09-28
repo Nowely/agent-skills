@@ -1,9 +1,9 @@
 const fs = require('node:fs');
 const cp = require('node:child_process');
 const path = require('node:path');
-const root = '~/Git/agent-skills';
+const root = path.resolve(__dirname, '../../../..');
 const out = __dirname;
-const designDir = '$TMPDIR/tmp.iUPMIn91WR';
+const designDir = path.join(require('node:os').tmpdir(), 'tmp.iUPMIn91WR');
 const round = path.join(root,'research/2026-09-11-markup-round-0');
 const ABS=/\b(every|always|never|cannot|guarantees?|ensures?|nothing|only|by default)\b/i;
 const LIFE=/\b(stays?|removed?|removes?|continu\w*|resum\w*|reclaim\w*|ke(ep|pt)s?|prun\w*|until|left|lasts?|clears?|age out|trimmed|deletes?|preserved|goes when|ends|killed|dies|crashed|dead)\b/i;

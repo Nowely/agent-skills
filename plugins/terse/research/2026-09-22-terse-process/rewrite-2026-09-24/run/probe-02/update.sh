@@ -8,9 +8,9 @@
 # it installed, the copy's plugin.json is bumped by one patch, and the README's two update commands run,
 # byte for byte. The checkout is only read; its status for the copied paths is printed at the end.
 set -u
-P=$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02
-REPO=~/Git/agent-skills
-CL=~/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+P=${TMPDIR:-/tmp}/terse/runs/20260924-002235-terse-readme-rewrite2/probe-02
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+CL=$HOME/.nvm/versions/node/v24.11.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
 NP=/usr/bin:/bin:/usr/sbin:/sbin
 for d in "$P/config-upd" "$P/home-upd" "$P/work-upd" "$P/mkt-upd"; do case "$d" in "$P"/*) rm -rf "$d"; mkdir -p "$d";; *) echo "refused"; exit 9;; esac; done
 iso() { (cd "$P/work-upd" && env -i HOME="$P/home-upd" PATH="$NP" CLAUDE_CONFIG_DIR="$P/config-upd" "$CL" "$@" < /dev/null); }

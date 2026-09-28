@@ -5,8 +5,11 @@
 // escapes a sentence (ledger-seed.mjs:50-51). The edits are then applied here exactly as round.mjs:101-105
 // applies them, and the result is checked for the protected passages before anything is written.
 import fs from "node:fs";
-const RUN = "$TMPDIR/terse/runs/20260922-233021-terse-readme";
-const REPO = "~/Git/agent-skills";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const RUN = path.join(os.tmpdir(), "terse/runs/20260922-233021-terse-readme");
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../../..");
 const SK = `${REPO}/plugins/terse/skills`;
 const CH = `${REPO}/research/2026-09-10-chain/chain`;
 const B5 = `${REPO}/research/2026-09-10-chain/run-2x5`;

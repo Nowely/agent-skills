@@ -1,7 +1,8 @@
 // An engine can return a well-formed item whose source line numbers point nowhere near its text.
 // Nothing in the schema catches that, so overlap of content words is measured here.
 import fs from 'node:fs'
-const ROOT = '~/Git/agent-skills/'
+import { fileURLToPath } from 'node:url'
+const ROOT = fileURLToPath(new URL('../../../../../', import.meta.url))
 const bank = JSON.parse(fs.readFileSync('/tmp/bank-build/bank.json', 'utf8'))
 const STOP = new Set('the a an and or of to in is are it its that this for with on at by as be not from was were has have had he she they you we i do does did can may will would should must if then when where which who what how'.split(' '))
 const bag = (s) => new Set(s.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w)))

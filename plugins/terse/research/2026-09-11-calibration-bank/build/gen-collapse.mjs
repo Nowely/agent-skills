@@ -2,8 +2,10 @@
 // to the engine that wrote it - a different engine would break the eight-per-factor rotation - and this
 // time the prompt shows the offending spans instead of restating the rule.
 import fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
+const REPO = fileURLToPath(new URL('../../../../../', import.meta.url)).replace(/\/$/, '')
 
-const bank = JSON.parse(fs.readFileSync('~/Git/agent-skills/research/2026-09-11-calibration-bank/bank.json', 'utf8'))
+const bank = JSON.parse(fs.readFileSync(new URL('../bank.json', import.meta.url), 'utf8'))
 const OUT = '/tmp/bank-build/v3'
 
 function diffSpans(a, b) {
@@ -44,7 +46,7 @@ onto the other - it does not matter which, as long as both sides then read the s
 
   fs.writeFileSync(`${OUT}/${w}.prompt.txt`, `${items.length} of the pairs you rewrote still differ in more than one place. Fix those, and only those.
 
-Repository root: ~/Git/agent-skills
+Repository root: ${REPO}
 
 THE RULE, RESTATED EXACTLY
 

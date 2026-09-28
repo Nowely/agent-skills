@@ -2,8 +2,8 @@
 # Round 03: step 4 item 4's four checks with the document's own headings, then the skeleton's part 3
 # rules 2, 5, 6.11 and 7 as a grep would read them. Reads only.
 set -u
-R=$TMPDIR/terse/runs/20260924-002235-terse-readme-rewrite2
-S=~/Git/agent-skills/plugins/terse/skills/rewrite/scripts
+R=${TMPDIR:-/tmp}/terse/runs/20260924-002235-terse-readme-rewrite2
+S=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)/plugins/terse/skills/rewrite/scripts
 F="$R/03-routes.md"
 echo "# round 03 checks, $(date '+%Y-%m-%d %H:%M:%S'); 03-routes.md sha256 $(shasum -a 256 "$F" | cut -d' ' -f1)"
 echo "ledger.03.json sha256 $(shasum -a 256 "$R/ledger.03.json" | cut -d' ' -f1) (ledger.json before the round: $(cut -d' ' -f1 "$R/probe-03/ledger-before-03.sha"))"

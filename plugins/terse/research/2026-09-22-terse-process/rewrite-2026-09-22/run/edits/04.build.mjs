@@ -28,8 +28,11 @@
 // only. Its `asks` says what the frame sentence says, and its run shows, sentence by sentence, where the
 // section's statements come from. Text unchanged; every other edit as in the third build.
 import fs from "node:fs";
-const RUN = "$TMPDIR/terse/runs/20260922-233021-terse-readme";
-const REPO = "~/Git/agent-skills";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const RUN = path.join(os.tmpdir(), "terse/runs/20260922-233021-terse-readme");
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../../..");
 const SK = `${REPO}/plugins/terse/skills`;
 const CH = `${REPO}/research/2026-09-10-chain`;
 const PROBE = `${RUN}/probe-04`;
