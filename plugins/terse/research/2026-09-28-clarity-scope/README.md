@@ -35,7 +35,8 @@ where it was not called.
 
 - The two misses on the first `holdout.json` run were one case, `commit-title-h1`. In both, the model read the
   staged diff and wrote the title without loading the skill. The second run of the same pages had it at 3/3, so it
-  is run-to-run spread, as in the 0.3.0 runs, where one description scored 24/36 and then 29/36.
+  is run-to-run spread, as in [the runs that chose 0.3.0's description](../2026-09-26-writing-replication/measures/clarity-trigger.md),
+  where one description scored 24/36 and then 29/36.
 - On the 0.3.0 description, one `rename-h3` run stopped at the five-turn limit without calling `clarity`; it
   counts as not called.
 

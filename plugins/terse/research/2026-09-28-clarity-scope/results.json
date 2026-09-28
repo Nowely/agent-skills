@@ -23,5 +23,6 @@
     }
   },
   "probeIsolation": "two single sessions with --plugin-dir and terse@nowely 0.3.0 installed and enabled listed one terse plugin in init.plugins, at the candidate's path, with and without enabledPlugins set to false for the installed copy",
+  "probeIsolationCostUsd": 0.15,
   "totalCostUsd": 23.82
 }
