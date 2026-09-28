@@ -277,3 +277,24 @@ never looked at what it removed. The reclaim marker serialises two takers agains
 file's removal against a fresh write from the holder it just pronounced dead. Mitigating: the launcher claims one
 launch per agent directory through `err.txt` (`wx`, `agent-run.mjs:367`), so two `claimOwner` calls racing on the
 very same mailbox path is not the ordinary case this driver runs today.
+
+## E74. The README gives the data directory's lifetime as "an uninstall deletes it unless `--keep-data`", and `claude plugin marketplace remove` deletes it with no such option
+
+**Evidence, level 3.** `plugins/entrust/plugin/README.md:106-107`: "It survives plugin updates; an uninstall deletes
+it unless you pass `claude plugin uninstall --keep-data`". On 2026-09-11, during the marketplace restructure, `claude
+plugin marketplace remove` deleted this plugin's data directory, under its earlier name, with 28 agent reports in it.
+On Claude Code 2.1.280, `plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/probe-04/lifetime-probe.sh`
+measured the same mechanism on a plugin's data directory in fresh configurations
+(`…/probe-04/lifetime-probe.log`): `marketplace remove` deleted it and offers no `--keep-data`, and uninstalling one
+of two installations kept it until the last was removed. Found on 2026-09-28 while planning the fix of the same
+sentence in terse's `references/run.md` (E21).
+
+**Check.** `sed -n '106,107p' plugins/entrust/plugin/README.md; claude plugin marketplace remove --help` shows the
+sentence and a command with no `--keep-data`.
+
+**Issue text.** The README tells the user that the data directory, which holds every agent's answer, the worktree
+ledger and the orchestrate runs, goes only with `claude plugin uninstall` and stays with `--keep-data`. Removing the
+marketplace deletes it too, with no option to keep it, and uninstalling one of two installations keeps it. A user who
+removes the marketplace to tidy up loses every report without warning. The README should say the directory goes when
+the plugin's last installation is removed, by `claude plugin uninstall` without `--keep-data` or by `claude plugin
+marketplace remove`, which has no such option.
