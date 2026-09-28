@@ -1,0 +1,10 @@
+{
+  "name": "k2a",
+  "edits": [
+    {
+      "file": "references/roles.md",
+      "find": "Recheck a disputed fact; do not attribute a\ndecision to the owner that they did not make, or call a draft final before their word.",
+      "replace": "Recheck a disputed factual conclusion against its source and its reasoning: correct or keep it by what the\ncheck establishes, leave it unresolved when the check cannot settle it, and give the decisive evidence when\nthe reader needs it to follow the reply. Apply a preference or an agreed scope directly. Do not attribute a\ndecision to the owner that they did not make, or call a draft final before their word."
+    }
+  ]
+}

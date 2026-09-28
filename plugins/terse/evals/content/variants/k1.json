@@ -1,0 +1,15 @@
+{
+  "name": "k1",
+  "edits": [
+    {
+      "file": "skills/clarity/SKILL.md",
+      "find": "Keep a real limit at the decision; prefer an honest range to false precision.",
+      "replace": "Keep a real limit at the decision: when a recommendation depends on an unsettled assumption, name the observation that would change it, check it against the evidence this task already has, and narrow the recommendation to what the check establishes. Prefer an honest range to false precision."
+    },
+    {
+      "file": "references/genres/relayed-result.md",
+      "find": "The person needs to know what was found, what supports it, what remains uncertain, and what they can do next.",
+      "replace": "The person needs to know what was found, what supports it, what remains uncertain, and what they can do next; where their decision depends on something the run did not settle, name the observation that would change the conclusion and whether anyone looked for it."
+    }
+  ]
+}

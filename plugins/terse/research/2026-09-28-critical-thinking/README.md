@@ -7,8 +7,8 @@ here ships; each candidate still has to pass the tests its entry describes.
 
 ## Result
 
-Four candidates, each a check with a visible result rather than an instruction to be careful, in
-[`candidates-02.md`](candidates-02.md):
+Four candidates, each a check with a visible result rather than an instruction to be careful, reached draft 3,
+[`candidates-03.md`](candidates-03.md), with exact page edits and a decision table:
 
 - **K1**: when a recommendation depends on an unsettled assumption, name the observation that would change it,
   check it, and narrow the recommendation to what the check establishes.
@@ -18,10 +18,12 @@ Four candidates, each a check with a visible result rather than an instruction t
   and keeps established facts and decided scope as inputs.
 - **K4**: check a factual premise the answer relies on against the evidence at hand.
 
-Rejected: generic caution, risk lists, confidence numbers, and same-context self-correction as verification.
-The traits that belong to process rather than writing, such as a critic in a fresh context, point at
-entrust. The test plan starts with a
-harness the current trigger runners lack and a baseline of `clarity` as it is.
+**None passed its pilot, so none is in terse's pages** ([pilots.md](pilots.md)). K1, K3 and K4 were dropped by
+vetoes that a repeat of the unchanged pages showed firing with no page edit at all; K2's set was invalid because
+the skill did not load in every resumed session. On these short tasks the current `clarity` already met K1's
+main target and K2's in every run. The pilots found no effect large enough to clear their vetoes, which is not
+evidence that the candidates have none. The test cases, the page edits, the frozen rules and the decision
+script are kept for a better-powered round.
 
 ## How it ran
 
@@ -32,9 +34,12 @@ harness the current trigger runners lack and a baseline of `clarity` as it is.
 - Codex Sol CT1 read the 323 feedback episodes of the
   [writing-feedback replication](../2026-09-26-writing-replication/README.md) for each trait, with the owner's
   counter-reactions; its log confirms the whole file was read.
-- Fable D2 wrote [`candidates-01.md`](candidates-01.md); Codex Astra C7 critiqued it; D2 revised it into
-  [`candidates-02.md`](candidates-02.md); C7 checked the revision. Findings and regressions per round are in
+- Fable D2 wrote three drafts; Codex Astra C7 critiqued each. Findings and regressions per round are in
   [`rounds.md`](rounds.md).
+- Four Codex Sol agents wrote 100 test cases blind to the candidate texts, another checked them, and a third
+  built the content eval harness (`plugins/terse/evals/content.*`). The pilots ran on Claude Opus 5.5 with a
+  Sonnet judge under [decision-rules.md](decision-rules.md), frozen before any variant ran, and were decided by
+  [`tools/decide.py`](tools/decide.py).
 
 ## What is not in the repository
 

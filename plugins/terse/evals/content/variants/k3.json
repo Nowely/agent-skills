@@ -1,0 +1,10 @@
+{
+  "name": "k3",
+  "edits": [
+    {
+      "file": "references/genres/agent-brief.md",
+      "find": "Do not bury the objective under background, imply permission to edit from a request to review, or ask for a conclusion without specifying its evidence.",
+      "replace": "Do not bury the objective under background, imply permission to edit from a request to review, or ask for a conclusion without specifying its evidence. For an unresolved review or investigation, ask for the conclusion the evidence supports without supplying a preferred verdict; a verdict in the brief steers the reviewer. Keep established facts, requirements and decided scope as inputs. When testing a hypothesis is the task, name it as the proposition to test and the evidence that could reject it."
+    }
+  ]
+}

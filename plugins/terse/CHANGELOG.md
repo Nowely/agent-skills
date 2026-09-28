@@ -3,6 +3,21 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Added
+
+- A content eval harness, `evals/content.official.mjs` with its compare, recipient and selftest scripts, grades
+  what a text says instead of only whether a skill loaded: it stages a variant of the pages, seeds fixture files
+  and an earlier exchange, and has a judge score the answer against a hidden key. The runs spend Claude tokens
+  and stay out of CI; `evals/content.md` is the protocol.
+
+### Fixed
+
+- E55: the live trigger probe blocks `ListAgents` and `SendMessage`, so the agent-brief case is scored where
+  agent-messaging tools exist instead of being excluded because the model tried to send the brief to a real agent;
+  three live runs on 2026-09-28 were all scored, with `clarity` called before the answer.
+
 ## 0.3.0 — 2026-09-28
 
 terse gets `clarity`, a light skill for everyday texts that Claude may choose on its own while writing, and its
