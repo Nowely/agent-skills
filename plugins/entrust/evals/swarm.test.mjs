@@ -214,7 +214,7 @@ test("S2 usage refusals: neither or both modes, a cap above fifty, fifty-one uni
     const problems = [];
     const q = draft("q.txt", `RIGHTS: read ${shimDir}\nTASK: drain the queue\n`);
     const many = draft("many.txt", Array.from({ length: 51 }, (_, i) => `claim ${i + 1}`).join("\n") + "\n");
-    const runDir = path.join(world, "r0");
+    const runDir = path.join(state, "r0");
     const cases = [
       [["--brief", template, "--run", runDir], "neither mode"],
       [["--units", unitsFile, "--agents", "2", "--brief", template, "--run", runDir], "both modes"],
@@ -234,7 +234,7 @@ test("S2 usage refusals: neither or both modes, a cap above fifty, fifty-one uni
 test("S3 three units at concurrency two: each agent at <run>/<id>/report.json with agent/ beside it and the unit in its prompt, a dollar-quote unit substituted verbatim, the summary outside the run with PATH=own and exit 0 per agent",
   "this is the offload: one script call instead of three launches and three waits; the layout is the one the cleanup lists as a run; a string replacement would have eaten the unit's $' (shown 2026-09-18)",
   async () => {
-    const runDir = path.join(world, "run-units");
+    const runDir = path.join(state, "run-units");
     const r = await run(["--units", unitsFile, "--brief", template, "--run", runDir, "--concurrency", "2"]);
     if (r.code !== 0) return `exit ${r.code}: ${r.err.slice(0, 200)}`;
     const problems = [];
@@ -262,7 +262,7 @@ test("S3 three units at concurrency two: each agent at <run>/<id>/report.json wi
 test("S4 --agents two on one identical brief: two prompts with the id substituted and no unit, two entries in the summary",
   "the queue arm of E4 needs n agents on one brief; the script must not demand a unit it has no line for",
   async () => {
-    const runDir = path.join(world, "run-agents");
+    const runDir = path.join(state, "run-agents");
     const q = draft("queue.txt", `RIGHTS: read ${shimDir}\nTASK: agent {{UNIT_ID}} drains the queue\n`);
     const r = await run(["--agents", "2", "--brief", q, "--run", runDir, "--concurrency", "2"]);
     if (r.code !== 0) return `exit ${r.code}: ${r.err.slice(0, 200)}`;
@@ -278,7 +278,7 @@ test("S4 --agents two on one identical brief: two prompts with the id substitute
 test("S5 --concurrency one runs the agents one after another: no two intervals overlap",
   "a launcher that ignored the cap would run fifty at once whatever the plan announced; the timestamps in the summary are the evidence",
   async () => {
-    const runDir = path.join(world, "run-serial");
+    const runDir = path.join(state, "run-serial");
     const r = await run(["--units", unitsFile, "--brief", template, "--run", runDir, "--concurrency", "1"]);
     if (r.code !== 0) return `exit ${r.code}: ${r.err.slice(0, 200)}`;
     const s = summaryOf(r);
@@ -291,7 +291,7 @@ test("S5 --concurrency one runs the agents one after another: no two intervals o
 test("S6 a stale report under an agent's path reads as PATH=taken with no exit code and no first line",
   "a summary that read a stale report as this run's outcome was shown on 2026-09-18; the launcher's PATH line is what tells them apart",
   async () => {
-    const runDir = path.join(world, "run-stale");
+    const runDir = path.join(state, "run-stale");
     fs.mkdirSync(path.join(runDir, "001"), { recursive: true });
     fs.writeFileSync(path.join(runDir, "001", "report.json"), JSON.stringify({ ok: true, exitCode: 0, answer: "AN EARLIER RUN ANSWER" }));
     const r = await run(["--units", draft("one.txt", "only claim\n"), "--brief", template, "--run", runDir, "--concurrency", "1"]);
@@ -308,7 +308,7 @@ test("S6 a stale report under an agent's path reads as PATH=taken with no exit c
 test("S7 SIGTERM stops further launches, reaches the running agent, and the summary is still written with stopped set and exit 1",
   "Stop on the swarm's task must not let the wave finish behind the user's back: a launcher that killed the running agents and then launched the rest was shown on 2026-09-18",
   async () => {
-    const runDir = path.join(world, "run-stop");
+    const runDir = path.join(state, "run-stop");
     const many = draft("twenty.txt", Array.from({ length: 20 }, (_, i) => `claim ${i + 1}`).join("\n") + "\n");
     const h = start(["--units", many, "--brief", template, "--run", runDir, "--concurrency", "1"]);
     await new Promise((res) => setTimeout(res, 600));

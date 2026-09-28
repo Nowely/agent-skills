@@ -62,11 +62,11 @@ test("the frontmatter names the mode, forbids model invocation, and states the r
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the page stays inside its budget: 156 lines, one heading level, no fence",
+test("the page stays inside its budget: 168 lines, one heading level, no fence",
   "the mode is loaded into a context it exists to keep small, and it ships no code: a third heading level, a fence or a page that doubled in length are each the mode spending the budget it is selling",
   () => {
     const problems = [];
-    if (lines.length > 156) problems.push(`${lines.length} lines`);
+    if (lines.length > 168) problems.push(`${lines.length} lines`);
     const headings = lines.filter((l) => /^#+ /.test(l));
     const wrongLevel = headings.filter((l) => !l.startsWith("## "));
     if (!headings.length) problems.push("the page has no headings at all");
@@ -88,10 +88,13 @@ test("the tier table pairs all eight model names, one tier per row",
 
 // ------------------------------------------------------------------ A: what the mode is
 
-test("A1 the mode adds no header field or flag, what it asks of the driver and the launcher is the sibling's, and its own scripts write only under $TMPDIR",
-  "the owner, 2026-09-27: the \"prompt only\" sentence goes, because the fixes for #15 and #16 change the driver and the launcher and add the runner and the linter; a header field of the mode's own would still change its scope, and a script of its own that wrote beside the repository would be a second state directory",
+test("A1 the mode adds no header field or flag, what it asks of the driver and the launcher is the sibling's, its own scripts write only under $TMPDIR, and every agent has a mailbox",
+  "the owner, 2026-09-27: the \"prompt only\" sentence goes, because the fixes for #15 and #16 change the driver and the launcher and add the runner and the linter; a header field of the mode's own would still change its scope, and a script of its own that wrote beside the repository would be a second state directory. The mode names no flag for approvals either: every agent already has a mailbox",
   () => {
-    const said = says("The mode adds no header field or flag and leaves the agent's own prompt file where the sibling puts it; what it asks of the driver and the launcher is the sibling's and is changed there under its own changelog line, and its own scripts, the runner and the linter, run a command or read a draft and write only under `$TMPDIR`.");
+    const said = says(
+      "The mode adds no header field or flag and leaves the agent's own prompt file where the sibling puts it; what it asks of the driver and the launcher is the sibling's and is changed there under its own changelog line, and its own scripts, the runner and the linter, run a command or read a draft and write only under `$TMPDIR`.",
+      "Every agent has a mailbox, so it can ask instead of being declined at once.",
+    );
     if (said !== true) return said;
     return !/The mode is prompt only/.test(flat) || "the page still says the mode is prompt only";
   });
@@ -491,10 +494,10 @@ test("F3 two rounds of fix and cross-review, then escalate",
 test("F4 every row of the Result table",
   "this table is read at the one moment judgement is worst, when an agent has just failed; a missing row is a relaunch that duplicates a live run, or a gate verdict retried until it costs real money",
   () => shows(
-    /^\| `FILE=missing`, or `PATH=taken` \| `DRIVER_EXIT` is the driver's own status: with one, this run is over and `<DIR>\/err\.txt` says why — a refused report path, an unusable parent, a path another run published to first — so read `<DIR>\/out\.json` for a report a turn wrote where publication failed, otherwise treat the result as unknown and relaunch once, same rights, under the agent's next report path where work remains\. With `DRIVER_EXIT=unknown` nothing ended it: `kill -0 <pid>` with the pid on the first line of the stderr file says whether it is still running \|$/m,
+    /^\| `FILE=missing`, or `PATH=taken` \| `DRIVER_EXIT` is the driver's own status: with one, this run is over and `<DIR>\/err\.txt` says why — a refused report path, an unusable parent, a path another run published to first — so read `<DIR>\/out\.json` for a report a turn wrote where publication failed\. Read `RECEIPT=` first: an `approvals=` token whose first number is not 0 says a command ran with your rights and no report says how it ended — that count is a decision, not an execution outcome\. Read `<DIR>\/approvals\/` and check the tree and whatever the command touched before any relaunch, and never relaunch a prompt that would ask for the same thing again\. Only once that is clear, treat the rest as unknown and relaunch once, same rights, under the agent's next report path where work remains\. With `DRIVER_EXIT=unknown` nothing ended it: `kill -0 <pid>` with the pid on the first line of the stderr file says whether it is still running \|$/m,
     /^\| a stderr file naming no driver \| report it; no relaunch fixes an install \|$/m,
     /^\| `exitCode: 3`, a cut \| read the partial; if the work is unfinished, continue that thread once with `RESUME:`, under the agent's next report path \|$/m,
-    /^\| `exitCode: 10` \| a held lock or a busy thread: read `error` and the stderr file, wait for the holder, then run again; not a retry \|$/m,
+    /^\| `exitCode: 10` \| a held lock or a busy thread: read `error` and the stderr file, wait for the holder, then run again; not a retry\. A holder that waits on your own decision has an `ASK=` in your poll: answer it before you wait on the holder\. Before a second writer enters a directory where a command was approved, check for its survivors yourself: `pgrep -fl '<the approved command>'` and wait for it — the lock does not prove they are gone \|$/m,
     /^\| exit 2 or 4 \| with `turnStatus: null` no turn ran, or it was aborted: read `error` and the stderr file\. Exit 2 WITH a `turnStatus` is a turn the server rejected: read `turnError`, the commands and any answer before relaunching, or a paid turn is thrown away\. A `DRIVER_EXIT=2` beside `PATH=taken` is neither: the path was already taken, nothing of this run reached the file, and the report there is an earlier run's \|$/m,
     /^\| exit 4 with a `turnStatus` \| the server died mid-turn or the report was not delivered: the report is complete, read it as a gate verdict \|$/m,
     /^\| any other non-zero `exitCode` with an answer \| a gate verdict: do not retry, read the answer \|$/m,
@@ -505,17 +508,61 @@ test("F5 the wrapper's description names the agent by its model",
   "a Codex agent surfaces as the wrapper's card, so without a description the user reads a generic agent where a Claude agent shows its task; the two sides stop looking like one run, which is the whole point of naming it there, and the model is the name a person can use, where the word this page calls it by is one they cannot",
   () => says("The Agent call carries a `description` of the form \"Codex <short name> <id>: <task in a few words>\", so the card the user sees names the agent, its vendor and its task, not the command line."));
 
-test("F6 the one agent you wait for is a foreground call, background agents are waited for by their notifications and never blocked on, a Codex run's end is its poll's DONE= line, and a headless turn never ends with an agent alive",
-  "Claude Code 2.1.277 removed the tool the page used to block on (E50), and the replacement its changelog names, the task's output file, is an agent's whole transcript; a background agent's return arrives as its message and then its notification with nothing called (measured 2026-09-26), a poll on the driver's exit marker notifies with one DONE= line even after a wrapper handed back RUNNING= (2026-09-27), an interactive session takes each completion as a new turn (2026-09-27), and a headless session kills its background tasks with the turn (2026-09-08), so there the wait is a foreground call, whose hand-back arrives inside the turn (2026-09-17)",
+test("F6 the one agent you wait for is a foreground call, background agents are waited for by their notifications and never blocked on, one poll over every alive Codex agent's exit and approvals/pending markers says DONE= or ASK= and is launched again after, and a headless turn never ends with an agent alive",
+  "Claude Code 2.1.277 removed the tool the page used to block on (E50), and the replacement its changelog names, the task's output file, is an agent's whole transcript; a background agent's return arrives as its message and then its notification with nothing called (measured 2026-09-26), a poll on the driver's markers notifies with one line even after a wrapper handed back RUNNING= (2026-09-27), an interactive session takes each completion as a new turn (2026-09-27), and a headless session kills its background tasks with the turn (2026-09-08), so there the wait is a foreground call, whose hand-back arrives inside the turn (2026-09-17). The poll is one task over every alive agent's exit and pending markers that exits on the first marker rather than looping on, because a request that arrives after a RUNNING= hand-back has no call in flight to hand it back",
   () => says(
     "Wait for the agents you launch in the background, Claude or Codex, never on them: each one's return arrives on its own, its message first and its completion notification after (measured 2026-09-26).",
     "Never read an Agent task's output file for that return: it is the agent's whole transcript.",
-    "For a Codex agent in the background, also launch the poll `until [ -s \"<DIR>/exit\" ]; do sleep 5; done; echo DONE=<id>` as a background Bash task: the wrapper's hand-back and the poll's `DONE=<id>` line both arrive as notifications, the poll's says the run has ended even after a `RUNNING=` hand-back, and you read the report file after it (measured 2026-09-27).",
+    "For the Codex agents in the background, also launch one poll as a background Bash task over every alive one's `exit` and `approvals/pending` markers, one wake per event:",
+    "while :; do for d in <DIR>...; do [ -s \"$d/exit\" ] && { echo \"DONE=<id>\"; exit 0; }; [ -s \"$d/approvals/pending\" ] && { echo \"ASK=<id>\"; exit 0; }; done; sleep 5; done",
+    "one task for the whole batch, not one per agent, and it exits the moment it prints either marker rather than looping on",
+    "`DONE=<id>` is that agent's own exit marker: it says the run has ended even after a `RUNNING=` hand-back, and you read the report file after it (measured 2026-09-27).",
+    "`ASK=<id>` is that agent's own request waiting on your decision, and the wrapper's own hand-back may carry the same waiting block instead of the nine lines: read it whole with `--pending` or from that hand-back, decide it with `--decide ID --accept|--decline`, send the wrapper the very same message block again, then launch the poll again over the agents still alive and keep waiting",
+    "an armed agent is launched and waited for like any other",
     "In an interactive session you may end your turn with agents alive: they go on, and each completion arrives as a turn of its own (measured 2026-09-27).",
     "A headless session ends with the turn and its background tasks are killed with it (measured 2026-09-08), so there never end a turn with an agent alive: launch each agent in the foreground, and its hand-back arrives inside the same turn (measured 2026-09-17).",
     "in the background when agents run side by side and you work while they do, in the foreground for the one agent you wait for and for every agent in a headless session.",
   ));
 
+test("F7 the approval rule: run as you with no sandbox, approve nothing unread, what to approve, what goes to the owner",
+  "this is the sentence a coordinator applies at the moment of deciding a live request, verbatim from the design's own rule paragraph; a paraphrase here is a rule nobody agreed to",
+  () => says(
+    "Approving it runs the command as you, with no sandbox, the way every Claude agent in this session already runs; the line for Codex is not stricter than for Claude",
+    "approve nothing you have not read",
+    "Approve a request that is non-destructive and in the plan's direction",
+    "Take to the owner, while the turn waits, a request that is destructive or irreversible, or outside the plan",
+    "In a headless run decline it and name it in the answer",
+    "When you retell an approval, say what the entry's `outcome` says",
+  ));
+
+test("F8 the synthesis rule: one sentence per cause and what avoids it next time",
+  "the four causes are what the driver actually recorded, so a synthesis that skips one leaves the run's own why unexplained; sandboxWidened is what a widening's own cause points a reader at, and neither the sandbox clause nor the rest of the page names a tool",
+  () => says(
+    "When the run had approvals, the synthesis says why in one sentence per cause and what avoids it next time: `rights`, the driver answered and nothing changes",
+    "`sandbox`, the tool needed a path or a setting the plan can grant — `sandboxWidened` names what it gained, or a certificate failure inside the sandbox is the fetch run outside it",
+    "`policy`, Codex asks by its own rule and nothing on our side changes it",
+    "`outside`, the plan needs a `WRITABLE:` line or a different agent for that file",
+  ));
+
+test("F8b --pending's markers are named exactly, and STALE= beside LATE=/ORPHANED= is the stale= count",
+  "the coordinator copies the markers verbatim to find where a command starts and ends, so a paraphrase here breaks that copy; STALE= is a new line the driver added for a decision file that was never this run's own, and the page has to say what it means before a coordinator reads past it",
+  () => says(
+    "`--pending` prints the command whole between `COMMAND<<TOKEN` and `COMMAND>>TOKEN`",
+    "TOKEN a fresh twelve-hex-character run every print, never itself inside the command",
+    "a `STALE=<id>` line beside `LATE=` and `ORPHANED=` names a decision file that was not this run's own",
+    "`RECEIPT=`'s `stale=N` counts them the same way `late=N` counts a valid one the driver did not take",
+    "`REPEAT_OF=<id>` on an offered request names the earlier request you declined that this one follows, when its paths are not wholly inside it",
+  ));
+
+test("F8c prefer a widening to an escape, and a tool's own state under the home is approvable",
+  "the owner's rule that a sandboxed grant beats an unsandboxed one has to survive as a sentence a coordinator reads before deciding whether to accept a request; without it a coordinator has no reason to pick the widening over the escape when both are on offer",
+  () => says(
+    "Prefer a widening to an escape when either would do — a widened command stays sandboxed everywhere else — and approve a write into a tool's own state or cache under the home when the path is not a repository, not `~/.codex` and not the state directory.",
+  ));
+
+test("F9b never launch under another state directory while an armed agent is alive",
+  "containment is the driver's own inode check against one state directory; a peer under a different one is outside what that check can see, so the boundary is a page sentence, not a mechanism",
+  () => says("Never launch an agent under another state directory while an armed agent is alive"));
 test("F10 the critic's manifest, made as the page writes it, catches a changed cited artifact, and the digest comparison catches a manifest rewritten after the change",
   "#15 F4 and P8b: the critic read one version and another went out (T3, T8 post-critic corrections); a digest over the draft and every artifact it cites is the version link. `shasum -c` alone passes a manifest rewritten over the changed files, so the send rule also compares the manifest's digest with the one the critic returned (R1, 2026-09-27), and this case shows why both are needed",
   () => {
@@ -561,7 +608,9 @@ test("F11 a continuation or a relaunch goes under the agent's next report path, 
     const plan = run(launcher, ["--plan", "--run-dir", runDir], { input: "S1 | sol | cross-reviewer | nothing | 200000\n" });
     if (plan.status !== 0) { fs.rmSync(dir, { recursive: true, force: true }); return `--plan exited ${plan.status}: ${plan.stdout.trim()}`; }
     const prompt = "MODEL: sol\nTASK: review the diff\n";
-    const next = (n) => run(launcher, ["--new", "--report-file", path.join(runDir, n === 1 ? "S1" : `S1-${n}`, "report.json")], { input: n === 1 ? prompt : `RESUME: last\n${prompt}` });
+    // The temporary directory is the state directory too: --new puts every agent's mailbox inside it.
+    const next = (n) => run(launcher, ["--new", "--report-file", path.join(runDir, n === 1 ? "S1" : `S1-${n}`, "report.json")],
+      { input: n === 1 ? prompt : `RESUME: last\n${prompt}`, env: { ...process.env, ENTRUST_STATE_DIR: dir } });
     if (next(1).status !== 0) problems.push("the listed agent's first report path was refused");
     const early = next(2);
     if (early.status === 0) problems.push("S1-2 was admitted while S1 had not ended");
@@ -673,6 +722,7 @@ test("G6 the launcher and the driver make the run directory, the coordinator wri
   () => says(
     "The launcher and the driver create it, through `--report-file`, and it is what they make of it: a report per agent and, beside it, the launcher's `agent/` with the four files of the run, and the plan the launcher registered; nothing else is written there",
     "Never run `mkdir`, Write or a shell redirect under that data directory yourself, because a headless session refuses each of them as a sensitive file with no prompt anyone can answer, while a subprocess handed the same path as an argument writes it unopposed (measured 2026-09-08)",
+    "and never write a decision file by hand: `--decide` is the one path",
     "A Claude agent's artifact is its returned text, and a file it must leave goes under `$TMPDIR` with the path in that text",
   ));
 

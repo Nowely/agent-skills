@@ -25,6 +25,10 @@ const driver = fs.readFileSync(DRIVER, "utf8");
 // `case "--x":` in the source can outlive every route a caller has to it, and the help is the route.
 const help = spawnSync(process.execPath, [DRIVER, "--help"], { encoding: "utf8" }).stdout ?? "";
 const helpFlat = help.replace(/\s+/g, " ");
+// Two sentences pinned below (the conditional steering paragraph, the unsupported-entry-kind refusal) are
+// under --help-all only, not the plain --help this suite otherwise reads.
+const helpAll = spawnSync(process.execPath, [DRIVER, "--help-all"], { encoding: "utf8" }).stdout ?? "";
+const helpAllFlat = helpAll.replace(/\s+/g, " ");
 
 // The page in the pieces the cases read: the whole text collapsed for prose pins, the field table, and
 // the indented command lines a coordinator copies into a Bash call.
@@ -34,7 +38,7 @@ const flat = skill.replace(/\s+/g, " ");
 // on one, so a pattern that only matched `node "` would read the recipe as absent.
 const commands = [...skill.matchAll(/^ {4}((?:[A-Z_]+="[^"\n]*" )*node "[^\n]+)$/gm)].map((m) => m[1]).filter((c) => !c.includes("<<'PROMPT'"));
 // The prompt call is a heredoc block, indented like the commands and ended by its own terminator line.
-const promptCalls = [...skill.matchAll(/^ {4}(node "[^\n]*--new[^\n]*<<'PROMPT'\n(?:.*\n)*? {4}PROMPT)$/gm)].map((m) => m[1].replace(/^ {4}/gm, ""));
+const promptCalls = [...skill.matchAll(/^ {4}((?:[A-Z_]+="[^"\n]*" )*node "[^\n]*--new[^\n]*<<'PROMPT'\n(?:.*\n)*? {4}PROMPT)$/gm)].map((m) => m[1].replace(/^ {4}/gm, ""));
 
 const { cases: CASES, test } = registry();
 
@@ -130,8 +134,8 @@ test("the ONE call is agent-run.mjs --run with --report-file in one foreground c
     // The launcher's own spawn: exactly the two driver flags, prompt.txt as an argument only, the
     // environment untouched. agent-run.test.mjs runs it; this reads the promise off the source.
     const launcher = fs.readFileSync(path.join(SCRIPTS, "agent-run.mjs"), "utf8");
-    if (!/\[DRIVER, "--prompt-file", promptPath, "--report-file", report\]/.test(launcher))
-      problems.push("the launcher does not spawn the driver with exactly --prompt-file and --report-file");
+    if (!/\[DRIVER, "--prompt-file", promptPath, "--report-file", report, \.\.\.approvalArgs\]/.test(launcher))
+      problems.push("the launcher does not spawn the driver with exactly --prompt-file, --report-file and the approval arguments");
     if (/(readFileSync|openSync|createReadStream|readFile)\([^)]*prompt/i.test(launcher)) problems.push("the launcher reads prompt.txt");
     if (!/env: process\.env/.test(launcher)) problems.push("the launcher does not pass its environment to the driver untouched");
     // And the driver has to offer exactly those two flags.
@@ -325,6 +329,118 @@ test("the shipped wrapper is the agent the page names: Bash alone, a pinned mode
       if (!body.replace(/\s+/g, " ").includes(phrase)) problems.push(`the agent body no longer says: ${JSON.stringify(phrase)}`);
     for (const phrase of ["`subagent_type: entrust:codex-agent`", "Pass it no `model`"])
       if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("the Rights table's read row is read [<dir>] with no WRITABLE exception, and never a repository",
+  "the widening replaced the read-level WRITABLE grant a tool's own store used to get: the driver refuses --writable at read level again, and a page that still promised that exception, or still named a tool by it, would send a coordinator to a flag the driver rejects and teach the driver's own rule the name of a tool",
+  () => {
+    const problems = [];
+    for (const phrase of [
+      "read any readable path, reach the network, run commands, write `$TMPDIR`",
+      "the sandbox refuses every other write",
+      "a command escape, a file change or a widening for named paths in its place is offered or declined",
+    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    if (/WRITABLE:` root for a tool's own store|arc's object cache|never a repository/.test(flat))
+      problems.push("the page still promises a read-level WRITABLE exception for a tool's own store, or still names arc");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("the widening: the driver's own accept sentence is quoted, the waiting result ends in REPORT=, and the constant is thirty minutes",
+  "the widening is what makes the escape unnecessary for a tool's own state, so the page has to quote the driver's exact words for what an accept does rather than paraphrase them; a coordinator reading the waiting result has to see the same REPORT= line the nine-line result ends in, since that is what tells the wrapper's rerun step to stop; and the thirty-minute constant is what protects an unattended run now that the flag that used to be a deadline is gone",
+  () => {
+    const problems = [];
+    for (const phrase of [
+      "An accepted command runs with no sandbox, as you; an accepted widening — a request for paths or the network rather than to leave the sandbox — runs the command inside the sandbox with the paths added.",
+      "waiting result",
+      "ending in `REQUESTS=`, `WAITING=`",
+      "thirty minutes",
+    ]) if (!flat.includes(phrase)) problems.push(`SKILL.md no longer says: ${JSON.stringify(phrase)}`);
+    if (!/for 30 minutes, after which it is declined as expired/.test(helpFlat))
+      problems.push("--help no longer names the 30-minute constant");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("the widening's two conditions from the fix round: the steering paragraph is conditional on both features, and an unsupported entry kind is refused unshown",
+  "Opus W1's fix round changed both facts after the first pass shipped: a coordinator reading the page must not conclude that the model is always told to ask for a path, or that only a protected root is filtered before an offer — --help-all is the source for both, and the page has to say what it says",
+  () => {
+    const problems = [];
+    for (const phrase of [
+      'Only with both sent do the standing instructions tell the model to ask for the exact path a failing tool names, and to ask to leave the sandbox only when no path would do',
+      'why "protected root"; one naming a glob pattern or\n  any other special kind, why "unsupported entry kind"',
+    ]) if (!helpAllFlat.includes(phrase.replace(/\s+/g, " "))) problems.push(`--help-all no longer says: ${JSON.stringify(phrase)}`);
+    for (const phrase of [
+      "A widening only arrives at all",
+      "the model is never told to ask",
+      'why: "unsupported entry kind"',
+    ]) if (!flat.includes(phrase)) problems.push(`SKILL.md no longer says: ${JSON.stringify(phrase)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("the orchestrate page prefers a widening to an escape and names REPEAT_OF",
+  "the owner's rule that a sandboxed grant beats an unsandboxed one has to survive as a sentence a coordinator reads before deciding, and REPEAT_OF is the one field that shows a coordinator its own earlier no",
+  () => {
+    const orchestrateFlat = orchestrate.replace(/\s+/g, " ");
+    const problems = [];
+    for (const phrase of [
+      "Prefer a widening to an escape when either would do",
+      "REPEAT_OF",
+    ]) if (!orchestrateFlat.includes(phrase)) problems.push(`orchestrate/SKILL.md no longer says: ${JSON.stringify(phrase)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("a SIGTERM to the wrapper's pid is narrowed to the process group actually swept, not to \"nothing left running\", and the survivor check is the coordinator's own",
+  "E67: the teardown signals and polls the app-server's own process group; a command the server started lives in a process group of its own, and whether it dies with the server was never measured, so the page must not promise more than that group's sweep, and F10 (11-refutation-astra.md) is that this is a check the coordinator runs, never a promise the driver keeps",
+  () => {
+    const problems = [];
+    for (const phrase of [
+      "sweeps the codex app-server's own process group and publishes the report as",
+      "a command still running in its own process group at that moment is not established to end with it (E67)",
+      "An accepted command can outlive the agent, its server and this lock: before a\nsecond writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'`\nyourself and wait for it — no driver code checks this for you.",
+    ]) if (!flat.includes(phrase.replace(/\s+/g, " "))) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    if (/nothing left running/.test(flat)) problems.push("the page still promises \"nothing left running\", which E67 found unproven");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("FILE=missing reads RECEIPT's approvals= count as a decision, not an execution outcome, before any relaunch",
+  "F12 (11-refutation-astra.md): a coordinator that only reads the count and relaunches can repeat an accepted operation whose outcome is unknown, so the page has to send it to the tree and the command's own effects first, and say the count is a decision rather than a result",
+  () => {
+    const problems = [];
+    for (const phrase of [
+      "an `approvals=` token whose first number is not 0 says a command ran with",
+      "that count is a decision, not an execution outcome",
+      "check the tree and whatever the command touched before any relaunch",
+      "never relaunch a prompt that would ask for the same thing again",
+    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("exit 6 is a request declined or expired unanswered, never one accepted, and escalations carries decision, cause and unclipped detail",
+  "an auto-yes must never surface as a gate failure, and a coordinator reading `detail` clipped at 200 characters cannot judge the very command it is asked to approve",
+  () => {
+    const problems = [];
+    for (const phrase of [
+      "`exitCode: 6` is a request declined or expired unanswered, never one accepted",
+      "`detail` is the server's own wording whole",
+      "never clipped",
+      "`cause` (`rights`: a file change the writable roots cover, which the driver accepted itself and never shows anyone",
+      "`outside`: a file change not shown to lie inside them",
+      "`sandbox`: the same command had just failed in this turn",
+      "`policy`: no attempt was seen, so Codex asked by its own rule",
+    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("an auto-yes's why is re-checked at send time, and the page names the symlink-swap residual",
+  "the driver re-runs its own containment check the instant it answers, not only when the request first arrived, so the page's why string has to be the current one; the residual is what a race between that check and the server's own write can still do, and it is unmeasured, not fixed",
+  () => {
+    const problems = [];
+    for (const phrase of [
+      "\"rights cover it (checked as the answer was sent)\"",
+      "the check runs again at that moment, not only when the request arrived",
+      "a plain directory the driver walked that becomes a symlink before the server\n  writes is followed by the server, not caught here",
+      "whether the server itself re-resolves the swap is\n  unmeasured",
+    ]) if (!flat.includes(phrase.replace(/\s+/g, " "))) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
 

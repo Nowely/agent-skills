@@ -172,7 +172,9 @@ async function runScenario(scenario) {
   const emit = path.join(shimDir, `emit-${scenario}.jsonl`);
   try { fs.rmSync(emit, { force: true }); } catch {}
   await spawnNode([DRIVER, "--level", "read", "--cwd", shimDir, ...argsFor(scenario)], {
-    env: { PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: scenario,
+    // With the permission features listed, as on 0.155.1, the driver switches them on and every scenario
+    // also carries the server's `warning` notification.
+    env: { PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: scenario, FAKE_FEATURES: "both",
            FAKE_EMIT_LOG: emit, ENTRUST_STATE_DIR: path.join(shimDir, "state") },
     stdio: ["ignore", "ignore", "ignore"], killAfterMs: 30000 }).done;
   try { return fs.readFileSync(emit, "utf8").split("\n").filter((l) => l.trim()); } catch { return []; }

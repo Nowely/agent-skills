@@ -20,7 +20,7 @@
 // defect. Every other spawn or handshake failure is protocol drift. A skip is reported loudly so it
 // cannot be mistaken for a pass.
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -40,9 +40,14 @@ const REQUIRE_LIVE = process.argv.includes("--require-live") || process.env.REQU
 
 // Replay the request captured from the driver against whichever server is named. `args` already ends in
 // app-server: appending it here would make this test almost-the-driver rather than the driver.
-function handshake(bin, args, request, { timeoutMs = 60000, env = process.env } = {}) {
+// With `awaitWarning`, a handshake whose replies are in waits up to WARNING_WAIT_MS more for the server's
+// `warning` notification, which the live server sends 1 ms after the thread/start reply (P1 flags-dry).
+const WARNING_WAIT_MS = 2000;
+function handshake(bin, args, request, { timeoutMs = 60000, env = process.env, awaitWarning = false } = {}) {
   return new Promise((resolve) => {
     let child;
+    const warnings = [];
+    let grace = null;
     try { child = spawn(bin, args, { cwd: request.spawnCwd, stdio: ["pipe", "pipe", "pipe"], env }); }
     catch (e) {
       return resolve(e?.code === "ENOENT"
@@ -63,6 +68,7 @@ function handshake(bin, args, request, { timeoutMs = 60000, env = process.env } 
       if (settled) return;
       settled = true;
       clearTimeout(bell);
+      clearTimeout(grace);
       try { lines?.close(); } catch {}
       if (kill) { try { child.kill("SIGKILL"); } catch {} }
       resolve(v);
@@ -80,6 +86,7 @@ function handshake(bin, args, request, { timeoutMs = 60000, env = process.env } 
     lines = readline.createInterface({ input: child.stdout });
     lines.on("line", (line) => {
       let m; try { m = JSON.parse(line); } catch { return; }
+      if (m.method === "warning") warnings.push(String(m.params?.message ?? ""));
       if (m.id === 1) {
         if (m.error) { done({ failure: { kind: "JSON-RPC error", detail: `initialize returned ${JSON.stringify(m.error)}` } }); return; }
         send({ jsonrpc: "2.0", method: "initialized", params: request.initializedParams });
@@ -98,7 +105,9 @@ function handshake(bin, args, request, { timeoutMs = 60000, env = process.env } 
         if (m.error) { done({ failure: { kind: "JSON-RPC error", detail: `thread/start returned ${JSON.stringify(m.error)}` } }); return; }
         thread = m.result;
       }
-      if (thread !== undefined && limits !== undefined) done({ result: thread, limits });
+      if (thread === undefined || limits === undefined) return;
+      if (!awaitWarning || warnings.length) done({ result: thread, limits, warnings });
+      else grace ??= setTimeout(() => done({ result: thread, limits, warnings }), WARNING_WAIT_MS);
     });
     send({ jsonrpc: "2.0", id: 1, method: "initialize", params: request.initializeParams });
   });
@@ -176,8 +185,25 @@ os.userInfo = () => {
   return { ...realUserInfo(), homedir };
 };
 `);
+// The driver asks `codex features list` before it spawns the server, and sends the permission-feature
+// rows only where the listing names both; the capture hands that question to the real codex, so the
+// captured argv carries the rows exactly when this machine's codex would get them, and the replay below
+// puts them in front of the real server's --strict-config.
+const REAL_CODEX = findCodex();
+const PERMISSION_FEATURES = ["request_permissions_tool", "exec_permission_approvals"];
+const featureListing = REAL_CODEX === null ? null
+  : (() => { const r = spawnSync(REAL_CODEX, ["features", "list"], { encoding: "utf8", timeout: 10000 }); return r.status === 0 ? r.stdout : null; })();
+const FEATURE_ROWS = featureListing !== null
+  && PERMISSION_FEATURES.every((f) => new RegExp(`^${f}\\s+(?!removed\\b)\\S`, "m").test(featureListing))
+  ? PERMISSION_FEATURES.map((f) => `features.${f}=true`) : [];
 fs.writeFileSync(captureServer, String.raw`#!/usr/bin/env node
 "use strict";
+if (process.argv[2] === "features") {
+  const real = process.env.FIDELITY_REAL_CODEX;
+  if (!real) process.exit(1);
+  const r = require("node:child_process").spawnSync(real, process.argv.slice(2), { stdio: ["ignore", "inherit", "inherit"] });
+  process.exit(r.status ?? 1);
+}
 const readline = require("node:readline");
 const MARKER = "FIDELITY_DRIVER_CAPTURE ";
 let initializeParams = null;
@@ -283,6 +309,7 @@ function captureDriver(spec) {
     // home.
     TMPDIR: spec.env?.TMPDIR ?? freshDir("tmp"),
     PATH: `${captureBin}${path.delimiter}${baseEnv.PATH ?? ""}`,
+    FIDELITY_REAL_CODEX: REAL_CODEX ?? "",
   };
 
   return new Promise((resolve, reject) => {
@@ -318,7 +345,7 @@ function captureDriver(spec) {
         { finish(reject, new Error(`driver argv did not end in app-server: ${JSON.stringify(captured.spawnArgs)}`)); return; }
       // A differential compares two REPLIES to one request, so anything wrong with the REQUEST is
       // invisible: the capture replays it to both servers and both agree on the same wrong thing. So the
-      // request values no response field carries — web_search, --strict-config, experimentalApi,
+      // request values no response field carries — web_search, --strict-config, experimentalApi, the feature rows,
       // ephemeral — are asserted here by value: a small explicit list, not a second copy of the driver's
       // argv. A child pointed at a different TMPDIR is invisible HERE too, but is not unpinned: it reddens
       // most of the protocol suite and a lock case.
@@ -333,7 +360,9 @@ function captureDriver(spec) {
       };
       if (expect("-c web_search", sent("web_search"), "disabled")) return;
       if (expect("--strict-config", captured.spawnArgs.includes("--strict-config"), true)) return;
-      if (expect("initialize capabilities.experimentalApi", captured.initializeParams?.capabilities?.experimentalApi, false)) return;
+      if (expect("initialize capabilities.experimentalApi", captured.initializeParams?.capabilities?.experimentalApi, true)) return;
+      const featureRows = captured.spawnArgs.filter((a, n) => captured.spawnArgs[n - 1] === "-c" && a.startsWith("features."));
+      if (expect("-c features.* rows", JSON.stringify(featureRows), JSON.stringify(FEATURE_ROWS))) return;
       // thread/start carries no `ephemeral` field at all: the driver never sends one.
       if (expect("thread ephemeral", captured.threadParams?.ephemeral, undefined)) return;
       let isolated;
@@ -484,6 +513,7 @@ const CASES = [
 //
 // Gated because it costs a model call and about a minute: ENTRUST_LIVE_TURN=1.
 const LIVE_PROBE_FILE = "/etc/entrust-live-probe";
+const PERMISSIONS_TOOL_LINE = "The built-in `request_permissions` tool is available in this session.";
 const LIVE_PROMPT =
   "Run exactly these three shell commands, one at a time, and report each exit code: "
   + `(1) true  (2) false  (3) grep -q zzz /dev/null. Then attempt to create the file ${LIVE_PROBE_FILE} `
@@ -584,7 +614,9 @@ async function liveTurns() {
     const { code, out, err } = await runDriver(
       ["--level", "read", "--cwd", dir, "--effort", "low", "--timeout", "300",
        "--report-file", reportFile, "--prompt", LIVE_PROMPT],
-      { ...process.env, ENTRUST_CODEX: shim, ENTRUST_STATE_DIR: state }, 330000);
+      // A $TMPDIR beside the state directory, as captureDriver gives each case: the read level grants
+      // $TMPDIR, and the inherited one is an ancestor of `state`, which the driver refuses.
+      { ...process.env, ENTRUST_CODEX: shim, ENTRUST_STATE_DIR: state, TMPDIR: freshDir("live-tmp") }, 330000);
     let r = null;
     try { r = JSON.parse(out); } catch {}
     if (!r) report("live turn", `the driver produced no JSON report (exit ${code}): ${err.trim().slice(-300)}`);
@@ -633,6 +665,19 @@ async function liveTurns() {
       for (const n of notes) console.log(`      note: ${n}`);
       for (const p of problems) report("live turn: item key sets", p);
       console.log(`      live item types: ${[...new Set(items.map((i) => i.type))].join(", ")}`);
+      // With the permission features sent, the session's own record says the model was handed the tool
+      // (P1 q7d: byte 27,242 of the rollout), inside the head the driver already reads for the receipt.
+      if (r.featuresRequested?.length === PERMISSION_FEATURES.length) {
+        let head = "";
+        try {
+          const fd = fs.openSync(r.receiptPath, "r");
+          try { const buf = Buffer.alloc(64 * 1024); head = buf.subarray(0, fs.readSync(fd, buf, 0, buf.length, 0)).toString("utf8"); }
+          finally { fs.closeSync(fd); }
+        } catch {}
+        if (!head.includes(PERMISSIONS_TOOL_LINE))
+          report("live turn: the rollout head says the request_permissions tool is available", `receiptPath ${JSON.stringify(r.receiptPath)}, ${head.length} bytes read`);
+        else console.log("ok    live turn: the rollout head says the request_permissions tool is available");
+      } else console.log(`      the permission features were not sent (featuresRequested ${JSON.stringify(r.featuresRequested)}); the tool line is not checked`);
     }
   }
 
@@ -653,7 +698,8 @@ async function main() {
       continue;
     }
 
-    const live = await handshake("codex", request.spawnArgs, request, { env: request.replayEnv });
+    const featuresOn = request.spawnArgs.some((a, n) => request.spawnArgs[n - 1] === "-c" && a.startsWith("features."));
+    const live = await handshake("codex", request.spawnArgs, request, { env: request.replayEnv, awaitWarning: featuresOn });
     if (live.unavailable) {
       skipped++;
       console.log(`SKIP  ${c.name}\n      codex binary absent (spawn ENOENT): ${live.unavailable.slice(0, 120)}`);
@@ -674,6 +720,14 @@ async function main() {
       continue;
     }
 
+    // The server's own word that the permission features it was given are still under development. A
+    // codex that promotes them stops saying so, which is reported rather than failed: the features are
+    // still there, and the handshake above already proved --strict-config took the keys.
+    if (featuresOn) {
+      const named = (ws) => ws.some((w) => PERMISSION_FEATURES.every((f) => w.includes(f)) && /Under-development features enabled/.test(w));
+      if (!named(live.warnings ?? []))
+        console.log(`note  ${c.name}: the live server sent no under-development warning naming both permission features (promoted?): ${JSON.stringify(live.warnings ?? []).slice(0, 200)}`);
+    }
     const L = shapeOf(live.result, live.limits), F = shapeOf(fake.result, fake.limits);
     const diffs = new Set(Object.keys(L).filter((k) => JSON.stringify(L[k]) !== JSON.stringify(F[k])));
     // Required on the live response and operationally load-bearing. If both sides ever omit it together,

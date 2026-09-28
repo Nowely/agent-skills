@@ -14,6 +14,9 @@ import { DRIVER, ROOT, codexShim, readJson, spawnNode, tempDir } from "./harness
 const REVIEW_SCHEMA = path.join(ROOT, "skills", "codex", "schemas", "review-output.schema.json");
 
 const shimDir = tempDir("entrust-test-");
+// Every state root a case or a flow gets lives here, beside the shim rather than under it: the shim is
+// the cases' --cwd, and a write-level cwd above a state directory is refused as an ancestor of it.
+const stateBase = tempDir("entrust-state-");
 // Use a unique name per run to avoid collisions in the shared $TMPDIR.
 const survivorPidName = `verify-survivor-${crypto.randomBytes(4).toString("hex")}.pid`;
 codexShim(shimDir);
@@ -81,7 +84,7 @@ fs.writeFileSync(path.join(rolloutDay, "rollout-2026-01-01T00-00-00-thr_root.jso
 // not this run's, and receiptOk must say so rather than trusting the name.
 // A pre-existing state directory with $TMPDIR inside it: the read-level grant must not expose the
 // driver's protected state to writes.
-const protectedState = path.join(shimDir, "state");
+const protectedState = path.join(stateBase, "protected");
 const protectedTmp = path.join(protectedState, "tmp");
 fs.mkdirSync(protectedTmp, { recursive: true });
 
@@ -126,7 +129,7 @@ let agentSeq = 0;
 let caseSeq = 0;
 function run(c) {
   return new Promise((resolve) => {
-    const stateRoot = path.join(shimDir, "case-state", String(caseSeq++));
+    const stateRoot = path.join(stateBase, "case", String(caseSeq++));
     // A prompt-file case writes its declaration to disk and passes only --prompt-file, exactly as a
     // coordinator does — the point being that no value ever passes through a shell.
     let agentArgs = [];
@@ -150,6 +153,8 @@ function run(c) {
     if (c.closeStdout) { try { p.stdout.destroy(); } catch {} }
     if (c.pauseStdout) { p.stdout.pause(); setTimeout(() => p.stdout.resume(), c.pauseStdout); }
     if (c.stallStdout) p.stdout.pause();
+    // The driver's own process, for a flow that has to signal it mid-turn.
+    c.onSpawn?.(p);
     done.then((r) => resolve({ ...r, stateRoot }));
   });
 }
@@ -191,7 +196,7 @@ export async function runTable(cases) {
 
 let flowSeq = 0;
 const flowState = () => {
-  const d = path.join(shimDir, `flow-state-${flowSeq++}`);
+  const d = path.join(stateBase, `flow-${flowSeq++}`);
   fs.mkdirSync(d, { recursive: true });
   return d;
 };

@@ -10,7 +10,10 @@ explains environment, state, wrappers, operational bounds, and lifecycle details
 
 The variables, the subdirectories of the state directory `<state>` stands for below, the order the driver
 resolves it in, and what `TMPDIR` grants a read agent are all under `--help-all`. There is no default: the
-intended value is the plugin's own data directory, which the skill recipes pass on every call. What it does not carry: the agent's shell also receives `TMPPREFIX` under
+intended value is the plugin's own data directory, which the skill recipes pass on every call. `<state>`
+must also be absolute, and neither `$TMPDIR` nor a directory above it: both levels grant `$TMPDIR` to the
+agent, and a state directory at or above it would let the sandbox reach its own locks and answers, so a
+value naming either exits 2 before any turn runs. What it does not carry: the agent's shell also receives `TMPPREFIX` under
 the run's `$TMPDIR`, because zsh keeps here-document temp files at `$TMPPREFIX*`, default `/tmp/zsh`,
 which no grant covers ([incidents](incidents.md#here-documents-under-the-grant)).
 
@@ -26,11 +29,89 @@ codex 0.153.4 (measured 2026-09-15); to cost a thread, sum one report per turn. 
 **API request**, not the whole turn — measured on a rollout, one turn emitted `last: 13584 / total: 13584`
 then `last: 14273 / total: 27857`, so `last` is only the turn's tail.
 
-The report's `escalations` array has one `{method, detail, thread, subagent}` entry per approval request
-the driver declined, whichever thread asked. `detail` is the server's wording clipped to 200 characters
-and may be empty; a sandbox-denied command need not raise a request, so an empty array does not prove
-that no command was denied. An entry does not diagnose rights that were too narrow. Exit 6 means this
-rung won the ordered ladder; a cut run can carry entries and still exit 3.
+The report's `escalations` array has one entry per approval request, whichever thread asked — not only the
+ones the driver declined: `id`, `method`, `kind`, `detail`, `thread`, `subagent`, `agentPath`, `cause`
+(`rights`: a file change the writable roots cover, which the driver accepted itself; `outside`: a file
+change not shown to lie inside them; `sandbox`: the same command had just failed in this turn; `policy`:
+no attempt was seen, so Codex asked by its own rule), `offered`, `decision` (`accepted`, `declined` or
+`expired`), `by` (`driver` for an auto-yes, an expiry or a request never offered, `coordinator` otherwise),
+`why`, `askedAt`, `settledAt`, `waitMs`, `resolved`, `outcome` (the matching item's own completion, or null
+where none came), `cwd`, `reason`, `fileChanges`, `permissions` (the profile a widening asked for, or null),
+`granted` (whether it was given; null where nothing was asked) and `repeatOf` (the earlier permissions
+request a command widening follows, where its paths lie only partly inside it). `detail` is the server's own
+wording whole — never
+clipped — and may still be empty where it sent none; a sandbox-denied command need not raise a request, so
+an empty array does not prove that no command was denied. An entry does not diagnose rights that were too
+narrow. Exit 6 means a request was declined or expired unanswered, never one accepted; a cut run can carry
+entries and still exit 3. Beside the array, `approvalsAccepted`, `approvalsAutoAccepted`, `approvalsStale`
+and `approvalsLate` count what their names say, `approvalsDuplicate` counts a request id the server
+sent twice — the driver answers it once and the report counts the repeat, not a second request — and
+`sandboxWidened` lists one `{itemId, permissions, scope, at}` per accepted widening, `scope` `turn` for a
+permissions request and `command` for a command widening, so a reader of `sandbox` (the server's echo at
+`thread/start`) sees what the turn started with and a reader of `sandboxWidened` sees what it gained.
+
+An auto-yes carries `why: "rights cover it (checked as the answer was sent)"`: every component of the
+resolved path between the writable root and the file must be an existing plain directory, never a symlink,
+and the file itself regular or not there yet, with nothing under a `.git`, `.codex` or `.agents` directory
+in any spelling — matched by inode and by a case-folded name, so `.Git` and `.GIT` are caught too — and the
+whole check runs again, fresh, at the moment the driver sends the answer, not only when the request first
+arrived. A writer that swaps one of those plain directories for a symlink between the driver's check and
+the server's own write is followed by the server, not the driver; whether the server re-resolves that swap
+before it writes is unmeasured.
+
+## Approval mailbox
+
+Every agent gets one: `agent-run.mjs --new` makes `<DIR>/approvals` beside the prompt for every launch, no
+flag needed, and `--run` always hands the driver `--approval-dir` for it. `--approval-dir D` has to lie
+inside the driver's own state directory, and so does `--report-file` beside it: `--new` checks both paths
+strictly inside that directory before the agent's directory even exists, and refuses without the state
+directory in `ENTRUST_STATE_DIR` or `CLAUDE_PLUGIN_DATA`; it also refuses a mailbox placed under one of the
+driver's own subtrees there —
+`tmp/`, `home/`, `locks/`, `answers/`, `jobs/`, `worktrees/` or `pasted/` — where `tmp/` alone holds every
+run's private `$TMPDIR`; `reports/<run>` and an orchestrate run directory are both fine, being neither. The
+driver also refuses any writable root that is, or is an ancestor of, the state directory or `~/.codex` —
+the inverse of the ancestor walk [Only those are protected](#what-is-protected-and-what-is-not) already
+runs — so no sandbox the driver grants can reach in and write a decision itself. `D/owner.json` claims the
+mailbox by `link(2)`; a second driver over the same `D` exits 2 while that owner is alive, and a dead
+owner's claim is taken over under a reclaim marker, so two drivers never both own `D`. A request the
+mailbox itself cannot write — its file, or its entry in `pending` — is settled at once as expired,
+`why: "mailbox write failed: <error>"`, and an accept reaches the server only after that settlement record
+landed; a request's own `settled` object then carries `decisionFile`, what the decision file held as it
+settled: `taken`, `none`, `stale` or `late`. A subagent thread's request is offered, and its file change
+auto-accepted, only while that thread's own turn is still open: once it closes, a further request from it
+is declined at once, `why: "turn ended"` for one whose turn had been open and closed, `"not the current
+turn"` for one from a turn never open at all. A request nobody answers waits on the single clock the driver
+keeps for it, `LIMITS.APPROVAL_TIMEOUT_S`, a constant at 1800 seconds (thirty minutes, not a flag: nobody
+could say who would set it or why the default could not decide) — a safety net for a run nobody attends, not
+a policy choice, and the idle guard is paused for as long as any request stays open so the two clocks never
+compete. `--run` can hand a pending request straight back instead of waiting on it: see the codex page's
+`--new`/`--run` recipe and the launcher's own `--help`.
+
+## Feature probe, for the widening
+
+A permissions request and a command approval carrying added paths — the widening — exist only where the
+codex the driver spawns advertises both `features.request_permissions_tool` and
+`features.exec_permission_approvals`: the driver runs `codex features list` once per start, bounded by 5
+seconds and with the process group killed if it does not return in time, and treats any answer other than
+both names present and not `removed` as absent. Where both are present it sends
+`-c features.request_permissions_tool=true` and `-c features.exec_permission_approvals=true`, at both
+levels, and nothing otherwise: `--strict-config` would refuse the spawn outright on a codex without them.
+`initialize` also asks for `experimentalApi: true`, which is what lets a command approval's added paths
+reach the client at all — without it the same approval carries no `additionalPermissions` and cannot be
+told from a true escape. The report keeps `featuresRequested` (the `-c` keys actually sent, empty where the
+codex lacked either), `experimentalApi`, and `serverWarnings` (the server's own `warning` notifications,
+twenty at most, kept unsuppressed): an under-development feature can change shape or vanish between codex
+versions, and these three, plus the fidelity handshake's own differential against the real server, are what
+would show that drift rather than a silent stop to the widening. Sending the keys is only half of what
+makes a widening arrive: `--help-all`'s own words, "Only with both sent do the standing instructions tell
+the model to ask for the exact path a failing tool names, and to ask to leave the sandbox only when no path
+would do" — where the run's codex lacks either name, the model is never told to ask for a path at all, the
+standing instructions read as they did before this channel, and the escape is the only path a failing tool
+can take. An entry the model does ask for is filtered before it is ever offered: a path at or inside
+`~/.codex`, the state directory, the home or the filesystem root is `why: "protected root"`; a glob pattern,
+or any special kind other than a root, is `why: "unsupported entry kind"` instead — the filter reads the
+request's legacy read/write lists as well as its `entries`, so neither shape of request hides an entry from
+it.
 
 Codex delegates to subagent threads of its own whenever the model chooses to, at any effort. Measured on
 0.153.4 a child never sends `thread/started` to the client: the ROOT announces it as a `subAgentActivity`
@@ -69,9 +150,12 @@ verified by, the second this driver's locks and answer log. The private `<state>
 the driver is the narrow exception: its owner record binds it to that run. The driver also refuses your
 home directory itself and every ancestor of it, up to `/`.
 
-**Only those are protected.** `~/.ssh`, `~/.aws`, `~/.claude`, `~/Library` and the rest of your home
-are legitimate write roots as far as the driver is concerned. It stops you handing over *everything*;
-it does not curate what inside your home is precious. Choose the blast radius deliberately.
+**Only those are protected, and what is above them.** The guard also refuses a candidate that is `~/.codex`
+or the state directory itself, or an ancestor of either (E66): `~/.claude` is refused on a plugin install,
+whose state directory sits under it, while `~/.ssh`, `~/.aws`, `~/.arc`, `~/Library` and the rest of your
+home remain legitimate write roots as far as the driver is concerned. It stops you handing over
+*everything* above what it protects; it does not curate what inside your home is precious otherwise.
+Choose the blast radius deliberately.
 
 ## The isolated home
 
@@ -153,6 +237,13 @@ line, because verification runs an unsandboxed `/bin/sh` with the coordinator's 
   carries `worktreePath` and `worktreePreserved`: the reason it was kept, or `null` where it was removed.
 - The job record's `endedAt` is written only after the report has landed. Before then a live recorded
   pid means running and a dead one means crashed.
+- Under `--run`, `DIR/exit` is written by the detached keeper from the driver's own exit status, and the two
+  ways it can end differ: on `SIGTERM`, `SIGINT` or `SIGHUP` the driver's own handler catches the signal, cuts
+  the turn and exits with its own chosen code — 1 once a thread exists, the turn `interrupted` — so the
+  marker holds that code, never the signal; only an uncatchable signal (`SIGKILL`, a crash) bypasses the
+  handler entirely and leaves the keeper computing 128 plus the signal number for the marker (137 for
+  `SIGKILL`), and a request still open at that moment is left `ORPHANED` in the mailbox, which `--pending`
+  reports once the marker exists.
 
 ## Receipt validation and reporting
 

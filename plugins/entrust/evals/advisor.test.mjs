@@ -116,7 +116,9 @@ test("D4 the advisor's prompt, as the page writes it, registers through the laun
     const dir = tempDir("advisor-prompt.");
     const register = (id, prompt) => {
       const report = path.join(dir, id, "report.json");
-      const r = spawnSync(process.execPath, [path.join(SCRIPTS, "agent-run.mjs"), "--new", "--report-file", report], { input: prompt, encoding: "utf8" });
+      // The temporary directory is the state directory too: --new puts every agent's mailbox inside it.
+      const r = spawnSync(process.execPath, [path.join(SCRIPTS, "agent-run.mjs"), "--new", "--report-file", report],
+        { input: prompt, encoding: "utf8", env: { ...process.env, ENTRUST_STATE_DIR: dir } });
       const at = /^PROMPT=(.+)$/m.exec(r.stdout)?.[1];
       if (r.status !== 0 || !at) { problems.push(`${id}: --new exited ${r.status}: ${(r.stdout + r.stderr).trim()}`); return ""; }
       return fs.readFileSync(at, "utf8");

@@ -6,6 +6,71 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
+## E64. The server's `availableDecisions` never offers `decline`, the shape every refusal of this driver sends
+
+**Evidence, level 3 for the list and for the refusal being honoured today, level 1 for the schema.**
+
+- 2026-09-27, Opus P1's probe on codex 0.155.1
+  (`plugins/entrust/research/2026-09-27-approval-channel/01-probe.md`, transcripts under `01-probe/`): five
+  `item/commandExecution/requestApproval` requests each carried `availableDecisions: ["accept",
+  {acceptWithExecpolicyAmendment: …}, "cancel"]` and never `decline`; the field is absent from the generated
+  0.155.1 `CommandExecutionRequestApprovalParams.json`.
+- `driver.mjs:2729-2730` answers both `item/*` methods with `{ decision: "decline" }`; the 27 reports with exit 6 on
+  this machine (`00-escalations.md` in the same run) each went on to `turnStatus: completed` after it, so the server
+  honours it.
+- A JSON-RPC error in place of a decision is honoured as a rejection too, but the model reads
+  `exec_command failed: … Rejected("approval request failed")` and the item completes `status: "failed",
+  exitCode: null` (P1, Q3 error), which the classifier counts under `commandsFailed` (`:3318`, `:3336`).
+
+**Check.** `grep -o 'availableDecisions[^]]*]' plugins/entrust/research/2026-09-27-approval-channel/01-probe/transcript-q12.jsonl | head -1`
+prints the list without `decline`.
+
+**Issue text.** The refusal the driver sends is not among the decisions the server advertises for the request. It is
+honoured on 0.153.4 and 0.155.1, but nothing promises it: a server that enforced its own list would turn every
+refusal into an error the model reads as a broken tool while the report counts a failed command, and the offline
+fixture, which accepts any decision, would stay green. Record the fact where the refusal shapes are chosen, make the
+fixture carry the server's list, and let the live fidelity gate compare the two.
+
+## E65. `escalations` can hold an entry with no declined or failed command beside it, because a sandboxed attempt can emit no item notifications
+
+**Evidence, level 3 for the gap (seen once), level 2 for the consequence.**
+
+- P1's 180 s hold thread (`plugins/entrust/research/2026-09-27-approval-channel/01-probe/transcript-q3a.jsonl`, and
+  the rollout it names): the rollout shows the sandboxed first attempt run and fail (`exec_command`, exit 1,
+  `Operation not permitted`), while the transcript's only `commandExecution` item is the escalated one, `item/started`
+  at line 58, the request at line 60, `item/completed` with `status: "completed"` at line 70 after the accept.
+- `driver.mjs:3318` and `:3336` count `commandsFailed` and `commandsDeclined` from `item/completed`; the help at
+  `:427-432` says `commandsDeclined` and `escalations` "can differ" and names one cause, a refused request with no
+  command, not this one.
+
+**Check.** `grep -n -o 'item/started\|requestApproval\|"type\\":\\"commandExecution\\"' <that transcript> | head` shows no
+`commandExecution` item before the request.
+
+**Issue text.** A report can show one escalation beside zero declined and zero failed commands, because the sandboxed
+attempt that raised the request produced no item at all. The help's "can differ" covers it by accident; the report's
+reader has no way to tell this case from a request raised with no attempt. Name the cause in the help, and let the
+entry carry what the request itself says about the command, since the item may never come.
+
+## E67. "Nothing left running" after `SIGTERM` is not established for a command executing at the signal
+
+**Evidence, level 3 for the process groups, level 1 for the kill, level 2 for the consequence.**
+
+- `plugins/entrust/plugin/skills/codex/SKILL.md:93` (at `b3872b4`): a `SIGTERM` to the driver's pid "cuts the turn,
+  sweeps its codex and publishes the report … nothing left running".
+- `driver.mjs:2400-2403`: `killGroup` signals `-child.pid`, the app-server's own process group, and `groupAlive`
+  asks the same group.
+- 2026-09-27, Opus P1's probe on codex 0.155.1 (`plugins/entrust/research/2026-09-27-approval-channel/01-probe.md`,
+  Q2): each command the server runs shows "directly under the app-server pid, each in its own process group, with no
+  sandbox-exec or codex wrapper". Whether the server ends those groups on its own exit or abort was not measured.
+
+**Check.** `grep -n 'process.kill(-' plugins/entrust/plugin/skills/codex/scripts/driver.mjs` prints the two calls on
+`child.pid` alone; the probe's process-list observation is at the line the entry cites.
+
+**Issue text.** The teardown signals and polls the app-server's process group, while the commands the server runs
+live in groups of their own. Whether they die with the server is unmeasured, so the page's promise is a guess for
+any command still executing at the signal, a long test run first of all. Measure it (a `sleep` run through a live
+turn, then `SIGTERM`, then `pgrep`), and either sweep the children or narrow the sentence.
+
 ## E51. A Codex agent picks its own output cap when it reads a file, and no page tells the coordinator to set one, so a read can return a fragment
 
 **Evidence, level 3.**
@@ -186,3 +251,29 @@ prints `tokens: NaN`.
 **Issue text.** The gate reads a registered plan's tokens column with `Number`, so a row the launcher admits with
 `unknown` carries `NaN` into every check that sums or compares tokens. The record should keep `null` for
 `unknown` and the checks should skip it.
+
+## E68. The mailbox's owner reclaim checks the holder is dead and then removes the owner file by path, the pattern E44 removed from the lock
+
+**Evidence, level 2.**
+
+- `driver.mjs:3435-3441` (`claimOwner`, reached through `claimMailbox`): under the reclaim marker, `const now =
+  readJson(owner); if (!holderAlive(now)) { fs.rmSync(owner, { force: true }); … }` reads `owner.json`, decides
+  liveness, and unlinks it by its shared pathname — not the descriptor-held, identity-checked act that update and
+  release now use for the lock's own link after E44.
+- `driver.mjs:1887` documents the same shape as residual for the *lock's* owner file even after the E44 fix ("the
+  owner file, checked the same way, still goes"), because POSIX has no unlink by inode: a file swapped in between
+  the check and the unlink is not the one removed. The mailbox's `owner.json` reclaim has no rename or identity
+  check between its liveness read and its `rmSync`, so the same window is open here, one level up from where E44
+  closed it for the lock's link.
+
+**Check.** `grep -n "now = readJson(owner)" plugins/entrust/plugin/skills/codex/scripts/driver.mjs` shows the read
+and the `rmSync` a few lines apart, both keyed on the shared path `owner`, with nothing that binds the removal to
+the value just read.
+
+**Issue text.** `claimOwner`'s takeover path reads `owner.json`, decides its holder is dead, and then unlinks that
+path — the check-then-act-on-the-pathname shape E44's fix removed from the lock's own update and release, and for
+the same reason: a peer that replaces the file between the read and the unlink loses its claim to a taker that
+never looked at what it removed. The reclaim marker serialises two takers against each other, not the owner
+file's removal against a fresh write from the holder it just pronounced dead. Mitigating: the launcher claims one
+launch per agent directory through `err.txt` (`wx`, `agent-run.mjs:367`), so two `claimOwner` calls racing on the
+very same mailbox path is not the ordinary case this driver runs today.
