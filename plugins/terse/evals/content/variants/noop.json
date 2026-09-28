@@ -1,0 +1,10 @@
+{
+  "name": "one-word-body-control",
+  "edits": [
+    {
+      "file": "skills/clarity/SKILL.md",
+      "find": "Use few words per thought",
+      "replace": "Use fewer words per thought"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "k4",
+  "edits": [
+    {
+      "file": "skills/clarity/SKILL.md",
+      "find": "Keep a real limit at the decision; prefer an honest range to false precision.",
+      "replace": "Keep a real limit at the decision; prefer an honest range to false precision. Apply the same check to a factual premise the answer relies on: when the evidence at hand contradicts it, correct the premise and continue with the task as stated."
+    }
+  ]
+}

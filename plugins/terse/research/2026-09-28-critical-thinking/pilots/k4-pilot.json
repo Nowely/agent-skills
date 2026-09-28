@@ -1,0 +1,213 @@
+{
+ "candidate": "k4",
+ "current": "k4-pilot-current",
+ "variant": "k4-pilot-k4",
+ "exposure": {
+  "current": [
+   36,
+   36,
+   0
+  ],
+  "variant": [
+   36,
+   36,
+   0
+  ]
+ },
+ "W": 2,
+ "L": 1,
+ "p": 0.5,
+ "G": 0,
+ "gate_cases": [],
+ "vetoes": {
+  "completion": 1,
+  "leakage": 2
+ },
+ "veto_fired": [
+  "leakage"
+ ],
+ "pilot_outcome": "drop",
+ "confirmation_pass": false,
+ "rows": [
+  {
+   "case": "k4p-01",
+   "stratum": "contradicted",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie",
+   "completion": [
+    1.0,
+    1.0
+   ],
+   "leakage": [
+    0.3333333333333333,
+    0.6666666666666666
+   ]
+  },
+  {
+   "case": "k4p-02",
+   "stratum": "contradicted",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie",
+   "completion": [
+    1.0,
+    1.0
+   ],
+   "leakage": [
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "case": "k4p-03",
+   "stratum": "contradicted",
+   "current": 0.3333333333333333,
+   "variant": 0.6666666666666666,
+   "result": "win",
+   "completion": [
+    1.0,
+    0.6666666666666666
+   ],
+   "leakage": [
+    0.0,
+    0.6666666666666666
+   ]
+  },
+  {
+   "case": "k4p-04",
+   "stratum": "contradicted",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie",
+   "completion": [
+    1.0,
+    1.0
+   ],
+   "leakage": [
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "case": "k4p-05",
+   "stratum": "contradicted",
+   "current": 0.3333333333333333,
+   "variant": 0.6666666666666666,
+   "result": "win",
+   "completion": [
+    1.0,
+    1.0
+   ],
+   "leakage": [
+    0.6666666666666666,
+    0.0
+   ]
+  },
+  {
+   "case": "k4p-06",
+   "stratum": "contradicted",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie",
+   "completion": [
+    1.0,
+    1.0
+   ],
+   "leakage": [
+    0.6666666666666666,
+    0.6666666666666666
+   ]
+  },
+  {
+   "case": "k4p-07",
+   "stratum": "holds",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie",
+   "completion": [
+    1.0,
+    1.0
+   ],
+   "leakage": [
+    0.6666666666666666,
+    0.6666666666666666
+   ]
+  },
+  {
+   "case": "k4p-08",
+   "stratum": "holds",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie",
+   "completion": [
+    1.0,
+    1.0
+   ],
+   "leakage": [
+    0.6666666666666666,
+    1.0
+   ]
+  },
+  {
+   "case": "k4p-09",
+   "stratum": "holds",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie",
+   "completion": [
+    1.0,
+    1.0
+   ],
+   "leakage": [
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "case": "k4p-10",
+   "stratum": "unsettled",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie",
+   "completion": [
+    1.0,
+    1.0
+   ],
+   "leakage": [
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "case": "k4p-11",
+   "stratum": "unsettled",
+   "current": 1.0,
+   "variant": 0.3333333333333333,
+   "result": "loss",
+   "completion": [
+    1.0,
+    1.0
+   ],
+   "leakage": [
+    0.3333333333333333,
+    0.0
+   ]
+  },
+  {
+   "case": "k4p-12",
+   "stratum": "unsettled",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie",
+   "completion": [
+    0.0,
+    0.3333333333333333
+   ],
+   "leakage": [
+    0.0,
+    0.3333333333333333
+   ]
+  }
+ ]
+}

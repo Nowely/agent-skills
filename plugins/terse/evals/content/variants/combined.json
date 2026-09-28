@@ -1,0 +1,30 @@
+{
+  "name": "combined",
+  "edits": [
+    {
+      "file": "skills/clarity/SKILL.md",
+      "find": "Keep a real limit at the decision; prefer an honest range to false precision.",
+      "replace": "Keep a real limit at the decision: when a recommendation depends on an unsettled assumption, name the observation that would change it, check it against the evidence this task already has, and narrow the recommendation to what the check establishes. Prefer an honest range to false precision. Apply the same check to a factual premise the answer relies on: when the evidence at hand contradicts it, correct the premise and continue with the task as stated."
+    },
+    {
+      "file": "references/genres/relayed-result.md",
+      "find": "The person needs to know what was found, what supports it, what remains uncertain, and what they can do next.",
+      "replace": "The person needs to know what was found, what supports it, what remains uncertain, and what they can do next; where their decision depends on something the run did not settle, name the observation that would change the conclusion and whether anyone looked for it."
+    },
+    {
+      "file": "references/roles.md",
+      "find": "Recheck a disputed fact; do not attribute a\ndecision to the owner that they did not make, or call a draft final before their word.",
+      "replace": "Recheck a disputed factual conclusion against its source and its reasoning: correct or keep it by what the\ncheck establishes, leave it unresolved when the check cannot settle it, and give the decisive evidence when\nthe reader needs it to follow the reply. Apply a preference or an agreed scope directly. Do not attribute a\ndecision to the owner that they did not make, or call a draft final before their word."
+    },
+    {
+      "file": "skills/clarity/SKILL.md",
+      "find": "For a later objection, follow the [owner-feedback brief](../../references/roles.md#13-owner-feedback).",
+      "replace": "For a later objection that disputes a fact, recheck it at its source and say what the check established:\ncorrected, kept, or unresolved; apply a preference or an agreed scope directly. The\n[owner-feedback brief](../../references/roles.md#13-owner-feedback) has the full form."
+    },
+    {
+      "file": "references/genres/agent-brief.md",
+      "find": "Do not bury the objective under background, imply permission to edit from a request to review, or ask for a conclusion without specifying its evidence.",
+      "replace": "Do not bury the objective under background, imply permission to edit from a request to review, or ask for a conclusion without specifying its evidence. For an unresolved review or investigation, ask for the conclusion the evidence supports without supplying a preferred verdict; a verdict in the brief steers the reviewer. Keep established facts, requirements and decided scope as inputs. When testing a hypothesis is the task, name it as the proposition to test and the evidence that could reject it."
+    }
+  ]
+}

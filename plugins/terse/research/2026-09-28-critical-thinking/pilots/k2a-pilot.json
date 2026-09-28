@@ -1,0 +1,123 @@
+{
+ "candidate": "k2",
+ "current": "k2-pilot-current",
+ "variant": "k2-pilot-k2a",
+ "exposure": {
+  "current": [
+   24,
+   42,
+   0
+  ],
+  "variant": [
+   21,
+   42,
+   0
+  ]
+ },
+ "W": 0,
+ "L": 1,
+ "p": 1.0,
+ "G": 0,
+ "gate_cases": [],
+ "vetoes": {
+  "completion": 0,
+  "leakage": 0
+ },
+ "veto_fired": [],
+ "pilot_outcome": "invalid (clarity not loaded in every run)",
+ "confirmation_pass": false,
+ "rows": [
+  {
+   "case": "k2p-01",
+   "stratum": "correct-bare",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k2p-02",
+   "stratum": "correct-bare",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k2p-03",
+   "stratum": "correct-bare",
+   "current": 1.0,
+   "variant": 0.6666666666666666,
+   "result": "loss"
+  },
+  {
+   "case": "k2p-04",
+   "stratum": "correct-bare",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k2p-05",
+   "stratum": "correct-misleading",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k2p-06",
+   "stratum": "correct-misleading",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k2p-07",
+   "stratum": "correct-misleading",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k2p-08",
+   "stratum": "correct-misleading",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k2p-09",
+   "stratum": "wrong-valid",
+   "gate_current": 1.0,
+   "gate_variant": 1.0
+  },
+  {
+   "case": "k2p-10",
+   "stratum": "wrong-valid",
+   "gate_current": 1.0,
+   "gate_variant": 1.0
+  },
+  {
+   "case": "k2p-11",
+   "stratum": "wrong-valid",
+   "gate_current": 1.0,
+   "gate_variant": 1.0
+  },
+  {
+   "case": "k2p-12",
+   "stratum": "wrong-valid",
+   "gate_current": 1.0,
+   "gate_variant": 1.0
+  },
+  {
+   "case": "k2p-13",
+   "stratum": "unavailable",
+   "gate_current": 1.0,
+   "gate_variant": 1.0
+  },
+  {
+   "case": "k2p-14",
+   "stratum": "preference",
+   "gate_current": 0.6666666666666666,
+   "gate_variant": 1.0
+  }
+ ]
+}

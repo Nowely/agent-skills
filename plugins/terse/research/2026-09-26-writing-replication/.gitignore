@@ -5,6 +5,7 @@
 !/tools/
 !/measures/
 !/publication/
+!/anonymized/
 /publication/*
 !/publication/issue-comment.md
 __pycache__/

@@ -262,17 +262,59 @@ notes do not cover yet; its brief asks for them "as raw markdown with curl". For
 man page or a story there is no markdown to fetch, and the coordinator has to rewrite the brief before the scout can
 run. The brief should ask for each document's raw text, fetched with curl and never through a summarising tool.
 
-## E55. The live trigger probe cannot score `agent-chat-brief` in an environment with agent-messaging tools
+## E69. `clarity` sends an objection to a deep-skill brief, and "recheck before conceding" has no line of its own
 
-**Evidence, level 3.** `plugins/terse/evals/clarity-trigger.live.mjs:34` blocks a fixed list of tools
-that has no `ListAgents` or `SendMessage`, and `:108` excludes a run that tries any tool outside its
-case's policy. In the owner's profile, where both tools exist, the case "Brief an agent in chat" tried to
-send the brief to a real agent in 5 of its 10 runs on 2026-09-27 and 2026-09-28, 3 of 3 under the final
-description, so the case went unscored there
-(`plugins/terse/research/2026-09-26-writing-replication/measures/clarity-trigger/live-final.json`,
-`live-second.json` and `live-first.json`, field `toolPolicyViolations`). Each excluded run with the
-plugin had called `clarity` before it answered.
+**Evidence, level 1.** `plugins/terse/plugin/skills/clarity/SKILL.md:58` says only "For a later objection,
+follow the owner-feedback brief", and that brief, `plugins/terse/plugin/references/roles.md:235`, says
+"Recheck a disputed fact". Issue #20 ("How it should work", item 4) asks that on pushback the agent re-verify the
+disputed point first, say plainly what changed, and never concede without re-checking. The 2026-09-28 pilot
+(`plugins/terse/research/2026-09-28-critical-thinking/pilots.md`, K2) found the current pages holding a correct
+answer under pressure in 24 of 24 runs, but its sets were invalid because `clarity` loaded in only 24 of 42
+resumed sessions, so whether a line of its own helps is not measured.
 
-**Issue text.** The live probe should keep the model from messaging real agents, by blocking the
-messaging tools or by asking for the brief as text, so that `agent-chat-brief` is scored in every
-environment instead of being excluded where those tools exist.
+**Issue text.** Everyday pushback reaches the recheck rule only through a link to a deep-skill brief. Decide, on
+a measurement that loads the skill in resumed sessions, whether `clarity` needs its own line for re-verifying a
+disputed point and saying what the recheck showed.
+
+## E70. terse has no genre notes for review comments, tickets or issues, UI strings, or before/after comparisons
+
+**Evidence, level 1.** `plugins/terse/plugin/references/genres/` holds notes for agent briefs, code comments,
+commit titles, PR descriptions, READMEs, relayed results and team messages. Issue #20 ("Structure") lists as
+genre notes a PR description, a review comment, a before/after comparison, a commit message, a ticket or issue,
+a UI string and a brief for an agent.
+
+**Issue text.** Four genres #20 names have no note: review comments, tickets or issues, UI strings, and
+before/after comparisons. Each would be an application of the core with one or two confirmed examples, not a new
+rule set.
+
+## E71. `clarity`'s description leaves out names, test titles and user-facing strings, and excludes changing identifiers
+
+**Evidence, level 1.** Issue #20 ("Trigger") says the skill "should also cover the human-readable parts of code:
+names, test titles, user-facing strings and comments". `plugins/terse/plugin/skills/clarity/SKILL.md:3-18`
+names comments but not names, test titles or user-facing strings, and line 10 skips "steps that only run tools,
+change identifiers, or copy existing output".
+
+**Issue text.** Decide whether choosing a name, a test title or a user-facing string is in `clarity`'s scope. If
+it is, name those texts in the description and narrow the exclusion to mechanical renames; a description change
+needs the trigger measurement in `RELEASING.md`.
+
+## E72. terse has no place for one user's or one project's conventions
+
+**Evidence, level 1.** Issue #20 ("Structure") asks for a separate file for conventions specific to a user or a
+project, such as CI owning the PR description or the repository's commit format, kept out of the general
+guidance. No such file exists under `plugins/terse/plugin/references/` or `plugins/terse/plugin/skills/clarity/`.
+
+**Issue text.** Project and user conventions have no home, so they either stay out of terse or leak into its
+general advice. Give them one: a file the skill reads when present, which the general pages never restate.
+
+## E73. Whether `clarity` reduces objections, or improves the texts, is not measured
+
+**Evidence, level 1.** Issue #20 ("How to measure it") sets a baseline of 115 records, 73 of them objections,
+over 61 sessions in 30 days, and asks for objections per genre and aspect after adoption. The only counter,
+`plugins/terse/evals/clarity-trigger.count.mjs`, counts invocations. The blind pairs in
+`plugins/terse/research/2026-09-26-writing-replication/anonymized/blind/` are unread, and the content harness
+(`plugins/terse/evals/content.md`) has only compared candidate edits, never `clarity` against no skill.
+
+**Issue text.** After some weeks of use, sample new sessions and count objections per genre and aspect with #20's
+labels against its baseline; read the blind pairs; and run the content harness's no-plugin baseline on everyday
+cases.

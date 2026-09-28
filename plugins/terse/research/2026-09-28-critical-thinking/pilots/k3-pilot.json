@@ -1,0 +1,132 @@
+{
+ "candidate": "k3",
+ "current": "k3-pilot-current + k3-pilot-current-recipient",
+ "variant": "k3-pilot-k3 + k3-pilot-k3-recipient",
+ "exposure": {
+  "current": [
+   36,
+   36,
+   0
+  ],
+  "variant": [
+   36,
+   36,
+   0
+  ]
+ },
+ "brief_stage": {
+  "grader": "inputs-preserved",
+  "variant_lower": [
+   "k3p-01",
+   "k3p-09",
+   "k3p-12"
+  ],
+  "variant_higher": [
+   "k3p-02",
+   "k3p-05",
+   "k3p-06",
+   "k3p-07",
+   "k3p-11"
+  ]
+ },
+ "W": 3,
+ "L": 2,
+ "p": 0.5,
+ "G": 0,
+ "gate_cases": [],
+ "vetoes": {
+  "completion": 3,
+  "leakage": 0
+ },
+ "veto_fired": [
+  "completion"
+ ],
+ "pilot_outcome": "drop",
+ "confirmation_pass": false,
+ "rows": [
+  {
+   "case": "k3p-01",
+   "stratum": "defect",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k3p-02",
+   "stratum": "defect",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k3p-03",
+   "stratum": "defect",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k3p-04",
+   "stratum": "defect",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k3p-05",
+   "stratum": "defect",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k3p-06",
+   "stratum": "defect",
+   "current": 0.6666666666666666,
+   "variant": 1.0,
+   "result": "win"
+  },
+  {
+   "case": "k3p-07",
+   "stratum": "clean",
+   "current": 0.3333333333333333,
+   "variant": 0.6666666666666666,
+   "result": "win"
+  },
+  {
+   "case": "k3p-08",
+   "stratum": "clean",
+   "current": 0.0,
+   "variant": 0.0,
+   "result": "tie"
+  },
+  {
+   "case": "k3p-09",
+   "stratum": "clean",
+   "current": 0.6666666666666666,
+   "variant": 1.0,
+   "result": "win"
+  },
+  {
+   "case": "k3p-10",
+   "stratum": "clean",
+   "current": 0.3333333333333333,
+   "variant": 0.0,
+   "result": "loss"
+  },
+  {
+   "case": "k3p-11",
+   "stratum": "clean",
+   "current": 1.0,
+   "variant": 1.0,
+   "result": "tie"
+  },
+  {
+   "case": "k3p-12",
+   "stratum": "clean",
+   "current": 0.3333333333333333,
+   "variant": 0.0,
+   "result": "loss"
+  }
+ ]
+}
