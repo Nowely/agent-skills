@@ -517,7 +517,7 @@ test("F6 the one agent you wait for is a foreground call, background agents are 
     "while :; do for d in <DIR>...; do [ -s \"$d/exit\" ] && { echo \"DONE=<id>\"; exit 0; }; [ -s \"$d/approvals/pending\" ] && { echo \"ASK=<id>\"; exit 0; }; done; sleep 5; done",
     "one task for the whole batch, not one per agent, and it exits the moment it prints either marker rather than looping on",
     "`DONE=<id>` is that agent's own exit marker: it says the run has ended even after a `RUNNING=` hand-back, and you read the report file after it (measured 2026-09-27).",
-    "`ASK=<id>` is that agent's own request waiting on your decision, and the wrapper's own hand-back may carry the same waiting block instead of the nine lines: read it whole with `--pending` or from that hand-back, decide it with `--decide ID --accept|--decline`, send the wrapper the very same message block again, then launch the poll again over the agents still alive and keep waiting",
+    "`ASK=<id>` is that agent's own request waiting on your decision, and the wrapper's own hand-back may carry the same waiting block instead of the nine lines: read it whole from that hand-back or with `--pending`, decide it as Approvals below says, send the wrapper the very same message block again, then launch the poll again over the agents still alive and keep waiting",
     "an armed agent is launched and waited for like any other",
     "In an interactive session you may end your turn with agents alive: they go on, and each completion arrives as a turn of its own (measured 2026-09-27).",
     "A headless session ends with the turn and its background tasks are killed with it (measured 2026-09-08), so there never end a turn with an agent alive: launch each agent in the foreground, and its hand-back arrives inside the same turn (measured 2026-09-17).",
@@ -535,11 +535,21 @@ test("F7 the approval rule: run as you with no sandbox, approve nothing unread, 
     "When you retell an approval, say what the entry's `outcome` says",
   ));
 
+test("F7b an accept restates the command in a heredoc on a delimiter of the coordinator's own, a refused restatement is copied again from --pending, and a blocked accept is declined",
+  "the accept restates the command so that the call the classifier or the owner judges carries it; the heredoc's delimiter is one the coordinator makes up and checks is no line of the command, not the relayed token, because a fixed word or a relayed one lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell (both verifications of 2026-09-28 made it happen); a blocked accept publishes nothing, and without a sentence the turn would wait out the thirty minutes",
+  () => says(
+    "Decide from the waiting result the wrapper handed back and copy its command block into the sibling's accept call",
+    "`--decide 'ID' --accept` reads the command on stdin, in a quoted heredoc whose delimiter you build at that moment from `ACCEPT_`, the printed token and hex of your own and check is no line of the command, never a fixed word and never the printed token alone",
+    "Quote the ID, which reached you the same way, and use it only in the launcher's shape, digits, a hyphen and eight hex characters",
+    "If the launcher refuses the restatement as different, print `--pending` and copy from that",
+    "An accept the permission check or the classifier blocks publishes nothing, so decline the request with `--decide 'ID' --decline`, or ask the owner when the session is interactive",
+  ));
+
 test("F8 the synthesis rule: one sentence per cause and what avoids it next time",
-  "the four causes are what the driver actually recorded, so a synthesis that skips one leaves the run's own why unexplained; sandboxWidened is what a widening's own cause points a reader at, and neither the sandbox clause nor the rest of the page names a tool",
+  "the four causes are what the driver actually recorded, so a synthesis that skips one leaves the run's own why unexplained; a command the sandbox stopped ran as the user because the tool needed the user's own environment, which no plan line changes, and neither the sandbox clause nor the rest of the page names a tool",
   () => says(
     "When the run had approvals, the synthesis says why in one sentence per cause and what avoids it next time: `rights`, the driver answered and nothing changes",
-    "`sandbox`, the tool needed a path or a setting the plan can grant — `sandboxWidened` names what it gained, or a certificate failure inside the sandbox is the fetch run outside it",
+    "`sandbox`, the tool needed the user's own environment, nothing on our side changes it",
     "`policy`, Codex asks by its own rule and nothing on our side changes it",
     "`outside`, the plan needs a `WRITABLE:` line or a different agent for that file",
   ));
@@ -551,13 +561,6 @@ test("F8b --pending's markers are named exactly, and STALE= beside LATE=/ORPHANE
     "TOKEN a fresh twelve-hex-character run every print, never itself inside the command",
     "a `STALE=<id>` line beside `LATE=` and `ORPHANED=` names a decision file that was not this run's own",
     "`RECEIPT=`'s `stale=N` counts them the same way `late=N` counts a valid one the driver did not take",
-    "`REPEAT_OF=<id>` on an offered request names the earlier request you declined that this one follows, when its paths are not wholly inside it",
-  ));
-
-test("F8c prefer a widening to an escape, and a tool's own state under the home is approvable",
-  "the owner's rule that a sandboxed grant beats an unsandboxed one has to survive as a sentence a coordinator reads before deciding whether to accept a request; without it a coordinator has no reason to pick the widening over the escape when both are on offer",
-  () => says(
-    "Prefer a widening to an escape when either would do — a widened command stays sandboxed everywhere else — and approve a write into a tool's own state or cache under the home when the path is not a repository, not `~/.codex` and not the state directory.",
   ));
 
 test("F9b never launch under another state directory while an armed agent is alive",

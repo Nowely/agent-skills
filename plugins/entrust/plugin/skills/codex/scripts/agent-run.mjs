@@ -6,7 +6,7 @@
 //   node agent-run.mjs --run --report-file REPORT                start the run, wait, print the status lines or the request waiting
 //   node agent-run.mjs --status --report-file REPORT             the status lines of a run, whatever its state
 //   node agent-run.mjs --pending --report-file REPORT            the approval requests waiting on a decision
-//   node agent-run.mjs --decide ID --accept|--decline [--why TEXT] --report-file REPORT   answer one
+//   node agent-run.mjs --decide ID --accept|--decline [--why TEXT] --report-file REPORT   answer one (--accept: the command on stdin)
 //   node agent-run.mjs --report-file REPORT                      launch only (the exit status is the driver's)
 //   node agent-run.mjs --orphan --dir DIR --report-file REPORT   --run's own step: launch only, with the mailbox, outside its caller's tree
 //   --dir DIR names the agent's directory explicitly; without it, it is `agent/` beside REPORT
@@ -199,29 +199,35 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       report reads as unknown, never success.
   node agent-run.mjs --pending --report-file REPORT [--dir DIR]
       Prints each request waiting on a decision — one DIR/approvals/pending lists — as REQUEST=<id>,
-      THREAD=root or the subagent's path, METHOD=, KIND=, CAUSE= (sandbox: the same command had just
-      failed inside the sandbox, or the request is a widening; policy: no attempt was seen; outside: a
-      file change not shown inside the agent's roots), CWD=, REASON= (the agent's own), ROOTS= (the roots
-      the agent may write, "; " between them), DEADLINE= (an ISO time, or none), REPEAT_OF=<id> where a
-      command widening follows a permissions request you declined in the same turn, then FILES= for a
-      file change ("add /a; update /b -> /c", or unknown where no item named them) or the command: whole,
-      newlines kept, on the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, TOKEN drawn fresh for each
-      print and never in the command. A widening — a permissions request (no command block), or a
-      command carrying the paths it would add — then prints one ACCESS=<access> <type>:<value> per entry
-      (write path:/abs, read glob_pattern:<pattern>, write special:project_roots) and NETWORK=on, off or
-      none: a yes grants exactly those, the command running inside the sandbox with them added, for the
-      rest of the turn for a permissions request and for that command for the other. Every value outside
-      that block is one line: a backslash, a line break and every other control character in it written
-      as \\\\, \\n, \\r, \\t or \\uXXXX, and a ; inside a ROOTS or FILES item as \\;. Then LATE=<id> and
-      STALE=<id> as counted above and, once DIR/exit exists, ORPHANED=<id> for each request the run left
-      unanswered, then REQUESTS=<n>, the number still waiting. Always exits 0.
+      THREAD=root or the subagent's path, METHOD=, CAUSE= (sandbox: the same command had just failed
+      inside the sandbox; policy: no attempt was seen), CWD=, REASON= (the agent's own), ROOTS= (the
+      roots the agent may write, "; " between them), DEADLINE= (an ISO time, or none), then the command:
+      whole, newlines kept, on the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, TOKEN drawn fresh for
+      each print and never in the command. Every value outside that block is one line: a backslash, a
+      line break and every other control character in it written as \\\\, \\n, \\r, \\t or \\uXXXX, and a
+      ; inside a ROOTS item as \\;. Then LATE=<id> and STALE=<id> as counted above and, once DIR/exit
+      exists, ORPHANED=<id> for each request the run left unanswered, then REQUESTS=<n>, the number still
+      waiting. Always exits 0.
   node agent-run.mjs --decide ID --accept|--decline [--why TEXT] --report-file REPORT [--dir DIR]
+      --accept reads on stdin the command it approves, restated: the lines between COMMAND<<TOKEN and
+      COMMAND>>TOKEN as the waiting result or --pending printed them for ID, in a quoted heredoc whose
+      delimiter you build at that moment from ACCEPT_, the printed token and hex of your own and check
+      is no line of the command, never a fixed word and never the printed token alone, since a line of
+      the command equal to the delimiter would end the heredoc and run the rest in your shell, and a
+      printed token may have passed through a relay; quote the ID for the same reason:
+        node agent-run.mjs --decide 'ID' --accept --report-file REPORT <<'ACCEPT_<token><hex of yours>'
+        <the command, as printed>
+        ACCEPT_<token><hex of yours>
+      It is compared with the request's command byte for byte, one trailing newline tolerated and nothing
+      else normalised; an empty stdin or any difference is refused, REFUSED=ID with the two lengths and
+      the first byte where they differ, and nothing is published. --decline reads no stdin.
       Publishes the decision for request ID as DIR/approvals/ID.decision.json at 0600, by link(2) over a
       temp file, carrying the run identity copied from the request. Refuses (exit 2, REFUSED=ID and the
       reason) an ID with no request, a run that is over, a request already settled, a request pending
-      does not list, a request already decided, naming that decision, and one with a stale decision in
-      the way. Then reads the request again: DECIDED=ID accept|decline and exit 0 while it was still
-      open, or LATE=ID and exit 3 when the driver settled it first — nothing ran on your word.
+      does not list, an accept whose restatement is empty or differs, a request already decided, naming
+      that decision, and one with a stale decision in the way. Then reads the request again:
+      DECIDED=ID accept|decline and exit 0 while it was still open, or LATE=ID and exit 3 when the
+      driver settled it first — nothing ran on your word.
   node agent-run.mjs --help
 
   A REPORT that is not absolute, in each form:
@@ -587,35 +593,14 @@ function newAgent(report, dirOverride) {
 // this print and absent from the command, so no command can end its own block or forge a field after it:
 // a script-shaped command read on one clipped line is a command approved unread. A request is waiting when
 // `pending` lists it, the driver's own open set.
-// A widening's profile as the lines the coordinator reads: one ACCESS= per filesystem entry, `write
-// path:/abs`, `read glob_pattern:**/*.lock` or `write special:project_roots`, the legacy read and write
-// lists standing in only where `entries` is absent, then NETWORK= on, off or none.
-function accessLines(perm) {
-  const fsys = perm?.fileSystem ?? null;
-  const entries = Array.isArray(fsys?.entries) && fsys.entries.length ? fsys.entries.map((e) => [e?.access, e?.path])
-    : [...(fsys?.write ?? []).map((x) => ["write", { type: "path", path: x }]), ...(fsys?.read ?? []).map((x) => ["read", { type: "path", path: x }])];
-  const where = (x) => x?.type === "path" ? `path:${x.path}` : x?.type === "glob_pattern" ? `glob_pattern:${x.pattern}`
-    : x?.type === "special" ? `special:${x?.value?.kind ?? "unknown"}${x?.value?.subpath ? `:${x.value.subpath}` : x?.value?.path ? `:${x.value.path}` : ""}`
-    : `${x?.type ?? "unknown"}:${JSON.stringify(x)}`;
-  const net = perm?.network == null || perm.network.enabled == null ? "none" : perm.network.enabled ? "on" : "off";
-  return [...entries.map(([access, x]) => `ACCESS=${field(access)} ${field(where(x))}`), `NETWORK=${net}`];
-}
-
 function requestLines(q) {
-  const out = [`REQUEST=${q.id}`, `THREAD=${q.subagent ? field(q.agentPath ?? q.run?.threadId ?? "unknown") : "root"}`,
-    `METHOD=${field(q.method)}`, `KIND=${field(q.kind ?? "none")}`, `CAUSE=${field(q.cause ?? "unknown")}`, `CWD=${field(q.cwd)}`,
+  const command = String(q.command ?? "");
+  let token;
+  do token = crypto.randomBytes(6).toString("hex"); while (command.includes(token));
+  return [`REQUEST=${q.id}`, `THREAD=${q.subagent ? field(q.agentPath ?? q.run?.threadId ?? "unknown") : "root"}`,
+    `METHOD=${field(q.method)}`, `CAUSE=${field(q.cause ?? "unknown")}`, `CWD=${field(q.cwd)}`,
     `REASON=${field(q.reason)}`, `ROOTS=${(q.roots ?? []).map(item).join("; ")}`, `DEADLINE=${field(q.deadlineAt ?? "none")}`,
-    ...(q.repeatOf ? [`REPEAT_OF=${field(q.repeatOf)}`] : [])];
-  if (q.method === "item/fileChange/requestApproval") out.push(`FILES=${Array.isArray(q.fileChanges)
-    ? q.fileChanges.map((c) => `${item(c.kind)} ${item(c.path)}${c.move ? ` -> ${item(c.move)}` : ""}`).join("; ") : "unknown"}`);
-  else if (q.method !== "item/permissions/requestApproval") {
-    const command = String(q.command ?? "");
-    let token;
-    do token = crypto.randomBytes(6).toString("hex"); while (command.includes(token));
-    out.push(`COMMAND<<${token}`, command, `COMMAND>>${token}`);
-  }
-  if (q.permissions) out.push(...accessLines(q.permissions));
-  return out;
+    `COMMAND<<${token}`, command, `COMMAND>>${token}`];
 }
 
 function pendingRequests(dir) {
@@ -660,6 +645,24 @@ function decideRequest(dir, id, decision, why) {
   // `pending` is the driver's own list of what it is waiting on; a request file it does not list is not
   // one it will read a decision for.
   if (!mailbox(dir).pending.includes(id)) refuse(`is not waiting: ${path.join(box, "pending")} does not list it`);
+  // An accept restates the command it approves, so the call a classifier or the owner judges carries the
+  // command and not an id. What runs is the request's own command, never stdin: so the comparison is on
+  // bytes and exact, the heredoc's one trailing newline aside. A decline restates nothing and never reads
+  // stdin.
+  if (decision === "accept") {
+    let said = Buffer.alloc(0);
+    try { said = fs.readFileSync(0); } catch {}
+    const want = Buffer.from(String(q.command ?? ""), "utf8");
+    // A request with no command has nothing to restate, and an accept of it would carry no command to judge.
+    if (want.length === 0) refuse("the request carries no command to restate: decline it with --decline; nothing was published");
+    if (said.length === 0) refuse("the restated command is empty: an accept reads the command it approves on stdin, a quoted heredoc whose delimiter you build from ACCEPT_, the printed token and hex of your own and check is no line of the command; nothing was published");
+    if (!said.equals(want) && !said.equals(Buffer.concat([want, Buffer.from("\n")]))) {
+      const body = said.at(-1) === 0x0a ? said.subarray(0, -1) : said;
+      let at = 0;
+      while (at < body.length && at < want.length && body[at] === want[at]) at++;
+      refuse(`the restated command differs from the request's: ${body.length} bytes against ${want.length}, the first difference at byte ${at + 1}; copy the lines between COMMAND<<TOKEN and COMMAND>>TOKEN as printed, or print --pending and copy from that; nothing was published`);
+    }
+  }
   const target = path.join(box, `${id}.decision.json`);
   const tmp = `${target}.${crypto.randomBytes(8).toString("hex")}.tmp`;
   const record = { id: q.id, run: { pid: q.run?.pid ?? null, startedAtMs: q.run?.startedAtMs ?? null, turnId: q.run?.turnId ?? null },

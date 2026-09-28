@@ -25,10 +25,6 @@ const driver = fs.readFileSync(DRIVER, "utf8");
 // `case "--x":` in the source can outlive every route a caller has to it, and the help is the route.
 const help = spawnSync(process.execPath, [DRIVER, "--help"], { encoding: "utf8" }).stdout ?? "";
 const helpFlat = help.replace(/\s+/g, " ");
-// Two sentences pinned below (the conditional steering paragraph, the unsupported-entry-kind refusal) are
-// under --help-all only, not the plain --help this suite otherwise reads.
-const helpAll = spawnSync(process.execPath, [DRIVER, "--help-all"], { encoding: "utf8" }).stdout ?? "";
-const helpAllFlat = helpAll.replace(/\s+/g, " ");
 
 // The page in the pieces the cases read: the whole text collapsed for prose pins, the field table, and
 // the indented command lines a coordinator copies into a Bash call.
@@ -116,7 +112,7 @@ test("the ONE call is agent-run.mjs --run with --report-file in one foreground c
       const r = spawnSync("bash", ["-n"], { input: src, encoding: "utf8" });
       if (r.status !== 0) problems.push(`bash -n rejected ${JSON.stringify(src.slice(0, 60))}: ${String(r.stderr).trim()}`);
     }
-    const calls = commands.filter((c) => c.includes("agent-run.mjs"));
+    const calls = commands.filter((c) => c.includes("agent-run.mjs") && !c.includes("--decide"));
     if (calls.length !== 1) problems.push(`expected exactly one indented agent-run.mjs run line on the page, found ${calls.length}`);
     const call = calls[0] ?? "";
     for (const part of ["--run", '--report-file "<REPORT>"'])
@@ -333,59 +329,59 @@ test("the shipped wrapper is the agent the page names: Bash alone, a pinned mode
   });
 
 test("the Rights table's read row is read [<dir>] with no WRITABLE exception, and never a repository",
-  "the widening replaced the read-level WRITABLE grant a tool's own store used to get: the driver refuses --writable at read level again, and a page that still promised that exception, or still named a tool by it, would send a coordinator to a flag the driver rejects and teach the driver's own rule the name of a tool",
+  "the read row is what a coordinator sizes an agent by: the sandbox bounds the agent, a command it cannot run is offered and runs as the user once approved, and a file change it cannot show inside its roots is declined at once with exit 6; a page that still promised a read-level WRITABLE exception for a tool's store, or named a tool, would teach the driver's own rule the name of a tool",
   () => {
     const problems = [];
     for (const phrase of [
       "read any readable path, reach the network, run commands, write `$TMPDIR`",
-      "the sandbox refuses every other write",
-      "a command escape, a file change or a widening for named paths in its place is offered or declined",
+      "the sandbox bounds what the agent does itself: a command it cannot run there is offered to you and, approved, runs as you with no sandbox",
+      "a file change not shown to lie inside its writable roots is declined at once, which makes the run exit 6",
     ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
     if (/WRITABLE:` root for a tool's own store|[\w-]+'s object cache|never a repository/.test(flat))
       problems.push("the page still promises a read-level WRITABLE exception for a tool's own store, or still names a tool's object cache");
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the widening: the driver's own accept sentence is quoted, the waiting result ends in REPORT=, and the constant is thirty minutes",
-  "the widening is what makes the escape unnecessary for a tool's own state, so the page has to quote the driver's exact words for what an accept does rather than paraphrase them; a coordinator reading the waiting result has to see the same REPORT= line the nine-line result ends in, since that is what tells the wrapper's rerun step to stop; and the thirty-minute constant is what protects an unattended run now that the flag that used to be a deadline is gone",
+test("the waiting result ends in REPORT=, the constant is thirty minutes, and neither page names the widening",
+  "a coordinator reading the waiting result has to see the same REPORT= line the nine-line result ends in, since that is what tells the wrapper's rerun step to stop, and the thirty-minute constant is what protects an unattended run; the widening is gone, so a page that still named its lines, its report fields or a tool's cache would send a coordinator after a request the driver never offers",
   () => {
     const problems = [];
     for (const phrase of [
-      "An accepted command runs with no sandbox, as you; an accepted widening — a request for paths or the network rather than to leave the sandbox — runs the command inside the sandbox with the paths added.",
       "waiting result",
       "ending in `REQUESTS=`, `WAITING=`",
       "thirty minutes",
     ]) if (!flat.includes(phrase)) problems.push(`SKILL.md no longer says: ${JSON.stringify(phrase)}`);
     if (!/for 30 minutes, after which it is declined as expired/.test(helpFlat))
       problems.push("--help no longer names the 30-minute constant");
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("the widening's two conditions from the fix round: the steering paragraph is conditional on both features, and an unsupported entry kind is refused unshown",
-  "Opus W1's fix round changed both facts after the first pass shipped: a coordinator reading the page must not conclude that the model is always told to ask for a path, or that only a protected root is filtered before an offer — --help-all is the source for both, and the page has to say what it says",
-  () => {
-    const problems = [];
-    for (const phrase of [
-      'Only with both sent do the standing instructions tell the model to ask for the exact path a failing tool names, and to ask to leave the sandbox only when no path would do',
-      'why "protected root"; one naming a glob pattern or\n  any other special kind, why "unsupported entry kind"',
-    ]) if (!helpAllFlat.includes(phrase.replace(/\s+/g, " "))) problems.push(`--help-all no longer says: ${JSON.stringify(phrase)}`);
-    for (const phrase of [
-      "A widening only arrives at all",
-      "the model is never told to ask",
-      'why: "unsupported entry kind"',
-    ]) if (!flat.includes(phrase)) problems.push(`SKILL.md no longer says: ${JSON.stringify(phrase)}`);
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("the orchestrate page prefers a widening to an escape and names REPEAT_OF",
-  "the owner's rule that a sandboxed grant beats an unsandboxed one has to survive as a sentence a coordinator reads before deciding, and REPEAT_OF is the one field that shows a coordinator its own earlier no",
-  () => {
     const orchestrateFlat = orchestrate.replace(/\s+/g, " ");
+    for (const [label, text] of [["SKILL.md", flat], ["orchestrate/SKILL.md", orchestrateFlat]])
+      for (const gone of ["sandboxWidened", "REPEAT_OF", "ACCESS=", "NETWORK=", "repeatOf", "a widening for named paths", "Prefer a widening", "state or cache", "permission features"])
+        if (text.includes(gone)) problems.push(`${label} still names ${JSON.stringify(gone)}`);
+    if (!orchestrateFlat.includes("`sandbox`, the tool needed the user's own environment, nothing on our side changes it"))
+      problems.push("orchestrate/SKILL.md's synthesis sentence for cause sandbox is not the one the subtraction left");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("the accept the page shows restates the command in a quoted heredoc on a delimiter the coordinator makes up, and Stop's reach stops at the server's group",
+  "a fixed delimiter lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell before the launcher compares anything (both verifications of 2026-09-28 made it happen), so the block the coordinator copies ends on a delimiter it made up and checked, never the relayed token; and an accepted command in a process group of its own is E67, which the Stop line has to say rather than promise",
+  () => {
     const problems = [];
+    const at = skill.search(/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'$/m);
+    if (at < 0) return "the page shows no accept call ending in <<'<DELIMITER>'";
+    const block = skill.slice(at).split("\n").slice(0, 3);
+    if (!/^ {4}<the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, exactly as printed>$/.test(block[1] ?? "") || block[2] !== "    <DELIMITER>")
+      problems.push(`the accept block: ${JSON.stringify(block)}`);
+    for (const l of skill.split("\n").filter((x) => /--decide /.test(x) && !/--decide '(<ID>|ID)'/.test(x))) problems.push(`an unquoted ID: ${l.trim()}`);
+    if (/<<'?(COMMAND|EOF|CMD)'?\s*$/m.test(skill.split("\n").filter((l) => l.includes("--decide")).join("\n")))
+      problems.push("an accept on the page ends its heredoc on a fixed word");
     for (const phrase of [
-      "Prefer a widening to an escape when either would do",
-      "REPEAT_OF",
-    ]) if (!orchestrateFlat.includes(phrase)) problems.push(`orchestrate/SKILL.md no longer says: ${JSON.stringify(phrase)}`);
+      "a quoted heredoc whose delimiter you build at that moment from `ACCEPT_`, the printed token and six hex characters of your own",
+      "Never a fixed word and never the printed token alone",
+      "The ID reached you the same way: quote it, and use it only in the shape the launcher prints",
+      "one trailing newline tolerated, and publishes nothing on an empty stdin or any difference",
+      "An accept the permission check or the classifier blocks publishes nothing either",
+      "a command you accepted may run in a process group of its own, which is not established to end with it (E67)",
+    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -424,7 +420,7 @@ test("exit 6 is a request declined or expired unanswered, never one accepted, an
       "`detail` is the server's own wording whole",
       "never clipped",
       "`cause` (`rights`: a file change the writable roots cover, which the driver accepted itself and never shows anyone",
-      "`outside`: a file change not shown to lie inside them",
+      "`outside`: a file change not shown to lie inside them, or a permissions request, which the driver declines itself, its `why` naming `WRITABLE:` for a file change and \"rights are set at launch\" for a permissions request",
       "`sandbox`: the same command had just failed in this turn",
       "`policy`: no attempt was seen, so Codex asked by its own rule",
     ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);

@@ -975,17 +975,17 @@ flow("--help says the mailbox is the launcher's, that a request waits thirty min
     return problems.length === 0 || problems.join("; ");
   });
 
-flow("--help says an accepted widening runs the command inside the sandbox with the paths added; --help-all names the feature rows and the report's widening fields",
-  "a coordinator who reads every accept as an escape refuses the widening that would have kept the sandbox, and the pages quote these names for the fields a synthesis reads",
+flow("--help says an accepted command runs with no sandbox and a file change not shown inside the roots is declined at once; --help-all names no permission feature and no widening field",
+  "the widening is gone: a help that still names its feature rows or its report fields sends a coordinator after fields no report carries, and one that still offers a file change outside the roots promises a question the driver never asks",
   () => {
     const core = helpRun("--help").stdout.replace(/\s+/g, " "), all = helpRun("--help-all").stdout.replace(/\s+/g, " ");
     const problems = [];
-    for (const s of ["An accepted command runs with no sandbox, as you; an accepted widening — a request for paths or the network rather than to leave the sandbox — runs the command inside the sandbox with the paths added."])
+    for (const s of ["An accepted command runs with no sandbox, as you.", "and one not shown to lie inside them is declined at once"])
       if (!core.includes(s)) problems.push(`--help lacks ${JSON.stringify(s)}`);
-    for (const s of ["-c features.request_permissions_tool=true", "-c features.exec_permission_approvals=true", "experimentalApi", "serverWarnings",
-                     "featuresRequested", "sandboxWidened", "protected root", "unsupported entry kind", "repeatOf", "granted (whether it was given",
-                     "Only with both sent do the standing instructions tell the model to ask for the exact path"])
+    for (const s of ["a permissions request, with the empty profile, why \"rights are set at launch\"", "its why naming the WRITABLE: line"])
       if (!all.includes(s)) problems.push(`--help-all lacks ${JSON.stringify(s)}`);
+    for (const s of ["features.", "experimentalApi", "serverWarnings", "featuresRequested", "sandboxWidened", "repeatOf", "widening"])
+      if (all.includes(s)) problems.push(`--help-all still names ${JSON.stringify(s)}`);
     return problems.length === 0 || problems.join("; ");
   });
 

@@ -11,7 +11,7 @@ description: >-
   mixes ("one of them codex", "half codex", "only codex") and refusals ("no codex", "just you"). Skip
   trivia and mechanical fact-gathering.
 metadata:
-  version: "0.21.0"
+  version: "0.22.0"
 license: MIT
 ---
 
@@ -117,10 +117,26 @@ against the state directory before the agent's directory exists; without it `--n
 `--run`'s one call may hand back a **waiting result** instead of the nine status lines: a request is
 pending, and it returns at once with what `--pending` would print for it, ending in `REQUESTS=`, `WAITING=`
 and `REPORT=`. The wrapper hands it back exactly as it hands back any result — step 2 reruns only while a
-result has no `REPORT=` line, and the waiting result carries one — so read it whole, decide under the plan's
-own rule with `--decide ID --accept|--decline`, then send the wrapper the very same message block again:
-`--run` picks the run back up and waits for the next request or the run's own end. A session with no message
-tool continues the same way with a second wrapper given the same command.
+result has no `REPORT=` line, and the waiting result carries one — so read it whole and decide under the plan's
+own rule. An accept restates the command it approves, so the call that gets judged carries the command and not
+an id: copy the lines between `COMMAND<<TOKEN` and `COMMAND>>TOKEN` as printed into a quoted heredoc whose
+delimiter you build at that moment from `ACCEPT_`, the printed token and six hex characters of your own, and
+check it is no line of the command. Never a fixed word and never the printed token alone: a line of the command
+equal to the delimiter would end the heredoc and run the rest in your shell, and the token reached you through the
+wrapper, which could have changed it. The ID reached you the same way: quote it, and use it only in the shape the
+launcher prints, digits, a hyphen and eight hex characters; for anything else print `--pending`:
+
+    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'
+    <the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, exactly as printed>
+    <DELIMITER>
+
+The launcher compares what it reads with the request's command, one trailing newline tolerated, and publishes
+nothing on an empty stdin or any difference; when it refuses the restatement as different, print `--pending`
+and copy from that. An accept the permission check or the classifier blocks publishes nothing either: decline
+the request with `--decide '<ID>' --decline`, which reads no stdin, or ask the user when the session is
+interactive. Then send the wrapper the very same message block again: `--run` picks the run back up and waits
+for the next request or the run's own end. A session with no message tool continues the same way with a second
+wrapper given the same command.
 
 The Agent call, its message this block:
 
@@ -187,7 +203,7 @@ Choose the smallest `RIGHTS` that can complete and check the work:
 
 | Prompt header | Codex may | Settle first? |
 | --- | --- | --- |
-| `RIGHTS: read [<dir>]` or no header | read any readable path, reach the network, run commands, write `$TMPDIR`; the sandbox refuses every other write, and a command escape, a file change or a widening for named paths in its place is offered or declined and recorded in `escalations` | no |
+| `RIGHTS: read [<dir>]` or no header | read any readable path, reach the network, run commands, write `$TMPDIR`; the sandbox bounds what the agent does itself: a command it cannot run there is offered to you and, approved, runs as you with no sandbox, and a file change not shown to lie inside its writable roots is declined at once, which makes the run exit 6; each is recorded in `escalations` | no |
 | `RIGHTS: worktree <repo>` | write in a driver-managed detached tree | say that a worktree will be made |
 | `RIGHTS: write <dir>` | write under the live directory | yes; this chooses the blast radius |
 
@@ -213,6 +229,10 @@ sandbox refusal.
 A write agent sharing a live tree must not change what the tree shares: no stash, branch switch, reset,
 clean or rebase while another writer holds part of it. Those move or discard work the other agent is
 still editing, and no sandbox refuses them.
+
+An accepted escape runs as the user, so two hazards ride with every accept, as they do with your own Bash:
+a version-control query runs the repository's configured hooks, monitors and pagers, and a script runs the
+bytes at its path when it runs, not the bytes you read.
 
 ## Header fields
 
@@ -313,45 +333,31 @@ write its own would be grading itself. Declare gates on the command line instead
 - `escalations` is one entry per approval request, whichever thread asked, root or a grandchild's: `decision`
   (`accepted`, `declined` or `expired`), `by` (`driver` for an auto-yes, an expiry or a request never offered,
   `coordinator` otherwise), `cause` (`rights`: a file change the writable roots cover, which the driver
-  accepted itself and never shows anyone; `outside`: a file change not shown to lie inside them; `sandbox`:
-  the same command had just failed in this turn; `policy`: no attempt was seen, so Codex asked by its own
-  rule), and `outcome` (the item's own completion, or null where none came). `detail` is the server's own
-  wording whole — the command, else the reason, else the message, or the joined file-change list — never
-  clipped, and may still be empty where the server sent none. `exitCode: 6` is a request declined or expired
-  unanswered, never one accepted — below timeout and the other cuts, so a cut run carries entries and exits
-  3. A command the sandbox denied outright need not raise a request, and an entry is neither evidence that
-  work was lost nor a reason to widen the rights. An auto-yes's own `why` is
-  `"rights cover it (checked as the answer was sent)"`: the check runs again at that moment, not only when
-  the request arrived, and a plain directory the driver walked that becomes a symlink before the server
-  writes is followed by the server, not caught here — whether the server itself re-resolves the swap is
-  unmeasured.
-- A widening — a permissions request, or a command approval carrying the paths it would add — is a third
-  kind of request beside a command escape and a file change: `--pending` prints its `ACCESS=` and
-  `NETWORK=` lines after the usual fields. The driver's own words for what an accept does are exact: "An
-  accepted command runs with no sandbox, as you; an accepted widening — a request for paths or the network
-  rather than to leave the sandbox — runs the command inside the sandbox with the paths added." An accepted
-  widening adds to `sandboxWidened`, one `{itemId, permissions, scope, at}` per grant, `scope` `turn` for a
-  permissions request and `command` for a command widening; `escalations` carries `permissions` (what was
-  asked), `granted` (whether it was given) and `repeatOf` (the earlier request a re-ask follows, where its
-  paths are not wholly inside it). Declining a permissions request is not the end of it: the model re-issues
-  the same need as a command approval, and the driver itself declines one whose paths lie wholly inside a
-  permissions request you declined in the same turn — that turn only, a later turn's re-ask is offered
-  fresh — naming that decision in `why`. A request nobody
-  answers is declined as expired after thirty minutes and the turn goes on. A widening only arrives at all
-  where the run's codex advertises both permission features: short of that the model is never told to ask
-  for a path, so the standing instructions are as they were before this channel and the escape is the only
-  path there is. An entry naming a glob pattern, or any special kind other than a root, is refused unoffered
-  like a protected root, but with its own reason, `why: "unsupported entry kind"`.
+  accepted itself and never shows anyone; `outside`: a file change not shown to lie inside them, or a
+  permissions request, which the driver declines itself, its `why` naming `WRITABLE:` for a file change and
+  "rights are set at launch" for a permissions request; `sandbox`: the same command had just failed in this
+  turn; `policy`: no attempt was seen, so Codex asked by its own rule), and `outcome` (the item's own
+  completion, or null where none came). `detail` is the server's own wording whole — the command, else the
+  reason, else the message, or the joined file-change list — never clipped, and may still be empty where the
+  server sent none. `exitCode: 6` is a request declined or expired unanswered, never one accepted — below
+  timeout and the other cuts, so a cut run carries entries and exits 3. A command the sandbox denied outright
+  need not raise a request, and an entry is neither evidence that work was lost nor a reason to widen the
+  rights. An auto-yes's own `why` is `"rights cover it (checked as the answer was sent)"`: the check runs
+  again at that moment, not only when the request arrived, and a plain directory the driver walked that
+  becomes a symlink before the server writes is followed by the server, not caught here — whether the server
+  itself re-resolves the swap is unmeasured. A request nobody answers is declined as expired after thirty
+  minutes and the turn goes on.
 - Any other non-zero is a gate verdict on the run; read the answer before deciding what to do.
 - `receiptOk: false` on a run that claims success is a red flag; what the receipt proves and does not
   prove is in
   [environment-and-internals.md](references/environment-and-internals.md#receipt-validation-and-reporting).
 - Evidence of success is root-thread-only: a Codex subagent thread's commands are liveness, not evidence.
 - To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or send `SIGTERM` to the pid on the first line of `<DIR>/err.txt`:
-  the driver interrupts the turn, writes the report it had earned and sweeps the codex process group. The
-  driver runs under a detached keeper, so a hand-back's waiting result does not end it: a hard kill of the
+  the driver interrupts the turn, writes the report it had earned and sweeps the codex process group; a
+  command you accepted may run in a process group of its own, which is not established to end with it (E67).
+  The driver runs under a detached keeper, so a hand-back's waiting result does not end it: a hard kill of the
   wrapper's task, or a `SIGKILL` of the launcher, no longer reaches it, only the forwarded signal does. After
-  a waiting result nothing else holds the driver: stop it with `--decide ID --decline` and the same `--run`
+  a waiting result nothing else holds the driver: stop it with `--decide 'ID' --decline` and the same `--run`
   again, or `kill -TERM` that same pid.
 
 ## Prompt shape

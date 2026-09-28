@@ -3,13 +3,65 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.22.0 — 2026-09-28
+
+Contracts that change in this release, each detailed in its entry below. The driver no longer switches on Codex's
+permission features or tells the model to ask for a failing tool's files, and `initialize` asks `experimentalApi:
+false`. The report loses `sandboxWidened`, `experimentalApi`, `featuresRequested` and `serverWarnings`; an
+`escalations` entry loses `permissions`, `granted` and `repeatOf`; `--pending` and the waiting result lose `ACCESS=`,
+`NETWORK=`, `REPEAT_OF=`, `FILES=` and `KIND=`. A file change the driver cannot show inside the writable roots, and a
+permissions request, are declined at once with cause `outside`, and the run exits 6. `--decide ID --accept` needs the
+approved command on stdin and refuses any byte of difference. Measured with codex-cli 0.155.1 and Node 24.11.0.
 
 ### Fixed
 
 - The README's update step is one command, `claude plugin update entrust@nowely`. It refreshes the marketplace
   itself: on 2026-09-28 it found terse 0.4.0 with no separate `claude plugin marketplace update nowely`, which the
   README asked for first.
+
+### Changed
+
+- **The coordinator approves a signal to a process its agent started, and a `codex sandbox` check the plan named.**
+  The orchestrate page used to send every signal and every nested `codex` to the owner. Now a `kill` whose target
+  `ps` shows below the agent's own driver, and a `codex sandbox` run the plan names, which runs one command under
+  Codex's sandbox and ends with it, are the coordinator's; a signal to any other process, or one whose parentage
+  `ps` cannot show, and a nested Codex agent still go to the owner. Why: of the 37 requests the driver declined on
+  this machine before 0.21.0, one `kill` and both nested `codex` runs were of this kind, and the owner's rule sends
+  to them only what is destructive or outside the plan.
+- **A file change the driver cannot show inside the agent's writable roots is declined at once, never offered.**
+  Its `why` is "not shown to lie inside the writable roots; a WRITABLE: line grants a root", and like every
+  declined request it makes the run exit 6; the codex page's rights row says so. A permissions request, which the
+  driver no longer invites, is declined the same way with the empty profile, `why: "rights are set at launch"`, and
+  its cause is `outside`, not `sandbox`. `initialize` asks `experimentalApi: false` again. Why: a yes would grant a
+  path mid-run that no settled `WRITABLE:` line granted, and none of the 37 requests declined on this machine
+  before 0.21.0 was of this kind.
+- **An accept restates the command it approves.** `agent-run.mjs --decide ID --accept` reads the command on stdin
+  and compares it with the request's `command` byte for byte, one trailing newline tolerated and nothing else
+  normalised; an empty stdin or any difference publishes nothing and prints `REFUSED=ID` with the two lengths and
+  the first byte where they differ. `--decline` reads no stdin. The codex and orchestrate pages show the call as a
+  quoted heredoc on a delimiter the coordinator builds at that moment from `ACCEPT_`, the printed token and hex of
+  its own and checks is no line of the command, never the printed token alone, which reaches it through the
+  wrapper; the request ID is quoted and used only in the shape the launcher prints; a request with no command is
+  refused, and the pages say to decline it. They say that an accept the permission check or the classifier blocks
+  is followed by a decline, or by the owner's word in an interactive session; the codex page's Stop line now says
+  an accepted command in a process group of its own is E67, and its Rights section names the two hazards every
+  accept carries, as the orchestrate page does, now in words that name no tool. Contract: `--decide ID --accept`
+  with no command on stdin is refused. Why: the auto-mode classifier judged the accept and saw only an id, and a
+  fixed delimiter would let a line of the agent's command end the heredoc and run the rest in the coordinator's
+  shell, which both verifications of the design made happen.
+
+### Removed
+
+- **The widening.** The driver no longer asks `codex features list`, no longer switches on Codex's
+  `request_permissions_tool` and `exec_permission_approvals` features, and no longer tells the model to ask for the
+  state or cache files a failing tool names; the orchestrate page no longer approves such a write, and its
+  synthesis for cause `sandbox` says the tool needed the user's own environment. Contracts: the report loses
+  `sandboxWidened`, `experimentalApi`, `featuresRequested` and `serverWarnings`, an `escalations` entry loses
+  `permissions`, `granted` and `repeatOf`, and `--pending` and the waiting result lose `ACCESS=`, `NETWORK=`,
+  `REPEAT_OF=`, `FILES=` and `KIND=`. Why: a request names the path a tool failed on first, not its whole state, so
+  grants made one at a time left a VCS client with an object store able to write part of its cache, and it deleted
+  its own index (E77, now closed); through the plain escape the same commands ran as in the terminal and deleted
+  nothing (`research/2026-09-28-command-gate/06-vcs-escape.md`).
 
 ## 0.21.0 — 2026-09-28
 

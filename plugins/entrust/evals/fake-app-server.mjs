@@ -112,15 +112,6 @@ export const SCENARIOS = {
   "approval-duplicate": {}, "filechange-at": {},
   // A subagent's file change whose item/started and request arrive after that subagent's turn completed.
   "filechange-child-late": {},
-  // Widenings: the model asking for paths rather than to leave the sandbox (P1 Q7d, Q10b). A permissions
-  // request granted, then a plain command that needs nothing more; two in one turn; one naming ~/.codex;
-  // one asking for the network; one for the filesystem root; the same need asked on a command approval;
-  // a declined permissions request re-asked as a command for the same paths, and for one path more, and
-  // (next-turn) a child's re-ask in its next turn; a glob under ~/.codex; a special entry of kind unknown;
-  // entries naming one path while the legacy write list names ~/.codex.
-  "widening-wait": {}, "widening-twice": {}, "widening-protected": {}, "widening-network": {}, "widening-root": {},
-  "widening-command": {}, "widening-declined-reask": {}, "widening-reask-other": {}, "widening-next-turn": {},
-  "widening-glob": {}, "widening-special": {}, "widening-legacy-split": {},
 };
 if (!Object.hasOwn(SCENARIOS, SCENARIO)) {
   process.stderr.write(`fake-app-server: ${JSON.stringify(SCENARIO)} is not in SCENARIOS; an uninventoried name would answer as the default scenario and measure nothing\n`);
@@ -151,30 +142,14 @@ if (isMain && process.argv[2] === "sandbox") {
   process.exit(r.status ?? 1);
 }
 
-// `codex features list`, which the driver asks before it decides on the two permission features: one row
-// per feature, name, stage and value, as 0.155.1 prints it. FAKE_FEATURES=both names both, `one` names
-// only the first, `fail` exits non-zero, `hang` answers nothing until killed, and unset names neither.
-if (isMain && process.argv[2] === "features") {
-  const mode = process.env.FAKE_FEATURES ?? "";
-  if (mode === "fail") { process.stderr.write("error: features unavailable\n"); process.exit(1); }
-  if (mode === "hang") { setInterval(() => {}, 1000); await new Promise(() => {}); }
-  const rows = ["apps                                     stable             true",
-    ...(mode === "both" || mode === "one" ? ["request_permissions_tool                 under development  false"] : []),
-    ...(mode === "both" ? ["exec_permission_approvals                under development  false"] : []),
-    "write_stdin_approval                     under development  false"];
-  process.stdout.write(`${rows.join("\n")}\n`);
-  process.exit(0);
-}
-
 // The -c config this server was spawned with, one `cfg:<key>` line each — the only way a suite can see
-// a grant that rides the spawn args rather than any file. A permission feature also logs its value, as
-// `feature:<key>=<value>`, because what it is set to is the whole question.
+// a grant that rides the spawn args rather than any file.
 if (isMain && process.env.FAKE_RPC_LOG) {
   try {
     fs.appendFileSync(process.env.FAKE_RPC_LOG,
       process.argv.slice(2)
         .filter((a, i, all) => all[i - 1] === "-c" && a.includes("="))
-        .map((a) => `cfg:${a.slice(0, a.indexOf("="))}\n${a.startsWith("features.") ? `feature:${a}\n` : ""}`).join(""));
+        .map((a) => `cfg:${a.slice(0, a.indexOf("="))}\n`).join(""));
   } catch {}
 }
 // The driver passes its config as `-c key=value` spawn args, so the fixture can report back what it was
@@ -351,26 +326,6 @@ const approvalRequest = (id, threadId, turnId, itemId, command, kind = "command"
       proposedExecpolicyAmendment: prefix,
       availableDecisions: ["accept", { acceptWithExecpolicyAmendment: { execpolicy_amendment: prefix } }, "cancel"] } };
 };
-// A widening, as 0.155.1 sent it (P1 transcript-q7d): the model's request_permissions tool asking for write
-// on one file, the path in both the entries and the legacy write list.
-const writeProfile = (...paths) => ({ network: null, fileSystem: { read: null, write: paths,
-  entries: paths.map((p) => ({ path: { type: "path", path: p }, access: "write" })) } });
-const permissionsRequest = (id, threadId, turnId, itemId, permissions) => ({ jsonrpc: "2.0", id, method: "item/permissions/requestApproval",
-  params: { threadId, turnId, itemId, environmentId: "local", startedAtMs: now(), cwd: requestedThread?.cwd ?? "/tmp",
-    reason: "The status tool must write its state at the exact path its error names.", permissions } });
-// The same need asked on the command itself (P1 Q10b, under experimentalApi): a command approval carrying
-// the paths it would add, offering only accept and cancel.
-const commandWidening = (id, threadId, turnId, itemId, command, additionalPermissions) => {
-  const r = approvalRequest(id, threadId, turnId, itemId, command);
-  return { ...r, params: { ...r.params, reason: null, additionalPermissions, availableDecisions: ["accept", "cancel"] } };
-};
-// Where a widening's paths go: under the account's home, where a tool keeps its own state, outside every
-// root the sandbox grants.
-const toolState = (name) => path.join(os.userInfo().homedir, `.entrust-fixture-tool-${process.pid}`, name);
-const sameProfile = (a, b) => isDeepStrictEqual(a ?? null, b ?? null);
-// FAKE_FEATURES=both lists the two permission features as 0.155.1 does; anything else lists neither.
-const FEATURE_ROWS = ["request_permissions_tool", "exec_permission_approvals"];
-const featuresOn = () => FEATURE_ROWS.every((f) => CFG[`features.${f}`] === "true");
 // A file-change request carries no path at all (P1 Q4, Q5a): the paths are on the item/started before it.
 const fileChangeRequest = (id, threadId, turnId, itemId) => ({ jsonrpc: "2.0", id, method: "item/fileChange/requestApproval",
   params: { threadId, turnId, itemId, startedAtMs: now(), reason: null, grantRoot: null } });
@@ -650,12 +605,6 @@ function onLine(line) {
       activePermissionProfile: profile,
       sandbox: sb
     }));
-    // What 0.155.1 says on every thread started with the two features on (P1 transcript-q7d), under the
-    // thread's own id.
-    if (featuresOn())
-      w(note("warning", { threadId: THREAD, message: "Under-development features enabled: exec_permission_approvals, request_permissions_tool. "
-        + "Under-development features are incomplete and may behave unpredictably. To suppress this warning, set "
-        + "`suppress_unstable_features_warning = true` in /tmp/fixture-home/config.toml." }));
     return;
   }
 
@@ -1427,109 +1376,6 @@ function onLine(line) {
           ask(fileChangeRequest(9422, THREAD, TURN, itemId), (a) => w(resolvedNote(THREAD, a.requestId),
             fileChangeDone(TURN, THREAD, itemId, changes, a.decision === "accept" ? "completed" : "declined"),
             msg(TURN, THREAD, `the patch was answered ${a.decision}`), done(TURN, THREAD))));
-        break;
-      }
-
-      // --- widenings ---
-
-      // The tool fails on its own state file, asks for exactly that file, and on a grant of exactly that
-      // profile for the turn re-runs and succeeds; a later plain command needs nothing more (P1 Q7d/e). The
-      // empty profile declines it, and the tool's re-run is declined.
-      case "widening-wait":
-      case "widening-network":
-      case "widening-root":
-      case "widening-glob":
-      case "widening-special":
-      case "widening-legacy-split":
-      case "widening-protected": {
-        const perm = SCENARIO === "widening-network" ? { network: { enabled: true }, fileSystem: null }
-          : SCENARIO === "widening-root" ? { network: null, fileSystem: { entries: [{ path: { type: "special", value: { kind: "root" } }, access: "write" }] } }
-          : SCENARIO === "widening-glob" ? { network: null, fileSystem: { entries: [
-            { path: { type: "glob_pattern", pattern: path.join(os.userInfo().homedir, ".codex", "**") }, access: "write" }] } }
-          : SCENARIO === "widening-special" ? { network: null, fileSystem: { entries: [
-            { path: { type: "special", value: { kind: "unknown", path: toolState("state.log") } }, access: "write" }] } }
-          : SCENARIO === "widening-legacy-split" ? { network: null, fileSystem: { read: null,
-            write: [path.join(os.userInfo().homedir, ".codex", "entrust-fixture-state")],
-            entries: [{ path: { type: "path", path: toolState("state.log") }, access: "write" }] } }
-          : SCENARIO === "widening-protected" ? writeProfile(path.join(os.userInfo().homedir, ".codex", "entrust-fixture-state"))
-          : writeProfile(toolState("state.log"));
-        const tool = "entrust-fixture-tool status";
-        w(R, cmd(TURN, THREAD, { command: tool, exitCode: 1, status: "failed" }),
-          ask(permissionsRequest(9440, THREAD, TURN, "call_perm_1", perm), (a) => {
-            const granted = a.result?.scope === "turn" && sameProfile(a.result?.permissions?.fileSystem, perm.fileSystem)
-              && sameProfile(a.result?.permissions?.network, perm.network);
-            w(resolvedNote(THREAD, a.requestId),
-              granted ? cmd(TURN, THREAD, { command: tool }) : cmd(TURN, THREAD, { command: tool, exitCode: null, status: "declined" }),
-              ...(granted ? [cmd(TURN, THREAD, { command: "entrust-fixture-tool status --again" })] : []),
-              msg(TURN, THREAD, `the widening was ${granted ? "granted" : "refused"}`), done(TURN, THREAD));
-          }));
-        break;
-      }
-
-      // A second request in the same turn for a sibling the tool opens next, after the first grant: two
-      // decisions, and both grants stand.
-      case "widening-twice": {
-        const first = writeProfile(toolState("state.log")), second = writeProfile(toolState("state.lock"));
-        const tool = "entrust-fixture-tool status";
-        const isGrant = (a, perm) => a.result?.scope === "turn" && sameProfile(a.result?.permissions?.fileSystem, perm.fileSystem);
-        w(R, cmd(TURN, THREAD, { command: tool, exitCode: 1, status: "failed" }),
-          ask(permissionsRequest(9441, THREAD, TURN, "call_perm_1", first), (a) => {
-            if (!isGrant(a, first)) { w(resolvedNote(THREAD, a.requestId), msg(TURN, THREAD, "refused"), done(TURN, THREAD)); return; }
-            w(resolvedNote(THREAD, a.requestId), cmd(TURN, THREAD, { command: tool, exitCode: 1, status: "failed" }),
-              ask(permissionsRequest(9442, THREAD, TURN, "call_perm_2", second), (b) => {
-                const ok = isGrant(b, second);
-                w(resolvedNote(THREAD, b.requestId), cmd(TURN, THREAD, { command: tool, ...(ok ? {} : { exitCode: 1, status: "failed" }) }),
-                  msg(TURN, THREAD, `the second widening was ${ok ? "granted" : "refused"}`), done(TURN, THREAD));
-              }));
-          }));
-        break;
-      }
-
-      // The need asked on the command itself: accept runs it with the path added, decline declines it.
-      // FAKE_WIDEN_PATH names another path to add, for the case that aims it at ~/.codex.
-      case "widening-command": {
-        const tool = "entrust-fixture-tool status";
-        w(R, cmd(TURN, THREAD, { command: tool, exitCode: 1, status: "failed" }),
-          ask(commandWidening(9443, THREAD, TURN, "exec-widen-1", tool, writeProfile(process.env.FAKE_WIDEN_PATH ?? toolState("state.log"))),
-            (a) => commandAnswered(a, TURN, THREAD, "exec-widen-1", tool)));
-        break;
-      }
-
-      // A permissions request, then, after the empty profile, the same need as a command approval: for the
-      // same path, or (reask-other) for that path and one more.
-      case "widening-declined-reask":
-      case "widening-reask-other": {
-        const perm = writeProfile(toolState("state.log"));
-        const again = SCENARIO === "widening-reask-other" ? writeProfile(toolState("state.log"), toolState("cache.db")) : perm;
-        const tool = "entrust-fixture-tool status";
-        w(R, cmd(TURN, THREAD, { command: tool, exitCode: 1, status: "failed" }),
-          ask(permissionsRequest(9444, THREAD, TURN, "call_perm_1", perm), (a) => {
-            if (a.result?.scope === "turn") { w(resolvedNote(THREAD, a.requestId), cmd(TURN, THREAD, { command: tool }), msg(TURN, THREAD, "granted"), done(TURN, THREAD)); return; }
-            w(resolvedNote(THREAD, a.requestId),
-              ask(commandWidening(9445, THREAD, TURN, "exec-reask-1", tool, again),
-                (b) => commandAnswered(b, TURN, THREAD, "exec-reask-1", tool)));
-          }));
-        break;
-      }
-
-      // A child's widening declined in its first turn, and the same paths asked as a command in its second:
-      // a decline answers re-asks in its own turn only.
-      case "widening-next-turn": {
-        const [annStart, annEnd] = subAgentItem(TURN, THREAD, "call_sub", "started", OTHER_THREAD, "/root/tool");
-        const perm = writeProfile(toolState("state.log"));
-        const tool = "entrust-fixture-tool status";
-        w(R, cmd(TURN, THREAD), annStart, annEnd, ...childTurnStart("turn_sub_1", OTHER_THREAD),
-          ask(permissionsRequest(9446, OTHER_THREAD, "turn_sub_1", "call_perm_1", perm), (a) => {
-            w(resolvedNote(OTHER_THREAD, a.requestId), done("turn_sub_1", OTHER_THREAD), ...childTurnStart("turn_sub_2", OTHER_THREAD),
-              ask(commandWidening(9447, OTHER_THREAD, "turn_sub_2", "exec-next-1", tool, perm), (b) => {
-                w(resolvedNote(OTHER_THREAD, b.requestId),
-                  cmd("turn_sub_2", OTHER_THREAD, { id: "exec-next-1", command: tool,
-                    ...(b.result?.decision === "accept" ? {} : { exitCode: null, status: "declined" }) }),
-                  done("turn_sub_2", OTHER_THREAD),
-                  ...subAgentItem(TURN, THREAD, "subagent-completed-1", "completed", OTHER_THREAD, "/root/tool"),
-                  msg(TURN, THREAD, `the second turn's request was answered ${b.result?.decision}`), done(TURN, THREAD));
-              }));
-          }));
         break;
       }
 
