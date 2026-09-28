@@ -24,7 +24,7 @@
   "leakage": 0
  },
  "veto_fired": [],
- "pilot_outcome": "drop",
+ "pilot_outcome": "invalid (clarity not loaded in every run)",
  "confirmation_pass": false,
  "rows": [
   {
@@ -119,9 +119,5 @@
    "gate_current": 0.6666666666666666,
    "gate_variant": 1.0
   }
- ],
- "cost_usd": {
-  "k2-pilot-current": 3.83,
-  "k2-pilot-k2a": 3.65
- }
+ ]
 }

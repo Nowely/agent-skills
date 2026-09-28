@@ -48,5 +48,10 @@ Fixed in draft 3 (its "Round 2 dispositions"); C7's round 3 confirmed R1, R2 and
   rules; `--criterion-only` was added for K3. `content.compare.mjs` itself is unchanged and is descriptive only.
 - **Smoke runs** found two harness defects before any pilot: the history file was not a resumable transcript,
   and the `/terse:clarity` prompt prefix did not load the skill. Both fixed by Codex Sol HW1.
+- **Codex Sol R6**, the final review before the push: the decisions were not all reproducible from the script
+  (K2 recorded as a drop though its exposure made it invalid; K3's brief-stage veto applied by hand), and the
+  write-up overstated what the repeat of the unchanged pages shows. `tools/decide.py` now enforces both rules,
+  every decision was regenerated, and the claims were narrowed. Its third finding, machine paths in
+  `plugins/terse/ISSUES.md`, predates this branch and belongs to E56, which the owner left for later.
 
 The pilots and their result: [pilots.md](pilots.md).

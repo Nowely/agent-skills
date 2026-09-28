@@ -1,17 +1,46 @@
 {
  "candidate": "k3",
- "current": "k3-pilot-current (+ recipient)",
- "variant": "k3-pilot-k3 (+ recipient)",
+ "current": "k3-pilot-current + k3-pilot-current-recipient",
+ "variant": "k3-pilot-k3 + k3-pilot-k3-recipient",
+ "exposure": {
+  "current": [
+   36,
+   36,
+   0
+  ],
+  "variant": [
+   36,
+   36,
+   0
+  ]
+ },
+ "brief_stage": {
+  "grader": "inputs-preserved",
+  "variant_lower": [
+   "k3p-01",
+   "k3p-09",
+   "k3p-12"
+  ],
+  "variant_higher": [
+   "k3p-02",
+   "k3p-05",
+   "k3p-06",
+   "k3p-07",
+   "k3p-11"
+  ]
+ },
  "W": 3,
  "L": 2,
  "p": 0.5,
  "G": 0,
  "gate_cases": [],
  "vetoes": {
-  "completion": 0,
+  "completion": 3,
   "leakage": 0
  },
- "veto_fired": [],
+ "veto_fired": [
+  "completion"
+ ],
  "pilot_outcome": "drop",
  "confirmation_pass": false,
  "rows": [
@@ -99,28 +128,5 @@
    "variant": 0.0,
    "result": "loss"
   }
- ],
- "brief_stage_completion_veto": {
-  "grader": "inputs-preserved",
-  "variant_lower": [
-   "k3p-01",
-   "k3p-09",
-   "k3p-12"
-  ],
-  "variant_higher": [
-   "k3p-02",
-   "k3p-05",
-   "k3p-06",
-   "k3p-07",
-   "k3p-11"
-  ],
-  "fired": true
- },
- "note": "decide.py scores the recipient stage; the completion veto on the brief stage was computed beside it and fires (3 cases lower, 5 higher), which turns rule 3 on: W=3 < 4, so drop.",
- "cost_usd": {
-  "k3-pilot-current": 4.56,
-  "k3-pilot-current-recipient": 5.57,
-  "k3-pilot-k3": 4.28,
-  "k3-pilot-k3-recipient": 5.3
- }
+ ]
 }

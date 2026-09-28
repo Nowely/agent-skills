@@ -1,7 +1,7 @@
 {
  "candidate": "k1",
  "current": "k1-pilot-current",
- "variant": "k1-pilot-current-aa (the same pages, run again)",
+ "variant": "k1-pilot-current-aa",
  "exposure": {
   "current": [
    36,
@@ -209,8 +209,5 @@
     0.6666666666666666
    ]
   }
- ],
- "cost_usd": {
-  "k1-pilot-current-aa": 4.34
- }
+ ]
 }

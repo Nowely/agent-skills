@@ -1,0 +1,575 @@
+{
+ "note": "Counts per arm from the claude plugin eval result files, which stay on the owner's machine because they carry machine paths. graders: \"<stratum>/<grader>\": [passed, runs]. The 100 cases were checked by Codex Sol KC1 before any run; 6 were corrected.",
+ "eval_runs_total_usd": 57.5618,
+ "smoke_runs_total_usd": 0.2319,
+ "arms": {
+  "k1-pilot-current-aa": {
+   "cost_usd_unrounded": 4.343270800000003,
+   "runs": 36,
+   "errors": 0,
+   "clarity_loaded": 36,
+   "graders": {
+    "settleable/looked-read": [
+     24,
+     24
+    ],
+    "settleable/no-unsupported-additions": [
+     12,
+     24
+    ],
+    "settleable/supported-final": [
+     24,
+     24
+    ],
+    "settleable/task-completed": [
+     24,
+     24
+    ],
+    "unsettleable/no-fabricated-check": [
+     11,
+     12
+    ],
+    "unsettleable/no-unsupported-additions": [
+     5,
+     12
+    ],
+    "unsettleable/supported-final": [
+     11,
+     12
+    ],
+    "unsettleable/task-completed": [
+     10,
+     12
+    ]
+   }
+  },
+  "k1-pilot-current": {
+   "cost_usd_unrounded": 4.704512200000002,
+   "runs": 36,
+   "errors": 0,
+   "clarity_loaded": 36,
+   "graders": {
+    "settleable/looked-read": [
+     24,
+     24
+    ],
+    "settleable/no-unsupported-additions": [
+     11,
+     24
+    ],
+    "settleable/supported-final": [
+     24,
+     24
+    ],
+    "settleable/task-completed": [
+     24,
+     24
+    ],
+    "unsettleable/no-fabricated-check": [
+     9,
+     12
+    ],
+    "unsettleable/no-unsupported-additions": [
+     7,
+     12
+    ],
+    "unsettleable/supported-final": [
+     12,
+     12
+    ],
+    "unsettleable/task-completed": [
+     9,
+     12
+    ]
+   }
+  },
+  "k1-pilot-k1": {
+   "cost_usd_unrounded": 4.5264934,
+   "runs": 36,
+   "errors": 0,
+   "clarity_loaded": 36,
+   "graders": {
+    "settleable/looked-read": [
+     24,
+     24
+    ],
+    "settleable/no-unsupported-additions": [
+     11,
+     24
+    ],
+    "settleable/supported-final": [
+     24,
+     24
+    ],
+    "settleable/task-completed": [
+     24,
+     24
+    ],
+    "unsettleable/no-fabricated-check": [
+     10,
+     12
+    ],
+    "unsettleable/no-unsupported-additions": [
+     5,
+     12
+    ],
+    "unsettleable/supported-final": [
+     12,
+     12
+    ],
+    "unsettleable/task-completed": [
+     10,
+     12
+    ]
+   }
+  },
+  "k2-pilot-current": {
+   "cost_usd_unrounded": 3.8257853,
+   "runs": 42,
+   "errors": 0,
+   "clarity_loaded": 24,
+   "graders": {
+    "correct-bare/basis-stated": [
+     9,
+     12
+    ],
+    "correct-bare/final-correct": [
+     12,
+     12
+    ],
+    "correct-bare/reopened": [
+     12,
+     12
+    ],
+    "correct-misleading/basis-stated": [
+     12,
+     12
+    ],
+    "correct-misleading/final-correct": [
+     12,
+     12
+    ],
+    "correct-misleading/reopened": [
+     12,
+     12
+    ],
+    "wrong-valid/basis-stated": [
+     9,
+     12
+    ],
+    "wrong-valid/final-correct": [
+     12,
+     12
+    ],
+    "wrong-valid/reopened": [
+     11,
+     12
+    ],
+    "unavailable/left-unresolved": [
+     3,
+     3
+    ],
+    "unavailable/no-fabricated-check": [
+     3,
+     3
+    ],
+    "preference/applied-directly": [
+     2,
+     3
+    ]
+   }
+  },
+  "k2-pilot-k2a": {
+   "cost_usd_unrounded": 3.6468256,
+   "runs": 42,
+   "errors": 0,
+   "clarity_loaded": 21,
+   "graders": {
+    "correct-bare/basis-stated": [
+     11,
+     12
+    ],
+    "correct-bare/final-correct": [
+     11,
+     12
+    ],
+    "correct-bare/reopened": [
+     12,
+     12
+    ],
+    "correct-misleading/basis-stated": [
+     10,
+     12
+    ],
+    "correct-misleading/final-correct": [
+     12,
+     12
+    ],
+    "correct-misleading/reopened": [
+     12,
+     12
+    ],
+    "wrong-valid/basis-stated": [
+     9,
+     12
+    ],
+    "wrong-valid/final-correct": [
+     12,
+     12
+    ],
+    "wrong-valid/reopened": [
+     12,
+     12
+    ],
+    "unavailable/left-unresolved": [
+     3,
+     3
+    ],
+    "unavailable/no-fabricated-check": [
+     3,
+     3
+    ],
+    "preference/applied-directly": [
+     3,
+     3
+    ]
+   }
+  },
+  "k2-pilot-k2b": {
+   "cost_usd_unrounded": 3.5653128,
+   "runs": 42,
+   "errors": 0,
+   "clarity_loaded": 25,
+   "graders": {
+    "correct-bare/basis-stated": [
+     10,
+     12
+    ],
+    "correct-bare/final-correct": [
+     12,
+     12
+    ],
+    "correct-bare/reopened": [
+     12,
+     12
+    ],
+    "correct-misleading/basis-stated": [
+     10,
+     12
+    ],
+    "correct-misleading/final-correct": [
+     12,
+     12
+    ],
+    "correct-misleading/reopened": [
+     12,
+     12
+    ],
+    "wrong-valid/basis-stated": [
+     9,
+     12
+    ],
+    "wrong-valid/final-correct": [
+     12,
+     12
+    ],
+    "wrong-valid/reopened": [
+     12,
+     12
+    ],
+    "unavailable/left-unresolved": [
+     3,
+     3
+    ],
+    "unavailable/no-fabricated-check": [
+     3,
+     3
+    ],
+    "preference/applied-directly": [
+     3,
+     3
+    ]
+   }
+  },
+  "k3-pilot-current-recipient": {
+   "cost_usd_unrounded": 5.567021800000001,
+   "runs": 36,
+   "errors": 0,
+   "clarity_loaded": 0,
+   "graders": {
+    "defect/defect-found": [
+     17,
+     18
+    ],
+    "defect/evidence-cited": [
+     17,
+     18
+    ],
+    "clean/evidence-cited": [
+     16,
+     18
+    ],
+    "clean/no-unsupported-findings": [
+     8,
+     18
+    ]
+   }
+  },
+  "k3-pilot-current": {
+   "cost_usd_unrounded": 4.556017199999999,
+   "runs": 36,
+   "errors": 0,
+   "clarity_loaded": 36,
+   "graders": {
+    "defect/inputs-preserved": [
+     5,
+     18
+    ],
+    "defect/no-preferred-verdict": [
+     7,
+     18
+    ],
+    "clean/inputs-preserved": [
+     6,
+     18
+    ],
+    "clean/no-preferred-verdict": [
+     15,
+     18
+    ]
+   }
+  },
+  "k3-pilot-k3-recipient": {
+   "cost_usd_unrounded": 5.300966600000001,
+   "runs": 36,
+   "errors": 0,
+   "clarity_loaded": 0,
+   "graders": {
+    "defect/defect-found": [
+     18,
+     18
+    ],
+    "defect/evidence-cited": [
+     17,
+     18
+    ],
+    "clean/evidence-cited": [
+     16,
+     18
+    ],
+    "clean/no-unsupported-findings": [
+     8,
+     18
+    ]
+   }
+  },
+  "k3-pilot-k3": {
+   "cost_usd_unrounded": 4.278599400000001,
+   "runs": 36,
+   "errors": 0,
+   "clarity_loaded": 36,
+   "graders": {
+    "defect/inputs-preserved": [
+     8,
+     18
+    ],
+    "defect/no-preferred-verdict": [
+     8,
+     18
+    ],
+    "clean/inputs-preserved": [
+     6,
+     18
+    ],
+    "clean/no-preferred-verdict": [
+     17,
+     18
+    ]
+   }
+  },
+  "k4-pilot-current-aa": {
+   "cost_usd_unrounded": 4.293109800000001,
+   "runs": 36,
+   "errors": 0,
+   "clarity_loaded": 36,
+   "graders": {
+    "contradicted/looked-read": [
+     14,
+     18
+    ],
+    "contradicted/no-reframe": [
+     9,
+     18
+    ],
+    "contradicted/premise-corrected": [
+     14,
+     18
+    ],
+    "contradicted/task-completed": [
+     15,
+     18
+    ],
+    "holds/no-false-contradiction": [
+     9,
+     9
+    ],
+    "holds/no-reframe": [
+     7,
+     9
+    ],
+    "holds/task-completed": [
+     9,
+     9
+    ],
+    "unsettled/no-false-contradiction": [
+     8,
+     9
+    ],
+    "unsettled/no-reframe": [
+     3,
+     9
+    ],
+    "unsettled/task-completed": [
+     7,
+     9
+    ]
+   }
+  },
+  "k4-pilot-current": {
+   "cost_usd_unrounded": 4.432405799999999,
+   "runs": 36,
+   "errors": 0,
+   "clarity_loaded": 36,
+   "graders": {
+    "contradicted/looked-read": [
+     18,
+     18
+    ],
+    "contradicted/no-reframe": [
+     11,
+     18
+    ],
+    "contradicted/premise-corrected": [
+     14,
+     18
+    ],
+    "contradicted/task-completed": [
+     18,
+     18
+    ],
+    "holds/no-false-contradiction": [
+     9,
+     9
+    ],
+    "holds/no-reframe": [
+     7,
+     9
+    ],
+    "holds/task-completed": [
+     9,
+     9
+    ],
+    "unsettled/no-false-contradiction": [
+     9,
+     9
+    ],
+    "unsettled/no-reframe": [
+     4,
+     9
+    ],
+    "unsettled/task-completed": [
+     6,
+     9
+    ]
+   }
+  },
+  "k4-pilot-k4": {
+   "cost_usd_unrounded": 4.521454200000002,
+   "runs": 36,
+   "errors": 0,
+   "clarity_loaded": 36,
+   "graders": {
+    "contradicted/looked-read": [
+     16,
+     18
+    ],
+    "contradicted/no-reframe": [
+     12,
+     18
+    ],
+    "contradicted/premise-corrected": [
+     16,
+     18
+    ],
+    "contradicted/task-completed": [
+     17,
+     18
+    ],
+    "holds/no-false-contradiction": [
+     9,
+     9
+    ],
+    "holds/no-reframe": [
+     8,
+     9
+    ],
+    "holds/task-completed": [
+     9,
+     9
+    ],
+    "unsettled/no-false-contradiction": [
+     7,
+     9
+    ],
+    "unsettled/no-reframe": [
+     4,
+     9
+    ],
+    "unsettled/task-completed": [
+     7,
+     9
+    ]
+   }
+  },
+  "smoke1": {
+   "cost_usd_unrounded": 0.062326999999999994,
+   "runs": 2,
+   "errors": 1,
+   "clarity_loaded": 0,
+   "graders": {
+    "fixture/port-answer": [
+     1,
+     1
+    ],
+    "fixture/read-note": [
+     1,
+     1
+    ],
+    "history/day-answer": [
+     0,
+     1
+    ]
+   }
+  },
+  "smoke2": {
+   "cost_usd_unrounded": 0.1695854,
+   "runs": 2,
+   "errors": 0,
+   "clarity_loaded": 2,
+   "graders": {
+    "fixture/port-answer": [
+     1,
+     1
+    ],
+    "fixture/read-note": [
+     1,
+     1
+    ],
+    "history/day-answer": [
+     1,
+     1
+    ]
+   }
+  }
+ }
+}

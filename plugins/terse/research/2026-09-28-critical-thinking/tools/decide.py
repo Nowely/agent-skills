@@ -2,7 +2,10 @@
 """Apply the frozen 0.4 pilot rules (../decision-rules.md) to two `claude plugin eval` results.
 
   decide.py CANDIDATE CURRENT.json VARIANT.json [--rewording-spent] [--json OUT]
-            [--source-current S1.json --source-variant S2.json]   (k3: the brief runs, to drop errored briefs)
+            [--source-current S1.json --source-variant S2.json]   (k3: the brief runs: errored briefs are
+             dropped, the inputs-preserved completion veto is read from them, and exposure is checked there)
+
+A set in which any run of either arm shows no `clarity` call is invalid (rule M4), not a drop.
 
 CANDIDATE is k1, k2, k3 or k4. For k3 the two files are the recipient results (content.recipient.mjs),
 whose case ids are <source id>-r<brief run>; they are reduced to the source case first.
@@ -79,9 +82,16 @@ def main():
     if cand != 'k3':
         report['exposure'] = {'current': exposure(cur), 'variant': exposure(var)}
     roles = ROLES[cand]
+    brief_veto = None
     if cand == 'k3':
         src = lambda flag: load(sys.argv[sys.argv.index(flag) + 1]) if flag in sys.argv else None
-        cur, var = reduce_k3(cur, src('--source-current')), reduce_k3(var, src('--source-variant'))
+        sc, sv = src('--source-current'), src('--source-variant')
+        cur, var = reduce_k3(cur, sc), reduce_k3(var, sv)
+        if sc and sv:
+            report['exposure'] = {'current': exposure(sc), 'variant': exposure(sv)}
+            lower = sorted(k for k in sc if mean_of(sv[k]['runs'], ['inputs-preserved']) < mean_of(sc[k]['runs'], ['inputs-preserved']))
+            higher = sorted(k for k in sc if mean_of(sv[k]['runs'], ['inputs-preserved']) > mean_of(sc[k]['runs'], ['inputs-preserved']))
+            brief_veto = {'grader': 'inputs-preserved', 'variant_lower': lower, 'variant_higher': higher}
         score = lambda c, names: (lambda xs: sum(xs) / len(xs) if xs else None)(
             [m for m in (mean_of(b, names) for b in c['briefs']) if m is not None])
     else:
@@ -117,9 +127,15 @@ def main():
                     vetoes[kind] += 1
         rows.append(row)
     G = len(gates)
+    if brief_veto is not None:
+        vetoes['completion'] = len(brief_veto['variant_lower'])
+        report['brief_stage'] = brief_veto
     veto = [k for k, n in vetoes.items() if n >= 2]
+    exp = report.get('exposure')
+    invalid = bool(exp) and any(e[0] < e[1] for e in exp.values())
     need = 3 if cand == 'k2' else 4
-    if cand == 'k2' and G >= 2: outcome = 'drop'
+    if invalid: outcome = 'invalid (clarity not loaded in every run)'
+    elif cand == 'k2' and G >= 2: outcome = 'drop'
     elif cand == 'k2' and G == 1: outcome = 'drop' if spent else 'revise'
     elif veto: outcome = 'revise' if (not spent and W >= need) else 'drop'
     elif W <= L or L >= 4: outcome = 'drop'

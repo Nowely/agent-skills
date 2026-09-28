@@ -18,10 +18,11 @@ Four candidates, each a check with a visible result rather than an instruction t
   and keeps established facts and decided scope as inputs.
 - **K4**: check a factual premise the answer relies on against the evidence at hand.
 
-**None passed its pilot, so none is in terse's pages** ([pilots.md](pilots.md)). On short, clean tasks the
-current `clarity` already did what K1 and K2 ask in every run; K3 and K4 moved a little in both directions. A
-repeat of the unchanged pages produced results in the same range, so the pilot could not have detected an effect
-of this size: no effect was found, not harm. The test cases, the page edits, the frozen rules and the decision
+**None passed its pilot, so none is in terse's pages** ([pilots.md](pilots.md)). K1, K3 and K4 were dropped by
+vetoes that a repeat of the unchanged pages showed firing with no page edit at all; K2's set was invalid because
+the skill did not load in every resumed session. On these short tasks the current `clarity` already met K1's
+main target and K2's in every run. The pilots found no effect large enough to clear their vetoes, which is not
+evidence that the candidates have none. The test cases, the page edits, the frozen rules and the decision
 script are kept for a better-powered round.
 
 ## How it ran
