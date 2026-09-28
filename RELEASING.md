@@ -26,7 +26,9 @@ the GitHub release.
 3. **Check what CI does not.**
    - Review the complete release diff; confirm no scratch files or credentials are tracked.
    - Run the plugin's conditional checks (its section below) whose trigger the release hits.
-   - When the release changes what a session shows, open a fresh session loaded from the candidate
+   - A check that spends tokens — a live session, a live gate, a trigger run — is proposed to the owner with what
+     it would show and what it costs, and runs only on their word; one not run is named in the package.
+   - When the release changes what a session shows, propose a fresh session loaded from the candidate
      (`claude --plugin-dir plugins/<plugin>/plugin`), not from the installed copy, confirm its version, and exercise the
      changed behaviour.
    - When the release changes a path, a brief or a procedure the other plugin uses, run one real example through
