@@ -81,29 +81,6 @@ On HEAD it exited 0; grep printed only line 96's baseline-arm "same questions", 
 
 _From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-24/run/code-defects.md, D15._
 
-## E38. `writing-rules.md:29` says "byte for byte" of a block that differs from its source by an indent
-
-**Evidence, level 3.** `plugins/terse/skills/rewrite/references/writing-rules.md:29` (at f9987f1; now `plugins/terse/plugin/references/writing-rules.md`), the note beside
-the frozen block's SHA line, says the block is the source prompt's PART 2 "byte for byte";
-`plugins/terse/research/2026-09-10-chain/chain-source-prompt.txt:64-83`, the source, is indented four spaces, and `diff` between
-the two shows the indent only. The SHA on the page is of the page's own text and stays valid; the note's "byte for
-byte" is false by the indent. Found by the round-04 wave's lens 1 (Claude Opus) on 2026-09-24.
-
-**Check.** From any directory, with two temporary files in place of process substitution:
-
-    T=$(mktemp -d); sed -n '6,25p' /Users/ruliny/Git/agent-skills/plugins/terse/plugin/references/writing-rules.md > "$T/block"; sed -n '64,83p' /Users/ruliny/Git/agent-skills/plugins/terse/research/2026-09-10-chain/chain-source-prompt.txt | sed 's/^    //' > "$T/source"; diff "$T/block" "$T/source" && echo "identical after removing the indent"; sed -n '64,83p' /Users/ruliny/Git/agent-skills/plugins/terse/research/2026-09-10-chain/chain-source-prompt.txt | diff -q "$T/block" -; echo "raw diff exit $?"
-
-On HEAD it printed `identical after removing the indent` and `raw diff exit 1`: the block equals its source up to
-the indent and not byte for byte. The run file's own check, written with `<(...)`, could not run in the reviewer's
-sandbox (`diff: /dev/fd/11: Operation not permitted`) and was run by the coordinator with files.
-
-**Issue text.** The frozen block's note says it is the source prompt's text byte for byte; the source is indented
-four spaces and the block is not, so the claim is false by exactly the indent. The repository's rule is that the
-SHA line and the note move together and the text never alone: the note should say "the source's text with its
-indent removed", and the SHA line stays as it is.
-
-_From plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-24/run/code-defects.md, D24._
-
 ## E69. `clarity` sends an objection to a deep-skill brief, and "recheck before conceding" has no line of its own
 
 **Evidence, level 1.** `plugins/terse/plugin/skills/clarity/SKILL.md:58` says only "For a later objection,
