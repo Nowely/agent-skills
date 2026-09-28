@@ -37,11 +37,13 @@ the GitHub release.
 5. **CI on the PR is the full run.** Push the branch, open the PR, and wait for `gh pr checks <n> --watch`. Suites
    run locally while the work is under way and are not repeated once CI is green on the same tree. A red run
    stops the release.
-6. **Merge and compare trees.** `gh pr merge <n> --squash --match-head-commit <head>`, `<head>` being the commit
-   the word approved. Then `git fetch origin` and confirm the squash commit's tree is the tree CI tested: with
-   `<merge>` from `gh pr view <n> --json mergeCommit`, `git rev-parse <merge>^{tree}` equals
-   `git rev-parse <head>^{tree}`. When they differ, main moved under the PR and the release stops; CI on main is
-   not waited for otherwise.
+6. **Merge and compare the plugin's tree.** `gh pr merge <n> --squash --match-head-commit <head>`, `<head>` being
+   the commit the word approved. Then `git fetch origin` and, with `<merge>` from `gh pr view <n> --json mergeCommit`,
+   confirm that `git diff --stat <head> <merge> -- plugins/<plugin> CLAUDE.md RELEASING.md .claude-plugin` prints
+   nothing: a squash merge folds in whatever landed on main under the PR, and another plugin's commit there changes
+   the whole tree without touching the release (entrust 0.21.0: a terse commit under #28). A difference inside
+   those paths means main moved under the plugin, and the release stops. CI on main after the merge is not waited
+   for: it repeats the run the PR already had.
 7. **Tag, check, publish.** `git switch --detach <merge>`, tag it with
    `git tag -a <plugin>@X.Y.Z -m '<plugin> X.Y.Z' <merge>`, run the plugin's tag check from its section, then
    `git push origin <plugin>@X.Y.Z` and
