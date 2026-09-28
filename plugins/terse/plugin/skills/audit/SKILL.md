@@ -21,23 +21,26 @@ sentences, it becomes the thing that was measured and lost: an audit that rewrit
 
 ## Step 1. Scope and the run directory
 
-Settle four things with the user in one exchange, not six:
+Settle five things with the user in one exchange, not six:
 
 - Which files are the documentation. Default to every tracked `.md`.
 - Which repository backs them, if any. Text with no code behind it still gets audited; the truth pass
   runs in its weaker form, described in [truth.md](../../references/truth.md).
 - Where a reader arrives. Usually `README.md`. This is the entry file for every reader.
+- Where the report goes: a folder in the audited repository, `audits/` at its root unless they name
+  another, or the chat alone. A summary comes to the chat either way.
 - The mode: [light, or full](../../references/roles.md#light-and-full) on their word. In a full run, start
   the harness, brief 12, as soon as the run directory exists: the truth pass runs the code in its copy.
 
-Then make the run directory, `<slug>` naming the audited document; where it lives, how long, and what
-its path is for: [run.md](../../references/run.md).
+Then make the run directory for the working files, `<slug>` naming the audited document; where it lives,
+how long, and what its path is for: [run.md](../../references/run.md).
 
 ```bash
 D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
 ```
 
-Write nothing into the audited repository. Not a report, not a note, not a fix.
+Write nothing into the audited repository but the report, in the folder they named. Not a note, not a fix,
+not a commit.
 
 ## Step 2. The reader profile
 
@@ -65,10 +68,11 @@ Write the correct answer to each from the ledger, and write it now. The ledger a
 and the line, so the key costs nothing extra here and is impossible to reconstruct honestly later.
 
 At least two of the questions must be ones the current text answers correctly. These are the controls.
-Without them a later rewrite can raise the score by breaking something nobody asked about.
+Without them a rewrite measured on these questions can raise the score by breaking something nobody asked
+about.
 
-Plant at least one question the documentation genuinely does not answer, and record it as unanswerable in
-the key. A confident answer to it is a failure, and it is the only thing that separates a reader who read
+Plant at least one question the documentation genuinely does not answer, and record in the key that it
+does not, with the true answer where the code gives one. A confident answer to it is a failure, and it is the only thing that separates a reader who read
 from a reader who knew. Benchmarks that do this plant about one in ten.
 
 ## Step 5. The readers
@@ -80,13 +84,11 @@ are bills.
 One fresh reader per question: brief 8 of [roles.md](../../references/roles.md), in its form for a set of
 documents, under the rights in [measure.md](references/measure.md).
 
-**The baseline measurement runs a second arm with no documentation at all**: the same questions, the same
+**Every audit runs a second arm with no documentation at all**: the same questions, the same
 model, no files. Its score is what a reader already knew, and the number this audit reports is the
 difference between the two. A raw score without that arm cannot tell a document that teaches from a
 document that is merely about something the reader has seen before; the two published benchmarks that ran
-this arm found the effect large enough to swallow a result our size. It doubles the reader agents, so it
-runs once, at the baseline. A re-measurement after a rewrite reuses the same no-document score and does
-not pay again.
+this arm found the effect large enough to swallow a result our size. It doubles the reader agents.
 
 ## Step 5b. The cold readers
 
@@ -136,20 +138,21 @@ A local warning belongs immediately before its action; a global one is stated on
 Do not move a fact away from where it is currently read correctly in order to put it where it is also
 needed — put it in both places.
 
-Report the score with its own limits beside it. If the baseline is a perfect score, say so and stop: an
-instrument with no room above cannot register an improvement, and a later "the score did not fall" will
-mean nothing. A zero can rise; report it and go on.
+Report the score with its own limits beside it. If every question is already answered right, say so and
+stop: an instrument with no room above cannot register an improvement, and a rewrite measured on these
+questions will show nothing. A zero can rise; report it and go on.
 
-Write the run file to `$RUN/audit.md` using the section contract in [ledgers.md](references/ledgers.md):
-`rewrite` is given this run's directory, and its writer works from that file.
+Write the report using the section contract in [ledgers.md](references/ledgers.md), to the folder they
+named as `<date>-<slug>.md`, or to `$RUN/audit.md` when they chose the chat alone: `rewrite` is given its
+path, and its writer and readers work from that file.
 
 Report to the user, first, what the cold readers found hard to read, with its lines; then the score, the
-failures with their causes, the refuted claims, the absolute path, and the shape verdict; in a light run,
+failures with their causes, the refuted claims, the report's path, and the shape verdict; in a light run,
 also that nothing was run, so no claim is above level 2 and no recipe was tried. It is `shape: agreed`
 only on the user's word: that they agree to a named plan (`rethink` step 5), whose path and SHA-256 go
-into the run file, or, quoted, that the document's current shape stands. A plan they read without saying
+into the report, or, quoted, that the document's current shape stands. A plan they read without saying
 they agree to it is not agreement; anything short of their word is `shape: not agreed`. Agreed, offer
-`rewrite` as the next step, given this run's directory. Not agreed, offer `/terse:rethink`, and say why
+`rewrite` as the next step, given the report's path. Not agreed, offer `/terse:rethink`, and say why
 not `rewrite` alone: a polished text can still have the wrong shape
 ([M29](../../references/measurements.md#m29)). Run neither. For the human hand-over, follow
 [relayed results](../../references/genres/relayed-result.md).
@@ -159,5 +162,5 @@ not `rewrite` alone: a polished text can still have the wrong shape
 - The readers' briefs, their models, light and full: [roles.md](../../references/roles.md).
 - Building the profile, with a worked example: [reader-profile.md](references/reader-profile.md).
 - Evidence levels, guarantee words, verdicts: [truth.md](../../references/truth.md).
-- The reader protocol and re-measurement: [measure.md](references/measure.md).
-- Entry formats and the run file contract: [ledgers.md](references/ledgers.md).
+- The reader protocol and scoring: [measure.md](references/measure.md).
+- Entry formats and the report's contract: [ledgers.md](references/ledgers.md).

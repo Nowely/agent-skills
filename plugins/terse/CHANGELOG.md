@@ -12,6 +12,18 @@ forensics remain in the repository references and release notes.
   and an earlier exchange, and has a judge score the answer against a hidden key. The runs spend Claude tokens
   and stay out of CI; `evals/content.md` is the protocol.
 
+### Changed
+
+- `audit` and `rewrite`: each audit stands alone, and a before and after on the same questions happens inside
+  one `rewrite` run. `audit` settles in its first step where its report goes — a folder of the audited
+  repository, `audits/` unless the user names another, or the chat alone — writes nothing else there and
+  commits nothing; a summary comes to the chat either way, and the report names paths relative to the
+  repository. `rewrite`, given the report's path, asks the audit's questions of the existing text and of its
+  own, one file each, and shows both scores; without a report it writes three to five questions and their
+  answers first. The pages no longer promise a second audit with the same questions or a stored score as a
+  regression test. This settles E9 (on the planted question, a reader of either arm who says it cannot tell is
+  right), E12, E14 (the key keeps the true answer and whether the documentation gives it), E15 and E29.
+
 ### Fixed
 
 - E55: the live trigger probe blocks `ListAgents` and `SendMessage`, so the agent-brief case is scored where

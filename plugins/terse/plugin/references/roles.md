@@ -9,7 +9,7 @@ documentation, the repository), `<CONTEXT>` (the `context.md` the writer writes 
 for this kind of text, or the scout's table and the best documents it fetched), `<RULES>` (`rules.md` beside
 this page), `<SENTENCES>` (`writing-rules.md` and `curse-of-knowledge.md` beside this page), `<TRUTH>`
 (`truth.md` beside this page), `<PURPOSE>` (the owner's words: what the text is for and who reads it),
-`<AUDIT>` (an audit's `audit.md`, where one was given), `<OUT>` (the run directory); send nothing else.
+`<AUDIT>` (an audit's report, where one was given), `<OUT>` (the run directory); send nothing else.
 Every brief ends with: do not modify the repository, write only under `$TMPDIR`, never `cd` inside a
 compound command. Every agent returns its report as its final message, and the coordinator saves it: a
 harness hook refuses a subagent's report file.
@@ -23,7 +23,7 @@ harness hook refuses a subagent's report file.
 | form | Claude Sonnet | on the draft | 5 |
 | terms | Claude Sonnet | on the draft | 6 |
 | sentences | Claude Sonnet | on the draft | 10 |
-| question readers | Codex Luna | `rewrite`: three to five, on the draft and again on the repaired text; `audit`: one per question | 8 |
+| question readers | Codex Luna | `rewrite`: one per question, on the existing text, the draft and the repaired text; `audit`: one per question | 8 |
 | task reader | Codex Sol | `rewrite`: one, on the draft; `audit`: two, on the documentation; full mode only | 9 |
 | harness | Claude Sonnet | beside the writer, or from the audit's first step; full mode only | 12 |
 | cold readers, two | Codex Astra and Codex Sol | `rewrite`: on the repaired text; `audit`: on the entry file | 11 |
@@ -44,7 +44,7 @@ what it does, how a user gets it and starts it, what they type, what comes back 
 they need first, what would make them want it and choose it over what it resembles, and the one thought the
 text carries. The purpose, in the owner's words: <PURPOSE>. Then see how the best texts of its kind are
 built: <GENRE>. Where a text exists already, it is <EXISTING>: keep what is true and does its job. Where it
-was audited, the run file is <AUDIT>: write for its reader profile, and answer what it found hard to read,
+was audited, the report is <AUDIT>: write for its reader profile, and answer what it found hard to read,
 every failure under What broke and every refuted claim in its ledger.
 
 <RULES> requires two things — the text is pleasant to read, and true within its world — and the rest of it

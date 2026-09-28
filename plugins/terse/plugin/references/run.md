@@ -20,5 +20,7 @@ permission modes each file written there asks first, until the user allows edits
 session, and no allow rule or `additionalDirectories` entry approves it in advance; in auto mode its
 classifier decides.
 
-`<slug>` names the text, and a `rethink` run ends it in `-rethink`. Name the run's absolute path in the
-report and in the run's own files: the next skill is given that path by the user and cannot guess it.
+`<slug>` names the text, and a `rethink` run ends it in `-rethink`. Name the run's absolute path to the
+user and in the run's own files: the next skill is given a path by the user and cannot guess it. An audit's
+report is the one file that may go into the repository, to the folder the user settles, and every path in
+it is relative to the repository.
