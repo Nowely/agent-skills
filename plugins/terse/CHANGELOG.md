@@ -5,18 +5,78 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Fixed
+
+- The README's update step is one command, `claude plugin update terse@nowely`. It refreshes the marketplace
+  itself: on 2026-09-28 it found terse 0.4.0 with no separate `claude plugin marketplace update nowely`, which the
+  README asked for first.
+
+## 0.4.0 — 2026-09-28
+
+terse closes its ledger of defects in `audit`, `rewrite` and their shared pages, makes each audit stand alone,
+and gives `clarity` its own line for pushback and three more genre notes. **Compatibility:** `audit` now asks at
+its first step where its report goes, a folder of the audited repository (`audits/` by default) or its run
+directory, and `rewrite` is given the report's path instead of the audit's run directory.
+
 ### Added
 
 - A content eval harness, `evals/content.official.mjs` with its compare, recipient and selftest scripts, grades
   what a text says instead of only whether a skill loaded: it stages a variant of the pages, seeds fixture files
   and an earlier exchange, and has a judge score the answer against a hidden key. The runs spend Claude tokens
   and stay out of CI; `evals/content.md` is the protocol.
+- E70: genre notes for a review comment, a ticket or issue, and interface text and error messages, each linked
+  from `clarity` and each with an example paraphrased from the anonymized episodes. A before-and-after
+  comparison gets no note of its own: it is a device, and `clarity` already asks whether the recipient can tell
+  what changed, from what to what.
+
+### Changed
+
+- `audit` and `rewrite`: each audit stands alone, and a before and after on the same questions happens inside
+  one `rewrite` run. `audit` settles in its first step where its report goes — a folder of the audited
+  repository, `audits/` unless the user names another, or the run directory outside it — writes nothing else
+  there and commits nothing; a summary and the report's path come to the chat either way, and the report names paths relative to the
+  repository. `rewrite`, given the report's path, asks the audit's questions of the existing text and of its
+  own, one file each, and shows both scores; without a report it writes three to five questions and their
+  answers first. The pages no longer promise a second audit with the same questions or a stored score as a
+  regression test. This settles E9 (on the planted question, a reader of either arm who says it cannot tell is
+  right), E12, E14 (the key keeps the true answer and whether the documentation gives it), E15 and E29.
 
 ### Fixed
 
 - E55: the live trigger probe blocks `ListAgents` and `SendMessage`, so the agent-brief case is scored where
   agent-messaging tools exist instead of being excluded because the model tried to send the brief to a real agent;
   three live runs on 2026-09-28 were all scored, with `clarity` called before the answer.
+- E41, E25: `rewrite`'s section report compares the draft with the repair instead of reading a `budgets.json`
+  the writer typed by hand. Keys written as brief 1 asked, `"## Install"`, matched no heading, so the report said
+  "0 section(s) over budget" having checked nothing, and a renamed or removed section vanished from it. Now a
+  section that grew shows its difference, and one that only one version has is marked; the budgets stay in the
+  writer's plan.
+- E26: the section report counts words with `Intl.Segmenter`, so a section in Chinese, Japanese or Thai is
+  counted in words rather than as one word per run of text between spaces.
+- E42: the genre scout's brief asks for each document's raw text, not "raw markdown", which the comments of a
+  source file, a man page or a story do not have; the coordinator no longer rewrites the brief for them.
+- E20: the task reader points every application a document runs at configuration and data under `$TMPDIR`,
+  and a command it cannot point there it does not run; before, a document that installs a plugin or edits a
+  configuration had the reader act on the user's own machine.
+- E21, E19, E11: `references/run.md` gives a run's real lifetime and cost in prompts. Runs go when the plugin's
+  last installation is removed, and `claude plugin marketplace remove` deletes them with no `--keep-data`
+  (measured 2026-09-22 on Claude Code 2.1.280); a `claude --plugin-dir` checkout keeps its runs in a data
+  directory of its own that no uninstall removes; and the data directory is under `~/.claude`, a protected path
+  where each write asks in the `default` and `acceptEdits` modes until edits there are allowed for the session.
+  The README no longer says every source-checkout run uses the temporary directory.
+- E7, E36: `references/prior-art.md` and the README stop overstating the survey's record: not every practice is
+  marked measured, argued or asserted, the curated section ranks 108
+  entries rather than "forty", and not every 2026-09-10 number traces to the bake-off directory.
+- E38: the note beside the writing rules' frozen block says the block is `PART 2` of the measured prompt with
+  the source's four-space indent removed, not "byte for byte"; the block and its SHA-256 are unchanged.
+- E69: `clarity` carries its own line for pushback: when the reader disputes a fact, recheck it at its source
+  before conceding or holding, and say what the recheck showed. Before, it reached that rule only through a
+  link to a deep-skill brief.
+- E71: interface text and error messages are already in `clarity`'s scope, so its description stays as it was.
+  On 2026-09-28 the unchanged description called `clarity` for them in 12 of 12 runs, the same as a description
+  that named them (`research/2026-09-28-clarity-scope/`). Names and test titles stay out, so the skill does not
+  load on every code edit. The held-out set that measured it, `evals/clarity-trigger/holdout-ui.json`, joins the
+  trigger runs.
 
 ## 0.3.0 — 2026-09-28
 

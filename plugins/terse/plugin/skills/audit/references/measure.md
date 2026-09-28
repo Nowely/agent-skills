@@ -21,8 +21,8 @@ At least two questions must be ones the current text already answers correctly. 
 A rewrite that raises the score while breaking a control has traded one failure for another, and without
 controls that trade is invisible.
 
-Plant at least one question the documentation does not answer at all, keyed as unanswerable. A confident
-answer to it is a failure of the reader, not of the text, and it is the cheapest way to catch a reader
+Plant at least one question the documentation does not answer at all, keyed as not answered there, with
+the true answer where the code gives one. A confident answer to it is a failure of the reader, not of the text, and it is the cheapest way to catch a reader
 answering from what it already knew rather than from what it read.
 
 ## The reader's rights
@@ -43,7 +43,7 @@ spawning. A measurement the user did not agree to pay for is not a measurement t
 
 ## The no-document arm
 
-The baseline runs every question twice: once through the documentation, once with no files at all, same
+Every audit runs every question twice: once through the documentation, once with no files at all, same
 model, same brief minus the corpus. **The score this audit reports is the difference.**
 
 Without it a document that teaches cannot be told from a document about something the reader has already
@@ -51,8 +51,7 @@ seen. Two benchmarks that ran this arm found the gap large — one scored betwee
 closed-book on tasks built to require documentation, and treats a high closed-book score as contamination. A third of
 our questions could plausibly sit there, which is more than the whole effect we have ever measured.
 
-It doubles the reader agents, so it runs at the baseline only. A re-measurement after a rewrite reuses the
-same no-document score; the questions have not changed, and neither has what the reader already knew.
+It doubles the reader agents.
 
 ## Scoring
 
@@ -60,39 +59,31 @@ Right answers over questions, and then the delta against the no-document arm. Be
 are not the score but predict it: steps taken, and how many readers departed from the documentation. A
 right answer found by reading the source is a documentation failure with a correct answer attached.
 
+On the planted question a reader in either arm is right when it says it cannot tell, and wrong when it
+answers with confidence; when both arms say so, the question adds nothing to the difference.
+
 Then give every wrong answer a cause — refuted, missing, placement, findability or harmful. The five are defined
 in Step 6 of [SKILL.md](../SKILL.md), the evidence rules behind `refuted` are in
 [truth.md](../../../references/truth.md), and the ledger entry in [ledgers.md](ledgers.md) records which one.
 `missing` is the one most easily mistaken for `findability`: if the answer is nowhere in the `.md` files,
 no path leads to it and no rewrite of the path will help.
 
-**Say when the instrument has no room.** A baseline of every question right cannot register an
+**Say when the instrument has no room.** A score of every question right cannot register an
 improvement; report that and stop rather than producing a number that cannot move. A zero can rise.
 
 ## Establishing this instrument's own noise floor
 
-Optional, and worth it once per project. Run the unchanged document through the same questions two or
+Optional. Run the unchanged document through the same questions two or
 three times under blinded version labels and count how many answers flip. That flip rate is **this**
-instrument's noise floor, and until it exists, "the score fell" in a re-measure is being judged against a
+instrument's noise floor, and until it exists, "the score fell" after a rewrite is being judged against a
 threshold borrowed from somebody else's benchmark. Six questions × two labels × three repeats is 36
 cheap calls.
 
-## Re-measuring after a rewrite
+## Each audit stands alone
 
-Same questions, same key, same entry file, same model. Change any of them and the two scores are not
-comparable; a new question set is a new measurement with a new baseline, not a result.
-
-Three ways a rewrite fails the re-measure:
-
-- the score falls by more than the measured noise floor, or by anything at all if no floor was measured
-- a control question that passed now fails
-- a claim confirmed before is refuted now, which means the rewrite introduced a false statement
-
-## Keeping the number as a regression test
-
-A score sitting in the audited repository turns documentation rot into a failing check: the text drifts,
-the number falls, and the fall is the refusal. Storing it there requires the user's word, because it
-means writing into their tree. The run file keeps it either way.
+An audit takes no earlier audit as input, and a later one writes questions of its own. A before and after
+on the same questions is `rewrite`'s, inside its own run: given this report, it asks these questions of the
+text as it was and of its own, [its Step 2b](../../rewrite/SKILL.md#step-2b-the-questions-and-the-text-before).
 
 ## What is measured and what is not
 

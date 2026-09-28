@@ -91,11 +91,10 @@ This route exposes the skill as `entrust:codex`, the modes as `/entrust:orchestr
 wrapper every Codex run goes through as `entrust:codex-agent`.
 
 The same two steps from a shell: `claude plugin marketplace add Nowely/agent-skills`, then
-`claude plugin install entrust@nowely`. To update, refresh the marketplace clone and
-then the plugin, and restart Claude Code:
+`claude plugin install entrust@nowely`. To update, update the plugin, which refreshes
+the marketplace clone itself, and restart Claude Code:
 
 ```bash
-claude plugin marketplace update nowely
 claude plugin update entrust@nowely
 ```
 

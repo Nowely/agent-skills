@@ -1,8 +1,8 @@
 # Who reads this
 
-The profile does two jobs. Here it chooses the questions the measurement asks. In `rewrite`, given this
-run's directory, it is who the writer writes for. One artifact, both times, which is why it is written
-once and carried in the run file rather than re-derived.
+The profile does two jobs. Here it chooses the questions the measurement asks. In `rewrite`, given the
+audit's report, it is who the writer writes for. One artifact, both times, which is why it is written
+once and carried in the report rather than re-derived.
 
 ## Where to get it
 

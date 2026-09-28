@@ -5,6 +5,12 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Fixed
+
+- The README's update step is one command, `claude plugin update entrust@nowely`. It refreshes the marketplace
+  itself: on 2026-09-28 it found terse 0.4.0 with no separate `claude plugin marketplace update nowely`, which the
+  README asked for first.
+
 ### Changed
 
 - **The coordinator approves a signal to a process its agent started, and a `codex sandbox` check the plan

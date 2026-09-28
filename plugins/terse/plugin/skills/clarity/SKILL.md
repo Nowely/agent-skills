@@ -17,7 +17,7 @@ when_to_use: >-
   what the text says, what supports it, and how it fits its destination. This includes feedback on a
   diff, text beside code, and a change note. Read a genre note only when that genre is at hand.
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 license: MIT
 ---
 
@@ -55,14 +55,19 @@ Ask when it matters; no line has to satisfy all six.
 - Can this text be read, copied, or forwarded in its destination without missing context or an
   unexplained internal label?
 
-For a later objection, follow the [owner-feedback brief](../../references/roles.md#13-owner-feedback).
+When the reader disputes a fact, recheck it at its source before you concede or hold, and say what the
+recheck showed. For an exchange of objections, follow the
+[owner-feedback brief](../../references/roles.md#13-owner-feedback).
 
 ## Genres and larger texts
 
 Open the relevant note when writing a [code comment](../../references/genres/code-comments.md),
 [commit title](../../references/genres/commit-title.md),
+[review comment](../../references/genres/review-comment.md),
 [PR description](../../references/genres/pr-description.md),
 [team message](../../references/genres/team-message.md),
+[ticket or issue](../../references/genres/ticket.md),
+[interface text or error message](../../references/genres/ui-text.md),
 [relayed result](../../references/genres/relayed-result.md), or
 [agent brief](../../references/genres/agent-brief.md).
 
