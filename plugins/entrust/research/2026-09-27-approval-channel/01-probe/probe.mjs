@@ -27,10 +27,11 @@ fs.writeFileSync(path.join(home, "config.toml"), `model = "${cfg.model}"\n`);
 const config = [
   ["web_search", "disabled"],
   ["permissions.entrust_read.extends", '":read-only"'],
-  ["permissions.entrust_read.filesystem", '{":tmpdir"="write"}'],
+  ["permissions.entrust_read.filesystem", cfg.fsToml ?? '{":tmpdir"="write"}'],
   ["permissions.entrust_read.network", "{enabled=true}"],
   ["default_permissions", '"entrust_read"'],
-  ["model_reasoning_effort", cfg.effort]
+  ["model_reasoning_effort", cfg.effort],
+  ...(cfg.extraConfig ?? [])
 ];
 const args = ["--strict-config", ...config.flatMap(([k, v]) => ["-c", `${k}=${v}`]), "app-server"];
 log("spawn", { cmd: "codex", args, CODEX_HOME: home });
@@ -79,7 +80,7 @@ function sampleTree() {
 const sampler = setInterval(sampleTree, 500);
 
 const items = new Map();      // itemId -> item (from item/started / item/completed)
-let turnDone = null, errorsSent = 0, approvalsSeen = 0;
+let turnDone = null, errorsSent = 0, approvalsSeen = 0, permGrants = 0;
 const norm = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
 function commandMatches(cmd) {
   const c = norm(cmd), want = norm(cfg.allowCommand);
@@ -124,6 +125,16 @@ async function handle(msg) {
   note(`server request ${msg.method} id=${msg.id}`);
   if (msg.method === "item/commandExecution/requestApproval") {
     approvalsSeen++;
+    const add = msg.params?.additionalPermissions;
+    if (add) {
+      const ps = [...(add.fileSystem?.entries ?? []).map((e) => (e?.path?.type === "path" ? e.path.path : null)),
+        ...(add.fileSystem?.write ?? []), ...(add.fileSystem?.read ?? [])];
+      const ok = Boolean(cfg.permGrantRoots) && ps.length > 0 && !add.network?.enabled
+        && ps.every((q) => q && cfg.permGrantRoots.some((r) => q === r || q.startsWith(r + "/")));
+      note(`command approval WITH additionalPermissions ${JSON.stringify(add)} -> ${ok ? "accept" : "decline"}`);
+      return reply({ decision: ok ? "accept" : "decline" });
+    }
+    note(`command approval WITHOUT additionalPermissions (escape) ${msg.params?.command}`);
     if (cfg.closeOnCommand && norm(msg.params?.command).includes(cfg.closeOnCommand)) {
       note(`leaving request id=${msg.id} unanswered; closing stdin in ${cfg.closeDelaySec}s`);
       setTimeout(() => shutdown("stdin close with an approval request pending"), cfg.closeDelaySec * 1000);
@@ -146,7 +157,32 @@ async function handle(msg) {
     if (cfg.mode === "accept" && await fileChangeMatches(msg.params?.itemId)) { note("accept fileChange"); return reply({ decision: "accept" }); }
     note("declining fileChange"); return reply({ decision: "decline" });
   }
-  if (msg.method === "item/permissions/requestApproval") { note("declining permissions"); return reply({ permissions: { fileSystem: null, network: null } }); }
+  if (msg.method === "item/permissions/requestApproval") {
+    approvalsSeen++;
+    const fsReq = msg.params?.permissions?.fileSystem ?? null;
+    const paths = [];
+    let shapeOk = true;
+    for (const e of fsReq?.entries ?? []) {
+      if (e?.path?.type === "path" && (e.access === "write" || e.access === "read")) paths.push(e.path.path); else shapeOk = false;
+    }
+    for (const p of [...(fsReq?.write ?? []), ...(fsReq?.read ?? [])]) paths.push(p);
+    const inside = (p) => (cfg.permGrantRoots ?? []).some((r) => p === r || p.startsWith(r + "/"));
+    note(`permissions request paths ${JSON.stringify(paths)} network ${JSON.stringify(msg.params?.permissions?.network ?? null)}`);
+    // arc policy: grant only the combination measured safe (objectdb directory, optionally with the sync
+    // file and files inside objectdb), or the sync file alone. A partial file-level grant inside objectdb
+    // could let arc's cache re-creation delete index.dat while other files still fail to open.
+    const OBJ = "/Users/ruliny/.arc/store/.arc/objects/objectdb", SYNC = "/Users/ruliny/.arc/store/.arc/sync";
+    const arcSafe = paths.length > 0 && paths.every((q) => q === OBJ || q === SYNC || q.startsWith(OBJ + "/"))
+      && (paths.includes(OBJ) || paths.every((q) => q === SYNC));
+    if (cfg.permPolicy === "arc") note(`arc grant policy: ${arcSafe ? "safe, granting" : "not the measured-safe set, declining"}`);
+    if ((cfg.permPolicy === "arc" ? arcSafe : (cfg.permGrantRoots && paths.every(inside))) && shapeOk && paths.length) {
+      const grant = { permissions: { fileSystem: fsReq, network: null }, scope: cfg.permScope ?? "turn" };
+      note(`granting ${JSON.stringify(grant)}`);
+      permGrants++;
+      return reply(grant);
+    }
+    note("declining permissions"); return reply({ permissions: { fileSystem: null, network: null } });
+  }
   if (msg.method === "applyPatchApproval" || msg.method === "execCommandApproval") return reply({ decision: "abort" });
   if (msg.method === "mcpServer/elicitation/request") return reply({ action: "decline" });
   replyError(-32601, `${msg.method} is not supported by the probe`);
@@ -181,7 +217,7 @@ const hardStop = setTimeout(() => shutdown(`maxRunSec ${cfg.maxRunSec} reached`)
 try {
   const init = await request("initialize", {
     clientInfo: { name: "Claude Code", title: "entrust-probe", version: "0.0.0" },
-    capabilities: { experimentalApi: false, requestAttestation: false,
+    capabilities: { experimentalApi: cfg.experimentalApi ?? false, requestAttestation: false,
       optOutNotificationMethods: ["item/reasoning/summaryTextDelta", "item/reasoning/summaryPartAdded", "item/reasoning/textDelta", "item/plan/delta"] }
   });
   note(`userAgent ${init?.userAgent}`);
@@ -192,7 +228,8 @@ try {
     "Do not use web search.",
     "You have network access: use it for what is not in this checkout, keep to the hosts this task names, and cite what you fetched.",
     "If a command cannot run, record it in one line — the command, whether it started, its exit status if there was one, and the exact diagnostic — then continue. Write \"unknown\" for what you could not observe rather than inferring it.",
-    "State uncertainty plainly rather than guessing; an honest 'I could not determine this' is useful."
+    "State uncertainty plainly rather than guessing; an honest 'I could not determine this' is useful.",
+    ...(cfg.devExtra ? [cfg.devExtra] : [])
   ].join(" ");
   const th = await request("thread/start", { cwd: cfg.cwd, model: cfg.model, approvalPolicy: "on-request",
     approvalsReviewer: "user", developerInstructions, serviceName: "claude-code-entrust-probe" });
