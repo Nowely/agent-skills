@@ -49,7 +49,6 @@ There is no separate switch for this plugin skill; use `/plugin` to disable the 
 ### Update
 
 ```bash
-claude plugin marketplace update nowely
 claude plugin update terse@nowely
 ```
 
