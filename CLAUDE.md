@@ -21,6 +21,9 @@ are `<name>@X.Y.Z`.
   a whole under `research/<date>-<slug>/`. Every iteration of a document is its own numbered file, never
   overwritten; a round is frozen once its critics launch; `rounds.md` beside them records the findings and
   the regression count of each round.
+- **Everything gathered for research is private by default.** A tracked file carries only what the owner has
+  already made public or would publish on this repository's front page; a detail private only in combination
+  with public ones is private.
 - **Frozen blocks**: `plugins/terse/plugin/references/writing-rules.md` and
   `curse-of-knowledge.md` carry the SHA-256 of their own text. Check it after any edit or move nearby; a
   change to the text changes the measurement it was made under, so the SHA line and the note beside it
