@@ -7,30 +7,86 @@ forensics remain in the repository references and release notes.
 
 ### Added
 
-- **An approval channel.** `agent-run.mjs --new --approvals` makes `<DIR>/approvals`, and `--run` passes it
-  to the driver as `--approval-dir`; a command request or a file change the agent's rights do not cover is
-  then written whole to the mailbox instead of declined at once, from the root thread's own turn or from a
-  subagent thread the root announced (Codex's own "внуки", the owner's principle 4), and the turn waits with
-  no deadline by default until `--decide ID --accept|--decline` answers it or the agent is stopped;
-  `--approval-timeout S` stays as an optional bound for headless runs and the suites. `--pending` prints
-  each open request whole — thread, cause, cwd, reason, the writable roots, the command or the file-change
-  list — between markers, so the coordinator reads it before deciding: the command itself sits between
-  `COMMAND<<TOKEN` and `COMMAND>>TOKEN`, a fresh twelve-hex-character token drawn for that one print and
-  never present in the command, and every other field is escaped onto its own line; `--pending` also lists
-  `STALE=<id>` beside `LATE=` and `ORPHANED=`, for a decision file that was not its request's own.
-  `--decide` refuses an id `pending` does not list ("is not waiting") and a stale decision already in the
-  way, and never runs a second time on the coordinator's word. `--new --approvals` checks that both
-  `--report-file` and the agent directory lie strictly inside the state directory, and refuses a mailbox
-  placed under one of the driver's own subtrees there (`tmp/`, `home/`, `locks/`, `answers/`, `jobs/`,
-  `worktrees/`, `pasted/`); a mailbox writing itself under `reports/<run>` or an orchestrate run directory
-  is fine, since neither is one of those. A request the mailbox itself cannot write is settled at once as
-  expired, `why: "mailbox write failed: <error>"`, and an accept reaches the server only once that
-  settlement record has landed. The orchestrate page's `## Approvals`
-  section states the owner's rule: approve what is non-destructive and in the plan's direction, take the
-  rest to the owner while the turn waits, decline and name it in a headless run, approve nothing unread. Why:
-  every request was declined by default, so a plan that needed `arc status` or a script the agent wrote for
-  its own task failed silently, and the owner's principle is that a non-destructive request in the plan's
-  direction should not need a second turn to ask for it by hand.
+- **An approval channel, with no flag of its own.** `agent-run.mjs --new` makes `<DIR>/approvals` beside the
+  prompt for every agent it launches, not only ones asked for by a flag, and `--run` always hands the driver
+  `--approval-dir` for it; the launch-only form still gets no mailbox, so a run nobody attends (swarm's own
+  launches) is declined at once as before. `--new` needs the state directory to check the mailbox's
+  containment before the agent's directory even exists — `CLAUDE_PLUGIN_DATA` on the call, or
+  `ENTRUST_STATE_DIR` — and refuses without it. `--approval-timeout` is gone with it: the driver's own
+  `LIMITS.APPROVAL_TIMEOUT_S` is a constant, 1800 seconds, the owner's figure of thirty minutes — three
+  times the coordinator's longest blind spot and short enough that a run nobody attends still delivers its
+  report within the hour; the idle guard pauses for as long as any request stays open, so the two clocks
+  never compete. Neither flag had a sentence naming who would set it and why the default could not decide,
+  and CLAUDE.md now carries the rule that a flag without one goes unbuilt (2026-09-28). A command request, a
+  file change the rights do not cover, a permissions request (the model's own `request_permissions` tool) or
+  a command approval carrying added paths is offered through the mailbox, from the root thread's own turn or
+  a subagent thread the root announced; the driver's own words for what an accept does are now: "An accepted
+  command runs with no sandbox, as you; an accepted widening — a request for paths or the network rather
+  than to leave the sandbox — runs the command inside the sandbox with the paths added." `--run` hands a
+  pending request straight back instead of waiting on it silently: it returns as soon as one is pending,
+  printing what `--pending` would for it and ending in `REQUESTS=`, `WAITING=` and `REPORT=`, so the
+  wrapper's own hand-back may be that waiting result instead of the nine status lines; the coordinator
+  decides with `--decide ID --accept|--decline` and sends the wrapper the very same message block again,
+  which `--run` picks up where it left off. The driver runs the launched turn under a detached keeper so a
+  hand-back does not end it: a hard kill of the wrapper's task, or a `SIGKILL` of the launcher, no longer
+  reaches it, only the forwarded `SIGTERM` does. The keeper's own exit marker still tells the two cases
+  apart: on `SIGTERM`, `SIGINT` or `SIGHUP` the driver's own handler catches the signal and exits with its
+  own chosen code — 1 once a thread exists, the turn `interrupted` — so the marker holds that code, not the
+  signal; only an uncatchable signal (`SIGKILL`, a crash) bypasses the handler and leaves the marker holding
+  128 plus the signal number (137 for `SIGKILL`), and a request still open at that moment is left
+  `ORPHANED` in the mailbox, read from `--pending` once the marker exists. `--pending` prints every request the same way it always
+  did — thread, cause, cwd, reason, the writable roots, the command or the file-change list, between
+  markers — and a widening's profile as one `ACCESS=<access> <type>:<value>` line per filesystem entry and
+  `NETWORK=on|off|none`; `REPEAT_OF=<id>` names an earlier request you declined that a re-ask for other
+  paths follows. `--new` checks that both the report and the agent's directory lie strictly inside the state
+  directory, and refuses a mailbox placed under one of the driver's own subtrees there (`tmp/`, `home/`,
+  `locks/`, `answers/`, `jobs/`, `worktrees/`, `pasted/`); a mailbox writing itself under `reports/<run>` or
+  an orchestrate run directory is fine, since neither is one of those. A request the mailbox itself cannot
+  write is settled at once as expired, `why: "mailbox write failed: <error>"`, and an accept reaches the
+  server only once that settlement record has landed. The orchestrate page's `## Approvals` section states
+  the owner's rule: approve what is non-destructive and in the plan's direction, prefer a widening to an
+  escape when either would do, take the rest to the owner while the turn waits, decline and name it in a
+  headless run, approve nothing unread. Why: every request was declined by default, so a plan that needed a
+  tool's own state file or a script the agent wrote for its own task failed silently, and the owner's
+  principle is that a non-destructive request in the plan's direction should not need a second turn to ask
+  for it by hand, without teaching the driver the name of a single tool.
+- **The widening runs under two Codex features the driver turns on itself.** `codex features list`, probed
+  once per run (bounded 5 seconds, the process group killed if it does not return in time), and where it
+  names both `request_permissions_tool` and `exec_permission_approvals` — under development and off by
+  default on 0.155.1 — the driver sends `-c features.request_permissions_tool=true` and
+  `-c features.exec_permission_approvals=true`, at both levels; without both names the model has no tool to
+  ask for a path at all (measured 2026-09-28, Opus P1: three turns with the features off, across three
+  standing-instruction variants, each ran the tool into "Operation not permitted" and asked for nothing,
+  neither a path nor an escape). `initialize` also asks for `experimentalApi: true`: without it, the paths a
+  command approval would add are invisible to the client and the approval cannot be told from a true escape;
+  with it, the same shape of approval carries `additionalPermissions` and an accept runs the command inside
+  Seatbelt with the paths added, never outside one (measured 2026-09-28). Three checks watch the drift an
+  under-development feature carries: the fidelity handshake replays the driver's exact `spawnArgs` and
+  asserts the server's own `warning` notification naming the two features; the rollout's head carries the
+  availability line while they are on; and the report keeps `featuresRequested`, `serverWarnings` (the
+  server's own warnings, twenty at most, kept unsuppressed) and `experimentalApi`. Only where both features
+  are actually sent do the standing instructions gain a steering paragraph — the driver's own words: "Only
+  with both sent do the standing instructions tell the model to ask for the exact path a failing tool names,
+  and to ask to leave the sandbox only when no path would do"; ask for the exact path a failing tool needs
+  before asking to run outside the sandbox, and ask to run outside it only when no path would make the
+  command succeed — softened from an outright ban after Opus P1 measured that the model still asks for the
+  path first under the softer wording and only escapes when no path could fix the failure (2026-09-28).
+  Where the run's codex lacks either feature the standing instructions are as they were before this channel,
+  and the escape is the only path there is. `--decide --accept` on a permissions
+  request copies the request's own `fileSystem` and `network` at `scope: "turn"`, never more than was asked
+  and never `session`: the coordinator cannot grant a tool's whole layout, only what it named for itself;
+  `sandboxWidened` records one `{itemId, permissions, scope, at}` per grant, `turn` for a permissions request
+  and `command` for a command approval that carried added paths. An entry is refused unoffered before any of
+  this: `why: "protected root"` for one naming `~/.codex`, the state directory, the home or the filesystem
+  root, and, new in this round, `why: "unsupported entry kind"` for one that names a glob pattern or any
+  special kind other than a root — the filter reads the request's legacy read/write lists as well as its
+  `entries`, so neither shape hides an entry from it. Declining a permissions request is not the
+  end of it: the model re-issues the same need as a command approval, and the driver itself declines one
+  whose added paths lie wholly inside a permissions request you declined in the same turn (that turn only:
+  a later turn's re-ask is offered fresh), naming the
+  earlier decision in `why` and `repeatOf`; a re-ask for other paths is offered fresh. Nothing here names a
+  tool: a request that cannot be answered by a path stays on the escape it always had, decided on the plan's
+  own terms.
 
 ### Changed
 
@@ -53,14 +109,6 @@ forensics remain in the repository references and release notes.
   unmeasured. A subagent thread's own request, offer or auto-yes alike, lives only while that thread's own
   turn stays open; once it closes, a further request from it is declined at once as `"turn ended"` or
   `"not the current turn"`.
-- **`WRITABLE:` at read level, for a tool's own store.** A read agent's `--writable` may now name a
-  directory or a regular file the way a write agent's already could, and the driver adds it to the read
-  profile beside `$TMPDIR`. Measured for `arc`: under the read profile it opens its object store read-write
-  and fails outright; granting write on `~/.arc/store/.arc/objects/objectdb` and `~/.arc/store/.arc/sync`
-  makes `status`, `log`, `show --stat` and `diff --stat` exit 0 with the unsandboxed baseline's shape
-  (01-probe-2.md, Q6, level 3) — measured only under `codex sandbox`, not through the app-server or under
-  this machine's managed configuration. The codex page's Rights and header-field tables name the shape;
-  never a repository.
 - **The report's `escalations` array, per entry.** Exit 6 is now "a request was declined or expired
   unanswered", never one that was accepted, matching the help's own wording; `detail` carries the server's
   wording, the command, or the joined file-change list whole, no longer clipped to 200 characters; every

@@ -78,10 +78,10 @@ test("the tier table pairs all eight model names, one tier per row",
 
 // ------------------------------------------------------------------ A: what the mode is
 
-test("A1 the mode is prompt only, one launcher flag aside",
-  "the mode adds no mechanism to maintain beyond the one flag that arms a channel; asking for a new header field would still change its scope",
+test("A1 the mode is prompt only, no flag of its own",
+  "the mode adds no mechanism to maintain: every agent already has a mailbox, so the mode names no flag; asking for a new header field would still change its scope",
   () => says(
-    "The mode is prompt only: no header field, the agent's own prompt file and the driver's state directory unchanged; one launcher flag, `--approvals`, arms the coordinator's channel to an agent, so it can ask instead of being declined at once.",
+    "The mode is prompt only: no header field, the agent's own prompt file and the driver's state directory unchanged; every agent has a mailbox, so it can ask instead of being declined at once.",
   ));
 
 test("A3 the sibling is loaded first and this page re-cuts only what the mode changes",
@@ -346,7 +346,7 @@ test("F6 every alive Codex agent is waited on by one poll task that wakes once p
     "while :; do for d in <DIR>...; do [ -s \"$d/exit\" ] && { echo \"DONE=<id>\"; exit 0; }; [ -s \"$d/approvals/pending\" ] && { echo \"ASK=<id>\"; exit 0; }; done; sleep 5; done",
     "one task for the whole batch, not one per agent, and it exits the moment it prints either marker rather than looping on",
     "call `TaskOutput(<poll_task_id>, block: true, timeout: 600000)` on it, again while any agent is alive",
-    "`DONE=<id>` is that agent's own exit marker; `ASK=<id>` is that agent's own request waiting on your decision: read it whole with `--pending`, decide it with `--decide ID --accept|--decline`, then re-arm the same poll task — launch it again — and keep waiting",
+    "`DONE=<id>` is that agent's own exit marker; `ASK=<id>` is that agent's own request waiting on your decision, and the wrapper's own hand-back may carry the same waiting block instead of the nine lines: read it whole with `--pending` or from that hand-back, decide it with `--decide ID --accept|--decline`, send the wrapper the very same message block again, then re-arm the same poll task — launch it again — and keep waiting",
     "an armed agent runs in the background throughout, like any other",
     "For a Claude agent, call the same `TaskOutput` on its Agent task, again while it runs, and read its return when it finishes",
   ));
@@ -363,10 +363,10 @@ test("F7 the approval rule: run as you with no sandbox, approve nothing unread, 
   ));
 
 test("F8 the synthesis rule: one sentence per cause and what avoids it next time",
-  "the four causes are what the driver actually recorded, so a synthesis that skips one leaves the run's own why unexplained",
+  "the four causes are what the driver actually recorded, so a synthesis that skips one leaves the run's own why unexplained; sandboxWidened is what a widening's own cause points a reader at, and neither the sandbox clause nor the rest of the page names a tool",
   () => says(
     "When the run had approvals, the synthesis says why in one sentence per cause and what avoids it next time: `rights`, the driver answered and nothing changes",
-    "`sandbox`, the tool needs a root or a setting the plan can grant",
+    "`sandbox`, the tool needed a path or a setting the plan can grant — `sandboxWidened` names what it gained, or a certificate failure inside the sandbox is the fetch run outside it",
     "`policy`, Codex asks by its own rule and nothing on our side changes it",
     "`outside`, the plan needs a `WRITABLE:` line or a different agent for that file",
   ));
@@ -378,6 +378,13 @@ test("F8b --pending's markers are named exactly, and STALE= beside LATE=/ORPHANE
     "TOKEN a fresh twelve-hex-character run every print, never itself inside the command",
     "a `STALE=<id>` line beside `LATE=` and `ORPHANED=` names a decision file that was not this run's own",
     "`RECEIPT=`'s `stale=N` counts them the same way `late=N` counts a valid one the driver did not take",
+    "`REPEAT_OF=<id>` on an offered request names the earlier request you declined that this one follows, when its paths are not wholly inside it",
+  ));
+
+test("F8c prefer a widening to an escape, and a tool's own state under the home is approvable",
+  "the owner's rule that a sandboxed grant beats an unsandboxed one has to survive as a sentence a coordinator reads before deciding whether to accept a request; without it a coordinator has no reason to pick the widening over the escape when both are on offer",
+  () => says(
+    "Prefer a widening to an escape when either would do — a widened command stays sandboxed everywhere else — and approve a write into a tool's own state or cache under the home when the path is not a repository, not `~/.codex` and not the state directory.",
   ));
 
 test("F9 never launch under another state directory while an armed agent is alive",

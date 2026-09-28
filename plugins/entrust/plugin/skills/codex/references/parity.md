@@ -25,7 +25,7 @@ and one qualification.
 | a schema-validated return | `--output-schema <file>` | spends one corrective turn before exit 13; see `--help` |
 | a short return plus transcript | `--brief` | full generated text remains at `answerPath`; see `--help` |
 | a review pass | [adversarial-review.md](adversarial-review.md) plus [`review-output.schema.json`](../schemas/review-output.schema.json) | one prompt agent under a strict schema, grounded ship/no-ship |
-| a permission prompt | a command request waits for the coordinator's decision when the agent was armed with `--approvals`; a file change inside the agent's writable roots is accepted by the driver itself; everything else is declined and recorded; exit 6 only when a request was declined or expired unanswered | inspect `escalations` and the answer before judging completeness; a denied command need not have requested approval |
+| a permission prompt | a command request, a file change outside the agent's writable roots, or a widening for named paths waits for the coordinator's decision — every agent has a mailbox; a file change inside the agent's writable roots is accepted by the driver itself; everything else is declined and recorded; exit 6 only when a request was declined or expired unanswered | inspect `escalations` and the answer before judging completeness; an accepted widening runs the command inside the sandbox with the paths added, never outside one; a denied command need not have requested approval |
 
 Settle rights through [SKILL.md's rights rules](../SKILL.md#rights).
 

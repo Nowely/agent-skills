@@ -97,17 +97,24 @@ yourself and wait for it — no driver code checks this for you.
 
 The prompt, one Bash call, the heredoc quoted so nothing in it expands:
 
-    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --new --report-file "<REPORT>" <<'PROMPT'
+    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --new --report-file "<REPORT>" <<'PROMPT'
     MODEL: terra
     TASK: …
     CHECK: …
     RETURN: …
     PROMPT
 
-An agent the plan lets ask for approval is made with `--new --approvals` in place of plain `--new`, which
-arms the channel and prints `APPROVALS=<dir>`; that call also needs `CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}"`
-set ahead of it on the command line, the way the run call below already carries it, because arming checks the
-mailbox's containment against that variable before the agent's directory exists, where plain `--new` never needed it.
+`--new` makes every agent's mailbox beside its prompt, no flag needed, and needs that variable ahead of it on
+the command line, the way the run call below already carries it, because it checks the mailbox's containment
+against the state directory before the agent's directory exists; without it `--new` refuses.
+
+`--run`'s one call may hand back a **waiting result** instead of the nine status lines: a request is
+pending, and it returns at once with what `--pending` would print for it, ending in `REQUESTS=`, `WAITING=`
+and `REPORT=`. The wrapper hands it back exactly as it hands back any result — step 2 reruns only while a
+result has no `REPORT=` line, and the waiting result carries one — so read it whole, decide under the plan's
+own rule with `--decide ID --accept|--decline`, then send the wrapper the very same message block again:
+`--run` picks the run back up and waits for the next request or the run's own end. A session with no message
+tool continues the same way with a second wrapper given the same command.
 
 The Agent call, its message this block:
 
@@ -170,7 +177,7 @@ Choose the smallest `RIGHTS` that can complete and check the work:
 
 | Prompt header | Codex may | Settle first? |
 | --- | --- | --- |
-| `RIGHTS: read [<dir>]` or no header | read any readable path, reach the network, run commands, write `$TMPDIR` and a settled `WRITABLE:` root for a tool's own store — a directory or a regular file, never a repository; arc's object cache and sync file are the measured example, under `codex sandbox` only, unmeasured through the app-server; the sandbox refuses every other write, and an approval request in its place is declined and recorded in `escalations` | no |
+| `RIGHTS: read [<dir>]` or no header | read any readable path, reach the network, run commands, write `$TMPDIR`; the sandbox refuses every other write, and a command escape, a file change or a widening for named paths in its place is offered or declined and recorded in `escalations` | no |
 | `RIGHTS: worktree <repo>` | write in a driver-managed detached tree | say that a worktree will be made |
 | `RIGHTS: write <dir>` | write under the live directory | yes; this chooses the blast radius |
 
@@ -206,7 +213,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | --- | --- | --- |
 | `RIGHTS:` | `read [<dir>]`, `worktree <repo>`, `write <dir>` | first, or not at all: no header is a read agent in the current directory |
 | `NETWORK:` | `no` | this agent's own commands must not reach the network; no line leaves it the egress every level has, and `WEB_SEARCH:` is untouched either way |
-| `WRITABLE:` | `<dir>`, repeatable | a write agent needs one more root than the directory it was given; at read level, only for a tool's own store, never a repository |
+| `WRITABLE:` | `<dir>`, repeatable | a write agent needs one more root than the directory it was given |
 | `RESUME:` | `<threadId>`, `last` | this agent continues an earlier thread instead of opening one |
 | `EXPECT:` | `<regex>` | the answer is only evidence if a command matching it ran AND succeeded; a matching command that exited non-zero does not count, and none matching is exit 5. Do not point it at a check whose failure IS the finding |
 | `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>` | the answer must parse as one JSON object |
@@ -303,13 +310,34 @@ write its own would be grading itself. Declare gates on the command line instead
   the request arrived, and a plain directory the driver walked that becomes a symlink before the server
   writes is followed by the server, not caught here — whether the server itself re-resolves the swap is
   unmeasured.
+- A widening — a permissions request, or a command approval carrying the paths it would add — is a third
+  kind of request beside a command escape and a file change: `--pending` prints its `ACCESS=` and
+  `NETWORK=` lines after the usual fields. The driver's own words for what an accept does are exact: "An
+  accepted command runs with no sandbox, as you; an accepted widening — a request for paths or the network
+  rather than to leave the sandbox — runs the command inside the sandbox with the paths added." An accepted
+  widening adds to `sandboxWidened`, one `{itemId, permissions, scope, at}` per grant, `scope` `turn` for a
+  permissions request and `command` for a command widening; `escalations` carries `permissions` (what was
+  asked), `granted` (whether it was given) and `repeatOf` (the earlier request a re-ask follows, where its
+  paths are not wholly inside it). Declining a permissions request is not the end of it: the model re-issues
+  the same need as a command approval, and the driver itself declines one whose paths lie wholly inside a
+  permissions request you declined in the same turn — that turn only, a later turn's re-ask is offered
+  fresh — naming that decision in `why`. A request nobody
+  answers is declined as expired after thirty minutes and the turn goes on. A widening only arrives at all
+  where the run's codex advertises both permission features: short of that the model is never told to ask
+  for a path, so the standing instructions are as they were before this channel and the escape is the only
+  path there is. An entry naming a glob pattern, or any special kind other than a root, is refused unoffered
+  like a protected root, but with its own reason, `why: "unsupported entry kind"`.
 - Any other non-zero is a gate verdict on the run; read the answer before deciding what to do.
 - `receiptOk: false` on a run that claims success is a red flag; what the receipt proves and does not
   prove is in
   [environment-and-internals.md](references/environment-and-internals.md#receipt-validation-and-reporting).
 - Evidence of success is root-thread-only: a Codex subagent thread's commands are liveness, not evidence.
 - To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or send `SIGTERM` to the pid on the first line of `<DIR>/err.txt`:
-  the driver interrupts the turn, writes the report it had earned and sweeps the codex process group.
+  the driver interrupts the turn, writes the report it had earned and sweeps the codex process group. The
+  driver runs under a detached keeper, so a hand-back's waiting result does not end it: a hard kill of the
+  wrapper's task, or a `SIGKILL` of the launcher, no longer reaches it, only the forwarded signal does. After
+  a waiting result nothing else holds the driver: stop it with `--decide ID --decline` and the same `--run`
+  again, or `kill -TERM` that same pid.
 
 ## Prompt shape
 
