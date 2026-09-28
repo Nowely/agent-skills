@@ -101,7 +101,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { DRIVER, ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
+import { DRIVER, ROOT, SYSTEM_TMP, registry, runCases, summarize } from "./lib/harness.mjs";
 import {
   CODEX_SLUG, advisorBriefs, advisorPromptProblems, activationRecord, agentCalls, cardProblems, codexCalls,
   codexCommand, codexLoadProblems, isCodexCall, isTierModel, parseStream, planRecord, runProblems as checkRun,
@@ -112,10 +112,12 @@ import { parseReceipts } from "../plugin/skills/orchestrate/scripts/lint-draft.m
 const { cases: CASES, test } = registry();
 
 // Kept, never swept: RELEASING files these with the release notes, so they must outlive the process. That
-// is also why harness.tempDir is not used here, which removes its directories on exit.
+// is also why harness.tempDir is not used here, which removes its directories on exit. SYSTEM_TMP, not
+// os.tmpdir(): the harness has already pointed $TMPDIR at a swept directory of its own, and a state
+// directory under the $TMPDIR the driver inherits is refused, since the read level grants $TMPDIR.
 // Colons are legal in a path on both supported platforms and awkward in every shell that will open these,
 // so the ISO stamp keeps its order and loses its punctuation.
-const ART = path.join(os.tmpdir(), `orchestrate-live-${new Date().toISOString().replace(/[:.]/g, "-")}`);
+const ART = path.join(SYSTEM_TMP, `orchestrate-live-${new Date().toISOString().replace(/[:.]/g, "-")}`);
 const caseDir = (n, slug) => {
   const d = path.join(ART, `${n}-${slug}`);
   fs.mkdirSync(d, { recursive: true });
@@ -309,7 +311,8 @@ function runDirProblems(dirs) {
       if (inner.includes("agent")) {
         let four = [];
         try { four = fs.readdirSync(path.join(run, s.name, "agent")); } catch (e) { problems.push(`${path.basename(run)}/${s.name}/agent cannot be read: ${e.message}`); continue; }
-        const extra = four.filter((n) => !["prompt.txt", "out.json", "err.txt", "exit"].includes(n));
+        // approvals/ is the mailbox --new makes beside the prompt for every agent.
+        const extra = four.filter((n) => !["prompt.txt", "out.json", "err.txt", "exit", "approvals"].includes(n));
         if (extra.length) problems.push(`${path.basename(run)}/${s.name}/agent holds ${extra.join(", ")} beside the launcher's four files`);
       }
     }

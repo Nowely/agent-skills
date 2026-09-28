@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // Runs one Codex agent's driver for the entrust wrapper in one foreground call, and reads its status back.
 //
-//   node agent-run.mjs --new --report-file REPORT  < prompt      make the agent's directory beside REPORT, prompt from stdin
+//   node agent-run.mjs --new --report-file REPORT  < prompt      make the agent's directory and mailbox beside REPORT, prompt from stdin
 //   node agent-run.mjs --plan --run-dir RUN < rows             register the approved agent rows
-//   node agent-run.mjs --run --report-file REPORT                start the run, wait, print the status lines
+//   node agent-run.mjs --run --report-file REPORT                start the run, wait, print the status lines or the request waiting
 //   node agent-run.mjs --status --report-file REPORT             the status lines of a run, whatever its state
+//   node agent-run.mjs --pending --report-file REPORT            the approval requests waiting on a decision
+//   node agent-run.mjs --decide ID --accept|--decline [--why TEXT] --report-file REPORT   answer one
 //   node agent-run.mjs --report-file REPORT                      launch only (the exit status is the driver's)
-//   node agent-run.mjs --orphan --dir DIR --report-file REPORT   --run's own step: launch only, outside its caller's tree
+//   node agent-run.mjs --orphan --dir DIR --report-file REPORT   --run's own step: launch only, with the mailbox, outside its caller's tree
 //   --dir DIR names the agent's directory explicitly; without it, it is `agent/` beside REPORT
 //   node agent-run.mjs --help
 //
@@ -18,8 +20,10 @@
 // before the ceiling. On a fresh directory it starts the launch-only mode as a keeper and waits; on a
 // directory whose run is still going it waits; on a finished one it prints. A call that has waited
 // RETURN_MS prints RUNNING= where REPORT= would be and exits 0, and the wrapper runs the same command
-// again. Every path ends by printing the same nine lines to stdout, which is the tool result the wrapper
-// hands back, so nothing has to open a file.
+// again. Every other path ends by printing to stdout the nine status lines or, while the run waits on a
+// decision, the request itself; either is the tool result the wrapper hands back, and both end in a
+// REPORT= line, so nothing has to open a file. A call that hands a request back ends while the run goes
+// on under its keeper.
 //
 // Why a keeper, and why the early return: when a foreground subagent ends, the harness sends SIGTERM to
 // its backgrounded command's process group and to every descendant it finds by ppid, then SIGKILL
@@ -32,7 +36,8 @@
 //
 // What it keeps: it NEVER opens prompt.txt except as the driver's argument, because a relay that reads a
 // prompt can rewrite it (incidents.md, "A relay on a small model"); it passes the driver exactly the two
-// flags the page used to and the environment as it found it, CLAUDE_PLUGIN_DATA included; the driver's
+// flags the page used to, plus the mailbox under --run, and the environment as it found it,
+// CLAUDE_PLUGIN_DATA included; the driver's
 // own stderr is what lands in DIR/err.txt, its pid line the first line of the whole pid-line shape (a preload's
 // output may stand before it). DIR is `agent/` beside the report, made
 // by --new at 0700 with the prompt it read on stdin at 0600, so one run's four files (prompt.txt on
@@ -55,8 +60,19 @@
 // own claim, and one made where the claim is another launch's, or where no DIR is named at all (a REPORT
 // that is not absolute and no --dir), goes to stderr alone (measured 2026-09-27: a relative REPORT
 // launched into a live run's directory appended to its err.txt and wrote its exit marker).
+//
+// Every agent has a mailbox, DIR/approvals/, made by --new beside the prompt and handed to the driver by
+// --run's keeper; no flag a caller sets arms it, because nobody could say who would leave one off. The
+// launch-only form a caller runs itself hands it no mailbox: that caller (swarm) runs agents nobody is
+// there to answer, so their requests are declined at once as before. The keeper is the same launch-only
+// form, and --keeper, which only the orphan step passes, is what tells the two apart. --pending and --decide
+// are the caller's two hands on it, because a coordinator cannot write under the data directory itself
+// and must never hand-write a decision: --decide copies the run's identity out of the request file,
+// publishes by link(2) so one decision per request is all there can be, and reads the request again
+// afterwards to say whether the driver still took it.
 
 import { spawn, spawnSync } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -106,14 +122,17 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       records declared scope; it does not certify actual cost or live caps.
   node agent-run.mjs --new --report-file REPORT  < prompt
       Makes the agent's directory, agent/ beside REPORT (or --dir DIR), at 0700, puts the prompt read on
-      stdin through driver.mjs --check-prompt-file, and only on a pass makes it DIR/prompt.txt at 0600
-      and prints PROMPT=<path>. A refusal prints ERROR=<the driver's reason> and no PROMPT= line, exits
-      2 and leaves no prompt.txt: a --run finds nothing to start, and the same command with the prompt
-      corrected is the retry. A check that neither passes nor refuses is a fault in the driver, and
-      ERROR= says so, exit 2 the same way. Refuses (exit 2) a REPORT that is not absolute, an empty
-      prompt, and a directory that already holds a prompt: a relaunch gets a fresh report path. A
-      directory that holds a launch's exit, err.txt or out.json and no prompt (a --run came after a
-      refused --new) is refused the same way, with ERROR= naming the file: the path is spent.
+      stdin through driver.mjs --check-prompt-file, and only on a pass makes it DIR/prompt.txt at 0600,
+      makes its mailbox, DIR/approvals/, at 0700, and prints PROMPT=<path> and APPROVALS=<path>. A
+      refusal prints ERROR=<the driver's reason> and no PROMPT= line, exits 2 and leaves no prompt.txt:
+      a --run finds nothing to start, and the same command with the prompt corrected is the retry. A
+      check that neither passes nor refuses is a fault in the driver, and ERROR= says so, exit 2 the same
+      way. Needs the driver's state directory in ENTRUST_STATE_DIR, else CLAUDE_PLUGIN_DATA, absolute,
+      and REPORT and DIR both inside it, where no agent's sandbox can write a decision. Refuses (exit 2)
+      a REPORT that is not absolute, no state directory, a REPORT or a DIR outside it, an empty prompt,
+      and a directory that already holds a prompt: a relaunch gets a fresh report path. A directory that
+      holds a launch's exit, err.txt or out.json and no prompt (a --run came after a refused --new) is
+      refused the same way, with ERROR= naming the file: the path is spent.
       When RUN/plan.txt exists, REPORT must be RUN/<id>/report.json for a listed agent.
       RUN/<id>-<n>/report.json, n from 2 with no leading zero, continues listed <id>
       (a RESUME:, relaunch, or advisor's next question) once the previous link's
@@ -123,39 +142,86 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       One foreground call, idempotent; DIR is agent/ beside REPORT unless --dir names it, and a prompt
       not there yet is waited for up to ${PROMPT_WAIT_MS / 1000} s (a --new issued in the same turn).
       A fresh DIR: starts the launch-only mode below as a keeper in a session of its own, outside this
-      call's process tree, so the run outlives the call. Every call, the first and a rerun alike, then
-      waits for DIR's run: for the driver's pid line (up to ${PROMPT_WAIT_MS / 1000} s, or the lines say
-      ERROR=the driver did not start), then for the exit marker, and prints the status lines. A call
-      that has waited ${RETURN_MS / 1000} s prints them with RUNNING=pid <pid>, <n> s so far; run the same
-      command again in place of REPORT=, DRIVER_EXIT=running, and exits 0: this is the early return,
-      before the tool's ten-minute ceiling, the run goes on, and the same command again waits for it.
-      A DIR that already ran for this REPORT: prints. A DIR whose run is for another report path,
-      being born, running or ended, is refused on this call's own lines, the reason on ERROR=, and
-      nothing is written to DIR: the driver's pid line decides, by the whole path it names, and a run
-      whose line is not there yet is waited for. Always exits 0 once the lines are printed, a missing
-      DIR included; the driver's own status is the DRIVER_EXIT line. A signal it receives (SIGTERM,
-      SIGINT, SIGHUP) goes to the driver, the pid on its pid line in DIR/err.txt, which cuts the turn
-      and publishes; one that arrives before that line is delivered when it appears and names this
-      REPORT, and is dropped when it names another; one after the early return's deadline is not
-      forwarded.
+      call's process tree, so the run outlives the call; the keeper hands the driver the mailbox,
+      --approval-dir DIR/approvals (made there if an older --new left none). Every call, the first, a
+      rerun and a call continuing after a decision alike, then waits for DIR's run: for the driver's pid
+      line (up to ${PROMPT_WAIT_MS / 1000} s, or the lines say ERROR=the driver did not start), then for
+      the exit marker or a request waiting on a decision. It prints one of four results:
+        waiting — the run waits on your decision: for each request waiting, the lines --pending prints
+          for it (first line REQUEST=), then REQUESTS=<n>, WAITING=<id>[,<id>] and REPORT=<REPORT>.
+          The run goes on. Decide each with --decide, then run the same --run again: it waits for the
+          next result. A request whose decision is published and not yet taken is not handed back.
+        ended — the run is over: the nine status lines --status prints, first line DRIVER_EXIT=.
+        refused — the directory, the launch or the driver's own checks refused the run before a turn
+          (a mailbox outside the state directory among them): the nine lines, DRIVER_EXIT=2 or unknown,
+          the reason on ERROR=.
+        running — the call has waited ${RETURN_MS / 1000} s: the nine lines with DRIVER_EXIT=running and
+          RUNNING=pid <pid>, <n> s so far; run the same command again in place of REPORT=. This is the
+          early return, before the tool's ten-minute ceiling; the run goes on, and the same command
+          again waits for it.
+      The last line of the first three is REPORT=. A DIR that already ran for this REPORT: prints. A
+      DIR whose run is for another report path, being born, running or ended, is refused on this call's
+      own lines, the reason on ERROR=, and nothing is written to DIR: the driver's pid line decides, by
+      the whole path it names, and a run whose line is not there yet is waited for. Always exits 0 once
+      the lines are printed, a missing DIR included; the driver's own status is the DRIVER_EXIT line. A
+      signal it receives (SIGTERM, SIGINT, SIGHUP) goes to the driver, the pid on its pid line in
+      DIR/err.txt, which cuts the turn and publishes; one that arrives before that line is delivered
+      when it appears and names this REPORT, and is dropped when it names another; one after the early
+      return's deadline is not forwarded. After a waiting result no call holds the driver, so stop it
+      with --decide --decline and the same --run, or kill -TERM the pid on its pid line in DIR/err.txt.
   node agent-run.mjs --report-file REPORT [--dir DIR]
-      Launch only, the keeper --run starts: the same run without the wait's printing, exiting with the
-      driver's status. It claims DIR by creating DIR/err.txt before it writes anything there. Under its
-      own claim it refuses, exit 2 with the reason in DIR/err.txt and a DIR/exit of 2: a prompt.txt
-      that is not a regular file, and a REPORT that is not absolute (with --dir). Without a claim it
-      refuses on stderr alone, exit 2, nothing written: a DIR that is not one; a DIR whose exit marker
-      already exists, whose files are an earlier run's; and a DIR whose err.txt is already there, which
-      is another launch's claim, with the reason this launch would have recorded, if it had one.
+      Launch only: the same run without the wait's printing, exiting with the driver's status. Run by a
+      caller itself, it hands the driver no mailbox: every approval request is declined at once, since
+      no caller is waiting to answer. The keeper --run starts is this mode marked --keeper by the orphan
+      step, and hands the driver DIR/approvals. It claims DIR by creating DIR/err.txt before it writes
+      anything there. Under its own claim it refuses, exit 2 with the reason in DIR/err.txt and a
+      DIR/exit of 2: a prompt.txt that is not a regular file, a REPORT that is not absolute (with
+      --dir), and, for the keeper, a mailbox that cannot be made. Without a claim it refuses on stderr
+      alone, exit 2, nothing written: a DIR that is not one; a DIR whose exit marker already exists,
+      whose files are an earlier run's; and a DIR whose err.txt is already there, which is another
+      launch's claim, with the reason this launch would have recorded, if it had one.
   node agent-run.mjs --orphan --dir DIR --report-file REPORT
-      --run's own step: starts the launch-only mode in a session of its own and exits at once, so the
-      keeper's parent is gone before anything looks for it.
+      --run's own step: starts the launch-only mode, marked --keeper, in a session of its own and exits
+      at once, so the keeper's parent is gone before anything looks for it. --keeper is set by this step
+      alone: the launch-only default has to stay without a mailbox for the callers nobody answers, and
+      without the mark the keeper's driver would decline every request of a --run agent at once.
   node agent-run.mjs --status --report-file REPORT [--dir DIR]
       Prints nine lines: ${STATUS_LINES.join(", ")}. PATH is own where the
       driver's pid line names REPORT, the whole path, taken where the driver refused a path already
       there or could not publish, none otherwise or where the launch was refused. ANSWER is the whole
       answer on one line when it is at most ${ANSWER_MAX} characters, else a pointer to the report; ERROR is the report's
       error, else its turnError, else the launcher's own refusal; RECEIPT is turnStatus, receiptOk and
-      the model by its short name. Always exits 0; a missing report reads as unknown, never success.
+      the model by its short name, then, read from DIR/approvals with or without a report,
+      approvals=A/D/E/O (accepted, declined, expired, still open or orphaned) when any request was
+      offered, auto=N when the driver accepted file changes its rights covered, late=N for valid
+      decisions nobody took (its request was settled first, or the run ended with it open) and stale=N
+      for decision files that are not their request's, whenever they came. Always exits 0; a missing
+      report reads as unknown, never success.
+  node agent-run.mjs --pending --report-file REPORT [--dir DIR]
+      Prints each request waiting on a decision — one DIR/approvals/pending lists — as REQUEST=<id>,
+      THREAD=root or the subagent's path, METHOD=, KIND=, CAUSE= (sandbox: the same command had just
+      failed inside the sandbox, or the request is a widening; policy: no attempt was seen; outside: a
+      file change not shown inside the agent's roots), CWD=, REASON= (the agent's own), ROOTS= (the roots
+      the agent may write, "; " between them), DEADLINE= (an ISO time, or none), REPEAT_OF=<id> where a
+      command widening follows a permissions request you declined in the same turn, then FILES= for a
+      file change ("add /a; update /b -> /c", or unknown where no item named them) or the command: whole,
+      newlines kept, on the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, TOKEN drawn fresh for each
+      print and never in the command. A widening — a permissions request (no command block), or a
+      command carrying the paths it would add — then prints one ACCESS=<access> <type>:<value> per entry
+      (write path:/abs, read glob_pattern:<pattern>, write special:project_roots) and NETWORK=on, off or
+      none: a yes grants exactly those, the command running inside the sandbox with them added, for the
+      rest of the turn for a permissions request and for that command for the other. Every value outside
+      that block is one line: a backslash, a line break and every other control character in it written
+      as \\\\, \\n, \\r, \\t or \\uXXXX, and a ; inside a ROOTS or FILES item as \\;. Then LATE=<id> and
+      STALE=<id> as counted above and, once DIR/exit exists, ORPHANED=<id> for each request the run left
+      unanswered, then REQUESTS=<n>, the number still waiting. Always exits 0.
+  node agent-run.mjs --decide ID --accept|--decline [--why TEXT] --report-file REPORT [--dir DIR]
+      Publishes the decision for request ID as DIR/approvals/ID.decision.json at 0600, by link(2) over a
+      temp file, carrying the run identity copied from the request. Refuses (exit 2, REFUSED=ID and the
+      reason) an ID with no request, a run that is over, a request already settled, a request pending
+      does not list, a request already decided, naming that decision, and one with a stale decision in
+      the way. Then reads the request again: DECIDED=ID accept|decline and exit 0 while it was still
+      open, or LATE=ID and exit 3 when the driver settled it first — nothing ran on your word.
   node agent-run.mjs --help
 
   A REPORT that is not absolute, in each form:
@@ -167,7 +233,8 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
 `;
 
 function parse(argv) {
-  const o = { run: false, status: false, isNew: false, isPlan: false, amend: false, runDir: null, orphan: false, dir: null, report: null, help: false };
+  const o = { run: false, status: false, isNew: false, isPlan: false, amend: false, runDir: null, orphan: false, keeper: false,
+              dir: null, report: null, help: false, pending: false, decide: null, decision: null, why: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--help" || a === "-h") o.help = true;
@@ -178,10 +245,20 @@ function parse(argv) {
     else if (a === "--run-dir") o.runDir = argv[++i];
     else if (a === "--status") o.status = true;
     else if (a === "--orphan") o.orphan = true;
+    else if (a === "--keeper") o.keeper = true;
     else if (a === "--dir") o.dir = argv[++i];
     else if (a === "--report-file") o.report = argv[++i];
+    else if (a === "--pending") o.pending = true;
+    else if (a === "--decide") o.decide = argv[++i] ?? "";
+    else if (a === "--accept" || a === "--decline") {
+      if (o.decision !== null) return { error: "--accept and --decline: one decision per call" };
+      o.decision = a === "--accept" ? "accept" : "decline";
+    }
+    else if (a === "--why") o.why = argv[++i] ?? "";
     else return { error: `unknown argument: ${a}` };
   }
+  if (o.decide !== null && o.decision === null) return { error: "--decide needs --accept or --decline" };
+  if (o.decide === null && (o.decision !== null || o.why !== null)) return { error: "--accept, --decline and --why belong to --decide" };
   return o;
 }
 
@@ -202,6 +279,66 @@ const pidIn = (err) => { const m = pidLineIn(err); return m ? Number(m[1]) : nul
 const acceptedIn = (err) => pidLineIn(err)?.[3] ?? null;
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === "EPERM"; } };
 
+const readJsonFile = (p) => { try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch { return null; } };
+// A path resolved through its longest existing prefix, so a directory --new is about to make is compared
+// where it will actually be.
+function resolveLoose(p) {
+  const rest = [];
+  for (let cur = path.resolve(p); ; ) {
+    try { return path.join(fs.realpathSync(cur), ...rest); } catch {}
+    const parent = path.dirname(cur);
+    if (parent === cur) return path.resolve(p);
+    rest.unshift(path.basename(cur));
+    cur = parent;
+  }
+}
+const within = (child, parent) => {
+  const rel = path.relative(parent, child);
+  return rel === "" || (rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
+};
+
+// The shape of a request id the driver makes: a sequence number and eight hex digits. Anything else in the
+// mailbox is not a request of any run, and an id is also a file name, so nothing else may name one.
+const REQUEST_ID = /^\d+-[0-9a-f]{8}$/;
+// Whether a decision file is the one for this request of this run: the identity --decide copies out of the
+// request, and the one the driver checks before it takes a decision.
+const decisionFits = (d, q) => d?.id === q.id && d?.run?.pid === q.run?.pid && d?.run?.startedAtMs === q.run?.startedAtMs
+  && (d?.run?.turnId ?? null) === (q.run?.turnId ?? null) && (d?.decision === "accept" || d?.decision === "decline");
+
+// What DIR/approvals holds, read from the files alone: every request in the order the driver offered them,
+// the ids `pending` lists, and the decisions nobody took. A decision whose identity is not its request's is
+// stale, whenever it came; a valid one is late when the driver settled the request without it, or the run
+// ended with the request still open. `over` is the run's own exit marker.
+function mailbox(dir) {
+  const box = path.join(dir, "approvals");
+  const over = fs.existsSync(path.join(dir, "exit"));
+  let names = [];
+  try { names = fs.readdirSync(box); } catch { return { box, armed: false, requests: [], pending: [], late: [], stale: [], over }; }
+  const seqOf = (id) => Number.parseInt(String(id), 10) || 0;
+  const requests = names.filter((n) => n.endsWith(".request.json")).map((n) => [n, readJsonFile(path.join(box, n))])
+    .filter(([n, q]) => q && typeof q.id === "string" && REQUEST_ID.test(q.id) && n === `${q.id}.request.json`)
+    .map(([, q]) => q).sort((a, b) => seqOf(a.id) - seqOf(b.id));
+  const pending = (read(path.join(box, "pending")) ?? "").split("\n").filter((l) => REQUEST_ID.test(l));
+  const late = [], stale = [];
+  for (const q of requests) {
+    if (!names.includes(`${q.id}.decision.json`)) continue;
+    if (!decisionFits(readJsonFile(path.join(box, `${q.id}.decision.json`)), q)) stale.push(q.id);
+    else if (q.settled ? q.settled.by !== "coordinator" : over) late.push(q.id);
+  }
+  return { box, armed: true, requests, pending, late, stale, over };
+}
+
+// One value on one line, whatever it holds: a backslash, a line break of any kind and every other control
+// character escaped, so no value can end its own line and forge the next field. In a list, a ; inside an
+// item is escaped too, so no item can forge another.
+const ESCAPED = { "\\": "\\\\", "\n": "\\n", "\r": "\\r", "\t": "\\t" };
+const field = (s) => [...String(s ?? "")].map((c) => {
+  const n = c.codePointAt(0);
+  if (ESCAPED[c]) return ESCAPED[c];
+  return n < 0x20 || n === 0x7f || n === 0x85 || n === 0x2028 || n === 0x2029 ? `\\u${n.toString(16).padStart(4, "0")}` : c;
+}).join("");
+const item = (s) => field(s).replace(/;/g, "\\;");
+
 // This script again, in a session of its own with no stdio, and not waited for.
 function spawnDetached(args) {
   const child = spawn(process.execPath, [SELF, ...args], { detached: true, stdio: "ignore", env: process.env });
@@ -210,8 +347,9 @@ function spawnDetached(args) {
 }
 
 // Launch the driver on DIR/prompt.txt. `onExit(status)` runs after the marker is written; `onRefuse()`
-// after a refusal. Neither returns.
-function launch(dir, report, { onExit, onRefuse }) {
+// after a refusal. Neither returns. `mailbox` is the keeper's: the driver gets DIR/approvals, and a
+// launch-only call its own caller made gets none, so every request of its agent is declined at once.
+function launch(dir, report, { onExit, onRefuse, mailbox = false }) {
   // Without the claim DIR is not this launch's, and a refusal is said on stderr alone: a line added to
   // err.txt or a marker written there would be read by the run that holds the directory.
   const refuse = (why) => { process.stderr.write(`${REFUSED}: ${why}\n`); onRefuse(); };
@@ -221,13 +359,19 @@ function launch(dir, report, { onExit, onRefuse }) {
   if (fs.existsSync(path.join(dir, "exit")))
     return refuse(`${path.join(dir, "exit")} already exists: one launch per directory, a relaunch gets a fresh one`);
   const promptPath = path.join(dir, "prompt.txt");
-  const why = !isRegularFile(promptPath) ? `${promptPath} is not a regular file`
+  let why = !isRegularFile(promptPath) ? `${promptPath} is not a regular file`
     : !report || !path.isAbsolute(report) ? `--report-file ${JSON.stringify(report ?? "")} is not an absolute path` : null;
   // The claim on DIR, before anything is written there: a second keeper racing this one (a --run and its
   // rerun each starting one) finds err.txt there and leaves with nothing written.
   let errFd;
   try { errFd = fs.openSync(path.join(dir, "err.txt"), "wx"); }
   catch (e) { if (e.code === "EEXIST") return refuse(why ?? `${path.join(dir, "err.txt")} already exists: another launch holds this directory`); throw e; }
+  // The mailbox --new made, handed over by the keeper; a directory an older --new left without one gets
+  // it here, under the claim. The driver checks where it lies.
+  const box = path.join(dir, "approvals");
+  if (!why && mailbox) {
+    try { fs.mkdirSync(box, { mode: 0o700 }); } catch (e) { if (e.code !== "EEXIST") why = `${box} cannot be made: ${e.message}`; }
+  }
   // Under its own claim a refusal is recorded beside the launch, with a marker, because the wrapper's wait
   // reads the marker and would otherwise wait for a driver that never started.
   if (why) {
@@ -239,7 +383,8 @@ function launch(dir, report, { onExit, onRefuse }) {
     return onRefuse();
   }
   const outFd = fs.openSync(path.join(dir, "out.json"), "w");
-  const child = spawn(process.execPath, [DRIVER, "--prompt-file", promptPath, "--report-file", report],
+  const approvalArgs = mailbox ? ["--approval-dir", box] : [];
+  const child = spawn(process.execPath, [DRIVER, "--prompt-file", promptPath, "--report-file", report, ...approvalArgs],
     { stdio: ["ignore", outFd, errFd], env: process.env });
   for (const sig of SIGNALS) process.on(sig, () => { try { child.kill(sig); } catch {} });
   child.on("error", (e) => {
@@ -329,7 +474,19 @@ export function statusLines(dir, report) {
   const lines = [`DRIVER_EXIT=${markerOf(dir) || "unknown"}`, `PATH=${where}`];
   let r = null;
   try { r = JSON.parse(read(report) ?? ""); } catch {}
-  if (r && typeof r === "object") {
+  if (!r || typeof r !== "object") r = null;
+  // Read from the request files, which the driver settles before it answers, so a run whose report was
+  // lost still says whether a command ran with your rights; the driver's own acceptances never touch the
+  // mailbox and come from the report.
+  const box = mailbox(dir);
+  const count = (d) => box.requests.filter((q) => q.settled?.decision === d).length;
+  const approvals = [
+    ...(box.requests.length ? [`approvals=${count("accepted")}/${count("declined")}/${count("expired")}/${box.requests.filter((q) => !q.settled).length}`] : []),
+    ...(r && r.approvalsAutoAccepted > 0 ? [`auto=${r.approvalsAutoAccepted}`] : []),
+    ...(box.late.length ? [`late=${box.late.length}`] : []),
+    ...(box.stale.length ? [`stale=${box.stale.length}`] : []),
+  ].join(" ");
+  if (r) {
     const a = r.schemaOverflow ? r.answer
       : r.answerJson && typeof r.answerJson.result === "string" ? r.answerJson.result : r.answer;
     const s = String(a ?? "");
@@ -339,11 +496,11 @@ export function statusLines(dir, report) {
       `FIRST=${s.split("\n")[0].slice(0, FIRST_MAX)}`,
       `ANSWER=${s.length <= ANSWER_MAX ? oneLine(s) : `(long: ${s.length} chars, read the report)`}`,
       `ERROR=${oneLine(e).replace(/ \/ /g, " ").slice(0, ERROR_MAX)}`,
-      `RECEIPT=turnStatus=${r.turnStatus ?? "null"} receiptOk=${r.receiptOk ?? "none"} model=${r.model ? shortName(r.model) : "none"}`);
+      `RECEIPT=turnStatus=${r.turnStatus ?? "null"} receiptOk=${r.receiptOk ?? "none"} model=${r.model ? shortName(r.model) : "none"}${approvals ? ` ${approvals}` : ""}`);
   } else {
     // No report: the one reason a coordinator can act on is the launcher's own refusal, if there was one.
     const refusal = err.split("\n").find((l) => l.startsWith(REFUSED)) ?? "";
-    lines.push("EXIT=unknown", "FIRST=", "ANSWER=", `ERROR=${refusal.slice(0, ERROR_MAX)}`, "RECEIPT=");
+    lines.push("EXIT=unknown", "FIRST=", "ANSWER=", `ERROR=${refusal.slice(0, ERROR_MAX)}`, `RECEIPT=${approvals}`);
   }
   lines.push(`FILE=${fs.existsSync(report) ? "exists" : "missing"}`, `REPORT=${report}`);
   return lines;
@@ -375,6 +532,19 @@ function newAgent(report, dirOverride) {
   const dir = dirOverride ?? agentDirOf(report);
   const promptPath = path.join(dir, "prompt.txt");
   if (fs.existsSync(promptPath)) refuse(`${promptPath} already exists: one prompt per report path, a relaunch gets a fresh one`);
+  // Every agent gets a mailbox, and a mailbox is only safe inside the driver's state directory, which no
+  // agent's sandbox can write: so the variable that names it is needed here, the same one the run call
+  // carries, and nothing is guessed without it — the driver keeps no default either. An early refusal in
+  // the caller's own call; the driver's inode check on the mailbox is the wall. The report is checked as
+  // well as the directory: --dir can put the mailbox under the state directory while the report, which a
+  // relaunch reads the run back from, lands anywhere.
+  const state = process.env.ENTRUST_STATE_DIR || process.env.CLAUDE_PLUGIN_DATA || "";
+  if (!path.isAbsolute(state))
+    refuse(`--new needs the driver's state directory, where the agent's mailbox goes: pass CLAUDE_PLUGIN_DATA on this call as the run call does, or export ENTRUST_STATE_DIR, as an absolute path (got ${JSON.stringify(state)})`);
+  const stateReal = resolveLoose(state);
+  for (const [what, p] of [["report", report], ["agent's directory", dir]])
+    if (!within(resolveLoose(p), stateReal) || resolveLoose(p) === stateReal)
+      refuse(`--new needs the ${what} inside the state directory ${stateReal}, where no agent's sandbox can write a decision; ${p} is not (name a report path under it)`);
   // A launch's own files with no prompt beside them: a --run came to this path after a refused --new and
   // its keeper refused in turn. A prompt written here now would be read as that launch's, and the next
   // --run would print the old refusal as this prompt's result.
@@ -404,9 +574,122 @@ function newAgent(report, dirOverride) {
       : `the driver's --check-prompt-file ended with ${how}, a fault in the driver and no verdict on the prompt${said ? `: ${oneLine(said).slice(0, ERROR_MAX)}` : ""}`}\n`);
     process.exit(2);
   }
+  // The mailbox before the prompt's name appears, so a --run in the same turn finds both.
+  const box = path.join(dir, "approvals");
+  fs.mkdirSync(box, { recursive: true, mode: 0o700 });
   fs.renameSync(checked, promptPath);
-  process.stdout.write(`PROMPT=${promptPath}\n`);
+  process.stdout.write(`PROMPT=${promptPath}\nAPPROVALS=${box}\n`);
   process.exit(0);
+}
+
+// --pending: what a coordinator reads before it decides, every word of it. Each field is one escaped line,
+// and the command goes whole, newlines kept, between two marker lines carrying a token drawn fresh for
+// this print and absent from the command, so no command can end its own block or forge a field after it:
+// a script-shaped command read on one clipped line is a command approved unread. A request is waiting when
+// `pending` lists it, the driver's own open set.
+// A widening's profile as the lines the coordinator reads: one ACCESS= per filesystem entry, `write
+// path:/abs`, `read glob_pattern:**/*.lock` or `write special:project_roots`, the legacy read and write
+// lists standing in only where `entries` is absent, then NETWORK= on, off or none.
+function accessLines(perm) {
+  const fsys = perm?.fileSystem ?? null;
+  const entries = Array.isArray(fsys?.entries) && fsys.entries.length ? fsys.entries.map((e) => [e?.access, e?.path])
+    : [...(fsys?.write ?? []).map((x) => ["write", { type: "path", path: x }]), ...(fsys?.read ?? []).map((x) => ["read", { type: "path", path: x }])];
+  const where = (x) => x?.type === "path" ? `path:${x.path}` : x?.type === "glob_pattern" ? `glob_pattern:${x.pattern}`
+    : x?.type === "special" ? `special:${x?.value?.kind ?? "unknown"}${x?.value?.subpath ? `:${x.value.subpath}` : x?.value?.path ? `:${x.value.path}` : ""}`
+    : `${x?.type ?? "unknown"}:${JSON.stringify(x)}`;
+  const net = perm?.network == null || perm.network.enabled == null ? "none" : perm.network.enabled ? "on" : "off";
+  return [...entries.map(([access, x]) => `ACCESS=${field(access)} ${field(where(x))}`), `NETWORK=${net}`];
+}
+
+function requestLines(q) {
+  const out = [`REQUEST=${q.id}`, `THREAD=${q.subagent ? field(q.agentPath ?? q.run?.threadId ?? "unknown") : "root"}`,
+    `METHOD=${field(q.method)}`, `KIND=${field(q.kind ?? "none")}`, `CAUSE=${field(q.cause ?? "unknown")}`, `CWD=${field(q.cwd)}`,
+    `REASON=${field(q.reason)}`, `ROOTS=${(q.roots ?? []).map(item).join("; ")}`, `DEADLINE=${field(q.deadlineAt ?? "none")}`,
+    ...(q.repeatOf ? [`REPEAT_OF=${field(q.repeatOf)}`] : [])];
+  if (q.method === "item/fileChange/requestApproval") out.push(`FILES=${Array.isArray(q.fileChanges)
+    ? q.fileChanges.map((c) => `${item(c.kind)} ${item(c.path)}${c.move ? ` -> ${item(c.move)}` : ""}`).join("; ") : "unknown"}`);
+  else if (q.method !== "item/permissions/requestApproval") {
+    const command = String(q.command ?? "");
+    let token;
+    do token = crypto.randomBytes(6).toString("hex"); while (command.includes(token));
+    out.push(`COMMAND<<${token}`, command, `COMMAND>>${token}`);
+  }
+  if (q.permissions) out.push(...accessLines(q.permissions));
+  return out;
+}
+
+function pendingRequests(dir) {
+  const box = mailbox(dir);
+  const out = [];
+  let waiting = 0;
+  for (const q of box.requests) {
+    if (q.settled) continue;
+    if (box.over) { out.push(`ORPHANED=${q.id}`); continue; }
+    if (!box.pending.includes(q.id)) continue;
+    waiting++;
+    out.push(...requestLines(q));
+  }
+  for (const id of box.late) out.push(`LATE=${id}`);
+  for (const id of box.stale) out.push(`STALE=${id}`);
+  out.push(`REQUESTS=${waiting}`);
+  process.stdout.write(`${out.join("\n")}\n`);
+  process.exit(0);
+}
+
+// The requests --run hands back: open, listed in `pending`, and with no decision file yet. One with a
+// decision on disk is decided, and the driver takes it within APPROVAL_POLL_MS, so a --run continued a
+// moment after --decide waits for that instead of handing the same request back.
+function waitingRequests(dir) {
+  const box = mailbox(dir);
+  if (box.over) return [];
+  return box.requests.filter((q) => !q.settled && box.pending.includes(q.id)
+    && !fs.existsSync(path.join(box.box, `${q.id}.decision.json`)));
+}
+
+// --decide: one decision per request, published whole or not at all, never over another one.
+function decideRequest(dir, id, decision, why) {
+  const refuse = (msg) => { process.stdout.write(`REFUSED=${id} ${msg}\n`); process.exit(2); };
+  // The id names a file, so it is held to the driver's own shape: nothing else can walk out of the mailbox.
+  if (!REQUEST_ID.test(id)) refuse("is not a request id");
+  const box = path.join(dir, "approvals");
+  const requestPath = path.join(box, `${id}.request.json`);
+  const q = readJsonFile(requestPath);
+  if (!q || q.id !== id) refuse(`has no request in ${box}`);
+  if (fs.existsSync(path.join(dir, "exit"))) refuse("belongs to a run that is over; nothing can take a decision now");
+  if (q.settled) refuse(`was already settled: ${q.settled.decision} by ${q.settled.by}${q.settled.why ? ` (${q.settled.why})` : ""} at ${q.settled.settledAt}`);
+  // `pending` is the driver's own list of what it is waiting on; a request file it does not list is not
+  // one it will read a decision for.
+  if (!mailbox(dir).pending.includes(id)) refuse(`is not waiting: ${path.join(box, "pending")} does not list it`);
+  const target = path.join(box, `${id}.decision.json`);
+  const tmp = `${target}.${crypto.randomBytes(8).toString("hex")}.tmp`;
+  const record = { id: q.id, run: { pid: q.run?.pid ?? null, startedAtMs: q.run?.startedAtMs ?? null, turnId: q.run?.turnId ?? null },
+                   decision, by: "coordinator", why, decidedAt: new Date().toISOString() };
+  let failure = null;
+  try {
+    fs.writeFileSync(tmp, `${JSON.stringify(record, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+    fs.linkSync(tmp, target);
+  } catch (e) { failure = e; }
+  fs.rmSync(tmp, { force: true });
+  if (failure?.code === "EEXIST") {
+    const prior = readJsonFile(target);
+    if (!decisionFits(prior, q))
+      refuse(`has a stale decision in the way at ${target}, one that is not this run's or not this request's; the driver will not take it, and the request waits until the run ends it`);
+    refuse(`was already decided: ${prior.decision}${prior.why ? ` (${field(prior.why)})` : ""}`);
+  }
+  if (failure) refuse(`could not be published: ${failure.message}`);
+  // A test seam and nothing else: a pause between the publication and the re-read, the window in which the
+  // driver can settle the request first. The launcher suite lands a settlement there; nothing else sets it.
+  const seamMs = Number(process.env.ENTRUST_DECIDE_SEAM_MS);
+  if (seamMs > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, seamMs);
+  const after = readJsonFile(requestPath);
+  if (after?.settled?.by === "coordinator" || (!after?.settled && !fs.existsSync(path.join(dir, "exit")))) {
+    process.stdout.write(`DECIDED=${id} ${decision}\n`);
+    process.exit(0);
+  }
+  process.stdout.write(`LATE=${id} ${decision}: ${after?.settled
+    ? `the driver settled this request as ${after.settled.decision} (${after.settled.why}) at ${after.settled.settledAt}`
+    : "the run ended with it unanswered"}; nothing ran on this decision\n`);
+  process.exit(3);
 }
 
 // A prompt a --new in the same turn has not written yet: wait for it, bounded, before deciding.
@@ -420,9 +703,10 @@ function waitForPrompt(dir, cb) {
   tick();
 }
 
-// The one foreground call. Ends, on every path, by printing nine lines and exiting 0: the wrapper runs
-// the command again while a result has no REPORT= line, so a refusal that printed none would be an
-// endless retry, and the early return prints RUNNING= in its place for exactly that rerun.
+// The one foreground call. Ends, on every path, by printing nine lines or the requests waiting on a
+// decision, and exiting 0: the wrapper runs the command again while a result has no REPORT= line, so a
+// refusal that printed none would be an endless retry; the early return prints RUNNING= in its place for
+// exactly that rerun, and a waiting result ends in REPORT= so that it is handed back.
 function run(dir, report) {
   const t0 = Date.now();
   let pid = null, kept = null;
@@ -437,6 +721,9 @@ function run(dir, report) {
   });
   const print = (lines) => { process.stdout.write(`${lines.join("\n")}\n`); process.exit(0); };
   const finish = () => print(statusLines(dir, report));
+  // The requests the run waits on, for the coordinator to decide; the run goes on under its keeper.
+  const handBack = (waiting) => print([...waiting.flatMap(requestLines), `REQUESTS=${waiting.length}`,
+    `WAITING=${waiting.map((q) => q.id).join(",")}`, `REPORT=${report}`]);
   // A refusal that reads no run: this call's own lines, and nothing written to DIR.
   const refused = (why) => print(["DRIVER_EXIT=unknown", "PATH=none", "EXIT=unknown", "FIRST=", "ANSWER=", `ERROR=${why.slice(0, ERROR_MAX)}`,
     "RECEIPT=", `FILE=${report && fs.existsSync(report) ? "exists" : "missing"}`, `REPORT=${report ?? ""}`]);
@@ -453,11 +740,13 @@ function run(dir, report) {
     // by that run's own calls as theirs.
     if (pidIn(err) !== null && acceptedIn(err) !== report) return foreign();
     if (markerOf(dir)) return finish();
-    // A fresh directory: the keeper, through the orphaning step. A directory whose err.txt exists has a
-    // launch already, and a second keeper would only lose the claim on it.
+    // A fresh directory: the keeper, through the orphaning step, which marks it --keeper so that it hands
+    // the driver the mailbox. A directory whose err.txt exists has a launch already, and a second keeper
+    // would only lose the claim on it.
     if (!fs.existsSync(path.join(dir, "err.txt"))) spawnDetached(["--orphan", "--dir", dir, "--report-file", report]);
-    // Then the same wait for the first call and a rerun: the driver's pid line, then its marker. A driver
-    // that died without one ends the wait too, and the lines then say DRIVER_EXIT=unknown.
+    // Then the same wait for the first call, a rerun and a call continuing after a decision: the driver's
+    // pid line, then its marker or a request waiting on a decision. A driver that died without a marker
+    // ends the wait too, and the lines then say DRIVER_EXIT=unknown.
     const startBy = Date.now() + PROMPT_WAIT_MS;
     let gone = 0;
     const tick = () => {
@@ -478,6 +767,8 @@ function run(dir, report) {
         }
         if (kept) { try { process.kill(pid, kept); } catch {} }
       }
+      const waiting = waitingRequests(dir);
+      if (waiting.length) return handBack(waiting);
       if (!alive(pid) && ++gone > 4) return finish();
       if (Date.now() - t0 >= RETURN_MS) {
         const lines = statusLines(dir, report);
@@ -503,8 +794,11 @@ if (isMain) {
   const dir = o.dir ?? (path.isAbsolute(o.report) ? agentDirOf(o.report) : null);
   if (dir === null) { process.stderr.write(`${REFUSED}: --report-file ${JSON.stringify(o.report)} is not an absolute path\n`); process.exit(2); }
   if (o.status) { process.stdout.write(`${statusLines(dir, o.report).join("\n")}\n`); process.exit(0); }
-  // The orphaning step: its child's parent is gone as soon as it is started.
-  if (o.orphan) { spawnDetached(["--dir", dir, "--report-file", o.report]); process.exit(0); }
+  if (o.pending) pendingRequests(dir);
+  if (o.decide !== null) decideRequest(dir, o.decide, o.decision, o.why);
+  // The orphaning step: its child's parent is gone as soon as it is started, and --keeper tells that
+  // child it is --run's keeper, the one launch-only form that hands the driver the mailbox.
+  if (o.orphan) { spawnDetached(["--keeper", "--dir", dir, "--report-file", o.report]); process.exit(0); }
   if (o.run) run(dir, o.report);
-  else launch(dir, o.report, { onExit: (status) => process.exit(status), onRefuse: () => process.exit(2) });
+  else launch(dir, o.report, { onExit: (status) => process.exit(status), onRefuse: () => process.exit(2), mailbox: o.keeper });
 }

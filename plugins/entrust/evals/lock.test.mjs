@@ -972,6 +972,59 @@ test("--writable refuses ~/.codex and the state directory in use, which hold the
     return true;
   });
 
+test("a root ABOVE the state directory is refused like one inside it: --writable and --cwd at write level, $TMPDIR at both",
+  "the plugin's data directory sits at ~/.claude/plugins/data/entrust-nowely, so `--writable ~/.claude` granted its locks, answer log and every agent's mailbox while the guard refused the directory itself; the walk has to go both ways (ISSUES E66)",
+  async () => {
+    // The shape of a plugin install, in miniature: a parent standing in for ~/.claude, the state directory
+    // three levels under it, not yet created, as on a first run. Beside the $TMPDIR the drivers here are
+    // handed, not under it, or that would be the ancestor refused first.
+    const claude = tempDir("codex-lock-dot-claude-");
+    const state = path.join(claude, "plugins", "data", "entrust-nowely");
+    const mid = path.join(claude, "plugins");
+    const problems = [];
+    const refused = (label, { code, err }, root) => {
+      if (code !== EXIT.USAGE) problems.push(`${label}: exit ${code}, expected 2`);
+      else if (!err.includes(`refusing to grant write access to ${fs.realpathSync(root)}: it is an ancestor of this driver's state directory`))
+        problems.push(`${label}: the refusal does not name it: ${err.trim().slice(0, 200)}`);
+    };
+    fs.mkdirSync(mid);
+    refused("--writable ~/.claude", await run(freshDir("above-writable"), { args: ["--writable", claude], env: { ENTRUST_STATE_DIR: state } }), claude);
+    refused("--writable ~/.claude/plugins", await run(freshDir("above-writable2"), { args: ["--writable", mid], env: { ENTRUST_STATE_DIR: state } }), mid);
+    refused("--cwd ~/.claude", await run(claude, { env: { ENTRUST_STATE_DIR: state } }), claude);
+    for (const level of ["write", "read"]) {
+      const { code, err } = await spawnNode([DRIVER, "--level", level, "--cwd", freshDir(`above-tmp-${level}`), "--timeout", "30",
+        "--allow-no-commands", "--prompt", "irrelevant, the server is scripted"],
+        { env: { PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: "happy", ENTRUST_STATE_DIR: state, TMPDIR: claude } }).done;
+      refused(`TMPDIR=~/.claude at ${level} level`, { code, err }, claude);
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("a write run waiting on a decision holds its lock until it is answered or stopped, and a peer exits 10 meanwhile",
+  "a request waits until it is answered, stopped or the thirty-minute deadline declines it, so the lock is held for as long as the question is open, and a peer has to be told so at once rather than queue behind it",
+  async () => {
+    const d = freshDir("approval-lock");
+    const box = path.join(STATE_DIR, `mailbox-${crypto.randomBytes(4).toString("hex")}`);
+    fs.mkdirSync(box, { mode: 0o700 });
+    const holder = spawnNode([DRIVER, "--level", "write", "--cwd", d, "--allow-no-commands", "--approval-dir", box,
+      "--prompt", "irrelevant, the server is scripted"],
+      { env: { PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: "approval-wait", ENTRUST_STATE_DIR: STATE_DIR }, killAfterMs: 60000 });
+    const asked = await waitUntil(() => fs.readdirSync(box).some((n) => n.endsWith(".request.json")), 15000);
+    const problems = [];
+    if (!asked) { holder.child.kill("SIGKILL"); return `no request was offered: ${holder.stderrSoFar().slice(-300)}`; }
+    await new Promise((r) => setTimeout(r, 1000));
+    const peer = await run(d);
+    if (peer.code !== EXIT.BUSY) problems.push(`a peer on the waiting run's directory exited ${peer.code}, not 10`);
+    if (!fs.existsSync(lockFor(d))) problems.push("the waiting run's lock is gone");
+    holder.child.kill("SIGTERM");
+    const { code, out } = await holder.done;
+    let r = null; try { r = JSON.parse(out); } catch {}
+    if (code !== EXIT.TURN_NOT_COMPLETED) problems.push(`the holder exited ${code}, not 1`);
+    if (r?.escalations?.[0]?.why !== "signal SIGTERM") problems.push(`the open request was not settled by the signal: ${JSON.stringify(r?.escalations)}`);
+    if (fs.existsSync(lockFor(d))) problems.push("the lock outlived the run");
+    return problems.length === 0 || problems.join("; ");
+  });
+
 test("a failed config probe keeps the last known good inherited config",
   "a failed probe must preserve the shared isolated config so a transient failure cannot move concurrent agents onto account defaults",
   async () => {

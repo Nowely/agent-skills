@@ -33,3 +33,6 @@ are `<name>@X.Y.Z`.
   links and anchors, the frozen digests, skill frontmatter and versions, the README's skill rows and the links
   to genre notes.
 - **Fan-outs**: state the agent count and the models before spawning, and wait for the word.
+- **Flags**: a new flag, header field or option is born only with a sentence that names who sets it, why the
+  default cannot decide, and what breaks without it; when that sentence cannot be written, the default decides.
+  Flags are forgotten, misused and maintained.
