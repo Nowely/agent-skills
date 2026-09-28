@@ -50,8 +50,8 @@ the GitHub release.
    `gh release create <plugin>@X.Y.Z --verify-tag --title '<plugin> X.Y.Z' --notes-file <notes>`. Confirm with
    `gh release view <plugin>@X.Y.Z --json isDraft,body,url` that it is published, not a draft, with the notes as
    its body; a tag alone is not a published release. Return with `git switch main && git pull --ff-only`.
-8. **Update this machine** when the word covered it: `claude plugin marketplace update nowely`, then
-   `claude plugin update <plugin>@nowely`, and confirm the installed version with `claude plugin list`.
+8. **Update this machine** when the word covered it: `claude plugin update <plugin>@nowely`, which refreshes the
+   marketplace itself, and confirm the installed version with `claude plugin list`.
 
 ## entrust
 
