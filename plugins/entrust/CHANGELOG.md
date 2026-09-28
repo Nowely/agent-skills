@@ -3,7 +3,15 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.22.0 — 2026-09-28
+
+Contracts that change in this release, each detailed in its entry below. The driver no longer switches on Codex's
+permission features or tells the model to ask for a failing tool's files, and `initialize` asks `experimentalApi:
+false`. The report loses `sandboxWidened`, `experimentalApi`, `featuresRequested` and `serverWarnings`; an
+`escalations` entry loses `permissions`, `granted` and `repeatOf`; `--pending` and the waiting result lose `ACCESS=`,
+`NETWORK=`, `REPEAT_OF=`, `FILES=` and `KIND=`. A file change the driver cannot show inside the writable roots, and a
+permissions request, are declined at once with cause `outside`, and the run exits 6. `--decide ID --accept` needs the
+approved command on stdin and refuses any byte of difference. Measured with codex-cli 0.155.1 and Node 24.11.0.
 
 ### Fixed
 
