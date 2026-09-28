@@ -298,3 +298,23 @@ marketplace deletes it too, with no option to keep it, and uninstalling one of t
 removes the marketplace to tidy up loses every report without warning. The README should say the directory goes when
 the plugin's last installation is removed, by `claude plugin uninstall` without `--keep-data` or by `claude plugin
 marketplace remove`, which has no such option.
+
+## E75. The README tells the user that `permissions.additionalDirectories` stops the prompts for writes into the data directory, which Claude Code protects
+
+**Evidence, level 2.** `plugins/entrust/plugin/README.md:110-111`: "In every permission mode but auto and bypass, a
+write outside the working directory prompts, so add that directory to `permissions.additionalDirectories` once".
+The data directory is `~/.claude/plugins/data/entrust-nowely/` (`README.md:104`). Claude Code's documentation,
+`https://code.claude.com/docs/en/permission-modes.md`, section "Protected paths", lists `.claude` among the
+protected directories, gives `default` and `acceptEdits` as "Prompted" for writes there, and says
+"`permissions.allow` rules in settings files do not pre-approve protected-path writes";
+`https://code.claude.com/docs/en/permissions.md` says files in additional directories "follow the same permission
+rules as the original working directory: they become readable without prompts". Read on 2026-09-28; not run
+against entrust.
+
+**Check.** `sed -n '104p;110,111p' plugins/entrust/plugin/README.md` and the two documentation sections above.
+
+**Issue text.** The README sends the user to `permissions.additionalDirectories` to stop prompts for writes into
+entrust's data directory. That directory is under `~/.claude`, a protected path: the setting makes it readable
+without prompts, and a write there by Claude Code's own file tools still asks in `default` and `acceptEdits`
+whatever the settings say, until the user allows `~/.claude` edits for the session. The README should say what
+the setting does, reads without prompts, and what it does not.
