@@ -862,6 +862,10 @@ test("E8 the roles reference is linked from the bounds paragraph",
   "the role set was the tier table's four rows in practice; the reference is where the coordinator's variety lives, and a page without the link never sends anyone there",
   () => shows(/\[roles\.md\]\(references\/roles\.md\)/));
 
+test("E11 a Claude agent starts with the CLAUDE.md files and the memory index, and a Codex agent without them",
+  "E53, 2026-09-26: an analyst told to work from episodes only and not to open CLAUDE.md or memory had all three attached by the harness; the plugin cannot remove them, so the page says it where roles are assigned",
+  () => says("A Claude agent starts with the user's and the project's CLAUDE.md and the memory index in its context, whatever its brief says, and a Codex agent starts without them, so a blind or independent role on the Claude side still sees them."));
+
 test("E9 the roles reference exists with its seven columns, at least fifteen roles, the six the page relies on, and no write right on a bulk verifier, a swarm reducer or a standing advisor",
   "the page sends the coordinator to references/roles.md for what a role may write and return; a missing file, a table without those columns, a gutted table or a bulk row granted a tree is a reference that misleads",
   () => {
