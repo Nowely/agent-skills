@@ -444,18 +444,13 @@ each as a worker, a checker or neither, or the plan step should say which words 
 extraction agent, which the orchestrate page's unit now allows, has no row in the reference and no name the pattern
 accepts: "bulk extractor", "extractor" and "bulk reader" are all refused, while "bulk verifier" counts as a checker.
 
-## E90. The swarm, the bulk row's route for verdict batches, is user-only, called an experiment, fifty units at most, and reports no tokens
+## E90. The swarm, the bulk row's batch route, is called an experiment, holds fifty units at most, and reports no tokens
 
 **Evidence, level 1 for the lines, level 3 for the refused registration.**
 
-- `plugins/entrust/plugin/skills/swarm/SKILL.md:7` `disable-model-invocation: true`: a coordinator cannot load the
-  skill, so the user starts every swarm. `plugins/entrust/plugin/README.md:51` introduces it with "Two more are
-  experiments with a page of their own."
+- `plugins/entrust/plugin/README.md:51` introduces it with "Two more are experiments with a page of their own."
 - `swarm/scripts/swarm.mjs:30` `const MAX = 50;` and `:84` refuses a longer unit file: "a swarm is 50 at most".
-  A batch wider than fifty verdict units takes several swarms.
-- `swarm/SKILL.md:17`: "A unit is one claim, one address, a verbatim quote, and a verdict from a closed set"; so
-  `orchestrate/SKILL.md:69` sends a batch of extraction units, the bulk work of issue #22 and the replication, to
-  ordinary Codex agents, outside the swarm's batch launch, concurrency cap and single Stop.
+  A batch wider than fifty units takes several swarms.
 - `swarm.mjs:113-117` and `:150`: the summary holds per agent its number, unit, report path, the launcher's status
   lines and times, and no tokens, which the plan's re-estimate and per-agent stop line (`orchestrate/SKILL.md:40`)
   read; each report has to be opened for them.
@@ -464,15 +459,14 @@ accepts: "bulk extractor", "extractor" and "bulk reader" are all refused, while 
   through `--plan` printed `ERROR=invalid agent id: 001`, exit 2, and `--new` for `<run>/001/report.json` in a run
   with a registered plan printed `ERROR=001 is not in the approved plan …`, exit 2.
 
-**Check.** `sed -n 7p plugins/entrust/plugin/skills/swarm/SKILL.md`, `grep -n 'MAX' .../swarm/scripts/swarm.mjs`, and
+**Check.** `grep -n 'experiments' plugins/entrust/plugin/README.md`, `grep -n 'MAX' .../swarm/scripts/swarm.mjs`, and
 the two launcher calls above against a scratch run directory.
 
-**Issue text.** The orchestrate page routes a batch of verdict units to the swarm, and the swarm cannot yet carry
-such a batch as the plan makes it: only the user can start one, the README calls it an experiment, a swarm holds
-fifty units, its summary carries no tokens for the plan's re-estimate and stop line, and its agents cannot be
-registered in the orchestrate run's plan, so a swarm launched into that run is refused agent by agent. An extraction
-batch, the bulk work of both recorded runs, has no batch route at all. Decide which of these stay limits the plan
-states, and lift the rest.
+**Issue text.** An orchestrate plan may propose a swarm for a bulk batch, and the swarm still carries such a batch
+with limits the plan has to work around: the README calls it an experiment, a swarm holds fifty units, its summary
+carries no tokens for the plan's re-estimate and stop line, and its agents cannot be registered in the orchestrate
+run's plan, so each swarm needs a run directory of its own. Decide which of these stay limits the plan states, and
+lift the rest.
 
 ## E92. Codex agents running side by side share one `$TMPDIR`, and the pages send each agent's overflow there as if it were its own
 
@@ -488,6 +482,52 @@ that allowed one findings file under `$TMPDIR`; two of them named the same `$TMP
 pages describe it as each agent's own temporary directory. Two agents that pick the same file name overwrite each
 other, and a finding written there is lost without an error. Each agent should get a temporary directory of its own,
 or the pages should have every file an agent leaves carry the agent's id.
+
+## E91. `foreman.md:24` gives a broader cause than observed: the Skill tool loads a user-only skill whose command the user typed
+
+**Evidence, level 3 for the pairing; the mechanism is a guess.** `plugins/entrust/plugin/skills/orchestrate/references/foreman.md:24-25`:
+"It cannot load this skill: the Skill tool refuses a skill marked `disable-model-invocation`." On 2026-09-29 Opus O1 of
+the prepare-feedback design run (`plugins/entrust/research/2026-09-29-prepare-feedback/`) counted the Skill tool's
+results for entrust's user-only skills in one machine's transcripts: 13 loads (orchestrate 11, advisor 2), each with
+the skill's command in the user's last message, and 6 refusals, none with it. The same day the Skill tool loaded
+`entrust:orchestrate` in a session whose user had typed `/entrust:orchestrate`. The foreman's own conclusion may still
+hold, since nobody types a command to a subagent; the stated cause does not. E82 is the neighbouring tension.
+
+**Issue text.** The foreman page says the Skill tool refuses every user-only skill, but it loads one whose command the
+user typed. A reader who takes the stated cause as the rule will route around a load that works. The sentence should
+state the observed condition, or only the conclusion.
+
+## E94. The entrust README says two more skills ship beside the main one; the plugin ships five more
+
+**Evidence, level 1.** `plugins/entrust/plugin/README.md:8-9`: "Two more skills ship beside it, both described below
+and both invoked by the user rather than by the model." `plugins/entrust/plugin/skills/` on `main` holds `codex` and
+five more: `advisor`, `cleanup`, `experiment`, `orchestrate` and `swarm`.
+
+**Issue text.** The README's opening undercounts the plugin's skills, so a reader who stops there misses three of
+them. The sentence should give the count the directory holds, or not count.
+
+## E95. `research/2026-09-28-command-gate/` has no README and no row in the research index
+
+**Evidence, level 1.** `plugins/entrust/research/2026-09-28-command-gate/` holds ten numbered files and no README,
+and `plugins/entrust/research/README.md` has no row for it, while its opening says "Each directory has its own README
+with the result; this is the index."
+
+**Issue text.** The command-gate run cannot be found from the research index, and its folder does not say what it
+found. It needs a README with the result and a row in the index, as its neighbours have.
+
+## E96. The harness's token figure for a Claude subagent is its last call's context, and the plan's comparables are built on it
+
+**Evidence, level 3.** On 2026-09-29 Opus R2 of the prepare-feedback run compared, for 233 subagents in one machine's
+transcripts, the Agent tool's `totalTokens` with the usage summed over the subagent's own transcript: 203 were within
+1% of the last API call (78 exactly), none equalled the sum, and the median of sum over figure was 2.8. The research
+cost tables that `orchestrate/SKILL.md:40` sends a plan to as comparables ("name the comparable runs behind each
+estimate") quote that figure, for instance `research/2026-09-27-field-audit-triage/README.md:157` ("Claude 1.5M by the
+harness's per-subagent count"), whose own line 160 already guessed it was not the cache-inclusive total.
+
+**Issue text.** A Claude agent's cost in a plan or a research table is the size of its last call, not the tokens it
+processed, which are about 2.8 times more, mostly cache reads. Estimates built on those tables understate a run, and
+Claude and Codex figures side by side do not compare. The page should say which figure it states, and a spend should
+come from the subagent's transcript, as `prepare-feedback.mjs process` sums it.
 
 ## E100. A coordinator session inside a worktree has the launcher's heredoc calls refused when their text names git
 
@@ -528,3 +568,26 @@ run: "Your user settings, hooks, `CLAUDE.md` files, MCP servers, other installed
 from the build. The build has it now, and it runs each case in a configuration with no installed plugins or user
 instructions, the harness terse already uses for its own trigger suite. The README should say so, and the trigger
 cases could run through it instead of through a reading of a real invocation's transcript.
+
+## E102. A Codex agent can run as one background Bash task, as the swarm runs fifty, but the codex page offers only the Haiku wrapper, for a reason the swarm page contradicts
+
+**Evidence, level 1 for the pages and scripts, level 3 for the task list.** `plugins/entrust/plugin/skills/codex/SKILL.md:54-57`
+makes the wrapper the one route: "One Agent call per agent … a Bash task, whatever its description says, is not on the
+agent map, is not stopped from it and is not continued by a message (measured 2026-09-12 against the VS Code extension
+2.1.269 …)". `plugins/entrust/plugin/skills/swarm/SKILL.md:25` says the opposite of the same kind of task: "the swarm's
+agents are not on the agent map, the task is, and Stop on it … reaches every running agent". The swarm already runs
+Codex agents with no wrapper: `swarm.mjs:135-140` calls the launcher's `--new`, its plain mode, which waits for the run
+with no early return, and `--status`; the launcher passes SIGTERM, SIGINT and SIGHUP to the driver (`agent-run.mjs:395`, and
+`:720` until its early return). The ten-minute ceiling and the `RUNNING=` rerun come from the wrapper's own foreground Bash call
+(`agent-run.mjs:18-31`); a background task has no ceiling, and on 2026-09-29 one ran for 105 minutes. The wrapper
+cannot move its call to the background, because a subagent ends with its turn: one that did returned at once and was
+counted as reported (`plugins/entrust/plugin/skills/codex/references/incidents.md:21`, "The unverified wrapper"). On 2026-09-29 the VS Code extension listed a
+running background Bash task under its description in its background task list. Whether that list is the agent map,
+and whether its Stop reaches the driver, is not measured.
+
+**Issue text.** A Codex agent needs its Haiku subagent only for a card on the agent map. The coordinator can run the
+launcher itself as one background Bash task, as the swarm does for up to fifty agents, with no wrapper tokens, no relay
+that can paraphrase the status lines, and no ten-minute ceiling or `RUNNING=` reruns. The codex page names only the
+wrapper, and its reason contradicts the swarm page and may be out of date. The page should name the background task
+as a supported route, say what it shows and how it is stopped, and support it, after measuring the current extension's
+task list and its Stop on such a task.

@@ -5,8 +5,53 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Added
+
+- `/entrust:prepare-feedback` turns the sessions where entrust or terse loaded into a report on the plugin under one
+  focus (a release, one run, where its time and tokens went, the user's feedback on a topic, all of these at once, or
+  a question in their own words), handed back as an issue title and body, or as a research run inside a checkout of
+  this repository, because the reports behind #1, #15, #16, #20 and #22 were each assembled by hand and #21 asked for
+  them as one repeatable run; the design is in `plugins/entrust/research/2026-09-29-prepare-feedback/`. The `process`
+  focus reports where the runs' time and tokens went and whether each role earned its place, and `all` runs every
+  focus over one corpus into one report with a section per focus, because #15 found the coordinator's own context at
+  51% of the tokens, #16 asked which roles were useful, #22 kept its costs as comparables for later estimates, and
+  the owner asked for every focus in one run and one report.
+- Every prepare-feedback report keeps the facts `timeline` extracts from the transcript, the owner's messages with the
+  queued ones, the pages read before each draft and what each agent read itself, apart from the writing model's own
+  account, which it marks a hypothesis, and each reader's brief names its task's slice of the timeline, because in a
+  field report on terse's clarity skill (2026-09-29) those facts changed the conclusions while the model's own account
+  held neither and contradicted itself three times.
+- `evals/prepare-feedback.test.mjs` checks the skill's script on synthetic transcripts and reports; `package.test.mjs`
+  includes `skills/prepare-feedback/scripts` in the payload check, because the list there is written by hand and a new
+  scripts directory would otherwise go unchecked.
+- `prepare-feedback.mjs corpus` records per task the calls, the time split by what ends each pause (the run working,
+  waiting for the person, gaps over ten minutes), the tool uses, the repeated commands and the largest outputs, and
+  per Codex run the report's model, effort, tokens, timing and command counts, and `process --run <run>` sums them
+  into `measures/process.json` with MCP tool names and non-built-in agent types folded, because the `process` focus
+  asks where a run's time and tokens went and no page or script counted it before.
+
 ### Changed
 
+- `skills/orchestrate/references/roles.md` has a page dry run row: an agent walks one scenario through a plugin's pages
+  without running anything and counts the words, calls, agents and user stops before the first action, as the two dry
+  runs of #15 did; prepare-feedback calls it for a `version` report.
+- The plugin README names the seventh skill in its overview, install list, layout, table of canonical homes and the
+  list of what cleanup leaves, and `plugin.json` and the marketplace entry add it to the description they share, so
+  that every place a user learns what the plugin ships from names it.
+- **An orchestrate plan may propose a swarm for a bulk batch, of verdict units or of extraction parts with a fixed
+  answer schema.** The card names it with its count and cost, the user's "go" on the plan starts it, and the
+  coordinator reads the swarm page by path and launches it with the data directory forwarded, each swarm in a run
+  directory of its own; `/entrust:swarm` still starts one directly. The swarm page takes an extraction part as a unit
+  and says how it starts under a plan, `references/roles.md` has a swarm row in the bulk tier that writes nothing, and
+  prepare-feedback runs its extraction batches this way instead of overriding orchestrate. Why: the owner made the
+  swarm a role the planner may propose, and the writing replication and issue #22 ran their bulk batches by batch
+  launch, with no wrapper per agent. This lifts two of E90's limits, that only the user starts a swarm and that an
+  extraction batch has no batch route; the others stay: fifty units per swarm, no tokens in its summary, agent ids the
+  plan's registration refuses, and the README's place for it among the experiments.
+- **A headless session runs the swarm in the foreground.** The swarm page said to run the script as a background
+  task and wait for its notification; a headless session ends its background tasks with the turn, and on 2026-09-29 a
+  headless orchestrate run that launched a plan's swarm that way ended its turn and cut all three Luna agents, each
+  interrupted with no answer.
 - **The coordinator asks the advisor for the premises its recommendation rests on.** The advisor page now has
   the coordinator ask it to list in `evidence` the premises it relied on, those in the coordinator's own message
   included, each marked checked at a source or taken as given, and count its agreement as independent only on
@@ -25,6 +70,14 @@ forensics remain in the repository references and release notes.
   facts and what they contradict. Why: in the issue #22 run two critics read the draft four and five times, and every
   read after the first found errors the orchestrator's own rewording or a block added after the first read had put
   there; the read that closed the last loop applied the critic's wording verbatim.
+- **The completeness critic reads an answer or publication three times at most.** The critic's bullet called two
+  reads repeating the same gap a stall and said nothing of what it does; now the reads are counted across the drafts,
+  and after the third, or after two that repeat a gap, the answer or publication goes out with its remaining gaps
+  named as open, with no further read and none of the fix rounds' escalation or new plan. Why: in the first live run
+  of prepare-feedback on 2026-09-29, the five completeness reads of a report on one eight-minute session found 9, 3,
+  2, 1 and 0 gaps; in the second to fourth reads one gap each was a line about the review itself, the fourth's only
+  gap, and the report and its README took eight reads, an hour and 43 minutes from the first review read to the
+  commit.
 - **The bulk row's extraction, classification and verification run at `EFFORT: high`; `low` is for mechanical work
   only.** The orchestrate page's effort bullet and the swarm page's Luna brief said `low` for the whole bulk row; the
   strong and cheap rows keep `medium` for review, refutation and judgement. Why: in the pilot reported in issue #22,

@@ -156,7 +156,7 @@ test("every file the plugin needs to run is in the payload",
       ...skillPages,
       ...under(path.relative(ROOT, SCRIPTS)),
       ...under("skills/experiment/scripts"), ...under("skills/swarm/scripts"),
-      ...under("skills/orchestrate/scripts"),
+      ...under("skills/orchestrate/scripts"), ...under("skills/prepare-feedback/scripts"),
     ];
     // The suites are not in that list: they sit beside ROOT, and what installs is ROOT alone.
     const have = new Set(tracked ?? []);
