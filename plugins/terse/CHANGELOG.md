@@ -36,6 +36,9 @@ forensics remain in the repository references and release notes.
   to where it sits, and the team-message note no longer limits self-containment to a block that leaves the
   conversation: in the same report, the writer pointed to an earlier comment in the thread whose text the
   reader needed in hand.
+- `rules.md` says an enumeration of three or more items reads best as a numbered list, and a table row whose
+  content is an enumeration keeps a short summary in its cell with the list right below the table: a chat shows
+  `<br>` and HTML in a cell as literal tags (owner, 2026-09-29).
 
 ### Fixed
 
