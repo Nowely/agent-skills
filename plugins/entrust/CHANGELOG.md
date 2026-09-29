@@ -150,6 +150,11 @@ forensics remain in the repository references and release notes.
   crutches and clean architecture, an outside critic, and a top-row judge where they disagree; an item without one
   goes to the user as a question. Why: the repository's design principles asked for this analysis, and the
   coordinator's own recommendations had gone out without one.
+- **An option in that analysis now names what it removes or moves and who relies on it** — users, coordinators,
+  tools, tests, leftover state — and what stays and how a user finds it is made to happen or `unknown`; the roles
+  reference gains a final-reviewer row that reads the whole change's consequences first. Why: on this run an E92 fix
+  passed every critic and review and moved every Codex agent's scratch to where `/entrust:cleanup` never looked; no
+  stage had asked what the change removed or who relied on it.
 
 ### Fixed
 
@@ -198,7 +203,8 @@ forensics remain in the repository references and release notes.
   `<tmp>/entrust/<rel>` for a report at `<state>/<rel>/report.json`, else `<tmp>/entrust/runs/<startedAtMs>-<pid>`.
   The agent is granted that directory only, never the caller's whole `TMPDIR`. The report's `tmpDir` names it, it
   outlives the run, and the driver never removes it. A leaf that already exists is refused with exit 2. The driver
-  no longer creates `<state>/tmp`; one left by an earlier version can be deleted by hand or through
+  refuses a `<tmp>/entrust` base that is a symbolic link, not a directory, or another user's, with exit 2. The
+  driver no longer creates `<state>/tmp`; one left by an earlier version can be deleted by hand or through
   `/entrust:cleanup`. Agents of one coordinator no longer share, and overwrite, one temp directory. (E92)
 - **`/entrust:cleanup` removes a run's or standalone report's temporary folder** (`<tmp>/entrust/<rel>`) together
   with the run, on the same number and under the run's own liveness. It lists and suggests the folders there whose
