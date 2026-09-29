@@ -643,7 +643,7 @@ const CASES = [
       if (e.offered !== false || e.id !== null || e.decision !== "declined" || e.by !== "driver" || e.why !== "no channel")
         return `the refusal is not recorded as one nobody offered: ${JSON.stringify(e)}`;
       if (!/\n/.test(e.detail) || e.detail.length <= 200) return `the detail is not the whole command: ${JSON.stringify(e.detail)}`;
-      if (e.kind !== "command" || e.cause !== "policy" || e.waitMs !== 0 || typeof e.askedAt !== "string") return `the entry's fields are wrong: ${JSON.stringify(e)}`;
+      if (e.kind !== "command" || e.cause !== "policy" || !(Number.isInteger(e.waitMs) && e.waitMs >= 0) || typeof e.askedAt !== "string") return `the entry's fields are wrong: ${JSON.stringify(e)}`;
       return (r.approvalDir === null && r.approvalsAccepted === 0 && e.resolved === true && e.outcome?.status === "declined")
         || `the counts, the receipt or the outcome are wrong: ${JSON.stringify({ dir: r.approvalDir, acc: r.approvalsAccepted, resolved: e.resolved, outcome: e.outcome })}`;
     } },

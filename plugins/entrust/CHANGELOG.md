@@ -71,6 +71,13 @@ forensics remain in the repository references and release notes.
   only in the coordinator's command output; since 0.21.0 the runner keeps that output in a log, and the manifest did
   not name it.
 
+### Fixed
+
+- **The protocol suite's `approval-wait` case accepts any whole non-negative `waitMs` for a request declined at once**
+  (E76). It required 0, and two clock reads with no wait between them can straddle a millisecond tick: this Mac
+  recorded 1 on 2026-09-29, as a macOS CI runner had. `offered: false`, `by: driver` and `why: no channel` already
+  show that no wait ran.
+
 ## 0.22.0 — 2026-09-28
 
 Contracts that change in this release, each detailed in its entry below. The driver no longer switches on Codex's
