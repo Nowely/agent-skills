@@ -3,9 +3,9 @@
 All content runs used terse's content harness (`evals/content.official.mjs`) with the cases in
 `evals/content/cases/pr35-field.json` (the versions below changed between runs), `clarity` loaded by force,
 three runs per arm, a Sonnet judge that votes three times per grader, and `--criterion-only`. "Before" is the
-pages with #35's five clarity fixes reverted (`evals/content/variants/pr35-before.json`); "after" is the pages
-as changed. The agent was Opus 5.5 in every run whose trace was checked. Counts are passes out of three runs.
-The judge records votes, not reasons.
+pages with #35's five clarity fixes reverted (`evals/content/variants/pr35-before.json`, which since the label
+check's removal reverts fixes 1–4 only); "after" is the pages as changed. The agent was Opus 5.5 in every run
+whose trace was checked. Counts are passes out of three runs. The judge records votes, not reasons.
 
 ## Target grader per case, after against before
 
@@ -17,8 +17,8 @@ The judge records votes, not reasons.
 | 4 quote what the reader acts on | quotes-the-check | 2 / 3 | 3 / 3 | 3 / 2 |
 | 5 heading or group label check | label-fit | 0 / 1 | 2 / 0 | 2 / 1 |
 
-The pilot's "after" carried the first wording of the label check; the rerun and the confirmation run carried
-the second.
+The pilot's "after" carried the first wording of the label check; the rerun and the confirmation run carried the
+second.
 
 ## Blind reading, after against before
 
@@ -33,30 +33,30 @@ behind random labels. The pilot was read with the arms known.
 | 4 | 2 / 3 | 3 / 3 | 3 / 3 |
 | 5 | 0 / 1 | 2 / 0 | 2 / 1 |
 
-Grader against reader, answers where they disagreed (of six per case): rerun 0, 0, 3, 0, 0; confirmation 1,
-3, 4, 1, 0. Under the rules, two or more disagreements mark the grader as a defect and the case as
-unmeasured on it: list-first in both runs, form-matches-neighbours in the confirmation run.
+Grader against reader, answers where they disagreed (of six per case): rerun 0, 0, 3, 0, 0; confirmation 1, 3,
+4, 1, 0. Under the rules, two or more disagreements mark the grader as a defect and the case as unmeasured on
+it: list-first in both runs, form-matches-neighbours in the confirmation run.
 
-Non-target graders lower by two or more in the after arm: none in any run. That check is weak for cases 1
-and 5, whose side graders are unreliable: in the confirmation run, case 5's steps-correct, which judges only
-Steps, voted 0 of 3 and 3 of 3 on two answers whose Steps are word for word the same. The frozen rule lists
-each disagreement with its quote; the quotes are in the run's working files, which are not kept.
+Non-target graders lower by two or more in the after arm: none in any run. That check is weak for cases 1 and 5,
+whose side graders are unreliable: in the confirmation run, case 5's steps-correct, which judges only Steps,
+voted 0 of 3 and 3 of 3 on two answers whose Steps are word for word the same. The frozen rule lists each
+disagreement with its quote; the quotes are in the run's working files, which are not kept.
 
 ## Regrade of saved answers
 
 The twelve rerun answers of cases 1 and 3 were echoed verbatim by Haiku (all twelve exact) and judged again
 under the reworded list-first and facts-correct criteria. The judge agreed with the reader's expected verdicts
-on 7 of 12: facts-correct 4 of 6, list-first 3 of 6. List-first failed the three answers that open with the count
-"I count three jobs, not four" and then give the table, directly, after a caption or inside a block introduced
-for pasting; its criterion names each of these openings as allowed. Facts-correct failed two of the three answers
-expected to pass.
+on 7 of 12: facts-correct 4 of 6, list-first 3 of 6. List-first failed the three answers that open with the
+count "I count three jobs, not four" and then give the table, directly, after a caption or inside a block
+introduced for pasting; its criterion names each of these openings as allowed. Facts-correct failed two of the
+three answers expected to pass.
 
-The same twelve echoes judged by Opus instead of Sonnet agreed with the expected verdicts on 12 of 12, each by
-three unanimous votes: it passed the three count-first answers and the two drafts without a wrong fact that
-Sonnet had failed. The expected verdicts were written by the reader with the arms known, on the answers the
-criteria were reworded against, so this shows that Opus applies the criteria as written; it is not a test on
-new answers. form-matches-neighbours and case 5's steps-correct were not regraded. Since then the pr35 cases
-run with `--judge-model opus`.
+The same twelve answers, echoed again by Haiku (all twelve exact) and judged by Opus instead of Sonnet, agreed
+with the expected verdicts on 12 of 12, each by three unanimous votes: it passed the three count-first answers
+and the two drafts without a wrong fact that Sonnet had failed. The expected verdicts were written by the reader
+with the arms known, on the answers the criteria were reworded against, so this shows that Opus applies the
+criteria as written; it is not a test on new answers. form-matches-neighbours and case 5's steps-correct were
+not regraded. `content.md` now says to run the pr35 cases with `--judge-model opus`.
 
 ## Advisor probe (entrust)
 
@@ -87,5 +87,5 @@ isolated; the with-plugin session loaded only the candidate.
 | Confirmation run | $4.77 |
 | Total | $17.43 |
 
-Priced here: the harness and trigger runs. The agents that designed, criticised and read, and the advisor
-probe, ran on session tokens and are not priced.
+Priced here: the harness and trigger runs. The agents that designed, criticised and read, and the advisor probe,
+ran on session tokens and are not priced.
