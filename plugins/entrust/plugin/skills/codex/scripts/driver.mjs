@@ -86,8 +86,8 @@ const LIMITS = {
   // Too little of the budget left to start the verifier in at all; ENTRUST_VERIFY_FLOOR_MS
   // overrides it, which is also the only way to reach that branch without racing the clock.
   VERIFY_FLOOR_MS: 100,
-  // Retention for the directories this driver keeps: age first, then count, never the newest entry and
-  // never a directory a live agent still owns.
+  // Retention for the answers and job records this driver keeps: age first, then count, never the newest
+  // entry.
   PRUNE_DAYS: 14,
   PRUNE_MAX_ENTRIES: 400,
   // What a report gets to drain in where no wall clock was set, and the floor where one was.
@@ -243,7 +243,6 @@ const STATE_SUBDIRS = [
   ["answers/", "answers, partials, turn diffs"],
   ["home/", "the isolated Codex home"],
   ["jobs/", "`--resume last` and the worktree rebuild"],
-  ["tmp/", "each run's private $TMPDIR"],
   ["worktrees/", "the --worktree ledger"],
   ["pasted/", "attach-pasted.mjs's staged images"],
 ];
@@ -348,12 +347,14 @@ const HELP = [
   ~/.codex, <state> and every directory above either, which hold the receipts
   and this driver's own state`,
     more: `  $TMPDIR is writable at BOTH levels: the whole grant at read level, beside
-  --cwd at write level; /tmp is not, at either. It is the run's own: for every
-  run the driver makes a private 0700 one at <state>/tmp/<runId>, whatever the
-  caller exported, and reports it as tmpDir. It is exported for the turn AND the
-  verifier, and it OUTLIVES the run, because --brief tells the agent to leave
-  long output in a file there. It is pruned on
-  the run-directory bounds (${LIMITS.PRUNE_DAYS} days or ${LIMITS.PRUNE_MAX_ENTRIES} directories, never one still running).
+  --cwd at write level; /tmp is not, at either. It is the run's own directory,
+  made fresh at 0700 inside the system's temporary directory (your TMPDIR when
+  exported, else the OS default), never your whole one:
+    a report at <state>/<rel>/report.json: <tmp>/entrust/<rel>
+    no report under <state>: <tmp>/entrust/runs/<startedAtMs>-<pid>
+  The report names it as tmpDir. It is exported for the turn AND the verifier,
+  and it OUTLIVES the run, because --brief tells the agent to leave long output
+  in a file there; the driver never removes it.
   A worktree turn that did not complete, or a harvest
   that failed, PRESERVES the tree and the report says why and how to remove it; a
   clean tree whose turn never started is removed too. With --resume the tree is
@@ -485,8 +486,8 @@ const HELP = [
   with the empty profile, why "rights are set at launch"; every other request
   (kind writeStdin, the legacy pair, a thread nobody announced, a turn that is
   over or closing), and all of them when --approval-dir is absent. D may not
-  lie in one of this driver's own subdirectories of <state> (tmp/, home/ and
-  the rest): tmp/ holds every run's private $TMPDIR.
+  lie in one of this driver's own subdirectories of <state> (home/, locks/ and
+  the rest), nor under <tmp>/entrust, where every run's $TMPDIR is.
   D/owner.json names the driver that owns D, published by link(2); a second one
   exits 2 whether that one is alive or has ended, so D serves one driver, ever,
   and each launch gets a D of its own. Nothing is written to D once
@@ -1360,39 +1361,42 @@ function refuseWebSearchMode(mode, network) {
   }
 }
 
-// A $TMPDIR of this run's own, made at EITHER level for every run, 0700 so no other
-// user can read what the agent writes there. It lives under the driver's own state and OUTLIVES the run:
-// --brief tells the agent to leave long output in a file there, so a directory removed at exit takes with
-// it every path the answer names. PRUNE_DAYS and PRUNE_MAX_ENTRIES bound retention without removing a
-// live run and reap the directories a SIGKILL leaves behind.
-let privateTmp = null;
-const TMP_OWNER = "owner.json";
-function privateTmpDir() {
-  const base = path.join(stateDir(), "tmp");
-  const id = `${Date.now().toString(36)}-${crypto.randomBytes(4).toString("hex")}`;
-  const dir = path.join(base, id);
+// A $TMPDIR of this run's own, made at EITHER level for every run, in the system's temporary directory —
+// the caller's TMPDIR where one is exported, else the OS default — under entrust/, and named after the
+// run so whose it is can be read off the path: a report at <state>/<rel>/report.json gets
+// entrust/<rel>, the agent's own report directory mirrored, and a run with no report under the state
+// directory gets entrust/runs/<startedAtMs>-<pid>, the start its answer file is named by. Every level made
+// is 0700, and the leaf is made fresh: an existing one is another run's, and sharing it is how two agents
+// overwrote each other's files (E92). It OUTLIVES the run — --brief tells the agent to leave long output in
+// a file there, so a directory removed at exit takes with it every path the answer names — and the driver
+// never removes it.
+let runTmp = null, runTmpBase = null;
+function runTmpDir() {
+  const base = path.join(path.resolve(os.tmpdir()), "entrust");
+  const state = canonPath(stateDir());
+  const from = reportFilePath === null ? null : canonPath(path.dirname(reportFilePath));
+  const rel = state && from ? path.relative(state, from) : "";
+  const mirrored = rel !== "" && rel.split(path.sep)[0] !== ".." && !path.isAbsolute(rel);
+  const dir = path.join(base, mirrored ? rel : path.join("runs", `${startedAtMs}-${process.pid}`));
   try {
-    fs.mkdirSync(base, { recursive: true, mode: 0o700 });
-    pruneDir(base, true);
+    fs.mkdirSync(path.dirname(dir), { recursive: true, mode: 0o700 });
     fs.mkdirSync(dir, { mode: 0o700 });
-    // Whose it is, so the pruner never removes a live agent's scratch directory. An agent may delete this
-    // file — it owns the tree — and the age bound is what decides then.
-    fs.writeFileSync(path.join(dir, TMP_OWNER),
-      JSON.stringify({ pid: process.pid, identity: processIdentity(process.pid), startedAt: new Date().toISOString() }),
-      { mode: 0o600 });
   } catch (e) {
-    fail(EXIT.USAGE, `no private temp directory could be created under ${base} (${e.message}); the state directory must be writable`);
+    fail(EXIT.USAGE, e.code === "EEXIST"
+      ? `the run's $TMPDIR ${dir} already exists: it is named after ${mirrored ? "the report's directory" : "the run"}, so another run made it; name a report path of this run's own`
+      : `the run's $TMPDIR ${dir} could not be created (${e.message})`);
   }
-  privateTmp = dir;
+  runTmpBase = base;
+  runTmp = dir;
   return dir;
 }
 // Named in the report, because it is where the agent's own file paths resolve and it is still there when
 // the coordinator reads the answer. null only on a report written before setup() made it.
-const keptTmpDir = () => privateTmp;
-// Did the agent actually leave anything of its own? The owner record is the driver's, not the agent's.
+const keptTmpDir = () => runTmp;
+// Did the agent actually leave anything of its own?
 const tmpHasAgentFiles = () => {
-  if (!privateTmp) return false;
-  try { return fs.readdirSync(privateTmp).some((n) => n !== TMP_OWNER); } catch { return false; }
+  if (!runTmp) return false;
+  try { return fs.readdirSync(runTmp).length > 0; } catch { return false; }
 };
 // Record the source of the agent's model and effort so a fresh probe, stale config and account defaults
 // remain distinguishable.
@@ -2475,8 +2479,8 @@ function assertReadSandbox(thread) {
   const want = canonPath(tmp);
   if (!want) refuse(`TMPDIR is set to ${JSON.stringify(tmp)}, which does not resolve to a real directory`);
   const got = (sb.writableRoots ?? []).map(canonPath);
-  // Expect exactly TMPDIR. It is the run's own directory under <state>/tmp, made after --cwd was
-  // resolved, so it is never the cwd the server would subtract from writableRoots.
+  // Expect exactly TMPDIR. It is a directory this run made fresh after --cwd was resolved, so it is
+  // never the cwd the server would subtract from writableRoots.
   assertWorkspaceRoot(thread, refuse);
   const ok = got.length === 1 && got[0] === want;
   if (!ok)
@@ -2588,13 +2592,14 @@ async function setup() {
   if (opts.resume === "last") { opts.resume = resolveResumeLast(cwd); refuseLiveResume(opts.resume); }
 
   // $TMPDIR is a grant at BOTH levels — the whole of it at read level, beside --cwd at write level — so
-  // every run gets a directory of its own, whatever the caller exported: a caller's TMPDIR is shared by
-  // every agent it starts, and two agents that named one file there overwrote each other with no error
-  // (E92). /tmp is excluded from the write sandbox too, so without it a write agent would have no temp
-  // root at all, and every heredoc, mkdtemp and test runner would die. It needs no checkRoot: it is one
-  // leaf directory of this run's own under <state>/tmp, which grants nothing beside it.
+  // every run gets a directory of its own inside the caller's, never the caller's whole one: a caller's
+  // TMPDIR is shared by every agent it starts, and two agents that named one file there overwrote each
+  // other with no error (E92). /tmp is excluded from the write sandbox too, so without it a write agent
+  // would have no temp root at all, and every heredoc, mkdtemp and test runner would die. It needs no
+  // checkRoot, wherever the caller's TMPDIR lies: it is a directory this run has just made, empty, which
+  // grants nothing beside itself.
   // Set on process.env because the codex spawn and `codex sandbox :tmpdir` read it.
-  process.env.TMPDIR = privateTmpDir();
+  process.env.TMPDIR = runTmpDir();
 
   // Asked here rather than at the deadline: an opt-in sandbox that turns out to be unavailable must not
   // be discovered after the turn has been paid for, and must never silently fall back to running the
@@ -3232,9 +3237,9 @@ function countLateDecisions() {
 
 // The mailbox is where a decision comes from, so it must be a place no sandbox this driver grants can
 // write: strictly inside the state directory, which checkRoot keeps out of every root from both sides,
-// and inside none of this run's own roots, which covers the one exception, a private $TMPDIR under
-// <state>/tmp. By inode, like every other guard. One driver per mailbox: `pending` is rewritten whole,
-// so two would erase each other's requests.
+// outside <tmp>/entrust, where every run's $TMPDIR is (inside the state directory only when the caller's
+// TMPDIR is), and inside none of this run's own roots. By inode, like every other guard. One driver per
+// mailbox: `pending` is rewritten whole, so two would erase each other's requests.
 function claimMailbox(d) {
   const real = resolveDir(d, "--approval-dir");
   const within = (p, anc) => {
@@ -3251,12 +3256,10 @@ function claimMailbox(d) {
   };
   if (!within(path.dirname(real), stateDir()))
     fail(EXIT.USAGE, `--approval-dir ${real} is not inside this driver's state directory ${stateDir()}: anywhere else a sandbox this driver grants could write a decision into it`);
-  // The one kind of place under the state directory a sandbox may write is a private $TMPDIR this driver
-  // hands out, <state>/tmp/<run>, and that grant belongs to whichever run made it: this run's roots alone
-  // do not cover another run's. So none of the driver's own subdirectories may hold a mailbox; a run
-  // directory, <state>/reports/<run> or the orchestrate page's, is the only place for one.
-  for (const [sub] of STATE_SUBDIRS) {
-    const own = path.join(stateDir(), sub.replace(/\/$/, ""));
+  // None of the driver's own subdirectories may hold a mailbox, and neither may another run's $TMPDIR,
+  // which that run's sandbox writes and this run's roots do not cover: a run directory,
+  // <state>/reports/<run> or the orchestrate page's, is the only place for one.
+  for (const own of [...STATE_SUBDIRS.map(([sub]) => path.join(stateDir(), sub.replace(/\/$/, ""))), runTmpBase]) {
     if (within(real, own))
       fail(EXIT.USAGE, `--approval-dir ${real} lies inside ${own}, which this driver keeps for itself or hands to agents as a writable root: a run there could publish another's decision`);
   }
@@ -3918,10 +3921,8 @@ function persistTurnDiff(payload) {
 }
 
 // Prune by PRUNE_DAYS and PRUNE_MAX_ENTRIES, always keeping the newest entry. Named for the directory
-// rather than for the answers: the job records and the private $TMPDIR trees are pruned by it too.
-// A recursive prune is over the private $TMPDIR tree, where a directory whose owner record names a live
-// process is kept whatever its age: it is a running agent's scratch space.
-function pruneDir(dir, recursive = false) {
+// rather than for the answers: the job records are pruned by it too.
+function pruneDir(dir) {
   try {
     const now = Date.now();
     const entries = fs.readdirSync(dir)
@@ -3929,8 +3930,7 @@ function pruneDir(dir, recursive = false) {
       .filter(Boolean).sort((a, b) => b.t - a.t);
     for (const [i, e] of entries.entries()) {
       if (i === 0 || (now - e.t <= LIMITS.PRUNE_DAYS * 86400000 && i < LIMITS.PRUNE_MAX_ENTRIES)) continue;
-      if (recursive && holderAlive(readJson(path.join(dir, e.n, TMP_OWNER)))) continue;
-      try { fs.rmSync(path.join(dir, e.n), { force: true, recursive }); } catch {}
+      try { fs.rmSync(path.join(dir, e.n), { force: true }); } catch {}
     }
   } catch {}
 }
@@ -4315,7 +4315,7 @@ function writeReport(ev, verifySkipped, codeOverride) {
   // the answer's own file paths resolve.
   const tmpDir = keptTmpDir();
   if (tmpDir && tmpHasAgentFiles())
-    process.stderr.write(`entrust: the agent left files in its private $TMPDIR ${tmpDir}; it outlives the run and is pruned with the run directories\n`);
+    process.stderr.write(`entrust: the agent left files in its private $TMPDIR ${tmpDir}; it outlives the run, and the driver never removes it\n`);
 
   const report = {
     ok: code === EXIT.OK, exitCode: code, level: opts.level, sandbox: effectiveSandbox, cwd,

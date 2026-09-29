@@ -31,7 +31,9 @@ function fresh() {
   fs.writeFileSync(path.join(dir, "prompt.txt"), `RIGHTS: read ${shimDir}\nTASK: irrelevant, the server is scripted\n`);
   return { dir, state, report };
 }
-const env = (state, scenario = "happy") => ({ PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: scenario, ENTRUST_STATE_DIR: state });
+// The case's own TMPDIR too, its state root: the driver names a run's $TMPDIR after the report's path
+// relative to the state root, so cases that share one TMPDIR and one relative path would share a leaf.
+const env = (state, scenario = "happy") => ({ PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: scenario, ENTRUST_STATE_DIR: state, TMPDIR: state });
 const launch = (dir, report, state, scenario) =>
   spawnNode([LAUNCHER, "--dir", dir, "--report-file", report], { env: env(state, scenario), killAfterMs: 60000 });
 const status = async (dir, report) => {

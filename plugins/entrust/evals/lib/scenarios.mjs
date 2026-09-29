@@ -29,7 +29,8 @@ fs.writeFileSync(schemaFile, JSON.stringify({
   type: "object", additionalProperties: false, required: ["verdict", "count"],
   properties: { verdict: { type: "string", enum: ["ok", "bad"] }, count: { type: "integer" } }
 }));
-// A $TMPDIR the caller exports, distinct from --cwd, which the cases show the driver does not use.
+// A $TMPDIR the caller exports, distinct from --cwd, which the cases show holds the run's own directory
+// and is never itself the grant.
 const explicitTmp = path.join(shimDir, "explicit-tmp");
 fs.mkdirSync(explicitTmp);
 const notExec = path.join(shimDir, "not-executable");

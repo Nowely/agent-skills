@@ -380,7 +380,7 @@ const CASES = [
   // The same question at WRITE level, which excludes /tmp: without the run's own directory, os.tmpdir()
   // and TMPPREFIX would both point into a directory the sandbox refuses, and every heredoc and mkdtemp in
   // the turn would fail with nothing in the report saying why.
-  { scenario: "env-tmpprefix",    expect: EXIT.OK, unsetEnv: ["TMPDIR", "TMPPREFIX"], args: ["--level", "write"],
+  { scenario: "env-tmpprefix",    expect: EXIT.OK, unsetEnv: ["TMPPREFIX"], args: ["--level", "write"],
     why: "the private $TMPDIR is not a read-level convenience: with /tmp excluded from the write sandbox, a write agent has no writable temp root at all unless the driver makes one",
     assert: (r) => {
       const got = /TMPPREFIX=(\S+)/.exec(String(r.answer))?.[1];
