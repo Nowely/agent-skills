@@ -5,7 +5,7 @@ Six experiments, five the 2026-09-17 research round left as hypotheses and one t
 ## E1 Width: one Sol against thirty-four Luna
 
 **Hypothesis.** Thirty-four Luna agents, one bounded claim each, verify a set of claims at least as correctly as one Sol agent over all of them, at fewer tokens per correct claim; on raising findings beyond the claims, Luna is worse.
-**Arms.** A: one Sol read agent over all thirty-four claims, its verdicts in a table it leaves as an artifact, since `result` holds thirty lines. B: thirty-four Luna read agents, one claim each, in the bulk row at `low` effort. C: thirty-four Luna, then one Sol over the claims Luna returned as `unknown`.
+**Arms.** A: one Sol read agent over all thirty-four claims, its verdicts in a table it leaves as an artifact, since `result` holds thirty lines. B: thirty-four Luna read agents, one claim each, in the bulk row at the orchestrate page's effort for it. C: thirty-four Luna, then one Sol over the claims Luna returned as `unknown`.
 **Material.** Thirty-four claims of the bulk unit's shape, one claim, one address, a verbatim quote, a closed-set verdict, over a frozen document set; the ground truth written by the coordinator before the run and shown to no arm.
 **Metrics.** Correctness per claim against the ground truth; tokens and paid turns per arm and per correct claim; findings raised beyond the claims, each verified independently; for C, the escalation rate. Thirty-four claims is under fifty: the difference carries an interval.
 **Judge.** A cross-family strong reader with the ground truth, or the user; the returns' first lines removed and the arms lettered.
@@ -19,7 +19,7 @@ Six experiments, five the 2026-09-17 research round left as hypotheses and one t
 **Material.** The same bounded units as E1 or a fresh set of the same shape with ground truth; the closed verdict set includes `unknown`, and the brief says when to return it.
 **Metrics.** Correctness per unit; escalation rate and the correctness of the escalated units; tokens per arm and per correct unit.
 **Judge.** As E1.
-**Budget and stop rule.** One Sol turn for A; the cheap tier at `low` effort plus one Sol turn over the escalated units for B and C.
+**Budget and stop rule.** One Sol turn for A; the cheap tier at the orchestrate page's effort for its row plus one Sol turn over the escalated units for B and C.
 **What it cannot show.** A trust rule for a unit shape it did not run: the rule is measured for the closed-set unit, not for prose.
 
 ## E3 The standing advisor against per-call advice
