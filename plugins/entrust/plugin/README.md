@@ -105,9 +105,14 @@ and the isolated Codex home, the write locks, the worktree ledger and the orches
 directories are all there. `/entrust:cleanup` lists what is there and removes only the items you pick by
 number; experiment records under `experiments/` it neither lists nor removes.
 The driver keeps no default of its own: with neither that variable nor `ENTRUST_STATE_DIR` it
-exits 2. In every permission mode but auto and bypass, a write outside the working directory prompts, so
-add that directory to `permissions.additionalDirectories` once — this plugin adds no rules on your
-behalf. A shell outside Claude Code has no `CLAUDE_PLUGIN_DATA`; to run the driver by hand, as under
+exits 2. Add that directory to `permissions.additionalDirectories` once to read the agents' reports
+without prompts — this plugin adds no rules on your behalf. You never need to write there: the launcher
+and the driver do, and a write there by Claude Code's own tools still asks in the `default` and
+`acceptEdits` modes whatever your settings say, because the directory is under `.claude`, a protected
+path. Claude Code's [permissions page](https://code.claude.com/docs/en/permissions.md) says files in
+additional directories "become readable without prompts, and file editing permissions follow the current
+permission mode", and its [permission modes page](https://code.claude.com/docs/en/permission-modes.md)
+says "`permissions.allow` rules in settings files do not pre-approve protected-path writes". A shell outside Claude Code has no `CLAUDE_PLUGIN_DATA`; to run the driver by hand, as under
 First run, export an absolute path of your own — neither `$TMPDIR` nor a directory above it: both levels
 grant `$TMPDIR` to the agent, and a state directory there, or above it, is refused, so the run exits 2. The
 driver reads `ENTRUST_STATE_DIR` first, so wherever it is set it overrides the plugin's directory:
