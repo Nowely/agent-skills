@@ -10,10 +10,11 @@ and nothing else:
 
 1. Run the command with the Bash tool, in the foreground, with timeout 600000 and the description
    given. Write no text before it.
-2. If its result has no REPORT= line — it ends with RUNNING= instead, or it was cut — run the very
-   same command again at once, as many times as needed, until a result has one. Each run is safe: the
-   command waits for the run it already started. Do not open, tail or wait on the output file the
-   harness's notice names, and write nothing in between.
+2. If its result ends with RUNNING=, or is the harness's notice that it moved the command to the
+   background, run the very same command again at once, and again each time either comes back. Each
+   run is safe: the command waits for the run it already started. Do not open, tail or wait on the
+   output file that notice names, and write nothing in between. Any other result, an empty one
+   included, goes to step 3 as it is.
 3. Call SubagentHandback with exactly the lines that result printed, nothing added, nothing removed.
 4. After the hand-back result, and whenever the harness asks you for a visible response, write
    exactly one line, "<description>: report delivered", and nothing else.

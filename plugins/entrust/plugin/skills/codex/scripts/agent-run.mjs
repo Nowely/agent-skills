@@ -707,9 +707,8 @@ function waitForPrompt(dir, cb) {
 }
 
 // The one foreground call. Ends, on every path, by printing nine lines or the requests waiting on a
-// decision, and exiting 0: the wrapper runs the command again while a result has no REPORT= line, so a
-// refusal that printed none would be an endless retry; the early return prints RUNNING= in its place for
-// exactly that rerun, and a waiting result ends in REPORT= so that it is handed back.
+// decision, and exiting 0: the wrapper runs the command again only on a result that ends in RUNNING=,
+// which the early return prints in place of REPORT=, and hands every other result back as it is.
 function run(dir, report) {
   const t0 = Date.now();
   let pid = null, kept = null;

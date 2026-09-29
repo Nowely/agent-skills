@@ -567,7 +567,7 @@ test("a run whose err.txt starts with a line written before the driver's main re
   });
 
 test("--run that has waited its deadline prints RUNNING= in place of REPORT= and exits 0 while the run goes on, and the same command again prints the nine lines with REPORT=",
-  "the harness moves a foreground command that reaches the tool's ten-minute ceiling into the background, where the wrapper's end tears it down; a call that returns before the ceiling is never moved, and a result with no REPORT= line still sends the wrapper to run the same command again",
+  "the harness moves a foreground command that reaches the tool's ten-minute ceiling into the background, where the wrapper's end tears it down; a call that returns before the ceiling is never moved, and a result that ends in RUNNING= sends the wrapper to run the same command again",
   async () => {
     const { dir, state, report } = fresh();
     const first = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: { ...env(state, "slow-turn"), AGENT_RUN_RETURN_MS: "300" }, killAfterMs: 60000 }).done;
@@ -962,7 +962,7 @@ test("--run always hands the driver its mailbox, making one for a directory an o
   });
 
 test("a --run whose agent asks hands the request back: the --pending block for it, REQUESTS=, WAITING= and REPORT= last, while the run goes on",
-  "the wrapper hands back whatever its one call printed, and its rerun step keys on a REPORT= line: ending the call on a request, with REPORT= last, is what puts the question in front of the coordinator as an agent's return, in the foreground case where no poll exists",
+  "the wrapper hands back whatever its one call printed unless it ends in RUNNING=: ending the call on a request, with REPORT= last, is what puts the question in front of the coordinator as an agent's return, in the foreground case where no poll exists",
   async () => {
     const problems = [];
     const state = tempDir("agent-run-state.");

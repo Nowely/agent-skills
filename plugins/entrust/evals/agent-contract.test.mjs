@@ -118,8 +118,8 @@ test("the ONE call is agent-run.mjs --run with --report-file in one foreground c
     for (const part of ["--run", '--report-file "<REPORT>"'])
       if (!call.includes(part)) problems.push(`the run does not carry ${part}: ${JSON.stringify(call)}`);
     if (call.includes("--dir")) problems.push("the run names --dir, which the launcher derives from the report path");
-    for (const step of ["Write no text before it", "If its result has no REPORT= line", "run the very same command again at once",
-                        "Call SubagentHandback with exactly the lines that result printed", "After the hand-back result", '"<DESCRIPTION>: report delivered"'])
+    for (const step of ["Write no text before it", "If its result ends with RUNNING=", "run the very same command again at once",
+                        "Any other result, an empty one included, goes to step 3", "Call SubagentHandback with exactly the lines that result printed", "After the hand-back result", '"<DESCRIPTION>: report delivered"'])
       if (!flat.includes(step)) problems.push(`the wrapper's message on the page lacks the step ${JSON.stringify(step)}`);
     if (call.includes("driver.mjs")) problems.push("the run names the driver directly again");
     if (/(^|[^&])&\s*$/.test(call)) problems.push("the run ends in an `&` of its own, which hides the run from the task");
@@ -316,10 +316,12 @@ test("the shipped wrapper is the agent the page names: Bash alone, a pinned mode
     if (!/^model: (sonnet|haiku|opus)$/m.test(head)) problems.push("the agent pins no model");
     for (const phrase of ["Do not answer the task yourself", "Do not create or edit files", "Do not change any flag, path, or environment variable",
                           // The procedure the page's message carries and this file repeats: one foreground call with
-                          // the ten-minute timeout, the same command again while no REPORT= line, the hand-back with
-                          // the lines alone, and the one visible line after it.
+                          // the ten-minute timeout, the same command again only on RUNNING= or the harness's notice
+                          // and every other result handed back, the hand-back with the lines alone, and the one
+                          // visible line after it.
                           "in the foreground, with timeout 600000", "Write no text before it",
-                          "If its result has no REPORT= line", "run the very same command again",
+                          "If its result ends with RUNNING=", "run the very same command again",
+                          "Any other result, an empty one included, goes to step 3",
                           "Call SubagentHandback with exactly the lines that result printed",
                           "After the hand-back result", ": report delivered"])
       if (!body.replace(/\s+/g, " ").includes(phrase)) problems.push(`the agent body no longer says: ${JSON.stringify(phrase)}`);
@@ -343,7 +345,7 @@ test("the Rights table's read row is read [<dir>] with no WRITABLE exception, an
   });
 
 test("the waiting result ends in REPORT=, the constant is thirty minutes, and neither page names the widening",
-  "a coordinator reading the waiting result has to see the same REPORT= line the nine-line result ends in, since that is what tells the wrapper's rerun step to stop, and the thirty-minute constant is what protects an unattended run; the widening is gone, so a page that still named its lines, its report fields or a tool's cache would send a coordinator after a request the driver never offers",
+  "a coordinator reading the waiting result has to see the same REPORT= line the nine-line result ends in, since that is the path its --decide and its next --run take, and the thirty-minute constant is what protects an unattended run; the widening is gone, so a page that still named its lines, its report fields or a tool's cache would send a coordinator after a request the driver never offers",
   () => {
     const problems = [];
     for (const phrase of [
