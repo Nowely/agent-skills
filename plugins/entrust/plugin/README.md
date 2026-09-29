@@ -58,8 +58,8 @@ the user's "go" starts. Shared state and free messaging between agents are E4's 
 
 A seventh, `/entrust:prepare-feedback`, turns your own Claude Code sessions into a report on a plugin: it finds
 the sessions where entrust or terse loaded, has orchestrated agents read them under one focus (a release, one
-run, your feedback on a topic, or a question of your own) and hands back an issue title and body, or, inside a
-checkout of this repository, a research run on a worktree branch
+run, where its time and tokens went, your feedback on a topic, all of these at once, or a question of your own) and
+hands back an issue title and body, or, inside a checkout of this repository, a research run on a worktree branch
 ([skills/prepare-feedback/SKILL.md](skills/prepare-feedback/SKILL.md)). What it reads stays in a private folder
 under the plugin's data directory, and an agent that wrote none of the report checks every detail before it
 leaves.

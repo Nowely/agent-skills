@@ -1,7 +1,7 @@
 # Focuses
 
-Contents: [version](#version) with the lens of role usefulness, [run](#run), [feedback](#feedback), [a question in the
-user's words](#a-question-in-the-users-words), [role words](#role-words).
+Contents: [version](#version), [run](#run), [process](#process), [feedback](#feedback), [all](#all), [a question in
+the user's words](#a-question-in-the-users-words), [role words](#role-words).
 
 A focus fixes four things: the unit an agent returns, the closed labels on it, the report's layout and the way of
 reading. Each layout follows a reference, a public issue of `github.com/Nowely/agent-skills` the owner accepted; the
@@ -30,18 +30,6 @@ How a plugin behaved in real work in one release or a window of releases.
 - **Blind proposers:** two, for the proposals table, once the plan has named the criterion that picks the survivors.
 - **Judge:** none.
 
-**The lens of role usefulness (issue #16).** The same corpus, asked which agents earned their place.
-
-- **Unit:** one agent launch.
-- **Labels:** used, its output shaped a delivered result or decision; decisive, a visible contribution nothing else in
-  the run supplied; miss, a later correction inside the scope it was given; harm, its output made a result or decision
-  worse; unknown.
-- **Layout (issue #16):** Summary. Evidence base, terms and role results, each claim marked proven or hypothesis. One
-  section per proposal, each with its acceptance check. The role table. Costs and source records.
-- **Reading:** readers with a question, then two judges, one applying the labels' rules and one auditing the sources
-  independently, then a refuter on the rows they dispute. An experiment the lens proposes goes to
-  `/entrust:experiment` as a protocol and is not run here.
-
 ## run
 
 One run: a failure, a limit, or what a large run measured.
@@ -63,6 +51,47 @@ One run: a failure, a limit, or what a large run measured.
   proposed; one fresh reader.
 - **Judge:** none.
 
+## process
+
+Where the time and tokens of the runs went, and what to do about it. Over one session, `run` says what happened and
+what was measured; `process` says where the time and tokens went.
+
+- **Unit:** a finding about where a run's time or tokens went; for the usefulness rows, one agent launch.
+- **Labels:** each claim is measured or a hypothesis. Level: 1, 2 or 3. Refuter: its verdict. A launch is used, its
+  output shaped a delivered result or decision; decisive, a visible contribution nothing else in the run supplied;
+  miss, a later correction inside the scope it was given; harm, its output made a result or decision worse; or
+  unknown (the labels of issue #16).
+- **Layout:** the title `<plugin> <release or window>: where the time and tokens went`. Summary. Cost by role and by
+  agent. The coordinator's share. Wall time split into active, user and gap time, and where the run waited. Repeats,
+  stalls, redundant checks and rounds. Whether each role earned its place, a table of the launches' labels by role.
+  Proposals, each with its measured baseline first and its expected saving. Method and limits. Its reference is three
+  parts of others: #15's cost profile, #16's role table and #22's costs as comparables.
+- **Time:** a pause is split by what ends it. A pause with a tool call or an agent in flight is active time, however
+  long. A pause a person's input ends is user time, `userMs` and `USER=`, uncapped: read it as idle time on the
+  person's side, not as time spent answering. Any other pause is active up to 600 seconds and a gap above.
+- **Numbers:** `process --run <run>` writes `measures/process.json`: `gap` (600 seconds), `tasks[]`, `agents[]` and
+  `totals`, which include `userMs`. A task row holds `id`, `wallMs`, `activeMs`, `userMs`, `apiCalls`, `tokens`
+  (`input`, `cacheWrite`, `cacheRead`, `output`), `tools`, `gapCount` (every gap over 600 seconds), `gaps[]` (the ten
+  longest, each `{ms, after, before, at}`), `repeats[]`, `outputs[]`, `agentTokens` and `codexTokens`. An agent row
+  holds `id` (`T3.s2`, or `run:T3.c1` for a Codex run), `task`, `model`, `type` (a subagent's agent type, or `codex`),
+  `tokens`, `durationMs` (a Codex run's wall time), `toolUses` (a Codex run's commands that succeeded) and `exit` (a
+  Codex run's exit code, `null` for a subagent). A subagent's `tokens` is summed over the API calls in its own
+  transcript, since the Agent tool's figure is its last call's context, and is `null` when the transcript has no usage;
+  its `durationMs` falls back to its own wall time. A share says where the tokens went, not what they cost: most of a
+  coordinator's are cache reads, 96% in issue #15.
+- **Names:** an MCP tool is written as `mcp`, and an agent type that is neither built in nor `entrust:` or `terse:` as
+  `custom`; model names stay. No field carries a command's text, a brief or a description; the full names and a
+  subagent's description stay in `corpus/index.json`.
+- **Roles:** the script counts by agent and by model, never by role, because a role stands in the plan card, not in
+  a record. The reader names each agent's role from the card in the transcript and labels its launch; the table by
+  role joins those labels with the agent rows.
+- **Reading:** `process` runs once after `corpus`; then readers with a question over `process.json`, each brief
+  carrying its task's rows; a measurer's script
+  only for a number the script does not give, such as the coordinator's context by source, as issue #15 counted it.
+  An experiment a finding proposes goes to `/entrust:experiment` as a protocol and is not run here.
+- **Judges:** two on the usefulness rows, as issue #16 had, one applying the labels' rules and one auditing the
+  sources independently; then a refuter on the rows they dispute.
+
 ## feedback
 
 How the user reacted on a topic, to improve the skill behind it; feedback on writing is a report about terse.
@@ -82,6 +111,27 @@ How the user reacted on a topic, to improve the skill behind it; feedback on wri
   down. The stress test's unit is one principle against one episode.
 - **Judge:** one, deciding keep, revise, merge or drop per principle, and whether a principle turns one success into a
   template.
+
+## all
+
+Every standard focus over one corpus, in one plan and one report.
+
+- **Plan:** the cost of each focus in its own rows, so that the user can drop a focus in words: the readers, shared by
+  `version`, `run` and `process`; for `version`, the page dry run, the two blind proposers and the `Recurring` check
+  against the changelog; for `run`, the measurer over the rollout logs of the tasks it covers and one refuter per
+  thesis; for `process`, the two judges, the refuter and the `process` command; for `feedback`, the pilot, the
+  batches, `coverage`, `quotes`, the two analyses, the stress test and the judge, the costliest row; and the rows
+  every focus shares, the split critic, the dedup-and-rank, the publication reviewer and the completeness critic. A
+  dropped focus takes its rows and its section of the report with it. The corpus is one, so `--all-sessions` widens it
+  for every focus, and every row is priced over the widened corpus.
+- **Reading:** one brief per task carries the questions of every readers' focus the plan kept, and the reader returns
+  a section per focus, with addresses. `feedback` runs its extraction over the same corpus, `parts` cut from it.
+- **`run`:** it covers each task in which the readers find a failure, a limit or a large run, one subsection each, in
+  #1's layout for a failure or a limit and #22's for a large run's measurements.
+- **Report:** one draft, written by the top row, titled
+  `<plugin> <release or window> field report: <headline findings>`; then a section per focus in the menu's order,
+  `version`, `run`, `process`, `feedback`, each in its focus's layout. One publication reviewer and one completeness
+  critic read it, as they read any draft.
 
 ## A question in the user's words
 

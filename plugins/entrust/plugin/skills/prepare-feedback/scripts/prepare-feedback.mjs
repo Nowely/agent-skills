@@ -11,12 +11,14 @@
 //   node prepare-feedback.mjs coverage --run <run> --map <tsv>
 //   node prepare-feedback.mjs quotes   --run <run> --episodes <jsonl>
 //   node prepare-feedback.mjs tokens   --run <run> --reports <dir> | --from <tsv> [--median <n>]
+//   node prepare-feedback.mjs process  --run <run>
 //   node prepare-feedback.mjs export   --run <run> --to <relative dir>
 //
 // A run is <state>/prepare-feedback/<date>-<slug>/ with corpus/index.json, corpus/turns.jsonl, corpus/parts/,
 // corpus/pages/, corpus/parts.json, ledger/, measures/, drafts/, anonymized/ and rounds.md. The transcripts stay
-// where Claude Code keeps them: the index maps each task to its files (T3, its forks T3.f1, its subagents T3.s2),
-// and turns.jsonl holds the text of their turns, each addressed by a task and a line of its JSONL (T3:282).
+// where Claude Code keeps them: the index maps each task to its files (T3, its forks T3.f1, its subagents T3.s2,
+// its Codex runs T3.c1), and turns.jsonl holds the text of their turns, each addressed by a task and a line of its
+// JSONL (T3:282). The index also holds each task's process counts, which process sums without any text.
 // Events are read from parsed records, never from raw lines, so a quoted marker is not an event. Nothing in a
 // run is overwritten: a scope narrowed after the plan is a new --slug. export copies what a report publishes to
 // a new directory named relative to the working directory, never under the state directory, and nothing it
@@ -40,6 +42,9 @@ const PLUGINS = ["entrust", "terse"];
 const SELF = "prepare-feedback";
 const PART_CHARS = 60000, PAGE_CHARS = 18000, OVERLAP_TURNS = 3, OVERLAP_CHARS = 6000;
 const NEAR = 0.6, NEAR_WORDS = 300, NEAR_CANDIDATES = 20;
+const GAP_MS = 600000, CARRY_MS = 5000, TOP = 10, REPEAT_ADDRESSES = 10;
+// Claude Code's own agent types; any other, but the reported plugins' own, is written to process.json as custom.
+const BUILT_IN_AGENTS = new Set(["general-purpose", "claude", "claude-code-guide", "Explore", "Plan", "statusline-setup"]);
 const NAME = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const SEMVER = /^\d+\.\d+\.\d+$/;
 const ADDABLE = /^(?:(?:ledger|measures|anonymized)(?:\/[A-Za-z0-9_][A-Za-z0-9._-]*)+|drafts\/\d{2,}-report\.md|rounds\.md)$/;
@@ -50,6 +55,7 @@ const OPTIONS = {
   coverage: { one: ["run", "map"] },
   quotes: { one: ["run", "episodes"] },
   tokens: { one: ["run", "reports", "from", "median"] },
+  process: { one: ["run"] },
   export: { one: ["run", "to"] },
 };
 const COMMANDS = Object.keys(OPTIONS);
@@ -100,6 +106,12 @@ const usage = () => `prepare-feedback.mjs — the private folder of one /entrust
   tokens   --run <run> --reports <dir> | --from <tsv> [--median <n>]
                   <dir>/*/report.json (tokenUsage.total.totalTokens) or lines agent<TAB>tokens; the batch's median
                   and maximum, and with --median the agents above three times <n>; writes measures/tokens-<name>.json
+  process  --run <run>
+                  sum the process counts corpus recorded into measures/process.json: a row per task, a row per
+                  agent (T3.s2, or run:T3.c1 for a Codex run) and the totals, counts, hashes and addresses only;
+                  every token count is summed over API calls, a subagent's from its own transcript; prints TASKS=,
+                  WALL=, ACTIVE= GAP=600s, USER=, GAPS= LARGEST=, COORD=, AGENTS=, CODEX=, TOOLS=, REPEATS=,
+                  OUTPUTS=, then FILE=
   export   --run <run> --to <relative dir>
                   copy drafts/*.md, rounds.md, measures/ and anonymized/ unchanged into <dir>, which must not exist
 
@@ -119,6 +131,20 @@ assistant (its text blocks) and tool_error (a failed tool's result), from every 
 subagent (T3.s2); thinking, tool calls and successful tool results stay in the transcript. A subagent is a
 transcript directly under <session>/subagents/; workflow agents below it are not read. <name> is the input's
 basename without its extension. coverage and tokens print their per-agent lines before their summary line.
+Process counts, per task (its transcript and forks, a fork's copies once) and per subagent in index.json (a
+subagent's also its usage summed from its transcript beside the Agent tool's tokens, which count one call):
+apiCalls (distinct API responses), wallMs (first to last record), and each pause between records in one of three:
+activeMs (the run working: any pause while a tool call or an agent is in flight, a background one until the
+notification that reports it done, however long, and any other pause of 600 s or less), userMs (a pause a
+person's own input ended: their message, or the queue operation or attachment that carries it in), gapCount and
+gaps[] (any other pause over 600 s, the ten longest: ms, after and before, the kinds of record on either side, and
+the address of the one before); tools {name: uses}, repeats[] (Bash commands run twice or more: sha256, chars,
+count, up to ten addresses; never the command), outputs[] (the ten largest tool results: tool, bytes, address).
+Each Codex run (codex[], T3.c1) adds its report's model, effort (reasoningEffort, else effort), tokens, cached,
+wallMs, commandMs, modelMs, exitCode, turnStatus and commandsSucceeded, commandsFailed, commandsDeclined.
+process.json holds counts, hashes, addresses, basenames, Claude Code's own tool and agent-type names, the
+reported plugins' agent types, model names and two folded names: mcp for every MCP tool, custom for every other
+agent type; the full names stay in index.json.
 
 Environment: ENTRUST_STATE_DIR, else CLAUDE_PLUGIN_DATA (absolute); CLAUDE_CONFIG_DIR, else ~/.claude, for the
 transcripts; CODEX_HOME, else ~/.codex, for the rollouts. Nothing is overwritten, ever.
@@ -342,46 +368,163 @@ function launchesIn(text) {
   return receipts.map((receipt) => ({ report: null, threadId: ROLLOUT.exec(path.basename(receipt))?.[1] ?? null, receipt }));
 }
 
-// Every turn, usage record, Agent return and Codex launch one transcript holds, in line order.
+// What one record is, for the process counts: its kind (a gap names the kinds on both sides), whether it is a
+// person's own input, and whether it is a queue operation or attachment that only carries the next record in.
+function kindOf(r, tools, sub) {
+  const c = r.message?.content;
+  if (r.type === "assistant") {
+    let kind = "assistant";
+    if (Array.isArray(c)) for (const b of c) if (b && b.type === "tool_use") kind = `tool_use:${b.name}`;
+    return { kind };
+  }
+  if (r.type === "queue-operation") {
+    const typed = r.operation === "enqueue" && typeof r.content === "string" && r.content.trim() && !r.content.trimStart().startsWith("<");
+    return { kind: "queue-operation", carrier: true, person: !!typed };
+  }
+  if (r.type === "attachment") return { kind: "attachment", carrier: true };
+  if (r.type !== "user") return { kind: r.type };
+  const results = Array.isArray(c) ? c.filter((b) => b && b.type === "tool_result") : [];
+  if (results.length) return { kind: `tool_result:${tools.get(results.at(-1).tool_use_id)?.name ?? "unknown"}` };
+  if (r.origin?.kind === "task-notification" || textOf(c).trimStart().startsWith("<task-notification>")) return { kind: "notification" };
+  if (r.origin?.kind === "peer") return { kind: "peer" };
+  if (r.isMeta) return { kind: "meta" };
+  if (sub) return { kind: "brief" };
+  return humanText(r) !== null ? { kind: "user", person: true } : { kind: "system" };
+}
+
+// A task notification's call (tool-use-id), task (task-id) and time, and a background agent's totals. Read from a
+// user record, a queued enqueue or the attachment that carries it: the same notice seen twice ends the same call
+// at the earliest time and sets the same totals.
+function notification(found, text, ms, sub) {
+  if (!text.trimStart().startsWith("<task-notification>")) return;
+  const tag = (name) => new RegExp(`<${name}>([^<]*)</${name}>`).exec(text)?.[1];
+  found.notes.push({ tool: tag("tool-use-id") ?? null, task: tag("task-id") ?? null, ms });
+  if (!sub && tag("task-id") && /^\d+$/.test(tag("subagent_tokens") ?? ""))
+    found.agents.push({ agentId: tag("task-id"), tokens: Number(tag("subagent_tokens")), durationMs: Number(tag("duration_ms")) || undefined, toolUses: Number(tag("tool_uses")) || undefined });
+}
+
+// Every turn, usage record, Agent return and Codex launch one transcript holds, in line order, and for the
+// process counts every timestamp with its record's kind, every tool call's start and end (a background one's
+// end is the notification that reports it done), every tool use and every result's size.
 function scan(file, sub) {
-  const found = { first: null, turns: [], usage: [], agents: [], launches: [] };
+  const found = { first: null, turns: [], usage: [], agents: [], launches: [], stamps: [], uses: [], outputs: [], calls: [], results: [], notes: [] };
   const tools = new Map();
   for (const [line, r] of records(file)) {
     const ts = typeof r.timestamp === "string" ? r.timestamp : "";
     if (ts && (!found.first || ts < found.first)) found.first = ts;
+    const ms = ts ? Date.parse(ts) : NaN;
     const c = r.message?.content;
+    if (ts) found.stamps.push({ ms, line, ...kindOf(r, tools, sub) });
+    // A notification that arrives while the assistant is busy is queued: an enqueue, then an attachment that
+    // carries it in, and only sometimes a user record. Each is read; metrics keeps the earliest time per call.
+    const queued = r.type === "queue-operation" && r.operation === "enqueue" ? r.content
+      : r.type === "attachment" && r.attachment?.type === "queued_command" ? r.attachment.prompt : null;
+    if (typeof queued === "string") { notification(found, queued, ms, sub); continue; }
     if (r.type === "assistant") {
-      if (Array.isArray(c)) for (const b of c) if (b && b.type === "tool_use")
+      if (Array.isArray(c)) for (const b of c) if (b && b.type === "tool_use") {
         tools.set(b.id, { name: b.name, command: typeof b.input?.command === "string" ? b.input.command : "" });
+        found.uses.push({ id: b.id, name: b.name, command: tools.get(b.id).command, line });
+        found.calls.push({ id: b.id, ms });
+      }
       const text = textOf(c);
       if (text.trim()) found.turns.push({ line, ts, role: "assistant", text });
       if (r.message?.usage && typeof r.message.id === "string") found.usage.push([r.message.id, r.message.usage]);
       continue;
     }
     if (r.type !== "user") continue;
+    const u = r.toolUseResult;
     if (Array.isArray(c)) for (const b of c) {
       if (!b || b.type !== "tool_result") continue;
       const text = resultText(b);
       if (b.is_error && text.trim()) found.turns.push({ line, ts, role: "tool_error", text });
       const tool = tools.get(b.tool_use_id);
+      found.outputs.push({ id: b.tool_use_id, tool: tool?.name ?? "unknown", bytes: Buffer.byteLength(text), line });
+      const background = !!u && typeof u === "object" && (u.isAsync === true || u.status === "async_launched" || typeof u.backgroundTaskId === "string");
+      found.results.push({ id: b.tool_use_id, ms, background, task: background ? (u.agentId ?? u.backgroundTaskId ?? null) : null });
       if (tool && LAUNCHERS.has(tool.name) && /REPORT=|threadId|receiptPath/.test(text)) {
         const read = readsFile(tool.command);
         for (const l of launchesIn(text)) if (l.report || !read) found.launches.push({ line, ...l });
       }
     }
-    const u = r.toolUseResult;
     if (u && typeof u === "object" && typeof u.agentId === "string")
       found.agents.push({ agentId: u.agentId, tokens: u.totalTokens, durationMs: u.totalDurationMs, toolUses: u.totalToolUseCount, model: u.resolvedModel });
-    const note = textOf(c);
-    if (!sub && note.trimStart().startsWith("<task-notification>")) {
-      const tag = (name) => new RegExp(`<${name}>([^<]*)</${name}>`).exec(note)?.[1];
-      if (tag("task-id") && /^\d+$/.test(tag("subagent_tokens") ?? ""))
-        found.agents.push({ agentId: tag("task-id"), tokens: Number(tag("subagent_tokens")), durationMs: Number(tag("duration_ms")) || undefined, toolUses: Number(tag("tool_uses")) || undefined });
-    }
+    notification(found, textOf(c), ms, sub);
     const text = sub ? briefText(r) : humanText(r);
     if (text !== null) found.turns.push({ line, ts, role: "user", text });
   }
   return found;
+}
+
+// The process counts of one task (its transcript and forks) or one subagent, a fork's copies counted once:
+// a timestamp, tool call, result, notification or API call two files share is the same event. Each pause
+// between records is sorted by what was going on and what ended it: while a tool call or an agent was in
+// flight the run was working, however long; a pause a person's input ended is time waiting for the person;
+// any other pause is working time up to GAP_MS and a gap over it, named by the kinds before and after it. A
+// person's input is their message, or a queue operation or attachment that carries one in within CARRY_MS.
+// No text is kept: a repeated command is its sha256 and length.
+function metrics(parts) {
+  const stamps = new Map(), uses = new Map(), outs = new Map(), calls = new Set();
+  const starts = new Map(), ends = new Map(), byTool = new Map(), byTask = new Map();
+  const usage = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0 };
+  const first = (map, key, value) => { if (key != null && !map.has(key)) map.set(key, value); };
+  const earliest = (map, key, ms) => { if (key != null && !(map.get(key) <= ms)) map.set(key, ms); };
+  for (const { t, found } of parts) {
+    for (const s of found.stamps) if (Number.isFinite(s.ms)) first(stamps, s.ms, { ...s, at: `${t}:${s.line}` });
+    for (const u of found.uses) first(uses, u.id, { ...u, at: `${t}:${u.line}` });
+    for (const o of found.outputs) first(outs, o.id, { tool: o.tool, bytes: o.bytes, at: `${t}:${o.line}` });
+    for (const x of found.calls) if (Number.isFinite(x.ms)) first(starts, x.id, x.ms);
+    for (const x of found.results) if (Number.isFinite(x.ms)) first(ends, x.id, x);
+    for (const n of found.notes) if (Number.isFinite(n.ms)) { earliest(byTool, n.tool, n.ms); earliest(byTask, n.task, n.ms); }
+    for (const [mid, u] of found.usage) {
+      if (calls.has(mid)) continue;
+      calls.add(mid);
+      usage.input += u.input_tokens ?? 0; usage.cacheWrite += u.cache_creation_input_tokens ?? 0;
+      usage.cacheRead += u.cache_read_input_tokens ?? 0; usage.output += u.output_tokens ?? 0;
+    }
+  }
+  const flights = [];
+  for (const [id, start] of starts) {
+    const r = ends.get(id);
+    if (!r) continue;
+    const end = r.background ? (byTool.get(id) ?? byTask.get(r.task) ?? r.ms) : r.ms;
+    if (end > start) flights.push([start, end]);
+  }
+  flights.sort((a, b) => a[0] - b[0]);
+  const busy = [];
+  for (const f of flights) if (busy.length && f[0] <= busy.at(-1)[1]) busy.at(-1)[1] = Math.max(busy.at(-1)[1], f[1]); else busy.push([...f]);
+  const line = [...stamps.values()].sort((a, b) => a.ms - b.ms);
+  for (let i = line.length - 1, next = null; i >= 0; i--) {
+    const s = line[i];
+    if (s.carrier) s.person = s.person || (!!next && next.person && next.ms - s.ms <= CARRY_MS);
+    else next = s;
+  }
+  let activeMs = 0, userMs = 0, p = 0;
+  const gaps = [];
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1].ms, b = line[i].ms, d = b - a;
+    while (p < busy.length && busy[p][1] < b) p++;
+    if (p < busy.length && busy[p][0] <= a) activeMs += d;
+    else if (line[i].person) userMs += d;
+    else if (d <= GAP_MS) activeMs += d;
+    else gaps.push({ ms: d, after: line[i - 1].kind, before: line[i].kind, at: line[i - 1].at });
+  }
+  const tools = {}, commands = new Map();
+  for (const u of uses.values()) {
+    tools[u.name] = (tools[u.name] ?? 0) + 1;
+    if (u.name !== "Bash" || !u.command.trim()) continue;
+    const h = sha256(u.command);
+    const x = commands.get(h) ?? { sha256: h, chars: u.command.length, count: 0, at: [] };
+    x.count++;
+    if (x.at.length < REPEAT_ADDRESSES) x.at.push(u.at);
+    commands.set(h, x);
+  }
+  return {
+    apiCalls: calls.size, usage: calls.size ? usage : null, wallMs: line.length ? line.at(-1).ms - line[0].ms : 0, activeMs, userMs,
+    gapCount: gaps.length, gaps: gaps.sort((a, b) => b.ms - a.ms).slice(0, TOP),
+    tools: Object.fromEntries(Object.entries(tools).sort((a, b) => b[1] - a[1] || cmpStr(a[0], b[0]))),
+    repeats: [...commands.values()].filter((x) => x.count > 1).sort((a, b) => b.count - a.count || cmpStr(a.at[0], b.at[0])),
+    outputs: [...outs.values()].sort((a, b) => b.bytes - a.bytes || cmpStr(a.at, b.at)).slice(0, TOP),
+  };
 }
 
 // threadId -> rollout files under the Codex sessions directory, walked once and only when a launch needs it.
@@ -407,8 +550,9 @@ function rolloutIndex(dir) {
 }
 
 // One launch seen twice (a fork's copy, a status line printed again) is one run; a thread seen before its
-// REPORT= line is the reported run.
-function resolveRuns(launches, rollouts) {
+// REPORT= line is the reported run. Each run is numbered in its task (T3.c1) and carries its report's model,
+// effort, tokens, timing, exit and command counts, as the entrust driver writes them, null where there is none.
+function resolveRuns(launches, rollouts, task) {
   const runs = new Map();
   for (const l of launches) {
     const key = l.report ? `report\u0000${l.report}` : l.threadId ? `thread\u0000${l.threadId}` : `receipt\u0000${l.receipt}`;
@@ -421,13 +565,25 @@ function resolveRuns(launches, rollouts) {
     if (!r.report) continue;
     const rep = readJson(r.report);
     r.reportFound = rep !== null;
+    r.rep = rep ?? {};
     if (rep && typeof rep.threadId === "string") r.threadId = rep.threadId;
   }
   const reported = new Set(all.filter((r) => r.report && r.threadId).map((r) => r.threadId));
-  return all.filter((r) => r.report || !reported.has(r.threadId)).map((r) => ({
-    at: r.at, report: r.report, reportFound: r.reportFound, threadId: r.threadId, receipt: r.receipt,
-    rollout: (r.threadId && rollouts().get(r.threadId)?.[0]) || (r.receipt && isFile(r.receipt) ? r.receipt : null),
-  }));
+  const num = (v) => (typeof v === "number" ? v : null), str = (v) => (typeof v === "string" ? v : null);
+  return all.filter((r) => r.report || !reported.has(r.threadId)).map((r, k) => {
+    const rep = r.rep ?? {};
+    return {
+      id: `${task}.c${k + 1}`, at: r.at, report: r.report, reportFound: r.reportFound, threadId: r.threadId, receipt: r.receipt,
+      rollout: (r.threadId && rollouts().get(r.threadId)?.[0]) || (r.receipt && isFile(r.receipt) ? r.receipt : null),
+      // The effort the turn ran at: the driver's reasoningEffort, since the requested effort is null when the
+      // thread inherited its config (driver.mjs, where the report is written).
+      model: str(rep.model), effort: str(rep.reasoningEffort) ?? str(rep.effort),
+      tokens: num(rep.tokenUsage?.total?.totalTokens), cached: num(rep.tokenUsage?.total?.cachedInputTokens),
+      wallMs: num(rep.timing?.wallMs), commandMs: num(rep.timing?.commandMs), modelMs: num(rep.timing?.modelMs),
+      exitCode: num(rep.exitCode), turnStatus: str(rep.turnStatus),
+      commandsSucceeded: num(rep.commandsSucceeded), commandsFailed: num(rep.commandsFailed), commandsDeclined: num(rep.commandsDeclined),
+    };
+  });
 }
 
 // One task: its main transcript, its forks and every subagent under them, as an index entry and turns.
@@ -442,7 +598,7 @@ function gather(files, id, rollouts) {
     tokens: { input: 0, cacheWrite: 0, cacheRead: 0, output: 0 },
     loads: [], refusals: [], subagents: [], codex: [],
   };
-  const turns = [], seen = new Set(), agents = new Map(), launches = [];
+  const turns = [], seen = new Set(), agents = new Map(), launches = [], coordinator = [];
   const once = (key) => {
     const k = sha256(key);
     return seen.has(k) ? false : (seen.add(k), true);
@@ -460,6 +616,7 @@ function gather(files, id, rollouts) {
     for (const x of s.refusals) if (once(`refusal\u0000${x.ts}\u0000${x.skill}`))
       entry.refusals.push({ at: `${t}:${x.line}`, skill: x.skill, plugin: x.plugin });
     const found = scan(s.file, false);
+    coordinator.push({ t, found });
     for (const x of found.turns) turn(t, x);
     for (const [mid, u] of found.usage) if (once(`usage\u0000${mid}`)) {
       entry.tokens.input += u.input_tokens ?? 0; entry.tokens.cacheWrite += u.cache_creation_input_tokens ?? 0;
@@ -472,6 +629,9 @@ function gather(files, id, rollouts) {
     }
     for (const l of found.launches) launches.push({ ...l, at: `${t}:${l.line}` });
   });
+  const { usage: _same, ...counts } = metrics(coordinator);
+  Object.assign(entry, counts);
+  coordinator.length = 0;
   const subs = [], agentIds = new Set();
   for (const s of files) {
     const d = path.join(path.dirname(s.file), s.session, "subagents");
@@ -492,11 +652,12 @@ function gather(files, id, rollouts) {
     entry.subagents.push({
       id: t, path: x.file, agentId: x.agentId, type: meta.agentType ?? null, description: meta.description ?? null,
       tokens: ret?.tokens ?? null, durationMs: ret?.durationMs ?? null, toolUses: ret?.toolUses ?? null, model: ret?.model ?? null,
+      ...metrics([{ t, found: x.found }]),
     });
     for (const y of x.found.turns) turn(t, y);
     for (const l of x.found.launches) launches.push({ ...l, at: `${t}:${l.line}` });
   });
-  entry.codex = resolveRuns(launches, rollouts);
+  entry.codex = resolveRuns(launches, rollouts, id);
   return { entry, turns };
 }
 
@@ -942,6 +1103,83 @@ function tokens(opt, state) {
   ]);
 }
 
+// Where a run's time and tokens went, from the counts corpus recorded: no transcript text, no path and no
+// thread id, since export publishes measures/. Every token count is summed over API calls: the coordinator's
+// from its tasks' usage, a subagent's from its own transcript's usage (the Agent tool's totalTokens counts only
+// its last call's context), a Codex run's from its report.
+function processRun(opt, state) {
+  const dir = runDir(opt, state);
+  const indexFile = path.join(dir, "corpus", "index.json");
+  if (!isFile(indexFile)) fail(EXIT.REFUSED, `the run has no corpus yet: run corpus first: ${dir}`);
+  const idx = readJson(indexFile);
+  if (!idx || !Array.isArray(idx.sessions)) fail(EXIT.USAGE, `corpus/index.json does not parse: ${indexFile}`);
+  const dst = path.join(dir, "measures", "process.json");
+  if (fs.existsSync(dst)) fail(EXIT.REFUSED, `already there, not rewritten: ${dst}`);
+  const sum = (xs) => xs.reduce((n, x) => n + (typeof x === "number" ? x : 0), 0);
+  // Names from the user's environment stay in index.json: an MCP tool is written as mcp, an agent type that is
+  // neither Claude Code's nor a reported plugin's as custom.
+  const tool = (n) => (typeof n === "string" && n.startsWith("mcp__") ? "mcp" : n);
+  const kind = (k) => (typeof k === "string" ? k.replace(/:mcp__.*$/, ":mcp") : k);
+  const type = (t) => (t == null || BUILT_IN_AGENTS.has(t) || PLUGINS.some((p) => t.startsWith(`${p}:`)) ? t ?? null : "custom");
+  const folded = (tools) => {
+    const out = {};
+    for (const [k, v] of Object.entries(tools ?? {})) out[tool(k)] = (out[tool(k)] ?? 0) + v;
+    return Object.fromEntries(Object.entries(out).sort((a, b) => b[1] - a[1] || cmpStr(a[0], b[0])));
+  };
+  const tasks = idx.sessions.map((e) => ({
+    id: e.id, wallMs: e.wallMs ?? 0, activeMs: e.activeMs ?? 0, userMs: e.userMs ?? 0, apiCalls: e.apiCalls ?? 0,
+    tokens: { input: e.tokens?.input ?? 0, cacheWrite: e.tokens?.cacheWrite ?? 0, cacheRead: e.tokens?.cacheRead ?? 0, output: e.tokens?.output ?? 0 },
+    tools: folded(e.tools), gapCount: e.gapCount ?? 0,
+    gaps: (e.gaps ?? []).map((g) => ({ ms: g.ms, after: kind(g.after), before: kind(g.before), at: g.at })),
+    repeats: e.repeats ?? [], outputs: (e.outputs ?? []).map((o) => ({ tool: tool(o.tool), bytes: o.bytes, at: o.at })),
+    agentTokens: sum((e.subagents ?? []).map((s) => (s.usage ? sum(Object.values(s.usage)) : 0))), codexTokens: sum((e.codex ?? []).map((c) => c.tokens)),
+  }));
+  const agents = idx.sessions.flatMap((e) => [
+    ...(e.subagents ?? []).map((s) => ({ id: s.id, task: e.id, model: s.model ?? null, type: type(s.type),
+      tokens: s.usage ? sum(Object.values(s.usage)) : null, durationMs: s.durationMs ?? s.wallMs ?? null, toolUses: s.toolUses ?? null, exit: null })),
+    ...(e.codex ?? []).map((c) => ({ id: `run:${c.id}`, task: e.id, model: c.model ?? null, type: "codex", tokens: c.tokens ?? null,
+      durationMs: c.wallMs ?? null, toolUses: c.commandsSucceeded ?? null, exit: c.exitCode ?? null })),
+  ]);
+  const claude = agents.filter((a) => a.type !== "codex"), codex = agents.filter((a) => a.type === "codex");
+  const coord = sum(tasks.map((t) => sum(Object.values(t.tokens)))), cacheRead = sum(tasks.map((t) => t.tokens.cacheRead));
+  const agentTokens = sum(claude.map((a) => a.tokens)), codexTokens = sum(codex.map((a) => a.tokens));
+  const all = coord + agentTokens + codexTokens;
+  const pct = (n, d) => (d ? Math.round((100 * n) / d) : 0);
+  const gaps = tasks.flatMap((t) => t.gaps).sort((a, b) => b.ms - a.ms);
+  const tools = {};
+  for (const t of tasks) for (const [k, v] of Object.entries(t.tools)) tools[k] = (tools[k] ?? 0) + v;
+  const toolsRanked = Object.entries(tools).sort((a, b) => b[1] - a[1] || cmpStr(a[0], b[0]));
+  const repeats = tasks.flatMap((t) => t.repeats).sort((a, b) => b.count - a.count || cmpStr(a.at[0], b.at[0]));
+  const outputsRanked = tasks.flatMap((t) => t.outputs).sort((a, b) => b.bytes - a.bytes || cmpStr(a.at, b.at));
+  const nonzero = codex.filter((a) => typeof a.exit === "number" && a.exit !== 0).length;
+  const totals = {
+    tasks: tasks.length, wallMs: sum(tasks.map((t) => t.wallMs)), activeMs: sum(tasks.map((t) => t.activeMs)), userMs: sum(tasks.map((t) => t.userMs)),
+    gaps: sum(tasks.map((t) => t.gapCount)), largestGap: gaps[0] ?? null, apiCalls: sum(tasks.map((t) => t.apiCalls)),
+    coordinatorTokens: coord, coordinatorShare: pct(coord, all), cacheReadShare: pct(cacheRead, coord),
+    agents: claude.length, agentTokens, agentShare: pct(agentTokens, all),
+    codex: codex.length, codexTokens, codexShare: pct(codexTokens, all), nonzeroExit: nonzero,
+    tools: Object.fromEntries(toolsRanked), repeats: repeats.length,
+    mostRepeated: repeats[0] ? { count: repeats[0].count, at: repeats[0].at[0] } : null, largestOutput: outputsRanked[0] ?? null,
+  };
+  makeDir(path.dirname(dst));
+  place(dst, `${JSON.stringify({ gap: GAP_MS / 1000, tasks, agents, totals }, null, 2)}\n`);
+  const s = (ms) => Math.round(ms / 1000);
+  say([
+    `TASKS=${tasks.length}`,
+    `WALL=${s(totals.wallMs)}`,
+    `ACTIVE=${s(totals.activeMs)} GAP=${GAP_MS / 1000}s`,
+    `USER=${s(totals.userMs)}`,
+    `GAPS=${totals.gaps} LARGEST=${gaps[0] ? s(gaps[0].ms) : 0} at ${gaps[0]?.at ?? "none"}`,
+    `COORD=${coord} share=${totals.coordinatorShare}% cache_read=${totals.cacheReadShare}% api_calls=${totals.apiCalls}`,
+    `AGENTS=${claude.length} tokens=${agentTokens} share=${totals.agentShare}%`,
+    `CODEX=${codex.length} tokens=${codexTokens} share=${totals.codexShare}% nonzero_exit=${nonzero}`,
+    `TOOLS=${toolsRanked.slice(0, 5).map(([k, v]) => `${k}:${v}`).join(" ") || "none"}`,
+    `REPEATS=${repeats.length} MOST=${repeats[0]?.count ?? 0}x at ${repeats[0]?.at[0] ?? "none"}`,
+    `OUTPUTS=${outputsRanked[0]?.bytes ?? 0} at ${outputsRanked[0]?.at ?? "none"}`,
+    "FILE=measures/process.json",
+  ]);
+}
+
 function exportRun(opt, state) {
   const dir = runDir(opt, state);
   if (!opt.to) fail(EXIT.USAGE, "--to <relative dir> is required");
@@ -987,4 +1225,4 @@ if (cmd !== undefined && !COMMANDS.includes(cmd)) fail(EXIT.USAGE, `unknown comm
 if (argv.includes("--help") || !cmd) { process.stdout.write(usage()); process.exit(argv.includes("--help") ? EXIT.OK : EXIT.USAGE); }
 const opt = parse(cmd, argv.slice(1));
 const state = stateDir();
-({ corpus, parts, add, coverage, quotes, tokens, export: exportRun })[cmd](opt, state);
+({ corpus, parts, add, coverage, quotes, tokens, process: processRun, export: exportRun })[cmd](opt, state);

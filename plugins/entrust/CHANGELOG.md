@@ -8,13 +8,22 @@ forensics remain in the repository references and release notes.
 ### Added
 
 - `/entrust:prepare-feedback` turns the sessions where entrust or terse loaded into a report on the plugin under one
-  focus (a release, one run, the user's feedback on a topic, or a question in their own words), handed back as an
-  issue title and body, or as a research run inside a checkout of this repository, because the reports behind #1,
-  #15, #16, #20 and #22 were each assembled by hand and #21 asked for them as one repeatable run; the design is in
-  `plugins/entrust/research/2026-09-29-prepare-feedback/`.
+  focus (a release, one run, where its time and tokens went, the user's feedback on a topic, all of these at once, or
+  a question in their own words), handed back as an issue title and body, or as a research run inside a checkout of
+  this repository, because the reports behind #1, #15, #16, #20 and #22 were each assembled by hand and #21 asked for
+  them as one repeatable run; the design is in `plugins/entrust/research/2026-09-29-prepare-feedback/`. The `process`
+  focus reports where the runs' time and tokens went and whether each role earned its place, and `all` runs every
+  focus over one corpus into one report with a section per focus, because #15 found the coordinator's own context at
+  51% of the tokens, #16 asked which roles were useful, #22 kept its costs as comparables for later estimates, and
+  the owner asked for every focus in one run and one report.
 - `evals/prepare-feedback.test.mjs` checks the skill's script on synthetic transcripts and reports; `package.test.mjs`
   includes `skills/prepare-feedback/scripts` in the payload check, because the list there is written by hand and a new
   scripts directory would otherwise go unchecked.
+- `prepare-feedback.mjs corpus` records per task the calls, the time split by what ends each pause (the run working,
+  waiting for the person, gaps over ten minutes), the tool uses, the repeated commands and the largest outputs, and
+  per Codex run the report's model, effort, tokens, timing and command counts, and `process --run <run>` sums them
+  into `measures/process.json` with MCP tool names and non-built-in agent types folded, because the `process` focus
+  asks where a run's time and tokens went and no page or script counted it before.
 
 ### Changed
 
@@ -24,15 +33,6 @@ forensics remain in the repository references and release notes.
 - The plugin README names the seventh skill in its overview, install list, layout, table of canonical homes and the
   list of what cleanup leaves, and `plugin.json` and the marketplace entry add it to the description they share, so
   that every place a user learns what the plugin ships from names it.
-- **The bulk row's extraction, classification and verification run at `EFFORT: high`; `low` is for mechanical work
-  only.** The orchestrate page's effort bullet and the swarm page's Luna brief said `low` for the whole bulk row; the
-  strong and cheap rows keep `medium` for review, refutation and judgement. Why: in the pilot reported in issue #22,
-  Luna on a classification task marked 11 false positives in 22 at `low` against 1 in 13 at `medium` (Fisher, p =
-  0.013), with recall 11 and 12 of 15 and 3.48M against 3.63M tokens; in the writing replication's pilot
-  (`plugins/terse/research/2026-09-26-writing-replication/measures/pilot-decision.md`) `high` and `medium` both found
-  21 of 21, with 1 extra in 31 against 4 in 34 (p = 0.36) at median tokens per run of 129,873 and 128,657. `high` over
-  `medium` is the owner's choice, not a significant result; neither pilot ran `low` on a verification unit.
-- **The orchestrate page's bulk unit is either one part of the material for extraction, with a fixed answer schema, or
 - **An orchestrate plan may propose a swarm for a bulk batch, of verdict units or of extraction parts with a fixed
   answer schema.** The card names it with its count and cost, the user's "go" on the plan starts it, and the
   coordinator reads the swarm page by path and launches it with the data directory forwarded, each swarm in a run
@@ -43,6 +43,15 @@ forensics remain in the repository references and release notes.
   launch, with no wrapper per agent. This lifts two of E90's limits, that only the user starts a swarm and that an
   extraction batch has no batch route; the others stay: fifty units per swarm, no tokens in its summary, agent ids the
   plan's registration refuses, and the README's place for it among the experiments.
+- **The bulk row's extraction, classification and verification run at `EFFORT: high`; `low` is for mechanical work
+  only.** The orchestrate page's effort bullet and the swarm page's Luna brief said `low` for the whole bulk row; the
+  strong and cheap rows keep `medium` for review, refutation and judgement. Why: in the pilot reported in issue #22,
+  Luna on a classification task marked 11 false positives in 22 at `low` against 1 in 13 at `medium` (Fisher, p =
+  0.013), with recall 11 and 12 of 15 and 3.48M against 3.63M tokens; in the writing replication's pilot
+  (`plugins/terse/research/2026-09-26-writing-replication/measures/pilot-decision.md`) `high` and `medium` both found
+  21 of 21, with 1 extra in 31 against 4 in 34 (p = 0.36) at median tokens per run of 129,873 and 128,657. `high` over
+  `medium` is the owner's choice, not a significant result; neither pilot ran `low` on a verification unit.
+- **The orchestrate page's bulk unit is either one part of the material for extraction, with a fixed answer schema, or
   the closed-set verdict it was.** The effort line names extraction, and the unit said only the verdict. Why: the bulk
   work of issue #22's run and of the writing replication was extraction, one part of the material per agent (in the
   replication, a part and one angle) with a shared answer schema.

@@ -5,7 +5,7 @@
 //   node evals/prepare-feedback.test.mjs
 //
 // The page cases pin only what the page and the script share: the frontmatter, the script's command line, the
-// seven commands, the two directory forms, the link to focuses.md and the page's budget; none of its prose. The
+// eight commands, the two directory forms, the link to focuses.md and the page's budget; none of its prose. The
 // script cases run it in a synthetic world under one harness temp directory: transcripts under
 // CLAUDE_CONFIG_DIR, Codex rollouts under CODEX_HOME, reports beside them, and ENTRUST_STATE_DIR pointing at a
 // scratch state with CLAUDE_PLUGIN_DATA unset, so nothing reaches the machine's own data or transcripts. Every
@@ -21,7 +21,7 @@ const { cases: CASES, test } = registry();
 
 const PAGE = "skills/prepare-feedback/SKILL.md";
 const SCRIPT = path.join(ROOT, "skills", "prepare-feedback", "scripts", "prepare-feedback.mjs");
-const COMMANDS = ["corpus", "parts", "add", "coverage", "quotes", "tokens", "export"];
+const COMMANDS = ["corpus", "parts", "add", "coverage", "quotes", "tokens", "process", "export"];
 let text = "";
 try { text = fs.readFileSync(path.join(ROOT, PAGE), "utf8"); } catch {}
 const front = /^---\n([\s\S]*?)\n---\n/.exec(text)?.[1] ?? "";
@@ -56,7 +56,7 @@ test("the page calls the script in one indented line that forwards the data dire
   () => /^ {4}CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/prepare-feedback\.mjs" <command>/m.test(text)
     || "no line reads `    CLAUDE_PLUGIN_DATA=\"${CLAUDE_PLUGIN_DATA}\" node \"${CLAUDE_SKILL_DIR}/scripts/prepare-feedback.mjs\" <command> …`");
 
-test("the page names each of the script's seven commands",
+test("the page names each of the script's eight commands",
   "a command the page never names is one the coordinator never runs, and the step it serves is done by hand",
   () => {
     const missing = COMMANDS.filter((c) => !new RegExp("`" + c + "[` ]").test(text));
@@ -128,7 +128,11 @@ const CHECKOUT = (plugin, skill) => `/src/agent-skills/plugins/${plugin}/plugin/
 const filler = (n, word) => { let s = "", i = 0; while (s.length < n) s += `${word} ${i++} said "so"\n`; return s.slice(0, n); };
 
 const reportR1 = path.join(world, "reports", "r1", "report.json");
-write(reportR1, [JSON.stringify({ ok: true, threadId: TH.reported, tokenUsage: { total: { totalTokens: 500 } } })]);
+// The keys the entrust driver writes: a nonzero exit, a timing split, three command counts, and the effort the turn
+// ran at in reasoningEffort, the requested one null as when the thread inherited its config.
+write(reportR1, [JSON.stringify({ ok: false, threadId: TH.reported, model: "codex-test-model", effort: null, reasoningEffort: "high", exitCode: 3, turnStatus: "completed",
+  commandsSucceeded: 4, commandsFailed: 1, commandsDeclined: 0, timing: { wallMs: 31000, setupMs: 10, commandMs: 5000, modelMs: 25000 },
+  tokenUsage: { total: { totalTokens: 500, inputTokens: 480, cachedInputTokens: 400, outputTokens: 20 } } })]);
 const rolloutDir = path.join(codexHome, "sessions", "2026", "09", "20");
 const rollout = (th, records) => {
   const f = path.join(rolloutDir, `rollout-2026-09-20T10-00-00-${th}.jsonl`);
@@ -152,6 +156,12 @@ const MAIN = transcript(path.join(alpha, `${S.main}.jsonl`), S.main, "/work/alph
   [on20("10:00:07"), result("the review is done", { returned: { status: "completed", agentId: "a1", totalTokens: 1234, totalDurationMs: 5000, totalToolUseCount: 3, resolvedModel: "claude-opus" } })],
   [on20("10:00:08"), call("Agent")],
   [on20("10:00:09"), result("launched in the background", { returned: { status: "async_launched", agentId: "a2", resolvedModel: "claude-sonnet" } })],
+  [on20("10:00:10"), call("Bash", { command: "git status --short" })],
+  [on20("10:00:11"), result("M notes.txt")],
+  [on20("10:00:12"), call("Bash", { command: "git status --short" })],
+  [on20("10:00:13"), result("M notes.txt")],
+  [on20("10:00:14"), call("Read", { file_path: "notes.txt" })],
+  [on20("10:00:15"), result(filler(5000, "note"))],
   [on20("10:00:30"), notice("<task-notification>\n<task-id>a2</task-id>\n<status>completed</status>\n<usage><subagent_tokens>777</subagent_tokens><tool_uses>2</tool_uses><duration_ms>900</duration_ms></usage>\n</task-notification>")],
   [on20("10:00:31"), peer("a note another session sent")],
   [on20("10:05:00"), human("the codex step was slow")],
@@ -170,12 +180,22 @@ const A1 = transcript(path.join(subs, "agent-a1.jsonl"), S.main, "/work/alpha", 
   ["2026-09-20T10:00:06.800Z", { ...said("The plugin reads well."), agentId: "a1" }],
 ], { isSidechain: true });
 write(path.join(subs, "agent-a1.meta.json"), [JSON.stringify({ agentType: "general-purpose", description: "review the plugin" })]);
+write(path.join(subs, "agent-a2.meta.json"), [JSON.stringify({ agentType: "acme:reviewer", description: "count the tests" })]);
+// A subagent with no API usage and no Agent return: no tokens, and its own wall time as its duration.
+const A3 = transcript(path.join(subs, "agent-a3.jsonl"), S.main, "/work/alpha", [
+  ["2026-09-20T10:00:20.000Z", { type: "user", agentId: "a3", message: { role: "user", content: "Look around." } }],
+  ["2026-09-20T10:00:25.000Z", { ...call("Glob"), agentId: "a3" }],
+], { isSidechain: true });
 transcript(path.join(subs, "agent-a2.jsonl"), S.main, "/work/alpha", [
   ["2026-09-20T10:00:09.500Z", { type: "user", agentId: "a2", message: { role: "user", content: "Count the tests." } }],
   ["2026-09-20T10:00:09.600Z", { ...said("There are twelve."), agentId: "a2" }],
   ["2026-09-20T10:00:09.700Z", { ...notice("<task-notification>\n<task-id>a3</task-id>\n<status>completed</status>\n</task-notification>"), agentId: "a2" }],
 ], { isSidechain: true });
 
+// After them, the process fixtures: a pause of 29 minutes that a tool call ends (a gap), a foreground Agent call of
+// 20 minutes (the run working), an MCP tool, a pause of 15 minutes that a notification ends (a gap), one of
+// 3 minutes that the person's message ends, carried in by a queue operation (waiting for the person), and a
+// background agent in flight for 12 minutes while the person writes (the run working until its notification).
 // A load from a checkout, whose version the path does not carry, a refusal of entrust:orchestrate and one of
 // another plugin's skill, the refusal's words quoted in a failed command and a threadId in a file read, by the
 // Read tool or by cat, none of them an event, a background launch's output read back, which is one, and a
@@ -199,6 +219,20 @@ const CHECKOUT_S = transcript(path.join(config, "projects", "-work-alpha--claude
   [on22("09:00:14"), result(`{\n  "threadId": "${thread(7)}",\n  "ok": true\n}`)],
   [on22("09:00:15"), call("Bash", { command: "sleep 5; cat tasks/b1.output" })],
   [on22("09:00:16"), result(`codex-delegate: threadId=${thread(8)} (live rollout)\n`)],
+  [on22("09:30:00"), call("Agent")],
+  [on22("09:50:00"), result("the long review is done", { returned: { status: "completed", agentId: "a9", totalTokens: 10, totalDurationMs: 1200000, totalToolUseCount: 1 } })],
+  [on22("09:50:01"), said("The review is back.")],
+  [on22("09:50:02"), call("mcp__acme_tracker__get_issue")],
+  [on22("09:50:03"), result("the issue as the tracker has it")],
+  [on22("10:05:03"), notice("<task-notification>\n<task-id>zz9</task-id>\n<status>completed</status>\n</task-notification>")],
+  [on22("10:08:02"), { type: "queue-operation", operation: "enqueue" }],
+  [on22("10:08:03"), human("go on")],
+  [on22("10:08:04"), said("Going on.")],
+  [on22("10:08:05"), call("Agent", { run_in_background: true })],
+  [on22("10:08:06"), result("launched in the background", { returned: { status: "async_launched", isAsync: true, agentId: "a8" } })],
+  [on22("10:18:06"), human("is it done?")],
+  [on22("10:20:06"), notice(`<task-notification>\n<task-id>a8</task-id>\n<tool-use-id>${lastCall}</tool-use-id>\n<status>completed</status>\n</task-notification>`)],
+  [on22("10:20:07"), said("It is done.")],
 ]);
 
 // A run of this skill, which also loaded codex: excluded all the same, counted apart, back only through --session.
@@ -230,11 +264,23 @@ transcript(path.join(config, "projects", "-work-alphabet", `${S_ALPHABET}.jsonl`
 // checkout load, one holding only a checkout load; C11 adds a fork pair to it.
 const config2 = path.join(world, "config2");
 const gamma = path.join(config2, "projects", "-work-gamma");
-const G = { mixed: uuid(8), checkout: uuid(9), original: uuid("b"), fork: uuid("a") };
+const G = { mixed: uuid(8), checkout: uuid(9), original: uuid("b"), fork: uuid("a"), queued: uuid("c") };
 transcript(path.join(gamma, `${G.mixed}.jsonl`), G.mixed, "/work/gamma", [
   ["2026-09-23T10:00:00.000Z", human("both kinds of load")],
   ["2026-09-23T10:00:01.000Z", load(CACHE("entrust", "0.20.0", "codex"))],
   ["2026-09-23T10:00:02.000Z", load(CHECKOUT("entrust", "swarm"))],
+]);
+// A background agent whose only notification came while the assistant was busy: queued as an enqueue, then carried
+// in by an attachment, never a user record.
+const queuedNotice = (id) => `<task-notification>\n<task-id>q1</task-id>\n<tool-use-id>${id}</tool-use-id>\n<status>completed</status>\n</task-notification>`;
+transcript(path.join(gamma, `${G.queued}.jsonl`), G.queued, "/work/gamma", [
+  ["2026-09-25T10:00:00.000Z", human("review it in the background")],
+  ["2026-09-25T10:00:01.000Z", call("Agent", { run_in_background: true })],
+  ["2026-09-25T10:00:02.000Z", result("launched in the background", { returned: { status: "async_launched", isAsync: true, agentId: "q1" } })],
+  ["2026-09-25T10:00:03.000Z", said("Waiting for the review.")],
+  ["2026-09-25T10:20:03.000Z", { type: "queue-operation", operation: "enqueue", content: queuedNotice(lastCall) }],
+  ["2026-09-25T10:20:04.000Z", { type: "attachment", attachment: { type: "queued_command", prompt: queuedNotice(lastCall), commandMode: "task-notification" } }],
+  ["2026-09-25T10:20:05.000Z", said("The review is in.")],
 ]);
 transcript(path.join(gamma, `${G.checkout}.jsonl`), G.checkout, "/work/gamma", [
   ["2026-09-23T11:00:00.000Z", human("a checkout load only")],
@@ -302,7 +348,7 @@ test("C1 corpus makes <state>/prepare-feedback/<date>-<slug>/ at mode 0700 and p
     problems.push(...expect(r.out, {
       PLUGINS: "entrust:2 terse:1", HUMAN_SESSIONS: "5", PROJECTS: "3",
       SESSIONS: "3 loaded=3 cache=2 checkout=1 refusals=1", RANGE: "2026-09-20..2026-09-22", OLDEST: "2026-09-18",
-      SELF_RUNS: "1", SUBAGENTS: "2", CODEX_RUNS: "4 reports=1 rollouts=2",
+      SELF_RUNS: "1", SUBAGENTS: "3", CODEX_RUNS: "4 reports=1 rollouts=2",
     }));
     const lines = r.out.trim().split("\n");
     const keys = lines.map((l) => l.split("=")[0]);
@@ -456,6 +502,16 @@ test("C11 when a fork and its original start at the same time, the file made fir
       || `the task is ${JSON.stringify(s.map((e) => [e.session, e.forks.map((f) => f.session)]))}`;
   });
 
+test("C12 a background call whose notification arrived queued, as an enqueue and an attachment, is in flight until the earlier of them, and the wait is working time, not a gap",
+  "while the assistant is busy a notification is queued rather than written as a user record; read from user records alone, 629 of 868 background calls on one machine never ended, and their runs showed as gaps",
+  async () => {
+    const r = await run(["corpus", "--slug", "queued", "--session", G.queued], { CLAUDE_CONFIG_DIR: config2 });
+    if (r.code !== 0) return `exit ${r.code}: ${r.err.slice(0, 160)}`;
+    const e = JSON.parse(fs.readFileSync(path.join(value(r.out, "RUN"), "corpus", "index.json"), "utf8")).sessions[0];
+    const got = [e?.wallMs, e?.activeMs, e?.userMs, e?.gapCount];
+    return JSON.stringify(got) === JSON.stringify([1205000, 1205000, 0, 0]) || `wall, active, user, gaps: ${JSON.stringify(got)}`;
+  });
+
 test("C8 corpus on an existing run is refused with exit 10, and the run is untouched",
   "nothing in a run is rewritten; a narrower scope after the plan is a new --slug, so the first corpus stays what the plan was shown",
   async () => {
@@ -491,7 +547,7 @@ test("C9 turns.jsonl carries t, line, role and text, each line the line of its s
     if (!t3threads.includes(thread(8))) problems.push("a background launch's .output read back is not a launch");
     const t1 = idx.sessions.find((e) => e.id === "T1");
     const agents = t1?.subagents.map((a) => [a.id, a.agentId, a.tokens, a.type]);
-    if (JSON.stringify(agents) !== JSON.stringify([["T1.s1", "a1", 1234, "general-purpose"], ["T1.s2", "a2", 777, null]])) problems.push(`subagents ${JSON.stringify(agents)}`);
+    if (JSON.stringify(agents) !== JSON.stringify([["T1.s1", "a1", 1234, "general-purpose"], ["T1.s2", "a2", 777, "acme:reviewer"], ["T1.s3", "a3", null, null]])) problems.push(`subagents ${JSON.stringify(agents)}`);
     const launched = t1?.codex.map((c) => [c.at, !!c.reportFound, c.threadId, !!c.rollout]);
     const wantLaunches = [[`T1:${lineOf(MAIN, saysText("REPORT="))}`, true, TH.reported, true], [`T1.s1:${lineOf(A1, saysText("receiptPath"))}`, false, TH.receipt, true]];
     if (JSON.stringify(launched) !== JSON.stringify(wantLaunches)) problems.push(`T1 launches ${JSON.stringify(launched)}`);
@@ -659,7 +715,91 @@ test("K1 tokens takes the median and maximum of a batch from its reports or from
     return problems.length === 0 || problems.join("; ");
   });
 
-test("X1 export copies drafts, rounds.md, measures/ and anonymized/ unchanged to a new relative directory, none of it naming a machine path, and refuses an existing one, one under the state directory and an absolute path",
+const lineIn = (entries, predicate) => `T1:${lineOf(entries, predicate)}`;
+const isCall = (command) => (r) => r.message?.content?.[0]?.input?.command === command;
+const inT3 = (predicate) => `T3:${lineOf(CHECKOUT_S, predicate)}`;
+const PRIVATE = ["acme", "mcp__"];
+const TEXTS = ["git status --short", "review the plugin", "Review the plugin and say what you found.", "the codex step was slow", "please review the entrust plugin"];
+const strings = (v) => (typeof v === "string" ? [v] : v && typeof v === "object" ? Object.values(v).flatMap(strings) : []);
+
+test("M1 corpus records each task's process counts: API calls, wall time split into the run working, waiting for the person and gaps by what ends each pause, tools, a repeated command by hash, the largest outputs, and each Codex run's report fields",
+  "the process focus asks where a run's time and tokens went and where it waited; a person reading and typing is not the run working (34% of active time on real data before the split), a 20-minute foreground Agent call is the run working and not a gap, a fork's copies count once, and a repeated command is a hash because export publishes what process sums",
+  () => {
+    if (!runs.default) return "C1 made no run";
+    const t1 = indexOf("default").sessions.find((e) => e.id === "T1");
+    if (!t1) return "no T1";
+    const problems = [];
+    const pick = (e) => ({ apiCalls: e?.apiCalls, wallMs: e?.wallMs, activeMs: e?.activeMs, userMs: e?.userMs, gapCount: e?.gapCount, gaps: e?.gaps, tools: e?.tools });
+    const want = { apiCalls: 3, wallMs: 3601000, activeMs: 32000, userMs: 3569000, gapCount: 0, gaps: [], tools: { Bash: 3, Agent: 2, Read: 1 } };
+    if (JSON.stringify(pick(t1)) !== JSON.stringify(want)) problems.push(`T1 counts ${JSON.stringify(pick(t1))}`);
+    const t3 = indexOf("default").sessions.find((e) => e.session === S.checkout);
+    const want3 = { apiCalls: 4, wallMs: 4807000, activeMs: 1943000, userMs: 180000, gapCount: 2,
+      gaps: [{ ms: 1784000, after: "tool_result:Bash", before: "tool_use:Agent", at: inT3(saysText(thread(8))) },
+        { ms: 900000, after: "tool_result:mcp__acme_tracker__get_issue", before: "notification", at: inT3(saysText("the issue as the tracker has it")) }],
+      tools: { Bash: 4, Agent: 2, Skill: 2, Read: 1, mcp__acme_tracker__get_issue: 1 } };
+    if (JSON.stringify(pick(t3)) !== JSON.stringify(want3)) problems.push(`T3 counts ${JSON.stringify(pick(t3))}`);
+    const git = lineOf(MAIN, isCall("git status --short"));
+    const second = MAIN.findIndex(([, r], i) => i + 1 > git && isCall("git status --short")(r)) + 1;
+    const wantRepeat = [{ sha256: crypto.createHash("sha256").update("git status --short").digest("hex"), chars: 18, count: 2, at: [`T1:${git}`, `T1:${second}`] }];
+    if (JSON.stringify(t1.repeats) !== JSON.stringify(wantRepeat)) problems.push(`repeats ${JSON.stringify(t1.repeats)}`);
+    const big = lineIn(MAIN, (r) => r.message?.content?.[0]?.content?.length === 5000);
+    if (JSON.stringify(t1.outputs?.[0]) !== JSON.stringify({ tool: "Read", bytes: 5000, at: big })) problems.push(`largest output ${JSON.stringify(t1.outputs?.[0])}`);
+    if (strings({ repeats: t1.repeats, outputs: t1.outputs, gaps: t1.gaps }).some((s) => TEXTS.some((x) => s.includes(x)))) problems.push("a count carries transcript text");
+    const s1 = t1.subagents.find((a) => a.id === "T1.s1");
+    if (JSON.stringify([s1?.apiCalls, s1?.tools, s1?.usage]) !== JSON.stringify([1, { Bash: 1 }, { input: 10, cacheWrite: 20, cacheRead: 100, output: 5 }])) problems.push(`T1.s1 counts ${JSON.stringify([s1?.apiCalls, s1?.tools, s1?.usage])}`);
+    const s3 = t1.subagents.find((a) => a.id === "T1.s3");
+    if (JSON.stringify([s3?.apiCalls, s3?.usage, s3?.wallMs, s3?.durationMs]) !== JSON.stringify([0, null, 5000, null])) problems.push(`T1.s3 counts ${JSON.stringify([s3?.apiCalls, s3?.usage, s3?.wallMs, s3?.durationMs])}`);
+    const c1 = t1.codex[0];
+    const fields = ["id", "model", "effort", "tokens", "cached", "wallMs", "commandMs", "modelMs", "exitCode", "turnStatus", "commandsSucceeded", "commandsFailed", "commandsDeclined"];
+    const wantRun = ["T1.c1", "codex-test-model", "high", 500, 400, 31000, 5000, 25000, 3, "completed", 4, 1, 0];
+    if (JSON.stringify(fields.map((k) => c1?.[k])) !== JSON.stringify(wantRun)) problems.push(`T1.c1 ${JSON.stringify(fields.map((k) => c1?.[k]))}`);
+    if (t1.codex[1]?.id !== "T1.c2" || t1.codex[1]?.tokens !== null) problems.push(`a run without a report: ${JSON.stringify([t1.codex[1]?.id, t1.codex[1]?.tokens])}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("R1 process writes measures/process.json with a row per task, a row per agent and the totals, prints its summary with USER= and FILE= last, carries no text, path, thread id or name from the user's environment, and refuses a second run and a run with no corpus",
+  "a reader's brief names process.json and export publishes it without review, so it holds counts, hashes, addresses and built-in or folded names only: an MCP tool is mcp and an agent type of the user's own is custom; its lines go through the runner, whose tail keeps the end",
+  async () => {
+    if (!runs.default) return "C1 made no run";
+    const r = await run(["process", "--run", runs.default]);
+    if (r.code !== 0) return `exit ${r.code}: ${r.err.slice(0, 200)}`;
+    const problems = [];
+    const want = [
+      "TASKS=3", "WALL=9608", "ACTIVE=3175 GAP=600s", "USER=3749", `GAPS=2 LARGEST=1784 at ${inT3(saysText(thread(8)))}`,
+      "COORD=2700 share=78% cache_read=74% api_calls=20", "AGENTS=3 tokens=270 share=8%", "CODEX=4 tokens=500 share=14% nonzero_exit=1",
+      "TOOLS=Bash:7 Agent:4 Read:2 Skill:2 mcp:1", `REPEATS=1 MOST=2x at ${lineIn(MAIN, isCall("git status --short"))}`,
+      `OUTPUTS=5000 at ${lineIn(MAIN, (x) => x.message?.content?.[0]?.content?.length === 5000)}`, "FILE=measures/process.json",
+    ];
+    if (r.out.trim() !== want.join("\n")) problems.push(`printed ${JSON.stringify(r.out.trim().split("\n"))}`);
+    const file = path.join(runs.default, "measures", "process.json");
+    const p = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {};
+    if (JSON.stringify(Object.keys(p)) !== JSON.stringify(["gap", "tasks", "agents", "totals"]) || p.gap !== 600) problems.push(`process.json keys ${JSON.stringify(Object.keys(p))}`);
+    const taskKeys = ["id", "wallMs", "activeMs", "userMs", "apiCalls", "tokens", "tools", "gapCount", "gaps", "repeats", "outputs", "agentTokens", "codexTokens"];
+    if (JSON.stringify(Object.keys(p.tasks?.[0] ?? {})) !== JSON.stringify(taskKeys)) problems.push(`task row keys ${JSON.stringify(Object.keys(p.tasks?.[0] ?? {}))}`);
+    const rows = (p.agents ?? []).map((a) => JSON.stringify(a));
+    for (const row of [{ id: "T1.s1", task: "T1", model: "claude-opus", type: "general-purpose", tokens: 135, durationMs: 5000, toolUses: 3, exit: null },
+      { id: "T1.s2", task: "T1", model: "claude-sonnet", type: "custom", tokens: 135, durationMs: 900, toolUses: 2, exit: null },
+      { id: "T1.s3", task: "T1", model: null, type: null, tokens: null, durationMs: 5000, toolUses: null, exit: null },
+      { id: "run:T1.c1", task: "T1", model: "codex-test-model", type: "codex", tokens: 500, durationMs: 31000, toolUses: 4, exit: 3 }])
+      if (!rows.includes(JSON.stringify(row))) problems.push(`no agent row ${row.id}`);
+    if ((p.agents ?? []).length !== 7) problems.push(`${(p.agents ?? []).length} agent rows`);
+    const t3row = (p.tasks ?? []).find((t) => t.id === "T3");
+    if (JSON.stringify([t3row?.tools, t3row?.gaps?.[1]?.after]) !== JSON.stringify([{ Bash: 4, Agent: 2, Skill: 2, Read: 1, mcp: 1 }, "tool_result:mcp"]))
+      problems.push(`T3 row folds to ${JSON.stringify([t3row?.tools, t3row?.gaps?.[1]?.after])}`);
+    const raw = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
+    if (PRIVATE.some((x) => raw.includes(x))) problems.push("process.json names an MCP server or a custom agent type");
+    const leaks = strings(p).filter((s) => TEXTS.some((x) => s.includes(x)) || Object.values(TH).some((x) => s.includes(x)) || s.includes("/"));
+    if (leaks.length) problems.push(`process.json carries text, a path or a thread id: ${JSON.stringify(leaks.slice(0, 3))}`);
+    const again = await run(["process", "--run", runs.default]);
+    if (again.code !== 10) problems.push(`a second process exit ${again.code}`);
+    const hollow = path.join(fs.realpathSync(state), "prepare-feedback", `${today}-hollow`);
+    fs.mkdirSync(hollow);
+    const early = await run(["process", "--run", hollow]);
+    if (early.code !== 10 || fs.readdirSync(hollow).length !== 0) problems.push(`process before corpus: exit ${early.code}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("X1 export copies drafts, rounds.md, measures/ and anonymized/ unchanged to a new relative directory, none of it naming a machine path, a thread id or transcript text, and refuses an existing one, one under the state directory and an absolute path",
   "the research folder is committed as it is exported, and a tracked file carries no path of the machine it was made on; the ledger and the corpus stay private, a second export over the first would rewrite a published record, and a destination under the state directory is the script writing where it promised only runs",
   async () => {
     if (!runs.default) return "C1 made no run";
@@ -679,8 +819,12 @@ test("X1 export copies drafts, rounds.md, measures/ and anonymized/ unchanged to
       const content = fs.readFileSync(path.join(dest, f), "utf8");
       const leak = [world, fs.realpathSync(world), os.homedir()].find((p) => content.includes(p));
       if (leak) problems.push(`${f} names a machine path`);
+      if (Object.values(TH).some((x) => content.includes(x))) problems.push(`${f} names a Codex thread id`);
+      if (TEXTS.some((x) => content.includes(x))) problems.push(`${f} carries transcript text`);
+      if (PRIVATE.some((x) => content.includes(x))) problems.push(`${f} names an MCP server or a custom agent type`);
     }
-    if (!got.some((f) => f.startsWith("measures/coverage-")) || !got.some((f) => f.startsWith("measures/tokens-"))) problems.push("the path check read no coverage or tokens file");
+    for (const kind of ["coverage-", "tokens-", "process.json"])
+      if (!got.some((f) => f.startsWith(`measures/${kind}`))) problems.push(`the check read no measures/${kind} file`);
     const again = await run(["export", "--run", runs.default, "--to", to]);
     if (again.code !== 10) problems.push(`a second export exit ${again.code}`);
     const under = await run(["export", "--run", runs.default, "--to", "state/leak"]);
