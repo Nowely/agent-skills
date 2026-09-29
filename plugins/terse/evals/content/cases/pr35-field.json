@@ -1,0 +1,200 @@
+[
+ {
+  "id": "fix1-ask-owner",
+  "candidate": "pr35",
+  "set": "field",
+  "stratum": "fix1-what-comes-back",
+  "prompt": "Draft a message from me to the Saturday Digitizers about the Kestrel Bay reels. My notes and the earlier thread with them are in the workspace. The message goes into our group chat.",
+  "fixtures": {
+   "notes/kestrel-reels.md": "# Kestrel Bay Sessions, reel intake\n\nReceived 2026-08-14 from the Kestrel Bay community centre: three reels.\n\nIntake sheet (mine): K-07, K-08, K-11\nShelf list (kept by the Saturday Digitizers): K-07, K-08, K-08\n\nDigitizing of these three is paused until the ids agree. Reply to the Digitizers before Saturday's session; they set the machines up on Friday evening.\n",
+   "messages/digitizers-thread.txt": "2026-08-16 Priya (Saturday Digitizers): The Kestrel Bay reels are on the shelf. Two of the three boxes are labelled K-08 and none is labelled K-11, so our shelf list says K-07, K-08, K-08 and your intake sheet says K-07, K-08, K-11. Relabelling the second K-08 box as K-11 and fixing the shelf list is five minutes for us. Do you want us to do that, or leave the boxes as they are and you sort it out from the intake sheet? Either is fine for us.\n2026-08-16 me: Let me check the intake sheet first.\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "What comes back from the Digitizers is not settled by the material and is the owner's to decide. In messages/digitizers-thread.txt Priya asked on 2026-08-16 whether the volunteers should relabel the second K-08 box as K-11 and fix the shelf list, or leave the boxes as they are for the owner to sort out from the intake sheet, said either is fine for them, and the owner's only reply was 'Let me check the intake sheet first'; nothing in the material says that check was done or what it found. notes/kestrel-reels.md records three reels received 2026-08-14 from the Kestrel Bay community centre, what the two records say (intake sheet K-07, K-08, K-11; shelf list K-07, K-08, K-08), that digitizing of the three is paused until the ids agree, and that a reply is wanted before Saturday's session because the volunteers set the machines up on Friday evening. The material gives no calendar date for that Friday or Saturday, does not say which record is correct, and does not say which of the two courses the owner wants.",
+  "graders": [
+   {
+    "name": "asks-owner",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the reply leaves the choice between the two courses in the key (the volunteers relabel the second K-08 box as K-11 and fix the shelf list, or they leave the boxes and the owner sorts it out from the intake sheet) visibly with the owner, the user, before anything is sent: it asks the owner which course they want, or it gives a draft for each course and tells the owner to choose, or it gives one draft and beside it the other course's wording or a gap for the owner to fill. FAIL if the reply hands over one finished draft that has taken a course and at most notes that it assumed so, or a draft that asks the volunteers to choose again, without putting the choice to the owner or giving the other course."
+   },
+   {
+    "name": "facts-correct",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS unless one of the three failures below holds; judge nothing else. FAIL if (1) the reply or a draft carries an id, a name or a calendar date the material does not hold: a day-of-month date for the Friday setup or the Saturday session is such a date, while \"Friday evening\", \"Saturday\", \"this Saturday\" and the material's 14 and 16 August are not; (2) the reply's own prose, or a draft's ids, dates, names or counts, contradicts the key's account of the reels, the two records, the thread or the timing, for example another receipt date, another sender, another id list or another number of reels; or (3) the reply's own prose states as a plain fact that the intake sheet or the shelf list is the correct record. Do not fail a draft offered for the owner to send for what it presupposes the owner has decided or done: it may say the owner has checked the intake sheet, take either course and treat the intake sheet as right. Do not fail the reply's own prose for a question or a caution that assumes one K-08 box holds K-11, such as \"nothing says which K-08 box is really K-11\"."
+   },
+   {
+    "name": "looked-thread",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "messages/digitizers\\-thread\\.txt",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "fix2-nearby-form",
+  "candidate": "pr35",
+  "set": "field",
+  "stratum": "fix2-nearby-texts",
+  "prompt": "Write tonight's entry for the Skerry Line night-watch handover log from my notes in scratch/tonight.txt; the log's entries live in handover/. Give me the text to paste.",
+  "fixtures": {
+   "handover/2026-09-30.md": "STATUS green — nothing open; ferry feeds and booking site normal all night.\n\nWATCH\n- none\n\nDONE\n- 23:10 booking site slow for 6 min, cleared on its own; no ticket\n- 02:00 rotated the feed API key as scheduled [SL-412]\n\nNEXT Anja\n",
+   "handover/2026-10-01.md": "STATUS amber — the Rousay timetable feed is stale since 04:20; ops know.\n\nWATCH\n- 04:20– Rousay timetable feed stale, last good pull 04:15; retry every 30 min, escalate to ops if still stale at 08:00 [SL-418]\n\nDONE\n- 22:45 cleared the stuck export job on tally-1 [SL-415]\n- 01:30 booking site deploy 3.14.2 went out, no errors since\n\nNEXT Callum\n",
+   "handover/2026-10-02.md": "STATUS green — Rousay feed recovered at 06:10; nothing open.\n\nWATCH\n- none\n\nDONE\n- 06:10 Rousay timetable feed back, SL-418 closed\n- 03:00 disk cleanup on tally-1 freed 40 GB [SL-420]\n\nNEXT Ewan\n",
+   "scratch/tonight.txt": "21:40 mailer-2 disk alert 92%, cleared old logs, back to 60%, alert closed, ticket SL-423\n23:05 Westray schedule feed started failing, 502 from upstream, retried 23:35 and 00:05 still 502, upstream contact does not answer at night, opened SL-424, try them again after 08:00\nbooking site fine all night\nhanding to Callum in the morning\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "The three existing entries in handover/ share one shape, and the next on-call reads the first line first: line 1 is STATUS, a colour (green when nothing is open, amber when something is), a dash and one sentence; then a WATCH block and a DONE block, each the heading word alone on a line followed by one item per line that starts with the time (a range with a trailing dash for something still open) and ends with the ticket id in square brackets when there is one, or '- none' when the block is empty; the last line is NEXT and the name of the next on-call. What scratch/tonight.txt holds for tonight: at 21:40 a mailer-2 disk alert at 92%, old logs cleared, back to 60%, alert closed, ticket SL-423 (done); from 23:05 the Westray schedule feed fails with 502 from upstream, retried 23:35 and 00:05 still 502, the upstream contact does not answer at night, ticket SL-424 opened, to be tried again after 08:00 (still open, so the status is amber); the booking site fine all night, which the entry of 2026-09-30 states in its STATUS sentence; the next on-call is Callum. Nothing else happened.",
+  "graders": [
+   {
+    "name": "form-matches-neighbours",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the entry has the shape the key describes for the existing entries in handover/: a first line beginning STATUS with a colour word and one sentence, then a WATCH block and a DONE block with one item per line carrying the time and the ticket id in square brackets where the notes give one, and a final NEXT line naming the next on-call; a sentence outside the entry saying it is the text to paste is fine. FAIL if the entry is prose, uses other headings or another order, lacks the STATUS first line or the NEXT line, or contains a table, extra headings or commentary meant to be pasted with it."
+   },
+   {
+    "name": "content-correct",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the STATUS colour is amber, the Westray feed failure is under WATCH with SL-424, the mailer-2 disk alert is under DONE with SL-423, the booking site is reported normal in the STATUS sentence or under DONE, NEXT names Callum, and nothing is invented. FAIL if any of these is missing, the Westray failure or the mailer-2 alert is placed in the other block, or anything is invented."
+   },
+   {
+    "name": "looked-neighbours",
+    "type": "tool_used",
+    "tool": "Read",
+    "input_match": "handover/2026\\-(09|10)\\-0[12]|handover/2026\\-09\\-30",
+    "min": 1
+   }
+  ]
+ },
+ {
+  "id": "fix3-list-is-conclusion",
+  "candidate": "pr35",
+  "set": "field",
+  "stratum": "fix3-list-conclusion",
+  "prompt": "Which of the scheduled jobs under jobs/ still write to the old bucket arbor-exports-legacy? I'm pasting your answer into the migration ticket. The ticket currently says four jobs do; if your count differs, tell me why.",
+  "fixtures": {
+   "jobs/nightly-orders.yaml": "name: nightly-orders\nschedule: \"0 2 * * *\"\ntarget: s3://arbor-exports-legacy/orders/\nformat: csv\n",
+   "jobs/refund-ledger.yaml": "name: refund-ledger\nschedule: \"30 2 * * *\"\ntarget: s3://arbor-exports-legacy/refunds/\nformat: csv\n",
+   "jobs/partner-sync.yaml": "name: partner-sync\nschedule: \"0 */6 * * *\"\ntarget: s3://arbor-exports-legacy/partners/\nformat: json\n",
+   "jobs/weekly-digest.yaml": "name: weekly-digest\ndescription: Weekly digest for the ops mailing list; moved from arbor-exports-legacy in July\nschedule: \"0 6 * * 1\"\ntarget: s3://arbor-exports/digest/\nformat: html\n",
+   "jobs/stock-snapshot.yaml": "name: stock-snapshot\nschedule: \"15 3 * * *\"\ntarget: s3://arbor-exports/stock/\nformat: csv\n",
+   "jobs/price-feed.yaml": "name: price-feed\nschedule: \"*/20 * * * *\"\ntarget: s3://arbor-exports/prices/\nformat: json\n",
+   "jobs/audit-trail.yaml": "name: audit-trail\nschedule: \"0 4 * * *\"\ntarget: s3://arbor-exports/audit/\nformat: jsonl\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "Three jobs write to arbor-exports-legacy, by their target: lines: jobs/nightly-orders.yaml, jobs/refund-ledger.yaml and jobs/partner-sync.yaml. jobs/weekly-digest.yaml mentions arbor-exports-legacy only in its description: line and its target is s3://arbor-exports/digest/, so it is not a writer; that mention is the likely source of the ticket's four. stock-snapshot, price-feed and audit-trail target arbor-exports.",
+  "graders": [
+   {
+    "name": "list-first",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the first thing the reply gives is the three writers named in the key, together and once, as bullet lines, table rows or one sentence naming exactly them. A short lead-in may come before them if it names no job and does not say how the answer was found; it may hold a count, which may say it differs from the ticket's four (\"I count three jobs, not four:\" and \"Three jobs still write to arbor-exports-legacy, not four:\" are both counts), a label saying what the listed jobs share (\"Their config files set target to the old bucket:\"), and a line introducing text to paste, which may itself open with such a count. FAIL if anything before the list names a job, the one behind the ticket's four included, or says why the count differs; if a sentence before the list reports what the writer did to reach the answer, such as which files, fields or lines were read, searched or checked (\"I checked the target: line of every YAML file under jobs/.\"); if the writers' names are spread through prose instead of given together; or if a lead-in or summary line names any of the writers and the list then names them again."
+   },
+   {
+    "name": "list-correct",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the reply names exactly the three writers in the key and does not count weekly-digest.yaml among them. FAIL if a writer is missing or any other job is listed as a writer."
+   },
+   {
+    "name": "count-explained",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the reply says the ticket's fourth is weekly-digest.yaml, whose only mention of the legacy bucket is in its description while its target is arbor-exports. FAIL if the difference from four is not explained or is explained with a reason not in the key."
+   }
+  ]
+ },
+ {
+  "id": "fix4-quote-not-point",
+  "candidate": "pr35",
+  "set": "field",
+  "stratum": "fix4-quote-with-source",
+  "prompt": "Write a message to Tomasz on the Ridgeway side asking him to add the signature check to their receiver before we switch it on Thursday. What he needs is in docs/receivers.md, and his note from last week is under messages/. The message goes to him in chat.",
+  "fixtures": {
+   "docs/receivers.md": "# Pelican webhook receivers\n\nPelican posts each event as JSON to the receiver URL a partner registers.\n\n## Retries\n\nA receiver that answers anything but 2xx is retried after 1, 5 and 30 minutes.\n\n## Verifying the signature\n\nFrom the switch on Thursday 2026-10-08, every request carries the header X-Pelican-Signature. Reject a request whose signature does not match before reading the body. Compute the expected value as\n\n    expected = hex(HMAC_SHA256(key = shared_secret, message = raw_request_body))\n\nand accept the request only if the header value equals expected, compared in constant time. shared_secret is the value shown on the partner's Pelican settings page under Signing secret. The HMAC is over the raw bytes of the body, not the parsed JSON.\n\n## Event types\n\norder.created, order.cancelled, refund.issued\n",
+   "messages/tomasz-2026-10-01.txt": "2026-10-01 Tomasz (Ridgeway): Read the receivers doc when it went round, thanks. Our receiver is live and handling order.created fine. Ping me here when something on our side needs to change.\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "Tomasz must, before the switch on Thursday 2026-10-08, make his receiver compute expected = hex(HMAC_SHA256(key = shared_secret, message = raw_request_body)), compare it in constant time with the X-Pelican-Signature header, reject a mismatch before reading the body, hash the raw body bytes rather than the parsed JSON, and take shared_secret from Signing secret on his Pelican settings page; all of it is in docs/receivers.md under Verifying the signature. He reads the message in chat and has seen docs/receivers.md but does not have it open. Not part of this ask: the retry schedule (1, 5 and 30 minutes) and the event types; he already handles order.created.",
+  "graders": [
+   {
+    "name": "quotes-the-check",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the message itself contains the header name X-Pelican-Signature, the HMAC-SHA256 computation over the raw request body with the shared secret, the constant-time comparison and where the secret is found, as text Tomasz can act on without opening the doc, and names docs/receivers.md or its Verifying the signature section as the source after or beside that text. FAIL if the message only points to the doc, the section or a line, paraphrases the check without the header name or the computation, or gives the text without naming its source."
+   },
+   {
+    "name": "facts-correct",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if every fact in the message matches the key: the switch on Thursday 2026-10-08, the header name, HMAC-SHA256 with the shared secret, the raw-body rule, constant-time compare and the secret's location. FAIL if any is wrong or invented, for example another date, header or algorithm, or the retry schedule presented as part of this ask."
+   },
+   {
+    "name": "action-and-date-first",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the message says near its start what Tomasz must do and that it must be in place before Thursday's switch. FAIL if the ask or the deadline is missing or appears only at the end."
+   }
+  ]
+ },
+ {
+  "id": "fix5-label-fit",
+  "candidate": "pr35",
+  "set": "field",
+  "stratum": "fix5-label-fits-items",
+  "prompt": "Write the Requirements and Steps sections of the README for wren-tally from notes/readme-notes.txt. Keep both short. People keep asking whether they still need Postgres, so make sure that is answered.",
+  "fixtures": {
+   "notes/readme-notes.txt": "wren-tally: syncs the club's bird-count sheet to the county tally\n\nrequirements\n- Node 20 or newer\n- a WREN_TOKEN from the county tally site (Settings > API tokens)\n- no database any more: versions before 2.0 needed Postgres, 2.0 dropped it\n- wren.config.json is optional; without it the defaults apply (sheet = counts.csv, county = the token's county)\n\nsteps\n1. npm install -g wren-tally\n2. export WREN_TOKEN=<token>\n3. wren sync   (run it from the folder with the sheet)\n"
+  },
+  "allowedTools": [
+   "Skill",
+   "Read",
+   "Grep",
+   "Glob"
+  ],
+  "key": "notes/readme-notes.txt gives two things the reader must have: Node 20 or newer, and a WREN_TOKEN from the county tally site (Settings > API tokens). It gives two facts that say nothing is needed: no database (versions before 2.0 needed Postgres and 2.0 dropped it), and wren.config.json is optional, with the defaults sheet = counts.csv and county = the token's county applied without it. The owner asked that the Postgres question be answered, so both of those facts belong in the sections. Steps, in order: npm install -g wren-tally; export WREN_TOKEN=<token>; wren sync, run from the folder with the sheet. Where the two not-needed facts sit relative to the requirements list is a question of placement, not of fact.",
+  "graders": [
+   {
+    "name": "label-fit",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if every item of the requirements list (the list under the Requirements heading, or under whatever heading or label the reply uses for requirements or prerequisites) is something the reader must have or do before starting, as the key describes. Statements that something is not needed or is optional pass when they sit outside that list: in a sentence after it, or under their own label such as Not needed or Optional, even inside the Requirements section. FAIL if an item of the requirements list itself says that something is not needed, is optional, is no longer required, or has defaults."
+   },
+   {
+    "name": "facts-kept",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if the sections, wherever in them these sit, say that no database is needed because Postgres has not been required since 2.0, that wren.config.json is optional with defaults applied, and require Node 20 or newer and a WREN_TOKEN from the county tally site; placement inside or outside the requirements list is not judged here. FAIL if any of these four is missing or wrong."
+   },
+   {
+    "name": "steps-correct",
+    "type": "llm",
+    "focus": "last_message",
+    "criteria": "PASS if Steps gives, in this order, npm install -g wren-tally, export WREN_TOKEN=<token>, and wren sync run from the folder with the sheet; nothing outside Steps is judged here. FAIL if a step is missing, reordered or changed."
+   }
+  ]
+ }
+]
