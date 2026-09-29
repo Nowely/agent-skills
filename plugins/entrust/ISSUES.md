@@ -32,6 +32,32 @@ accepted it and so runs outside the sandbox as the user, is still unmeasured: an
 long-running process the signal never reaches. The manual `pgrep` step before a second writer touches the same
 directory stays for this reason, and should stay until that case is measured too.
 
+## E110. E59's fix dropped the live gate's check of worker briefs against the split's owners, and a shell write of the shared file is invisible to it
+
+**Evidence, level 2.** `plugins/entrust/evals/lib/gate-checks.mjs` has no `parseSplit` or `ownsPath` function, and no
+test names "the corrected split is read: an interface it omits, one its owner's brief omits, and a file a brief
+takes from its owner are each red" (`grep -rn` over `evals/*.mjs` finds none). `splitAdmissionProblems`
+(`gate-checks.mjs:391-417`) only checks that the split critic named a file, that each worker brief names that
+file's path, that the file opens, and counts the shared file's writers from `writesSeen` (`:327-339`), which reads
+only Write/Edit/NotebookEdit/MultiEdit calls and a Codex report's `filesTouched`; its own comment (`:326`) says "A
+write made through a shell command is not visible here." The orchestrate page still asks the coordinator to check
+each brief against the file's owners (`orchestrate/SKILL.md:127`: "before a worker launches you check the files
+and interfaces its brief touches against the file's owners"), with no test behind that instruction now. Found by
+Fable H1.
+
+**Check.** `grep -n 'parseSplit\|ownsPath' plugins/entrust/evals/lib/gate-checks.mjs` finds nothing; reading
+`splitAdmissionProblems` (`:391-417`) shows no check of a brief's claimed files or interfaces against the split
+file's contents, only that the brief names the split file's path. A worker whose write ran through `sed -i` leaves
+`filesTouched` and every Write/Edit call empty, so `writesSeen` returns no writer for it and
+`splitAdmissionProblems` reports "0 agents wrote lib/shared.mjs" on a correct run.
+
+**Issue text.** E59 replaced the free-text split and ownership readers, which misread a Codex critic's own report
+as the split and a quoted request as ownership, with a narrower check that only confirms a file exists and is
+named; it never restored a check of what each brief claims against what the split file says an owner should touch,
+and it counts a file's writers only from tool calls and `filesTouched`, so a worker that writes through a shell
+command is invisible to the count. The gate should read the split file's own owner and interface list and compare
+each brief against it, and count a shell write that names the shared file among the writers.
+
 ## E77. After a compaction, Claude Code keeps only the first 5,000 tokens of `codex` and `orchestrate`, and their last sections are lost for the rest of the session
 
 **Evidence, level 3 for the mechanism, level 2 for HEAD's word counts.** Claude Code's skills page: after
@@ -257,11 +283,11 @@ on a line of its own.
 
 **Evidence, level 1 for the page line, level 2 for the collision.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:30`:
 "A Claude agent's artifact is its returned text, and a file it must leave goes under `$TMPDIR` with the path in that
-text". E92's fix gives every Codex run its own private `$TMPDIR` under the state directory
-(`plugins/entrust/plugin/skills/codex/scripts/driver.mjs`), so two Codex agents launched together no longer share
-one; a Claude agent is a native subagent of the coordinator's own process, with no driver to give it a directory of
-its own, so several launched together still write under the one `$TMPDIR` the coordinator's session holds. Found
-by Fable J1.
+text". E92's fix gives every Codex run its own fresh `$TMPDIR`, named after the run inside the system temporary
+directory (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs`), so two Codex agents launched together no
+longer share one; a Claude agent is a native subagent of the coordinator's own process, with no driver to give it a
+directory of its own, so several launched together still write under the one `$TMPDIR` the coordinator's session
+holds. Found by Fable J1.
 
 **Check.** `grep -n 'a file it must leave goes under' plugins/entrust/plugin/skills/orchestrate/SKILL.md` finds the
 line at :30; nothing in the codex or orchestrate pages gives a Claude agent a temporary directory of its own.
