@@ -762,6 +762,13 @@ test("C10 the plan states expected tokens by tier and role, from comparable runs
     return prose;
   });
 
+test("C10b the bulk row is estimated per unit and again after the pilot, and the plan's per-agent stop line halts further launches",
+  "issue #22's bulk row was planned at 25–30M and spent 38.7M, pilots and re-runs included, with one agent at 2.09M; the replication's per-part forecast with a relaunch margin came within about 6 %. The stop line is a plan line, not a budget: it fires when an agent's report arrives, so it can stop only the launches after it, and 0.8.0 removed the driver's budget on purpose",
+  () => says(
+    "Estimate the bulk row per unit: a comparable unit's tokens times the units, plus the pilot and a margin for re-runs, and estimate it again after the pilot.",
+    "The plan states a stop line of three times the pilot's median tokens per agent: an agent whose report's `tokenUsage` total passes it stops further launches until the user has seen a new estimate.",
+  ));
+
 test("C11 the commands each check needs are checked against planned rights and environment before the plan, and unmet prerequisites go into the plan",
   "a review turn spent 2.65 M tokens and left its decisive check unrun because the sandbox could not complete it (sol-n2, 2026-09-17), and ten of thirteen agents in one run ended at exit 6 on declined requests; a prerequisite found before launch is a line in the plan, one found after it is a paid turn; the wording reassigns nothing after a refusal, which the sibling forbids",
   () => {
