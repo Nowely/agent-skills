@@ -92,7 +92,7 @@ test("a catalogue with none of the four short names prints MODEL=none",
   });
 
 test("the codex page injects the line, it runs this script, its allowed-tools covers it, and no other page runs it",
-  "a pattern that misses the command cancels the page outside auto mode (measured 2026-09-29); a second page that runs it costs its load in dontAsk mode (E102), and orchestrate gets the status from the codex page it loads before a plan is shown",
+  "a pattern that misses the command cancels the page outside auto mode (measured 2026-09-29); a second page that runs it costs its load in dontAsk mode (E103), and orchestrate gets the status from the codex page it loads before a plan is shown",
   () => {
     const problems = [];
     // At a line's start or after a space: Claude Code runs the form nowhere else.
