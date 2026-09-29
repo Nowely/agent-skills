@@ -79,11 +79,12 @@ leaves.
 - **macOS and Linux are both measured.** CI runs every suite that needs no `codex` binary on both;
   the macOS-only call (the managed-preferences plist) is guarded. On both, an agent's `$TMPDIR` is its
   run's own directory, never your whole one: the driver makes it fresh at 0700 inside the system's
-  temporary directory `<tmp>` (your `TMPDIR` when exported, else the OS default). A report at
+  temporary directory `<tmp>`, Node's `os.tmpdir()`: your `TMPDIR`, else `TMP` or `TEMP`, else `/tmp`. A report at
   `<rel>/report.json` under the driver's state directory gets `<tmp>/entrust/<rel>`, and a run with no
   report there gets `<tmp>/entrust/runs/<startedAtMs>-<pid>`. The report names it as `tmpDir`
   ([Environment](skills/codex/references/environment-and-internals.md#environment)); it outlives the run,
-  the driver never removes it, and `/entrust:cleanup` removes it with its run (below). At read level it is
+  and the driver never removes it: it stays until the system clears its temporary directory or
+  `/entrust:cleanup` removes it with its run (below). At read level it is
   the only place an agent may write; at write level it is one more writable root beside the directories
   you chose. An earlier version kept these folders in the state directory's `tmp/`; the cleanup offers
   what is left there too.
