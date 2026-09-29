@@ -30,7 +30,6 @@ fan-out is read as evidence about the prompt first.
 - 2026-09-27: in an interactive session, agents left alive at the end of a turn went on, and each completion
   arrived as a turn of its own.
 - 2026-09-08: a headless session killed its background tasks when its turn ended.
-- 2026-09-17: a foreground call's hand-back arrived inside the same turn.
 
 ## A Workflow hid an early exit
 
