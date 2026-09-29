@@ -110,7 +110,7 @@ test("A3 step 1 reads the generated composition page first, the sibling is loade
       "Load [codex](../codex/SKILL.md) (Skill tool, `entrust:codex`) once the plan has a Codex agent, before its launcher's `--plan`",
       "this page re-cuts only what the mode changes",
       "1. First read `${CLAUDE_SKILL_DIR}/references/codex-composition.md` whole with the Read tool, before any decision: it holds the composition rules and the rights table the plan is made from.",
-      "Scout, then decide the composition and the agents from it; load the sibling skill with the Skill tool once the plan has a Codex agent.",
+      "Scout, then decide the composition and the agents from it; load the sibling skill with the Skill tool once the plan has a Codex agent, and compose again by the Codex status it prints as it loads, the sixth rule, before anything is registered or shown.",
     );
     if (prose !== true) problems.push(prose);
     // The live gate, 2026-09-27 (case 6): with the reference only linked, an Opus coordinator scouted and showed
@@ -390,7 +390,7 @@ test("D8 effort is chosen per agent below the top row, and low effort only for m
       "Every Codex agent carries an `EFFORT:` line chosen for its work",
       "`high` for the bulk row's extraction, classification and verification",
       "`low` for mechanical work only",
-      "only a top-row agent goes without one and inherits the configured effort",
+      "only Astra in the top row goes without one and inherits the configured effort, and a model standing in for Astra carries `EFFORT: xhigh`",
       "In a Workflow, `effort: 'low'` is for mechanical Claude Sonnet stages only.",
     );
     // The negative half: the old rule, which a later edit could restore beside the new sentences.

@@ -4922,9 +4922,9 @@ const RUN_AS_MAIN = (() => {
 // and a second copy of "is this pid still the holder" is a second answer that can disagree with the
 // lock it is about. Every name here is already a module-scope binding, so exporting them changes no
 // behaviour, and RUN_AS_MAIN above keeps an import from starting a turn, a handler or a state directory.
-export { EXIT, FIELDS, LADDER, PINNED_CODEX, PROMPT_FIELDS, RECLAIM_BACKSTOP_MS, VERSION, canonPath,
-         dropReclaimMarker, holderAlive, holdsReclaimMarker, lockKey, processIdentity, reclaimMarkerAbandoned,
-         reclaimable, takeReclaimMarker };
+export { CODEX_FALLBACK_DIRS, EXIT, FIELDS, LADDER, PINNED_CODEX, PROMPT_FIELDS, RECLAIM_BACKSTOP_MS, VERSION, canonPath,
+         dropReclaimMarker, holderAlive, holdsReclaimMarker, lockKey, newestNamed, processIdentity,
+         reclaimMarkerAbandoned, reclaimable, takeReclaimMarker };
 
 if (RUN_AS_MAIN) {
   process.stdout.on("error", stdoutFailed);

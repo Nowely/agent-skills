@@ -20,7 +20,7 @@ import { measured, parseCount } from "./lib/harness.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // Hand-ordered, because the order is information (cheapest first), and checked against the directory,
 // because a suite file nobody listed here would otherwise never run.
-const SUITES = ["orchestrate", "advisor", "fragments", "lint-draft", "gate-checks", "package", "capture-check", "agent-contract", "agent-run", "swarm", "attach-pasted", "experiment", "prepare-feedback", "cleanup", "worktree", "cli", "conformance", "lock", "protocol", "fidelity", "orchestrate-live"];
+const SUITES = ["orchestrate", "advisor", "fragments", "lint-draft", "gate-checks", "package", "capture-check", "agent-contract", "agent-run", "swarm", "attach-pasted", "experiment", "status", "prepare-feedback", "cleanup", "worktree", "cli", "conformance", "lock", "protocol", "fidelity", "orchestrate-live"];
 const onDisk = fs.readdirSync(HERE).filter((f) => f.endsWith(".test.mjs")).map((f) => f.slice(0, -".test.mjs".length));
 const unlisted = onDisk.filter((n) => !SUITES.includes(n)), missing = SUITES.filter((n) => !onDisk.includes(n));
 if (unlisted.length || missing.length) {
