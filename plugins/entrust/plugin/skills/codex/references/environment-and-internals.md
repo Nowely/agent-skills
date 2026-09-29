@@ -29,10 +29,11 @@ resolves it in, and what `TMPDIR` grants a read agent are all under `--help-all`
 intended value is the plugin's own data directory, which the skill recipes pass on every call. `<state>`
 must also be absolute.
 
-`$TMPDIR` is the run's own: for every run the driver makes a private 0700 one at `<state>/tmp/<runId>`,
-whatever the caller exported, and reports it as `tmpDir`. A caller's `TMPDIR` never reaches the agent, so
-agents started side by side never share one; the directory outlives the run and is pruned with the run
-directories. What `--help-all` does not carry: the agent's shell also receives `TMPPREFIX` under
+`$TMPDIR` is the run's own directory, made fresh at 0700 inside the system's temporary directory (your
+`TMPDIR` when exported, else the OS default), never your whole one: a report at `<state>/<rel>/report.json`
+gets `<tmp>/entrust/<rel>`, and a run with no report under `<state>` gets
+`<tmp>/entrust/runs/<startedAtMs>-<pid>`; the report names it as `tmpDir`, it outlives the run, and the
+driver never removes it. What `--help-all` does not carry: the agent's shell also receives `TMPPREFIX` under
 the run's `$TMPDIR`, because zsh keeps here-document temp files at `$TMPPREFIX*`, default `/tmp/zsh`,
 which no grant covers ([incidents](incidents.md#here-documents-under-the-grant)).
 
@@ -66,6 +67,13 @@ a cut run can carry entries and still exit 3. Beside the array, `approvalsAccept
 `approvalsDuplicate` counts a request id the server sent twice — the driver answers it once and the report
 counts the repeat, not a second request.
 
+Under an output schema, `schemaOverflow` is null unless the answer broke a size cap, and then
+`{completeAnswerPath, clipped}`: the file holding the whole answer and each field cut, with its path, cap and
+length; `answerAttemptPaths` lists the file of the first answer a corrective turn for size replaced.
+`turnError` is the server's error for a turn that did not complete, its `codexErrorInfo` and `message`, or
+the driver's own `aborted` or `crashed` in that shape; the launcher's `ERROR=` line falls back to it when the
+report has no `error`.
+
 An auto-yes carries `why: "rights cover it (checked as the answer was sent)"`: every component of the
 resolved path between the writable root and the file must be an existing plain directory, never a symlink,
 and the file itself regular or not there yet, with nothing under a `.git`, `.codex` or `.agents` directory
@@ -83,8 +91,8 @@ inside the driver's own state directory, and so does `--report-file` beside it: 
 strictly inside that directory before the agent's directory even exists, and refuses without the state
 directory in `ENTRUST_STATE_DIR` or `CLAUDE_PLUGIN_DATA`; it also refuses a mailbox placed under one of the
 driver's own subtrees there —
-`tmp/`, `home/`, `locks/`, `answers/`, `jobs/`, `worktrees/` or `pasted/` — where `tmp/` alone holds every
-run's private `$TMPDIR`; `reports/<run>` and an orchestrate run directory are both fine, being neither. The
+`home/`, `locks/`, `answers/`, `jobs/`, `worktrees/` or `pasted/` — or under `<tmp>/entrust`, where every
+run's `$TMPDIR` is; `reports/<run>` and an orchestrate run directory are both fine, being neither. The
 driver also refuses any writable root that is, or is an ancestor of, the state directory or `~/.codex` —
 the inverse of the ancestor walk [Only those are protected](#what-is-protected-and-what-is-not) already
 runs — so no sandbox the driver grants can reach in and write a decision itself. `D/owner.json` claims the
@@ -136,8 +144,9 @@ checked before the turn, so a typo costs nothing.
 At write level every root the agent may write — `--cwd`, each `--writable`, and the tree a `--worktree`
 lands in — refuses `~/.codex` and the resolved state directory, and anything inside them, by inode
 identity. The first holds the receipts an agent is verified by, the second this driver's locks and answer
-log. The run's own `$TMPDIR`, `<state>/tmp/<runId>`, is the narrow exception: the driver makes it for that
-run alone, and its owner record binds it to that run. The driver also refuses your
+log. The run's own `$TMPDIR` takes no such check, wherever the system's temporary directory lies: it is a
+directory the run has just made, empty, which grants nothing beside itself ([Environment](#environment)).
+The driver also refuses your
 home directory itself and every ancestor of it, up to `/`.
 
 **Only those are protected, and what is above them.** The guard also refuses a candidate that is `~/.codex`
