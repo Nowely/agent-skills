@@ -6,39 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with entrust's ledger, `plugins/entrust/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E106. `CLAUDE.md`'s "one owner and one place" is read as one occurrence for a page an agent reads and as one owner for a text a person acts on, and the bullet does not say which (tension)
-
-**Evidence, level 1.** `CLAUDE.md:48`: "clean architecture — each fact has one owner and one place, and a page says what
-the code does", in a bullet scoped to "every plugin's code and pages". On 2026-09-29 the entrust options round applied
-the words as one occurrence to pages a model reads (`plugins/entrust/research/2026-09-29-ledger-options/02-options.md`,
-E52: a link line on `orchestrate` rejected as a duplicate of the sibling's reference; E83: a second list of
-requirements in `codex/SKILL.md` rejected as "один факт в двух местах"; E89: a role classification held beside
-`roles.md` rejected). terse's rules keep the definition in one place and repeat the condition where a reader decides:
-`plugins/terse/plugin/references/writing-rules.md:9-10` "Give the instruction; the case for it lives in one place.";
-`writing-rules.md:21-22` "Never cut a condition, a limit or a warning where a reader decides. Repetition at an
-independently read decision point is not redundancy."; `plugins/terse/plugin/skills/audit/SKILL.md:135-139` "Placement
-is repaired by repetition as often as by relocation. … Do not move a fact away from where it is currently read
-correctly in order to put it where it is also needed — put it in both places."; `plugins/terse/plugin/references/rules.md:29`
-"Keep a fact when it changes a decision. Versions, prerequisites, paths, protocol names and machine fields need space
-when compatibility, reproduction or the next action depends on them."; the measured instance,
-`plugins/terse/plugin/references/truth.md:58-61`. Neither reading is wrong: for a model the whole page set is one
-context and a second occurrence is a second place to maintain; for a person each decision point is read on its own,
-and the repeated condition has one owner still. The same day, an analysis of whether the principles apply to terse
-called the principle "reversed" for text, and an outside critic corrected it to the owner-against-occurrence
-distinction: the words admit both readings, and the one file every agent loads does not say which holds where.
-
-**Check.** `sed -n 48p CLAUDE.md` and `sed -n '21,22p' plugins/terse/plugin/references/writing-rules.md`: the first
-forbids a second place, the second requires one at a decision point, and no line joins them.
-
-**Issue text.** The principle's "one owner and one place" means one owning place, where a fact is defined and changed;
-terse's rules mean the same and, for a text a person acts on, repeat the condition at each decision point without
-moving its owner. Read as one occurrence, the words would have an agent cut a repeated warning from a README or a
-changelog, which terse's measured rule keeps. The fix is at the source and two words long: "each fact has one owner and
-is defined in one place". A scope clause about text or decision points would be a qualification on the rule, and a
-second statement of the rule in terse's pages a second place for it. The entrust verdicts stand under the reword: E52
-rested on the compaction budget and on `orchestrate`'s own rule not to restate the sibling, E89 on a definition held
-twice. The owner's wording, so the owner's word.
-
 ## E107. The Node floor is written in three places, and the two numbers drift when `engines` changes (draft)
 
 **Evidence, level 1.** `plugins/terse/plugin/package.json:4-5` `"engines": { "node": ">=22" }` is the floor's owner.
