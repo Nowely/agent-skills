@@ -78,8 +78,8 @@ leaves.
   the macOS-only call (the managed-preferences plist) is guarded. On both, every run gets a private
   `$TMPDIR` of its own under the driver's state directory, whatever the shell exported, and the report
   names it as `tmpDir` ([Environment](skills/codex/references/environment-and-internals.md#environment)).
-  At read level it is the only place an agent may write; at write level it sits beside the directories you
-  chose.
+  At read level it is the only place an agent may write; at write level it is one more writable root beside
+  the directories you chose.
 - **Your `~/.codex/config.toml` is the default policy** — or the one in the home `CODEX_HOME` names.
   Model, reasoning effort and the other keys the driver inherits come from it unless a call overrides
   them (`--model`, `--effort`); the driver sets no defaults of its own
