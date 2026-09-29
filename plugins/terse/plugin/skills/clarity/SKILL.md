@@ -28,7 +28,9 @@ only when it helps the text at hand.
 ## Before writing
 
 1. Who will read this, and what do they know? Use the actual recipient.
-2. What will they do with it now: understand, decide, approve, act, or pass it on? A reply that merely
+2. What will they do with it now: understand, decide, approve, act, or pass it on, and what comes back?
+   When the owner has not said and your sources do not settle it, ask the owner rather than infer it
+   ([true within its world](../../references/rules.md#true-within-its-world)). A reply that merely
    confirms a tool step may need no prose.
 3. Where will they read, render, copy, or paste it? The destination sets its context needs.
 

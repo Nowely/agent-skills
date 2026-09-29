@@ -3,6 +3,14 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- `clarity`'s second question before writing also asks what comes back, and when neither the owner nor the
+  sources settle what the reader will do, it has the writer ask the owner instead of inferring it: in a field
+  report, a reply in a long thread was built on a division of work the writer had pieced together.
+
 ## 0.5.0 — 2026-09-28
 
 terse gets a genre note for skill pages and standing agent instructions, text whose reader is the model that
