@@ -179,15 +179,17 @@ forensics remain in the repository references and release notes.
   unless or before as an unsupported claim**; `after` and a bare claim still count (E61).
 - **The live gate's plan record drops the tokens column**, which no check read and which turned `unknown` into NaN
   (E62).
-- **Behaviour change: `agent-run.mjs --plan` accepts any role** and prints `PLAN=` (or `AMENDED=`) and one `AGENT=`
-  line per row, without `WORKERS=` and `CHECKING=`; it used to refuse 12 of the 22 roles in `roles.md` (E89). The
-  live gate no longer compares the card's counts with the launcher's; the orchestrate card is built from the rows.
+- **Behaviour change: `agent-run.mjs --plan` accepts any non-empty role** and prints `PLAN=` (or `AMENDED=`) and one
+  `AGENT=` line per row, without `WORKERS=` and `CHECKING=`; an empty role is still refused, `missing role for <id>`,
+  exit 2; it used to refuse 12 of the 22 roles in `roles.md` (E89). The live gate no longer compares the card's
+  counts with the launcher's; the orchestrate card is built from the rows.
 - **Behaviour change: an approval request for a command reports the cause `asked` in place of `sandbox` and
   `policy`**, in the report's `escalations`, the request file, `CAUSE=` and the pages (E65). The driver could not
   tell the two apart reliably, since a sandboxed attempt can leave no trace, and both called for the same advice.
 - **The driver's comment and help and the codex page say what stopping an agent was measured to do**: a command
-  running inside the sandbox ends with the agent (measured once, 2026-09-29); a command run after an approval is
-  unmeasured, so the `pgrep` check before a second writer stays (E67).
+  running inside the sandbox ends with the agent (measured once, 2026-09-29); a command run after an approval,
+  outside the sandbox, is still unmeasured, so the `pgrep` check before a second writer stays (E67, narrowed to
+  that unmeasured case and stays open).
 - **Behaviour change: a driver handed a mailbox that already has an `owner.json` exits 2 whether its owner is
   running or has ended**; the takeover of a dead owner's mailbox is gone, since the launcher gives every launch a
   mailbox of its own (E68).
