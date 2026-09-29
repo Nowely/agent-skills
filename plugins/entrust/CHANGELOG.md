@@ -5,6 +5,23 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Added
+
+- **The codex and orchestrate pages see which Codex models the account can run before a plan is made.** Both
+  pages run `scripts/status.mjs` as they load, through Claude Code's `` !`…` `` substitution, and it prints
+  whether codex is installed, whether an account is signed in, and the models the account lists under Astra,
+  Sol, Terra and Luna with their efforts. A sixth composition rule reads it: a model the account does not list
+  is taken by the nearest listed one below it, and the plan says in one clause who stands in for whom; with
+  Codex not installed or not signed in the plan has no Codex agents and says so in its first line; a status
+  that could not be read makes the plan say Codex was not checked. Otherwise the plan says nothing about
+  Codex's state. A model standing in for Astra, the advisor included, carries `EFFORT: xhigh`, where Astra
+  inherits the configured effort. Each page's frontmatter pre-approves that one command, without which
+  Manual mode cancels the page (measured 2026-09-29, with Manual and auto mode loading it with the grant);
+  `dontAsk` mode does not count that grant and cancels the page, which E102 records. Why: on 2026-09-29 an
+  account on the free plan listed Luna and Terra and no Astra or Sol, the pages named Astra for every
+  top-row role, and its user had to say which models were available in every session. The script asks
+  for the account before the catalogue, because a signed-out server still lists Astra and Sol.
+
 ### Changed
 
 - **The coordinator asks the advisor for the premises its recommendation rests on.** The advisor page now has

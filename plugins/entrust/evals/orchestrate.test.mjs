@@ -390,7 +390,7 @@ test("D8 effort is chosen per agent below the top row, and low effort only for m
       "Every Codex agent carries an `EFFORT:` line chosen for its work",
       "`high` for the bulk row's extraction, classification and verification",
       "`low` for mechanical work only",
-      "only a top-row agent goes without one and inherits the configured effort",
+      "only Astra in the top row goes without one and inherits the configured effort, and a model standing in for Astra carries `EFFORT: xhigh`",
       "In a Workflow, `effort: 'low'` is for mechanical Claude Sonnet stages only.",
     );
     // The negative half: the old rule, which a later edit could restore beside the new sentences.

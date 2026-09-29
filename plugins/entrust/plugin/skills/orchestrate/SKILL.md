@@ -7,12 +7,15 @@ disable-model-invocation: true
 metadata:
   version: "0.22.0"
 license: MIT
+allowed-tools: Bash(node *codex/scripts/status.mjs*)
 ---
 
 Plan from [codex-composition.md](references/codex-composition.md), the sibling's composition rules and rights table generated into this page's references. Load [codex](../codex/SKILL.md) (Skill tool, `entrust:codex`) once the plan has a Codex agent, before its launcher's `--plan`, and follow it for every Codex agent: rights, header fields, worktree lifecycle, the report and the exit
 ladder live there and stay authoritative; this page re-cuts only what the mode changes. The mode adds no header field or flag and leaves the agent's own prompt file where the sibling puts it; what it asks of the driver and the launcher is the sibling's and is changed there under its own changelog line, and its own scripts, the runner and the linter, run a command or read a draft and write only under `$TMPDIR`. Every agent has a mailbox, so it can ask instead of
 being declined at once. You are the
 orchestrator; the work-list, the plan, the composition and the synthesis are yours, the rest is an agent's.
+
+The Codex this machine can run, asked of its server as this page loaded, for the composition rules' sixth rule: !`node "${CLAUDE_SKILL_DIR}/../codex/scripts/status.mjs"`
 
 ## Your own hands
 
@@ -63,7 +66,7 @@ run directory: its artifact is its report, and a brief that asks a Codex read ag
 
 Your own model is in your system prompt ("You are powered by the model named ..."); nothing else carries it. You are outside the
 pool, and the pool is the same whatever you are: at most one Fable agent and one Astra agent alive at a time, each taking
-the top-row roles in turn, architect for one task and judge for the next, and the strong and cheap agents the alive cap admits. The caps count turns in progress: separate advisor, critic and architect threads may take turns within them, and a thread waiting for another message uses no slot.
+the top-row roles in turn, architect for one task and judge for the next, and the strong and cheap agents the alive cap admits. The caps count turns in progress: separate advisor, critic and architect threads may take turns within them, and a thread waiting for another message uses no slot. A Codex row whose model the Codex status does not list is taken by the nearest listed model below it, as the composition rules' sixth rule says; a model standing in for Astra is the top row's one Codex agent, counted as Astra is.
 **Prefer Luna to Haiku in the bulk row**: measured better. The bulk row does not
 count against the alive cap and never takes a top-row role; announce its count before spawning, like any other fan-out, a count derived from the units with the plan saying why that many.
 The unit of a bulk fan-out is either one part of the material for extraction, with a fixed answer schema, or one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief: whether an address moved or was wrong is a judgement about your own input, and it stays out of the set (measured 2026-09-12: a broken path in every brief drew the same verdict from nineteen of twenty agents). A batch of verdict units runs as a swarm, which only the user starts, with `/entrust:swarm`: one script launches its agents under a concurrency cap, and one Stop ends the batch; a batch of extraction units runs as ordinary Codex agents, launched as Mechanism below says. Pilot every bulk fan-out before it launches: a stronger model marks a few units, the bulk model runs the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort.
@@ -75,8 +78,8 @@ The unit of a bulk fan-out is either one part of the material for extraction, wi
 - Subagents may spawn subagents, but a Fable agent never spawns Fable: it tags its own Agent calls `opus` or `sonnet`; only you, or a
   foreman you launched, launch Fable agents.
 - Every Codex agent carries an `EFFORT:` line chosen for its work, as it carries its `MODEL:` line: `high` for the bulk row's
-  extraction, classification and verification, `low` for mechanical work only, `medium` for review, refutation and judgement in the strong and cheap rows; only a top-row agent
-  goes without one and inherits the configured effort. Measured 2026-09-17: two Luna read agents at an inherited `xhigh`
+  extraction, classification and verification, `low` for mechanical work only, `medium` for review, refutation and judgement in the strong and cheap rows; only Astra in the top row
+  goes without one and inherits the configured effort, and a model standing in for Astra carries `EFFORT: xhigh`. Measured 2026-09-17: two Luna read agents at an inherited `xhigh`
   took 480 and 557 seconds and 1.2M and 2.3M tokens for a ledger and a grep task. In a Workflow, `effort: 'low'` is
   for mechanical Claude Sonnet stages only.
 

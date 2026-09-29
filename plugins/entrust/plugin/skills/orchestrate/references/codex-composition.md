@@ -5,7 +5,7 @@ Generated from [codex/SKILL.md](../../codex/SKILL.md) by `evals/fragments.mjs`: 
 <!-- fragment codex-composition 1: ../../codex/SKILL.md, ## Composition -->
 ## Composition
 
-Apply all five rules:
+Apply all six rules:
 
 1. Announce the composition **before** starting any Codex run, naming the count and which agents are Codex; a
    read agent's rights need no sentence, since nothing is being approved.
@@ -15,6 +15,18 @@ Apply all five rules:
    a Claude answer.
 4. Knowing the answer is not a reason to skip a requested second opinion.
 5. Never add allow-rules on the user's behalf.
+6. Compose from the Codex status the skill page printed as it loaded: a `CODEX=` line and, when it reads
+   `ready`, one `MODEL=` line per model the account lists.
+   - `ready`: every Codex agent's `MODEL:` is a listed short name. A model the user, a page or a tier names
+     that is not listed is taken by the nearest listed one below it in Astra, Sol, Terra, Luna, or above it
+     when none is below, and the plan says in one clause who stands in for whom.
+   - `signed-out`, `missing`, or `MODEL=none`: zero Codex agents; the plan's first line says Codex is not
+     signed in, not installed, or lists no model, and that the panel is all-Claude and shares one model bias.
+   - `unchecked`: compose by the other rules, and the plan says Codex was not checked. A launch is no check:
+     a signed-out server lists Astra and Sol too (measured 2026-09-29).
+   - The command itself in place of those lines was not run: run it with the Bash tool before composing.
+
+   The status lines stay with you: the plan names Codex's state only where it changed the composition.
 
 | What the user says | Composition |
 | --- | --- |
