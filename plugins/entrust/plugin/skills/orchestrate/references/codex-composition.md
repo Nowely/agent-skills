@@ -42,5 +42,5 @@ Choose the smallest `RIGHTS` that can complete and check the work:
 | `RIGHTS: write <dir>` | write under the live directory | yes; this chooses the blast radius |
 
 `$TMPDIR` is granted at every level and `/tmp` at none; a write agent adds each settled `WRITABLE:` root
-to what its row names. The driver refuses a server whose sandbox answers differently.
+to what its row names. Every output path a `TASK:` names lies under the agent's writable roots: a write outside them is refused. The driver refuses a server whose sandbox answers differently.
 <!-- /fragment -->

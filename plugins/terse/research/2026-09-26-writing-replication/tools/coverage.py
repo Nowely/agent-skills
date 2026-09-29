@@ -4,7 +4,8 @@
   coverage.py MAP.tsv OUT_NAME      MAP: agent_id<TAB>P### (one part per agent)
 
 A page counts as read only when its whole text, as it is on disk now, is a substring of one command
-output the model received in the agent's own thread (the attempt's threadId from its own report).
+output the model received in the agent's own thread (the attempt's threadId from its own report),
+either as it is or JSON-escaped, the way a model that prints JSON.stringify(result) receives it.
 A page whose first line (`# P### page NN/MM`) reached the model but whose whole text did not is
 `partial` (truncated or read in pieces); the rest are `unread`. Pages are checked against
 corpus/measures/corpus-revision.json when it exists: a page whose sha256 differs is reported as
@@ -62,15 +63,6 @@ def outputs_of(thread):
                     o = ''.join(x.get('text', '') for x in o if isinstance(x, dict))
                 if isinstance(o, str):
                     outs.append(o.replace('\r\n', '\n'))
-                    # a model that prints JSON.stringify(result) gets the command output JSON-escaped
-                    i = o.find('{"')
-                    if i >= 0:
-                        try:
-                            inner = json.JSONDecoder().raw_decode(o[i:])[0]
-                            if isinstance(inner, dict) and isinstance(inner.get('output'), str):
-                                outs.append(inner['output'].replace('\r\n', '\n'))
-                        except ValueError:
-                            pass
     return outs, len(files)
 
 
@@ -90,7 +82,9 @@ def main(mapfile, name):
         for fn, first, text, ch in pages:
             if ch:
                 changed.append(fn)
-            if any(text in o for o in outs):
+            # a printed array of results or a cut one does not decode, so match the escaped text instead
+            esc = json.dumps(text, ensure_ascii=False)[1:-1]
+            if any(text in o or esc in o for o in outs):
                 read.append(fn)
             elif any(first in o for o in outs):
                 partial.append(fn)

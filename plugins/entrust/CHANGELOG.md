@@ -24,6 +24,57 @@ forensics remain in the repository references and release notes.
 - The plugin README names the seventh skill in its overview, install list, layout, table of canonical homes and the
   list of what cleanup leaves, and `plugin.json` and the marketplace entry add it to the description they share, so
   that every place a user learns what the plugin ships from names it.
+- **The bulk row's extraction, classification and verification run at `EFFORT: high`; `low` is for mechanical work
+  only.** The orchestrate page's effort bullet and the swarm page's Luna brief said `low` for the whole bulk row; the
+  strong and cheap rows keep `medium` for review, refutation and judgement. Why: in the pilot reported in issue #22,
+  Luna on a classification task marked 11 false positives in 22 at `low` against 1 in 13 at `medium` (Fisher, p =
+  0.013), with recall 11 and 12 of 15 and 3.48M against 3.63M tokens; in the writing replication's pilot
+  (`plugins/terse/research/2026-09-26-writing-replication/measures/pilot-decision.md`) `high` and `medium` both found
+  21 of 21, with 1 extra in 31 against 4 in 34 (p = 0.36) at median tokens per run of 129,873 and 128,657. `high` over
+  `medium` is the owner's choice, not a significant result; neither pilot ran `low` on a verification unit.
+- **The orchestrate page's bulk unit is either one part of the material for extraction, with a fixed answer schema, or
+  the closed-set verdict it was.** The effort line names extraction, and the unit said only the verdict. Why: the bulk
+  work of issue #22's run and of the writing replication was extraction, one part of the material per agent (in the
+  replication, a part and one angle) with a shared answer schema.
+- **Experiment protocols E1 and E2 run their Luna arms at `high` and E2's Terra arm at `medium`.** They said `low`,
+  which the bulk row's verification no longer is, and E2's Terra arm, a closed-set judgement, already disagreed with
+  the cheap row's `medium` for judgement. Why: an arm at an effort no coordinator uses measures a configuration whose
+  result does not transfer.
+- **Every bulk fan-out, a swarm included, is piloted first.** A stronger model marks a few units, the bulk model runs
+  the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort.
+  The swarm page's plan names the pilot's units, and its "go" covers the pilot and then the swarm. The orchestrate
+  page carries the rule beside the bulk unit in Model tiers, not in Verification, which lies past what a compaction
+  keeps (E77). Why: issue #22's pilot chose the effort and exposed a brief that counted process complaints; the
+  replication's first pilot, on the brief as first assembled, found 12 extras in 22 and the brief gained four
+  exclusions (`plugins/terse/research/2026-09-26-writing-replication/measures/pilot-protocol.md`). Both runs had
+  critiqued the split before the pilot, and that critique reads the decomposition, not the subject.
+- **The plan estimates the bulk row per unit and again after the pilot, and states a per-agent stop line.** The
+  estimate is a comparable unit's tokens times the units, plus the pilot and a margin for re-runs; the stop line is
+  three times the pilot's median tokens per agent, and an agent whose report's `tokenUsage` total passes it stops
+  further launches until the user has seen a new estimate. It fires only when an agent ends, so it stops the
+  launches after it, not the agent; it is a plan line, and no driver or swarm option, because 0.8.0 removed the
+  token budget on purpose. Why: the bulk row of issue #22 was planned at 25–30M tokens and spent 38.7M, pilots and
+  re-runs included, and one agent spent 2.09M on a chunked read; the replication forecast its collection per part
+  with a 1.15 relaunch margin at 57.1M and spent about 53.8M (`measures/pilot-decision.md`, `measures/tokens.md`), and
+  3 of its 356 collection runs passed its stop line at three times the pilot median. The issue's second trigger, a
+  forecast at twice the plan, is left out: it fired in neither run.
+- **The orchestrate page names the swarm as the batch route for verdict units.** A batch of verdict units runs as a
+  swarm, which only the user starts, with `/entrust:swarm`: one script launches its agents under a concurrency cap,
+  and one Stop ends the batch. A batch of extraction units runs as ordinary Codex agents, because the swarm's unit is
+  the closed-set verdict alone. Why: the 456 Luna runs of issue #22 and the replication's collection
+  (`plugins/terse/research/2026-09-26-writing-replication/tools/batch.py`) both launched their batches by hand,
+  launch-only and with no wrapper, and the page named no route; the issue counts about 13k tokens per wrapper. The
+  swarm's limits, recorded as E90, are not changed here.
+- **Every output path a `TASK:` names lies under the agent's writable roots.** The codex page's Rights section says
+  so, and its generated copy, `skills/orchestrate/references/codex-composition.md`, follows; the orchestrate check
+  that opens one assembled brief checks its output paths against those roots beside its input paths. Why: in issue
+  #22 a write agent's brief put its output one level above its `RIGHTS: write` root, the write was refused and the
+  run exited 6; since 0.22.0 no approval grants a root mid-run, so the brief is where the path is caught.
+- **The completeness critic's manifest also carries the run's ledger and the runner's log behind each number the
+  draft states.** Both already sit under `$TMPDIR`, so nothing new is written in the run directory, and the draft
+  keeps citing a check by its label. Why: in issue #22 a publication reviewer could not verify a number that existed
+  only in the coordinator's command output; since 0.21.0 the runner keeps that output in a log, and the manifest did
+  not name it.
 
 ## 0.22.0 — 2026-09-28
 
