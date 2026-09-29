@@ -18,7 +18,7 @@ runs outside this repository, or a research run when it runs inside.
   words; sessions found by the skill-load marker in transcripts; the focus picks how agents read (readers with a
   question, or exhaustive extraction) and the corpus size only how many; the place of the run picks the output;
   privacy as a principle, checked by a model that did not write the text; no flags.
-- One ledger entry came out of the run: E89, a cause in `foreman.md:24` broader than what was observed.
+- One ledger entry came out of the run: E91, a cause in `foreman.md:24` broader than what was observed.
 
 ## How it ran
 

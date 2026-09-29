@@ -443,7 +443,7 @@ pages describe it as each agent's own temporary directory. Two agents that pick 
 other, and a finding written there is lost without an error. Each agent should get a temporary directory of its own,
 or the pages should have every file an agent leaves carry the agent's id.
 
-## E89. `foreman.md:24` gives a broader cause than observed: the Skill tool loads a user-only skill whose command the user typed
+## E91. `foreman.md:24` gives a broader cause than observed: the Skill tool loads a user-only skill whose command the user typed
 
 **Evidence, level 3 for the pairing; the mechanism is a guess.** `plugins/entrust/plugin/skills/orchestrate/references/foreman.md:24-25`:
 "It cannot load this skill: the Skill tool refuses a skill marked `disable-model-invocation`." On 2026-09-29 Opus O1 of
