@@ -67,11 +67,11 @@ arms, never the default.
 - **Node at or above the floor `package.json` declares** (`engines`); CI runs that floor and a current
   release, Linux and macOS. No dependencies: the driver is one file importing only `node:` builtins.
 - **macOS and Linux are both measured.** CI runs every suite that needs no `codex` binary on both;
-  the macOS-only call (the managed-preferences plist) is guarded. A stock Linux shell leaves `TMPDIR`
-  unset: at either level the driver then makes a private one and names it in the report as `tmpDir`
-  ([Environment](skills/codex/references/environment-and-internals.md#environment)). At read level it is
-  the only place an agent may write; at write level it sits beside the directories you chose. Export your own to put
-  the agent's scratch files elsewhere.
+  the macOS-only call (the managed-preferences plist) is guarded. On both, every run gets a private
+  `$TMPDIR` of its own under the driver's state directory, whatever the shell exported, and the report
+  names it as `tmpDir` ([Environment](skills/codex/references/environment-and-internals.md#environment)).
+  At read level it is the only place an agent may write; at write level it sits beside the directories you
+  chose.
 - **Your `~/.codex/config.toml` is the default policy** — or the one in the home `CODEX_HOME` names.
   Model, reasoning effort and the other keys the driver inherits come from it unless a call overrides
   them (`--model`, `--effort`); the driver sets no defaults of its own
@@ -113,9 +113,7 @@ path. Claude Code's [permissions page](https://code.claude.com/docs/en/permissio
 additional directories "become readable without prompts, and file editing permissions follow the current
 permission mode", and its [permission modes page](https://code.claude.com/docs/en/permission-modes.md)
 says "`permissions.allow` rules in settings files do not pre-approve protected-path writes". A shell outside Claude Code has no `CLAUDE_PLUGIN_DATA`; to run the driver by hand, as under
-First run, export an absolute path of your own — neither `$TMPDIR` nor a directory above it: both levels
-grant `$TMPDIR` to the agent, and a state directory there, or above it, is refused, so the run exits 2. The
-driver reads `ENTRUST_STATE_DIR` first, so wherever it is set it overrides the plugin's directory:
+First run, export an absolute path of your own. The driver reads `ENTRUST_STATE_DIR` first, so wherever it is set it overrides the plugin's directory:
 
 ```bash
 export ENTRUST_STATE_DIR="$HOME/.local/state/entrust"
@@ -302,7 +300,7 @@ Canonical homes for repeated stories:
 Young code, adversarially reviewed by mixed Claude/Codex panels. What that produced is checkable in the
 repository rather than in the claim: the home-directory guard is pinned against case variants, symlinks
 and a hostile `$HOME`; the lock's critical section is pinned against overlapping holders; a prompt file
-cannot introduce a verifier; `$TMPDIR` is guarded like every other writable root; and each suite is
+cannot introduce a verifier; every run's `$TMPDIR` is its own, whatever the caller exported; and each suite is
 mutation-checked, with the surviving mutants and what was done about them listed in
 [`plugins/entrust/evals/README.md`](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/evals/README.md).
 Changes are in the [changelog on GitHub](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/CHANGELOG.md); release notes and known issues also live on the
