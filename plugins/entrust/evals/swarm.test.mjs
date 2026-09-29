@@ -86,7 +86,7 @@ test("U1 a unit is the bulk row's unit, fifty at most, the template has its plac
       /one per line, fifty at most/,
       /one brief template with `\{\{UNIT\}\}` where the unit goes and `\{\{UNIT_ID\}\}` where its number goes/,
       /[Aa]ssemble one brief and open it whole before the launch, checking its paths, its count and each quote against its source/,
-      /Every brief carries `MODEL: luna` or `MODEL: terra`, `EFFORT: low` for Luna and `medium` for Terra/,
+      /Every brief carries `MODEL: luna` or `MODEL: terra`, `EFFORT: high` for Luna and `medium` for Terra/,
       /[Aa] swarm never carries a top-row or strong-row model, and it never writes: every agent is a read agent/,
       /Its `OUTPUT_SCHEMA:` file, under your temporary directory, holds the five fields' schema below/,
     /Announce the count, derived from the units with the plan saying why that many, before the launch/,

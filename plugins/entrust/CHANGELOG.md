@@ -3,6 +3,19 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- **The bulk row's extraction, classification and verification run at `EFFORT: high`; `low` is for mechanical work
+  only.** The orchestrate page's effort bullet and the swarm page's Luna brief said `low` for the whole bulk row; the
+  strong and cheap rows keep `medium` for review, refutation and judgement. Why: in the pilot reported in issue #22,
+  Luna on a classification task marked 11 false positives in 22 at `low` against 1 in 13 at `medium` (Fisher, p =
+  0.013), with recall 11 and 12 of 15 and 3.48M against 3.63M tokens; in the writing replication's pilot
+  (`plugins/terse/research/2026-09-26-writing-replication/measures/pilot-decision.md`) `high` and `medium` both found
+  21 of 21, with 1 extra in 31 against 4 in 34 (p = 0.36) at median tokens per run of 129,873 and 128,657. `high`
+  over `medium` is the owner's choice, not a significant result; neither pilot ran `low` on a verification unit.
+
 ## 0.22.0 — 2026-09-28
 
 Contracts that change in this release, each detailed in its entry below. The driver no longer switches on Codex's

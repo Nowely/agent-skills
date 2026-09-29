@@ -384,11 +384,11 @@ test("D7 a Fable agent never spawns Fable, and only the orchestrator or a forema
   () => says("a Fable agent never spawns Fable", "only you, or a foreman you launched, launch Fable agents"));
 
 test("D8 effort is chosen per agent below the top row, and low effort only for mechanical Sonnet stages in a Workflow",
-  "measured 2026-09-17: two Luna read agents at an inherited xhigh took 480 and 557 s and 1.2M and 2.3M tokens for a ledger and a grep task. The earlier rule inherited the user's effort everywhere because, measured on codex-cli 0.153.4, no effort level bought the evidence guarantee an exception once claimed; this rule claims cost, not evidence",
+  "measured 2026-09-17: two Luna read agents at an inherited xhigh took 480 and 557 s and 1.2M and 2.3M tokens for a ledger and a grep task. The earlier rule inherited the user's effort everywhere because, measured on codex-cli 0.153.4, no effort level bought the evidence guarantee an exception once claimed; this rule claims cost, not evidence. The bulk row left `low` after issue #22's pilot (11 false positives in 22 at low, 1 in 13 at medium, tokens within 5 %); `high` over `medium` is the owner's choice from the writing replication's pilot",
   () => {
     const prose = says(
       "Every Codex agent carries an `EFFORT:` line chosen for its work",
-      "`low` for the bulk row",
+      "`high` for the bulk row's extraction, classification and verification, `low` for mechanical work only",
       "only a top-row agent goes without one and inherits the configured effort",
       "In a Workflow, `effort: 'low'` is for mechanical Claude Sonnet stages only.",
     );
