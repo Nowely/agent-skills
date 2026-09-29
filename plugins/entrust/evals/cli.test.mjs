@@ -905,8 +905,8 @@ flow("a private $TMPDIR outlives its run and is reaped on the answer log's bound
     return fs.existsSync(dir) || `an earlier run's kept $TMPDIR was reaped inside the bounds: ${dir}`;
   });
 
-flow("one driver per mailbox: a second exits 2 naming the owner's pid, and a dead owner's claim is taken over",
-  "pending is rewritten whole by whoever owns the mailbox, so two drivers on one would erase each other's requests; a claim whose driver is gone would otherwise wedge the directory",
+flow("one driver per mailbox, ever: a second exits 2 naming the owner's pid, whether the owner is still running or has ended",
+  "pending is rewritten whole by whoever owns the mailbox, so two drivers on one would erase each other's requests; the launcher makes a mailbox per launch, so an owner file already there is never a mailbox to take over, and a takeover checked by name could meet a second taker between its check and its removal (E68)",
   async () => {
     const state = flowState();
     const box = path.join(state, "run", "agent", "approvals");
@@ -920,34 +920,14 @@ flow("one driver per mailbox: a second exits 2 naming the owner's pid, and a dea
     if (second.code !== EXIT.USAGE || !second.err.includes(`belongs to entrust pid ${owner.pid}, which is still running`))
       problems.push(`a second driver on a live mailbox: exit ${second.code}, ${second.err.trim().slice(-200)}`);
     if (a.code !== EXIT.OK) problems.push(`the owner exited ${a.code}`);
-    if (readJson(path.join(box, "owner.json"))?.threadId !== "thr_root") problems.push("the owner file does not name the thread once it exists");
+    const held = readJson(path.join(box, "owner.json"));
+    if (held?.threadId !== "thr_root") problems.push("the owner file does not name the thread once it exists");
     const third = await run({ scenario: "happy", args: ["--approval-dir", box], env: { ENTRUST_STATE_DIR: state } });
-    if (third.code !== EXIT.OK || !third.err.includes(`was left by entrust pid ${owner.pid}, which is gone`))
-      problems.push(`a dead owner's mailbox: exit ${third.code}, ${third.err.trim().slice(-200)}`);
-    return problems.length === 0 || problems.join("; ");
-  });
-
-flow("two drivers that both find a mailbox's owner dead: one takes it over, the other exits 2 naming it",
-  "a takeover by rename lets both racers replace the dead claim and both rewrite pending from maps of their own, erasing each other's requests (reproduced offline); the claim is a link(2) and the takeover happens under a marker, so exactly one owns the mailbox",
-  async () => {
-    const state = flowState();
-    const box = path.join(state, "run", "agent", "approvals");
-    fs.mkdirSync(box, { recursive: true, mode: 0o700 });
-    const gone = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
-    const deadPid = Number(gone.stdout);
-    fs.writeFileSync(path.join(box, "owner.json"), JSON.stringify({ pid: deadPid, identity: "lstart:long gone", startedAtMs: 1, threadId: null }));
-    // Both pause between finding the owner dead and taking it over, so both are past that check at once.
-    const env = { ENTRUST_STATE_DIR: state, ENTRUST_LOCK_SEAM_MS: "800" };
-    const [a, b] = await Promise.all([run({ scenario: "slow-turn", args: ["--approval-dir", box], env }),
-                                      run({ scenario: "slow-turn", args: ["--approval-dir", box], env })]);
-    const codes = [a.code, b.code].sort();
-    const loser = a.code === EXIT.USAGE ? a : b;
-    const problems = [];
-    if (JSON.stringify(codes) !== JSON.stringify([EXIT.OK, EXIT.USAGE])) problems.push(`the two drivers exited ${JSON.stringify([a.code, b.code])}, not one 0 and one 2`);
-    if (!/belongs to entrust pid \d+, which is still running/.test(loser.err)) problems.push(`the loser does not name the owner: ${loser.err.trim().slice(-200)}`);
-    const takeovers = [a.err, b.err].filter((e) => e.includes(`was left by entrust pid ${deadPid}, which is gone`)).length;
-    if (takeovers !== 1) problems.push(`${takeovers} drivers announced a takeover`);
-    if (fs.existsSync(path.join(box, "owner.json.reclaim"))) problems.push("the reclaim marker was left behind");
+    if (third.code !== EXIT.USAGE || !third.err.includes(`belongs to entrust pid ${owner.pid}, which has ended`))
+      problems.push(`a driver on an ended owner's mailbox: exit ${third.code}, ${third.err.trim().slice(-200)}`);
+    if (JSON.stringify(readJson(path.join(box, "owner.json"))) !== JSON.stringify(held)) problems.push("a refused driver changed the owner file");
+    const leftovers = fs.readdirSync(box).filter((n) => n !== "owner.json");
+    if (leftovers.length) problems.push(`the refused drivers left ${JSON.stringify(leftovers)} in the mailbox`);
     return problems.length === 0 || problems.join("; ");
   });
 

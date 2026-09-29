@@ -489,8 +489,8 @@ const HELP = [
   lie in one of this driver's own subdirectories of <state> (tmp/, home/ and
   the rest): tmp/ holds every run's private $TMPDIR.
   D/owner.json names the driver that owns D, published by link(2); a second one
-  exits 2 while that one is alive, and a dead one's claim is taken over under a
-  reclaim marker, so two drivers never both own D. Nothing is written to D once
+  exits 2 whether that one is alive or has ended, so D serves one driver, ever,
+  and each launch gets a D of its own. Nothing is written to D once
   owner.json names another run, and a request whose file or pending entry cannot
   be written is settled at once as expired, declined, why "mailbox write failed:
   <error>"; an accept goes out only after its settlement is written, and a
@@ -664,11 +664,10 @@ ${stateSubdirHelp()}
                                 mode must pass both, so it narrows and never widens
   ENTRUST_LOCK_SEAM_MS          a test seam: how long to pause between the
                                 lock's ownership check and the act it guards,
-                                touching <lock>.seam while it pauses, and as
-                                long between finding a mailbox's owner dead and
-                                taking it over. The suites set it to put a peer
-                                in a window a real peer reaches only by timing,
-                                and nothing else in this plugin sets it; setting it yourself
+                                touching <lock>.seam while it pauses. The
+                                suites set it to put a peer in a window a real
+                                peer reaches only by timing, and nothing else
+                                in this plugin sets it; setting it yourself
                                 slows this run's startup and teardown by that
                                 much and protects nothing
   ENTRUST_APPROVAL_POLL_MS      a test seam: how often an open approval request's
@@ -3296,40 +3295,20 @@ const ownsMailbox = () => {
   const held = readJson(mailboxOwnerPath);
   return held?.pid === process.pid && held?.startedAtMs === startedAtMs;
 };
-// One driver per mailbox, claimed by link(2), which refuses an entry already there. A dead holder's claim is
-// removed under a reclaim marker of its own, the way a stale lock is: two drivers that both find the holder
-// dead would otherwise both replace it and both believe they own the mailbox.
+// One driver per mailbox, ever: the claim is a link(2), which refuses an entry already there, so a mailbox
+// that has had an owner is refused whether that driver is alive or gone. The launcher makes a mailbox per
+// launch, so no run needs another's.
 function claimOwner(real) {
-  const owner = mailboxOwnerPath, marker = `${owner}.reclaim`;
+  const owner = mailboxOwnerPath;
   const tmp = `${owner}.${crypto.randomBytes(8).toString("hex")}.tmp`;
   try {
     fs.writeFileSync(tmp, mailboxOwner(), { mode: 0o600, flag: "wx" });
-    for (let attempt = 0; attempt < LIMITS.LOCK_ATTEMPTS; attempt++) {
-      try { fs.linkSync(tmp, owner); return; }
-      catch (e) { if (e.code !== "EEXIST") fail(EXIT.USAGE, `--approval-dir ${real} cannot be claimed: ${e.message}`); }
+    try { fs.linkSync(tmp, owner); }
+    catch (e) {
+      if (e.code !== "EEXIST") fail(EXIT.USAGE, `--approval-dir ${real} cannot be claimed: ${e.message}`);
       const held = readJson(owner);
-      if (holderAlive(held))
-        fail(EXIT.USAGE, `--approval-dir ${real} belongs to entrust pid ${held.pid}, which is still running; give each agent a mailbox of its own`);
-      lockSeam(owner);
-      try { fs.linkSync(tmp, marker); }
-      catch (e) {
-        if (e.code !== "EEXIST") fail(EXIT.USAGE, `--approval-dir ${real} cannot be claimed: ${e.message}`);
-        if (!holderAlive(readJson(marker))) { try { fs.rmSync(marker, { force: true }); } catch {} }
-        sleepSync(LIMITS.LOCK_RETRY_MS);
-        continue;
-      }
-      try {
-        // Asked again under the marker: a peer may have taken the mailbox since.
-        const now = readJson(owner);
-        if (!holderAlive(now)) {
-          fs.rmSync(owner, { force: true });
-          if (now !== null) process.stderr.write(`entrust: --approval-dir ${real} was left by entrust pid ${now.pid ?? "unknown"}, which is gone; this run takes it over\n`);
-        }
-      } finally {
-        try { if (readJson(marker)?.pid === process.pid) fs.rmSync(marker, { force: true }); } catch {}
-      }
+      fail(EXIT.USAGE, `--approval-dir ${real} belongs to entrust pid ${held?.pid ?? "unknown"}, ${holderAlive(held) ? "which is still running" : "which has ended"}; a mailbox serves one driver, so give each run a mailbox of its own`);
     }
-    fail(EXIT.USAGE, `--approval-dir ${real} is contended: its owner changed hands ${LIMITS.LOCK_ATTEMPTS} times without settling`);
   } finally { fs.rmSync(tmp, { force: true }); }
 }
 
