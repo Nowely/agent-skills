@@ -332,8 +332,9 @@ that is wide rather than deep", and `:77` gives `high` to the bulk row only for 
 verification", `medium` to review and judgement in the rows above. On the ledger run of 2026-09-29/30, with no other
 Codex model available, Luna ran at `high` as the critic of each recommendation
 (`plugins/entrust/research/2026-09-29-ledger-options/rounds.md`, `02-options.md`): it said E92's isolation belongs
-with the unit that knows the agent's directory — the design the owner chose after the judge's contrary verdict
-shipped a regression; its E89 "delete the classifier" and its E52 and E75 objections were upheld by the judge; it
+with the unit that knows the agent's directory (it named the launcher) — the judge kept the driver's private
+directory, which shipped a regression, and the owner's rework names each run's folder after the agent's report
+directory, in the driver; its E89 "delete the classifier" and its E52 and E75 objections were upheld by the judge; it
 corrected a Fable analyst's reading of "one place" for text; its refinement of the retro was the owner's pick. As a
 wide diff reviewer it was weak: nothing found in a 1,763-line code diff, 3 minor findings in the page diff, at 576k
 and 821k tokens. The swarm runs Luna for verdict units (`plugins/entrust/plugin/skills/swarm/SKILL.md`). Raised by the
