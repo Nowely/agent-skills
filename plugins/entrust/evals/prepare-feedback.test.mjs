@@ -596,8 +596,8 @@ test("V1 coverage counts a page read only when the agent's model was shown it wh
     const cov = fs.existsSync(saved) ? JSON.parse(fs.readFileSync(saved, "utf8")) : { agents: [] };
     if (cov.agents.map((a) => a.status).join() !== "whole,partial,unread,unread") problems.push(`coverage-map.json says ${cov.agents.map((a) => a.status).join()}`);
     const a = cov.agents[0];
-    if (cov.map !== "map.tsv" || a?.report !== "a/report.json" || JSON.stringify(a?.rollouts) !== JSON.stringify([`rollout-2026-09-20T10-00-00-${TH.a}.jsonl`]))
-      problems.push(`coverage-map.json names its files ${JSON.stringify([cov.map, a?.report, a?.rollouts])}`);
+    if (cov.map !== "map.tsv" || a?.report !== "a/report.json" || a?.threadId !== undefined || a?.rollouts !== undefined)
+      problems.push(`coverage-map.json names ${JSON.stringify([cov.map, a?.report, a?.threadId, a?.rollouts])}`);
     const again = await run(["coverage", "--run", runs.default, "--map", map]);
     if (again.code !== 10) problems.push(`a second coverage-map exit ${again.code}`);
     const bad = await run(["coverage", "--run", runs.default, "--map", draft("bad.tsv", `a\t${rep("a", TH.a)}\tP999\n`)]);

@@ -95,7 +95,7 @@ The folder is `<state>/prepare-feedback/<date>-<slug>/`, `<date>` today's and `<
 - `add --run <run> --name <relative name> --from <file>`: puts a file under `ledger/`, `measures/`, `drafts/` or `anonymized/`, or as `rounds.md`; each step's return goes under `ledger/`, each draft as `drafts/NN-report.md`.
 - `coverage --run <run> --map <tsv>`: the map has one line per agent, `agent-id<TAB>report.json<TAB>P###[,P###]`, written from the batch's units file and the swarm's `summary.json`; it names every agent with an unread page, then its counts.
 - `quotes --run <run> --episodes <jsonl>`: one JSON object per line with a `quote` and an optional `id`; each quote comes back `exact`, `near` with the nearest match and its address, or `missing`.
-- `tokens --run <run>` with `--reports <dir>`, a batch's run directory, or `--from <tsv>`, lines of `agent<TAB>tokens`, and `[--median <n>]`: every agent over three times `<n>` when `--median` is given, then the median and the maximum.
+- `tokens --run <run>` with `--reports <dir>`, a batch's run directory, or `--from <tsv>`, lines of `agent<TAB>tokens` with each agent named as its plan row names it, and `[--median <n>]`: every agent over three times `<n>` when `--median` is given, then the median and the maximum.
 - `export --run <run> --to <relative dir>`: copies the drafts, `rounds.md`, `measures/` and `anonymized/` into a directory that does not exist yet, outside the state directory.
 
 A result file is named after its input and never written over, so give each batch's map and each episodes file a name of its own. `rounds.md` records each round's findings and goes in once, before `export`. `--help` lists the commands and their refusals. Cleanup neither lists nor removes the folder.

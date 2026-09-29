@@ -761,13 +761,12 @@ function coverage(opt, state) {
   // What measures/ records names files by their last segments, never by a machine path: export publishes it.
   const agents = rows.map((row) => {
     const a = { agent: row.agent, report: `${path.basename(path.dirname(row.report))}/${path.basename(row.report)}`,
-      threadId: null, rollouts: [], parts: row.parts, read: [], unread: [], status: "unread", reason: null };
+      parts: row.parts, read: [], unread: [], status: "unread", reason: null };
     const rep = readJson(row.report);
     let files = [];
     if (!rep) a.reason = "no report";
     else if (typeof rep.threadId !== "string") a.reason = "no threadId";
-    else { a.threadId = rep.threadId; files = rollouts().get(rep.threadId) ?? []; if (!files.length) a.reason = "no rollout"; }
-    a.rollouts = files.map((f) => path.basename(f));
+    else { files = rollouts().get(rep.threadId) ?? []; if (!files.length) a.reason = "no rollout"; }
     const seen = [];
     for (const f of files) outputs(f, seen);
     for (const p of row.parts.flatMap((id) => byPart.get(id).pages)) {
