@@ -7,6 +7,18 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- **A check runs when its result can change what happens next.** The orchestrate page let a writer "run the suite" and
+  gave the verdict to an agent that did not write the code; a writer now runs the checks that read the files it
+  changed, the deciding run is those checks once on the tree that goes out, and a brief names them. Why: on 2026-09-29
+  the full suite, about six minutes, ran seven times after page, ledger and rebase changes that five suites of a few
+  seconds read.
+- **The completeness critic writes its fixes into a copy of the draft.** It returned only what was missing, and the
+  orchestrator rewrote each fix in its own words; now the critic returns the copy's path and one diff hunk per gap
+  citing its source, the orchestrator takes the copy, whole or without the hunks it objects to, the first draft is
+  frozen after the last decision and return, and a later read covers the changed lines, the lines stating the same
+  facts and what they contradict. Why: in the issue #22 run two critics read the draft four and five times, and every
+  read after the first found errors the orchestrator's own rewording or a block added after the first read had put
+  there; the read that closed the last loop applied the critic's wording verbatim.
 - **The bulk row's extraction, classification and verification run at `EFFORT: high`; `low` is for mechanical work
   only.** The orchestrate page's effort bullet and the swarm page's Luna brief said `low` for the whole bulk row; the
   strong and cheap rows keep `medium` for review, refutation and judgement. Why: in the pilot reported in issue #22,
@@ -58,6 +70,13 @@ forensics remain in the repository references and release notes.
   keeps citing a check by its label. Why: in issue #22 a publication reviewer could not verify a number that existed
   only in the coordinator's command output; since 0.21.0 the runner keeps that output in a log, and the manifest did
   not name it.
+
+### Fixed
+
+- **The protocol suite's `approval-wait` case accepts any whole non-negative `waitMs` for a request declined at once**
+  (E76). It required 0, and two clock reads with no wait between them can straddle a millisecond tick: this Mac
+  recorded 1 on 2026-09-29, as a macOS CI runner had. `offered: false`, `by: driver` and `why: no channel` already
+  show that no wait ran.
 
 ## 0.22.0 — 2026-09-28
 

@@ -327,22 +327,6 @@ without prompts, and a write there by Claude Code's own file tools still asks in
 whatever the settings say, until the user allows `~/.claude` edits for the session. The README should say what
 the setting does, reads without prompts, and what it does not.
 
-## E76. `protocol.test.mjs` requires a refusal made at once to take 0 ms, and a slow macOS runner records 1 ms
-
-**Evidence, level 3.** `plugins/entrust/evals/protocol.test.mjs:658` fails the `approval-wait` scenario unless
-`e.waitMs === 0`. The driver declined the request at once, but on CI it recorded `askedAt` …36.470Z and
-`settledAt` …36.471Z, so `waitMs` was 1, and the suite failed with "the entry's fields are wrong". This happened in
-run 36417631361 of PR #29 (macos-latest, node 24) and in run 36387062335 on main at c920b97 (macos-latest, node 22); the
-other jobs of both runs passed, and PR #29 changes no entrust code.
-
-**Check.** `gh run view 36387062335 -R Nowely/agent-skills --log-failed | grep 'FAIL  approval-wait'` prints the failure
-with `"waitMs":1`.
-
-**Issue text.** The test asserts that a refusal with no channel takes zero milliseconds, which a millisecond clock
-does not guarantee: a refusal that spans a clock tick records 1 ms, and the macOS jobs fail intermittently with
-nothing wrong in the driver. It should assert that the refusal did not wait, for example that `waitMs` is far below
-the approval timeout, rather than an exact 0.
-
 ## E77. After a compaction, Claude Code keeps only the first 5,000 tokens of `codex` and `orchestrate`, and their last sections are lost for the rest of the session
 
 **Evidence, level 3.** Claude Code's skills page: after auto-compaction it "re-attaches the most recent invocation of

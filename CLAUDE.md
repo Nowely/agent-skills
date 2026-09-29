@@ -36,6 +36,8 @@ are `<name>@X.Y.Z`.
   any edit to terse's pages, run `node plugins/terse/evals/pages.test.mjs`: it checks that line, relative
   links and anchors, the frozen digests, skill frontmatter and versions, the README's skill rows and the links
   to genre notes.
+- **Checks run by need.** A suite runs when a change touches what it reads, which its header states; entrust's
+  `evals/run-all.mjs` on the PR is CI's full run (RELEASING.md step 5).
 - **Fan-outs**: state the agent count and the models before spawning, and wait for the word.
 - **Flags**: a new flag, header field or option is born only with a sentence that names who sets it, why the
   default cannot decide, and what breaks without it; when that sentence cannot be written, the default decides.
