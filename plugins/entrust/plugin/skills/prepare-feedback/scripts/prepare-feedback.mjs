@@ -108,7 +108,7 @@ const usage = () => `prepare-feedback.mjs — the private folder of one /entrust
                   and maximum, and with --median the agents above three times <n>; writes measures/tokens-<name>.json
   process  --run <run>
                   sum the process counts corpus recorded into measures/process.json: a row per task, a row per
-                  agent (T3.s2, or run:T3.c1 for a Codex run) and the totals, counts, hashes and addresses only;
+                  agent (T3.s2, or run:T3.c1 for a Codex run) and the totals, counts and addresses only;
                   every token count is summed over API calls, a subagent's from its own transcript; prints TASKS=,
                   WALL=, ACTIVE= GAP=600s, USER=, GAPS= LARGEST=, COORD=, AGENTS=, CODEX=, TOOLS=, REPEATS=,
                   OUTPUTS=, then FILE=
@@ -142,7 +142,7 @@ the address of the one before); tools {name: uses}, repeats[] (Bash commands run
 count, up to ten addresses; never the command), outputs[] (the ten largest tool results: tool, bytes, address).
 Each Codex run (codex[], T3.c1) adds its report's model, effort (reasoningEffort, else effort), tokens, cached,
 wallMs, commandMs, modelMs, exitCode, turnStatus and commandsSucceeded, commandsFailed, commandsDeclined.
-process.json holds counts, hashes, addresses, basenames, Claude Code's own tool and agent-type names, the
+process.json holds counts, addresses, basenames, Claude Code's own tool and agent-type names, the
 reported plugins' agent types, model names and two folded names: mcp for every MCP tool, custom for every other
 agent type; the full names stay in index.json.
 
@@ -1131,7 +1131,7 @@ function processRun(opt, state) {
     tokens: { input: e.tokens?.input ?? 0, cacheWrite: e.tokens?.cacheWrite ?? 0, cacheRead: e.tokens?.cacheRead ?? 0, output: e.tokens?.output ?? 0 },
     tools: folded(e.tools), gapCount: e.gapCount ?? 0,
     gaps: (e.gaps ?? []).map((g) => ({ ms: g.ms, after: kind(g.after), before: kind(g.before), at: g.at })),
-    repeats: e.repeats ?? [], outputs: (e.outputs ?? []).map((o) => ({ tool: tool(o.tool), bytes: o.bytes, at: o.at })),
+    repeats: (e.repeats ?? []).map(({ sha256: _hash, ...r }) => r), outputs: (e.outputs ?? []).map((o) => ({ tool: tool(o.tool), bytes: o.bytes, at: o.at })),
     agentTokens: sum((e.subagents ?? []).map((s) => (s.usage ? sum(Object.values(s.usage)) : 0))), codexTokens: sum((e.codex ?? []).map((c) => c.tokens)),
   }));
   const agents = idx.sessions.flatMap((e) => [

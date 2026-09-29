@@ -723,7 +723,7 @@ const TEXTS = ["git status --short", "review the plugin", "Review the plugin and
 const strings = (v) => (typeof v === "string" ? [v] : v && typeof v === "object" ? Object.values(v).flatMap(strings) : []);
 
 test("M1 corpus records each task's process counts: API calls, wall time split into the run working, waiting for the person and gaps by what ends each pause, tools, a repeated command by hash, the largest outputs, and each Codex run's report fields",
-  "the process focus asks where a run's time and tokens went and where it waited; a person reading and typing is not the run working (34% of active time on real data before the split), a 20-minute foreground Agent call is the run working and not a gap, a fork's copies count once, and a repeated command is a hash because export publishes what process sums",
+  "the process focus asks where a run's time and tokens went and where it waited; a person reading and typing is not the run working (34% of active time on real data before the split), a 20-minute foreground Agent call is the run working and not a gap, a fork's copies count once, and a repeated command is kept as a hash in the private index and never as its text",
   () => {
     if (!runs.default) return "C1 made no run";
     const t1 = indexOf("default").sessions.find((e) => e.id === "T1");
@@ -758,7 +758,7 @@ test("M1 corpus records each task's process counts: API calls, wall time split i
   });
 
 test("R1 process writes measures/process.json with a row per task, a row per agent and the totals, prints its summary with USER= and FILE= last, carries no text, path, thread id or name from the user's environment, and refuses a second run and a run with no corpus",
-  "a reader's brief names process.json and export publishes it without review, so it holds counts, hashes, addresses and built-in or folded names only: an MCP tool is mcp and an agent type of the user's own is custom; its lines go through the runner, whose tail keeps the end",
+  "a reader's brief names process.json and export publishes it without review, so it holds counts, addresses and built-in or folded names only, never a command's hash, which a guess confirms: an MCP tool is mcp and an agent type of the user's own is custom; its lines go through the runner, whose tail keeps the end",
   async () => {
     if (!runs.default) return "C1 made no run";
     const r = await run(["process", "--run", runs.default]);
@@ -788,6 +788,7 @@ test("R1 process writes measures/process.json with a row per task, a row per age
       problems.push(`T3 row folds to ${JSON.stringify([t3row?.tools, t3row?.gaps?.[1]?.after])}`);
     const raw = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
     if (PRIVATE.some((x) => raw.includes(x))) problems.push("process.json names an MCP server or a custom agent type");
+    if (raw.includes("sha256")) problems.push("process.json carries a command's hash, which a guess of the command confirms");
     const leaks = strings(p).filter((s) => TEXTS.some((x) => s.includes(x)) || Object.values(TH).some((x) => s.includes(x)) || s.includes("/"));
     if (leaks.length) problems.push(`process.json carries text, a path or a thread id: ${JSON.stringify(leaks.slice(0, 3))}`);
     const again = await run(["process", "--run", runs.default]);
