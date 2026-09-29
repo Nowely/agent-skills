@@ -552,7 +552,9 @@ const HELP = [
                      "unknown", never "success"`,
     more: `  An agent is stopped by SIGTERM to this process: its pid is on stderr from the
   first line, the handler asks the server to end the turn, and the report the
-  turn had earned is written anyway, at exit 1. There is no run registry and no
+  turn had earned is written anyway, at exit 1. A command the agent was running
+  inside the sandbox ends with it (measured once); one run after an approval,
+  outside the sandbox, has not been measured. There is no run registry and no
   collector — the caller that started the agent owns its lifetime — and
   <state>/jobs/ keeps only what \`--resume last\` and a worktree rebuild need.` },
 
@@ -616,8 +618,8 @@ const HELP = [
   saved answers are <state>/answers/<threadId>-<startedAtMs>.md, startedAtMs the
   run's start in epoch milliseconds, so a --resume leaves the earlier turn's file
   in place; the turn diff and the worktree harvest stay named for the thread.
-  On a signal, either way, the child process group is waited out before the lock is
-  released.` },
+  On a signal, either way, the app-server's process group is waited out before
+  the lock is released.` },
 
   { s: "Isolation", all: true,
     text: `  by default the turn runs against a CODEX_HOME private to this driver — one
@@ -2693,8 +2695,12 @@ let stderrDropped = 0;
 // may print a banner one day — but discarding it silently means a malformed stream looks like a quiet one.
 let unparsedLines = 0;
 
-// detached:true gave every child this driver spawns its own process group, so the negative pid reaches
-// its descendants too — killing only the app-server pid leaves orphaned test servers behind.
+// detached:true gives every child this driver spawns a process group of its own, and the negative pid
+// reaches every member of that group — killing only the app-server pid left orphaned test servers behind.
+// A command the server runs for the agent sits in a group of its own (P1), which this signal does not
+// name. A sandboxed one still ended when the driver was stopped (measured once, 2026-09-29: `sleep 913`
+// in its own group, SIGTERM to the driver, neither alive 10 s later); a command run after an approval,
+// outside the sandbox, has not been measured.
 const killGroupOf = (proc, sig) => { try { process.kill(-proc.pid, sig); } catch { try { proc.kill(sig); } catch {} } };
 const killGroup = (sig) => { if (child) killGroupOf(child, sig); };
 // Signal 0 to the NEGATIVE pid answers "does any member of the group still exist" without touching it.
