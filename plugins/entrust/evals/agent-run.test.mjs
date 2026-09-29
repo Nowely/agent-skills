@@ -103,6 +103,17 @@ test("--help names the plan, new and run modes and exits 0",
     return true;
   });
 
+test("the launcher runs when the path it is invoked by goes through a symbolic link",
+  "E56: it compared the path as typed with its own real path, so through a link ($TMPDIR on macOS, a linked checkout) it printed nothing and exited 0, and the wrapper ran it again 64 times (measured 2026-09-27)",
+  async () => {
+    const link = path.join(tempDir("agent-run-link."), "scripts");
+    fs.symlinkSync(SCRIPTS, link);
+    const direct = await spawnNode([LAUNCHER, "--help"], { killAfterMs: 10000 }).done;
+    const linked = await spawnNode([path.join(link, "agent-run.mjs"), "--help"], { killAfterMs: 10000 }).done;
+    return (linked.code === 0 && linked.out.length > 0 && linked.out === direct.out)
+      || `through the link: exit ${linked.code}, ${linked.out.split("\n").length - 1} lines; directly: ${direct.out.split("\n").length - 1}`;
+  });
+
 test("a launch runs the driver on DIR/prompt.txt and REPORT, leaves out.json, err.txt and exit, and exits with the driver's status",
   "these four names are what both pages promise a DIR holds after a launch, and the wait in the wrapper reads the last of them",
   async () => {
