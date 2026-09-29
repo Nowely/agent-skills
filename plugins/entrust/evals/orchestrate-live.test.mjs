@@ -28,7 +28,7 @@
 //   F18, P5      the codex page loaded only by a plan with a Codex agent, before the launcher's first call  1, 5, 6
 //   F13, P9a, F3 the card's five rows, every registered agent on it, workers and checkers counted apart     1, 5, 6
 //   F14, P9b     launches and each agent's writes reconciled with its registered row; a dropped one named  5, 7
-//   F6, Q3a      no brief before the split critic returns; each names its file and owns what the file gives 7
+//   F6, Q3a      briefs only after the split critic, each naming its file; the shared file has one writer   7
 //   F4, P8b      the critic returns its manifest's sha256; nothing changed after; the answer is the draft  5, 7
 //   F16, P13a    one paragraph per phase, none claiming a success no receipt supports                     5, 7
 //   P13b, F20a   the draft linted first; the answer lints clean, names every agent, credits each fact right 5, 7
