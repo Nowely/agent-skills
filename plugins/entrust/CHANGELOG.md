@@ -70,6 +70,11 @@ forensics remain in the repository references and release notes.
   facts and what they contradict. Why: in the issue #22 run two critics read the draft four and five times, and every
   read after the first found errors the orchestrator's own rewording or a block added after the first read had put
   there; the read that closed the last loop applied the critic's wording verbatim.
+- **The completeness critic reads a text three times at most.** The page ended its loop only on a stall, two reads
+  repeating the same gap; now what the third read leaves is named in the answer as open. Why: in the first live run
+  of prepare-feedback on 2026-09-29, a report on one eight-minute session had five completeness reads, which found
+  9, 1, 1, 0 and 0 gaps in its subject; the fourth found only a line about the review itself, and the report and its
+  README took eight reads, an hour and forty minutes from the first draft to the commit.
 - **The bulk row's extraction, classification and verification run at `EFFORT: high`; `low` is for mechanical work
   only.** The orchestrate page's effort bullet and the swarm page's Luna brief said `low` for the whole bulk row; the
   strong and cheap rows keep `medium` for review, refutation and judgement. Why: in the pilot reported in issue #22,
