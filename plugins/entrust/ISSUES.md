@@ -453,6 +453,34 @@ exits 2 before its card can be shown, and a coordinator that renames the role to
 card that no longer says what the agent does. The launcher should accept every role the reference defines, counting
 each as a worker, a checker or neither, or the plan step should say which words the launcher counts.
 
+## E90. The swarm, the bulk row's batch route, is user-only, called an experiment, fifty verification units at most, and reports no tokens
+
+**Evidence, level 1 for the lines, level 3 for the refused registration.**
+
+- `plugins/entrust/plugin/skills/swarm/SKILL.md:7` `disable-model-invocation: true`: a coordinator cannot load the
+  skill, so the user starts every swarm. `plugins/entrust/plugin/README.md:51` introduces it with "Two more are
+  experiments with a page of their own."
+- `swarm/scripts/swarm.mjs:30` `const MAX = 50;` and `:84` refuses a longer unit file: "a swarm is 50 at most".
+  Issue #22's 456 Luna runs would take ten swarms.
+- `swarm/SKILL.md:17`: "A unit is one claim, one address, a verbatim quote, and a verdict from a closed set"; an
+  extraction unit, a transcript part that yields episodes, is not that shape.
+- `swarm.mjs:113-117` and `:150`: the summary holds per agent its number, unit, report path, the launcher's status
+  lines and times, and no tokens, which the plan's re-estimate and per-agent stop line (`orchestrate/SKILL.md:40`)
+  read; each report has to be opened for them.
+- A swarm's agent ids are `001` to `050` (`swarm.mjs:114`), and the plan registration takes only ids that start with
+  a letter (`codex/scripts/agent-run.mjs:442`). 2026-09-29: the row `001 | luna | bulk verifier | nothing | unknown`
+  through `--plan` printed `ERROR=invalid agent id: 001`, exit 2, and `--new` for `<run>/001/report.json` in a run
+  with a registered plan printed `ERROR=001 is not in the approved plan …`, exit 2.
+
+**Check.** `sed -n 7p plugins/entrust/plugin/skills/swarm/SKILL.md`, `grep -n 'MAX' .../swarm/scripts/swarm.mjs`, and
+the two launcher calls above against a scratch run directory.
+
+**Issue text.** The orchestrate page routes a bulk batch to the swarm, and the swarm cannot yet carry the batches
+that made the route necessary: only the user can start one, the README calls it an experiment, a swarm holds fifty
+units, its unit is a closed-set verdict and not an extraction, its summary carries no tokens for the plan's
+re-estimate and stop line, and its agents cannot be registered in the orchestrate run's plan, so a swarm launched
+into that run is refused agent by agent. Decide which of these stay limits the plan states, and lift the rest.
+
 ## E92. Codex agents running side by side share one `$TMPDIR`, and the pages send each agent's overflow there as if it were its own
 
 **Evidence, level 3 for the collision, level 1 for the pages.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:152`
