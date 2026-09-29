@@ -72,11 +72,11 @@ forensics remain in the repository references and release notes.
   there; the read that closed the last loop applied the critic's wording verbatim.
 - **The completeness critic reads an answer or publication three times at most.** The page called two reads
   repeating the same gap a stall and said nothing of what a stall does; now the reads are counted across the drafts,
-  and after the third, or after two that repeat a gap, the answer goes out with the remaining gaps named as open and
-  no further read. Why: in the first live run of prepare-feedback on 2026-09-29, the five completeness reads of a
+  and after the third, or after two that repeat a gap, the answer or publication goes out with its remaining gaps named
+  as open and no further read. Why: in the first live run of prepare-feedback on 2026-09-29, the five completeness reads of a
   report on one eight-minute session found 9, 3, 2, 1 and 0 gaps; in the second to fourth reads one gap each was a
   line about the review itself, the fourth's only gap, and the report and its README took eight reads, an hour and
-  forty minutes from the first review read to the commit.
+  43 minutes from the first review read to the commit.
 - **The bulk row's extraction, classification and verification run at `EFFORT: high`; `low` is for mechanical work
   only.** The orchestrate page's effort bullet and the swarm page's Luna brief said `low` for the whole bulk row; the
   strong and cheap rows keep `medium` for review, refutation and judgement. Why: in the pilot reported in issue #22,
