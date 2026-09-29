@@ -442,3 +442,17 @@ that allowed one findings file under `$TMPDIR`; two of them named the same `$TMP
 pages describe it as each agent's own temporary directory. Two agents that pick the same file name overwrite each
 other, and a finding written there is lost without an error. Each agent should get a temporary directory of its own,
 or the pages should have every file an agent leaves carry the agent's id.
+
+## E89. `foreman.md:24` gives a broader cause than observed: the Skill tool loads a user-only skill whose command the user typed
+
+**Evidence, level 3 for the pairing; the mechanism is a guess.** `plugins/entrust/plugin/skills/orchestrate/references/foreman.md:24-25`:
+"It cannot load this skill: the Skill tool refuses a skill marked `disable-model-invocation`." On 2026-09-29 Opus O1 of
+the prepare-feedback design run (`plugins/entrust/research/2026-09-29-prepare-feedback/`) counted the Skill tool's
+results for entrust's user-only skills in one machine's transcripts: 13 loads (orchestrate 11, advisor 2), each with
+the skill's command in the user's last message, and 6 refusals, none with it. The same day the Skill tool loaded
+`entrust:orchestrate` in a session whose user had typed `/entrust:orchestrate`. The foreman's own conclusion may still
+hold, since nobody types a command to a subagent; the stated cause does not. E82 is the neighbouring tension.
+
+**Issue text.** The foreman page says the Skill tool refuses every user-only skill, but it loads one whose command the
+user typed. A reader who takes the stated cause as the rule will route around a load that works. The sentence should
+state the observed condition, or only the conclusion.
