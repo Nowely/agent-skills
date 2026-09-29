@@ -65,8 +65,8 @@ auto-compaction it "re-attaches the most recent invocation of each skill after t
 tokens of each". At HEAD, `codex/SKILL.md` is 4,461 words (4,242 after this branch's own trims, `22777dc` and
 `b1056f9`, from 5,602, itself up from the 5,510 first measured after the E51, E57, E65, E67, E80 and E92 fixes added
 material; main's Codex status lines and sixth composition rule, merged after, added 208): the 3,400th word falls in
-"Reading the result" (`codex/SKILL.md:273`), so "Prompt shape" (`:295`), "What the user reads" (`:323`), "Traps"
-(`:333`) and "References" (`:341`), about 750 words, lie past it. `orchestrate/SKILL.md` is 5,977 words (5,668 after
+"Reading the result" (`codex/SKILL.md:273`), so "Prompt shape" (`:296`), "What the user reads" (`:324`), "Traps"
+(`:334`) and "References" (`:342`), about 750 words, lie past it. `orchestrate/SKILL.md` is 5,977 words (5,668 after
 this branch's `887759a`, from 6,001, up from the 5,516 first measured after the E53, E65, E89, E90 fixes and the
 Verification analysis bullet; main's swarm route, stand-in rule and critic read count, merged after, added 270 to
 5,938; the retro's analysis clause and a four-word fix added 39 more): the 3,400th word falls in "Mechanism"

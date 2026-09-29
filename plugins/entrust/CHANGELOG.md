@@ -198,7 +198,7 @@ forensics remain in the repository references and release notes.
 - **Behaviour change: a driver handed a mailbox that already has an `owner.json` exits 2 whether its owner is
   running or has ended**; the takeover of a dead owner's mailbox is gone, since the launcher gives every launch a
   mailbox of its own (E68).
-- **Every Codex run gets its own `$TMPDIR`, created fresh at 0700 inside the system temporary directory** —
+- **Behaviour change: every Codex run gets its own `$TMPDIR`, created fresh at 0700 inside the system temporary directory** —
   `os.tmpdir()` (the caller's `TMPDIR`, `TMP` or `TEMP`, else the OS default) — and named after the run:
   `<tmp>/entrust/<rel>` for a report at `<state>/<rel>/report.json`, else `<tmp>/entrust/runs/<startedAtMs>-<pid>`.
   The agent is granted that directory only, never the caller's whole `TMPDIR`. The report's `tmpDir` names it, it
@@ -206,7 +206,7 @@ forensics remain in the repository references and release notes.
   refuses a `<tmp>/entrust` base that is a symbolic link, not a directory, or another user's, with exit 2. The
   driver no longer creates `<state>/tmp`; one left by an earlier version can be deleted by hand or through
   `/entrust:cleanup`. Agents of one coordinator no longer share, and overwrite, one temp directory. (E92)
-- **`/entrust:cleanup` removes a run's or standalone report's temporary folder** (`<tmp>/entrust/<rel>`) together
+- **Behaviour change: `/entrust:cleanup` removes a run's or standalone report's temporary folder** (`<tmp>/entrust/<rel>`) together
   with the run, on the same number and under the run's own liveness. It lists and suggests the folders there whose
   run is gone from the state directory or whose report-less run has stopped, and it offers what an earlier driver
   left in `<state>/tmp` once no agent of that version still uses it. Its closing line no longer says nothing is
@@ -223,8 +223,8 @@ forensics remain in the repository references and release notes.
 - **The README says what `permissions.additionalDirectories` does for the data directory: reports read without
   prompts**; a write there by Claude Code's own tools still asks in `default` and `acceptEdits`, since `.claude` is
   a protected path (E75).
-- **`codex/SKILL.md` is 1,338 words shorter than on main (5,799 → 4,461) and `orchestrate/SKILL.md` 302 shorter
-  (6,240 → 5,938)**: they stop restating the launcher's and the driver's `--help`, and orchestrate stops restating the codex
+- **`codex/SKILL.md` is 1,338 words shorter than on main (5,799 → 4,461) and `orchestrate/SKILL.md` 263 shorter
+  (6,240 → 5,977)**: they stop restating the launcher's and the driver's `--help`, and orchestrate stops restating the codex
   page; the escalations fields live only in the internals reference (E77, stays open).
 - **The four codex references over 100 lines open with a contents list** (E78).
 - **The measurement stories of both pages move to `incidents.md`** (codex's, and a new
