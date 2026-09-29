@@ -96,8 +96,8 @@ itself refused (no `prompt.txt`, a relative report path) puts its reason there i
 directory, with an exit of 2 and `PATH=none`; a refusal for a directory another run owns (an `exit` marker already there, a report path that is
 not the directory's) goes to the caller alone and leaves that directory's files untouched. A `SIGTERM` to that
 pid cuts the turn, sweeps the codex app-server's own process group and publishes the report as
-`turnStatus: interrupted`, exit 1; a command still running in its own process group at that moment is not
-established to end with it (E67). An accepted command can outlive the agent, its server and this lock: before a
+`turnStatus: interrupted`, exit 1. A command the agent was running inside the sandbox ends with it (measured
+once, 2026-09-29); a command run after an approval, outside the sandbox, has not been measured, so before a
 second writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'`
 yourself and wait for it — no driver code checks this for you.
 
@@ -354,7 +354,8 @@ write its own would be grading itself. Declare gates on the command line instead
 - Evidence of success is root-thread-only: a Codex subagent thread's commands are liveness, not evidence.
 - To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or send `SIGTERM` to the pid on the first line of `<DIR>/err.txt`:
   the driver interrupts the turn, writes the report it had earned and sweeps the codex process group; a
-  command you accepted may run in a process group of its own, which is not established to end with it (E67).
+  command the agent was running inside the sandbox ends with it, and one run after an approval has not been
+  measured.
   The driver runs under a detached keeper, so a hand-back's waiting result does not end it: a hard kill of the
   wrapper's task, or a `SIGKILL` of the launcher, no longer reaches it, only the forwarded signal does. After
   a waiting result nothing else holds the driver: stop it with `--decide 'ID' --decline` and the same `--run`

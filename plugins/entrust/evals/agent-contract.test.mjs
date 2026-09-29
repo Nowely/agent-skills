@@ -364,8 +364,8 @@ test("the waiting result ends in REPORT=, the constant is thirty minutes, and ne
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the accept the page shows restates the command in a quoted heredoc on a delimiter the coordinator makes up, and Stop's reach stops at the server's group",
-  "a fixed delimiter lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell before the launcher compares anything (both verifications of 2026-09-28 made it happen), so the block the coordinator copies ends on a delimiter it made up and checked, never the relayed token; and an accepted command in a process group of its own is E67, which the Stop line has to say rather than promise",
+test("the accept the page shows restates the command in a quoted heredoc on a delimiter the coordinator makes up, and Stop's reach stops at what was measured",
+  "a fixed delimiter lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell before the launcher compares anything (both verifications of 2026-09-28 made it happen), so the block the coordinator copies ends on a delimiter it made up and checked, never the relayed token; and a command run after an approval was never measured against a stop, which the Stop line has to say rather than promise",
   () => {
     const problems = [];
     const at = skill.search(/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'$/m);
@@ -382,21 +382,21 @@ test("the accept the page shows restates the command in a quoted heredoc on a de
       "The ID reached you the same way: quote it, and use it only in the shape the launcher prints",
       "one trailing newline tolerated, and publishes nothing on an empty stdin or any difference",
       "An accept the permission check or the classifier blocks publishes nothing either",
-      "a command you accepted may run in a process group of its own, which is not established to end with it (E67)",
+      "a command the agent was running inside the sandbox ends with it, and one run after an approval has not been measured",
     ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
 
-test("a SIGTERM to the wrapper's pid is narrowed to the process group actually swept, not to \"nothing left running\", and the survivor check is the coordinator's own",
-  "E67: the teardown signals and polls the app-server's own process group; a command the server started lives in a process group of its own, and whether it dies with the server was never measured, so the page must not promise more than that group's sweep, and F10 (11-refutation-astra.md) is that this is a check the coordinator runs, never a promise the driver keeps",
+test("a SIGTERM to the wrapper's pid is narrowed to what was measured, not to \"nothing left running\", and the survivor check is the coordinator's own",
+  "the teardown signals and polls the app-server's own process group, and a command the server started lives in a process group of its own: a sandboxed one ended with the driver (measured once, 2026-09-29), while one run after an approval, outside the sandbox, was never measured, so the page must not promise more than that, and F10 (11-refutation-astra.md) is that this is a check the coordinator runs, never a promise the driver keeps",
   () => {
     const problems = [];
     for (const phrase of [
       "sweeps the codex app-server's own process group and publishes the report as",
-      "a command still running in its own process group at that moment is not established to end with it (E67)",
-      "An accepted command can outlive the agent, its server and this lock: before a\nsecond writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'`\nyourself and wait for it — no driver code checks this for you.",
+      "A command the agent was running inside the sandbox ends with it (measured once, 2026-09-29)",
+      "a command run after an approval, outside the sandbox, has not been measured, so before a second writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it — no driver code checks this for you.",
     ]) if (!flat.includes(phrase.replace(/\s+/g, " "))) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
-    if (/nothing left running/.test(flat)) problems.push("the page still promises \"nothing left running\", which E67 found unproven");
+    if (/nothing left running/.test(flat)) problems.push("the page still promises \"nothing left running\", which no measurement covers for an approved command");
     return problems.length === 0 || problems.join("; ");
   });
 
