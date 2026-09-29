@@ -24,6 +24,10 @@ forensics remain in the repository references and release notes.
 - `clarity` says that when the answer is itself a list, the list is the conclusion, so conclusion first and
   say a thought once no longer pull apart: in the same report, a status line at the top repeated the list under
   it.
+- `rules.md` and `clarity` say to quote what the reader will act on, with its source after it, rather than point
+  to where it sits, and the team-message note no longer limits self-containment to a block that leaves the
+  conversation: in the same report, the writer pointed to an earlier comment in the thread whose text the
+  reader needed in hand.
 
 ## 0.5.0 — 2026-09-28
 
