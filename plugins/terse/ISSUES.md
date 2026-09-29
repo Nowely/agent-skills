@@ -6,22 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with entrust's ledger, `plugins/entrust/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E84. `rewrite` reaches `writing-rules.md`, `curse-of-knowledge.md` and `truth.md` only through a second page
-
-**Evidence, level 2.** `plugins/terse/plugin/skills/rewrite/SKILL.md:16-17` links `rules.md` and `roles.md`, and no
-SKILL.md links `writing-rules.md` or `curse-of-knowledge.md`: they are linked from `README.md`, `references/rules.md`,
-`references/roles.md` and `references/practices-full.md`. The writer and the sentences critic receive them as
-`<SENTENCES>`, which the coordinator fills after reading `roles.md:10`; `truth.md` fills `<TRUTH>` the same way and
-`rewrite/SKILL.md` never links it, while `audit/SKILL.md:28` and `clarity/SKILL.md:40` do. Anthropic's skill authoring
-page: keep references one level deep from SKILL.md, because a model may read a nested file partially. From
-`plugins/terse/research/2026-09-28-vendor-guides/m1-map.md`, finding 4.1.
-
-**Check.** `grep -rl 'writing-rules.md' plugins/terse/plugin` lists no SKILL.md.
-
-**Issue text.** The fixed sentence rules, the one text the pages say to pass as written, are two links away from the
-page that runs the writer, where a model may paraphrase or half-read them. `rewrite/SKILL.md` should link
-`writing-rules.md`, `curse-of-knowledge.md` and `truth.md` directly where its briefs use them.
-
 ## E85. `measurements.md` is 168 lines and opens with ranges, not a list of its entries
 
 **Evidence, level 2.** `plugins/terse/plugin/references/measurements.md:3-8` gives the entries as ranges ("M1–M23 concern

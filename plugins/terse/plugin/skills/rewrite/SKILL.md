@@ -14,7 +14,10 @@ license: MIT
 One writer, then every critic at once, then the writer once more and a check of what it changed, then
 your read. Each critic holds one concern, so none waits for another. Every role works from
 [rules.md](../../references/rules.md) — two requirements, a pleasant read and truth within the text's world,
-and advice taken where it helps; the briefs are in [roles.md](../../references/roles.md).
+and advice taken where it helps; the briefs are in [roles.md](../../references/roles.md). The writer and the
+sentences critic get [writing-rules.md](../../references/writing-rules.md) and
+[curse-of-knowledge.md](../../references/curse-of-knowledge.md) as the briefs' `<SENTENCES>`, and every truth
+critic gets [truth.md](../../references/truth.md) as `<TRUTH>`.
 
 ## Step 1. One message to the user
 

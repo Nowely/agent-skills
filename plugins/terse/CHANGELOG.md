@@ -37,6 +37,12 @@ forensics remain in the repository references and release notes.
   conversation: in the same report, the writer pointed to an earlier comment in the thread whose text the
   reader needed in hand.
 
+### Fixed
+
+- E84: `rewrite` links `writing-rules.md`, `curse-of-knowledge.md` and `truth.md` where it names the briefs that
+  receive them: the first two for the writer and the sentences critic, `truth.md` for every truth critic. Before, it
+  reached them only through `roles.md`, a second link away, and a model may read a page that far down partially.
+
 ## 0.5.0 — 2026-09-28
 
 terse gets a genre note for skill pages and standing agent instructions, text whose reader is the model that
