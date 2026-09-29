@@ -815,7 +815,6 @@ test("D14 every bulk fan-out is piloted against a stronger model's marking, and 
   "issue #22's pilot chose the effort and exposed a brief that counted process complaints, and the writing replication's first pilot found 12 extras in 22 on the brief as assembled; the split critique reads the decomposition and caught neither. The rule sits in Model tiers because Verification lies past what a compaction keeps (E77)",
   () => says(
     "Pilot every bulk fan-out before it launches: a stronger model marks a few units, the bulk model runs the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort.",
-    "unless its pilot chose another level",
   ));
 
 test("E7 a decisive check runs before any panel, dependent execution stays in one agent, and its verification stays independent",
