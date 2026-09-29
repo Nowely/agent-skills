@@ -21,6 +21,9 @@ forensics remain in the repository references and release notes.
   on form, which the page did not link. The examples advice moves there from the fifth question while writing.
   In the same report, a session that never opened `rules.md` while drafting used a flat list where the reader
   would look things up by screen and then by field.
+- `clarity` says that when the answer is itself a list, the list is the conclusion, so conclusion first and
+  say a thought once no longer pull apart: in the same report, a status line at the top repeated the list under
+  it.
 
 ## 0.5.0 — 2026-09-28
 
