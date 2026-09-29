@@ -95,7 +95,7 @@ test("--help names the plan, new and run modes and exits 0",
     const { code, out } = await spawnNode([LAUNCHER, "--help"], { killAfterMs: 10000 }).done;
     if (code !== 0) return `--help exited ${code}`;
     for (const s of ["--plan --run-dir RUN", "--plan --amend", "--new --report-file REPORT", "--run --report-file REPORT", "--status",
-                     "RUNNING=", "--check-prompt-file", "planRowOf", "the role is any text", "unknown", "<absolute dir>", ...STATUS_LINES,
+                     "RUNNING=", "--check-prompt-file", "planRowOf", "the role is any non-empty text", "unknown", "<absolute dir>", ...STATUS_LINES,
                      "APPROVALS=", "WAITING=<id>[,<id>]", "waiting —", "ended —", "refused —", "--pending --report-file REPORT",
                      "--decide ID --accept|--decline [--why TEXT]", "COMMAND<<", "COMMAND>>", "REQUESTS=", "ORPHANED=",
                      "DECIDED=", "LATE=", "STALE=", "REFUSED=", "approvals=A/D/E/O", "auto=N", "late=N", "stale=N"])

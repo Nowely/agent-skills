@@ -115,7 +115,7 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       Models: astra, sol, terra, luna, opus, sonnet, haiku, fable. Writes: nothing,
       worktree, live tree, or write <absolute dir>. Ids start with a letter and then
       use letters, digits, _ or -; each is unique ignoring case and cannot end in -<digits>.
-      Tokens are a nonnegative integer or unknown; the role is any text. --plan --amend
+      Tokens are a nonnegative integer or unknown; the role is any non-empty text. --plan --amend
       appends new rows explicitly; show the amendment and wait for approval before launching
       them. Prints PLAN=, or AMENDED= for an amendment, and an AGENT= line per row it adds. A
       plan records declared scope; it does not certify actual cost or live caps.
