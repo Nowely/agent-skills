@@ -18,16 +18,6 @@ Finding 4.3 of the same map.
 **Issue text.** The description spends tokens on every turn on how to apply the checks, which the body could say. Moving
 it needs a new trigger measurement.
 
-## E87. `rewrite` runs a Node script and no skill page says Node must be installed (tension)
-
-**Evidence, level 1.** `plugins/terse/plugin/skills/rewrite/SKILL.md:96-97` runs `node
-"${CLAUDE_SKILL_DIR}/scripts/sections.mjs"`; Node is named in `plugins/terse/plugin/README.md:14` "You need: Node 22 or
-newer." and on no SKILL.md. Anthropic's skill authoring page lists required packages in SKILL.md. House side: the README
-owns installation, by the genre note `readme-tools.md`. Finding 4.10 of the same map.
-
-**Issue text.** A coordinator on a machine without Node meets a shell error the page does not explain. The page should
-name the dependency where it runs the script.
-
 ## E88. `audit`'s eight steps have no checklist the model can copy and tick off (tension)
 
 **Evidence, level 1.** `plugins/terse/plugin/skills/audit/SKILL.md:22-158` gives eight numbered steps and no checklist.

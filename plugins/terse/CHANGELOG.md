@@ -45,6 +45,8 @@ forensics remain in the repository references and release notes.
 - E85: `references/measurements.md` opens with a list of its 34 entries, each a link to its anchor, so a preview of
   its first 100 lines shows where every entry is. Before, it opened with ranges, and such a preview stopped at M20,
   with fourteen entries unseen.
+- E87: `rewrite` names Node 22 or newer where it runs its section script. Before, only the README said so, and a
+  coordinator on a machine without Node met a shell error the page did not explain.
 
 ## 0.5.0 — 2026-09-28
 
