@@ -43,6 +43,10 @@ forensics remain in the repository references and release notes.
   launch, with no wrapper per agent. This lifts two of E90's limits, that only the user starts a swarm and that an
   extraction batch has no batch route; the others stay: fifty units per swarm, no tokens in its summary, agent ids the
   plan's registration refuses, and the README's place for it among the experiments.
+- **A headless session runs the swarm in the foreground.** The swarm page said to run the script as a background
+  task and wait for its notification; a headless session ends its background tasks with the turn, and on 2026-09-29 a
+  headless orchestrate run that launched a plan's swarm that way ended its turn and cut all three Luna agents, each
+  interrupted with no answer.
 - **A check runs when its result can change what happens next.** The orchestrate page let a writer "run the suite" and
   gave the verdict to an agent that did not write the code; a writer now runs the checks that read the files it
   changed, the deciding run is those checks once on the tree that goes out, and a brief names them. Why: on 2026-09-29
