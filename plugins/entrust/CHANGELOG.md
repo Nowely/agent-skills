@@ -16,6 +16,11 @@ forensics remain in the repository references and release notes.
   focus over one corpus into one report with a section per focus, because #15 found the coordinator's own context at
   51% of the tokens, #16 asked which roles were useful, #22 kept its costs as comparables for later estimates, and
   the owner asked for every focus in one run and one report.
+- Every prepare-feedback report keeps the facts `timeline` extracts from the transcript, the owner's messages with the
+  queued ones, the pages read before each draft and what each agent read itself, apart from the writing model's own
+  account, which it marks a hypothesis, and each reader's brief names its task's slice of the timeline, because in a
+  field report on terse's clarity skill (2026-09-29) those facts changed the conclusions while the model's own account
+  held neither and contradicted itself three times.
 - `evals/prepare-feedback.test.mjs` checks the skill's script on synthetic transcripts and reports; `package.test.mjs`
   includes `skills/prepare-feedback/scripts` in the payload check, because the list there is written by hand and a new
   scripts directory would otherwise go unchecked.

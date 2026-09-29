@@ -5,7 +5,7 @@
 //   node evals/prepare-feedback.test.mjs
 //
 // The page cases pin only what the page and the script share: the frontmatter, the script's command line, the
-// eight commands, the two directory forms, the link to focuses.md and the page's budget; none of its prose. The
+// nine commands, the two directory forms, the link to focuses.md and the page's budget; none of its prose. The
 // script cases run it in a synthetic world under one harness temp directory: transcripts under
 // CLAUDE_CONFIG_DIR, Codex rollouts under CODEX_HOME, reports beside them, and ENTRUST_STATE_DIR pointing at a
 // scratch state with CLAUDE_PLUGIN_DATA unset, so nothing reaches the machine's own data or transcripts. Every
@@ -21,7 +21,7 @@ const { cases: CASES, test } = registry();
 
 const PAGE = "skills/prepare-feedback/SKILL.md";
 const SCRIPT = path.join(ROOT, "skills", "prepare-feedback", "scripts", "prepare-feedback.mjs");
-const COMMANDS = ["corpus", "parts", "add", "coverage", "quotes", "tokens", "process", "export"];
+const COMMANDS = ["corpus", "parts", "add", "coverage", "quotes", "tokens", "process", "timeline", "export"];
 let text = "";
 try { text = fs.readFileSync(path.join(ROOT, PAGE), "utf8"); } catch {}
 const front = /^---\n([\s\S]*?)\n---\n/.exec(text)?.[1] ?? "";
@@ -56,7 +56,7 @@ test("the page calls the script in one indented line that forwards the data dire
   () => /^ {4}CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/prepare-feedback\.mjs" <command>/m.test(text)
     || "no line reads `    CLAUDE_PLUGIN_DATA=\"${CLAUDE_PLUGIN_DATA}\" node \"${CLAUDE_SKILL_DIR}/scripts/prepare-feedback.mjs\" <command> …`");
 
-test("the page names each of the script's eight commands",
+test("the page names each of the script's nine commands",
   "a command the page never names is one the coordinator never runs, and the step it serves is done by hand",
   () => {
     const missing = COMMANDS.filter((c) => !new RegExp("`" + c + "[` ]").test(text));
@@ -259,6 +259,86 @@ transcript(path.join(config, "projects", "-work-alphabet", `${S_ALPHABET}.jsonl`
   ["2026-09-19T09:00:00.000Z", human("sort the list")],
   ["2026-09-19T09:00:01.000Z", said("Sorted.")],
 ]);
+
+// A third world for the timeline: an owner whose first message is an array of blocks, a draft, a typed skill
+// command, the model reading a plugin's pages by Read, Grep and a Bash sed -n and grep through a variable, and
+// files outside a plugin; a Skill call that loads and one refused; a subagent that reads a page itself; two
+// owner messages queued while the model worked, one as blocks and one as a string, and a subagent's queued
+// return, which is not the owner's; then a fork, titled as Claude Code titles one, that goes its own way.
+const config3 = path.join(world, "config3");
+const delta = path.join(config3, "projects", "-work-delta");
+const D = { main: uuid("d"), fork: uuid("e") };
+const TERSE_ROOT = "/home/someone/.claude/plugins/cache/nowely/terse/0.5.0";
+const queuedMsg = (origin, prompt, extra = {}) => ({ type: "attachment", attachment: { type: "queued_command", prompt, commandMode: "prompt", origin: { kind: origin }, ...extra } });
+const at8 = (s_) => `2026-09-26T08:${s_}.000Z`;
+const DMAIN = [
+  [at8("00:00"), human("please write the ticket")],
+  [at8("00:01"), said("Drafting.")],
+  [at8("00:02"), call("Write", { file_path: "/work/delta/ticket.md", content: "the ticket" })],
+  [at8("00:03"), result("written")],
+  [at8("00:10"), typed("<command-message>terse:clarity</command-message>\n<command-name>/terse:clarity</command-name>\n<command-args>check it</command-args>")],
+  [at8("00:11"), load(CACHE("terse", "0.5.0", "clarity"))],
+  [at8("00:12"), call("Read", { file_path: `${TERSE_ROOT}/references/genres/ticket.md` })],
+  [at8("00:13"), result("the ticket genre")],
+  [at8("00:14"), call("Grep", { pattern: "reader", path: `${TERSE_ROOT}/references` })],
+  [at8("00:15"), result("rules.md:1")],
+  [at8("00:16"), call("Bash", { command: `R=${TERSE_ROOT}/references; sed -n 1,40p $R/rules.md; grep -nE 'reader|claim' "$R/truth.md"` })],
+  [at8("00:17"), result("the rules")],
+  [at8("00:18"), call("Bash", { command: "sed -n 1,5p /work/delta/notes.md" })],
+  [at8("00:19"), result("notes")],
+  [at8("00:20"), call("Read", { file_path: "/work/delta/src/app.js" })],
+  [at8("00:21"), result("code")],
+  [at8("00:22"), call("Skill", { skill: "entrust:codex" })],
+  [at8("00:23"), result("Launching skill: entrust:codex")],
+  [at8("00:24"), call("Skill", { skill: "entrust:orchestrate" })],
+  [at8("00:25"), refusal("entrust:orchestrate")],
+  [at8("00:26"), call("Agent", { subagent_type: "general-purpose", model: "sonnet", prompt: "check the rules page" })],
+];
+const agentCall = lastCall;
+DMAIN.push(
+  [at8("00:40"), result("the rules are fine", { returned: { status: "completed", agentId: "d1", totalTokens: 50, totalDurationMs: 14000, totalToolUseCount: 1, resolvedModel: "claude-sonnet" } })],
+  [at8("00:41"), queuedMsg("human", [{ type: "text", text: "no codex, only luna there" }])],
+  [at8("00:42"), queuedMsg("human", "fix the second line")],
+  [at8("00:43"), queuedMsg("peer", "<agent-return agent=\"d1\">the rules are fine</agent-return>", { isMeta: true })],
+  [at8("00:44"), said("Done with the ticket.")],
+);
+transcript(path.join(delta, `${D.main}.jsonl`), D.main, "/work/delta", DMAIN);
+const dsub = path.join(delta, D.main, "subagents");
+const DSUB = transcript(path.join(dsub, "agent-d1.jsonl"), D.main, "/work/delta", [
+  [at8("00:27"), { type: "user", agentId: "d1", message: { role: "user", content: "check the rules page" } }],
+  [at8("00:28"), { ...call("Read", { file_path: `${TERSE_ROOT}/references/rules.md` }), agentId: "d1" }],
+  [at8("00:29"), { ...result("the rules"), agentId: "d1" }],
+  [at8("00:39"), { ...said("the rules are fine"), agentId: "d1" }],
+], { isSidechain: true });
+write(path.join(dsub, "agent-d1.meta.json"), [JSON.stringify({ agentType: "general-purpose", description: "check the rules", toolUseId: agentCall })]);
+const DFORK = [...DMAIN.slice(0, 10), ["", { type: "custom-title", customTitle: "ticket (fork)" }],
+  ["2026-09-26T08:05:00.000Z", human("take the other road")], ["2026-09-26T08:05:01.000Z", said("Other road.")]];
+write(path.join(delta, `${D.fork}.jsonl`), DFORK.map(([ts, r]) => JSON.stringify(ts ? { parentUuid: null, isSidechain: false, userType: "external", cwd: "/work/delta", sessionId: D.fork, version: "2.1.0", uuid: `u-${++serial}`, timestamp: ts, ...r } : { ...r, sessionId: D.fork })));
+
+// A fourth world for the shapes a Bash read takes: a cd into a plugin, then pages by relative name and a grep
+// pattern that is not a page; a cd outside any plugin; a loop over literal skill names, and one over a command's
+// output that nothing can expand; a sed that prints a page, and one that edits another in place.
+const config4 = path.join(world, "config4");
+const ENTRUST_ROOT = "/home/someone/.claude/plugins/cache/nowely/entrust/0.22.0";
+const at9 = (s_) => `2026-09-27T09:${s_}.000Z`;
+const BASH4 = [
+  [at9("00:00"), human("read the pages")],
+  [at9("00:01"), load(CACHE("terse", "0.5.0", "clarity"))],
+  [at9("00:02"), call("Bash", { command: `cd ${TERSE_ROOT} && cat references/rules.md && grep -n -A 3 reader references/truth.md` })],
+  [at9("00:03"), result("rules and truth")],
+  [at9("00:04"), call("Bash", { command: "cd /work/epsilon && cat notes.md" })],
+  [at9("00:05"), result("notes")],
+  [at9("00:06"), call("Bash", { command: `E=${ENTRUST_ROOT}; for s in codex swarm; do sed -n 1,20p "$E/skills/$s/SKILL.md"; done` })],
+  [at9("00:07"), result("two pages")],
+  [at9("00:08"), call("Bash", { command: `E=${ENTRUST_ROOT}; for s in $(ls $E/skills); do head -5 $E/skills/$s/SKILL.md; done` })],
+  [at9("00:09"), result("every page head")],
+  [at9("00:10"), call("Bash", { command: `sed 's/a/b/' ${TERSE_ROOT}/references/genres/ticket.md` })],
+  [at9("00:11"), result("the ticket genre")],
+  [at9("00:12"), call("Bash", { command: `sed -i '' 's/a/b/' ${TERSE_ROOT}/references/genres/team-message.md` })],
+  [at9("00:13"), result("")],
+  [at9("00:14"), said("Read them.")],
+];
+transcript(path.join(config4, "projects", "-work-epsilon", `${uuid("f")}.jsonl`), uuid("f"), "/work/epsilon", BASH4);
 
 // A second world, apart so the counts above stay as they are: one session holding a cache load of 0.20.0 and a
 // checkout load, one holding only a checkout load; C11 adds a fork pair to it.
@@ -798,6 +878,126 @@ test("R1 process writes measures/process.json with a row per task, a row per age
     const early = await run(["process", "--run", hollow]);
     if (early.code !== 10 || fs.readdirSync(hollow).length !== 0) problems.push(`process before corpus: exit ${early.code}`);
     return problems.length === 0 || problems.join("; ");
+  });
+
+const tl = { run: null, events: [] };
+test("TL1 timeline writes one event a line in time order, the owner's messages typed and queued, as blocks or a string, apart from a peer's return, a typed skill apart from the model's Skill calls, plugin reads by Read, Grep and Bash with the path from the plugin's root, drafts, replies, a subagent with the pages it read itself, and a fork where it left its original",
+  "what the model read before each draft and what the owner said while it worked changed the conclusions of the 2026-09-29 clarity review, and a reader of the transcript missed two queued owner messages and took a subagent's return for the owner's; the facts come from the script, not from a model's memory",
+  async () => {
+    let r = await run(["corpus", "--slug", "timeline"], { CLAUDE_CONFIG_DIR: config3 });
+    if (r.code !== 0) return `corpus exit ${r.code}: ${r.err.slice(0, 160)}`;
+    tl.run = value(r.out, "RUN");
+    r = await run(["timeline", "--run", tl.run], { CLAUDE_CONFIG_DIR: config3 });
+    if (r.code !== 0) return `exit ${r.code}: ${r.err.slice(0, 200)}`;
+    const problems = [];
+    const want = ["OWNER=4 queued=2", "COMMAND=1", "SKILL=2 loaded=1 refused=1", "READ=4", "DRAFT=1", "REPLY=3", "AGENT=1 reads=1", "FORK=1", "FILE=corpus/timeline.jsonl"];
+    if (r.out.trim() !== want.join("\n")) problems.push(`printed ${JSON.stringify(r.out.trim().split("\n"))}`);
+    tl.events = fs.readFileSync(path.join(tl.run, "corpus", "timeline.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    const ev = tl.events;
+    const main = (pred) => `T1:${lineOf(DMAIN, pred)}`;
+    if (ev.some((e) => e.source !== "transcript" || !e.t || !e.at)) problems.push("an event without source, t or at");
+    const sorted = [...ev].sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0));
+    if (JSON.stringify(sorted.map((e) => e.t)) !== JSON.stringify(ev.map((e) => e.t))) problems.push("events out of time order");
+    const owners = ev.filter((e) => e.kind === "owner").map((e) => [e.text, e.queued, e.at]);
+    const wantOwners = [["please write the ticket", false, "T1:1"], ["no codex, only luna there", true, main((x) => x.attachment?.prompt?.[0]?.text)],
+      ["fix the second line", true, main((x) => x.attachment?.prompt === "fix the second line")], ["take the other road", false, `T1.f1:${DFORK.findIndex(([, x]) => JSON.stringify(x).includes("take the other road")) + 1}`]];
+    if (JSON.stringify(owners) !== JSON.stringify(wantOwners)) problems.push(`owner events ${JSON.stringify(owners)}`);
+    if (ev.some((e) => JSON.stringify(e).includes("agent-return"))) problems.push("the subagent's queued return became an event");
+    const cmd = ev.find((e) => e.kind === "command");
+    if (JSON.stringify([cmd?.name, cmd?.args]) !== JSON.stringify(["terse:clarity", "check it"])) problems.push(`command ${JSON.stringify(cmd)}`);
+    const skills = ev.filter((e) => e.kind === "skill").map((e) => [e.name, e.status]);
+    if (JSON.stringify(skills) !== JSON.stringify([["entrust:codex", "loaded"], ["entrust:orchestrate", "refused"]])) problems.push(`skills ${JSON.stringify(skills)}`);
+    const reads = ev.filter((e) => e.kind === "read").map((e) => [e.plugin, e.version, e.path, e.tool]);
+    const wantReads = [["terse", "0.5.0", "references/genres/ticket.md", "Read"], ["terse", "0.5.0", "references", "Grep"],
+      ["terse", "0.5.0", "references/rules.md", "Bash"], ["terse", "0.5.0", "references/truth.md", "Bash"]];
+    if (JSON.stringify(reads) !== JSON.stringify(wantReads)) problems.push(`reads ${JSON.stringify(reads)}`);
+    const draft = ev.find((e) => e.kind === "draft");
+    if (JSON.stringify([draft?.path, draft?.tool, draft?.at]) !== JSON.stringify(["/work/delta/ticket.md", "Write", main((x) => x.message?.content?.[0]?.name === "Write")])) problems.push(`draft ${JSON.stringify(draft)}`);
+    if (JSON.stringify(ev.filter((e) => e.kind === "reply").map((e) => e.text)) !== JSON.stringify(["Drafting.", "Done with the ticket.", "Other road."])) problems.push("replies differ");
+    const agent = ev.find((e) => e.kind === "agent");
+    const wantAgent = { id: "T1.s1", type: "general-purpose", model: "claude-sonnet", prompt: "check the rules page", answer: "the rules are fine", at: main((x) => x.message?.content?.[0]?.name === "Agent"),
+      reads: [{ t: at8("00:28"), at: `T1.s1:${lineOf(DSUB, (x) => x.message?.content?.[0]?.name === "Read")}`, plugin: "terse", version: "0.5.0", path: "references/rules.md", tool: "Read" }] };
+    const gotAgent = agent && { id: agent.id, type: agent.type, model: agent.model, prompt: agent.prompt, answer: agent.answer, at: agent.at, reads: agent.reads };
+    if (JSON.stringify(gotAgent) !== JSON.stringify(wantAgent)) problems.push(`agent ${JSON.stringify(gotAgent)}`);
+    const fork = ev.find((e) => e.kind === "fork");
+    if (JSON.stringify([fork?.task, fork?.fork, fork?.title, fork?.at, fork?.t]) !== JSON.stringify(["T1", "T1.f1", "ticket (fork)", wantOwners[3][2], "2026-09-26T08:05:00.000Z"])) problems.push(`fork ${JSON.stringify(fork)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("TL2 an owner message queued while the model worked is a user turn and the person's input in the time split, a peer's queued return is neither, and the first message as blocks is the owner's",
+  "turns.jsonl feeds extraction and quotes, and the time split's USER= is the owner's time; a queued message dropped there is a reply nobody reads, a peer counted there is a subagent taken for the owner",
+  () => {
+    if (!tl.run) return "TL1 made no run";
+    const turns = fs.readFileSync(path.join(tl.run, "corpus", "turns.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    const problems = [];
+    for (const text of ["please write the ticket", "no codex, only luna there", "fix the second line"])
+      if (!turns.some((t) => t.t === "T1" && t.role === "user" && t.text === text)) problems.push(`no user turn for "${text}"`);
+    if (turns.some((t) => t.text.includes("agent-return"))) problems.push("the peer's return is a turn");
+    const t1 = JSON.parse(fs.readFileSync(path.join(tl.run, "corpus", "index.json"), "utf8")).sessions[0];
+    if (t1?.userMs !== 265000) problems.push(`userMs ${t1?.userMs}, expected 265000 (7 s before the typed command, 1 s before each queued message, 256 s before the fork's)`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("TL3 timeline refuses a second run and a run with no corpus with exit 10, and export leaves the timeline behind",
+  "the timeline holds transcript text and stays in the private folder; nothing in a run is rewritten",
+  async () => {
+    if (!tl.run || !runs.default) return "TL1 or C1 made no run";
+    const problems = [];
+    const again = await run(["timeline", "--run", tl.run], { CLAUDE_CONFIG_DIR: config3 });
+    if (again.code !== 10) problems.push(`a second timeline exit ${again.code}`);
+    const hollow = path.join(fs.realpathSync(state), "prepare-feedback", `${today}-hollow`);
+    if (!fs.existsSync(hollow)) fs.mkdirSync(hollow);
+    const early = await run(["timeline", "--run", hollow]);
+    if (early.code !== 10 || fs.readdirSync(hollow).length !== 0) problems.push(`timeline before corpus: exit ${early.code}`);
+    const own = await run(["timeline", "--run", runs.default]);
+    if (own.code !== 0 || !fs.existsSync(path.join(runs.default, "corpus", "timeline.jsonl"))) problems.push(`timeline on the default run: exit ${own.code}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+const tl4 = { reads: null };
+const bashRead = async () => {
+  if (tl4.reads) return tl4.reads;
+  let r = await run(["corpus", "--slug", "bash-reads"], { CLAUDE_CONFIG_DIR: config4 });
+  if (r.code !== 0) return null;
+  const runDir4 = value(r.out, "RUN");
+  r = await run(["timeline", "--run", runDir4], { CLAUDE_CONFIG_DIR: config4 });
+  if (r.code !== 0) return null;
+  tl4.reads = fs.readFileSync(path.join(runDir4, "corpus", "timeline.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l))
+    .filter((e) => e.kind === "read").map((e) => [e.at.split(":")[1], e.plugin, e.path, e.unresolved ?? false]);
+  return tl4.reads;
+};
+const lineIn4 = (hms) => String(BASH4.findIndex(([ts]) => ts === at9(hms)) + 1);
+
+test("TL4 a Bash read after cd into a plugin names the page by its relative path, a grep pattern and a count are not pages, and a cd outside a plugin reads none",
+  "23 of 50 commands on one machine cd into a plugin and then read a page by a relative name; none reached the timeline, and one missed read before a draft turns 'opened' into 'not opened'",
+  async () => {
+    const reads = await bashRead();
+    if (!reads) return "corpus or timeline failed";
+    const got = reads.filter(([line]) => line === lineIn4("00:02") || line === lineIn4("00:04"));
+    const want = [[lineIn4("00:02"), "terse", "references/rules.md", false], [lineIn4("00:02"), "terse", "references/truth.md", false]];
+    return JSON.stringify(got) === JSON.stringify(want) || `reads ${JSON.stringify(got)}`;
+  });
+
+test("TL5 a for-loop over literal words reads each page it names, and a loop nothing can expand is one read with * and unresolved: true, never a literal $",
+  "a loop variable left as $s named a page that does not exist (skills/$s/SKILL.md) in the field session's fork; a page the script cannot name is still a read, marked as such",
+  async () => {
+    const reads = await bashRead();
+    if (!reads) return "corpus or timeline failed";
+    const got = reads.filter(([line]) => line === lineIn4("00:06") || line === lineIn4("00:08"));
+    const want = [[lineIn4("00:06"), "entrust", "skills/codex/SKILL.md", false], [lineIn4("00:06"), "entrust", "skills/swarm/SKILL.md", false],
+      [lineIn4("00:08"), "entrust", "skills/*/SKILL.md", true]];
+    if (reads.some(([, , p]) => p.includes("$"))) return `a path holds a literal $: ${JSON.stringify(reads)}`;
+    return JSON.stringify(got) === JSON.stringify(want) || `reads ${JSON.stringify(got)}`;
+  });
+
+test("TL6 sed reads a page when it prints it, with or without -n, and not when it edits the file in place",
+  "sed without -n prints the whole file, the same read as cat; sed -i writes the file and prints nothing",
+  async () => {
+    const reads = await bashRead();
+    if (!reads) return "corpus or timeline failed";
+    const got = reads.filter(([line]) => line === lineIn4("00:10") || line === lineIn4("00:12"));
+    const want = [[lineIn4("00:10"), "terse", "references/genres/ticket.md", false]];
+    return JSON.stringify(got) === JSON.stringify(want) || `reads ${JSON.stringify(got)}`;
   });
 
 test("X1 export copies drafts, rounds.md, measures/ and anonymized/ unchanged to a new relative directory, none of it naming a machine path, a thread id or transcript text, and refuses an existing one, one under the state directory and an absolute path",

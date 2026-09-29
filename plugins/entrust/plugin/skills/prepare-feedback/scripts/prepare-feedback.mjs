@@ -12,10 +12,11 @@
 //   node prepare-feedback.mjs quotes   --run <run> --episodes <jsonl>
 //   node prepare-feedback.mjs tokens   --run <run> --reports <dir> | --from <tsv> [--median <n>]
 //   node prepare-feedback.mjs process  --run <run>
+//   node prepare-feedback.mjs timeline --run <run>
 //   node prepare-feedback.mjs export   --run <run> --to <relative dir>
 //
 // A run is <state>/prepare-feedback/<date>-<slug>/ with corpus/index.json, corpus/turns.jsonl, corpus/parts/,
-// corpus/pages/, corpus/parts.json, ledger/, measures/, drafts/, anonymized/ and rounds.md. The transcripts stay
+// corpus/pages/, corpus/parts.json, corpus/timeline.jsonl, ledger/, measures/, drafts/, anonymized/ and rounds.md. The transcripts stay
 // where Claude Code keeps them: the index maps each task to its files (T3, its forks T3.f1, its subagents T3.s2,
 // its Codex runs T3.c1), and turns.jsonl holds the text of their turns, each addressed by a task and a line of its
 // JSONL (T3:282). The index also holds each task's process counts, which process sums without any text.
@@ -56,6 +57,7 @@ const OPTIONS = {
   quotes: { one: ["run", "episodes"] },
   tokens: { one: ["run", "reports", "from", "median"] },
   process: { one: ["run"] },
+  timeline: { one: ["run"] },
   export: { one: ["run", "to"] },
 };
 const COMMANDS = Object.keys(OPTIONS);
@@ -112,6 +114,21 @@ const usage = () => `prepare-feedback.mjs — the private folder of one /entrust
                   every token count is summed over API calls, a subagent's from its own transcript; prints TASKS=,
                   WALL=, ACTIVE= GAP=600s, USER=, GAPS= LARGEST=, COORD=, AGENTS=, CODEX=, TOOLS=, REPEATS=,
                   OUTPUTS=, then FILE=
+  timeline --run <run>
+                  write corpus/timeline.jsonl, one event a line in time order per task, each with t (ISO time), at
+                  (T3:282, T3.f1:40, T3.s2:198), kind and source "transcript": owner (text, queued: whether it was
+                  sent while the model worked), command (a skill the owner typed: name, args), skill (a Skill call by
+                  the model: name, status loaded, refused or unknown), read (a Read or Grep, or a Bash cat, head, tail,
+                  grep, egrep, rg or sed that does not edit in place, following the command's variables, ~, cd and
+                  for-loops over literal words, of a file inside a plugin: plugin, version from a cache install,
+                  path from the plugin's root, tool; a path a variable leaves open has * there and unresolved:
+                  true), draft (a Write or Edit: path, tool), reply (the model's visible text), agent (a
+                  subagent: id, type, model, prompt, answer, and reads[], the plugin pages it read itself), fork
+                  (task, fork, title, at where it left the original); prints OWNER=, COMMAND=, SKILL=, READ=,
+                  DRAFT=, REPLY=, AGENT=, FORK=, then FILE=. It holds transcript text, so it stays under corpus/,
+                  which export never copies. A tool result Claude Code moved to <session>/tool-results/ is not
+                  opened: a skill's status comes from the error flag the transcript keeps, a subagent's answer from
+                  its own transcript.
   export   --run <run> --to <relative dir>
                   copy drafts/*.md, rounds.md, measures/ and anonymized/ unchanged into <dir>, which must not exist
 
@@ -126,7 +143,8 @@ tasks with a checkout load that every option but --version keeps and no cache lo
 already, the ones a further --version unknown would add. CODEX_RUNS= counts a REPORT= line in a command's output,
 or a threadId there when the command does not read a file (cat, grep, sed, head, tail, jq and the like; reading a
 background command's .output file back is that command's output).
-turns.jsonl holds one line per turn, {"t","line","role","text"}: user (a human message, or a subagent's brief),
+turns.jsonl holds one line per turn, {"t","line","role","text"}: user (a human message, one sent while the model
+worked included, or a subagent's brief),
 assistant (its text blocks) and tool_error (a failed tool's result), from every task (T3), fork (T3.f1) and
 subagent (T3.s2); thinking, tool calls and successful tool results stay in the transcript. A subagent is a
 transcript directly under <session>/subagents/; workflow agents below it are not read. <name> is the input's
@@ -275,6 +293,15 @@ const textOf = (c) => (typeof c === "string" ? c : Array.isArray(c)
 const resultText = (b) => (typeof b.content === "string" ? b.content : textOf(b.content));
 const hasResult = (c) => Array.isArray(c) && c.some((b) => b && b.type === "tool_result");
 
+// A message the owner sent while the model worked: a queued_command attachment of human origin, its prompt a
+// string or an array of text blocks. A peer's return and a queued task notification are not the owner's.
+function queuedOwnerText(r) {
+  const a = r.type === "attachment" ? r.attachment : null;
+  if (!a || a.type !== "queued_command" || a.origin?.kind !== "human") return null;
+  const text = typeof a.prompt === "string" ? a.prompt : textOf(a.prompt);
+  return text.trim() ? text : null;
+}
+
 // A person's message in a main transcript: not meta, not a compaction summary, not a tool result, and not
 // the harness speaking in the user's place (a task notification, a local command's output, an interruption).
 function humanText(r) {
@@ -322,6 +349,8 @@ function survey(file) {
     if (ts && (!s.first || ts < s.first)) s.first = ts;
     if (ts && (!s.last || ts > s.last)) s.last = ts;
     if (!s.cwd && typeof r.cwd === "string") s.cwd = r.cwd;
+    const queuedText = queuedOwnerText(r);
+    if (queuedText !== null) s.humans.push({ line, ts, text: queuedText });
     if (r.type !== "user") continue;
     const c = r.message?.content;
     if (r.isMeta) {
@@ -381,7 +410,11 @@ function kindOf(r, tools, sub) {
     const typed = r.operation === "enqueue" && typeof r.content === "string" && r.content.trim() && !r.content.trimStart().startsWith("<");
     return { kind: "queue-operation", carrier: true, person: !!typed };
   }
-  if (r.type === "attachment") return { kind: "attachment", carrier: true };
+  if (r.type === "attachment") {
+    if (queuedOwnerText(r) !== null) return sub ? { kind: "brief" } : { kind: "user", person: true };
+    if (r.attachment?.type === "queued_command" && r.attachment.origin?.kind === "peer") return { kind: "peer" };
+    return { kind: "attachment", carrier: true };
+  }
   if (r.type !== "user") return { kind: r.type };
   const results = Array.isArray(c) ? c.filter((b) => b && b.type === "tool_result") : [];
   if (results.length) return { kind: `tool_result:${tools.get(results.at(-1).tool_use_id)?.name ?? "unknown"}` };
@@ -417,6 +450,8 @@ function scan(file, sub) {
     if (ts) found.stamps.push({ ms, line, ...kindOf(r, tools, sub) });
     // A notification that arrives while the assistant is busy is queued: an enqueue, then an attachment that
     // carries it in, and only sometimes a user record. Each is read; metrics keeps the earliest time per call.
+    const owner = sub ? null : queuedOwnerText(r);
+    if (owner !== null) { found.turns.push({ line, ts, role: "user", text: owner }); continue; }
     const queued = r.type === "queue-operation" && r.operation === "enqueue" ? r.content
       : r.type === "attachment" && r.attachment?.type === "queued_command" ? r.attachment.prompt : null;
     if (typeof queued === "string") { notification(found, queued, ms, sub); continue; }
@@ -1180,6 +1215,216 @@ function processRun(opt, state) {
   ]);
 }
 
+// A file inside a plugin, from the path a tool was given: a cache install (…/plugins/cache/<marketplace>/<plugin>/
+// <version>/…) or a checkout or marketplace clone (…/plugins/<plugin>/plugin/…), the path relative to its root.
+const IN_CACHE = /\/plugins\/cache\/[^/]+\/([^/]+)\/([^/]+)(?:\/(.*))?$/;
+const IN_CHECKOUT = /\/plugins\/([^/]+)\/plugin(?:\/(.*))?$/;
+function inPlugin(p, cwd) {
+  if (typeof p !== "string" || !p.trim()) return null;
+  const abs = path.resolve(cwd ?? "/", p.trim());
+  let m = IN_CACHE.exec(abs);
+  if (m) return { plugin: m[1], version: m[2], path: m[3] || "." };
+  m = IN_CHECKOUT.exec(abs);
+  return m ? { plugin: m[1], version: null, path: m[2] || "." } : null;
+}
+
+// The files a Bash command reads with cat, head, tail, grep, egrep, rg or sed (sed unless it edits in place, since
+// without -n it prints the whole file): the reader's file words, not its pattern, script or counts. The command's
+// own variables (R=<dir>; cat $R/x.md), a leading ~ and a for-loop over literal words are expanded; a cd sets the
+// directory later relative words resolve against, and a bare word counts when that directory is inside a plugin.
+// A variable nothing expands (a loop over $(…), a variable from outside) becomes * and the read is unresolved.
+const BASH_READERS = new Set(["cat", "head", "tail", "grep", "egrep", "rg", "sed"]);
+const PATTERNED = new Set(["grep", "egrep", "rg", "sed"]);
+const VAR = /\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?/g;
+// A command's segments (split at ; && || | and new lines) as words, quotes honoured and removed, so a quoted
+// pattern like 'a|b' stays one word.
+function segments(command) {
+  const segs = [];
+  let words = [], word = "", quote = null, has = false;
+  const endWord = () => { if (has) words.push(word); word = ""; has = false; };
+  const endSeg = () => { endWord(); if (words.length) segs.push(words); words = []; };
+  const s = String(command ?? "");
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (quote) { if (ch === quote) quote = null; else word += ch; continue; }
+    if (ch === "'" || ch === '"') { quote = ch; has = true; continue; }
+    if (ch === ";" || ch === "\n" || ch === "|" || (ch === "&" && s[i + 1] === "&")) { if (ch === "&" || (ch === "|" && s[i + 1] === "|")) i++; endSeg(); continue; }
+    if (/\s/.test(ch)) { endWord(); continue; }
+    word += ch; has = true;
+  }
+  endSeg();
+  return segs;
+}
+// A reader's file words: flags, the counts some flags take, and the pattern or script a patterned reader takes
+// first (unless -e or -f gave it) are left out; an in-place sed reads nothing.
+function fileWords(words) {
+  const cmd = path.basename(words[0]), args = words.slice(1), files = [];
+  let pattern = PATTERNED.has(cmd), inPlace = false;
+  for (let i = 0; i < args.length; i++) {
+    const w = args[i];
+    if (w.startsWith("-") && w.length > 1) {
+      if (cmd === "sed" && (/^-i/.test(w) || w === "--in-place")) inPlace = true;
+      if (["-e", "-f", "--regexp", "--file", "--expression"].includes(w)) { i++; pattern = false; }
+      else if (cmd !== "sed" && /^\d+$/.test(args[i + 1] ?? "")) i++;
+      continue;
+    }
+    if (pattern) { pattern = false; continue; }
+    if (!/^\d+$/.test(w)) files.push(w);
+  }
+  return inPlace ? [] : files;
+}
+
+function bashReads(command, cwd) {
+  const out = [], vars = {}, loops = {};
+  let dir = null;
+  const plain = (w) => w.replace(VAR, (m, k) => vars[k] ?? m).replace(/^~(?=\/|$)/, os.homedir());
+  // One word as every word it stands for: a loop variable over literal words gives one per word.
+  const expand = (w) => {
+    let forms = [plain(w)];
+    for (const [k, list] of Object.entries(loops)) {
+      if (!list) continue;
+      const re = new RegExp(`\\$\\{?${k}\\}?(?![A-Za-z0-9_])`, "g");
+      forms = forms.flatMap((x) => (re.test(x) ? list.map((v) => x.replace(new RegExp(re.source, "g"), v)) : [x]));
+    }
+    return forms;
+  };
+  for (let words of segments(command)) {
+    if (words[0] === "do") words = words.slice(1);
+    if (words[0] === "done") { for (const k of Object.keys(loops)) delete loops[k]; continue; }
+    if (words[0] === "for" && words[2] === "in") {
+      const list = words.slice(3).map(plain);
+      loops[words[1]] = list.every((v) => !/[$*?`(]/.test(v)) ? list : null;
+      continue;
+    }
+    for (;;) {
+      const a = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(words[0] ?? "");
+      if (a) { vars[a[1]] = plain(a[2]); words = words.slice(1); } else if (PRELUDE.has(words[0]) && words[0] !== "cd") words = words.slice(1); else break;
+    }
+    if (!words.length) continue;
+    if (words[0] === "cd") { dir = path.resolve(dir ?? cwd ?? "/", plain(words[1] ?? "~")); continue; }
+    if (!BASH_READERS.has(path.basename(words[0]))) continue;
+    const bare = dir !== null && inPlugin(dir) !== null;
+    for (const w of fileWords(words)) for (const x of expand(w)) {
+      if (!x.includes("/") && !bare) continue;
+      const unresolved = /\$\{?[A-Za-z_]|\$\(|`/.test(x);
+      out.push({ path: path.resolve(dir ?? cwd ?? "/", x.replace(VAR, "*")), ...(unresolved ? { unresolved: true } : {}) });
+    }
+  }
+  return out;
+}
+
+// The events of one transcript, in line order: what the owner wrote or typed, the model's skill calls, plugin
+// reads, drafts and visible replies. A fork's copies of its original (records with the original's times) are
+// skipped. calls maps each Agent call's id to its address, time and input, for the subagent it started.
+function timelineOf(file, label, sub, copied) {
+  const out = [], skills = new Map(), calls = new Map();
+  for (const [line, r] of records(file)) {
+    if (typeof r.timestamp !== "string") continue;
+    if (copied && copied.has(Date.parse(r.timestamp))) continue;
+    const t = r.timestamp, at = `${label}:${line}`, c = r.message?.content;
+    const ev = (kind, fields) => { const e = { t, at, kind, source: "transcript", ...fields }; out.push(e); return e; };
+    if (r.type === "assistant") {
+      const text = textOf(c);
+      if (text.trim()) ev("reply", { text });
+      if (Array.isArray(c)) for (const b of c) {
+        if (!b || b.type !== "tool_use") continue;
+        const input = b.input ?? {};
+        if (b.name === "Skill") skills.set(b.id, ev("skill", { name: input.skill ?? null, status: "unknown" }));
+        else if (b.name === "Read" || b.name === "Grep") {
+          const p = inPlugin(input.file_path ?? input.path, r.cwd);
+          if (p) ev("read", { ...p, tool: b.name });
+        } else if (b.name === "Bash") for (const w of bashReads(input.command, r.cwd)) {
+          const p = inPlugin(w.path);
+          if (p) ev("read", { ...p, tool: "Bash", ...(w.unresolved ? { unresolved: true } : {}) });
+        } else if (["Write", "Edit", "MultiEdit", "NotebookEdit"].includes(b.name)) ev("draft", { path: input.file_path ?? input.notebook_path ?? null, tool: b.name });
+        else if (b.name === "Agent" || b.name === "Task") calls.set(b.id, { t, at, input });
+      }
+      continue;
+    }
+    if (sub) continue;
+    const queued = queuedOwnerText(r);
+    if (queued !== null) { ev("owner", { text: queued, queued: true }); continue; }
+    if (r.type !== "user") continue;
+    if (Array.isArray(c)) for (const b of c) {
+      const e = b && b.type === "tool_result" ? skills.get(b.tool_use_id) : null;
+      if (e) e.status = b.is_error ? "refused" : "loaded";
+    }
+    const text = humanText(r);
+    if (text === null) continue;
+    if (/^\s*<command-(?:message|name)>/.test(text)) {
+      const name = (/<command-name>\/?([^<]+)<\/command-name>/.exec(text) ?? /<command-message>([^<]+)<\/command-message>/.exec(text))?.[1]?.trim() ?? null;
+      const args = /<command-args>([\s\S]*?)<\/command-args>/.exec(text)?.[1]?.trim();
+      ev("command", { name, ...(args ? { args } : {}) });
+    } else ev("owner", { text, queued: false });
+  }
+  return { out, calls };
+}
+
+// One timeline of the corpus: per task, its transcript's and forks' events, each subagent as one event with its
+// type, model, prompt, answer and the plugin pages it read itself, and each fork where it left its original.
+// It holds transcript text, so it lives under corpus/, which export never copies.
+function timeline(opt, state) {
+  const dir = runDir(opt, state);
+  const indexFile = path.join(dir, "corpus", "index.json");
+  if (!isFile(indexFile)) fail(EXIT.REFUSED, `the run has no corpus yet: run corpus first: ${dir}`);
+  const idx = readJson(indexFile);
+  if (!idx || !Array.isArray(idx.sessions)) fail(EXIT.USAGE, `corpus/index.json does not parse: ${indexFile}`);
+  const dst = path.join(dir, "corpus", "timeline.jsonl");
+  if (fs.existsSync(dst)) fail(EXIT.REFUSED, `already there, not rewritten: ${dst}`);
+  const all = [];
+  for (const e of idx.sessions) {
+    const own = [], calls = new Map();
+    const main = timelineOf(e.path, e.id, false, null);
+    own.push(...main.out);
+    for (const [k, v] of main.calls) calls.set(k, v);
+    const mainTimes = new Set();
+    for (const [, r] of records(e.path)) if (typeof r.timestamp === "string") mainTimes.add(Date.parse(r.timestamp));
+    for (const f of e.forks ?? []) {
+      const fork = timelineOf(f.path, f.id, false, mainTimes);
+      own.push(...fork.out);
+      for (const [k, v] of fork.calls) if (!calls.has(k)) calls.set(k, v);
+      let split = null, title = null;
+      for (const [line, r] of records(f.path)) {
+        if (r.type === "custom-title" && typeof r.customTitle === "string") title = r.customTitle;
+        if (!split && typeof r.timestamp === "string" && !mainTimes.has(Date.parse(r.timestamp))) split = { t: r.timestamp, at: `${f.id}:${line}` };
+      }
+      if (split) own.push({ ...split, kind: "fork", source: "transcript", task: e.id, fork: f.id, title });
+    }
+    for (const s of e.subagents ?? []) {
+      const meta = readJson(s.path.replace(/\.jsonl$/, ".meta.json")) ?? {};
+      const call = calls.get(meta.toolUseId) ?? null;
+      let first = null, prompt = null, answer = null;
+      for (const [, r] of records(s.path)) {
+        if (!first && typeof r.timestamp === "string") first = r.timestamp;
+        if (prompt === null && r.type === "user") prompt = briefText(r);
+        if (r.type === "assistant") { const text = textOf(r.message?.content); if (text.trim()) answer = text; }
+      }
+      const reads = timelineOf(s.path, s.id, true, null).out.filter((x) => x.kind === "read")
+        .map(({ t, at, plugin, version, path: p, tool }) => ({ t, at, plugin, version, path: p, tool }));
+      own.push({
+        t: call?.t ?? first, at: call?.at ?? `${s.id}:1`, kind: "agent", source: "transcript", id: s.id,
+        type: meta.agentType ?? call?.input?.subagent_type ?? null, model: s.model ?? call?.input?.model ?? null,
+        prompt: call?.input?.prompt ?? prompt, answer, reads,
+      });
+    }
+    own.sort((a, b) => cmpStr(a.t ?? "", b.t ?? "") || cmpStr(a.at, b.at));
+    for (const x of own) all.push(x);
+  }
+  placeLines(dst, (function* () { for (const x of all) yield JSON.stringify(x); })());
+  const n = (kind, test = () => true) => all.filter((x) => x.kind === kind && test(x)).length;
+  say([
+    `OWNER=${n("owner")} queued=${n("owner", (x) => x.queued)}`,
+    `COMMAND=${n("command")}`,
+    `SKILL=${n("skill")} loaded=${n("skill", (x) => x.status === "loaded")} refused=${n("skill", (x) => x.status === "refused")}`,
+    `READ=${n("read")}`,
+    `DRAFT=${n("draft")}`,
+    `REPLY=${n("reply")}`,
+    `AGENT=${n("agent")} reads=${all.filter((x) => x.kind === "agent").reduce((k, x) => k + x.reads.length, 0)}`,
+    `FORK=${n("fork")}`,
+    "FILE=corpus/timeline.jsonl",
+  ]);
+}
+
 function exportRun(opt, state) {
   const dir = runDir(opt, state);
   if (!opt.to) fail(EXIT.USAGE, "--to <relative dir> is required");
@@ -1225,4 +1470,4 @@ if (cmd !== undefined && !COMMANDS.includes(cmd)) fail(EXIT.USAGE, `unknown comm
 if (argv.includes("--help") || !cmd) { process.stdout.write(usage()); process.exit(argv.includes("--help") ? EXIT.OK : EXIT.USAGE); }
 const opt = parse(cmd, argv.slice(1));
 const state = stateDir();
-({ corpus, parts, add, coverage, quotes, tokens, process: processRun, export: exportRun })[cmd](opt, state);
+({ corpus, parts, add, coverage, quotes, tokens, process: processRun, timeline, export: exportRun })[cmd](opt, state);

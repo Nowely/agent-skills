@@ -1,7 +1,8 @@
 # Focuses
 
-Contents: [version](#version), [run](#run), [process](#process), [feedback](#feedback), [all](#all), [a question in
-the user's words](#a-question-in-the-users-words), [role words](#role-words).
+Contents: [facts and self-analysis](#facts-and-self-analysis), [version](#version), [run](#run), [process](#process),
+[feedback](#feedback), [all](#all), [a question in the user's words](#a-question-in-the-users-words), [role
+words](#role-words).
 
 A focus fixes four things: the unit an agent returns, the closed labels on it, the report's layout and the way of
 reading. Each layout follows a reference, a public issue of `github.com/Nowely/agent-skills` the owner accepted; the
@@ -9,6 +10,20 @@ layout below is enough to write from, and the issue shows one filled in. Take a 
 
 Every claim carries its evidence level: 1, the line resolves; 2, an independent reader of the source would say the
 same; 3, the behaviour was made to happen. A refuter's verdict is `upheld`, `refuted` or `unknown`.
+
+## Facts and self-analysis
+
+Every report keeps two kinds of statement apart. A fact comes from the transcript through the script: an event of
+`corpus/timeline.jsonl` or a count, each with its address. A model's own account of why it acted, whether the model
+that did the work or a reader retelling it, is a hypothesis, marked as one, however confident it sounds. What the
+timeline answers is never taken from memory: which plugin pages were read before which draft, which skill the owner
+typed and which the model called, what the owner said while the model worked, queued messages included, and what an
+agent was told in its prompt against what it read itself.
+
+The case behind the rule: in a field report on terse's clarity skill (2026-09-29), two facts changed the conclusions
+most, the pages the model had opened while it drafted and two messages the owner sent while it worked. The writing
+model's own account held neither and contradicted itself three times, and the first reading of the transcript
+missed both messages.
 
 ## version
 
@@ -23,8 +38,9 @@ How a plugin behaved in real work in one release or a window of releases.
   runs, what was left out and why, the audit's own composition, the address notation. Cost profile. Findings `F1`…,
   each with Seen (addresses), Pages (`file:line` of the plugin's public text, which may be quoted), Kind, Level,
   Refuter and Recurring. What to keep. Proposed changes, as a table. Open questions. Audit cost.
-- **Reading:** readers with a question, one per task; a measurer over the transcripts' `usage` for the cost profile;
-  for entrust, a strong reader of the Codex runs' reports.
+- **Reading:** readers with a question, one per task, each with its task's timeline slice; a measurer over the
+  transcripts' `usage` for the cost profile; for entrust, a strong reader of the Codex runs' reports. Which pages were
+  read before which draft, and what the owner said while the model worked, come from the timeline.
 - **Page dry run:** when a finding turns on what the pages make a coordinator do, one agent per scenario walks it
   through the pages as written, as issue #15 did for the advisor's start and for two basic actions.
 - **Blind proposers:** two, for the proposals table, once the plan has named the criterion that picks the survivors.
@@ -85,8 +101,9 @@ what was measured; `process` says where the time and tokens went.
 - **Roles:** the script counts by agent and by model, never by role, because a role stands in the plan card, not in
   a record. The reader names each agent's role from the card in the transcript and labels its launch; the table by
   role joins those labels with the agent rows.
-- **Reading:** `process` runs once after `corpus`; then readers with a question over `process.json`, each brief
-  carrying its task's rows; a measurer's script
+- **Reading:** `process` and `timeline` run once after `corpus`; then readers with a question over `process.json`,
+  each brief carrying its task's rows and its timeline slice. Which pages were read before which draft, and what the
+  owner said while the model worked come from the timeline; a measurer's script
   only for a number the script does not give, such as the coordinator's context by source, as issue #15 counted it.
   An experiment a finding proposes goes to `/entrust:experiment` as a protocol and is not run here.
 - **Judges:** two on the usefulness rows, as issue #16 had, one applying the labels' rules and one auditing the
