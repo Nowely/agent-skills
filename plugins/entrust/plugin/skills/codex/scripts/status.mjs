@@ -56,6 +56,9 @@ let err = "";
 server.stderr.on("data", (d) => { err = (err + d).slice(-400); });
 const tail = () => err.trim().split("\n").pop() ?? "";
 server.on("error", (e) => unchecked(`codex app-server did not start: ${e.message}`));
+// A server that exits before reading fails the write with EPIPE, which would otherwise win the race against
+// the close handler below and report the pipe instead of the server's own last line (seen on Linux CI).
+server.stdin.on("error", () => {});
 server.on("close", (code) => unchecked(`codex app-server exited (${code}) before it answered${tail() ? `: ${tail()}` : ""}`));
 setTimeout(() => unchecked(`codex app-server did not answer within ${BUDGET_MS / 1000} s`), BUDGET_MS).unref();
 
