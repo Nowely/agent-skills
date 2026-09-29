@@ -73,7 +73,7 @@ forensics remain in the repository references and release notes.
 - **The completeness critic reads an answer or publication three times at most.** The page called two reads
   repeating the same gap a stall and said nothing of what a stall does; now the reads are counted across the drafts,
   and after the third, or after two that repeat a gap, the answer or publication goes out with its remaining gaps named
-  as open and no further read. Why: in the first live run of prepare-feedback on 2026-09-29, the five completeness reads of a
+  as open and no further read, never to the fix rounds' escalation or new plan. Why: in the first live run of prepare-feedback on 2026-09-29, the five completeness reads of a
   report on one eight-minute session found 9, 3, 2, 1 and 0 gaps; in the second to fourth reads one gap each was a
   line about the review itself, the fourth's only gap, and the report and its README took eight reads, an hour and
   43 minutes from the first review read to the commit.
