@@ -87,8 +87,8 @@ turn, then `SIGTERM`, then `pgrep`), and either sweep the children or narrow the
   characters and 419 of the 1,745 message ids on those pages ever reached the model
   (`plugins/terse/research/2026-09-26-writing-replication/measures/A2-1-reading-check.md`). With
   "`max_output_tokens: 10000`, one `cat` per page" in the brief, all 1,584 page reads by 374 Luna agents arrived
-  whole at the first launch, by the replication's `tools/coverage.py` as fixed on branch `terse-coverage-escaped`
-  (commit `cd78f4a`). The 1,583 recorded before that fix came from a tool that decoded only the first JSON object of
+  whole at the first launch, by the replication's `tools/coverage.py` now that it matches
+  JSON-escaped text. The 1,583 recorded before that fix came from a tool that decoded only the first JSON object of
   an output. One agent, `col-P036-B`, read all ten pages of its part in one loop and got the combined output cut;
   its rollout shows it then read the eight pages the cut had lost, one `cat` each.
 - `grep -rn max_output_tokens plugins/entrust/plugin/skills` finds nothing: neither `codex` nor `orchestrate` says it.
@@ -108,7 +108,7 @@ prints the 1000.
   No page names a check that a page an agent was given reached its context.
 - A check that works: `plugins/terse/research/2026-09-26-writing-replication/tools/coverage.py` counts a page as
   read only when its whole text is a substring of one command output in the agent's own rollout, raw or
-  JSON-escaped. As fixed on branch `terse-coverage-escaped` (commit `cd78f4a`) and re-run on the 13 recorded sets,
+  JSON-escaped. Re-run on the 13 recorded sets,
   it flags 1 of 500 stress agents, `cx-P102`, which had reported itself `partial`, none of 356 collection agents
   (1,508 of 1,508 pages read) and none of 13 relaunched stress agents. Among the Luna runs it found no report that
   hid a miss; the hidden miss that stands is the Sol agent above. The records made before the fix, 13 of 500, 1 of
