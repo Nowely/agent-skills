@@ -18,10 +18,6 @@ forensics remain in the repository references and release notes.
 - `clarity`'s second question before writing also asks what comes back, and when neither the owner nor the
   sources settle what the reader will do, it has the writer ask the owner instead of inferring it: in a field
   report, a reply in a long thread was built on a division of work the writer had pieced together.
-- `clarity` checks after writing that every item under a heading or group label fits the label, since the
-  reader applies the label to each item: in the same report, the writer checked explicit claims while a group
-  label placed an item where it did not belong. The check sits on clarity's own page because the session did
-  not open `truth.md` while drafting.
 - `clarity`'s body now says its questions apply while revising as well as writing, as its description
   already did.
 - `clarity`'s questions before writing end by choosing the form: look at good nearby texts of the kind and
@@ -42,6 +38,9 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- E99: the trigger suite turns the installed terse off for its sessions with `enabledPlugins` in the `--settings`
+  JSON it already passes, so the control arm counts on a machine where terse is installed. Before, every control
+  session loaded the installed terse and the arm counted nothing.
 - E84: `rewrite` links `writing-rules.md`, `curse-of-knowledge.md` and `truth.md` where it names the briefs that
   receive them: the first two for the writer and the sentences critic, `truth.md` for every truth critic. Before, it
   reached them only through `roles.md`, a second link away, and a model may read a page that far down partially.

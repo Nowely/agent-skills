@@ -75,14 +75,22 @@ test("A1 the swarm is a bulk fan-out at its widest, the mode adds no driver chan
   () => says(
     /A swarm is a bulk fan-out at its widest/,
     /adds no driver change, no header field and no flag/,
-    /Its agents are a pool of their own\. A Terra swarm counts as a Luna one does, against the swarm's own cap and never against the alive cap of six\./,
+    /Its agents are a pool of their own\. A Terra swarm counts as a Luna one does, against the swarm's own cap and never against the alive cap of six, and the plan says so/,
   ));
 
-test("U1 a unit is the bulk row's verdict unit, fifty at most, the template has its placeholders, every brief is a read agent on a bulk or cheap model at the page's effort, and no strong or top model is admitted",
+test("A2 a swarm starts from a typed /entrust:swarm or from an orchestrate plan's go, and under a plan it takes a run directory of its own",
+  "the owner made the swarm a role the planner may propose (2026-09-29) while keeping its own command; a swarm's agent ids cannot be registered in the plan (E90), so a swarm launched into the plan's run directory is refused agent by agent",
+  () => says(
+    /A swarm starts two ways: the user types `\/entrust:swarm`, or an orchestrate plan proposes one for a bulk batch, with its count and cost on the card, and the user's "go" on that plan starts it/,
+    /under a plan it takes a run directory of its own, since the plan's registration refuses its agent ids/,
+  ));
+
+test("U1 a unit is the bulk row's verdict unit or an extraction part with a fixed answer schema, fifty at most, the template has its placeholders, every brief is a read agent on a bulk or cheap model at the page's effort, and no strong or top model is admitted",
   "the 2026-09-12 round's lesson: a broken path in every brief drew the same verdict from nineteen of twenty agents, so one assembled brief is opened whole; a top-row model in a swarm is the pool cap multiplied by fifty",
   () => {
     const prose = says(
       /one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief/,
+      /or one part of the material for extraction, with a fixed answer schema the brief states/,
       /one per line, fifty at most/,
       /one brief template with `\{\{UNIT\}\}` where the unit goes and `\{\{UNIT_ID\}\}` where its number goes/,
       /[Aa]ssemble one brief and open it whole before the launch, checking its paths, its count and each quote against its source/,

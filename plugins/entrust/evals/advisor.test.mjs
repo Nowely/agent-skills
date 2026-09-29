@@ -75,7 +75,7 @@ test("D1 the advisor is a top-row agent of the other family, consulted from the 
   "the value the sources claim for an advisor is a different lineage (Amp's oracle). #15 F1 and #16: the page chose the advisor by the composition it was to advise on and stopped for \"go\" before read-only advice the invocation had already asked for, so the advisor never advised the first decision; a stop stays for what the invocation did not grant, and the user can end and restart the thread in words",
   () => {
     const said = says(
-      /One top-row agent from the other model family than your own: Astra under a Claude coordinator, and Fable only when the user's composition words rule Codex out/,
+      /One top-row agent from the other model family than your own: Astra under a Claude coordinator, or the model the sibling's Codex status puts in Astra's place, and Fable only when the user's composition words or that status rule Codex out/,
       /Your user's invocation of this command is the word for its turns: consult it before the first decision, the composition included, with no plan stop of its own/,
       /The plan the run shows for its workers names it as the advisor, with its expected turns/,
       /a stop is for authority the invocation did not grant — the workers' plan, an edit, a commit, a publication — under the rules of the run it joins/,
@@ -88,14 +88,16 @@ test("D1 the advisor is a top-row agent of the other family, consulted from the 
     return true;
   });
 
-test("D3 the advisor's prompt carries its model and the five-field schema, and no effort line",
-  "#15 F12c: the page loads codex alone, so orchestrate's top-row rule (no EFFORT:) never reaches it and the codex row invites one, and an advisor once answered in 111 lines of prose with no schema",
+test("D3 the advisor's prompt carries its model and the five-field schema, no effort line on Astra, and xhigh on a stand-in",
+  "#15 F12c: the page loads codex alone, so orchestrate's top-row rule (no EFFORT:) never reaches it and the codex row invites one, and an advisor once answered in 111 lines of prose with no schema. On 2026-09-29 a Luna advisor on a plan without Astra ran at xhigh only because the owner's config said so",
   () => {
+    const standIn = "and a stand-in carries `EFFORT: xhigh`";
     const said = says(
-      /Its prompt carries `MODEL: astra` \(or the Fable agent's `model: "fable"` tag\), an `OUTPUT_SCHEMA:` line naming the five-field schema file the sibling ships, and no `EFFORT:` line: a top-row agent inherits the configured effort/,
+      /Its prompt carries `MODEL: astra` \(or its stand-in's short name, or the Fable agent's `model: "fable"` tag\), an `OUTPUT_SCHEMA:` line naming the five-field schema file the sibling ships, and no `EFFORT:` line on Astra: Astra inherits the configured effort/,
+      standIn,
     );
     if (said !== true) return said;
-    const effort = /EFFORT: ?(none|minimal|low|medium|high|xhigh|max|ultra)\b/.exec(text);
+    const effort = /EFFORT: ?(none|minimal|low|medium|high|xhigh|max|ultra)\b/.exec(text.replace(standIn, ""));
     return !effort || `the page gives the advisor an effort: ${effort[0]}`;
   });
 
@@ -151,14 +153,18 @@ test("D2 the advisor is one thread kept for the run, holds a slot only while a t
     /That slot is one of six alive at a time, and the only Astra or the only Fable among them/,
   ));
 
-test("Q1 the decision points are named, one question per message carries the coordinator's own decision, and the return is a recommendation with reasons, an alternative and what would change its mind",
-  "an advisor asked open questions is a second coordinator; one asked to react to a decision already formed is measurable against that decision",
-  () => says(
-    /the split before a fan-out, the composition, a verdict you are about to adopt, a stall, and any point the plan names/,
-    /One question per message, carrying the decision you would take without advice and the evidence in a few lines/,
-    /Its return is five fields: `status` \(done, partial or blocked\), `result`, `evidence`, `artifacts` and `open`/,
-    /a recommendation with the reasons that decide it, one alternative, and what it would need to see to change its mind/,
-  ));
+test("Q1 the decision points are named, one question per message carries the coordinator's own decision, and the coordinator asks for a result that is a recommendation with reasons, an alternative and what would change its mind",
+  "an advisor asked open questions is a second coordinator; one asked to react to a decision already formed is measurable against that decision; the result's shape reaches the advisor only in what the coordinator sends, so the page instructs the coordinator instead of describing the advisor (E98)",
+  () => {
+    const said = says(
+      /the split before a fan-out, the composition, a verdict you are about to adopt, a stall, and any point the plan names/,
+      /One question per message, carrying the decision you would take without advice and the evidence in a few lines/,
+      /Its return is five fields: `status` \(done, partial or blocked\), `result`, `evidence`, `artifacts` and `open`/,
+      /Ask it for a `result` that gives a recommendation with the reasons that decide it, one alternative, and what it would need to see to change its mind/,
+    );
+    if (said !== true) return said;
+    return !/Its `result` is a recommendation/.test(flat) || "the result's shape is written as a description of the advisor again (E98)";
+  });
 
 test("Q2 the advisor never implements, writes, judges its own advice or spawns, answers unknown when it cannot answer, and no sentence hands it one of those roles",
   "a top-row agent that implements is the tier table's \"never implementation\" broken; one that judges its own advice is self-grading with a title",

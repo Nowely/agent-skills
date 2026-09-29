@@ -53,8 +53,16 @@ the other model family to one run, asked one question at each decision point, wi
 recorded before and after ([skills/advisor/SKILL.md](skills/advisor/SKILL.md)); it states no benefit until
 protocol E3 has run. `/entrust:swarm` has one script make up to fifty bulk agents over a file of units
 through the sibling launcher, with a concurrency cap and one summary for a cheap reducer
-([skills/swarm/SKILL.md](skills/swarm/SKILL.md)); shared state and free messaging between agents are E4's
-arms, never the default.
+([skills/swarm/SKILL.md](skills/swarm/SKILL.md)); an orchestrate plan may also propose one for a bulk batch, which
+the user's "go" starts. Shared state and free messaging between agents are E4's arms, never the default.
+
+A seventh, `/entrust:prepare-feedback`, turns your own Claude Code sessions into a report on a plugin: it finds
+the sessions where entrust or terse loaded, has orchestrated agents read them under one focus (a release, one
+run, where its time and tokens went, your feedback on a topic, all of these at once, or a question of your own) and
+hands back an issue title and body, or, inside a checkout of this repository, a research run on a worktree branch
+([skills/prepare-feedback/SKILL.md](skills/prepare-feedback/SKILL.md)). What it reads stays in a private folder
+under the plugin's data directory, and an agent that wrote none of the report checks every detail before it
+leaves.
 
 ## Prerequisites
 
@@ -79,7 +87,7 @@ arms, never the default.
 
 ## Install
 
-As a plugin — the full set: all six skills and the driver (the repo is its own marketplace):
+As a plugin — the full set: all seven skills and the driver (the repo is its own marketplace):
 
 ```
 /plugin marketplace add Nowely/agent-skills
@@ -87,8 +95,8 @@ As a plugin — the full set: all six skills and the driver (the repo is its own
 ```
 
 This route exposes the skill as `entrust:codex`, the modes as `/entrust:orchestrate`, `/entrust:cleanup`,
-`/entrust:experiment`, `/entrust:advisor` and `/entrust:swarm`, which only the user can turn on, and the
-wrapper every Codex run goes through as `entrust:codex-agent`.
+`/entrust:experiment`, `/entrust:advisor`, `/entrust:swarm` and `/entrust:prepare-feedback`, which only the user
+can turn on, and the wrapper every Codex run goes through as `entrust:codex-agent`.
 
 The same two steps from a shell: `claude plugin marketplace add Nowely/agent-skills`, then
 `claude plugin install entrust@nowely`. To update, update the plugin, which refreshes
@@ -103,11 +111,12 @@ Claude Code substitutes into the skill's recipes and which this install resolves
 `~/.claude/plugins/data/entrust-nowely/` (the plugin's name, then the marketplace's). The answers
 and the isolated Codex home, the write locks, the worktree ledger and the orchestrator mode's run
 directories are all there. `/entrust:cleanup` lists what is there and removes only the items you pick by
-number; experiment records under `experiments/` it neither lists nor removes.
+number; experiment records under `experiments/` and report folders under `prepare-feedback/` it neither
+lists nor removes.
 The driver keeps no default of its own: with neither that variable nor `ENTRUST_STATE_DIR` it
 exits 2. Add that directory to `permissions.additionalDirectories` once to read the agents' reports
-without prompts — this plugin adds no rules on your behalf. You never need to write there: the launcher
-and the driver do, and a write there by Claude Code's own tools still asks in the `default` and
+without prompts — this plugin adds no rules on your behalf. You never need to write there: the plugin's
+own scripts do, and a write there by Claude Code's own tools still asks in the `default` and
 `acceptEdits` modes whatever your settings say, because the directory is under `.claude`, a protected
 path. Claude Code's [permissions page](https://code.claude.com/docs/en/permissions.md) says files in
 additional directories "become readable without prompts, and file editing permissions follow the current
@@ -265,6 +274,9 @@ skills/experiment/               the experiment mode: SKILL.md (protocol, arms, 
                                  (the record under the data directory), references/protocols.md (the six registered)
 skills/advisor/SKILL.md          the advisor mode: one standing top-row thread per run, prompt only
 skills/swarm/                    the swarm mode: SKILL.md (units, launch, reducer, arms), scripts/swarm.mjs (the launcher)
+skills/prepare-feedback/         the report mode: SKILL.md (focus, corpus, two ways of reading, output),
+                                 scripts/prepare-feedback.mjs (the private folder under the data directory),
+                                 references/focuses.md (each focus's unit, labels and layout)
 .claude-plugin/                  plugin + marketplace manifests
 ../evals/                        not installed: the suites, one file each; run-all.mjs lists them and runs them
                                  cheapest first, lib/harness.mjs and lib/scenarios.mjs are their
@@ -289,6 +301,7 @@ Canonical homes for repeated stories:
 | experiments: protocol, arms, verdicts, the record | [`skills/experiment/SKILL.md`](skills/experiment/SKILL.md), `node skills/experiment/scripts/experiment.mjs --help` |
 | the standing advisor | [`skills/advisor/SKILL.md`](skills/advisor/SKILL.md) |
 | swarms: units, launch, reducer, coordination arms | [`skills/swarm/SKILL.md`](skills/swarm/SKILL.md), `node skills/swarm/scripts/swarm.mjs --help` |
+| feedback reports: focuses, scope, the private folder, the export | [`skills/prepare-feedback/SKILL.md`](skills/prepare-feedback/SKILL.md), `node skills/prepare-feedback/scripts/prepare-feedback.mjs --help` |
 | flags and field formats | `node skills/codex/scripts/driver.mjs --help` (`--help-all` for the rest) |
 | environment, prompt files, receipts, worktree internals | [`environment-and-internals.md`](skills/codex/references/environment-and-internals.md) |
 | native capability parity and dated measurements | [`parity.md`](skills/codex/references/parity.md) |

@@ -1,0 +1,40 @@
+{
+  "name": "pr35-before",
+  "edits": [
+    {
+      "file": "skills/clarity/SKILL.md",
+      "find": "pass it on, and what comes back?\n   When the owner has not said and your sources do not settle it, ask the owner rather than infer it\n   ([true within its world](../../references/rules.md#true-within-its-world)). A reply that merely\n   confirms a tool step may need no prose.",
+      "replace": "pass it on? A reply that merely\n   confirms a tool step may need no prose."
+    },
+    {
+      "file": "skills/clarity/SKILL.md",
+      "find": "The destination sets its context needs.\n\nThen look at good nearby texts of its kind and choose a form for the way this reader will read it\n([start from the context](../../references/rules.md#start-from-the-context), [form](../../references/rules.md#form)).\n\n## While writing",
+      "replace": "The destination sets its context needs.\n\n## While writing"
+    },
+    {
+      "file": "skills/clarity/SKILL.md",
+      "find": "Follow the nearby texts' conventions without copying their section lists.",
+      "replace": "Start from good nearby examples for a commit, PR or comment, without copying their section lists."
+    },
+    {
+      "file": "skills/clarity/SKILL.md",
+      "find": "put the conclusion before detailed evidence; when the answer is itself a list, the list is the conclusion.",
+      "replace": "put the conclusion before detailed evidence."
+    },
+    {
+      "file": "skills/clarity/SKILL.md",
+      "find": "Make transferred text self-contained, and quote what the reader will act on, with its source after it, rather than point to where it sits.",
+      "replace": "Make transferred text self-contained."
+    },
+    {
+      "file": "references/rules.md",
+      "find": " A text they have seen is not one they have at hand: quote what they will act on, such as a text to insert or a value to check, with its source after it.",
+      "replace": ""
+    },
+    {
+      "file": "references/genres/team-message.md",
+      "find": "Keep the block self-contained.",
+      "replace": "Keep the block self-contained if it will leave the current conversation."
+    }
+  ]
+}

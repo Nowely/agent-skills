@@ -48,9 +48,12 @@ node evals/clarity-trigger.live.mjs --run --without-plugin --repeat 3 --out "$TM
 
 Each command covers all 15 cases and three repetitions (45 fresh sessions per arm). The second
 command runs only the control arm, without `--plugin-dir`; `--candidate DIR` changes the candidate.
-Both arms use the ordinary owner profile, including neighboring skills and user-level `CLAUDE.md`.
-They differ only in the explicit `--plugin-dir` flag. Hooks are disabled with
-`--settings '{"disableAllHooks":true}'`, MCP configuration is excluded with `--strict-mcp-config`,
+Both arms use the ordinary owner profile, including neighboring skills and user-level `CLAUDE.md`, with
+the installed terse turned off for the session: the `--settings` JSON carries
+`"enabledPlugins": {"terse@nowely": false}`, which Claude Code applies above the user settings file for
+that session only, while the candidate loads through `--plugin-dir` under the id `terse@inline`, which that
+key does not name. They differ only in the explicit `--plugin-dir` flag. The same JSON disables hooks with
+`"disableAllHooks": true`; MCP configuration is excluded with `--strict-mcp-config`,
 and `--no-session-persistence` avoids saved sessions. `dontAsk` denies permission prompts. Tool
 grants are case-specific: `Edit(task.md)` permits the Write tool for `task.md` relative to the fresh
 temporary working directory, and Bash only for `pwd` in the status case. [Claude Code's permission

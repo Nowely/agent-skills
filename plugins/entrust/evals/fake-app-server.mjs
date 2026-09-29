@@ -492,6 +492,20 @@ function onLine(line) {
     return;
   }
 
+  // FAKE_ACCOUNT: unset is a signed-in ChatGPT account; signed-out and no-auth are the two shapes of no
+  // account codex 0.155.1 answers; error is a server that rejects the method.
+  if (m.method === "account/read") {
+    const account = process.env.FAKE_ACCOUNT;
+    if (account === "error") {
+      w({ jsonrpc: "2.0", id: m.id, error: { code: -32601, message: "Method not found" } });
+      return;
+    }
+    w(reply(m.id, account === "signed-out" ? { account: null, requiresOpenaiAuth: true }
+      : account === "no-auth" ? { account: null, requiresOpenaiAuth: false }
+        : { account: { type: "chatgpt", email: "fixture@example.invalid", planType: "plus" }, requiresOpenaiAuth: true }));
+    return;
+  }
+
   if (m.method === "model/list") {
     const efforts = ["none", "low", "medium", "high", "xhigh", "max", "ultra"];
     // Several generations under one short name, the newest neither first nor last in its family, one
