@@ -6,6 +6,22 @@ delegate — the recipes at the top of that file cover the decision.
 The canonical flag inventory lives in `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`, with the rarely needed flags and the environment table under `--help-all`. This file
 explains environment, state, wrappers, operational bounds, and lifecycle details behind those flags.
 
+## Contents
+
+- [Environment](#environment)
+- [Observability](#observability)
+- [Approval mailbox](#approval-mailbox)
+- [The answer log, and what --brief does not deliver](#the-answer-log-and-what---brief-does-not-deliver)
+- [What is protected, and what is not](#what-is-protected-and-what-is-not)
+- [The isolated home](#the-isolated-home)
+- [Prompt files and wrappers](#prompt-files-and-wrappers), with [The injection limit](#the-injection-limit)
+- [Bounding or stopping an agent](#bounding-or-stopping-an-agent)
+- [Receipt validation and reporting](#receipt-validation-and-reporting)
+- [Worktree ledger and destination](#worktree-ledger-and-destination)
+- [Lock design](#lock-design)
+- [Git-directory grant](#git-directory-grant)
+- [Configuration key oracle](#configuration-key-oracle)
+
 ## Environment
 
 The variables, the subdirectories of the state directory `<state>` stands for below, the order the driver

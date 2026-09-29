@@ -4,6 +4,17 @@ Measured 2026-08-30/31 on this repo (driver 0.1.0–0.4.0); the memory and overh
 numbers here and were not re-measured for the 0.153.4 pin. Treat them as an order of magnitude, and
 re-check them on your own machine before sizing a fan-out against them.
 
+## Contents
+
+- [Capability table](#capability-table)
+- [Qualifications](#qualifications): [Read and isolated write](#read-and-isolated-write),
+  [Isolation, MCP, and search](#isolation-mcp-and-search), [Effort](#effort),
+  [Attachments and pasted images](#attachments-and-pasted-images),
+  [Watching a turn, and answer shape](#watching-a-turn-and-answer-shape)
+- [Fan-out and reporting](#fan-out-and-reporting)
+- [Browser-mode sandbox](#browser-mode-sandbox)
+- [Pasted-media handling](#pasted-media-handling)
+
 ## Capability table
 
 The driver's `--help` and `--help-all` are canonical for flags and formats; each cell here gives only the routing choice

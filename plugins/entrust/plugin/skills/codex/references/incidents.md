@@ -3,6 +3,45 @@
 The measured failures that produced SKILL.md's imperatives. Each line is evidence, not folklore: if a
 rule ever looks like ceremony, this is what it cost to learn.
 
+## Contents
+
+- [Isolation](#isolation)
+- [Composition disclosure](#composition-disclosure)
+- [The unverified wrapper](#the-unverified-wrapper)
+- [A relay on a small model](#a-relay-on-a-small-model)
+- [Context cost](#context-cost)
+- [Silent downgrades](#silent-downgrades)
+- [The TOML parser](#the-toml-parser)
+- [Redundant flags as crashes](#redundant-flags-as-crashes)
+- [Worktree leaks, and who actually leaked](#worktree-leaks-and-who-actually-leaked)
+- [Hooks run by the driver's own git](#hooks-run-by-the-drivers-own-git)
+- [Orphaned load](#orphaned-load)
+- [Red-green agents](#red-green-agents)
+- [A read cut to fragments](#a-read-cut-to-fragments)
+- [A non-zero exit discarded](#a-non-zero-exit-discarded)
+- [Safety classifier](#safety-classifier)
+- [Fan-out physics](#fan-out-physics)
+- [Report integrity](#report-integrity)
+- [Resume rights](#resume-rights)
+- [Prompt-file newline injection](#prompt-file-newline-injection)
+- [State split the lock](#state-split-the-lock)
+- [Shared-home fixture pollution](#shared-home-fixture-pollution)
+- [A healthy link read as a file in the way](#a-healthy-link-read-as-a-file-in-the-way)
+- [Stale-lock stampede](#stale-lock-stampede)
+- [Protected-root aliases](#protected-root-aliases)
+- [MCP secrets in argv](#mcp-secrets-in-argv)
+- [Negative probes counted as failures](#negative-probes-counted-as-failures)
+- [Cancellation lost the answer](#cancellation-lost-the-answer)
+- [The verifier gate was inverted](#the-verifier-gate-was-inverted)
+- [An unref'd kill never fired](#an-unrefd-kill-never-fired)
+- [Five of seven agents lost to the wall clock](#five-of-seven-agents-lost-to-the-wall-clock)
+- [Here-documents under the grant](#here-documents-under-the-grant)
+- [The agent map](#the-agent-map)
+- [The wrapper's message](#the-wrappers-message)
+- [Foreground, background and the ceiling](#foreground-background-and-the-ceiling)
+- [A reused agent directory](#a-reused-agent-directory)
+- [Language and name in a return](#language-and-name-in-a-return)
+
 ## Isolation
 
 Of 157 delegations run against the caller's own `~/.codex`, 95 spent their FIRST tool
