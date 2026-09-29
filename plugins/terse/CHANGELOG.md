@@ -49,6 +49,9 @@ forensics remain in the repository references and release notes.
   coordinator on a machine without Node met a shell error the page did not explain.
 - E88: `audit` gets no checklist to copy and tick off, so its page stays as it was. Its steps are numbered and each
   needs the previous one's result, it reports to the person in prose, and no run has been seen to skip a step.
+- E86: "Apply the checks silently when asked for only the finished text; keep the requested format." moves from
+  `clarity`'s description to its body, beside the line that the questions need not appear in the answer. The
+  description stays in context on every turn of every session; the body is read only when the skill loads.
 
 ## 0.5.0 — 2026-09-28
 
