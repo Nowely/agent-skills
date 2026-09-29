@@ -6,7 +6,7 @@
 // evals/fragments.mjs holds the fragments: the codex page's composition rules and rights table, generated
 // into orchestrate/references/codex-composition.md so a plan with no Codex agent never loads the codex page
 // (#15 F18); the five-field schema the plugin ships, copied inline into two pages; the run-directory path
-// three pages name. One case per fragment runs the check on this tree. The mutation cases run it on a
+// four pages name. One case per fragment runs the check on this tree. The mutation cases run it on a
 // scratch copy of the pages with one word changed, because a drift check that stays green under a changed
 // word is measuring nothing (#15 P12b asks for the release to fail on drift, and run-all runs this suite).
 
@@ -140,7 +140,7 @@ test("mutation: a size cap changed in a page's inline schema is red, and --write
   });
 
 test("mutation: a page that loses the run-directory path is red",
-  "three pages name one directory the launcher and cleanup walk; a page that renamed it sends agents' reports where nothing looks",
+  "four pages name one directory the launcher and cleanup walk; a page that renamed it sends agents' reports where nothing looks",
   () => {
     const root = scratch();
     edit(root, "skills/swarm/SKILL.md", "`<state>/orchestrate/<project-slug>/<run>/`", "`<state>/runs/<run>/`");

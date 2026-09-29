@@ -45,7 +45,7 @@ export const FRAGMENTS = [
     id: "run-directory",
     kind: "literal",
     text: "`<state>/orchestrate/<project-slug>/<run>/`",
-    copies: ["skills/orchestrate/SKILL.md", "skills/swarm/SKILL.md", "skills/experiment/SKILL.md"],
+    copies: ["skills/orchestrate/SKILL.md", "skills/swarm/SKILL.md", "skills/experiment/SKILL.md", "skills/prepare-feedback/SKILL.md"],
   },
 ];
 
