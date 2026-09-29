@@ -596,11 +596,11 @@ agent map, is not stopped from it and is not continued by a message (measured 20
 2.1.269 …)". `plugins/entrust/plugin/skills/swarm/SKILL.md:25` says the opposite of the same kind of task: "the swarm's
 agents are not on the agent map, the task is, and Stop on it … reaches every running agent". The swarm already runs
 Codex agents with no wrapper: `swarm.mjs:135-140` calls the launcher's `--new`, its plain mode, which waits for the run
-with no early return, and `--status`; the launcher passes SIGTERM, SIGINT and SIGHUP to the driver (`agent-run.mjs:395`,
-`:720`). The ten-minute ceiling and the `RUNNING=` rerun come from the wrapper's own foreground Bash call
+with no early return, and `--status`; the launcher passes SIGTERM, SIGINT and SIGHUP to the driver (`agent-run.mjs:395`, and
+`:720` until its early return). The ten-minute ceiling and the `RUNNING=` rerun come from the wrapper's own foreground Bash call
 (`agent-run.mjs:18-31`); a background task has no ceiling, and on 2026-09-29 one ran for 105 minutes. The wrapper
 cannot move its call to the background, because a subagent ends with its turn: one that did returned at once and was
-counted as reported (`references/incidents.md`, "The unverified wrapper"). On 2026-09-29 the VS Code extension listed a
+counted as reported (`plugins/entrust/plugin/skills/codex/references/incidents.md:21`, "The unverified wrapper"). On 2026-09-29 the VS Code extension listed a
 running background Bash task under its description in its background task list. Whether that list is the agent map,
 and whether its Stop reaches the driver, is not measured.
 
