@@ -450,6 +450,7 @@ test("F1 a Codex agent is one Agent call of the shipped codex-agent type, and th
       "Launch independent Claude agents as background Agent calls, one notification each",
       "Load the `workflow-authoring` skill before writing the script when the session lists it.",
       "`agent(prompt, {label, phase, schema, model, effort, agentType, isolation})`",
+      "a Codex agent's `agentType` is `entrust:codex-agent`.",
       "`pipeline(items, ...stages)` runs items through stages with no barrier, `parallel(thunks)` is a barrier",
       "A subagent's final text is its return value, not a message to a human",
     );
