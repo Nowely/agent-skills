@@ -569,3 +569,26 @@ text names git, and the orchestrate and codex pages feed the launcher exactly th
 agent's directory, and agent prompts that mention the repository. The refusal comes before the command runs and names no
 way around it, so the mode stops at registration unless the coordinator happens to write `live tree` instead. The pages
 should give a form measured to pass in a worktree session.
+
+## E101. A Codex agent can run as one background Bash task, as the swarm runs fifty, but the codex page offers only the Haiku wrapper, for a reason the swarm page contradicts
+
+**Evidence, level 1 for the pages and scripts, level 3 for the task list.** `plugins/entrust/plugin/skills/codex/SKILL.md:54-57`
+makes the wrapper the one route: "One Agent call per agent … a Bash task, whatever its description says, is not on the
+agent map, is not stopped from it and is not continued by a message (measured 2026-09-12 against the VS Code extension
+2.1.269 …)". `plugins/entrust/plugin/skills/swarm/SKILL.md:25` says the opposite of the same kind of task: "the swarm's
+agents are not on the agent map, the task is, and Stop on it … reaches every running agent". The swarm already runs
+Codex agents with no wrapper: `swarm.mjs:135-140` calls the launcher's `--new`, its plain mode, which waits for the run
+with no early return, and `--status`; the launcher passes SIGTERM, SIGINT and SIGHUP to the driver (`agent-run.mjs:395`,
+`:720`). The ten-minute ceiling and the `RUNNING=` rerun come from the wrapper's own foreground Bash call
+(`agent-run.mjs:18-31`); a background task has no ceiling, and on 2026-09-29 one ran for 105 minutes. The wrapper
+cannot move its call to the background, because a subagent ends with its turn: one that did returned at once and was
+counted as reported (`references/incidents.md`, "The unverified wrapper"). On 2026-09-29 the VS Code extension listed a
+running background Bash task under its description in its background task list. Whether that list is the agent map,
+and whether its Stop reaches the driver, is not measured.
+
+**Issue text.** A Codex agent needs its Haiku subagent only for a card on the agent map. The coordinator can run the
+launcher itself as one background Bash task, as the swarm does for up to fifty agents, with no wrapper tokens, no relay
+that can paraphrase the status lines, and no ten-minute ceiling or `RUNNING=` reruns. The codex page names only the
+wrapper, and its reason contradicts the swarm page and may be out of date. The page should name the background task
+as a supported route, say what it shows and how it is stopped, and support it, after measuring the current extension's
+task list and its Stop on such a task.
