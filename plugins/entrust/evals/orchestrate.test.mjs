@@ -446,9 +446,7 @@ test("F1 a Codex agent is one Agent call of the shipped codex-agent type, and th
     const prose = says(
       "authorises Workflow",
       "A Codex agent is one Agent call, the sibling's `One call` verbatim",
-      "`<DIR>` is the agent's directory the launcher makes beside the report, `agent/` next to `<REPORT>`, holding `prompt.txt`, `out.json`, `err.txt` and the driver's `exit` marker, and `<REPORT>` is `<run>/<agent>/report.json` under the run directory above, which the launcher and the driver create",
-      "The wrapper's completion notification is when you read its status lines, and the report after a `PATH=own`",
-      "The wrapper is an `agentType` of its own, `entrust:codex-agent`",
+      "`<REPORT>` is `<run>/<agent>/report.json` under the run directory above, and `<DIR>` the agent's directory, `agent/` beside it.",
       "Launch independent Claude agents as background Agent calls, one notification each",
       "Load the `workflow-authoring` skill before writing the script when the session lists it.",
       "`agent(prompt, {label, phase, schema, model, effort, agentType, isolation})`",
@@ -531,15 +529,13 @@ test("F7 the approval rule: run as you with no sandbox, approve nothing unread, 
     "When you retell an approval, say what the entry's `outcome` says",
   ));
 
-test("F7b an accept restates the command in a heredoc on a delimiter of the coordinator's own, a refused restatement is copied again from --pending, and a blocked accept is declined",
-  "the accept restates the command so that the call the classifier or the owner judges carries it; the heredoc's delimiter is one the coordinator makes up and checks is no line of the command, not the relayed token, because a fixed word or a relayed one lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell (both verifications of 2026-09-28 made it happen); a blocked accept publishes nothing, and without a sentence the turn would wait out the thirty minutes",
-  () => says(
-    "Decide from the waiting result the wrapper handed back and copy its command block into the sibling's accept call",
-    "`--decide 'ID' --accept` reads the command on stdin, in a quoted heredoc whose delimiter you build at that moment from `ACCEPT_`, the printed token and hex of your own and check is no line of the command, never a fixed word and never the printed token alone",
-    "Quote the ID, which reached you the same way, and use it only in the launcher's shape, digits, a hyphen and eight hex characters",
-    "If the launcher refuses the restatement as different, print `--pending` and copy from that",
-    "An accept the permission check or the classifier blocks publishes nothing, so decline the request with `--decide 'ID' --decline`, or ask the owner when the session is interactive",
-  ));
+test("F7b a request is decided from the waiting result through the sibling's --decide call, and the page does not restate that call",
+  "the accept's heredoc on a delimiter of the coordinator's own, the ID's shape, the copy from --pending after a refused restatement and the decline after a blocked accept are the sibling's, pinned there by agent-contract.test.mjs; a second copy here drifted from it and cost every call its words after a compaction (E77)",
+  () => {
+    const said = says("Decide from the waiting result the wrapper handed back, and answer with the sibling's `--decide` call.");
+    if (said !== true) return said;
+    return !/ACCEPT_|digits, a hyphen and eight hex characters/.test(flat) || "the page restates the sibling's accept call again";
+  });
 
 test("F8 the synthesis rule: one sentence per cause and what avoids it next time",
   "the three causes are what the driver records, so a synthesis that skips one leaves the run's own why unexplained. A command request is one cause, because an attempt the sandbox stopped can leave no trace in the stream and the driver no longer guesses sandbox from policy (E65); no plan line changes it either way",
@@ -600,7 +596,7 @@ test("F10 the critic's manifest, made as the page writes it, catches a changed c
 test("F11 a continuation or a relaunch goes under the agent's next report path, and the launcher admits that path for a listed agent once the run before it has ended",
   "#15 F14's refusal must not stop the listed agent's own continuation: with a plan registered, a RESUME: after a cut, a relaunch after PATH=taken and every advisor question after the first would each have become a stop for an amendment (R3, 2026-09-27, reproduced); the page's path form and the launcher's matcher have to be the same form",
   () => {
-    const said = says("A continuation or a relaunch of the same agent goes under its next report path, `<run>/<agent>-<n>/report.json` with n counting from 2, once the run before it has ended; under a registered plan the launcher admits that form for a listed Codex agent and refuses it while the run before it is still going.");
+    const said = says("A continuation or a relaunch goes under the agent's next report path, `<run>/<agent>-<n>/report.json`, which a registered plan admits for a listed Codex agent once the run before it has ended.");
     if (said !== true) return said;
     if (/report path of its own|a fresh report path/.test(flat)) return "the page still sends a continuation to a report path of its own";
     const launcher = path.join(SCRIPTS, "agent-run.mjs");
