@@ -435,13 +435,13 @@ test("E5 the three scaling rows: simple, comparison, complex",
     /^\| complex \| 5 agents or more, launched in batches inside the alive cap \|$/m,
   ));
 
-test("E6 the writer may run the suite, but the deciding evidence comes from elsewhere",
-  "a writer iterating against its own suite is how a green run gets produced by the same context that produced the bug; the rule keeps the iteration and moves only the verdict",
+test("E6 a writer runs the checks that read what it changed, and the deciding run of them comes from elsewhere",
+  "a writer iterating against its own suite is how a green run gets produced by the same context that produced the bug, and a whole suite run after a change none of its checks reads spends minutes proving nothing (measured 2026-09-29: seven full runs of about six minutes each after page, ledger and rebase changes that five suites of a few seconds read); the rule keeps the iteration, moves only the verdict, and ties both to the files changed",
   () => says(
     "split by file ownership, as Claude agents on one live tree or as Codex agents in separate worktrees, never two Codex write agents on one directory",
     "stop the writers, restate the contract, let each owner repair only its own files, then have an agent that wrote neither verify the combined tree",
     "nobody changes what they share: no stash, branch switch, reset, clean or rebase",
-    "A writer may run the suite while it iterates, but the evidence that decides comes from an agent that did not write the code, or from you under the redirect rule.",
+    "Run a check only when its result can change what happens next: a writer runs the checks that read the files it changed while it iterates, and the evidence that decides is those same checks run once on the tree that goes out, by an agent that did not write the code or by you under the redirect rule; a brief names those checks, not the whole suite.",
   ));
 
 // ------------------------------------------------------------------ F: mechanism and verification

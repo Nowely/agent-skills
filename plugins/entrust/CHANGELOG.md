@@ -7,6 +7,11 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- **A check runs when its result can change what happens next.** The orchestrate page let a writer "run the suite" and
+  gave the verdict to an agent that did not write the code; a writer now runs the checks that read the files it
+  changed, the deciding run is those checks once on the tree that goes out, and a brief names them. Why: on 2026-09-29
+  the full suite, about six minutes, ran seven times after page, ledger and rebase changes that five suites of a few
+  seconds read.
 - **The bulk row's extraction, classification and verification run at `EFFORT: high`; `low` is for mechanical work
   only.** The orchestrate page's effort bullet and the swarm page's Luna brief said `low` for the whole bulk row; the
   strong and cheap rows keep `medium` for review, refutation and judgement. Why: in the pilot reported in issue #22,
