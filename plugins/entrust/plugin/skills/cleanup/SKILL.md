@@ -113,9 +113,12 @@ entries in the coordinator's temporary directory. Say "To list those entries
 without removing them, run this command." and show `notCovered.listCommand`;
 for removal, `notCovered.removeCommand`. An agent started under another
 temporary root is outside the agent scan; its report is kept while
-`report.json` is absent. The driver's private `<state>/tmp`
-directories are guarded and not listed: the driver owns them, and this cleanup
-never makes them removable.
+`report.json` is absent. Each run's own `$TMPDIR`, a folder under
+`entrust/` in the temporary directory, is not listed and not counted among the
+entries outside this cleanup, and the driver never removes it; an old
+`<state>/tmp` an earlier driver left is guarded and not listed, and this
+cleanup never makes it removable. Both are the user's to delete by hand, a
+run's folder once that run has ended.
 
 Forward `CLAUDE_PLUGIN_DATA` as shown. The script uses
 `ENTRUST_STATE_DIR` first, then `CLAUDE_PLUGIN_DATA`; setup follows the

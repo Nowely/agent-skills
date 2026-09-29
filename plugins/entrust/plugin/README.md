@@ -75,11 +75,15 @@ leaves.
 - **Node at or above the floor `package.json` declares** (`engines`); CI runs that floor and a current
   release, Linux and macOS. No dependencies: the driver is one file importing only `node:` builtins.
 - **macOS and Linux are both measured.** CI runs every suite that needs no `codex` binary on both;
-  the macOS-only call (the managed-preferences plist) is guarded. On both, every run gets a private
-  `$TMPDIR` of its own under the driver's state directory, whatever the shell exported, and the report
-  names it as `tmpDir` ([Environment](skills/codex/references/environment-and-internals.md#environment)).
-  At read level it is the only place an agent may write; at write level it is one more writable root beside
-  the directories you chose.
+  the macOS-only call (the managed-preferences plist) is guarded. On both, an agent's `$TMPDIR` is its
+  run's own directory, never your whole one: the driver makes it fresh at 0700 inside the system's
+  temporary directory `<tmp>` (your `TMPDIR` when exported, else the OS default). A report at
+  `<rel>/report.json` under the driver's state directory gets `<tmp>/entrust/<rel>`, and a run with no
+  report there gets `<tmp>/entrust/runs/<startedAtMs>-<pid>`. The report names it as `tmpDir`
+  ([Environment](skills/codex/references/environment-and-internals.md#environment)); it outlives the run,
+  and the driver never removes it. At read level it is the only place an agent may write; at write level
+  it is one more writable root beside the directories you chose. An earlier version kept these folders in
+  the state directory's `tmp/`; if that folder is still there, you can delete it by hand.
 - **Your `~/.codex/config.toml` is the default policy** — or the one in the home `CODEX_HOME` names.
   Model, reasoning effort and the other keys the driver inherits come from it unless a call overrides
   them (`--model`, `--effort`); the driver sets no defaults of its own
@@ -110,9 +114,10 @@ claude plugin update entrust@nowely
 Claude Code substitutes into the skill's recipes and which this install resolves to
 `~/.claude/plugins/data/entrust-nowely/` (the plugin's name, then the marketplace's). The answers
 and the isolated Codex home, the write locks, the worktree ledger and the orchestrator mode's run
-directories are all there. `/entrust:cleanup` lists what is there and removes only the items you pick by
-number; experiment records under `experiments/` and report folders under `prepare-feedback/` it neither
-lists nor removes.
+directories are all there. `/entrust:cleanup` lists what is there and removes
+only the items you pick by number; experiment records under `experiments/`, report folders under
+`prepare-feedback/` and an old `tmp/` it neither lists nor removes, and it does not look at the runs'
+`$TMPDIR` folders under `<tmp>/entrust/`.
 The driver keeps no default of its own: with neither that variable nor `ENTRUST_STATE_DIR` it
 exits 2. Add that directory to `permissions.additionalDirectories` once to read the agents' reports
 without prompts — this plugin adds no rules on your behalf. You never need to write there: the plugin's
