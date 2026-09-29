@@ -21,6 +21,9 @@ forensics remain in the repository references and release notes.
 - `skills/orchestrate/references/roles.md` has a page dry run row: an agent walks one scenario through a plugin's pages
   without running anything and counts the words, calls, agents and user stops before the first action, as the two dry
   runs of #15 did; prepare-feedback calls it for a `version` report.
+- The plugin README names the seventh skill in its overview, install list, layout, table of canonical homes and the
+  list of what cleanup leaves, and `plugin.json` and the marketplace entry add it to the description they share, so
+  that every place a user learns what the plugin ships from names it.
 
 ## 0.22.0 — 2026-09-28
 
