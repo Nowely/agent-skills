@@ -3,6 +3,14 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- `skills/orchestrate/references/roles.md` has a page dry run row: an agent walks one scenario through a plugin's pages
+  without running anything and counts the words, calls, agents and user stops before the first action, as the two dry
+  runs of #15 did; prepare-feedback calls it for a `version` report.
+
 ## 0.22.0 — 2026-09-28
 
 Contracts that change in this release, each detailed in its entry below. The driver no longer switches on Codex's
