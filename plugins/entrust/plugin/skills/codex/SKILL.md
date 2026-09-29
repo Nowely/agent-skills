@@ -371,7 +371,11 @@ Write a concrete, checkable body:
     RETURN: exactly what to hand back
     ENVIRONMENT: staged inputs and their paths; known daemon or socket limits and runnable alternatives; flags that avoid an unwritable cache
 
-For a write agent, or where repository tools need a daemon, fill `ENVIRONMENT:` with observed facts and staged paths, including the diff and trunk files when supplied. It is a body line after `TASK:`, not a header field. Give one deliverable per agent. Split a return that asks for unrelated artifacts or decisions. Write `TASK:` in the
+For a write agent, or where repository tools need a daemon, fill `ENVIRONMENT:` with observed facts and staged paths, including the diff and trunk files when supplied. It is a body line after `TASK:`, not a header field. Give one deliverable per agent. Split a return that asks for unrelated artifacts or decisions.
+A task that reads files names the read: one command per file, and `max_output_tokens` at the tool's output
+cap, 10,000 today (`codex debug models` lists it under `truncation_policy`); a model left to choose sets its own
+cap, often 1,000, and reads fragments ([A read cut to fragments](references/incidents.md#a-read-cut-to-fragments)).
+Write `TASK:` in the
 user's language: the agent answers in the language it is asked in (measured 2026-09-17: a task written in English
 about a Russian «хай» came back in English). Whatever `RETURN:`
 asks for, its first line is one sentence a reader can take on its own: the name you gave the agent in the prompt

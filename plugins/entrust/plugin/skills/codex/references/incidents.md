@@ -104,6 +104,14 @@ Three mutation-testing agents ran suites against deliberately broken copies;
 commands are report fields and no verdict now; pass `--verify` with the end condition you actually
 want.
 
+## A read cut to fragments
+
+On 2026-09-26 a Codex Sol read agent opened 95 pages of about 18,000 characters in one loop, with the
+`max_output_tokens: 1000` it chose itself: each output held 19–60 characters, 419 of the 1,745 messages on
+those pages reached the model, and its answer reported no truncation. A one-line probe on Luna set 1,000 on
+its own as well. With one `cat` per page and `max_output_tokens: 10000` in the brief, all 1,584 page reads by
+374 Luna agents arrived whole.
+
 ## A non-zero exit discarded
 
 A review panel's merge step discarded a receipt-verified Codex answer containing ten findings because
