@@ -807,15 +807,15 @@ test("D13 the bulk row announces its count before spawning, like any other fan-o
   "the bulk row sits outside the alive cap, which is exactly the row a count could grow in unannounced; the clause was deleted alongside the Luna preference in the 2026-09-17 mutation baseline and the suite stayed green",
   () => says("announce its count before spawning, like any other fan-out"));
 
-test("D15 the bulk row's batch route is the swarm, which only the user starts",
-  "issue #22's 456 Luna runs and the writing replication's collection both launched bulk batches by hand, with no wrapper, and the page named no batch route; the swarm is that route, and its limits are E90's",
-  () => says("A bulk batch runs as a swarm, which only the user starts, with `/entrust:swarm`: one script launches its agents under a concurrency cap, and one Stop ends the batch."));
-
 test("D14 every bulk fan-out is piloted against a stronger model's marking, and the pilot decides the brief's fixes and the effort",
   "issue #22's pilot chose the effort and exposed a brief that counted process complaints, and the writing replication's first pilot found 12 extras in 22 on the brief as assembled; the split critique reads the decomposition and caught neither. The rule sits in Model tiers because Verification lies past what a compaction keeps (E77)",
   () => says(
     "Pilot every bulk fan-out before it launches: a stronger model marks a few units, the bulk model runs the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort.",
   ));
+
+test("D15 the bulk row's batch route is the swarm, which only the user starts",
+  "issue #22's 456 Luna runs and the writing replication's collection both launched bulk batches by hand, with no wrapper, and the page named no batch route; the swarm is that route, and its limits are E90's",
+  () => says("A bulk batch runs as a swarm, which only the user starts, with `/entrust:swarm`: one script launches its agents under a concurrency cap, and one Stop ends the batch."));
 
 test("E7 a decisive check runs before any panel, dependent execution stays in one agent, and its verification stays independent",
   "sixteen agents over two naming rounds proposed, reviewed and judged before the check that decided was run (426:973, 426:1208, 2026-09-17), while the two tasks the coordinator kept in its own hands (2026-09-12, 2026-09-16) landed with critics only; the rule orders the check first and keeps the fresh verifier, it does not ban a panel",
