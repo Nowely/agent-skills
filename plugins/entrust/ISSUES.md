@@ -66,18 +66,19 @@ tokens of each". At HEAD, `codex/SKILL.md` is 4,461 words (4,242 after this bran
 `b1056f9`, from 5,602, itself up from the 5,510 first measured after the E51, E57, E65, E67, E80 and E92 fixes added
 material; main's Codex status lines and sixth composition rule, merged after, added 208): the 3,400th word falls in
 "Reading the result" (`codex/SKILL.md:273`), so "Prompt shape" (`:295`), "What the user reads" (`:323`), "Traps"
-(`:333`) and "References" (`:341`), about 750 words, lie past it. `orchestrate/SKILL.md` is 5,938 words (5,668 after
+(`:333`) and "References" (`:341`), about 750 words, lie past it. `orchestrate/SKILL.md` is 5,977 words (5,668 after
 this branch's `887759a`, from 6,001, up from the 5,516 first measured after the E53, E65, E89, E90 fixes and the
-Verification analysis bullet; main's swarm route, stand-in rule and critic read count, merged after, added 270): the
-3,400th word falls in "Mechanism" (`:106`); "Approvals" starts at word 3,875 (`:114`), "Verification" at 4,312
-(`:124`) and "The agent's return" at 5,682 (`:151`).
+Verification analysis bullet; main's swarm route, stand-in rule and critic read count, merged after, added 270 to
+5,938; the retro's analysis clause and a four-word fix added 39 more): the 3,400th word falls in "Mechanism"
+(`:104`); "Approvals" starts at word 3,881 (`:114`), "Verification" at 4,318 (`:124`) and "The agent's return" at
+5,721 (`:151`).
 
-**Check.** `wc -w plugins/entrust/plugin/skills/{codex,orchestrate}/SKILL.md` prints 4461 and 5938; a page past
+**Check.** `wc -w plugins/entrust/plugin/skills/{codex,orchestrate}/SKILL.md` prints 4461 and 5977; a page past
 about 3,400 words loses its tail after a compaction.
 
 **Issue text.** The two skills a coordinator relies on for the whole of a long session are still longer than what
 Claude Code keeps of a skill after compaction, though each fix round has cut into both: `codex` from 5,602 to
-4,242 words and `orchestrate` from 6,001 to 5,668, before later additions brought them to 4,461 and 5,938. Past the
+4,242 words and `orchestrate` from 6,001 to 5,668, before later additions brought them to 4,461 and 5,977. Past the
 first compaction, `codex` loses the prompt shape, what the user reads, the traps and the reference list;
 `orchestrate` loses verification, the Result table included, and the agent's return. Candidates the page writers
 named for the next cut: `codex`'s "Worktree lifecycle" section (`:224-247`, 286 words, repeats the driver's help and
@@ -318,7 +319,10 @@ orchestrate run's path is the working directory's full absolute path with every 
 user's home path repeats in every report and temporary path a coordinator names, and each place a run leaves files
 was picked by the change that needed it. Analyse the naming and the locations together — a shorter project key (the
 repository's name, or a short hash of the path), what lives where, who removes it, and how a user finds everything
-one run left behind — and change them in one step with the pages and the cleanup skill.
+one run left behind — and change them in one step with the pages and the cleanup skill. Candidate directions for
+the socket-path limit to weigh in that analysis: create sockets in a short parent folder (the `<tmp>/entrust` base,
+for instance) rather than the run's own folder; have the parent, the coordinator or the driver, hand the agent a
+short directory for sockets; or another option the analysis finds better (raised by the owner, 2026-09-30).
 
 ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
 
@@ -343,3 +347,44 @@ Measure it: the same set of recommendations criticised by Luna at `high`, by Lun
 model, scored by which dissents the judge or the owner upheld; and, for the swarm, whether a verdict unit that asks
 Luna to dissent rather than to match adds catches. If the result holds, give Luna a critic role in the tier table and
 the effort rule that fits it.
+
+## E112. The README says the cleanup only reports write locks; `cleanup.mjs --help` says it removes three kinds of them
+
+**Evidence, level 1.** `plugins/entrust/plugin/README.md:30-34`: "It removes seven kinds — … the test suites'
+scratch directories and the saved conversations they leave behind. Five more it only ever reports: the driver's
+saved answers, managed worktrees and their ledger, write locks, the shared Codex home, and another copy of the
+plugin's data"; the seven-kinds list names no lock. `plugins/entrust/plugin/skills/codex/scripts/cleanup.mjs:92-95`,
+its own `--help` text: "It removes … write locks nobody holds: a released lock's leftover link, an abandoned lock
+with its record, and a lock record no link names. It only REPORTS … write locks still held or in the previous
+shape". Pre-existing, on `main` before this branch. Found by Opus W3.
+
+**Check.** `sed -n '30,34p' plugins/entrust/plugin/README.md` and `sed -n '92,95p'
+plugins/entrust/plugin/skills/codex/scripts/cleanup.mjs`.
+
+**Issue text.** The README's intro puts every write lock in the list of what the cleanup only reports, while the
+tool's own `--help` removes three kinds of them — a released lock's leftover link, an abandoned lock with its
+record, and a lock record no link names — and reports only a lock still held or in the lock's previous shape. A
+reader of the README alone would not know the cleanup deletes anything lock-shaped at all. The README should say
+what the cleanup does with locks, matching `--help`.
+
+## E113. The driver's check of the temporary base leaves a window before the run's folder is made, and never checks the base's mode
+
+**Evidence, level 2, from reading.** `driver.mjs:1376-1381` (`tmpBaseProblem`) refuses a base that is a symbolic
+link, not a directory, or another uid's, and nothing else: it reads no mode bit. `driver.mjs:1393-1404`
+(`runTmpDir`'s `refuseBase`, called at `:1400` and `:1402`) calls `fs.lstatSync(base)` before the base is made
+(`:1401`) and again right after, but nothing re-checks it after `fs.mkdirSync(path.dirname(dir), …)` (`:1403`) or
+before the leaf itself is made, `fs.mkdirSync(dir, { mode: 0o700 })` (`:1404`): a base or an intermediate directory
+swapped for a link between the second `lstat` and that last `mkdirSync` is followed, not caught. Separately, a
+group- or world-writable base of this user's own passes `tmpBaseProblem` unchallenged, since only `isSymbolicLink`,
+`isDirectory` and `uid` are read from the `lstat` result.
+
+**Check.** Read `tmpBaseProblem` (`:1376-1381`): no `st.mode` term. Read `runTmpDir` (`:1382-1414`): the last write
+before the leaf directory is created (`:1404`) is the intermediate `mkdirSync` at `:1403`, with no `lstat` between
+them.
+
+**Issue text.** The check-then-act shape `refuseBase`/`mkdirSync` repeats twice, but the window between the second
+check and the final act — the leaf's own creation — is not covered, so a base or intermediate path swapped for a
+link in that gap decides where the run's files go, the same class of race E44 closed for the lock. The base's mode
+is never read, so a group- or world-writable directory of this user's is accepted as freely as a private one. Close
+the window (make the run folder relative to an opened directory handle, or verify the leaf's own realpath right
+after creation) and refuse a group- or world-writable base, or record why neither is needed on a per-user TMPDIR.
