@@ -6,6 +6,32 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
+## E67. A command run after an approval, outside the sandbox, is not established to end when its agent is stopped
+
+**Evidence, level 3 for the sandboxed case (measured), level 1 for the escaped case (unmeasured).**
+
+- 2026-09-29, measured once: `/bin/zsh -c 'sleep 913 && echo done-913'` run inside the sandbox, in its own process
+  group; `SIGTERM` to the driver's pid; neither the shell nor `sleep` alive 10 s later. `driver.mjs:2676-2681`
+  records it in the comment above `killGroupOf`/`killGroup`, and `plugins/entrust/plugin/skills/codex/SKILL.md:288`
+  says so: "A command the agent was running inside the sandbox ends with it (measured once, 2026-09-29)".
+- The same sentence continues, `:289`: "a command run after an approval, outside the sandbox, has not been
+  measured", and the page keeps the manual step for it: before a second writer enters a directory where a command
+  was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it (`codex/SKILL.md:289-291`);
+  `orchestrate/SKILL.md:145` carries the same check in its Result table's `exitCode: 10` row.
+- An accepted command runs as the user, with no sandbox (the codex page's Rights section); whether the driver's
+  `SIGTERM` to its own pid reaches a process running outside any sandbox that would otherwise bound it is what
+  remains unmeasured.
+
+**Check.** Run a live turn through an accepted command that sleeps well past the turn's own signal, `SIGTERM` the
+driver, and `pgrep` for the sleep 10 s later: alive settles the question either way; the probe above measured only
+the sandboxed case.
+
+**Issue text.** The one case now measured, a command still executing inside the sandbox when the driver is
+`SIGTERM`'d, dies with it. The other case the page has always hedged on, a command that ran after the user
+accepted it and so runs outside the sandbox as the user, is still unmeasured: an accepted command could be a
+long-running process the signal never reaches. The manual `pgrep` step before a second writer touches the same
+directory stays for this reason, and should stay until that case is measured too.
+
 ## E77. After a compaction, Claude Code keeps only the first 5,000 tokens of `codex` and `orchestrate`, and their last sections are lost for the rest of the session
 
 **Evidence, level 3 for the mechanism, level 2 for HEAD's word counts.** Claude Code's skills page: after
