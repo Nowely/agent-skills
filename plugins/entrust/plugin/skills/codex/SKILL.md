@@ -116,8 +116,8 @@ against the state directory before the agent's directory exists; without it `--n
 
 `--run`'s one call may hand back a **waiting result** instead of the nine status lines: a request is
 pending, and it returns at once with what `--pending` would print for it, ending in `REQUESTS=`, `WAITING=`
-and `REPORT=`. The wrapper hands it back exactly as it hands back any result — step 2 reruns only while a
-result has no `REPORT=` line, and the waiting result carries one — so read it whole and decide under the plan's
+and `REPORT=`. The wrapper hands it back exactly as it hands back any result — step 2 reruns only on a
+result ending in `RUNNING=` or on the harness's background notice — so read it whole and decide under the plan's
 own rule. An accept restates the command it approves, so the call that gets judged carries the command and not
 an id: copy the lines between `COMMAND<<TOKEN` and `COMMAND>>TOKEN` as printed into a quoted heredoc whose
 delimiter you build at that moment from `ACCEPT_`, the printed token and six hex characters of your own, and
