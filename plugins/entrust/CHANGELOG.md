@@ -5,6 +5,17 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Added
+
+- `/entrust:prepare-feedback` turns the sessions where entrust or terse loaded into a report on the plugin under one
+  focus (a release, one run, the user's feedback on a topic, or a question in their own words), handed back as an
+  issue title and body, or as a research run inside a checkout of this repository, because the reports behind #1,
+  #15, #16, #20 and #22 were each assembled by hand and #21 asked for them as one repeatable run; the design is in
+  `plugins/entrust/research/2026-09-29-prepare-feedback/`.
+- `evals/prepare-feedback.test.mjs` checks the skill's script on synthetic transcripts and reports; `package.test.mjs`
+  includes `skills/prepare-feedback/scripts` in the payload check, because the list there is written by hand and a new
+  scripts directory would otherwise go unchecked.
+
 ### Changed
 
 - `skills/orchestrate/references/roles.md` has a page dry run row: an agent walks one scenario through a plugin's pages
