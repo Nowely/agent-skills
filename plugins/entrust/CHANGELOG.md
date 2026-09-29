@@ -7,6 +7,12 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- **The coordinator asks the advisor for the premises its recommendation rests on.** The advisor page now has
+  the coordinator ask it to list in `evidence` the premises it relied on, those in the coordinator's own message
+  included, each marked checked at a source or taken as given, and count its agreement as independent only on
+  the checked ones. Why: in a terse field report on 2026-09-29, an advisor asked whether a list was complete
+  refuted the premise its question pointed at, then kept another item in a wrong group its context had set,
+  though it had opened the file that showed where the item lives.
 - **A check runs when its result can change what happens next.** The orchestrate page let a writer "run the suite" and
   gave the verdict to an agent that did not write the code; a writer now runs the checks that read the files it
   changed, the deciding run is those checks once on the tree that goes out, and a brief names them. Why: on 2026-09-29

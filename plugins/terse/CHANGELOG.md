@@ -3,6 +3,40 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Added
+
+- A trigger case, `ticket-check`, where the request asks only to check a ticket whose last comment is an
+  open question, so replying is the writer's own next step: in a field report, clarity did not start on its
+  own for such a reply. Measured on 2026-09-29 with Opus 5.5 in three sessions with the plugin as changed here:
+  clarity started before the answer in all three, so in a short session a request that never asks for a reply
+  did not reproduce the miss. The control arm did not count, because the installed terse loaded there too.
+
+### Changed
+
+- `clarity`'s second question before writing also asks what comes back, and when neither the owner nor the
+  sources settle what the reader will do, it has the writer ask the owner instead of inferring it: in a field
+  report, a reply in a long thread was built on a division of work the writer had pieced together.
+- `clarity` checks after writing that every item under a heading or group label fits the label, since the
+  reader applies the label to each item: in the same report, the writer checked explicit claims while a group
+  label placed an item where it did not belong. The check sits on clarity's own page because the session did
+  not open `truth.md` while drafting.
+- `clarity`'s body now says its questions apply while revising as well as writing, as its description
+  already did.
+- `clarity`'s questions before writing end by choosing the form: look at good nearby texts of the kind and
+  choose a form for the way this reader will read it, with links to the sections of `rules.md` on context and
+  on form, which the page did not link. The examples advice moves there from the fifth question while writing.
+  In the same report, a session that never opened `rules.md` while drafting used a flat list where the reader
+  would look things up by screen and then by field.
+- `clarity` says that when the answer is itself a list, the list is the conclusion, so conclusion first and
+  say a thought once no longer pull apart: in the same report, a status line at the top repeated the list under
+  it.
+- `rules.md` and `clarity` say to quote what the reader will act on, with its source after it, rather than point
+  to where it sits, and the team-message note no longer limits self-containment to a block that leaves the
+  conversation: in the same report, the writer pointed to an earlier comment in the thread whose text the
+  reader needed in hand.
+
 ## 0.5.0 — 2026-09-28
 
 terse gets a genre note for skill pages and standing agent instructions, text whose reader is the model that

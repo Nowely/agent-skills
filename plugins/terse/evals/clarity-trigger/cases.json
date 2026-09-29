@@ -60,6 +60,11 @@
     "prompt": "Write a review comment on the line that contradicts the API contract. Fictional contract: `retryAfter` is an integer number of seconds and is absent when no retry is advised. Diff line: `retryAfter: retryAt ? retryAt.toISOString() : null`. The reviewer can request a conversion to whole seconds and omission when absent. Write only the review comment."
   },
   {
+    "id": "ticket-check",
+    "positive": true,
+    "prompt": "Check where this ticket stands. Fictional ticket, three comments. Dana (design), 3 March: 'Add help text to the hall booking form: beside the date field, beside the attendee count, and in the cancellation dialog.' Rui (docs), 12 June: 'Date field help text: Bookings open 90 days ahead. The other two once the fields are final.' Rui, 2 September: 'Where did we get to on this?' Fictional code state: the date field reads its help text from the key booking.date.help, which is empty; the attendee count has no help text; the cancellation dialog shows 'Cancel free of charge until the day before'. The September comment has no reply."
+  },
+  {
     "id": "acknowledge",
     "positive": false,
     "prompt": "Reply only OK to acknowledge receipt"
