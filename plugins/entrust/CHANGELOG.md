@@ -153,7 +153,7 @@ forensics remain in the repository references and release notes.
 - **An option in that analysis now names what it removes or moves and who relies on it** — users, coordinators,
   tools, tests, leftover state — and what stays and how a user finds it is made to happen or `unknown`; the roles
   reference gains a final-reviewer row that reads the whole change's consequences first. Why: on this run an E92 fix
-  passed every critic and review and moved every Codex agent's scratch to where `/entrust:cleanup` never looked; no
+  passed the judge, who overruled the critic's objection, and every review, and moved every Codex agent's scratch to where `/entrust:cleanup` never looked; no
   stage had asked what the change removed or who relied on it.
 
 ### Fixed
