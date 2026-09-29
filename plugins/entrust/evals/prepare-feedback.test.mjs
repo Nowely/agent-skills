@@ -142,13 +142,16 @@ const rollout = (th, records) => {
 rollout(TH.reported, []);
 const receiptFile = rollout(TH.receipt, []);
 
+// A message streamed as two records under one id, the first a thinking block with a partial output count.
+const streamed = (r) => ({ ...r, message: { ...r.message, content: [{ type: "thinking", thinking: "" }], usage: { ...r.message.usage, output_tokens: 1 } } });
+
 // T1: a cache load of entrust 0.20.0, a REPORT= launch, a foreground and a background subagent, then its fork.
 const alpha = path.join(config, "projects", "-work-alpha");
 const on20 = (hms) => `2026-09-20T${hms}.000Z`;
 const MAIN = transcript(path.join(alpha, `${S.main}.jsonl`), S.main, "/work/alpha", [
   [on20("10:00:00"), { type: "queue-operation", operation: "enqueue" }],
   [on20("10:00:01"), human("please review the entrust plugin")],
-  [on20("10:00:02"), said("Loading the codex skill.")],
+  ...((r) => [[on20("10:00:02"), streamed(r)], [on20("10:00:02"), r]])(said("Loading the codex skill.")),
   [on20("10:00:03"), load(CACHE("entrust", "0.20.0", "codex"))],
   [on20("10:00:04"), call("Bash")],
   [on20("10:00:05"), result(`status: done\nREPORT=${reportR1}\n`)],
@@ -173,8 +176,6 @@ const FORK = transcript(path.join(alpha, `${S.fork}.jsonl`), S.fork, "/work/alph
   [on20("11:00:01"), said("Continuing in the fork.")],
 ]);
 const subs = path.join(alpha, S.main, "subagents");
-// A message streamed as two records under one id, the first a thinking block with a partial output count.
-const streamed = (r) => ({ ...r, message: { ...r.message, content: [{ type: "thinking", thinking: "" }], usage: { ...r.message.usage, output_tokens: 1 } } });
 const A1 = transcript(path.join(subs, "agent-a1.jsonl"), S.main, "/work/alpha", [
   ["2026-09-20T10:00:06.500Z", { type: "user", agentId: "a1", message: { role: "user", content: "Review the plugin and say what you found." } }],
   ["2026-09-20T10:00:06.600Z", { ...call("Bash"), agentId: "a1" }],
