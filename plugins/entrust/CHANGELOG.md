@@ -193,10 +193,13 @@ forensics remain in the repository references and release notes.
 - **Behaviour change: a driver handed a mailbox that already has an `owner.json` exits 2 whether its owner is
   running or has ended**; the takeover of a dead owner's mailbox is gone, since the launcher gives every launch a
   mailbox of its own (E68).
-- **Behaviour change: every Codex run gets its own private `$TMPDIR` at `<state>/tmp/<runId>`**, reported as
-  `tmpDir`; a caller's `TMPDIR` is no longer honoured, and an `ENTRUST_STATE_DIR` under the caller's `TMPDIR` is no
-  longer refused (E92). Agents of one coordinator no longer share, and overwrite, one temp directory. The README and
-  the codex pages describe one behaviour.
+- **Every Codex run gets its own `$TMPDIR`, created fresh at 0700 inside the system temporary directory** (the
+  caller's `TMPDIR` when exported, else the OS default) and named after the run: `<tmp>/entrust/<rel>` for a report
+  at `<state>/<rel>/report.json`, else `<tmp>/entrust/runs/<startedAtMs>-<pid>`. The agent is granted that directory
+  only, never the caller's whole `TMPDIR`. The report's `tmpDir` names it, it outlives the run, and the driver never
+  removes it. A leaf that already exists is refused with exit 2. The driver no longer creates `<state>/tmp`; one
+  left by an earlier version can be deleted by hand. Agents of one coordinator no longer share, and overwrite, one
+  temp directory. (E92)
 - **The EFFORT row and `driver.mjs --help` drop the 2026-09-17 catalogue snapshot**; the value is checked against
   the live catalogue before each turn (E80).
 - **A brief that reads files names the read: one command per file with `max_output_tokens` at the tool's cap,
