@@ -39,8 +39,9 @@ and the panel shares one model's bias. The findings per round are in [rounds.md]
 ## Cost
 
 By the harness's count per invocation: Fable F1 200.6k and 242.6k; Opus O1 211.1k and 267.2k; Opus C1 90.1k, 112.2k
-and 116.1k; Opus P1 165.0k; for the fourth iteration and the split, Fable F1 360.1k and Fable
-F2 154.9k. The twenty Luna reports hold 1.09M tokens, 837k of them cached input. The coordinator's own session was
+and 116.1k; Opus P1 165.0k and 269.8k; for the fourth iteration and the split, Fable F1 360.1k and
+Fable F2 154.9k; for the skill, Opus W1 225.6k, 285.4k and 314.4k, Opus W2 315.4k, 414.0k and 458.2k, Opus R1
+212.7k, 260.0k and 277.2k, Opus R2 216.9k, 302.4k and 349.3k. The twenty Luna reports hold 1.09M tokens, 837k of them cached input. The coordinator's own session was
 not counted.
 
 ## What stayed private
