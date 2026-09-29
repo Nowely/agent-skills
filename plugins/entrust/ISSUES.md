@@ -427,3 +427,18 @@ required packages in SKILL.md and advises against assuming them. A refused launc
 
 **Issue text.** A coordinator on a machine without the `codex` CLI or Node meets a failed launch the page does not
 explain. The page should name its dependencies in one line.
+
+## E92. Codex agents running side by side share one `$TMPDIR`, and the pages send each agent's overflow there as if it were its own
+
+**Evidence, level 3 for the collision, level 1 for the pages.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:152`
+"A field past the schema's cap goes whole into a file under the agent's temporary directory", and
+`plugins/entrust/plugin/skills/codex/SKILL.md:161` "a read agent's own writable root stays there"; the driver grants a
+read agent the whole `$TMPDIR` (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs:350`), and a report names no
+temporary directory of the agent's own. On 2026-09-28 twelve Codex Luna read agents ran side by side on one brief
+that allowed one findings file under `$TMPDIR`; two of them named the same `$TMPDIR/episodes-findings.txt` in
+`artifacts`, the file held one agent's list, and the other agent's list was lost, leaving only the counts in its report.
+
+**Issue text.** Codex agents that run side by side share the coordinator's `$TMPDIR`, while the orchestrate and codex
+pages describe it as each agent's own temporary directory. Two agents that pick the same file name overwrite each
+other, and a finding written there is lost without an error. Each agent should get a temporary directory of its own,
+or the pages should have every file an agent leaves carry the agent's id.
