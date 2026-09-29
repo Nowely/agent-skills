@@ -21,7 +21,7 @@ forensics remain in the repository references and release notes.
   whose result does not transfer, and naming the page keeps the two from disagreeing again.
 - **Every bulk fan-out, a swarm included, is piloted first.** A stronger model marks a few units, the bulk model runs
   the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort.
-  The orchestrate page carries the rule beside the bulk unit in Model tiers, not in Verification, which lies past
+  The swarm page's plan names the pilot's units, and its "go" covers the pilot and then the swarm. The orchestrate page carries the rule beside the bulk unit in Model tiers, not in Verification, which lies past
   what a compaction keeps (E77). Why: issue #22's
   pilot chose the effort and exposed a brief that counted process complaints; the replication's first pilot, on the
   brief as first assembled, found 12 extras in 22 and the brief gained four exclusions

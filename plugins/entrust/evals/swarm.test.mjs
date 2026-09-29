@@ -86,12 +86,12 @@ test("U1 a unit is the bulk row's unit, fifty at most, the template has its plac
       /one per line, fifty at most/,
       /one brief template with `\{\{UNIT\}\}` where the unit goes and `\{\{UNIT_ID\}\}` where its number goes/,
       /[Aa]ssemble one brief and open it whole before the launch, checking its paths, its count and each quote against its source/,
-      /pilot it: a stronger model marks a few units, the swarm's model runs the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort/,
       /Every brief carries `MODEL: luna` or `MODEL: terra`, `EFFORT: high` for Luna and `medium` for Terra/,
       /[Aa] swarm never carries a top-row or strong-row model, and it never writes: every agent is a read agent/,
       /Its `OUTPUT_SCHEMA:` file, under your temporary directory, holds the five fields' schema below/,
     /Announce the count, derived from the units with the plan saying why that many, before the launch/,
-    /Show the plan and stop; "go" covers the swarm as announced and nothing else/,
+    /Show the plan, the pilot's units in it, and stop; "go" covers the pilot and the swarm as announced and nothing else/,
+    /Pilot first: a stronger model marks the pilot's units, the swarm's model runs the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort; then launch the swarm at that effort/,
     );
     if (prose !== true) return prose;
     const models = [...flat.matchAll(/`MODEL: ([^`]+)`/g)].map((m) => m[1]);
