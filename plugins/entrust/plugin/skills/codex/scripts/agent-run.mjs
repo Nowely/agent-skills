@@ -198,8 +198,8 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       report reads as unknown, never success.
   node agent-run.mjs --pending --report-file REPORT [--dir DIR]
       Prints each request waiting on a decision — one DIR/approvals/pending lists — as REQUEST=<id>,
-      THREAD=root or the subagent's path, METHOD=, CAUSE= (sandbox: the same command had just failed
-      inside the sandbox; policy: no attempt was seen), CWD=, REASON= (the agent's own), ROOTS= (the
+      THREAD=root or the subagent's path, METHOD=, CAUSE= (asked: Codex asked before running the
+      command, and nothing on our side changes it), CWD=, REASON= (the agent's own), ROOTS= (the
       roots the agent may write, "; " between them), DEADLINE= (an ISO time, or none), then the command:
       whole, newlines kept, on the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, TOKEN drawn fresh for
       each print and never in the command. Every value outside that block is one line: a backslash, a

@@ -890,7 +890,7 @@ function handMailbox() {
   fs.mkdirSync(box, { mode: 0o700 });
   const put = (name, body) => fs.writeFileSync(path.join(box, name), JSON.stringify(body));
   const run = { pid: 4242, startedAtMs: 1790000000000, threadId: "thr_root", turnId: "turn_root" };
-  const request = (id, extra = {}) => ({ id, method: "item/commandExecution/requestApproval", kind: "command", cause: "policy",
+  const request = (id, extra = {}) => ({ id, method: "item/commandExecution/requestApproval", kind: "command", cause: "asked",
     command: "/bin/zsh -c 'vcs status'", cwd: "/work", reason: "the sandbox said no", roots: ["/tmp/agent-tmp"], deadlineAt: null,
     subagent: false, agentPath: null, fileChanges: null, run, askedAt: "2026-09-27T12:00:00.000Z", ...extra });
   // The ids the driver is waiting on, as it writes them.
@@ -975,7 +975,7 @@ test("a --run whose agent asks hands the request back: the --pending block for i
     const id = valueOf(lines, "REQUEST");
     if (lines.at(-1) !== `REPORT=${report}` || lines.at(-2) !== `WAITING=${id}` || lines.at(-3) !== "REQUESTS=1")
       problems.push(`the tail is not REQUESTS=, WAITING=, REPORT=: ${JSON.stringify(lines.slice(-3))}`);
-    for (const [name, want] of [["THREAD", "root"], ["METHOD", "item/commandExecution/requestApproval"], ["CAUSE", "policy"]])
+    for (const [name, want] of [["THREAD", "root"], ["METHOD", "item/commandExecution/requestApproval"], ["CAUSE", "asked"]])
       if (valueOf(lines, name) !== want) problems.push(`${name}=${valueOf(lines, name)}, not ${want}`);
     if (!/^20\d\d-/.test(valueOf(lines, "DEADLINE"))) problems.push(`DEADLINE=${valueOf(lines, "DEADLINE")}, not a time`);
     const token = /^COMMAND<<([0-9a-f]{12})$/m.exec(first.out)?.[1] ?? "none";
@@ -1133,12 +1133,12 @@ test("--pending names a subagent's request by its path in THREAD= and prints no 
   async () => {
     const { dir, report, put, request, pend } = handMailbox();
     put("1-aaaaaaaa.request.json", request("1-aaaaaaaa", { subagent: true, agentPath: "/root/writer", deadlineAt: "2026-09-27T12:55:00.000Z" }));
-    put("2-bbbbbbbb.request.json", request("2-bbbbbbbb", { cause: "sandbox" }));
+    put("2-bbbbbbbb.request.json", request("2-bbbbbbbb"));
     pend("1-aaaaaaaa", "2-bbbbbbbb");
     const { code, lines } = await launcherLines(["--pending", "--dir", dir, "--report-file", report]);
     const problems = [];
     if (code !== 0) problems.push(`exit ${code}`);
-    if (!lines.includes("THREAD=/root/writer") || !lines.includes("DEADLINE=2026-09-27T12:55:00.000Z") || !lines.includes("CAUSE=sandbox")) problems.push(`the request lines: ${JSON.stringify(lines)}`);
+    if (!lines.includes("THREAD=/root/writer") || !lines.includes("DEADLINE=2026-09-27T12:55:00.000Z") || !lines.includes("CAUSE=asked")) problems.push(`the request lines: ${JSON.stringify(lines)}`);
     if (lines.some((l) => /^(KIND|FILES|ACCESS|NETWORK|REPEAT_OF)=/.test(l))) problems.push(`a line for a field the mailbox no longer carries: ${JSON.stringify(lines)}`);
     if (lines.filter((l) => /^COMMAND<<[0-9a-f]{12}$/.test(l)).length !== 2) problems.push(`not one command block per request: ${JSON.stringify(lines)}`);
     if (valueOf(lines, "REQUESTS") !== "2") problems.push(`REQUESTS=${valueOf(lines, "REQUESTS")}`);
