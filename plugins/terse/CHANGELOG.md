@@ -37,6 +37,19 @@ forensics remain in the repository references and release notes.
   conversation: in the same report, the writer pointed to an earlier comment in the thread whose text the
   reader needed in hand.
 
+### Fixed
+
+- E84: `rewrite` links `writing-rules.md`, `curse-of-knowledge.md` and `truth.md` where it names the briefs that
+  receive them: the first two for the writer and the sentences critic, `truth.md` for every truth critic. Before, it
+  reached them only through `roles.md`, a second link away, and a model may read a page that far down partially.
+- E85: `references/measurements.md` opens with a list of its 34 entries, each a link to its anchor, so a preview of
+  its first 100 lines shows where every entry is. Before, it opened with ranges, and such a preview stopped at M20,
+  with fourteen entries unseen.
+- E87: `rewrite` names Node 22 or newer where it runs its section script. Before, only the README said so, and a
+  coordinator on a machine without Node met a shell error the page did not explain.
+- E88: `audit` gets no checklist to copy and tick off, so its page stays as it was. Its steps are numbered and each
+  needs the previous one's result, it reports to the person in prose, and no run has been seen to skip a step.
+
 ## 0.5.0 — 2026-09-28
 
 terse gets a genre note for skill pages and standing agent instructions, text whose reader is the model that

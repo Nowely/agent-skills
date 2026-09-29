@@ -14,7 +14,10 @@ license: MIT
 One writer, then every critic at once, then the writer once more and a check of what it changed, then
 your read. Each critic holds one concern, so none waits for another. Every role works from
 [rules.md](../../references/rules.md) — two requirements, a pleasant read and truth within the text's world,
-and advice taken where it helps; the briefs are in [roles.md](../../references/roles.md).
+and advice taken where it helps; the briefs are in [roles.md](../../references/roles.md). The writer and the
+sentences critic get [writing-rules.md](../../references/writing-rules.md) and
+[curse-of-knowledge.md](../../references/curse-of-knowledge.md) as the briefs' `<SENTENCES>`, and every truth
+critic gets [truth.md](../../references/truth.md) as `<TRUTH>`.
 
 ## Step 1. One message to the user
 
@@ -89,9 +92,9 @@ The writer again, on the repair brief of `roles.md`, sent every report: it takes
 becomes truer for its reader or easier to read, declines one that adds words the reader does not need
 there with a reason from the context, and writes `02-repaired.md` with that list. Then, in one message:
 truth, brief 3, on the sentences the repair changed; the question readers again; the two cold readers,
-brief 11. Run the script on it too, from this skill's `scripts/`, the directory beside this file — words per
-section of the draft and the repair side by side, a report: a section that grew, or one only one of them has,
-is where the repair added or lost text:
+brief 11. Run the script on it too, with Node 22 or newer, from this skill's `scripts/`, the directory beside
+this file — words per section of the draft and the repair side by side, a report: a section that grew, or one
+only one of them has, is where the repair added or lost text:
 
 ```bash
 node "${CLAUDE_SKILL_DIR}/scripts/sections.mjs" 01-draft.md 02-repaired.md
