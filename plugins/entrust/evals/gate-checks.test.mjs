@@ -224,50 +224,42 @@ test("the manifest: every launch is on the registered plan by id and model, an a
 
 // --------------------------------------------------------------- the split critic
 
-test("the split critic: no worker brief before it returns, each names its file, the shared interface has one owner",
-  "D12 (#16, T5): twenty agents on a bad split agree and are all wrong, and T5's fan-out started before its critique had finished",
+test("the split critic: no worker brief before it returns, each names the file in its artifacts, the shared interface has one writer",
+  "D12 (#16, T5): twenty agents on a bad split agree and are all wrong, and T5's fan-out started before its critique had finished; E59: the file is the critic's artifact, not the first path in its hand-back (a Codex critic's REPORT= line), and the owner is who wrote the file, not a brief that quotes the request",
   () => {
     const file = path.join(TMP, "split-7.md");
     fs.writeFileSync(file, "unit a: lib/a.mjs, owner W1\nunit b: lib/b.mjs, owner W2\ninterface lib/shared.mjs, shared by a and b, owner W1\n");
+    const REPORTS = { "/d/run/A1/report.json": { answerJson: { artifacts: [file, "/tmp/validate-split.py"] } },
+      "/d/run/C3/report.json": { answerJson: {}, filesTouched: ["lib/shared.mjs"] } };
     const critic = (s) => s.newAgent("/d/run/A1/report.json", "MODEL: astra\nTASK: critique this split of the task: unit a (lib/a.mjs), unit b (lib/b.mjs)")
-      .codex("Codex Astra A1: critique the split", "/d/run/A1/report.json", `DRIVER_EXIT=0\nPATH=own\nANSWER=Astra A1: done, the corrected split is ${file}`);
-    const worker = (s, id, unit, owns) => s.claude(`Opus ${id}: ${unit}`, "opus",
-      `TASK: change ${unit} from the split ${file}.\n${owns ? "You own lib/shared.mjs and may change it." : "Do not edit lib/shared.mjs; W1 owns it."}`, five());
-    const opts = { units: ["lib/a.mjs", "lib/b.mjs"], shared: "lib/shared.mjs" };
+      .codex("Codex Astra A1: critique the split", "/d/run/A1/report.json", "DRIVER_EXIT=0\nPATH=own\nANSWER=Astra A1: done, the corrected split is in artifacts");
+    // Each brief quotes the request, which names every file: only the writes decide who owns lib/shared.mjs.
+    const worker = (s, id, unit, writesShared) => s.claude(`Opus ${id}: ${unit}`, "opus",
+      `TASK: change ${unit} from the split ${file}.\nWhy: the user asked to rename fmt in lib/shared.mjs and update lib/a.mjs and lib/b.mjs.`,
+      five(), [`/work/${unit}`, ...(writesShared ? ["/work/lib/shared.mjs"] : [])]);
+    const opts = { units: ["lib/a.mjs", "lib/b.mjs"], shared: "lib/shared.mjs", reportOf: (p) => REPORTS[p] ?? null };
     const good = worker(worker(critic(session()), "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", false).parsed();
     const early = critic(worker(session(), "W1", "lib/a.mjs", true)).parsed();
-    const twoOwners = worker(worker(critic(session()), "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", true).parsed();
-    const noFile = critic(session()).claude("Opus W1: lib/a.mjs", "opus", "TASK: change lib/a.mjs. You own lib/shared.mjs.", five()).parsed();
+    const twoWriters = worker(worker(critic(session()), "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", true).parsed();
+    const codexWriter = worker(worker(critic(session()), "W1", "lib/a.mjs", true), "W2", "lib/b.mjs", false)
+      .newAgent("/d/run/C3/report.json", `MODEL: terra\nTASK: tidy lib/shared.mjs from the split ${file}`)
+      .codex("Codex Terra C3: tidy", "/d/run/C3/report.json").parsed();
+    const noWriter = worker(worker(critic(session()), "W1", "lib/a.mjs", false), "W2", "lib/b.mjs", false).parsed();
+    const noFile = critic(session()).claude("Opus W1: lib/a.mjs", "opus", "TASK: change lib/a.mjs and lib/shared.mjs.", five(), ["/work/lib/shared.mjs"]).parsed();
+    const fableCritic = (artifacts) => worker(session()
+      .claude("Fable S1: critique the split", "fable", "TASK: critique this split of the task: unit a (lib/a.mjs), unit b (lib/b.mjs)", five({ artifacts })),
+      "W1", "lib/a.mjs", true).parsed();
     return all(
       expectNone(G.splitAdmissionProblems(good, opts)),
       expectSome(G.splitAdmissionProblems(early, opts), /written before the split critic returned/),
-      expectSome(G.splitAdmissionProblems(twoOwners, opts), /2 worker briefs own lib\/shared\.mjs/),
+      expectSome(G.splitAdmissionProblems(twoWriters, opts), /2 agents wrote lib\/shared\.mjs, and it has one owner/),
+      expectSome(G.splitAdmissionProblems(codexWriter, opts), /2 agents wrote lib\/shared\.mjs/),
+      expectSome(G.splitAdmissionProblems(noWriter, opts), /0 agents wrote lib\/shared\.mjs/),
       expectSome(G.splitAdmissionProblems(noFile, opts), /do not name the corrected split/),
+      expectSome(G.splitAdmissionProblems(good, { ...opts, reportOf: () => null }), /the split critic's artifacts name no file/),
+      expectNone(G.splitAdmissionProblems(fableCritic([file]), opts)),
+      expectSome(G.splitAdmissionProblems(fableCritic([]), opts), /the split critic's artifacts name no file/),
       expectSome(G.splitAdmissionProblems(worker(session(), "W1", "lib/a.mjs", true).parsed(), opts), /no top-row agent was given the split/),
-    );
-  });
-
-test("the corrected split is read: an interface it omits, one its owner's brief omits, and a file a brief takes from its owner are each red",
-  "D12 (09 amendment): naming the critic's file is not admission; each brief is checked against the owners and interfaces the file gives",
-  () => {
-    const file = path.join(TMP, "split-8.md");
-    const run = (split, w1, w2) => {
-      fs.writeFileSync(file, split);
-      return session()
-        .newAgent("/d/run/A1/report.json", "MODEL: astra\nTASK: critique this split: unit a (lib/a.mjs), unit b (lib/b.mjs)")
-        .codex("Codex Astra A1: critique the split", "/d/run/A1/report.json", `DRIVER_EXIT=0\nANSWER=Astra A1: done, the corrected split is ${file}`)
-        .claude("Opus W1: lib/a.mjs", "opus", `TASK: from the split ${file}: ${w1}`, five())
-        .claude("Opus W2: lib/b.mjs", "opus", `TASK: from the split ${file}: ${w2}`, five()).parsed();
-    };
-    const opts = { units: ["lib/a.mjs", "lib/b.mjs"], shared: "lib/shared.mjs" };
-    const full = "unit a: lib/a.mjs, owner W1\nunit b: lib/b.mjs, owner W2\ninterface lib/shared.mjs, shared by a and b, owner W1\n";
-    const w1 = "change lib/a.mjs.\nYou own lib/shared.mjs and may change it.", w2 = "change lib/b.mjs.\nDo not edit lib/shared.mjs; W1 owns it.";
-    return all(
-      expectNone(G.splitAdmissionProblems(run(full, w1, w2), opts)),
-      expectSome(G.splitAdmissionProblems(run("unit a: lib/a.mjs, owner W1\nunit b: lib/b.mjs, owner W2\n", w1, w2), opts), /omits the shared interface lib\/shared\.mjs/),
-      expectSome(G.splitAdmissionProblems(run(full, "change lib/a.mjs.", "change lib/b.mjs.\nYou own lib/shared.mjs and may change it."), opts), /gives lib\/shared\.mjs to W1, whose brief does not own it/),
-      expectSome(G.splitAdmissionProblems(run(full, w1, "change lib/b.mjs and lib/a.mjs."), opts), /W2's brief owns lib\/a\.mjs, which the corrected split gives to W1/),
-      expectSome(G.splitAdmissionProblems(run(full.replace("shared by a and b, owner W1", "shared by W1 and W2"), w1, w2), opts), /gives the interface lib\/shared\.mjs 0 owners/),
     );
   });
 

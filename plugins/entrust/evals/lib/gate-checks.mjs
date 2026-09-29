@@ -359,11 +359,27 @@ export function manifestProblems({ planTurn, runTurn, rows, finalText = "" }) {
   return problems;
 }
 
+// Every write an agent was seen to make, as { id, file } with the path as written: a Claude agent's writes
+// are the Write, Edit and NotebookEdit calls under its Agent call, however deep; a Codex agent's are its
+// report's filesTouched. A write made through a shell command is not visible here.
+function writesSeen(s, reports) {
+  const byId = new Map(s.toolUses.filter((u) => u.id).map((u) => [u.id, u]));
+  const top = (u) => { let x = u; while (x?.parent && byId.get(x.parent)) x = byId.get(x.parent); return x; };
+  const seen = [];
+  for (const u of s.toolUses.filter((x) => x.parent && ["Write", "Edit", "NotebookEdit", "MultiEdit"].includes(x.name))) {
+    const t = top(u);
+    const d = t && AGENT_TOOLS.has(t.name) ? describedAgent(t) : null;
+    const file = String(u.input.file_path ?? u.input.notebook_path ?? "");
+    if (d && file) seen.push({ id: d.id, file });
+  }
+  for (const r of reports)
+    for (const f of r.report?.filesTouched ?? []) seen.push({ id: r.id, file: String(f) });
+  return seen;
+}
+
 // Every write an agent was seen to make, against the writes its row allows: `nothing`, `live tree` (under
 // the working directory), `write <dir>` (under that directory), `worktree` (its own tree, under the
-// repository's .claude directory). A write under the temporary directory is every agent's. A Claude
-// agent's writes are the Write, Edit and NotebookEdit calls under its Agent call, however deep; a Codex
-// agent's are its report's filesTouched. A write made through a shell command is not visible here.
+// repository's .claude directory). A write under the temporary directory is every agent's.
 export function writesProblems({ s, rows = [], reports = [], cwd, tmp = [] }) {
   const problems = [];
   if (!rows.length) return problems;
@@ -390,65 +406,26 @@ export function writesProblems({ s, rows = [], reports = [], cwd, tmp = [] }) {
     const dir = /^write\s+(\S.*)$/.exec(w)?.[1];
     return dir ? under(file, dir) : false;
   };
-  const byId = new Map(s.toolUses.filter((u) => u.id).map((u) => [u.id, u]));
-  const top = (u) => { let x = u; while (x?.parent && byId.get(x.parent)) x = byId.get(x.parent); return x; };
-  const seen = [];
-  for (const u of s.toolUses.filter((x) => x.parent && ["Write", "Edit", "NotebookEdit", "MultiEdit"].includes(x.name))) {
-    const t = top(u);
-    const d = t && AGENT_TOOLS.has(t.name) ? describedAgent(t) : null;
-    const file = String(u.input.file_path ?? u.input.notebook_path ?? "");
-    if (d && file) seen.push({ id: d.id, file: path.isAbsolute(file) ? file : path.join(cwd, file) });
-  }
-  for (const r of reports)
-    for (const f of r.report?.filesTouched ?? []) seen.push({ id: r.id, file: path.isAbsolute(f) ? f : path.join(cwd, f) });
-  for (const w of seen) {
+  for (const w of writesSeen(s, reports)) {
     const row = planRowOf(w.id, rows)?.row;
     if (!row) continue;
-    if (!allowed(row, w.file)) problems.push(`${w.id} wrote ${path.relative(cwd, w.file) || w.file}, outside its row's writes (${row.writes})`);
+    const file = path.isAbsolute(w.file) ? w.file : path.join(cwd, w.file);
+    if (!allowed(row, file)) problems.push(`${w.id} wrote ${path.relative(cwd, file) || file}, outside its row's writes (${row.writes})`);
   }
   return problems;
 }
 
 // --------------------------------------------------------------- the split critic
 
-// No worker brief exists before the split critic returns; each names the critic's file; the shared
-// interface has one owner among the briefs (#16's acceptance check, T5's bypass). The owner test reads a
-// brief's lines for the shared path beside a verb of ownership, which is a heuristic.
 const escapeRe = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const FILE_RE = /(?<![\w/.-])((?:[\w.-]+\/)*[\w-]+\.(?:mjs|cjs|js|jsx|ts|tsx|py|rb|go|rs|java|c|h|sh|md|json|ya?ml|toml|txt|css|html))(?![\w/])/g;
-// A line of a brief that names the path beside a verb of ownership, and does not negate it.
-const ownsPath = (text, file) => text.split("\n").some((l) => l.includes(file)
-  && /\b(own|owns|owner|write|writes|edit|edits|change|changes|modify|rename|update)\b|владе|пиш|измен/i.test(l)
-  && !/\b(do not|don't|never|not)\b[^.]*\b(own|write|edit|change|modify|rename|update)|не (?:пиш|измен|трог)/i.test(l));
 
-// The corrected split as the critic wrote it: which worker id owns which path, and which paths are the
-// interfaces units share. A line naming paths and one worker id gives it those paths; a line naming several
-// gives them to the id after "owner" or "owned by"; a line that says interface or shared marks its paths as
-// interfaces. Heuristic over free text: the page fixes no format for the file.
-export function parseSplit(text, ids) {
-  const owners = new Map();
-  const interfaces = new Set();
-  for (const line of String(text).split("\n")) {
-    const files = [...line.matchAll(FILE_RE)].map((m) => m[1]);
-    if (!files.length) continue;
-    const named = ids.filter((id) => new RegExp(`(?<![A-Za-z0-9])${escapeRe(id)}(?![A-Za-z0-9-])`, "i").test(line));
-    let owner = named.length === 1 ? named[0] : null;
-    if (!owner && named.length > 1) {
-      const m = new RegExp(`(?:owner|owned by|владелец)[:\\s]+(${named.map(escapeRe).join("|")})`, "i").exec(line);
-      owner = m ? named.find((id) => id.toLowerCase() === m[1].toLowerCase()) : null;
-    }
-    const iface = /interface|shared|интерфейс|общ/i.test(line);
-    for (const f of files) {
-      if (iface) interfaces.add(f);
-      if (owner) owners.set(f, new Set([...(owners.get(f) ?? []), owner]));
-    }
-  }
-  return { owners, interfaces };
-}
-
-// No worker brief exists before the split critic returns; each names the critic's file; the corrected split,
-// read from that file, gives every interface one owner, and each brief owns what the split gives it and
-// nothing it gives another (#16's acceptance check, T5's bypass).
+// No worker brief exists before the split critic returns; each names the file the critic published in its
+// artifacts; and the shared interface has one owner, counted from the agents seen writing it (#16's
+// acceptance check, T5's bypass). What the briefs and the split say about owners is not read: measured on
+// the live gate's case 7 (2026-09-28), a brief quoting the request read as owning every file it named, and
+// the critic's report.json, the first path in its hand-back, read as the split, while each file had one
+// writer.
 export function splitAdmissionProblems(s, { units, shared, reportOf = null, read = (p) => fs.readFileSync(p) }) {
   const bs = briefs(s);
   const problems = [];
@@ -461,37 +438,19 @@ export function splitAdmissionProblems(s, { units, shared, reportOf = null, read
   if (!workers.length) problems.push("no worker brief names a unit of the task");
   const early = workers.filter((w) => critic.done === null || w.seq < critic.done);
   if (early.length) problems.push(`${early.length} worker brief(s) written before the split critic returned`);
-  // A Codex critic's hand-back carries the answer's first line only when it is long; its report has the rest.
-  const report = critic.side === "codex" && reportOf ? reportOf(critic.report) : null;
-  const criticText = [s.results.get(critic.call?.id)?.text ?? "", JSON.stringify(report?.answerJson ?? report?.answer ?? "")].join("\n");
-  const file = absolutePaths(criticText).find((p) => /\.(?:md|txt|json)$/.test(p)) ?? null;
-  if (!file) problems.push("the split critic's return names no file for the corrected split");
+  // A Codex critic's artifacts are in its report; a Claude critic's are the artifacts field of its return.
+  const artifacts = critic.side === "codex" ? (reportOf ? reportOf(critic.report) : null)?.answerJson?.artifacts
+    : parseFiveFields(s.results.get(critic.call?.id)?.text ?? "").fields.artifacts;
+  const file = (Array.isArray(artifacts) ? artifacts : []).find((p) => /\.(?:md|txt|json)$/.test(String(p))) ?? null;
+  if (!file) problems.push("the split critic's artifacts name no file for the corrected split");
   else {
     const without = workers.filter((w) => !w.text.includes(file));
     if (without.length) problems.push(`${without.length} worker brief(s) do not name the corrected split ${file}`);
-    let text = null;
-    try { text = read(file).toString("utf8"); } catch { problems.push(`the corrected split ${file} cannot be read`); }
-    if (text !== null) {
-      const ids = workers.map((w) => w.id).filter(Boolean);
-      const { owners, interfaces } = parseSplit(text, ids);
-      if (shared && !interfaces.has(shared)) problems.push(`the corrected split omits the shared interface ${shared}`);
-      for (const f of interfaces) {
-        const o = [...(owners.get(f) ?? [])];
-        if (o.length !== 1) problems.push(`the corrected split gives the interface ${f} ${o.length} owners`);
-      }
-      for (const [f, o] of owners)
-        for (const id of o) {
-          const w = workers.find((x) => x.id?.toLowerCase() === id.toLowerCase());
-          if (w && !ownsPath(w.text, f)) problems.push(`the corrected split gives ${f} to ${id}, whose brief does not own it`);
-        }
-      for (const w of workers)
-        for (const [f, o] of owners)
-          if (![...o].some((id) => id.toLowerCase() === w.id?.toLowerCase()) && ownsPath(w.text, f))
-            problems.push(`${w.id}'s brief owns ${f}, which the corrected split gives to ${[...o].join(", ")}`);
-    }
+    try { read(file); } catch { problems.push(`the corrected split ${file} cannot be read`); }
   }
-  const owners = workers.filter((w) => ownsPath(w.text, shared));
-  if (owners.length !== 1) problems.push(`${owners.length} worker briefs own ${shared}, and it has one owner`);
+  const reports = bs.filter((b) => b.side === "codex" && reportOf).map((b) => ({ id: b.id, report: reportOf(b.report) }));
+  const writers = new Set(writesSeen(s, reports).filter((w) => w.file === shared || w.file.endsWith(`/${shared}`)).map((w) => w.id.toLowerCase()));
+  if (writers.size !== 1) problems.push(`${writers.size} agents wrote ${shared}, and it has one owner`);
   return problems;
 }
 
