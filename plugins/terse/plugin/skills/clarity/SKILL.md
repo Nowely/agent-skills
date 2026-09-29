@@ -52,6 +52,8 @@ Ask when it matters; no line has to satisfy all six.
 - Is the conclusion visible before the supporting detail when the reader needs a decision?
 - Does each factual or numerical claim say no more than the evidence supports, with the comparison
   named where it changes the conclusion?
+- Does every item under a heading or group label fit what the label says? The reader applies the label
+  to each item ([truth](../../references/truth.md#true-but-not-where-it-is-read)).
 - Can the recipient tell what changed, from what to what, and why that matters to them?
 - Is any warning proportional to the consequence and the action required of this recipient?
 - Can this text be read, copied, or forwarded in its destination without missing context or an

@@ -10,6 +10,10 @@ forensics remain in the repository references and release notes.
 - `clarity`'s second question before writing also asks what comes back, and when neither the owner nor the
   sources settle what the reader will do, it has the writer ask the owner instead of inferring it: in a field
   report, a reply in a long thread was built on a division of work the writer had pieced together.
+- `clarity` checks after writing that every item under a heading or group label fits the label, since the
+  reader applies the label to each item: in the same report, the writer checked explicit claims while a group
+  label placed an item where it did not belong. The check sits on clarity's own page because the session did
+  not open `truth.md` while drafting.
 
 ## 0.5.0 — 2026-09-28
 
