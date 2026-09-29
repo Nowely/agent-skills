@@ -30,18 +30,21 @@ const cases = ids.map((id) => allCases.find((c) => c.id === id));
 const arms = options.withoutPlugin ? ["without-plugin"] : ["with-plugin"];
 const candidate = path.resolve(options.candidate);
 const tempRoot = fs.realpathSync(process.env.TMPDIR || os.tmpdir());
-const hookSettings = JSON.stringify({ disableAllHooks: true });
+// A false for the installed terse's id in --settings turns it off for this session only, above the user
+// settings file; the candidate loads through --plugin-dir as terse@inline, which this key does not name.
+const launchSettings = { disableAllHooks: true, enabledPlugins: { "terse@nowely": false } };
+const launchSettingsJson = JSON.stringify(launchSettings);
 const blockedTools = ["Read", "Glob", "Grep", "WebFetch", "WebSearch", "Agent", "Task", "ListAgents", "SendMessage", "NotebookEdit", "PowerShell", "REPL"];
 // Claude Code checks Write paths against Edit(path) rules; task.md is relative to cwd.
 const allowedFor = (id) => id === "status-done" ? "Skill,Bash(pwd)" : id === "agent-task-file" ?
   "Skill,Edit(task.md)" : "Skill";
 const disallowedFor = (id) => [...blockedTools, ...(id === "agent-task-file" ? [] : ["Edit"]),
   ...(id === "status-done" ? [] : ["Bash"]), ...(id === "agent-task-file" ? [] : ["Write"])].join(",");
-const sessionSettings = (id, cwd) => ({ hooks: { disableAllHooks: true }, strictMcpConfig: true,
-  settingSources: "ordinary profile; project and local settings only if visible from temporary cwd", sessionPersistence: false,
+const sessionSettings = (id, cwd) => ({ hooks: { disableAllHooks: true }, enabledPlugins: launchSettings.enabledPlugins, strictMcpConfig: true,
+  settingSources: "ordinary profile with terse@nowely disabled by --settings; project and local settings only if visible from temporary cwd", sessionPersistence: false,
   permissionMode: "dontAsk", allowedTools: allowedFor(id), disallowedTools: disallowedFor(id), cwd });
 const command = (arm, caseItem) => ["claude", "-p", "--strict-mcp-config",
-  "--no-session-persistence", "--permission-mode", "dontAsk", "--settings", hookSettings,
+  "--no-session-persistence", "--permission-mode", "dontAsk", "--settings", launchSettingsJson,
   "--allowedTools", allowedFor(caseItem.id), "--disallowedTools", disallowedFor(caseItem.id),
   ...(arm === "with-plugin" ? ["--plugin-dir", candidate] : []),
   "--output-format", "stream-json", "--verbose", caseItem.prompt];

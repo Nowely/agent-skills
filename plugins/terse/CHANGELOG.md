@@ -42,6 +42,9 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- E99: the trigger suite turns the installed terse off for its sessions with `enabledPlugins` in the `--settings`
+  JSON it already passes, so the control arm counts on a machine where terse is installed. Before, every control
+  session loaded the installed terse and the arm counted nothing.
 - E84: `rewrite` links `writing-rules.md`, `curse-of-knowledge.md` and `truth.md` where it names the briefs that
   receive them: the first two for the writer and the sentences critic, `truth.md` for every truth critic. Before, it
   reached them only through `roles.md`, a second link away, and a model may read a page that far down partially.
