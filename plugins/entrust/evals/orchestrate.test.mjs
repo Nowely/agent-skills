@@ -807,6 +807,10 @@ test("D13 the bulk row announces its count before spawning, like any other fan-o
   "the bulk row sits outside the alive cap, which is exactly the row a count could grow in unannounced; the clause was deleted alongside the Luna preference in the 2026-09-17 mutation baseline and the suite stayed green",
   () => says("announce its count before spawning, like any other fan-out"));
 
+test("D15 the bulk row's batch route is the swarm, which only the user starts",
+  "issue #22's 456 Luna runs and the writing replication's collection both launched bulk batches by hand, with no wrapper, and the page named no batch route; the swarm is that route, and its limits are E90's",
+  () => says("A bulk batch runs as a swarm, which only the user starts, with `/entrust:swarm`: one script launches its agents under a concurrency cap, and one Stop ends the batch."));
+
 test("D14 every bulk fan-out is piloted against a stronger model's marking, and the pilot decides the brief's fixes and the effort",
   "issue #22's pilot chose the effort and exposed a brief that counted process complaints, and the writing replication's first pilot found 12 extras in 22 on the brief as assembled; the split critique reads the decomposition and caught neither. The rule sits in Model tiers because Verification lies past what a compaction keeps (E77)",
   () => says(
