@@ -15,10 +15,10 @@ forensics remain in the repository references and release notes.
   (`plugins/terse/research/2026-09-26-writing-replication/measures/pilot-decision.md`) `high` and `medium` both found
   21 of 21, with 1 extra in 31 against 4 in 34 (p = 0.36) at median tokens per run of 129,873 and 128,657. `high`
   over `medium` is the owner's choice, not a significant result; neither pilot ran `low` on a verification unit.
-- **Experiment protocols E1 and E2 run their Luna and Terra arms at the orchestrate page's effort for each row.**
-  They said `low`: E1's bulk arm now runs at `high`, and E2's Terra arm, a closed-set judgement, already disagreed
-  with the cheap row's `medium` for judgement. Why: an arm at an effort no coordinator uses measures a configuration
-  whose result does not transfer, and naming the page keeps the two from disagreeing again.
+- **Experiment protocols E1 and E2 run their Luna arms at `high` and E2's Terra arm at `medium`.** They said `low`,
+  which the bulk row's verification no longer is, and E2's Terra arm, a closed-set judgement, already disagreed with
+  the cheap row's `medium` for judgement. Why: an arm at an effort no coordinator uses measures a configuration whose
+  result does not transfer.
 - **Every bulk fan-out, a swarm included, is piloted first.** A stronger model marks a few units, the bulk model runs
   the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort.
   The swarm page's plan names the pilot's units, and its "go" covers the pilot and then the swarm. The orchestrate page carries the rule beside the bulk unit in Model tiers, not in Verification, which lies past
