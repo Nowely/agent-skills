@@ -456,7 +456,9 @@ the table in `roles.md`: 12 of 22 come back `null`.
 half of those names when the plan is registered: a plan with an architect, an area scout, a measurer or the foreman
 exits 2 before its card can be shown, and a coordinator that renames the role to a word the pattern knows gets a
 card that no longer says what the agent does. The launcher should accept every role the reference defines, counting
-each as a worker, a checker or neither, or the plan step should say which words the launcher counts.
+each as a worker, a checker or neither, or the plan step should say which words the launcher counts. The bulk row's
+extraction agent, which the orchestrate page's unit now allows, has no row in the reference and no name the pattern
+accepts: "bulk extractor", "extractor" and "bulk reader" are all refused, while "bulk verifier" counts as a checker.
 
 ## E90. The swarm, the bulk row's route for verdict batches, is user-only, called an experiment, fifty units at most, and reports no tokens
 
