@@ -26,7 +26,7 @@
 //   F12c         the advisor's assembled prompts: MODEL astra, the shipped schema, no EFFORT line            8
 //   F2, P14a     a slash command first expands the page; the command last is recorded, not judged          9
 //   F18, P5      the codex page loaded only by a plan with a Codex agent, before the launcher's first call  1, 5, 6
-//   F13, P9a, F3 the card's five rows, every registered agent on it, workers and checkers counted apart     1, 5, 6
+//   F13, P9a, F3 the card's five rows and every registered agent on it                                      1, 5, 6
 //   F14, P9b     launches and each agent's writes reconciled with its registered row; a dropped one named  5, 7
 //   F6, Q3a      briefs only after the split critic, each naming its file; the shared file has one writer   7
 //   F4, P8b      the critic returns its manifest's sha256; nothing changed after; the answer is the draft  5, 7
@@ -105,7 +105,7 @@ import { DRIVER, ROOT, SYSTEM_TMP, registry, runCases, summarize } from "./lib/h
 import {
   CODEX_SLUG, advisorBriefs, advisorPromptProblems, activationRecord, agentCalls, cardProblems, codexCalls,
   codexCommand, codexLoadProblems, isCodexCall, isTierModel, parseStream, planRecord, runProblems as checkRun,
-  planOutputOf, skillCalls, splitAdmissionProblems, topRowAgents, workflowCalls,
+  skillCalls, splitAdmissionProblems, topRowAgents, workflowCalls,
 } from "./lib/gate-checks.mjs";
 import { parseReceipts } from "../plugin/skills/orchestrate/scripts/lint-draft.mjs";
 
@@ -444,8 +444,8 @@ function planProblems({ s, scratch, head0, codexPlanned = true }) {
   const reg = registeredPlan(scratch);
   if (codexPlanned && !reg) problems.push("a plan with a Codex agent registered nothing with the launcher's --plan");
   if (!codexPlanned && reg) problems.push(`an all-Claude plan registered ${reg.file}`);
-  // D6/D9: the card of five rows, every registered agent on it, workers and checking agents counted apart.
-  problems.push(...cardProblems(text, reg?.rows ?? null, { counted: planOutputOf(s) }));
+  // D6/D9: the card of five rows and every registered agent on it.
+  problems.push(...cardProblems(text, reg?.rows ?? null));
   // The plan no longer prints the run directory. A resolved path is machinery aimed at the one reader who
   // cannot act on it, and the page now asks for the fact in ordinary words instead, so there is nothing
   // language-independent left to match: measured, every natural phrasing of "outside the repository" fails

@@ -14,9 +14,8 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { lintDraft } from "../../plugin/skills/orchestrate/scripts/lint-draft.mjs";
-// The launcher's own matcher and classifier, not copies: a continuation it admits, or a role it counts as a
-// worker, reads the same here.
-import { classifyRole, planRowOf } from "../../plugin/skills/codex/scripts/agent-run.mjs";
+// The launcher's own matcher, not a copy: a continuation it admits reads the same here.
+import { planRowOf } from "../../plugin/skills/codex/scripts/agent-run.mjs";
 
 // --------------------------------------------------------------- the stream
 
@@ -212,44 +211,14 @@ const CARD = {
   cost: label("costs?|стоимость|цена|токены"),
   checks: label("checks?|verification|проверки|проверка"),
 };
-const NUMBER = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
-  один: 1, одна: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, шесть: 6 };
-const countNear = (text, re) => {
-  const m = new RegExp(`(?<![\\p{L}\\d])(\\d+|${Object.keys(NUMBER).join("|")})\\s+(?:${re.source})`, "iu").exec(text);
-  return m ? Number(NUMBER[m[1].toLowerCase()] ?? m[1]) : null;
-};
-
 // The card row a line is, by the label it opens with once the table and emphasis marks are off, or null.
 export function cardLabelOf(line) {
   const l = String(line).replace(/^[\s>|#*_\-\d.]+/, "").replace(/^\*\*/, "").trim();
   return Object.entries(CARD).find(([, re]) => re.test(l))?.[0] ?? null;
 }
 
-// The workers and the checking agents the card's who row counts, in the phrasings plans use: "3 workers",
-// "3 do the work, 3 check it", "3 выполняют работу, 3 проверяют". Read from the who row alone: an
-// assumption such as "one worker doing all three edits would be cheaper" is not the count (measured on the
-// live gate's case 7, 2026-09-28). Heuristic over free text.
-export function cardCounts(text) {
-  const who = String(text).split("\n").filter((l) => cardLabelOf(l) === "who").join("\n");
-  if (!who) return null;
-  return {
-    workers: countNear(who, /do the work|do it|workers?|implementers?|writers?|editors?|edit\b|выполня\p{L}*|исполнител\p{L}*|работник\p{L}*/u),
-    checking: countNear(who, /check(?:s|ing)?(?: it| the work)?\b|checking agents?|checkers?|verifiers?|critics?|reviewers?|assurance|проверя\p{L}*|проверяющ\p{L}*/u),
-  };
-}
-
-// The launcher's own count of the registered plan, WORKERS= and CHECKING= off the last --plan call.
-export function planOutputOf(s) {
-  const call = rootUses(s).filter((u) => isLauncher(u, "plan")).pop();
-  const out = call ? s.results.get(call.id)?.text ?? "" : "";
-  const w = /^WORKERS=(\d+)$/m.exec(out)?.[1], c = /^CHECKING=(\d+)$/m.exec(out)?.[1];
-  return w === undefined || c === undefined ? null : { workers: Number(w), checking: Number(c) };
-}
-
-// The card's five rows by the labels the page names, and, against the registered plan, every agent on it
-// and the workers and the checking agents its who row counts, as the launcher's classifier counts them
-// (`counted`, the --plan call's own output, when the stream has it).
-export function cardProblems(text, rows = null, { counted = null } = {}) {
+// The card's five rows by the labels the page names, and, against the registered plan, every agent on it.
+export function cardProblems(text, rows = null) {
   const problems = [];
   const labels = new Set(String(text).split("\n").map(cardLabelOf).filter(Boolean));
   const missing = Object.keys(CARD).filter((k) => !labels.has(k));
@@ -257,14 +226,6 @@ export function cardProblems(text, rows = null, { counted = null } = {}) {
   if (rows) {
     const absent = rows.filter((r) => !new RegExp(`(?<![A-Za-z0-9])${r.id}(?![A-Za-z0-9])`, "i").test(text)).map((r) => r.id);
     if (absent.length) problems.push(`the card does not show ${absent.join(", ")}, registered in the plan`);
-    const classified = { workers: rows.filter((r) => classifyRole(r.role) === "worker").length, checking: rows.filter((r) => classifyRole(r.role) === "checking").length };
-    if (counted && (counted.workers !== classified.workers || counted.checking !== classified.checking))
-      problems.push(`the launcher counted ${counted.workers} worker(s) and ${counted.checking} checking, the registered rows classify as ${classified.workers} and ${classified.checking}`);
-    const said = cardCounts(text);
-    const want = counted ?? classified;
-    // A plan whose coordinator writes registers no worker, and its card may count the coordinator as one.
-    if (said?.workers != null && want.workers > 0 && said.workers !== want.workers) problems.push(`the card counts ${said.workers} worker(s), the plan registers ${want.workers}`);
-    if (said?.checking != null && said.checking !== want.checking) problems.push(`the card counts ${said.checking} checking agent(s), the plan registers ${want.checking}`);
   }
   return problems;
 }

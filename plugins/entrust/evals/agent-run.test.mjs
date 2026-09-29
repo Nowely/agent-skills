@@ -12,7 +12,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { DRIVER, EXIT, FAKE, SCRIPTS, codexShim, readJson, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
-import { ACCEPTED, REFUSED, STATUS_LINES, TAKEN, agentDirOf, classifyRole, planRowOf, shortName } from "../plugin/skills/codex/scripts/agent-run.mjs";
+import { ACCEPTED, REFUSED, STATUS_LINES, TAKEN, agentDirOf, planRowOf, shortName } from "../plugin/skills/codex/scripts/agent-run.mjs";
 
 const LAUNCHER = path.join(SCRIPTS, "agent-run.mjs");
 const DRIVER_SRC = fs.readFileSync(path.join(SCRIPTS, "driver.mjs"), "utf8");
@@ -95,7 +95,7 @@ test("--help names the plan, new and run modes and exits 0",
     const { code, out } = await spawnNode([LAUNCHER, "--help"], { killAfterMs: 10000 }).done;
     if (code !== 0) return `--help exited ${code}`;
     for (const s of ["--plan --run-dir RUN", "--plan --amend", "--new --report-file REPORT", "--run --report-file REPORT", "--status",
-                     "RUNNING=", "--check-prompt-file", "planRowOf", "classifyRole", "unknown", "<absolute dir>", ...STATUS_LINES,
+                     "RUNNING=", "--check-prompt-file", "planRowOf", "the role is any text", "unknown", "<absolute dir>", ...STATUS_LINES,
                      "APPROVALS=", "WAITING=<id>[,<id>]", "waiting —", "ended —", "refused —", "--pending --report-file REPORT",
                      "--decide ID --accept|--decline [--why TEXT]", "COMMAND<<", "COMMAND>>", "REQUESTS=", "ORPHANED=",
                      "DECIDED=", "LATE=", "STALE=", "REFUSED=", "approvals=A/D/E/O", "auto=N", "late=N", "stale=N"])
@@ -742,7 +742,7 @@ test("D6 --plan registers rows, --new refuses an unlisted id, and an explicit am
       return h.done;
     };
     const first = await plan("id | model | role | writes | tokens\nA | sol | writer | worktree | 1000\n");
-    const expected = `PLAN=${path.join(runDir, "plan.txt")}\nAGENT=A sol worktree\nWORKERS=1\nCHECKING=0\n`;
+    const expected = `PLAN=${path.join(runDir, "plan.txt")}\nAGENT=A sol worktree\n`;
     if (first.code !== 0 || first.out !== expected) return `registration: exit ${first.code}, ${JSON.stringify(first.out)}`;
     const outsider = path.join(runDir, "B", "report.json");
     const refused = await newAgent(outsider);
@@ -750,7 +750,7 @@ test("D6 --plan registers rows, --new refuses an unlisted id, and an explicit am
     if (refused.code !== 2 || refused.out !== reason || fs.existsSync(path.join(runDir, "B", "agent", "prompt.txt")))
       return `unlisted: exit ${refused.code}, ${JSON.stringify(refused.out)}`;
     const amendment = await plan("B | luna | verifier | nothing | 400\n", true);
-    if (amendment.code !== 0 || amendment.out !== `AMENDED=${path.join(runDir, "plan.txt")}\nAGENT=B luna nothing\nWORKERS=1\nCHECKING=1\n`
+    if (amendment.code !== 0 || amendment.out !== `AMENDED=${path.join(runDir, "plan.txt")}\nAGENT=B luna nothing\n`
       || !/# amended \d{4}-\d\d-\d\dT/.test(read(path.join(runDir, "plan.txt")) ?? ""))
       return `amendment: exit ${amendment.code}, ${JSON.stringify(amendment.out)}`;
     const admitted = await newAgent(outsider);
@@ -776,9 +776,7 @@ test("D6 plan continuations, Claude rows, report shape, case, roles and unknown 
     };
     const rows = "id | model | role | writes | tokens\nSol-W3 | sol | writer | worktree | unknown\nOpus-R3 | opus | reviewer | nothing | 300\n";
     const first = await plan(rows);
-    if (first.code !== 0 || !first.out.includes("WORKERS=1\nCHECKING=1")) return `plan exit=${first.code}: ${first.out}`;
-    if (classifyRole("writer") !== "worker" || classifyRole("reviewer") !== "checking" || classifyRole("misc") !== null)
-      return "role classifier disagrees";
+    if (first.code !== 0 || /^(WORKERS|CHECKING)=/m.test(first.out)) return `plan exit=${first.code}: ${first.out}`;
     const registered = [{ id: "Sol-W3", model: "sol" }, { id: "Opus-R3", model: "opus" }];
     if (planRowOf("sol-w3-2", registered, runDir)?.previous !== "Sol-W3") return "exported matcher missed the continuation";
     const launch = (name, tail = "report.json") => newAgent(path.join(runDir, name, tail));
@@ -803,10 +801,13 @@ test("D6 plan continuations, Claude rows, report shape, case, roles and unknown 
       || !deep.out.includes("/<row id or continuation>/report.json")) return `report form: ${wrong.out} ${deep.out}`;
     const duplicate = await plan("sol-w3 | sol | writer | nothing | 1\n", true);
     const reserved = await plan("A-2 | sol | writer | nothing | 1\n", true);
-    const unknown = await plan("X | sol | other | nothing | 1\n", true);
-    return duplicate.code === 2 && reserved.code === 2 && unknown.code === 2
+    // E89: the role is the coordinator's word, and the roles reference is open; a word list refused 12 of its
+    // 22 rows, the architect, the foreman and the area scout among them (2026-09-29).
+    const roles = await plan("X | sol | architect | nothing | 1\nY | opus | foreman | nothing | unknown\nZ | luna | area scout | nothing | 1\n", true);
+    return duplicate.code === 2 && reserved.code === 2 && roles.code === 0
       && duplicate.out.includes("duplicate agent id") && reserved.out.includes("form names a continuation")
-      && unknown.out.includes("invalid role") || `plan refusals: ${duplicate.out} ${reserved.out} ${unknown.out}`;
+      && roles.out.endsWith("\nAGENT=X sol nothing\nAGENT=Y opus nothing\nAGENT=Z luna nothing\n")
+      || `plan refusals: ${duplicate.out} ${reserved.out}; roles: exit ${roles.code}, ${roles.out}`;
   });
 
 test("D16 --new registers a prompt with maxLength and the driver's offline check accepts it",

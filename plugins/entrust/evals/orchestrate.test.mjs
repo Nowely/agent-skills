@@ -289,14 +289,6 @@ test("C13 the plan is a card of five rows over agents the launcher registered, a
     const launcher = path.join(SCRIPTS, "agent-run.mjs");
     const help = run(launcher, ["--help"]).stdout ?? "";
     for (const flag of ["--plan", "--run-dir", "--amend"]) if (!help.includes(flag)) problems.push(`the launcher's --help does not advertise ${flag}`);
-    // The counts the card shows are what --plan prints, not the coordinator's own tally.
-    const dir = tempDir("orchestrate-plan.");
-    const rows = "W1 | opus | implementer | live tree | 300000\nR1 | sol | cross-reviewer | nothing | 200000\nC1 | opus | completeness critic | nothing | unknown\n";
-    const plan = run(launcher, ["--plan", "--run-dir", path.join(dir, "run")], { input: rows });
-    const count = (k) => new RegExp(`^${k}=(\\d+)$`, "m").exec(plan.stdout)?.[1];
-    if (plan.status !== 0) problems.push(`--plan exited ${plan.status}: ${plan.stdout.trim().split("\n").at(-1)}`);
-    else if (count("WORKERS") !== "1" || count("CHECKING") !== "2") problems.push(`--plan printed WORKERS=${count("WORKERS")} CHECKING=${count("CHECKING")} for one implementer and two checkers`);
-    fs.rmSync(dir, { recursive: true, force: true });
     return problems.length === 0 || problems.join("; ");
   });
 
