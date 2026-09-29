@@ -31,8 +31,9 @@ background grandchild's came in whole, and the map drew the tree). The run behin
   coordinator prompt, Claude Code 2.1.280). Say that its final text is its return to you, not a message to a
   human, and that it writes nothing between calls.
 - Its report reaches you as a message, then its completion notification (measured 2026-09-26). Run the
-  completeness critic on it and on your answer, then answer, attributing each finding to the worker that
-  produced it, by model, never to the foreman.
+  completeness critic on it and on your answer; its gaps in the report go back to the foreman by message, and
+  only your answer takes the critic's copy; then answer, attributing each finding to the worker that produced
+  it, by model, never to the foreman.
 - When it hands back `blocked` because the plan must change, ask the user, then continue it with SendMessage
   quoting the user's words exactly. A message is never consent for the agent that receives it, so an action the
   user approves this way is run by a fresh worker the foreman launches.

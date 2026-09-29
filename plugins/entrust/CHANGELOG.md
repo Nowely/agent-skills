@@ -14,11 +14,11 @@ forensics remain in the repository references and release notes.
   seconds read.
 - **The completeness critic writes its fixes into a copy of the draft.** It returned only what was missing, and the
   orchestrator rewrote each fix in its own words; now the critic returns the copy's path and one diff hunk per gap
-  citing its source, the orchestrator takes the copy or objects to a hunk, the first draft is frozen after the last
-  decision and return, and a later read covers the changed lines, the lines stating the same facts and what they
-  contradict. Why: in the issue #22 run two critics read their answers four and five times, and every read after the
-  first found errors the orchestrator's own rewording or a block added after the first read had put there; the read
-  that closed the last loop applied the critic's wording verbatim.
+  citing its source, the orchestrator takes the copy, whole or without the hunks it objects to, the first draft is
+  frozen after the last decision and return, and a later read covers the changed lines, the lines stating the same
+  facts and what they contradict. Why: in the issue #22 run two critics read the draft four and five times, and every
+  read after the first found errors the orchestrator's own rewording or a block added after the first read had put
+  there; the read that closed the last loop applied the critic's wording verbatim.
 - **The bulk row's extraction, classification and verification run at `EFFORT: high`; `low` is for mechanical work
   only.** The orchestrate page's effort bullet and the swarm page's Luna brief said `low` for the whole bulk row; the
   strong and cheap rows keep `medium` for review, refutation and judgement. Why: in the pilot reported in issue #22,
