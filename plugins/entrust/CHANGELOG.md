@@ -44,6 +44,11 @@ forensics remain in the repository references and release notes.
   that opens one assembled brief checks its output paths against those roots beside its input paths. Why: in issue
   #22 a write agent's brief put its output one level above its `RIGHTS: write` root, the write was refused and the
   run exited 6; since 0.22.0 no approval grants a root mid-run, so the brief is where the path is caught.
+- **The completeness critic's manifest also carries the run's ledger and the runner's log behind each number the
+  draft states.** Both already sit under `$TMPDIR`, so nothing new is written in the run directory, and the draft
+  keeps citing a check by its label. Why: in issue #22 a publication reviewer could not verify a number that existed
+  only in the coordinator's command output; since 0.21.0 the runner keeps that output in a log, and the manifest did
+  not name it.
 
 ## 0.22.0 — 2026-09-28
 
