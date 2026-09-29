@@ -16,7 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { DRIVER, EXIT, FAKE, readJson, registry, runCases, skip, summarize, tempDir } from "./lib/harness.mjs";
 import { SHIM, assertKnownScenarios, explicitTmp, flowState, laxSchemaFile, looseNestedSchemaFile,
-         looseSchemaFile, mismatchSessions, notExec, oneOfSchemaFile, optionalSchemaFile, protectedState, protectedTmp,
+         looseSchemaFile, mismatchSessions, notExec, oneOfSchemaFile, optionalSchemaFile,
          run, runTable, sessionsDir, survivorPidName, unknownModelLog, until } from "./lib/scenarios.mjs";
 
 const shimDir = SHIM;
@@ -31,9 +31,6 @@ fs.mkdirSync(armedBox, { recursive: true, mode: 0o700 });
 // A mailbox inside another run's private $TMPDIR under the same state directory.
 const mailUnderRunTmp = path.join(armedState, "tmp", "another-run", "approvals");
 fs.mkdirSync(mailUnderRunTmp, { recursive: true, mode: 0o700 });
-// A mailbox under the $TMPDIR every driver here is handed, which the read level may write.
-const mailUnderTmp = path.join(process.env.TMPDIR ? process.env.TMPDIR : tempDir("entrust-mail-"), "entrust-mail-under-tmp");
-fs.mkdirSync(mailUnderTmp, { recursive: true });
 const realOf = (p) => fs.realpathSync(p);
 
 // The two roots the state-directory cases below measure: one stands in for the plugin's own data
@@ -129,10 +126,6 @@ const CASES = [
   { scenario: "happy",            expect: EXIT.OK, args: ["--resume", "thr_root"],
     why: "a resumed report must name the continued thread so the coordinator can distinguish it from a fresh run and detect a wrong resume target",
     assert: (r) => r.resumedFrom === "thr_root" || `the report did not name the thread it continued: ${JSON.stringify(r.resumedFrom)}` },
-  { scenario: "happy",            expect: EXIT.OK, env: { TMPDIR: null },
-    why: "when cwd is the tmpdir, the server reports it under runtimeWorkspaceRoots rather than writableRoots; the sandbox check must accept that effective grant",
-    assert: (r) => JSON.stringify(r.sandbox?.writableRoots) === "[]"
-      || `expected the tmpdir root to be subtracted, got ${JSON.stringify(r.sandbox?.writableRoots)}` },
   { scenario: "happy",            expect: EXIT.OK, env: { FAKE_MODEL_ECHO: "1" },
     why: "with no --model the driver sends null and the server chooses; FAKE_MODEL_ECHO reports the request so a hardcoded model cannot look inherited. The echo is opt-in because fidelity.test.mjs compares this field with the live server",
     assert: (r) => r.model === "inherited" || `a model was imposed rather than inherited: ${JSON.stringify(r.model)}` },
@@ -201,7 +194,7 @@ const CASES = [
     assert: (r) => {
       if (r.verify?.ok !== true) return `the verifier itself did not pass: ${JSON.stringify(r.verify)}`;
       let pid = 0;
-      try { pid = Number(fs.readFileSync(path.join(process.env.TMPDIR ?? os.tmpdir(), survivorPidName), "utf8").trim()); } catch {}
+      try { pid = Number(fs.readFileSync(path.join(r.tmpDir, survivorPidName), "utf8").trim()); } catch {}
       if (!pid) return "the verifier's background child never wrote its pid";
       try { process.kill(pid, 0); return `the verifier's background child ${pid} outlived the run`; }
       catch { return true; }
@@ -258,9 +251,6 @@ const CASES = [
   { scenario: "happy",            expect: EXIT.USAGE, args: ["--approval-dir", shimDir],
     why: "a mailbox outside the state directory is a place some sandbox may be able to write, and then an agent can publish its own decision",
     assertStderr: (t) => /is not inside this driver's state directory/.test(t) || `a mailbox outside the state directory was accepted: ${t.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, args: ["--approval-dir", mailUnderTmp],
-    why: "the same refusal for a mailbox under the $TMPDIR the read agent writes, the one place it would be most tempting to put one",
-    assertStderr: (t) => /is not inside this driver's state directory/.test(t) || `a mailbox under $TMPDIR was accepted: ${t.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.USAGE, env: { ENTRUST_STATE_DIR: guardState }, args: ["--approval-dir", guardState],
     why: "inside means inside: the state directory itself holds the locks and the answer log, and a mailbox is a directory of its own below it",
     assertStderr: (t) => /is not inside this driver's state directory/.test(t) || `the state directory itself was accepted as a mailbox: ${t.slice(0, 200)}` },
@@ -372,19 +362,9 @@ const CASES = [
     assert: (r) => (r.verifySkipped === "budget-exhausted" && r.verify === null)
       || `the skipped verifier was not reported as such: ${JSON.stringify({ s: r.verifySkipped, v: r.verify })}` },
 
-  // --- the read level's writable root is $TMPDIR, so $TMPDIR needs the guard every root gets ---
-  { scenario: "happy",            expect: EXIT.USAGE,
-    env: { ENTRUST_STATE_DIR: protectedState, TMPDIR: protectedTmp },
-    why: "$TMPDIR is the read-level write grant and must pass the protected-root guard so it cannot expose the receipt store",
-    assertStderr: (e) => /refusing to grant write access/.test(e)
-      || `a protected $TMPDIR was granted at read level: ${e.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, args: ["--level", "write"],
-    env: { ENTRUST_STATE_DIR: protectedState, TMPDIR: protectedTmp },
-    why: "the write sandbox keeps $TMPDIR writable by declaration, which makes a caller's own one a grant like any other: it takes the same protected-root guard --cwd and --writable take, or `TMPDIR=~/.codex/x --level write` opens the receipt store",
-    assertStderr: (e) => /refusing to grant write access/.test(e)
-      || `a protected $TMPDIR was granted at write level: ${e.slice(0, 200)}` },
+  // --- the agent's $TMPDIR is always the run's own, whatever the caller exported ---
   { scenario: "happy",            expect: EXIT.OK, unsetEnv: ["TMPDIR"],
-    why: "when TMPDIR is unset, a private directory permits scratch writes without granting all of /tmp; it lives under driver state so retention pruning reaches it",
+    why: "a private directory permits scratch writes without granting all of /tmp; it lives under driver state so retention pruning reaches it",
     assert: (r, _ms, stateRoot) => {
       const roots = r.sandbox?.writableRoots ?? [];
       if (roots.length !== 1) return `the private temp grant is not exactly one root: ${JSON.stringify(roots)}`;
@@ -412,22 +392,22 @@ const CASES = [
       const sent = TMP_KEYS.filter((k) => keys.includes(k));
       return sent.length === 0 || `the read level sent write-level sandbox keys: ${JSON.stringify(sent)}`;
     } },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"], env: { TMPDIR: null },
-    why: "--cwd and $TMPDIR being the same directory is the one shape where the write grant's two halves collapse into one: the server reports no extra root, the caller's own TMPDIR is not this run's to prune, and both temp exclusions must still read back as sent",
-    assert: (r) => {
+  { scenario: "happy",            expect: EXIT.OK, env: { TMPDIR: explicitTmp },
+    why: "a caller's TMPDIR is never the agent's: every agent a coordinator starts inherits the same one, and two that named one file there overwrote each other with no error (E92), so the grant is the run's own directory and the report names it",
+    assert: (r, _ms, stateRoot) => {
       const roots = r.sandbox?.writableRoots ?? [];
-      if (roots.length) return `the cwd was echoed back as an extra writable root: ${JSON.stringify(roots)}`;
-      if (r.tmpDir !== null) return `a caller's own TMPDIR was reported as this run's to remove: ${JSON.stringify(r.tmpDir)}`;
+      if (!r.tmpDir || path.dirname(r.tmpDir) !== path.join(stateRoot, "tmp")) return `the run's own directory is not under <state>/tmp: ${JSON.stringify(r.tmpDir)}`;
+      return (roots.length === 1 && roots[0] === fs.realpathSync(r.tmpDir))
+        || `the grant is not the run's own directory (the caller's is ${fs.realpathSync(explicitTmp)}): ${JSON.stringify(roots)}`;
+    } },
+  { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"], env: { TMPDIR: explicitTmp },
+    why: "the same at write level, where $TMPDIR is an implicit grant writableRoots never shows: the caller's is no extra root, the run's own is named, and both temp exclusions read back as sent",
+    assert: (r, _ms, stateRoot) => {
+      const roots = r.sandbox?.writableRoots ?? [];
+      if (roots.length) return `a write run with no --writable reported extra roots: ${JSON.stringify(roots)}`;
+      if (!r.tmpDir || path.dirname(r.tmpDir) !== path.join(stateRoot, "tmp")) return `the run's own directory is not under <state>/tmp: ${JSON.stringify(r.tmpDir)}`;
       return (r.sandbox?.excludeSlashTmp === true && r.sandbox?.excludeTmpdirEnvVar === false)
         || `the temp exclusions are not what was sent: ${JSON.stringify({ slash: r.sandbox?.excludeSlashTmp, env: r.sandbox?.excludeTmpdirEnvVar })}`;
-    } },
-  { scenario: "happy",            expect: EXIT.OK, env: { TMPDIR: explicitTmp },
-    why: "an explicit TMPDIR is honoured unchanged — the private directory is a fallback for an unset variable, never a substitution for the caller's own choice",
-    assert: (r) => {
-      const roots = r.sandbox?.writableRoots ?? [];
-      if (r.tmpDir !== null) return `a caller's own TMPDIR was reported as this run's to remove: ${JSON.stringify(r.tmpDir)}`;
-      return (roots.length === 1 && roots[0] === fs.realpathSync(explicitTmp))
-        || `an explicit TMPDIR did not survive as the grant: ${JSON.stringify(roots)}`;
     } },
 
   // --- what the report says about the run's own footing ---
@@ -1153,7 +1133,7 @@ flow("D4 developer instructions name only effective writable roots and the stage
     const wt = await run({ scenario: "echo-instructions", noCwd: true,
       args: ["--level", "write", "--worktree", repo, "--writable", extra] });
     const wr = JSON.parse(wt.out);
-    const expected = `Your writable roots are: ${fs.realpathSync(os.tmpdir())}, ${wr.worktreePath}, ${fs.realpathSync(extra)}; /tmp is not one.`;
+    const expected = `Your writable roots are: ${fs.realpathSync(wr.tmpDir)}, ${wr.worktreePath}, ${fs.realpathSync(extra)}; /tmp is not one.`;
     return wt.code === 0 && wr.answer.includes(expected)
       || `worktree capsule exit ${wt.code}: expected ${expected}; got ${wr.answer?.slice(0, 500)}`;
   });

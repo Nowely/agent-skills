@@ -339,6 +339,9 @@ const resolvedNote = (threadId, requestId) => note("serverRequest/resolved", { t
 // survive every hop to the reader who approves it.
 const APPROVAL_COMMAND = `sleep 1; touch /tmp/entrust-accept-probe-0ea4d218\necho ${"approval-padding-".repeat(14)}end`;
 const tmpRoot = () => process.env.TMPDIR ?? os.tmpdir();
+// The run's $TMPDIR is made by the driver as it starts, so a case cannot name a path in it: it writes
+// <TMPDIR>/… and the fixture, spawned with that directory, puts it in.
+const inTmp = (p) => p?.replace(/^<TMPDIR>(?=\/|$)/, tmpRoot());
 
 // The approval requests a scenario is waiting on, by request id, each with what it emits once answered,
 // and every id ever asked, so an answer that comes twice is logged twice.
@@ -1331,14 +1334,16 @@ function onLine(line) {
 
       // A file change whose item/started names a path 4 ms before the request that names none (P1 Q4,
       // Q5a). In $TMPDIR under either spelling — FAKE_FILECHANGE_SPELLING=private asks by the resolved
-      // one, which is the spelling the live edit tool asked by — under /etc, or through a link a case
-      // planted at FAKE_LINK.
+      // one, which is the spelling the live edit tool asked by — under /etc, or through a link the agent
+      // planted in its own $TMPDIR, pointing at FAKE_LINK_TO.
       case "filechange-in-tmpdir":
       case "filechange-outside":
       case "filechange-symlink":
       case "filechange-no-started": {
+        const link = path.join(tmpRoot(), process.env.FAKE_LINK_TO ? "entrust-link" : "no-link-planted");
+        if (SCENARIO === "filechange-symlink" && process.env.FAKE_LINK_TO) fs.symlinkSync(process.env.FAKE_LINK_TO, link);
         const target = SCENARIO === "filechange-outside" ? `/etc/entrust-fixture-${process.pid}.md`
-          : SCENARIO === "filechange-symlink" ? path.join(process.env.FAKE_LINK ?? path.join(tmpRoot(), "no-link-planted"), "x.md")
+          : SCENARIO === "filechange-symlink" ? path.join(link, "x.md")
             : path.join(process.env.FAKE_FILECHANGE_SPELLING === "private" ? canon(tmpRoot()) : tmpRoot(), `entrust-fixture-${process.pid}.md`);
         const changes = [{ path: target, kind: { type: "add" }, diff: "fixture\n" }];
         const itemId = "call_patch_1";
@@ -1357,11 +1362,12 @@ function onLine(line) {
         break;
       }
 
-      // A file change at FAKE_FILECHANGE_PATH, a rename to FAKE_FILECHANGE_MOVE when that is set: the
+      // A file change at FAKE_FILECHANGE_PATH, a rename to FAKE_FILECHANGE_MOVE when that is set, either
+      // one allowed to open with <TMPDIR>: the
       // shapes the containment has to judge path by path — a destination outside, a .git inside a root.
       case "filechange-at": {
-        const target = process.env.FAKE_FILECHANGE_PATH ?? path.join(tmpRoot(), `entrust-fixture-at-${process.pid}.md`);
-        const move = process.env.FAKE_FILECHANGE_MOVE ?? null;
+        const target = inTmp(process.env.FAKE_FILECHANGE_PATH) ?? path.join(tmpRoot(), `entrust-fixture-at-${process.pid}.md`);
+        const move = inTmp(process.env.FAKE_FILECHANGE_MOVE) ?? null;
         const changes = [{ path: target, kind: move ? { type: "update", move_path: move } : { type: "add" }, diff: "fixture\n" }];
         const itemId = "call_patch_at";
         w(R, cmd(TURN, THREAD), fileChangeStarted(TURN, THREAD, itemId, changes),

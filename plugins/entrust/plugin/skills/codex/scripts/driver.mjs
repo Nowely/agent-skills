@@ -243,7 +243,7 @@ const STATE_SUBDIRS = [
   ["answers/", "answers, partials, turn diffs"],
   ["home/", "the isolated Codex home"],
   ["jobs/", "`--resume last` and the worktree rebuild"],
-  ["tmp/", "the private $TMPDIR of a run whose caller exported none"],
+  ["tmp/", "each run's private $TMPDIR"],
   ["worktrees/", "the --worktree ledger"],
   ["pasted/", "attach-pasted.mjs's staged images"],
 ];
@@ -323,9 +323,9 @@ function wrapJoined(items, sep, indent, width = 79) {
 // with `more` beneath it and adds the blocks marked `all`, so a flag cannot reach one tier alone.
 const HELP = [
   { s: "Rights",
-    text: `  --level read       the default: read anything, write only $TMPDIR; no lock is
-                     taken, so read agents run in parallel over one directory. An
-                     unset $TMPDIR is not an error — see --help-all
+    text: `  --level read       the default: read anything, write only the run's own
+                     $TMPDIR; no lock is taken, so read agents run in parallel
+                     over one directory
   --level write      write under --cwd, each --writable root and $TMPDIR, and
                      nothing else — /tmp is excluded; takes a per-directory lock
   --cwd DIR          where the turn runs. Required at --level write: the writable
@@ -344,16 +344,15 @@ const HELP = [
   --no-network       deny egress. BOTH levels have it by default, as Claude's own
                      subagents do; --network says so explicitly. There is no host
                      allowlist — name the hosts in the prompt
-  every writable root — a write-level --cwd, --writable and $TMPDIR — refuses
+  every root you grant — a write-level --cwd and each --writable — refuses
   ~/.codex, <state> and every directory above either, which hold the receipts
   and this driver's own state`,
     more: `  $TMPDIR is writable at BOTH levels: the whole grant at read level, beside
-  --cwd at write level; /tmp is not, at either. An explicit one is honoured and
-  takes the same protected-root guard every writable root takes; where the caller
-  exported none the driver makes a private 0700 one at <state>/tmp/<runId> and
-  reports it as tmpDir. It is exported for the turn AND the verifier, and it
-  OUTLIVES the run, because --brief tells the agent to leave long output in a file
-  there. It is pruned on
+  --cwd at write level; /tmp is not, at either. It is the run's own: for every
+  run the driver makes a private 0700 one at <state>/tmp/<runId>, whatever the
+  caller exported, and reports it as tmpDir. It is exported for the turn AND the
+  verifier, and it OUTLIVES the run, because --brief tells the agent to leave
+  long output in a file there. It is pruned on
   the run-directory bounds (${LIMITS.PRUNE_DAYS} days or ${LIMITS.PRUNE_MAX_ENTRIES} directories, never one still running).
   A worktree turn that did not complete, or a harvest
   that failed, PRESERVES the tree and the report says why and how to remove it; a
@@ -637,10 +636,7 @@ const HELP = [
   { s: "Environment", all: true,
     text: `  ENTRUST_STATE_DIR             where everything this driver owns lives, and the
                                 first place <state> is read from; must be
-                                absolute, and neither $TMPDIR nor under it:
-                                both levels grant $TMPDIR, and a root at or
-                                above <state> is refused, so every run exits 2.
-                                For test harnesses: two runs under
+                                absolute. For test harnesses: two runs under
                                 different values do NOT exclude each other
 ${stateSubdirHelp()}
   CLAUDE_PLUGIN_DATA            <state> where the variable above is unset: the
@@ -1364,7 +1360,7 @@ function refuseWebSearchMode(mode, network) {
   }
 }
 
-// A $TMPDIR of this run's own, made at EITHER level whenever the caller exported none, 0700 so no other
+// A $TMPDIR of this run's own, made at EITHER level for every run, 0700 so no other
 // user can read what the agent writes there. It lives under the driver's own state and OUTLIVES the run:
 // --brief tells the agent to leave long output in a file there, so a directory removed at exit takes with
 // it every path the answer names. PRUNE_DAYS and PRUNE_MAX_ENTRIES bound retention without removing a
@@ -1385,13 +1381,13 @@ function privateTmpDir() {
       JSON.stringify({ pid: process.pid, identity: processIdentity(process.pid), startedAt: new Date().toISOString() }),
       { mode: 0o600 });
   } catch (e) {
-    fail(EXIT.USAGE, `TMPDIR is unset and no private temp directory could be created under ${base} (${e.message}); export TMPDIR and retry`);
+    fail(EXIT.USAGE, `no private temp directory could be created under ${base} (${e.message}); the state directory must be writable`);
   }
   privateTmp = dir;
   return dir;
 }
-// Named in the report whenever the driver made one, because it is where the agent's own file paths
-// resolve and it is still there when the coordinator reads the answer. null means the caller's TMPDIR.
+// Named in the report, because it is where the agent's own file paths resolve and it is still there when
+// the coordinator reads the answer. null only on a report written before setup() made it.
 const keptTmpDir = () => privateTmp;
 // Did the agent actually leave anything of its own? The owner record is the driver's, not the agent's.
 const tmpHasAgentFiles = () => {
@@ -2479,14 +2475,10 @@ function assertReadSandbox(thread) {
   const want = canonPath(tmp);
   if (!want) refuse(`TMPDIR is set to ${JSON.stringify(tmp)}, which does not resolve to a real directory`);
   const got = (sb.writableRoots ?? []).map(canonPath);
-  // Expect exactly TMPDIR, except when it is the cwd and the server reports it in runtimeWorkspaceRoots,
-  // which is what the shared check below establishes.
+  // Expect exactly TMPDIR. It is the run's own directory under <state>/tmp, made after --cwd was
+  // resolved, so it is never the cwd the server would subtract from writableRoots.
   assertWorkspaceRoot(thread, refuse);
-  const cwdIsTmp = canonPath(cwd) === want;
-  // When --cwd IS the tmpdir the server subtracts it from writableRoots and reports it in the workspace
-  // roots instead — already verified just above — so an empty root list is correct there, not a dropped
-  // grant.
-  const ok = cwdIsTmp ? got.length === 0 : (got.length === 1 && got[0] === want);
+  const ok = got.length === 1 && got[0] === want;
   if (!ok)
     refuse(`writable roots are ${JSON.stringify(sb.writableRoots ?? [])}, expected exactly [${JSON.stringify(want)}]`);
 }
@@ -2595,26 +2587,14 @@ async function setup() {
   // After the cwd exists, because "last" means the last agent HERE.
   if (opts.resume === "last") { opts.resume = resolveResumeLast(cwd); refuseLiveResume(opts.resume); }
 
-  // $TMPDIR is a grant at BOTH levels — the whole of it at read level, beside --cwd at write level — and
-  // a private directory of the run's own is narrower than /tmp. Made whenever the caller exported none,
-  // at either level: /tmp is excluded from the write sandbox too, and where no TMPDIR is exported
-  // os.tmpdir() and zsh's TMPPREFIX both fall back to /tmp — so a write agent without this would have no
-  // temp root at all, and every heredoc, mkdtemp and test runner would die.
+  // $TMPDIR is a grant at BOTH levels — the whole of it at read level, beside --cwd at write level — so
+  // every run gets a directory of its own, whatever the caller exported: a caller's TMPDIR is shared by
+  // every agent it starts, and two agents that named one file there overwrote each other with no error
+  // (E92). /tmp is excluded from the write sandbox too, so without it a write agent would have no temp
+  // root at all, and every heredoc, mkdtemp and test runner would die. It needs no checkRoot: it is one
+  // leaf directory of this run's own under <state>/tmp, which grants nothing beside it.
   // Set on process.env because the codex spawn and `codex sandbox :tmpdir` read it.
-  const ownTmp = !process.env.TMPDIR;
-  if (ownTmp) process.env.TMPDIR = privateTmpDir();
-  // $TMPDIR is a writable root at BOTH levels, so a CALLER's takes the same checkRoot guard every other
-  // writable root takes: without it `TMPDIR=~/.codex/x` grants write access inside the directory holding
-  // the rollout receipts — at read level, whose promise is that it writes nothing of yours, and at write
-  // level, where exclude_tmpdir_env_var=false makes that directory an acknowledged part of the grant.
-  // Here rather than in the sandbox assertions: a protected TMPDIR is knowable before anything is
-  // spawned, so it costs a usage error rather than a thread and exit 4.
-  // The driver's OWN <state>/tmp/<runId> is exempt: it is one leaf directory of this run's own, which
-  // grants nothing beside it, and checkRoot refuses everything inside the state directory by design.
-  if (process.env.TMPDIR && !ownTmp) {
-    const t = canonPath(process.env.TMPDIR);
-    if (t) checkRoot(t);
-  }
+  process.env.TMPDIR = privateTmpDir();
 
   // Asked here rather than at the deadline: an opt-in sandbox that turns out to be unavailable must not
   // be discovered after the turn has been paid for, and must never silently fall back to running the
@@ -2662,8 +2642,8 @@ async function setup() {
       // Measured on 0.153.4: with neither key sent, thread/start answers writableRoots [],
       // excludeSlashTmp false and excludeTmpdirEnvVar false — so an agent given one --cwd could also
       // write all of /tmp, which no caller named. /tmp is excluded; $TMPDIR is kept, because heredocs,
-      // mkdtemp and every test runner need a temp root and $TMPDIR is the one the caller (or the
-      // private directory above) chose. Sent unconditionally, like the two keys above, and
+      // mkdtemp and every test runner need a temp root and $TMPDIR is the run's own directory above.
+      // Sent unconditionally, like the two keys above, and
       // assertWriteSandbox refuses a response that differs either way.
       ["sandbox_workspace_write.exclude_slash_tmp", "true"],
       ["sandbox_workspace_write.exclude_tmpdir_env_var", "false"]
@@ -4142,9 +4122,9 @@ function runVerifyProcess(budgetMs) {
     let out = "", err = "";
     let child2;
     try {
-      // The caller's environment, untouched, for the plain verifier: it is the caller's own command and
-      // nothing here may reshape what it sees. CODEX_HOME is set only for the sandboxed form, where the
-      // profile must resolve against the same home the turn used.
+      // The caller's environment, but for the run's own $TMPDIR, for the plain verifier: it is the
+      // caller's own command and nothing else here may reshape what it sees. CODEX_HOME is set only for
+      // the sandboxed form, where the profile must resolve against the same home the turn used.
       const env = opts.verifySandboxed && codexHome !== null ? { ...process.env, CODEX_HOME: codexHome } : process.env;
       // detached: its own group, so a verifier that backgrounds a server is swept with it rather than
       // outliving the run.
@@ -4343,9 +4323,8 @@ function writeReport(ev, verifySkipped, codeOverride) {
     // assertWriteSandbox refuses any difference. `network` is the effective grant, not a flag someone
     // passed: it is on unless the agent denied it, and sandbox.networkAccess is asserted to agree.
     writableRootsRequested: roots, network: opts.network,
-    // The run's own $TMPDIR when the driver made one — at either level, whenever the caller exported
-    // none — so a path the answer names can still be opened after the run; null when the caller
-    // exported a TMPDIR of his own.
+    // The run's own $TMPDIR, made at either level for every run, so a path the answer names can still be
+    // opened after the run.
     tmpDir,
     // Report which thread was continued after resolving "last", so the caller can identify the conversation.
     resumedFrom: opts.resume ?? null,
@@ -4676,12 +4655,12 @@ async function readPrompt() {
 function spawnServer() {
   // The agent's shell is zsh, which keeps every here-document in a file under $TMPPREFIX, default
   // /tmp/zsh: outside the grant, so every `<<EOF` failed ("can't create temp file for here document",
-  // measured in 15 rollouts, 2026-08-31 to 2026-09-08). Under $TMPDIR it is inside the grant at every
-  // level; where TMPDIR is unset the fallback equals zsh's own default, so nothing changes.
+  // measured in 15 rollouts, 2026-08-31 to 2026-09-08). Under the run's own $TMPDIR, which setup() made,
+  // it is inside the grant at every level.
   child = spawn(codexBin, spawnArgs, {
     cwd, stdio: ["pipe", "pipe", "pipe"], detached: true,
     env: { ...process.env, ...(codexHome === null ? {} : { CODEX_HOME: codexHome }),
-           TMPPREFIX: path.join(process.env.TMPDIR ?? os.tmpdir(), "zsh") },
+           TMPPREFIX: path.join(process.env.TMPDIR, "zsh") },
   });
   child.stderr.setEncoding("utf8");
   // Keep a bounded stderr tail because runs can be long and abort() prints it; report how much was dropped.
