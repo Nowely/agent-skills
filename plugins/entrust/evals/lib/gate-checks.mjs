@@ -706,10 +706,11 @@ export function originsOf(s, { reports = [] } = {}) {
 }
 
 // Each claim the answer credits to an agent holds only what that agent's admitted return holds: the answer
-// is cut at every "<Model> <id>" into the stretch that agent is the subject of, and each fact in it (a
-// backquoted span, a file path, an "N of M" count, a number of two digits or more) must be in that agent's
-// return. A fact only another agent's return holds is misattributed; one no return holds is unsupported.
-// Heuristic over free text: a claim with no such fact is not checked.
+// is cut at every "<Model> <id>" into the stretch that agent is the subject of, up to the next mention or
+// the end of its sentence or line, and each fact in it (a backquoted span, a file path, an "N of M" count, a
+// number of two digits or more) must be in that agent's return. A fact only another agent's return holds
+// is misattributed; one no return holds is unsupported. Heuristic over free text: a claim with no such fact
+// is not checked, nor one that stands before its mention, as in a list item ending "(Model id)".
 export function claimOriginProblems(s, { reports = [], finalText = "" }) {
   const origins = originsOf(s, { reports });
   const problems = [];
@@ -717,7 +718,7 @@ export function claimOriginProblems(s, { reports = [], finalText = "" }) {
   const text = String(finalText);
   const marks = [...text.matchAll(mention)].map((m) => ({ at: m.index, end: m.index + m[0].length, key: `${m[1]} ${m[2]}`.toLowerCase(), name: `${m[1]} ${m[2]}` }));
   marks.forEach((m, i) => {
-    const stop = Math.min(marks[i + 1]?.at ?? text.length, (() => { const j = text.slice(m.end).search(/[.!?](\s|$)/); return j < 0 ? text.length : m.end + j + 1; })());
+    const stop = Math.min(marks[i + 1]?.at ?? text.length, (() => { const j = text.slice(m.end).search(/[.!?](\s|$)|\n/); return j < 0 ? text.length : m.end + j + 1; })());
     const stretch = text.slice(m.end, stop);
     const facts = [
       ...[...stretch.matchAll(/`([^`]+)`/g)].map((x) => [x[1]]),

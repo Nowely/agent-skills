@@ -517,6 +517,9 @@ test("each claim in the answer is held by the return of the agent it credits: a 
       // What a Codex agent read is part of its return: case 5's verifier compared the change with `greet`.
       expectNone(G.claimOriginProblems(s, { reports: [{ id: "C1", report: { ...reports[0].report, commands: [{ command: "nl -ba lib/greet.mjs", exitCode: 0 }] } }],
         finalText: "Codex Terra C1 checked the change against the style of `greet`." })),
+      // E60: a list whose items end "(Model id)" with no period; the stretch after a mention ends at its line,
+      // so the next item's fact is not credited to it (case 7, 2026-09-28: four such problems on a correct answer).
+      expectNone(G.claimOriginProblems(s, { reports, finalText: "- `lib/slug.mjs`: the helper (Opus W1)\n- 5 of 5 in the suite (Codex Terra C1)\n- the rest" })),
     );
   });
 
