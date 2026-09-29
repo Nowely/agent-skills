@@ -21,12 +21,12 @@ forensics remain in the repository references and release notes.
   result does not transfer.
 - **Every bulk fan-out, a swarm included, is piloted first.** A stronger model marks a few units, the bulk model runs
   the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort.
-  The swarm page's plan names the pilot's units, and its "go" covers the pilot and then the swarm. The orchestrate page carries the rule beside the bulk unit in Model tiers, not in Verification, which lies past
-  what a compaction keeps (E77). Why: issue #22's
-  pilot chose the effort and exposed a brief that counted process complaints; the replication's first pilot, on the
-  brief as first assembled, found 12 extras in 22 and the brief gained four exclusions
-  (`plugins/terse/research/2026-09-26-writing-replication/measures/pilot-protocol.md`). Both runs had critiqued the
-  split before the pilot, and that critique reads the decomposition, not the subject.
+  The swarm page's plan names the pilot's units, and its "go" covers the pilot and then the swarm. The orchestrate
+  page carries the rule beside the bulk unit in Model tiers, not in Verification, which lies past what a compaction
+  keeps (E77). Why: issue #22's pilot chose the effort and exposed a brief that counted process complaints; the
+  replication's first pilot, on the brief as first assembled, found 12 extras in 22 and the brief gained four
+  exclusions (`plugins/terse/research/2026-09-26-writing-replication/measures/pilot-protocol.md`). Both runs had
+  critiqued the split before the pilot, and that critique reads the decomposition, not the subject.
 - **The plan estimates the bulk row per unit and again after the pilot, and states a per-agent stop line.** The
   estimate is a comparable unit's tokens times the units, plus the pilot and a margin for re-runs; the stop line is
   three times the pilot's median tokens per agent, and an agent whose report's `tokenUsage` total passes it stops
