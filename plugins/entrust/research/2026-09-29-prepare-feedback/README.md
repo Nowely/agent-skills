@@ -18,14 +18,20 @@ runs outside this repository, or a research run when it runs inside.
   words; sessions found by the skill-load marker in transcripts; the focus picks how agents read (readers with a
   question, or exhaustive extraction) and the corpus size only how many; the place of the run picks the output;
   privacy as a principle, checked by a model that did not write the text; no flags.
-- One ledger entry came out of the run: E91, a cause in `foreman.md:24` broader than what was observed.
+- The fourth iteration ([09](09-design.md)) closed the second critique and was cut for two writers ([10](10-split.md));
+  Fable F2's critique of that cut ([11](11-split.md)) is the split the skill was written from, in the same branch.
+- Ledger entries from the run: E91, a cause in `foreman.md:24` broader than what was observed; E93 to E95, found in
+  passing while the skill was written.
 
 ## How it ran
 
 Fable F1 designed the skill and listed the design's factual claims ([01](01-design.md), [02](02-claims.md)). Twenty
 Codex Luna agents checked one claim each ([03](03-claims-check.md)) while Opus O1 critiqued the design
 ([04](04-critique.md)). F1 revised it ([05](05-design.md), [06](06-claims.md)); the coordinator applied the owner's
-decisions ([07](07-design.md)); O1 critiqued the revision ([08](08-critique.md)). Opus C1 read the coordinator's
+decisions ([07](07-design.md)); O1 critiqued the revision ([08](08-critique.md)); F1 closed it ([09](09-design.md)) and cut the work for two writers
+([10](10-split.md)), and Fable F2 corrected the cut ([11](11-split.md)). Opus W1 wrote the page and Opus W2 the
+script and its test; Opus R1 and Opus R2 reviewed them through two fix rounds, and R2's full suite run is the
+verification of record. Opus C1 read the coordinator's
 answers to the owner for completeness. Opus P1, who wrote none of these files, read every one of them for privacy
 before the commit; its eleven replacements are applied. Codex offered only Luna at the time, so every judgement role went to Claude,
 and the panel shares one model's bias. The findings per round are in [rounds.md](rounds.md).
@@ -33,7 +39,8 @@ and the panel shares one model's bias. The findings per round are in [rounds.md]
 ## Cost
 
 By the harness's count per invocation: Fable F1 200.6k and 242.6k; Opus O1 211.1k and 267.2k; Opus C1 90.1k, 112.2k
-and 116.1k; Opus P1 165.0k. The twenty Luna reports hold 1.09M tokens, 837k of them cached input. The coordinator's own session was
+and 116.1k; Opus P1 165.0k; for the fourth iteration and the split, Fable F1 360.1k and Fable
+F2 154.9k. The twenty Luna reports hold 1.09M tokens, 837k of them cached input. The coordinator's own session was
 not counted.
 
 ## What stayed private
