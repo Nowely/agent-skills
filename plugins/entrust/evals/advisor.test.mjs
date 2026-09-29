@@ -151,14 +151,18 @@ test("D2 the advisor is one thread kept for the run, holds a slot only while a t
     /That slot is one of six alive at a time, and the only Astra or the only Fable among them/,
   ));
 
-test("Q1 the decision points are named, one question per message carries the coordinator's own decision, and the return is a recommendation with reasons, an alternative and what would change its mind",
-  "an advisor asked open questions is a second coordinator; one asked to react to a decision already formed is measurable against that decision",
-  () => says(
-    /the split before a fan-out, the composition, a verdict you are about to adopt, a stall, and any point the plan names/,
-    /One question per message, carrying the decision you would take without advice and the evidence in a few lines/,
-    /Its return is five fields: `status` \(done, partial or blocked\), `result`, `evidence`, `artifacts` and `open`/,
-    /a recommendation with the reasons that decide it, one alternative, and what it would need to see to change its mind/,
-  ));
+test("Q1 the decision points are named, one question per message carries the coordinator's own decision, and the coordinator asks for a result that is a recommendation with reasons, an alternative and what would change its mind",
+  "an advisor asked open questions is a second coordinator; one asked to react to a decision already formed is measurable against that decision; the result's shape reaches the advisor only in what the coordinator sends, so the page instructs the coordinator instead of describing the advisor (E98)",
+  () => {
+    const said = says(
+      /the split before a fan-out, the composition, a verdict you are about to adopt, a stall, and any point the plan names/,
+      /One question per message, carrying the decision you would take without advice and the evidence in a few lines/,
+      /Its return is five fields: `status` \(done, partial or blocked\), `result`, `evidence`, `artifacts` and `open`/,
+      /Ask it for a `result` that gives a recommendation with the reasons that decide it, one alternative, and what it would need to see to change its mind/,
+    );
+    if (said !== true) return said;
+    return !/Its `result` is a recommendation/.test(flat) || "the result's shape is written as a description of the advisor again (E98)";
+  });
 
 test("Q2 the advisor never implements, writes, judges its own advice or spawns, answers unknown when it cannot answer, and no sentence hands it one of those roles",
   "a top-row agent that implements is the tier table's \"never implementation\" broken; one that judges its own advice is self-grading with a title",

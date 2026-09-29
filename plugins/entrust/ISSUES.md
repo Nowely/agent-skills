@@ -489,25 +489,6 @@ pages describe it as each agent's own temporary directory. Two agents that pick 
 other, and a finding written there is lost without an error. Each agent should get a temporary directory of its own,
 or the pages should have every file an agent leaves carry the agent's id.
 
-## E98. The shape of the advisor's `result` reaches the advisor only when the coordinator restates it
-
-**Evidence, level 2.** `plugins/entrust/plugin/skills/advisor/SKILL.md:27` says "Its `result` is a recommendation with the
-reasons that decide it, one alternative, and what it would need to see to change its mind", but the advisor is sent only
-the prompt block at :21-23 and the driver's standing rules (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs`),
-which name no result shape; the block's `TASK:` line (:23) names "one question, the decision you would take without
-advice, and the evidence in a few lines" and not that shape. The five-field schema the block names carries no field descriptions
-(`plugins/entrust/plugin/skills/codex/schemas/five-fields.schema.json`). The sentence beside it on premises is written as
-an instruction to the coordinator ("Ask it to list in `evidence` …"); this one describes the advisor, whose page the
-advisor never reads. Found while reviewing the premises fix of 2026-09-29.
-
-**Check.** `grep -n 'alternative' plugins/entrust/plugin/skills/advisor/SKILL.md` finds it only at :27, outside the prompt
-block; `grep -c '"description"' plugins/entrust/plugin/skills/codex/schemas/five-fields.schema.json` prints 0.
-
-**Issue text.** The advisor page describes the return it wants, a recommendation with its reasons, one alternative and
-what would change the advisor's mind, in a sentence the advisor never receives. Unless the coordinator restates that
-shape in `TASK:`, nothing the advisor receives asks for it. The sentence should tell the coordinator to ask for it, as
-the premises sentence does, or the `TASK:` placeholder should name it.
-
 ## E100. A coordinator session inside a worktree has the launcher's heredoc calls refused when their text names git
 
 **Evidence, level 3 for plan rows, level 2 for prompts.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:37` has the

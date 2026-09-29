@@ -79,6 +79,9 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- **The coordinator asks the advisor for the shape of its `result`** (E98). Why: the page described the shape, a
+  recommendation with its reasons, one alternative and what would change the advisor's mind, in a sentence the
+  advisor never receives; its prompt block and the driver's rules do not name it.
 - **The protocol suite's `approval-wait` case accepts any whole non-negative `waitMs` for a request declined at once**
   (E76). It required 0, and two clock reads with no wait between them can straddle a millisecond tick: this Mac
   recorded 1 on 2026-09-29, as a macOS CI runner had. `offered: false`, `by: driver` and `why: no channel` already
