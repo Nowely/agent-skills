@@ -200,6 +200,11 @@ forensics remain in the repository references and release notes.
   removes it. A leaf that already exists is refused with exit 2. The driver no longer creates `<state>/tmp`; one
   left by an earlier version can be deleted by hand. Agents of one coordinator no longer share, and overwrite, one
   temp directory. (E92)
+- **`/entrust:cleanup` removes a run's or standalone report's temporary folder** (`<tmp>/entrust/<rel>`) together
+  with the run, on the same number and under the run's own liveness. It lists and suggests the folders there whose
+  run is gone from the state directory or whose report-less run has stopped, and it offers what an earlier driver
+  left in `<state>/tmp` once no agent of that version still uses it. Its closing line no longer says nothing is
+  left while those folders stand.
 - **The EFFORT row and `driver.mjs --help` drop the 2026-09-17 catalogue snapshot**; the value is checked against
   the live catalogue before each turn (E80).
 - **A brief that reads files names the read: one command per file with `max_output_tokens` at the tool's cap,
