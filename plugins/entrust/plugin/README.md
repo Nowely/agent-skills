@@ -114,7 +114,7 @@ claude plugin update entrust@nowely
 Claude Code substitutes into the skill's recipes and which this install resolves to
 `~/.claude/plugins/data/entrust-nowely/` (the plugin's name, then the marketplace's). The answers
 and the isolated Codex home, the write locks, the worktree ledger and the orchestrator mode's run
-directories are all there. `/entrust:cleanup` lists what is there and removes
+directories are all there. It survives plugin updates. `/entrust:cleanup` lists what is there and removes
 only the items you pick by number; experiment records under `experiments/`, report folders under
 `prepare-feedback/` and an old `tmp/` it neither lists nor removes, and it does not look at the runs'
 `$TMPDIR` folders under `<tmp>/entrust/`.
