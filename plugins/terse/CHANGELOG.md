@@ -9,7 +9,7 @@ forensics remain in the repository references and release notes.
 
 - A trigger case, `ticket-check`, where the request asks only to check a ticket whose last comment is an
   open question, so replying is the writer's own next step: in a field report, clarity did not start on its
-  own for such a reply. Measured on 2026-09-29 with Opus 5.5 in three sessions with the plugin as changed here:
+  own for such a reply. Measured on 2026-09-29 with Opus 5.5 in three sessions with this branch's plugin:
   clarity started before the answer in all three, so in a short session a request that never asks for a reply
   did not reproduce the miss. The control arm did not count, because the installed terse loaded there too.
 

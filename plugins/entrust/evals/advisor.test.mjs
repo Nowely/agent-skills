@@ -174,7 +174,7 @@ test("Q2 the advisor never implements, writes, judges its own advice or spawns, 
   });
 
 test("Q3 the coordinator asks the advisor to list the premises its recommendation rests on, those in the message included, each checked or taken as given, and counts its agreement only on the checked ones",
-  "E97: an advisor asked whether a list was complete refuted the premise its question pointed at and kept another item in the wrong group its context had set, holding the file that showed where the item lives; agreement with an untested premise is not an independent check",
+  "an advisor asked whether a list was complete refuted the premise its question pointed at and kept another item in the wrong group its context had set, holding the file that showed where the item lives; agreement with an untested premise is not an independent check",
   () => says(
     /Ask it to list in `evidence` the premises the recommendation rests on, including those in your message, each marked checked at a source or taken as given/,
     /Its agreement counts as independent only on the premises it checked/,
