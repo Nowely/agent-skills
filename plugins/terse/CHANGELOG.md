@@ -16,6 +16,11 @@ forensics remain in the repository references and release notes.
   not open `truth.md` while drafting.
 - `clarity`'s body now says its questions apply while revising as well as writing, as its description
   already did.
+- `clarity`'s questions before writing end by choosing the form: look at good nearby texts of the kind and
+  choose a form for the way this reader will read it, with links to the sections of `rules.md` on context and
+  on form, which the page did not link. The examples advice moves there from the fifth question while writing.
+  In the same report, a session that never opened `rules.md` while drafting used a flat list where the reader
+  would look things up by screen and then by field.
 
 ## 0.5.0 — 2026-09-28
 
