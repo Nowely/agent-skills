@@ -570,7 +570,25 @@ agent's directory, and agent prompts that mention the repository. The refusal co
 way around it, so the mode stops at registration unless the coordinator happens to write `live tree` instead. The pages
 should give a form measured to pass in a worktree session.
 
-## E101. A Codex agent can run as one background Bash task, as the swarm runs fifty, but the codex page offers only the Haiku wrapper, for a reason the swarm page contradicts
+## E101. entrust's evals README says `claude plugin eval` is missing from the build, and the build has it
+
+**Evidence, level 3.** `plugins/entrust/evals/README.md:115-117`: "There is no harness for those. `claude plugin eval`
+exists in the documentation but is early access and absent from this build — `claude plugin --help` lists no `eval`
+subcommand." On 2026-09-29 `claude plugin --help` of Claude Code 2.1.280 lists `eval [options] [target]  Run eval cases
+… against a plugin and report scored results`, and terse's trigger suite has run it through
+`plugins/terse/evals/clarity-trigger.official.mjs` since 2026-09-26
+(`plugins/terse/research/2026-09-26-writing-replication/measures/clarity-trigger.md:33`). The documentation isolates each
+run: "Your user settings, hooks, `CLAUDE.md` files, MCP servers, other installed plugins, memory, and skills are absent"
+(code.claude.com/docs/en/plugin-evals.md, "How runs are isolated").
+
+**Check.** `claude plugin --help` lists an `eval` command.
+
+**Issue text.** entrust's evals README says the trigger cases have no harness because `claude plugin eval` is missing
+from the build. The build has it now, and it runs each case in a configuration with no installed plugins or user
+instructions, the harness terse already uses for its own trigger suite. The README should say so, and the trigger
+cases could run through it instead of through a reading of a real invocation's transcript.
+
+## E102. A Codex agent can run as one background Bash task, as the swarm runs fifty, but the codex page offers only the Haiku wrapper, for a reason the swarm page contradicts
 
 **Evidence, level 1 for the pages and scripts, level 3 for the task list.** `plugins/entrust/plugin/skills/codex/SKILL.md:54-57`
 makes the wrapper the one route: "One Agent call per agent … a Bash task, whatever its description says, is not on the
