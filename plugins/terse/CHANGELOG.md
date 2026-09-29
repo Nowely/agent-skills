@@ -42,6 +42,9 @@ forensics remain in the repository references and release notes.
 - E84: `rewrite` links `writing-rules.md`, `curse-of-knowledge.md` and `truth.md` where it names the briefs that
   receive them: the first two for the writer and the sentences critic, `truth.md` for every truth critic. Before, it
   reached them only through `roles.md`, a second link away, and a model may read a page that far down partially.
+- E85: `references/measurements.md` opens with a list of its 34 entries, each a link to its anchor, so a preview of
+  its first 100 lines shows where every entry is. Before, it opened with ranges, and such a preview stopped at M20,
+  with fourteen entries unseen.
 
 ## 0.5.0 — 2026-09-28
 

@@ -6,16 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with entrust's ledger, `plugins/entrust/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E85. `measurements.md` is 168 lines and opens with ranges, not a list of its entries
-
-**Evidence, level 2.** `plugins/terse/plugin/references/measurements.md:3-8` gives the entries as ranges ("M1–M23 concern
-…; M24–M25 …; M26–M33 …"); every skill page links it by anchor, and a `head -100` preview ends inside M17, before the
-entries the current pages cite most. Anthropic's skill authoring page: a reference file over 100 lines opens with its
-contents. Finding 4.2 of the same map.
-
-**Issue text.** A model that previews `measurements.md` to find an entry sees neither the entry nor a list saying where
-it is. The file should open with one line per entry.
-
 ## E86. `clarity`'s description carries two sentences of instructions that load on every turn (tension)
 
 **Evidence, level 1.** `plugins/terse/plugin/skills/clarity/SKILL.md:3-12`: "Apply the checks silently when asked for only
