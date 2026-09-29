@@ -796,10 +796,10 @@ test("D10 Luna over Haiku carries no price claim",
     return true;
   });
 
-test("D12 the bulk unit is one claim, one address, a verbatim quote, and a closed-set verdict about the subject, never the brief",
-  "a bulk verifier scored on its own prompt agrees with itself for the wrong reason (measured 2026-09-12: a broken path in every brief drew the same verdict from nineteen of twenty agents); this sentence is what keeps a bulk verdict about the input rather than the ask, and the 2026-09-17 mutation baseline deleted it with the suite staying green",
+test("D12 the bulk unit is one part of the material for extraction with a fixed answer schema, or one claim, one address, a verbatim quote, and a closed-set verdict about the subject, never the brief",
+  "a bulk verifier scored on its own prompt agrees with itself for the wrong reason (measured 2026-09-12: a broken path in every brief drew the same verdict from nineteen of twenty agents); this sentence is what keeps a bulk verdict about the input rather than the ask, and the 2026-09-17 mutation baseline deleted it with the suite staying green. The bulk rows of issue #22 and of the writing replication were extraction, one part of the material per agent with a shared answer schema, which the verdict alone did not describe",
   () => says(
-    "The unit of a bulk fan-out is one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief",
+    "The unit of a bulk fan-out is either one part of the material for extraction, with a fixed answer schema, or one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief",
     "whether an address moved or was wrong is a judgement about your own input, and it stays out of the set",
   ));
 
