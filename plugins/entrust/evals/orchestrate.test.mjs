@@ -274,14 +274,16 @@ test("C13 the plan is a card of five rows over agents the launcher registered, a
   () => {
     const problems = [];
     const said = says(
-      "With a Codex agent in the plan, register every agent, Claude or Codex, through the sibling's launcher, `--plan --run-dir <run>` (its `--help` gives the rows), and build the card from what it prints: the rows and the `WORKERS=` and `CHECKING=` counts. An all-Claude plan skips the registration.",
-      "— work: what will be done; who: each agent by model name and role, and how many are workers and how many check their work; writes: what each may write",
+      "With a Codex agent in the plan, register every agent, Claude or Codex, through the sibling's launcher, `--plan --run-dir <run>` (its `--help` gives the rows), and build the card from the rows it prints. An all-Claude plan skips the registration.",
+      "— work: what will be done; who: each agent by model name and role; writes: what each may write",
       "except a worktree agent's own tree, which is made and removed inside the repository, in a hidden folder;",
       "; cost: the tokens by agent, and your own inline work beside them; checks: which agent verifies what, the critic, and for a design round the criterion that picks the survivors.",
       "The launcher refuses a Codex agent the registered plan does not list, and a Claude agent the card does not list is one you do not launch: amend the plan (`--plan --amend` when it was registered), show the amendment and wait for a word, as for the plan.",
       "Give it a description of the form \"<Model> <id>: <task in a few words>\", the id the card gave it, as a Codex agent's card carries \"Codex <short name> <id>\".",
     );
     if (said !== true) problems.push(said);
+    // E89: the launcher prints no counts, since the role vocabulary is open and a word classifier refused 12 of 22 roles.
+    if (/WORKERS=|CHECKING=/.test(flat)) problems.push("the card is still built from the launcher's worker and checker counts");
     // The card is read by the user: the sentence that tells what it says carries no machinery (R1, 2026-09-27).
     const card = flat.split("Then show the plan as a card of five rows")[1]?.split("Name no path and no header field")[0] ?? "";
     for (const word of ["driver", ".claude"]) if (card.includes(word)) problems.push(`the card's sentence says ${JSON.stringify(word)}`);
