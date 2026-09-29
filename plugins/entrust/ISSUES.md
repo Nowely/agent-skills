@@ -456,3 +456,33 @@ hold, since nobody types a command to a subagent; the stated cause does not. E82
 **Issue text.** The foreman page says the Skill tool refuses every user-only skill, but it loads one whose command the
 user typed. A reader who takes the stated cause as the rule will route around a load that works. The sentence should
 state the observed condition, or only the conclusion.
+
+## E93. `protocol.test.mjs:646` expects `waitMs` of 0 for an approval the fake server settles at once, and the driver computes it from two clock reads
+
+**Evidence, level 3.** `plugins/entrust/evals/protocol.test.mjs:646` fails the case `approval-wait` unless
+`e.waitMs === 0`; `plugins/entrust/plugin/skills/codex/scripts/driver.mjs:3108` sets
+`entry.waitMs = Date.parse(entry.settledAt) - Date.parse(entry.askedAt)`. On 2026-09-29 Opus R2 of the prepare-feedback
+run saw the case fail in 5 of 13 protocol runs across `main` and a branch whose protocol inputs were byte-identical,
+each time with `"waitMs":1`, while another full suite ran on the same machine.
+
+**Issue text.** The approval-wait case fails whenever the two timestamps fall on either side of a millisecond, so
+`run-all` goes red on an unchanged tree and stops before the suites after protocol. The case should accept a wait of
+at most one millisecond.
+
+## E94. The entrust README says two more skills ship beside the main one; the plugin ships five more
+
+**Evidence, level 1.** `plugins/entrust/plugin/README.md:8-9`: "Two more skills ship beside it, both described below
+and both invoked by the user rather than by the model." `plugins/entrust/plugin/skills/` on `main` holds `codex` and
+five more: `advisor`, `cleanup`, `experiment`, `orchestrate` and `swarm`.
+
+**Issue text.** The README's opening undercounts the plugin's skills, so a reader who stops there misses three of
+them. The sentence should give the count the directory holds, or not count.
+
+## E95. `research/2026-09-28-command-gate/` has no README and no row in the research index
+
+**Evidence, level 1.** `plugins/entrust/research/2026-09-28-command-gate/` holds ten numbered files and no README,
+and `plugins/entrust/research/README.md` has no row for it, while its opening says "Each directory has its own README
+with the result; this is the index."
+
+**Issue text.** The command-gate run cannot be found from the research index, and its folder does not say what it
+found. It needs a README with the result and a row in the index, as its neighbours have.
