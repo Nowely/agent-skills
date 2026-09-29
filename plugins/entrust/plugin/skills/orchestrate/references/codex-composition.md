@@ -1,7 +1,5 @@
 # Composition and rights
 
-Generated from [codex/SKILL.md](../../codex/SKILL.md) by `evals/fragments.mjs`: edit the source, then run `node evals/fragments.mjs --write`.
-
 <!-- fragment codex-composition 1: ../../codex/SKILL.md, ## Composition -->
 ## Composition
 
