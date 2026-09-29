@@ -33,6 +33,16 @@ forensics remain in the repository references and release notes.
   21 of 21, with 1 extra in 31 against 4 in 34 (p = 0.36) at median tokens per run of 129,873 and 128,657. `high` over
   `medium` is the owner's choice, not a significant result; neither pilot ran `low` on a verification unit.
 - **The orchestrate page's bulk unit is either one part of the material for extraction, with a fixed answer schema, or
+- **An orchestrate plan may propose a swarm for a bulk batch, of verdict units or of extraction parts with a fixed
+  answer schema.** The card names it with its count and cost, the user's "go" on the plan starts it, and the
+  coordinator reads the swarm page by path and launches it with the data directory forwarded, each swarm in a run
+  directory of its own; `/entrust:swarm` still starts one directly. The swarm page takes an extraction part as a unit
+  and says how it starts under a plan, `references/roles.md` has a swarm row in the bulk tier that writes nothing, and
+  prepare-feedback runs its extraction batches this way instead of overriding orchestrate. Why: the owner made the
+  swarm a role the planner may propose, and the writing replication and issue #22 ran their bulk batches by batch
+  launch, with no wrapper per agent. This lifts two of E90's limits, that only the user starts a swarm and that an
+  extraction batch has no batch route; the others stay: fifty units per swarm, no tokens in its summary, agent ids the
+  plan's registration refuses, and the README's place for it among the experiments.
   the closed-set verdict it was.** The effort line names extraction, and the unit said only the verdict. Why: the bulk
   work of issue #22's run and of the writing replication was extraction, one part of the material per agent (in the
   replication, a part and one angle) with a shared answer schema.

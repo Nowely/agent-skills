@@ -53,8 +53,8 @@ the other model family to one run, asked one question at each decision point, wi
 recorded before and after ([skills/advisor/SKILL.md](skills/advisor/SKILL.md)); it states no benefit until
 protocol E3 has run. `/entrust:swarm` has one script make up to fifty bulk agents over a file of units
 through the sibling launcher, with a concurrency cap and one summary for a cheap reducer
-([skills/swarm/SKILL.md](skills/swarm/SKILL.md)); shared state and free messaging between agents are E4's
-arms, never the default.
+([skills/swarm/SKILL.md](skills/swarm/SKILL.md)); an orchestrate plan may also propose one for a bulk batch, which
+the user's "go" starts. Shared state and free messaging between agents are E4's arms, never the default.
 
 A seventh, `/entrust:prepare-feedback`, turns your own Claude Code sessions into a report on a plugin: it finds
 the sessions where entrust or terse loaded, has orchestrated agents read them under one focus (a release, one

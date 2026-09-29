@@ -813,9 +813,15 @@ test("D14 every bulk fan-out is piloted against a stronger model's marking, and 
     "Pilot every bulk fan-out before it launches: a stronger model marks a few units, the bulk model runs the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort.",
   ));
 
-test("D15 a batch of verdict units runs as a swarm, which only the user starts, and a batch of extraction units as ordinary Codex agents",
-  "issue #22's 456 Luna runs and the writing replication's collection both launched bulk batches by hand, with no wrapper, and the page named no batch route; the swarm is that route for verdict units, whose shape is the only one it takes (swarm/SKILL.md), and its limits are E90's",
-  () => says("A batch of verdict units runs as a swarm, which only the user starts, with `/entrust:swarm`: one script launches its agents under a concurrency cap, and one Stop ends the batch; a batch of extraction units runs as ordinary Codex agents, launched as Mechanism below says."));
+test("D15 a bulk batch of either unit may run as a swarm the plan proposes, started by the user's go, read by path and launched with the data directory forwarded, each in a run directory of its own; otherwise as ordinary Codex agents",
+  "issue #22's 456 Luna runs and the writing replication's collection both launched bulk batches by hand, with no wrapper, and the page named no batch route; the owner then made the swarm a role the planner may propose (2026-09-29), for verdict units and extraction parts alike. The swarm page is user-only, so it is read by path; the launch line forwards the data directory because a Bash shell has none of its own, and a swarm's agent ids cannot be registered in a plan (E90)",
+  () => says(
+    "A bulk batch of either unit may run as a swarm the plan proposes: the card names it with its count and cost, and the user's \"go\" on the plan starts it, as a typed `/entrust:swarm` also does.",
+    "Read [swarm](../swarm/SKILL.md) at `${CLAUDE_SKILL_DIR}/../swarm/SKILL.md` whole with the Read tool",
+    "`CLAUDE_PLUGIN_DATA=\"${CLAUDE_PLUGIN_DATA}\" node \"${CLAUDE_SKILL_DIR}/../swarm/scripts/swarm.mjs\" --units <file> --brief <template> --run <run directory> --concurrency <n>`",
+    "each swarm in a run directory of its own, since the launcher refuses a swarm's agent ids under a registered plan (E90)",
+    "A bulk batch the plan gives no swarm runs as ordinary Codex agents, launched as Mechanism below says.",
+  ));
 
 test("E7 a decisive check runs before any panel, dependent execution stays in one agent, and its verification stays independent",
   "sixteen agents over two naming rounds proposed, reviewed and judged before the check that decided was run (426:973, 426:1208, 2026-09-17), while the two tasks the coordinator kept in its own hands (2026-09-12, 2026-09-16) landed with critics only; the rule orders the check first and keeps the fresh verifier, it does not ban a panel",
