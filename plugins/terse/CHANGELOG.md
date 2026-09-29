@@ -47,6 +47,8 @@ forensics remain in the repository references and release notes.
   with fourteen entries unseen.
 - E87: `rewrite` names Node 22 or newer where it runs its section script. Before, only the README said so, and a
   coordinator on a machine without Node met a shell error the page did not explain.
+- E88: `audit` gets no checklist to copy and tick off, so its page stays as it was. Its steps are numbered and each
+  needs the previous one's result, it reports to the person in prose, and no run has been seen to skip a step.
 
 ## 0.5.0 — 2026-09-28
 

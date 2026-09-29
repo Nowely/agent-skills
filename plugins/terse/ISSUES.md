@@ -18,16 +18,6 @@ Finding 4.3 of the same map.
 **Issue text.** The description spends tokens on every turn on how to apply the checks, which the body could say. Moving
 it needs a new trigger measurement.
 
-## E88. `audit`'s eight steps have no checklist the model can copy and tick off (tension)
-
-**Evidence, level 1.** `plugins/terse/plugin/skills/audit/SKILL.md:22-158` gives eight numbered steps and no checklist.
-Anthropic's skill authoring page offers, for a complex workflow, a checklist the model copies into its response and
-checks off. House side: the owner's rule keeps machinery out of what the person reads, and the audit reports to the user
-in prose (`audit/SKILL.md:149-158`); the order is kept by the steps' dependence. Finding 4.12 of the same map.
-
-**Issue text.** A long audit could skip a step with nothing tracking the order. Decide whether a checklist is worth what it
-puts in front of the person, or can be kept out of the visible reply.
-
 ## E99. On a machine where terse is installed, the trigger suite's control arm cannot be isolated
 
 **Evidence, level 3.** `plugins/terse/evals/clarity-trigger.live.md:51-52`: "Both arms use the ordinary owner profile,
