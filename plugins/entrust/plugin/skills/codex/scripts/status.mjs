@@ -5,8 +5,8 @@
 //
 //   node scripts/status.mjs
 //
-// The codex and orchestrate pages run it through Claude Code's !`…` substitution. A non-zero exit there
-// cancels the whole page, so every outcome prints one CODEX= line and exits 0:
+// The codex page runs it through Claude Code's !`…` substitution. A non-zero exit there cancels the whole
+// page, so every outcome prints one CODEX= line and exits 0:
 //
 //   CODEX=ready [PLAN=<plan>]     then one MODEL=<short name> <slug> efforts=<list> line per listed model,
 //                                 or MODEL=none when none of astra, sol, terra, luna is listed

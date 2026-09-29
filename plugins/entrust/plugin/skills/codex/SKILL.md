@@ -40,7 +40,7 @@ Apply all six rules:
    a Claude answer.
 4. Knowing the answer is not a reason to skip a requested second opinion.
 5. Never add allow-rules on the user's behalf.
-6. Compose from the Codex status the skill page printed as it loaded: a `CODEX=` line and, when it reads
+6. Compose from the Codex status the codex page printed as it loaded: a `CODEX=` line and, when it reads
    `ready`, one `MODEL=` line per model the account lists.
    - `ready`: every Codex agent's `MODEL:` is a listed short name. A model the user, a page or a tier names
      that is not listed is taken by the nearest listed one below it in Astra, Sol, Terra, Luna, or above it

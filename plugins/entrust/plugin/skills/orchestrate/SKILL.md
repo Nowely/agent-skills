@@ -7,15 +7,12 @@ disable-model-invocation: true
 metadata:
   version: "0.22.0"
 license: MIT
-allowed-tools: Bash(node *codex/scripts/status.mjs*)
 ---
 
 Plan from [codex-composition.md](references/codex-composition.md), the sibling's composition rules and rights table generated into this page's references. Load [codex](../codex/SKILL.md) (Skill tool, `entrust:codex`) once the plan has a Codex agent, before its launcher's `--plan`, and follow it for every Codex agent: rights, header fields, worktree lifecycle, the report and the exit
 ladder live there and stay authoritative; this page re-cuts only what the mode changes. The mode adds no header field or flag and leaves the agent's own prompt file where the sibling puts it; what it asks of the driver and the launcher is the sibling's and is changed there under its own changelog line, and its own scripts, the runner and the linter, run a command or read a draft and write only under `$TMPDIR`. Every agent has a mailbox, so it can ask instead of
 being declined at once. You are the
 orchestrator; the work-list, the plan, the composition and the synthesis are yours, the rest is an agent's.
-
-The Codex this machine can run, asked of its server as this page loaded, for the composition rules' sixth rule: !`node "${CLAUDE_SKILL_DIR}/../codex/scripts/status.mjs"`
 
 ## Your own hands
 
@@ -36,7 +33,7 @@ run directory: its artifact is its report, and a brief that asks a Codex read ag
 
 ## The plan
 
-1. First read `${CLAUDE_SKILL_DIR}/references/codex-composition.md` whole with the Read tool, before any decision: it holds the composition rules and the rights table the plan is made from. Scout, then decide the composition and the agents from it; load the sibling skill with the Skill tool once the plan has a Codex agent. For each agent, check the required commands against its planned rights and environment, and write what you found into a Codex agent's `ENVIRONMENT:` line: what is staged and where, and the daemon or socket a tool needs with the command to run instead. Probe uncertain prerequisites cheaply; put unmet prerequisites in the plan.
+1. First read `${CLAUDE_SKILL_DIR}/references/codex-composition.md` whole with the Read tool, before any decision: it holds the composition rules and the rights table the plan is made from. Scout, then decide the composition and the agents from it; load the sibling skill with the Skill tool once the plan has a Codex agent, and compose again by the Codex status it prints as it loads, the sixth rule, before anything is registered or shown. For each agent, check the required commands against its planned rights and environment, and write what you found into a Codex agent's `ENVIRONMENT:` line: what is staged and where, and the daemon or socket a tool needs with the command to run instead. Probe uncertain prerequisites cheaply; put unmet prerequisites in the plan.
 2. With a Codex agent in the plan, register every agent, Claude or Codex, through the sibling's launcher, `--plan --run-dir <run>` (its `--help` gives the rows), and build the card from what it prints: the rows and the `WORKERS=` and `CHECKING=` counts. An all-Claude plan skips the registration. Then show the plan as a card of five rows and stop, in the user's own language and in ordinary words — work: what will be done; who: each agent by model name and role, and how many are workers and how many check their work; writes: what each may write, that the agents reach the network and any you are keeping off it, and that
    reports and artifacts land outside the repository, except a worktree agent's own tree, which is made and removed inside the repository, in a hidden folder; cost: the tokens by agent, and your own inline work beside them; checks: which agent verifies what, the critic, and for a design round the criterion that picks the survivors. The launcher refuses a Codex agent the registered plan does not list, and a Claude agent the card does not list is one you do not launch: amend the plan (`--plan --amend` when it was registered), show the amendment and wait for a word, as for the plan. Name no path and no header field. A worktree agent is named as such, because a worktree will be made. Browser and end-to-end runs go to a Claude agent, or to a write agent with the grants parity.md's
    [Browser-mode sandbox](../codex/references/parity.md#browser-mode-sandbox) section names; a read agent cannot, because that section's Chromium override is a file in the tree it may not write.

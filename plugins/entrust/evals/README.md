@@ -32,7 +32,7 @@ pages name. It runs before `package`, so a release run stops on drift. `capture-
 `lint-draft.test.mjs` drive the orchestrate mode's two scripts. `gate-checks.test.mjs` runs the live gate's
 reading of a session, `lib/gate-checks.mjs`, against fixture streams, so what the paid gate concludes is
 checked on every run. `status.test.mjs` drives `scripts/status.mjs` against the fake server in each state it
-prints, and reads the line the codex and orchestrate pages inject to run it.
+prints, and reads the line the codex page injects to run it.
 
 The counts are deliberately not written down here — the last one was wrong twice in two days. The
 `CASES` arrays are the inventory, and each suite states its own count in its last line. A case that

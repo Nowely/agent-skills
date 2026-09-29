@@ -1,13 +1,12 @@
 #!/usr/bin/env node
-// Tests for scripts/status.mjs — what Codex the machine can run, printed into the codex and orchestrate
-// pages as they load.
+// Tests for scripts/status.mjs — what Codex the machine can run, printed into the codex page as it loads.
 //
 //   node evals/status.test.mjs
 //
 // Every case runs the script against the fake app-server through ENTRUST_CODEX, and every case checks the
 // exit code: Claude Code cancels a page whose injected command exits non-zero, so 0 is the contract in each
-// state. The last case reads the two pages: the line they inject, the script it names, and the
-// allowed-tools pattern that lets it run outside auto mode. Whether Claude Code runs it under that pattern
+// state. The last case reads the pages: the line the codex page injects, the script it names, the
+// allowed-tools pattern that lets it run outside auto mode, and no other page that runs it. Whether Claude Code runs it under that pattern
 // is a live question this suite cannot answer.
 
 import fs from "node:fs";
@@ -92,22 +91,26 @@ test("a catalogue with none of the four short names prints MODEL=none",
     return r.out.trim() === "CODEX=ready PLAN=plus\nMODEL=none" || `printed ${JSON.stringify(r.out.trim())}`;
   });
 
-test("the codex and orchestrate pages inject the same line, it runs this script, and each page's allowed-tools covers it",
-  "orchestrate plans before it loads the codex page, so a page without the line plans blind; a pattern that misses the command cancels the page outside auto mode",
+test("the codex page injects the line, it runs this script, its allowed-tools covers it, and no other page runs it",
+  "a pattern that misses the command cancels the page outside auto mode (measured 2026-09-29); a second page that runs it costs its load in dontAsk mode (E102), and orchestrate gets the status from the codex page it loads before a plan is shown",
   () => {
     const problems = [];
-    for (const skill of ["codex", "orchestrate"]) {
-      const page = fs.readFileSync(path.join(ROOT, "skills", skill, "SKILL.md"), "utf8");
-      // At a line's start or after a space: Claude Code runs the form nowhere else.
-      const line = /(?:^|\s)!`(node "\$\{CLAUDE_SKILL_DIR\}\/([^"]+)")`$/m.exec(page);
-      if (!line) { problems.push(`${skill}: no line reads !\`node "\${CLAUDE_SKILL_DIR}/…"\``); continue; }
-      const dir = path.join(ROOT, "skills", skill);
-      if (path.resolve(dir, line[2]) !== STATUS) problems.push(`${skill}: the line runs ${line[2]}, not scripts/status.mjs`);
-      const command = line[1].replace("${CLAUDE_SKILL_DIR}", dir);
-      const front = page.split(/^---$/m)[1] ?? "";
-      const patterns = [...(/^allowed-tools: (.+)$/m.exec(front)?.[1] ?? "").matchAll(/Bash\(([^)]+)\)/g)].map((m) => m[1]);
-      const glob = (p) => new RegExp(`^${p.split("*").map((s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
-      if (!patterns.some((p) => glob(p).test(command))) problems.push(`${skill}: no allowed-tools Bash pattern matches ${command}`);
+    // At a line's start or after a space: Claude Code runs the form nowhere else.
+    const inject = /(?:^|\s)!`(node "\$\{CLAUDE_SKILL_DIR\}\/([^"]+)")`$/m;
+    const page = fs.readFileSync(path.join(ROOT, "skills", "codex", "SKILL.md"), "utf8");
+    const line = inject.exec(page);
+    if (!line) return 'the codex page has no line reading !`node "${CLAUDE_SKILL_DIR}/…"`';
+    const dir = path.join(ROOT, "skills", "codex");
+    if (path.resolve(dir, line[2]) !== STATUS) problems.push(`the line runs ${line[2]}, not scripts/status.mjs`);
+    const command = line[1].replace("${CLAUDE_SKILL_DIR}", dir);
+    const front = page.split(/^---$/m)[1] ?? "";
+    const patterns = [...(/^allowed-tools: (.+)$/m.exec(front)?.[1] ?? "").matchAll(/Bash\(([^)]+)\)/g)].map((m) => m[1]);
+    const glob = (p) => new RegExp(`^${p.split("*").map((s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
+    if (!patterns.some((p) => glob(p).test(command))) problems.push(`no allowed-tools Bash pattern matches ${command}`);
+    for (const skill of fs.readdirSync(path.join(ROOT, "skills")).filter((s) => s !== "codex")) {
+      let other = "";
+      try { other = fs.readFileSync(path.join(ROOT, "skills", skill, "SKILL.md"), "utf8"); } catch { continue; }
+      if (/status\.mjs/.test(other)) problems.push(`${skill}/SKILL.md runs or names status.mjs`);
     }
     return problems.length === 0 || problems.join("; ");
   });

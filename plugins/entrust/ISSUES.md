@@ -548,29 +548,30 @@ from the build. The build has it now, and it runs each case in a configuration w
 instructions, the harness terse already uses for its own trigger suite. The README should say so, and the trigger
 cases could run through it instead of through a reading of a real invocation's transcript.
 
-## E102. In `dontAsk` mode the codex, orchestrate and advisor pages do not load, because the Codex status line they run needs an allow rule the page cannot give
+## E102. In `dontAsk` mode the codex page, and the advisor page that loads it first, do not load, because the Codex status line it runs needs an allow rule the page cannot give
 
-**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:29` and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:18`
-run `scripts/status.mjs` through Claude Code's `` !`…` `` substitution as the page loads, and both frontmatters (`:16`, `:10`)
-pre-approve it with `allowed-tools: Bash(node *codex/scripts/status.mjs*)`; `plugins/entrust/plugin/skills/advisor/SKILL.md:13`
-loads the codex page first. On 2026-09-29, Claude Code 2.1.280, a `claude plugin eval` case that loaded `entrust:codex`
-ran in `permissionMode: dontAsk`, and the Skill call's result was "Shell command permission check failed for pattern
-… Permission to use Bash has been denied because Claude Code is running in don't ask mode": the model never received
-the page. The same case with the operator's `--allow-tools "Bash(node *codex/scripts/status.mjs*)"` loaded it, so the
-pattern matches and the page's own grant is what `dontAsk` ignores; the permission-modes page lists reads,
-`permissions.allow` rules and PreToolUse hook approvals as what `dontAsk` runs, and no skill's `allowed-tools`. In headless
-`claude -p` sessions the codex page loaded in Manual (`default`) and auto mode with the grant and was cancelled in Manual mode
-without it, and the orchestrate page loaded in Manual mode. Before the status line, both pages loaded in `dontAsk` with no
-rule, and the orchestrate page could still run a plan of Claude agents alone.
+**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:29` runs `scripts/status.mjs` through Claude Code's
+`` !`…` `` substitution as the page loads, and its frontmatter (`:16`) pre-approves it with
+`allowed-tools: Bash(node *codex/scripts/status.mjs*)`; `plugins/entrust/plugin/skills/advisor/SKILL.md:13` loads the codex
+page first, and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:36` loads it once a plan has a Codex agent. On 2026-09-29,
+Claude Code 2.1.280, a `claude plugin eval` case that loaded `entrust:codex` ran in `permissionMode: dontAsk`, and the Skill
+call's result was "Shell command permission check failed for pattern … Permission to use Bash has been denied because
+Claude Code is running in don't ask mode": the model never received the page. The same case with the operator's
+`--allow-tools "Bash(node *codex/scripts/status.mjs*)"` loaded it, so the pattern matches and the page's own grant is what
+`dontAsk` ignores; the permission-modes page lists reads, `permissions.allow` rules and PreToolUse hook approvals as what
+`dontAsk` runs, and no skill's `allowed-tools`. In headless `claude -p` sessions the codex page loaded in Manual
+(`default`) and auto mode with the grant and was cancelled in Manual mode without it. Before the status line the codex page
+loaded in `dontAsk` with no rule. The orchestrate page carries no status line and loads there; what an orchestrator does
+when its plan has a Codex agent and the codex page it loads is cancelled was not measured.
 
 **Check.** Run `claude plugin eval` on a case whose prompt loads `entrust:codex` with the Skill tool, with
 `--ablation none --runs 1`: the Skill call's result is the permission failure above and no `CODEX=` line reaches the session.
 
 **Issue text.** In `dontAsk` mode, the mode `claude plugin eval` runs every case in and the one locked-down CI uses, the
-codex, orchestrate and advisor pages no longer load. Each page runs the Codex status script as it loads, and `dontAsk`
-counts only allow rules and hook approvals, not the page's own `allowed-tools`, so Claude Code cancels the page before the
-model sees it. The status is advice for the composition and should never take a page down: in `dontAsk` the page should
-load and the plan should say Codex was not checked unless the operator allowed the command. The two fixes weighed on
-2026-09-29 were rejected by the owner as not good enough: an allow rule every `dontAsk` operator adds leaves the page dead
-until someone reads the README, and an explicit first step in place of the substitution adds a visible Bash call to every
-load and a step the model can skip.
+codex page no longer loads, and neither does the advisor page, which loads it first. The page runs the Codex status script as
+it loads, and `dontAsk` counts only allow rules and hook approvals, not the page's own `allowed-tools`, so Claude Code
+cancels the page before the model sees it. The status is advice for the composition and should never take a page down: in
+`dontAsk` the page should load and the plan should say Codex was not checked unless the operator allowed the command. The two
+fixes weighed on 2026-09-29 were rejected by the owner as not good enough: an allow rule every `dontAsk` operator adds leaves
+the page dead until someone reads the README, and an explicit first step in place of the substitution adds a visible Bash call
+to every load and a step the model can skip.
