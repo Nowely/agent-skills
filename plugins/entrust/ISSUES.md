@@ -428,6 +428,31 @@ required packages in SKILL.md and advises against assuming them. A refused launc
 **Issue text.** A coordinator on a machine without the `codex` CLI or Node meets a failed launch the page does not
 explain. The page should name its dependencies in one line.
 
+## E89. The launcher's plan registration refuses 12 of the 22 role names `orchestrate`'s roles reference defines
+
+**Evidence, level 3.**
+
+- `plugins/entrust/plugin/skills/codex/scripts/agent-run.mjs:416-419` (`classifyRole`) knows a role only by a worker
+  word (`implement|writ|worker|build|fix|…`) or a checking word (`critic|verif|review|refut|judge|check|test|advis|…`),
+  and `:445` refuses a row whose role has neither: `invalid role for <id>: <role>`, exit 2.
+- `plugins/entrust/plugin/skills/orchestrate/SKILL.md:37` registers every agent, Claude or Codex, through `--plan`
+  once the plan has a Codex agent, and `orchestrate/references/roles.md:3` has the coordinator choose the role from
+  that reference's table, or name a new one the same way.
+- 2026-09-29, `classifyRole` over the first column of that table returned no class for 12 of its 22 rows: area scout,
+  architect, foreman, strong reader, live prober, recognition reader, blind proposer, dedup-and-rank, surveyor,
+  measurer, retrospective analyst, swarm reducer. The row `A1 | opus | architect | nothing | unknown` through
+  `--plan --run-dir <dir>` printed `ERROR=invalid role for A1: architect` and exited 2; the same row as
+  `split critic` registered with `CHECKING=1`.
+
+**Check.** Import `classifyRole` from `agent-run.mjs` in a `node` one-liner and run it over the first column of
+the table in `roles.md`: 12 of 22 come back `null`.
+
+**Issue text.** The coordinator names each agent's role from the roles reference, and the launcher refuses more than
+half of those names when the plan is registered: a plan with an architect, an area scout, a measurer or the foreman
+exits 2 before its card can be shown, and a coordinator that renames the role to a word the pattern knows gets a
+card that no longer says what the agent does. The launcher should accept every role the reference defines, counting
+each as a worker, a checker or neither, or the plan step should say which words the launcher counts.
+
 ## E92. Codex agents running side by side share one `$TMPDIR`, and the pages send each agent's overflow there as if it were its own
 
 **Evidence, level 3 for the collision, level 1 for the pages.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:152`
