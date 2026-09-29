@@ -36,7 +36,7 @@ directory stays for this reason, and should stay until that case is measured too
 
 **Evidence, level 3 for the mechanism, level 2 for HEAD's word counts.** Claude Code's skills page: after
 auto-compaction it "re-attaches the most recent invocation of each skill after the summary, keeping the first 5,000
-tokens of each". At HEAD, `codex/SKILL.md` is 4,450 words (4,242 after this branch's own trims, `22777dc` and
+tokens of each". At HEAD, `codex/SKILL.md` is 4,461 words (4,242 after this branch's own trims, `22777dc` and
 `b1056f9`, from 5,602, itself up from the 5,510 first measured after the E51, E57, E65, E67, E80 and E92 fixes added
 material; main's Codex status lines and sixth composition rule, merged after, added 208): the 3,400th word falls in
 "Reading the result" (`codex/SKILL.md:273`), so "Prompt shape" (`:295`), "What the user reads" (`:323`), "Traps"
@@ -46,12 +46,12 @@ Verification analysis bullet; main's swarm route, stand-in rule and critic read 
 3,400th word falls in "Mechanism" (`:106`); "Approvals" starts at word 3,875 (`:114`), "Verification" at 4,312
 (`:124`) and "The agent's return" at 5,682 (`:151`).
 
-**Check.** `wc -w plugins/entrust/plugin/skills/{codex,orchestrate}/SKILL.md` prints 4450 and 5938; a page past
+**Check.** `wc -w plugins/entrust/plugin/skills/{codex,orchestrate}/SKILL.md` prints 4461 and 5938; a page past
 about 3,400 words loses its tail after a compaction.
 
 **Issue text.** The two skills a coordinator relies on for the whole of a long session are still longer than what
 Claude Code keeps of a skill after compaction, though each fix round has cut into both: `codex` from 5,602 to
-4,242 words and `orchestrate` from 6,001 to 5,668, before later additions brought them to 4,450 and 5,938. Past the
+4,242 words and `orchestrate` from 6,001 to 5,668, before later additions brought them to 4,461 and 5,938. Past the
 first compaction, `codex` loses the prompt shape, what the user reads, the traps and the reference list;
 `orchestrate` loses verification, the Result table included, and the agent's return. Candidates the page writers
 named for the next cut: `codex`'s "Worktree lifecycle" section (`:224-247`, 286 words, repeats the driver's help and
