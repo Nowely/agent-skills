@@ -193,13 +193,13 @@ forensics remain in the repository references and release notes.
 - **Behaviour change: a driver handed a mailbox that already has an `owner.json` exits 2 whether its owner is
   running or has ended**; the takeover of a dead owner's mailbox is gone, since the launcher gives every launch a
   mailbox of its own (E68).
-- **Every Codex run gets its own `$TMPDIR`, created fresh at 0700 inside the system temporary directory** (the
-  caller's `TMPDIR` when exported, else the OS default) and named after the run: `<tmp>/entrust/<rel>` for a report
-  at `<state>/<rel>/report.json`, else `<tmp>/entrust/runs/<startedAtMs>-<pid>`. The agent is granted that directory
-  only, never the caller's whole `TMPDIR`. The report's `tmpDir` names it, it outlives the run, and the driver never
-  removes it. A leaf that already exists is refused with exit 2. The driver no longer creates `<state>/tmp`; one
-  left by an earlier version can be deleted by hand. Agents of one coordinator no longer share, and overwrite, one
-  temp directory. (E92)
+- **Every Codex run gets its own `$TMPDIR`, created fresh at 0700 inside the system temporary directory** —
+  `os.tmpdir()` (the caller's `TMPDIR`, `TMP` or `TEMP`, else the OS default) — and named after the run:
+  `<tmp>/entrust/<rel>` for a report at `<state>/<rel>/report.json`, else `<tmp>/entrust/runs/<startedAtMs>-<pid>`.
+  The agent is granted that directory only, never the caller's whole `TMPDIR`. The report's `tmpDir` names it, it
+  outlives the run, and the driver never removes it. A leaf that already exists is refused with exit 2. The driver
+  no longer creates `<state>/tmp`; one left by an earlier version can be deleted by hand or through
+  `/entrust:cleanup`. Agents of one coordinator no longer share, and overwrite, one temp directory. (E92)
 - **`/entrust:cleanup` removes a run's or standalone report's temporary folder** (`<tmp>/entrust/<rel>`) together
   with the run, on the same number and under the run's own liveness. It lists and suggests the folders there whose
   run is gone from the state directory or whose report-less run has stopped, and it offers what an earlier driver
