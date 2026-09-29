@@ -39,10 +39,9 @@ export function tempDir(prefix) {
   temps.push(d);
   return d;
 }
-// Every process a suite spawns inherits a $TMPDIR BESIDE the suite's directories rather than above them:
-// the driver refuses a $TMPDIR that is an ancestor of its state directory, and the inherited one is an
-// ancestor of every state directory made above. Set where the parent had none too, so a case that plants
-// something in the agent's own $TMPDIR runs on every machine; a case about an unset one unsets it itself.
+// Every process a suite spawns inherits a $TMPDIR of the suite's own, set where the parent had none too;
+// the driver gives each run a private one whatever the caller exports, so this only keeps the suite's own
+// scratch off the machine's shared temp directory.
 process.env.TMPDIR = tempDir("entrust-agent-tmp-");
 
 // The driver spawns `codex` from PATH, so the shim has to be called exactly that.

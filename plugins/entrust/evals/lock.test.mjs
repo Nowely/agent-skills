@@ -972,12 +972,11 @@ test("--writable refuses ~/.codex and the state directory in use, which hold the
     return true;
   });
 
-test("a root ABOVE the state directory is refused like one inside it: --writable and --cwd at write level, $TMPDIR at both",
+test("a root ABOVE the state directory is refused like one inside it: --writable and --cwd at write level",
   "the plugin's data directory sits at ~/.claude/plugins/data/entrust-nowely, so `--writable ~/.claude` granted its locks, answer log and every agent's mailbox while the guard refused the directory itself; the walk has to go both ways (ISSUES E66)",
   async () => {
     // The shape of a plugin install, in miniature: a parent standing in for ~/.claude, the state directory
-    // three levels under it, not yet created, as on a first run. Beside the $TMPDIR the drivers here are
-    // handed, not under it, or that would be the ancestor refused first.
+    // three levels under it, not yet created, as on a first run.
     const claude = tempDir("codex-lock-dot-claude-");
     const state = path.join(claude, "plugins", "data", "entrust-nowely");
     const mid = path.join(claude, "plugins");
@@ -991,12 +990,6 @@ test("a root ABOVE the state directory is refused like one inside it: --writable
     refused("--writable ~/.claude", await run(freshDir("above-writable"), { args: ["--writable", claude], env: { ENTRUST_STATE_DIR: state } }), claude);
     refused("--writable ~/.claude/plugins", await run(freshDir("above-writable2"), { args: ["--writable", mid], env: { ENTRUST_STATE_DIR: state } }), mid);
     refused("--cwd ~/.claude", await run(claude, { env: { ENTRUST_STATE_DIR: state } }), claude);
-    for (const level of ["write", "read"]) {
-      const { code, err } = await spawnNode([DRIVER, "--level", level, "--cwd", freshDir(`above-tmp-${level}`), "--timeout", "30",
-        "--allow-no-commands", "--prompt", "irrelevant, the server is scripted"],
-        { env: { PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: "happy", ENTRUST_STATE_DIR: state, TMPDIR: claude } }).done;
-      refused(`TMPDIR=~/.claude at ${level} level`, { code, err }, claude);
-    }
     return problems.length === 0 || problems.join("; ");
   });
 

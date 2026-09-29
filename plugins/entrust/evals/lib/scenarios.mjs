@@ -29,8 +29,7 @@ fs.writeFileSync(schemaFile, JSON.stringify({
   type: "object", additionalProperties: false, required: ["verdict", "count"],
   properties: { verdict: { type: "string", enum: ["ok", "bad"] }, count: { type: "integer" } }
 }));
-// A $TMPDIR the caller exports, distinct from --cwd: with the two equal the server subtracts the root
-// and the "an explicit TMPDIR is honoured" case would pass on an empty list.
+// A $TMPDIR the caller exports, distinct from --cwd, which the cases show the driver does not use.
 const explicitTmp = path.join(shimDir, "explicit-tmp");
 fs.mkdirSync(explicitTmp);
 const notExec = path.join(shimDir, "not-executable");
@@ -82,11 +81,6 @@ const rolloutLine = (id) => JSON.stringify({
 fs.writeFileSync(path.join(rolloutDay, "rollout-2026-01-01T00-00-00-thr_root.jsonl"), `${rolloutLine("thr_root")}\n`);
 // Same filename convention, a session_meta naming a DIFFERENT thread: the file exists, the receipt is
 // not this run's, and receiptOk must say so rather than trusting the name.
-// A pre-existing state directory with $TMPDIR inside it: the read-level grant must not expose the
-// driver's protected state to writes.
-const protectedState = path.join(stateBase, "protected");
-const protectedTmp = path.join(protectedState, "tmp");
-fs.mkdirSync(protectedTmp, { recursive: true });
 
 // A directory name with consecutive spaces checks that prompt-file parsing preserves the literal path.
 const spacedDir = path.join(shimDir, "two  spaces");
@@ -217,7 +211,7 @@ async function until(fn, ms = 15000) {
 export {
   shimDir as SHIM, REVIEW_SCHEMA, survivorPidName, schemaFile, explicitTmp, notExec, laxSchemaFile,
   oneOfSchemaFile, looseSchemaFile, looseNestedSchemaFile, optionalSchemaFile, protoSchemaFile,
-  sessionsDir, rolloutDay, rolloutLine, protectedState, protectedTmp, spacedDir, attachFile,
+  sessionsDir, rolloutDay, rolloutLine, spacedDir, attachFile,
   attachFile2, mismatchSessions, mismatchDay, interruptLog, modelListLog, unknownModelLog,
   rateLimitLog, run, flowState, recordOf, wait, until,
 };
