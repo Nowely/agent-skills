@@ -37,7 +37,8 @@ How a plugin behaved in real work in one release or a window of releases.
   Summary, with numbered headlines. Scope and method: the corpus as a table of T-ids and each task's shape, the Codex
   runs, what was left out and why, the audit's own composition, the address notation. Cost profile. Findings `F1`…,
   each with Seen (addresses), Pages (`file:line` of the plugin's public text, which may be quoted), Kind, Level,
-  Refuter and Recurring. What to keep. Proposed changes, as a table. Open questions. Audit cost.
+  Refuter and Recurring. What to keep. Proposed changes, as a table. Open questions. Audit cost, of the agents
+  that read, refuted and judged, never of the report's own review.
 - **Reading:** readers with a question, one per task, each with its task's timeline slice; a measurer over the
   transcripts' `usage` for the cost profile; for entrust, a strong reader of the Codex runs' reports. Which pages were
   read before which draft, and what the owner said while the model worked, come from the timeline.
