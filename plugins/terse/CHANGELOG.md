@@ -5,6 +5,12 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Added
+
+- A trigger case, `ticket-check`, where the request asks only to check a ticket whose last comment is an
+  open question, so replying is the writer's own next step: in a field report, clarity did not start on its
+  own for such a reply. The case is unmeasured until the live suite runs it.
+
 ### Changed
 
 - `clarity`'s second question before writing also asks what comes back, and when neither the owner nor the

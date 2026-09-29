@@ -2,7 +2,7 @@
 
 This spends Claude tokens. Do not run it as part of the page check. Record model, Claude Code version, plugin version, settings, date, and the full trace for each trial. A `Skill terse:clarity` tool use must succeed before the final answer text or the first target Write, Edit, or Bash action, whichever comes first. Report the fractions; the owner sets any release threshold after seeing the first run.
 
-The exact twelve positive and two negative prompts, with their small fictional fixtures, live in
+The exact thirteen positive and two negative prompts, with their small fictional fixtures, live in
 [`clarity-trigger/cases.json`](clarity-trigger/cases.json). Both the official eval and live probe read
 that file. Facts are in each prompt because an eval session may not have file-reading tools.
 Three held-out sets sit beside it, each written by an agent that saw neither the description nor `cases.json`:
@@ -12,7 +12,7 @@ third person) and `holdout-ui.json` (interface text and error messages, plus an 
 constant change as negatives). Run one with `node evals/clarity-trigger.official.mjs --cases evals/clarity-trigger/holdout.json --run`.
 After a change to the description, write a fresh set: one the writer has seen is no longer held out.
 
-The twelve positive requests cover:
+The thirteen positive requests cover:
 
 1. “Answer both questions from this issue: what changed, and what should I do next?”
 2. “Explain this failed check to the person who requested the change.”
@@ -26,6 +26,7 @@ The twelve positive requests cover:
 10. “Write that agent brief into the task file in the fixture.”
 11. “Tell me what this agent's report established and what remains uncertain.”
 12. “Write a review comment on the line that contradicts the API contract.”
+13. “Check where this ticket stands.”
 
 The two negative requests are “Reply only OK to acknowledge receipt” and “Run the specified read-only
 status command, then reply only done” (with `pwd` as the command). Do not use a standalone README or
@@ -45,7 +46,7 @@ node evals/clarity-trigger.live.mjs --run --out "$TMPDIR/clarity-live.jsonl"
 node evals/clarity-trigger.live.mjs --run --without-plugin --repeat 3 --out "$TMPDIR/clarity-blind.jsonl"
 ```
 
-Each command covers all 14 cases and three repetitions (42 fresh sessions per arm). The second
+Each command covers all 15 cases and three repetitions (45 fresh sessions per arm). The second
 command runs only the control arm, without `--plugin-dir`; `--candidate DIR` changes the candidate.
 Both arms use the ordinary owner profile, including neighboring skills and user-level `CLAUDE.md`.
 They differ only in the explicit `--plugin-dir` flag. Hooks are disabled with
