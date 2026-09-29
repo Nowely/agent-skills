@@ -279,7 +279,9 @@ artifact a name, or a subdirectory, that cannot collide with a sibling's.
 character that is not a letter or a digit replaced by `-`". For a checkout at `~/Git/agent-skills` the slug is
 `-Users-<user>-Git-agent-skills`, so an agent's report sits at
 `<state>/orchestrate/-Users-<user>-Git-agent-skills/<run>/<agent>/report.json`, and E92's rework on this branch
-names each run's temporary folder by the same relative path under the system temporary directory. The places a run
+names each run's temporary folder by the same relative path under the system temporary directory; on a macOS
+machine the path to a socket file `s.sock` in an orchestrate agent's folder measured 141 bytes, over the 104-byte
+limit of a Unix socket path (the plugin makes no socket there; a tool an agent runs might, not measured). The places a run
 leaves files — the plugin's data directory, the system temporary directory, the repository's `.claude/worktrees/` —
 were each chosen by the change that needed them. Raised by the owner, 2026-09-30.
 
