@@ -348,13 +348,14 @@ const HELP = [
   and this driver's own state`,
     more: `  $TMPDIR is writable at BOTH levels: the whole grant at read level, beside
   --cwd at write level; /tmp is not, at either. It is the run's own directory,
-  made fresh at 0700 inside the system's temporary directory (your TMPDIR when
-  exported, else the OS default), never your whole one:
+  made fresh at 0700 inside the system's temporary directory, Node's
+  os.tmpdir() (TMPDIR, else TMP or TEMP, else /tmp), never your whole one:
     a report at <state>/<rel>/report.json: <tmp>/entrust/<rel>
     no report under <state>: <tmp>/entrust/runs/<startedAtMs>-<pid>
-  The report names it as tmpDir. It is exported for the turn AND the verifier,
-  and it OUTLIVES the run, because --brief tells the agent to leave long output
-  in a file there; the driver never removes it.
+  <tmp>/entrust must be a directory of yours and no link; anything else is
+  exit 2. The report names it as tmpDir. It is exported for the turn AND the
+  verifier, and it OUTLIVES the run, because --brief tells the agent to leave
+  long output in a file there; the driver never removes it.
   A worktree turn that did not complete, or a harvest
   that failed, PRESERVES the tree and the report says why and how to remove it; a
   clean tree whose turn never started is removed too. With --resume the tree is
@@ -1362,8 +1363,8 @@ function refuseWebSearchMode(mode, network) {
 }
 
 // A $TMPDIR of this run's own, made at EITHER level for every run, in the system's temporary directory —
-// the caller's TMPDIR where one is exported, else the OS default — under entrust/, and named after the
-// run so whose it is can be read off the path: a report at <state>/<rel>/report.json gets
+// Node's os.tmpdir(), which reads TMPDIR, then TMP and TEMP, then falls back to /tmp — under entrust/,
+// and named after the run so whose it is can be read off the path: a report at <state>/<rel>/report.json gets
 // entrust/<rel>, the agent's own report directory mirrored, and a run with no report under the state
 // directory gets entrust/runs/<startedAtMs>-<pid>, the start its answer file is named by. Every level made
 // is 0700, and the leaf is made fresh: an existing one is another run's, and sharing it is how two agents
@@ -1371,6 +1372,13 @@ function refuseWebSearchMode(mode, network) {
 // a file there, so a directory removed at exit takes with it every path the answer names — and the driver
 // never removes it.
 let runTmp = null, runTmpBase = null;
+// What is wrong with the base <tmp>/entrust as lstat saw it, or null when it is a directory of this user's.
+function tmpBaseProblem(st) {
+  if (st.isSymbolicLink()) return "is a symbolic link";
+  if (!st.isDirectory()) return "is not a directory";
+  if (typeof process.getuid === "function" && st.uid !== process.getuid()) return `belongs to uid ${st.uid}, not to this user`;
+  return null;
+}
 function runTmpDir() {
   const base = path.join(path.resolve(os.tmpdir()), "entrust");
   const state = canonPath(stateDir());
@@ -1378,10 +1386,24 @@ function runTmpDir() {
   const rel = state && from ? path.relative(state, from) : "";
   const mirrored = rel !== "" && rel.split(path.sep)[0] !== ".." && !path.isAbsolute(rel);
   const dir = path.join(base, mirrored ? rel : path.join("runs", `${startedAtMs}-${process.pid}`));
+  // The base is a fixed name, and where TMPDIR is unset on Linux it sits in a /tmp every user shares: a
+  // link planted there, or another user's directory, would decide where the agent's files go. So it is
+  // looked at with lstat before it is used and again once it is made, and anything but a directory of
+  // this user's is refused.
+  const refuseBase = () => {
+    let st = null;
+    try { st = fs.lstatSync(base); } catch (e) { if (e.code !== "ENOENT") throw e; }
+    const why = st === null ? null : tmpBaseProblem(st);
+    if (why) fail(EXIT.USAGE, `the temporary base ${base} ${why}, so no run's $TMPDIR is made in it: a link or another user's directory there would decide where the agent's files go; remove it, or export a TMPDIR of your own`);
+  };
   try {
+    refuseBase();
+    fs.mkdirSync(base, { recursive: true, mode: 0o700 });
+    refuseBase();
     fs.mkdirSync(path.dirname(dir), { recursive: true, mode: 0o700 });
     fs.mkdirSync(dir, { mode: 0o700 });
   } catch (e) {
+    if (e instanceof Bail) throw e;
     fail(EXIT.USAGE, e.code === "EEXIST"
       ? `the run's $TMPDIR ${dir} already exists: it is named after ${mirrored ? "the report's directory" : "the run"}, so another run made it; name a report path of this run's own`
       : `the run's $TMPDIR ${dir} could not be created (${e.message})`);

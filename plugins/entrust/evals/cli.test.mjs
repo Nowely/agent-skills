@@ -902,6 +902,34 @@ flow("the run's $TMPDIR is named after its report: <tmp>/entrust/<rel> for a rep
     return problems.length === 0 || problems.join("; ");
   });
 
+flow("a temporary base <tmp>/entrust that is a link, not a directory, or another user's is refused with exit 2, whether it was there before or turns out so once made",
+  "the base is a fixed name, and where TMPDIR is unset on Linux it sits in a /tmp every user shares: a link planted there would put the agent's scratch where someone else chose, and another user's directory would hold it",
+  async () => {
+    const problems = [];
+    const refused = async (label, tmp, want, env = {}) => {
+      const r = await run({ scenario: "happy", env: { TMPDIR: tmp, ...env } });
+      if (r.code !== EXIT.USAGE || !r.err.includes(`the temporary base ${path.join(tmp, "entrust")} ${want}`))
+        problems.push(`${label}: exit ${r.code}, ${r.err.trim().slice(-200)}`);
+    };
+    const linked = tempDir("entrust-base-link-"), target = tempDir("entrust-base-target-");
+    fs.symlinkSync(target, path.join(linked, "entrust"));
+    await refused("a symbolic link", linked, "is a symbolic link");
+    if (fs.readdirSync(target).length) problems.push(`the run wrote through the link: ${fs.readdirSync(target).join(", ")}`);
+    const filed = tempDir("entrust-base-file-");
+    fs.writeFileSync(path.join(filed, "entrust"), "");
+    await refused("a file", filed, "is not a directory");
+    // Another user's directory, without root: the driver is started with its own uid reported one higher,
+    // so a directory this process made reads as someone else's, both one already there and one it makes.
+    const preload = path.join(tempDir("entrust-uid-"), "other-uid.cjs");
+    fs.writeFileSync(preload, "const own = process.getuid; process.getuid = () => own() + 1;\n");
+    const env = { NODE_OPTIONS: `--require ${preload}` };
+    const theirs = tempDir("entrust-base-theirs-");
+    fs.mkdirSync(path.join(theirs, "entrust"));
+    await refused("another user's, already there", theirs, `belongs to uid ${process.getuid()}, not to this user`, env);
+    await refused("another user's, once made", tempDir("entrust-base-made-"), `belongs to uid ${process.getuid()}, not to this user`, env);
+    return problems.length === 0 || problems.join("; ");
+  });
+
 flow("a caller TMPDIR above the state directory or inside it is never granted: the run's fresh directory in it is, and nothing beside it",
   "the old guards refused such a TMPDIR because the whole of it was the grant; the grant is now one directory this run has just made, empty, so it reaches neither the state directory nor anything the caller keeps beside it",
   async () => {
