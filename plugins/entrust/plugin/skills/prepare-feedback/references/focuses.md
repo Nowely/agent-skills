@@ -90,8 +90,9 @@ what was measured; `process` says where the time and tokens went.
   (`input`, `cacheWrite`, `cacheRead`, `output`), `tools`, `gapCount` (every gap over 600 seconds), `gaps[]` (the ten
   longest, each `{ms, after, before, at}`), `repeats[]`, `outputs[]`, `agentTokens` and `codexTokens`. An agent row
   holds `id` (`T3.s2`, or `run:T3.c1` for a Codex run), `task`, `model`, `type` (a subagent's agent type, or `codex`),
-  `tokens`, `durationMs` (a Codex run's wall time), `toolUses` (a Codex run's commands that succeeded) and `exit` (a
-  Codex run's exit code, `null` for a subagent). A subagent's `tokens` is summed over the API calls in its own
+  `tokens`, `durationMs` (a Codex run's wall time), `toolUses` (a Codex run's commands that succeeded), `exit` (a
+  Codex run's exit code, `null` for a subagent) and `repeats` (a subagent's, as on a task row, `null` for a Codex run),
+  which the totals count with the tasks'. A subagent's `tokens` is summed over the API calls in its own
   transcript, since the Agent tool's figure is its last call's context, and is `null` when the transcript has no usage;
   its `durationMs` falls back to its own wall time. A share says where the tokens went, not what they cost: most of a
   coordinator's are cache reads, 96% in issue #15.

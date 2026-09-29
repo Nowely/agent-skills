@@ -1169,9 +1169,10 @@ function processRun(opt, state) {
   }));
   const agents = idx.sessions.flatMap((e) => [
     ...(e.subagents ?? []).map((s) => ({ id: s.id, task: e.id, model: s.model ?? null, type: type(s.type),
-      tokens: s.usage ? sum(Object.values(s.usage)) : null, durationMs: s.durationMs ?? s.wallMs ?? null, toolUses: s.toolUses ?? null, exit: null })),
+      tokens: s.usage ? sum(Object.values(s.usage)) : null, durationMs: s.durationMs ?? s.wallMs ?? null, toolUses: s.toolUses ?? null, exit: null,
+      repeats: (s.repeats ?? []).map(({ sha256: _hash, ...r }) => r) })),
     ...(e.codex ?? []).map((c) => ({ id: `run:${c.id}`, task: e.id, model: c.model ?? null, type: "codex", tokens: c.tokens ?? null,
-      durationMs: c.wallMs ?? null, toolUses: c.commandsSucceeded ?? null, exit: c.exitCode ?? null })),
+      durationMs: c.wallMs ?? null, toolUses: c.commandsSucceeded ?? null, exit: c.exitCode ?? null, repeats: null })),
   ]);
   const claude = agents.filter((a) => a.type !== "codex"), codex = agents.filter((a) => a.type === "codex");
   const coord = sum(tasks.map((t) => sum(Object.values(t.tokens)))), cacheRead = sum(tasks.map((t) => t.tokens.cacheRead));
@@ -1182,7 +1183,7 @@ function processRun(opt, state) {
   const tools = {};
   for (const t of tasks) for (const [k, v] of Object.entries(t.tools)) tools[k] = (tools[k] ?? 0) + v;
   const toolsRanked = Object.entries(tools).sort((a, b) => b[1] - a[1] || cmpStr(a[0], b[0]));
-  const repeats = tasks.flatMap((t) => t.repeats).sort((a, b) => b.count - a.count || cmpStr(a.at[0], b.at[0]));
+  const repeats = [...tasks, ...agents].flatMap((x) => x.repeats ?? []).sort((a, b) => b.count - a.count || cmpStr(a.at[0], b.at[0]));
   const outputsRanked = tasks.flatMap((t) => t.outputs).sort((a, b) => b.bytes - a.bytes || cmpStr(a.at, b.at));
   const nonzero = codex.filter((a) => typeof a.exit === "number" && a.exit !== 0).length;
   const totals = {

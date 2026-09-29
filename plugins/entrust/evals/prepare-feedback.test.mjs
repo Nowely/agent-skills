@@ -183,9 +183,12 @@ const A1 = transcript(path.join(subs, "agent-a1.jsonl"), S.main, "/work/alpha", 
 ], { isSidechain: true });
 write(path.join(subs, "agent-a1.meta.json"), [JSON.stringify({ agentType: "general-purpose", description: "review the plugin" })]);
 write(path.join(subs, "agent-a2.meta.json"), [JSON.stringify({ agentType: "acme:reviewer", description: "count the tests" })]);
-// A subagent with no API usage and no Agent return: no tokens, and its own wall time as its duration.
+// A subagent with no API usage and no Agent return: no tokens, and its own wall time as its duration; it runs one
+// command twice.
 const A3 = transcript(path.join(subs, "agent-a3.jsonl"), S.main, "/work/alpha", [
   ["2026-09-20T10:00:20.000Z", { type: "user", agentId: "a3", message: { role: "user", content: "Look around." } }],
+  ["2026-09-20T10:00:21.000Z", { ...call("Bash", { command: "ls tests" }), agentId: "a3" }],
+  ["2026-09-20T10:00:22.000Z", { ...call("Bash", { command: "ls tests" }), agentId: "a3" }],
   ["2026-09-20T10:00:25.000Z", { ...call("Glob"), agentId: "a3" }],
 ], { isSidechain: true });
 transcript(path.join(subs, "agent-a2.jsonl"), S.main, "/work/alpha", [
@@ -840,7 +843,7 @@ test("M1 corpus records each task's process counts: API calls, wall time split i
   });
 
 test("R1 process writes measures/process.json with a row per task, a row per agent and the totals, prints its summary with USER= and FILE= last, carries no text, path, thread id or name from the user's environment, and refuses a second run and a run with no corpus",
-  "a reader's brief names process.json and export publishes it without review, so it holds counts, addresses and built-in or folded names only, never a command's hash, which a guess confirms: an MCP tool is mcp and an agent type of the user's own is custom; its lines go through the runner, whose tail keeps the end",
+  "a reader's brief names process.json and export publishes it without review, so it holds counts, addresses and built-in or folded names only, never a command's hash, which a guess confirms: an MCP tool is mcp and an agent type of the user's own is custom; its lines go through the runner, whose tail keeps the end; a subagent's repeated command is on its row and in the totals, since the first live process run showed a subagent's repeat as none",
   async () => {
     if (!runs.default) return "C1 made no run";
     const r = await run(["process", "--run", runs.default]);
@@ -849,7 +852,7 @@ test("R1 process writes measures/process.json with a row per task, a row per age
     const want = [
       "TASKS=3", "WALL=9608", "ACTIVE=3175 GAP=600s", "USER=3749", `GAPS=2 LARGEST=1784 at ${inT3(saysText(thread(8)))}`,
       "COORD=2700 share=78% cache_read=74% api_calls=20", "AGENTS=3 tokens=270 share=8%", "CODEX=4 tokens=500 share=14% nonzero_exit=1",
-      "TOOLS=Bash:7 Agent:4 Read:2 Skill:2 mcp:1", `REPEATS=1 MOST=2x at ${lineIn(MAIN, isCall("git status --short"))}`,
+      "TOOLS=Bash:7 Agent:4 Read:2 Skill:2 mcp:1", `REPEATS=2 MOST=2x at T1.s3:${lineOf(A3, isCall("ls tests"))}`,
       `OUTPUTS=5000 at ${lineIn(MAIN, (x) => x.message?.content?.[0]?.content?.length === 5000)}`, "FILE=measures/process.json",
     ];
     if (r.out.trim() !== want.join("\n")) problems.push(`printed ${JSON.stringify(r.out.trim().split("\n"))}`);
@@ -859,10 +862,11 @@ test("R1 process writes measures/process.json with a row per task, a row per age
     const taskKeys = ["id", "wallMs", "activeMs", "userMs", "apiCalls", "tokens", "tools", "gapCount", "gaps", "repeats", "outputs", "agentTokens", "codexTokens"];
     if (JSON.stringify(Object.keys(p.tasks?.[0] ?? {})) !== JSON.stringify(taskKeys)) problems.push(`task row keys ${JSON.stringify(Object.keys(p.tasks?.[0] ?? {}))}`);
     const rows = (p.agents ?? []).map((a) => JSON.stringify(a));
-    for (const row of [{ id: "T1.s1", task: "T1", model: "claude-opus", type: "general-purpose", tokens: 135, durationMs: 5000, toolUses: 3, exit: null },
-      { id: "T1.s2", task: "T1", model: "claude-sonnet", type: "custom", tokens: 135, durationMs: 900, toolUses: 2, exit: null },
-      { id: "T1.s3", task: "T1", model: null, type: null, tokens: null, durationMs: 5000, toolUses: null, exit: null },
-      { id: "run:T1.c1", task: "T1", model: "codex-test-model", type: "codex", tokens: 500, durationMs: 31000, toolUses: 4, exit: 3 }])
+    const ls = (k) => `T1.s3:${A3.findIndex(([, r], i) => isCall("ls tests")(r) && --k === 0) + 1}`;
+    for (const row of [{ id: "T1.s1", task: "T1", model: "claude-opus", type: "general-purpose", tokens: 135, durationMs: 5000, toolUses: 3, exit: null, repeats: [] },
+      { id: "T1.s2", task: "T1", model: "claude-sonnet", type: "custom", tokens: 135, durationMs: 900, toolUses: 2, exit: null, repeats: [] },
+      { id: "T1.s3", task: "T1", model: null, type: null, tokens: null, durationMs: 5000, toolUses: null, exit: null, repeats: [{ chars: 8, count: 2, at: [ls(1), ls(2)] }] },
+      { id: "run:T1.c1", task: "T1", model: "codex-test-model", type: "codex", tokens: 500, durationMs: 31000, toolUses: 4, exit: 3, repeats: null }])
       if (!rows.includes(JSON.stringify(row))) problems.push(`no agent row ${row.id}`);
     if ((p.agents ?? []).length !== 7) problems.push(`${(p.agents ?? []).length} agent rows`);
     const t3row = (p.tasks ?? []).find((t) => t.id === "T3");
