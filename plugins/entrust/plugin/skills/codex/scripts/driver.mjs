@@ -390,9 +390,8 @@ const HELP = [
                      luna) that becomes the newest listed model ending in it;
                      omit to use whatever config.toml chose
   --effort LEVEL     low|medium|high|xhigh|max, and ultra where the model
-                     advertises it; checked against model/list before the turn
-                     (none and minimal are on no current model); omit to
-                     inherit config.toml
+                     advertises it; checked against model/list before the turn;
+                     omit to inherit config.toml
   --resume THREAD    continue a thread; "--resume last" continues the run most
                      recently STARTED for this --cwd or, with --worktree, this
                      repository — not the one most recently active, so a long
