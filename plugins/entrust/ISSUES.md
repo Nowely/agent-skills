@@ -542,3 +542,17 @@ with the result; this is the index."
 
 **Issue text.** The command-gate run cannot be found from the research index, and its folder does not say what it
 found. It needs a README with the result and a row in the index, as its neighbours have.
+
+## E96. The harness's token figure for a Claude subagent is its last call's context, and the plan's comparables are built on it
+
+**Evidence, level 3.** On 2026-09-29 Opus R2 of the prepare-feedback run compared, for 233 subagents in one machine's
+transcripts, the Agent tool's `totalTokens` with the usage summed over the subagent's own transcript: 203 were within
+1% of the last API call (78 exactly), none equalled the sum, and the median of sum over figure was 2.8. The research
+cost tables that `orchestrate/SKILL.md:40` sends a plan to as comparables ("name the comparable runs behind each
+estimate") quote that figure, for instance `research/2026-09-27-field-audit-triage/README.md:157` ("Claude 1.5M by the
+harness's per-subagent count"), whose own line 160 already guessed it was not the cache-inclusive total.
+
+**Issue text.** A Claude agent's cost in a plan or a research table is the size of its last call, not the tokens it
+processed, which are about 2.8 times more, mostly cache reads. Estimates built on those tables understate a run, and
+Claude and Codex figures side by side do not compare. The page should say which figure it states, and a spend should
+come from the subagent's transcript, as `prepare-feedback.mjs process` sums it.
