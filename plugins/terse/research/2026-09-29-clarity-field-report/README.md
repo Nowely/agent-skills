@@ -17,7 +17,8 @@ the transcript stay private; nothing here names the case.
   says") moved nothing: in all three sessions with it, "No database" stayed an item under Requirements,
   against two of three without the check.
   The second wording ("is every item an instance of what the label names") scored 2 against 0 and then 2
-  against 1, a lead that did not hold under the rule.
+  against 1, a lead that did not hold under the rule. After the confirmation run the owner removed the check
+  from `clarity` (#39); case 5 stays in the suite, where its two arms are now the same pages.
 - **Fixes 2, 3 and 4 show no effect either way.** Fix 2's drop in the rerun (1 against 3) did not come back:
   in the confirmation run its grader was unmeasured and the reader counted 2 against 2. Fix 3 is unmeasured on
   its grader in both runs; the reader counted 1 against 3, then 3 against 3. Fix 4 was at a ceiling: the model
