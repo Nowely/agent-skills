@@ -209,8 +209,8 @@ forensics remain in the repository references and release notes.
 - **The README says what `permissions.additionalDirectories` does for the data directory: reports read without
   prompts**; a write there by Claude Code's own tools still asks in `default` and `acceptEdits`, since `.claude` is
   a protected path (E75).
-- **`codex/SKILL.md` is 1,360 words shorter (5,602 → 4,242) and `orchestrate/SKILL.md` 333 shorter (6,001 →
-  5,668)**: they stop restating the launcher's and the driver's `--help`, and orchestrate stops restating the codex
+- **`codex/SKILL.md` is 1,338 words shorter than on main (5,799 → 4,461) and `orchestrate/SKILL.md` 302 shorter
+  (6,240 → 5,938)**: they stop restating the launcher's and the driver's `--help`, and orchestrate stops restating the codex
   page; the escalations fields live only in the internals reference (E77, stays open).
 - **The four codex references over 100 lines open with a contents list** (E78).
 - **The measurement stories of both pages move to `incidents.md`** (codex's, and a new

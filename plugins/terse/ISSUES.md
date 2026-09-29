@@ -6,7 +6,7 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with entrust's ledger, `plugins/entrust/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E107. The Node floor is written in three places, and the two numbers drift when `engines` changes (draft)
+## E107. The Node floor is written in three places, and the two numbers drift when `engines` changes
 
 **Evidence, level 1.** `plugins/terse/plugin/package.json:4-5` `"engines": { "node": ">=22" }` is the floor's owner.
 `plugins/terse/plugin/README.md:14` "You need: Node 22 or newer." and `plugins/terse/plugin/skills/rewrite/SKILL.md:95`
