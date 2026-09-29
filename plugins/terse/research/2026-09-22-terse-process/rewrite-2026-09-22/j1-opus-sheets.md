@@ -98,7 +98,7 @@ I1 Claude login. I2 node on PATH on both routes, in the setup paragraph (curse-o
 - B:45-47 (measure.md:36-37, 49, 106-109; the recipe is untested but not contradicted).
 - B:51-56 (audit/SKILL.md:33-44; rewrite/SKILL.md:66-71, 149-154, 191-192; C10).
 - B:60-61 (L3 login; C20/C21 L3; package.json:4-6).
-- B:73-76 (What broke L3 CONFIRMED; `git show 8c041b7` rewrite/SKILL.md:66 and :113 write into the repository).
+- B:73-76 (What broke L3 CONFIRMED; `git show 21a225b` rewrite/SKILL.md:66 and :113 write into the repository).
 - B:80-86 (C23, C24; bake-off.md:47, 60-62, 108-114; writing-rules.md:21-23).
 - B:90-103 (C30, C44, C31-C33 attributed "Its pages report"; E7; v04PR6HL.prompt.txt:13-24; the judges' answers as in Sheet A; C43). The unconfirmed C08, C14, C28, C29 and C40 are reworded and none is strengthened.
 

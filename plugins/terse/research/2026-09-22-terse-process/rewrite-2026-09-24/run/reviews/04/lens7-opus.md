@@ -12,7 +12,7 @@ Document: `04-shape.md` (82 lines, 788 tokens by `sections.mjs`). R = `$TMPDIR/t
 
 **Rules.** `skeleton.md` part 3, items 1–7 (lines 208–293). Item 6 adopts `stages.md` rules 1–11 (`stages.md:319–351`), and rule 12 comes in through the second statement (`skeleton.md:29–31`). Also the words decided in part 4 (`skeleton.md:295–328`).
 
-**Also read.** `owner-readme-words.md`; the verdict at `purpose.md:24–28`; `skeleton-read-02.md`, the Quick-start half of the owner's read, which skeleton 2.2 rests on; `03-routes.md` for comparison. `R/04-terms-rejected.md` does not exist. I read `research/2026-09-22-terse-process/rethink-2026-09-23/04-terms-rejected.md` in the repository instead: its sha256, `34cc4cb0…`, equals the rethink run's copy.
+**Also read.** `owner-readme-words.md`; the verdict at `purpose.md:24–28`; `skeleton-read-02.md`, the Quick-start half of the owner's read, which skeleton 2.2 rests on; `03-routes.md` for comparison. `R/04-terms-rejected.md` does not exist. I read `research/2026-09-22-terse-process/rethink-2026-09-23/04-terms-rejected.md` in the repository instead: its sha256, `d3f681d9…`, equals the rethink run's copy.
 
 **Checks run.** rule1 prints `0 violation(s)`. The headings are exactly the eight listed. `dup.mjs` prints `0 concept(s) in three or more sections`. The fences are 2 `bash` and 3 `text`, and `/plugin` appears 0 times. The qualifier grep counts 0. Rule 7's grep, its `pipeline` check and its `[a-z]+ readers?` check print nothing, and its must-occur words and first-use glosses hold. Its Must-use list fails (P2–P4). The part 4 words fail (P7). The budgets fail (P6).
 

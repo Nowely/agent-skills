@@ -75,7 +75,7 @@ The skill pages tell the user this at the hand-over (`audit/SKILL.md:39-42`, `re
 
 ## Observed in passing (not claims of `04-shape.md`; for `code-defects.md` or `ISSUES.md` on the owner's word)
 
-- **P1.** Line 10's install block installs GitHub `main` today: commit `8c041b7`, terse 0.1.1.
+- **P1.** Line 10's install block installs GitHub `main` today: commit `21a225b`, terse 0.1.1.
   - The audit formula in that release reaches the model unsubstituted: `RUN="${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/terse}/…"` (`stub/log1/req.010.json`).
   - During the skill, the Bash tool's shell holds neither `CLAUDE_PLUGIN_DATA` nor `CLAUDE_PLUGIN_ROOT`: `printenv` printed nothing (`stub/evidence/req.003.json`).
   - The release's rewrite works in "`research/<date>-<slug>/` at the root of the" repository (cached `rewrite/SKILL.md:66`).

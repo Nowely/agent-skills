@@ -28,7 +28,7 @@ My own checks on the briefs and the returns (mechanical, no grading):
 ## open
 
 Deviations from the plan, and choices I made:
-- entrust:codex was not loaded with the Skill tool, per the orchestrator's instruction. Every Codex worker used the launcher and the pages at 882bcf3.
+- entrust:codex was not loaded with the Skill tool, per the orchestrator's instruction. Every Codex worker used the launcher and the pages at 1bbab5b.
 - "No network and no server" was read as no network and no real Codex server. Suites that use evals/fake-app-server.mjs were allowed. T1, which chose its own suites, ran fidelity.test.mjs. By T1's account that suite tried the real rate-limit endpoint without the live-turn opt-in. It exited 1 with 15/15 failed, and the NETWORK: no sandbox kept it from reaching the endpoint (T1's statement; I have not verified it). The briefs written after that (R3, A2, F1) excluded fidelity.test.mjs.
 - The R2, T1 and A2 prompts were built by a shell pipeline that copied the returns verbatim from their files and reports. The rows in the R1, R3 and F1 briefs were pasted verbatim from jq and grep output. Nothing was retyped by hand.
 - A2's brief carried the refuters' result lines and open items verbatim, but only the paths of their evidence (R1 and R3 files, R2 report), to keep the prompt at 89 KB. A2 reports reading all three.

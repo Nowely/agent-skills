@@ -40,7 +40,7 @@ Architect and Judgement → both “—”: no mistake recorded, not evidence of
 - Read plugins/entrust/skills/orchestrate/SKILL.md in full: 152 lines, 3,075 words. Inheritance at lines 12–16; context objective at lines 4–5; composition override at lines 83–89; split critique and verification at lines 112–124.
 - Read research/2026-09-12-issues-verification/rounds.md in full: 34 lines, 589 words. Classified all five Got wrong cells at lines 10–14 into seven atomic statements plus two no-error-recorded cells. Width limitations and malformed verdict contract appear at lines 24–34.
 - Read research/README.md in full: 20 lines, 429 words. Line 10 distinguishes model answerability from human improvement; line 12 records lifecycle claims made from reading rather than running.
-- Ran nine read-only shell commands: pwd, rg file discovery, cat, four numbered file reads, wc, and git rev-parse HEAD; all nine started and exited 0. Total full-file reading: five files, 545 lines, 8,101 words. Checkout HEAD: dff2f0bc531087ebcbfaf85a20f2393e18d255f5.
+- Ran nine read-only shell commands: pwd, rg file discovery, cat, four numbered file reads, wc, and git rev-parse HEAD; all nine started and exited 0. Total full-file reading: five files, 545 lines, 8,101 words. Checkout HEAD: e4d98b6648d12e928fed0c788bd8475eb4243327.
 - No external sources fetched, tests run, subagents launched or files changed. Proposed external source additions are unverified research leads.
 
 ## Open

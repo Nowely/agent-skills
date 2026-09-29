@@ -34,7 +34,7 @@ show.
 
 ## The rules and the page
 
-The page is `plugins/entrust/plugin/skills/orchestrate/SKILL.md` at `b3872b4`, with its line numbers.
+The page is `plugins/entrust/plugin/skills/orchestrate/SKILL.md` at `c828b7f`, with its line numbers.
 
 | # | Anthropic's rule | The page | Status | This run |
 |---|---|---|---|---|

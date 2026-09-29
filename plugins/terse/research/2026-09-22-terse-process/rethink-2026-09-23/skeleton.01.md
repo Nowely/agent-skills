@@ -404,7 +404,7 @@ From `terms.md` (row numbers in brackets); the Troubleshooting heading is decide
    one; Q7 is decision 6.
 2. **The files boundary is the next release's.** 2.5 says nothing enters the reader's repository until they
    say so — true of rewrite on this branch (`rewrite/SKILL.md:76, 88–89, 171–173` at d60c3f8; CHANGELOG
-   Unreleased), false of the installed terse@0.1.1 (tag dff2f0b; main 8c041b7 carries the same pages),
+   Unreleased), false of the installed terse@0.1.1 (tag e4d98b6; main 21a225b carries the same pages),
    which writes `research/<date>-<slug>/` at the repository's root and `ISSUES.md` without asking
    (`rewrite/SKILL.md:66–67, 112–113`). Question: does this README ship only in the release that carries
    that change?

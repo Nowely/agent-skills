@@ -17,7 +17,7 @@ R03f — HOLDS — rewrite/SKILL.md:177-192 states the stop condition verbatim.
 R03g — HOLDS — rewrite/SKILL.md:44-47,107-118,194-208 requires evidence and justified cuts.
 R03h — HOLDS — the level-3 probe demonstrated login and Node requirements.
 R03i — HOLDS — the scoped plugin tree has no diff from 2f29a8f.
-R03j — HOLDS — historical audit evidence and 8c041b7 ranges establish the old unasked repository writes.
+R03j — HOLDS — historical audit evidence and 21a225b ranges establish the old unasked repository writes.
 G4 — HOLDS — audit/SKILL.md:21-44 and rewrite/SKILL.md:64-79 contain the current boundary.
 G3b — HOLDS — the level-3 run-directory probe exercised all placement branches.
 R03b — HOLDS — the installed probe observed plugins/data/terse-nowely.

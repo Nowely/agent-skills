@@ -4,9 +4,9 @@ Fable F1's drafts file verbatim: one section per delta, D1 to D24, then the pins
 
 # Fable F1: deltas for the 42 fix-now rows of #15 and #16
 
-Tree: ~/Git/agent-skills-field-audit-triage at 882bcf3 (git rev-parse, exit 0; status clean but for the untracked research run). Baseline suites, run into mktemp files: orchestrate.test.mjs "all 70 passed" exit 0; advisor.test.mjs "all 11 passed" exit 0; agent-contract.test.mjs "all 14 passed" exit 0; swarm.test.mjs "all 18 passed" exit 0. Word counts (wc -w): orchestrate 3,649; codex 4,511; roles 1,281; foreman 950.
+Tree: ~/Git/agent-skills-field-audit-triage at 1bbab5b (git rev-parse, exit 0; status clean but for the untracked research run). Baseline suites, run into mktemp files: orchestrate.test.mjs "all 70 passed" exit 0; advisor.test.mjs "all 11 passed" exit 0; agent-contract.test.mjs "all 14 passed" exit 0; swarm.test.mjs "all 18 passed" exit 0. Word counts (wc -w): orchestrate 3,649; codex 4,511; roles 1,281; foreman 950.
 
-Paths below are under plugins/entrust/: `plugin/skills/...` is the installed part, `evals/...` sits beside it. A line number is the file at 882bcf3, located by the quoted text. Cost classes: S = text or a few lines, one suite touched; M = a script, a launcher/driver change or a paid live-gate case; L = several of those.
+Paths below are under plugins/entrust/: `plugin/skills/...` is the installed part, `evals/...` sits beside it. A line number is the file at 1bbab5b, located by the quoted text. Cost classes: S = text or a few lines, one suite touched; M = a script, a launcher/driver change or a paid live-gate case; L = several of those.
 
 Twenty-four deltas cover the 42 ids once each: 13 sentences, 9 mechanisms, 2 experiment protocols.
 
@@ -57,7 +57,7 @@ New live-gate case, orchestrate-live.test.mjs (paid, one Astra turn): headless `
 **Cost.** S.
 **Why a sentence.** The two pages contradict each other on a mechanic; a reader who follows either is right on one and wrong on the other, and one true sentence removes the contradiction. Nothing to enforce.
 **Keep list.** None.
-**Followed.** The refuter (R1 refuted S1's fixed-on-main): :106 at 882bcf3 still opens "one background Agent call" (read here, level 1).
+**Followed.** The refuter (R1 refuted S1's fixed-on-main): :106 at 1bbab5b still opens "one background Agent call" (read here, level 1).
 
 ## D4 — F11, F19, P10a: the environment capsule, half computed by the driver, half a body line the plan fills
 

@@ -29,7 +29,7 @@ SSH not configured, cloning via HTTPS: https://github.com/Nowely/agent-skills.gi
 ✔ Successfully installed plugin: terse@nowely (scope: user)
 ```
 
-`installed_plugins.json` recorded `gitCommitSha: 8c041b76d7f30196441285d77985b81ae9c9e59f`, version `0.1.1`. `git -C "$P/claude-config/plugins/marketplaces/nowely" rev-parse HEAD` returned the same hash. The fetched source is **https://github.com/Nowely/agent-skills.git**; no other external source was fetched.
+`installed_plugins.json` recorded `gitCommitSha: 21a225b12f15221f978492718ecdc00eb7ea5924`, version `0.1.1`. `git -C "$P/claude-config/plugins/marketplaces/nowely" rev-parse HEAD` returned the same hash. The fetched source is **https://github.com/Nowely/agent-skills.git**; no other external source was fetched.
 
 The fetched `plugins/terse/skills/rewrite/SKILL.md:66–67` says:
 
@@ -120,7 +120,7 @@ Fourteen top-level subprocess invocations have complete command/output/exit reco
 
 - `claude --version`: 2.1.280, exit 0.
 - `claude --help`, `claude plugin marketplace add --help`, `claude plugin uninstall --help`: 3 help calls, all exit 0.
-- Marketplace add and plugin install: 2 calls, both exit 0; observed revision `8c041b7` from the GitHub source cited in F1.
+- Marketplace add and plugin install: 2 calls, both exit 0; observed revision `21a225b` from the GitHub source cited in F1.
 - `node plugins/terse/skills/rewrite/scripts/selftest.mjs`: exit 0; **45 `ok` lines, 0 `MISS` lines**, counted from the output obtained in this turn. Summary: `all checks caught their planted violation`. Its expected planted refusals are retained in `selftest.json` stderr. This is not evidence of general model compliance.
 - Three direct seed probes: 3 exit-1 refusals. Two observed the empty-claim rejection. One intervening invocation encountered the logger filename collision described below; it is not evidence for F2.
 - `claude plugin uninstall terse@nowely --keep-data`, reinstall, ordinary uninstall: 3 commands, all exit 0. A temporary sentinel at `claude-config/plugins/data/terse-nowely/runs/probe/sentinel.md` existed before uninstall, remained after `--keep-data`, and was absent after ordinary uninstall. No uninstall defect is counted.

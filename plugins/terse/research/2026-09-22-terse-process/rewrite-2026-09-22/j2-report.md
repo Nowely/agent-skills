@@ -21,7 +21,7 @@ B — failures repaired: 16/17; TB remains partial at B:51–55,73–76; staging
 B — prerequisites: mostly answered at B:5–7,9–16,29–30,40–61,73–76; retention advice absent at B:51–56.
 B — cuts justified: unknown; omissions at B:32–34,80–86,92–103 lack supplied author cut reasons.
 B — length: original:1–90, 933 words → B:1–107, 960 words.
-C — new false claims: VETO, C:43–45 promises behavior unqualified by C:53–61’s install route; what-broke:47 and 8c041b7 rewrite/SKILL.md:66–67,110–113 contradict that installed scope.
+C — new false claims: VETO, C:43–45 promises behavior unqualified by C:53–61’s install route; what-broke:47 and 21a225b rewrite/SKILL.md:66–67,110–113 contradict that installed scope.
 C — protected passages: PASS, C:12–14,21–25,41–45,53–58,65–73; retained unconfirmed claims remain unconfirmed.
 C — failures repaired: 13/17; partial at C:4–7,19–25,43–46; release distinction missing at C:43–45,53–61.
 C — prerequisites: mixed, C:6–14,19–25,41–61; release identity, explicit exclusion and temporary staging unresolved.

@@ -12,7 +12,7 @@ Source: the report files under the plugin's data directory, 914 reports, 27 with
 | 2026-09-22-terse-process/V1 | gpt-5.6-sol | (none) | fileChange/requestApproval | `` |
 | 2026-09-22-terse-process/V1 | gpt-5.6-sol | (none) | fileChange/requestApproval | `` |
 | 2026-09-24-terse-benchmark-maestro/SYN | gpt-6-astra | (none) | commandExecution/requestApproval | `/bin/zsh -lc 'python3 $TMPDIR/terse/runs/20260924-125421-maestro-readme-rethink` |
-| 2026-09-26-entrust-issues/A2b | gpt-6-astra | read ~/Git/agent-skills | commandExecution/requestApproval | `/bin/zsh -lc 'python3 $TMPDIR/entrust-a2-b3872b4/run.py baseline-lock-unsandbox` |
+| 2026-09-26-entrust-issues/A2b | gpt-6-astra | read ~/Git/agent-skills | commandExecution/requestApproval | `/bin/zsh -lc 'python3 $TMPDIR/entrust-a2-c828b7f/run.py baseline-lock-unsandbox` |
 | 2026-09-26-entrust-issues/V1 | gpt-5.6-sol | read ~/Git/agent-skills-entrust-issues | commandExecution/requestApproval | `/bin/zsh -lc 'node $TMPDIR/e45-d1/e45-check.mjs ~/Git/agent-skills-` |
 | 2026-09-26-layout-bd/A1 | gpt-6-astra | (none) | commandExecution/requestApproval | `/bin/zsh -lc 'curl --silent --show-error --max-time 30 --head https://code.claude.com/docs/en/plugins/loading'` |
 | 2026-09-26-writing-replication/A2-2 | gpt-6-sol | (none) | commandExecution/requestApproval | `/bin/zsh -lc "vcs log -n 1 --format='{date_rfc} {commit}' AGENTS.md"` |

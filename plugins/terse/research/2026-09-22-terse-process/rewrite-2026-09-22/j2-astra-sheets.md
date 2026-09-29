@@ -9,7 +9,7 @@ Primary count: 17 distinct repair targets. Q2/C15/C16 are combined because the s
 
 No candidate-specific prerequisite inventory, author cut ledger, or author execution log was supplied with the three candidate files. Their completeness is unknown. I do not substitute guessed author reasons. Prerequisite rows below reconstruct only requirements visible in the supplied profile, failures, and code.
 
-Sources: abbreviations below are repository-relative paths under `~/Git/agent-skills`; all current code citations use the identical `2f29a8f` contents. `what-broke:N` is the supplied run’s `candidates/what-broke.md`. `8c041b7 RW:N` is the historical Git object, not current RW.
+Sources: abbreviations below are repository-relative paths under `~/Git/agent-skills`; all current code citations use the identical `2f29a8f` contents. `what-broke:N` is the supplied run’s `candidates/what-broke.md`. `21a225b RW:N` is the historical Git object, not current RW.
 - `AU` = `plugins/terse/skills/audit/SKILL.md`
 - `RW` = `plugins/terse/skills/rewrite/SKILL.md`
 - `RT` = `plugins/terse/skills/rethink/SKILL.md`
@@ -46,7 +46,7 @@ Sources: abbreviations below are repository-relative paths under `~/Git/agent-sk
 
 | Row | Judgment, candidate lines, deciding evidence |
 |---|---|
-| new false claims | VETO — A:57–59 says every claim added by an edit gets an executed check. ROUND:66–67,85 skips undeclared claims; RW:132 permits no verifier; audit C14 explicitly records this hole. My claimless-edit probe wrote a new behavioral guarantee, exit 0, ledger []. A:26–36 with A:71–76 also leaves the installed-revision contradiction unresolved (what-broke:47; 8c041b7 RW:66–67,110–113). |
+| new false claims | VETO — A:57–59 says every claim added by an edit gets an executed check. ROUND:66–67,85 skips undeclared claims; RW:132 permits no verifier; audit C14 explicitly records this hole. My claimless-edit probe wrote a new behavioral guarantee, exit 0, ledger []. A:26–36 with A:71–76 also leaves the installed-revision contradiction unresolved (what-broke:47; 21a225b RW:66–67,110–113). |
 | protected passages | VETO for strengthened evidence ceiling at A:57–59 (audit C14; AUDIT:1036–1040; what-broke:60). The four working passage groups themselves survive: install A:26–31, pipeline A:14–16, outputs/word A:43–46,60–64, and non-compression/numbers A:82–84 (C05/C07/C14/C18/C19/C23/C24). |
 | failures repaired | 14/17 documented targets repaired; 2 partial (TB A:71–76; temporary re-audit A:19–21), 1 not repaired (release A:26–36,71–76). Detailed source-by-source count below; no new reader score claimed. |
 | prerequisites | Mixed at A:5–9,19–21,33–36,60–78,93–94: runtime/auth, scope, write location and exclusions answered; release identity and temporary re-audit unresolved. Original writer inventory unavailable; comparison below is reconstructed, not an invented author inventory. |
@@ -70,7 +70,7 @@ Sources: abbreviations below are repository-relative paths under `~/Git/agent-sk
 | F11: C45 two benchmarks both large | repaired; A:120–122 | False claim cut | PA:104–107 |
 | F12: C46 exhaustive review coverage | repaired; A:121–122 | Exhaustive claim narrowed | AUDIT:C46; PA:87–133 |
 | F13: C44 limit before results | repaired; A:98–107 | No-document warning before counts | AUDIT:C44; ME:70–81 |
-| F14: L3 actual installed revision and write boundary | not repaired; A:26–36,71–76 | Advertised commands and unconditional outside-repository promise have no version boundary | what-broke:47; 8c041b7 RW:66–67,110–113 |
+| F14: L3 actual installed revision and write boundary | not repaired; A:26–36,71–76 | Advertised commands and unconditional outside-repository promise have no version boundary | what-broke:47; 21a225b RW:66–67,110–113 |
 | F15: L3 host authentication | repaired; A:33–34 | Signed-in host required | what-broke:48 (C20 supplement) |
 | F16: L3 external-tool recipe exclusion | repaired; A:5–6 | Explicit exclusion at first truth-pass claim | TP:66–71; what-broke:49 (C02 supplement) |
 | F17: L3 temporary candidate links and comparison staging | partial; A:19–21,64 | Apply-first route works after consent; no temporary-tree validation route | ME:35–37,49,108–115; what-broke:50–52 |
@@ -164,7 +164,7 @@ Sources: abbreviations below are repository-relative paths under `~/Git/agent-sk
 
 | Row | Judgment, candidate lines, deciding evidence |
 |---|---|
-| new false claims | PASS within checked evidence — B:40–43 scopes the check to declared/pinned claims (ROUND:66–67; LEDGER:18–27; C14); B:51–55 describes instructions, and B:73–76 bounds those instructions to checkout 2f29a8f versus recorded main 8c041b7 (what-broke:47; historical RW:66–67,110–113). B:92–96 attributes unconfirmed counts rather than presenting new measured evidence (C31–C33). No new contradiction found; runtime limits remain below. |
+| new false claims | PASS within checked evidence — B:40–43 scopes the check to declared/pinned claims (ROUND:66–67; LEDGER:18–27; C14); B:51–55 describes instructions, and B:73–76 bounds those instructions to checkout 2f29a8f versus recorded main 21a225b (what-broke:47; historical RW:66–67,110–113). B:92–96 attributes unconfirmed counts rather than presenting new measured evidence (C31–C33). No new contradiction found; runtime limits remain below. |
 | protected passages | PASS — install commands B:66–71; pipeline B:14–16; audit/output/consent B:27–29,40–43,54–55; non-compression and 2725→2571, -105/+105 B:80–82; decision-point protection B:84–86. Deciding sources C05/C07/C14/C18/C19/C23/C24/C27 and what-broke:56–60. Unconfirmed claims are weakened, attributed, or cut, not strengthened. |
 | failures repaired | 16/17 documented targets repaired; TB is partial at B:51–55,73–76 because full rewrite task execution is unknown. Temporary staging B:45–47 and release boundary B:73–76 repair both adversarial workflow gaps at their source. Detailed count below; no new reader score claimed. |
 | prerequisites | Most observed gaps answered at B:5–7,9–16,29–30,40–61,73–76; runtime/auth precede install, copied-tree re-audit is explicit. B:51–56 omits run-retention/uninstall advice. Original writer inventory unavailable; reconstructed comparison below. |
@@ -188,7 +188,7 @@ Sources: abbreviations below are repository-relative paths under `~/Git/agent-sk
 | F11: C45 two benchmarks both large | repaired; B:90–103 | False claim cut | PA:104–107 |
 | F12: C46 exhaustive review coverage | repaired; B:90–107 | Exhaustive claim cut | AUDIT:C46; PA:87–133 |
 | F13: C44 limit before results | repaired; B:90–96 | No-document warning before counts | AUDIT:C44; ME:70–81 |
-| F14: L3 actual installed revision and write boundary | repaired; B:73–76 | Names checkout commit, historical main revision, and different write behavior | what-broke:47; 8c041b7 RW:66–67,110–113 |
+| F14: L3 actual installed revision and write boundary | repaired; B:73–76 | Names checkout commit, historical main revision, and different write behavior | what-broke:47; 21a225b RW:66–67,110–113 |
 | F15: L3 host authentication | repaired; B:60–61 | Sign-in before commands | what-broke:48 (C20 supplement) |
 | F16: L3 external-tool recipe exclusion | repaired; B:29–30 | Explicit list of exclusions | TP:66–71; what-broke:49 (C02 supplement) |
 | F17: L3 temporary candidate links and comparison staging | repaired; B:45–47 | Same-relative-entry copied Markdown tree, same questions/key/model; link-layout mechanics checked | ME:35–37,49,108–115; what-broke:50–52 |
@@ -257,7 +257,7 @@ Sources: abbreviations below are repository-relative paths under `~/Git/agent-sk
 | B-N07 | B:51–56: Instructions' external run directory, code-defects proposal, ISSUES/application gate, rethink location unknown | AU:33–44; RW:66–79,149–154,191–192; RT:70–83; C10/C15/C16 | Supported L2 descriptions of instructions; formula exercised for checkout and installed-variable cases, not host integration |
 | B-N08 | B:60–61: Claude Code installed and signed in; Node >=22 on PATH for both routes | PKG:4–6; AU:159–161; RW:83–87; C20/C21 + what-broke:48 | Supported prerequisite; Node floor declared, Node 22 runtime not exercised |
 | B-N09 | B:63–71: Slash commands inside Claude Code and shell counterparts | MARKET:2,18–24; C18/C19 | Supported documented syntax; all four commands retained verbatim; no network install run this turn |
-| B-N10 | B:73–76: 2f29a8f branch scope vs audited main 8c041b7 behavior | what-broke:47; local git object 8c041b7 RW:66–67,110–113; C18/C19 supplement | Supported historical/version boundary; today's remote main UNKNOWN |
+| B-N10 | B:73–76: 2f29a8f branch scope vs audited main 21a225b behavior | what-broke:47; local git object 21a225b RW:66–67,110–113; C18/C19 supplement | Supported historical/version boundary; today's remote main UNKNOWN |
 | B-N11 | B:80–82: Length not selection and budgets reports | BO:118,136–139; SECTIONS:4,25; C23 | Supported; over-budget self-test passed |
 | B-N12 | B:84–86: Veto, reword/correct exception, repetition/date rules | BO:47,60–63,113–114; WR:21–23; C27–C29 | Supported rule descriptions, L2 |
 | B-N13 | B:92–96: Missing raw records, reported counts and conditional p | AUDIT:C31–C33; PA:92–95 | Preserves L1 status of counts by attributing them, while calculation remains conditional |
@@ -282,7 +282,7 @@ Sources: abbreviations below are repository-relative paths under `~/Git/agent-sk
 
 | Row | Judgment, candidate lines, deciding evidence |
 |---|---|
-| new false claims | VETO — C:43–45 promises outside-repository/consent behavior without qualifying C:53–61’s advertised install route. what-broke:47 (C18/C19 supplement) identifies delivered main 8c041b7; that revision’s RW:66–67 writes inside the repository and RW:110–113 routes defects to ISSUES.md without the gate. Current checkout RW:66–79,149–154 supports the promise only for this checkout. C:4–7 also leaves the external-tool exclusion unstated (TP:69–71), scored partial rather than a second decisive veto. |
+| new false claims | VETO — C:43–45 promises outside-repository/consent behavior without qualifying C:53–61’s advertised install route. what-broke:47 (C18/C19 supplement) identifies delivered main 21a225b; that revision’s RW:66–67 writes inside the repository and RW:110–113 routes defects to ISSUES.md without the gate. Current checkout RW:66–79,149–154 supports the promise only for this checkout. C:4–7 also leaves the external-tool exclusion unstated (TP:69–71), scored partial rather than a second decisive veto. |
 | protected passages | PASS — working install C:53–58, pipeline C:12–14, audit/output/consent C:21–25,41–45, non-compression/numbers C:65–68, and safeguard rules C:70–73 survive (C05/C07/C14/C18/C19/C23/C24/C27; what-broke:56–60). Unconfirmed effect and historical claims C:65–68,82–91 are retained without being newly confirmed or strengthened; see all 18 dispositions below. |
 | failures repaired | 13/17 documented targets repaired; 3 partial (TB C:43–46; external-recipe exclusion C:4–7,19–25; temporary staging C:45–46), 1 not repaired (release C:43–45,53–61). Detailed count below; no new reader score claimed. |
 | prerequisites | Mixed at C:6–14,19–25,41–61: scope, host auth, Node and checkout write boundary answered. Revision identity, explicit truth exclusion and temporary-tree validation remain unresolved; fixed comparison inputs are absent at C:45–46. Original writer inventory unavailable. |
@@ -306,7 +306,7 @@ Sources: abbreviations below are repository-relative paths under `~/Git/agent-sk
 | F11: C45 two benchmarks both large | repaired; C:103–106 | Different benchmark outcomes stated | PA:104–107 |
 | F12: C46 exhaustive review coverage | repaired; C:103–106 | Exhaustive claim narrowed | AUDIT:C46; PA:87–133 |
 | F13: C44 limit before results | repaired; C:77–85 | No-document warning before counts | AUDIT:C44; ME:70–81 |
-| F14: L3 actual installed revision and write boundary | not repaired; C:53–61,43–45 | Advertised commands and outside-repository promise have no version boundary | what-broke:47; 8c041b7 RW:66–67,110–113 |
+| F14: L3 actual installed revision and write boundary | not repaired; C:53–61,43–45 | Advertised commands and outside-repository promise have no version boundary | what-broke:47; 21a225b RW:66–67,110–113 |
 | F15: L3 host authentication | repaired; C:60–61 | Logged-in host required | what-broke:48 (C20 supplement) |
 | F16: L3 external-tool recipe exclusion | partial; C:4–7,19–25 | Narrows to own software but never states external-tool recipe exclusion | TP:66–71; what-broke:49 (C02 supplement) |
 | F17: L3 temporary candidate links and comparison staging | partial; C:45–46 | Original entry location named; no temporary-copy route or fixed comparison inputs | ME:35–37,49,108–115; what-broke:50–52 |
@@ -367,7 +367,7 @@ Sources: abbreviations below are repository-relative paths under `~/Git/agent-sk
 | ID | Candidate line and claim | Code / ledger | Judgment and evidence level |
 |---|---|---|---|
 | C-N01 | C:6–7: Readers get same brief across languages; weaker unmeasured no-code check | ME:46–60; AU:25–27; TP:73–80; AUDIT:19–22; Q7 | Supported L2 method/intent; no claim of equal detection accuracy. English-only rule1 defect remains undisclosed here |
-| C-N02 | C:24–25,43–45: External run path named, rewrite asks audit path, ISSUES/application need consent | AU:33–44; RW:29,66–79,149–154,191–192; C15/C16 | Supported for checkout; unsupported as unqualified advertised-install behavior (what-broke:47; 8c041b7 RW:66–67,110–113) |
+| C-N02 | C:24–25,43–45: External run path named, rewrite asks audit path, ISSUES/application need consent | AU:33–44; RW:29,66–79,149–154,191–192; C15/C16 | Supported for checkout; unsupported as unqualified advertised-install behavior (what-broke:47; 21a225b RW:66–67,110–113) |
 | C-N03 | C:30–32: 2026-09-11 abandoned draft, third section, nine structural objections | RT:17–21; ST:39–56; no separate original ledger entry | Same anecdote as original 27–29, with date added from source; supported L2 record, not new reader trial |
 | C-N04 | C:37–39: Own round file, failed pin/retirement regeneration before critics | RW:119–144; LEDGER:18–27; C13/C14 | Supported process with pattern-level guard, not retained history of abandoned attempts; shipped lifecycle checks exercised file/snapshot behavior |
 | C-N05 | C:41–46: Owner decides stop, output for checked claims, re-audit at original entry | RW:188–208; ME:35–37,108–115; C05/C12/C14 | Supported L2 process; temporary staging and fixed comparison inputs not supplied |
@@ -409,6 +409,6 @@ Sources: abbreviations below are repository-relative paths under `~/Git/agent-sk
 
 ## Selection and unresolved limits
 
-B survives both vetoes (B:40–43,51–55,66–76,80–86); A is vetoed by the new coverage guarantee (A:57–59; ROUND:66–67,85; C14) and its evidence ceiling, and C is vetoed by the unqualified installed write boundary (C:43–45,53–61; what-broke:47; 8c041b7 RW:66–67,110–113). **B wins with 16/17 documented targets repaired (B:5–7,29–30,36–61,73–103), one partial. There is no tie among survivors.** A:19–21,26–36,57–59,71–76 and C:4–7,19–25,43–61 have the unresolved or vetoed points enumerated in their sheets; their repair totals are not used to override vetoes.
+B survives both vetoes (B:40–43,51–55,66–76,80–86); A is vetoed by the new coverage guarantee (A:57–59; ROUND:66–67,85; C14) and its evidence ceiling, and C is vetoed by the unqualified installed write boundary (C:43–45,53–61; what-broke:47; 21a225b RW:66–67,110–113). **B wins with 16/17 documented targets repaired (B:5–7,29–30,36–61,73–103), one partial. There is no tie among survivors.** A:19–21,26–36,57–59,71–76 and C:4–7,19–25,43–61 have the unresolved or vetoed points enumerated in their sheets; their repair totals are not used to override vetoes.
 
 Unknown: whether any candidate’s author supplied an inventory, cut reasons, or lifecycle runs elsewhere; those were not provided for this judgment. Unknown: complete TB outcome under an actual model-driven rewrite, fresh-reader success rates after these edits, current remote main, host-uninstall behavior, and runtime on Node 22. Historical reader-answer records behind C31/C32/C34–C37 remain absent according to the named audit, so retained statements at A:103–112 and C:82–91 remain unconfirmed; B:92–96 expressly attributes the limited reported counts. The manual staging instruction at B:45–47 has been checked for file layout only, not accepted by a live audit session.

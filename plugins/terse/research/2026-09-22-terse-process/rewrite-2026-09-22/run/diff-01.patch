@@ -99,7 +99,7 @@
 +`claude plugin install terse@nowely`.
  
 +Version boundary: this page describes commit `2f29a8f` on branch `terse-process-2026-09-22`. At the
-+2026-09-22 audit, the install commands resolved the marketplace's `main` at `8c041b7`, whose rewrite page
++2026-09-22 audit, the install commands resolved the marketplace's `main` at `21a225b`, whose rewrite page
 +still wrote into the document repository without asking. The outside-repository write boundary above
 +therefore describes this checkout, not that published revision.
 +

@@ -44,7 +44,7 @@ Coverage: 62 sentences that state a behaviour, 14 findings.
 - Verdict: UNDERSTATED.
 - What the code does: the published revision also puts the installed audit's runs somewhere else. So the uninstall lifecycle in L80-81 does not hold for what the install commands install today.
 - Check, level 3 except where marked:
-  - `git ls-remote https://github.com/Nowely/agent-skills.git refs/heads/main` returns `8c041b76…`, committed 2026-09-18.
+  - `git ls-remote https://github.com/Nowely/agent-skills.git refs/heads/main` returns `21a225b1…`, committed 2026-09-18.
   - Installed from GitHub in `$T/cc2`, the unauthenticated `/terse:audit` transcript carries `RUN="${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/terse}/runs/…"` unsubstituted, and no `plugins/data` directory is created. Claude Code 2.1.280 substitutes only the exact form: the binary contains `replace(/\$\{CLAUDE_PLUGIN_DATA\}/g,…)`.
   - Level 2: the docs (plugins-reference) say these variables "aren't present in the environment of commands Claude runs through the Bash tool". So installed audit runs land in `$TMPDIR/terse`, which uninstall does not touch.
   - The `/terse:rewrite` transcript says to work in "`research/<date>-<slug>/` at the root of the repository that holds the document". Uninstall does not touch that either.
@@ -123,7 +123,7 @@ Coverage: 62 sentences that state a behaviour, 14 findings.
   - L101-102: an exact McNemar test with b=3, c=0 gives p = 0.25.
   - L19: `claude plugin details terse@nowely` lists "Skills (3) audit, rethink, rewrite".
   - L63-64: both shell commands exit 0.
-  - L66-68: `main` is `8c041b7`, and that revision's rewrite page works in `research/<date>-<slug>/` at the repository root and sends defects to `ISSUES.md`.
+  - L66-68: `main` is `21a225b`, and that revision's rewrite page works in `research/<date>-<slug>/` at the repository root and sends defects to `ISSUES.md`.
   - L73: installed from the local marketplace (`$T/cc3`), the audit body reads `D=".../plugins/data/terse-nowely"`.
   - L86, "section budgets are reports": the selftest check "sections reports a section over its budget and still exits 0" passes.
 - **Level 2:**
@@ -149,7 +149,7 @@ Coverage: 62 sentences that state a behaviour, 14 findings.
   - `research/2026-09-10-chain/README.md`, `chain/audit.md:1-75`, `chain/validation.json` and `chain-source-prompt.txt:100-140`.
   - The opening 400 bytes of each of the 40 `run-2x5` prompts, the two judge prompts in full, and both judge answers.
   - `ISSUES.md`.
-  - From the published `8c041b7`: the audit and rewrite pages.
+  - From the published `21a225b`: the audit and rewrite pages.
 - **Ran:**
   - `git diff --quiet` (exit 0).
   - `wc -w` on 5 files.
@@ -157,7 +157,7 @@ Coverage: 62 sentences that state a behaviour, 14 findings.
   - `selftest.mjs` twice (exit 0, exit 0).
   - `ledger.mjs` stub runs, 3 (exits 1, 0, 1).
   - The McNemar computation.
-  - `git ls-remote` (main = `8c041b7`).
+  - `git ls-remote` (main = `21a225b`).
 - **Isolated configs:**
   - `cc1`: marketplace add, 4 installs, 4 uninstalls and one marketplace remove, all exit 0.
   - `cc2`: auth status (exit 1, not logged in); add and install with no node on `PATH` (exit 0, exit 0); two skill invocations (exit 1, cost 0).

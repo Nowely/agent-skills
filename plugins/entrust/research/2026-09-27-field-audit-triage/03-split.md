@@ -20,7 +20,7 @@ proposed that was not taken:
 
 ## Question and tree
 
-As in 01-split.md: for every row, is it still true of `main` at `882bcf3`, should it be fixed, and how. The
+As in 01-split.md: for every row, is it still true of `main` at `1bbab5b`, should it be fixed, and how. The
 issues describe 0.20.0 as installed; a row can be answered on `main` and open in the release users have.
 
 ## Items and groups
@@ -60,7 +60,7 @@ The implementation order #15 proposes (P1 and P14a; then P2, P3, P4; then P5 and
                     CHANGELOG line) with its level (1, 2 or 3); the verdict's reason in one or two sentences;
                     for a P or Q row, the acceptance check the issue names and whether the tree has it
 
-- status: `fixed-on-main` (the text at 882bcf3 answers it, though 0.20.0 did not), `partial` (some of it),
+- status: `fixed-on-main` (the text at 1bbab5b answers it, though 0.20.0 did not), `partial` (some of it),
   `still-true`, `not-a-defect` (the claim does not hold, or asks for what the pages already do),
   `not-applicable` (outside entrust, or the tree has no such surface), `unknown` (undecidable with read rights
   and a tree; the missing check named in `open`).

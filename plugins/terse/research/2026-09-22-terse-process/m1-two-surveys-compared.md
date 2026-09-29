@@ -171,11 +171,11 @@ adversarial refutation of the plugin's conclusions.**
 - The brief that reports present/partial/not located/contradicts is reporting four of six; the run's own
   tally is six-valued: README.md:13 — "72 present, 69 partial, 27 not located, 5 conditional, 11 unknown,
   1 contradicts (S1-39 vs O L25); 495 line citations, 148 page quotes", evidence level 1, "a script
-  resolved every citation and quote against `dff2f0b`".
+  resolved every citation and quote against `e4d98b6`".
 - Who applied it, and the separation that made it possible: `c0-split-critique.md:16` — "Surveyors should
   not perform the page mapping"; `:17` — "R should read both complete, frozen pages … Record file,
   revision, lines and scope; allow partial, conditional, not located and unknown. Unread references prevent
-  whole-plugin absence claims." Applied at `r-synthesis.md:244` ("both pages read whole at `dff2f0b`; every
+  whole-plugin absence claims." Applied at `r-synthesis.md:244` ("both pages read whole at `e4d98b6`; every
   row cites a line read"), rows from `:248`.
 - Polarity is handled: `r-synthesis.md:9` — "For a claim whose direction is harm or no-benefit, `present`
   means the pages already avoid the practice the source warns against" (worked at `:254`, S1-04 "present
@@ -362,23 +362,23 @@ shows the transfer.**
   `research/2026-09-11-terse-survey/README.md:41-45`.
 - Both pages ship inside the plugin payload (`plugins/terse/references/`) and are linked from a skill:
   `plugins/terse/skills/rethink/SKILL.md:89` — "What the field already says about all of this:
-  [prior-art.md](../../references/prior-art.md)". Squashed onto `main` as `b29e921` (2026-09-12).
+  [prior-art.md](../../references/prior-art.md)". Squashed onto `main` as `846197c` (2026-09-12).
 - One survey finding reached a **rule** page: the over-formatting caution at
   `plugins/terse/skills/rethink/references/stages.md:140-144` ("in Morkes & Nielsen 1997 the 'scannable'
   arm … was the only version that did **worse** than the promotional control"), whose source is the
   survey's own formatting section, `prior-art.md:669` ("**The one real measurement.** Morkes and Nielsen
   1997, study 3: 51 participants across five between-subject …"). Evidence level 2: `git log -S "Morkes &
-  Nielsen 1997" -- .../stages.md` returns only the squash `b29e921`, so no commit isolates the transfer.
+  Nielsen 1997" -- .../stages.md` returns only the squash `846197c`, so no commit isolates the transfer.
 - Not found: any commit in which a survey finding rewrote `writing-rules.md`'s rules. `56c9105` touches
   `writing-rules.md` (+8) and `curse-of-knowledge.md` (+7) but the hunks are **Provenance/SHA-256 blocks**,
   not rules (`git show 56c9105 -- .../curse-of-knowledge.md`, added §"Provenance" with the digest).
 
 **Newer — eleven sentences on the orchestrate page, one new reference file, in one commit that names the
 directory.**
-Commit `8983268` (2026-09-18), "The orchestrator as a manager: the 2026-09-17 research round, eleven page
+Commit `dfe6e0b` (2026-09-18), "The orchestrator as a manager: the 2026-09-17 research round, eleven page
 rules …" — `plugins/entrust/skills/orchestrate/SKILL.md` **+33/−…**, new
 `plugins/entrust/skills/orchestrate/references/roles.md` **+29**, CHANGELOG +137, research directory added.
-Shortlist row → shipped line (current `main`, `git show 8983268 -- .../orchestrate/SKILL.md` for the diff):
+Shortlist row → shipped line (current `main`, `git show dfe6e0b -- .../orchestrate/SKILL.md` for the diff):
 
 | shortlist | shipped line |
 |---|---|
@@ -407,7 +407,7 @@ Each step: what it took in, what it put out, and the file that shows it happened
 
 1. **Fix the subject and freeze it.** In: the owner's question and his four themes. Out: two named pages at
    one pinned revision, and the rule that every line number in the round is at that revision.
-   Shown by README.md:3 ("Subject: … at `dff2f0b`; every line number below is at that revision") and
+   Shown by README.md:3 ("Subject: … at `e4d98b6`; every line number below is at that revision") and
    `r-synthesis.md:3` (both pages sized: 152 and 315 lines).
 2. **Measure the constraint before designing for it, and let the measurement delete a goal.** In: 46 root
    transcripts. Out: the context breakdown — pages 2.1 %, agent returns 0.6 %, own output 45.5 % — and
@@ -433,7 +433,7 @@ Each step: what it took in, what it put out, and the file that shows it happened
    disagreements kept with the conditions that separate them; un-audited handoffs named.
    Shown by `r-synthesis.md:5, 15-27, 29-33, 35-48, 50-52`.
 7. **Map every merged claim onto the frozen pages with a six-value verdict set, and cite a line for each.**
-   In: both pages read whole at `dff2f0b`. Out: 72 present / 69 partial / 27 not located / 5 conditional /
+   In: both pages read whole at `e4d98b6`. Out: 72 present / 69 partial / 27 not located / 5 conditional /
    11 unknown / 1 contradicts; 495 line citations and 148 page quotes, every one script-resolved; absence
    claims bounded to the two pages because six references were read by headings only.
    Shown by `r-synthesis.md:9, 244-246, 250+`; README.md:13; `r-synthesis.md:3`.
@@ -465,7 +465,7 @@ Each step: what it took in, what it put out, and the file that shows it happened
     eleven page deltas, ten new pins and two rewritten, a changelog entry, a line ledger; critic verdict
     2 keep / 9 fix / 0 drop, which also corrected two numbers in the phase-1 README.
     Shown by README.md:81; `d1-design-v1.md`, `c1-design-critique.md`, `d1-design-v2.md`;
-    `rounds.md:13-14`; commit `8983268`.
+    `rounds.md:13-14`; commit `dfe6e0b`.
 16. **Phase 3: do not claim improvement; register the protocols and stop.** Out: 15 + 3 hypotheses and,
     the next day, five registered protocols. Shown by README.md:5, :85;
     `plugins/entrust/skills/experiment/references/protocols.md:3-53`. **Not run** — see the last section.
@@ -566,7 +566,7 @@ improvement. Use matched tasks and budgets with independent outcome assessment, 
 single-agent/no-delegation comparator."
 
 **Whether it ran: no.** Proven at level 3:
-- A vehicle was built the next day, not a run: commit `8983268` adds
+- A vehicle was built the next day, not a run: commit `dfe6e0b` adds
   `plugins/entrust/skills/experiment/SKILL.md`, its script, and five registered protocols E1–E5
   (`plugins/entrust/skills/experiment/references/protocols.md:5-53`) — the commit message says the round's
   "fifteen hypotheses stay opinions without a vehicle".

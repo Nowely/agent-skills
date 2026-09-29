@@ -1,10 +1,10 @@
-# Fable M1 — the vendor guides mapped onto the pages at d2eb159
+# Fable M1 — the vendor guides mapped onto the pages at c72dad8
 
 Read only; no page changed. Inputs: `s1-sources.md` (its fetch manifest and rows N-1..N-24; its Part 1 not used),
 `v1-verification.md`, the saved pages under `$TMPDIR/vendor-guides-2026-09-28/pages/`, the 2026-09-22 run
 (`p1-mapping.md`, `s1-openai-skills-and-prompting.md`, `s2-anthropic-prompting.md`, `s3-writing-for-agents.md`,
 `k2-completeness.md`), and every page of `plugins/terse/plugin/` and `plugins/entrust/plugin/` at HEAD
-(`d2eb159`), each opened whole except `prior-art.md`, `practices-full.md`, `environment-and-internals.md`,
+(`c72dad8`), each opened whole except `prior-art.md`, `practices-full.md`, `environment-and-internals.md`,
 `incidents.md`, `parity.md` and `why-not-the-plugin.md`, whose openings were read for the contents-list check
 and whose bodies are not cited.
 
@@ -291,7 +291,7 @@ Validation: every M quote above was searched as a fixed string in its saved page
 
 ## 2. The old candidates and refusals, re-judged
 
-The 2026-09-22 targets were at `8c041b7`, before the restructure that put the installed part under
+The 2026-09-22 targets were at `21a225b`, before the restructure that put the installed part under
 `plugins/<name>/plugin/`, rewrote the three terse skill pages, deleted `stages.md`, `loop.md`, `bake-off.md`,
 `critic-briefs.md` and `truth-pass.md`, and added `rules.md`, `roles.md`, `truth.md`, `run.md` and the
 `clarity` skill. Old aliases: W `writing-rules.md`, K `curse-of-knowledge.md`, S `stages.md`, A/T/R the three

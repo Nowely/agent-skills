@@ -71,7 +71,7 @@ The same two steps from a shell: `claude plugin marketplace add Nowely/agent-ski
 `claude plugin install terse@nowely`.
 
 This page describes commit `2f29a8f`. At the 2026-09-22 audit, the install commands resolved the
-marketplace's `main` at `8c041b7`, whose rewrite page wrote into the document repository without asking.
+marketplace's `main` at `21a225b`, whose rewrite page wrote into the document repository without asking.
 The section below describes this commit, not that one.
 
 ## Where it writes

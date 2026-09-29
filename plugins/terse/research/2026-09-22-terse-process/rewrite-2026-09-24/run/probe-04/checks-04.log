@@ -1,5 +1,5 @@
 # round 04 checks, 2026-09-24 09:41:03; 04-shape.md sha256 1e6eed3b993a06180f90c7e28aad4bed5d0bb580daba2124b71981b59a8d64e0
-ledger.04.json sha256 2bc2f92897a0527c3b8f1dcbbe901ac44513e08af93f4947460b7cdef04487f0 (ledger.json before the round: 2bc2f92897a0527c3b8f1dcbbe901ac44513e08af93f4947460b7cdef04487f0)
+ledger.04.json sha256 de8f4009f7323cd141746d88f3df48e345b4e686014e288333648269d1fdab69 (ledger.json before the round: de8f4009f7323cd141746d88f3df48e345b4e686014e288333648269d1fdab69)
 
 $ node rule1.mjs F --cut "How it works" --except "Quick start"
 

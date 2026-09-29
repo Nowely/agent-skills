@@ -7,7 +7,7 @@
     {
       "check": "pinned commit",
       "satisfied": true,
-      "observed": "8c041b76d7f30196441285d77985b81ae9c9e59f"
+      "observed": "21a225b12f15221f978492718ecdc00eb7ea5924"
     },
     {
       "check": "survey row counts",
@@ -134,5 +134,5 @@
       "observed": " M research/README.md\n?? research/2026-09-22-terse-process/\n"
     }
   ],
-  "report_sha256": "c7d5d769bbd69c8d548507d2faa240dc903d197a3d32459588ed3ca4228ecc4c"
+  "report_sha256": "cdf88ec018fe95cc5eecb307d9ffb363ed2650831ea9f609cb34034bffd0cdd5"
 }

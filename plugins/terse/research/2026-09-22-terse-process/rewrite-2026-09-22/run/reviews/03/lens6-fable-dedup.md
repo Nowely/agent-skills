@@ -1,7 +1,7 @@
 # Lens 6 — dedup and rank of the round-03 wave on `03-review.md`
 
 Fable (claude-fable-5-1), 2026-09-23. Document: `$R/03-review.md`, 126 lines, SHA-256
-`366210288342aa9edce8d74424b7521d8730e422bc27236acfa2b3e92f84159b`. Code: `~/Git/agent-skills`,
+`f15296bf31007514fe5c4f641fe0c2f760654b0f93909b587055c6e4d28c846a`. Code: `~/Git/agent-skills`,
 branch `terse-process-2026-09-22`, HEAD `bdac0ef` (one commit after the `1af4160` the brief names: the
 round-03 record itself, 32 files under `research/`; `git diff --stat 2f29a8f HEAD -- plugins/terse` is
 empty, `git status --short` empty). Line numbers are `cat -n` lines of `03-review.md`. `$R` = the run
@@ -57,19 +57,19 @@ round 02). "Introduced by round 03" is read off `diff -u 02-grafts.md 03-review.
 
 ### L6.3-02. Install gives no route to the commit the page describes; the published one differs in ten files
 - **Lines:** l66-67, l70-71 (the four install commands); l73 — "This page describes commit `2f29a8f`."; l74.
-- **Finding:** the only install recipe still resolves the marketplace's `main` at `8c041b7` on 2026-09-23 (both commits call themselves 0.1.1), and `git diff --stat 8c041b7 2f29a8f -- plugins/terse` is 10 files (+487/−50): no `ledger-seed.mjs`, no verifier, `audit` runs no Node, `rewrite` writes into the document's repository — so for the plugin a reader installs, l41-42, l49, l60-61 and l79-92 describe something else, and no line installs `2f29a8f` (`grep -n 2f29a8f` → l73 only).
+- **Finding:** the only install recipe still resolves the marketplace's `main` at `21a225b` on 2026-09-23 (both commits call themselves 0.1.1), and `git diff --stat 21a225b 2f29a8f -- plugins/terse` is 10 files (+487/−50): no `ledger-seed.mjs`, no verifier, `audit` runs no Node, `rewrite` writes into the document's repository — so for the plugin a reader installs, l41-42, l49, l60-61 and l79-92 describe something else, and no line installs `2f29a8f` (`grep -n 2f29a8f` → l73 only).
 - **Raised by:** lens 1 F5 (a: level 3 install on 2026-09-23; b: level 2 diff); lens 2 P1 (l85-86 ↔ l74, reconciled only by l73). 2 lenses. = round-02 L6-04 (SCOPE, routed to the owner; decision (d) settled only where the boundary sentence lives, not the install route).
-- **Check:** lens 1: `T2=$(mktemp -d); export CLAUDE_CONFIG_DIR=$T2/cfg; claude plugin marketplace add Nowely/agent-skills; claude plugin install terse@nowely; grep gitCommitSha $T2/cfg/plugins/installed_plugins.json` → `8c041b76…`; `git -C ~/Git/agent-skills diff --stat 8c041b7 2f29a8f -- plugins/terse`; `git ls-tree -r --name-only 8c041b7 -- plugins/terse/skills/audit/scripts` → nothing. Lens 2: `grep -n 2f29a8f $R/03-review.md` → 73; `grep -n -E "plugin (marketplace add|install)" $R/03-review.md` → 66 67 70 71.
+- **Check:** lens 1: `T2=$(mktemp -d); export CLAUDE_CONFIG_DIR=$T2/cfg; claude plugin marketplace add Nowely/agent-skills; claude plugin install terse@nowely; grep gitCommitSha $T2/cfg/plugins/installed_plugins.json` → `21a225b1…`; `git -C ~/Git/agent-skills diff --stat 21a225b 2f29a8f -- plugins/terse`; `git ls-tree -r --name-only 21a225b -- plugins/terse/skills/audit/scripts` → nothing. Lens 2: `grep -n 2f29a8f $R/03-review.md` → 73; `grep -n -E "plugin (marketplace add|install)" $R/03-review.md` → 66 67 70 71.
 - **Category:** SCOPE — the durable fix is a release, the owner's. The README-side option is round 02's L6-04 edit, unchanged and still level 3 (c4-1, c4-2, lens 1 `cc3`): after l71, "To install the commit this page describes, give the checkout's path in place of `Nowely/agent-skills`."
 
 ### L6.3-03. The boundary sentence names one page and one section where two pages and the whole page differ, and l75 repeats l73
-- **Lines:** l73-75 — "This page describes commit `2f29a8f`. At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `8c041b7`, whose rewrite page wrote into the document repository without asking. The section below describes this commit, not that one."
-- **Finding:** at `8c041b7` the audit page also differs — its run line carries `${CLAUDE_PLUGIN_DATA:-…}` unsubstituted, so its runs land in `${TMPDIR:-/tmp}/terse` and l80-81 is false for the install the page gives (lens 1 charges l74-75, not l80-81) — and l75 says in 9 words what l73 already says of the whole page.
-- **Raised by:** lens 1 F5 b/c (UNDERSTATED; c at level 3, stub renders under `8c041b7` and `2f29a8f`); lens 2 W1 (cut l75). 2 lenses; compatible.
-- **Check:** lens 1: `claude -p "/terse:audit" --max-turns 1` under a local marketplace from `git archive 8c041b7` with `ANTHROPIC_BASE_URL` at a stub → request body carries `RUN="${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/terse}/runs/…"` unsubstituted, no `plugins/data/terse-nowely` created; the same under `2f29a8f` → `D="…/plugins/data/terse-nowely"`, directory created. Lens 2: `sed -n '73,75p' $R/03-review.md`.
+- **Lines:** l73-75 — "This page describes commit `2f29a8f`. At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `21a225b`, whose rewrite page wrote into the document repository without asking. The section below describes this commit, not that one."
+- **Finding:** at `21a225b` the audit page also differs — its run line carries `${CLAUDE_PLUGIN_DATA:-…}` unsubstituted, so its runs land in `${TMPDIR:-/tmp}/terse` and l80-81 is false for the install the page gives (lens 1 charges l74-75, not l80-81) — and l75 says in 9 words what l73 already says of the whole page.
+- **Raised by:** lens 1 F5 b/c (UNDERSTATED; c at level 3, stub renders under `21a225b` and `2f29a8f`); lens 2 W1 (cut l75). 2 lenses; compatible.
+- **Check:** lens 1: `claude -p "/terse:audit" --max-turns 1` under a local marketplace from `git archive 21a225b` with `ANTHROPIC_BASE_URL` at a stub → request body carries `RUN="${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/terse}/runs/…"` unsubstituted, no `plugins/data/terse-nowely` created; the same under `2f29a8f` → `D="…/plugins/data/terse-nowely"`, directory created. Lens 2: `sed -n '73,75p' $R/03-review.md`.
 - **Category:** SENTENCE.
 - **Introduced:** round 03 (reworded from `02-grafts.md:66-69`; the claim is round 02's G4, the words round 03's). Understated → not a regression by the definition. Pins: G4 is exactly l75, R03j is l74 → the edit must drop G4 and re-pin R03j.
-- **Edit (mine, folding F5 and W1; R1's opening optional, see L6.3-15):** l74-75 → "…resolved the marketplace's `main` at `8c041b7`, whose audit and rewrite pages differ from the ones described here; its rewrite page wrote into the document repository without asking." and cut l75.
+- **Edit (mine, folding F5 and W1; R1's opening optional, see L6.3-15):** l74-75 → "…resolved the marketplace's `main` at `21a225b`, whose audit and rewrite pages differ from the ones described here; its rewrite page wrote into the document repository without asking." and cut l75.
 
 ### L6.3-04. "pinned sentence" and "wording retired as false" are never defined, and the Q5 reader guessed for that reason
 - **Lines:** l49-50 — "The shipped check rejects a new round that loses a pinned sentence or restores wording retired as false. That guard is not a promise that no regression can occur."
@@ -159,12 +159,12 @@ round 02). "Introduced by round 03" is read off `diff -u 02-grafts.md 03-review.
 - **Category:** SENTENCE. **Introduced:** earlier. C09 pinned → re-pin (same edit as L6.3-13).
 
 ### L6.3-15. Decision (d) read literally: l74 names a branch and the document's own review event
-- **Lines:** l73-74 — "At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `8c041b7`, …"
+- **Lines:** l73-74 — "At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `21a225b`, …"
 - **Finding:** `skeleton.md:22-23` says "no branch name, no 'still', the date and both commits kept"; l74 names `main`, and "At the 2026-09-22 audit" names the review event, the class `writing-rules.md:12` cuts.
 - **Raised by:** lens 2 R1. 1 lens.
 - **Check:** `` grep -n '`main`' $R/03-review.md `` → 74 (reproduced); `sed -n '22,23p' $R/skeleton.md`.
 - **Category:** UNSETTLED — decision (d) was written against round 02's "on branch `terse-process-2026-09-22`" (the checkout's branch, editing history); `main` is the branch the install resolves, a fact about the install, not the document's history. Whether (d) meant any branch name is the coordinator's. Introduced by round 03; not false. R03j pinned → re-pin if changed.
-- **Edit (lens 2's, 23 → 18 words, if adopted):** "On 2026-09-22 the install commands resolved to `8c041b7`, whose …" — combine with L6.3-03.
+- **Edit (lens 2's, 23 → 18 words, if adopted):** "On 2026-09-22 the install commands resolved to `21a225b`, whose …" — combine with L6.3-03.
 
 ### L6.3-16. Decision (a)'s rule, read page-wide: five sentences state a page's instruction as fact outside the l23 frame
 - **Lines:** l7 "guarantee-shaped claims need a named source or weaker wording" (`truth-pass.md:23-25`, a page); l85-86 "Copying that defect … requires your word." (`rewrite/SKILL.md:153-154, 191-192`, a page; R02d pinned); l96 "Length does not select a candidate" (`bake-off.md:118`, a page; "section budgets are reports" is `sections.mjs`, level 3, direct is right); l100 "the bake-off vetoes" (`bake-off.md:114`, a page); l101-102 (no page — L6.3-01).
@@ -278,7 +278,7 @@ round 02). "Introduced by round 03" is read off `diff -u 02-grafts.md 03-review.
 - **No authenticated skill run anywhere in the wave** (lens 1: stub only, 0 tokens): G1 announce-and-wait, the first question `audit` asks, the live Bash environment of a skill session (L6.3-25's hypothesis), the in-app `/plugin` forms (lens 1 level-1 item 2).
 - **Lens 2 by its own account** opened no `edits/` (cut reasons), no `02-grafts.md` or diff (decision (e) "left as it is" unchecked — checked here: l5-6 byte-identical), no ledger (l47's pin — checked here: not pinned), and checked no fact against code.
 - **Whether the measured chain is the shipping procedure** — no critic checked it (L6.3-09, read here from `chain/README.md`).
-- **The after-readers' 6/6** (level 1 only, no record); the OS purge of `$TMPDIR` (unobservable; G3c now attributed); "Models were hidden" (dossier not kept); `main` at `8c041b7` observed on 2026-09-23 against a 2026-09-18 commit, not on 2026-09-22.
+- **The after-readers' 6/6** (level 1 only, no record); the OS purge of `$TMPDIR` (unobservable; G3c now attributed); "Models were hidden" (dossier not kept); `main` at `21a225b` observed on 2026-09-23 against a 2026-09-18 commit, not on 2026-09-22.
 - **The Node 22 floor**: declared, not enforced (round 02: `selftest.mjs` passed under 20.16.0); nobody checked whether any skill needs 22 (l60-61 says "22 or newer").
 - **A curse-of-knowledge pass**: no critic in this wave either; R4 covers four terms, and "adversarial read", "candidate", "arm", "entry file", "no-document baseline", "trial" are untested on a reader.
 - **`stages.md` content rules** (untagged fences at l13 and l65; warnings in the opening at l6-8): not applied, no skeleton adopts them — as in round 02.

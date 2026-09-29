@@ -1,6 +1,6 @@
 # Codex Astra P1 — survey merge and target map
 
-Completed against commit `8c041b76d7f30196441285d77985b81ae9c9e59f` (`8c041b7`). The repository was read only; all extracted snapshots, checks and this report live under `$TMPDIR`. No network fetch, survey fan-out, model experiment or application test was performed by P1. I used the three supplied surveys as inputs, reopening saved source text for quotations, conditions and tensions. The OpenAI Docs skill was read; the task’s saved-source/no-web-search instructions controlled the workflow.
+Completed against commit `21a225b12f15221f978492718ecdc00eb7ea5924` (`21a225b`). The repository was read only; all extracted snapshots, checks and this report live under `$TMPDIR`. No network fetch, survey fan-out, model experiment or application test was performed by P1. I used the three supplied surveys as inputs, reopening saved source text for quotations, conditions and tensions. The OpenAI Docs skill was read; the task’s saved-source/no-web-search instructions controlled the workflow.
 
 Declared bias: I am the model named in the OpenAI post. All verdicts concern target text. C11, C14 and C16 explicitly identify support consisting only of a vendor description/recommendation of Astra. I do not use my own compliance in this turn as evidence for those claims.
 
@@ -306,7 +306,7 @@ The bracketed target line opens its exact quoted source in the ledger below. Tra
 
 <a id="quote-live"></a>
 
-**W:6–7** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `8c041b7`.
+**W:6–7** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `21a225b`.
 
 ```sh
 sed -n '6,7p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'
@@ -319,7 +319,7 @@ contract, a constraint, or a reason the code cannot state.
 
 <a id="quote-reason"></a>
 
-**W:9–10** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `8c041b7`.
+**W:9–10** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `21a225b`.
 
 ```sh
 sed -n '9,10p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'
@@ -332,7 +332,7 @@ appears. Give the instruction; the case for it lives in one place.
 
 <a id="quote-firstdef"></a>
 
-**W:15–16** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `8c041b7`.
+**W:15–16** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `21a225b`.
 
 ```sh
 sed -n '15,16p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'
@@ -345,7 +345,7 @@ with a glossary.
 
 <a id="quote-purpose"></a>
 
-**W:18–19** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `8c041b7`.
+**W:18–19** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `21a225b`.
 
 ```sh
 sed -n '18,19p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'
@@ -358,7 +358,7 @@ the argument for an instruction, and it is not cut.
 
 <a id="quote-safeguard"></a>
 
-**W:21–23** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `8c041b7`.
+**W:21–23** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `21a225b`.
 
 ```sh
 sed -n '21,23p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'
@@ -372,7 +372,7 @@ its date and its numbers, including ones the code has since changed.
 
 <a id="quote-counts"></a>
 
-**W:25–25** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `8c041b7`.
+**W:25–25** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `21a225b`.
 
 ```sh
 sed -n '25,25p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'
@@ -384,7 +384,7 @@ Counts - sentence length, repeated phrases - prompt a review. They are not gates
 
 <a id="quote-fixed"></a>
 
-**W:3–4** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `8c041b7`.
+**W:3–4** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `21a225b`.
 
 ```sh
 sed -n '3,4p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'
@@ -397,7 +397,7 @@ your own words, and do not extend it with rules you like better. It was measured
 
 <a id="quote-modelcheck"></a>
 
-**W:44–47** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `8c041b7`.
+**W:44–47** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `21a225b`.
 
 ```sh
 sed -n '44,47p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'
@@ -412,7 +412,7 @@ that causes one. Re-check them against the model in front of you before treating
 
 <a id="quote-nolinters"></a>
 
-**W:49–51** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `8c041b7`.
+**W:49–51** — `plugins/terse/skills/rewrite/references/writing-rules.md` at `21a225b`.
 
 ```sh
 sed -n '49,51p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/writing-rules.md'
@@ -426,7 +426,7 @@ punctuation gate in CI.
 
 <a id="quote-prereq"></a>
 
-**K:11–16** — `plugins/terse/skills/rewrite/references/curse-of-knowledge.md` at `8c041b7`.
+**K:11–16** — `plugins/terse/skills/rewrite/references/curse-of-knowledge.md` at `21a225b`.
 
 ```sh
 sed -n '11,16p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/curse-of-knowledge.md'
@@ -443,7 +443,7 @@ sed -n '11,16p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rew
 
 <a id="quote-framing"></a>
 
-**K:18–20** — `plugins/terse/skills/rewrite/references/curse-of-knowledge.md` at `8c041b7`.
+**K:18–20** — `plugins/terse/skills/rewrite/references/curse-of-knowledge.md` at `21a225b`.
 
 ```sh
 sed -n '18,20p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/curse-of-knowledge.md'
@@ -457,7 +457,7 @@ Every "obviously", "simply" or "just" hides a prerequisite.
 
 <a id="quote-realexamples"></a>
 
-**K:33–34** — `plugins/terse/skills/rewrite/references/curse-of-knowledge.md` at `8c041b7`.
+**K:33–34** — `plugins/terse/skills/rewrite/references/curse-of-knowledge.md` at `21a225b`.
 
 ```sh
 sed -n '33,34p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/references/curse-of-knowledge.md'
@@ -470,7 +470,7 @@ sed -n '33,34p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rew
 
 <a id="quote-content_scope"></a>
 
-**S:265–268** — `plugins/terse/skills/rethink/references/stages.md` at `8c041b7`.
+**S:265–268** — `plugins/terse/skills/rethink/references/stages.md` at `21a225b`.
 
 ```sh
 sed -n '265,268p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'
@@ -485,7 +485,7 @@ sentences are in [writing-rules.md](../../rewrite/references/writing-rules.md) a
 
 <a id="quote-problem"></a>
 
-**S:270–272** — `plugins/terse/skills/rethink/references/stages.md` at `8c041b7`.
+**S:270–272** — `plugins/terse/skills/rethink/references/stages.md` at `21a225b`.
 
 ```sh
 sed -n '270,272p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'
@@ -499,7 +499,7 @@ sed -n '270,272p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-detail"></a>
 
-**S:275–276** — `plugins/terse/skills/rethink/references/stages.md` at `8c041b7`.
+**S:275–276** — `plugins/terse/skills/rethink/references/stages.md` at `21a225b`.
 
 ```sh
 sed -n '275,276p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'
@@ -512,7 +512,7 @@ sed -n '275,276p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-prereqexception"></a>
 
-**S:277–279** — `plugins/terse/skills/rethink/references/stages.md` at `8c041b7`.
+**S:277–279** — `plugins/terse/skills/rethink/references/stages.md` at `21a225b`.
 
 ```sh
 sed -n '277,279p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'
@@ -526,7 +526,7 @@ sed -n '277,279p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-copycmd"></a>
 
-**S:280–281** — `plugins/terse/skills/rethink/references/stages.md` at `8c041b7`.
+**S:280–281** — `plugins/terse/skills/rethink/references/stages.md` at `21a225b`.
 
 ```sh
 sed -n '280,281p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'
@@ -539,7 +539,7 @@ sed -n '280,281p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-update"></a>
 
-**S:282–283** — `plugins/terse/skills/rethink/references/stages.md` at `8c041b7`.
+**S:282–283** — `plugins/terse/skills/rethink/references/stages.md` at `21a225b`.
 
 ```sh
 sed -n '282,283p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'
@@ -552,7 +552,7 @@ sed -n '282,283p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-noinvent"></a>
 
-**S:284–285** — `plugins/terse/skills/rethink/references/stages.md` at `8c041b7`.
+**S:284–285** — `plugins/terse/skills/rethink/references/stages.md` at `21a225b`.
 
 ```sh
 sed -n '284,285p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'
@@ -565,7 +565,7 @@ sed -n '284,285p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-vocab"></a>
 
-**S:286–289** — `plugins/terse/skills/rethink/references/stages.md` at `8c041b7`.
+**S:286–289** — `plugins/terse/skills/rethink/references/stages.md` at `21a225b`.
 
 ```sh
 sed -n '286,289p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'
@@ -580,7 +580,7 @@ sed -n '286,289p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-table"></a>
 
-**S:290–293** — `plugins/terse/skills/rethink/references/stages.md` at `8c041b7`.
+**S:290–293** — `plugins/terse/skills/rethink/references/stages.md` at `21a225b`.
 
 ```sh
 sed -n '290,293p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'
@@ -595,7 +595,7 @@ sed -n '290,293p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-fenced"></a>
 
-**S:294–298** — `plugins/terse/skills/rethink/references/stages.md` at `8c041b7`.
+**S:294–298** — `plugins/terse/skills/rethink/references/stages.md` at `21a225b`.
 
 ```sh
 sed -n '294,298p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'
@@ -611,7 +611,7 @@ sed -n '294,298p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-caveat"></a>
 
-**S:299–302** — `plugins/terse/skills/rethink/references/stages.md` at `8c041b7`.
+**S:299–302** — `plugins/terse/skills/rethink/references/stages.md` at `21a225b`.
 
 ```sh
 sed -n '299,302p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/references/stages.md'
@@ -626,7 +626,7 @@ sed -n '299,302p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-adesc"></a>
 
-**A:4–7** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:4–7** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '4,7p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -641,7 +641,7 @@ disable-model-invocation: true
 
 <a id="quote-tdesc"></a>
 
-**T:4–7** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:4–7** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '4,7p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -656,7 +656,7 @@ disable-model-invocation: true
 
 <a id="quote-rdesc"></a>
 
-**R:4–8** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:4–8** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '4,8p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -672,7 +672,7 @@ disable-model-invocation: true
 
 <a id="quote-auditorder"></a>
 
-**A:13–16** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:13–16** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '13,16p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -687,7 +687,7 @@ written measures the text against your memory of it, and your memory has already
 
 <a id="quote-scope"></a>
 
-**A:23–28** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:23–28** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '23,28p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -704,7 +704,7 @@ Settle three things with the user in one exchange, not six:
 
 <a id="quote-nowrite"></a>
 
-**A:40–40** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:40–40** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '40,40p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -716,7 +716,7 @@ Write nothing into the audited repository. Not a report, not a note, not a fix.
 
 <a id="quote-profile"></a>
 
-**A:44–45** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:44–45** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '44,45p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -729,7 +729,7 @@ Build it from the repository and from the user's own words, following
 
 <a id="quote-ledger"></a>
 
-**A:52–55** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:52–55** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '52,55p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -744,7 +744,7 @@ verdicts. Use the entry format in [ledgers.md](references/ledgers.md).
 
 <a id="quote-evidencelevels"></a>
 
-**A:62–63** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:62–63** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '62,63p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -757,7 +757,7 @@ sed -n '62,63p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/aud
 
 <a id="quote-controls"></a>
 
-**A:73–74** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:73–74** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '73,74p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -770,7 +770,7 @@ Without them a later rewrite can raise the score by breaking something nobody as
 
 <a id="quote-unanswerable"></a>
 
-**A:76–78** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:76–78** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '76,78p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -784,7 +784,7 @@ from a reader who knew. Benchmarks that do this plant about one in ten.
 
 <a id="quote-readers"></a>
 
-**A:85–88** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:85–88** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '85,88p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -799,7 +799,7 @@ documentation to find out.
 
 <a id="quote-baseline"></a>
 
-**A:90–96** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:90–96** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '90,96p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -817,7 +817,7 @@ not pay again.
 
 <a id="quote-task"></a>
 
-**A:105–112** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:105–112** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '105,112p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -836,7 +836,7 @@ invent something, and treat a guess that turned out right exactly like one that 
 
 <a id="quote-repeat"></a>
 
-**A:139–143** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:139–143** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '139,143p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -852,7 +852,7 @@ needed — put it in both places.
 
 <a id="quote-baselineceiling"></a>
 
-**A:145–147** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:145–147** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '145,147p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -866,7 +866,7 @@ mean nothing. A zero can rise; report it and go on.
 
 <a id="quote-areturn"></a>
 
-**A:149–151** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:149–151** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '149,151p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -880,7 +880,7 @@ causes, the refuted claims, and the absolute path. Offer `rewrite` as the next s
 
 <a id="quote-arefs"></a>
 
-**A:155–158** — `plugins/terse/skills/audit/SKILL.md` at `8c041b7`.
+**A:155–158** — `plugins/terse/skills/audit/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '155,158p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/audit/SKILL.md'
@@ -895,7 +895,7 @@ sed -n '155,158p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/a
 
 <a id="quote-tskeleton"></a>
 
-**T:13–15** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:13–15** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '13,15p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -909,7 +909,7 @@ rules that will gate the writing. No prose.
 
 <a id="quote-tstop"></a>
 
-**T:17–21** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:17–21** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '17,21p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -925,7 +925,7 @@ sentence in it was written against a shape nobody had agreed.
 
 <a id="quote-tmethod"></a>
 
-**T:23–23** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:23–23** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '23,23p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -937,7 +937,7 @@ The method, with the measurements behind each stage: [stages.md](references/stag
 
 <a id="quote-tfan"></a>
 
-**T:27–28** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:27–28** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '27,28p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -950,7 +950,7 @@ on six slices return a sample.
 
 <a id="quote-tpermission"></a>
 
-**T:30–32** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:30–32** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '30,32p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -964,7 +964,7 @@ guidance, whatever this document's hard part is, and one slice whose job is what
 
 <a id="quote-tsources"></a>
 
-**T:34–35** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:34–35** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '34,35p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -977,7 +977,7 @@ document reported carries its URL and its headings in order — and **weight by 
 
 <a id="quote-tterms"></a>
 
-**T:45–47** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:45–47** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '45,47p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -991,7 +991,7 @@ different thing.
 
 <a id="quote-ttermref"></a>
 
-**T:49–52** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:49–52** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '49,52p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -1006,7 +1006,7 @@ agents "seats" while claiming they were the equal of native subagents — is in
 
 <a id="quote-tcritics"></a>
 
-**T:59–61** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:59–61** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '59,61p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -1020,7 +1020,7 @@ structure including the one it ranks first.
 
 <a id="quote-tcommon"></a>
 
-**T:63–65** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:63–65** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '63,65p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -1034,7 +1034,7 @@ was the three critics' shared answer that found the real defect, and none of the
 
 <a id="quote-toutput"></a>
 
-**T:76–80** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:76–80** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '76,80p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -1050,7 +1050,7 @@ sed -n '76,80p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/ret
 
 <a id="quote-thandoff"></a>
 
-**T:82–83** — `plugins/terse/skills/rethink/SKILL.md` at `8c041b7`.
+**T:82–83** — `plugins/terse/skills/rethink/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '82,83p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rethink/SKILL.md'
@@ -1063,7 +1063,7 @@ it finds that belongs to a stage above it.
 
 <a id="quote-rbranches"></a>
 
-**R:18–21** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:18–21** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '18,21p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1078,7 +1078,7 @@ sed -n '18,21p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rew
 
 <a id="quote-rbackground"></a>
 
-**R:23–25** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:23–25** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '23,25p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1092,7 +1092,7 @@ act; this file is.
 
 <a id="quote-rbrief"></a>
 
-**R:34–47** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:34–47** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '34,47p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1117,7 +1117,7 @@ skeleton route parts 2 and 5 do not exist; say so in the report rather than inve
 
 <a id="quote-rcopy"></a>
 
-**R:49–50** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:49–50** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '49,50p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1130,7 +1130,7 @@ Copy the fixed parts; do not paraphrase them. The wording a critic receives is i
 
 <a id="quote-rfirst"></a>
 
-**R:54–58** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:54–58** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '54,58p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1146,7 +1146,7 @@ only bake-off; every round after it edits the round before.
 
 <a id="quote-rperm"></a>
 
-**R:60–62** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:60–62** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '60,62p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1160,7 +1160,7 @@ fan-out, write one candidate yourself from the same brief and report that the co
 
 <a id="quote-selftest"></a>
 
-**R:74–74** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:74–74** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '74,74p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1172,7 +1172,7 @@ node "$S/selftest.mjs"      # once per session: every check against its planted 
 
 <a id="quote-rchecks"></a>
 
-**R:96–103** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:96–103** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '96,103p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1191,7 +1191,7 @@ sed -n '96,103p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/re
 
 <a id="quote-rdispatch"></a>
 
-**R:104–109** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:104–109** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '104,109p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1208,7 +1208,7 @@ sed -n '104,109p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-rverify"></a>
 
-**R:110–114** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:110–114** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '110,114p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1224,7 +1224,7 @@ sed -n '110,114p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-rregress"></a>
 
-**R:115–118** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:115–118** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '115,118p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1239,7 +1239,7 @@ sed -n '115,118p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-rgates"></a>
 
-**R:137–144** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:137–144** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '137,144p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1258,7 +1258,7 @@ Before the user reads a round, three things, none tradeable against another:
 
 <a id="quote-rstop"></a>
 
-**R:146–150** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:146–150** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '146,150p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1274,7 +1274,7 @@ the candidate to the user's files needs their word, and a diff they have read is
 
 <a id="quote-rstate"></a>
 
-**R:157–158** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:157–158** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '157,158p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1287,7 +1287,7 @@ sed -n '157,158p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-rpreserve"></a>
 
-**R:167–170** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:167–170** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '167,170p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1302,7 +1302,7 @@ keeps its date and its numbers.
 
 <a id="quote-rscripts"></a>
 
-**R:179–179** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:179–179** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '179,179p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1314,7 +1314,7 @@ sed -n '179,179p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-header"></a>
 
-**D:196–197** — `plugins/entrust/skills/codex/SKILL.md` at `8c041b7`.
+**D:196–197** — `plugins/entrust/skills/codex/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '196,197p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'
@@ -1327,7 +1327,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 
 <a id="quote-rights"></a>
 
-**D:201–201** — `plugins/entrust/skills/codex/SKILL.md` at `8c041b7`.
+**D:201–201** — `plugins/entrust/skills/codex/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '201,201p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'
@@ -1339,7 +1339,7 @@ sed -n '201,201p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-expect"></a>
 
-**D:205–205** — `plugins/entrust/skills/codex/SKILL.md` at `8c041b7`.
+**D:205–205** — `plugins/entrust/skills/codex/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '205,205p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'
@@ -1351,7 +1351,7 @@ sed -n '205,205p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-schema"></a>
 
-**D:206–206** — `plugins/entrust/skills/codex/SKILL.md` at `8c041b7`.
+**D:206–206** — `plugins/entrust/skills/codex/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '206,206p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'
@@ -1363,7 +1363,7 @@ sed -n '206,206p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-model"></a>
 
-**D:207–207** — `plugins/entrust/skills/codex/SKILL.md` at `8c041b7`.
+**D:207–207** — `plugins/entrust/skills/codex/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '207,207p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'
@@ -1375,7 +1375,7 @@ sed -n '207,207p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-effort"></a>
 
-**D:208–208** — `plugins/entrust/skills/codex/SKILL.md` at `8c041b7`.
+**D:208–208** — `plugins/entrust/skills/codex/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '208,208p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'
@@ -1387,7 +1387,7 @@ sed -n '208,208p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-brief"></a>
 
-**D:210–210** — `plugins/entrust/skills/codex/SKILL.md` at `8c041b7`.
+**D:210–210** — `plugins/entrust/skills/codex/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '210,210p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'
@@ -1399,7 +1399,7 @@ sed -n '210,210p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-gateowner"></a>
 
-**D:213–216** — `plugins/entrust/skills/codex/SKILL.md` at `8c041b7`.
+**D:213–216** — `plugins/entrust/skills/codex/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '213,216p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'
@@ -1414,7 +1414,7 @@ write its own would be grading itself. Declare gates on the command line instead
 
 <a id="quote-shape"></a>
 
-**D:296–300** — `plugins/entrust/skills/codex/SKILL.md` at `8c041b7`.
+**D:296–300** — `plugins/entrust/skills/codex/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '296,300p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'
@@ -1430,7 +1430,7 @@ Write a concrete, checkable body:
 
 <a id="quote-one"></a>
 
-**D:302–308** — `plugins/entrust/skills/codex/SKILL.md` at `8c041b7`.
+**D:302–308** — `plugins/entrust/skills/codex/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '302,308p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'
@@ -1448,7 +1448,7 @@ retells, and not itself a message to the user; the rest is the return's own shap
 
 <a id="quote-standing"></a>
 
-**D:310–314** — `plugins/entrust/skills/codex/SKILL.md` at `8c041b7`.
+**D:310–314** — `plugins/entrust/skills/codex/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '310,314p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'
@@ -1464,7 +1464,7 @@ command line).
 
 <a id="quote-user"></a>
 
-**D:318–324** — `plugins/entrust/skills/codex/SKILL.md` at `8c041b7`.
+**D:318–324** — `plugins/entrust/skills/codex/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '318,324p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/codex/SKILL.md'
@@ -1482,7 +1482,7 @@ what an agent may write, and where, in ordinary words, because that is what the 
 
 <a id="quote-assembly"></a>
 
-**O:119–119** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:119–119** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '119,119p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1494,7 +1494,7 @@ sed -n '119,119p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-split"></a>
 
-**O:118–118** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:118–118** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '118,118p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1506,7 +1506,7 @@ sed -n '118,118p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-adversarial"></a>
 
-**O:120–120** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:120–120** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '120,120p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1518,7 +1518,7 @@ sed -n '120,120p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-diverse"></a>
 
-**O:121–121** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:121–121** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '121,121p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1530,7 +1530,7 @@ sed -n '121,121p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-unanimous"></a>
 
-**O:122–122** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:122–122** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '122,122p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1542,7 +1542,7 @@ sed -n '122,122p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-unknown"></a>
 
-**O:123–123** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:123–123** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '123,123p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1554,7 +1554,7 @@ sed -n '123,123p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-complete"></a>
 
-**O:124–124** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:124–124** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '124,124p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1566,7 +1566,7 @@ sed -n '124,124p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-caps"></a>
 
-**O:125–125** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:125–125** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '125,125p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1578,7 +1578,7 @@ sed -n '125,125p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-crossreview"></a>
 
-**O:127–128** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:127–128** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '127,128p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1591,7 +1591,7 @@ that round fails too. Between selection rounds, record the candidates rejected, 
 
 <a id="quote-resume"></a>
 
-**O:134–134** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:134–134** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '134,134p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1603,7 +1603,7 @@ sed -n '134,134p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-returnscope"></a>
 
-**O:143–144** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:143–144** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '143,144p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1616,7 +1616,7 @@ reader can take on its own: the agent's model and id, its status and what it did
 
 <a id="quote-return"></a>
 
-**O:146–150** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:146–150** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '146,150p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1632,7 +1632,7 @@ sed -n '146,150p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills
 
 <a id="quote-strict"></a>
 
-**O:152–156** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:152–156** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '152,156p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1648,7 +1648,7 @@ as a strict JSON Schema file (`additionalProperties: false` on every object, eve
 
 <a id="quote-record"></a>
 
-**P:64–79** — `plugins/terse/README.md` at `8c041b7`.
+**P:64–79** — `plugins/terse/README.md` at `21a225b`.
 
 ```sh
 sed -n '64,79p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/README.md'
@@ -1675,7 +1675,7 @@ One run, on 2026-09-10, on one README in one repository. Read the size of it bef
 
 <a id="quote-limits"></a>
 
-**P:81–86** — `plugins/terse/README.md` at `8c041b7`.
+**P:81–86** — `plugins/terse/README.md` at `21a225b`.
 
 ```sh
 sed -n '81,86p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/README.md'
@@ -1692,7 +1692,7 @@ files say so where it matters, and
 
 <a id="quote-humanlimit"></a>
 
-**I:10–10** — `research/README.md` at `8c041b7`.
+**I:10–10** — `research/README.md` at `21a225b`.
 
 ```sh
 sed -n '10,10p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/research/README.md'
@@ -1704,7 +1704,7 @@ sed -n '10,10p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/research/README.md'
 
 <a id="quote-regrecord"></a>
 
-**I:12–12** — `research/README.md` at `8c041b7`.
+**I:12–12** — `research/README.md` at `21a225b`.
 
 ```sh
 sed -n '12,12p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/research/README.md'
@@ -1716,7 +1716,7 @@ sed -n '12,12p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/research/README.md'
 
 <a id="quote-dryrun"></a>
 
-**I:13–13** — `research/README.md` at `8c041b7`.
+**I:13–13** — `research/README.md` at `21a225b`.
 
 ```sh
 sed -n '13,13p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/research/README.md'
@@ -1728,7 +1728,7 @@ sed -n '13,13p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/research/README.md'
 
 <a id="quote-rsetup"></a>
 
-**R:80–90** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:80–90** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '80,90p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1750,7 +1750,7 @@ sed -n '80,90p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rew
 
 <a id="quote-rprovenance"></a>
 
-**R:160–164** — `plugins/terse/skills/rewrite/SKILL.md` at `8c041b7`.
+**R:160–164** — `plugins/terse/skills/rewrite/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '160,164p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/rewrite/SKILL.md'
@@ -1765,7 +1765,7 @@ sed -n '160,164p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/terse/skills/r
 
 <a id="quote-returnevidence"></a>
 
-**O:148–148** — `plugins/entrust/skills/orchestrate/SKILL.md` at `8c041b7`.
+**O:148–148** — `plugins/entrust/skills/orchestrate/SKILL.md` at `21a225b`.
 
 ```sh
 sed -n '148,148p' '$TMPDIR/astra-p1-map-2026-09-22/pinned/plugins/entrust/skills/orchestrate/SKILL.md'
@@ -1982,7 +1982,7 @@ Full-quote fixed-string searches: **128/173 raw matches**. The other **45/173** 
 - Coverage observed: 173 unique survey rows, 85 unique claims, 182 memberships, 255 target verdicts, 0 invalid verdicts, 0 unplaced IDs, 0 invented IDs.
 - Citation extraction: 102 distinct pinned target/record sed ranges and 173 localized source sed ranges; every extraction exited 0 and its bytes matched the stored quote.
 - Source grep protocol: `rg -n -F -- <complete survey quote> <saved source>` for all 173; 128 literal matches. For the 45 remaining rows, `rg -c -F -- <normalized complete quote without added terminal punctuation> <normalized saved source>` returned 1 matching line and exit 0 in every case. These are quotation checks, not application or model tests.
-- Read scope: W 1–51, K 1–42, stages 1–320 (only content rules used for A), audit 1–158, rethink 1–89, rewrite 1–183; C codex 194–217 and 294–325; C orchestrate 115–156. Records: terse README 1–90 and research README 1–22, extracted with `git show 8c041b7:<path>`.
+- Read scope: W 1–51, K 1–42, stages 1–320 (only content rules used for A), audit 1–158, rethink 1–89, rewrite 1–183; C codex 194–217 and 294–325; C orchestrate 115–156. Records: terse README 1–90 and research README 1–22, extracted with `git show 21a225b:<path>`.
 - Read the entire S1-findings.md (183 lines), survey.md (83 lines) and S3_report.md (88 lines); the initially truncated display was completed with separate sed reads. No rows were inferred from missing S2 numbers.
 - Commands that failed while constructing the report (both started): `python3 $TMPDIR/astra-p1-map-2026-09-22/build_report.py` — exit 1 — `ValueError: ('tpermission', [30, 57], 'Announce the count')`; same command — exit 1 — `ValueError: ('strict', [81, 152], 'In a Workflow')`. Both ambiguous anchors were made unique and the generator then completed. These were local report-generation errors, not failed product tests.
 - No product test suite or model experiment was run. Improvement, human-transfer effect sizes, model-specific defaults, current installed-host invocation semantics and undocumented source experiment designs remain unknown.

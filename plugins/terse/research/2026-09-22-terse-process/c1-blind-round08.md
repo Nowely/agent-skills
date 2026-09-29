@@ -1,6 +1,6 @@
 # Round 08 blind refusal list — frozen before reading design or D1/H1/M1
 
-Index convention: JSON array indices, zero-based (ordinal is index + 1). Input: only edits/08.json plus repository code/docs available now. No reviews/08, autopsy, design, or prior method attack read before this list. Repository history was reachable: b29e921 is the commit adding edits/08.json; historical code read from that commit and saved beside this file. Also inspected current entrust equivalents and 6951763 code. Neither historical commit is independently established as the exact runtime snapshot of Round 08. No behavior probes were run. This is one human-style model verification run, n=1, with source-reading and evidence-gap refusals, not measured behavior.
+Index convention: JSON array indices, zero-based (ordinal is index + 1). Input: only edits/08.json plus repository code/docs available now. No reviews/08, autopsy, design, or prior method attack read before this list. Repository history was reachable: 846197c is the commit adding edits/08.json; historical code read from that commit and saved beside this file. Also inspected current entrust equivalents and 4710e2f code. Neither historical commit is independently established as the exact runtime snapshot of Round 08. No behavior probes were run. This is one human-style model verification run, n=1, with source-reading and evidence-gap refusals, not measured behavior.
 
 I would refuse these 12 edits pending correction or evidence:
 

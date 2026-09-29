@@ -10,7 +10,7 @@ For every finding and proposal of [#15](https://github.com/Nowely/agent-skills/i
 
 ## Tree under triage
 
-`main` at `882bcf3` (2026-09-27), which is 0.20.0 plus the unreleased changes in `plugins/entrust/CHANGELOG.md`
+`main` at `1bbab5b` (2026-09-27), which is 0.20.0 plus the unreleased changes in `plugins/entrust/CHANGELOG.md`
 under `Unreleased`: the foreman (#24), the keeper launcher, the lock's new shape, `WEB_SEARCH:` wording,
 `advisor`/`experiment`/`swarm` loading `codex` alone, the page waiting on notifications (#23). The defects
 ledger `plugins/entrust/ISSUES.md` is empty at this commit. Both issues were written against 0.20.0 as installed,
@@ -47,7 +47,7 @@ Coverage: 21 findings + M1 + 14 proposals + K + 7 of #16 = 44 items, each in exa
 One row each, in `result`:
 
     id | claim (one line, as the issue states it)
-       | status at 882bcf3: fixed-on-main | still-true | not-a-defect | unknown, with the evidence (file:line, or
+       | status at 1bbab5b: fixed-on-main | still-true | not-a-defect | unknown, with the evidence (file:line, or
          the changelog line) and its level (1 the line resolves; 2 an independent reader would agree; 3 made to
          happen)
        | verdict: fix-now | fix-after-measurement | do-not-fix | already-fixed, with the reason in one or two

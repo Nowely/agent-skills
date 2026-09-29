@@ -1,14 +1,14 @@
 # Steps
 
 2026-09-27. The orchestrator is the main session (Fable 5.1) under `/entrust:orchestrate` as installed (0.20.0),
-following the unreleased foreman rules read from the tree at `882bcf3`. The owner asked for the not-yet-released
+following the unreleased foreman rules read from the tree at `1bbab5b`. The owner asked for the not-yet-released
 coordinator, chose the Max tier of three offered (as #16 asks every plan to do), and asked for the work to be done
 in a worktree. Costs are the reports' own token totals (cache reads included) and wall-clock seconds.
 
 | Step | Who | Produced | Cost | Got wrong, or deviated |
 |---|---|---|---|---|
-| Scouting | the orchestrator, cheap commands | both issues read; PR #23 found merged as `882bcf3` mid-session (the owner merged it and said so); the ledger empty; the installed launcher's ceiling defect (E45) gone on main; TaskOutput absent from the session's tools | inline | the first plan assumed PR #23 unmerged and proposed exporting its scripts; re-scouted after the owner's message |
-| Worktree | the orchestrator, on "го макс" | `agent-skills-field-audit-triage` on branch `entrust-field-audit-triage` at `882bcf3`; this directory | — | — |
+| Scouting | the orchestrator, cheap commands | both issues read; PR #23 found merged as `1bbab5b` mid-session (the owner merged it and said so); the ledger empty; the installed launcher's ceiling defect (E45) gone on main; TaskOutput absent from the session's tools | inline | the first plan assumed PR #23 unmerged and proposed exporting its scripts; re-scouted after the owner's message |
+| Worktree | the orchestrator, on "го макс" | `agent-skills-field-audit-triage` on branch `entrust-field-audit-triage` at `1bbab5b`; this directory | — | — |
 | Smoke turn | Codex Luna L0, read, network off, effort low | the launcher on main runs under codex-cli 0.155.1 with short-name model resolution: exit 0, receipt ok, one driver, one report | 13.5k wrapper tokens, 30 s | — |
 | Split | the orchestrator | [01-split.md](01-split.md): 44 items in three groups | inline | see the critic |
 | Split critique | Codex Astra A1, read, network off, inherited effort | [02-split-critique.md](02-split-critique.md): 20 changes; no numbered item lost; compound items to split (F12, F20, P8–P14, Q2, Q3, Q7); H1/H2 and K1–K8 unowned; harness rows to move to A; the refuter rule "default refuted" opposed to #16's own; the template to gain partial/not-applicable/undecided and to cite the issues' measurements as reported | 184.6k tokens, 488 s, 13 commands | it proposed provenance rows for the orchestrator's own premises and a full per-row form with alternatives, dependency gate and release scope; not taken (03-split.md says why) |

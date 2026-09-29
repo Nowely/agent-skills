@@ -170,7 +170,7 @@ at driver.mjs:2466/2507 hold in step 1.
 
 ### F10 — Step 2's size estimate is low (level 2, low)
 0.21.0's channel, the calibration, added about 2200 suite lines and about 1370 lines to the driver and
-launcher (`git show --stat 0cc07c0`). Step 2 adds a new server request, a launcher mode, a block, and
+launcher (`git show --stat 9c8a9c9`). Step 2 adds a new server request, a launcher mode, a block, and
 settle, expiry and decline semantics. Expect 400-800 suite lines, not about 150. The claimed net of about
 −190 is then likely near zero.
 

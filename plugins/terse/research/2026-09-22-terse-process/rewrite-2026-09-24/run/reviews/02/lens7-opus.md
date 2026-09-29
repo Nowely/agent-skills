@@ -27,7 +27,7 @@ repository as it is") and "version" on part 3's must-not list (:279). Part 4's t
 
 **Inputs beyond the brief.** `R/04-terms-rejected.md` is not in R. I read
 `~/Git/agent-skills/research/2026-09-22-terse-process/rethink-2026-09-23/04-terms-rejected.md`
-instead (sha256 `34cc4cb0…1da0efa5`, identical to the rethink run's copy). I read `R/01-candidate.md` for the
+instead (sha256 `d3f681d9…c3812400`, identical to the rethink run's copy). I read `R/01-candidate.md` for the
 word diff behind "added this round". `R/concepts.json` drops `make it worse` from the pattern of part 3's
 "a fix is not undone"; rule 3 prints 0 under either list.
 

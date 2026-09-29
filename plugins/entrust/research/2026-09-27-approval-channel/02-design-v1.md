@@ -1,6 +1,6 @@
 # Design v1: the approval channel
 
-Run `2026-09-27-approval-channel`, Fable D1, against the tree at b3872b4 (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs`, 4198 lines, version 0.20.0, pinned codex 0.153.4; the installed binary is 0.155.1 and its generated schema carries the same six command decisions and four file-change decisions). Evidence levels as the repository defines them: 1 the line resolves, 2 an independent reader would say the same, 3 made to happen; a lifecycle claim not made to happen is a guess and says so. Line numbers are the driver's unless a file is named.
+Run `2026-09-27-approval-channel`, Fable D1, against the tree at c828b7f (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs`, 4198 lines, version 0.20.0, pinned codex 0.153.4; the installed binary is 0.155.1 and its generated schema carries the same six command decisions and four file-change decisions). Evidence levels as the repository defines them: 1 the line resolves, 2 an independent reader would say the same, 3 made to happen; a lifecycle claim not made to happen is a guess and says so. Line numbers are the driver's unless a file is named.
 
 ## In one paragraph
 

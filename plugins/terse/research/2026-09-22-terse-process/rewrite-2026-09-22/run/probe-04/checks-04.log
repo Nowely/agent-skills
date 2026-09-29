@@ -134,7 +134,7 @@ R03f the loop stops when you read a round and say whether you would send it as i
 R03g every cut of twenty words or more carries a reason, every declared behavioural claim its source and evidence                                                     L2   LOST LOST LOST LOST yes 
 R03h install needs Claude Code; running a skill needs sign-in; audit and rewrite also need Node 22 or newer on PATH                                                   L3   LOST LOST LOST yes  yes 
 R03i this page describes commit 2f29a8f                                                                                                                               L2   LOST LOST LOST LOST yes 
-R03j at the 2026-09-22 audit the install commands resolved main at 8c041b7, whose rewrite page wrote into the document repository unasked                             L2   LOST LOST LOST LOST yes 
+R03j at the 2026-09-22 audit the install commands resolved main at 21a225b, whose rewrite page wrote into the document repository unasked                             L2   LOST LOST LOST LOST yes 
 R03b installed, the runs land in plugins/data/terse-nowely/runs/ inside Claude Code's configuration directory                                                         L3   LOST LOST LOST yes  yes 
 G3c the audit and rewrite pages warn that the operating system may purge a run in the temporary directory; copy a run to keep it                                      L2   LOST LOST LOST yes  yes 
 R03l the writing rules forbid cutting a condition, limit or warning; the bake-off vetoes a candidate that cuts or weakens one                                         L2   LOST LOST LOST yes  yes 
@@ -142,7 +142,7 @@ R03k ranking on wording one judge put both controls above every entry of the thr
 R04a a round is handed over as a candidate and its diff from the original                                                                                             L2   LOST LOST LOST LOST yes 
 R04b the shipped check rejects a new round that loses a sentence an earlier round verified or brings back wording one retired as false                                L3   LOST LOST LOST LOST yes 
 R04c to install commit 2f29a8f, marketplace add takes the path of a local clone checked out at it in place of Nowely/agent-skills, then plugin install terse@nowely   L3   LOST LOST LOST LOST yes 
-R04d at 8c041b7 the audit and rewrite pages differ from the ones this README describes                                                                                L2   LOST LOST LOST LOST yes 
+R04d at 21a225b the audit and rewrite pages differ from the ones this README describes                                                                                L2   LOST LOST LOST LOST yes 
 R04f the chain, four passes that preceded the plugin's bake-off and rounds, covered one README                                                                        L2   LOST LOST LOST LOST yes 
 R04e the result neither clears a significance threshold, nor separates what the text taught from prior knowledge, nor says whether a human reader improved            L2   LOST LOST LOST LOST yes 
 
@@ -185,8 +185,8 @@ exit 0
 
 # ---- second build, after the verifier's send-back (reviews/04/verifier-sol-v3.md), 2026-09-23 16:31:51 +0300; repository HEAD b7a17da
 $ rm $R/04-terms.md; cp $R/ledger.04.json $R/ledger.json   (done before the build; ledger.json sha256 now:)
-ade21886facd8c6e8593d439b2526933333bfadc4b69618f088ef9652d8942b7  ledger.json
-ade21886facd8c6e8593d439b2526933333bfadc4b69618f088ef9652d8942b7  ledger.04.json
+46e06084921da2220a734790d409c216b65e29423cc0b2ac2aa1dd694f0965bf  ledger.json
+46e06084921da2220a734790d409c216b65e29423cc0b2ac2aa1dd694f0965bf  ledger.04.json
 
 $ node $S/round.mjs $R/03-review.md $R/04-terms.md $R/edits/04.json --ledger $R/ledger.json
 ran  L6.3-17 the frame names each page and its references (R03a re-pinned)
@@ -227,7 +227,7 @@ wrote $TMPDIR/terse/runs/20260922-233021-terse-readme/04-terms.md
 exit 0
 
 $ shasum -a 256 ledger.04.json   (the snapshot round.mjs rewrote: still the state before the round)
-ade21886facd8c6e8593d439b2526933333bfadc4b69618f088ef9652d8942b7  ledger.04.json
+46e06084921da2220a734790d409c216b65e29423cc0b2ac2aa1dd694f0965bf  ledger.04.json
 
 $ node $S/rule1.mjs $R/04-terms.md --cut "Install" --except "Install"
 
@@ -316,7 +316,7 @@ R03f the loop stops when you read a round and say whether you would send it as i
 R03g every cut of twenty words or more carries a reason, every declared behavioural claim its source and evidence  L2   LOST LOST LOST LOST yes 
 R03h install needs Claude Code; running a skill needs sign-in; audit and rewrite also need Node 22 or newer on PATH  L3   LOST LOST LOST yes  yes 
 R03i this page describes commit 2f29a8f  L2   LOST LOST LOST LOST yes 
-R03j at the 2026-09-22 audit the install commands resolved main at 8c041b7, whose rewrite page wrote into the document repository unasked  L2   LOST LOST LOST LOST yes 
+R03j at the 2026-09-22 audit the install commands resolved main at 21a225b, whose rewrite page wrote into the document repository unasked  L2   LOST LOST LOST LOST yes 
 R03b installed, the runs land in plugins/data/terse-nowely/runs/ inside Claude Code's configuration directory  L3   LOST LOST LOST yes  yes 
 G3c the audit and rewrite pages warn that the operating system may purge a run in the temporary directory; copy a run to keep it  L2   LOST LOST LOST yes  yes 
 R03l the writing rules forbid cutting a condition, limit or warning; the bake-off vetoes a candidate that cuts or weakens one  L2   LOST LOST LOST yes  yes 
@@ -324,7 +324,7 @@ R03k ranking on wording one judge put both controls above every entry of the thr
 R04a a round is handed over as a candidate and its diff from the original  L2   LOST LOST LOST LOST yes 
 R04b the shipped check rejects a new round that loses a sentence an earlier round verified or brings back wording one retired as false  L3   LOST LOST LOST LOST yes 
 R04c to install commit 2f29a8f, marketplace add takes the path of a local clone checked out at it in place of Nowely/agent-skills, then plugin install terse@nowely   L3   LOST LOST LOST LOST yes 
-R04d at 8c041b7 the audit and rewrite pages differ from the ones this README describes  L2   LOST LOST LOST LOST yes 
+R04d at 21a225b the audit and rewrite pages differ from the ones this README describes  L2   LOST LOST LOST LOST yes 
 R04f the chain, four passes that preceded the plugin's bake-off and rounds, covered one README  L2   LOST LOST LOST LOST yes 
 R04e the result neither clears a significance threshold, nor separates what the text taught from prior knowledge, nor says whether a human reader improved            L2   LOST LOST LOST LOST yes 
 
@@ -353,10 +353,10 @@ ledger: 56 claim(s); the state before this round is in ledger.04.json
 wrote $TMPDIR/terse/runs/20260922-233021-terse-readme/04-terms.md
 exit 0
 $ shasum -a 256 against the build before the name fix:
-34cc4cb0c62b799c12b7ff8ea8e637fcc6393a05fcb798976d8ca03d1da0efa5  04-terms.md
+d3f681d9817f4149e9b26cfd00e458791a88c4b1fc613a63cf5247fbc3812400  04-terms.md
 41ace8652386dd5da06ebdca60cb51114224ea55aebb857e68302c02923e3b50  ledger.json
 68a3d1853e5fa2a96c1c861f8ba83481ac724fbf4afc3203867ce33510384691  edits/04.json
-(before: 34cc4cb0c62b799c12b7ff8ea8e637fcc6393a05fcb798976d8ca03d1da0efa5  04-terms.md 41ace8652386dd5da06ebdca60cb51114224ea55aebb857e68302c02923e3b50  ledger.json c98f65c7cbd3fbb3f738e8d9260cee41c76ddd0bd13b41ec18966417f0cfb59f  edits/04.json )
+(before: d3f681d9817f4149e9b26cfd00e458791a88c4b1fc613a63cf5247fbc3812400  04-terms.md 41ace8652386dd5da06ebdca60cb51114224ea55aebb857e68302c02923e3b50  ledger.json c98f65c7cbd3fbb3f738e8d9260cee41c76ddd0bd13b41ec18966417f0cfb59f  edits/04.json )
 $ the four checks on the regenerated file (byte-identical to the one above), exit codes only:
 0 violation(s), 0 excused
 rule1 exit 0
@@ -371,16 +371,16 @@ diff exit 1, 185 lines
 
 # ---- third build, before the verifier's second read, 2026-09-23 16:44:28 +0300: R03j's asks and run also name the run of the page's lineage in this repository; repository HEAD b7a17da
 $ rm 04-terms.md; cp ledger.04.json ledger.json:
-ade21886facd8c6e8593d439b2526933333bfadc4b69618f088ef9652d8942b7  ledger.json
-ade21886facd8c6e8593d439b2526933333bfadc4b69618f088ef9652d8942b7  ledger.04.json
+46e06084921da2220a734790d409c216b65e29423cc0b2ac2aa1dd694f0965bf  ledger.json
+46e06084921da2220a734790d409c216b65e29423cc0b2ac2aa1dd694f0965bf  ledger.04.json
 $ node $S/round.mjs $R/03-review.md $R/04-terms.md $R/edits/04.json --ledger $R/ledger.json
 ledger: 56 claim(s); the state before this round is in ledger.04.json
 wrote $TMPDIR/terse/runs/20260922-233021-terse-readme/04-terms.md
 exit 0
 $ shasum -a 256 04-terms.md ledger.json ledger.04.json edits/04.json
-34cc4cb0c62b799c12b7ff8ea8e637fcc6393a05fcb798976d8ca03d1da0efa5  04-terms.md
+d3f681d9817f4149e9b26cfd00e458791a88c4b1fc613a63cf5247fbc3812400  04-terms.md
 50c8982efe85ee8de1d5a32374a0e9c97cd04da6a286ca97f980a7003bc9172e  ledger.json
-ade21886facd8c6e8593d439b2526933333bfadc4b69618f088ef9652d8942b7  ledger.04.json
+46e06084921da2220a734790d409c216b65e29423cc0b2ac2aa1dd694f0965bf  ledger.04.json
 902a038d37b72b115d28e3d8ec68457c832816423ebdeb1b490c2f5597df6c53  edits/04.json
 $ node $S/rule1.mjs $R/04-terms.md --cut "Install" --except "Install"
 0 violation(s), 0 excused
@@ -408,17 +408,17 @@ exit 1 (1: the files differ), 185 lines
 
 # ---- fourth build, after the verifier's second read (reviews/04/verifier-sol-v3b.md), R03a only, 2026-09-23 17:00:13 +0300; repository HEAD b7a17da
 $ rm 04-terms.md; cp ledger.04.json ledger.json:
-ade21886facd8c6e8593d439b2526933333bfadc4b69618f088ef9652d8942b7  ledger.json
-ade21886facd8c6e8593d439b2526933333bfadc4b69618f088ef9652d8942b7  ledger.04.json
+46e06084921da2220a734790d409c216b65e29423cc0b2ac2aa1dd694f0965bf  ledger.json
+46e06084921da2220a734790d409c216b65e29423cc0b2ac2aa1dd694f0965bf  ledger.04.json
 $ node $S/round.mjs $R/03-review.md $R/04-terms.md $R/edits/04.json --ledger $R/ledger.json
 ledger: 56 claim(s); the state before this round is in ledger.04.json
 wrote $TMPDIR/terse/runs/20260922-233021-terse-readme/04-terms.md
 exit 0
 $ shasum -a 256 04-terms.md ledger.json ledger.04.json edits/04.json
-34cc4cb0c62b799c12b7ff8ea8e637fcc6393a05fcb798976d8ca03d1da0efa5  04-terms.md
-cd4ff972658eef5f52901e0b32b7081069c006016daa9405aede01913c7d488f  ledger.json
-ade21886facd8c6e8593d439b2526933333bfadc4b69618f088ef9652d8942b7  ledger.04.json
-022ebb676f42eeedb88c6ada1da838b746518613217fe9fb8d7b6e8d53165faf  edits/04.json
+d3f681d9817f4149e9b26cfd00e458791a88c4b1fc613a63cf5247fbc3812400  04-terms.md
+40a7f79a36d92af4e9aed4a7ef4af8609fddf6843ed2f309266020d62d53fcb6  ledger.json
+46e06084921da2220a734790d409c216b65e29423cc0b2ac2aa1dd694f0965bf  ledger.04.json
+5d4243dea8ad3e2cdc2570ffc0cf5a3a6dbd7726aeb0c64de292757a23ed1224  edits/04.json
 $ node $S/rule1.mjs $R/04-terms.md --cut "Install" --except "Install"
 0 violation(s), 0 excused
 exit 0

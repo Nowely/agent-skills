@@ -51,11 +51,11 @@ disclosed it ("S2-15 spans prose and a fenced example"), but the class is struct
 | raw / normalised quote matches | 128 / 45 | 128 / 45 | yes |
 
 Extra check not asked for: **all 102 pinned citation-ledger quotes reproduce byte-for-byte** from
-`git show 8c041b7:<path> | sed -n 'lo,hip'` (`ledger.py`, 0 mismatches).
+`git show 21a225b:<path> | sed -n 'lo,hip'` (`ledger.py`, 0 mismatches).
 
 The mapper's numbers are exact. The **coordinator's** numbers are where the divergence is — section 4c.
 
-## 3. Fifteen target lines at `8c041b7`
+## 3. Fifteen target lines at `21a225b`
 
 | # | claim / line | verdict says | line says it? |
 |---|---|---|---|

@@ -14,7 +14,7 @@
 // ANSWER); the first build is kept as edits/04.sent-back.json and edits/04.sent-back.build.mjs. Five of the
 // nine sit under the frame "below is what each page and its references say", and their `asks` now say what
 // the page instructs or says, which is what their runs show (R03a C06 C10 C11 R04a); R03i's says what the checkout is
-// and R03j is a claim about the record of 2026-09-22 and about what 8c041b7's page instructs, with every
+// and R03j is a claim about the record of 2026-09-22 and about what 21a225b's page instructs, with every
 // asking line of that page shown; C44 searches the whole repository; C42 loses "unpublished", the audit's word
 // (audit.md:377, C39's verdict) and not the source's. R02e is re-pinned with its sentence unchanged, because
 // 1af4160 and b7a17da moved the ISSUES.md lines its run cited. The seven claims that held keep their edits; R04d shares
@@ -220,7 +220,7 @@ const edit = (nm, old, nu, claims, check, drop) => edits.push({ name: nm, old, n
 // describes. It takes the place of the 2026-09-22 sentence, which the next edit rewrites in place of l75.
 // Level 3: probe-04/install-checkout.sh installs from the checkout and from a clone at 2f29a8f.
 {
-  const old = at("At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `8c041b7`, whose rewrite page wrote into the document repository without asking.");
+  const old = at("At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `21a225b`, whose rewrite page wrote into the document repository without asking.");
   const nu = "To install that commit, run\n`claude plugin marketplace add` with the path of a local clone checked out at it in place of\n`Nowely/agent-skills`, then `claude plugin install terse@nowely`.";
   edit("L6.3-02 the SCOPE line: installing the commit this README describes (R04c new, level 3)", old, nu,
     [{ name: "R04c to install commit 2f29a8f, marketplace add takes the path of a local clone checked out at it in place of Nowely/agent-skills, then plugin install terse@nowely", pattern: pin(nu),
@@ -245,12 +245,12 @@ const edit = (nm, old, nu, claims, check, drop) => edits.push({ name: nm, old, n
 // dropped. R03j re-pinned with its check, plus the brief's dated heading; R04d on the ten-file diff.
 {
   const old = "The section below describes this commit, not that one.";
-  const nu = "On 2026-09-22 the install commands with `Nowely/agent-skills` resolved to `8c041b7`, whose audit and\nrewrite pages differ from the ones described here; its rewrite page wrote into the document repository\nwithout asking.";
+  const nu = "On 2026-09-22 the install commands with `Nowely/agent-skills` resolved to `21a225b`, whose audit and\nrewrite pages differ from the ones described here; its rewrite page wrote into the document repository\nwithout asking.";
   const e = entry("R03j");
   const differ = "whose audit and rewrite pages differ from the ones described here";
   // Sent back (V3): the run quoted the record and the page but `asks` stated a resolution and a write as
   // behaviour, which no run here repeats. R03j is now a claim about the record of 2026-09-22 (the adversarial
-  // read that ran both commands) and about what 8c041b7's rewrite page instructs. Every line of that page that
+  // read that ran both commands) and about what 21a225b's rewrite page instructs. Every line of that page that
   // asks, waits or needs the user's word is printed, so the reader sees that none sits in the run-directory
   // block. R04d, on the same sentence, keeps its `asks` and its evidence, the diff, which this run still prints.
   // The whole output stays under round.mjs's 2000-character clip of `saw`.
@@ -259,28 +259,28 @@ const edit = (nm, old, nu, claims, check, drop) => edits.push({ name: nm, old, n
   // repository's plugins/codex-delegate/README.md, kept with its rounds at the repository's root; its README
   // lists the rounds there (:43, :45); the page first placed runs under research/ at 1e3f5b2 on the branch the
   // plugin was built on (the only commit there that adds the phrase), and that run's rounds 08 and 09 were
-  // committed after it; the page shipped at 0.1.0 (b29e921) with 8c041b7's lines 64-67 unchanged. Rounds 00-07
+  // committed after it; the page shipped at 0.1.0 (846197c) with 21a225b's lines 64-67 unchanged. Rounds 00-07
   // came before 1e3f5b2, so the claim says what the order shows. To make room under the clip, brief.md:198
   // (the same record as l3-adversarial-findings.md:11), the HEAD-equals-2f29a8f line and 2f29a8f's line 66 are
   // dropped, and the asking lines print their phrase only; the rest is as in the second build.
   const L3 = `${REPO}/research/2026-09-22-terse-process/rewrite-2026-09-22/l3-adversarial-findings.md`;
   const MR = `${REPO}/research/2026-09-11-markup-round-0`;
-  const P8 = `git -C ${REPO} show 8c041b7:plugins/terse/skills/rewrite/SKILL.md`;
-  const P0 = `git -C ${REPO} show b29e921:plugins/terse/skills/rewrite/SKILL.md`;
+  const P8 = `git -C ${REPO} show 21a225b:plugins/terse/skills/rewrite/SKILL.md`;
+  const P0 = `git -C ${REPO} show 846197c:plugins/terse/skills/rewrite/SKILL.md`;
   const ASK = "your word|user's word|their word|(^|[^a-z])ask|wait for|consent|approv|permission";
   const run = [
     `${sed("196p", `${RUN}/brief.md`)} | grep -o 'adversarial whole-document read (Codex Astra L3, 2026-09-22, added under What broke'`,
     `${sed("3p", L3)} | grep -o 'Checks performed on 2026-09-22'; ${sed("23,24p", L3)}`,
-    `${sed("11p", L3)} | grep -o 'The exact two shell commands fetched .main. at .8c041b76d7f30196441285d77985b81ae9c9e59f. and installed terse 0.1.1'`,
+    `${sed("11p", L3)} | grep -o 'The exact two shell commands fetched .main. at .21a225b12f15221f978492718ecdc00eb7ea5924. and installed terse 0.1.1'`,
     `${sed("13p", L3)} | grep -o 'This confirms the fetched payload and its instructions, not that a model performed the unapproved writes'`,
-    `${sed("209p", `${RUN}/audit.md`)} | grep -o '.origin/main. (8c041b7) lists terse 0.1.1'`,
-    `echo '8c041b7 against 2f29a8f, plugins/terse:'; git -C ${REPO} diff --shortstat 8c041b7 2f29a8f -- plugins/terse; git -C ${REPO} diff --stat=72 8c041b7 2f29a8f -- plugins/terse/skills/audit/SKILL.md plugins/terse/skills/rewrite/SKILL.md | sed '$d'`,
-    `echo '8c041b7, rewrite/SKILL.md:64, 66-67:'; ${P8} | sed -n '64p;66,67p'`,
-    `echo "8c041b7, rewrite/SKILL.md, every line that asks, waits or needs the user's word, with the phrase:"; ${P8} | grep -n -o -i -E "${ASK}"`,
+    `${sed("209p", `${RUN}/audit.md`)} | grep -o '.origin/main. (21a225b) lists terse 0.1.1'`,
+    `echo '21a225b against 2f29a8f, plugins/terse:'; git -C ${REPO} diff --shortstat 21a225b 2f29a8f -- plugins/terse; git -C ${REPO} diff --stat=72 21a225b 2f29a8f -- plugins/terse/skills/audit/SKILL.md plugins/terse/skills/rewrite/SKILL.md | sed '$d'`,
+    `echo '21a225b, rewrite/SKILL.md:64, 66-67:'; ${P8} | sed -n '64p;66,67p'`,
+    `echo "21a225b, rewrite/SKILL.md, every line that asks, waits or needs the user's word, with the phrase:"; ${P8} | grep -n -o -i -E "${ASK}"`,
     `echo "of them in step 4's run-directory block, 64-78: $(${P8} | sed -n '64,78p' | grep -c -i -E "${ASK}")"`,
-    `[ "$(${P0} | sed -n '64,67p')" = "$(${P8} | sed -n '64,67p')" ] && echo 'rewrite/SKILL.md:64-67 at b29e921 (0.1.0) = at 8c041b7'`,
+    `[ "$(${P0} | sed -n '64,67p')" = "$(${P8} | sed -n '64,67p')" ] && echo 'rewrite/SKILL.md:64-67 at 846197c (0.1.0) = at 21a225b'`,
     `echo 'a rewrite run in this repository:'; ls -d ${MR} | sed 's#^${REPO}/##'; ${sed("3,4p", `${MR}/README.md`)} | tr '\\n' ' ' | grep -o 'The document: .plugins/codex-delegate/README.md., 2726 words'`,
-    `git -C ${REPO} cat-file -e b29e921:plugins/codex-delegate/README.md && echo 'b29e921:plugins/codex-delegate/README.md exists'`,
+    `git -C ${REPO} cat-file -e 846197c:plugins/codex-delegate/README.md && echo '846197c:plugins/codex-delegate/README.md exists'`,
     `${sed("43p;45p", `${MR}/README.md`)} | grep -o -E '^## What is in this directory|^- .NN-<pass>.md. — every round, never overwritten'`,
     `git -C ${REPO} log --format='committed into the repository: %h %ad' --date=short -1 -- research/2026-09-11-markup-round-0`,
     `echo "first commit putting research/<date>-<slug>/ in the page, on terse-plugin: $(git -C ${REPO} log terse-plugin --format=%h -S 'research/<date>-<slug>/' -- plugins/terse/skills/rewrite/SKILL.md | tail -1)"; git -C ${REPO} show 1e3f5b2:plugins/terse/skills/rewrite/SKILL.md | sed -n '141p' | grep -o '.research/<date>-<slug>/. in the repository'`,
@@ -288,25 +288,25 @@ const edit = (nm, old, nu, claims, check, drop) => edits.push({ name: nm, old, n
   ].join("; ");
   edit("L6.3-03/15 the 2026-09-22 boundary: no branch, both pages, l75 cut (R03j re-pinned, R04d new, G4 dropped)", old, nu,
     [{ name: e.name, pattern: pin(nu),
-       asks: "Record, 2026-09-22: the adversarial whole-document read, added under the audit's What broke, ran the two install commands with Nowely/agent-skills, which fetched the marketplace's main at 8c041b7 and installed terse 0.1.1. Instruction, 8c041b7's rewrite page (level 2): step 4 puts the run in research/<date>-<slug>/ at the root of the repository that holds the document, and no line of that block asks the user before the directory is made; the page's lines that ask or wait (7, 29, 61, 104-105, 150) concern its description's promise to write only on your word, the audit's run directory, spawning agents and applying the candidate. Record, this repository: the page shipped at 0.1.0 (b29e921) with the same lines, and a rewrite run was written into this repository under that instruction — research/2026-09-11-markup-round-0/, a rewrite of this repository's plugins/codex-delegate/README.md that holds its rounds at the repository's root, whose rounds 08 and 09 were committed after the page first placed runs under research/ (1e3f5b2)." },
-     { name: "R04d at 8c041b7 the audit and rewrite pages differ from the ones this README describes", pattern: pin(differ),
-       asks: "At 8c041b7, the revision the install commands resolved to on 2026-09-22, the audit page and the rewrite page differ from the pages at 2f29a8f that this README describes." }],
+       asks: "Record, 2026-09-22: the adversarial whole-document read, added under the audit's What broke, ran the two install commands with Nowely/agent-skills, which fetched the marketplace's main at 21a225b and installed terse 0.1.1. Instruction, 21a225b's rewrite page (level 2): step 4 puts the run in research/<date>-<slug>/ at the root of the repository that holds the document, and no line of that block asks the user before the directory is made; the page's lines that ask or wait (7, 29, 61, 104-105, 150) concern its description's promise to write only on your word, the audit's run directory, spawning agents and applying the candidate. Record, this repository: the page shipped at 0.1.0 (846197c) with the same lines, and a rewrite run was written into this repository under that instruction — research/2026-09-11-markup-round-0/, a rewrite of this repository's plugins/codex-delegate/README.md that holds its rounds at the repository's root, whose rounds 08 and 09 were committed after the page first placed runs under research/ (1e3f5b2)." },
+     { name: "R04d at 21a225b the audit and rewrite pages differ from the ones this README describes", pattern: pin(differ),
+       asks: "At 21a225b, the revision the install commands resolved to on 2026-09-22, the audit page and the rewrite page differ from the pages at 2f29a8f that this README describes." }],
     { level: 2, run,
       expect: E(L("adversarial whole-document read (Codex Astra L3, 2026-09-22, added under What broke"),
                 L("Checks performed on 2026-09-22"), L("claude plugin marketplace add Nowely/agent-skills") + "\\n" + L("claude plugin install terse@nowely"),
-                L("The exact two shell commands fetched `main` at `8c041b76d7f30196441285d77985b81ae9c9e59f` and installed terse 0.1.1"),
+                L("The exact two shell commands fetched `main` at `21a225b12f15221f978492718ecdc00eb7ea5924` and installed terse 0.1.1"),
                 L("This confirms the fetched payload and its instructions, not that a model performed the unapproved writes"),
-                L("`origin/main` (8c041b7) lists terse 0.1.1"),
-                L("8c041b7 against 2f29a8f, plugins/terse:"), L("10 files changed, 487 insertions(+), 50 deletions(-)"),
+                L("`origin/main` (21a225b) lists terse 0.1.1"),
+                L("21a225b against 2f29a8f, plugins/terse:"), L("10 files changed, 487 insertions(+), 50 deletions(-)"),
                 "plugins/terse/skills/audit/SKILL\\.md\\s+\\|\\s+27 ", "plugins/terse/skills/rewrite/SKILL\\.md\\s+\\|\\s+92 ",
-                L("8c041b7, rewrite/SKILL.md:64, 66-67:"), L("## Step 4. The rounds"),
+                L("21a225b, rewrite/SKILL.md:64, 66-67:"), L("## Step 4. The rounds"),
                 L("Work in a run directory of the document's own — `research/<date>-<slug>/` at the root of the") + "\\s+repository that holds the document",
                 "with the phrase:\\n7:your word\\n29:Ask\\n61:Wait for\\n61:user's word\\n104:wait for\\n105:user's word\\n150:their word\\nof them in step 4's run-directory block, 64-78: 0\\n",
-                L("rewrite/SKILL.md:64-67 at b29e921 (0.1.0) = at 8c041b7"),
+                L("rewrite/SKILL.md:64-67 at 846197c (0.1.0) = at 21a225b"),
                 "a rewrite run in this repository:\\nresearch/2026-09-11-markup-round-0\\n" + L("The document: `plugins/codex-delegate/README.md`, 2726 words"),
-                L("b29e921:plugins/codex-delegate/README.md exists"),
+                L("846197c:plugins/codex-delegate/README.md exists"),
                 L("## What is in this directory") + "\\n" + L("- `NN-<pass>.md` — every round, never overwritten"),
-                L("committed into the repository: b29e921 2026-09-12"),
+                L("committed into the repository: 846197c 2026-09-12"),
                 "first commit putting research/<date>-<slug>/ in the page, on terse-plugin: 1e3f5b2\\n" + L("`research/<date>-<slug>/` in the repository"),
                 "then rounds 08 and 09 of that run:\\n1e3f5b2 2026-09-12 19:03\\na4238a5 2026-09-12 20:29\\n0eb7762 2026-09-12 20:45\\nresearch/2026-09-11-markup-round-0/08-review\\.md\\nresearch/2026-09-11-markup-round-0/09-reduction\\.md") },
     [name("G4")]);

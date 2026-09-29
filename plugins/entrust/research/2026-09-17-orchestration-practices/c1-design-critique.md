@@ -6,7 +6,7 @@ The proposal needs revision before the owner receives it as an evidence-backed d
 
 Numbering below follows the design's shortlist rows **1, 2, 4–11, D3**, not `apply.py`'s separate D1–D11 numbering. Row 10 also implements owner decision D2. Unadopted rows 3 and 12 and owner decision D1 are assessed in section 6. “Keep” means keep the substantive rule; the common recommendation to move incident parentheticals out of the page applies to all rows. Severity labels concern the design, not observed execution of this proposed page.
 
-All O and C quotations below are from **git 7e7d9cc**, respectively `plugins/entrust/skills/orchestrate/SKILL.md` and `plugins/entrust/skills/codex/SKILL.md`. They were extracted with `git show` and verified with fixed-string `rg`. The worktree is at that revision. Contrary to the task's starting assumption, the main checkout was clean at **4f593a5f523464ce884bc9a40127198cb3ed5279**, so I did not take baseline quotes from its files. The research mapping uses dff2f0b; I translated its citations to 7e7d9cc.
+All O and C quotations below are from **git 38c8167**, respectively `plugins/entrust/skills/orchestrate/SKILL.md` and `plugins/entrust/skills/codex/SKILL.md`. They were extracted with `git show` and verified with fixed-string `rg`. The worktree is at that revision. Contrary to the task's starting assumption, the main checkout was clean at **786d5bb96d215d38055dc48b989f1870a15f1e0c**, so I did not take baseline quotes from its files. The research mapping uses e4d98b6; I translated its citations to 38c8167.
 
 ## 1. Evidence
 
@@ -32,7 +32,7 @@ The repository's levels are: 1, a line resolves; 2, independent code reading sup
 
 ## 2. Breakage and exact repairs
 
-The old text in each replacement below is **D1's proposed text**, identified as such. Baseline quotations are separately labeled O/C and come only from 7e7d9cc. All replacements omit the new dated parenthetical; move the corrected incident and trace to the Unreleased changelog. Unchanged text surrounding the replacement stays intact.
+The old text in each replacement below is **D1's proposed text**, identified as such. Baseline quotations are separately labeled O/C and come only from 38c8167. All replacements omit the new dated parenthetical; move the corrected incident and trace to the Unreleased changelog. Unchanged text surrounding the replacement stays intact.
 
 ### Delta 1 — fix the unit of non-delegation
 
@@ -224,7 +224,7 @@ I ran the exact requested command on D1's copy:
 
 `node --test $TMPDIR/d1-design.TtEyil/entrust/evals/orchestrate.test.mjs`
 
-It started, exited **0**, and printed **`all 53 passed`**. Node reports one file-level test; the plugin's harness counts **53 custom cases**. The independent baseline run in the 7e7d9cc worktree started, exited **0**, and printed **`all 45 passed`**. The harness derives ROOT from its own module location, so the requested run read D1's copied page. Its page and eval file exactly match my reconstruction from the pinned baseline plus the eleven deltas/five replacements/eight added cases. No live skill-behavior or driver-lifecycle eval was run.
+It started, exited **0**, and printed **`all 53 passed`**. Node reports one file-level test; the plugin's harness counts **53 custom cases**. The independent baseline run in the 38c8167 worktree started, exited **0**, and printed **`all 45 passed`**. The harness derives ROOT from its own module location, so the requested run read D1's copied page. Its page and eval file exactly match my reconstruction from the pinned baseline plus the eleven deltas/five replacements/eight added cases. No live skill-behavior or driver-lifecycle eval was run.
 
 **Severity: note** for deliberate exact-word pinning and existing coverage gaps; **must fix before apply** for pins that retain the corrected policies or erroneous measurements after D1 revises them. **Are the 53 cases sound?** They are sound as an approved-text ratchet: `says` compares whitespace-collapsed substrings, `shows` matches literal regular expressions, and schema/link checks have actual structural content. This exactness is an explicit repository choice in the suite header, not a new accidental testing style. They are not evidence that an instruction is coherent, followed, true, or better. D1 should describe them as text pins, not a behavioral validation of the design.
 
@@ -294,7 +294,7 @@ Use exact pins for owner-approved wording if that remains the repository convent
 - Additional reads: result-gates **86 lines**, adversarial-review **37**; eval README **lines 1–110 of 250**; markup-round rounds **lines 1–28 of 226**; CHANGELOG **lines 1–25**; driver **2634–2646, 2955–2983, 3005–3020**. These are source inspections, not newly executed behavior claims.
 - Independently read **78 `report.json` files' model/token/exit metadata** across the five named agent-skills runs; the 77 reports with model/token values are 53 Luna, 18 Sol, 6 Astra. Re-derived totals and medians are in `token-audit.json`.
 - Read **9 specific transcript records**: 426:973/979/983/1005/1208/1285 and 30a:204/848 plus 426:92. The naming excerpts are saved in `naming-trace.json`; approval timestamps are reported above. No unrelated transcript content was used.
-- Quote greps: `rg -n -F -f orchestrate-needles.txt orchestrate-7e7d9cc.txt` verified **31 phrases/31 matching lines**; the corresponding codex command verified **11/11**. Every old replacement anchor occurred **once** in the git-show baseline; **11/11** page anchors and all five pin-replacement anchors matched. Logs and reconstruction hashes are in this artifact directory.
+- Quote greps: `rg -n -F -f orchestrate-needles.txt orchestrate-38c8167.txt` verified **31 phrases/31 matching lines**; the corresponding codex command verified **11/11**. Every old replacement anchor occurred **once** in the git-show baseline; **11/11** page anchors and all five pin-replacement anchors matched. Logs and reconstruction hashes are in this artifact directory.
 - Evals observed this turn: modified **53/53 custom cases**, baseline **45/45**, both exit 0; no skipped custom cases reported. Ten selected in-memory pin probes and the separate 53-predicate contradictory-append check are recorded in `pin-probes.json` and reproduced by `pin-probes.mjs`.
 - No external source was fetched, no web search used, no subagent spawned, and no file outside this C1 temporary directory was written. Primary papers were assessed through the supplied survey quotes, conditions and audit records, not independently re-fetched. Every shell command invoked in this critique started and exited 0; there is no failed-command diagnostic to report.
 - Unknown: causal improvement from these edits; a consistent exact three/four-round naming count; comparative Haiku/Luna price or matched quality; per-role prospective token cost; the best stall threshold; quota fallback outcomes; the real effect of judge ordering; actual agent compliance with the revised prose. The role of a publication bundle in the owner's “any text” boundary is an operational interpretation, not a newly observed owner instruction.

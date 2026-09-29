@@ -24,7 +24,7 @@ CHECK a) C45: removed the false claim that two benchmarks found a large no-docum
 CHECK a) C46: removed the false claim that prior-art.md collects every finding.
 CHECK a) C15: lines 53–55 name the run locations explicitly.
 CHECK a) C44: lines 94–96 put the missing arm and missing records before the 3/6 → 6/6 figures.
-CHECK a) Installed revision: lines 75–78 distinguish checkout 2f29a8f from published 8c041b7.
+CHECK a) Installed revision: lines 75–78 distinguish checkout 2f29a8f from published 21a225b.
 CHECK a) Authentication: lines 62–63 require a signed-in Claude Code host.
 CHECK a) Truth-pass exclusion: lines 27–30 name external-tool recipes and other exclusions.
 CHECK a) Relative links: lines 47–49 give a staging rule for temporary candidates.
@@ -43,12 +43,12 @@ CHECK e) Line-backed claims reached L1/L2; run-directory placement and round rej
 - Final lines 36–45: rewrite inputs, bake-off, rounds, stop, hand-over, and ledger guard — rewrite/SKILL.md:14-21,52-62,107-159,177-208; rewrite/references/bake-off.md:17-40; rewrite/scripts/ledger.mjs:1-27.
 - Final lines 47–49: comparable re-measurement — audit/references/measure.md:106-115. Relative-layout instruction repairs brief.md:201-203 without claiming the plugin performs staging.
 - Final lines 53–58: write boundary — audit/SKILL.md:30-44; rewrite/SKILL.md:66-79,149-155,188-192; rethink/SKILL.md:70-83.
-- Final lines 62–78: Node floor and installed script use — plugins/terse/package.json:4-6; audit/SKILL.md:159-162; rewrite/SKILL.md:81-88. Authentication and published-revision evidence — brief.md:196-203; git rev-parse origin/main returned 8c041b76d7f30196441285d77985b81ae9c9e59f.
+- Final lines 62–78: Node floor and installed script use — plugins/terse/package.json:4-6; audit/SKILL.md:159-162; rewrite/SKILL.md:81-88. Authentication and published-revision evidence — brief.md:196-203; git rev-parse origin/main returned 21a225b12f15221f978492718ecdc00eb7ea5924.
 - Final lines 82–88: length and safeguards — rewrite/references/bake-off.md:113-118,134-145; rewrite/references/writing-rules.md:21-25; rewrite/scripts/sections.mjs:1-25. The 2,725 → 2,571 and ±105 figures are confirmed in audit.md claim C24.
 - Final lines 92–105: corrected experiment claims — audit.md claims C30-C46, especially C30, C33, C39-C45; rewrite/references/bake-off.md:7-15.
 - Ran node plugins/terse/skills/rewrite/scripts/selftest.mjs: exit 0; 45 checks reported ok, including lost pins, restored false wording, refused writes, byte-identical rollback state, and planted violations.
 - Ran the documented run-directory formula twice: checkout fallback and populated CLAUDE_PLUGIN_DATA both printed OUTSIDE_REPO and exited 0. These are the final candidate’s lifecycle claims at L3.
-- Validation counts: four files found; draft word counts 943, 884, 950, and 960; original 933. Final has four fence lines and both protected slash install commands. Final SHA-256: 825acabd866b21a3e626e62ae9a88a78b819211465d0f78a9911d75dc75b4993.
+- Validation counts: four files found; draft word counts 943, 884, 950, and 960; original 933. Final has four fence lines and both protected slash install commands. Final SHA-256: a1434060069429587e7ce76268427e498ba5a06e39910b6f94267ff270ec437f.
 - Repository status at hand-off shows research/2026-09-22-terse-process/audit-2026-09-22/audit.md modified. Whether that modification predated this turn is unknown; no command in this work wrote to the repository.
 
 ## artifacts

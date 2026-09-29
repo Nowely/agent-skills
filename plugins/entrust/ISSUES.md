@@ -58,7 +58,7 @@ entry carry what the request itself says about the command, since the item may n
 
 **Evidence, level 3 for the process groups, level 1 for the kill, level 2 for the consequence.**
 
-- `plugins/entrust/plugin/skills/codex/SKILL.md:93` (at `b3872b4`): a `SIGTERM` to the driver's pid "cuts the turn,
+- `plugins/entrust/plugin/skills/codex/SKILL.md:93` (at `c828b7f`): a `SIGTERM` to the driver's pid "cuts the turn,
   sweeps its codex and publishes the report … nothing left running".
 - `driver.mjs:2400-2403`: `killGroup` signals `-child.pid`, the app-server's own process group, and `groupAlive`
   asks the same group.
@@ -327,7 +327,7 @@ the setting does, reads without prompts, and what it does not.
 **Evidence, level 3.** `plugins/entrust/evals/protocol.test.mjs:658` fails the `approval-wait` scenario unless
 `e.waitMs === 0`. The driver declined the request at once, but on CI it recorded `askedAt` …36.470Z and
 `settledAt` …36.471Z, so `waitMs` was 1, and the suite failed with "the entry's fields are wrong". This happened in
-run 36417631361 of PR #29 (macos-latest, node 24) and in run 36387062335 on main at c1acf7c (macos-latest, node 22); the
+run 36417631361 of PR #29 (macos-latest, node 24) and in run 36387062335 on main at c920b97 (macos-latest, node 22); the
 other jobs of both runs passed, and PR #29 changes no entrust code.
 
 **Check.** `gh run view 36387062335 -R Nowely/agent-skills --log-failed | grep 'FAIL  approval-wait'` prints the failure

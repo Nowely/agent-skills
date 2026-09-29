@@ -244,7 +244,7 @@ Every file includes NN-pass.md, emitted at step 2 and frozen before step 5; its 
 #### C2-5.1. Frozen historical inputs cannot exercise the new verifier contract
 
 - `/tmp/fable-a2.cB3Zls/a2-design-v2.md:429` — “**The pre-registered test.** Brief 0 run blind, twice — once on Sol, once on Astra — on `edits/06.json`,”
-- `/tmp/fable-a2.cB3Zls/a2-design-v2.md:430` — “`07.json`, `08.json` at `b29e921` (`c1:9`), each refusal list frozen by SHA-256 before D1 is opened, then”
+- `/tmp/fable-a2.cB3Zls/a2-design-v2.md:430` — “`07.json`, `08.json` at `846197c` (`c1:9`), each refusal list frozen by SHA-256 before D1 is opened, then”
 - `/tmp/fable-a2.cB3Zls/a2-design-v2.md:377` — “this duty is `unmeasured` as a catch and is what the pre-registered test measures. *Displaces:* `how`.”
 - `$TMPDIR/astra-c2.n1oboI/prereg-input-summary.txt:1` — “Pinned round 06: edits=9, checks=0, asks=0, run=0, saw=0.”
 - `$TMPDIR/astra-c2.n1oboI/prereg-input-summary.txt:2` — “Pinned round 07: edits=8, checks=0, asks=0, run=0, saw=0.”
@@ -254,14 +254,14 @@ Pinned rounds 06/07/08 have 9/8/27 edits, 0/0/27 check objects, but zero asks, r
 
 #### C2-5.2. Withholding D1 does not blind a checkout containing target answers
 
-- `/tmp/fable-a2.cB3Zls/a2-design-v2.md:430` — “`07.json`, `08.json` at `b29e921` (`c1:9`), each refusal list frozen by SHA-256 before D1 is opened, then”
+- `/tmp/fable-a2.cB3Zls/a2-design-v2.md:430` — “`07.json`, `08.json` at `846197c` (`c1:9`), each refusal list frozen by SHA-256 before D1 is opened, then”
 - `/tmp/fable-a2.cB3Zls/a2-design-v2.md:300` — “the document and the repository's `.md` files are searched for the sentence that says otherwise, quote or”
-- `$TMPDIR/astra-c2.n1oboI/prereg-input-summary.txt:4` — “Pinned b29e921 includes all three reviews/08 files and rounds.md; saved pinned-review-08.md is its Opus report.”
+- `$TMPDIR/astra-c2.n1oboI/prereg-input-summary.txt:4` — “Pinned 846197c includes all three reviews/08 files and rounds.md; saved pinned-review-08.md is its Opus report.”
 - `$TMPDIR/astra-c2.n1oboI/pinned-review-08.md:7` — “- **F-a FALSE (L3).** "a copy with unsaved files is left as it is, commits and all" (L121). Dirtiness is `git status --porcelain` (`driver.mjs:1650-1656`), blind to ignored files; a preserved copy holding only a `.gitignore`d file was judged clean, removed by the next `--worktree` run, the file destroyed. The dirty case with an untracked file behaves as claimed.”
 - `$TMPDIR/astra-c2.n1oboI/pinned-review-08.md:8` — “- **F-b FALSE (L3).** cleanup row "not your answers, run records or reports" (L59). An orchestrate seat's report lives inside a run directory (`orchestrate/SKILL.md:103`) and run rows are selectable (`cleanup.mjs:867-869`); seeded `<state>/orchestrate/<slug>/run-42/seat-a/report.json`, selected the run: "I deleted the run 42", report gone, answers survive. The listing on a seeded state dir produced only *kept* rows.”
 - `$TMPDIR/astra-c2.n1oboI/pinned-review-08.md:11` — “- **F-e OVERSTATED, and a regression against the retired sentence (L3).** Row 2's cure "when that run is dead, stop the Codex processes the refusal names" (L190). Three cases in `acquireLock` (`driver.mjs:1444-1456`): a live holder's refusal says the opposite ("leave it there, a lock whose holder is gone is reclaimed on the next attempt without your help"); only a dead driver with a live codex group names a process; a plain dead holder is reclaimed silently (planted, exit 0). 07's "reclaimed by the next" was true and was retired.”
 
-git ls-tree and git show confirm b29e921 already contains all three reviews/08 reports and rounds.md. The saved Opus report supplies counterexamples for the target items. G2 duty (iv) searches repository Markdown; only D1 is withheld by the test. No rule excludes the target reviews, the autopsy-derived design or equivalent outcome files. Hashing the later refusal list does not establish blindness. A high score cannot distinguish independent verification from finding the stored critic report.
+git ls-tree and git show confirm 846197c already contains all three reviews/08 reports and rounds.md. The saved Opus report supplies counterexamples for the target items. G2 duty (iv) searches repository Markdown; only D1 is withheld by the test. No rule excludes the target reviews, the autopsy-derived design or equivalent outcome files. Hashing the later refusal list does not establish blindness. A high score cannot distinguish independent verification from finding the stored critic report.
 
 #### C2-5.3. Strict scoring is not independent by design
 

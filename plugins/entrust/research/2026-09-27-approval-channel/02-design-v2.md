@@ -1,6 +1,6 @@
 # Design v2: the approval channel
 
-Run `2026-09-27-approval-channel`, Fable D1, against the tree at b3872b4 (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs`, 4198 lines, version 0.20.0, pinned codex 0.153.4; the installed binary is 0.155.1). v2 folds in Opus P1's probe ([01-probe.md](01-probe.md), five paid turns on 0.155.1, level 3 throughout unless a line says otherwise). Evidence levels as the repository defines them: 1 the line resolves, 2 an independent reader would say the same, 3 made to happen; a lifecycle claim not made to happen is a guess and says so. Line numbers are the driver's unless a file is named. [02-design-v1.md](02-design-v1.md) stays as written.
+Run `2026-09-27-approval-channel`, Fable D1, against the tree at c828b7f (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs`, 4198 lines, version 0.20.0, pinned codex 0.153.4; the installed binary is 0.155.1). v2 folds in Opus P1's probe ([01-probe.md](01-probe.md), five paid turns on 0.155.1, level 3 throughout unless a line says otherwise). Evidence levels as the repository defines them: 1 the line resolves, 2 an independent reader would say the same, 3 made to happen; a lifecycle claim not made to happen is a guess and says so. Line numbers are the driver's unless a file is named. [02-design-v1.md](02-design-v1.md) stays as written.
 
 ## Changes from v1
 

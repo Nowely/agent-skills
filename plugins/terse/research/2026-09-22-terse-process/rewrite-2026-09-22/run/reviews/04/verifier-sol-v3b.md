@@ -16,8 +16,8 @@ R03g cuts and behavioural claims: HOLDS — opened rewrite/SKILL.md:44-47,107-11
 R04b shipped ratchet: HOLDS — opened ledger.mjs:1-27, rewrite/SKILL.md:119-130, and ledger-guard.sh:1-24; fresh planted cases returned 1, 1, and 0.
 R03i README boundary: HOLDS — opened 04-terms.md:59-79 and the current audit/rewrite directory blocks; the fix answers the first reason by defining the checked-against tree, which equals 2f29a8f.
 R04c local-checkout installation: HOLDS — opened install-checkout.sh:1-43 and the manifests; two isolated installs produced matching 28-file trees.
-R03j dated resolution and repository write: HOLDS — opened the dated L3 record:1-30, 8c041b7 rewrite/SKILL.md:55-125, and markup-round-0/README.md:1-50; the fix answers the first reason by separating record statements from page instructions and quoting both.
-R04d page differences: HOLDS — opened both current pages and 8c041b7 rewrite/SKILL.md:55-125; direct git diff reports both pages changed.
+R03j dated resolution and repository write: HOLDS — opened the dated L3 record:1-30, 21a225b rewrite/SKILL.md:55-125, and markup-round-0/README.md:1-50; the fix answers the first reason by separating record statements from page instructions and quoting both.
+R04d page differences: HOLDS — opened both current pages and 21a225b rewrite/SKILL.md:55-125; direct git diff reports both pages changed.
 R02e rethink storage: HOLDS — opened rethink/SKILL.md:1-89 and ISSUES.md:189-200; the complete page gives no skeleton storage location.
 R04f chain chronology: HOLDS — opened the chain README:1-36 and CHANGELOG.md:81-98; the dated records establish four passes over one README before the plugin workflow.
 C44 reader records: HOLDS — opened research/README.md:1-12, chain-source-prompt.txt:103-132, measure.md:117-132, and ISSUES.md:94-107; the fix answers the first reason with a repository-wide search rather than a chain-subtree search.

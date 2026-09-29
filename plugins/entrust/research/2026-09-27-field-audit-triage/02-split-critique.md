@@ -44,7 +44,7 @@ Codex Astra A1: done, 20 changes to the split.
 
 6. What the return template must retain
 
-- F/P/Q/K: separate reported historical evidence, implementation at 882bcf3, observed behavior and measured benefit. Add partial/not-applicable states and an explicit undecided verdict; “fix-after-measurement” otherwise presupposes that fixing is warranted. Preserve F2’s unknown causation, F4’s refuted wording, F21’s estimated/unrefuted accounting and M1’s recurrence evidence without inventing a measured compliance-rate effect.
+- F/P/Q/K: separate reported historical evidence, implementation at 1bbab5b, observed behavior and measured benefit. Add partial/not-applicable states and an explicit undecided verdict; “fix-after-measurement” otherwise presupposes that fixing is warranted. Preserve F2’s unknown causation, F4’s refuted wording, F21’s estimated/unrefuted accounting and M1’s recurrence evidence without inventing a measured compliance-rate effect.
 - Every P/Q child needs its source clause, requested behavior, decisive acceptance check, prerequisites, expected result and observed result or unknown. Carry the body’s checks, not just the summary: Q1’s resumed consultation/opt-out/no writes; Q2’s equal deliverable, evidence and authority boundaries; Q4’s six-field evolving contract; Q6’s approved reference and evidence-only claims. A generic “how” or “open” cell does not ensure these survive.
 - Every proposed fix needs whether/why, the recommended change, material alternatives or conflicts, dependency/experiment gate, preservation constraints and release scope. Allow cost to be unknown rather than forcing S/M/L. Keep “implemented on main,” “behavior verified” and “available in the installed release” separate; proposed targets must not become measured benefits.
 
@@ -70,7 +70,7 @@ Corrected split: ranges expand into separate rows; aliases and K1–K6 preservat
 
 ## open
 
-- Actual implementation status at 882bcf3, release availability, and implementation-file reading load: unknown in this decomposition-only critique.
+- Actual implementation status at 1bbab5b, release availability, and implementation-file reading load: unknown in this decomposition-only critique.
 - Independent validity of the historical incidents, accounting, role classifications, replay scoring and overlap simulation: unknown without the owner's local source corpora.
 - Current harness behavior, behavioral compliance and prospective effectiveness or savings: unknown until the named live checks and experiments run.
 - The split's owner-choice, concurrency-cap and unreleased-tree metadata were not independently verified from their underlying sources.

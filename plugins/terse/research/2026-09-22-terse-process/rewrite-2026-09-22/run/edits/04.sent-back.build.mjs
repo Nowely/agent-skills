@@ -172,7 +172,7 @@ const edit = (nm, old, nu, claims, check, drop) => edits.push({ name: nm, old, n
 // describes. It takes the place of the 2026-09-22 sentence, which the next edit rewrites in place of l75.
 // Level 3: probe-04/install-checkout.sh installs from the checkout and from a clone at 2f29a8f.
 {
-  const old = at("At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `8c041b7`, whose rewrite page wrote into the document repository without asking.");
+  const old = at("At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `21a225b`, whose rewrite page wrote into the document repository without asking.");
   const nu = "To install that commit, run\n`claude plugin marketplace add` with the path of a local clone checked out at it in place of\n`Nowely/agent-skills`, then `claude plugin install terse@nowely`.";
   edit("L6.3-02 the SCOPE line: installing the commit this README describes (R04c new, level 3)", old, nu,
     [{ name: "R04c to install commit 2f29a8f, marketplace add takes the path of a local clone checked out at it in place of Nowely/agent-skills, then plugin install terse@nowely", pattern: pin(nu),
@@ -197,7 +197,7 @@ const edit = (nm, old, nu, claims, check, drop) => edits.push({ name: nm, old, n
 // dropped. R03j re-pinned with its check, plus the brief's dated heading; R04d on the ten-file diff.
 {
   const old = "The section below describes this commit, not that one.";
-  const nu = "On 2026-09-22 the install commands with `Nowely/agent-skills` resolved to `8c041b7`, whose audit and\nrewrite pages differ from the ones described here; its rewrite page wrote into the document repository\nwithout asking.";
+  const nu = "On 2026-09-22 the install commands with `Nowely/agent-skills` resolved to `21a225b`, whose audit and\nrewrite pages differ from the ones described here; its rewrite page wrote into the document repository\nwithout asking.";
   const e = entry("R03j");
   const differ = "whose audit and rewrite pages differ from the ones described here";
   // R03j's round-03 run, kept in what it shows, reordered and trimmed so that the whole output, with the
@@ -207,22 +207,22 @@ const edit = (nm, old, nu, claims, check, drop) => edits.push({ name: nm, old, n
     `${sed("196p", `${RUN}/brief.md`)} | grep -o 'adversarial whole-document read (Codex Astra L3, 2026-09-22'`,
     `${sed("198p", `${RUN}/brief.md`)} | grep -o 'the advertised install commands fetch[^;]*'`,
     `${sed("209p", `${RUN}/audit.md`)} | grep -o 'is github.com/Nowely/agent-skills and [^;]*'`,
-    `echo '8c041b7 against 2f29a8f, plugins/terse:'; git -C ${REPO} diff --shortstat 8c041b7 2f29a8f -- plugins/terse; git -C ${REPO} diff --stat=100 8c041b7 2f29a8f -- plugins/terse/skills/audit/SKILL.md plugins/terse/skills/rewrite/SKILL.md | sed '$d'`,
-    `echo '8c041b7, rewrite/SKILL.md:66-67, 112-113:'; git -C ${REPO} show 8c041b7:plugins/terse/skills/rewrite/SKILL.md | sed -n '66,67p;112,113p'`,
-    `echo '8c041b7, audit/SKILL.md:33:'; git -C ${REPO} show 8c041b7:plugins/terse/skills/audit/SKILL.md | sed -n '33p'`,
+    `echo '21a225b against 2f29a8f, plugins/terse:'; git -C ${REPO} diff --shortstat 21a225b 2f29a8f -- plugins/terse; git -C ${REPO} diff --stat=100 21a225b 2f29a8f -- plugins/terse/skills/audit/SKILL.md plugins/terse/skills/rewrite/SKILL.md | sed '$d'`,
+    `echo '21a225b, rewrite/SKILL.md:66-67, 112-113:'; git -C ${REPO} show 21a225b:plugins/terse/skills/rewrite/SKILL.md | sed -n '66,67p;112,113p'`,
+    `echo '21a225b, audit/SKILL.md:33:'; git -C ${REPO} show 21a225b:plugins/terse/skills/audit/SKILL.md | sed -n '33p'`,
     `echo '2f29a8f = HEAD, audit/SKILL.md:33, 44:'; ${sed("33p;44p", `${SK}/audit/SKILL.md`)}`,
     `echo '2f29a8f = HEAD, rewrite/SKILL.md:66, 78-79:'; ${sed("66p;78,79p", `${SK}/rewrite/SKILL.md`)}`,
   ].join("; ");
   edit("L6.3-03/15 the 2026-09-22 boundary: no branch, both pages, l75 cut (R03j re-pinned, R04d new, G4 dropped)", old, nu,
     [{ name: e.name, pattern: pin(nu),
-       asks: "On 2026-09-22 the install commands given with Nowely/agent-skills resolved to commit 8c041b7, and that revision's rewrite page wrote into the document's repository without asking the user." },
-     { name: "R04d at 8c041b7 the audit and rewrite pages differ from the ones this README describes", pattern: pin(differ),
-       asks: "At 8c041b7, the revision the install commands resolved to on 2026-09-22, the audit page and the rewrite page differ from the pages at 2f29a8f that this README describes." }],
+       asks: "On 2026-09-22 the install commands given with Nowely/agent-skills resolved to commit 21a225b, and that revision's rewrite page wrote into the document's repository without asking the user." },
+     { name: "R04d at 21a225b the audit and rewrite pages differ from the ones this README describes", pattern: pin(differ),
+       asks: "At 21a225b, the revision the install commands resolved to on 2026-09-22, the audit page and the rewrite page differ from the pages at 2f29a8f that this README describes." }],
     { level: 2, run,
       expect: E("plugin tree at HEAD against 2f29a8f: diff exit 0", L("adversarial whole-document read (Codex Astra L3, 2026-09-22"),
-                "the advertised install commands fetch the marketplace's `main`, which at 8c041b7 ships terse 0\\.1\\.1 with the old `rewrite` page that wrote into the repository unasked",
-                L("`origin/main` (8c041b7) lists terse 0.1.1"),
-                L("8c041b7 against 2f29a8f, plugins/terse:"), L("10 files changed, 487 insertions(+), 50 deletions(-)"),
+                "the advertised install commands fetch the marketplace's `main`, which at 21a225b ships terse 0\\.1\\.1 with the old `rewrite` page that wrote into the repository unasked",
+                L("`origin/main` (21a225b) lists terse 0.1.1"),
+                L("21a225b against 2f29a8f, plugins/terse:"), L("10 files changed, 487 insertions(+), 50 deletions(-)"),
                 "plugins/terse/skills/audit/SKILL\\.md\\s+\\|\\s+27 ", "plugins/terse/skills/rewrite/SKILL\\.md\\s+\\|\\s+92 ",
                 L("Work in a run directory of the document's own — `research/<date>-<slug>/` at the root of the") + "\\s+repository that holds the document",
                 L("a code defect to the repository's") + "\\s+" + L("`ISSUES.md`"), L('RUN="${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/terse}/runs/'),

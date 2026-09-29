@@ -112,7 +112,7 @@ K1 and K4 extend the same line of the everyday skill, the evidence check `clarit
 
 **Terms.** A case's *score* is its grader mean over the three runs, on the hidden key; *completion* and *leakage* are separate graders on the same runs. A case *differs* when the arms' scores differ by more than δ, the noise margin: fixed after the baseline as the median gap between the highest and lowest run score of one case in the current arm, and δ = 0 if the compare script takes no margin. A *win* is a differing case in the variant's favour, a *loss* the reverse. *Reached*: the trace shows the edited page read in the with-arm (k2a: `roles.md`; k3: `agent-brief.md`); K1, K4 and k2b edit the loaded page and are always reached.
 
-**Freeze.** Before any run: the plugin at `9241e79` plus the variant, the model, the environment, the case files with their hidden keys, the grader prompts, δ's rule and this table. Arms never see each other's returns.
+**Freeze.** Before any run: the plugin at `e84798e` plus the variant, the model, the environment, the case files with their hidden keys, the grader prompts, δ's rule and this table. Arms never see each other's returns.
 
 **Baseline.** Current pages against no plugin on the fourteen `cases.json` prompts, both held-out sets and every pilot set, scored on the candidates' keys plus unsupported inference, false precision, comparison scope, cited-report entailment, completion and omitted necessary limits. Yields δ and each candidate's room: a pilot set the current arm already scores at ceiling (every case at the key) stops that candidate as "no room". A failure on the calibration graders is repaired in the existing lines before any new default and re-baselined.
 
@@ -154,7 +154,7 @@ K1 and K4 extend the same line of the everyday skill, the evidence check `clarit
 
 ## Variants
 
-Paths are relative to `plugins/terse/plugin`. Every `find` occurs exactly once in the worktree at `9241e79`; each variant was dry-applied in memory and every replacement landed. `pages.test.mjs` checks links, the run-directory line, frontmatter length and the frozen digests; these edits keep every link, touch no frontmatter and no frozen file. K1 and K4 collide on one `find` string, so `combined` carries a single merged replacement for it; if `k2a` is the surviving K2, delete the `clarity:58` edit from `combined` before the combined run.
+Paths are relative to `plugins/terse/plugin`. Every `find` occurs exactly once in the worktree at `e84798e`; each variant was dry-applied in memory and every replacement landed. `pages.test.mjs` checks links, the run-directory line, frontmatter length and the frozen digests; these edits keep every link, touch no frontmatter and no frozen file. K1 and K4 collide on one `find` string, so `combined` carries a single merged replacement for it; if `k2a` is the surviving K2, delete the `clarity:58` edit from `combined` before the combined run.
 
 ```json
 {
@@ -273,5 +273,5 @@ Paths are relative to `plugins/terse/plugin`. Every `find` occurs exactly once i
 - Neither `pages.test.mjs` nor the trigger eval was run on a variant here (no file edits allowed); the edits were dry-applied in memory only.
 - Primary papers were not fetched; every literature number is L1's, with L1's own unverified list (Veinott 2010, several venues, Mitropoulos v4 full text, frontier sycophancy rates) carried through.
 - E0210 carries provenance flags in `episodes.jsonl` (`DIALOG`, `no_match_0.9`); CT1's corpus-wide absence claims (no T12 support, no wrong owner pushback) were not re-established across all 323 episodes.
-- Line numbers are from the worktree at `9241e79`.
+- Line numbers are from the worktree at `e84798e`.
 - Length: the draft body is 3,990 whitespace tokens; the return with dispositions, variants and this list is longer. No budget was restated for draft 3.

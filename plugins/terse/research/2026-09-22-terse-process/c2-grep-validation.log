@@ -301,9 +301,9 @@ COMMAND: grep -n -F -- '**The pre-registered test.** Brief 0 run' /tmp/fable-a2.
 STARTED: yes; EXIT: 0
 429:**The pre-registered test.** Brief 0 run blind, twice — once on Sol, once on Astra — on `edits/06.json`,
 
-COMMAND: grep -n -F -- '`07.json`, `08.json` at `b29e921` (`c1:9`), each' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+COMMAND: grep -n -F -- '`07.json`, `08.json` at `846197c` (`c1:9`), each' /tmp/fable-a2.cB3Zls/a2-design-v2.md
 STARTED: yes; EXIT: 0
-430:`07.json`, `08.json` at `b29e921` (`c1:9`), each refusal list frozen by SHA-256 before D1 is opened, then
+430:`07.json`, `08.json` at `846197c` (`c1:9`), each refusal list frozen by SHA-256 before D1 is opened, then
 
 COMMAND: grep -n -F -- 'this duty is `unmeasured` as a' /tmp/fable-a2.cB3Zls/a2-design-v2.md
 STARTED: yes; EXIT: 0
@@ -321,17 +321,17 @@ COMMAND: grep -n -F -- 'Pinned round 08: edits=27, checks=27, asks=0,' $TMPDIR/a
 STARTED: yes; EXIT: 0
 3:Pinned round 08: edits=27, checks=27, asks=0, run=0, saw=0.
 
-COMMAND: grep -n -F -- '`07.json`, `08.json` at `b29e921` (`c1:9`), each' /tmp/fable-a2.cB3Zls/a2-design-v2.md
+COMMAND: grep -n -F -- '`07.json`, `08.json` at `846197c` (`c1:9`), each' /tmp/fable-a2.cB3Zls/a2-design-v2.md
 STARTED: yes; EXIT: 0
-430:`07.json`, `08.json` at `b29e921` (`c1:9`), each refusal list frozen by SHA-256 before D1 is opened, then
+430:`07.json`, `08.json` at `846197c` (`c1:9`), each refusal list frozen by SHA-256 before D1 is opened, then
 
 COMMAND: grep -n -F -- 'the document and the repository'"'"'s `.md`' /tmp/fable-a2.cB3Zls/a2-design-v2.md
 STARTED: yes; EXIT: 0
 300:the document and the repository's `.md` files are searched for the sentence that says otherwise, quote or
 
-COMMAND: grep -n -F -- 'Pinned b29e921 includes all three reviews/08' $TMPDIR/astra-c2.n1oboI/prereg-input-summary.txt
+COMMAND: grep -n -F -- 'Pinned 846197c includes all three reviews/08' $TMPDIR/astra-c2.n1oboI/prereg-input-summary.txt
 STARTED: yes; EXIT: 0
-4:Pinned b29e921 includes all three reviews/08 files and rounds.md; saved pinned-review-08.md is its Opus report.
+4:Pinned 846197c includes all three reviews/08 files and rounds.md; saved pinned-review-08.md is its Opus report.
 
 COMMAND: grep -n -F -- '- **F-a FALSE (L3).** "a copy' $TMPDIR/astra-c2.n1oboI/pinned-review-08.md
 STARTED: yes; EXIT: 0

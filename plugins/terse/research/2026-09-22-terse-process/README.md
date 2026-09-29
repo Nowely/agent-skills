@@ -108,7 +108,7 @@ version-drift check it would have made went into the surveyors' briefs instead.
   table cites two rows (S2-27, S2-56) it does not contain. `writing-for-agents` reports no measurement anywhere: 39 argued, 29 asserted.
   Fetched pages stay out of the repository; each row carries its URL, fetch time and the page's SHA-256.
 - **The map** ([p1-mapping.md](p1-mapping.md), Codex Astra P1): 173 rows merged into 85 claims, 255 verdicts
-  against three targets pinned at `8c041b7`, every cited target line opened with `sed` and quoted. Target A,
+  against three targets pinned at `21a225b`, every cited target line opened with `sed` and quoted. Target A,
   the writing rules for documents: present 8, partial 20, conditional 3, not located 2, unknown 51 (no
   counterpart expected), contradicts 1. Target B, the three SKILL.md as texts a model executes: present 21,
   partial 21, conditional 32 (pinned to one model by the source), not located 4, unknown 6, contradicts 1.

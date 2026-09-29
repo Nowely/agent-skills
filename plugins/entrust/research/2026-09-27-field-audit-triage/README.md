@@ -3,7 +3,7 @@
 2026-09-27. The owner asked for the two field-audit issues,
 [#15](https://github.com/Nowely/agent-skills/issues/15) (21 findings, a meta-finding, 14 proposals, a keep list,
 two harness notes) and [#16](https://github.com/Nowely/agent-skills/issues/16) (seven proposals, one a twelve-row
-role table), to be triaged against `main` at `882bcf3`, using the unreleased foreman, at the Max tier of three
+role table), to be triaged against `main` at `1bbab5b`, using the unreleased foreman, at the Max tier of three
 offered. Everything below is attributed; the orchestrator (Fable 5.1) wrote the split, the briefs and this page, and
 where a statement is its own and not an agent's, it says so.
 

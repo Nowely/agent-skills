@@ -67,15 +67,15 @@ D24 | keep | E6 specifies the frozen, blinded, preregistered comparison Q7b requ
 - Conflict D10/D14/D15/D16: Admit returns and preserve overflow bodies first, then assemble and lint the frozen draft, then have the critic read and digest the draft plus referenced bodies. Any later edit or artifact-body change invalidates that verdict.
 - Conflict D11/page pin: Owner decision 2 selects option B. Change orchestrate line 119, roles line 18 and orchestrate.test F2 together; unknown is permitted only for an unrun decisive check.
 - Conflict D16/server keywords: Owner decision 5 assigns one Luna probe in the fix run. Local caps remain authoritative until the server result is known.
-- Moved line D5: orchestrate-live.test.mjs's sibling-load check was at 436–437 in 882bcf3 and is at 443–444 in current e99cdb6; its text is unchanged.
+- Moved line D5: orchestrate-live.test.mjs's sibling-load check was at 436–437 in 1bbab5b and is at 443–444 in current e99cdb6; its text is unchanged.
 - Moved line D9: orchestrate-live.test.mjs's one-agent gate comment was at 508–511 and is at 520–522; its text is unchanged.
-- Moved line D17: orchestrate-live.test.mjs's cited 856–858 is now 866–868. It checks background Codex calls in a headless turn, not F7 notification waiting; the assumption was wrong even at 882bcf3.
+- Moved line D17: orchestrate-live.test.mjs's cited 856–858 is now 866–868. It checks background Codex calls in a headless turn, not F7 notification waiting; the assumption was wrong even at 1bbab5b.
 - Moved line D17: orchestrate-live.test.mjs's cited 904–906 gate-arm check is now 914–916; its text is unchanged.
 - Incorrect source citation D5: codex/SKILL.md lines 49–58 are the end of Composition and start of One call. The rights table is at 166–177 in the current tree.
 - Incorrect source citation D16: driver.mjs line 3218 is text_elements in the corrective input; the outputSchema argument is at 3220. The cited behavior is still present.
-- Changed cited files: current HEAD is e99cdb6, not the architect's 882bcf3. Of delta-named source files, driver.mjs changed its pinned Codex version at line 40, cli.test.mjs changed the expected version at line 387, and orchestrate-live.test.mjs changed run-directory admission at 306–333 and plan-agent heuristics at 481–484. None of those changes implements a drafted delta; rebase new gate assertions on the current file.
+- Changed cited files: current HEAD is e99cdb6, not the architect's 1bbab5b. Of delta-named source files, driver.mjs changed its pinned Codex version at line 40, cli.test.mjs changed the expected version at line 387, and orchestrate-live.test.mjs changed run-directory admission at 306–333 and plan-agent heuristics at 481–484. None of those changes implements a drafted delta; rebase new gate assertions on the current file.
 - Counts: Parsed 24 distinct D1–D24 headings and 72 judge result rows; exactly 42 rows have verdict fix-now. The corrected contract has 2 kept, 22 amended, 0 dropped, and 2 judge reasons uncovered.
-- Commands run: pwd; rg --files; wc -l; cat and sed -n on the four required triage files; git rev-parse --short HEAD; git status --short; git diff --name-status and --unified=0 882bcf3..HEAD; git show 882bcf3:plugins/entrust/evals/orchestrate-live.test.mjs; nl -ba and rg on every delta-named existing source and eval file; python3 parser counted D headings and judge verdict rows. All these reads started and exited 0. No test suite or live server probe was run.
+- Commands run: pwd; rg --files; wc -l; cat and sed -n on the four required triage files; git rev-parse --short HEAD; git status --short; git diff --name-status and --unified=0 1bbab5b..HEAD; git show 1bbab5b:plugins/entrust/evals/orchestrate-live.test.mjs; nl -ba and rg on every delta-named existing source and eval file; python3 parser counted D headings and judge verdict rows. All these reads started and exited 0. No test suite or live server probe was run.
 
 ## open
 

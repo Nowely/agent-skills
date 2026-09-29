@@ -21,7 +21,7 @@ served over local smart HTTP, for update and uninstall. The `-p` runs pointed `A
 local stub (`$TMPDIR/lens1-opus/stub/server.mjs`, `launch.mjs`) with a fake key, so no model was called.
 
 **Level-3 facts outside the verdicts:**
-- The Quick start's install (lines 8–9) fetched GitHub main `8c041b7` (`installed_plugins.json`
+- The Quick start's install (lines 8–9) fetched GitHub main `21a225b` (`installed_plugins.json`
   `gitCommitSha`). That copy's rewrite works in "`research/<date>-<slug>/` at the root of the repository
   that holds the document" (cache `skills/rewrite/SKILL.md:66-67`). So lines 33 and 65 describe HEAD's
   tree and are true only after it is released.

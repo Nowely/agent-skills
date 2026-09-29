@@ -3,7 +3,7 @@
 **Sent back once by the verifier and regenerated; see *Sent back* at the end. The sections before it record the first build, kept as `edits/04.sent-back.json`.**
 
 Round 04 of the rewrite of `plugins/terse/README.md`, the last under the cap of four. Built from
-`03-review.md` (SHA-256 `36621028…159b`, the one the dedup read) by `edits/04.build.mjs` → `edits/04.json`,
+`03-review.md` (SHA-256 `f15296bf…846a`, the one the dedup read) by `edits/04.build.mjs` → `edits/04.json`,
 produced by `round.mjs`, checked by the four checks. Repository `~/Git/agent-skills` at `b7a17da`
 (the owner committed it at 15:30 during this round; it changes `ISSUES.md` only); its `plugins/terse` and
 `.claude-plugin` are byte-identical to `2f29a8f`'s (`git diff --quiet 2f29a8f HEAD -- plugins/terse
@@ -21,7 +21,7 @@ All 15 SENTENCE findings, the SCOPE line, the METHOD fix and the coordinator's d
 | L6.3-01 | cut "A writer may reword one or correct it when it is false." (`03:101-102`, 12 words; the dedup counted 10). No page grants it; the pages' conflict is D8. R03l, the sentence before it, untouched | none (a cut) |
 | L6.3-02 (SCOPE) | new: "To install that commit, run `claude plugin marketplace add` with the path of a local clone checked out at it in place of `Nowely/agent-skills`, then `claude plugin install terse@nowely`." (`04:74-76`) | R04c new, L3 |
 | L6.3-03, 15, 20 | "This README describes commit `2f29a8f`." (`04:74`) | R03i re-pinned, L2 (its check kept) |
-| L6.3-03, 15 | "On 2026-09-22 the install commands with `Nowely/agent-skills` resolved to `8c041b7`, whose audit and rewrite pages differ from the ones described here; its rewrite page wrote into the document repository without asking." (`04:77-79`). No branch name, no review event; l75 cut | R03j re-pinned, L2; R04d new, L2; **G4 dropped** |
+| L6.3-03, 15 | "On 2026-09-22 the install commands with `Nowely/agent-skills` resolved to `21a225b`, whose audit and rewrite pages differ from the ones described here; its rewrite page wrote into the document repository without asking." (`04:77-79`). No branch name, no review event; l75 cut | R03j re-pinned, L2; R04d new, L2; **G4 dropped** |
 | L6.3-04 | "The shipped check rejects a new round that loses a sentence an earlier round verified, or brings back wording one retired as false." (`04:50-51`); "That guard is not a promise…" kept | R04b new, L3 |
 | L6.3-08 | "…before assigning one fresh reader, a model agent, to each question." (`04:25-26`) | C06 re-pinned, L2 |
 | L6.3-08 | "…nor separates what the text taught from prior knowledge, nor says whether a human reader improved." (`04:118-119`). No pin covered this sentence (C33 covers the McNemar sentence only), so the claim is new | R04e new, L2 |
@@ -63,12 +63,12 @@ stays), L6.3-05/06/07/23/24/25/26/29 (code). Decision (d) now covers `main`: no 
 - New (6): `R04a a round is handed over as a candidate and its diff from the original`; `R04b the shipped check
   rejects a new round that loses a sentence an earlier round verified or brings back wording one retired as
   false`; `R04c to install commit 2f29a8f, marketplace add takes the path of a local clone checked out at it
-  in place of Nowely/agent-skills, then plugin install terse@nowely`; `R04d at 8c041b7 the audit and rewrite
+  in place of Nowely/agent-skills, then plugin install terse@nowely`; `R04d at 21a225b the audit and rewrite
   pages differ from the ones this README describes`; `R04e the result neither clears a significance threshold,
   nor separates what the text taught from prior knowledge, nor says whether a human reader improved`;
   `R04f the chain, four passes that preceded the plugin's bake-off and rounds, covered one README`.
 - Re-pinned (10), names reused exactly: C06, C09, C10, C11, C42, C44, R03a, R03g, R03i, R03j.
-- **Drop, for `rounds.md`:** `G4 version boundary: the write boundary below is this checkout's, not 8c041b7's`
+- **Drop, for `rounds.md`:** `G4 version boundary: the write boundary below is this checkout's, not 21a225b's`
   — its sentence, `03:75` "The section below describes this commit, not that one.", is cut (L6.3-03, lens 2 W1).
 - Provisional: `round.mjs` marks C11 (L2~) because its pattern contains "resum" (`round.mjs:33-36, 117`).
   The sentence states the page's route (`rewrite/SKILL.md:18, 74`) under decision (a)'s frame; running a
@@ -116,7 +116,7 @@ stays), L6.3-05/06/07/23/24/25/26/29 (code). Decision (d) now covers `main`: no 
 
 ## What I could not do, and what is open
 
-- `2f29a8f` is on no remote ref: `git ls-remote origin` (2026-09-23) lists `main` at `8c041b7`, PR refs and
+- `2f29a8f` is on no remote ref: `git ls-remote origin` (2026-09-23) lists `main` at `21a225b`, PR refs and
   tags, and no `terse-process-2026-09-22`; `git branch -r --contains 2f29a8f` prints nothing. The install line
   works where the commit exists, this checkout, until the owner publishes it; a squash merge never would.
   The owner's SCOPE, as the dedup said of L6.3-02.
@@ -140,7 +140,7 @@ ANSWER, 0 REFUTED, 0 UNREACHABLE, duty 1 clean. Regenerated by the page's recipe
 (SHA-256 of both `4f939622…1e84`); `edits/04.build.mjs` fixed and run; `round.mjs` run again; the checks
 appended to `probe-04/checks-04.log`; `diff-04.patch` written again. After it, one edit's name and a comment in
 `edits/04.build.mjs` were corrected (the R02e history in the table below) and the round regenerated once more by the same
-recipe: `04-terms.md` and `ledger.json` came out byte-identical (SHA-256 `34cc4cb0…efa5`, `41ace865…3b50`),
+recipe: `04-terms.md` and `ledger.json` came out byte-identical (SHA-256 `d3f681d9…2400`, `41ace865…3b50`),
 only `edits/04.json` changed, and the four checks gave the same results.
 
 ### What changed, per claim
@@ -153,8 +153,8 @@ only `edits/04.json` changed, and the four checks gave the same results.
 | C11 | DOES NOT ANSWER | `asks`: the rewrite page names three starts — the agreed skeleton, an audit's run file, a run of its own that already holds rounds. Not "only three": the page's fourth row, the guess route, is left unnamed by decision (j). Still L2~ by `round.mjs` ("resum") |
 | R04a | DOES NOT ANSWER | `asks`: the rewrite page instructs Claude to hand a round over as the candidate and its diff against the original. Sentence and run unchanged |
 | R03i | DOES NOT ANSWER | `asks`: the plugin tree this README's statements are checked against is 2f29a8f's; HEAD's `plugins/terse` and `.claude-plugin` equal it, which the run's first line shows. Sentence and run unchanged |
-| R03j | DOES NOT ANSWER | `asks` is a record claim and an instruction claim. The record: the adversarial read of 2026-09-22 ran both commands, fetched `main` at `8c041b7` and installed terse 0.1.1 (`research/2026-09-22-terse-process/rewrite-2026-09-22/l3-adversarial-findings.md:3, 11, 13, 23-24`; `brief.md:196-198`; `audit.md:209`). The instruction: 8c041b7's `rewrite/SKILL.md:64-67` puts the run in `research/<date>-<slug>/` at the root of the document's repository. The run prints every line of that page that asks, waits or needs the user's word — 7, 29, 61, 104, 105, 150 — and counts those in step 4's run-directory block, 64-78: 0. Line 7 is the description's "writes into your tree only on your word", which no step carries for the run directory; the others concern the audit's run directory, spawning agents and applying the candidate. The record bounds itself: "This confirms the fetched payload and its instructions, not that a model performed the unapproved writes" (`:13`), and the run prints that line too |
-| R04d | HOLDS | Untouched in `asks`, pattern and level. It shares R03j's edit, so its check is the new run. That run still prints its evidence, the diff (`--shortstat` 10 files; `audit/SKILL.md` 27 lines, `rewrite/SKILL.md` 92). Dropped to stay under the 2000-character clip: 8c041b7's `rewrite/SKILL.md:112-113` and `audit/SKILL.md:33`, 2f29a8f's `audit/SKILL.md:33, 44` and `rewrite/SKILL.md:78-79`. Output 1893 characters |
+| R03j | DOES NOT ANSWER | `asks` is a record claim and an instruction claim. The record: the adversarial read of 2026-09-22 ran both commands, fetched `main` at `21a225b` and installed terse 0.1.1 (`research/2026-09-22-terse-process/rewrite-2026-09-22/l3-adversarial-findings.md:3, 11, 13, 23-24`; `brief.md:196-198`; `audit.md:209`). The instruction: 21a225b's `rewrite/SKILL.md:64-67` puts the run in `research/<date>-<slug>/` at the root of the document's repository. The run prints every line of that page that asks, waits or needs the user's word — 7, 29, 61, 104, 105, 150 — and counts those in step 4's run-directory block, 64-78: 0. Line 7 is the description's "writes into your tree only on your word", which no step carries for the run directory; the others concern the audit's run directory, spawning agents and applying the candidate. The record bounds itself: "This confirms the fetched payload and its instructions, not that a model performed the unapproved writes" (`:13`), and the run prints that line too |
+| R04d | HOLDS | Untouched in `asks`, pattern and level. It shares R03j's edit, so its check is the new run. That run still prints its evidence, the diff (`--shortstat` 10 files; `audit/SKILL.md` 27 lines, `rewrite/SKILL.md` 92). Dropped to stay under the 2000-character clip: 21a225b's `rewrite/SKILL.md:112-113` and `audit/SKILL.md:33`, 2f29a8f's `audit/SKILL.md:33, 44` and `rewrite/SKILL.md:78-79`. Output 1893 characters |
 | C44 | DOES NOT ANSWER | The negative half now searches the whole repository (`.md`, `.txt`, `.json`, `.git` excluded) for a line in the before-record's form, `N. "question" - ANSWERED VERDICT`. Two files hold six each: `chain-source-prompt.txt` and `run-2x5/Faf2geGl.prompt.txt`, which are byte-identical (`cmp`); the second is the chain seat's prompt the record was copied from. Lines in that form that are not lines of the before-record: 0. The chain-only `6/6` search is dropped. `asks` and the positive half unchanged. Output 1784 characters |
 | C42 | DOES NOT ANSWER | Text: "four writing standards, one an unpublished draft," → "four writing standards, one of them a draft," (+1 word, `04:120-121`). `asks` says what the source says: five conditions of two agents, four of them standards, one of the four "a draft rule block for the owner's CLAUDE.md" (`v04PR6HL.prompt.txt:18`, not `:15` as the message had it), and a control given no standard. Run and `expect` unchanged. "Unpublished" came from the audit's C39 verdict at `audit.md:377` (the message called it C41's; C41's verdict is at `:393`) |
 | R02e | not raised | Re-pinned under its name, sentence unchanged: `new` equals `old`, and `round.mjs` accepts it (`round.mjs:99-104` checks only that `old` occurs once; the run printed `ok`). Its run keeps the rethink-page grep (0) and finds E13 with `grep -n -A6 '^## E13' ISSUES.md`. E13 sat at line 183 when R02e was pinned (`f677303`), moved to 187 at `1af4160` and to 189 at `b7a17da`, so the old run has not matched since `1af4160`, not only since `b7a17da` (the old `expect` tested against `git show <commit>:ISSUES.md`). `asks` unchanged |
@@ -183,23 +183,23 @@ line, `04:120`.
 At the coordinator's word, for the risk named on R03j (the verb "wrote" against a claim only about what the page
 instructs): the sentence is kept and the claim strengthened. Same recipe: `04-terms.md` removed,
 `ledger.04.json` copied back (`4f939622…1e84`), the build fixed, `round.mjs` exit 0, the four checks exit 0,
-`diff-04.patch` written again (185 lines). `04-terms.md` came out byte-identical, SHA-256 `34cc4cb0…efa5`;
+`diff-04.patch` written again (185 lines). `04-terms.md` came out byte-identical, SHA-256 `d3f681d9…2400`;
 `ledger.json` is now `50c8982e…172e`. Only the edit that carries R03j and R04d changed.
 
 - R03j's `asks` names three parts and says which is which. **Record, 2026-09-22:** the adversarial read ran
-  both commands, which fetched `main` at `8c041b7`. **Instruction, 8c041b7's page, level 2:** step 4
+  both commands, which fetched `main` at `21a225b`. **Instruction, 21a225b's page, level 2:** step 4
   (`:64-67`) puts the run in `research/<date>-<slug>/` at the repository's root; no asking line in that block;
   the asking lines 7, 29, 61, 104-105 and 150 are about other things. **Record, this repository:** the page
-  shipped at 0.1.0 (`b29e921`) with `8c041b7`'s lines 64-67 unchanged. `research/2026-09-11-markup-round-0/` is a
+  shipped at 0.1.0 (`846197c`) with `21a225b`'s lines 64-67 unchanged. `research/2026-09-11-markup-round-0/` is a
   rewrite run of this repository's `plugins/codex-delegate/README.md`, and its README lists every round there
   (`README.md:43, 45`). Its rounds 08 and 09 (`a4238a5` 20:29, `0eb7762` 20:45) were committed after the page
   first put runs under `research/` (`1e3f5b2` 19:03, the only commit on `terse-plugin` that adds the phrase).
-  The directory reached `main` in `b29e921`.
+  The directory reached `main` in `846197c`.
 - What the order shows, and no more: rounds 00-07 of that run were committed before `1e3f5b2`, so for them the
   directory came first and the instruction after. The claim names only rounds 08 and 09 as written under it.
   One other `research/2026-09-1*/` directory holds numbered versions of a document of this repository:
   `2026-09-12-issues-verification` has `00-ledger-as-found.md`, `01-marked-up.md` and `02-proposed.md` of
-  `ISSUES.md`, committed in `2270cef`. Its record calls it a verification in five waves and does not say it
+  `ISSUES.md`, committed in `aeb7d15`. Its record calls it a verification in five waves and does not say it
   followed the rewrite page, so the claim does not rest on it. The rest (`chain`, `calibration-bank`,
   `terse-survey`, `skill-review`, `orchestration-practices`) hold no rounds of a document.
 - To stay under the 2000-character clip, three things were dropped from the run: `brief.md:198` (the same
@@ -211,7 +211,7 @@ instructs): the sentence is kept and the claim strengthened. Same recipe: `04-te
 
 V3b (`reviews/04/verifier-sol-v3b.md`): 17 claims, 16 HOLD, and one DOES NOT ANSWER: R03a, because its
 `asks` weakened "what each page and its references say" to "draws on", and its run never opened a reference.
-Only R03a changed, by the same recipe. `04-terms.md` came out byte-identical (`34cc4cb0…efa5`), `ledger.json` is
+Only R03a changed, by the same recipe. `04-terms.md` came out byte-identical (`d3f681d9…2400`), `ledger.json` is
 `7197618a…1793`, and the four checks exit 0.
 
 R03a's `asks` now says what the sentence says. The run keeps the frontmatter and `references/` listings and adds

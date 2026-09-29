@@ -16,7 +16,7 @@
     "live": {"cases.json": {"positives": "36/36", "positivesBeforeAnyText": "36/36", "negativesNotCalled": "6/6", "counted": "42/42", "costUsd": 5.37}}
   },
   "old": {
-    "description": "terse 0.3.0's, unchanged since 9241e79",
+    "description": "terse 0.3.0's, unchanged since e84798e",
     "official": {
       "holdout.json":    {"positives": "24/24", "negativesNotCalled": "6/6", "costUsd": 2.80},
       "holdout-ui.json": {"positives": "12/12", "negativesNotCalled": "6/6", "costUsd": 1.79, "note": "one rename-h3 run ended at the five-turn limit without calling clarity"}

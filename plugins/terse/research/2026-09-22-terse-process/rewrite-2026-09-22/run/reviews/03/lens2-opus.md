@@ -67,24 +67,24 @@ The opening's 149 include 34 diagram tokens and the 2 of `# terse`: 113 words of
   no record of its readers after it". Holds (its wording collides with l111-112: P4).
 - Decision (a), skeleton.md:13-17, as applied: the frame at l23 is verbatim skeleton.md:15; l49 is direct;
   the attributions at l79, l82, l83, l86, l91 are kept. Holds as applied; the rule itself: R3.
-- Decision (d), skeleton.md:22-23: in Install ✓; `still` 0 ✓; the date 2026-09-22 ✓; `2f29a8f` and `8c041b7`
+- Decision (d), skeleton.md:22-23: in Install ✓; `still` 0 ✓; the date 2026-09-22 ✓; `2f29a8f` and `21a225b`
   ✓; the head of *Where it writes* (l79) carries no repeat ✓; branch name ✗ (R1).
 - Decision (e), skeleton.md:24-25: "left as it is" is relative to round 02, which I did not open. Not checked.
 
 ### R1 — decision (d) "no branch name": l74 names the branch
 
-l73-74: "At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `8c041b7`,
+l73-74: "At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `21a225b`,
 whose rewrite page wrote into the document repository without asking."
 
 Rule: skeleton.md:22-23 "worded without editing history (lens 2 W2): no branch name, no "still", the date
 and both commits kept".
 
-Check: `grep -n '`main`' $R/03-review.md` → `74:marketplace's `main` at `8c041b7`, whose rewrite page …`
+Check: `grep -n '`main`' $R/03-review.md` → `74:marketplace's `main` at `21a225b`, whose rewrite page …`
 
 Same clause: "At the 2026-09-22 audit" names the document's own review event, the class writing-rules.md:12
 cuts ("per PR #123"); the date the decision keeps does not need it.
 
-A form that satisfies both: "On 2026-09-22 the install commands resolved to `8c041b7`, whose rewrite page
+A form that satisfies both: "On 2026-09-22 the install commands resolved to `21a225b`, whose rewrite page
 wrote into the document repository without asking." 23 → 18 words; the date and both commits kept.
 
 ### R2 — "A dated measurement keeps its date and its numbers" (writing-rules.md:22-23): the 2026-09-10 numbers changed
@@ -158,7 +158,7 @@ Ranked. Two items, 13 words. The growth in the four sections over budget is cond
 the version boundary: sentences skipped below for that reason.
 
 **W1 — l75**, "The section below describes this commit, not that one." → cut. l73 "This page describes commit
-`2f29a8f`." already scopes the whole page, the section below included; the warning itself, what `8c041b7`
+`2f29a8f`." already scopes the whole page, the section below included; the warning itself, what `21a225b`
 did, stays in l73-74. It restates the warning in the same paragraph and is not the warning, so the
 never-cut rule does not protect it. **9 words.** Check: `sed -n '73,75p' $R/03-review.md`.
 
@@ -213,10 +213,10 @@ all (l55), forbid(s) (l82, l100), requires (l86), excludes (l33), without (l33, 
 Pairs, ranked:
 
 **P1 — l85-86 ↔ l74.** "Copying that defect into the repository's `ISSUES.md`, or applying the candidate to
-your document, requires your word." ↔ "the install commands resolved the marketplace's `main` at `8c041b7`,
+your document, requires your word." ↔ "the install commands resolved the marketplace's `main` at `21a225b`,
 whose rewrite page wrote into the document repository without asking." Only l73's "This page describes commit
 `2f29a8f`." reconciles them. The install commands a reader runs (l66-67, l70-71) are the ones l74 says
-resolved to `8c041b7`, and no line installs `2f29a8f`: `grep -n 2f29a8f $R/03-review.md` → l73 only;
+resolved to `21a225b`, and no line installs `2f29a8f`: `grep -n 2f29a8f $R/03-review.md` → l73 only;
 `grep -n -E "plugin (marketplace add|install)" $R/03-review.md` → 66, 67, 70, 71.
 
 **P2 — l100 ↔ l101-102.** "The writing rules forbid cutting a condition, limit, or warning where a reader

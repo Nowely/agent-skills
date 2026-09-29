@@ -1,6 +1,6 @@
 # Scouting: the coordinator's account before the design
 
-Run `2026-09-27-approval-channel`, coordinator Fable 5.1, branch `entrust-approval-channel` in a worktree under `.claude/worktrees/`, cut at b3872b4. Evidence levels as the repository defines them: 1 the line resolves, 2 an independent reader would say the same, 3 made to happen.
+Run `2026-09-27-approval-channel`, coordinator Fable 5.1, branch `entrust-approval-channel` in a worktree under `.claude/worktrees/`, cut at c828b7f. Evidence levels as the repository defines them: 1 the line resolves, 2 an independent reader would say the same, 3 made to happen.
 
 ## The question
 

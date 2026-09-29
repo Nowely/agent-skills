@@ -22,14 +22,14 @@
   "new": "The outside-repository write boundary below\ntherefore describes this checkout, not that published revision.",
   "claims": [
    {
-    "name": "G4 version boundary: the write boundary below is this checkout's, not 8c041b7's",
+    "name": "G4 version boundary: the write boundary below is this checkout's, not 21a225b's",
     "pattern": "The outside-repository write boundary below therefore describes this checkout, not that published revision\\.",
-    "asks": "The outside-repository write boundary stated in the section below is what this checkout does, not what the published revision 8c041b7 did, whose rewrite page worked in a run directory inside the document's repository."
+    "asks": "The outside-repository write boundary stated in the section below is what this checkout does, not what the published revision 21a225b did, whose rewrite page worked in a run directory inside the document's repository."
    }
   ],
   "check": {
    "level": 2,
-   "run": "git -C ~/Git/agent-skills show 8c041b7:plugins/terse/skills/rewrite/SKILL.md | sed -n '66,67p'; sed -n '66,67p' ~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md; sed -n '44p' ~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md",
+   "run": "git -C ~/Git/agent-skills show 21a225b:plugins/terse/skills/rewrite/SKILL.md | sed -n '66,67p'; sed -n '66,67p' ~/Git/agent-skills/plugins/terse/skills/rewrite/SKILL.md; sed -n '44p' ~/Git/agent-skills/plugins/terse/skills/audit/SKILL.md",
    "expect": "Work in a run directory of the document's own — `research/<date>-<slug>/` at the root of the\\s+repository that holds the document[\\s\\S]*Work in a run directory of the document's own, outside the repository that holds it[\\s\\S]*Write nothing into the audited repository\\."
   }
  },

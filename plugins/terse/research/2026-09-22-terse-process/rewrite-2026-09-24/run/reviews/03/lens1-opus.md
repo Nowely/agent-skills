@@ -4,7 +4,7 @@
 - **Standard:** level 2, an independent reader of the code would state the same thing; level 3, the behaviour made to happen, wherever it could be run without cost or risk.
 - **Repository not modified:** `git -C ~/Git/agent-skills status --porcelain` before the first command and after the last one, identical: ` M research/2026-09-22-terse-process/rounds.md` and `?? research/2026-09-22-terse-process/rewrite-2026-09-24/run/code-defects.md`, both already there before I started.
 - **Where host-application commands ran:** only under `$W` = `$TMPDIR/lens1-opus-r3`, through `$W/iso.sh`: `env -i`, with `HOME` and `CLAUDE_CONFIG_DIR` inside `$W/<iso>/`, and telemetry and non-essential traffic turned off. Never signed in, no credentials copied, no `--dangerously-skip-permissions`; `claude` 2.1.280.
-  - `iso1`: the README's own commands, against GitHub `Nowely/agent-skills` (main `8c041b7`, terse 0.1.1).
+  - `iso1`: the README's own commands, against GitHub `Nowely/agent-skills` (main `21a225b`, terse 0.1.1).
   - `iso2`, `iso2-keep`, `iso3`, `iso4`: a local marketplace from `$W/repo-head`, a clone of `0dc7cf6`. For the update test, the version was bumped in the clone and nowhere else.
   - `iso-nogit`: a `PATH` holding only `claude` and `node`.
   - Print-mode runs went to a local stub (`node $W/stub.mjs <port> <logdir>`, with `ANTHROPIC_BASE_URL=http://127.0.0.1:<port>` and a dummy key). The stub logs each request and answers "ok", so no model was called.
@@ -143,6 +143,6 @@ The plugin's own rule (`audit/references/truth-pass.md:23-25`) requires level 3 
 - Line 66, "is refused before you see it": the ledger's exit 1 is level 3. That the coordinator fixes the round before the critics see it, and gates it before the user reads it (`rewrite/SKILL.md:144-148, 202-206`), is level 2.
 - Line 67, "nothing in your repository changes until you say so": `audit/SKILL.md:44`; `rewrite/SKILL.md:88-89, 172-173`; `rethink/SKILL.md:46`. The only agent whose working place the pages leave unstated is the audit's task reader, "acting from the documentation alone" (`audit/SKILL.md:111-113`). Rewrite's lens 4, by contrast, says "create it under $TMPDIR" (`rewrite/references/critic-briefs.md:146-147`).
 
-Not counted, because the brief says to judge against HEAD: line 9 installs GitHub main `8c041b7`, which is terse 0.1.1 (`$W/iso1/config/plugins/installed_plugins.json`, `gitCommitSha` 8c041b7…). That release's rewrite page makes its run in "`research/<date>-<slug>/` at the root of the" repository (`git show 8c041b7:plugins/terse/skills/rewrite/SKILL.md`, line 66). Lines 33 and 67 are therefore false of that release.
+Not counted, because the brief says to judge against HEAD: line 9 installs GitHub main `21a225b`, which is terse 0.1.1 (`$W/iso1/config/plugins/installed_plugins.json`, `gitCommitSha` 21a225b…). That release's rewrite page makes its run in "`research/<date>-<slug>/` at the root of the" repository (`git show 21a225b:plugins/terse/skills/rewrite/SKILL.md`, line 66). Lines 33 and 67 are therefore false of that release.
 
 Counts: 42 behaviour sentences checked. By verdict: FALSE 0, OVERSTATED 4 (F1, F3, F7, F9), UNDERSTATED 6 (F2, F4, F5, F6, F8, F10). Claims at level 1 only: 8.

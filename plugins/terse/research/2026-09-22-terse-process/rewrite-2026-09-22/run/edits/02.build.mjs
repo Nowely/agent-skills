@@ -73,10 +73,10 @@ edits.push({ name: "G4 move 1/2: Where it writes leaves its place before Install
   edits.push({
     name: "G4 move 2/2: Where it writes follows Install; the version boundary points below",
     old, new: `${moved}\n\n## Where it writes\n\n${body}`,
-    claims: [{ name: "G4 version boundary: the write boundary below is this checkout's, not 8c041b7's", pattern: pin(moved),
-      asks: "The outside-repository write boundary stated in the section below is what this checkout does, not what the published revision 8c041b7 did, whose rewrite page worked in a run directory inside the document's repository." }],
+    claims: [{ name: "G4 version boundary: the write boundary below is this checkout's, not 21a225b's", pattern: pin(moved),
+      asks: "The outside-repository write boundary stated in the section below is what this checkout does, not what the published revision 21a225b did, whose rewrite page worked in a run directory inside the document's repository." }],
     check: { level: 2,
-      run: `git -C ${REPO} show 8c041b7:plugins/terse/skills/rewrite/SKILL.md | sed -n '66,67p'; ${sed("66,67p", `${SK}/rewrite/SKILL.md`)}; ${sed("44p", `${SK}/audit/SKILL.md`)}`,
+      run: `git -C ${REPO} show 21a225b:plugins/terse/skills/rewrite/SKILL.md | sed -n '66,67p'; ${sed("66,67p", `${SK}/rewrite/SKILL.md`)}; ${sed("44p", `${SK}/audit/SKILL.md`)}`,
       expect: esc("Work in a run directory of the document's own — `research/<date>-<slug>/` at the root of the") + "\\s+repository that holds the document"
         + "[\\s\\S]*" + esc("Work in a run directory of the document's own, outside the repository that holds it")
         + "[\\s\\S]*" + esc("Write nothing into the audited repository.") } });

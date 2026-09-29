@@ -78,32 +78,32 @@ into a run.
 
 ### F5: 73-75, UNDERSTATED (level 3 for a and c, level 2 for b)
 
-> At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `8c041b7`, whose
+> At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `21a225b`, whose
 > rewrite page wrote into the document repository without asking. The section below describes this
 > commit, not that one.
 
 (a) This is still true, not only at the audit. On 2026-09-23 a fresh isolated install resolves
-`8c041b7`:
+`21a225b`:
 
 ```
 T2=$(mktemp -d); export CLAUDE_CONFIG_DIR=$T2/cfg
 claude plugin marketplace add Nowely/agent-skills    # exit 0
 claude plugin install terse@nowely                   # exit 0
 grep gitCommitSha $T2/cfg/plugins/installed_plugins.json
-#   "gitCommitSha": "8c041b76d7f30196441285d77985b81ae9c9e59f"
+#   "gitCommitSha": "21a225b12f15221f978492718ecdc00eb7ea5924"
 ```
 
-`git -C ~/Git/agent-skills log -1 --format='%H %cI' origin/main` gives `8c041b7…`,
+`git -C ~/Git/agent-skills log -1 --format='%H %cI' origin/main` gives `21a225b…`,
 committed 2026-09-18. Both commits declare version `0.1.1`.
 
 (b) The difference reaches past "the section below" and past the rewrite page.
-`git diff --stat 8c041b7 2f29a8f -- plugins/terse` shows 10 files, +487/−50:
+`git diff --stat 21a225b 2f29a8f -- plugins/terse` shows 10 files, +487/−50:
 
 - `audit/SKILL.md`, `ledgers.md`, `rewrite/SKILL.md`, `critic-briefs.md`, `loop.md`,
   `measurements.md`, `round.mjs` and `selftest.mjs` all change.
-- `ledger-seed.mjs` does not exist at `8c041b7`:
-  `git ls-tree -r --name-only 8c041b7 -- plugins/terse/skills/audit/scripts` prints nothing.
-- `git show 8c041b7:plugins/terse/skills/rewrite/SKILL.md | sed -n '90,94p'` gives "`ledger.json`
+- `ledger-seed.mjs` does not exist at `21a225b`:
+  `git ls-tree -r --name-only 21a225b -- plugins/terse/skills/audit/scripts` prints nothing.
+- `git show 21a225b:plugins/terse/skills/rewrite/SKILL.md | sed -n '90,94p'` gives "`ledger.json`
   starts empty and grows from the rounds", and a check `{"level", "how"}` that nothing runs.
 
 So for the plugin these install commands deliver:
@@ -117,7 +117,7 @@ So for the plugin these install commands deliver:
 itself gives. Stub runs, each `claude -p "/terse:audit" --max-turns 1` with the working directory set
 to `$T/doc-a`, exit 1 after the stub's 400:
 
-- `8c041b7` (local marketplace from `git archive 8c041b7`, config `$T/cfg3`): the body sent carries
+- `21a225b` (local marketplace from `git archive 21a225b`, config `$T/cfg3`): the body sent carries
   `RUN="${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)"` unsubstituted, and
   no `$T/cfg3/plugins/data/terse-nowely` is created.
 - `2f29a8f` (config `$T/cfg2`): the body carries
@@ -133,7 +133,7 @@ A reader who follows Install therefore gets:
 
 - `audit` runs under `${TMPDIR:-/tmp}/terse`;
 - `rewrite` runs under `research/<date>-<slug>/` in the document's own repository
-  (`8c041b7` rewrite:66-67), with code defects sent to its `ISSUES.md` (:112-113).
+  (`21a225b` rewrite:66-67), with code defects sent to its `ISSUES.md` (:112-113).
 
 Line 80-81 is true of `2f29a8f` once installed (level 3, "Held at level 3" below) and is scoped by line
 75. I charge the gap to lines 74-75, not to lines 80-81.
@@ -256,7 +256,7 @@ Read, all in whole:
 - in `research/2026-09-10-chain/`: `README.md`, `chain-source-prompt.txt`, `chain/validation.json`,
   `run-2x5/index.json`, 7 `run-2x5` prompts and 2 answers (J1, J2);
 - `research/README.md`;
-- 8c041b7's audit and rewrite pages, through `git show` and `git diff`;
+- 21a225b's audit and rewrite pages, through `git show` and `git diff`;
 - Claude Code 2.1.280, through `strings`.
 
 Ran, with exit codes:
@@ -270,7 +270,7 @@ Ran, with exit codes:
 | `wc -w` | 5 files |
 | McNemar, in node | p = 0.25 |
 | isolated-config CLI | 20 commands: marketplace add ×3, install ×8, uninstall ×4, marketplace remove ×2, list ×2, details ×1, all exit 0 |
-| stub skill runs | 5, each exit 1 as intended: audit ×2 on 2f29a8f (the first, with an API key, said "Not logged in"; a bearer token then reached the stub), rethink ×1, rewrite ×1, audit ×1 on 8c041b7 |
+| stub skill runs | 5, each exit 1 as intended: audit ×2 on 2f29a8f (the first, with an API key, said "Not logged in"; a bearer token then reached the stub), rethink ×1, rewrite ×1, audit ×1 on 21a225b |
 
 A repository-wide grep for `6/6|3/6` printed a few lines from
 `research/2026-09-22-terse-process/rewrite-2026-09-22/run/{edits/,reviews/02/,grafts.md}`, the
@@ -280,10 +280,10 @@ repository's copy of this run's records. I opened none of those files and nothin
 
 - No skill ran on a live model, because that costs tokens. So "the coordinator runs the rendered line
   as written" is level 2. I ran the rendered line myself.
-- The Bash environment of a live plugin-skill session was not observed. The 8c041b7 fallback and P5
+- The Bash environment of a live plugin-skill session was not observed. The 21a225b fallback and P5
   rest on the binary's code and the CHANGELOG.
 - Interactive `/plugin` commands were not run.
 - The 6/6 after-readers: their absence rests on a search, and their numbers cannot be checked.
 - `/tmp/bakeoff/dossier.txt` is not kept, so "model names stripped" rests on the judges' prompts.
-- Main at 8c041b7 was observed on 2026-09-23 against a commit dated 2026-09-18, not observed on
+- Main at 21a225b was observed on 2026-09-23 against a commit dated 2026-09-18, not observed on
   2026-09-22 itself.

@@ -50,7 +50,7 @@ Grep over all root `*.jsonl` of `-Users-user-Git-agent-skills` and `-Users-user-
 
 ### 0.3 Repository files read
 
-`plugins/entrust/skills/orchestrate/SKILL.md` (152 lines, at `dff2f0b`) · `plugins/entrust/skills/codex/SKILL.md` (315 lines, length only) ·
+`plugins/entrust/skills/orchestrate/SKILL.md` (152 lines, at `e4d98b6`) · `plugins/entrust/skills/codex/SKILL.md` (315 lines, length only) ·
 `plugins/entrust/CHANGELOG.md` (grep for `measured`, 40 hits) ·
 `research/README.md` · `research/2026-09-12-issues-verification/{rounds.md, seat-returns/codex-seats.md, seat-returns/claude-seats.md}` ·
 `research/2026-09-11-markup-round-0/{rounds.md, reviews/07/*, reviews/08/*}` (11 + 3 files listed, `fable-dedup-and-rank.md` read) ·
@@ -74,7 +74,7 @@ counts and the category table used for the TaskOutput and context figures below.
 ## 1. Ledger of coordinator incidents
 
 Abbreviations: **b1**=`b1e2a3a5`, **30a**=`30a03d40`, **426**=`42691a3b`, **308**=`30805d36`.
-"Page then" = the orchestrate page version actually in force during the run; "page now" = line at `dff2f0b`.
+"Page then" = the orchestrate page version actually in force during the run; "page now" = line at `e4d98b6`.
 
 | id | run / date | stage | tags | what happened | trace | consequence & cost | page then | page now | severity | conf |
 |---|---|---|---|---|---|---|---|---|---|---|

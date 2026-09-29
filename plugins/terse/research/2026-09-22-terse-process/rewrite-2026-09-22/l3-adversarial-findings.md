@@ -8,7 +8,7 @@ Four findings: three CONFIRMED, one PLAUSIBLE. These are additions to the earlie
 
 **README:** 35–36, 43–49. **Lenses:** A, C, E. **Ledger relationship:** ADDS TO C18/C19; distinguishes the now-superseded checkout allegations C15/C16 from the still-published instructions. The earlier pass installed a local checkout and expressly did not fetch the GitHub source. This finding is about what the actual published install commands delivered.
 
-The exact two shell commands fetched `main` at `8c041b76d7f30196441285d77985b81ae9c9e59f` and installed terse 0.1.1. That installed rewrite page tells the agent to create `research/<date>-<slug>/` inside the document's repository and route a code defect to the repository's `ISSUES.md`. The permission boundary is stated only for applying the candidate. The reviewed checkout instead requires an external run directory and permission before putting a code defect into `ISSUES.md`. Both payloads still identify themselves as 0.1.1. A reader obeying Install gets the older recipe while relying on “Applying anything to your files needs your word.” The local repair therefore does not settle the README's promise for its advertised installation route.
+The exact two shell commands fetched `main` at `21a225b12f15221f978492718ecdc00eb7ea5924` and installed terse 0.1.1. That installed rewrite page tells the agent to create `research/<date>-<slug>/` inside the document's repository and route a code defect to the repository's `ISSUES.md`. The permission boundary is stated only for applying the candidate. The reviewed checkout instead requires an external run directory and permission before putting a code defect into `ISSUES.md`. Both payloads still identify themselves as 0.1.1. A reader obeying Install gets the older recipe while relying on “Applying anything to your files needs your word.” The local repair therefore does not settle the README's promise for its advertised installation route.
 
 This confirms the fetched payload and its instructions, not that a model performed the unapproved writes. No rewrite model run was made.
 
@@ -27,7 +27,7 @@ git -C "$CLAUDE_CONFIG_DIR/plugins/marketplaces/nowely" rev-parse HEAD
 nl -ba "$CLAUDE_CONFIG_DIR/plugins/cache/nowely/terse/0.1.1/skills/rewrite/SKILL.md" | sed -n '64,68p;110,114p;146,150p'
 ```
 
-**Observed output:** both install commands started and exited 0. Marketplace add printed `SSH not configured, cloning via HTTPS: https://github.com/Nowely/agent-skills.git`, `Clone complete, validating marketplace`, and `Successfully added marketplace: nowely (declared in user settings)`. Install printed `Successfully installed plugin: terse@nowely (scope: user)`. List returned one enabled plugin, `terse@nowely`, version `0.1.1`. The marketplace HEAD was `8c041b76d7f30196441285d77985b81ae9c9e59f`.
+**Observed output:** both install commands started and exited 0. Marketplace add printed `SSH not configured, cloning via HTTPS: https://github.com/Nowely/agent-skills.git`, `Clone complete, validating marketplace`, and `Successfully added marketplace: nowely (declared in user settings)`. Install printed `Successfully installed plugin: terse@nowely (scope: user)`. List returned one enabled plugin, `terse@nowely`, version `0.1.1`. The marketplace HEAD was `21a225b12f15221f978492718ecdc00eb7ea5924`.
 
 Installed `skills/rewrite/SKILL.md`:
 
@@ -40,9 +40,9 @@ Installed `skills/rewrite/SKILL.md`:
 150 the candidate to the user's files needs their word, and a diff they have read is what earns it.
 ```
 
-**Checkout comparison:** `plugins/terse/skills/rewrite/SKILL.md:66–76` requires the external run directory; lines 149–151 require permission before writing `ISSUES.md`. `git log -7 --oneline` identifies the intervening repair as `ef69fdf`. `git ls-remote https://github.com/Nowely/agent-skills.git HEAD refs/heads/main refs/heads/terse-process-2026-09-22` started and exited 0, returning the same `8c041b7…` for HEAD/main and no matching branch line. This is a dated observation; future remote state is unknown.
+**Checkout comparison:** `plugins/terse/skills/rewrite/SKILL.md:66–76` requires the external run directory; lines 149–151 require permission before writing `ISSUES.md`. `git log -7 --oneline` identifies the intervening repair as `ef69fdf`. `git ls-remote https://github.com/Nowely/agent-skills.git HEAD refs/heads/main refs/heads/terse-process-2026-09-22` started and exited 0, returning the same `21a225b…` for HEAD/main and no matching branch line. This is a dated observation; future remote state is unknown.
 
-Fetched source: <https://github.com/Nowely/agent-skills.git>; pinned source for the inspected payload: <https://github.com/Nowely/agent-skills/blob/8c041b76d7f30196441285d77985b81ae9c9e59f/plugins/terse/skills/rewrite/SKILL.md>. Raw observations are retained in `remote-install.json`, `remote-probe.json`, and `remote-payload.json` beside this report; the actual installed payload is under `remote-config/plugins/cache/nowely/terse/0.1.1/`.
+Fetched source: <https://github.com/Nowely/agent-skills.git>; pinned source for the inspected payload: <https://github.com/Nowely/agent-skills/blob/21a225b12f15221f978492718ecdc00eb7ea5924/plugins/terse/skills/rewrite/SKILL.md>. Raw observations are retained in `remote-install.json`, `remote-probe.json`, and `remote-payload.json` beside this report; the actual installed payload is under `remote-config/plugins/cache/nowely/terse/0.1.1/`.
 
 ## F2 — CONFIRMED — “no account anywhere” hides the host authentication prerequisite
 
@@ -135,7 +135,7 @@ No additional pair of README sentences that cannot both be true was established.
 ## E — what a new reader still cannot answer reliably
 
 - **CONFIRMED omission, F2 / C20:** What host authentication or provider access is assumed before the two installation commands are enough to use terse? Check: README 47–49 versus the isolated pre-run refusal.
-- **CONFIRMED omission, F1 / C18/C19:** Which revision does Install deliver, and does that revision honor the described approval boundary? Check: the fetched `8c041b7…` payload versus the `ed7335f…` checkout and README 35–36, 43–49.
+- **CONFIRMED omission, F1 / C18/C19:** Which revision does Install deliver, and does that revision honor the described approval boundary? Check: the fetched `21a225b…` payload versus the `ed7335f…` checkout and README 35–36, 43–49.
 - **CONFIRMED omission, F3 / C02:** Do the documentation's external-tool recipes enter the promised truth ledger? Check: README 4–5 versus `truth-pass.md:69–71`.
 - **PLAUSIBLE workflow gap, F4 / C05/C15:** How is a temporary candidate re-audited before applying it, with the same entry point and functioning relative links? Check: README 10–12, 35–36, the candidate-link probe, and `measure.md:49,108`.
 
@@ -145,7 +145,7 @@ No additional pair of README sentences that cannot both be true was established.
 - Fourteen isolated Claude CLI invocations: 12 exited 0 and two exited 1. They comprise version (1), help (4), auth status (1), unauthenticated bare prompt (1), local manifest validation (1), marketplace adds (2), plugin installs (2), and plugin lists (2). The two nonzero commands are recorded below. The shell install forms were executed; the slash-command UI forms were not.
 - `node ~/Git/agent-skills/plugins/terse/skills/rewrite/scripts/selftest.mjs` ran once with Node `v24.11.0`: exit 0, **45 `ok` checks, zero `MISS` checks**, final line `all checks caught their planted violation`. The count was computed from this run's saved stdout. This establishes only those planted mechanical checks, not a successful model workflow. Output: `selftest.stdout`, `selftest.stderr`.
 - One installed-script invocation with Node absent from PATH started and exited 127. That duplicates C20/C21's dependency finding and is not a new finding here.
-- `git ls-remote` made one read-only request to `https://github.com/Nowely/agent-skills.git`: exit 0, two refs returned (HEAD and main), both `8c041b7…`. The installed marketplace's `git rev-parse HEAD` independently returned that hash. No web search was used.
+- `git ls-remote` made one read-only request to `https://github.com/Nowely/agent-skills.git`: exit 0, two refs returned (HEAD and main), both `21a225b…`. The installed marketplace's `git rev-parse HEAD` independently returned that hash. No web search was used.
 - Candidate experiment: two resolutions of one relative link, one existing in the original context and one absent in the candidate context. No reader model was run.
 - Prior-ledger scan: 46 prose claim IDs, 46 unique. `git diff 1a24018 ed7335f -- plugins/terse/README.md` was empty.
 - `git ls-files 'plugins/terse/skills/*/scripts/*.mjs'` returned **seven**, not the eight stated in the assignment. A hidden/unignored file scan also returned seven. The identity of an eighth script is unknown; this discrepancy is not a README finding.

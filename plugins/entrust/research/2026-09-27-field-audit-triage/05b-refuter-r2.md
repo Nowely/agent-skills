@@ -36,7 +36,7 @@ Q5 | upheld | - | The critic receives request, answer and evidence; no contract-
 
 ## evidence
 
-- Repository: `git rev-parse --short HEAD` exit 0 → 882bcf3. Read `plugins/entrust/plugin/skills/orchestrate/SKILL.md` (155 lines), `references/roles.md` (26 lines), `references/foreman.md`, both issue files and `03-split.md`; reads exit 0. The cited main-tree addresses below resolved.
+- Repository: `git rev-parse --short HEAD` exit 0 → 1bbab5b. Read `plugins/entrust/plugin/skills/orchestrate/SKILL.md` (155 lines), `references/roles.md` (26 lines), `references/foreman.md`, both issue files and `03-split.md`; reads exit 0. The cited main-tree addresses below resolved.
 - F3: `orchestrate/SKILL.md:24,53,87,90–95,123` and `evals/orchestrate.test.mjs:267–278,516–530` read, exit 0; one-agent bound and critic pin confirmed.
 - F4/P8b/P8c: `orchestrate/SKILL.md:123` and `roles.md:26` read, exit 0; final-answer timing and verdict text confirmed. `rg -n -i 'digest|invalidat'` on orchestration pages yielded 0 matches (exit 1).
 - F5/P8d: `roles.md:18,25` read, exit 0; the exact line is “attacks one claim; `refuted` when uncertain.” `orchestrate/SKILL.md:119` retains the uncertainty default. This existing one-claim rule changes F5 from still-true to partial.

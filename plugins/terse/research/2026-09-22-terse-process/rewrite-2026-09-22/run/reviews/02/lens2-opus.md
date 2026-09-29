@@ -1,7 +1,7 @@
 # Lens 2: mechanical rules, water, duplication and contradiction, round 02 (`02-grafts.md`)
 
 Critic: Claude Opus 5.5 (1M), 2026-09-23. Document: `$R/02-grafts.md` (114 lines, 65 sentences, 986 words by
-`sections.mjs`). SHA-256 `66cc182c5836688f8994ad59ed6c927a0ea27b730a2072ad66db4c9d2411fec7` at the end of the review. Its size and mtime
+`sections.mjs`). SHA-256 `c4df2689f4a74f037177ca3a30be5f489a57cd215b455fd41177db31971a9946` at the end of the review. Its size and mtime
 (6410 bytes, Sep 23 11:54) were the same at the start. Line numbers are `cat -n` lines of that file. Facts were not checked against code. Not
 read, per critic-briefs.md:18-19: `rounds.md`, `ledger.json`, `ledger.02.json`, `reviews/`; nor `grafts.md`
 or `edits/`.
@@ -253,7 +253,7 @@ within a section are water items W1, W5 and W7 and the skipped pair at L98 and L
 - L73-75: "The `audit` instructions create the run under the plugin data directory when installed, ... The
   `rewrite` instructions create their run there too." L76-77: "... applying the candidate to your
   document, requires your word."
-- L66-68: "At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `8c041b7`,
+- L66-68: "At the 2026-09-22 audit, the install commands resolved the marketplace's `main` at `21a225b`,
   whose rewrite page still wrote into the document repository without asking."
 
 A reader who types the commands at L58-64 gets the revision that L67-68 describes, and for that revision
@@ -364,7 +364,7 @@ which matched 30 lines. No sentence elsewhere on the page says these can happen:
 ## Open
 
 - Facts were not checked against code, because that is lens 1's job. This covers which set of numbers in
-  X1 is right, and whether `${TMPDIR:-/tmp}/terse`, `2f29a8f` and `8c041b7` are correct.
+  X1 is right, and whether `${TMPDIR:-/tmp}/terse`, `2f29a8f` and `21a225b` are correct.
 - The ledger was not read, by design, so I cannot say whether a water cut removes a pinned sentence. W2 and
   W5 touch sentences that a correction may have pinned. Run ledger.mjs on any round that applies them.
 - The content rules in stages.md were not applied, because no skeleton on this route adopts them. Rule 10

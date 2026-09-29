@@ -206,7 +206,7 @@ Claim: inside Claude Code, `/plugin marketplace add Nowely/agent-skills` then `/
 
 Sources: .claude-plugin/marketplace.json:1-27; plugins/terse/.claude-plugin/plugin.json:1-10.
 
-Level: 2. Verdict: confirmed — the marketplace is named `nowely` and lists `terse` at `./plugins/terse` (marketplace.json:2, 18-25); `origin` is github.com/Nowely/agent-skills and `origin/main` (8c041b7) lists terse 0.1.1; `claude plugin validate` passed on both manifests; with the checkout's path in place of `Nowely/agent-skills`, the shell form added `nowely` and installed `terse@nowely` 0.1.1 into an isolated config (exit 0 each). The GitHub fetch and the slash form were not run, so the sentence as written stays at level 2.
+Level: 2. Verdict: confirmed — the marketplace is named `nowely` and lists `terse` at `./plugins/terse` (marketplace.json:2, 18-25); `origin` is github.com/Nowely/agent-skills and `origin/main` (21a225b) lists terse 0.1.1; `claude plugin validate` passed on both manifests; with the checkout's path in place of `Nowely/agent-skills`, the shell form added `nowely` and installed `terse@nowely` 0.1.1 into an isolated config (exit 0 each). The GitHub fetch and the slash form were not run, so the sentence as written stays at level 2.
 
 ### C19 — README.md:47
 

@@ -28,8 +28,8 @@ Q7b | upheld | - | The framework already expects a single-agent comparator (expe
 
 evidence:
 all rows:
-- `git -C <tree> rev-parse --short HEAD` exit 0: 882bcf3.
-- `git -C <tree> diff -M entrust@0.20.0 882bcf3 -- <orchestrate SKILL.md, roles.md, codex SKILL.md, codex-agent.md, experiment/>` exit 0. The plan section (34-44) changed only `gpt-6-astra` to `Astra`. roles.md gained only the foreman row and short model names. The codex page's "What the user reads" changed only "never `gpt-5.6-sol`" to "never the slug the report carries". experiment changed its load line, arms wording and run-directory text (level 1).
+- `git -C <tree> rev-parse --short HEAD` exit 0: 1bbab5b.
+- `git -C <tree> diff -M entrust@0.20.0 1bbab5b -- <orchestrate SKILL.md, roles.md, codex SKILL.md, codex-agent.md, experiment/>` exit 0. The plan section (34-44) changed only `gpt-6-astra` to `Astra`. roles.md gained only the foreman row and short model names. The codex page's "What the user reads" changed only "never `gpt-5.6-sol`" to "never the slug the report carries". experiment changed its load line, arms wording and run-directory text (level 1).
 - `node plugins/entrust/plugin/skills/codex/scripts/agent-run.mjs --help` exit 0, 57 lines; `node .../driver.mjs --help` exit 0, 161 lines; `node plugins/entrust/evals/orchestrate.test.mjs` exit 0, "all 70 passed"; `grep -c '^test('` exit 0, 70; `grep -cE 'says\(|shows\('` exit 0, 59. S2's counts reproduce.
 - `ls plugins/entrust/plugin/` exit 0: LICENSE README.md agents package.json skills. No hooks directory.
 - plugins/entrust/ISSUES.md:9 "No open entries".
@@ -94,7 +94,7 @@ $TMPDIR/r3-driver-help.sTL4Mr
 $TMPDIR/r3-orch-eval.CjgOYm
 
 open:
-- F13, P12a, M1: orchestrate-live.test.mjs was not run (paid gate), so whether its 5 cases pass at 882bcf3 is unknown.
+- F13, P12a, M1: orchestrate-live.test.mjs was not run (paid gate), so whether its 5 cases pass at 1bbab5b is unknown.
 - F14, F20a: the foreman sentences are partial by text only (level 1); no live foreman run was observed.
 - M1: that the launcher's early return stops the relay's tail and poll behaviour (F8) is level 2, a hypothesis about the T6/T7 trigger.
 - P13b: whether any Claude Code hook can intercept assistant text before display cannot be checked in the tree.

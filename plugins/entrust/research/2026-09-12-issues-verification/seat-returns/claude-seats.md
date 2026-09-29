@@ -26,8 +26,8 @@ README; C3 calls an extended-help block "--help".
 
 Tally: five HOLD (C4, C5, C6, C7, C9), four MOVED (C1, C2, C3, C8), none FIXED, WEAKENED or FAILS.
 
-Root cause of the drift, proven by blob: the ledger was written against commit a0f7ee8; the wrapper commit
-312e2df shifted seat/SKILL.md by about 44 lines and the ledger was never rebased. All four MOVED entries are that
+Root cause of the drift, proven by blob: the ledger was written against commit 173975c; the wrapper commit
+d290977 shifted seat/SKILL.md by about 44 lines and the ledger was never rebased. All four MOVED entries are that
 one shift.
 
 Re-measured today on this tree: C2 (a seeded report and a seeded answer produced no row and both files survived);

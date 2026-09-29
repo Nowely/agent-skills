@@ -74,7 +74,7 @@ The same two steps from a shell: `claude plugin marketplace add Nowely/agent-ski
 This README describes commit `2f29a8f`. To install that commit, run
 `claude plugin marketplace add` with the path of a local clone checked out at it in place of
 `Nowely/agent-skills`, then `claude plugin install terse@nowely`.
-On 2026-09-22 the install commands with `Nowely/agent-skills` resolved to `8c041b7`, whose audit and
+On 2026-09-22 the install commands with `Nowely/agent-skills` resolved to `21a225b`, whose audit and
 rewrite pages differ from the ones described here; its rewrite page wrote into the document repository
 without asking.
 

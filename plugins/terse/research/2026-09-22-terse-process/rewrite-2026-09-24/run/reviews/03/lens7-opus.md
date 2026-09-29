@@ -18,7 +18,7 @@ A bare `Lnn` is a line of the document.
 
 **Calibration, and how each change is dated**
 - Calibration: `owner-readme-words.md` and the verdict in `purpose.md:24–28`.
-- The rejected round: `R/04-terms-rejected.md` does not exist. I read `.../runs/20260923-212113-terse-readme-rethink/04-terms-rejected.md` instead. Its SHA-256 (`34cc4cb0…`) matches `research/2026-09-22-terse-process/rethink-2026-09-23/04-terms-rejected.md`.
+- The rejected round: `R/04-terms-rejected.md` does not exist. I read `.../runs/20260923-212113-terse-readme-rethink/04-terms-rejected.md` instead. Its SHA-256 (`d3f681d9…`) matches `research/2026-09-22-terse-process/rethink-2026-09-23/04-terms-rejected.md`.
 - Each change is dated with `diff 02-grafts.md 03-routes.md` and with `01-candidate.md`.
 - Not opened: `R/reviews/` apart from this file, `rounds.md`, `ledger*.json`, `edits/`, and the reports of the verifier, critics, judges and writers.
 

@@ -10,7 +10,7 @@ R03a register: HOLDS — opened 04-terms.md:19-58, audit/SKILL.md:1-19,84-116,16
 Other sixteen claims: HOLDS unchanged — their edit objects are identical to the retained second-read build; canonical SHA-256 for both sixteen-object arrays is 44209d9e8ebb2ff2c401700d0d0587b9d13fbaf9e0defb1a3d316301d8128cf9.
 
 evidence:
-- 04-terms.md SHA-256: 34cc4cb0c62b799c12b7ff8ea8e637fcc6393a05fcb798976d8ca03d1da0efa5; command exited 0.
+- 04-terms.md SHA-256: d3f681d9817f4149e9b26cfd00e458791a88c4b1fc613a63cf5247fbc3812400; command exited 0.
 - Current edits/04.json parsed as 17 edits and 17 claims; exit 0.
 - Comparison with $TMPDIR/04.third-build.json: changed indices [0], 16 other objects identical, 0 other changes; exit 0.
 - Current ledger contains exactly one R03a entry with asks, run, expect, and saw; exit 0.

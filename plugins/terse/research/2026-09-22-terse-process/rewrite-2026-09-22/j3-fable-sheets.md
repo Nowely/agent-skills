@@ -8,7 +8,7 @@ everything else is a repository path at 2f29a8f.
 
 ## Ruling on the point the sheet leaves to the judge
 
-Question: is a sentence that is true of the checkout at 2f29a8f and false of what `main` (8c041b7) installs today
+Question: is a sentence that is true of the checkout at 2f29a8f and false of what `main` (21a225b) installs today
 a "new false claim" (row 1), or a release-timing matter outside that row?
 
 Ruling: outside the row. Reasons, each with its line:
@@ -23,7 +23,7 @@ Ruling: outside the row. Reasons, each with its line:
    states the plugin as it is on this branch and the release makes it true, or says which version it describes"
    (what-broke.md:47).
 4. The opposite ruling would veto all three candidates alike (each describes the branch's outside-repository
-   run directory, which 8c041b7's rewrite page does not have: `git show 8c041b7:plugins/terse/skills/rewrite/SKILL.md`
+   run directory, which 21a225b's rewrite page does not have: `git show 21a225b:plugins/terse/skills/rewrite/SKILL.md`
    lines 66–67 "research/<date>-<slug>/ at the root of the repository", 112–113 "a code defect to the
    repository's ISSUES.md"), which would make the row measure the release calendar, not the text.
 
@@ -31,8 +31,8 @@ Applied the same way to all three: no candidate is vetoed for describing 2f29a8f
 naming the version, is scored under row 3 (failures repaired) as the one textual repair, and only B has a line
 for it (B:73-76).
 
-What I verified about `main`: `git branch --list main` exists locally; `git log -1 main` = 8c041b7 ("Release
-0.20.0 …"); `git log -1 origin/main` = 8c041b7; 8c041b7's plugin.json version is "0.1.1". The GitHub fetch the
+What I verified about `main`: `git branch --list main` exists locally; `git log -1 main` = 21a225b ("Release
+0.20.0 …"); `git log -1 origin/main` = 21a225b; 21a225b's plugin.json version is "0.1.1". The GitHub fetch the
 install commands perform was not run by me (no network in my remit) nor by the truth pass (ledger C18: "The
 GitHub fetch and the slash form were not run"); Astra's finding (what-broke.md:47) is the only run-backed source.
 
@@ -277,11 +277,11 @@ GitHub fetch and the slash form were not run"); Astra's finding (what-broke.md:4
 31. B:66-71 install commands — the four strings verbatim.
 32. B:73 this page describes commit 2f29a8f on branch terse-process-2026-09-22 — true at judging (tree
     verified identical); self-dating, goes stale at the next change of the pages.
-33. B:73-74 at the 2026-09-22 audit the install commands resolved the marketplace's main at 8c041b7 — main and
-    origin/main are 8c041b7 (git log, L1); the fetch itself: what-broke.md:47 (Astra, CONFIRMED); the truth
+33. B:73-74 at the 2026-09-22 audit the install commands resolved the marketplace's main at 21a225b — main and
+    origin/main are 21a225b (git log, L1); the fetch itself: what-broke.md:47 (Astra, CONFIRMED); the truth
     pass did not fetch (C18). Stated at the level the audit's What broke gives it.
-34. B:74-75 8c041b7's rewrite page wrote into the document repository without asking — `git show
-    8c041b7:plugins/terse/skills/rewrite/SKILL.md` 66-67 (run directory in the repository), 112-113 (ISSUES.md)
+34. B:74-75 21a225b's rewrite page wrote into the document repository without asking — `git show
+    21a225b:plugins/terse/skills/rewrite/SKILL.md` 66-67 (run directory in the repository), 112-113 (ISSUES.md)
     (L2).
 35. B:75-76 the boundary above describes this checkout, not that revision — follows from 24-27 and 34.
 36. B:80-82 not a compressor; length does not select; budgets are reports; figure dated — C23, C24.

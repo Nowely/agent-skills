@@ -1,6 +1,6 @@
 # Triage, handover, the healing loop, the survey: design v2 for `terse`
 
-Fable A2, 2026-09-22. Read-only; the repository at `9bd160d` was not touched (`git diff --stat 8c041b7
+Fable A2, 2026-09-22. Read-only; the repository at `9bd160d` was not touched (`git diff --stat 21a225b
 HEAD -- plugins/terse` is empty: the plugin pages are the ones P1 mapped). Inputs read whole:
 `a1-design-v1.md` (550 lines), `c1-design-critique.md` (387), `c1-blind-round08.md` (20), `c1-checks.log`
 (43), `k2-completeness.md` (158), `s4-claims.md` (63, Terra S4, under `$TMPDIR`), `h1-survey-harvest.md`
@@ -286,7 +286,7 @@ script gate: a run can answer a narrower question than the sentence.
 and `check.expect` (a regex over its output); `round.mjs` runs it, refuses the round when it fails, and
 writes the output as `check.saw`.** *Refuted by:* a citation that does not exist passing G1. *Evidence:*
 `d1:563-567`; R08-1 and R08-10 carry their refutation in `how` (the items at `d1:285-296`, `:450-460`). Catches alone: 0; it is
-what G2 reads. Note C1's caution (`c1:380`): edit 19's `:2360` example is not reproducible at `b29e921`,
+what G2 reads. Note C1's caution (`c1:380`): edit 19's `:2360` example is not reproducible at `846197c`,
 so the illustration is `one incident` from `d1:526`. *Displaces:* `round.mjs:23-24`; the schema line
 `rewrite/SKILL.md:92-94`.
 
@@ -427,7 +427,7 @@ a desk hypothesis with no run behind it. Eight are forced to a run by a regex wh
 whose run is not. Nothing here says "13 of 25 caught".
 
 **The pre-registered test.** Brief 0 run blind, twice — once on Sol, once on Astra — on `edits/06.json`,
-`07.json`, `08.json` at `b29e921` (`c1:9`), each refusal list frozen by SHA-256 before D1 is opened, then
+`07.json`, `08.json` at `846197c` (`c1:9`), each refusal list frozen by SHA-256 before D1 is opened, then
 scored against D1's 21 items in those rounds by explicit counterexample. Rounds 06 and 07 declare no
 checks, so the verifier's duty (i) is what is measured there. Threshold, stated now: fewer than 11 of 21
 strict on the model chosen for the live verifier — then `caught` collapses to `forced`, G2 becomes a

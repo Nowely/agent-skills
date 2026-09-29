@@ -60,7 +60,7 @@ $ node $S/sections.mjs R/04-terms.md R/budgets.json
 - Editing history (writing-rules.md:12): clean. `grep -n -i -E "previously|used to|moved out of|per PR|on this machine|formerly|no longer|anymore|\bnow\b|\bstill\b|\bsince\b|renamed|originally"` hits only L106 "the code has since changed", which is the rule's own wording.
 - Capitals for emphasis: clean. The all-caps tokens are README (L3, L74, L113), PATH (L62), TMPDIR (L84), ISSUES (L89) and MIT (L130). All are names.
 - Glossary opening: clean.
-- Decisions as greps. (c): L93 has "the plugin's last installation" and there is no `--scope` — clean. (d)/(g): `grep -w -E "main|master|branch|HEAD|trunk|still"` finds nothing; L74 has `2f29a8f`, L77 has 2026-09-22 and `8c041b7`; *Where it writes* opens at L83 with "The `audit` instructions create the run…" — clean. (i): `grep -i -w -E "lies|lie|lied|clarity|confusion|confused|benchmarks?"` finds nothing — clean. (j): "guess" is absent, and L40-41 names the skeleton, the run file and a resumed run — clean. (k): L74-76 is present. (e)/(l): L5-6 is present. (a): see R1.
+- Decisions as greps. (c): L93 has "the plugin's last installation" and there is no `--scope` — clean. (d)/(g): `grep -w -E "main|master|branch|HEAD|trunk|still"` finds nothing; L74 has `2f29a8f`, L77 has 2026-09-22 and `21a225b`; *Where it writes* opens at L83 with "The `audit` instructions create the run…" — clean. (i): `grep -i -w -E "lies|lie|lied|clarity|confusion|confused|benchmarks?"` finds nothing — clean. (j): "guess" is absent, and L40-41 names the skeleton, the run file and a resumed run — clean. (k): L74-76 is present. (e)/(l): L5-6 is present. (a): see R1.
 - Counts (writing-rules.md:25 treats them as a prompt to review, not a gate). Sentences over 30 words: L29 (33), L42 (32), L77 (31), L101 (35), L115 (31). Repeated four-word phrases: only the install command inside *Install* (L71, L75, L76) and "audit and rewrite pages" (L77, L95).
 
 ### Budgets (a report, not a gate — skeleton.md:5-6)
@@ -148,7 +148,7 @@ These repeat in two sections, which is allowed: the chain as one file in four pa
 
 **P1** (level 2) — The install block has no condition. Eight lines later the text says the same commands install a commit that this README does not describe.
 - L64-69: "Inside Claude Code:" / "/plugin marketplace add Nowely/agent-skills" / "/plugin install terse@nowely"
-- L77-78: "On 2026-09-22 the install commands with `Nowely/agent-skills` resolved to `8c041b7`, whose audit and rewrite pages differ from the ones described here"
+- L77-78: "On 2026-09-22 the install commands with `Nowely/agent-skills` resolved to `21a225b`, whose audit and rewrite pages differ from the ones described here"
 
 A reader who copies the block has run it before reaching that sentence. (d), (g) and (k) fix what the text says and which section it is in, not the order inside the section.
 

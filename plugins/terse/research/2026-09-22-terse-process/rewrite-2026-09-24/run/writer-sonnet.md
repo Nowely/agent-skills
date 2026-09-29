@@ -4,7 +4,7 @@ Angle: PATH-FIRST — rebuilt the reader's route (install → prerequisite → f
 
 ## a) Evidence level per behavioural claim
 
-Level 3 (made it happen, this session): the two install commands, run verbatim in an isolated CLAUDE_CONFIG_DIR under $TMPDIR with env -i, never signed in — `claude plugin marketplace add Nowely/agent-skills` → exit 0 (cloned via HTTPS from GitHub); `claude plugin install terse@nowely` → exit 0, installed terse 0.1.1 at commit 8c041b76d7f30196441285d77985b81ae9c9e59f. Scratch dir removed after.
+Level 3 (made it happen, this session): the two install commands, run verbatim in an isolated CLAUDE_CONFIG_DIR under $TMPDIR with env -i, never signed in — `claude plugin marketplace add Nowely/agent-skills` → exit 0 (cloned via HTTPS from GitHub); `claude plugin install terse@nowely` → exit 0, installed terse 0.1.1 at commit 21a225b12f15221f978492718ecdc00eb7ea5924. Scratch dir removed after.
 
 Level 3 (prior executed run, read directly): "You need: Node 22 or newer" for the fact that Node is required at all — research/2026-09-22-terse-process/rewrite-2026-09-22/run/probe-03/install-probe.log: self-test exits 127 with no node on PATH, exits 0 with Node 24.11.0; corroborated by the run's own audit.md C20 (level 3 verdict). The specific floor "22" is level 1 only — package.json's "engines":{"node":">=22"}; no script checks the version and only 24.11.0 was ever run (C21, same file).
 

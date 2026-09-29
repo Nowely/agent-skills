@@ -16,8 +16,8 @@ R03g cuts and behavioural claims: HOLDS — opened rewrite/SKILL.md:44-47,107-11
 R04b shipped ratchet: HOLDS — opened ledger.mjs:1-27, rewrite/SKILL.md:119-130, and ledger-guard.sh:1-24; planted lost/revived/control rounds returned 1/1/0.
 R03i README describes 2f29a8f: DOES NOT ANSWER — opened 04-terms.md:59-126, audit/SKILL.md:30-44, and rewrite/SKILL.md:64-79; tree identity and selected examples do not validate the whole README.
 R04c local-checkout installation: HOLDS — opened install-checkout.sh:1-43 and all three manifests; two isolated installs returned 0 and produced 28-file trees identical to the 2f29a8f archive.
-R03j dated resolution and unasked write: DOES NOT ANSWER — opened brief.md:196-203, audit.md:203-216, and 8c041b7 rewrite/SKILL.md:55-125; it quotes historical assertions and instructions without rerunning either lifecycle.
-R04d audit and rewrite pages differ: HOLDS — opened both current pages and 8c041b7 rewrite/SKILL.md:55-125; direct git diff reports changes to both pages.
+R03j dated resolution and unasked write: DOES NOT ANSWER — opened brief.md:196-203, audit.md:203-216, and 21a225b rewrite/SKILL.md:55-125; it quotes historical assertions and instructions without rerunning either lifecycle.
+R04d audit and rewrite pages differ: HOLDS — opened both current pages and 21a225b rewrite/SKILL.md:55-125; direct git diff reports changes to both pages.
 R04f four-pass chain preceded plugin workflow: HOLDS — opened research/2026-09-10-chain/README.md:1-36 and CHANGELOG.md:81-98; the dated records establish four passes over one README before release.
 C44 before readers and only totals after: DOES NOT ANSWER — opened research/README.md:1-12, chain-source-prompt.txt:103-132, measure.md:117-132, and ISSUES.md:94-107; the negative search omitted repository paths outside the chain subtree.
 R04e measurement limits: HOLDS — opened prior-art.md:87-107,120-140, measure.md:123-132, and CHANGELOG.md:100-105; all three stated limits are explicit.

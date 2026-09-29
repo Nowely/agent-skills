@@ -1,6 +1,6 @@
 # Design v4: the approval channel
 
-Run `2026-09-27-approval-channel`, Fable D1, against the tree at b3872b4 (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs`, 4198 lines, version 0.20.0, pinned codex 0.153.4; the installed binary is 0.155.1). v4 builds the owner's principle ([06-owner-round.md](06-owner-round.md)) and Opus P1's second round ([01-probe-2.md](01-probe-2.md)) into v3's mechanics ([02-design-v3.md](02-design-v3.md)). Evidence levels as the repository defines them: 1 the line resolves, 2 an independent reader would say the same, 3 made to happen; a lifecycle claim not made to happen is a guess and says so. Line numbers are the driver's unless a file is named. v1–v3 stay as written.
+Run `2026-09-27-approval-channel`, Fable D1, against the tree at c828b7f (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs`, 4198 lines, version 0.20.0, pinned codex 0.153.4; the installed binary is 0.155.1). v4 builds the owner's principle ([06-owner-round.md](06-owner-round.md)) and Opus P1's second round ([01-probe-2.md](01-probe-2.md)) into v3's mechanics ([02-design-v3.md](02-design-v3.md)). Evidence levels as the repository defines them: 1 the line resolves, 2 an independent reader would say the same, 3 made to happen; a lifecycle claim not made to happen is a guess and says so. Line numbers are the driver's unless a file is named. v1–v3 stay as written.
 
 ## Changes from v3
 
