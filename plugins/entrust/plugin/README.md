@@ -254,8 +254,9 @@ skills/codex/                    the main skill: SKILL.md (the operating manual)
                                  and its companions, each self-describing under --help), references/
 skills/orchestrate/              the orchestrator mode: SKILL.md (a delta over the codex skill), scripts/
                                  (capture-check.mjs, the check runner; lint-draft.mjs, the answer's linter;
-                                 each self-describing under --help), references/ (roles, the foreman, and
-                                 codex-composition.md, generated from the codex page by ../evals/fragments.mjs)
+                                 each self-describing under --help), references/ (roles, the foreman, the
+                                 incidents behind the page's dated rules, and codex-composition.md,
+                                 generated from the codex page by ../evals/fragments.mjs)
 skills/cleanup/SKILL.md          the cleanup mode: runs scripts/cleanup.mjs, shows its listing and
                                  deletes what the user chose
 skills/experiment/               the experiment mode: SKILL.md (protocol, arms, two verdicts), scripts/experiment.mjs
@@ -289,7 +290,7 @@ Canonical homes for repeated stories:
 | flags and field formats | `node skills/codex/scripts/driver.mjs --help` (`--help-all` for the rest) |
 | environment, prompt files, receipts, worktree internals | [`environment-and-internals.md`](skills/codex/references/environment-and-internals.md) |
 | native capability parity and dated measurements | [`parity.md`](skills/codex/references/parity.md) |
-| measured failures behind rules | [`incidents.md`](skills/codex/references/incidents.md) |
+| measured failures behind rules | [`incidents.md`](skills/codex/references/incidents.md), and orchestrate's own [`incidents.md`](skills/orchestrate/references/incidents.md) |
 | suite coverage and mutations | [`plugins/entrust/evals/README.md`](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/evals/README.md) |
 
 ## Status
