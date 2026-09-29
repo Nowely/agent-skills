@@ -1107,13 +1107,13 @@ function reasonRow(row, many) {
       if (row.cond === "live") return many ? "The runs that made them are still running."
                                            : "The run that made it is still running.";
       return row.top === "runs"
-        ? (many ? "The runs that made them have stopped, and nothing else removes these folders."
-                : "The run that made it has stopped, and nothing else removes this folder.")
-        : (many ? "Their runs are gone from the plugin's data directory, and nothing else removes these folders."
-                : "Its run is gone from the plugin's data directory, and nothing else removes this folder.");
+        ? (many ? "The runs that made them have stopped, and the plugin removes these folders nowhere else."
+                : "The run that made it has stopped, and the plugin removes this folder nowhere else.")
+        : (many ? "Their runs are gone from the plugin's data directory, and the plugin removes these folders nowhere else."
+                : "Its run is gone from the plugin's data directory, and the plugin removes this folder nowhere else.");
     case "oldtmp":
       if (row.cond === "live") return "An agent started by an earlier version of the driver is still using them.";
-      return "The driver no longer writes here, and nothing else removes these folders.";
+      return "The driver no longer writes or prunes these folders, and the plugin removes them nowhere else.";
     case "eval":
       if (row.cond === "no-ps") return "The running processes could not be listed, so these need your review.";
       if (row.cond === "suite") return `${cap(row.evalKind)} are running, so these are being kept.`;

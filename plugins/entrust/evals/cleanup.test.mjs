@@ -2213,7 +2213,7 @@ function plantTemp(w, ...parts) {
 }
 
 test("47 · a run and a standalone report go with their temporary folders; a run still going keeps its own",
-  "the driver makes each run a folder in the temporary directory named after its report, and nothing else removes it: a run removed without it leaves the folder behind for good, and a folder removed while its run goes on takes the files its agents are writing",
+  "the driver makes each run a folder in the temporary directory named after its report, and the plugin removes it nowhere else: a run removed without it leaves the folder behind until the system clears its temporary directory, and a folder removed while its run goes on takes the files its agents are writing",
   async () => {
     const w = makeWorld("run-temp");
     const run = plantRun(w, w.slug, "run-done", { A: report(w.project) });
@@ -2241,7 +2241,7 @@ test("47 · a run and a standalone report go with their temporary folders; a run
   });
 
 test("48 · a temporary folder whose run is gone, or whose run wrote no report and stopped, is listed and suggested; one whose run is still running is kept",
-  "nothing else ever removes these folders, so one no listed run owns has to be listed on its own rather than ignored, and the pid a runs/ folder is named after is the only evidence of its run",
+  "the plugin removes these folders nowhere else, so one no listed run owns has to be listed on its own rather than ignored, and the pid a runs/ folder is named after is the only evidence of its run",
   async () => {
     const m = misses();
     const w = makeWorld("temp-orphans");
