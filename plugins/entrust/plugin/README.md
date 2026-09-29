@@ -102,9 +102,8 @@ claude plugin update entrust@nowely
 Claude Code substitutes into the skill's recipes and which this install resolves to
 `~/.claude/plugins/data/entrust-nowely/` (the plugin's name, then the marketplace's). The answers
 and the isolated Codex home, the write locks, the worktree ledger and the orchestrator mode's run
-directories are all there. It survives plugin updates; an uninstall deletes it unless you pass
-`claude plugin uninstall --keep-data`, and
-`/entrust:cleanup` lists what is there and removes only the items you pick by number; experiment records under `experiments/` it neither lists nor removes.
+directories are all there. `/entrust:cleanup` lists what is there and removes only the items you pick by
+number; experiment records under `experiments/` it neither lists nor removes.
 The driver keeps no default of its own: with neither that variable nor `ENTRUST_STATE_DIR` it
 exits 2. In every permission mode but auto and bypass, a write outside the working directory prompts, so
 add that directory to `permissions.additionalDirectories` once — this plugin adds no rules on your
