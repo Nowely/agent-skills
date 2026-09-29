@@ -539,13 +539,16 @@ test("F7b an accept restates the command in a heredoc on a delimiter of the coor
   ));
 
 test("F8 the synthesis rule: one sentence per cause and what avoids it next time",
-  "the four causes are what the driver actually recorded, so a synthesis that skips one leaves the run's own why unexplained; a command the sandbox stopped ran as the user because the tool needed the user's own environment, which no plan line changes, and neither the sandbox clause nor the rest of the page names a tool",
-  () => says(
-    "When the run had approvals, the synthesis says why in one sentence per cause and what avoids it next time: `rights`, the driver answered and nothing changes",
-    "`sandbox`, the tool needed the user's own environment, nothing on our side changes it",
-    "`policy`, Codex asks by its own rule and nothing on our side changes it",
-    "`outside`, the plan needs a `WRITABLE:` line or a different agent for that file",
-  ));
+  "the three causes are what the driver records, so a synthesis that skips one leaves the run's own why unexplained. A command request is one cause, because an attempt the sandbox stopped can leave no trace in the stream and the driver no longer guesses sandbox from policy (E65); no plan line changes it either way",
+  () => {
+    const said = says(
+      "When the run had approvals, the synthesis says why in one sentence per cause and what avoids it next time: `rights`, the driver answered and nothing changes",
+      "`asked`, Codex asked before running the command, and nothing on our side changes it",
+      "`outside`, the plan needs a `WRITABLE:` line or a different agent for that file",
+    );
+    if (said !== true) return said;
+    return !/`sandbox`, the tool|`policy`, Codex/.test(flat) || "the page still names the causes sandbox and policy";
+  });
 
 test("F8b --pending's markers are named exactly, and STALE= beside LATE=/ORPHANED= is the stale= count",
   "the coordinator copies the markers verbatim to find where a command starts and ends, so a paraphrase here breaks that copy; STALE= is a new line the driver added for a decision file that was never this run's own, and the page has to say what it means before a coordinator reads past it",
