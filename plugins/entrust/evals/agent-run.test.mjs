@@ -804,10 +804,12 @@ test("D6 plan continuations, Claude rows, report shape, case, roles and unknown 
     // E89: the role is the coordinator's word, and the roles reference is open; a word list refused 12 of its
     // 22 rows, the architect, the foreman and the area scout among them (2026-09-29).
     const roles = await plan("X | sol | architect | nothing | 1\nY | opus | foreman | nothing | unknown\nZ | luna | area scout | nothing | 1\n", true);
-    return duplicate.code === 2 && reserved.code === 2 && roles.code === 0
+    const noRole = await plan("E | sol |  | nothing | 1\n", true);
+    return duplicate.code === 2 && reserved.code === 2 && roles.code === 0 && noRole.code === 2
       && duplicate.out.includes("duplicate agent id") && reserved.out.includes("form names a continuation")
       && roles.out.endsWith("\nAGENT=X sol nothing\nAGENT=Y opus nothing\nAGENT=Z luna nothing\n")
-      || `plan refusals: ${duplicate.out} ${reserved.out}; roles: exit ${roles.code}, ${roles.out}`;
+      && noRole.out.includes("missing role for E")
+      || `plan refusals: ${duplicate.out} ${reserved.out}; roles: exit ${roles.code}, ${roles.out}; no role: exit ${noRole.code}, ${noRole.out}`;
   });
 
 test("D16 --new registers a prompt with maxLength and the driver's offline check accepts it",

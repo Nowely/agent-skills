@@ -436,6 +436,7 @@ const planRows = (body) => {
     if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(id)) planError(`invalid agent id: ${id}`);
     if (/-\d+$/.test(id)) planError(`invalid agent id ${id}: the -<n> form names a continuation`);
     if (!PLAN_MODELS.has(model.toLowerCase())) planError(`invalid model for ${id}: ${model}`);
+    if (!role) planError(`missing role for ${id}`);
     if (!/^(nothing|worktree|live tree|write \/\S.*)$/.test(writes)) planError(`invalid writes for ${id}: ${writes}`);
     if (!/^(unknown|0|[1-9]\d*)$/.test(tokens)) planError(`invalid tokens for ${id}: ${tokens}`);
     return { id, model, role, writes, tokens };
