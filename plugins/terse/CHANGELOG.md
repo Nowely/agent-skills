@@ -52,6 +52,9 @@ forensics remain in the repository references and release notes.
 - E86: "Apply the checks silently when asked for only the finished text; keep the requested format." moves from
   `clarity`'s description to its body, beside the line that the questions need not appear in the answer. The
   description stays in context on every turn of every session; the body is read only when the skill loads.
+  Measured on 2026-09-29 with Opus 5.5 through `claude plugin eval` on all four trigger case sets, three runs per
+  case, against the description before the move: clarity was called in 93 of 93 positive runs, against 91 of 93
+  before, and in none of the 18 negative runs, as before.
 
 ## 0.5.0 — 2026-09-28
 
