@@ -7,7 +7,8 @@
 // hands the wrapper the one command, which runs the driver through scripts/agent-run.mjs in one foreground
 // Bash call, so the ONE call
 // and the field table are both SKILL.md's and the agent file carries only the relay's standing rules. This suite compares
-// that page, and the orchestrate page that re-cuts it, with the driver they describe.
+// that page, the orchestrate page that re-cuts it, and references/environment-and-internals.md, which holds the
+// report's escalation fields the page links, with the driver they describe.
 
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -17,9 +18,11 @@ import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../plugin/skills/codex/scripts/
 
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "orchestrate", "SKILL.md");
+const ENV_MD = path.join(ROOT, "skills", "codex", "references", "environment-and-internals.md");
 
 const skill = fs.readFileSync(SKILL, "utf8");
 const orchestrate = fs.readFileSync(ORCHESTRATE, "utf8");
+const envFlat = fs.readFileSync(ENV_MD, "utf8").replace(/\s+/g, " ");
 const driver = fs.readFileSync(DRIVER, "utf8");
 // What the driver ADVERTISES, for the cases that ask whether a flag the page hands over still exists: a
 // `case "--x":` in the source can outlive every route a caller has to it, and the help is the route.
@@ -364,8 +367,8 @@ test("the waiting result ends in REPORT=, the constant is thirty minutes, and ne
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the accept the page shows restates the command in a quoted heredoc on a delimiter the coordinator makes up, and Stop's reach stops at what was measured",
-  "a fixed delimiter lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell before the launcher compares anything (both verifications of 2026-09-28 made it happen), so the block the coordinator copies ends on a delimiter it made up and checked, never the relayed token; and a command run after an approval was never measured against a stop, which the Stop line has to say rather than promise",
+test("the accept the page shows restates the command in a quoted heredoc on a delimiter the coordinator makes up",
+  "a fixed delimiter lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell before the launcher compares anything (both verifications of 2026-09-28 made it happen), so the block the coordinator copies ends on a delimiter it made up and checked, never the relayed token",
   () => {
     const problems = [];
     const at = skill.search(/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'$/m);
@@ -382,7 +385,6 @@ test("the accept the page shows restates the command in a quoted heredoc on a de
       "The ID reached you the same way: quote it, and use it only in the shape the launcher prints",
       "one trailing newline tolerated, and publishes nothing on an empty stdin or any difference",
       "An accept the permission check or the classifier blocks publishes nothing either",
-      "a command the agent was running inside the sandbox ends with it, and one run after an approval has not been measured",
     ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
@@ -413,31 +415,34 @@ test("FILE=missing reads RECEIPT's approvals= count as a decision, not an execut
     return problems.length === 0 || problems.join("; ");
   });
 
-test("exit 6 is a request declined or expired unanswered, never one accepted, and escalations carries decision, cause and unclipped detail",
-  "an auto-yes must never surface as a gate failure, and a coordinator reading `detail` clipped at 200 characters cannot judge the very command it is asked to approve",
+test("exit 6 is a request declined or expired unanswered, never one accepted, and the internals reference gives escalations its cause and unclipped detail",
+  "an auto-yes must never surface as a gate failure, and a coordinator reading `detail` clipped at 200 characters cannot judge the very command it is asked to approve; the page states the exit and links the fields, which live once, in environment-and-internals.md",
   () => {
     const problems = [];
+    if (!flat.includes("`exitCode: 6` is a request declined or expired unanswered, never one accepted"))
+      problems.push("the page no longer says what exit 6 is");
+    if (!flat.includes("[Observability](references/environment-and-internals.md#observability)"))
+      problems.push("the page no longer links the escalations fields");
     for (const phrase of [
-      "`exitCode: 6` is a request declined or expired unanswered, never one accepted",
       "`detail` is the server's own wording whole",
       "never clipped",
       "`cause` (`rights`: a file change the writable roots cover, which the driver accepted itself and never shows anyone",
-      "`outside`: a file change not shown to lie inside them, or a permissions request, which the driver declines itself, its `why` naming `WRITABLE:` for a file change and \"rights are set at launch\" for a permissions request",
+      "`outside`: a file change not shown to lie inside them, or a permissions request, which the driver declined itself, its `why` naming `WRITABLE:` for a file change and \"rights are set at launch\" for a permissions request",
       "`asked`: Codex asked before running the command, and nothing on our side changes it",
-    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    ]) if (!envFlat.includes(phrase)) problems.push(`environment-and-internals.md no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
 
-test("an auto-yes's why is re-checked at send time, and the page names the symlink-swap residual",
-  "the driver re-runs its own containment check the instant it answers, not only when the request first arrived, so the page's why string has to be the current one; the residual is what a race between that check and the server's own write can still do, and it is unmeasured, not fixed",
+test("an auto-yes's why is re-checked at send time, and the internals reference names the symlink-swap residual",
+  "the driver re-runs its own containment check the instant it answers, not only when the request first arrived, so the reference's why string has to be the current one; the residual is what a race between that check and the server's own write can still do, and it is unmeasured, not fixed",
   () => {
     const problems = [];
     for (const phrase of [
       "\"rights cover it (checked as the answer was sent)\"",
-      "the check runs again at that moment, not only when the request arrived",
-      "a plain directory the driver walked that becomes a symlink before the server\n  writes is followed by the server, not caught here",
-      "whether the server itself re-resolves the swap is\n  unmeasured",
-    ]) if (!flat.includes(phrase.replace(/\s+/g, " "))) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+      "the whole check runs again, fresh, at the moment the driver sends the answer, not only when the request first arrived",
+      "A writer that swaps one of those plain directories for a symlink between the driver's check and the server's own write is followed by the server, not the driver",
+      "whether the server re-resolves that swap before it writes is unmeasured",
+    ]) if (!envFlat.includes(phrase)) problems.push(`environment-and-internals.md no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
 

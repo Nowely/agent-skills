@@ -52,53 +52,12 @@ task while the coordinator orchestrates and checks it.
 ## One call
 
 One Agent call per agent: a native subagent, the **wrapper**, that launches the driver, waits for
-it and returns when the run has ended. Only a subagent is a subagent to Claude Code: a Bash task, whatever
-its description says, is not on the agent map, is not stopped from it and is not continued by a message
-([the agent map](references/incidents.md#the-agent-map)). The
-wrapper is what makes a Codex agent read like a Claude agent: one card under its description, Stop on the
-card, one completion notification, and a message to continue it.
+it and returns when the run has ended. A Bash task, whatever its description says, is not on the agent map,
+is not stopped from it and is not continued by a message
+([the agent map](references/incidents.md#the-agent-map)); the wrapper gives a Codex agent what a Claude agent
+has: one card under its description, Stop on the card, one completion notification, and a message to continue it.
 
-Write the prompt with one Bash call, the launcher's `--new`, which makes the agent's directory beside the
-report, takes the prompt on stdin and puts it through the driver's own check. A refusal prints its reason on an
-`ERROR=` line and no `PROMPT=`: spawn no wrapper on that result, and take a mode the device refuses back to the
-user as a question, never to another mode. On `PROMPT=`, spawn the wrapper with the Agent tool:
-`subagent_type: entrust:codex-agent`, `run_in_background: false` for the one agent you wait for and `true`
-for agents that run side by side or while you work ([foreground and
-background](references/incidents.md#foreground-background-and-the-ceiling)), and a `description` of
-`Codex <short name> <id>: <task in a few words>` — `Astra`, `Sol`, `Terra` or `Luna`, the name on the
-`MODEL:` line — so the card the user sees names the agent, its
-vendor and its task, and not the command line. That type is the agent this plugin ships,
-[agents/codex-agent.md](../../agents/codex-agent.md): a relay with the Bash tool alone and its model pinned
-in its own file, so its context is half a `general-purpose` subagent's
-([the agent map](references/incidents.md#the-agent-map)). Pass it no `model`; the agent's model is the `MODEL:` line in its prompt
-file.
-
-The wrapper's message is the block below with its two placeholders filled in and nothing added or
-removed: the command and the four steps, which the wrapper's own file repeats
-([the wrapper's message](references/incidents.md#the-wrappers-message)). It never sees the agent's
-prompt. The command is the
-launcher `scripts/agent-run.mjs`, one foreground call and no `&` of your own: it opens `prompt.txt` only
-as the driver's argument, passes the driver `--prompt-file` and `--report-file` and its own environment
-untouched, writes the driver's exit status to a file of its own beside the two output files, last, and
-prints the nine status lines, which are what the wrapper hands back, so a Codex agent's card shows one Bash
-and its return, as a native subagent's does. The launcher is idempotent and returns on its own before the tool's
-ten-minute ceiling: a call that has waited nine and a half minutes prints its lines with `RUNNING=` in place of
-`REPORT=`, the wrapper runs the same command again, and the second call finds the run its directory already
-started and waits for it ([the ceiling](references/incidents.md#foreground-background-and-the-ceiling)).
-The driver runs under a keeper of its own, outside the wrapper's process tree, so a wrapper that ends early — the
-harness ends a foreground subagent's leftover commands with SIGTERM to their tree (measured 2026-09-26) — leaves
-the run going and its report to come. The driver prints its pid on the first line of `<DIR>/err.txt`
-once it has accepted the report path, and a refusal before that point prints none; a launch the launcher
-itself refused (no `prompt.txt`, a relative report path) puts its reason there instead, under its own claim of the
-directory, with an exit of 2 and `PATH=none`; a refusal for a directory another run owns (an `exit` marker already there, a report path that is
-not the directory's) goes to the caller alone and leaves that directory's files untouched. A `SIGTERM` to that
-pid cuts the turn, sweeps the codex app-server's own process group and publishes the report as
-`turnStatus: interrupted`, exit 1. A command the agent was running inside the sandbox ends with it (measured
-once, 2026-09-29); a command run after an approval, outside the sandbox, has not been measured, so before a
-second writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'`
-yourself and wait for it — no driver code checks this for you.
-
-The prompt, one Bash call, the heredoc quoted so nothing in it expands:
+Write the prompt with one Bash call, the launcher's `--new`, the heredoc quoted so nothing in it expands:
 
     CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --new --report-file "<REPORT>" <<'PROMPT'
     MODEL: terra
@@ -107,33 +66,21 @@ The prompt, one Bash call, the heredoc quoted so nothing in it expands:
     RETURN: …
     PROMPT
 
-`--new` makes every agent's mailbox beside its prompt, no flag needed, and needs that variable ahead of it on
-the command line, the way the run call below already carries it, because it checks the mailbox's containment
-against the state directory before the agent's directory exists; without it `--new` refuses.
+A refusal prints its reason on an `ERROR=` line and no `PROMPT=`: spawn no wrapper on that result, and take a
+mode the device refuses back to the user as a question, never to another mode. On `PROMPT=`, spawn the wrapper
+with the Agent tool: `subagent_type: entrust:codex-agent`, `run_in_background: false` for the one agent you
+wait for and `true` for agents that run side by side or while you work ([foreground and
+background](references/incidents.md#foreground-background-and-the-ceiling)), and a `description` of
+`Codex <short name> <id>: <task in a few words>` — `Astra`, `Sol`, `Terra` or `Luna`, the name on the
+`MODEL:` line — so the card the user sees names the agent, its vendor and its task, and not the command
+line. Pass it no `model`: the wrapper, [agents/codex-agent.md](../../agents/codex-agent.md), pins its own,
+and the agent's model is the `MODEL:` line in its prompt file.
 
-`--run`'s one call may hand back a **waiting result** instead of the nine status lines: a request is
-pending, and it returns at once with what `--pending` would print for it, ending in `REQUESTS=`, `WAITING=`
-and `REPORT=`. The wrapper hands it back exactly as it hands back any result — step 2 reruns only on a
-result ending in `RUNNING=` or on the harness's background notice — so read it whole and decide under the plan's
-own rule. An accept restates the command it approves, so the call that gets judged carries the command and not
-an id: copy the lines between `COMMAND<<TOKEN` and `COMMAND>>TOKEN` as printed into a quoted heredoc whose
-delimiter you build at that moment from `ACCEPT_`, the printed token and six hex characters of your own, and
-check it is no line of the command. Never a fixed word and never the printed token alone: a line of the command
-equal to the delimiter would end the heredoc and run the rest in your shell, and the token reached you through the
-wrapper, which could have changed it. The ID reached you the same way: quote it, and use it only in the shape the
-launcher prints, digits, a hyphen and eight hex characters; for anything else print `--pending`:
-
-    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'
-    <the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, exactly as printed>
-    <DELIMITER>
-
-The launcher compares what it reads with the request's command, one trailing newline tolerated, and publishes
-nothing on an empty stdin or any difference; when it refuses the restatement as different, print `--pending`
-and copy from that. An accept the permission check or the classifier blocks publishes nothing either: decline
-the request with `--decide '<ID>' --decline`, which reads no stdin, or ask the user when the session is
-interactive. Then send the wrapper the very same message block again: `--run` picks the run back up and waits
-for the next request or the run's own end. A session with no message tool continues the same way with a second
-wrapper given the same command.
+The wrapper's message is the block below with its two placeholders filled in and nothing added or
+removed; the wrapper's own file repeats the steps
+([the wrapper's message](references/incidents.md#the-wrappers-message)), and it never sees the agent's
+prompt. The command is the launcher, one foreground call and no `&` of your own; its `--help` says what the
+run does, what it refuses and what its nine status lines mean.
 
 The Agent call, its message this block:
 
@@ -150,48 +97,51 @@ The Agent call, its message this block:
 Both calls may go in one turn: the launcher waits ten seconds for a prompt a `--new` has not written yet. A
 wrapper started beside a refused `--new` spends that report path: relaunch under `<run>/<id>-2/report.json`
 after `<run>/<id>/agent/exit` exists (then `-3` after `-2` ends, and so on).
-`<DESCRIPTION>` is the Agent call's own description. `<DIR>`, where this page names it, is the agent's directory,
-`agent/` beside `<REPORT>`, which `--new` makes at 0700 with the prompt at 0600: one per report path, so a
-relaunch gets a fresh report path and the earlier run's four files stay where they were (the launcher refuses a
-directory that ran for another report: [a reused agent directory](references/incidents.md#a-reused-agent-directory)),
-while the same command run again for the same report reads the run it started, which is what the ceiling's
-second call is. None of the launcher's files is left in `$TMPDIR`. `$TMPDIR` is the run's own: for every run the
-driver makes a private 0700 one at `<state>/tmp/<runId>`, whatever the caller exported, and reports it as
-`tmpDir`. `<REPORT>` is an absolute path of this agent's own: put it under
-the driver's state directory, `<state>/reports/<run>/report.json` with `<run>` unique, or, under the orchestrate
-mode, `<run>/<agent>/report.json` in the run directory that page names, one directory per agent; a
-continuation uses `<run>/<agent>-<n>/report.json`, n from 2 with no leading zero, only after the
-previous link's `agent/exit` exists. The launcher and
-the driver make every directory those paths need, at 0700, so they may name a root your own Write and `mkdir`
-are refused.
-The wrapper's completion notification is the agent's completion: read the wrapper's own lines first —
-what the driver exited with, whose run the file at `<REPORT>` belongs to, whether it is there, the answer
-where it is short and its first line where it is not, the refusal where no turn ran, and the receipt — and
+`<DESCRIPTION>` is the Agent call's own description. `<REPORT>` is an absolute path of this agent's own: put it
+under the driver's state directory, `<state>/reports/<run>/report.json` with `<run>` unique, or, under the
+orchestrate mode, `<run>/<agent>/report.json` in the run directory that page names, one directory per agent.
+The launcher and the driver make every directory it needs, so it may name a root your own Write and `mkdir`
+are refused. A relaunch takes a fresh report path, because the launcher refuses a directory that ran for
+another report ([a reused agent directory](references/incidents.md#a-reused-agent-directory)). `<DIR>` is the
+agent's directory, `agent/` beside `<REPORT>`. `$TMPDIR` is the run's own: for every run the driver makes a
+private 0700 one at `<state>/tmp/<runId>`, whatever the caller exported, and reports it as `tmpDir`.
+
+The wrapper's completion notification is the agent's completion: read the wrapper's own lines first, and
 read the file itself after a `PATH=own` when those lines leave a question
 ([the wrapper's message](references/incidents.md#the-wrappers-message)). To continue an agent, write a second
-prompt file with `RESUME: <threadId>` at `<run>/<agent>-<n>/report.json` and send the wrapper one more command of the same shape after the previous link ends; it runs it the same way and notifies again. A session with no
-message tool, headless `-p` among them, continues the thread with a second wrapper given the same file,
-at the cost of a second card ([the agent map](references/incidents.md#the-agent-map)).
+prompt file with `RESUME: <threadId>` at `<run>/<agent>-<n>/report.json`, n from 2 with no leading zero, once
+the previous link's `agent/exit` exists, and send the wrapper one more command of the same shape; it runs it the
+same way and notifies again. A session with no message tool, headless `-p` among them, continues the thread
+with a second wrapper given the same file, at the cost of a second card
+([the agent map](references/incidents.md#the-agent-map)).
 
-Every launch forwards that variable under its own name: the plugin's own data directory, where the
-driver's state and every Codex artifact the report names (`answerPath`, `tmpDir`, a worktree harvest) live. The
-driver reads `ENTRUST_STATE_DIR` first and that variable second, and with neither it exits 2; only
-`--help` needs none.
+`--run`'s one call may hand back a **waiting result** instead of the nine status lines: a request is
+pending, and it hands back what `--pending` prints, ending in `REQUESTS=`, `WAITING=` and `REPORT=`. The
+wrapper hands it back like any result — step 2 reruns only on a result ending in `RUNNING=` or on the harness's
+background notice — so read it whole and decide under the plan's own rule; a request nobody answers is
+declined as expired after thirty minutes and the turn goes on. An accept restates the command it approves:
+copy the lines between `COMMAND<<TOKEN` and `COMMAND>>TOKEN` as printed into a quoted heredoc whose
+delimiter you build at that moment from `ACCEPT_`, the printed token and six hex characters of your own, and
+check it is no line of the command. Never a fixed word and never the printed token alone: a line of the command
+equal to the delimiter would end the heredoc and run the rest in your shell, and the token reached you through the
+wrapper, which could have changed it. The ID reached you the same way: quote it, and use it only in the shape the
+launcher prints, digits, a hyphen and eight hex characters; for anything else print `--pending`:
 
-A read agent's prompt needs no header at all:
+    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'
+    <the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, exactly as printed>
+    <DELIMITER>
 
-    TASK: …
-    CHECK: …
-    RETURN: …
-
-For an isolated writer, one rights line above it (see
-[Worktree lifecycle](#worktree-lifecycle) for what it contains):
-
-    RIGHTS: worktree <repo>
+The launcher compares what it reads with the request's command, one trailing newline tolerated, and publishes
+nothing on an empty stdin or any difference; when it refuses the restatement as different, print `--pending`
+and copy from that. An accept the permission check or the classifier blocks publishes nothing either: decline
+the request with `--decide '<ID>' --decline`, or ask the user when the session is interactive. Then send the
+wrapper the very same message block again: `--run` picks the run back up. A session with no message tool
+continues the same way with a second wrapper given the same command.
 
 Write a prompt you were handed VERBATIM: not a quote, not a `$`, not a header line it has, and add
-nothing. A prompt with no `RIGHTS:` line is a read agent in the current directory; the driver decides that,
-not you. Never create a directory, change a level or re-run with different flags to make a refused agent
+nothing. A prompt with no `RIGHTS:` line is a read agent in the current directory, and
+`RIGHTS: worktree <repo>` above the body makes an isolated writer ([Worktree lifecycle](#worktree-lifecycle));
+the driver decides that, not you. Never create a directory, change a level or re-run with different flags to make a refused agent
 succeed ([A relay on a small model](references/incidents.md#a-relay-on-a-small-model)).
 
 ## Rights
@@ -288,73 +238,42 @@ write its own would be grading itself. Declare gates on the command line instead
   foreground call has no notification.
 - On `EXIT=0` what reaches the user is the agent's name and its answer; the other lines are yours and stay with
   you ([the wrapper's message](references/incidents.md#the-wrappers-message)).
-- `PATH=own` says the driver accepted `<REPORT>` and published there; `PATH=taken` says an entry was
-  already there or another run published first, so the file is an earlier run's, whatever the numbers
-  beside it say; `PATH=none` says the path was never accepted and no file of this run's exists.
-  `DRIVER_EXIT` is what this invocation's driver exited with, `EXIT` the code inside the file.
-- A refused path — not absolute, an unusable parent, an entry already there, a symlink included — makes
-  no report for this run; an entry already there is left as it was, and `<DIR>/err.txt` names the
-  refusal. Once the path is accepted, a refusal before the turn does reach the file, as
-  `{ok: false, exitCode, turnStatus: null, error}`, while `out.json` stays empty.
+- `PATH=taken` means the file at `<REPORT>` is an earlier run's, whatever the numbers beside it say, and
+  `PATH=none` that no file of this run's exists. `DRIVER_EXIT` is what this invocation's driver exited with,
+  `EXIT` the code inside the file.
 - `FILE=missing` beside a `DRIVER_EXIT` is a run that ended without a report of its own: read
   `<DIR>/err.txt` for the reason and `<DIR>/out.json` for the report a turn wrote where publication
   failed. Read `RECEIPT=` first: an `approvals=` token whose first number is not 0 says a command ran with
-  your rights and no report says how it ended — that count is a decision, not an execution outcome; `outcome`
-  in `escalations` is the execution record, where a report exists to read it from. Read `<DIR>/approvals/`
-  and check the tree and whatever the command touched before any relaunch, and never relaunch a prompt that
-  would ask for the same thing again. Only once that is clear, treat the rest as unknown and relaunch under
-  a fresh report path where the work still needs doing.
-- `RUNNING=` in place of `REPORT=` is a run still going whose wrapper handed back early: spawn the wrapper
-  again with the same message — the launcher waits for the run it started and hands back its lines — or
-  wait on `<DIR>/exit` yourself; nothing was lost.
+  your rights and no report says how it ended — that count is a decision, not an execution outcome. Read
+  `<DIR>/approvals/` and check the tree and whatever the command touched before any relaunch, and never
+  relaunch a prompt that would ask for the same thing again; then relaunch under a fresh report path where
+  the work still needs doing.
+- `RUNNING=` in place of `REPORT=` is a run still going whose wrapper handed back early: send the wrapper the
+  same message again, or wait on `<DIR>/exit`; nothing was lost.
 - `exitCode: 0` means the completed turn passed its declared evidence gates. `answer` is the agent's text;
-  with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed. On a final size overflow,
-  both are clipped to the schema caps; `schemaOverflow.clipped` names each cut, and `answerPath`
-  holds the complete answer. If a size correction succeeds, `answerAttemptPaths` retains the first attempt.
-- `exitCode: 3` is a cut; read the retained answer or partial and the `RESUME:` hint. Give the continuation a
-  `<run>/<agent>-<n>/report.json` after the previous link's `agent/exit` exists: the driver refuses one already taken and exits 2 without publishing, which
-  reaches you as `PATH=taken` over the earlier run's file.
-- `exitCode: 10` is a held lock or a busy resumed thread: the report says `ok: false` and carries the
-  refusal in `error`, and `<DIR>/err.txt` has it in full.
-- Exit 2 has two shapes, and the report tells them apart. With `turnStatus: null` no turn ran: the reason
-  is in `error` and there is no receipt. With any other `turnStatus` the turn ran and the server rejected
-  the request: the reason is in `turnError`, and the commands, any retained answer and the receipt are
-  real. Read them before relaunching, or a paid turn is thrown away.
-- Exit 4 has two shapes. With `turnStatus: null` it is a refusal or an abort (a sandbox assertion, a
-  signal before the thread, a transport failure): read `error` and `<DIR>/err.txt`; a `threadId` beside
-  it means the thread had started and its rollout is the only record. With any other `turnStatus` — the
-  server died mid-turn, or the report could not be published — the report is complete: read it like any
-  post-turn code (commands, `answer`, `answerPath`, receipt).
-- `escalations` is one entry per approval request, whichever thread asked, root or a grandchild's: `decision`
-  (`accepted`, `declined` or `expired`), `by` (`driver` for an auto-yes, an expiry or a request never offered,
-  `coordinator` otherwise), `cause` (`rights`: a file change the writable roots cover, which the driver
-  accepted itself and never shows anyone; `outside`: a file change not shown to lie inside them, or a
-  permissions request, which the driver declines itself, its `why` naming `WRITABLE:` for a file change and
-  "rights are set at launch" for a permissions request; `asked`: Codex asked before running the command, and
-  nothing on our side changes it), and `outcome` (the item's own
-  completion, or null where none came). `detail` is the server's own wording whole — the command, else the
-  reason, else the message, or the joined file-change list — never clipped, and may still be empty where the
-  server sent none. `exitCode: 6` is a request declined or expired unanswered, never one accepted — below
-  timeout and the other cuts, so a cut run carries entries and exits 3. A command the sandbox denied outright
-  need not raise a request, and an entry is neither evidence that work was lost nor a reason to widen the
-  rights. An auto-yes's own `why` is `"rights cover it (checked as the answer was sent)"`: the check runs
-  again at that moment, not only when the request arrived, and a plain directory the driver walked that
-  becomes a symlink before the server writes is followed by the server, not caught here — whether the server
-  itself re-resolves the swap is unmeasured. A request nobody answers is declined as expired after thirty
-  minutes and the turn goes on.
-- Any other non-zero is a gate verdict on the run; read the answer before deciding what to do.
+  with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed, and `answerPath` holds the
+  complete answer where a size cap clipped either.
+- Exit 2 and exit 4 each have two shapes. With `turnStatus: null` no turn ran: the reason is in `error` and
+  `<DIR>/err.txt`. With any other `turnStatus` the turn ran, and its commands, any retained answer and the
+  receipt are real: read them before relaunching, or a paid turn is thrown away.
+- `exitCode: 6` is a request declined or expired unanswered, never one accepted; `escalations` holds one entry
+  per approval request, its fields in
+  [Observability](references/environment-and-internals.md#observability).
+- Any other non-zero is a verdict on the run, and a cut (exit 3) keeps the answer or partial and a `RESUME:`
+  hint: read the answer before deciding what to do. `driver.mjs --help` lists every code.
 - `receiptOk: false` on a run that claims success is a red flag; what the receipt proves and does not
   prove is in
   [environment-and-internals.md](references/environment-and-internals.md#receipt-validation-and-reporting).
 - Evidence of success is root-thread-only: a Codex subagent thread's commands are liveness, not evidence.
 - To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or send `SIGTERM` to the pid on the first line of `<DIR>/err.txt`:
-  the driver interrupts the turn, writes the report it had earned and sweeps the codex process group; a
-  command the agent was running inside the sandbox ends with it, and one run after an approval has not been
-  measured.
-  The driver runs under a detached keeper, so a hand-back's waiting result does not end it: a hard kill of the
-  wrapper's task, or a `SIGKILL` of the launcher, no longer reaches it, only the forwarded signal does. After
-  a waiting result nothing else holds the driver: stop it with `--decide 'ID' --decline` and the same `--run`
-  again, or `kill -TERM` that same pid.
+  the driver cuts the turn, sweeps the codex app-server's own process group and publishes the report as
+  `turnStatus: interrupted`, exit 1. A command the agent was running inside the sandbox ends with it (measured
+  once, 2026-09-29); a command run after an approval, outside the sandbox, has not been measured, so before a
+  second writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'`
+  yourself and wait for it — no driver code checks this for you. The driver runs under a keeper outside the
+  wrapper's process tree, so only a forwarded signal reaches it, never a `SIGKILL` of the launcher; after a
+  waiting result no call holds it, so stop it with `--decide 'ID' --decline` and the same `--run` again, or
+  `kill -TERM` that same pid.
 
 ## Prompt shape
 

@@ -253,7 +253,8 @@ Measured 2026-09-17: a foreground call brought the hand-back message inside the 
 notification after it, as the owner's native foreground subagent did, and an eleven-minute call ended
 normally, so the call has no ceiling of its own. Under a background call a coordinator told the user that the
 notification duplicated the answer. An eighteen-minute agent took two launcher calls, one driver and one
-report.
+report. On 2026-09-26 the harness ended a foreground subagent's leftover commands with SIGTERM to their tree,
+which is why the driver runs under a keeper outside the wrapper's.
 
 ## A reused agent directory
 

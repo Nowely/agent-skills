@@ -34,13 +34,15 @@ then `last: 14273 / total: 27857`, so `last` is only the turn's tail.
 
 The report's `escalations` array has one entry per approval request, whichever thread asked — not only the
 ones the driver declined: `id`, `method`, `kind`, `detail`, `thread`, `subagent`, `agentPath`, `cause`
-(`rights`: a file change the writable roots cover, which the driver accepted itself; `outside`: a file
-change not shown to lie inside them, or a permissions request, which the driver declined itself; `asked`: Codex
-asked before running the command, and nothing on our side changes it), `offered`, `decision`
+(`rights`: a file change the writable roots cover, which the driver accepted itself and never shows anyone;
+`outside`: a file change not shown to lie inside them, or a permissions request, which the driver declined
+itself, its `why` naming `WRITABLE:` for a file change and "rights are set at launch" for a permissions
+request; `asked`: Codex asked before running the command, and nothing on our side changes it), `offered`, `decision`
 (`accepted`, `declined` or `expired`), `by` (`driver` for an auto-yes, an expiry or a request never offered,
 `coordinator` otherwise), `why`, `askedAt`, `settledAt`, `waitMs`, `resolved`, `outcome` (the matching
 item's own completion, or null where none came), `cwd`, `reason` and `fileChanges`. `detail` is the server's
-own wording whole — never clipped — and may still be empty where it sent none; a sandbox-denied command need
+own wording whole — the command, else the reason, else the message, or the joined file-change list — never
+clipped, and may still be empty where it sent none; a sandbox-denied command need
 not raise a request, so an empty array does not prove that no command was denied. An entry does not diagnose
 rights that were too narrow. Exit 6 means a request was declined or expired unanswered, never one accepted;
 a cut run can carry entries and still exit 3. Beside the array, `approvalsAccepted`,
