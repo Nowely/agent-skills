@@ -21,7 +21,7 @@ metadata:
 license: MIT
 ---
 
-Use these questions while writing for someone else. This page starts no agents or run. Once loaded,
+Use these questions while writing or revising for someone else. This page starts no agents or run. Once loaded,
 use it while it remains in context. The questions need not appear in the answer. Open a linked note
 only when it helps the text at hand.
 

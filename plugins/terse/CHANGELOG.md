@@ -14,6 +14,8 @@ forensics remain in the repository references and release notes.
   reader applies the label to each item: in the same report, the writer checked explicit claims while a group
   label placed an item where it did not belong. The check sits on clarity's own page because the session did
   not open `truth.md` while drafting.
+- `clarity`'s body now says its questions apply while revising as well as writing, as its description
+  already did.
 
 ## 0.5.0 — 2026-09-28
 
