@@ -585,9 +585,8 @@ const HELP = [
   file change's paths as "add /a; update /b"), thread, subagent, agentPath, cause
   (rights: a file change the writable roots cover, which the driver accepted;
   outside: a file change not shown to lie inside them, or a permissions
-  request, which it declined;
-  sandbox: the same command had just failed on that turn; policy: no attempt
-  was seen, so Codex asked by its own rule), offered, decision (accepted,
+  request, which it declined; asked: Codex asked before running the command,
+  and nothing on our side changes it), offered, decision (accepted,
   declined or expired), by (driver or coordinator), why, askedAt, settledAt,
   waitMs, resolved (the server acknowledged the answer), outcome ({status,
   exitCode, durationMs} from the item's own completion, or null when none
@@ -3042,19 +3041,10 @@ const fileChangeStarts = new Map();
 // Each non-root thread's turns, open and completed, keyed like items: a subagent's request is answered only
 // inside a turn of its own still running.
 const childTurnsOpen = new Set(), childTurnsDone = new Set();
-// Commands that failed on the root or an announced subagent thread, by root turn and text: the same text
-// asked for again is the sandbox having stopped it, and Codex asking to escalate.
-const failedAttempts = new Set();
 // Every entry by the server's request id, for serverRequest/resolved, and by thread and item, for the
 // completion that says what the command or the write then did.
 const entryByRpc = new Map(), entryByItem = new Map();
 const itemKey = (thread, item) => `${thread}\u0000${item}`;
-const attemptKey = (text) => `${rootTurnId}\u0000${text}`;
-const commandTexts = (command, actions) => {
-  const c = { command: Array.isArray(command) ? command.join(" ") : String(command ?? ""),
-              actions: (Array.isArray(actions) ? actions : []).map((a) => String(a?.command ?? a ?? "")) };
-  return [c.command, bareCommand(c)].filter(Boolean);
-};
 
 // The roots the agent may write, resolved: $TMPDIR at both levels, the cwd at write level, and every
 // --writable root. These are what the sandbox assertions verified the server applied.
@@ -3431,11 +3421,12 @@ function handleServerRequest(msg) {
       : null;
     const covered = why === null && isFileChange && entry.fileChanges !== null ? coveredByRights(entry.fileChanges) : null;
     // A permissions request asks for rights beyond those set at launch, which only a WRITABLE: line grants.
+    // A command request is one cause whatever came before it: an attempt the sandbox stopped can leave no
+    // trace in the stream (P1), so telling a sandbox refusal from Codex's own rule would be a guess.
     entry.cause = covered !== null ? "rights"
       : isPermissions ? "outside"
-      : isCommand || msg.method === "execCommandApproval"
-        ? (commandTexts(p.command, p.commandActions).some((t) => failedAttempts.has(attemptKey(t))) ? "sandbox" : "policy")
-        : "outside";
+      : isCommand || msg.method === "execCommandApproval" ? "asked"
+      : "outside";
     // The rights already cover it: the sandbox would have let a shell write the same bytes to the same
     // inode, and the edit tool asked only because it compares spellings. Answered here, armed or not, and
     // looked at once more as the answer goes out; what the server does with the paths after that is its own.
@@ -3610,9 +3601,8 @@ function handleMessage(msg, bytes = 0) {
   }
 
   // What the approval entries need from the stream: the paths a file change names, which arrive only on
-  // its item/started; the commands that failed, which make a later request for the same text a sandbox
-  // refusal; the server's receipt of an answer; and what the item did once answered. On the root and on
-  // announced subagent threads alike, since both may ask.
+  // its item/started; the server's receipt of an answer; and what the item did once answered. On the root
+  // and on announced subagent threads alike, since both may ask.
   const ours = rootThreadId !== null && ((p?.threadId ?? null) === rootThreadId || subagentThreads.has(p?.threadId ?? ""));
   if (msg.method === "item/started" && ours && p.item?.type === "fileChange" && p.item.id != null && Array.isArray(p.item.changes))
     fileChangeStarts.set(itemKey(p.threadId, p.item.id), p.item.changes);
@@ -3623,9 +3613,6 @@ function handleMessage(msg, bytes = 0) {
     if (e && e.outcome === null)
       e.outcome = { status: p.item.status ?? null, exitCode: typeof p.item.exitCode === "number" ? p.item.exitCode : null,
                     durationMs: typeof p.item.durationMs === "number" ? p.item.durationMs : null };
-    if (p.item.type === "commandExecution" && p.item.status !== "declined"
-        && (p.item.status === "failed" || (typeof p.item.exitCode === "number" && p.item.exitCode !== 0)))
-      for (const t of commandTexts(p.item.command, p.item.commandActions)) failedAttempts.add(attemptKey(t));
   }
   if (msg.method === "serverRequest/resolved") {
     const e = entryByRpc.get(p?.requestId);

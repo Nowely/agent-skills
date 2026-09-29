@@ -104,7 +104,7 @@ export const SCENARIOS = {
   "approval-wait": {}, "approval-wait-error": {}, "approval-wait-no-outcome": {},
   "approval-subagent-wait": {}, "approval-child-command": {}, "approval-stdin-close": {},
   "approval-writestdin": {}, "approval-then-transient": {}, "approval-turn-end": { outputSchema: true },
-  "approval-after-failed-attempt": {}, "approval-no-attempt": {},
+  "approval-after-failed-attempt": {},
   "filechange-in-tmpdir": {}, "filechange-outside": {}, "filechange-no-started": {},
   "filechange-symlink": {}, "filechange-child": {},
   // One request delivered twice under one id; and a file change at whatever path a case names, a rename
@@ -1266,14 +1266,6 @@ function onLine(line) {
           ask(approvalRequest(9403, THREAD, TURN, "exec-vcs-2", "vcs status --short"),
             (a) => commandAnswered(a, TURN, THREAD, "exec-vcs-2", "vcs status --short")));
         break;
-
-      // Asked with no attempt before it: Codex's own rule, as for an rm -rf of its own temp directory.
-      case "approval-no-attempt": {
-        const command = "rm -rf /tmp/entrust-scratch-dir";
-        w(R, cmd(TURN, THREAD, { command: "ls" }), ask(approvalRequest(9404, THREAD, TURN, "exec-rm-1", command),
-          (a) => commandAnswered(a, TURN, THREAD, "exec-rm-1", command)));
-        break;
-      }
 
       // Input to a terminal already running, which no rule can read as a command.
       case "approval-writestdin":

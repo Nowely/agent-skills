@@ -643,7 +643,7 @@ const CASES = [
       if (e.offered !== false || e.id !== null || e.decision !== "declined" || e.by !== "driver" || e.why !== "no channel")
         return `the refusal is not recorded as one nobody offered: ${JSON.stringify(e)}`;
       if (!/\n/.test(e.detail) || e.detail.length <= 200) return `the detail is not the whole command: ${JSON.stringify(e.detail)}`;
-      if (e.kind !== "command" || e.cause !== "policy" || !(Number.isInteger(e.waitMs) && e.waitMs >= 0) || typeof e.askedAt !== "string") return `the entry's fields are wrong: ${JSON.stringify(e)}`;
+      if (e.kind !== "command" || e.cause !== "asked" || !(Number.isInteger(e.waitMs) && e.waitMs >= 0) || typeof e.askedAt !== "string") return `the entry's fields are wrong: ${JSON.stringify(e)}`;
       return (r.approvalDir === null && r.approvalsAccepted === 0 && e.resolved === true && e.outcome?.status === "declined")
         || `the counts, the receipt or the outcome are wrong: ${JSON.stringify({ dir: r.approvalDir, acc: r.approvalsAccepted, resolved: e.resolved, outcome: e.outcome })}`;
     } },
@@ -658,11 +658,8 @@ const CASES = [
     assert: (r) => (entry0(r).why === "unknown thread" && entry0(r).subagent === true && entry0(r).offered === false)
       || `an unannounced thread's request was not refused as one: ${JSON.stringify(entry0(r))}` },
   { scenario: "approval-after-failed-attempt", expect: EXIT.ESCALATED,
-    why: "the same command failing inside the sandbox just before the request is the sandbox having stopped it (P1 Q1), and the cause says so: that one is fixed by a right or a setting",
-    assert: (r) => entry0(r).cause === "sandbox" || `cause is ${JSON.stringify(entry0(r).cause)}, not sandbox` },
-  { scenario: "approval-no-attempt", expect: EXIT.ESCALATED,
-    why: "a request with no attempt before it is Codex asking by its own rule, as it does for rm -rf; nothing on the plugin's side changes it, and the cause has to tell the two apart",
-    assert: (r) => entry0(r).cause === "policy" || `cause is ${JSON.stringify(entry0(r).cause)}, not policy` },
+    why: "a request right after the same command failed inside the sandbox has the cause a request with no attempt before it has (approval-wait): an attempt the sandbox stopped can leave no trace (P1), so any split between the two would be a guess, and nothing on the plugin's side changes either",
+    assert: (r) => entry0(r).cause === "asked" || `cause is ${JSON.stringify(entry0(r).cause)}, not asked` },
   { scenario: "approval-writestdin", expect: EXIT.ESCALATED,
     why: "input to a terminal already running cannot be read as a command, so it is never offered; the kind is checked before the mailbox is",
     assert: (r) => (entry0(r).why === "kind writeStdin" && entry0(r).kind === "writeStdin")
@@ -888,7 +885,7 @@ flow("a request waits for the caller under the thirty-minute deadline: still ope
     if (typeof q.run?.pid !== "number" || typeof q.run?.startedAtMs !== "number" || q.run?.turnId !== "turn_root" || q.run?.threadId !== "thr_root")
       problems.push(`the run identity is incomplete: ${JSON.stringify(q.run)}`);
     if (q.level !== "read" || Date.parse(q.deadlineAt) - Date.parse(q.askedAt) !== 1800000 || !Array.isArray(q.roots) || !q.roots.length || !q.sandbox || typeof q.askedAt !== "string"
-        || !Array.isArray(q.availableDecisions) || q.cause !== "policy")
+        || !Array.isArray(q.availableDecisions) || q.cause !== "asked")
       problems.push(`the request file lacks the agent's footing: ${JSON.stringify({ level: q.level, deadline: q.deadlineAt, roots: q.roots, cause: q.cause })}`);
     if (!err.includes(`approval request ${q.id}`) || !err.includes(`until ${q.deadlineAt}`)) problems.push("stderr did not name the request and its open wait");
     return problems.length === 0 || problems.join("; ");
