@@ -37,8 +37,8 @@ How a plugin behaved in real work in one release or a window of releases.
   Summary, with numbered headlines. Scope and method: the corpus as a table of T-ids and each task's shape, the Codex
   runs, what was left out and why, the audit's own composition, the address notation. Cost profile. Findings `F1`…,
   each with Seen (addresses), Pages (`file:line` of the plugin's public text, which may be quoted), Kind, Level,
-  Refuter and Recurring. What to keep. Proposed changes, as a table. Open questions. Audit cost, of the agents
-  that read, refuted and judged, never of the report's own review.
+  Refuter and Recurring. What to keep. Proposed changes, as a table. Open questions. Audit cost, of every agent
+  but the report's own reviewers.
 - **Reading:** readers with a question, one per task, each with its task's timeline slice; a measurer over the
   transcripts' `usage` for the cost profile; for entrust, a strong reader of the Codex runs' reports. Which pages were
   read before which draft, and what the owner said while the model worked, come from the timeline.
@@ -87,7 +87,8 @@ what was measured; `process` says where the time and tokens went.
   long. A pause a person's input ends is user time, `userMs` and `USER=`, uncapped: read it as idle time on the
   person's side, not as time spent answering. Any other pause is active up to 600 seconds and a gap above.
 - **Numbers:** `process --run <run>` writes `measures/process.json`: `gap` (600 seconds), `tasks[]`, `agents[]` and
-  `totals`, which include `userMs`. A task row holds `id`, `wallMs`, `activeMs`, `userMs`, `apiCalls`, `tokens`
+  `totals`, which include `userMs`; the printed `TOOLS=` and `OUTPUTS=` count the tasks' own calls, and `REPEATS=`
+  the tasks' and their subagents' repeats. A task row holds `id`, `wallMs`, `activeMs`, `userMs`, `apiCalls`, `tokens`
   (`input`, `cacheWrite`, `cacheRead`, `output`), `tools`, `gapCount` (every gap over 600 seconds), `gaps[]` (the ten
   longest, each `{ms, after, before, at}`), `repeats[]`, `outputs[]`, `agentTokens` and `codexTokens`. An agent row
   holds `id` (`T3.s2`, or `run:T3.c1` for a Codex run), `task`, `model`, `type` (a subagent's agent type, or `codex`),
