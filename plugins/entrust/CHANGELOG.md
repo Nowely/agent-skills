@@ -40,9 +40,10 @@ forensics remain in the repository references and release notes.
   with a 1.15 relaunch margin at 57.1M and spent about 53.8M (`measures/pilot-decision.md`, `measures/tokens.md`), and
   3 of its 356 collection runs passed its stop line at three times the pilot median. The issue's second trigger, a
   forecast at twice the plan, is left out: it fired in neither run.
-- **The orchestrate page names the swarm as the bulk row's batch route.** A bulk batch runs as a swarm, which only
-  the user starts, with `/entrust:swarm`: one script launches its agents under a concurrency cap, and one Stop ends
-  the batch. Why: the 456 Luna runs of issue #22 and the replication's collection
+- **The orchestrate page names the swarm as the batch route for verdict units.** A batch of verdict units runs as a
+  swarm, which only the user starts, with `/entrust:swarm`: one script launches its agents under a concurrency cap,
+  and one Stop ends the batch. A batch of extraction units runs as ordinary Codex agents, because the swarm's unit is
+  the closed-set verdict alone. Why: the 456 Luna runs of issue #22 and the replication's collection
   (`plugins/terse/research/2026-09-26-writing-replication/tools/batch.py`) both launched their batches by hand,
   launch-only and with no wrapper, and the page named no route; the issue counts about 13k tokens per wrapper. The
   swarm's limits, recorded as E90, are not changed here.
