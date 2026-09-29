@@ -120,8 +120,8 @@ orchestrate mode, `<run>/<agent>/report.json` in the run directory that page nam
 The launcher and the driver make every directory it needs, so it may name a root your own Write and `mkdir`
 are refused. A relaunch takes a fresh report path, because the launcher refuses a directory that ran for
 another report ([a reused agent directory](references/incidents.md#a-reused-agent-directory)). `<DIR>` is the
-agent's directory, `agent/` beside `<REPORT>`. `$TMPDIR` is the run's own: for every run the driver makes a
-private 0700 one at `<state>/tmp/<runId>`, whatever the caller exported, and reports it as `tmpDir`.
+agent's directory, `agent/` beside `<REPORT>`. Files an agent leaves in its `$TMPDIR` are its own and stay
+after the run, at the report's `tmpDir` ([Environment](references/environment-and-internals.md#environment)).
 
 The wrapper's completion notification is the agent's completion: read the wrapper's own lines first, and
 read the file itself after a `PATH=own` when those lines leave a question
@@ -271,7 +271,8 @@ write its own would be grading itself. Declare gates on the command line instead
   with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed, and `answerPath` holds the
   complete answer where a size cap clipped either.
 - Exit 2 and exit 4 each have two shapes. With `turnStatus: null` no turn ran: the reason is in `error` and
-  `<DIR>/err.txt`. With any other `turnStatus` the turn ran, and its commands, any retained answer and the
+  `<DIR>/err.txt`, and a `threadId` beside it means the thread had started and its rollout is the only record.
+  With any other `turnStatus` the turn ran, and its commands, any retained answer and the
   receipt are real: read them before relaunching, or a paid turn is thrown away.
 - `exitCode: 6` is a request declined or expired unanswered, never one accepted; `escalations` holds one entry
   per approval request, its fields in
