@@ -908,7 +908,7 @@ test("E10 the roles reference carries what #15 and #16 asked of each role's brie
       ["judge", "the final verdict by the criterion the plan named, which its brief quotes"],
       ["dedup-and-rank", "merges a wave's returns into clusters of one claim each, keeps every origin on its cluster"],
       ["dedup-and-rank", "before the refutation of a wave's claims"],
-      ["completeness critic", "the verdict, the manifest's sha256 and the missing items"],
+      ["completeness critic", "the verdict, the manifest's sha256, the missing items, and the copy's path with one cited diff hunk per gap"],
       ["measurer", "a script over inputs fixed by path and digest, re-runnable by anyone who has them"],
       ["retrospective analyst", "each incident with its trace address, and `unknown` where the trace has none"],
     ];
