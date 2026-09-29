@@ -29,6 +29,8 @@ the transcript stay private; nothing here names the case.
   three answers the regrade expected to pass; case 5's steps-correct passed and failed the same Steps text. Under
   the rule, a case whose grader disagrees with the reader on two or more answers is unmeasured on that grader;
   the reader's counts stand beside it and decide nothing alone.
+  An Opus judge applied list-first and case 1's facts-correct as written on the saved answers (12 of 12), so
+  the pr35 cases now run with it.
 - **The advisor's premises ask changed how premises are reported, not whether a false one is caught**: all four
   advisors caught the planted premise, with the ask or without it.
 - **E99 is fixed and checked**: the trigger suite's control arm now runs without the installed terse.
@@ -53,6 +55,6 @@ nothing here says how often the skill is chosen.
    and a second blind reading.
 5. The advisor probe and the trigger runs, beside the content runs.
 
-[results.md](results.md) holds the tables and the costs ($16.02 for the paid runs); [rules.md](rules.md)
+[results.md](results.md) holds the tables and the costs ($17.43 for the paid runs); [rules.md](rules.md)
 holds each frozen reading rule. The cases are `evals/content/cases/pr35-field.json` and the reverting variant
 `evals/content/variants/pr35-before.json`.

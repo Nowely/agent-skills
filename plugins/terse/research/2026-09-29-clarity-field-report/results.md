@@ -51,6 +51,13 @@ on 7 of 12: facts-correct 4 of 6, list-first 3 of 6. List-first failed the three
 for pasting; its criterion names each of these openings as allowed. Facts-correct failed two of the three answers
 expected to pass.
 
+The same twelve echoes judged by Opus instead of Sonnet agreed with the expected verdicts on 12 of 12, each by
+three unanimous votes: it passed the three count-first answers and the two drafts without a wrong fact that
+Sonnet had failed. The expected verdicts were written by the reader with the arms known, on the answers the
+criteria were reworded against, so this shows that Opus applies the criteria as written; it is not a test on
+new answers. form-matches-neighbours and case 5's steps-correct were not regraded. Since then the pr35 cases
+run with `--judge-model opus`.
+
 ## Advisor probe (entrust)
 
 Four fresh Fable advisors, two per wording, got one question whose context planted a false premise (a default
@@ -76,8 +83,9 @@ isolated; the with-plugin session loaded only the candidate.
 | Content rerun | $4.65 |
 | E99 check | $0.25 |
 | Regrade | $0.63 |
+| Regrade, Opus judge | $1.41 |
 | Confirmation run | $4.77 |
-| Total | $16.02 |
+| Total | $17.43 |
 
 Priced here: the harness and trigger runs. The agents that designed, criticised and read, and the advisor
 probe, ran on session tokens and are not priced.
