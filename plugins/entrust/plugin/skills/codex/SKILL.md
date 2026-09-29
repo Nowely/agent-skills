@@ -54,7 +54,7 @@ task while the coordinator orchestrates and checks it.
 One Agent call per agent: a native subagent, the **wrapper**, that launches the driver, waits for
 it and returns when the run has ended. Only a subagent is a subagent to Claude Code: a Bash task, whatever
 its description says, is not on the agent map, is not stopped from it and is not continued by a message
-(measured 2026-09-12 against the VS Code extension 2.1.269, whose map lists `local_agent` tasks alone). The
+([the agent map](references/incidents.md#the-agent-map)). The
 wrapper is what makes a Codex agent read like a Claude agent: one card under its description, Stop on the
 card, one completion notification, and a message to continue it.
 
@@ -63,22 +63,19 @@ report, takes the prompt on stdin and puts it through the driver's own check. A 
 `ERROR=` line and no `PROMPT=`: spawn no wrapper on that result, and take a mode the device refuses back to the
 user as a question, never to another mode. On `PROMPT=`, spawn the wrapper with the Agent tool:
 `subagent_type: entrust:codex-agent`, `run_in_background: false` for the one agent you wait for and `true`
-for agents that run side by side or while you work (measured 2026-09-17: a foreground call brings the
-hand-back message inside the same turn and no task notification after it, so you answer once — the owner's
-native foreground subagent showed one message after the hand-back frame — and an eleven-minute call ended
-normally, so the call has no ceiling of its own), and a `description` of
+for agents that run side by side or while you work ([foreground and
+background](references/incidents.md#foreground-background-and-the-ceiling)), and a `description` of
 `Codex <short name> <id>: <task in a few words>` — `Astra`, `Sol`, `Terra` or `Luna`, the name on the
 `MODEL:` line — so the card the user sees names the agent, its
 vendor and its task, and not the command line. That type is the agent this plugin ships,
 [agents/codex-agent.md](../../agents/codex-agent.md): a relay with the Bash tool alone and its model pinned
-in its own file, so its context is half a `general-purpose` subagent's (measured 2026-09-12: 8.2k against
-15.4k tokens on the same agent). Pass it no `model`; the agent's model is the `MODEL:` line in its prompt
+in its own file, so its context is half a `general-purpose` subagent's
+([the agent map](references/incidents.md#the-agent-map)). Pass it no `model`; the agent's model is the `MODEL:` line in its prompt
 file.
 
 The wrapper's message is the block below with its two placeholders filled in and nothing added or
-removed: the command and the four steps, which the wrapper's own file repeats (measured 2026-09-17: with the
-steps in the file alone, Haiku kept them in one run of three and paraphrased the lines, narrated, and read
-the output file in the other two; with them in the message, three of three). It never sees the agent's
+removed: the command and the four steps, which the wrapper's own file repeats
+([the wrapper's message](references/incidents.md#the-wrappers-message)). It never sees the agent's
 prompt. The command is the
 launcher `scripts/agent-run.mjs`, one foreground call and no `&` of your own: it opens `prompt.txt` only
 as the driver's argument, passes the driver `--prompt-file` and `--report-file` and its own environment
@@ -87,7 +84,7 @@ prints the nine status lines, which are what the wrapper hands back, so a Codex 
 and its return, as a native subagent's does. The launcher is idempotent and returns on its own before the tool's
 ten-minute ceiling: a call that has waited nine and a half minutes prints its lines with `RUNNING=` in place of
 `REPORT=`, the wrapper runs the same command again, and the second call finds the run its directory already
-started and waits for it (measured 2026-09-17: an eighteen-minute agent took two calls, one driver, one report).
+started and waits for it ([the ceiling](references/incidents.md#foreground-background-and-the-ceiling)).
 The driver runs under a keeper of its own, outside the wrapper's process tree, so a wrapper that ends early — the
 harness ends a foreground subagent's leftover commands with SIGTERM to their tree (measured 2026-09-26) — leaves
 the run going and its report to come. The driver prints its pid on the first line of `<DIR>/err.txt`
@@ -156,7 +153,7 @@ after `<run>/<id>/agent/exit` exists (then `-3` after `-2` ends, and so on).
 `<DESCRIPTION>` is the Agent call's own description. `<DIR>`, where this page names it, is the agent's directory,
 `agent/` beside `<REPORT>`, which `--new` makes at 0700 with the prompt at 0600: one per report path, so a
 relaunch gets a fresh report path and the earlier run's four files stay where they were (the launcher refuses a
-directory that ran for another report; measured 2026-09-17 on the earlier shape, a reused one lost its record),
+directory that ran for another report: [a reused agent directory](references/incidents.md#a-reused-agent-directory)),
 while the same command run again for the same report reads the run it started, which is what the ceiling's
 second call is. None of the launcher's files is left in `$TMPDIR`. `$TMPDIR` is the run's own: for every run the
 driver makes a private 0700 one at `<state>/tmp/<runId>`, whatever the caller exported, and reports it as
@@ -170,12 +167,11 @@ are refused.
 The wrapper's completion notification is the agent's completion: read the wrapper's own lines first —
 what the driver exited with, whose run the file at `<REPORT>` belongs to, whether it is there, the answer
 where it is short and its first line where it is not, the refusal where no turn ran, and the receipt — and
-read the file itself after a `PATH=own` when those lines leave a question (measured 2026-09-17: on a one-line
-task and on a pre-turn refusal, a hand-back without the answer and the refusal cost the coordinator one more
-turn each). To continue an agent, write a second
-prompt file with `RESUME: <threadId>` at `<run>/<agent>-<n>/report.json` and send the wrapper one more command of the same shape after the previous link ends; it runs it the same way and notifies again (measured 2026-09-12). A session with no
+read the file itself after a `PATH=own` when those lines leave a question
+([the wrapper's message](references/incidents.md#the-wrappers-message)). To continue an agent, write a second
+prompt file with `RESUME: <threadId>` at `<run>/<agent>-<n>/report.json` and send the wrapper one more command of the same shape after the previous link ends; it runs it the same way and notifies again. A session with no
 message tool, headless `-p` among them, continues the thread with a second wrapper given the same file,
-at the cost of a second card (measured: the thread held both ways).
+at the cost of a second card ([the agent map](references/incidents.md#the-agent-map)).
 
 Every launch forwards that variable under its own name: the plugin's own data directory, where the
 driver's state and every Codex artifact the report names (`answerPath`, `tmpDir`, a worktree harvest) live. The
@@ -196,7 +192,7 @@ For an isolated writer, one rights line above it (see
 Write a prompt you were handed VERBATIM: not a quote, not a `$`, not a header line it has, and add
 nothing. A prompt with no `RIGHTS:` line is a read agent in the current directory; the driver decides that,
 not you. Never create a directory, change a level or re-run with different flags to make a refused agent
-succeed: measured, a wrapper that created the missing directory ran Codex with rights nobody granted.
+succeed ([A relay on a small model](references/incidents.md#a-relay-on-a-small-model)).
 
 ## Rights
 
@@ -219,8 +215,7 @@ adding it, and never translate a refusal into broader rights: an approval under 
 one request, not a rights change. Every field is in
 [Header fields](#header-fields) below; model, effort, gates, continuation and answer-shape choices
 belong in that header, and the agent's rights in its `RIGHTS:` line, which is why the prompt is copied
-into the file rather than rewritten: measured, a wrapper that rewrote one widened malformed rights and
-reported false success
+into the file rather than rewritten
 ([A relay on a small model](references/incidents.md#a-relay-on-a-small-model)).
 
 Read agents may share one cwd, and each has a `$TMPDIR` of its own, but a repository whose tooling keeps a
@@ -288,12 +283,11 @@ write its own would be grading itself. Declare gates on the command line instead
 - `<REPORT>` is the report, the same JSON the run also wrote to `<DIR>/out.json` once a turn ran. Read
   the file: it is written whole or not at all, and a missing one means unknown, never success.
 - Under a background call, the hand-back message and the task notification that follows it are one
-  completion: read the first, and give the second the shortest reply the harness accepts (measured
-  2026-09-17: a coordinator told the user that the notification duplicated the answer). A foreground call
-  has no notification.
+  completion: read the first, and give the second the shortest reply the harness accepts
+  ([foreground and background](references/incidents.md#foreground-background-and-the-ceiling)). A
+  foreground call has no notification.
 - On `EXIT=0` what reaches the user is the agent's name and its answer; the other lines are yours and stay with
-  you (measured 2026-09-17: two coordinators retold `RECEIPT=` and the report's model field, slug included, as
-  prose, so the status line now carries the short name).
+  you ([the wrapper's message](references/incidents.md#the-wrappers-message)).
 - `PATH=own` says the driver accepted `<REPORT>` and published there; `PATH=taken` says an entry was
   already there or another run published first, so the file is an earlier run's, whatever the numbers
   beside it say; `PATH=none` says the path was never accepted and no file of this run's exists.
@@ -376,11 +370,12 @@ A task that reads files names the read: one command per file, and `max_output_to
 cap, 10,000 today (`codex debug models` lists it under `truncation_policy`); a model left to choose sets its own
 cap, often 1,000, and reads fragments ([A read cut to fragments](references/incidents.md#a-read-cut-to-fragments)).
 Write `TASK:` in the
-user's language: the agent answers in the language it is asked in (measured 2026-09-17: a task written in English
-about a Russian «хай» came back in English). Whatever `RETURN:`
+user's language: the agent answers in the language it is asked in
+([language and name](references/incidents.md#language-and-name-in-a-return)). Whatever `RETURN:`
 asks for, its first line is one sentence a reader can take on its own: the name you gave the agent in the prompt
 ("you are Codex Terra T1"), its status and what it did. Give the name; the model does not know its short name and
-answers with whatever it calls itself (measured 2026-09-17: «GPT-5 Codex, id T1»). That line is what the coordinator
+answers with whatever it calls itself ([language and name](references/incidents.md#language-and-name-in-a-return)).
+That line is what the coordinator
 retells, and not itself a message to the user; the rest is the return's own shape.
 
 The standing rules are already on the thread — unattended, its effective writable roots and that `/tmp` is not one, its egress and its web search each named

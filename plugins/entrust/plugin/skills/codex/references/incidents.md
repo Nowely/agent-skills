@@ -229,3 +229,38 @@ document in a file under `$TMPPREFIX`, default `/tmp/zsh`, and no agent may writ
 15 rollouts between 2026-08-31 and 2026-09-08 and reproduced under the read profile with `codex sandbox
 --log-denials` (`(zsh) file-write-create /private/tmp/zsh…`). The driver now hands the app-server
 `TMPPREFIX` under the run's `$TMPDIR`, which every level may write; `/bin/sh` was never affected.
+
+## The agent map
+
+Measured 2026-09-12 against the VS Code extension 2.1.269: the agent map lists `local_agent` tasks alone, so a
+Bash task, whatever its description says, is not on it, is not stopped from it and is not continued by a
+message. The shipped wrapper, with the Bash tool alone and its model pinned, took 8.2k tokens of context where
+a `general-purpose` subagent took 15.4k on the same agent. A message to the wrapper continued the agent's
+thread, and so did a second wrapper given the same prompt file in a session with no message tool, at the cost
+of a second card.
+
+## The wrapper's message
+
+Measured 2026-09-17 on Haiku: with the four steps in the wrapper's file alone, it kept them in one run of
+three, and in the other two it paraphrased the lines, narrated, and read the output file; with the steps in
+the message, three of three. On a one-line task and on a pre-turn refusal, a hand-back without the answer and
+the refusal cost the coordinator one more turn each. Two coordinators retold `RECEIPT=` and the report's model
+field, slug included, as prose, which is why the status line carries the short name.
+
+## Foreground, background and the ceiling
+
+Measured 2026-09-17: a foreground call brought the hand-back message inside the same turn and no task
+notification after it, as the owner's native foreground subagent did, and an eleven-minute call ended
+normally, so the call has no ceiling of its own. Under a background call a coordinator told the user that the
+notification duplicated the answer. An eighteen-minute agent took two launcher calls, one driver and one
+report.
+
+## A reused agent directory
+
+Measured 2026-09-17 on the launcher's earlier shape: an agent directory reused for a second report lost the
+first run's record, which is why the launcher refuses a directory that ran for another report.
+
+## Language and name in a return
+
+Measured 2026-09-17: a `TASK:` written in English about a Russian «хай» came back in English, and an agent not
+told its name answered «GPT-5 Codex, id T1».
