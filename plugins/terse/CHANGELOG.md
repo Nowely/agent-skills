@@ -18,13 +18,6 @@ forensics remain in the repository references and release notes.
 - `clarity`'s second question before writing also asks what comes back, and when neither the owner nor the
   sources settle what the reader will do, it has the writer ask the owner instead of inferring it: in a field
   report, a reply in a long thread was built on a division of work the writer had pieced together.
-- `clarity` checks after writing that every item under a heading or group label is an instance of what the
-  label names, and sends an item the label does not hold for after the list or under a label of its own, since
-  the reader reads the label into each item: in the same report, the writer checked explicit claims while a
-  group label placed an item where it did not belong. The check sits on clarity's own page because the session
-  did not open `truth.md` while drafting. A first wording, whether every item fits what the label says, was
-  measured on 2026-09-29 with Opus 5.5 and moved nothing: in three sessions with it, all three still listed
-  "No database" as an item under Requirements, against two of three sessions without the check.
 - `clarity`'s body now says its questions apply while revising as well as writing, as its description
   already did.
 - `clarity`'s questions before writing end by choosing the form: look at good nearby texts of the kind and

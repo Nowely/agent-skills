@@ -27,11 +27,6 @@
       "replace": "Make transferred text self-contained."
     },
     {
-      "file": "skills/clarity/SKILL.md",
-      "find": "- Is every item under a heading or group label an instance of what the label names? The reader reads the\n  label into each item, so an item the label does not hold for goes after the list or under a label of\n  its own ([truth](../../references/truth.md#true-but-not-where-it-is-read)).\n",
-      "replace": ""
-    },
-    {
       "file": "references/rules.md",
       "find": " A text they have seen is not one they have at hand: quote what they will act on, such as a text to insert or a value to check, with its source after it.",
       "replace": ""
