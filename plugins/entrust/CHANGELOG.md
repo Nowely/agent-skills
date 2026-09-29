@@ -39,6 +39,11 @@ forensics remain in the repository references and release notes.
   (`plugins/terse/research/2026-09-26-writing-replication/tools/batch.py`) both launched their batches by hand,
   launch-only and with no wrapper, and the page named no route; the issue counts about 13k tokens per wrapper. The
   swarm's limits, recorded as E90, are not changed here.
+- **Every output path a `TASK:` names lies under the agent's writable roots.** The codex page's Rights section says
+  so, and its generated copy, `skills/orchestrate/references/codex-composition.md`, follows; the orchestrate check
+  that opens one assembled brief checks its output paths against those roots beside its input paths. Why: in issue
+  #22 a write agent's brief put its output one level above its `RIGHTS: write` root, the write was refused and the
+  run exited 6; since 0.22.0 no approval grants a root mid-run, so the brief is where the path is caught.
 
 ## 0.22.0 — 2026-09-28
 
