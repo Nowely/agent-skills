@@ -86,9 +86,11 @@ turn, then `SIGTERM`, then `pgrep`), and either sweep the children or narrow the
   opened 95 pages of about 18,000 characters in one loop with `max_output_tokens: 1000`; each output was 19–60
   characters and 419 of the 1,745 message ids on those pages ever reached the model
   (`plugins/terse/research/2026-09-26-writing-replication/measures/A2-1-reading-check.md`). With
-  "`max_output_tokens: 10000`, one `cat` per page" in the brief, 1,583 of 1,584 page reads by 374 Luna agents
-  arrived whole at the first launch; the one miss had read all ten pages of its part in one loop and got the
-  combined output cut (`measures/coverage/col.json`, agent `col-P036-B`).
+  "`max_output_tokens: 10000`, one `cat` per page" in the brief, all 1,584 page reads by 374 Luna agents arrived
+  whole at the first launch, by the replication's `tools/coverage.py` now that it matches
+  JSON-escaped text. The 1,583 recorded before that fix came from a tool that decoded only the first JSON object of
+  an output. One agent, `col-P036-B`, read all ten pages of its part in one loop and got the combined output cut;
+  its rollout shows it then read the eight pages the cut had lost, one `cat` each.
 - `grep -rn max_output_tokens plugins/entrust/plugin/skills` finds nothing: neither `codex` nor `orchestrate` says it.
 
 **Check.** `jq -r 'select(.payload.type=="custom_tool_call") | .payload.input' <the second rollout> | grep -o 'max_output_tokens[^,}]*'`
@@ -102,13 +104,16 @@ prints the 1000.
   10000; no truncation found" (`answerJson.evidence`, report `A2-1`); its rollout holds 28 custom tool outputs, 2 wait outputs and
   419 of 1,745 message ids, and its gap findings came from keyword regexes over the messages
   (`plugins/terse/research/2026-09-26-writing-replication/measures/A2-1-reading-check.md`).
-- The receipt proves the thread ran, not what it read: `codex/references/environment-and-internals.md:160-166`.
+- The receipt proves the thread ran, not what it read: `codex/references/environment-and-internals.md:219-222`.
   No page names a check that a page an agent was given reached its context.
 - A check that works: `plugins/terse/research/2026-09-26-writing-replication/tools/coverage.py` counts a page as
-  read only when its whole text is a substring of one command output in the agent's own rollout (decoding a
-  JSON-printed output too); over the run it flagged 13 of 500 stress agents, 1 of 356 collection agents (inspected: nine of ten pages
-  whole, the tenth only inside a cut loop output) and the false self-report above; before it learned to decode a
-  JSON-printed output it also flagged two agents that had read everything.
+  read only when its whole text is a substring of one command output in the agent's own rollout, raw or
+  JSON-escaped. Re-run on the 13 recorded sets,
+  it flags 1 of 500 stress agents, `cx-P102`, which had reported itself `partial`, none of 356 collection agents
+  (1,508 of 1,508 pages read) and none of 13 relaunched stress agents. Among the Luna runs it found no report that
+  hid a miss; the hidden miss that stands is the Sol agent above. The records made before the fix, 13 of 500, 1 of
+  356 and 1 of 13 flagged, came from a tool that decoded only the first JSON object of an output, and an earlier
+  version that decoded none also flagged two agents that had read everything.
 
 **Check.** Run `coverage.py` on a map that pairs agent `A2-1` with the 94 human pages: it reports the pages unread.
 
@@ -384,9 +389,9 @@ with the vendor's guidance, recorded for the owner's audit; each aside also coun
 advises stating what to do and keeping the story elsewhere; the repository's rule asks for the evidence. Decide whether
 the line keeps its level and the incident moves to `incidents.md`.
 
-## E80. `codex/SKILL.md:231` uses a dated catalogue snapshot as the instruction for `EFFORT:` values (tension)
+## E80. `codex/SKILL.md:251` uses a dated catalogue snapshot as the instruction for `EFFORT:` values (tension)
 
-**Evidence, level 1.** `plugins/entrust/plugin/skills/codex/SKILL.md:231`: "(the catalogue of 2026-09-17: `none` and
+**Evidence, level 1.** `plugins/entrust/plugin/skills/codex/SKILL.md:251`: "(the catalogue of 2026-09-17: `none` and
 `minimal` are on no model and exit 2 before the turn)". Anthropic's skill authoring page advises against time-sensitive
 information, and its example is an instruction that turns false when a date passes. This line tells the reader which
 values to write, from a snapshot of an external catalogue; when the catalogue changes, the line is wrong and the reader
@@ -427,6 +432,63 @@ required packages in SKILL.md and advises against assuming them. A refused launc
 
 **Issue text.** A coordinator on a machine without the `codex` CLI or Node meets a failed launch the page does not
 explain. The page should name its dependencies in one line.
+
+## E89. The launcher's plan registration refuses 12 of the 22 role names `orchestrate`'s roles reference defines
+
+**Evidence, level 3.**
+
+- `plugins/entrust/plugin/skills/codex/scripts/agent-run.mjs:416-419` (`classifyRole`) knows a role only by a worker
+  word (`implement|writ|worker|build|fix|…`) or a checking word (`critic|verif|review|refut|judge|check|test|advis|…`),
+  and `:445` refuses a row whose role has neither: `invalid role for <id>: <role>`, exit 2.
+- `plugins/entrust/plugin/skills/orchestrate/SKILL.md:37` registers every agent, Claude or Codex, through `--plan`
+  once the plan has a Codex agent, and `orchestrate/references/roles.md:3` has the coordinator choose the role from
+  that reference's table, or name a new one the same way.
+- 2026-09-29, `classifyRole` over the first column of that table returned no class for 12 of its 22 rows: area scout,
+  architect, foreman, strong reader, live prober, recognition reader, blind proposer, dedup-and-rank, surveyor,
+  measurer, retrospective analyst, swarm reducer. The row `A1 | opus | architect | nothing | unknown` through
+  `--plan --run-dir <dir>` printed `ERROR=invalid role for A1: architect` and exited 2; the same row as
+  `split critic` registered with `CHECKING=1`.
+
+**Check.** Import `classifyRole` from `agent-run.mjs` in a `node` one-liner and run it over the first column of
+the table in `roles.md`: 12 of 22 come back `null`.
+
+**Issue text.** The coordinator names each agent's role from the roles reference, and the launcher refuses more than
+half of those names when the plan is registered: a plan with an architect, an area scout, a measurer or the foreman
+exits 2 before its card can be shown, and a coordinator that renames the role to a word the pattern knows gets a
+card that no longer says what the agent does. The launcher should accept every role the reference defines, counting
+each as a worker, a checker or neither, or the plan step should say which words the launcher counts. The bulk row's
+extraction agent, which the orchestrate page's unit now allows, has no row in the reference and no name the pattern
+accepts: "bulk extractor", "extractor" and "bulk reader" are all refused, while "bulk verifier" counts as a checker.
+
+## E90. The swarm, the bulk row's route for verdict batches, is user-only, called an experiment, fifty units at most, and reports no tokens
+
+**Evidence, level 1 for the lines, level 3 for the refused registration.**
+
+- `plugins/entrust/plugin/skills/swarm/SKILL.md:7` `disable-model-invocation: true`: a coordinator cannot load the
+  skill, so the user starts every swarm. `plugins/entrust/plugin/README.md:51` introduces it with "Two more are
+  experiments with a page of their own."
+- `swarm/scripts/swarm.mjs:30` `const MAX = 50;` and `:84` refuses a longer unit file: "a swarm is 50 at most".
+  A batch wider than fifty verdict units takes several swarms.
+- `swarm/SKILL.md:17`: "A unit is one claim, one address, a verbatim quote, and a verdict from a closed set"; so
+  `orchestrate/SKILL.md:69` sends a batch of extraction units, the bulk work of issue #22 and the replication, to
+  ordinary Codex agents, outside the swarm's batch launch, concurrency cap and single Stop.
+- `swarm.mjs:113-117` and `:150`: the summary holds per agent its number, unit, report path, the launcher's status
+  lines and times, and no tokens, which the plan's re-estimate and per-agent stop line (`orchestrate/SKILL.md:40`)
+  read; each report has to be opened for them.
+- A swarm's agent ids are `001` to `050` (`swarm.mjs:114`), and the plan registration takes only ids that start with
+  a letter (`codex/scripts/agent-run.mjs:442`). 2026-09-29: the row `001 | luna | bulk verifier | nothing | unknown`
+  through `--plan` printed `ERROR=invalid agent id: 001`, exit 2, and `--new` for `<run>/001/report.json` in a run
+  with a registered plan printed `ERROR=001 is not in the approved plan …`, exit 2.
+
+**Check.** `sed -n 7p plugins/entrust/plugin/skills/swarm/SKILL.md`, `grep -n 'MAX' .../swarm/scripts/swarm.mjs`, and
+the two launcher calls above against a scratch run directory.
+
+**Issue text.** The orchestrate page routes a batch of verdict units to the swarm, and the swarm cannot yet carry
+such a batch as the plan makes it: only the user can start one, the README calls it an experiment, a swarm holds
+fifty units, its summary carries no tokens for the plan's re-estimate and stop line, and its agents cannot be
+registered in the orchestrate run's plan, so a swarm launched into that run is refused agent by agent. An extraction
+batch, the bulk work of both recorded runs, has no batch route at all. Decide which of these stay limits the plan
+states, and lift the rest.
 
 ## E92. Codex agents running side by side share one `$TMPDIR`, and the pages send each agent's overflow there as if it were its own
 

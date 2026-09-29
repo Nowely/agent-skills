@@ -384,11 +384,12 @@ test("D7 a Fable agent never spawns Fable, and only the orchestrator or a forema
   () => says("a Fable agent never spawns Fable", "only you, or a foreman you launched, launch Fable agents"));
 
 test("D8 effort is chosen per agent below the top row, and low effort only for mechanical Sonnet stages in a Workflow",
-  "measured 2026-09-17: two Luna read agents at an inherited xhigh took 480 and 557 s and 1.2M and 2.3M tokens for a ledger and a grep task. The earlier rule inherited the user's effort everywhere because, measured on codex-cli 0.153.4, no effort level bought the evidence guarantee an exception once claimed; this rule claims cost, not evidence",
+  "measured 2026-09-17: two Luna read agents at an inherited xhigh took 480 and 557 s and 1.2M and 2.3M tokens for a ledger and a grep task. The earlier rule inherited the user's effort everywhere because, measured on codex-cli 0.153.4, no effort level bought the evidence guarantee an exception once claimed; this rule claims cost, not evidence. The bulk row left `low` after issue #22's pilot (11 false positives in 22 at low, 1 in 13 at medium, tokens within 5 %); `high` over `medium` is the owner's choice from the writing replication's pilot",
   () => {
     const prose = says(
       "Every Codex agent carries an `EFFORT:` line chosen for its work",
-      "`low` for the bulk row",
+      "`high` for the bulk row's extraction, classification and verification",
+      "`low` for mechanical work only",
       "only a top-row agent goes without one and inherits the configured effort",
       "In a Workflow, `effort: 'low'` is for mechanical Claude Sonnet stages only.",
     );
@@ -477,12 +478,12 @@ test("F2 the nine verification bullets, one line each",
     return shows(
       /^- Scout inline first: the work-list is yours, before any fan-out\.$/m,
       /^- Critique the split before the fan-out: a top-row agent reads the decomposition, not the subject, for what the cut lost, what the wording added, which items are two and which the fan-out's rights cannot decide; twenty agents on a bad split agree and are all wrong \(measured [\d-]+: it caught two claims true at one release and false at the next, and they never reached the fan-out\)\. It returns the corrected split as a file under its temporary directory, naming each unit's owner and every interface two units share with its one owner\. No worker brief exists before that file: each is written from it and names its path, and before a worker launches you check the files and interfaces its brief touches against the file's owners\.$/m,
-      /^- (Open|Read) one assembled brief whole before (the|any) fan-out; check its input paths in the agent's planned tree, its item count and each quoted claim against its source\.$/m,
+      /^- (Open|Read) one assembled brief whole before (the|any) fan-out; check its input paths in the agent's planned tree, its output paths against the agent's writable roots, its item count and each quoted claim against its source\.$/m,
       /^- Adversarial verify: a refuter returns `refuted` when its check ran and contradicted the claim and `unknown` when its decisive check could not run, never `refuted` for want of evidence\. It attacks one of the dedup-and-rank's one-claim clusters and keeps its origins, and a prerequisite the refuters share runs once, its receipt in each brief\. A finding is (one|what) that changes correctness or a stated requirement, the rest (its|in) `open`\.$/m,
       /^- Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters\.$/m,
       /^- Read a unanimous fan-out as evidence about the prompt first: open one return whole before you trust the tally \(measured [\d-]+: nineteen of twenty verdicts answered one broken path in every prompt\)\.$/m,
       /^- Judge panel for a design task: a verdict (missing|without|lacking) its decisive check is `unknown` in `result`; name the missing check in `open`\. Use the sibling's `EXPECT:` rule for a Codex check\.$/m,
-      /^- Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. What it reads is the linted draft, frozen with a manifest beside it: `shasum -a 256` over the draft and every artifact it cites\. The critic returns the manifest's sha256 as the first line of its `evidence`\. Before the answer goes out, compute the manifest's sha256 again and compare it with the critic's, and run `shasum -a 256 -c` on the manifest: a different digest or a failed check voids the verdict, and the critic reads the changed part again\. What goes out is the draft's text and one line after it, the critic's verdict, "<Model> <id>: done", "partial" or "not done", counted in the draft's word bound\. Nothing else follows the lint, no paragraph on the critic's return included: anything you must add is linted and frozen again, and the critic reads again\. A `not done` verdict means you fix the answer or name the gap in it\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
+      /^- Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. What it reads is the linted draft, frozen with a manifest beside it: `shasum -a 256` over the draft, every artifact it cites, the run's ledger and the runner's log behind each number it states\. The critic returns the manifest's sha256 as the first line of its `evidence`\. Before the answer goes out, compute the manifest's sha256 again and compare it with the critic's, and run `shasum -a 256 -c` on the manifest: a different digest or a failed check voids the verdict, and the critic reads the changed part again\. What goes out is the draft's text and one line after it, the critic's verdict, "<Model> <id>: done", "partial" or "not done", counted in the draft's word bound\. Nothing else follows the lint, no paragraph on the critic's return included: anything you must add is linted and frozen again, and the critic reads again\. A `not done` verdict means you fix the answer or name the gap in it\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
       /^- No silent caps: name every agent, check or item you dropped\.$/m,
     );
   });
@@ -761,6 +762,13 @@ test("C10 the plan states expected tokens by tier and role, from comparable runs
     return prose;
   });
 
+test("C10b the bulk row is estimated per unit and again after the pilot, and the plan's per-agent stop line halts further launches",
+  "issue #22's bulk row was planned at 25–30M and spent 38.7M, pilots and re-runs included, with one agent at 2.09M; the replication's per-part forecast with a relaunch margin came within about 6 %. The stop line is a plan line, not a budget: it fires when an agent's report arrives, so it can stop only the launches after it, and 0.8.0 removed the driver's budget on purpose",
+  () => says(
+    "Estimate the bulk row per unit: a comparable unit's tokens times the units, plus the pilot and a margin for re-runs, and estimate it again after the pilot.",
+    "The plan states a stop line of three times the pilot's median tokens per agent: an agent whose report's `tokenUsage` total passes it stops further launches until the user has seen a new estimate.",
+  ));
+
 test("C11 the commands each check needs are checked against planned rights and environment before the plan, and unmet prerequisites go into the plan",
   "a review turn spent 2.65 M tokens and left its decisive check unrun because the sandbox could not complete it (sol-n2, 2026-09-17), and ten of thirteen agents in one run ended at exit 6 on declined requests; a prerequisite found before launch is a line in the plan, one found after it is a paid turn; the wording reassigns nothing after a refusal, which the sibling forbids",
   () => {
@@ -788,16 +796,26 @@ test("D10 Luna over Haiku carries no price claim",
     return true;
   });
 
-test("D12 the bulk unit is one claim, one address, a verbatim quote, and a closed-set verdict about the subject, never the brief",
-  "a bulk verifier scored on its own prompt agrees with itself for the wrong reason (measured 2026-09-12: a broken path in every brief drew the same verdict from nineteen of twenty agents); this sentence is what keeps a bulk verdict about the input rather than the ask, and the 2026-09-17 mutation baseline deleted it with the suite staying green",
+test("D12 the bulk unit is one part of the material for extraction with a fixed answer schema, or one claim, one address, a verbatim quote, and a closed-set verdict about the subject, never the brief",
+  "a bulk verifier scored on its own prompt agrees with itself for the wrong reason (measured 2026-09-12: a broken path in every brief drew the same verdict from nineteen of twenty agents); this sentence is what keeps a bulk verdict about the input rather than the ask, and the 2026-09-17 mutation baseline deleted it with the suite staying green. The bulk rows of issue #22 and of the writing replication were extraction, one part of the material per agent with a shared answer schema, which the verdict alone did not describe",
   () => says(
-    "The unit of a bulk fan-out is one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief",
+    "The unit of a bulk fan-out is either one part of the material for extraction, with a fixed answer schema, or one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief",
     "whether an address moved or was wrong is a judgement about your own input, and it stays out of the set",
   ));
 
 test("D13 the bulk row announces its count before spawning, like any other fan-out",
   "the bulk row sits outside the alive cap, which is exactly the row a count could grow in unannounced; the clause was deleted alongside the Luna preference in the 2026-09-17 mutation baseline and the suite stayed green",
   () => says("announce its count before spawning, like any other fan-out"));
+
+test("D14 every bulk fan-out is piloted against a stronger model's marking, and the pilot decides the brief's fixes and the effort",
+  "issue #22's pilot chose the effort and exposed a brief that counted process complaints, and the writing replication's first pilot found 12 extras in 22 on the brief as assembled; the split critique reads the decomposition and caught neither. The rule sits in Model tiers because Verification lies past what a compaction keeps (E77)",
+  () => says(
+    "Pilot every bulk fan-out before it launches: a stronger model marks a few units, the bulk model runs the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort.",
+  ));
+
+test("D15 a batch of verdict units runs as a swarm, which only the user starts, and a batch of extraction units as ordinary Codex agents",
+  "issue #22's 456 Luna runs and the writing replication's collection both launched bulk batches by hand, with no wrapper, and the page named no batch route; the swarm is that route for verdict units, whose shape is the only one it takes (swarm/SKILL.md), and its limits are E90's",
+  () => says("A batch of verdict units runs as a swarm, which only the user starts, with `/entrust:swarm`: one script launches its agents under a concurrency cap, and one Stop ends the batch; a batch of extraction units runs as ordinary Codex agents, launched as Mechanism below says."));
 
 test("E7 a decisive check runs before any panel, dependent execution stays in one agent, and its verification stays independent",
   "sixteen agents over two naming rounds proposed, reviewed and judged before the check that decided was run (426:973, 426:1208, 2026-09-17), while the two tasks the coordinator kept in its own hands (2026-09-12, 2026-09-16) landed with critics only; the rule orders the check first and keeps the fresh verifier, it does not ban a panel",
@@ -806,9 +824,9 @@ test("E7 a decisive check runs before any panel, dependent execution stays in on
     /(Keep|Leave) dependent execution in one agent; keep its verification independent/,
   ));
 
-test("F7 one assembled brief is opened whole before the fan-out, and its input paths, item count and quoted claims are checked",
-  "the split critic reads the decomposition, not the file the generator wrote: a join paired all twelve reports with the wrong paragraph (T1-05, 2026-09-11), a doubled path segment reached all twenty prompts (T1-09, 2026-09-12) and a quoting slip gave each of three agents one set of four (T1-39, 2026-09-17); paths that exist catch only the second, so the check names all three",
-  () => shows(/^- (Open|Read) one assembled brief whole before (the|any) fan-out; check its input paths in the agent's planned tree, its item count and each quoted claim against its source\.$/m));
+test("F7 one assembled brief is opened whole before the fan-out, and its input paths, output paths, item count and quoted claims are checked",
+  "the split critic reads the decomposition, not the file the generator wrote: a join paired all twelve reports with the wrong paragraph (T1-05, 2026-09-11), a doubled path segment reached all twenty prompts (T1-09, 2026-09-12) and a quoting slip gave each of three agents one set of four (T1-39, 2026-09-17); paths that exist catch only the second, so the check names all three. Issue #22: a write agent's brief put its output one level above its root, the write was refused and the run exited 6, and since 0.22.0 no approval can grant the root mid-run, so the brief is the one place to catch it",
+  () => shows(/^- (Open|Read) one assembled brief whole before (the|any) fan-out; check its input paths in the agent's planned tree, its output paths against the agent's writable roots, its item count and each quoted claim against its source\.$/m));
 
 test("F8 two selection rounds on the same blocker are a stall, re-planned for the word, while repair rounds keep their escalation",
   "the two-round rule counts fix rounds; naming rounds each crowned a winner and the same blocker, a collision check no agent had run, came back (426:973, 426:1208), so that rule never tripped; a stall keyed to a repeated blocker trips where a round count does not, and the repair ladder, two rounds then the top row then the user, is untouched",
