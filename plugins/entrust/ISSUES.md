@@ -507,3 +507,25 @@ block; `grep -c '"description"' plugins/entrust/plugin/skills/codex/schemas/five
 what would change the advisor's mind, in a sentence the advisor never receives. Unless the coordinator restates that
 shape in `TASK:`, nothing the advisor receives asks for it. The sentence should tell the coordinator to ask for it, as
 the premises sentence does, or the `TASK:` placeholder should name it.
+
+## E100. A coordinator session inside a worktree has the launcher's heredoc calls refused when their text names git
+
+**Evidence, level 3 for plan rows, level 2 for prompts.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:37` has the
+coordinator register the plan with the launcher's `--plan --run-dir <run>`, which reads its rows on stdin, and a write
+agent's row names its absolute directory (`write <absolute dir>`). `plugins/entrust/plugin/skills/codex/SKILL.md:104-106`
+writes every Codex agent's prompt with `--new` from a quoted heredoc, and `:129` does the same for `--decide --accept`.
+On 2026-09-29 a coordinator session entered its worktree with EnterWorktree, in a repository whose path contains a
+directory named `Git`, and ran `--plan --amend` with the row `W2 | opus | implementer | write <worktree path> | unknown`
+in a quoted heredoc. Claude Code refused it before it ran: "This session is isolated in the worktree <path>, but this
+command feeds node text naming git in a plain command, which cannot be shown to stay inside the worktree." The same
+row with `live tree` in place of `write <worktree path>` ran. No `--new` ran from that session, so a refusal of a prompt
+that mentions git or the repository's path is inferred from the message, not measured.
+
+**Check.** In a session entered into a worktree whose path contains `Git`, run `--plan --amend --run-dir <run>` with one
+row `write <that worktree>` in a quoted heredoc: Claude Code refuses it before the launcher starts.
+
+**Issue text.** When the coordinator's session works inside a worktree, Claude Code refuses a `node` call whose heredoc
+text names git, and the orchestrate and codex pages feed the launcher exactly that way: plan rows that name a write
+agent's directory, and agent prompts that mention the repository. The refusal comes before the command runs and names no
+way around it, so the mode stops at registration unless the coordinator happens to write `live tree` instead. The pages
+should give a form measured to pass in a worktree session.
