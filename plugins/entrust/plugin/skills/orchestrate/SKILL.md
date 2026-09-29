@@ -66,7 +66,7 @@ pool, and the pool is the same whatever you are: at most one Fable agent and one
 the top-row roles in turn, architect for one task and judge for the next, and the strong and cheap agents the alive cap admits. The caps count turns in progress: separate advisor, critic and architect threads may take turns within them, and a thread waiting for another message uses no slot.
 **Prefer Luna to Haiku in the bulk row**: measured better. The bulk row does not
 count against the alive cap and never takes a top-row role; announce its count before spawning, like any other fan-out, a count derived from the units with the plan saying why that many.
-The unit of a bulk fan-out is one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief: whether an address moved or was wrong is a judgement about your own input, and it stays out of the set (measured 2026-09-12: a broken path in every brief drew the same verdict from nineteen of twenty agents).
+The unit of a bulk fan-out is one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief: whether an address moved or was wrong is a judgement about your own input, and it stays out of the set (measured 2026-09-12: a broken path in every brief drew the same verdict from nineteen of twenty agents). Pilot every bulk fan-out before it launches: a stronger model marks a few units, the bulk model runs the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort.
 
 - Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable` only for Fable agents within the agreed cap;
   untagged, a subagent inherits your session model. Give it a description of the form "<Model> <id>: <task in a few words>", the id the card gave it, as a Codex agent's card carries "Codex <short name> <id>". A Codex agent's model is its `MODEL:` line, and every Codex agent carries one
@@ -75,7 +75,7 @@ The unit of a bulk fan-out is one claim, one address, a verbatim quote, and a ve
 - Subagents may spawn subagents, but a Fable agent never spawns Fable: it tags its own Agent calls `opus` or `sonnet`; only you, or a
   foreman you launched, launch Fable agents.
 - Every Codex agent carries an `EFFORT:` line chosen for its work, as it carries its `MODEL:` line: `high` for the bulk row's
-  extraction, classification and verification, `low` for mechanical work only, `medium` for review, refutation and judgement in the strong and cheap rows; only a top-row agent
+  extraction, classification and verification unless its pilot chose another level, `low` for mechanical work only, `medium` for review, refutation and judgement in the strong and cheap rows; only a top-row agent
   goes without one and inherits the configured effort. Measured 2026-09-17: two Luna read agents at an inherited `xhigh`
   took 480 and 557 seconds and 1.2M and 2.3M tokens for a ledger and a grep task. In a Workflow, `effort: 'low'` is
   for mechanical Claude Sonnet stages only.
