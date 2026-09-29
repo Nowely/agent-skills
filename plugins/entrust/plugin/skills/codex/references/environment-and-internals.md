@@ -11,9 +11,12 @@ explains environment, state, wrappers, operational bounds, and lifecycle details
 The variables, the subdirectories of the state directory `<state>` stands for below, the order the driver
 resolves it in, and what `TMPDIR` grants a read agent are all under `--help-all`. There is no default: the
 intended value is the plugin's own data directory, which the skill recipes pass on every call. `<state>`
-must also be absolute, and neither `$TMPDIR` nor a directory above it: both levels grant `$TMPDIR` to the
-agent, and a state directory at or above it would let the sandbox reach its own locks and answers, so a
-value naming either exits 2 before any turn runs. What it does not carry: the agent's shell also receives `TMPPREFIX` under
+must also be absolute.
+
+`$TMPDIR` is the run's own: for every run the driver makes a private 0700 one at `<state>/tmp/<runId>`,
+whatever the caller exported, and reports it as `tmpDir`. A caller's `TMPDIR` never reaches the agent, so
+agents started side by side never share one; the directory outlives the run and is pruned with the run
+directories. What `--help-all` does not carry: the agent's shell also receives `TMPPREFIX` under
 the run's `$TMPDIR`, because zsh keeps here-document temp files at `$TMPPREFIX*`, default `/tmp/zsh`,
 which no grant covers ([incidents](incidents.md#here-documents-under-the-grant)).
 
@@ -114,9 +117,9 @@ checked before the turn, so a typo costs nothing.
 
 At write level every root the agent may write — `--cwd`, each `--writable`, and the tree a `--worktree`
 lands in — refuses `~/.codex` and the resolved state directory, and anything inside them, by inode
-identity; `$TMPDIR` takes the same guard at either level. The first holds the receipts an agent is
-verified by, the second this driver's locks and answer log. The private `<state>/tmp/<runId>` created by
-the driver is the narrow exception: its owner record binds it to that run. The driver also refuses your
+identity. The first holds the receipts an agent is verified by, the second this driver's locks and answer
+log. The run's own `$TMPDIR`, `<state>/tmp/<runId>`, is the narrow exception: the driver makes it for that
+run alone, and its owner record binds it to that run. The driver also refuses your
 home directory itself and every ancestor of it, up to `/`.
 
 **Only those are protected, and what is above them.** The guard also refuses a candidate that is `~/.codex`
@@ -395,12 +398,10 @@ grant, while the profile still applies under its correct id:
 This is why the driver's read-level assert checks the **effect** as well as the name. It requires
 sandbox type `workspaceWrite`, the network access that was asked for, `excludeSlashTmp` true so `/tmp`
 is not writable beside `$TMPDIR`, and the cwd present in `runtimeWorkspaceRoots`. It also requires
-`writableRoots` equal to exactly `[$TMPDIR]` — or exactly empty when `--cwd` is `$TMPDIR`, where the
-server moves it to `runtimeWorkspaceRoots` instead — with paths canonicalised on both sides. The
+`writableRoots` equal to exactly `[$TMPDIR]`, the run's own directory, never the cwd, with paths
+canonicalised on both sides. The
 profile id is asserted first, but a name-only check passes in both cases above; verified live,
-introducing exactly this typo now exits 4 before any model turn. ($TMPDIR itself also goes through the
-protected-root guard at both levels before the turn, so `TMPDIR=~/.codex/x` is a usage error rather than
-something either assert has to catch.) Check a profile the same way yourself:
+introducing exactly this typo now exits 4 before any model turn. Check a profile the same way yourself:
 
 ```bash
 codex sandbox -c 'permissions.entrust_read.extends=":read-only"' \

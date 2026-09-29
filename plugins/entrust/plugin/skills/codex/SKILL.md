@@ -158,7 +158,9 @@ after `<run>/<id>/agent/exit` exists (then `-3` after `-2` ends, and so on).
 relaunch gets a fresh report path and the earlier run's four files stay where they were (the launcher refuses a
 directory that ran for another report; measured 2026-09-17 on the earlier shape, a reused one lost its record),
 while the same command run again for the same report reads the run it started, which is what the ceiling's
-second call is. None of the launcher's files is left in `$TMPDIR`; a read agent's own writable root stays there. `<REPORT>` is an absolute path of this agent's own: put it under
+second call is. None of the launcher's files is left in `$TMPDIR`. `$TMPDIR` is the run's own: for every run the
+driver makes a private 0700 one at `<state>/tmp/<runId>`, whatever the caller exported, and reports it as
+`tmpDir`. `<REPORT>` is an absolute path of this agent's own: put it under
 the driver's state directory, `<state>/reports/<run>/report.json` with `<run>` unique, or, under the orchestrate
 mode, `<run>/<agent>/report.json` in the run directory that page names, one directory per agent; a
 continuation uses `<run>/<agent>-<n>/report.json`, n from 2 with no leading zero, only after the
@@ -175,9 +177,8 @@ prompt file with `RESUME: <threadId>` at `<run>/<agent>-<n>/report.json` and sen
 message tool, headless `-p` among them, continues the thread with a second wrapper given the same file,
 at the cost of a second card (measured: the thread held both ways).
 
-Every launch forwards that variable under its own name — the plugin's own data directory, where the
-driver's state and every Codex artifact the report names (`answerPath`, a worktree harvest) live — and
-the launcher hands its environment to the driver as it found it. The
+Every launch forwards that variable under its own name: the plugin's own data directory, where the
+driver's state and every Codex artifact the report names (`answerPath`, `tmpDir`, a worktree harvest) live. The
 driver reads `ENTRUST_STATE_DIR` first and that variable second, and with neither it exits 2; only
 `--help` needs none.
 
@@ -222,9 +223,9 @@ into the file rather than rewritten: measured, a wrapper that rewrote one widene
 reported false success
 ([A relay on a small model](references/incidents.md#a-relay-on-a-small-model)).
 
-Read agents may share one cwd, but a repository whose tooling keeps a daemon, a socket, or a pid/state
-file needs a distinct cwd or its own `TMPDIR` per concurrent agent; the failure is a native crash, not a
-sandbox refusal.
+Read agents may share one cwd, and each has a `$TMPDIR` of its own, but a repository whose tooling keeps a
+daemon, a socket, or a pid/state file in the tree needs a distinct cwd per concurrent agent; the failure is a
+native crash, not a sandbox refusal.
 
 A write agent sharing a live tree must not change what the tree shares: no stash, branch switch, reset,
 clean or rebase while another writer holds part of it. Those move or discard work the other agent is
