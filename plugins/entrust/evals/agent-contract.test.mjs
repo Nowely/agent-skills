@@ -357,10 +357,10 @@ test("the waiting result ends in REPORT=, the constant is thirty minutes, and ne
       problems.push("--help no longer names the 30-minute constant");
     const orchestrateFlat = orchestrate.replace(/\s+/g, " ");
     for (const [label, text] of [["SKILL.md", flat], ["orchestrate/SKILL.md", orchestrateFlat]])
-      for (const gone of ["sandboxWidened", "REPEAT_OF", "ACCESS=", "NETWORK=", "repeatOf", "a widening for named paths", "Prefer a widening", "state or cache", "permission features"])
+      for (const gone of ["sandboxWidened", "REPEAT_OF", "ACCESS=", "NETWORK=", "repeatOf", "a widening for named paths", "Prefer a widening", "state or cache", "permission features", "`policy`"])
         if (text.includes(gone)) problems.push(`${label} still names ${JSON.stringify(gone)}`);
-    if (!orchestrateFlat.includes("`sandbox`, the tool needed the user's own environment, nothing on our side changes it"))
-      problems.push("orchestrate/SKILL.md's synthesis sentence for cause sandbox is not the one the subtraction left");
+    if (!orchestrateFlat.includes("`asked`, Codex asked before running the command, and nothing on our side changes it"))
+      problems.push("orchestrate/SKILL.md's synthesis sentence for cause asked is not the driver's own");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -423,8 +423,7 @@ test("exit 6 is a request declined or expired unanswered, never one accepted, an
       "never clipped",
       "`cause` (`rights`: a file change the writable roots cover, which the driver accepted itself and never shows anyone",
       "`outside`: a file change not shown to lie inside them, or a permissions request, which the driver declines itself, its `why` naming `WRITABLE:` for a file change and \"rights are set at launch\" for a permissions request",
-      "`sandbox`: the same command had just failed in this turn",
-      "`policy`: no attempt was seen, so Codex asked by its own rule",
+      "`asked`: Codex asked before running the command, and nothing on our side changes it",
     ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });

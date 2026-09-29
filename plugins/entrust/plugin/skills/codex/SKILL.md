@@ -335,8 +335,8 @@ write its own would be grading itself. Declare gates on the command line instead
   `coordinator` otherwise), `cause` (`rights`: a file change the writable roots cover, which the driver
   accepted itself and never shows anyone; `outside`: a file change not shown to lie inside them, or a
   permissions request, which the driver declines itself, its `why` naming `WRITABLE:` for a file change and
-  "rights are set at launch" for a permissions request; `sandbox`: the same command had just failed in this
-  turn; `policy`: no attempt was seen, so Codex asked by its own rule), and `outcome` (the item's own
+  "rights are set at launch" for a permissions request; `asked`: Codex asked before running the command, and
+  nothing on our side changes it), and `outcome` (the item's own
   completion, or null where none came). `detail` is the server's own wording whole — the command, else the
   reason, else the message, or the joined file-change list — never clipped, and may still be empty where the
   server sent none. `exitCode: 6` is a request declined or expired unanswered, never one accepted — below
