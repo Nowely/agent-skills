@@ -75,7 +75,7 @@ test("A1 the swarm is a bulk fan-out at its widest, the mode adds no driver chan
   () => says(
     /A swarm is a bulk fan-out at its widest/,
     /adds no driver change, no header field and no flag/,
-    /Its agents are a pool of their own\. A Terra swarm counts as a Luna one does, against the swarm's own cap and never against the alive cap of six, and the plan says so/,
+    /Its agents are a pool of their own\. A Terra swarm counts as a Luna one does, against the swarm's own cap and never against the alive cap of six\./,
   ));
 
 test("U1 a unit is the bulk row's verdict unit, fifty at most, the template has its placeholders, every brief is a read agent on a bulk or cheap model at the page's effort, and no strong or top model is admitted",

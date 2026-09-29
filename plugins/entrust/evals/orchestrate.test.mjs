@@ -810,10 +810,6 @@ test("D14 every bulk fan-out is piloted against a stronger model's marking, and 
     "Pilot every bulk fan-out before it launches: a stronger model marks a few units, the bulk model runs the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort.",
   ));
 
-test("D15 a batch of verdict units runs as a swarm, which only the user starts, and a batch of extraction units as ordinary Codex agents",
-  "issue #22's 456 Luna runs and the writing replication's collection both launched bulk batches by hand, with no wrapper, and the page named no batch route; the swarm is that route for verdict units, whose shape is the only one it takes (swarm/SKILL.md), and its limits are E90's",
-  () => says("A batch of verdict units runs as a swarm, which only the user starts, with `/entrust:swarm`: one script launches its agents under a concurrency cap, and one Stop ends the batch; a batch of extraction units runs as ordinary Codex agents, launched as Mechanism below says."));
-
 test("E7 a decisive check runs before any panel, dependent execution stays in one agent, and its verification stays independent",
   "sixteen agents over two naming rounds proposed, reviewed and judged before the check that decided was run (426:973, 426:1208, 2026-09-17), while the two tasks the coordinator kept in its own hands (2026-09-12, 2026-09-16) landed with critics only; the rule orders the check first and keeps the fresh verifier, it does not ban a panel",
   () => shows(

@@ -10,7 +10,7 @@ metadata:
 license: MIT
 ---
 
-Load the sibling [codex](../codex/SKILL.md) now (Skill tool, `entrust:codex`); this page holds every other rule a swarm needs. A swarm is a bulk fan-out at its widest: the units, the brief template and the reducer are yours; the launches and the waits are the script's. The mode adds no driver change, no header field and no flag; its one script makes each agent through the sibling's launcher, runs them and writes their summary. Its agents are a pool of their own. A Terra swarm counts as a Luna one does, against the swarm's own cap and never against the alive cap of six, and the plan says so.
+Load the sibling [codex](../codex/SKILL.md) now (Skill tool, `entrust:codex`); this page holds every other rule a swarm needs. A swarm is a bulk fan-out at its widest: the units, the brief template and the reducer are yours; the launches and the waits are the script's. The mode adds no driver change, no header field and no flag; its one script makes each agent through the sibling's launcher, runs them and writes their summary. Its agents are a pool of their own. A Terra swarm counts as a Luna one does, against the swarm's own cap and never against the alive cap of six.
 
 ## The units and the brief
 
