@@ -491,14 +491,16 @@ function scan(file, sub) {
 }
 
 // The process counts of one task (its transcript and forks) or one subagent, a fork's copies counted once:
-// a timestamp, tool call, result, notification or API call two files share is the same event. Each pause
+// a timestamp, tool call, result, notification or API call two files share is the same event, and an API call's
+// usage is its last record, since the transcript writes one record per content block and the first can carry a
+// partial output count. Each pause
 // between records is sorted by what was going on and what ended it: while a tool call or an agent was in
 // flight the run was working, however long; a pause a person's input ended is time waiting for the person;
 // any other pause is working time up to GAP_MS and a gap over it, named by the kinds before and after it. A
 // person's input is their message, or a queue operation or attachment that carries one in within CARRY_MS.
 // No text is kept: a repeated command is its sha256 and length.
 function metrics(parts) {
-  const stamps = new Map(), uses = new Map(), outs = new Map(), calls = new Set();
+  const stamps = new Map(), uses = new Map(), outs = new Map(), calls = new Map();
   const starts = new Map(), ends = new Map(), byTool = new Map(), byTask = new Map();
   const usage = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0 };
   const first = (map, key, value) => { if (key != null && !map.has(key)) map.set(key, value); };
@@ -510,12 +512,11 @@ function metrics(parts) {
     for (const x of found.calls) if (Number.isFinite(x.ms)) first(starts, x.id, x.ms);
     for (const x of found.results) if (Number.isFinite(x.ms)) first(ends, x.id, x);
     for (const n of found.notes) if (Number.isFinite(n.ms)) { earliest(byTool, n.tool, n.ms); earliest(byTask, n.task, n.ms); }
-    for (const [mid, u] of found.usage) {
-      if (calls.has(mid)) continue;
-      calls.add(mid);
-      usage.input += u.input_tokens ?? 0; usage.cacheWrite += u.cache_creation_input_tokens ?? 0;
-      usage.cacheRead += u.cache_read_input_tokens ?? 0; usage.output += u.output_tokens ?? 0;
-    }
+    for (const [mid, u] of found.usage) calls.set(mid, u);
+  }
+  for (const u of calls.values()) {
+    usage.input += u.input_tokens ?? 0; usage.cacheWrite += u.cache_creation_input_tokens ?? 0;
+    usage.cacheRead += u.cache_read_input_tokens ?? 0; usage.output += u.output_tokens ?? 0;
   }
   const flights = [];
   for (const [id, start] of starts) {
@@ -653,10 +654,6 @@ function gather(files, id, rollouts) {
     const found = scan(s.file, false);
     coordinator.push({ t, found });
     for (const x of found.turns) turn(t, x);
-    for (const [mid, u] of found.usage) if (once(`usage\u0000${mid}`)) {
-      entry.tokens.input += u.input_tokens ?? 0; entry.tokens.cacheWrite += u.cache_creation_input_tokens ?? 0;
-      entry.tokens.cacheRead += u.cache_read_input_tokens ?? 0; entry.tokens.output += u.output_tokens ?? 0;
-    }
     for (const a of found.agents) {
       const known = agents.get(a.agentId) ?? {};
       for (const [k, v] of Object.entries(a)) if (v !== undefined && v !== null) known[k] = v;
@@ -664,8 +661,9 @@ function gather(files, id, rollouts) {
     }
     for (const l of found.launches) launches.push({ ...l, at: `${t}:${l.line}` });
   });
-  const { usage: _same, ...counts } = metrics(coordinator);
+  const { usage, ...counts } = metrics(coordinator);
   Object.assign(entry, counts);
+  if (usage) entry.tokens = usage;
   coordinator.length = 0;
   const subs = [], agentIds = new Set();
   for (const s of files) {

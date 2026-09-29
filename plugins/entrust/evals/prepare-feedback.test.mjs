@@ -173,11 +173,13 @@ const FORK = transcript(path.join(alpha, `${S.fork}.jsonl`), S.fork, "/work/alph
   [on20("11:00:01"), said("Continuing in the fork.")],
 ]);
 const subs = path.join(alpha, S.main, "subagents");
+// A message streamed as two records under one id, the first a thinking block with a partial output count.
+const streamed = (r) => ({ ...r, message: { ...r.message, content: [{ type: "thinking", thinking: "" }], usage: { ...r.message.usage, output_tokens: 1 } } });
 const A1 = transcript(path.join(subs, "agent-a1.jsonl"), S.main, "/work/alpha", [
   ["2026-09-20T10:00:06.500Z", { type: "user", agentId: "a1", message: { role: "user", content: "Review the plugin and say what you found." } }],
   ["2026-09-20T10:00:06.600Z", { ...call("Bash"), agentId: "a1" }],
   ["2026-09-20T10:00:06.700Z", { ...result(`codex-delegate: threadId=${TH.receipt} (live rollout)\nreceiptPath: ${receiptFile}\n`), agentId: "a1" }],
-  ["2026-09-20T10:00:06.800Z", { ...said("The plugin reads well."), agentId: "a1" }],
+  ...((r) => [["2026-09-20T10:00:06.800Z", { ...streamed(r), agentId: "a1" }], ["2026-09-20T10:00:06.800Z", { ...r, agentId: "a1" }]])(said("The plugin reads well.")),
 ], { isSidechain: true });
 write(path.join(subs, "agent-a1.meta.json"), [JSON.stringify({ agentType: "general-purpose", description: "review the plugin" })]);
 write(path.join(subs, "agent-a2.meta.json"), [JSON.stringify({ agentType: "acme:reviewer", description: "count the tests" })]);
@@ -803,7 +805,7 @@ const TEXTS = ["git status --short", "review the plugin", "Review the plugin and
 const strings = (v) => (typeof v === "string" ? [v] : v && typeof v === "object" ? Object.values(v).flatMap(strings) : []);
 
 test("M1 corpus records each task's process counts: API calls, wall time split into the run working, waiting for the person and gaps by what ends each pause, tools, a repeated command by hash, the largest outputs, and each Codex run's report fields",
-  "the process focus asks where a run's time and tokens went and where it waited; a person reading and typing is not the run working (34% of active time on real data before the split), a 20-minute foreground Agent call is the run working and not a gap, a fork's copies count once, and a repeated command is kept as a hash in the private index and never as its text",
+  "the process focus asks where a run's time and tokens went and where it waited; a person reading and typing is not the run working (34% of active time on real data before the split), a 20-minute foreground Agent call is the run working and not a gap, a fork's copies count once, a repeated command is kept as a hash in the private index and never as its text, and a message streamed as several records counts its last usage, since the first held a partial output count that undercounted two Haiku subagents by 2,165 tokens in the first live process run (2026-09-29)",
   () => {
     if (!runs.default) return "C1 made no run";
     const t1 = indexOf("default").sessions.find((e) => e.id === "T1");
