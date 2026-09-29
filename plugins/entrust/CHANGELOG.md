@@ -9,15 +9,16 @@ forensics remain in the repository references and release notes.
 
 - **The bulk row's extraction, classification and verification run at `EFFORT: high`; `low` is for mechanical work
   only.** The orchestrate page's effort bullet and the swarm page's Luna brief said `low` for the whole bulk row; the
-  strong and cheap rows keep `medium` for review, refutation and judgement. The orchestrate page's bulk unit is now
-  either one part of the material for extraction, with a fixed answer schema, or the closed-set verdict it was. Why:
-  the bulk work of both runs below was extraction, one part per agent with a shared answer schema; in the pilot
-  reported in issue #22, Luna on a classification task marked 11 false positives in 22 at `low` against 1 in 13 at
-  `medium` (Fisher, p = 0.013), with recall 11 and 12 of 15 and 3.48M against 3.63M tokens; in the writing
-  replication's pilot (`plugins/terse/research/2026-09-26-writing-replication/measures/pilot-decision.md`) `high` and
-  `medium` both found 21 of 21, with 1 extra in 31 against 4 in 34 (p = 0.36) at median tokens per run of 129,873 and
-  128,657. `high` over `medium` is the owner's choice, not a significant result; neither pilot ran `low` on a
-  verification unit.
+  strong and cheap rows keep `medium` for review, refutation and judgement. Why: in the pilot reported in issue #22,
+  Luna on a classification task marked 11 false positives in 22 at `low` against 1 in 13 at `medium` (Fisher, p =
+  0.013), with recall 11 and 12 of 15 and 3.48M against 3.63M tokens; in the writing replication's pilot
+  (`plugins/terse/research/2026-09-26-writing-replication/measures/pilot-decision.md`) `high` and `medium` both found
+  21 of 21, with 1 extra in 31 against 4 in 34 (p = 0.36) at median tokens per run of 129,873 and 128,657. `high` over
+  `medium` is the owner's choice, not a significant result; neither pilot ran `low` on a verification unit.
+- **The orchestrate page's bulk unit is either one part of the material for extraction, with a fixed answer schema, or
+  the closed-set verdict it was.** The effort line names extraction, and the unit said only the verdict. Why: the bulk
+  work of issue #22's run and of the writing replication was extraction, one part of the material per agent (in the
+  replication, a part and one angle) with a shared answer schema.
 - **Experiment protocols E1 and E2 run their Luna arms at `high` and E2's Terra arm at `medium`.** They said `low`,
   which the bulk row's verification no longer is, and E2's Terra arm, a closed-set judgement, already disagreed with
   the cheap row's `medium` for judgement. Why: an arm at an effort no coordinator uses measures a configuration whose
