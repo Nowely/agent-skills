@@ -22,8 +22,9 @@ runs outside this repository, or a research run when it runs inside.
   Fable F2's critique of that cut ([11](11-split.md)) is the split the skill was written from, in the same branch.
 - The fifth iteration ([12](12-design.md), split [13](13-split.md)) adds the owner's `process` focus and `all` mode
   after #22 merged; the swarm became a route an orchestrate plan may propose in the same round.
-- Ledger entries from the run: E91, a cause in `foreman.md:24` broader than what was observed; E93 to E95, found in
-  passing while the skill was written.
+- Ledger entries from the run: E91, a cause in `foreman.md:24` broader than what was observed; E94 and E95, found in
+  passing while the skill was written (an E93 on the protocol suite's millisecond race duplicated E76 and went when
+  #34 fixed it).
 
 ## How it ran
 

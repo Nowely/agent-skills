@@ -497,18 +497,6 @@ hold, since nobody types a command to a subagent; the stated cause does not. E82
 user typed. A reader who takes the stated cause as the rule will route around a load that works. The sentence should
 state the observed condition, or only the conclusion.
 
-## E93. `protocol.test.mjs:646` expects `waitMs` of 0 for an approval the fake server settles at once, and the driver computes it from two clock reads
-
-**Evidence, level 3.** `plugins/entrust/evals/protocol.test.mjs:646` fails the case `approval-wait` unless
-`e.waitMs === 0`; `plugins/entrust/plugin/skills/codex/scripts/driver.mjs:3108` sets
-`entry.waitMs = Date.parse(entry.settledAt) - Date.parse(entry.askedAt)`. On 2026-09-29 Opus R2 of the prepare-feedback
-run saw the case fail in 5 of 13 protocol runs across `main` and a branch whose protocol inputs were byte-identical,
-each time with `"waitMs":1`, while another full suite ran on the same machine.
-
-**Issue text.** The approval-wait case fails whenever the two timestamps fall on either side of a millisecond, so
-`run-all` goes red on an unchanged tree and stops before the suites after protocol. The case should accept a wait of
-at most one millisecond.
-
 ## E94. The entrust README says two more skills ship beside the main one; the plugin ships five more
 
 **Evidence, level 1.** `plugins/entrust/plugin/README.md:8-9`: "Two more skills ship beside it, both described below
