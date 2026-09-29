@@ -319,3 +319,27 @@ user's home path repeats in every report and temporary path a coordinator names,
 was picked by the change that needed it. Analyse the naming and the locations together — a shorter project key (the
 repository's name, or a short hash of the path), what lives where, who removes it, and how a user finds everything
 one run left behind — and change them in one step with the pages and the cleanup skill.
+
+## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
+
+**Evidence, level 1 for the pages, level 3 for the run's outcomes, level 2 for the generalisation.**
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:62` puts Luna in the bulk row, "Fast, cheap and not clever — work
+that is wide rather than deep", and `:77` gives `high` to the bulk row only for "extraction, classification and
+verification", `medium` to review and judgement in the rows above. On the ledger run of 2026-09-29/30, with no other
+Codex model available, Luna ran at `high` as the critic of each recommendation
+(`plugins/entrust/research/2026-09-29-ledger-options/rounds.md`, `02-options.md`): it said E92's isolation belongs
+with the unit that knows the agent's directory — the design the owner chose after the judge's contrary verdict
+shipped a regression; its E89 "delete the classifier" and its E52 and E75 objections were upheld by the judge; it
+corrected a Fable analyst's reading of "one place" for text; its refinement of the retro was the owner's pick. As a
+wide diff reviewer it was weak: nothing found in a 1,763-line code diff, 3 minor findings in the page diff, at 576k
+and 821k tokens. The swarm runs Luna for verdict units (`plugins/entrust/plugin/skills/swarm/SKILL.md`). Raised by the
+owner, 2026-09-30.
+
+**Check.** `grep -n 'not clever' plugins/entrust/plugin/skills/orchestrate/SKILL.md`; the verdict table in `rounds.md`.
+
+**Issue text.** The orchestrate page keeps Luna, the bulk model, out of judgement, and one run suggests that at
+`high` effort it is a strong dissenting critic of a single recommendation while it stays weak on a wide review.
+Measure it: the same set of recommendations criticised by Luna at `high`, by Luna at `medium` and by a strong-row
+model, scored by which dissents the judge or the owner upheld; and, for the swarm, whether a verdict unit that asks
+Luna to dissent rather than to match adds catches. If the result holds, give Luna a critic role in the tier table and
+the effort rule that fits it.
