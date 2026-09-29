@@ -5,9 +5,11 @@
 //   node cleanup.mjs --list [--json]
 //   node cleanup.mjs --delete --from <listing.json> <number>...
 //
-// Six kinds of artifact can be removed here: an orchestrate run directory, a standalone report run
-// directory, an agent's scratch directory, the suites' scratch directories, the saved conversations
-// the suites leave behind, and a write lock nobody holds any more. Five more are REPORTED and never
+// Eight kinds of artifact can be removed here: an orchestrate run directory and a standalone report run
+// directory, each with the run's temporary folder under <tmp>/entrust, a temporary folder there whose
+// run is gone, the folders an earlier driver kept under <state>/tmp, an agent's scratch directory, the
+// suites' scratch directories, the saved conversations the suites leave behind, and a write lock nobody
+// holds any more. Five more are REPORTED and never
 // touched — the driver's saved answers, managed worktrees, write locks still held or in the previous
 // shape, the shared Codex home and another copy's data directory — because another owner or retention
 // policy is responsible for each of them. Nothing here runs git.
@@ -85,16 +87,19 @@ finds now is the row the listing showed — same kind, name, status, paths, iden
 last-change times. Everything else is refused untouched, and the fresh listing follows.
 
 It removes orchestrate run directories and agent scratch directories of THIS project, published
-standalone report run directories, the suites' scratch directories, the saved conversations the
-suites leave behind, and write locks nobody holds: a released lock's leftover link, an abandoned lock
-with its record, and a lock record no link names. It only REPORTS the driver's saved answers, managed
-worktrees and their ledger, write locks still held or in the previous shape, the shared Codex home,
-and another copy's data directory. It never runs git, and never removes anything it could not fully
-read.
+standalone report run directories, each run with its temporary folder under <tmp>/entrust, the
+temporary folders there whose run is gone, the folders an earlier driver kept under <state>/tmp, the
+suites' scratch directories, the saved conversations the suites leave behind, and write locks nobody
+holds: a released lock's leftover link, an abandoned lock with its record, and a lock record no link
+names. It only REPORTS the driver's saved answers, managed worktrees and their ledger, write locks
+still held or in the previous shape, the shared Codex home, and another copy's data directory. It
+never runs git, and never removes anything it could not fully read.
 
 An item is in use when a live pid is recorded under it or names it: an agent's startup line, a run's
 agent directory with no report, a standalone report run with no published report.json, a job record
-under the state directory, or a running test suite. That is the whole of what it can see — a process
+under the state directory, a running test suite, the name of a temporary folder whose run wrote no
+report, or an earlier driver's owner.json under <state>/tmp; a temporary folder whose run is still in
+the state directory goes only with that run. That is the whole of what it can see — a process
 with none of those behind it is invisible to it.
 
 Environment: ENTRUST_STATE_DIR, else CLAUDE_PLUGIN_DATA (absolute; no default of its own);
@@ -264,9 +269,10 @@ function resolveRoots() {
   // Both spellings the orchestrate page can assign: it slugs the working directory as the shell
   // reports it, which on macOS may be the symlinked /var form of the canonical /private/var one.
   r.slugs = new Set([slug(project), slug(cwd)]);
-  // Never a removal target, whatever anything says.
+  // Never a removal target, whatever anything says. `tmp` is not among them: the driver no longer writes
+  // there, and what an earlier version left is listed like any other leftover.
   r.guards = [r.S, r.T, r.CFG, r.PROJECTS, r.DATA, r.ORCH, r.project,
-              ...["answers", "jobs", "tmp", "pasted", "locks", "worktrees", "home"]
+              ...["answers", "jobs", "pasted", "locks", "worktrees", "home"]
                 .map((n) => (r.S === null ? null : path.join(r.S, n)))].filter(Boolean);
   return r;
 }
@@ -491,6 +497,7 @@ function listRuns(roots, agents) {
       Object.assign(row, { inUse: live.inUse, readable: row.readable && live.readable,
                            agents: live.agents, reports: live.reports, plan: live.plan, liveAgent: live.liveAgent,
                            liveAgentItem: live.liveAgentItem });
+      attachTemp(roots, row);
       // The slug says which project the coordinator ran in, and a slug is never proof: `a-b` and
       // `a_b` share one. A cwd a report actually carries is the proof, and every one of them must
       // resolve under this project.
@@ -534,6 +541,7 @@ function listReports(roots, agents) {
       { run: runName });
     rows.push(row);
     if (!row.chainOk) continue;
+    attachTemp(roots, row);
     const publication = reportPublication(row.path);
     if (!publication.readable) { row.readable = false; row.cond = "unreadable"; }
     else if (!publication.published) {
@@ -548,6 +556,86 @@ function listReports(roots, agents) {
     }
   }
   return { rows, complete: true };
+}
+
+// A run's temporary folder. The driver gives every run one of its own in the temporary directory, named
+// after the run's report under the state directory: <tmp>/entrust/<rel> for <state>/<rel>/report.json,
+// and <tmp>/entrust/runs/<startedAtMs>-<pid> for a run with none. So a run or report row at
+// <state>/<parts> has its folder at <tmp>/entrust/<parts>, and the folder goes with that row: in its
+// size, in the paths its number consents to, and removed right after it under the liveness just taken
+// for it. A folder that cannot be read whole keeps the row.
+function attachTemp(roots, row) {
+  const parts = ["entrust", ...row.parts];
+  const at = path.join(roots.tmp, ...parts);
+  const st = statAt(at);
+  if (st.ok && st.value === null) return;
+  const t = scratchRow("temp", roots.T, parts, at);
+  row.twin = { base: roots.T, parts, ident: t.ident };
+  row.alsoPaths = [t.path];
+  row.bytes += t.bytes;
+  row.mtimeMs = Math.max(row.mtimeMs, t.mtimeMs);
+  if (!t.readable) { row.readable = false; row.cond = "unreadable"; }
+}
+
+// A folder under <tmp>/entrust that no listed run or report owns is in use while the pid its name
+// carries is alive (runs/<startedAtMs>-<pid>), while the run it is named after is still in the state
+// directory, or while an agent's report path lies in that run.
+function tempInUse(roots, m, agents) {
+  if (m.parts[1] === "runs") {
+    const pid = /^\d+-(\d+)$/.exec(m.parts[2] ?? "")?.[1];
+    return pid === undefined ? "free" : holderAlive({ pid: Number(pid) }) ? "live" : "free";
+  }
+  const run = path.join(roots.S ?? roots.state, ...m.parts.slice(1));
+  const st = statAt(run);
+  if (!st.ok || st.value !== null) return "present";
+  return agentHolds(agents, run) ? "live" : "free";
+}
+
+function listTemps(roots, owned, agents) {
+  const rows = [];
+  const base = path.join(roots.tmp, "entrust");
+  const unit = (parts) => {
+    const row = scratchRow("temp", roots.T, ["entrust", ...parts], path.join(base, ...parts),
+      { top: parts[0], run: parts[parts.length - 1] });
+    rows.push(row);
+    if (!row.chainOk) return;
+    const use = tempInUse(roots, row, agents);
+    if (use !== "free") { row.inUse = true; if (row.readable) row.cond = use; }
+  };
+  for (const top of namesIn(base).sort()) {
+    if (top === "orchestrate") {
+      for (const s of namesIn(path.join(base, top)).sort())
+        for (const r of namesIn(path.join(base, top, s)).sort())
+          if (!owned.has(path.join(top, s, r))) unit([top, s, r]);
+    } else if (top === "reports" || top === "runs") {
+      for (const r of namesIn(path.join(base, top)).sort())
+        if (!owned.has(path.join(top, r))) unit([top, r]);
+    } else if (!owned.has(top)) unit([top]);
+  }
+  return rows;
+}
+
+// What an earlier driver kept under <state>/tmp, one folder per run with an owner.json naming the agent.
+// The driver no longer writes there; one record naming a live process, or one that cannot be read,
+// keeps the whole of it.
+function oldTmpInUse(dir) {
+  for (const n of namesIn(dir)) {
+    const st = statAt(path.join(dir, n));
+    if (!st.ok) return true;
+    if (st.value === null || !st.value.isDirectory()) continue;
+    const rec = jsonAt(path.join(dir, n, "owner.json"));
+    if (!rec.ok || (rec.value !== null && holderAlive(rec.value))) return true;
+  }
+  return false;
+}
+
+function listOldTmp(roots) {
+  const p = path.join(roots.state, "tmp");
+  const st = statAt(p);
+  if (st.ok && st.value === null) return [];
+  const row = scratchRow("oldtmp", roots.S, ["tmp"], p);
+  if (row.chainOk && oldTmpInUse(row.path)) { row.inUse = true; if (row.readable) row.cond = "live"; }
+  return [row];
 }
 
 function listEvals(roots, ps) {
@@ -920,6 +1008,16 @@ function nameRow(roots, row) {
     case "eval":
       many((n) => `${n} temporary directories from ${row.evalKind}`);
       return `the temporary directory from ${row.evalKind}`;
+    case "temp": {
+      const of = row.top === "runs" ? "a run that wrote no report"
+        : row.top === "orchestrate" ? `run ${JSON.stringify(row.run)}`
+        : row.top === "reports" ? `the standalone report from run ${JSON.stringify(row.run)}`
+        : `the runs under ${JSON.stringify(row.top)}`;
+      many((n) => `${n} temporary folders of ${row.top === "runs" ? "runs that wrote no report" : of}`);
+      return `the temporary folder of ${of}`;
+    }
+    case "oldtmp":
+      return "the temporary folders an earlier version of the driver kept in the plugin's data";
     case "session":
       many((n) => `${n} saved conversations from ${row.sessionKind}`);
       return `the saved conversation from ${row.sessionKind}`;
@@ -1003,6 +1101,19 @@ function reasonRow(row, many) {
       if (row.ours) return many ? "Their agents' drivers have stopped." : "The agent's driver has stopped.";
       return row.owner ? "The agent belongs to another project."
                        : "These temporary prompt files remain; their agent and project could not be identified.";
+    case "temp":
+      if (row.cond === "present") return many ? "Their runs are still in the plugin's data directory."
+                                              : "Its run is still in the plugin's data directory.";
+      if (row.cond === "live") return many ? "The runs that made them are still running."
+                                           : "The run that made it is still running.";
+      return row.top === "runs"
+        ? (many ? "The runs that made them have stopped, and nothing else removes these folders."
+                : "The run that made it has stopped, and nothing else removes this folder.")
+        : (many ? "Their runs are gone from the plugin's data directory, and nothing else removes these folders."
+                : "Its run is gone from the plugin's data directory, and nothing else removes this folder.");
+    case "oldtmp":
+      if (row.cond === "live") return "An agent started by an earlier version of the driver is still using them.";
+      return "The driver no longer writes here, and nothing else removes these folders.";
     case "eval":
       if (row.cond === "no-ps") return "The running processes could not be listed, so these need your review.";
       if (row.cond === "suite") return `${cap(row.evalKind)} are running, so these are being kept.`;
@@ -1113,7 +1224,9 @@ function inventory(roots) {
     s.owner = j.paths[0];
     s.ours = j.paths.every((p) => under(p, roots.project));
   }
-  const rows = [...runs, ...reports.rows, ...agents, ...listEvals(roots, ps), ...listSessions(roots),
+  const owned = new Set([...runs, ...reports.rows].filter((r) => r.twin).map((r) => path.join(...r.parts)));
+  const rows = [...runs, ...reports.rows, ...listTemps(roots, owned, agents), ...listOldTmp(roots),
+                ...agents, ...listEvals(roots, ps), ...listSessions(roots),
                 ...answers.rows,
                 ...listWorktrees(roots), ...listLocks(roots), ...listHome(roots), ...listDataDirs(roots)];
   for (const row of rows) {
@@ -1132,11 +1245,15 @@ function inventory(roots) {
   for (const row of listed) {
     row.removable = !row.inUse && row.readable && row.base !== null && !row.holdsRoot;
     row.proposed = row.removable && ((row.kind === "agent" && row.ours) || row.kind === "eval"
-      || row.kind === "previous" || (row.kind === "lock" && (row.form === "released" || row.form === "stray")));
+      || row.kind === "previous" || row.kind === "temp" || row.kind === "oldtmp"
+      || (row.kind === "lock" && (row.form === "released" || row.form === "stray")));
     row.selectable = row.proposed
       || (row.removable && ((row.kind === "run" && row.ours) || row.kind === "report"
         || row.kind === "session" || (row.kind === "lock" && row.form === "abandoned")));
     row.reason = reasonRow(row, row.count > 1);
+    // Said wherever the number would take it: a run's temporary folder goes with the run.
+    if (row.selectable && row.members.some((x) => x.twin))
+      row.reason += row.count > 1 ? " Their temporary folders go with them." : " Its temporary folder goes with it.";
   }
   listed.forEach((row, i) => { row.n = i + 1; });
   return { roots, rows: listed,
@@ -1279,9 +1396,23 @@ const listJson = (inv, text) => ({
 
 function removeOne(roots, m) {
   if (m.kind === "lock") return removeLock(roots, m);
-  const chk = chainCheck(m.base, m.parts);
+  // Taken again here, immediately before this member and not once for its row: an agent admitted, a
+  // job record written or a suite started since the batch began must still protect what it names.
+  const out = removeDir(roots, m.base, m.parts, m.ident, (p) => stillFree(roots, { ...m, path: p }));
+  // A run's temporary folder goes right after the run and only then: the run's liveness, just taken, is
+  // the folder's too, since only that run's agents write there. One that cannot go is said, and the next
+  // listing offers it on its own.
+  if (out.refused || out.failed || !m.twin) return out;
+  const t = removeDir(roots, m.twin.base, m.twin.parts, m.twin.ident, (p) => walk(p).complete);
+  return t.refused || t.failed ? { failed: `its temporary folder was left, since ${t.refused ?? t.failed}` } : out;
+}
+
+// One directory, from its canonical root down, removed only while `free` says so of the path it
+// resolved to.
+function removeDir(roots, base, parts, ident, free) {
+  const chk = chainCheck(base, parts);
   if (!chk.ok) return { refused: chk.why };
-  if (m.parts.length === 0 || chk.path === m.base || !under(chk.path, m.base))
+  if (parts.length === 0 || chk.path === base || !under(chk.path, base))
     return { failed: "it did not resolve inside the directory it was listed from" };
   if (roots.guards.some((g) => g === chk.path || under(g, chk.path)))
     return { failed: "it holds one of this cleanup's own directories" };
@@ -1289,13 +1420,11 @@ function removeOne(roots, m) {
   // another put in its place between the listing and this instant is a different item, and consent
   // was given for the first — as far as `dev:ino` can tell them apart, which on a filesystem that
   // recycles inode numbers is not always (see the identity note above).
-  if (m.ident !== null && identOf(chk.st) !== m.ident)
+  if (ident !== null && identOf(chk.st) !== ident)
     return { refused: "it changed since it was listed" };
-  // Taken again here, immediately before this member and not once for its row: an agent admitted, a
-  // job record written or a suite started since the batch began must still protect what it names.
-  if (!stillFree(roots, { ...m, path: chk.path }))
+  if (!free(chk.path))
     return { refused: "something started using it since it was listed" };
-  const leaf = m.parts[m.parts.length - 1];
+  const leaf = parts[parts.length - 1];
   const parentPath = path.dirname(chk.path);
   const prev = process.cwd();
   try {
@@ -1441,10 +1570,12 @@ function stillFree(roots, m) {
     const rec = agentRecord(m.path);
     return !rec.inUse && !rec.opaque;
   }
+  if (m.kind === "oldtmp") return !oldTmpInUse(m.path);
   // A run is protected by an agent, and an agent by a job record, so the job records have to reach the
   // agents before the run is judged — the same order the listing itself uses.
   const agents = listAgents(roots);
   for (const s of agents) if (!s.inUse && s.chainOk && jobHolds(jobs, s.path)) s.inUse = true;
+  if (m.kind === "temp") return tempInUse(roots, m, agents) === "free";
   if (m.kind === "report") {
     const publication = reportPublication(m.path);
     return publication.readable && publication.published && !agentHolds(agents, m.path);
