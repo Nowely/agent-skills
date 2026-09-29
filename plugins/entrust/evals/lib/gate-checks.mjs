@@ -197,10 +197,11 @@ export function validate(schema, value, where = "$") {
 // --------------------------------------------------------------- the plan and the card
 
 // plan.txt as the launcher's --plan writes it: `id | model | role | writes | tokens`, a header line first.
+// The tokens column is left out: no check reads it.
 export function planRecord(text) {
   return String(text ?? "").split("\n").map((l) => l.trim()).filter((l) => l && l !== "id | model | role | writes | tokens")
     .map((l) => l.split("|").map((c) => c.trim())).filter((c) => c.length === 5)
-    .map(([id, model, role, writes, tokens]) => ({ id, model, role, writes, tokens: Number(tokens) }));
+    .map(([id, model, role, writes]) => ({ id, model, role, writes }));
 }
 
 const label = (alts) => new RegExp(`^(?:${alts})(?!\\p{L})`, "iu");

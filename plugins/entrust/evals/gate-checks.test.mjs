@@ -132,8 +132,11 @@ test("the card: five rows by the page's labels, every registered agent on it, wo
     expectNone(G.cardProblems(CARD, ROWS)),
     expectSome(G.cardProblems(CARD.replace(/^\*\*Cost:\*\*.*$/m, ""), ROWS), /no cost row/),
     expectSome(G.cardProblems(CARD.replace("one worker", "two workers"), ROWS), /counts 2 worker/),
-    expectSome(G.cardProblems(CARD, [...ROWS, { id: "R9", model: "sol", role: "refuter", writes: "nothing", tokens: 0 }]), /does not show R9/),
+    expectSome(G.cardProblems(CARD, [...ROWS, { id: "R9", model: "sol", role: "refuter", writes: "nothing" }]), /does not show R9/),
     expectNone(G.cardProblems("| Работа | slug |\n| Кто | Opus W1 |\n| Пишет | W1 |\n| Стоимость | 40k |\n| Проверки | C1 |")),
+    // E62: a row the launcher admits with `unknown` tokens reads without the column, not as NaN.
+    JSON.stringify(G.planRecord("A1 | opus | worker | live tree | unknown")) === '[{"id":"A1","model":"opus","role":"worker","writes":"live tree"}]'
+      || `planRecord read ${JSON.stringify(G.planRecord("A1 | opus | worker | live tree | unknown"))}`,
   ));
 
 // The live gate's case 7 plan of 2026-09-28, verbatim (its artifact plan.txt), and the rows its --plan call
