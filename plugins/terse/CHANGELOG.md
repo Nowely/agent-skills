@@ -5,6 +5,17 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Changed
+
+- The genre note for skill pages says what Claude Code keeps of a skill after a compaction: Anthropic documents the
+  first 5,000 tokens of each re-attached skill, within 25,000 shared by all of them, and in Claude Code 2.1.280's
+  code a token is four characters, so about 20,000 characters of the body survive, without the frontmatter and with
+  its paths filled in, the most recent skill first; a skill's first load is never cut. It also lists Anthropic's
+  mechanical limits for a skill: the `name` format, a body under 500 lines, `description` and `when_to_use` within
+  the listing's 1,536 characters, every reference linked from SKILL.md itself, a table of contents at the top of a
+  reference over 100 lines, and forward slashes in paths. Before, it gave only the 5,000 tokens, with nothing to
+  measure a page against.
+
 ### Fixed
 
 - `audit`, `clarity` and `rethink` link directly the files they reached only through `rules.md`: all three
