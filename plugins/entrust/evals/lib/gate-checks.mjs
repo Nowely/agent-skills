@@ -14,9 +14,8 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { lintDraft } from "../../plugin/skills/orchestrate/scripts/lint-draft.mjs";
-// The launcher's own matcher and classifier, not copies: a continuation it admits, or a role it counts as a
-// worker, reads the same here.
-import { classifyRole, planRowOf } from "../../plugin/skills/codex/scripts/agent-run.mjs";
+// The launcher's own matcher, not a copy: a continuation it admits reads the same here.
+import { planRowOf } from "../../plugin/skills/codex/scripts/agent-run.mjs";
 
 // --------------------------------------------------------------- the stream
 
@@ -197,10 +196,11 @@ export function validate(schema, value, where = "$") {
 // --------------------------------------------------------------- the plan and the card
 
 // plan.txt as the launcher's --plan writes it: `id | model | role | writes | tokens`, a header line first.
+// The tokens column is left out: no check reads it.
 export function planRecord(text) {
   return String(text ?? "").split("\n").map((l) => l.trim()).filter((l) => l && l !== "id | model | role | writes | tokens")
     .map((l) => l.split("|").map((c) => c.trim())).filter((c) => c.length === 5)
-    .map(([id, model, role, writes, tokens]) => ({ id, model, role, writes, tokens: Number(tokens) }));
+    .map(([id, model, role, writes]) => ({ id, model, role, writes }));
 }
 
 const label = (alts) => new RegExp(`^(?:${alts})(?!\\p{L})`, "iu");
@@ -211,44 +211,14 @@ const CARD = {
   cost: label("costs?|стоимость|цена|токены"),
   checks: label("checks?|verification|проверки|проверка"),
 };
-const NUMBER = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
-  один: 1, одна: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, шесть: 6 };
-const countNear = (text, re) => {
-  const m = new RegExp(`(?<![\\p{L}\\d])(\\d+|${Object.keys(NUMBER).join("|")})\\s+(?:${re.source})`, "iu").exec(text);
-  return m ? Number(NUMBER[m[1].toLowerCase()] ?? m[1]) : null;
-};
-
 // The card row a line is, by the label it opens with once the table and emphasis marks are off, or null.
 export function cardLabelOf(line) {
   const l = String(line).replace(/^[\s>|#*_\-\d.]+/, "").replace(/^\*\*/, "").trim();
   return Object.entries(CARD).find(([, re]) => re.test(l))?.[0] ?? null;
 }
 
-// The workers and the checking agents the card's who row counts, in the phrasings plans use: "3 workers",
-// "3 do the work, 3 check it", "3 выполняют работу, 3 проверяют". Read from the who row alone: an
-// assumption such as "one worker doing all three edits would be cheaper" is not the count (measured on the
-// live gate's case 7, 2026-09-28). Heuristic over free text.
-export function cardCounts(text) {
-  const who = String(text).split("\n").filter((l) => cardLabelOf(l) === "who").join("\n");
-  if (!who) return null;
-  return {
-    workers: countNear(who, /do the work|do it|workers?|implementers?|writers?|editors?|edit\b|выполня\p{L}*|исполнител\p{L}*|работник\p{L}*/u),
-    checking: countNear(who, /check(?:s|ing)?(?: it| the work)?\b|checking agents?|checkers?|verifiers?|critics?|reviewers?|assurance|проверя\p{L}*|проверяющ\p{L}*/u),
-  };
-}
-
-// The launcher's own count of the registered plan, WORKERS= and CHECKING= off the last --plan call.
-export function planOutputOf(s) {
-  const call = rootUses(s).filter((u) => isLauncher(u, "plan")).pop();
-  const out = call ? s.results.get(call.id)?.text ?? "" : "";
-  const w = /^WORKERS=(\d+)$/m.exec(out)?.[1], c = /^CHECKING=(\d+)$/m.exec(out)?.[1];
-  return w === undefined || c === undefined ? null : { workers: Number(w), checking: Number(c) };
-}
-
-// The card's five rows by the labels the page names, and, against the registered plan, every agent on it
-// and the workers and the checking agents its who row counts, as the launcher's classifier counts them
-// (`counted`, the --plan call's own output, when the stream has it).
-export function cardProblems(text, rows = null, { counted = null } = {}) {
+// The card's five rows by the labels the page names, and, against the registered plan, every agent on it.
+export function cardProblems(text, rows = null) {
   const problems = [];
   const labels = new Set(String(text).split("\n").map(cardLabelOf).filter(Boolean));
   const missing = Object.keys(CARD).filter((k) => !labels.has(k));
@@ -256,14 +226,6 @@ export function cardProblems(text, rows = null, { counted = null } = {}) {
   if (rows) {
     const absent = rows.filter((r) => !new RegExp(`(?<![A-Za-z0-9])${r.id}(?![A-Za-z0-9])`, "i").test(text)).map((r) => r.id);
     if (absent.length) problems.push(`the card does not show ${absent.join(", ")}, registered in the plan`);
-    const classified = { workers: rows.filter((r) => classifyRole(r.role) === "worker").length, checking: rows.filter((r) => classifyRole(r.role) === "checking").length };
-    if (counted && (counted.workers !== classified.workers || counted.checking !== classified.checking))
-      problems.push(`the launcher counted ${counted.workers} worker(s) and ${counted.checking} checking, the registered rows classify as ${classified.workers} and ${classified.checking}`);
-    const said = cardCounts(text);
-    const want = counted ?? classified;
-    // A plan whose coordinator writes registers no worker, and its card may count the coordinator as one.
-    if (said?.workers != null && want.workers > 0 && said.workers !== want.workers) problems.push(`the card counts ${said.workers} worker(s), the plan registers ${want.workers}`);
-    if (said?.checking != null && said.checking !== want.checking) problems.push(`the card counts ${said.checking} checking agent(s), the plan registers ${want.checking}`);
   }
   return problems;
 }
@@ -359,11 +321,27 @@ export function manifestProblems({ planTurn, runTurn, rows, finalText = "" }) {
   return problems;
 }
 
+// Every write an agent was seen to make, as { id, file } with the path as written: a Claude agent's writes
+// are the Write, Edit and NotebookEdit calls under its Agent call, however deep; a Codex agent's are its
+// report's filesTouched. A write made through a shell command is not visible here.
+function writesSeen(s, reports) {
+  const byId = new Map(s.toolUses.filter((u) => u.id).map((u) => [u.id, u]));
+  const top = (u) => { let x = u; while (x?.parent && byId.get(x.parent)) x = byId.get(x.parent); return x; };
+  const seen = [];
+  for (const u of s.toolUses.filter((x) => x.parent && ["Write", "Edit", "NotebookEdit", "MultiEdit"].includes(x.name))) {
+    const t = top(u);
+    const d = t && AGENT_TOOLS.has(t.name) ? describedAgent(t) : null;
+    const file = String(u.input.file_path ?? u.input.notebook_path ?? "");
+    if (d && file) seen.push({ id: d.id, file });
+  }
+  for (const r of reports)
+    for (const f of r.report?.filesTouched ?? []) seen.push({ id: r.id, file: String(f) });
+  return seen;
+}
+
 // Every write an agent was seen to make, against the writes its row allows: `nothing`, `live tree` (under
 // the working directory), `write <dir>` (under that directory), `worktree` (its own tree, under the
-// repository's .claude directory). A write under the temporary directory is every agent's. A Claude
-// agent's writes are the Write, Edit and NotebookEdit calls under its Agent call, however deep; a Codex
-// agent's are its report's filesTouched. A write made through a shell command is not visible here.
+// repository's .claude directory). A write under the temporary directory is every agent's.
 export function writesProblems({ s, rows = [], reports = [], cwd, tmp = [] }) {
   const problems = [];
   if (!rows.length) return problems;
@@ -390,65 +368,26 @@ export function writesProblems({ s, rows = [], reports = [], cwd, tmp = [] }) {
     const dir = /^write\s+(\S.*)$/.exec(w)?.[1];
     return dir ? under(file, dir) : false;
   };
-  const byId = new Map(s.toolUses.filter((u) => u.id).map((u) => [u.id, u]));
-  const top = (u) => { let x = u; while (x?.parent && byId.get(x.parent)) x = byId.get(x.parent); return x; };
-  const seen = [];
-  for (const u of s.toolUses.filter((x) => x.parent && ["Write", "Edit", "NotebookEdit", "MultiEdit"].includes(x.name))) {
-    const t = top(u);
-    const d = t && AGENT_TOOLS.has(t.name) ? describedAgent(t) : null;
-    const file = String(u.input.file_path ?? u.input.notebook_path ?? "");
-    if (d && file) seen.push({ id: d.id, file: path.isAbsolute(file) ? file : path.join(cwd, file) });
-  }
-  for (const r of reports)
-    for (const f of r.report?.filesTouched ?? []) seen.push({ id: r.id, file: path.isAbsolute(f) ? f : path.join(cwd, f) });
-  for (const w of seen) {
+  for (const w of writesSeen(s, reports)) {
     const row = planRowOf(w.id, rows)?.row;
     if (!row) continue;
-    if (!allowed(row, w.file)) problems.push(`${w.id} wrote ${path.relative(cwd, w.file) || w.file}, outside its row's writes (${row.writes})`);
+    const file = path.isAbsolute(w.file) ? w.file : path.join(cwd, w.file);
+    if (!allowed(row, file)) problems.push(`${w.id} wrote ${path.relative(cwd, file) || file}, outside its row's writes (${row.writes})`);
   }
   return problems;
 }
 
 // --------------------------------------------------------------- the split critic
 
-// No worker brief exists before the split critic returns; each names the critic's file; the shared
-// interface has one owner among the briefs (#16's acceptance check, T5's bypass). The owner test reads a
-// brief's lines for the shared path beside a verb of ownership, which is a heuristic.
 const escapeRe = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const FILE_RE = /(?<![\w/.-])((?:[\w.-]+\/)*[\w-]+\.(?:mjs|cjs|js|jsx|ts|tsx|py|rb|go|rs|java|c|h|sh|md|json|ya?ml|toml|txt|css|html))(?![\w/])/g;
-// A line of a brief that names the path beside a verb of ownership, and does not negate it.
-const ownsPath = (text, file) => text.split("\n").some((l) => l.includes(file)
-  && /\b(own|owns|owner|write|writes|edit|edits|change|changes|modify|rename|update)\b|владе|пиш|измен/i.test(l)
-  && !/\b(do not|don't|never|not)\b[^.]*\b(own|write|edit|change|modify|rename|update)|не (?:пиш|измен|трог)/i.test(l));
 
-// The corrected split as the critic wrote it: which worker id owns which path, and which paths are the
-// interfaces units share. A line naming paths and one worker id gives it those paths; a line naming several
-// gives them to the id after "owner" or "owned by"; a line that says interface or shared marks its paths as
-// interfaces. Heuristic over free text: the page fixes no format for the file.
-export function parseSplit(text, ids) {
-  const owners = new Map();
-  const interfaces = new Set();
-  for (const line of String(text).split("\n")) {
-    const files = [...line.matchAll(FILE_RE)].map((m) => m[1]);
-    if (!files.length) continue;
-    const named = ids.filter((id) => new RegExp(`(?<![A-Za-z0-9])${escapeRe(id)}(?![A-Za-z0-9-])`, "i").test(line));
-    let owner = named.length === 1 ? named[0] : null;
-    if (!owner && named.length > 1) {
-      const m = new RegExp(`(?:owner|owned by|владелец)[:\\s]+(${named.map(escapeRe).join("|")})`, "i").exec(line);
-      owner = m ? named.find((id) => id.toLowerCase() === m[1].toLowerCase()) : null;
-    }
-    const iface = /interface|shared|интерфейс|общ/i.test(line);
-    for (const f of files) {
-      if (iface) interfaces.add(f);
-      if (owner) owners.set(f, new Set([...(owners.get(f) ?? []), owner]));
-    }
-  }
-  return { owners, interfaces };
-}
-
-// No worker brief exists before the split critic returns; each names the critic's file; the corrected split,
-// read from that file, gives every interface one owner, and each brief owns what the split gives it and
-// nothing it gives another (#16's acceptance check, T5's bypass).
+// No worker brief exists before the split critic returns; each names the file the critic published in its
+// artifacts; and the shared interface has one owner, counted from the agents seen writing it (#16's
+// acceptance check, T5's bypass). What the briefs and the split say about owners is not read: measured on
+// the live gate's case 7 (2026-09-28), a brief quoting the request read as owning every file it named, and
+// the critic's report.json, the first path in its hand-back, read as the split, while each file had one
+// writer.
 export function splitAdmissionProblems(s, { units, shared, reportOf = null, read = (p) => fs.readFileSync(p) }) {
   const bs = briefs(s);
   const problems = [];
@@ -461,37 +400,19 @@ export function splitAdmissionProblems(s, { units, shared, reportOf = null, read
   if (!workers.length) problems.push("no worker brief names a unit of the task");
   const early = workers.filter((w) => critic.done === null || w.seq < critic.done);
   if (early.length) problems.push(`${early.length} worker brief(s) written before the split critic returned`);
-  // A Codex critic's hand-back carries the answer's first line only when it is long; its report has the rest.
-  const report = critic.side === "codex" && reportOf ? reportOf(critic.report) : null;
-  const criticText = [s.results.get(critic.call?.id)?.text ?? "", JSON.stringify(report?.answerJson ?? report?.answer ?? "")].join("\n");
-  const file = absolutePaths(criticText).find((p) => /\.(?:md|txt|json)$/.test(p)) ?? null;
-  if (!file) problems.push("the split critic's return names no file for the corrected split");
+  // A Codex critic's artifacts are in its report; a Claude critic's are the artifacts field of its return.
+  const artifacts = critic.side === "codex" ? (reportOf ? reportOf(critic.report) : null)?.answerJson?.artifacts
+    : parseFiveFields(s.results.get(critic.call?.id)?.text ?? "").fields.artifacts;
+  const file = (Array.isArray(artifacts) ? artifacts : []).find((p) => /\.(?:md|txt|json)$/.test(String(p))) ?? null;
+  if (!file) problems.push("the split critic's artifacts name no file for the corrected split");
   else {
     const without = workers.filter((w) => !w.text.includes(file));
     if (without.length) problems.push(`${without.length} worker brief(s) do not name the corrected split ${file}`);
-    let text = null;
-    try { text = read(file).toString("utf8"); } catch { problems.push(`the corrected split ${file} cannot be read`); }
-    if (text !== null) {
-      const ids = workers.map((w) => w.id).filter(Boolean);
-      const { owners, interfaces } = parseSplit(text, ids);
-      if (shared && !interfaces.has(shared)) problems.push(`the corrected split omits the shared interface ${shared}`);
-      for (const f of interfaces) {
-        const o = [...(owners.get(f) ?? [])];
-        if (o.length !== 1) problems.push(`the corrected split gives the interface ${f} ${o.length} owners`);
-      }
-      for (const [f, o] of owners)
-        for (const id of o) {
-          const w = workers.find((x) => x.id?.toLowerCase() === id.toLowerCase());
-          if (w && !ownsPath(w.text, f)) problems.push(`the corrected split gives ${f} to ${id}, whose brief does not own it`);
-        }
-      for (const w of workers)
-        for (const [f, o] of owners)
-          if (![...o].some((id) => id.toLowerCase() === w.id?.toLowerCase()) && ownsPath(w.text, f))
-            problems.push(`${w.id}'s brief owns ${f}, which the corrected split gives to ${[...o].join(", ")}`);
-    }
+    try { read(file); } catch { problems.push(`the corrected split ${file} cannot be read`); }
   }
-  const owners = workers.filter((w) => ownsPath(w.text, shared));
-  if (owners.length !== 1) problems.push(`${owners.length} worker briefs own ${shared}, and it has one owner`);
+  const reports = bs.filter((b) => b.side === "codex" && reportOf).map((b) => ({ id: b.id, report: reportOf(b.report) }));
+  const writers = new Set(writesSeen(s, reports).filter((w) => w.file === shared || w.file.endsWith(`/${shared}`)).map((w) => w.id.toLowerCase()));
+  if (writers.size !== 1) problems.push(`${writers.size} agents wrote ${shared}, and it has one owner`);
   return problems;
 }
 
@@ -747,10 +668,11 @@ export function originsOf(s, { reports = [] } = {}) {
 }
 
 // Each claim the answer credits to an agent holds only what that agent's admitted return holds: the answer
-// is cut at every "<Model> <id>" into the stretch that agent is the subject of, and each fact in it (a
-// backquoted span, a file path, an "N of M" count, a number of two digits or more) must be in that agent's
-// return. A fact only another agent's return holds is misattributed; one no return holds is unsupported.
-// Heuristic over free text: a claim with no such fact is not checked.
+// is cut at every "<Model> <id>" into the stretch that agent is the subject of, up to the next mention or
+// the end of its sentence or line, and each fact in it (a backquoted span, a file path, an "N of M" count, a
+// number of two digits or more) must be in that agent's return. A fact only another agent's return holds
+// is misattributed; one no return holds is unsupported. Heuristic over free text: a claim with no such fact
+// is not checked, nor one that stands before its mention, as in a list item ending "(Model id)".
 export function claimOriginProblems(s, { reports = [], finalText = "" }) {
   const origins = originsOf(s, { reports });
   const problems = [];
@@ -758,7 +680,7 @@ export function claimOriginProblems(s, { reports = [], finalText = "" }) {
   const text = String(finalText);
   const marks = [...text.matchAll(mention)].map((m) => ({ at: m.index, end: m.index + m[0].length, key: `${m[1]} ${m[2]}`.toLowerCase(), name: `${m[1]} ${m[2]}` }));
   marks.forEach((m, i) => {
-    const stop = Math.min(marks[i + 1]?.at ?? text.length, (() => { const j = text.slice(m.end).search(/[.!?](\s|$)/); return j < 0 ? text.length : m.end + j + 1; })());
+    const stop = Math.min(marks[i + 1]?.at ?? text.length, (() => { const j = text.slice(m.end).search(/[.!?](\s|$)|\n/); return j < 0 ? text.length : m.end + j + 1; })());
     const stretch = text.slice(m.end, stop);
     const facts = [
       ...[...stretch.matchAll(/`([^`]+)`/g)].map((x) => [x[1]]),

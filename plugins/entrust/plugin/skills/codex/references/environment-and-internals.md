@@ -6,14 +6,35 @@ delegate — the recipes at the top of that file cover the decision.
 The canonical flag inventory lives in `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`, with the rarely needed flags and the environment table under `--help-all`. This file
 explains environment, state, wrappers, operational bounds, and lifecycle details behind those flags.
 
+## Contents
+
+- [Environment](#environment)
+- [Observability](#observability)
+- [Approval mailbox](#approval-mailbox)
+- [The answer log, and what --brief does not deliver](#the-answer-log-and-what---brief-does-not-deliver)
+- [What is protected, and what is not](#what-is-protected-and-what-is-not)
+- [The isolated home](#the-isolated-home)
+- [Prompt files and wrappers](#prompt-files-and-wrappers), with [The injection limit](#the-injection-limit)
+- [Bounding or stopping an agent](#bounding-or-stopping-an-agent)
+- [Receipt validation and reporting](#receipt-validation-and-reporting)
+- [Worktree ledger and destination](#worktree-ledger-and-destination)
+- [Lock design](#lock-design)
+- [Git-directory grant](#git-directory-grant)
+- [Configuration key oracle](#configuration-key-oracle)
+
 ## Environment
 
 The variables, the subdirectories of the state directory `<state>` stands for below, the order the driver
 resolves it in, and what `TMPDIR` grants a read agent are all under `--help-all`. There is no default: the
 intended value is the plugin's own data directory, which the skill recipes pass on every call. `<state>`
-must also be absolute, and neither `$TMPDIR` nor a directory above it: both levels grant `$TMPDIR` to the
-agent, and a state directory at or above it would let the sandbox reach its own locks and answers, so a
-value naming either exits 2 before any turn runs. What it does not carry: the agent's shell also receives `TMPPREFIX` under
+must also be absolute.
+
+`$TMPDIR` is the run's own directory, made fresh at 0700 inside the system's temporary directory (what
+Node's `os.tmpdir()` returns for the driver's environment), never your whole one: a report at
+`<state>/<rel>/report.json` gets `<tmp>/entrust/<rel>`, and a run with no report under `<state>` gets
+`<tmp>/entrust/runs/<startedAtMs>-<pid>`; the report names it as `tmpDir`, it outlives the run, and the
+driver never removes it: it stays until the system clears its temporary directory or `/entrust:cleanup`
+removes it with its run. What `--help-all` does not carry: the agent's shell also receives `TMPPREFIX` under
 the run's `$TMPDIR`, because zsh keeps here-document temp files at `$TMPPREFIX*`, default `/tmp/zsh`,
 which no grant covers ([incidents](incidents.md#here-documents-under-the-grant)).
 
@@ -31,19 +52,28 @@ then `last: 14273 / total: 27857`, so `last` is only the turn's tail.
 
 The report's `escalations` array has one entry per approval request, whichever thread asked — not only the
 ones the driver declined: `id`, `method`, `kind`, `detail`, `thread`, `subagent`, `agentPath`, `cause`
-(`rights`: a file change the writable roots cover, which the driver accepted itself; `outside`: a file
-change not shown to lie inside them, or a permissions request, which the driver declined itself; `sandbox`: the same command had just
-failed in this turn; `policy`: no attempt was seen, so Codex asked by its own rule), `offered`, `decision`
+(`rights`: a file change the writable roots cover, which the driver accepted itself and never shows anyone;
+`outside`: a file change not shown to lie inside them, or a permissions request, which the driver declined
+itself, its `why` naming `WRITABLE:` for a file change and "rights are set at launch" for a permissions
+request; `asked`: Codex asked before running the command, and nothing on our side changes it), `offered`, `decision`
 (`accepted`, `declined` or `expired`), `by` (`driver` for an auto-yes, an expiry or a request never offered,
 `coordinator` otherwise), `why`, `askedAt`, `settledAt`, `waitMs`, `resolved`, `outcome` (the matching
 item's own completion, or null where none came), `cwd`, `reason` and `fileChanges`. `detail` is the server's
-own wording whole — never clipped — and may still be empty where it sent none; a sandbox-denied command need
+own wording whole — the command, else the reason, else the message, or the joined file-change list — never
+clipped, and may still be empty where it sent none; a sandbox-denied command need
 not raise a request, so an empty array does not prove that no command was denied. An entry does not diagnose
 rights that were too narrow. Exit 6 means a request was declined or expired unanswered, never one accepted;
 a cut run can carry entries and still exit 3. Beside the array, `approvalsAccepted`,
 `approvalsAutoAccepted`, `approvalsStale` and `approvalsLate` count what their names say,
 `approvalsDuplicate` counts a request id the server sent twice — the driver answers it once and the report
 counts the repeat, not a second request.
+
+Under an output schema, `schemaOverflow` is null unless the answer broke a size cap, and then
+`{completeAnswerPath, clipped}`: the file holding the whole answer and each field cut, with its path, cap and
+length; `answerAttemptPaths` lists the file of the first answer a corrective turn for size replaced.
+`turnError` is the server's error for a turn that did not complete, its `codexErrorInfo` and `message`, or
+the driver's own `aborted` or `crashed` in that shape; the launcher's `ERROR=` line falls back to it when the
+report has no `error`.
 
 An auto-yes carries `why: "rights cover it (checked as the answer was sent)"`: every component of the
 resolved path between the writable root and the file must be an existing plain directory, never a symlink,
@@ -62,13 +92,13 @@ inside the driver's own state directory, and so does `--report-file` beside it: 
 strictly inside that directory before the agent's directory even exists, and refuses without the state
 directory in `ENTRUST_STATE_DIR` or `CLAUDE_PLUGIN_DATA`; it also refuses a mailbox placed under one of the
 driver's own subtrees there —
-`tmp/`, `home/`, `locks/`, `answers/`, `jobs/`, `worktrees/` or `pasted/` — where `tmp/` alone holds every
-run's private `$TMPDIR`; `reports/<run>` and an orchestrate run directory are both fine, being neither. The
+`home/`, `locks/`, `answers/`, `jobs/`, `worktrees/` or `pasted/` — or under `<tmp>/entrust`, where every
+run's `$TMPDIR` is; `reports/<run>` and an orchestrate run directory are both fine, being neither. The
 driver also refuses any writable root that is, or is an ancestor of, the state directory or `~/.codex` —
 the inverse of the ancestor walk [Only those are protected](#what-is-protected-and-what-is-not) already
 runs — so no sandbox the driver grants can reach in and write a decision itself. `D/owner.json` claims the
-mailbox by `link(2)`; a second driver over the same `D` exits 2 while that owner is alive, and a dead
-owner's claim is taken over under a reclaim marker, so two drivers never both own `D`. A request the
+mailbox by `link(2)`; a second driver over the same `D` exits 2 whether that owner is alive or has ended,
+so `D` serves one driver, ever, and each launch gets a `D` of its own. A request the
 mailbox itself cannot write — its file, or its entry in `pending` — is settled at once as expired,
 `why: "mailbox write failed: <error>"`, and an accept reaches the server only after that settlement record
 landed; a request's own `settled` object then carries `decisionFile`, what the decision file held as it
@@ -114,9 +144,10 @@ checked before the turn, so a typo costs nothing.
 
 At write level every root the agent may write — `--cwd`, each `--writable`, and the tree a `--worktree`
 lands in — refuses `~/.codex` and the resolved state directory, and anything inside them, by inode
-identity; `$TMPDIR` takes the same guard at either level. The first holds the receipts an agent is
-verified by, the second this driver's locks and answer log. The private `<state>/tmp/<runId>` created by
-the driver is the narrow exception: its owner record binds it to that run. The driver also refuses your
+identity. The first holds the receipts an agent is verified by, the second this driver's locks and answer
+log. The run's own `$TMPDIR` takes no such check, wherever the system's temporary directory lies: it is a
+directory the run has just made, empty, which grants nothing beside itself ([Environment](#environment)).
+The driver also refuses your
 home directory itself and every ancestor of it, up to `/`.
 
 **Only those are protected, and what is above them.** The guard also refuses a candidate that is `~/.codex`
@@ -395,12 +426,10 @@ grant, while the profile still applies under its correct id:
 This is why the driver's read-level assert checks the **effect** as well as the name. It requires
 sandbox type `workspaceWrite`, the network access that was asked for, `excludeSlashTmp` true so `/tmp`
 is not writable beside `$TMPDIR`, and the cwd present in `runtimeWorkspaceRoots`. It also requires
-`writableRoots` equal to exactly `[$TMPDIR]` — or exactly empty when `--cwd` is `$TMPDIR`, where the
-server moves it to `runtimeWorkspaceRoots` instead — with paths canonicalised on both sides. The
+`writableRoots` equal to exactly `[$TMPDIR]`, the run's own directory, never the cwd, with paths
+canonicalised on both sides. The
 profile id is asserted first, but a name-only check passes in both cases above; verified live,
-introducing exactly this typo now exits 4 before any model turn. ($TMPDIR itself also goes through the
-protected-root guard at both levels before the turn, so `TMPDIR=~/.codex/x` is a usage error rather than
-something either assert has to catch.) Check a profile the same way yourself:
+introducing exactly this typo now exits 4 before any model turn. Check a profile the same way yourself:
 
 ```bash
 codex sandbox -c 'permissions.entrust_read.extends=":read-only"' \

@@ -115,11 +115,10 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       Models: astra, sol, terra, luna, opus, sonnet, haiku, fable. Writes: nothing,
       worktree, live tree, or write <absolute dir>. Ids start with a letter and then
       use letters, digits, _ or -; each is unique ignoring case and cannot end in -<digits>.
-      Tokens are a nonnegative integer or unknown. classifyRole derives the
-      WORKERS/CHECKING counts. --plan --amend appends new rows explicitly; show the
-      amendment and wait for approval before launching them. Prints PLAN= and an
-      AGENT= line per row and WORKERS=/CHECKING= totals, or AMENDED= for an amendment. A plan
-      records declared scope; it does not certify actual cost or live caps.
+      Tokens are a nonnegative integer or unknown; the role is any non-empty text. --plan --amend
+      appends new rows explicitly; show the amendment and wait for approval before launching
+      them. Prints PLAN=, or AMENDED= for an amendment, and an AGENT= line per row it adds. A
+      plan records declared scope; it does not certify actual cost or live caps.
   node agent-run.mjs --new --report-file REPORT  < prompt
       Makes the agent's directory, agent/ beside REPORT (or --dir DIR), at 0700, puts the prompt read on
       stdin through driver.mjs --check-prompt-file, and only on a pass makes it DIR/prompt.txt at 0600,
@@ -199,8 +198,8 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       report reads as unknown, never success.
   node agent-run.mjs --pending --report-file REPORT [--dir DIR]
       Prints each request waiting on a decision — one DIR/approvals/pending lists — as REQUEST=<id>,
-      THREAD=root or the subagent's path, METHOD=, CAUSE= (sandbox: the same command had just failed
-      inside the sandbox; policy: no attempt was seen), CWD=, REASON= (the agent's own), ROOTS= (the
+      THREAD=root or the subagent's path, METHOD=, CAUSE= (asked: Codex asked before running the
+      command, and nothing on our side changes it), CWD=, REASON= (the agent's own), ROOTS= (the
       roots the agent may write, "; " between them), DEADLINE= (an ISO time, or none), then the command:
       whole, newlines kept, on the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, TOKEN drawn fresh for
       each print and never in the command. Every value outside that block is one line: a backslash, a
@@ -413,11 +412,6 @@ const PLAN_MODELS = new Set(["astra", "sol", "terra", "luna", "opus", "sonnet", 
 const CLAUDE_MODELS = new Set(["opus", "sonnet", "haiku", "fable"]);
 const PLAN_HEADER = "id | model | role | writes | tokens";
 const planError = (why) => { process.stdout.write(`ERROR=${why}\n`); process.exit(2); };
-export function classifyRole(role) {
-  const worker = /implement|writ|worker|build|fix|исполн|писат/i.test(role);
-  const assurance = /critic|verif|review|refut|judge|check|test|advis|критик|провер|ревью/i.test(role);
-  return worker && !assurance ? "worker" : assurance ? "checking" : null;
-}
 // Return the registered row and the preceding link for a launch, or null for an unlisted name.
 // A gate may use the row without probing the marker; the launcher requires it before creating a prompt.
 export function planRowOf(name, rows, runDir) {
@@ -442,7 +436,7 @@ const planRows = (body) => {
     if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(id)) planError(`invalid agent id: ${id}`);
     if (/-\d+$/.test(id)) planError(`invalid agent id ${id}: the -<n> form names a continuation`);
     if (!PLAN_MODELS.has(model.toLowerCase())) planError(`invalid model for ${id}: ${model}`);
-    if (!classifyRole(role)) planError(`invalid role for ${id}: ${role}`);
+    if (!role) planError(`missing role for ${id}`);
     if (!/^(nothing|worktree|live tree|write \/\S.*)$/.test(writes)) planError(`invalid writes for ${id}: ${writes}`);
     if (!/^(unknown|0|[1-9]\d*)$/.test(tokens)) planError(`invalid tokens for ${id}: ${tokens}`);
     return { id, model, role, writes, tokens };
@@ -464,11 +458,10 @@ function registerPlan(runDir, amend) {
   const rows = planRows(body);
   if (rows.some((r) => prior.some((p) => p.id.toLowerCase() === r.id.toLowerCase()))) planError("duplicate agent id in amendment");
   fs.mkdirSync(runDir, { recursive: true, mode: 0o700 });
-  const all = [...prior, ...rows];
   const serialized = rows.map((r) => [r.id, r.model, r.role, r.writes, r.tokens].join(" | ")).join("\n");
   if (amend) fs.appendFileSync(file, `# amended ${new Date().toISOString()}\n${serialized}\n`);
   else fs.writeFileSync(file, `${PLAN_HEADER}\n${serialized}\n`, { mode: 0o600, flag: "wx" });
-  process.stdout.write(`${amend ? "AMENDED" : "PLAN"}=${file}\n${rows.map((r) => `AGENT=${r.id} ${r.model} ${r.writes}`).join("\n")}\nWORKERS=${all.filter((r) => classifyRole(r.role) === "worker").length}\nCHECKING=${all.filter((r) => classifyRole(r.role) === "checking").length}\n`);
+  process.stdout.write(`${amend ? "AMENDED" : "PLAN"}=${file}\n${rows.map((r) => `AGENT=${r.id} ${r.model} ${r.writes}`).join("\n")}\n`);
 }
 
 export function statusLines(dir, report) {
@@ -707,9 +700,8 @@ function waitForPrompt(dir, cb) {
 }
 
 // The one foreground call. Ends, on every path, by printing nine lines or the requests waiting on a
-// decision, and exiting 0: the wrapper runs the command again while a result has no REPORT= line, so a
-// refusal that printed none would be an endless retry; the early return prints RUNNING= in its place for
-// exactly that rerun, and a waiting result ends in REPORT= so that it is handed back.
+// decision, and exiting 0: the wrapper runs the command again only on a result that ends in RUNNING=,
+// which the early return prints in place of REPORT=, and hands every other result back as it is.
 function run(dir, report) {
   const t0 = Date.now();
   let pid = null, kept = null;
@@ -785,7 +777,7 @@ function run(dir, report) {
   });
 }
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isMain = (() => { try { return fs.realpathSync(process.argv[1]) === fs.realpathSync(SELF); } catch { return false; } })();
 if (isMain) {
   const o = parse(process.argv.slice(2));
   if (o.error) { process.stderr.write(`agent-run: ${o.error}\n${USAGE}`); process.exit(2); }

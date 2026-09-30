@@ -7,7 +7,8 @@
 // hands the wrapper the one command, which runs the driver through scripts/agent-run.mjs in one foreground
 // Bash call, so the ONE call
 // and the field table are both SKILL.md's and the agent file carries only the relay's standing rules. This suite compares
-// that page, and the orchestrate page that re-cuts it, with the driver they describe.
+// that page, the orchestrate page that re-cuts it, and references/environment-and-internals.md, which holds the
+// report's escalation fields the page links, with the driver they describe.
 
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -17,9 +18,11 @@ import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../plugin/skills/codex/scripts/
 
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "orchestrate", "SKILL.md");
+const ENV_MD = path.join(ROOT, "skills", "codex", "references", "environment-and-internals.md");
 
 const skill = fs.readFileSync(SKILL, "utf8");
 const orchestrate = fs.readFileSync(ORCHESTRATE, "utf8");
+const envFlat = fs.readFileSync(ENV_MD, "utf8").replace(/\s+/g, " ");
 const driver = fs.readFileSync(DRIVER, "utf8");
 // What the driver ADVERTISES, for the cases that ask whether a flag the page hands over still exists: a
 // `case "--x":` in the source can outlive every route a caller has to it, and the help is the route.
@@ -118,8 +121,8 @@ test("the ONE call is agent-run.mjs --run with --report-file in one foreground c
     for (const part of ["--run", '--report-file "<REPORT>"'])
       if (!call.includes(part)) problems.push(`the run does not carry ${part}: ${JSON.stringify(call)}`);
     if (call.includes("--dir")) problems.push("the run names --dir, which the launcher derives from the report path");
-    for (const step of ["Write no text before it", "If its result has no REPORT= line", "run the very same command again at once",
-                        "Call SubagentHandback with exactly the lines that result printed", "After the hand-back result", '"<DESCRIPTION>: report delivered"'])
+    for (const step of ["Write no text before it", "If its result ends with RUNNING=", "run the very same command again at once",
+                        "Any other result, an empty one included, goes to step 3", "Call SubagentHandback with exactly the lines that result printed", "After the hand-back result", '"<DESCRIPTION>: report delivered"'])
       if (!flat.includes(step)) problems.push(`the wrapper's message on the page lacks the step ${JSON.stringify(step)}`);
     if (call.includes("driver.mjs")) problems.push("the run names the driver directly again");
     if (/(^|[^&])&\s*$/.test(call)) problems.push("the run ends in an `&` of its own, which hides the run from the task");
@@ -316,10 +319,12 @@ test("the shipped wrapper is the agent the page names: Bash alone, a pinned mode
     if (!/^model: (sonnet|haiku|opus)$/m.test(head)) problems.push("the agent pins no model");
     for (const phrase of ["Do not answer the task yourself", "Do not create or edit files", "Do not change any flag, path, or environment variable",
                           // The procedure the page's message carries and this file repeats: one foreground call with
-                          // the ten-minute timeout, the same command again while no REPORT= line, the hand-back with
-                          // the lines alone, and the one visible line after it.
+                          // the ten-minute timeout, the same command again only on RUNNING= or the harness's notice
+                          // and every other result handed back, the hand-back with the lines alone, and the one
+                          // visible line after it.
                           "in the foreground, with timeout 600000", "Write no text before it",
-                          "If its result has no REPORT= line", "run the very same command again",
+                          "If its result ends with RUNNING=", "run the very same command again",
+                          "Any other result, an empty one included, goes to step 3",
                           "Call SubagentHandback with exactly the lines that result printed",
                           "After the hand-back result", ": report delivered"])
       if (!body.replace(/\s+/g, " ").includes(phrase)) problems.push(`the agent body no longer says: ${JSON.stringify(phrase)}`);
@@ -343,7 +348,7 @@ test("the Rights table's read row is read [<dir>] with no WRITABLE exception, an
   });
 
 test("the waiting result ends in REPORT=, the constant is thirty minutes, and neither page names the widening",
-  "a coordinator reading the waiting result has to see the same REPORT= line the nine-line result ends in, since that is what tells the wrapper's rerun step to stop, and the thirty-minute constant is what protects an unattended run; the widening is gone, so a page that still named its lines, its report fields or a tool's cache would send a coordinator after a request the driver never offers",
+  "a coordinator reading the waiting result has to see the same REPORT= line the nine-line result ends in, since that is the path its --decide and its next --run take, and the thirty-minute constant is what protects an unattended run; the widening is gone, so a page that still named its lines, its report fields or a tool's cache would send a coordinator after a request the driver never offers",
   () => {
     const problems = [];
     for (const phrase of [
@@ -355,15 +360,15 @@ test("the waiting result ends in REPORT=, the constant is thirty minutes, and ne
       problems.push("--help no longer names the 30-minute constant");
     const orchestrateFlat = orchestrate.replace(/\s+/g, " ");
     for (const [label, text] of [["SKILL.md", flat], ["orchestrate/SKILL.md", orchestrateFlat]])
-      for (const gone of ["sandboxWidened", "REPEAT_OF", "ACCESS=", "NETWORK=", "repeatOf", "a widening for named paths", "Prefer a widening", "state or cache", "permission features"])
+      for (const gone of ["sandboxWidened", "REPEAT_OF", "ACCESS=", "NETWORK=", "repeatOf", "a widening for named paths", "Prefer a widening", "state or cache", "permission features", "`policy`"])
         if (text.includes(gone)) problems.push(`${label} still names ${JSON.stringify(gone)}`);
-    if (!orchestrateFlat.includes("`sandbox`, the tool needed the user's own environment, nothing on our side changes it"))
-      problems.push("orchestrate/SKILL.md's synthesis sentence for cause sandbox is not the one the subtraction left");
+    if (!orchestrateFlat.includes("`asked`, Codex asked before running the command, and nothing on our side changes it"))
+      problems.push("orchestrate/SKILL.md's synthesis sentence for cause asked is not the driver's own");
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the accept the page shows restates the command in a quoted heredoc on a delimiter the coordinator makes up, and Stop's reach stops at the server's group",
-  "a fixed delimiter lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell before the launcher compares anything (both verifications of 2026-09-28 made it happen), so the block the coordinator copies ends on a delimiter it made up and checked, never the relayed token; and an accepted command in a process group of its own is E67, which the Stop line has to say rather than promise",
+test("the accept the page shows restates the command in a quoted heredoc on a delimiter the coordinator makes up",
+  "a fixed delimiter lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell before the launcher compares anything (both verifications of 2026-09-28 made it happen), so the block the coordinator copies ends on a delimiter it made up and checked, never the relayed token",
   () => {
     const problems = [];
     const at = skill.search(/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'$/m);
@@ -380,21 +385,20 @@ test("the accept the page shows restates the command in a quoted heredoc on a de
       "The ID reached you the same way: quote it, and use it only in the shape the launcher prints",
       "one trailing newline tolerated, and publishes nothing on an empty stdin or any difference",
       "An accept the permission check or the classifier blocks publishes nothing either",
-      "a command you accepted may run in a process group of its own, which is not established to end with it (E67)",
     ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
 
-test("a SIGTERM to the wrapper's pid is narrowed to the process group actually swept, not to \"nothing left running\", and the survivor check is the coordinator's own",
-  "E67: the teardown signals and polls the app-server's own process group; a command the server started lives in a process group of its own, and whether it dies with the server was never measured, so the page must not promise more than that group's sweep, and F10 (11-refutation-astra.md) is that this is a check the coordinator runs, never a promise the driver keeps",
+test("a SIGTERM to the wrapper's pid is narrowed to what was measured, not to \"nothing left running\", and the survivor check is the coordinator's own",
+  "the teardown signals and polls the app-server's own process group, and a command the server started lives in a process group of its own: a sandboxed one ended with the driver (measured once, 2026-09-29), while one run after an approval, outside the sandbox, was never measured, so the page must not promise more than that, and F10 (11-refutation-astra.md) is that this is a check the coordinator runs, never a promise the driver keeps",
   () => {
     const problems = [];
     for (const phrase of [
       "sweeps the codex app-server's own process group and publishes the report as",
-      "a command still running in its own process group at that moment is not established to end with it (E67)",
-      "An accepted command can outlive the agent, its server and this lock: before a\nsecond writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'`\nyourself and wait for it — no driver code checks this for you.",
+      "A command the agent was running inside the sandbox ends with it (measured once, 2026-09-29)",
+      "a command run after an approval, outside the sandbox, has not been measured, so before a second writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it — no driver code checks this for you.",
     ]) if (!flat.includes(phrase.replace(/\s+/g, " "))) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
-    if (/nothing left running/.test(flat)) problems.push("the page still promises \"nothing left running\", which E67 found unproven");
+    if (/nothing left running/.test(flat)) problems.push("the page still promises \"nothing left running\", which no measurement covers for an approved command");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -411,32 +415,34 @@ test("FILE=missing reads RECEIPT's approvals= count as a decision, not an execut
     return problems.length === 0 || problems.join("; ");
   });
 
-test("exit 6 is a request declined or expired unanswered, never one accepted, and escalations carries decision, cause and unclipped detail",
-  "an auto-yes must never surface as a gate failure, and a coordinator reading `detail` clipped at 200 characters cannot judge the very command it is asked to approve",
+test("exit 6 is a request declined or expired unanswered, never one accepted, and the internals reference gives escalations its cause and unclipped detail",
+  "an auto-yes must never surface as a gate failure, and a coordinator reading `detail` clipped at 200 characters cannot judge the very command it is asked to approve; the page states the exit and links the fields, which live once, in environment-and-internals.md",
   () => {
     const problems = [];
+    if (!flat.includes("`exitCode: 6` is a request declined or expired unanswered, never one accepted"))
+      problems.push("the page no longer says what exit 6 is");
+    if (!flat.includes("[Observability](references/environment-and-internals.md#observability)"))
+      problems.push("the page no longer links the escalations fields");
     for (const phrase of [
-      "`exitCode: 6` is a request declined or expired unanswered, never one accepted",
       "`detail` is the server's own wording whole",
       "never clipped",
       "`cause` (`rights`: a file change the writable roots cover, which the driver accepted itself and never shows anyone",
-      "`outside`: a file change not shown to lie inside them, or a permissions request, which the driver declines itself, its `why` naming `WRITABLE:` for a file change and \"rights are set at launch\" for a permissions request",
-      "`sandbox`: the same command had just failed in this turn",
-      "`policy`: no attempt was seen, so Codex asked by its own rule",
-    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+      "`outside`: a file change not shown to lie inside them, or a permissions request, which the driver declined itself, its `why` naming `WRITABLE:` for a file change and \"rights are set at launch\" for a permissions request",
+      "`asked`: Codex asked before running the command, and nothing on our side changes it",
+    ]) if (!envFlat.includes(phrase)) problems.push(`environment-and-internals.md no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
 
-test("an auto-yes's why is re-checked at send time, and the page names the symlink-swap residual",
-  "the driver re-runs its own containment check the instant it answers, not only when the request first arrived, so the page's why string has to be the current one; the residual is what a race between that check and the server's own write can still do, and it is unmeasured, not fixed",
+test("an auto-yes's why is re-checked at send time, and the internals reference names the symlink-swap residual",
+  "the driver re-runs its own containment check the instant it answers, not only when the request first arrived, so the reference's why string has to be the current one; the residual is what a race between that check and the server's own write can still do, and it is unmeasured, not fixed",
   () => {
     const problems = [];
     for (const phrase of [
       "\"rights cover it (checked as the answer was sent)\"",
-      "the check runs again at that moment, not only when the request arrived",
-      "a plain directory the driver walked that becomes a symlink before the server\n  writes is followed by the server, not caught here",
-      "whether the server itself re-resolves the swap is\n  unmeasured",
-    ]) if (!flat.includes(phrase.replace(/\s+/g, " "))) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+      "the whole check runs again, fresh, at the moment the driver sends the answer, not only when the request first arrived",
+      "A writer that swaps one of those plain directories for a symlink between the driver's check and the server's own write is followed by the server, not the driver",
+      "whether the server re-resolves that swap before it writes is unmeasured",
+    ]) if (!envFlat.includes(phrase)) problems.push(`environment-and-internals.md no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
 

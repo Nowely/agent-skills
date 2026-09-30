@@ -288,7 +288,7 @@ function plantReported(w, { dataId = "entrust-other" } = {}) {
 // own kept inventory row because their lazy retention policy is relevant to a cleanup caller.
 function plantDriverState(w) {
   const made = {};
-  for (const name of ["answers", "jobs", "tmp", "pasted"]) {
+  for (const name of ["answers", "jobs", "pasted"]) {
     const d = path.join(w.state, name);
     fs.mkdirSync(d, { recursive: true });
     const f = path.join(d, "keep.txt");
@@ -2201,6 +2201,123 @@ test("46 · a reclaim marker replaced after the take by another carrying the sam
     m.has(String(d.out ?? "").replace(/\s+/g, " "), "because another process took over its reclaim marker.", "the refusal");
     m.ok(there(link), "the link was unlinked under a marker that was not cleanup's");
     m.ok(there(marker), "the marker that replaced cleanup's was removed as cleanup's own");
+    return m.done();
+  });
+
+// A run's temporary folder as the driver makes it: <tmp>/entrust/<the report's directory under <state>>.
+function plantTemp(w, ...parts) {
+  const d = path.join(w.tmp, "entrust", ...parts);
+  fs.mkdirSync(d, { recursive: true });
+  fs.writeFileSync(path.join(d, "note.txt"), "an agent's scratch\n");
+  return d;
+}
+
+test("47 · a run and a standalone report go with their temporary folders; a run still going keeps its own",
+  "the driver makes each run a folder in the temporary directory named after its report, and the plugin removes it nowhere else: a run removed without it leaves the folder behind until the system clears its temporary directory, and a folder removed while its run goes on takes the files its agents are writing",
+  async () => {
+    const w = makeWorld("run-temp");
+    const run = plantRun(w, w.slug, "run-done", { A: report(w.project) });
+    const live = plantRun(w, w.slug, "run-going", { A: null });
+    const alone = plantStandaloneReport(w, "run-alone");
+    const runTmp = path.dirname(plantTemp(w, "orchestrate", w.slug, "run-done", "A"));
+    const liveTmp = path.dirname(plantTemp(w, "orchestrate", w.slug, "run-going", "A"));
+    const aloneTmp = plantTemp(w, "reports", "run-alone");
+    const m = misses();
+    const s = await snapshot(w);
+    const bad = need(w, s); if (bad) return bad;
+    const row = rowAt(s.j, run), rrow = rowAt(s.j, alone), lrow = rowAt(s.j, live);
+    m.ok(row && rowAt(s.j, runTmp)?.n === row.n, `the run's temporary folder is not on the run's own row: ${shown(s.j)}`);
+    m.ok(rrow && rowAt(s.j, aloneTmp)?.n === rrow.n, `the report's temporary folder is not on the report's own row: ${shown(s.j)}`);
+    m.ok(lrow && rowAt(s.j, liveTmp)?.n === lrow.n, `the running run's temporary folder is not on its row: ${shown(s.j)}`);
+    m.eq(kindRows(s.j, "temp").length, 0, `a temporary folder whose run is listed got a row of its own: ${shown(s.j)}`);
+    if (!row || !rrow || !lrow) return m.done();
+    m.eq(lrow.status, "kept", "a run still going, with its temporary folder");
+    m.has(row.reason, "Its temporary folder goes with it.", "the finished run's reason");
+    const d = await pick(w, s.file, [row.n, rrow.n]);
+    m.eq(d.code, EXIT.OK, `deleting the run and the report exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+    for (const p of [run, runTmp, alone, aloneTmp]) m.ok(!fs.existsSync(p), `${path.relative(w.root, p)} survived its run's deletion`);
+    for (const p of [live, liveTmp]) m.ok(fs.existsSync(p), `${path.relative(w.root, p)} of the run still going was removed`);
+    return m.done();
+  });
+
+test("48 · a temporary folder whose run is gone, or whose run wrote no report and stopped, is listed and suggested; one whose run is still running is kept",
+  "the plugin removes these folders nowhere else, so one no listed run owns has to be listed on its own rather than ignored, and the pid a runs/ folder is named after is the only evidence of its run",
+  async () => {
+    const m = misses();
+    const w = makeWorld("temp-orphans");
+    const gone = path.dirname(plantTemp(w, "orchestrate", w.slug, "run-gone", "A"));
+    const stopped = plantTemp(w, "runs", `1790000000000-${DEAD_PID}`);
+    const s = await snapshot(w);
+    let bad = need(w, s); if (bad) return bad;
+    const rows = [gone, stopped].map((p) => rowAt(s.j, p));
+    for (const [i, row] of rows.entries()) {
+      m.ok(row, `${[gone, stopped][i]} is not listed: ${shown(s.j)}`);
+      if (row) { m.eq(row.kind, "temp", "kind"); m.eq(row.proposed, true, `${row.name} suggested`); }
+    }
+    if (rows.every(Boolean)) {
+      const d = await pick(w, s.file, rows.map((r) => r.n));
+      m.eq(d.code, EXIT.OK, `deleting the orphaned folders exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+      for (const p of [gone, stopped]) m.ok(!fs.existsSync(p), `${path.relative(w.root, p)} survived its deletion`);
+    }
+    const v = makeWorld("temp-running");
+    const running = plantTemp(v, "runs", `1790000000000-${process.pid}`);
+    const r = await list(v);
+    bad = need(v, r); if (bad) return bad;
+    const row = rowAt(r.j, running);
+    m.ok(row, `the running run's folder is not listed: ${shown(r.j)}`);
+    if (row) { m.eq(row.status, "kept", "a folder whose run is still running"); m.has(row.reason, "still running", "its reason"); }
+    return m.done();
+  });
+
+test("49 · what an earlier driver kept under <state>/tmp is suggested once no record there names a live agent",
+  "the driver no longer writes <state>/tmp, so nothing else removes what an earlier version left there; an owner record naming a live process is an agent of that version still at work",
+  async () => {
+    const m = misses();
+    const w = makeWorld("old-tmp");
+    const old = path.join(w.state, "tmp");
+    fs.mkdirSync(path.join(old, "mabc-0000"), { recursive: true });
+    fs.writeFileSync(path.join(old, "mabc-0000", "owner.json"), JSON.stringify({ pid: DEAD_PID, identity: DEAD_IDENTITY }));
+    fs.writeFileSync(path.join(old, "mabc-0000", "note.txt"), "left\n");
+    const s = await snapshot(w);
+    let bad = need(w, s); if (bad) return bad;
+    const row = rowAt(s.j, old);
+    m.ok(row, `<state>/tmp is not listed: ${shown(s.j)}`);
+    if (row) {
+      m.eq(row.proposed, true, "suggested");
+      const d = await pick(w, s.file, [row.n]);
+      m.eq(d.code, EXIT.OK, `deleting it exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+      m.ok(!fs.existsSync(old), "<state>/tmp survived its deletion");
+      m.ok(fs.existsSync(w.state), "the state directory went with it");
+    }
+    const v = makeWorld("old-tmp-live");
+    const vold = path.join(v.state, "tmp", "mabc-1111");
+    fs.mkdirSync(vold, { recursive: true });
+    fs.writeFileSync(path.join(vold, "owner.json"), JSON.stringify({ pid: process.pid, identity: processIdentity(process.pid) }));
+    const r = await list(v);
+    bad = need(v, r); if (bad) return bad;
+    const vrow = rowAt(r.j, path.dirname(vold));
+    m.ok(vrow, `<state>/tmp with a live record is not listed: ${shown(r.j)}`);
+    if (vrow) m.eq(vrow.status, "kept", "<state>/tmp while a record there names a live process");
+    return m.done();
+  });
+
+test("50 · every folder under <tmp>/entrust is on a row, so the closing line saying nothing else is outside this cleanup is true",
+  "the closing line is the listing's claim about the whole temporary directory: printed while the runs' folders were listed nowhere, it told the user nothing of this plugin's was left when much was",
+  async () => {
+    const m = misses();
+    const w = makeWorld("temp-coverage");
+    plantRun(w, w.slug, "run-listed", { A: report(w.project) });
+    const folders = [path.dirname(plantTemp(w, "orchestrate", w.slug, "run-listed", "A")),
+                     path.dirname(plantTemp(w, "orchestrate", "-some-other-project", "run-x", "B")),
+                     plantTemp(w, "reports", "run-gone"),
+                     plantTemp(w, "runs", `1790000000000-${DEAD_PID}`),
+                     path.join(w.tmp, "entrust", "elsewhere")];
+    plantTemp(w, "elsewhere", "deep", "leaf");
+    const r = await list(w);
+    const bad = need(w, r); if (bad) return bad;
+    for (const f of folders) m.ok(rowAt(r.j, f), `${path.relative(w.tmp, f)} is on no row: ${shown(r.j)}`);
+    m.eq(r.j.notCovered?.count, 0, "the count of what is outside this cleanup");
+    m.has(String(r.j.text ?? "").replace(/\s+/g, " "), "Nothing else in the temporary directory is outside this cleanup.", "the closing line");
     return m.done();
   });
 

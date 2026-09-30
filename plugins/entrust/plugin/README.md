@@ -27,8 +27,10 @@ this skill ([skills/orchestrate/SKILL.md](skills/orchestrate/SKILL.md)).
 
 A third, `/entrust:cleanup`, is the cleanup: it lists what the plugin has left on this machine and
 removes only what you pick by number ([skills/cleanup/SKILL.md](skills/cleanup/SKILL.md)). It
-removes five kinds — this project's orchestrate run directories and agent scratch, standalone report
-runs, the test suites' scratch directories and the saved conversations they leave behind. Five more
+removes seven kinds — this project's orchestrate run directories and agent scratch, standalone report
+runs, each run with its temporary folder, the temporary folders whose run is gone, what an earlier
+version left in the data directory's `tmp/`, the test suites' scratch directories and the saved
+conversations they leave behind. Five more
 it only ever reports: the driver's saved answers, managed worktrees and their ledger, write locks,
 the shared Codex home, and another copy of the plugin's data, which is yours to remove with the
 shell-quoted command the listing hands you. A report is never suggested: once the agent has written
@@ -75,11 +77,17 @@ leaves.
 - **Node at or above the floor `package.json` declares** (`engines`); CI runs that floor and a current
   release, Linux and macOS. No dependencies: the driver is one file importing only `node:` builtins.
 - **macOS and Linux are both measured.** CI runs every suite that needs no `codex` binary on both;
-  the macOS-only call (the managed-preferences plist) is guarded. A stock Linux shell leaves `TMPDIR`
-  unset: at either level the driver then makes a private one and names it in the report as `tmpDir`
-  ([Environment](skills/codex/references/environment-and-internals.md#environment)). At read level it is
-  the only place an agent may write; at write level it sits beside the directories you chose. Export your own to put
-  the agent's scratch files elsewhere.
+  the macOS-only call (the managed-preferences plist) is guarded. On both, an agent's `$TMPDIR` is its
+  run's own directory, never your whole one: the driver makes it fresh at 0700 inside the system's
+  temporary directory `<tmp>`, Node's `os.tmpdir()`: your `TMPDIR`, else `TMP` or `TEMP`, else `/tmp`. A report at
+  `<rel>/report.json` under the driver's state directory gets `<tmp>/entrust/<rel>`, and a run with no
+  report there gets `<tmp>/entrust/runs/<startedAtMs>-<pid>`. The report names it as `tmpDir`
+  ([Environment](skills/codex/references/environment-and-internals.md#environment)); it outlives the run,
+  and the driver never removes it: it stays until the system clears its temporary directory or
+  `/entrust:cleanup` removes it with its run (below). At read level it is
+  the only place an agent may write; at write level it is one more writable root beside the directories
+  you chose. An earlier version kept these folders in the state directory's `tmp/`; the cleanup offers
+  what is left there too.
 - **Your `~/.codex/config.toml` is the default policy** — or the one in the home `CODEX_HOME` names.
   Model, reasoning effort and the other keys the driver inherits come from it unless a call overrides
   them (`--model`, `--effort`); the driver sets no defaults of its own
@@ -110,16 +118,23 @@ claude plugin update entrust@nowely
 Claude Code substitutes into the skill's recipes and which this install resolves to
 `~/.claude/plugins/data/entrust-nowely/` (the plugin's name, then the marketplace's). The answers
 and the isolated Codex home, the write locks, the worktree ledger and the orchestrator mode's run
-directories are all there. It survives plugin updates; an uninstall deletes it unless you pass
-`claude plugin uninstall --keep-data`, and
-`/entrust:cleanup` lists what is there and removes only the items you pick by number; experiment records under `experiments/` and report folders under `prepare-feedback/` it neither lists nor removes.
+directories are all there. It survives plugin updates. `/entrust:cleanup` lists what is there and removes
+only the items you pick by number. A run or standalone report it removes takes its `<tmp>/entrust/`
+folder with it, and a run still going keeps both. A folder there whose run is gone from the state
+directory, or whose process has ended, is an item of its own and is suggested; so is what an earlier
+version left in `tmp/`, once no process its `owner.json` names is alive. Here `<tmp>` is what the cleanup
+sees: a non-empty `TMPDIR`, else Node's `os.tmpdir()`. Experiment records under `experiments/` and report
+folders under `prepare-feedback/` it neither lists nor removes.
 The driver keeps no default of its own: with neither that variable nor `ENTRUST_STATE_DIR` it
-exits 2. In every permission mode but auto and bypass, a write outside the working directory prompts, so
-add that directory to `permissions.additionalDirectories` once — this plugin adds no rules on your
-behalf. A shell outside Claude Code has no `CLAUDE_PLUGIN_DATA`; to run the driver by hand, as under
-First run, export an absolute path of your own — neither `$TMPDIR` nor a directory above it: both levels
-grant `$TMPDIR` to the agent, and a state directory there, or above it, is refused, so the run exits 2. The
-driver reads `ENTRUST_STATE_DIR` first, so wherever it is set it overrides the plugin's directory:
+exits 2. Add that directory to `permissions.additionalDirectories` once to read the agents' reports
+without prompts — this plugin adds no rules on your behalf. You never need to write there: the plugin's
+own scripts do, and a write there by Claude Code's own tools still asks in the `default` and
+`acceptEdits` modes whatever your settings say, because the directory is under `.claude`, a protected
+path. Claude Code's [permissions page](https://code.claude.com/docs/en/permissions.md) says files in
+additional directories "become readable without prompts, and file editing permissions follow the current
+permission mode", and its [permission modes page](https://code.claude.com/docs/en/permission-modes.md)
+says "`permissions.allow` rules in settings files do not pre-approve protected-path writes". A shell outside Claude Code has no `CLAUDE_PLUGIN_DATA`; to run the driver by hand, as under
+First run, export an absolute path of your own. The driver reads `ENTRUST_STATE_DIR` first, so wherever it is set it overrides the plugin's directory:
 
 ```bash
 export ENTRUST_STATE_DIR="$HOME/.local/state/entrust"
@@ -262,8 +277,9 @@ skills/codex/                    the main skill: SKILL.md (the operating manual)
                                  and its companions, each self-describing under --help), references/
 skills/orchestrate/              the orchestrator mode: SKILL.md (a delta over the codex skill), scripts/
                                  (capture-check.mjs, the check runner; lint-draft.mjs, the answer's linter;
-                                 each self-describing under --help), references/ (roles, the foreman, and
-                                 codex-composition.md, generated from the codex page by ../evals/fragments.mjs)
+                                 each self-describing under --help), references/ (roles, the foreman, the
+                                 incidents behind the page's dated rules, and codex-composition.md,
+                                 generated from the codex page by ../evals/fragments.mjs)
 skills/cleanup/SKILL.md          the cleanup mode: runs scripts/cleanup.mjs, shows its listing and
                                  deletes what the user chose
 skills/experiment/               the experiment mode: SKILL.md (protocol, arms, two verdicts), scripts/experiment.mjs
@@ -301,7 +317,7 @@ Canonical homes for repeated stories:
 | flags and field formats | `node skills/codex/scripts/driver.mjs --help` (`--help-all` for the rest) |
 | environment, prompt files, receipts, worktree internals | [`environment-and-internals.md`](skills/codex/references/environment-and-internals.md) |
 | native capability parity and dated measurements | [`parity.md`](skills/codex/references/parity.md) |
-| measured failures behind rules | [`incidents.md`](skills/codex/references/incidents.md) |
+| measured failures behind rules | [`incidents.md`](skills/codex/references/incidents.md), and orchestrate's own [`incidents.md`](skills/orchestrate/references/incidents.md) |
 | suite coverage and mutations | [`plugins/entrust/evals/README.md`](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/evals/README.md) |
 
 ## Status
@@ -309,7 +325,7 @@ Canonical homes for repeated stories:
 Young code, adversarially reviewed by mixed Claude/Codex panels. What that produced is checkable in the
 repository rather than in the claim: the home-directory guard is pinned against case variants, symlinks
 and a hostile `$HOME`; the lock's critical section is pinned against overlapping holders; a prompt file
-cannot introduce a verifier; `$TMPDIR` is guarded like every other writable root; and each suite is
+cannot introduce a verifier; every run's `$TMPDIR` is its own, whatever the caller exported; and each suite is
 mutation-checked, with the surviving mutants and what was done about them listed in
 [`plugins/entrust/evals/README.md`](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/evals/README.md).
 Changes are in the [changelog on GitHub](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/CHANGELOG.md); release notes and known issues also live on the

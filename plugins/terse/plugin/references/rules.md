@@ -56,7 +56,7 @@ These suggestions apply to a text that introduces something and asks a reader to
 
 ### Form
 
-**Format for the way the text is read.** Headings help navigation, lists help parallel points, tables help compare genuinely distinct rows, and fenced blocks help copy anything meant to be pasted, with a useful language tag when it is code. A short answer may need none of these; a table of repeated rows adds work without distinction. *Owner, 2026-09-11 and 2026-09-24.*
+**Format for the way the text is read.** Headings help navigation, lists help parallel points, tables help compare genuinely distinct rows, and fenced blocks help copy anything meant to be pasted, with a useful language tag when it is code. A short answer may need none of these; a table of repeated rows adds work without distinction. An enumeration of three or more items reads best as a numbered list. A table cell holds only inline text, and a chat may show `<br>` or HTML there as literal tags, so a row whose content is an enumeration keeps a short summary in its cell and its numbered list goes right below the table, not into rows of its own. *Owner, 2026-09-11, 2026-09-24 and 2026-09-29.*
 
 ### What seldom helps
 

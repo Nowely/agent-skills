@@ -94,12 +94,8 @@ export function generate(f, root = PLUGIN) {
     const body = relink(extract(read(root, s.file), s), s.file, f.copy);
     return `${marker(f, i + 1, s, rel)}\n${body}\n${END}`;
   });
-  const from = [...new Set(f.sources.map((s) => s.file))]
-    .map((file) => `[${file.replace(/^skills\//, "")}](${path.posix.relative(path.posix.dirname(f.copy), file)})`);
   return [
     `# ${f.title}`,
-    "",
-    `Generated from ${from.join(", ")} by \`evals/fragments.mjs\`: edit the source, then run \`node evals/fragments.mjs --write\`.`,
     "",
     blocks.join("\n\n"),
     "",

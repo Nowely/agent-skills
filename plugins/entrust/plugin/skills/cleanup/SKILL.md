@@ -113,9 +113,16 @@ entries in the coordinator's temporary directory. Say "To list those entries
 without removing them, run this command." and show `notCovered.listCommand`;
 for removal, `notCovered.removeCommand`. An agent started under another
 temporary root is outside the agent scan; its report is kept while
-`report.json` is absent. The driver's private `<state>/tmp`
-directories are guarded and not listed: the driver owns them, and this cleanup
-never makes them removable.
+`report.json` is absent. A run or standalone report the cleanup removes
+takes its temporary folder with it, `<tmp>/entrust/<rel>` for the report at
+`<state>/<rel>/report.json`, on the same row and number and under the run's
+own rule, so a run still going keeps both. A folder under `<tmp>/entrust`
+whose run is no longer in the state directory, or a `runs/<startedAtMs>-<pid>`
+folder whose process has ended, is a row of its own, suggested for deletion;
+one whose process is alive, or whose run is still there, is kept. What an
+earlier driver left in `<state>/tmp` is one row, suggested once no
+`owner.json` in it names a live process. `<tmp>` is the temporary directory as
+the cleanup sees it: a non-empty `TMPDIR`, else Node's `os.tmpdir()`.
 
 Forward `CLAUDE_PLUGIN_DATA` as shown. The script uses
 `ENTRUST_STATE_DIR` first, then `CLAUDE_PLUGIN_DATA`; setup follows the

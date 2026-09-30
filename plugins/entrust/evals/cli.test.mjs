@@ -16,7 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { DRIVER, EXIT, FAKE, readJson, registry, runCases, skip, summarize, tempDir } from "./lib/harness.mjs";
 import { SHIM, assertKnownScenarios, explicitTmp, flowState, laxSchemaFile, looseNestedSchemaFile,
-         looseSchemaFile, mismatchSessions, notExec, oneOfSchemaFile, optionalSchemaFile, protectedState, protectedTmp,
+         looseSchemaFile, mismatchSessions, notExec, oneOfSchemaFile, optionalSchemaFile,
          run, runTable, sessionsDir, survivorPidName, unknownModelLog, until } from "./lib/scenarios.mjs";
 
 const shimDir = SHIM;
@@ -28,13 +28,13 @@ fs.mkdirSync(guardState);
 const armedState = tempDir("entrust-armed-");
 const armedBox = path.join(armedState, "run", "agent", "approvals");
 fs.mkdirSync(armedBox, { recursive: true, mode: 0o700 });
-// A mailbox inside another run's private $TMPDIR under the same state directory.
-const mailUnderRunTmp = path.join(armedState, "tmp", "another-run", "approvals");
+// A mailbox inside another run's $TMPDIR, which lies under the state directory when the caller's TMPDIR
+// does: the case below exports the state directory itself as TMPDIR.
+const mailUnderRunTmp = path.join(armedState, "entrust", "runs", "another-run", "approvals");
 fs.mkdirSync(mailUnderRunTmp, { recursive: true, mode: 0o700 });
-// A mailbox under the $TMPDIR every driver here is handed, which the read level may write.
-const mailUnderTmp = path.join(process.env.TMPDIR ? process.env.TMPDIR : tempDir("entrust-mail-"), "entrust-mail-under-tmp");
-fs.mkdirSync(mailUnderTmp, { recursive: true });
 const realOf = (p) => fs.realpathSync(p);
+// The directory os.tmpdir() falls back to when a case unsets TMPDIR, so no case writes the machine's /tmp.
+const osTmp = tempDir("entrust-os-tmp-");
 
 // The two roots the state-directory cases below measure: one stands in for the plugin's own data
 // directory, the other for a home the run must leave untouched. Both live under the shim so the suite's
@@ -129,10 +129,6 @@ const CASES = [
   { scenario: "happy",            expect: EXIT.OK, args: ["--resume", "thr_root"],
     why: "a resumed report must name the continued thread so the coordinator can distinguish it from a fresh run and detect a wrong resume target",
     assert: (r) => r.resumedFrom === "thr_root" || `the report did not name the thread it continued: ${JSON.stringify(r.resumedFrom)}` },
-  { scenario: "happy",            expect: EXIT.OK, env: { TMPDIR: null },
-    why: "when cwd is the tmpdir, the server reports it under runtimeWorkspaceRoots rather than writableRoots; the sandbox check must accept that effective grant",
-    assert: (r) => JSON.stringify(r.sandbox?.writableRoots) === "[]"
-      || `expected the tmpdir root to be subtracted, got ${JSON.stringify(r.sandbox?.writableRoots)}` },
   { scenario: "happy",            expect: EXIT.OK, env: { FAKE_MODEL_ECHO: "1" },
     why: "with no --model the driver sends null and the server chooses; FAKE_MODEL_ECHO reports the request so a hardcoded model cannot look inherited. The echo is opt-in because fidelity.test.mjs compares this field with the live server",
     assert: (r) => r.model === "inherited" || `a model was imposed rather than inherited: ${JSON.stringify(r.model)}` },
@@ -153,7 +149,7 @@ const CASES = [
     why: "CLAUDE_PLUGIN_DATA is what the skill recipes pass, so a run carrying only it puts the whole of its state there and nothing under a home directory — the property the removed default used to break",
     assert: () => {
       const made = fs.existsSync(pluginData) ? fs.readdirSync(pluginData) : [];
-      if (!made.some((n) => ["locks", "answers", "home", "jobs", "tmp"].includes(n)))
+      if (!made.some((n) => ["locks", "answers", "home", "jobs"].includes(n)))
         return `the run left no state under CLAUDE_PLUGIN_DATA: ${JSON.stringify(made)}`;
       const under = fs.readdirSync(decoyHome);
       return under.length === 0 || `the run wrote under $HOME: ${under.join(", ")}`;
@@ -201,7 +197,7 @@ const CASES = [
     assert: (r) => {
       if (r.verify?.ok !== true) return `the verifier itself did not pass: ${JSON.stringify(r.verify)}`;
       let pid = 0;
-      try { pid = Number(fs.readFileSync(path.join(process.env.TMPDIR ?? os.tmpdir(), survivorPidName), "utf8").trim()); } catch {}
+      try { pid = Number(fs.readFileSync(path.join(r.tmpDir, survivorPidName), "utf8").trim()); } catch {}
       if (!pid) return "the verifier's background child never wrote its pid";
       try { process.kill(pid, 0); return `the verifier's background child ${pid} outlived the run`; }
       catch { return true; }
@@ -258,15 +254,12 @@ const CASES = [
   { scenario: "happy",            expect: EXIT.USAGE, args: ["--approval-dir", shimDir],
     why: "a mailbox outside the state directory is a place some sandbox may be able to write, and then an agent can publish its own decision",
     assertStderr: (t) => /is not inside this driver's state directory/.test(t) || `a mailbox outside the state directory was accepted: ${t.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, args: ["--approval-dir", mailUnderTmp],
-    why: "the same refusal for a mailbox under the $TMPDIR the read agent writes, the one place it would be most tempting to put one",
-    assertStderr: (t) => /is not inside this driver's state directory/.test(t) || `a mailbox under $TMPDIR was accepted: ${t.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.USAGE, env: { ENTRUST_STATE_DIR: guardState }, args: ["--approval-dir", guardState],
     why: "inside means inside: the state directory itself holds the locks and the answer log, and a mailbox is a directory of its own below it",
     assertStderr: (t) => /is not inside this driver's state directory/.test(t) || `the state directory itself was accepted as a mailbox: ${t.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, env: { ENTRUST_STATE_DIR: armedState }, args: ["--approval-dir", mailUnderRunTmp],
-    why: "<state>/tmp/<run> is another run's private $TMPDIR, which that run's sandbox writes: this run's own roots do not cover it, so the driver's own subdirectories are refused as a whole",
-    assertStderr: (t) => /lies inside .*\/tmp, which this driver keeps for itself or hands to agents as a writable root/.test(t)
+  { scenario: "happy",            expect: EXIT.USAGE, env: { ENTRUST_STATE_DIR: armedState, TMPDIR: armedState }, args: ["--approval-dir", mailUnderRunTmp],
+    why: "<tmp>/entrust holds every run's $TMPDIR, which that run's sandbox writes: with the caller's TMPDIR inside the state directory another run's lies there too, this run's own roots do not cover it, so the whole of <tmp>/entrust is refused",
+    assertStderr: (t) => /lies inside .*\/entrust, which this driver keeps for itself or hands to agents as a writable root/.test(t)
       || `a mailbox under another run's private $TMPDIR was accepted: ${t.slice(0, 240)}` },
   { scenario: "happy",            expect: EXIT.OK, env: { ENTRUST_STATE_DIR: armedState }, args: ["--approval-dir", armedBox],
     why: "an agent with a mailbox and nothing to ask runs as any other, and its report names the mailbox and no entries",
@@ -372,29 +365,20 @@ const CASES = [
     assert: (r) => (r.verifySkipped === "budget-exhausted" && r.verify === null)
       || `the skipped verifier was not reported as such: ${JSON.stringify({ s: r.verifySkipped, v: r.verify })}` },
 
-  // --- the read level's writable root is $TMPDIR, so $TMPDIR needs the guard every root gets ---
-  { scenario: "happy",            expect: EXIT.USAGE,
-    env: { ENTRUST_STATE_DIR: protectedState, TMPDIR: protectedTmp },
-    why: "$TMPDIR is the read-level write grant and must pass the protected-root guard so it cannot expose the receipt store",
-    assertStderr: (e) => /refusing to grant write access/.test(e)
-      || `a protected $TMPDIR was granted at read level: ${e.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, args: ["--level", "write"],
-    env: { ENTRUST_STATE_DIR: protectedState, TMPDIR: protectedTmp },
-    why: "the write sandbox keeps $TMPDIR writable by declaration, which makes a caller's own one a grant like any other: it takes the same protected-root guard --cwd and --writable take, or `TMPDIR=~/.codex/x --level write` opens the receipt store",
-    assertStderr: (e) => /refusing to grant write access/.test(e)
-      || `a protected $TMPDIR was granted at write level: ${e.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.OK, unsetEnv: ["TMPDIR"],
-    why: "when TMPDIR is unset, a private directory permits scratch writes without granting all of /tmp; it lives under driver state so retention pruning reaches it",
-    assert: (r, _ms, stateRoot) => {
+  // --- the agent's $TMPDIR is always the run's own, whatever the caller exported ---
+  // With no TMPDIR exported the base is Node's os.tmpdir(), which reads TMP next: set here, so the case
+  // writes nothing into the machine's own /tmp.
+  { scenario: "happy",            expect: EXIT.OK, unsetEnv: ["TMPDIR"], env: { TMP: osTmp },
+    why: "a directory of the run's own permits scratch writes without granting all of the temporary directory: made fresh at 0700 under <tmp>/entrust/runs/<startedAtMs>-<pid> when there is no report to name it after, every level it made 0700 too, and still there after the run",
+    assert: (r) => {
       const roots = r.sandbox?.writableRoots ?? [];
       if (roots.length !== 1) return `the private temp grant is not exactly one root: ${JSON.stringify(roots)}`;
-      if (roots[0] === os.tmpdir() || roots[0] === "/tmp") return `the grant is the whole system temp dir: ${JSON.stringify(roots[0])}`;
-      if (r.tmpDir === null) return "the run made a private temp directory and the report does not name it";
-      const base = path.join(stateRoot, "tmp");
-      if (path.dirname(r.tmpDir) !== base) return `the private temp directory is not under <state>/tmp: ${JSON.stringify(r.tmpDir)}`;
+      if (!r.tmpDir || !/^runs\/\d+-\d+$/.test(path.relative(path.join(osTmp, "entrust"), r.tmpDir)))
+        return `the run's directory is not <tmp>/entrust/runs/<startedAtMs>-<pid>: ${JSON.stringify(r.tmpDir)}`;
       if (fs.realpathSync(r.tmpDir) !== roots[0]) return `the grant is not the reported directory: ${JSON.stringify({ tmpDir: r.tmpDir, root: roots[0] })}`;
-      if ((fs.statSync(r.tmpDir).mode & 0o777) !== 0o700) return `the private temp directory is not 0700: ${(fs.statSync(r.tmpDir).mode & 0o777).toString(8)}`;
-      return fs.existsSync(r.tmpDir) || `the run's private temp directory was removed at exit: ${r.tmpDir}`;
+      for (const d of [r.tmpDir, path.dirname(r.tmpDir), path.join(osTmp, "entrust")])
+        if ((fs.statSync(d).mode & 0o777) !== 0o700) return `${d} is not 0700: ${(fs.statSync(d).mode & 0o777).toString(8)}`;
+      return true;
     } },
   { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"], env: { FAKE_RPC_LOG: writeCfgLog },
     why: "the write sandbox's two temp exclusions are sent as -c keys and reported in no field of the driver's own: without them an agent granted one --cwd also writes all of /tmp and its own $TMPDIR is a grant nobody declared",
@@ -412,22 +396,22 @@ const CASES = [
       const sent = TMP_KEYS.filter((k) => keys.includes(k));
       return sent.length === 0 || `the read level sent write-level sandbox keys: ${JSON.stringify(sent)}`;
     } },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"], env: { TMPDIR: null },
-    why: "--cwd and $TMPDIR being the same directory is the one shape where the write grant's two halves collapse into one: the server reports no extra root, the caller's own TMPDIR is not this run's to prune, and both temp exclusions must still read back as sent",
+  { scenario: "happy",            expect: EXIT.OK, env: { TMPDIR: explicitTmp },
+    why: "a caller's TMPDIR is never the agent's whole grant: every agent a coordinator starts inherits the same one, and two that named one file there overwrote each other with no error (E92), so the grant is the run's own directory inside it and the report names it",
     assert: (r) => {
       const roots = r.sandbox?.writableRoots ?? [];
-      if (roots.length) return `the cwd was echoed back as an extra writable root: ${JSON.stringify(roots)}`;
-      if (r.tmpDir !== null) return `a caller's own TMPDIR was reported as this run's to remove: ${JSON.stringify(r.tmpDir)}`;
+      if (!r.tmpDir || path.dirname(r.tmpDir) !== path.join(explicitTmp, "entrust", "runs")) return `the run's own directory is not under the caller's TMPDIR at entrust/runs: ${JSON.stringify(r.tmpDir)}`;
+      return (roots.length === 1 && roots[0] === fs.realpathSync(r.tmpDir))
+        || `the grant is not the run's own directory (the caller's is ${fs.realpathSync(explicitTmp)}): ${JSON.stringify(roots)}`;
+    } },
+  { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"], env: { TMPDIR: explicitTmp },
+    why: "the same at write level, where $TMPDIR is an implicit grant writableRoots never shows: the caller's is no extra root, the run's own is named, and both temp exclusions read back as sent",
+    assert: (r) => {
+      const roots = r.sandbox?.writableRoots ?? [];
+      if (roots.length) return `a write run with no --writable reported extra roots: ${JSON.stringify(roots)}`;
+      if (!r.tmpDir || path.dirname(r.tmpDir) !== path.join(explicitTmp, "entrust", "runs")) return `the run's own directory is not under the caller's TMPDIR at entrust/runs: ${JSON.stringify(r.tmpDir)}`;
       return (r.sandbox?.excludeSlashTmp === true && r.sandbox?.excludeTmpdirEnvVar === false)
         || `the temp exclusions are not what was sent: ${JSON.stringify({ slash: r.sandbox?.excludeSlashTmp, env: r.sandbox?.excludeTmpdirEnvVar })}`;
-    } },
-  { scenario: "happy",            expect: EXIT.OK, env: { TMPDIR: explicitTmp },
-    why: "an explicit TMPDIR is honoured unchanged — the private directory is a fallback for an unset variable, never a substitution for the caller's own choice",
-    assert: (r) => {
-      const roots = r.sandbox?.writableRoots ?? [];
-      if (r.tmpDir !== null) return `a caller's own TMPDIR was reported as this run's to remove: ${JSON.stringify(r.tmpDir)}`;
-      return (roots.length === 1 && roots[0] === fs.realpathSync(explicitTmp))
-        || `an explicit TMPDIR did not survive as the grant: ${JSON.stringify(roots)}`;
     } },
 
   // --- what the report says about the run's own footing ---
@@ -879,34 +863,99 @@ flow("a prompt file supplies the rights line a coordinator's prompt does not hav
       || `a RIGHTS below another field was accepted: exit ${late.code} ${late.err.trim().slice(0, 200)}`;
   });
 
-flow("a private $TMPDIR outlives its run and is reaped on the answer log's bounds",
-  "private scratch must survive exit so answer paths remain usable, then be pruned by later runs within retention bounds; live runs must never be pruned",
+flow("the run's $TMPDIR outlives its run, a later run leaves it alone, and the state directory gets no tmp/",
+  "scratch must survive exit so the answer's paths remain usable; the driver never removes one, and it keeps none of them under the plugin's data directory, where nothing lists them",
   async () => {
-    const state = flowState();
-    const first = await run({ scenario: "tmp-write", unsetEnv: ["TMPDIR"], env: { ENTRUST_STATE_DIR: state } });
+    const state = flowState(), tmp = tempDir("entrust-kept-tmp-");
+    const first = await run({ scenario: "tmp-write", env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
     if (first.code !== EXIT.OK) return `the first run exited ${first.code}: ${first.err.trim().slice(-200)}`;
     const dir = JSON.parse(first.out).tmpDir;
-    if (!dir || path.dirname(dir) !== path.join(state, "tmp")) return `the private $TMPDIR is not under <state>/tmp: ${JSON.stringify(dir)}`;
-    if (!fs.existsSync(dir)) return `the private $TMPDIR was removed at exit: ${dir}`;
-    // A SIGKILLed run's leavings: a directory with no owner record, older than the age bound.
-    const leak = path.join(state, "tmp", "leaked-by-a-sigkill");
-    fs.mkdirSync(leak, { recursive: true });
-    fs.writeFileSync(path.join(leak, "junk.txt"), "x");
-    // And a live one, whose owner record names a process that certainly exists: this one.
-    const live = path.join(state, "tmp", "a-live-agent");
-    fs.mkdirSync(live, { recursive: true });
-    fs.writeFileSync(path.join(live, "owner.json"), JSON.stringify({ pid: process.pid, identity: null }));
-    const old = (Date.now() - 15 * 86400000) / 1000;
-    for (const d of [leak, live]) fs.utimesSync(d, old, old);
-    const second = await run({ scenario: "happy", unsetEnv: ["TMPDIR"], env: { ENTRUST_STATE_DIR: state } });
+    if (!dir || !fs.existsSync(path.join(dir, "agent-note.txt"))) return `the run's $TMPDIR or the agent's file in it is gone at exit: ${JSON.stringify(dir)}`;
+    const second = await run({ scenario: "happy", env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
     if (second.code !== EXIT.OK) return `the second run exited ${second.code}: ${second.err.trim().slice(-200)}`;
-    if (fs.existsSync(leak)) return `the directory a SIGKILLed run left behind was not reaped: ${leak}`;
-    if (!fs.existsSync(live)) return `a live agent's scratch directory was reaped under it: ${live}`;
-    return fs.existsSync(dir) || `an earlier run's kept $TMPDIR was reaped inside the bounds: ${dir}`;
+    if (JSON.parse(second.out).tmpDir === dir) return `two runs were handed one $TMPDIR: ${dir}`;
+    if (!fs.existsSync(path.join(dir, "agent-note.txt"))) return `a later run removed an earlier run's $TMPDIR: ${dir}`;
+    return !fs.existsSync(path.join(state, "tmp")) || `the driver still made ${path.join(state, "tmp")}`;
   });
 
-flow("one driver per mailbox: a second exits 2 naming the owner's pid, and a dead owner's claim is taken over",
-  "pending is rewritten whole by whoever owns the mailbox, so two drivers on one would erase each other's requests; a claim whose driver is gone would otherwise wedge the directory",
+flow("the run's $TMPDIR is named after its report: <tmp>/entrust/<rel> for a report at <state>/<rel>/report.json, every level made 0700, one already there refused, and a report outside <state> named by the run",
+  "the owner of a scratch directory has to be readable off its path, and a directory another run made is that run's: sharing one is how two agents overwrote each other's files (E92)",
+  async () => {
+    const tmp = tempDir("entrust-named-tmp-"), problems = [];
+    const rel = path.join("orchestrate", "slug-x", "run-1", "a1");
+    const report = (state) => path.join(state, rel, "report.json");
+    const state = flowState();
+    const a = await run({ scenario: "happy", args: ["--report-file", report(state)], env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
+    const want = path.join(tmp, "entrust", rel);
+    if (a.code !== EXIT.OK || JSON.parse(a.out).tmpDir !== want) problems.push(`exit ${a.code}, tmpDir ${JSON.stringify(a.out && JSON.parse(a.out).tmpDir)}, expected ${want}`);
+    for (let d = want; d !== tmp; d = path.dirname(d))
+      if (fs.existsSync(d) && (fs.statSync(d).mode & 0o777) !== 0o700) problems.push(`${d} is ${(fs.statSync(d).mode & 0o777).toString(8)}, not 0700`);
+    // Another state directory with the same relative report path under the same TMPDIR: the leaf is there.
+    const other = flowState();
+    const b = await run({ scenario: "happy", args: ["--report-file", report(other)], env: { ENTRUST_STATE_DIR: other, TMPDIR: tmp } });
+    if (b.code !== EXIT.USAGE || !b.err.includes(`the run's $TMPDIR ${want} already exists`))
+      problems.push(`a leaf already there: exit ${b.code}, ${b.err.trim().slice(-200)}`);
+    const outside = path.join(tempDir("entrust-outside-report-"), "report.json");
+    const c = await run({ scenario: "happy", args: ["--report-file", outside], env: { ENTRUST_STATE_DIR: flowState(), TMPDIR: tmp } });
+    const got = c.code === EXIT.OK ? path.relative(path.join(tmp, "entrust"), JSON.parse(c.out).tmpDir) : null;
+    if (!/^runs\/\d+-\d+$/.test(got ?? "")) problems.push(`a report outside <state>: exit ${c.code}, tmpDir under entrust/ is ${JSON.stringify(got)}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("a temporary base <tmp>/entrust that is a link, not a directory, or another user's is refused with exit 2, whether it was there before or turns out so once made",
+  "the base is a fixed name, and where TMPDIR is unset on Linux it sits in a /tmp every user shares: a link planted there would put the agent's scratch where someone else chose, and another user's directory would hold it",
+  async () => {
+    const problems = [];
+    const refused = async (label, tmp, want, env = {}) => {
+      const r = await run({ scenario: "happy", env: { TMPDIR: tmp, ...env } });
+      if (r.code !== EXIT.USAGE || !r.err.includes(`the temporary base ${path.join(tmp, "entrust")} ${want}`))
+        problems.push(`${label}: exit ${r.code}, ${r.err.trim().slice(-200)}`);
+    };
+    const linked = tempDir("entrust-base-link-"), target = tempDir("entrust-base-target-");
+    fs.symlinkSync(target, path.join(linked, "entrust"));
+    await refused("a symbolic link", linked, "is a symbolic link");
+    if (fs.readdirSync(target).length) problems.push(`the run wrote through the link: ${fs.readdirSync(target).join(", ")}`);
+    const filed = tempDir("entrust-base-file-");
+    fs.writeFileSync(path.join(filed, "entrust"), "");
+    await refused("a file", filed, "is not a directory");
+    // Another user's directory, without root: the driver is started with its own uid reported one higher,
+    // so a directory this process made reads as someone else's, both one already there and one it makes.
+    const preload = path.join(tempDir("entrust-uid-"), "other-uid.cjs");
+    fs.writeFileSync(preload, "const own = process.getuid; process.getuid = () => own() + 1;\n");
+    const env = { NODE_OPTIONS: `--require ${preload}` };
+    const theirs = tempDir("entrust-base-theirs-");
+    fs.mkdirSync(path.join(theirs, "entrust"));
+    await refused("another user's, already there", theirs, `belongs to uid ${process.getuid()}, not to this user`, env);
+    await refused("another user's, once made", tempDir("entrust-base-made-"), `belongs to uid ${process.getuid()}, not to this user`, env);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("a caller TMPDIR above the state directory or inside it is never granted: the run's fresh directory in it is, and nothing beside it",
+  "the old guards refused such a TMPDIR because the whole of it was the grant; the grant is now one directory this run has just made, empty, so it reaches neither the state directory nor anything the caller keeps beside it",
+  async () => {
+    const problems = [];
+    for (const shape of ["above", "inside"]) for (const level of ["read", "write"]) {
+      const base = tempDir(`entrust-${shape}-`);
+      const state = path.join(base, "data", "state");
+      fs.mkdirSync(state, { recursive: true });
+      const tmp = shape === "above" ? base : path.join(state, "inner");
+      const r = await run({ scenario: "env-tmpprefix", args: level === "write" ? ["--level", "write"] : [],
+        unsetEnv: ["TMPPREFIX"], env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
+      const rep = r.code === EXIT.OK ? JSON.parse(r.out) : null;
+      const leaf = rep?.tmpDir;
+      const label = `TMPDIR ${shape} the state directory, ${level} level`;
+      if (!leaf || path.dirname(leaf) !== path.join(tmp, "entrust", "runs")) { problems.push(`${label}: exit ${r.code}, tmpDir ${JSON.stringify(leaf)}; ${r.err.trim().slice(-160)}`); continue; }
+      const roots = rep.sandbox?.writableRoots ?? [];
+      const granted = level === "read" ? roots : [...roots, ...(rep.sandbox?.excludeTmpdirEnvVar === false ? [leaf] : [])];
+      if (granted.length !== 1 || fs.realpathSync(granted[0]) !== fs.realpathSync(leaf)) problems.push(`${label}: the temp grant is ${JSON.stringify(granted)}, not the leaf alone`);
+      if (!/TMPPREFIX=(\S+)/.exec(String(rep.answer))?.[1]?.startsWith(`${leaf}/`)) problems.push(`${label}: the agent's temporary directory is not the leaf: ${String(rep.answer).slice(0, 160)}`);
+      if (!path.relative(leaf, state).startsWith("..")) problems.push(`${label}: the leaf ${leaf} holds the state directory`);
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+flow("one driver per mailbox, ever: a second exits 2 naming the owner's pid, whether the owner is still running or has ended",
+  "pending is rewritten whole by whoever owns the mailbox, so two drivers on one would erase each other's requests; the launcher makes a mailbox per launch, so an owner file already there is never a mailbox to take over, and a takeover checked by name could meet a second taker between its check and its removal (E68)",
   async () => {
     const state = flowState();
     const box = path.join(state, "run", "agent", "approvals");
@@ -920,34 +969,14 @@ flow("one driver per mailbox: a second exits 2 naming the owner's pid, and a dea
     if (second.code !== EXIT.USAGE || !second.err.includes(`belongs to entrust pid ${owner.pid}, which is still running`))
       problems.push(`a second driver on a live mailbox: exit ${second.code}, ${second.err.trim().slice(-200)}`);
     if (a.code !== EXIT.OK) problems.push(`the owner exited ${a.code}`);
-    if (readJson(path.join(box, "owner.json"))?.threadId !== "thr_root") problems.push("the owner file does not name the thread once it exists");
+    const held = readJson(path.join(box, "owner.json"));
+    if (held?.threadId !== "thr_root") problems.push("the owner file does not name the thread once it exists");
     const third = await run({ scenario: "happy", args: ["--approval-dir", box], env: { ENTRUST_STATE_DIR: state } });
-    if (third.code !== EXIT.OK || !third.err.includes(`was left by entrust pid ${owner.pid}, which is gone`))
-      problems.push(`a dead owner's mailbox: exit ${third.code}, ${third.err.trim().slice(-200)}`);
-    return problems.length === 0 || problems.join("; ");
-  });
-
-flow("two drivers that both find a mailbox's owner dead: one takes it over, the other exits 2 naming it",
-  "a takeover by rename lets both racers replace the dead claim and both rewrite pending from maps of their own, erasing each other's requests (reproduced offline); the claim is a link(2) and the takeover happens under a marker, so exactly one owns the mailbox",
-  async () => {
-    const state = flowState();
-    const box = path.join(state, "run", "agent", "approvals");
-    fs.mkdirSync(box, { recursive: true, mode: 0o700 });
-    const gone = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
-    const deadPid = Number(gone.stdout);
-    fs.writeFileSync(path.join(box, "owner.json"), JSON.stringify({ pid: deadPid, identity: "lstart:long gone", startedAtMs: 1, threadId: null }));
-    // Both pause between finding the owner dead and taking it over, so both are past that check at once.
-    const env = { ENTRUST_STATE_DIR: state, ENTRUST_LOCK_SEAM_MS: "800" };
-    const [a, b] = await Promise.all([run({ scenario: "slow-turn", args: ["--approval-dir", box], env }),
-                                      run({ scenario: "slow-turn", args: ["--approval-dir", box], env })]);
-    const codes = [a.code, b.code].sort();
-    const loser = a.code === EXIT.USAGE ? a : b;
-    const problems = [];
-    if (JSON.stringify(codes) !== JSON.stringify([EXIT.OK, EXIT.USAGE])) problems.push(`the two drivers exited ${JSON.stringify([a.code, b.code])}, not one 0 and one 2`);
-    if (!/belongs to entrust pid \d+, which is still running/.test(loser.err)) problems.push(`the loser does not name the owner: ${loser.err.trim().slice(-200)}`);
-    const takeovers = [a.err, b.err].filter((e) => e.includes(`was left by entrust pid ${deadPid}, which is gone`)).length;
-    if (takeovers !== 1) problems.push(`${takeovers} drivers announced a takeover`);
-    if (fs.existsSync(path.join(box, "owner.json.reclaim"))) problems.push("the reclaim marker was left behind");
+    if (third.code !== EXIT.USAGE || !third.err.includes(`belongs to entrust pid ${owner.pid}, which has ended`))
+      problems.push(`a driver on an ended owner's mailbox: exit ${third.code}, ${third.err.trim().slice(-200)}`);
+    if (JSON.stringify(readJson(path.join(box, "owner.json"))) !== JSON.stringify(held)) problems.push("a refused driver changed the owner file");
+    const leftovers = fs.readdirSync(box).filter((n) => n !== "owner.json");
+    if (leftovers.length) problems.push(`the refused drivers left ${JSON.stringify(leftovers)} in the mailbox`);
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -1173,7 +1202,7 @@ flow("D4 developer instructions name only effective writable roots and the stage
     const wt = await run({ scenario: "echo-instructions", noCwd: true,
       args: ["--level", "write", "--worktree", repo, "--writable", extra] });
     const wr = JSON.parse(wt.out);
-    const expected = `Your writable roots are: ${fs.realpathSync(os.tmpdir())}, ${wr.worktreePath}, ${fs.realpathSync(extra)}; /tmp is not one.`;
+    const expected = `Your writable roots are: ${fs.realpathSync(wr.tmpDir)}, ${wr.worktreePath}, ${fs.realpathSync(extra)}; /tmp is not one.`;
     return wt.code === 0 && wr.answer.includes(expected)
       || `worktree capsule exit ${wt.code}: expected ${expected}; got ${wr.answer?.slice(0, 500)}`;
   });

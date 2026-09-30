@@ -60,7 +60,9 @@ Rules:
                 a receipt's label nor is marked unverified (unverified, not
                 verified, not checked, untested, unknown, не проверено, без
                 проверки). A negated claim (not fixed, не исправлен) is not a
-                claim of success. A digit or an agent's name is not a receipt.
+                claim of success, nor is one in a clause that opens with once,
+                when, whenever, if, until, unless or before (goes out once the
+                check passes). A digit or an agent's name is not a receipt.
 
 --agents LIST    every agent that ran, as "<Model> <id>" separated by commas or
                  newlines: "Opus W2, Codex Sol D0, Sonnet W5". A Codex agent is
@@ -94,6 +96,10 @@ const FIVE = /^\s*(?:[-*]\s+)?(?:\*\*)?(status|result|evidence|artifacts|open)(?
 const SUCCESS = /\b(?:passed|passes|passing|green|works|working|fixed|verified|confirmed|succeeded|successfully)\b|(?<!\p{L})(?:прош(?:ёл|ел|ла|ли|ло)|зел[её]н\p{L}*|работает|работают|исправлен\p{L}*|исправил\p{L}*|подтвержд\p{L}*|успешн\p{L}*)/giu;
 const UNVERIFIED = /\b(?:unverified|not verified|not checked|unchecked|untested|unknown|not run)\b|(?<!\p{L})(?:не провер\p{L}*|без проверки|неизвестн\p{L}*|не запуска\p{L}*)/iu;
 const NEGATED = /(?:\b(?:not|never|no longer)|n't|(?<!\p{L})(?:не|ни))\s+(?:\S+\s+){0,2}$/iu;
+// A success word in a clause that opens with one of these, no comma, semicolon or colon between, says what
+// will happen, not what did: "the answer goes out once the check passes" (the live gate's case 5,
+// 2026-09-28). "after" is left out, since "After the fix the suite passes" is a claim.
+const CONDITIONAL = /\b(?:once|when|whenever|if|until|unless|before)\b[^,;:]*$/i;
 
 const collapse = (s) => s.toLowerCase().replace(/\s+/g, " ").trim();
 const cut = (s) => (s.length > 120 ? `${s.slice(0, 120)}…` : s);
@@ -159,7 +165,7 @@ export function lintDraft(text, { agents = [], receipts = [], request = "", maxW
     }
     for (const s of sentences(line)) {
       if (UNVERIFIED.test(s)) continue;
-      const claims = [...s.matchAll(SUCCESS)].filter((m) => !NEGATED.test(s.slice(0, m.index)));
+      const claims = [...s.matchAll(SUCCESS)].filter((m) => !NEGATED.test(s.slice(0, m.index)) && !CONDITIONAL.test(s.slice(0, m.index)));
       if (!claims.length) continue;
       const flat = collapse(s);
       if (!labels.some((l) => flat.includes(l))) hit("unsupported-success", n, s);

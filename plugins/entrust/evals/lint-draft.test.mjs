@@ -105,6 +105,19 @@ test("a success claim needs a receipt or an unverified mark: a digit or an agent
     expect("Не проверено: на Linux работает.", []),
   ));
 
+test("a success word in a clause opening with once, when, if, until, unless or before says what will happen and is not a claim; after it, or with after, it still is",
+  "E61: the live gate's case 5 (2026-09-28) was reported for \"The final answer goes out once its new verdict arrives and the digest check passes.\", and the coordinator must lint until clean; \"after\" stays a claim because \"After the fix the suite passes\" is one",
+  () => all(
+    expect("The final answer goes out once its new verdict arrives and the digest check passes.", []),
+    expect("When the suite passes, the answer goes out.", []),
+    expect("If the build is green, merge it.", []),
+    expect("Retry until the suite passes.", []),
+    expect("Once fixed, the suite passes.", ["unsupported-success"]),
+    expect("The suite passes when run with node --test.", ["unsupported-success"]),
+    expect("After the fix the suite passes.", ["unsupported-success"]),
+    expect("После исправления тесты прошли.", ["unsupported-success"]),
+  ));
+
 test("a receipt from a capture-check ledger supports a claim only when its check exited 0 and was not refused",
   "a label whose check failed would otherwise certify the opposite of what it measured",
   async () => {

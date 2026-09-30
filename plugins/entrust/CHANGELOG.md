@@ -145,6 +145,16 @@ forensics remain in the repository references and release notes.
   keeps citing a check by its label. Why: in issue #22 a publication reviewer could not verify a number that existed
   only in the coordinator's command output; since 0.21.0 the runner keeps that output in a log, and the manifest did
   not name it.
+- **The orchestrate Verification list gains a bullet.** A recommendation to the user now rests on an analysis of its
+  options — the problem, its cost, two or more options with closing among them, each judged by minimalism, no
+  crutches and clean architecture, an outside critic, and a top-row judge where they disagree; an item without one
+  goes to the user as a question. Why: the repository's design principles asked for this analysis, and the
+  coordinator's own recommendations had gone out without one.
+- **An option in that analysis now names what it removes or moves and who relies on it** — users, coordinators,
+  tools, tests, leftover state — and what stays and how a user finds it is made to happen or `unknown`; the roles
+  reference gains a final-reviewer row that reads the whole change's consequences first. Why: on this run an E92 fix
+  passed the judge, who overruled the critic's objection, and every review, and moved every Codex agent's scratch to where `/entrust:cleanup` never looked; no
+  stage had asked what the change removed or who relied on it.
 
 ### Fixed
 
@@ -155,6 +165,75 @@ forensics remain in the repository references and release notes.
   (E76). It required 0, and two clock reads with no wait between them can straddle a millisecond tick: this Mac
   recorded 1 on 2026-09-29, as a macOS CI runner had. `offered: false`, `by: driver` and `why: no channel` already
   show that no wait ran.
+- **The launcher runs when invoked through a symbolic link** (a `$TMPDIR` path on macOS, a linked checkout), by
+  resolving both sides of its own-module check to their real paths (E56). It used to compare the path as typed
+  against the module's real path, so a symlinked invocation looked like a foreign import, and the launcher printed
+  nothing and exited 0.
+- **The wrapper runs its command again only when the result ends in `RUNNING=` or is the harness's notice that the
+  command moved to the background; any other result, an empty one included, is handed back at once** (E57). It used
+  to rerun any result without a `REPORT=` line, without bound — 64 reruns in one incident. The codex page's
+  waiting-result paragraph says the same. Not measured live.
+- **The generated `orchestrate/references/codex-composition.md` no longer tells its reader to run
+  `evals/fragments.mjs`**, which an installed plugin does not carry (E58).
+- **The live gate reads the corrected split from the split critic's `artifacts` and counts the shared file's owners
+  from the agents seen writing it**; its free-text split and ownership readers are gone (E59) — 14 false problems on
+  a correct case 7, now 0.
+- **The live gate's attribution check ends an agent's stretch at the end of its line**, so a list whose items end in
+  "(Model id)" no longer credits it with the next item's path (E60).
+- **`lint-draft.mjs` no longer reports a success word in a clause opening with once, when, whenever, if, until,
+  unless or before as an unsupported claim**; `after` and a bare claim still count (E61).
+- **The live gate's plan record drops the tokens column**, which no check read and which turned `unknown` into NaN
+  (E62).
+- **Behaviour change: `agent-run.mjs --plan` accepts any non-empty role** and prints `PLAN=` (or `AMENDED=`) and one
+  `AGENT=` line per row, without `WORKERS=` and `CHECKING=`; an empty role is still refused, `missing role for <id>`,
+  exit 2; it used to refuse 12 of the 22 roles in `roles.md` (E89). The live gate no longer compares the card's
+  counts with the launcher's; the orchestrate card is built from the rows.
+- **Behaviour change: an approval request for a command reports the cause `asked` in place of `sandbox` and
+  `policy`**, in the report's `escalations`, the request file, `CAUSE=` and the pages (E65). The driver could not
+  tell the two apart reliably, since a sandboxed attempt can leave no trace, and both called for the same advice.
+- **The driver's comment and help and the codex page say what stopping an agent was measured to do**: a command
+  running inside the sandbox ends with the agent (measured once, 2026-09-29); a command run after an approval,
+  outside the sandbox, is still unmeasured, so the `pgrep` check before a second writer stays (E67, narrowed to
+  that unmeasured case and stays open).
+- **Behaviour change: a driver handed a mailbox that already has an `owner.json` exits 2 whether its owner is
+  running or has ended**; the takeover of a dead owner's mailbox is gone, since the launcher gives every launch a
+  mailbox of its own (E68).
+- **Behaviour change: every Codex run gets its own `$TMPDIR`, created fresh at 0700 inside the system temporary directory** —
+  `os.tmpdir()` (the caller's `TMPDIR`, `TMP` or `TEMP`, else the OS default) — and named after the run:
+  `<tmp>/entrust/<rel>` for a report at `<state>/<rel>/report.json`, else `<tmp>/entrust/runs/<startedAtMs>-<pid>`.
+  The agent is granted that directory only, never the caller's whole `TMPDIR`. The report's `tmpDir` names it, it
+  outlives the run, and the driver never removes it. A leaf that already exists is refused with exit 2. The driver
+  refuses a `<tmp>/entrust` base that is a symbolic link, not a directory, or another user's, with exit 2. The
+  driver no longer creates `<state>/tmp`; one left by an earlier version can be deleted by hand or through
+  `/entrust:cleanup`. Agents of one coordinator no longer share, and overwrite, one temp directory. (E92)
+- **Behaviour change: `/entrust:cleanup` removes a run's or standalone report's temporary folder** (`<tmp>/entrust/<rel>`) together
+  with the run, on the same number and under the run's own liveness. It lists and suggests the folders there whose
+  run is gone from the state directory or whose report-less run has stopped, and it offers what an earlier driver
+  left in `<state>/tmp` once no agent of that version still uses it. Its closing line no longer says nothing is
+  left while those folders stand.
+- **The EFFORT row and `driver.mjs --help` drop the 2026-09-17 catalogue snapshot**; the value is checked against
+  the live catalogue before each turn (E80).
+- **A brief that reads files names the read: one command per file with `max_output_tokens` at the tool's cap,
+  10,000 today** (E51). Why: left to choose, the model set 1,000, and a Sol read agent saw 19–60 characters of each
+  of 95 pages without noticing, while 374 Luna agents briefed this way read all 1,584 pages whole.
+- **The orchestrate page says a Claude agent starts with the user's and the project's CLAUDE.md and the memory
+  index in its context, whatever its brief says; a Codex agent starts without them** (E53).
+- **The README no longer says when the data directory is deleted and points to `/entrust:cleanup`**; it named only
+  an uninstall without `--keep-data`, while `claude plugin marketplace remove` deleted the directory (E74).
+- **The README says what `permissions.additionalDirectories` does for the data directory: reports read without
+  prompts**; a write there by Claude Code's own tools still asks in `default` and `acceptEdits`, since `.claude` is
+  a protected path (E75).
+- **`codex/SKILL.md` is 1,338 words shorter than on main (5,799 → 4,461) and `orchestrate/SKILL.md` 263 shorter
+  (6,240 → 5,977)**: they stop restating the launcher's and the driver's `--help`, and orchestrate stops restating the codex
+  page; the escalations fields live only in the internals reference (E77, stays open).
+- **The four codex references over 100 lines open with a contents list** (E78).
+- **The measurement stories of both pages move to `incidents.md`** (codex's, and a new
+  `orchestrate/references/incidents.md`); each line keeps its date or a link (E79).
+- **Closed without a code change**, one line naming each and why: E52 (the rollout check already lives in the
+  internals reference; the cause was E51), E64 (the schema lists `decline`; the fact is recorded in the driver and
+  the fixture), E81 (the vendor line is about checking one's own work; here a fresh agent checks others'), E82 (the
+  vendor line is about a blocked Skill call, not reading a file), E83 (the README lists the prerequisites the page
+  links to; the driver names a missing `codex`).
 
 ## 0.22.0 — 2026-09-28
 

@@ -6,443 +6,86 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E64. The server's `availableDecisions` never offers `decline`, the shape every refusal of this driver sends
-
-**Evidence, level 3 for the list and for the refusal being honoured today, level 1 for the schema.**
-
-- 2026-09-27, Opus P1's probe on codex 0.155.1
-  (`plugins/entrust/research/2026-09-27-approval-channel/01-probe.md:13-15`): five
-  `item/commandExecution/requestApproval` requests each carried `availableDecisions: ["accept",
-  {acceptWithExecpolicyAmendment: …}, "cancel"]` and never `decline`; the field is absent from the generated
-  0.155.1 `CommandExecutionRequestApprovalParams.json`.
-- `driver.mjs:2729-2730` answers both `item/*` methods with `{ decision: "decline" }`; the 27 reports with exit 6 on
-  this machine (`00-escalations.md` in the same run) each went on to `turnStatus: completed` after it, so the server
-  honours it.
-- A JSON-RPC error in place of a decision is honoured as a rejection too, but the model reads
-  `exec_command failed: … Rejected("approval request failed")` and the item completes `status: "failed",
-  exitCode: null` (P1, Q3 error), which the classifier counts under `commandsFailed` (`:3318`, `:3336`).
-
-**Check.** On 2026-09-27 Opus P1 answered five command requests from codex 0.155.1 and read the list each one
-advertised: `accept`, `acceptWithExecpolicyAmendment` and `cancel`, never `decline`. A probe that prints the
-`availableDecisions` of one command request on the pinned version repeats it.
-
-**Issue text.** The refusal the driver sends is not among the decisions the server advertises for the request. It is
-honoured on 0.153.4 and 0.155.1, but nothing promises it: a server that enforced its own list would turn every
-refusal into an error the model reads as a broken tool while the report counts a failed command, and the offline
-fixture, which accepts any decision, would stay green. Record the fact where the refusal shapes are chosen, make the
-fixture carry the server's list, and let the live fidelity gate compare the two.
-
-## E65. `escalations` can hold an entry with no declined or failed command beside it, because a sandboxed attempt can emit no item notifications
-
-**Evidence, level 3 for the gap (seen once), level 2 for the consequence.**
-
-- 2026-09-27, P1's 180 s hold thread on codex 0.155.1
-  (`plugins/entrust/research/2026-09-27-approval-channel/01-probe.md:23`, `:31`): the rollout showed the sandboxed first
-  attempt run and fail (`exec_command`, exit 1, `Operation not permitted`), while the thread's only
-  `commandExecution` item was the escalated one: `item/started`, then the request, then `item/completed` with
-  `status: "completed"` after the accept.
-- `driver.mjs:3318` and `:3336` count `commandsFailed` and `commandsDeclined` from `item/completed`; the help at
-  `:427-432` says `commandsDeclined` and `escalations` "can differ" and names one cause, a refused request with no
-  command, not this one.
-
-**Check.** Record the app-server messages of one turn whose sandboxed command fails and is escalated, and read
-its rollout beside them: on 2026-09-27 the rollout held the failed attempt, and the messages held no
-`commandExecution` item before the request.
-
-**Issue text.** A report can show one escalation beside zero declined and zero failed commands, because the sandboxed
-attempt that raised the request produced no item at all. The help's "can differ" covers it by accident; the report's
-reader has no way to tell this case from a request raised with no attempt. Name the cause in the help, and let the
-entry carry what the request itself says about the command, since the item may never come.
-
-## E67. "Nothing left running" after `SIGTERM` is not established for a command executing at the signal
-
-**Evidence, level 3 for the process groups, level 1 for the kill, level 2 for the consequence.**
-
-- `plugins/entrust/plugin/skills/codex/SKILL.md:93` (at `c828b7f`): a `SIGTERM` to the driver's pid "cuts the turn,
-  sweeps its codex and publishes the report … nothing left running".
-- `driver.mjs:2400-2403`: `killGroup` signals `-child.pid`, the app-server's own process group, and `groupAlive`
-  asks the same group.
-- 2026-09-27, Opus P1's probe on codex 0.155.1 (`plugins/entrust/research/2026-09-27-approval-channel/01-probe.md`,
-  Q2): each command the server runs shows "directly under the app-server pid, each in its own process group, with no
-  sandbox-exec or codex wrapper". Whether the server ends those groups on its own exit or abort was not measured.
-
-**Check.** `grep -n 'process.kill(-' plugins/entrust/plugin/skills/codex/scripts/driver.mjs` prints the two calls on
-`child.pid` alone; the probe's process-list observation is at the line the entry cites.
-
-**Issue text.** The teardown signals and polls the app-server's process group, while the commands the server runs
-live in groups of their own. Whether they die with the server is unmeasured, so the page's promise is a guess for
-any command still executing at the signal, a long test run first of all. Measure it (a `sleep` run through a live
-turn, then `SIGTERM`, then `pgrep`), and either sweep the children or narrow the sentence.
-
-## E51. A Codex agent picks its own output cap when it reads a file, and no page tells the coordinator to set one, so a read can return a fragment
-
-**Evidence, level 3.**
-
-- codex-cli 0.155.1 runs commands through a JavaScript `exec` tool whose `tools.exec_command({cmd, max_output_tokens, yield_time_ms})`
-  the model fills in itself. `codex debug models` gives every gpt-6 model `truncation_policy: {mode: tokens, limit: 10000}`.
-- 2026-09-26, a one-line probe on gpt-6-luna (rollout `~/.codex/sessions/2026/09/26/rollout-2026-09-26T20-51-43-01a0ded8-2b3b-7ca3-be1e-de3c54d965dd.jsonl`):
-  asked only to run `echo probe-ok`, the model wrote `max_output_tokens:1000` on its own.
-- Same day, a gpt-6-sol read agent (rollout `rollout-2026-09-26T22-51-18-01a0df45-a320-7fb1-9081-a446b9843a16.jsonl`)
-  opened 95 pages of about 18,000 characters in one loop with `max_output_tokens: 1000`; each output was 19–60
-  characters and 419 of the 1,745 message ids on those pages ever reached the model
-  (`plugins/terse/research/2026-09-26-writing-replication/measures/A2-1-reading-check.md`). With
-  "`max_output_tokens: 10000`, one `cat` per page" in the brief, all 1,584 page reads by 374 Luna agents arrived
-  whole at the first launch, by the replication's `tools/coverage.py` now that it matches
-  JSON-escaped text. The 1,583 recorded before that fix came from a tool that decoded only the first JSON object of
-  an output. One agent, `col-P036-B`, read all ten pages of its part in one loop and got the combined output cut;
-  its rollout shows it then read the eight pages the cut had lost, one `cat` each.
-- `grep -rn max_output_tokens plugins/entrust/plugin/skills` finds nothing: neither `codex` nor `orchestrate` says it.
-
-**Check.** `jq -r 'select(.payload.type=="custom_tool_call") | .payload.input' <the second rollout> | grep -o 'max_output_tokens[^,}]*'`
-prints the 1000.
-
-## E52. A read agent's report of what it read is taken on trust; its own rollout can contradict it and nothing compares them
-
-**Evidence, level 3.**
-
-- The same gpt-6-sol agent as in E51 answered "95 pages opened by separate cat commands with max_output_tokens:
-  10000; no truncation found" (`answerJson.evidence`, report `A2-1`); its rollout holds 28 custom tool outputs, 2 wait outputs and
-  419 of 1,745 message ids, and its gap findings came from keyword regexes over the messages
-  (`plugins/terse/research/2026-09-26-writing-replication/measures/A2-1-reading-check.md`).
-- The receipt proves the thread ran, not what it read: `codex/references/environment-and-internals.md:219-222`.
-  No page names a check that a page an agent was given reached its context.
-- A check that works: `plugins/terse/research/2026-09-26-writing-replication/tools/coverage.py` counts a page as
-  read only when its whole text is a substring of one command output in the agent's own rollout, raw or
-  JSON-escaped. Re-run on the 13 recorded sets,
-  it flags 1 of 500 stress agents, `cx-P102`, which had reported itself `partial`, none of 356 collection agents
-  (1,508 of 1,508 pages read) and none of 13 relaunched stress agents. Among the Luna runs it found no report that
-  hid a miss; the hidden miss that stands is the Sol agent above. The records made before the fix, 13 of 500, 1 of
-  356 and 1 of 13 flagged, came from a tool that decoded only the first JSON object of an output, and an earlier
-  version that decoded none also flagged two agents that had read everything.
-
-**Check.** Run `coverage.py` on a map that pairs agent `A2-1` with the 94 human pages: it reports the pages unread.
-
-## E53. A Claude agent starts with the owner's global and project CLAUDE.md and memory index loaded, which `orchestrate` never mentions when it assigns blind or independent roles
-
-**Evidence, level 3.**
-
-- 2026-09-26, the bottom-up analyst (Opus), told to work from episodes only and not to open CLAUDE.md or memory:
-  record 7 of its transcript,
-  `~/.claude/projects/-Users-user-Git-agent-skills/261eafc8-ba46-48af-8111-f9e6784dfc05/subagents/agent-a7f1e1fb08cb1091e.jsonl`,
-  is an `attachment` of type `instructions` whose files include `~/.claude/CLAUDE.md`, the
-  repository's `CLAUDE.md` and the memory `MEMORY.md`. The agent had not opened them; the harness put them there.
-- A Codex agent's context is its prompt file, the driver's standing rules and codex's own AGENTS.md files; on this
-  machine `~/.codex/AGENTS.md` is empty (0 bytes) and the repository has no `AGENTS.md`.
-- `orchestrate/SKILL.md` and `references/roles.md` give Claude and Codex agents the same judgement roles and state
-  no difference in what each starts with; `grep -n "CLAUDE.md" plugins/entrust/plugin/skills/*/SKILL.md` finds none.
-
-**Check.** `sed -n 7p <that transcript> | jq -r '.attachment.type, (.attachment.files[]?.path // empty)'` prints
-`instructions` and the three paths.
-
-## E56. The launcher runs nothing and exits 0 when its own path goes through a symlink
-
-**Evidence, level 3.**
-
-- `plugins/entrust/plugin/skills/codex/scripts/agent-run.mjs:396` (at `e99cdb6`): `const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);` — `path.resolve` keeps the path as typed, `fileURLToPath(import.meta.url)` is the module's real path, so they differ when the typed path crosses a symlink, and every mode of the launcher is skipped.
-- 2026-09-27, macOS, where `/var` is a symlink to `/private/var`: `node /var/folders/…/scripts/agent-run.mjs --help` printed 0 lines and exited 0; `node /private/var/folders/…/scripts/agent-run.mjs --help` printed the 57-line help; `--new` through the `/var` path printed no `PROMPT=` line, wrote nothing and exited 0; `driver.mjs --help` through the `/var` path printed its 161 lines, so the driver has no such check.
-
-**Check.** `node <a copy of scripts/ under $TMPDIR, whose path starts with /var/>/agent-run.mjs --help | wc -l` prints `0`; the same through `$(realpath …)` prints `57`.
-
-**Issue text.** The launcher decides whether it was run as a program by comparing the path it was invoked with against its module's real path, so an invocation through a symlink — `$TMPDIR` on macOS, any linked checkout — is a silent no-op with exit 0: no lines, no prompt, no run, and a wrapper told to run the command again "until a result has a REPORT= line" runs it again without end (E57). The comparison should resolve both sides with `fs.realpathSync`, or the launcher should refuse loudly when it is not the main module.
-
-## E57. The wrapper loops without bound on a command that prints nothing
-
-**Evidence, level 3.**
-
-- `plugins/entrust/plugin/agents/codex-agent.md:13-16` and the message block in `plugins/entrust/plugin/skills/codex/SKILL.md` (step 2): "If its result has no REPORT= line — it ends with RUNNING= instead, or it was cut — run the very same command again at once, as many times as needed, until a result has one." No bound, and no rule for a result that is empty.
-- 2026-09-27: a wrapper given the launcher through a `/var` path (E56) ran it 64 times over 352 s, then handed back "(no output produced by command after 75+ attempts)"; the harness ended the loop, not the rule.
-
-**Check.** Give the wrapper a command that prints nothing and exits 0 (`true`): step 2 as written never ends.
-
-**Issue text.** The wrapper's rerun rule has no bound and no case for an empty result, so a launcher that prints nothing (E56, or any refusal that reaches neither stdout nor the report) is rerun until the harness gives up, at one tool call every few seconds. The rule should stop after a small fixed number of reruns, and hand back an empty result as its own line, so the coordinator reads the refusal instead of a hung card.
-
-## E58. The generated composition reference tells its reader to run a script the plugin does not install
-
-**Evidence, level 1.**
-
-- `plugins/entrust/plugin/skills/orchestrate/references/codex-composition.md` (generated by `evals/fragments.mjs`,
-  landed in commit `080b1df`) carries a note telling the reader to regenerate it with `node evals/fragments.mjs
-  --write`; `evals/` is not part of the installed plugin (`plugins/entrust/plugin/` is what installs, see the
-  0.21.0-era changelog entry "What installs is now `plugins/entrust/plugin/`"), so on an installed copy the path
-  does not exist.
-- Found in passing by Opus E1, the changelog editor of the 2026-09-27 fix run, while verifying paths.
-
-**Check.** `grep -n 'fragments.mjs' plugins/entrust/plugin/skills/orchestrate/references/codex-composition.md`
-prints the note; `ls plugins/entrust/plugin/evals` fails.
-
-**Issue text.** The composition reference the orchestrate page plans from is generated from a constants module under
-`evals/`, and its header tells a reader to regenerate it with that module, which an installed plugin does not carry.
-The note should say the file is generated in the repository and name nothing a user cannot run, or the generator
-should live under the installed tree.
-
-## E59. The live gate takes the split critic's own report for the corrected split and reads ownership from any line that quotes a path
-
-**Evidence, level 3.**
-
-- `plugins/entrust/evals/lib/gate-checks.mjs:466` takes as the corrected split the first absolute path ending in
-  `.md`, `.txt` or `.json` in the critic's hand-back and report text; a Codex critic's hand-back opens with its
-  status lines, whose `REPORT=` names its own `report.json`, so that file is what the gate reads as the split, and
-  the file the critic published in `artifacts` (`corrected-split.md`) is never opened.
-- `plugins/entrust/evals/lib/gate-checks.mjs:420-422` (`ownsPath`) counts a brief as owning a path when any one
-  line holds the path and a verb from a list (`own`, `rename`, `update`, …) without a negation; a brief's "Why"
-  line quoting the user's request ("rename fmt in lib/shared.mjs … and update lib/a.mjs") qualifies.
-- 2026-09-28, the live gate's case 7 rerun (artifacts `$TMPDIR/orchestrate-live-2026-09-27T21-56-26-891Z/7-split-critic`):
-  Codex Astra X1 returned exit 0 with `corrected-split.md` and `validate-split.py` in `artifacts`, and the split
-  gives U1–U3 and interface I1 to Sonnet W1, W2 and W3; every worker brief names that file. The gate reported
-  "4 worker brief(s) do not name the corrected split …/X1/report.json", three interfaces with 0 owners
-  (`corrected-split.md`, `./shared.mjs`, `validate-split.py`: the report's artifact paths and an import string),
-  nine lines "W<n>'s brief owns lib/…, which the corrected split gives to V1" (the report's result text says V1
-  owns the review and the test run), and "4 worker briefs own lib/shared.mjs" where W2's and W3's briefs say
-  "Write no file other than lib/a.mjs" and quote the request in their "Why" line. The case's ordering check
-  itself passed: no worker brief before the critic returned.
-
-**Check.** Run `splitAdmissionProblems` over that case's `turn2.jsonl` with its report reader: the problems above
-appear; replace the file lookup with the critic's `artifacts` entry ending in `.md` and they go, except the
-ownership count, which needs `ownsPath` to skip a line that quotes the request or names another agent as the owner.
-
-**Issue text.** The gate's split check reads the critic's report file as the corrected split whenever the critic
-is a Codex agent, because its hand-back's `REPORT=` line is the first absolute path it finds, and its ownership
-reading counts any line that holds a path beside a verb like `rename` or `update`, so a brief that quotes the
-user's request owns every file the request names. The check should read the file the critic's `artifacts` name
-and count ownership only from a line whose subject is the brief's own agent.
-
-## E60. The live gate's attribution check credits an agent with the next list item's path
-
-**Evidence, level 3.**
-
-- `plugins/entrust/evals/lib/gate-checks.mjs:757-760` cuts the answer at each "<Model> <id>" mention and reads
-  the stretch up to the next mention or the next sentence end (`[.!?]` followed by whitespace); a list whose
-  items end with the attribution in parentheses and no period runs the stretch into the next item's path.
-- 2026-09-28, the live gate's case 7 rerun (same artifacts): the answer's list "`lib/shared.mjs`: … (Sonnet W1)
-  / `lib/a.mjs`: … (Sonnet W2) / `lib/b.mjs`: … (Sonnet W3)" drew "the answer credits Sonnet W1 with lib/a.mjs,
-  which only sonnet w2's return holds" and the same for W2 and `lib/b.mjs`, each twice.
-
-**Check.** `claimOriginProblems` over a three-item list in that shape reports the shifted paths; a stretch that
-ends at the line's end as well as at a sentence end reports none.
-
-**Issue text.** The gate's attribution reading treats a line break as part of the sentence, so a list whose items
-end with "(Model id)" credits each agent with the path of the item below it and reports a misattribution the
-answer does not make. The stretch an agent is the subject of should end at the end of its line.
-
-## E61. The draft linter reads a sentence about what will happen as a success claim
-
-**Evidence, level 3.**
-
-- `plugins/entrust/plugin/skills/orchestrate/scripts/lint-draft.mjs:94` (`SUCCESS`) matches `passes` and its kin
-  anywhere in a sentence, and `:165` reports the sentence as `unsupported-success` when no receipt label is in it;
-  tense and mood are not read.
-- 2026-09-28, the live gate's final run of case 5 (artifacts `$TMPDIR/orchestrate-live-2026-09-27T22-21-50-483Z/5-full-run`,
-  log `orchestrate-live-fixrun-3.log:4`): the coordinator's phase paragraph "The final answer goes out once its new
-  verdict arrives and the digest check passes." was reported as "an update claims success with no receipt".
-
-**Check.** `printf 'The answer goes out once the check passes.\n' | node lint-draft.mjs -` reports
-`unsupported-success`; the sentence claims nothing.
-
-**Issue text.** The linter's success rule matches the verb alone, so a sentence that says what will happen once a
-check passes is reported as an unsupported success claim. The rule should skip a clause introduced by `once`,
-`when`, `if`, `until` or `after`, or read the sentence's tense, and the gate's phase check inherits whichever the
-linter does.
-
-## E62. The gate's plan record turns `unknown` tokens into NaN
-
-**Evidence, level 1.**
-
-- `plugins/entrust/evals/lib/gate-checks.mjs:203` builds each plan row with `tokens: Number(tokens)`; the launcher
-  admits `unknown` in that column since 2026-09-28 (Codex Sol W3b's fix round, 13c-writer-w3b.md), and
-  `Number("unknown")` is `NaN`.
-- Opus R3 named it among its fourteen findings (12c-reviewer-r3.md); W3b left it as the gate's, and the gate's
-  fix round did not take it (rounds.md, "W2 fix round returns").
-
-**Check.** `node -e 'import("./plugins/entrust/evals/lib/gate-checks.mjs").then(m => console.log(m.planRecord("A1 | opus | worker | lib/a.mjs | unknown")))'`
-prints `tokens: NaN`.
-
-**Issue text.** The gate reads a registered plan's tokens column with `Number`, so a row the launcher admits with
-`unknown` carries `NaN` into every check that sums or compares tokens. The record should keep `null` for
-`unknown` and the checks should skip it.
-
-## E68. The mailbox's owner reclaim checks the holder is dead and then removes the owner file by path, the pattern E44 removed from the lock
-
-**Evidence, level 2.**
-
-- `driver.mjs:3435-3441` (`claimOwner`, reached through `claimMailbox`): under the reclaim marker, `const now =
-  readJson(owner); if (!holderAlive(now)) { fs.rmSync(owner, { force: true }); … }` reads `owner.json`, decides
-  liveness, and unlinks it by its shared pathname — not the descriptor-held, identity-checked act that update and
-  release now use for the lock's own link after E44.
-- `driver.mjs:1887` documents the same shape as residual for the *lock's* owner file even after the E44 fix ("the
-  owner file, checked the same way, still goes"), because POSIX has no unlink by inode: a file swapped in between
-  the check and the unlink is not the one removed. The mailbox's `owner.json` reclaim has no rename or identity
-  check between its liveness read and its `rmSync`, so the same window is open here, one level up from where E44
-  closed it for the lock's link.
-
-**Check.** `grep -n "now = readJson(owner)" plugins/entrust/plugin/skills/codex/scripts/driver.mjs` shows the read
-and the `rmSync` a few lines apart, both keyed on the shared path `owner`, with nothing that binds the removal to
-the value just read.
-
-**Issue text.** `claimOwner`'s takeover path reads `owner.json`, decides its holder is dead, and then unlinks that
-path — the check-then-act-on-the-pathname shape E44's fix removed from the lock's own update and release, and for
-the same reason: a peer that replaces the file between the read and the unlink loses its claim to a taker that
-never looked at what it removed. The reclaim marker serialises two takers against each other, not the owner
-file's removal against a fresh write from the holder it just pronounced dead. Mitigating: the launcher claims one
-launch per agent directory through `err.txt` (`wx`, `agent-run.mjs:367`), so two `claimOwner` calls racing on the
-very same mailbox path is not the ordinary case this driver runs today.
-
-## E74. The README gives the data directory's lifetime as "an uninstall deletes it unless `--keep-data`", and `claude plugin marketplace remove` deletes it with no such option
-
-**Evidence, level 3.** `plugins/entrust/plugin/README.md:106-107`: "It survives plugin updates; an uninstall deletes
-it unless you pass `claude plugin uninstall --keep-data`". On 2026-09-11, during the marketplace restructure, `claude
-plugin marketplace remove` deleted this plugin's data directory, under its earlier name, with 28 agent reports in it.
-On Claude Code 2.1.280, `plugins/terse/research/2026-09-22-terse-process/rewrite-2026-09-22/run/probe-04/lifetime-probe.sh`
-measured the same mechanism on a plugin's data directory in fresh configurations
-(`…/probe-04/lifetime-probe.log`): `marketplace remove` deleted it and offers no `--keep-data`, and uninstalling one
-of two installations kept it until the last was removed. Found on 2026-09-28 while planning the fix of the same
-sentence in terse's `references/run.md` (E21).
-
-**Check.** `sed -n '106,107p' plugins/entrust/plugin/README.md; claude plugin marketplace remove --help` shows the
-sentence and a command with no `--keep-data`.
-
-**Issue text.** The README tells the user that the data directory, which holds every agent's answer, the worktree
-ledger and the orchestrate runs, goes only with `claude plugin uninstall` and stays with `--keep-data`. Removing the
-marketplace deletes it too, with no option to keep it, and uninstalling one of two installations keeps it. A user who
-removes the marketplace to tidy up loses every report without warning. The README should say the directory goes when
-the plugin's last installation is removed, by `claude plugin uninstall` without `--keep-data` or by `claude plugin
-marketplace remove`, which has no such option.
-
-## E75. The README tells the user that `permissions.additionalDirectories` stops the prompts for writes into the data directory, which Claude Code protects
-
-**Evidence, level 2.** `plugins/entrust/plugin/README.md:110-111`: "In every permission mode but auto and bypass, a
-write outside the working directory prompts, so add that directory to `permissions.additionalDirectories` once".
-The data directory is `~/.claude/plugins/data/entrust-nowely/` (`README.md:104`). Claude Code's documentation,
-`https://code.claude.com/docs/en/permission-modes.md`, section "Protected paths", lists `.claude` among the
-protected directories, gives `default` and `acceptEdits` as "Prompted" for writes there, and says
-"`permissions.allow` rules in settings files do not pre-approve protected-path writes";
-`https://code.claude.com/docs/en/permissions.md` says files in additional directories "follow the same permission
-rules as the original working directory: they become readable without prompts". Read on 2026-09-28; not run
-against entrust.
-
-**Check.** `sed -n '104p;110,111p' plugins/entrust/plugin/README.md` and the two documentation sections above.
-
-**Issue text.** The README sends the user to `permissions.additionalDirectories` to stop prompts for writes into
-entrust's data directory. That directory is under `~/.claude`, a protected path: the setting makes it readable
-without prompts, and a write there by Claude Code's own file tools still asks in `default` and `acceptEdits`
-whatever the settings say, until the user allows `~/.claude` edits for the session. The README should say what
-the setting does, reads without prompts, and what it does not.
+## E67. A command run after an approval, outside the sandbox, is not established to end when its agent is stopped
+
+**Evidence, level 3 for the sandboxed case (measured), level 1 for the escaped case (unmeasured).**
+
+- 2026-09-29, measured once: `/bin/zsh -c 'sleep 913 && echo done-913'` run inside the sandbox, in its own process
+  group; `SIGTERM` to the driver's pid; neither the shell nor `sleep` alive 10 s later. `driver.mjs:2676-2681`
+  records it in the comment above `killGroupOf`/`killGroup`, and `plugins/entrust/plugin/skills/codex/SKILL.md:288`
+  says so: "A command the agent was running inside the sandbox ends with it (measured once, 2026-09-29)".
+- The same sentence continues, `:289`: "a command run after an approval, outside the sandbox, has not been
+  measured", and the page keeps the manual step for it: before a second writer enters a directory where a command
+  was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it (`codex/SKILL.md:289-291`);
+  `orchestrate/SKILL.md:145` carries the same check in its Result table's `exitCode: 10` row.
+- An accepted command runs as the user, with no sandbox (the codex page's Rights section); whether the driver's
+  `SIGTERM` to its own pid reaches a process running outside any sandbox that would otherwise bound it is what
+  remains unmeasured.
+
+**Check.** Run a live turn through an accepted command that sleeps well past the turn's own signal, `SIGTERM` the
+driver, and `pgrep` for the sleep 10 s later: alive settles the question either way; the probe above measured only
+the sandboxed case.
+
+**Issue text.** The one case now measured, a command still executing inside the sandbox when the driver is
+`SIGTERM`'d, dies with it. The other case the page has always hedged on, a command that ran after the user
+accepted it and so runs outside the sandbox as the user, is still unmeasured: an accepted command could be a
+long-running process the signal never reaches. The manual `pgrep` step before a second writer touches the same
+directory stays for this reason, and should stay until that case is measured too.
+
+## E110. E59's fix dropped the live gate's check of worker briefs against the split's owners, and a shell write of the shared file is invisible to it
+
+**Evidence, level 2.** `plugins/entrust/evals/lib/gate-checks.mjs` has no `parseSplit` or `ownsPath` function, and no
+test names "the corrected split is read: an interface it omits, one its owner's brief omits, and a file a brief
+takes from its owner are each red" (`grep -rn` over `evals/*.mjs` finds none). `splitAdmissionProblems`
+(`gate-checks.mjs:391-417`) only checks that the split critic named a file, that each worker brief names that
+file's path, that the file opens, and counts the shared file's writers from `writesSeen` (`:327-339`), which reads
+only Write/Edit/NotebookEdit/MultiEdit calls and a Codex report's `filesTouched`; its own comment (`:326`) says "A
+write made through a shell command is not visible here." The orchestrate page still asks the coordinator to check
+each brief against the file's owners (`orchestrate/SKILL.md:127`: "before a worker launches you check the files
+and interfaces its brief touches against the file's owners"), with no test behind that instruction now. Found by
+Fable H1.
+
+**Check.** `grep -n 'parseSplit\|ownsPath' plugins/entrust/evals/lib/gate-checks.mjs` finds nothing; reading
+`splitAdmissionProblems` (`:391-417`) shows no check of a brief's claimed files or interfaces against the split
+file's contents, only that the brief names the split file's path. A worker whose write ran through `sed -i` leaves
+`filesTouched` and every Write/Edit call empty, so `writesSeen` returns no writer for it and
+`splitAdmissionProblems` reports "0 agents wrote lib/shared.mjs" on a correct run.
+
+**Issue text.** E59 replaced the free-text split and ownership readers, which misread a Codex critic's own report
+as the split and a quoted request as ownership, with a narrower check that only confirms a file exists and is
+named; it never restored a check of what each brief claims against what the split file says an owner should touch,
+and it counts a file's writers only from tool calls and `filesTouched`, so a worker that writes through a shell
+command is invisible to the count. The gate should read the split file's own owner and interface list and compare
+each brief against it, and count a shell write that names the shared file among the writers.
 
 ## E77. After a compaction, Claude Code keeps only the first 5,000 tokens of `codex` and `orchestrate`, and their last sections are lost for the rest of the session
 
-**Evidence, level 3.** Claude Code's skills page: after auto-compaction it "re-attaches the most recent invocation of
-each skill after the summary, keeping the first 5,000 tokens of each". `plugins/entrust/plugin/skills/codex/SKILL.md`
-is 5,510 words in 414 lines and `orchestrate/SKILL.md` 5,516 words in 165 lines. In the session of
-`plugins/terse/research/2026-09-28-vendor-guides/` both were re-attached marked "skill content truncated for
-compaction": `codex` 0.21.0 ended at line 269 after 3,415 words, so "Prompt shape" (`codex/SKILL.md:357`), "What the
-user reads" (`:380`), "Traps" (`:390`) and "References" (`:398`) were not in context; `orchestrate` 0.20.0 ended at
-line 143 of 156 after 3,416 words. At HEAD `orchestrate` has grown, and "Verification" (`orchestrate/SKILL.md:124`)
-and "The agent's return" (`:150`) lie past the same word count (level 2 for HEAD).
+**Evidence, level 3 for the mechanism, level 2 for HEAD's word counts.** Claude Code's skills page: after
+auto-compaction it "re-attaches the most recent invocation of each skill after the summary, keeping the first 5,000
+tokens of each". At HEAD, `codex/SKILL.md` is 4,461 words (4,242 after this branch's own trims, `22777dc` and
+`b1056f9`, from 5,602, itself up from the 5,510 first measured after the E51, E57, E65, E67, E80 and E92 fixes added
+material; main's Codex status lines and sixth composition rule, merged after, added 208): the 3,400th word falls in
+"Reading the result" (`codex/SKILL.md:273`), so "Prompt shape" (`:296`), "What the user reads" (`:324`), "Traps"
+(`:334`) and "References" (`:342`), about 750 words, lie past it. `orchestrate/SKILL.md` is 5,977 words (5,668 after
+this branch's `887759a`, from 6,001, up from the 5,516 first measured after the E53, E65, E89, E90 fixes and the
+Verification analysis bullet; main's swarm route, stand-in rule and critic read count, merged after, added 270 to
+5,938; the retro's analysis clause and a four-word fix added 39 more): the 3,400th word falls in "Mechanism"
+(`:104`); "Approvals" starts at word 3,881 (`:114`), "Verification" at 4,318 (`:124`) and "The agent's return" at
+5,721 (`:151`).
 
-**Check.** `wc -w plugins/entrust/plugin/skills/{codex,orchestrate}/SKILL.md` prints 5510 and 5516; a page past about
-3,400 words loses its tail after a compaction.
+**Check.** `wc -w plugins/entrust/plugin/skills/{codex,orchestrate}/SKILL.md` prints 4461 and 5977; a page past
+about 3,400 words loses its tail after a compaction.
 
-**Issue text.** The two skills a coordinator relies on for the whole of a long session are longer than what Claude
-Code keeps of a skill after compaction. Past the first compaction, the coordinator writes briefs and relays returns
-without the sections that define them: the prompt shape, what the user reads, the traps and the reference list in
-`codex`, verification and the agent's return in `orchestrate`. Each page should keep its standing rules within the
-first 5,000 tokens and move the rest into the files it links.
-
-## E78. Four of `codex`'s reference files are over 100 lines and open with no list of their contents
-
-**Evidence, level 2.** `plugins/entrust/plugin/skills/codex/references/environment-and-internals.md` (447 lines),
-`incidents.md` (223), `parity.md` (203) and `why-not-the-plugin.md` (131) open without a contents list; `codex/SKILL.md:402-411`
-routes to sections deep in the first two by anchor. Anthropic's skill authoring page: a reference file longer than 100
-lines opens with its contents, because a model may preview it with `head -100`.
-
-**Check.** `head -100 plugins/entrust/plugin/skills/codex/references/environment-and-internals.md | grep -c '^## '`
-shows the sections a preview reaches; the locks, the git grant and the receipt come after it.
-
-**Issue text.** A model that previews a long reference file sees only its opening sections and cannot tell what the
-rest holds. Each reference file over 100 lines should open with a list of its sections.
-
-## E79. `codex` and `orchestrate` carry 27 inline "measured …" asides that the vendor would move off the page (tension)
-
-**Evidence, level 1.** `grep -c measured` gives 18 on `plugins/entrust/plugin/skills/codex/SKILL.md` and 9 on
-`orchestrate/SKILL.md`, for example `codex/SKILL.md:56-57` "(measured 2026-09-12 against the VS Code extension 2.1.269,
-whose map lists `local_agent` tasks alone)". Claude Code's skills page: "State what to do rather than narrating how or
-why". The repository's `CLAUDE.md` asks for an evidence level on every behavioural claim, and
-`codex/references/incidents.md:3` already holds "the measured failures that produced SKILL.md's imperatives". A tension
-with the vendor's guidance, recorded for the owner's audit; each aside also counts toward E77.
-
-**Issue text.** The skill pages give the measurement behind an instruction on the instruction's own line. The vendor
-advises stating what to do and keeping the story elsewhere; the repository's rule asks for the evidence. Decide whether
-the line keeps its level and the incident moves to `incidents.md`.
-
-## E80. `codex/SKILL.md:251` uses a dated catalogue snapshot as the instruction for `EFFORT:` values (tension)
-
-**Evidence, level 1.** `plugins/entrust/plugin/skills/codex/SKILL.md:251`: "(the catalogue of 2026-09-17: `none` and
-`minimal` are on no model and exit 2 before the turn)". Anthropic's skill authoring page advises against time-sensitive
-information, and its example is an instruction that turns false when a date passes. This line tells the reader which
-values to write, from a snapshot of an external catalogue; when the catalogue changes, the line is wrong and the reader
-cannot tell. Unlike a dated measurement, which stays a true record, this one is used as a rule.
-
-**Issue text.** The page's list of effort values rests on a catalogue read on 2026-09-17 and presented as current. It
-should name where the current values come from, and move the snapshot to an old-patterns note.
-
-## E81. `orchestrate` sends verification to a fresh agent, and Anthropic's page for Opus 5 says not to verify with subagents (tension)
-
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:24` "verify: you never grade your own work, a
-fresh agent does" and `:133` the completeness critic. Anthropic's Opus 5 page lists "use a subagent to verify" among
-instructions to remove and says not to use subagents to verify or double-check; its Fable 5 page says fresh-context
-verifier subagents tend to outperform self-critique. The page pins no coordinator model (`:23` "whatever your own
-model"). The rule is the owner's; the vendor's advice is measured per model.
-
-**Issue text.** On an Opus 5 coordinator the page's verification rule and the vendor's guidance for that model collide;
-on Fable 5 they agree. Decide whether the rule stands for every coordinator model, as the owner's, or names the model it
-holds for.
-
-## E82. The foreman is told to read `orchestrate`, a user-only skill, by path, and Claude Code tells a model not to reproduce a user-only skill another way (tension)
-
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/foreman.md:24-26`: "It cannot load this skill:
-the Skill tool refuses a skill marked `disable-model-invocation`. Name this file, the page and the sibling's page by
-absolute path in its brief". Claude Code's skills page: when Claude tries a user-only skill, it is instructed not to
-reproduce the steps another way. The user invoked `/entrust:orchestrate` and approved a plan naming the foreman
-(`foreman.md:15`), so the host's block does not describe this case, but the page does not say so.
-
-**Issue text.** A foreman that meets Claude Code's rule for user-only skills could refuse to follow the page it was
-given by path. The brief should say that the user started the skill and approved this plan.
-
-## E83. `codex` names neither the `codex` CLI nor Node as something that must be installed (tension)
-
-**Evidence, level 1.** `plugins/entrust/plugin/skills/codex/SKILL.md:414` "Installation and upgrades:
-[README.md](../../README.md)." and no other line names what must be installed. Anthropic's skill authoring page lists
-required packages in SKILL.md and advises against assuming them. A refused launch reaches the coordinator as
-`DRIVER_EXIT` and `err.txt` (`codex/SKILL.md:279-281`), so the page has a path for the failure but not for its cause.
-
-**Issue text.** A coordinator on a machine without the `codex` CLI or Node meets a failed launch the page does not
-explain. The page should name its dependencies in one line.
-
-## E89. The launcher's plan registration refuses 12 of the 22 role names `orchestrate`'s roles reference defines
-
-**Evidence, level 3.**
-
-- `plugins/entrust/plugin/skills/codex/scripts/agent-run.mjs:416-419` (`classifyRole`) knows a role only by a worker
-  word (`implement|writ|worker|build|fix|…`) or a checking word (`critic|verif|review|refut|judge|check|test|advis|…`),
-  and `:445` refuses a row whose role has neither: `invalid role for <id>: <role>`, exit 2.
-- `plugins/entrust/plugin/skills/orchestrate/SKILL.md:37` registers every agent, Claude or Codex, through `--plan`
-  once the plan has a Codex agent, and `orchestrate/references/roles.md:3` has the coordinator choose the role from
-  that reference's table, or name a new one the same way.
-- 2026-09-29, `classifyRole` over the first column of that table returned no class for 12 of its 22 rows: area scout,
-  architect, foreman, strong reader, live prober, recognition reader, blind proposer, dedup-and-rank, surveyor,
-  measurer, retrospective analyst, swarm reducer. The row `A1 | opus | architect | nothing | unknown` through
-  `--plan --run-dir <dir>` printed `ERROR=invalid role for A1: architect` and exited 2; the same row as
-  `split critic` registered with `CHECKING=1`.
-
-**Check.** Import `classifyRole` from `agent-run.mjs` in a `node` one-liner and run it over the first column of
-the table in `roles.md`: 12 of 22 come back `null`.
-
-**Issue text.** The coordinator names each agent's role from the roles reference, and the launcher refuses more than
-half of those names when the plan is registered: a plan with an architect, an area scout, a measurer or the foreman
-exits 2 before its card can be shown, and a coordinator that renames the role to a word the pattern knows gets a
-card that no longer says what the agent does. The launcher should accept every role the reference defines, counting
-each as a worker, a checker or neither, or the plan step should say which words the launcher counts. The bulk row's
-extraction agent, which the orchestrate page's unit now allows, has no row in the reference and no name the pattern
-accepts: "bulk extractor", "extractor" and "bulk reader" are all refused, while "bulk verifier" counts as a checker.
+**Issue text.** The two skills a coordinator relies on for the whole of a long session are still longer than what
+Claude Code keeps of a skill after compaction, though each fix round has cut into both: `codex` from 5,602 to
+4,242 words and `orchestrate` from 6,001 to 5,668, before later additions brought them to 4,461 and 5,977. Past the
+first compaction, `codex` loses the prompt shape, what the user reads, the traps and the reference list;
+`orchestrate` loses verification, the Result table included, and the agent's return. Candidates the page writers
+named for the next cut: `codex`'s "Worktree lifecycle" section (`:224-247`, 286 words, repeats the driver's help and
+the internals reference's worktree section) and the Rights paragraphs after the generated block (`:177-198`, about
+250 words), and moving "Prompt shape" and "What the user reads" up; `orchestrate`'s `--pending` markers paragraph (`:120`, about 75 words) and the Result table
+(`:140-149`). Each page should keep its standing rules within the first 5,000 tokens and move the rest into the
+files it links.
 
 ## E90. The swarm, the bulk row's batch route, is called an experiment, holds fifty units at most, and reports no tokens
 
@@ -467,21 +110,6 @@ with limits the plan has to work around: the README calls it an experiment, a sw
 carries no tokens for the plan's re-estimate and stop line, and its agents cannot be registered in the orchestrate
 run's plan, so each swarm needs a run directory of its own. Decide which of these stay limits the plan states, and
 lift the rest.
-
-## E92. Codex agents running side by side share one `$TMPDIR`, and the pages send each agent's overflow there as if it were its own
-
-**Evidence, level 3 for the collision, level 1 for the pages.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:152`
-"A field past the schema's cap goes whole into a file under the agent's temporary directory", and
-`plugins/entrust/plugin/skills/codex/SKILL.md:161` "a read agent's own writable root stays there"; the driver grants a
-read agent the whole `$TMPDIR` (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs:350`), and a report names no
-temporary directory of the agent's own. On 2026-09-28 twelve Codex Luna read agents ran side by side on one brief
-that allowed one findings file under `$TMPDIR`; two of them named the same `$TMPDIR/episodes-findings.txt` in
-`artifacts`, the file held one agent's list, and the other agent's list was lost, leaving only the counts in its report.
-
-**Issue text.** Codex agents that run side by side share the coordinator's `$TMPDIR`, while the orchestrate and codex
-pages describe it as each agent's own temporary directory. Two agents that pick the same file name overwrite each
-other, and a finding written there is lost without an error. Each agent should get a temporary directory of its own,
-or the pages should have every file an agent leaves carry the agent's id.
 
 ## E91. `foreman.md:24` gives a broader cause than observed: the Skill tool loads a user-only skill whose command the user typed
 
@@ -619,3 +247,145 @@ cancels the page before the model sees it. The status is advice for the composit
 fixes weighed on 2026-09-29 were rejected by the owner as not good enough: an allow rule every `dontAsk` operator adds leaves
 the page dead until someone reads the README, and an explicit first step in place of the substitution adds a visible Bash call
 to every load and a step the model can skip.
+
+## E104. The effort policy is stated twice: codex's parity reference and orchestrate's own EFFORT bullet
+
+**Evidence, level 1.** `plugins/entrust/plugin/skills/codex/references/parity.md:87-92` carries the effort table
+(`low` fact lookup, `medium` ordinary review, `high`/`xhigh` refutation and competing designs, `max`/`ultra` the
+hardest problems); `plugins/entrust/plugin/skills/orchestrate/SKILL.md:77-81` states the same policy in its own
+words: `high` for the bulk row's extraction, classification and verification, `low` for mechanical work only,
+`medium` for review, refutation and judgement in the strong and cheap rows. Found by Fable F1.
+
+**Check.** `sed -n '85,92p' plugins/entrust/plugin/skills/codex/references/parity.md` and
+`sed -n '77,81p' plugins/entrust/plugin/skills/orchestrate/SKILL.md` print the two statements.
+
+**Issue text.** Two pages each carry the rule for which effort a role gets, in their own words; a later change to
+one is a drift from the other unless both are edited by hand. `orchestrate` should link the table rather than
+restate it, or the table should move to a file both pages point at.
+
+## E105. "On the first line of `<DIR>/err.txt`" names a line `kill` cannot take a pid from
+
+**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:268` and
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:106,116,142` tell the reader to signal or check an agent by the
+pid "on the first line of" `<DIR>/err.txt`. `driver.mjs:4723-4724` writes that line as
+`entrust: pid=<n> identity=lstart:<…> reportPath=<…>`, not the bare number. Measured 2026-09-29 by the coordinator
+during the E67 probe: `kill -TERM $(head -1 err.txt)` failed with "kill: entrust: … arguments must be process or
+job IDs".
+
+**Check.** `head -1 <any agent's err.txt>` prints the `entrust: pid=… identity=…` line, not a bare number;
+`kill -TERM $(head -1 <that file>)` reports the error above.
+
+**Issue text.** Both pages tell the reader to take the pid from the first line of `err.txt`, and the first line is
+not the pid alone: a reader who follows the instruction literally, with `$(head -1 …)`, hands `kill` a string it
+refuses. The pages should say to read the number after `pid=` on that line, or the driver should put the bare pid
+on a line of its own.
+
+## E108. A Claude agent's overflow file goes under the coordinator's own `$TMPDIR`, the collision E92 fixed for Codex agents
+
+**Evidence, level 1 for the page line, level 2 for the collision.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:30`:
+"A Claude agent's artifact is its returned text, and a file it must leave goes under `$TMPDIR` with the path in that
+text". E92's fix gives every Codex run its own fresh `$TMPDIR`, named after the run inside the system temporary
+directory (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs`), so two Codex agents launched together no
+longer share one; a Claude agent is a native subagent of the coordinator's own process, with no driver to give it a
+directory of its own, so several launched together still write under the one `$TMPDIR` the coordinator's session
+holds. Found by Fable J1.
+
+**Check.** `grep -n 'a file it must leave goes under' plugins/entrust/plugin/skills/orchestrate/SKILL.md` finds the
+line at :30; nothing in the codex or orchestrate pages gives a Claude agent a temporary directory of its own.
+
+**Issue text.** The page tells a Claude agent to leave an overflow file under `$TMPDIR`, the same directory E92
+found two side-by-side Codex agents colliding on. E92's fix reaches only Codex runs, through the driver; a Claude
+agent has no driver to grant it a private directory, so two Claude agents told to leave a file under `$TMPDIR` in
+the same brief can still overwrite each other's file with no error. The page should give each Claude agent's
+artifact a name, or a subdirectory, that cannot collide with a sibling's.
+
+## E109. The paths a run creates are long and were never designed as a whole: the project part repeats the working directory's full path
+
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:27`: the run directory is
+"`<state>/orchestrate/<project-slug>/<run>/`, … `<project-slug>` the working directory's absolute path with every
+character that is not a letter or a digit replaced by `-`". For a checkout at `~/Git/agent-skills` the slug is
+`-Users-<user>-Git-agent-skills`, so an agent's report sits at
+`<state>/orchestrate/-Users-<user>-Git-agent-skills/<run>/<agent>/report.json`, and E92's rework on this branch
+names each run's temporary folder by the same relative path under the system temporary directory; on a macOS
+machine the path to a socket file `s.sock` in an orchestrate agent's folder measured 141 bytes, over the 104-byte
+limit of a Unix socket path (the plugin makes no socket there; a tool an agent runs might, not measured). The places a run
+leaves files — the plugin's data directory, the system temporary directory, the repository's `.claude/worktrees/` —
+were each chosen by the change that needed them. Raised by the owner, 2026-09-30.
+
+**Check.** `grep -n 'project-slug' plugins/entrust/plugin/skills/orchestrate/SKILL.md`.
+
+**Issue text.** The paths a run creates are long and were never designed as a whole. The project part of an
+orchestrate run's path is the working directory's full absolute path with every separator turned into a dash, so the
+user's home path repeats in every report and temporary path a coordinator names, and each place a run leaves files
+was picked by the change that needed it. Analyse the naming and the locations together — a shorter project key (the
+repository's name, or a short hash of the path), what lives where, who removes it, and how a user finds everything
+one run left behind — and change them in one step with the pages and the cleanup skill. Candidate directions for
+the socket-path limit to weigh in that analysis: create sockets in a short parent folder (the `<tmp>/entrust` base,
+for instance) rather than the run's own folder; have the parent, the coordinator or the driver, hand the agent a
+short directory for sockets; or another option the analysis finds better (raised by the owner, 2026-09-30).
+
+## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
+
+**Evidence, level 1 for the pages, level 3 for the run's outcomes, level 2 for the generalisation.**
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:62` puts Luna in the bulk row, "Fast, cheap and not clever — work
+that is wide rather than deep", and `:77` gives `high` to the bulk row only for "extraction, classification and
+verification", `medium` to review and judgement in the rows above. On the ledger run of 2026-09-29/30, with no other
+Codex model available, Luna ran at `high` as the critic of each recommendation
+(`plugins/entrust/research/2026-09-29-ledger-options/rounds.md`, `02-options.md`): it said E92's isolation belongs
+with the unit that knows the agent's directory (it named the launcher) — the judge kept the driver's private
+directory, which shipped a regression, and the owner's rework names each run's folder after the agent's report
+directory, in the driver; its E89 "delete the classifier" and its E52 and E75 objections were upheld by the judge; it
+corrected a Fable analyst's reading of "one place" for text; its refinement of the retro was the owner's pick. As a
+wide diff reviewer it was weak: nothing found in a 1,763-line code diff, 3 minor findings in the page diff, at 576k
+and 821k tokens. The swarm runs Luna for verdict units (`plugins/entrust/plugin/skills/swarm/SKILL.md`). Raised by the
+owner, 2026-09-30.
+
+**Check.** `grep -n 'not clever' plugins/entrust/plugin/skills/orchestrate/SKILL.md`; the verdict table in `rounds.md`.
+
+**Issue text.** The orchestrate page keeps Luna, the bulk model, out of judgement, and one run suggests that at
+`high` effort it is a strong dissenting critic of a single recommendation while it stays weak on a wide review.
+Measure it: the same set of recommendations criticised by Luna at `high`, by Luna at `medium` and by a strong-row
+model, scored by which dissents the judge or the owner upheld; and, for the swarm, whether a verdict unit that asks
+Luna to dissent rather than to match adds catches. If the result holds, give Luna a critic role in the tier table and
+the effort rule that fits it.
+
+## E112. The README says the cleanup only reports write locks; `cleanup.mjs --help` says it removes three kinds of them
+
+**Evidence, level 1.** `plugins/entrust/plugin/README.md:30-34`: "It removes seven kinds — … the test suites'
+scratch directories and the saved conversations they leave behind. Five more it only ever reports: the driver's
+saved answers, managed worktrees and their ledger, write locks, the shared Codex home, and another copy of the
+plugin's data"; the seven-kinds list names no lock. `plugins/entrust/plugin/skills/codex/scripts/cleanup.mjs:92-95`,
+its own `--help` text: "It removes … write locks nobody holds: a released lock's leftover link, an abandoned lock
+with its record, and a lock record no link names. It only REPORTS … write locks still held or in the previous
+shape". Pre-existing, on `main` before this branch. Found by Opus W3.
+
+**Check.** `sed -n '30,34p' plugins/entrust/plugin/README.md` and `sed -n '92,95p'
+plugins/entrust/plugin/skills/codex/scripts/cleanup.mjs`.
+
+**Issue text.** The README's intro puts every write lock in the list of what the cleanup only reports, while the
+tool's own `--help` removes three kinds of them — a released lock's leftover link, an abandoned lock with its
+record, and a lock record no link names — and reports only a lock still held or in the lock's previous shape. A
+reader of the README alone would not know the cleanup deletes anything lock-shaped at all. The README should say
+what the cleanup does with locks, matching `--help`.
+
+## E113. The driver's check of the temporary base leaves a window before the run's folder is made, and never checks the base's mode
+
+**Evidence, level 2, from reading.** `driver.mjs:1376-1381` (`tmpBaseProblem`) refuses a base that is a symbolic
+link, not a directory, or another uid's, and nothing else: it reads no mode bit. `driver.mjs:1393-1404`
+(`runTmpDir`'s `refuseBase`, called at `:1400` and `:1402`) calls `fs.lstatSync(base)` before the base is made
+(`:1401`) and again right after, but nothing re-checks it after `fs.mkdirSync(path.dirname(dir), …)` (`:1403`) or
+before the leaf itself is made, `fs.mkdirSync(dir, { mode: 0o700 })` (`:1404`): a base or an intermediate directory
+swapped for a link between the second `lstat` and that last `mkdirSync` is followed, not caught. Separately, a
+group- or world-writable base of this user's own passes `tmpBaseProblem` unchallenged, since only `isSymbolicLink`,
+`isDirectory` and `uid` are read from the `lstat` result.
+
+**Check.** Read `tmpBaseProblem` (`:1376-1381`): no `st.mode` term. Read `runTmpDir` (`:1382-1414`): the last write
+before the leaf directory is created (`:1404`) is the intermediate `mkdirSync` at `:1403`, with no `lstat` between
+them.
+
+**Issue text.** The check-then-act shape `refuseBase`/`mkdirSync` repeats twice, but the window between the second
+check and the final act — the leaf's own creation — is not covered, so a base or intermediate path swapped for a
+link in that gap decides where the run's files go, the same class of race E44 closed for the lock. The base's mode
+is never read, so a group- or world-writable directory of this user's is accepted as freely as a private one. Close
+the window (make the run folder relative to an opened directory handle, or verify the leaf's own realpath right
+after creation) and refuse a group- or world-writable base, or record why neither is needed on a per-user TMPDIR.

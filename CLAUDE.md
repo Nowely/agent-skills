@@ -42,3 +42,9 @@ are `<name>@X.Y.Z`.
 - **Flags**: a new flag, header field or option is born only with a sentence that names who sets it, why the
   default cannot decide, and what breaks without it; when that sentence cannot be written, the default decides.
   Flags are forgotten, misused and maintained.
+- **Design principles** for every plugin's code and pages: minimalism — removing beats adding, and closing an entry
+  is a real option when its harm is hypothetical; no crutches — fix the cause in the unit that produces it, never
+  compensate in a consumer with a special case, retry, counter or instruction (the Flags rule above is one case of
+  this); clean architecture — each fact has one owner and is defined in one place, and a page says what the code
+  does. A recommendation to the owner rests on an analysis of that item — its options judged by these principles
+  and an outside critic; without one, the item goes to the owner as a question.

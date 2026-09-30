@@ -3,6 +3,45 @@
 The measured failures that produced SKILL.md's imperatives. Each line is evidence, not folklore: if a
 rule ever looks like ceremony, this is what it cost to learn.
 
+## Contents
+
+- [Isolation](#isolation)
+- [Composition disclosure](#composition-disclosure)
+- [The unverified wrapper](#the-unverified-wrapper)
+- [A relay on a small model](#a-relay-on-a-small-model)
+- [Context cost](#context-cost)
+- [Silent downgrades](#silent-downgrades)
+- [The TOML parser](#the-toml-parser)
+- [Redundant flags as crashes](#redundant-flags-as-crashes)
+- [Worktree leaks, and who actually leaked](#worktree-leaks-and-who-actually-leaked)
+- [Hooks run by the driver's own git](#hooks-run-by-the-drivers-own-git)
+- [Orphaned load](#orphaned-load)
+- [Red-green agents](#red-green-agents)
+- [A read cut to fragments](#a-read-cut-to-fragments)
+- [A non-zero exit discarded](#a-non-zero-exit-discarded)
+- [Safety classifier](#safety-classifier)
+- [Fan-out physics](#fan-out-physics)
+- [Report integrity](#report-integrity)
+- [Resume rights](#resume-rights)
+- [Prompt-file newline injection](#prompt-file-newline-injection)
+- [State split the lock](#state-split-the-lock)
+- [Shared-home fixture pollution](#shared-home-fixture-pollution)
+- [A healthy link read as a file in the way](#a-healthy-link-read-as-a-file-in-the-way)
+- [Stale-lock stampede](#stale-lock-stampede)
+- [Protected-root aliases](#protected-root-aliases)
+- [MCP secrets in argv](#mcp-secrets-in-argv)
+- [Negative probes counted as failures](#negative-probes-counted-as-failures)
+- [Cancellation lost the answer](#cancellation-lost-the-answer)
+- [The verifier gate was inverted](#the-verifier-gate-was-inverted)
+- [An unref'd kill never fired](#an-unrefd-kill-never-fired)
+- [Five of seven agents lost to the wall clock](#five-of-seven-agents-lost-to-the-wall-clock)
+- [Here-documents under the grant](#here-documents-under-the-grant)
+- [The agent map](#the-agent-map)
+- [The wrapper's message](#the-wrappers-message)
+- [Foreground, background and the ceiling](#foreground-background-and-the-ceiling)
+- [A reused agent directory](#a-reused-agent-directory)
+- [Language and name in a return](#language-and-name-in-a-return)
+
 ## Isolation
 
 Of 157 delegations run against the caller's own `~/.codex`, 95 spent their FIRST tool
@@ -103,6 +142,14 @@ Three mutation-testing agents ran suites against deliberately broken copies;
 `commandsFailed` was 24, 17 and 9, and the run announced failure for work that had succeeded. Failed
 commands are report fields and no verdict now; pass `--verify` with the end condition you actually
 want.
+
+## A read cut to fragments
+
+On 2026-09-26 a Codex Sol read agent opened 95 pages of about 18,000 characters in one loop, with the
+`max_output_tokens: 1000` it chose itself: each output held 19–60 characters, 419 of the 1,745 messages on
+those pages reached the model, and its answer reported no truncation. A one-line probe on Luna set 1,000 on
+its own as well. With one `cat` per page and `max_output_tokens: 10000` in the brief, all 1,584 page reads by
+374 Luna agents arrived whole.
 
 ## A non-zero exit discarded
 
@@ -221,3 +268,39 @@ document in a file under `$TMPPREFIX`, default `/tmp/zsh`, and no agent may writ
 15 rollouts between 2026-08-31 and 2026-09-08 and reproduced under the read profile with `codex sandbox
 --log-denials` (`(zsh) file-write-create /private/tmp/zsh…`). The driver now hands the app-server
 `TMPPREFIX` under the run's `$TMPDIR`, which every level may write; `/bin/sh` was never affected.
+
+## The agent map
+
+Measured 2026-09-12 against the VS Code extension 2.1.269: the agent map lists `local_agent` tasks alone, so a
+Bash task, whatever its description says, is not on it, is not stopped from it and is not continued by a
+message. The shipped wrapper, with the Bash tool alone and its model pinned, took 8.2k tokens of context where
+a `general-purpose` subagent took 15.4k on the same agent. A message to the wrapper continued the agent's
+thread, and so did a second wrapper given the same prompt file in a session with no message tool, at the cost
+of a second card.
+
+## The wrapper's message
+
+Measured 2026-09-17 on Haiku: with the four steps in the wrapper's file alone, it kept them in one run of
+three, and in the other two it paraphrased the lines, narrated, and read the output file; with the steps in
+the message, three of three. On a one-line task and on a pre-turn refusal, a hand-back without the answer and
+the refusal cost the coordinator one more turn each. Two coordinators retold `RECEIPT=` and the report's model
+field, slug included, as prose, which is why the status line carries the short name.
+
+## Foreground, background and the ceiling
+
+Measured 2026-09-17: a foreground call brought the hand-back message inside the same turn and no task
+notification after it, as the owner's native foreground subagent did, and an eleven-minute call ended
+normally, so the call has no ceiling of its own. Under a background call a coordinator told the user that the
+notification duplicated the answer. An eighteen-minute agent took two launcher calls, one driver and one
+report. On 2026-09-26 the harness ended a foreground subagent's leftover commands with SIGTERM to their tree,
+which is why the driver runs under a keeper outside the wrapper's.
+
+## A reused agent directory
+
+Measured 2026-09-17 on the launcher's earlier shape: an agent directory reused for a second report lost the
+first run's record, which is why the launcher refuses a directory that ran for another report.
+
+## Language and name in a return
+
+Measured 2026-09-17: a `TASK:` written in English about a Russian «хай» came back in English, and an agent not
+told its name answered «GPT-5 Codex, id T1».

@@ -12,7 +12,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { DRIVER, EXIT, FAKE, SCRIPTS, codexShim, readJson, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
-import { ACCEPTED, REFUSED, STATUS_LINES, TAKEN, agentDirOf, classifyRole, planRowOf, shortName } from "../plugin/skills/codex/scripts/agent-run.mjs";
+import { ACCEPTED, REFUSED, STATUS_LINES, TAKEN, agentDirOf, planRowOf, shortName } from "../plugin/skills/codex/scripts/agent-run.mjs";
 
 const LAUNCHER = path.join(SCRIPTS, "agent-run.mjs");
 const DRIVER_SRC = fs.readFileSync(path.join(SCRIPTS, "driver.mjs"), "utf8");
@@ -31,7 +31,9 @@ function fresh() {
   fs.writeFileSync(path.join(dir, "prompt.txt"), `RIGHTS: read ${shimDir}\nTASK: irrelevant, the server is scripted\n`);
   return { dir, state, report };
 }
-const env = (state, scenario = "happy") => ({ PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: scenario, ENTRUST_STATE_DIR: state });
+// The case's own TMPDIR too, its state root: the driver names a run's $TMPDIR after the report's path
+// relative to the state root, so cases that share one TMPDIR and one relative path would share a leaf.
+const env = (state, scenario = "happy") => ({ PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: scenario, ENTRUST_STATE_DIR: state, TMPDIR: state });
 const launch = (dir, report, state, scenario) =>
   spawnNode([LAUNCHER, "--dir", dir, "--report-file", report], { env: env(state, scenario), killAfterMs: 60000 });
 const status = async (dir, report) => {
@@ -95,12 +97,23 @@ test("--help names the plan, new and run modes and exits 0",
     const { code, out } = await spawnNode([LAUNCHER, "--help"], { killAfterMs: 10000 }).done;
     if (code !== 0) return `--help exited ${code}`;
     for (const s of ["--plan --run-dir RUN", "--plan --amend", "--new --report-file REPORT", "--run --report-file REPORT", "--status",
-                     "RUNNING=", "--check-prompt-file", "planRowOf", "classifyRole", "unknown", "<absolute dir>", ...STATUS_LINES,
+                     "RUNNING=", "--check-prompt-file", "planRowOf", "the role is any non-empty text", "unknown", "<absolute dir>", ...STATUS_LINES,
                      "APPROVALS=", "WAITING=<id>[,<id>]", "waiting —", "ended —", "refused —", "--pending --report-file REPORT",
                      "--decide ID --accept|--decline [--why TEXT]", "COMMAND<<", "COMMAND>>", "REQUESTS=", "ORPHANED=",
                      "DECIDED=", "LATE=", "STALE=", "REFUSED=", "approvals=A/D/E/O", "auto=N", "late=N", "stale=N"])
       if (!out.includes(s)) return `--help does not mention ${s}`;
     return true;
+  });
+
+test("the launcher runs when the path it is invoked by goes through a symbolic link",
+  "E56: it compared the path as typed with its own real path, so through a link ($TMPDIR on macOS, a linked checkout) it printed nothing and exited 0, and the wrapper ran it again 64 times (measured 2026-09-27)",
+  async () => {
+    const link = path.join(tempDir("agent-run-link."), "scripts");
+    fs.symlinkSync(SCRIPTS, link);
+    const direct = await spawnNode([LAUNCHER, "--help"], { killAfterMs: 10000 }).done;
+    const linked = await spawnNode([path.join(link, "agent-run.mjs"), "--help"], { killAfterMs: 10000 }).done;
+    return (linked.code === 0 && linked.out.length > 0 && linked.out === direct.out)
+      || `through the link: exit ${linked.code}, ${linked.out.split("\n").length - 1} lines; directly: ${direct.out.split("\n").length - 1}`;
   });
 
 test("a launch runs the driver on DIR/prompt.txt and REPORT, leaves out.json, err.txt and exit, and exits with the driver's status",
@@ -556,7 +569,7 @@ test("a run whose err.txt starts with a line written before the driver's main re
   });
 
 test("--run that has waited its deadline prints RUNNING= in place of REPORT= and exits 0 while the run goes on, and the same command again prints the nine lines with REPORT=",
-  "the harness moves a foreground command that reaches the tool's ten-minute ceiling into the background, where the wrapper's end tears it down; a call that returns before the ceiling is never moved, and a result with no REPORT= line still sends the wrapper to run the same command again",
+  "the harness moves a foreground command that reaches the tool's ten-minute ceiling into the background, where the wrapper's end tears it down; a call that returns before the ceiling is never moved, and a result that ends in RUNNING= sends the wrapper to run the same command again",
   async () => {
     const { dir, state, report } = fresh();
     const first = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: { ...env(state, "slow-turn"), AGENT_RUN_RETURN_MS: "300" }, killAfterMs: 60000 }).done;
@@ -731,7 +744,7 @@ test("D6 --plan registers rows, --new refuses an unlisted id, and an explicit am
       return h.done;
     };
     const first = await plan("id | model | role | writes | tokens\nA | sol | writer | worktree | 1000\n");
-    const expected = `PLAN=${path.join(runDir, "plan.txt")}\nAGENT=A sol worktree\nWORKERS=1\nCHECKING=0\n`;
+    const expected = `PLAN=${path.join(runDir, "plan.txt")}\nAGENT=A sol worktree\n`;
     if (first.code !== 0 || first.out !== expected) return `registration: exit ${first.code}, ${JSON.stringify(first.out)}`;
     const outsider = path.join(runDir, "B", "report.json");
     const refused = await newAgent(outsider);
@@ -739,7 +752,7 @@ test("D6 --plan registers rows, --new refuses an unlisted id, and an explicit am
     if (refused.code !== 2 || refused.out !== reason || fs.existsSync(path.join(runDir, "B", "agent", "prompt.txt")))
       return `unlisted: exit ${refused.code}, ${JSON.stringify(refused.out)}`;
     const amendment = await plan("B | luna | verifier | nothing | 400\n", true);
-    if (amendment.code !== 0 || amendment.out !== `AMENDED=${path.join(runDir, "plan.txt")}\nAGENT=B luna nothing\nWORKERS=1\nCHECKING=1\n`
+    if (amendment.code !== 0 || amendment.out !== `AMENDED=${path.join(runDir, "plan.txt")}\nAGENT=B luna nothing\n`
       || !/# amended \d{4}-\d\d-\d\dT/.test(read(path.join(runDir, "plan.txt")) ?? ""))
       return `amendment: exit ${amendment.code}, ${JSON.stringify(amendment.out)}`;
     const admitted = await newAgent(outsider);
@@ -765,9 +778,7 @@ test("D6 plan continuations, Claude rows, report shape, case, roles and unknown 
     };
     const rows = "id | model | role | writes | tokens\nSol-W3 | sol | writer | worktree | unknown\nOpus-R3 | opus | reviewer | nothing | 300\n";
     const first = await plan(rows);
-    if (first.code !== 0 || !first.out.includes("WORKERS=1\nCHECKING=1")) return `plan exit=${first.code}: ${first.out}`;
-    if (classifyRole("writer") !== "worker" || classifyRole("reviewer") !== "checking" || classifyRole("misc") !== null)
-      return "role classifier disagrees";
+    if (first.code !== 0 || /^(WORKERS|CHECKING)=/m.test(first.out)) return `plan exit=${first.code}: ${first.out}`;
     const registered = [{ id: "Sol-W3", model: "sol" }, { id: "Opus-R3", model: "opus" }];
     if (planRowOf("sol-w3-2", registered, runDir)?.previous !== "Sol-W3") return "exported matcher missed the continuation";
     const launch = (name, tail = "report.json") => newAgent(path.join(runDir, name, tail));
@@ -792,10 +803,15 @@ test("D6 plan continuations, Claude rows, report shape, case, roles and unknown 
       || !deep.out.includes("/<row id or continuation>/report.json")) return `report form: ${wrong.out} ${deep.out}`;
     const duplicate = await plan("sol-w3 | sol | writer | nothing | 1\n", true);
     const reserved = await plan("A-2 | sol | writer | nothing | 1\n", true);
-    const unknown = await plan("X | sol | other | nothing | 1\n", true);
-    return duplicate.code === 2 && reserved.code === 2 && unknown.code === 2
+    // E89: the role is the coordinator's word, and the roles reference is open; a word list refused 12 of its
+    // 22 rows, the architect, the foreman and the area scout among them (2026-09-29).
+    const roles = await plan("X | sol | architect | nothing | 1\nY | opus | foreman | nothing | unknown\nZ | luna | area scout | nothing | 1\n", true);
+    const noRole = await plan("E | sol |  | nothing | 1\n", true);
+    return duplicate.code === 2 && reserved.code === 2 && roles.code === 0 && noRole.code === 2
       && duplicate.out.includes("duplicate agent id") && reserved.out.includes("form names a continuation")
-      && unknown.out.includes("invalid role") || `plan refusals: ${duplicate.out} ${reserved.out} ${unknown.out}`;
+      && roles.out.endsWith("\nAGENT=X sol nothing\nAGENT=Y opus nothing\nAGENT=Z luna nothing\n")
+      && noRole.out.includes("missing role for E")
+      || `plan refusals: ${duplicate.out} ${reserved.out}; roles: exit ${roles.code}, ${roles.out}; no role: exit ${noRole.code}, ${noRole.out}`;
   });
 
 test("D16 --new registers a prompt with maxLength and the driver's offline check accepts it",
@@ -878,7 +894,7 @@ function handMailbox() {
   fs.mkdirSync(box, { mode: 0o700 });
   const put = (name, body) => fs.writeFileSync(path.join(box, name), JSON.stringify(body));
   const run = { pid: 4242, startedAtMs: 1790000000000, threadId: "thr_root", turnId: "turn_root" };
-  const request = (id, extra = {}) => ({ id, method: "item/commandExecution/requestApproval", kind: "command", cause: "policy",
+  const request = (id, extra = {}) => ({ id, method: "item/commandExecution/requestApproval", kind: "command", cause: "asked",
     command: "/bin/zsh -c 'vcs status'", cwd: "/work", reason: "the sandbox said no", roots: ["/tmp/agent-tmp"], deadlineAt: null,
     subagent: false, agentPath: null, fileChanges: null, run, askedAt: "2026-09-27T12:00:00.000Z", ...extra });
   // The ids the driver is waiting on, as it writes them.
@@ -951,7 +967,7 @@ test("--run always hands the driver its mailbox, making one for a directory an o
   });
 
 test("a --run whose agent asks hands the request back: the --pending block for it, REQUESTS=, WAITING= and REPORT= last, while the run goes on",
-  "the wrapper hands back whatever its one call printed, and its rerun step keys on a REPORT= line: ending the call on a request, with REPORT= last, is what puts the question in front of the coordinator as an agent's return, in the foreground case where no poll exists",
+  "the wrapper hands back whatever its one call printed unless it ends in RUNNING=: ending the call on a request, with REPORT= last, is what puts the question in front of the coordinator as an agent's return, in the foreground case where no poll exists",
   async () => {
     const problems = [];
     const state = tempDir("agent-run-state.");
@@ -963,7 +979,7 @@ test("a --run whose agent asks hands the request back: the --pending block for i
     const id = valueOf(lines, "REQUEST");
     if (lines.at(-1) !== `REPORT=${report}` || lines.at(-2) !== `WAITING=${id}` || lines.at(-3) !== "REQUESTS=1")
       problems.push(`the tail is not REQUESTS=, WAITING=, REPORT=: ${JSON.stringify(lines.slice(-3))}`);
-    for (const [name, want] of [["THREAD", "root"], ["METHOD", "item/commandExecution/requestApproval"], ["CAUSE", "policy"]])
+    for (const [name, want] of [["THREAD", "root"], ["METHOD", "item/commandExecution/requestApproval"], ["CAUSE", "asked"]])
       if (valueOf(lines, name) !== want) problems.push(`${name}=${valueOf(lines, name)}, not ${want}`);
     if (!/^20\d\d-/.test(valueOf(lines, "DEADLINE"))) problems.push(`DEADLINE=${valueOf(lines, "DEADLINE")}, not a time`);
     const token = /^COMMAND<<([0-9a-f]{12})$/m.exec(first.out)?.[1] ?? "none";
@@ -1121,12 +1137,12 @@ test("--pending names a subagent's request by its path in THREAD= and prints no 
   async () => {
     const { dir, report, put, request, pend } = handMailbox();
     put("1-aaaaaaaa.request.json", request("1-aaaaaaaa", { subagent: true, agentPath: "/root/writer", deadlineAt: "2026-09-27T12:55:00.000Z" }));
-    put("2-bbbbbbbb.request.json", request("2-bbbbbbbb", { cause: "sandbox" }));
+    put("2-bbbbbbbb.request.json", request("2-bbbbbbbb"));
     pend("1-aaaaaaaa", "2-bbbbbbbb");
     const { code, lines } = await launcherLines(["--pending", "--dir", dir, "--report-file", report]);
     const problems = [];
     if (code !== 0) problems.push(`exit ${code}`);
-    if (!lines.includes("THREAD=/root/writer") || !lines.includes("DEADLINE=2026-09-27T12:55:00.000Z") || !lines.includes("CAUSE=sandbox")) problems.push(`the request lines: ${JSON.stringify(lines)}`);
+    if (!lines.includes("THREAD=/root/writer") || !lines.includes("DEADLINE=2026-09-27T12:55:00.000Z") || !lines.includes("CAUSE=asked")) problems.push(`the request lines: ${JSON.stringify(lines)}`);
     if (lines.some((l) => /^(KIND|FILES|ACCESS|NETWORK|REPEAT_OF)=/.test(l))) problems.push(`a line for a field the mailbox no longer carries: ${JSON.stringify(lines)}`);
     if (lines.filter((l) => /^COMMAND<<[0-9a-f]{12}$/.test(l)).length !== 2) problems.push(`not one command block per request: ${JSON.stringify(lines)}`);
     if (valueOf(lines, "REQUESTS") !== "2") problems.push(`REQUESTS=${valueOf(lines, "REQUESTS")}`);
