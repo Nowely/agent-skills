@@ -44,10 +44,11 @@ This report is written for the session that does the same for `orchestrate/SKILL
    `--help`s, and nothing else (`reader-brief.md`, filled by `brief.mjs`). Arms: old page whole, old page as
    compaction leaves it (first 19,900 characters and the truncation marker), new page; readers Sonnet and Opus.
    One blind grader scored the five anonymised, shuffled answer sets against the key (`grader-brief.md`).
-5. **Independent checks of the implementation.** Opus U2 classified every removed line of the diff; Fable X1
-   cross-reviewed the diff against `driver.mjs`, `agent-run.mjs` and `cleanup.mjs`; the coordinator ran the suites.
-   One fix round took their findings, and X1 re-checked it. A last advisor, Opus OA1, who had advised on nothing
-   before, weighed the verdict and found one more defect; X1 checked that fix too.
+5. **Independent checks of the implementation.** Opus U2 classified every removed line of the cut and the E105
+   commit; Fable X1 cross-reviewed the diff against `driver.mjs`, `agent-run.mjs` and `cleanup.mjs`; the
+   coordinator ran the suites. One fix round took their findings, and X1 re-checked it against the code, its removed
+   lines included, though not in a line-by-line table. A last advisor, Opus OA1, who had advised on nothing before,
+   weighed the verdict and found one more defect; X1 checked that fix too.
 
 ## The scenario scores
 
@@ -64,9 +65,10 @@ same on every scenario. The only critical error came from the reader of the comp
 the wrapper's card and told the user the agent was stopped, although the driver runs outside the wrapper's process
 tree. Full table and notes: `grades.md`.
 
-Limits: one answer per reader and arm; the key was written by the designer of the cut; the grader could tell the
-new page's answers by the file names they cite. The scores were taken on the page before the review fixes, which
-added clauses, shortened three lines and narrowed one.
+Limits: one answer per reader and arm; the key was written by the designer of the cut, minutes after drafting the
+new page; the answer sets were anonymised, but what an answer describes can still hint at its page. The scores were
+taken on the page before the review fixes, which added clauses, shortened three lines and narrowed one, the stop
+sentence that S5 tests among them.
 
 ## What the checks caught
 
@@ -143,5 +145,6 @@ The orchestrate page re-attaches at 36,075 characters, 16,074 over the limit, an
 By the harness's per-agent figure, which counts one call's context and understates the total: Fable A1 333,000;
 Opus I1 225,000 and 313,000 (two rounds); Opus U2 229,000; Fable X1 178,000, 228,000 and 238,000 (the review and
 two re-checks); Fable F1 125,000 and 197,000; Opus OA1 175,000; Opus R4 115,000 and R5 123,000; Sonnet R1 79,000,
-R2 81,000 and R3 105,000; Opus J2 100,000. Codex Luna LA1 836,000 by the driver's count. Codex Terra, the first
-Codex advisor, was stopped by the owner's choice before it answered; its tokens were not counted.
+R2 81,000 and R3 105,000; Opus J2 100,000; Opus C1, the completeness critic, 115,000. Codex Luna LA1 836,000 by the
+driver's count. Codex Terra, the first Codex advisor, was stopped by the owner's choice before it answered; its
+tokens were not counted.
