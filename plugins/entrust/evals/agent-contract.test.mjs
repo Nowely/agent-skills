@@ -19,6 +19,8 @@ import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../plugin/skills/codex/scripts/
 
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "orchestrate", "SKILL.md");
+// The orchestrate references a coordinator opens at a moment of the run; approvals.md holds its approval rule.
+const ORCHESTRATE_REFS = ["plan", "results", "approvals", "answer"].map((n) => path.join(ROOT, "skills", "orchestrate", "references", `${n}.md`));
 const ENV_MD = path.join(ROOT, "skills", "codex", "references", "environment-and-internals.md");
 const APPROVALS_MD = path.join(ROOT, "skills", "codex", "references", "approvals.md");
 
@@ -363,11 +365,13 @@ test("the waiting result ends in REPORT=, the constant is thirty minutes, and ne
     if (!/for 30 minutes, after which it is declined as expired/.test(helpFlat))
       problems.push("--help no longer names the 30-minute constant");
     const orchestrateFlat = orchestrate.replace(/\s+/g, " ");
-    for (const [label, text] of [["SKILL.md", flat], ["orchestrate/SKILL.md", orchestrateFlat]])
+    const refs = ORCHESTRATE_REFS.map((f) => [`orchestrate/references/${path.basename(f)}`, fs.readFileSync(f, "utf8").replace(/\s+/g, " ")]);
+    for (const [label, text] of [["SKILL.md", flat], ["orchestrate/SKILL.md", orchestrateFlat], ...refs])
       for (const gone of ["sandboxWidened", "REPEAT_OF", "ACCESS=", "NETWORK=", "repeatOf", "a widening for named paths", "Prefer a widening", "state or cache", "permission features", "`policy`"])
         if (text.includes(gone)) problems.push(`${label} still names ${JSON.stringify(gone)}`);
-    if (!orchestrateFlat.includes("`asked`, Codex asked before running the command, and nothing on our side changes it"))
-      problems.push("orchestrate/SKILL.md's synthesis sentence for cause asked is not the driver's own");
+    const approvalsFlat = refs.find(([label]) => label.endsWith("approvals.md"))[1];
+    if (!approvalsFlat.includes("`asked`, Codex asked before running the command, and nothing on our side changes it"))
+      problems.push("orchestrate/references/approvals.md's synthesis sentence for cause asked is not the driver's own");
     return problems.length === 0 || problems.join("; ");
   });
 

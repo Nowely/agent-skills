@@ -5,7 +5,7 @@
 //
 // evals/fragments.mjs holds the fragments: the codex page's composition rules and rights table, generated
 // into orchestrate/references/codex-composition.md so a plan with no Codex agent never loads the codex page
-// (#15 F18); the five-field schema the plugin ships, copied inline into two pages; the run-directory path
+// (#15 F18); the five-field schema the plugin ships, copied inline into the swarm page; the run-directory path
 // four pages name. One case per fragment runs the check on this tree. The mutation cases run it on a
 // scratch copy of the pages with one word changed, because a drift check that stays green under a changed
 // word is measuring nothing (#15 P12b asks for the release to fail on drift, and run-all runs this suite).
@@ -98,8 +98,8 @@ test("mutation: one word changed in the source is red until --write regenerates 
       || `before ${say(before) || "green"}; wrote ${wrote.join(", ") || "nothing"}; after ${say(after) || "green"}`;
   });
 
-test("mutation: the row the orchestrate page says it replaces, gone from the source, is red",
-  "the orchestrate page replaces the \"nothing\" row of the sibling's table; a table that lost the row makes that sentence point at nothing",
+test("mutation: the row the orchestrate plan says it replaces, gone from the source, is red",
+  "the orchestrate plan replaces the \"nothing\" row of the sibling's table; a table that lost the row makes that sentence point at nothing",
   () => {
     const root = scratch();
     edit(root, "skills/codex/SKILL.md", "| nothing |", "| silence |");
@@ -123,7 +123,7 @@ test("mutation: a size cap changed in a page's inline schema is red, and --write
     const root = scratch();
     const f = byId("five-field-schema");
     write(root, [f]);
-    const page = "skills/orchestrate/SKILL.md";
+    const page = "skills/swarm/SKILL.md";
     const text = fs.readFileSync(path.join(root, page), "utf8");
     const m = f.locate.exec(text);
     if (!m) return `${page} carries no inline schema`;
