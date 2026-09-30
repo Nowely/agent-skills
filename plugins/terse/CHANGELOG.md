@@ -22,7 +22,8 @@ forensics remain in the repository references and release notes.
   measure a page against.
 - The skill-page genre note's example ends with the repair: entrust's codex page moved the steps a coordinator
   takes only on an event into the files that own them, linked where each event comes up, and now re-attaches whole
-  after a compaction. Before, the example said the page was not repaired yet.
+  after a compaction; E77 closed once entrust's orchestrate page fit too. Before, the example said the page was not
+  repaired yet.
 
 ### Fixed
 

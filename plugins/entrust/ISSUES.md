@@ -304,9 +304,10 @@ dissenting critic of one recommendation, how the skill-page test (`evals/skills.
 hold E77 and E78. It agreed with two of the recommendation's five points and amended three; all three amendments
 were taken, and one was decisive: E77's `wc -w` check was the entry's only reproducible measurement, so it was kept
 rather than replaced (the owner later moved it to the Evidence). Its verdicts are in the run's report, kept outside
-the repository; what the three amendments changed is visible here: that measurement in E77's Evidence and the
-commands.md sentence the entrust changelog kept; the third shaped a check tying the test's known violations to
-ledger headings, which was removed later, when the owner chose to have the test fail on every violation.
+the repository. Two amendments show in what they changed: that measurement, in E77's Evidence until the entry closed
+on 2026-09-30, and the commands.md sentence the entrust changelog kept; the third shaped a check tying the test's
+known violations to ledger headings, which was removed later, when the owner chose to have the test fail on every
+violation.
 
 **Check.** `grep -n 'not clever' plugins/entrust/plugin/skills/orchestrate/SKILL.md`; the verdict table in `rounds.md`.
 
