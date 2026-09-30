@@ -239,27 +239,6 @@ words: `high` for the bulk row's extraction, classification and verification, `l
 one is a drift from the other unless both are edited by hand. `orchestrate` should link the table rather than
 restate it, or the table should move to a file both pages point at.
 
-## E105. "On the first line of `<DIR>/err.txt`" names a line `kill` cannot take a pid from
-
-**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/references/results.md:5,13` and
-`orchestrate/references/approvals.md:9` tell the reader to signal or check an agent by the pid "on the first line of"
-`<DIR>/err.txt`. `driver.mjs:4745` writes that line as `entrust: pid=<n> identity=lstart:<…> reportPath=<…>`, not the
-bare number. Measured 2026-09-29 by the coordinator
-during the E67 probe: `kill -TERM $(head -1 err.txt)` failed with "kill: entrust: … arguments must be process or
-job IDs". The codex page (`codex/SKILL.md:235-236`) and its internals reference
-(`codex/references/environment-and-internals.md:249-250`) say "the pid on the driver's pid line in `<DIR>/err.txt`,
-`entrust: pid=<n> identity=… reportPath=…`", as the launcher's `--help` does. The line is one record that
-`agent-run.mjs:279` and `cleanup.mjs:373` parse whole, so the pages change and the driver does not.
-
-**Check.** `grep -n 'pid on the first line\|pid is the first line' plugins/entrust/plugin/skills/orchestrate/references/*.md`
-prints the three lines;
-`head -1 <any agent's err.txt>` prints the `entrust: pid=…` line, not a bare number.
-
-**Issue text.** The orchestrate page's references tell the reader to take the pid from the first line of `err.txt`,
-and the first line is not the pid alone: a reader who follows it literally, with `$(head -1 …)`, hands `kill` a string it
-refuses. The three sentences should say what the codex page and the launcher's `--help` say: the pid on the
-driver's pid line, `entrust: pid=<n> …`.
-
 ## E108. A Claude agent's overflow file goes under the coordinator's own `$TMPDIR`, the collision E92 fixed for Codex agents
 
 **Evidence, level 1 for the page line, level 2 for the collision.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:30`:
