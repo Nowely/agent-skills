@@ -40,8 +40,8 @@ are `<name>@X.Y.Z`.
   `evals/run-all.mjs` on the PR is CI's full run (RELEASING.md step 5). After an edit to a SKILL.md or a file
   it links, run `node evals/skills.test.mjs`: it checks every plugin's skill pages against the vendor's
   mechanical skill rules (name, listing length, body line count, sections reachable from a file's first 100 lines,
-  one-level references, forward slashes), a word budget measured in E77, and every link and anchor, and its list
-  of known violations only shrinks.
+  one-level references, forward slashes), Claude Code's compaction cut counted in characters, and every link and
+  anchor, and its list of known violations only shrinks.
 - **Fan-outs**: state the agent count and the models before spawning, and wait for the word.
 - **Flags**: a new flag, header field or option is born only with a sentence that names who sets it, why the
   default cannot decide, and what breaks without it; when that sentence cannot be written, the default decides.

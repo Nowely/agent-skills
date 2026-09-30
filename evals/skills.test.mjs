@@ -35,8 +35,7 @@ const KNOWN = [
   ...[
     ["audit", "curse-of-knowledge.md"], ["audit", "genres/code-comments.md"], ["audit", "writing-rules.md"],
     ["clarity", "curse-of-knowledge.md"], ["clarity", "measurements.md"], ["clarity", "writing-rules.md"],
-    ["rethink", "curse-of-knowledge.md"], ["rethink", "genres/code-comments.md"], ["rethink", "truth.md"],
-    ["rethink", "writing-rules.md"], ["rewrite", "genres/code-comments.md"],
+    ["rethink", "curse-of-knowledge.md"], ["rethink", "truth.md"], ["rethink", "writing-rules.md"],
   ].map(([skill, file]) => ({
     rule: 6, from: `${TERSE}/skills/${skill}/SKILL.md`, file: `${TERSE}/references/${file}`, ledger: null, reason: NEW,
   })),
@@ -45,7 +44,6 @@ const KNOWN = [
 const rel = (p) => path.relative(ROOT, p).split(path.sep).join("/");
 const read = (file) => fs.readFileSync(file, "utf8");
 const lineCount = (text) => (text.match(/\n/g) ?? []).length; // as `wc -l` counts
-const wordCount = (text) => (text.match(/[^ \t\n\v\f\r]+/g) ?? []).length; // as `wc -w` counts
 const lineAt = (text, index) => lineCount(text.slice(0, index)) + 1;
 
 const skills = fs.readdirSync(path.join(ROOT, "plugins"), { withFileTypes: true })
@@ -160,10 +158,18 @@ function follows(skill, dest) {
   return !inside(path.join(skill.plugin, "skills"), dest) || inside(skill.dir, dest);
 }
 
+// A link to a directory counts as a direct link to each markdown file directly in it: the model lists the
+// directory and opens a file with no page between. The walk follows files only, so a directory linked from a
+// page other than a SKILL.md reaches nothing.
+const listed = (dest) => dest && fs.existsSync(dest) && fs.statSync(dest).isDirectory()
+  ? fs.readdirSync(dest, { withFileTypes: true }).filter((f) => f.isFile() && f.name.endsWith(".md"))
+    .map((f) => path.join(dest, f.name))
+  : [dest];
+
 // For each skill: the files its page links directly, and every file its walk reaches, with the link that
 // first reached it.
 const walks = skills.map((skill) => {
-  const direct = new Set(links(skill.file).map((l) => l.dest));
+  const direct = new Set(links(skill.file).flatMap((l) => listed(l.dest)));
   const reached = new Map();
   const queue = [skill.file];
   while (queue.length) {
@@ -209,14 +215,16 @@ const rules = [
     const n = text === "" ? 0 : text.replace(/\n$/, "").split("\n").length;
     return n < 500 ? [] : [v(3, s.file, `${rel(s.file)}: ${n} lines of body`)];
   })],
-  [4, "SKILL.md is at most 3,400 words, what survives a compaction (M-210, E77)", () => skills.flatMap((s) => {
-    // M-210: Claude Code "re-attaches the most recent invocation of each skill after the summary, keeping the
-    // first 5,000 tokens of each". The 3,400 words are not derived from it: they are calibrated on the two
-    // pages of entrust E77, which Claude Code cut after 3,415 words (`codex`) and 3,416 (`orchestrate`).
-    // Counted as `wc -w` counts, over the whole file.
-    const n = wordCount(read(s.file));
-    return n <= 3400 ? [] : [v(4, s.file, `${rel(s.file)}: ${n} words`)];
-  })],
+  [4, "SKILL.md survives a compaction whole: at most 20,001 characters re-attached (M-210, E77)", () => skills
+    .flatMap((s) => {
+      // M-210: Claude Code "re-attaches the most recent invocation of each skill after the summary, keeping the
+      // first 5,000 tokens of each". How it counts, from `reattached` below. The purpose is narrower: a page's
+      // standing rules lie within the part kept. Which lines those are is a judgement no count makes, so failing
+      // any page that is cut at all is a deterministic choice, stricter than the purpose.
+      const r = reattached(s.file);
+      return r.length <= WHOLE ? [] : [v(4, s.file, `${rel(s.file)}: ${r.length} characters re-attached; the cut `
+        + `falls at line ${r.line} of ${r.lines}, and ${r.kept}% of the body is kept`)];
+    })],
   [5, "a linked file links each section after its line 100 from its first 100 lines (N-11, M-48, M-50)", () => pages
     .filter((f) => !["SKILL.md", "README.md"].includes(path.basename(f)))
     .flatMap((f) => {
@@ -248,6 +256,43 @@ const rules = [
     return [];
   }))],
 ];
+
+// What Claude Code re-attaches of a skill after a compaction: "Base directory for this skill: " + the skill's
+// directory + "\n\n" + the body after the frontmatter, leading blank lines dropped, each ${CLAUDE_...}
+// placeholder replaced by its path. The block is kept whole while Math.round(length / 4) <= 5000, that is up
+// to 20,001 UTF-16 code units; past that, its first 19,900 are kept and a 100-character marker appended. The
+// first injection of a skill is never cut, only this one. Read from Claude Code 2.1.280
+// (`function Yu(e,r=4){...return Math.round(e.length/r)}`,
+// `function wcr(e,n){if(Yu(e)<=n)return e;let r=n*4-qGt.length;return e.slice(0,r)+qGt}`, `rcr=5000`) and
+// 2.1.170 (the same shape: `pM3`, `Xz`, `EM3=5000`), and matched over all 19,900 characters of three
+// re-attached blocks in one session: a measurement of those versions, which a later Claude Code can change.
+// Every path, the header's and each substituted one, is taken as PATH characters, a chosen bound, not a
+// measurement: this machine's are 49 to 79, and a longer path moves the cut earlier by its excess, once per
+// occurrence. A note, not a rule here:
+// the re-attached skills also share a 25,000-token total (`ocr=25000`), newest first, which binds only from
+// six skills.
+const PATH = 120, HEAD = "Base directory for this skill: ".length + "\n\n".length, WHOLE = 20001, KEPT = 19900;
+
+function reattached(file) {
+  const text = read(file), after = body(text);
+  const start = after.start + after.text.match(/^(?:[ \t]*\n)*/)[0].length;
+  const block = text.slice(start);
+  const places = [...block.matchAll(/\$\{CLAUDE_[A-Z_]+\}/g)];
+  const length = HEAD + PATH + block.length + places.reduce((n, m) => n + PATH - m[0].length, 0);
+  // The body offset of the first character lost: the kept characters, less the header, run through the body,
+  // a placeholder taking PATH of them; a cut inside a path falls at its placeholder.
+  let room = KEPT - HEAD - PATH, at = 0;
+  for (const m of places) {
+    if (m.index - at >= room) break;
+    room -= m.index - at;
+    at = m.index;
+    if (room < PATH) { room = 0; break; }
+    room -= PATH;
+    at = m.index + m[0].length;
+  }
+  const cut = Math.min(at + room, block.length);
+  return { length, line: lineAt(text, start + cut), lines: lineCount(text), kept: Math.round(100 * cut / block.length) };
+}
 
 function v(rule, file, message, from) {
   return { rule, file: rel(file), from: from && rel(from), message };

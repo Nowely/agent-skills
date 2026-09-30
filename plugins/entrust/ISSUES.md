@@ -73,8 +73,12 @@ Verification analysis bullet; main's swarm route, stand-in rule and critic read 
 (`:104`); "Approvals" starts at word 3,881 (`:114`), "Verification" at 4,318 (`:124`) and "The agent's return" at
 5,721 (`:151`).
 
-**Check.** `wc -w plugins/entrust/plugin/skills/{codex,orchestrate}/SKILL.md` prints 4461 and 5977; a page past
+Before the skill-page test counted characters, the check was a word count, which the test's character rule
+supersedes: `wc -w plugins/entrust/plugin/skills/{codex,orchestrate}/SKILL.md` prints 4461 and 5977; a page past
 about 3,400 words loses its tail after a compaction.
+
+**Check.** Run `node evals/skills.test.mjs`: its `known` rule-4 lines give each page's re-attached length and the
+line where the cut falls.
 
 **Issue text.** The two skills a coordinator relies on for the whole of a long session are still longer than what
 Claude Code keeps of a skill after compaction, though each fix round has cut into both: `codex` from 5,602 to
