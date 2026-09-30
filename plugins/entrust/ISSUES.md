@@ -77,8 +77,9 @@ Before the skill-page test counted characters, the check was a word count, which
 supersedes: `wc -w plugins/entrust/plugin/skills/{codex,orchestrate}/SKILL.md` prints 4461 and 5977; a page past
 about 3,400 words loses its tail after a compaction.
 
-**Check.** Run `node evals/skills.test.mjs`: its `known` rule-4 lines give each page's re-attached length and the
-line where the cut falls.
+**Check.** Run `node evals/skills.test.mjs`: it fails rule 4 on each page past the limit and gives the page's
+re-attached length, with each substituted path counted as 120 characters (the test's bound, not the machine's
+paths), and the line where the cut falls. It exits non-zero until this entry closes.
 
 **Issue text.** The two skills a coordinator relies on for the whole of a long session are still longer than what
 Claude Code keeps of a skill after compaction, though each fix round has cut into both: `codex` from 5,602 to
@@ -349,9 +350,9 @@ dissenting critic of one recommendation, how the skill-page test (`evals/skills.
 hold E77 and E78. It agreed with two of the recommendation's five points and amended three; all three amendments
 were taken, and one was decisive: E77's `wc -w` check was the entry's only reproducible measurement, so it was kept
 rather than replaced (the owner later moved it to the Evidence). Its verdicts are in the run's report, kept outside
-the repository; what the three amendments changed is visible here: that measurement in E77's Evidence, the
-commands.md sentence the entrust changelog kept, and the test's check that a known violation names a `## E<n>. `
-heading.
+the repository; what the three amendments changed is visible here: that measurement in E77's Evidence and the
+commands.md sentence the entrust changelog kept; the third shaped a check tying the test's known violations to
+ledger headings, which was removed later, when the owner chose to have the test fail on every violation.
 
 **Check.** `grep -n 'not clever' plugins/entrust/plugin/skills/orchestrate/SKILL.md`; the verdict table in `rounds.md`.
 

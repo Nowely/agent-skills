@@ -14,21 +14,14 @@
 // Rule 6 neither follows nor requires another skill's SKILL.md or any file under another skill's directory:
 // that file is one level from its own SKILL.md. Every file read is still held to rules 7 and 8.
 //
-// KNOWN lists the violations the owner has not yet resolved, each with its ledger entry, a `## <id>. ` heading in
-// that plugin's ISSUES.md. Every run prints each listed violation that occurs as a line starting `known`, with its
-// ledger id and the message a new one would print. The suite fails on a violation not in the list, on a listed one
-// that no longer occurs, so the list only shrinks, and on a row whose ledger entry is gone.
+// Every violation fails its rule; no list excuses one. A failing rule prints each violation's message, and the
+// suite exits 1 while any rule fails.
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-
-const KNOWN = [
-  { rule: 4, file: "plugins/entrust/plugin/skills/codex/SKILL.md", ledger: "entrust E77" },
-  { rule: 4, file: "plugins/entrust/plugin/skills/orchestrate/SKILL.md", ledger: "entrust E77" },
-];
 
 const rel = (p) => path.relative(ROOT, p).split(path.sep).join("/");
 const read = (file) => fs.readFileSync(file, "utf8");
@@ -183,36 +176,36 @@ const rules = [
   [1, "name uses lowercase letters, digits and hyphens only (N-5)", () => skills.flatMap((s) => {
     // N-5: "the `name` field must use lowercase letters, numbers, and hyphens only."
     let fm;
-    try { fm = frontmatter(s.file); } catch (e) { return [v(1, s.file, `${rel(s.file)}: ${e.message}`)]; }
+    try { fm = frontmatter(s.file); } catch (e) { return [`${rel(s.file)}: ${e.message}`]; }
     return typeof fm.name === "string" && /^[a-z0-9-]+$/.test(fm.name) ? []
-      : [v(1, s.file, `${rel(s.file)}: name is ${JSON.stringify(fm.name)}`)];
+      : [`${rel(s.file)}: name is ${JSON.stringify(fm.name)}`];
   })],
   [2, "description plus when_to_use is at most 1,536 characters (M-207)", () => skills.flatMap((s) => {
     // M-207: "the combined `description` and `when_to_use` text is truncated at 1,536 characters in the
     // skill listing". Counted on the values after YAML folds them.
     let fm;
-    try { fm = frontmatter(s.file); } catch (e) { return [v(2, s.file, `${rel(s.file)}: ${e.message}`)]; }
+    try { fm = frontmatter(s.file); } catch (e) { return [`${rel(s.file)}: ${e.message}`]; }
     const parts = [fm.description ?? "", fm.when_to_use ?? ""];
-    if (parts.some((p) => typeof p !== "string")) return [v(2, s.file, `${rel(s.file)}: a field is not a string`)];
+    if (parts.some((p) => typeof p !== "string")) return [`${rel(s.file)}: a field is not a string`];
     const n = parts[0].length + parts[1].length;
-    return n <= 1536 ? [] : [v(2, s.file, `${rel(s.file)}: ${n} characters`)];
+    return n <= 1536 ? [] : [`${rel(s.file)}: ${n} characters`];
   })],
   [3, "SKILL.md's body is under 500 lines (N-9)", () => skills.flatMap((s) => {
     // N-9: "Keep SKILL.md body under 500 lines". Counted over the body, after the frontmatter, as lines of text:
     // one trailing newline is dropped before splitting, so a last line counts once whether or not one ends it.
     const text = body(read(s.file)).text;
     const n = text === "" ? 0 : text.replace(/\n$/, "").split("\n").length;
-    return n < 500 ? [] : [v(3, s.file, `${rel(s.file)}: ${n} lines of body`)];
+    return n < 500 ? [] : [`${rel(s.file)}: ${n} lines of body`];
   })],
-  [4, "SKILL.md survives a compaction whole: at most 20,001 characters re-attached (M-210, E77)", () => skills
+  [4, "SKILL.md survives a compaction whole: at most 20,001 characters re-attached (M-210)", () => skills
     .flatMap((s) => {
       // M-210: Claude Code "re-attaches the most recent invocation of each skill after the summary, keeping the
       // first 5,000 tokens of each". How it counts, from `reattached` below. The purpose is narrower: a page's
       // standing rules lie within the part kept. Which lines those are is a judgement no count makes, so failing
       // any page that is cut at all is a deterministic choice, stricter than the purpose.
       const r = reattached(s.file);
-      return r.length <= WHOLE ? [] : [v(4, s.file, `${rel(s.file)}: ${r.length} characters re-attached; the cut `
-        + `falls at line ${r.line} of ${r.lines}, and ${r.kept}% of the body is kept`)];
+      return r.length <= WHOLE ? [] : [`${rel(s.file)}: ${r.length} characters re-attached; the cut `
+        + `falls at line ${r.line} of ${r.lines}, and ${r.kept}% of the body is kept`];
     })],
   [5, "a linked file links each section after its line 100 from its first 100 lines (N-11, M-48, M-50)", () => pages
     .filter((f) => !["SKILL.md", "README.md"].includes(path.basename(f)))
@@ -224,24 +217,24 @@ const rules = [
       // the target of a #anchor link in lines 1-100; the links' form, heading and place are free.
       const early = new Set(links(f).filter((l) => l.dest === f && l.anchor && l.line <= 100).map((l) => l.anchor));
       const late = targets(f).filter((t) => (t.level === 2 || t.level === 0) && t.line > 100 && !early.has(t.id));
-      return late.length === 0 ? [] : [v(5, f, `${rel(f)}: ${late.length} section(s) after line 100 not linked in `
-        + `lines 1-100, the first ${late[0].id} at line ${late[0].line}`)];
+      return late.length === 0 ? [] : [`${rel(f)}: ${late.length} section(s) after line 100 not linked in `
+        + `lines 1-100, the first ${late[0].id} at line ${late[0].line}`];
     })],
   [6, "every file a SKILL.md reaches in its plugin is linked from it directly (N-10, M-49)", () => walks
     .flatMap(({ skill, direct, reached }) => [...reached]
       // N-10: "Keep references one level deep from SKILL.md". M-49: "All reference files should link directly
       // from SKILL.md to ensure Claude reads complete files when needed."
       .filter(([dest]) => !direct.has(dest))
-      .map(([dest, { from, line }]) => v(6, dest,
-        `${rel(skill.file)} reaches ${rel(dest)} only through ${rel(from)}:${line}`, skill.file)))],
+      .map(([dest, { from, line }]) =>
+        `${rel(skill.file)} reaches ${rel(dest)} only through ${rel(from)}:${line}`))],
   [7, "no backslash in a link target (M-74)", () => pages.flatMap((f) => links(f)
     // M-74: "Always use forward slashes in file paths, even on Windows"
     .filter((l) => l.target.includes("\\"))
-    .map((l) => v(7, f, `${rel(f)}:${l.line}: ${l.target}`)))],
+    .map((l) => `${rel(f)}:${l.line}: ${l.target}`))],
   [8, "every relative link opens, its anchor included", () => pages.flatMap((f) => links(f).flatMap((l) => {
     const at = `${rel(f)}:${l.line}: ${l.target}`;
-    if (!l.dest || !fs.existsSync(l.dest)) return [v(8, f, `${at}: no such file`)];
-    if (l.anchor && l.dest.endsWith(".md") && !anchors(l.dest).has(l.anchor)) return [v(8, f, `${at}: no such anchor`)];
+    if (!l.dest || !fs.existsSync(l.dest)) return [`${at}: no such file`];
+    if (l.anchor && l.dest.endsWith(".md") && !anchors(l.dest).has(l.anchor)) return [`${at}: no such anchor`];
     return [];
   }))],
 ];
@@ -283,46 +276,12 @@ function reattached(file) {
   return { length, line: lineAt(text, start + cut), lines: lineCount(text), kept: Math.round(100 * cut / block.length) };
 }
 
-function v(rule, file, message, from) {
-  return { rule, file: rel(file), from: from && rel(from), message };
-}
-
-const key = (x) => `${x.rule}|${x.from ?? ""}|${x.file}`;
-const row = (x) => `rule ${x.rule}: ${x.from ? `${x.from} -> ` : ""}${x.file} (${x.ledger})`;
-const known = new Map(KNOWN.map((x) => [key(x), x]));
-const seen = new Set();
-
-// Each case returns the messages that fail it and the known violations it shows.
-const cases = rules.map(([n, name, collect]) => [`${n}. ${name}`, () => {
-  const found = collect();
-  for (const x of found) seen.add(key(x));
-  return {
-    fail: found.filter((x) => !known.has(key(x))).map((x) => x.message),
-    shown: found.filter((x) => known.has(key(x))).map((x) => `${known.get(key(x)).ledger}: ${x.message}`),
-  };
-}]);
-
-cases.push(["every KNOWN violation still occurs, so the list only shrinks", () => ({
-  fail: KNOWN.filter((x) => !seen.has(key(x))).map((x) => `${row(x)} no longer occurs; remove it`), shown: [],
-})]);
-
-cases.push(["every KNOWN row names a ledger entry its plugin's ISSUES.md holds", () => ({
-  fail: KNOWN.flatMap((x) => {
-    const [plugin, id] = String(x.ledger).split(" ");
-    const file = path.join(ROOT, "plugins", plugin, "ISSUES.md");
-    const held = id && fs.existsSync(file) && read(file).split("\n").some((l) => l.startsWith(`## ${id}. `));
-    return held ? [] : [`${row(x)}: ${rel(file)} has no "## ${id}. " entry`];
-  }),
-  shown: [],
-})]);
-
 let failed = 0;
-for (const [name, fn] of cases) {
-  let r;
-  try { r = fn(); } catch (e) { r = { fail: [`threw: ${e.stack}`], shown: [] }; }
-  if (r.fail.length === 0) console.log(`ok    ${name}`);
-  else { failed++; console.log(`FAIL  ${name}\n      ${r.fail.join("\n      ")}`); }
-  for (const line of r.shown) console.log(`known ${line}`);
+for (const [n, name, collect] of rules) {
+  let found;
+  try { found = collect(); } catch (e) { found = [`threw: ${e.stack}`]; }
+  if (found.length === 0) console.log(`ok    ${n}. ${name}`);
+  else { failed++; console.log(`FAIL  ${n}. ${name}\n      ${found.join("\n      ")}`); }
 }
-console.log(`${pages.length} pages read, ${skills.length} skills; ${cases.length - failed} of ${cases.length} passed`);
+console.log(`${pages.length} pages read, ${skills.length} skills; ${rules.length - failed} of ${rules.length} passed`);
 process.exit(failed ? 1 : 0);
