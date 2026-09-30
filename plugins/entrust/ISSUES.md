@@ -19,7 +19,7 @@ pinned to a commit is that commit's address, with today's beside it.
   measured", and the reference keeps the manual step for it: before a second writer enters a directory where a
   command was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it
   (`codex/references/environment-and-internals.md:253-254`);
-  `orchestrate/SKILL.md:145` carries the same check in its Result table's `exitCode: 10` row.
+  orchestrate's Result table, now `orchestrate/references/results.md`, no longer carries it.
 - An accepted command runs as the user, with no sandbox (the codex page's Rights section); whether the driver's
   `SIGTERM` to its own pid reaches a process running outside any sandbox that would otherwise bound it is what
   remains unmeasured.
@@ -43,7 +43,7 @@ takes from its owner are each red" (`grep -rn` over `evals/*.mjs` finds none). `
 file's path, that the file opens, and counts the shared file's writers from `writesSeen` (`:327-339`), which reads
 only Write/Edit/NotebookEdit/MultiEdit calls and a Codex report's `filesTouched`; its own comment (`:326`) says "A
 write made through a shell command is not visible here." The orchestrate page still asks the coordinator to check
-each brief against the file's owners (`orchestrate/SKILL.md:127`: "before a worker launches you check the files
+each brief against the file's owners (`orchestrate/SKILL.md:84`: "before a worker launches you check the files
 and interfaces its brief touches against the file's owners"), with no test behind that instruction now. Found by
 Fable H1.
 
@@ -60,26 +60,6 @@ and it counts a file's writers only from tool calls and `filesTouched`, so a wor
 command is invisible to the count. The gate should read the split file's own owner and interface list and compare
 each brief against it, and count a shell write that names the shared file among the writers.
 
-## E77. After a compaction, Claude Code keeps only the first 5,000 tokens of `orchestrate`, and its last sections are lost for the rest of the session
-
-**Evidence, level 3 for the mechanism, level 1 for the count.** Claude Code's skills page: after auto-compaction it
-"re-attaches the most recent invocation of each skill after the summary, keeping the first 5,000 tokens of each".
-`node evals/skills.test.mjs` rule 4 counts what is re-attached, each substituted path as 120 characters:
-`orchestrate/SKILL.md` is 36,075 characters, past the 20,001 kept whole; the cut falls at line 106 of 166, in
-"Mechanism", so "Approvals" (`:114`), "Verification" (`:124`), the Result table (`:140-149`) and "The agent's
-return" (`:151`) are lost. `codex/SKILL.md` closed under this entry (the CHANGELOG gives its count); the method is
-its: what the coordinator does at every launch and completion stays on the page, what it does on an event goes
-behind a link at the event's line, and restatements of a `--help` or a reference go to their owner.
-
-**Check.** `node evals/skills.test.mjs` fails rule 4 on `orchestrate/SKILL.md` alone and prints its re-attached
-length and the line of the cut. It exits non-zero until this entry closes.
-
-**Issue text.** The orchestrate page is 36,075 characters where Claude Code keeps 20,001 after a compaction, so
-past the first compaction a long session loses verification, the Result table and the agent's return. Candidates
-the page writers named: the `--pending` markers paragraph (`:120`) and the Result table (`:140-149`), which restate
-the codex skill's pages and the launcher's `--help`. The page should keep its standing rules within the first
-5,000 tokens and move the rest into the files it links.
-
 ## E90. The swarm, the bulk row's batch route, is called an experiment, holds fifty units at most, and reports no tokens
 
 **Evidence, level 1 for the lines, level 3 for the refused registration.**
@@ -88,8 +68,8 @@ the codex skill's pages and the launcher's `--help`. The page should keep its st
 - `swarm/scripts/swarm.mjs:30` `const MAX = 50;` and `:84` refuses a longer unit file: "a swarm is 50 at most".
   A batch wider than fifty units takes several swarms.
 - `swarm.mjs:113-117` and `:150`: the summary holds per agent its number, unit, report path, the launcher's status
-  lines and times, and no tokens, which the plan's re-estimate and per-agent stop line (`orchestrate/SKILL.md:40`)
-  read; each report has to be opened for them.
+  lines and times, and no tokens, which the plan's re-estimate and per-agent stop line
+  (`orchestrate/references/plan.md:19`) read; each report has to be opened for them.
 - A swarm's agent ids are `001` to `050` (`swarm.mjs:114`), and the plan registration takes only ids that start with
   a letter (`codex/scripts/agent-run.mjs:442`). 2026-09-29: the row `001 | luna | bulk verifier | nothing | unknown`
   through `--plan` printed `ERROR=invalid agent id: 001`, exit 2, and `--new` for `<run>/001/report.json` in a run
@@ -141,9 +121,9 @@ found. It needs a README with the result and a row in the index, as its neighbou
 **Evidence, level 3.** On 2026-09-29 Opus R2 of the prepare-feedback run compared, for 233 subagents in one machine's
 transcripts, the Agent tool's `totalTokens` with the usage summed over the subagent's own transcript: 203 were within
 1% of the last API call (78 exactly), none equalled the sum, and the median of sum over figure was 2.8. The research
-cost tables that `orchestrate/SKILL.md:40` sends a plan to as comparables ("name the comparable runs behind each
-estimate") quote that figure, for instance `research/2026-09-27-field-audit-triage/README.md:157` ("Claude 1.5M by the
-harness's per-subagent count"), whose own line 160 already guessed it was not the cache-inclusive total.
+cost tables that `orchestrate/references/plan.md:19` sends a plan to as comparables ("name the comparable runs behind
+each estimate") quote that figure, for instance `research/2026-09-27-field-audit-triage/README.md:157` ("Claude 1.5M by
+the harness's per-subagent count"), whose own line 160 already guessed it was not the cache-inclusive total.
 
 **Issue text.** A Claude agent's cost in a plan or a research table is the size of its last call, not the tokens it
 processed, which are about 2.8 times more, mostly cache reads. Estimates built on those tables understate a run, and
@@ -248,12 +228,12 @@ to every load and a step the model can skip.
 
 **Evidence, level 1.** `plugins/entrust/plugin/skills/codex/references/parity.md:87-92` carries the effort table
 (`low` fact lookup, `medium` ordinary review, `high`/`xhigh` refutation and competing designs, `max`/`ultra` the
-hardest problems); `plugins/entrust/plugin/skills/orchestrate/SKILL.md:77-81` states the same policy in its own
+hardest problems); `plugins/entrust/plugin/skills/orchestrate/references/plan.md:35` states the same policy in its own
 words: `high` for the bulk row's extraction, classification and verification, `low` for mechanical work only,
 `medium` for review, refutation and judgement in the strong and cheap rows. Found by Fable F1.
 
 **Check.** `sed -n '85,92p' plugins/entrust/plugin/skills/codex/references/parity.md` and
-`sed -n '77,81p' plugins/entrust/plugin/skills/orchestrate/SKILL.md` print the two statements.
+`sed -n '35p' plugins/entrust/plugin/skills/orchestrate/references/plan.md` print the two statements.
 
 **Issue text.** Two pages each carry the rule for which effort a role gets, in their own words; a later change to
 one is a drift from the other unless both are edited by hand. `orchestrate` should link the table rather than
@@ -261,20 +241,22 @@ restate it, or the table should move to a file both pages point at.
 
 ## E105. "On the first line of `<DIR>/err.txt`" names a line `kill` cannot take a pid from
 
-**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:106,116,142` tell the reader to signal or
-check an agent by the pid "on the first line of" `<DIR>/err.txt`. `driver.mjs:4745` writes that line as
-`entrust: pid=<n> identity=lstart:<…> reportPath=<…>`, not the bare number. Measured 2026-09-29 by the coordinator
+**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/references/results.md:5,13` and
+`orchestrate/references/approvals.md:9` tell the reader to signal or check an agent by the pid "on the first line of"
+`<DIR>/err.txt`. `driver.mjs:4745` writes that line as `entrust: pid=<n> identity=lstart:<…> reportPath=<…>`, not the
+bare number. Measured 2026-09-29 by the coordinator
 during the E67 probe: `kill -TERM $(head -1 err.txt)` failed with "kill: entrust: … arguments must be process or
 job IDs". The codex page (`codex/SKILL.md:235-236`) and its internals reference
 (`codex/references/environment-and-internals.md:249-250`) say "the pid on the driver's pid line in `<DIR>/err.txt`,
 `entrust: pid=<n> identity=… reportPath=…`", as the launcher's `--help` does. The line is one record that
 `agent-run.mjs:279` and `cleanup.mjs:373` parse whole, so the pages change and the driver does not.
 
-**Check.** `grep -n 'first line of' plugins/entrust/plugin/skills/orchestrate/SKILL.md` prints the three lines;
+**Check.** `grep -n 'pid on the first line\|pid is the first line' plugins/entrust/plugin/skills/orchestrate/references/*.md`
+prints the three lines;
 `head -1 <any agent's err.txt>` prints the `entrust: pid=…` line, not a bare number.
 
-**Issue text.** The orchestrate page tells the reader to take the pid from the first line of `err.txt`, and the
-first line is not the pid alone: a reader who follows it literally, with `$(head -1 …)`, hands `kill` a string it
+**Issue text.** The orchestrate page's references tell the reader to take the pid from the first line of `err.txt`,
+and the first line is not the pid alone: a reader who follows it literally, with `$(head -1 …)`, hands `kill` a string it
 refuses. The three sentences should say what the codex page and the launcher's `--help` say: the pid on the
 driver's pid line, `entrust: pid=<n> …`.
 
@@ -325,10 +307,10 @@ short directory for sockets; or another option the analysis finds better (raised
 ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
 
 **Evidence, level 1 for the pages, level 3 for the run's outcomes, level 2 for the generalisation.**
-`plugins/entrust/plugin/skills/orchestrate/SKILL.md:62` puts Luna in the bulk row, "Fast, cheap and not clever — work
-that is wide rather than deep", and `:77` gives `high` to the bulk row only for "extraction, classification and
-verification", `medium` to review and judgement in the rows above. On the ledger run of 2026-09-29/30, with no other
-Codex model available, Luna ran at `high` as the critic of each recommendation
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:50` puts Luna in the bulk row, "Fast, cheap and not clever — work
+that is wide rather than deep", and `orchestrate/references/plan.md:35` gives `high` to the bulk row only for
+"extraction, classification and verification", `medium` to review and judgement in the rows above. On the ledger
+run of 2026-09-29/30, with no other Codex model available, Luna ran at `high` as the critic of each recommendation
 (`plugins/entrust/research/2026-09-29-ledger-options/rounds.md`, `02-options.md`): it said E92's isolation belongs
 with the unit that knows the agent's directory (it named the launcher) — the judge kept the driver's private
 directory, which shipped a regression, and the owner's rework names each run's folder after the agent's report
@@ -445,3 +427,32 @@ the command is not run, and the turn goes on until the model ends it or a bound 
 end. A coordinator who follows the instruction
 to stop a runaway agent keeps it running. Stopping should be named as what the driver does stop on, its pid with
 `kill -TERM` or Stop on the wrapper, and a decline described as an answer to one request.
+
+## E117. The bulk row's unit, derived count and pilot are written twice, on orchestrate's plan reference and on the swarm page
+
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/plan.md:31` ("A bulk row") states the unit
+("one part of the material for extraction, with a fixed answer schema, or one claim, one address, a verbatim quote,
+and a verdict from a closed set that describes the subject and never the brief"), the count ("a count derived from the
+units with the plan saying why that many") and the pilot ("a stronger model marks a few units, the bulk model runs the
+same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort").
+`plugins/entrust/plugin/skills/swarm/SKILL.md:17` states all three again in its own words: "A unit is one claim, one
+address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief, or one part
+of the material for extraction, with a fixed answer schema the brief states", "Announce the count, derived from the
+units with the plan saying why that many, before the launch", and "Pilot first: a stronger model marks the pilot's
+units, the swarm's model runs the same units, and recall, false positives and tokens against that marking decide the
+brief's fixes and its effort". `evals/orchestrate.test.mjs` pins the first copy (D9, D12, D14) and
+`evals/swarm.test.mjs` the second (U1); nothing compares them. Both copies were on main before 2026-09-30, the first on
+`orchestrate/SKILL.md:67-69` at `4a3f0d7`; that day's cut of the page moved it into the reference word for word, and
+the owner kept both, because the swarm page describes a swarm and a bulk batch may also run as ordinary Codex agents,
+which it cannot own. Found by Fable F1 and Codex Luna L1.
+
+**Check.** `grep -n 'closed set that describes the subject' plugins/entrust/plugin/skills/orchestrate/references/plan.md plugins/entrust/plugin/skills/swarm/SKILL.md`
+prints one line in each file.
+
+**Issue text.** The rules for a bulk fan-out's unit, its derived count and its pilot are written twice: once in
+orchestrate's plan reference, for every bulk batch, and once on the swarm page, for a swarm, in different words and
+pinned by different suites. A change to one is a drift from the other unless both are edited by hand, and a
+coordinator who reads both meets two phrasings of one rule. The swarm page cannot simply own the rule, since a bulk
+batch the plan gives no swarm runs as ordinary Codex agents. Decide which page owns these rules and have the other
+link them, or generate the second copy from the first as the codex page's composition rules are generated into
+orchestrate's references.
