@@ -11,6 +11,8 @@ The model reads the description to decide whether to load the skill, then follow
 - a table of contents at the top of a reference over 100 lines, so that a model previewing it with `head -100` still sees every section;
 - forward slashes in file paths, even on Windows.
 
+When a page is cut to fit that budget, a restated fact goes only where its owner states the same fact, in the same words, at the moment the page's reader meets it; a file that holds the topic, or holds the fact at another step, is not its owner. Every event the page handles keeps a line of its own on the page, and a rewritten sentence keeps the old one's conditions, not only its words. The two cuts of 2026-09-30 that brought entrust's codex and orchestrate pages within the budget lost facts in exactly these ways, and an audit of every removed sentence and a fresh reader of the new page caught them: `plugins/entrust/research/2026-09-30-orchestrate-page/`, and the codex page's run beside it.
+
 Do not restate what the model already does unprompted, turn a dated measurement into an instruction that expires, or add emphasis in capitals. Test the page on realistic requests, with each model that will load it, against a run without it.
 
 ## Example

@@ -7,6 +7,11 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- The genre note for skill pages says how a page cut to fit what a compaction keeps loses no fact: a restated fact
+  goes only where its owner states it in the same words at the moment the reader meets it, every event the page
+  handles keeps a line on the page, and a rewritten sentence keeps the old one's conditions. Why: the two cuts of
+  2026-09-30, of entrust's codex and orchestrate pages, lost facts in each of these ways, and an audit of every
+  removed sentence and a fresh reader caught them.
 - The genre note for skill pages says what Claude Code keeps of a skill after a compaction: Anthropic documents the
   first 5,000 tokens of each re-attached skill, within 25,000 shared by all of them, and in Claude Code 2.1.280's
   code a token is four characters, so about 20,000 characters of the body survive, without the frontmatter and with
