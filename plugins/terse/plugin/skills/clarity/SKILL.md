@@ -48,6 +48,10 @@ Ask when it matters; no line has to satisfy all six.
 5. **How does this project already do it?** Follow the nearby texts' conventions without copying their section lists. Will a number, version or comment still help the next reader? Name the scope of a fact likely to change.
 6. **Would a colleague say this naturally?** Use phrasing and formatting that fit this language, reader and genre. A brief answer may stay brief; punctuation, emphasis and brevity are tools, not bans. See [a pleasant read](../../references/rules.md#a-pleasant-read).
 
+The sentence layer under the rules is in [writing-rules.md](../../references/writing-rules.md) and
+[curse-of-knowledge.md](../../references/curse-of-knowledge.md), and the dated evidence behind the rules in
+[measurements.md](../../references/measurements.md).
+
 ## After writing
 
 - Did I answer each point the person raised, whether by applying it, answering it, or declining it

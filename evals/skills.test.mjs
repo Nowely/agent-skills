@@ -15,10 +15,9 @@
 // that file is one level from its own SKILL.md. Every file read is still held to rules 7 and 8.
 //
 // KNOWN lists the violations the owner has not yet resolved, each with its ledger entry, a `## <id>. ` heading in
-// that plugin's ISSUES.md, or with the reason it has none yet. Every run prints each listed violation that occurs as
-// a line starting `known`, with its ledger id or reason and the message a new one would print. The suite fails on a
-// violation not in the list, on a listed one that no longer occurs, so the list only shrinks, and on a row whose
-// ledger entry is gone.
+// that plugin's ISSUES.md. Every run prints each listed violation that occurs as a line starting `known`, with its
+// ledger id and the message a new one would print. The suite fails on a violation not in the list, on a listed one
+// that no longer occurs, so the list only shrinks, and on a row whose ledger entry is gone.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -26,19 +25,9 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const NEW = "new, owner to decide";
-const TERSE = "plugins/terse/plugin";
 const KNOWN = [
   { rule: 4, file: "plugins/entrust/plugin/skills/codex/SKILL.md", ledger: "entrust E77" },
   { rule: 4, file: "plugins/entrust/plugin/skills/orchestrate/SKILL.md", ledger: "entrust E77" },
-  { rule: 5, file: `${TERSE}/references/roles.md`, ledger: null, reason: NEW },
-  ...[
-    ["audit", "curse-of-knowledge.md"], ["audit", "genres/code-comments.md"], ["audit", "writing-rules.md"],
-    ["clarity", "curse-of-knowledge.md"], ["clarity", "measurements.md"], ["clarity", "writing-rules.md"],
-    ["rethink", "curse-of-knowledge.md"], ["rethink", "truth.md"], ["rethink", "writing-rules.md"],
-  ].map(([skill, file]) => ({
-    rule: 6, from: `${TERSE}/skills/${skill}/SKILL.md`, file: `${TERSE}/references/${file}`, ledger: null, reason: NEW,
-  })),
 ];
 
 const rel = (p) => path.relative(ROOT, p).split(path.sep).join("/");
@@ -299,7 +288,7 @@ function v(rule, file, message, from) {
 }
 
 const key = (x) => `${x.rule}|${x.from ?? ""}|${x.file}`;
-const row = (x) => `rule ${x.rule}: ${x.from ? `${x.from} -> ` : ""}${x.file} (${x.ledger ?? x.reason})`;
+const row = (x) => `rule ${x.rule}: ${x.from ? `${x.from} -> ` : ""}${x.file} (${x.ledger})`;
 const known = new Map(KNOWN.map((x) => [key(x), x]));
 const seen = new Set();
 
@@ -309,8 +298,7 @@ const cases = rules.map(([n, name, collect]) => [`${n}. ${name}`, () => {
   for (const x of found) seen.add(key(x));
   return {
     fail: found.filter((x) => !known.has(key(x))).map((x) => x.message),
-    shown: found.filter((x) => known.has(key(x)))
-      .map((x) => `${known.get(key(x)).ledger ?? known.get(key(x)).reason}: ${x.message}`),
+    shown: found.filter((x) => known.has(key(x))).map((x) => `${known.get(key(x)).ledger}: ${x.message}`),
   };
 }]);
 
@@ -318,8 +306,8 @@ cases.push(["every KNOWN violation still occurs, so the list only shrinks", () =
   fail: KNOWN.filter((x) => !seen.has(key(x))).map((x) => `${row(x)} no longer occurs; remove it`), shown: [],
 })]);
 
-cases.push(["every ledger entry a KNOWN row names is in its plugin's ISSUES.md", () => ({
-  fail: KNOWN.filter((x) => x.ledger).flatMap((x) => {
+cases.push(["every KNOWN row names a ledger entry its plugin's ISSUES.md holds", () => ({
+  fail: KNOWN.flatMap((x) => {
     const [plugin, id] = String(x.ledger).split(" ");
     const file = path.join(ROOT, "plugins", plugin, "ISSUES.md");
     const held = id && fs.existsSync(file) && read(file).split("\n").some((l) => l.startsWith(`## ${id}. `));

@@ -164,3 +164,6 @@ not `rewrite` alone: a polished text can still have the wrong shape
 - Evidence levels, guarantee words, verdicts: [truth.md](../../references/truth.md).
 - The reader protocol and scoring: [measure.md](references/measure.md).
 - Entry formats and the report's contract: [ledgers.md](references/ledgers.md).
+- The sentence rules and the curse-of-knowledge steps under `rules.md`:
+  [writing-rules.md](../../references/writing-rules.md), [curse-of-knowledge.md](../../references/curse-of-knowledge.md).
+- What a code comment carries that the code does not: [code-comments.md](../../references/genres/code-comments.md).

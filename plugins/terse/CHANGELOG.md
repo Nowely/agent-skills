@@ -3,6 +3,18 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Fixed
+
+- `audit`, `clarity` and `rethink` link directly the files they reached only through `rules.md`: all three
+  `writing-rules.md` and `curse-of-knowledge.md`, `audit` also `genres/code-comments.md`, `clarity`
+  `measurements.md`, and `rethink` `truth.md`, naming its writer as the role that gets the sentence rules. Before, a
+  model reached them a second link away and may read a page that far down partially. `references/roles.md` lists
+  its sections under a Contents heading after its opening table, so a preview of its first 100 lines shows where
+  every brief is; before, such a preview stopped in brief 2, with eleven of its fourteen sections unseen. The
+  repository's `evals/skills.test.mjs` found both.
+
 ## 0.6.0 — 2026-09-30
 
 ### Added
