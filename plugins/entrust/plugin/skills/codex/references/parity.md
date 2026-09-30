@@ -23,7 +23,7 @@ and one qualification.
 | Native capability | Codex equivalent | Parity |
 | --- | --- | --- |
 | `Explore` (read-only) | `--cwd <repo>` | reads and runs node tests with constraints; see `--help` |
-| agent with `isolation: "worktree"` | `--worktree <repo>` | writes in a tree of its own, not the live one; see [Worktree lifecycle](../SKILL.md#worktree-lifecycle) |
+| agent with `isolation: "worktree"` | `--worktree <repo>` | writes in a tree of its own, not the live one; see `--help` and [Worktree ledger and destination](environment-and-internals.md#worktree-ledger-and-destination) |
 | the same, committing | none | an agent's sandbox ends at its own tree; the work returns as a diff ([Git-directory grant](environment-and-internals.md#git-directory-grant)) |
 | one-call wrapped subagent | one Agent call, foreground for the one agent the coordinator waits for and background for those that run side by side, a Haiku wrapper around one launcher run, the prompt through `--new` and the report at `--report-file` | the wrapper is the agent's lifetime, its card is the agent's on the agent map, and the file is the delivery; see `--help` |
 | fan-out of many agents | concurrent driver invocations | memory-bound rather than throttled; see [Fan-out and reporting](#fan-out-and-reporting) |

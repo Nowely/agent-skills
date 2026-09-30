@@ -15,6 +15,9 @@ forensics remain in the repository references and release notes.
   the listing's 1,536 characters, every reference linked from SKILL.md itself, a table of contents at the top of a
   reference over 100 lines, and forward slashes in paths. Before, it gave only the 5,000 tokens, with nothing to
   measure a page against.
+- The skill-page genre note's example ends with the repair: entrust's codex page moved the steps a coordinator
+  takes only on an event into the files that own them, linked where each event comes up, and now re-attaches whole
+  after a compaction. Before, the example said the page was not repaired yet.
 
 ### Fixed
 
