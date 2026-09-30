@@ -604,7 +604,7 @@ test("F7 the approval rule: run as you with no sandbox, approve nothing unread, 
 test("F7b a request is decided from the waiting result through the sibling's --decide call, and the page does not restate that call",
   "the accept's heredoc on a delimiter of the coordinator's own, the ID's shape, the copy from --pending after a refused restatement and the decline after a blocked accept are the sibling's, pinned there by agent-contract.test.mjs; a second copy here drifted from it and cost every call its words after a compaction (E77)",
   () => {
-    const said = saysIn(approvals, "Decide from the waiting result the wrapper handed back, and answer with the sibling's `--decide` call.");
+    const said = saysIn(approvals, "Decide from the waiting result the wrapper handed back, and answer with the sibling's [`--decide` call](../../codex/references/approvals.md#accept).");
     if (said !== true) return said;
     return !/ACCEPT_|digits, a hyphen and eight hex characters/.test(flat + approvals.flat) || "the page or approvals.md restates the sibling's accept call again";
   });
