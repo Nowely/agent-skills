@@ -423,9 +423,8 @@ then either make the two cases pass there or have the suite say that they cannot
 ## E115. The codex page and the launcher's `--help` say a decline stops a run, and the driver only answers the request
 
 **Evidence, level 2 (code reading; no live decline was run to see whether the turn ends).**
-`plugins/entrust/plugin/skills/codex/SKILL.md:236-238`, in the stop bullet: "after a waiting result or a `RUNNING=`
-hand-back no call holds the driver, so that pid, or `--decide '<ID>' --decline` and the same `--run`, is what reaches
-it"; `agent-run.mjs:169-170` (`--help`, under `--run`): "After a waiting result no call holds the driver, so stop it
+`plugins/entrust/plugin/skills/codex/SKILL.md:236-238`, in the stop bullet: "that pid is what reaches it, or, after a
+waiting result, `--decide '<ID>' --decline` and the same `--run`"; `agent-run.mjs:169-170` (`--help`, under `--run`): "After a waiting result no call holds the driver, so stop it
 with --decide --decline and the same --run, or kill -TERM the pid on its pid line in DIR/err.txt". A coordinator's
 decision reaches the server through `closeApproval` (`driver.mjs:3181-3200`), which settles the entry, records it in
 the mailbox and sends the server `{ decision: "decline" }` for that one request (`:3197`); nothing there cuts the
@@ -433,8 +432,7 @@ turn. The driver cuts a turn only through `cutTurn`, called at `:3008` (idle sil
 request is open), `:3490` (the command budget), `:4633` (the wall clock) and `:4935` (a signal). Exit 6 is decided
 after the turn ends (`driver.mjs --help`, "Decided after the turn"), so the declined command does not run and the
 turn goes on for as long as the model continues it. `codex/references/approvals.md:33-35` already describes a decline
-that way: decline, then send the same message again, and "`--run` picks the run back up". After a `RUNNING=`
-hand-back no request is waiting, so there is nothing to decline.
+that way: decline, then send the same message again, and "`--run` picks the run back up".
 
 **Check.** Launch an agent whose task needs one command outside its sandbox and more work after it, decline the
 request with `--decide '<ID>' --decline`, run the same `--run` again, and read the report: `turnStatus: completed`
@@ -444,6 +442,6 @@ the four `cutTurn` calls show why.
 **Issue text.** The codex page's stop instruction and the launcher's `--help` both offer "decline the waiting request
 and run `--run` again" as a way to stop an agent. In the driver a decline answers that one request and nothing more:
 the command is not run, and the turn goes on until the model ends it or a bound cuts it, with exit 6 decided at the
-end. After a `RUNNING=` hand-back there is no request to decline at all. A coordinator who follows the instruction
+end. A coordinator who follows the instruction
 to stop a runaway agent keeps it running. Stopping should be named as what the driver does stop on, its pid with
 `kill -TERM` or Stop on the wrapper, and a decline described as an answer to one request.

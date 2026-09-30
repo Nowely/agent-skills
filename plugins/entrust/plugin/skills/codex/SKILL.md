@@ -234,8 +234,8 @@ turn goes on. The `--decide` call that answers it, what an accept runs as, and w
   ([Worktree ledger and destination](references/environment-and-internals.md#worktree-ledger-and-destination)).
 - To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or `kill -TERM` the pid on the
   driver's pid line in `<DIR>/err.txt`, `entrust: pid=<n> identity=… reportPath=…`; after a waiting result or a
-  `RUNNING=` hand-back no call holds the driver, so that pid, or `--decide '<ID>' --decline` and the same
-  `--run`, is what reaches it
+  `RUNNING=` hand-back no call holds the driver, so that pid is what reaches it, or, after a waiting result,
+  `--decide '<ID>' --decline` and the same `--run`
   ([Bounding or stopping an agent](references/environment-and-internals.md#bounding-or-stopping-an-agent)).
 
 ## What the user reads
@@ -250,7 +250,7 @@ what an agent may write, and where, in ordinary words, because that is what the 
 
 ## References
 
-- `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`: the flags and the exit codes, and where the rest is; `agent-run.mjs --help` beside it: the wrapper's one command, its refusals, the nine status lines, the waiting result and `--decide`.
+- `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`: the flags and the exit codes, `--help-all` the rest; `agent-run.mjs --help` beside it: the wrapper's one command, its refusals, the nine status lines, the waiting result and `--decide`.
 - [approvals.md](references/approvals.md): the coordinator's approval steps.
 - [environment-and-internals.md](references/environment-and-internals.md): environment, prompt files, stopping an agent, receipts, worktrees, locks, the commit grant, config drift.
 - [result-gates.md](references/result-gates.md): evidence gates and the verifier.

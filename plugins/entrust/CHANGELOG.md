@@ -12,7 +12,7 @@ forensics remain in the repository references and release notes.
   what Claude Code re-attaches of the page after a compaction, past the 20,001 it keeps whole, so the page's last
   lines would have been cut; it now counts 17,930.
 - **`codex/SKILL.md` fits in what Claude Code re-attaches after a compaction**: `evals/skills.test.mjs` counts
-  19,843 characters against the 20,001 it keeps whole, where the page counted 28,393 and was cut at line 262 of 358
+  19,867 characters against the 20,001 it keeps whole, where the page counted 28,393 and was cut at line 262 of 358
   (E77, which stays open for `orchestrate`). What the coordinator does at every launch and completion stays on the
   page; what it does on an event stands as one line at the event's place with its procedure behind a link: the
   approval steps — the waiting result, the accept's heredoc, a blocked accept, what an accept runs as, the
