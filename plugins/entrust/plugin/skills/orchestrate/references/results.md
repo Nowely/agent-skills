@@ -14,7 +14,7 @@ Read the sibling's [Reading the result](../../codex/SKILL.md#reading-the-result)
 | a stderr file naming no driver | report it; no relaunch fixes an install |
 | `exitCode: 3`, a cut | if the work is unfinished, continue that thread once with `RESUME:`, under the agent's next report path |
 | `exitCode: 10` | a held lock or a busy thread: read `error` and the stderr file, wait for the holder, then run again; not a retry. A holder that waits on your own decision has an `ASK=` in your poll: answer it before you wait on the holder. Before a second writer enters a directory where a command was approved, check for its survivors yourself: `pgrep -fl '<the approved command>'` and wait for it — the lock does not prove they are gone |
-| exit 2 or 4 | Exit 2 WITH a `turnStatus` is a turn the server rejected: read `turnError`. A `DRIVER_EXIT=2` beside `PATH=taken` is neither a turn that never ran nor one the server rejected: the path was already taken, nothing of this run reached the file |
+| exit 2 or 4 | Exit 2 WITH a `turnStatus` is a turn the server rejected: read `turnError`. A `DRIVER_EXIT=2` beside `PATH=taken` says the path was already taken: nothing of this run reached the file, and the report there is an earlier run's |
 | exit 4 with a `turnStatus` | the server died mid-turn or the report was not delivered: the report is complete, read it as a gate verdict |
 | any other non-zero `exitCode` with an answer | a gate verdict: do not retry |
 | a Claude agent that returns `blocked` | do not retry, report it |
