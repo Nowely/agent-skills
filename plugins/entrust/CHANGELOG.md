@@ -45,7 +45,7 @@ forensics remain in the repository references and release notes.
   which the page names by path. The maintainer's clause on where driver changes are logged goes. Why:
   `evals/skills.test.mjs` counted 36,075 characters in what Claude Code re-attaches of the page after a compaction,
   past the 20,001 it keeps whole, so a long session lost the approvals, verification, the Result table and the
-  agent's return at its first compaction; it now counts 19,565 (E77, now fixed on both pages).
+  agent's return at its first compaction; it now counts 19,556 (E77, now fixed on both pages).
 
 ## 0.23.0 — 2026-09-30
 

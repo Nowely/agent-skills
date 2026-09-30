@@ -9,7 +9,7 @@ metadata:
 license: MIT
 ---
 
-Plan from [codex-composition.md](references/codex-composition.md), the sibling's composition rules and rights table generated into this page's references. Load [codex](../codex/SKILL.md) (Skill tool, `entrust:codex`) once the plan has a Codex agent, before its launcher's `--plan`, and follow it for every Codex agent: rights, header fields, worktree lifecycle, the report and the exit
+Plan from [codex-composition.md](references/codex-composition.md), the sibling's composition rules and rights table generated into this page's references. Load [codex](../codex/SKILL.md) (Skill tool, `entrust:codex`) once the plan has a Codex agent, before its launcher's `--plan`, and follow it for every Codex agent: rights, header fields, worktrees, the report and the exit
 ladder live there and stay authoritative; this page re-cuts only what the mode changes. The mode adds no header field or flag and leaves the agent's own prompt file where the sibling puts it, and its own scripts, the runner and the linter, run a command or read a draft and write only under `$TMPDIR`. Every agent has a mailbox, so it can ask instead of
 being declined at once. You are the
 orchestrator; the work-list, the plan, the composition and the synthesis are yours, the rest is an agent's.

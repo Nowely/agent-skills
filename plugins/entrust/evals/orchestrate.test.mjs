@@ -145,7 +145,7 @@ test("A4 the page sends the coordinator to each moment reference from the step o
   });
 
 test("A3 step 1 reads the generated composition page first, the sibling is loaded once the plan has a Codex agent, and this page re-cuts only what the mode changes",
-  "rights, header fields, the worktree lifecycle and the exit ladder have exactly one home; a copy here is a second copy to drift, so the page has to send the reader there and say what it does not restate. #15 F18: the page loaded the sibling's 4,500 words on every run, an all-Claude one included; the composition rules and the rights table it plans from are generated into a reference, and the load waits for a Codex agent, before the launcher's --plan, which is the first command that needs it",
+  "rights, header fields, worktrees and the exit ladder have exactly one home; a copy here is a second copy to drift, so the page has to send the reader there and say what it does not restate. #15 F18: the page loaded the sibling's 4,500 words on every run, an all-Claude one included; the composition rules and the rights table it plans from are generated into a reference, and the load waits for a Codex agent, before the launcher's --plan, which is the first command that needs it",
   () => {
     const problems = [];
     const raw = shows(/\[codex\]\(\.\.\/codex\/SKILL\.md\)/, /\[codex-composition\.md\]\(references\/codex-composition\.md\)/);
