@@ -393,3 +393,26 @@ link in that gap decides where the run's files go, the same class of race E44 cl
 is never read, so a group- or world-writable directory of this user's is accepted as freely as a private one. Close
 the window (make the run folder relative to an opened directory handle, or verify the leaf's own realpath right
 after creation) and refuse a group- or world-writable base, or record why neither is needed on a per-user TMPDIR.
+
+## E114. Two cases of the lock suite fail inside Codex's sandbox and pass outside it on the same tree
+
+**Evidence, level 3 for the failure inside the sandbox; not reproduced outside it.** On 2026-09-30 a Codex agent
+ran `node plugins/entrust/evals/lock.test.mjs` twice inside its sandbox, on main at `aaa0bcf` with a branch on top
+that changes none of the files the suite reads, and both runs ended "2/74 failed" with the same two cases. The case
+at `lock.test.mjs:1268`, "SIGTERM to the driver and then to its server, inside the grace, reports the turn as
+interrupted and not as a crash", failed with "the driver had no child to signal", the message `:1279` returns when
+it finds no child process of the driver. The case at `:1386`, "a lock whose pid was recycled by an unrelated live
+process is not honoured", failed with "a recycled pid still wedged the directory: exit 10" (`:1399`). Six minutes
+later the same suite on the same tree, run outside the sandbox, passed 74 of 74. The check runner's logs of the
+three runs hold the whole output. What the logs do not show is why: whether it is timing, a restriction the sandbox
+puts on signals or process ids, or something else is unknown.
+
+**Check.** Run `node plugins/entrust/evals/lock.test.mjs` inside a Codex agent's sandbox and outside it on the same
+tree, and compare the two cases above.
+
+**Issue text.** Two cases of the lock suite, the driver's report of a SIGTERM inside the grace and a lock whose pid
+was recycled, failed inside Codex's sandbox and passed outside it on the same tree, twice in a row. The logs show
+only the failed checks: "the driver had no child to signal", and a recycled pid that "still wedged the directory"
+with exit 10. Whether the cause is timing, a limit the sandbox puts on signals or process ids, or something else is
+not known, so a suite run from a Codex agent cannot yet tell these two failures from real ones. Find the cause,
+then either make the two cases pass there or have the suite say that they cannot run under that sandbox.
