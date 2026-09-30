@@ -11,6 +11,26 @@ forensics remain in the repository references and release notes.
   which the page links in a line naming the nine commands. Why: `evals/skills.test.mjs` counts 20,602 characters in
   what Claude Code re-attaches of the page after a compaction, past the 20,001 it keeps whole, so the page's last
   lines would have been cut; it now counts 17,930.
+- **`codex/SKILL.md` fits in what Claude Code re-attaches after a compaction**: `evals/skills.test.mjs` counts
+  19,867 characters against the 20,001 it keeps whole, where the page counted 28,393 and was cut at line 262 of 358
+  (E77, which stays open for `orchestrate`). What the coordinator does at every launch and completion stays on the
+  page; what it does on an event stands as one line at the event's place with its procedure behind a link: the
+  approval steps — the waiting result, the accept's heredoc, a blocked accept, what an accept runs as, the
+  `approvals=` count and exit 6 after a run — in the new `references/approvals.md`; stopping an agent and a
+  preserved worktree in the `environment-and-internals.md` sections that own the signal contract and the worktree
+  ledger, the latter now naming every case that preserves a tree, what a harvest leaves out (a file under an ignored
+  path, deleted with the tree) and the `worktreeRemoveCommand` a report written after the turn carries. The
+  launcher's `--help` now defines `EXIT=`, which only the page had. The Worktree lifecycle section is gone: its
+  launch-time facts are one paragraph under Rights, and the rest the driver's `--help` and the internals reference
+  already said. Traps dissolve into the sections they belong to or the references that already said them, the Header
+  fields rows stop restating the flags' `--help`, and the reference list drops five deep anchors the files' own
+  contents lists carry. Sections now follow launch order: rights and fields, the body, the call, the result. Why:
+  after the first compaction a long session had lost the prompt shape, what the user reads, the traps and the
+  reference list.
+- **The codex page's stop instruction names the pid on the driver's pid line, `entrust: pid=<n> …`**, where it
+  said "the first line of `<DIR>/err.txt`", which is that line and not a bare number: `kill -TERM $(head -1 …)`
+  failed on it (E105; the orchestrate page's three sentences stay open). The line is one record the launcher and
+  the cleanup script parse whole, so the page changes and the driver does not.
 
 ## 0.23.0 — 2026-09-30
 

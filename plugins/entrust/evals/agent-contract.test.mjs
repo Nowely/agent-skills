@@ -7,8 +7,9 @@
 // hands the wrapper the one command, which runs the driver through scripts/agent-run.mjs in one foreground
 // Bash call, so the ONE call
 // and the field table are both SKILL.md's and the agent file carries only the relay's standing rules. This suite compares
-// that page, the orchestrate page that re-cuts it, and references/environment-and-internals.md, which holds the
-// report's escalation fields the page links, with the driver they describe.
+// that page, the orchestrate page that re-cuts it, references/approvals.md, which holds the accept call and what
+// to read after a run with approvals, and references/environment-and-internals.md, which holds the report's
+// escalation fields the page links and the signal contract, with the driver they describe.
 
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -19,10 +20,13 @@ import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../plugin/skills/codex/scripts/
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "orchestrate", "SKILL.md");
 const ENV_MD = path.join(ROOT, "skills", "codex", "references", "environment-and-internals.md");
+const APPROVALS_MD = path.join(ROOT, "skills", "codex", "references", "approvals.md");
 
 const skill = fs.readFileSync(SKILL, "utf8");
 const orchestrate = fs.readFileSync(ORCHESTRATE, "utf8");
 const envFlat = fs.readFileSync(ENV_MD, "utf8").replace(/\s+/g, " ");
+const approvals = fs.readFileSync(APPROVALS_MD, "utf8");
+const approvalsFlat = approvals.replace(/\s+/g, " ");
 const driver = fs.readFileSync(DRIVER, "utf8");
 // What the driver ADVERTISES, for the cases that ask whether a flag the page hands over still exists: a
 // `case "--x":` in the source can outlive every route a caller has to it, and the help is the route.
@@ -166,7 +170,7 @@ test("every driver path and every state directory on both pages is the exact ${.
     const REL = "skills/codex/scripts/driver.mjs";
     if (path.relative(ROOT, DRIVER).split(path.sep).join("/") !== REL) return `the shipped layout moved: ${path.relative(ROOT, DRIVER)}`;
     const problems = [];
-    for (const [label, text] of [["SKILL.md", skill], ["orchestrate/SKILL.md", orchestrate]]) {
+    for (const [label, text] of [["SKILL.md", skill], ["orchestrate/SKILL.md", orchestrate], ["references/approvals.md", approvals]]) {
       for (const v of ["CLAUDE_SKILL_DIR", "CLAUDE_PLUGIN_DATA"])
         if (new RegExp(`${v}\\s*:-`).test(text))
           problems.push(`${label} writes \${${v}:-...}, which Claude Code does not substitute: the agent would run on the default, not on what the install resolved`);
@@ -238,7 +242,7 @@ test("the report file is what the coordinator reads, and a missing one is unknow
       "`<REPORT>` is the report, the same JSON the run also wrote to `<DIR>/out.json`",
       "it is written whole or not at all, and a missing one means unknown, never success",
       "with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed",
-      "To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or send `SIGTERM` to the pid on the first line of `<DIR>/err.txt`",
+      "To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or `kill -TERM` the pid on the driver's pid line in `<DIR>/err.txt`, `entrust: pid=<n> identity=… reportPath=…`",
     ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
     // Each of those is a promise the driver has to keep. The mode, the no-clobber rule, the pid line and
     // the signal handling are MEASURED elsewhere — cli.test.mjs's report-file flows and the lock suite's
@@ -371,21 +375,22 @@ test("the accept the page shows restates the command in a quoted heredoc on a de
   "a fixed delimiter lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell before the launcher compares anything (both verifications of 2026-09-28 made it happen), so the block the coordinator copies ends on a delimiter it made up and checked, never the relayed token",
   () => {
     const problems = [];
-    const at = skill.search(/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'$/m);
-    if (at < 0) return "the page shows no accept call ending in <<'<DELIMITER>'";
-    const block = skill.slice(at).split("\n").slice(0, 3);
+    const at = approvals.search(/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'$/m);
+    if (at < 0) return "approvals.md shows no accept call ending in <<'<DELIMITER>'";
+    const block = approvals.slice(at).split("\n").slice(0, 3);
     if (!/^ {4}<the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, exactly as printed>$/.test(block[1] ?? "") || block[2] !== "    <DELIMITER>")
       problems.push(`the accept block: ${JSON.stringify(block)}`);
-    for (const l of skill.split("\n").filter((x) => /--decide /.test(x) && !/--decide '(<ID>|ID)'/.test(x))) problems.push(`an unquoted ID: ${l.trim()}`);
-    if (/<<'?(COMMAND|EOF|CMD)'?\s*$/m.test(skill.split("\n").filter((l) => l.includes("--decide")).join("\n")))
-      problems.push("an accept on the page ends its heredoc on a fixed word");
+    for (const text of [skill, approvals])
+      for (const l of text.split("\n").filter((x) => /--decide /.test(x) && !/--decide '(<ID>|ID)'/.test(x))) problems.push(`an unquoted ID: ${l.trim()}`);
+    if (/<<'?(COMMAND|EOF|CMD)'?\s*$/m.test(approvals.split("\n").filter((l) => l.includes("--decide")).join("\n")))
+      problems.push("an accept in approvals.md ends its heredoc on a fixed word");
     for (const phrase of [
       "a quoted heredoc whose delimiter you build at that moment from `ACCEPT_`, the printed token and six hex characters of your own",
       "Never a fixed word and never the printed token alone",
       "The ID reached you the same way: quote it, and use it only in the shape the launcher prints",
       "one trailing newline tolerated, and publishes nothing on an empty stdin or any difference",
       "An accept the permission check or the classifier blocks publishes nothing either",
-    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    ]) if (!approvalsFlat.includes(phrase)) problems.push(`approvals.md no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -397,8 +402,8 @@ test("a SIGTERM to the wrapper's pid is narrowed to what was measured, not to \"
       "sweeps the codex app-server's own process group and publishes the report as",
       "A command the agent was running inside the sandbox ends with it (measured once, 2026-09-29)",
       "a command run after an approval, outside the sandbox, has not been measured, so before a second writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it — no driver code checks this for you.",
-    ]) if (!flat.includes(phrase.replace(/\s+/g, " "))) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
-    if (/nothing left running/.test(flat)) problems.push("the page still promises \"nothing left running\", which no measurement covers for an approved command");
+    ]) if (!envFlat.includes(phrase.replace(/\s+/g, " "))) problems.push(`environment-and-internals.md no longer says: ${JSON.stringify(phrase)}`);
+    if (/nothing left running/.test(flat + envFlat)) problems.push("a page still promises \"nothing left running\", which no measurement covers for an approved command");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -411,18 +416,23 @@ test("FILE=missing reads RECEIPT's approvals= count as a decision, not an execut
       "that count is a decision, not an execution outcome",
       "check the tree and whatever the command touched before any relaunch",
       "never relaunch a prompt that would ask for the same thing again",
-    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    ]) if (!approvalsFlat.includes(phrase)) problems.push(`approvals.md no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
 
 test("exit 6 is a request declined or expired unanswered, never one accepted, and the internals reference gives escalations its cause and unclipped detail",
-  "an auto-yes must never surface as a gate failure, and a coordinator reading `detail` clipped at 200 characters cannot judge the very command it is asked to approve; the page states the exit and links the fields, which live once, in environment-and-internals.md",
+  "an auto-yes must never surface as a gate failure, and a coordinator reading `detail` clipped at 200 characters cannot judge the very command it is asked to approve; the page states the exit where it lists the exits and links approvals.md, which states it whole and links the fields, which live once, in environment-and-internals.md",
   () => {
     const problems = [];
-    if (!flat.includes("`exitCode: 6` is a request declined or expired unanswered, never one accepted"))
-      problems.push("the page no longer says what exit 6 is");
-    if (!flat.includes("[Observability](references/environment-and-internals.md#observability)"))
-      problems.push("the page no longer links the escalations fields");
+    const exitSix = skill.split(/\n(?=- )/).find((b) => /exit 6 is/.test(b)) ?? "";
+    if (!/exit 6 is an approval declined or expired/.test(exitSix.replace(/\s+/g, " ")))
+      problems.push("the page no longer says what exit 6 is where it lists the exits");
+    if (!exitSix.includes("](references/approvals.md#after-the-run)"))
+      problems.push("the page's exit 6 no longer links approvals.md's After the run");
+    if (!approvalsFlat.includes("`exitCode: 6` is a request declined or expired unanswered, never one accepted"))
+      problems.push("approvals.md no longer says what exit 6 is");
+    if (!approvalsFlat.includes("[Observability](environment-and-internals.md#observability)"))
+      problems.push("approvals.md no longer links the escalations fields");
     for (const phrase of [
       "`detail` is the server's own wording whole",
       "never clipped",

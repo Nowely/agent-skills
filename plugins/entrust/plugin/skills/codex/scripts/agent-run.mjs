@@ -187,7 +187,9 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
   node agent-run.mjs --status --report-file REPORT [--dir DIR]
       Prints nine lines: ${STATUS_LINES.join(", ")}. PATH is own where the
       driver's pid line names REPORT, the whole path, taken where the driver refused a path already
-      there or could not publish, none otherwise or where the launch was refused. ANSWER is the whole
+      there or could not publish, none otherwise or where the launch was refused. EXIT is the exitCode
+      in the file at REPORT, whichever run wrote it (PATH says), where DRIVER_EXIT is this launch's
+      driver's own; unknown where no report parses there. ANSWER is the whole
       answer on one line when it is at most ${ANSWER_MAX} characters, else a pointer to the report; ERROR is the report's
       error, else its turnError, else the launcher's own refusal; RECEIPT is turnStatus, receiptOk and
       the model by its short name, then, read from DIR/approvals with or without a report,

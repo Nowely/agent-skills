@@ -73,7 +73,9 @@ Under an output schema, `schemaOverflow` is null unless the answer broke a size 
 length; `answerAttemptPaths` lists the file of the first answer a corrective turn for size replaced.
 `turnError` is the server's error for a turn that did not complete, its `codexErrorInfo` and `message`, or
 the driver's own `aborted` or `crashed` in that shape; the launcher's `ERROR=` line falls back to it when the
-report has no `error`.
+report has no `error`. With `turnStatus: null` no turn ran and the reason is in `error` and the driver's
+stderr, `DIR/err.txt` under `--run`; a `threadId` beside it means the thread had started and its rollout is the
+only record.
 
 An auto-yes carries `why: "rights cover it (checked as the answer was sent)"`: every component of the
 resolved path between the writable root and the file must be an existing plain directory, never a symlink,
@@ -244,6 +246,13 @@ line, because verification runs an unsandboxed `/bin/sh` with the coordinator's 
   handler entirely and leaves the keeper computing 128 plus the signal number for the marker (137 for
   `SIGKILL`), and a request still open at that moment is left `ORPHANED` in the mailbox, which `--pending`
   reports once the marker exists.
+- To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or `kill -TERM` the pid on the
+  driver's pid line in `DIR/err.txt`, `entrust: pid=<n> identity=… reportPath=…`; the driver then also sweeps
+  the codex app-server's own process group and publishes the report as the bullet above says. A command the
+  agent was running inside the sandbox ends with it (measured once, 2026-09-29); a command run after an
+  approval, outside the sandbox, has not been measured, so before a second writer enters a directory where a
+  command was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it — no driver code
+  checks this for you.
 
 ## Receipt validation and reporting
 
@@ -273,10 +282,28 @@ its HEAD get `refs/entrust/<name>`, and an entry that cannot be parsed is quaran
 `state: "preserved"` and is later handled on the same terms once its owner is gone. The destination
 guard prevents a `<repo>/.claude` symlink from escaping the repository's implied path.
 
+A completed turn's tree that holds changes or commits is harvested: the diff against its base, committed, staged
+and unstaged work alike, and an archive of the untracked files git does not ignore. A file the agent wrote under
+an ignored path is in neither and is deleted when the tree is removed; a harvest counts such files in
+`worktreeIgnoredDropped` (`count`, and a `sample` of up to ten names), and a tree with neither is removed with no
+harvest.
+
 Job records retain repository, base, diff, and untracked-archive paths so `--worktree --resume` can
 rebuild content; a harvest that takes nothing removes the diff and untracked archive an earlier turn of
 the same thread left under those names, and says so. Lock and ledger records also retain the app-server
 process group and are reclaimed only when both it and the driver are gone.
+
+A tree is preserved, and `worktreePreserved` says why, when the turn did not complete, when `git status` failed
+in it, when it holds changes and the harvest failed, when `git worktree remove` refused, or when the run was cut
+or refused before its turn with the tree already made, unless no codex had started in it and it was clean, which
+is removed; `worktreePath` is the path the run named, and `worktreePreserved` is `null` where it was removed. A `git worktree add` that failed over a destination already on
+disk names that destination, which is not a tree this run made; a `--resume` rebuild that could not finish tries
+to remove its half-restored tree and reports `null` where it did, or the refusal where git kept it. A preserved
+tree is not a harvest: `worktreeDiffPath`, `worktreeUntrackedPath` and `worktreeCommitsRef` can all be null, so
+the landing recipe has nothing to apply. The tree itself is the artifact, at `worktreePath`; read it, take what
+is worth keeping, then remove it with `git -C <repo> worktree remove --force <path>`, which the report written
+after the turn carries ready to run as `worktreeRemoveCommand` and a pre-turn refusal's report does not.
+Removing it discards whatever was never harvested.
 
 ## Lock design
 

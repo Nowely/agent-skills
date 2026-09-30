@@ -12,11 +12,13 @@ pinned to a commit is that commit's address, with today's beside it.
 
 - 2026-09-29, measured once: `/bin/zsh -c 'sleep 913 && echo done-913'` run inside the sandbox, in its own process
   group; `SIGTERM` to the driver's pid; neither the shell nor `sleep` alive 10 s later. `driver.mjs:2676-2681`
-  records it in the comment above `killGroupOf`/`killGroup`, and `plugins/entrust/plugin/skills/codex/SKILL.md:288`
-  says so: "A command the agent was running inside the sandbox ends with it (measured once, 2026-09-29)".
-- The same sentence continues, `:289`: "a command run after an approval, outside the sandbox, has not been
-  measured", and the page keeps the manual step for it: before a second writer enters a directory where a command
-  was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it (`codex/SKILL.md:289-291`);
+  records it in the comment above `killGroupOf`/`killGroup`, and
+  `plugins/entrust/plugin/skills/codex/references/environment-and-internals.md:251-252` says so: "A command the
+  agent was running inside the sandbox ends with it (measured once, 2026-09-29)".
+- The same sentence continues, `:252-253`: "a command run after an approval, outside the sandbox, has not been
+  measured", and the reference keeps the manual step for it: before a second writer enters a directory where a
+  command was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it
+  (`codex/references/environment-and-internals.md:253-254`);
   `orchestrate/SKILL.md:145` carries the same check in its Result table's `exitCode: 10` row.
 - An accepted command runs as the user, with no sandbox (the codex page's Rights section); whether the driver's
   `SIGTERM` to its own pid reaches a process running outside any sandbox that would otherwise bound it is what
@@ -58,39 +60,25 @@ and it counts a file's writers only from tool calls and `filesTouched`, so a wor
 command is invisible to the count. The gate should read the split file's own owner and interface list and compare
 each brief against it, and count a shell write that names the shared file among the writers.
 
-## E77. After a compaction, Claude Code keeps only the first 5,000 tokens of `codex` and `orchestrate`, and their last sections are lost for the rest of the session
+## E77. After a compaction, Claude Code keeps only the first 5,000 tokens of `orchestrate`, and its last sections are lost for the rest of the session
 
-**Evidence, level 3 for the mechanism, level 2 for HEAD's word counts.** Claude Code's skills page: after
-auto-compaction it "re-attaches the most recent invocation of each skill after the summary, keeping the first 5,000
-tokens of each". At HEAD, `codex/SKILL.md` is 4,461 words (4,242 after this branch's own trims, `22777dc` and
-`b1056f9`, from 5,602, itself up from the 5,510 first measured after the E51, E57, E65, E67, E80 and E92 fixes added
-material; main's Codex status lines and sixth composition rule, merged after, added 208): the 3,400th word falls in
-"Reading the result" (`codex/SKILL.md:273`), so "Prompt shape" (`:296`), "What the user reads" (`:324`), "Traps"
-(`:334`) and "References" (`:342`), about 750 words, lie past it. `orchestrate/SKILL.md` is 5,977 words (5,668 after
-this branch's `887759a`, from 6,001, up from the 5,516 first measured after the E53, E65, E89, E90 fixes and the
-Verification analysis bullet; main's swarm route, stand-in rule and critic read count, merged after, added 270 to
-5,938; the retro's analysis clause and a four-word fix added 39 more): the 3,400th word falls in "Mechanism"
-(`:104`); "Approvals" starts at word 3,881 (`:114`), "Verification" at 4,318 (`:124`) and "The agent's return" at
-5,721 (`:151`).
+**Evidence, level 3 for the mechanism, level 1 for the count.** Claude Code's skills page: after auto-compaction it
+"re-attaches the most recent invocation of each skill after the summary, keeping the first 5,000 tokens of each".
+`node evals/skills.test.mjs` rule 4 counts what is re-attached, each substituted path as 120 characters:
+`orchestrate/SKILL.md` is 36,075 characters, past the 20,001 kept whole; the cut falls at line 106 of 166, in
+"Mechanism", so "Approvals" (`:114`), "Verification" (`:124`), the Result table (`:140-149`) and "The agent's
+return" (`:151`) are lost. `codex/SKILL.md` closed under this entry (the CHANGELOG gives its count); the method is
+its: what the coordinator does at every launch and completion stays on the page, what it does on an event goes
+behind a link at the event's line, and restatements of a `--help` or a reference go to their owner.
 
-Before the skill-page test counted characters, the check was a word count, which the test's character rule
-supersedes: `wc -w plugins/entrust/plugin/skills/{codex,orchestrate}/SKILL.md` prints 4461 and 5977; a page past
-about 3,400 words loses its tail after a compaction.
+**Check.** `node evals/skills.test.mjs` fails rule 4 on `orchestrate/SKILL.md` alone and prints its re-attached
+length and the line of the cut. It exits non-zero until this entry closes.
 
-**Check.** Run `node evals/skills.test.mjs`: it fails rule 4 on each page past the limit and gives the page's
-re-attached length, with each substituted path counted as 120 characters (the test's bound, not the machine's
-paths), and the line where the cut falls. It exits non-zero until this entry closes.
-
-**Issue text.** The two skills a coordinator relies on for the whole of a long session are still longer than what
-Claude Code keeps of a skill after compaction, though each fix round has cut into both: `codex` from 5,602 to
-4,242 words and `orchestrate` from 6,001 to 5,668, before later additions brought them to 4,461 and 5,977. Past the
-first compaction, `codex` loses the prompt shape, what the user reads, the traps and the reference list;
-`orchestrate` loses verification, the Result table included, and the agent's return. Candidates the page writers
-named for the next cut: `codex`'s "Worktree lifecycle" section (`:224-247`, 286 words, repeats the driver's help and
-the internals reference's worktree section) and the Rights paragraphs after the generated block (`:177-198`, about
-250 words), and moving "Prompt shape" and "What the user reads" up; `orchestrate`'s `--pending` markers paragraph (`:120`, about 75 words) and the Result table
-(`:140-149`). Each page should keep its standing rules within the first 5,000 tokens and move the rest into the
-files it links.
+**Issue text.** The orchestrate page is 36,075 characters where Claude Code keeps 20,001 after a compaction, so
+past the first compaction a long session loses verification, the Result table and the agent's return. Candidates
+the page writers named: the `--pending` markers paragraph (`:120`) and the Result table (`:140-149`), which restate
+the codex skill's pages and the launcher's `--help`. The page should keep its standing rules within the first
+5,000 tokens and move the rest into the files it links.
 
 ## E90. The swarm, the bulk row's batch route, is called an experiment, holds fifty units at most, and reports no tokens
 
@@ -166,8 +154,9 @@ come from the subagent's transcript, as `prepare-feedback.mjs process` sums it.
 
 **Evidence, level 3 for plan rows, level 2 for prompts.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:37` has the
 coordinator register the plan with the launcher's `--plan --run-dir <run>`, which reads its rows on stdin, and a write
-agent's row names its absolute directory (`write <absolute dir>`). `plugins/entrust/plugin/skills/codex/SKILL.md:104-106`
-writes every Codex agent's prompt with `--new` from a quoted heredoc, and `:129` does the same for `--decide --accept`.
+agent's row names its absolute directory (`write <absolute dir>`). `plugins/entrust/plugin/skills/codex/SKILL.md:155-160`
+writes every Codex agent's prompt with `--new` from a quoted heredoc, and `codex/references/approvals.md:27-29` does the
+same for `--decide --accept`.
 On 2026-09-29 a coordinator session entered its worktree with EnterWorktree, in a repository whose path contains a
 directory named `Git`, and ran `--plan --amend` with the row `W2 | opus | implementer | write <worktree path> | unknown`
 in a quoted heredoc. Claude Code refused it before it ran: "This session is isolated in the worktree <path>, but this
@@ -204,12 +193,14 @@ cases could run through it instead of through a reading of a real invocation's t
 
 ## E102. A Codex agent can run as one background Bash task, as the swarm runs fifty, but the codex page offers only the Haiku wrapper, for a reason the swarm page contradicts
 
-**Evidence, level 1 for the pages and scripts, level 3 for the task list.** `plugins/entrust/plugin/skills/codex/SKILL.md:54-57`
-makes the wrapper the one route: "One Agent call per agent … a Bash task, whatever its description says, is not on the
-agent map, is not stopped from it and is not continued by a message (measured 2026-09-12 against the VS Code extension
-2.1.269 …)". `plugins/entrust/plugin/skills/swarm/SKILL.md:25` says the opposite of the same kind of task: "the swarm's
-agents are not on the agent map, the task is, and Stop on it … reaches every running agent". The swarm already runs
-Codex agents with no wrapper: `swarm.mjs:135-140` calls the launcher's `--new`, its plain mode, which waits for the run
+**Evidence, level 1 for the pages and scripts, level 3 for the task list.** `plugins/entrust/plugin/skills/codex/SKILL.md:148-151`
+makes the wrapper the one route: "One Agent call per agent … It gives a Codex agent what a Claude agent has — a card,
+Stop on it, one completion notification, a message to continue it — where a Bash task has none", linking
+`codex/references/incidents.md:273-276`: "Measured 2026-09-12 against the VS Code extension 2.1.269 … a Bash task,
+whatever its description says, is not on it, is not stopped from it and is not continued by a message".
+`plugins/entrust/plugin/skills/swarm/SKILL.md:25` says the opposite of the same kind of task: "the swarm's agents are
+not on the agent map, the task is, and Stop on it … reaches every running agent". The swarm already runs Codex agents
+with no wrapper: `swarm.mjs:135-140` calls the launcher's `--new`, its plain mode, which waits for the run
 with no early return, and `--status`; the launcher passes SIGTERM, SIGINT and SIGHUP to the driver (`agent-run.mjs:395`, and
 `:720` until its early return). The ten-minute ceiling and the `RUNNING=` rerun come from the wrapper's own foreground Bash call
 (`agent-run.mjs:18-31`); a background task has no ceiling, and on 2026-09-29 one ran for 105 minutes. The wrapper
@@ -227,7 +218,7 @@ task list and its Stop on such a task.
 
 ## E103. In `dontAsk` mode the codex page, and the advisor page that loads it first, do not load, because the Codex status line it runs needs an allow rule the page cannot give
 
-**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:29` runs `scripts/status.mjs` through Claude Code's
+**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:26` runs `scripts/status.mjs` through Claude Code's
 `` !`…` `` substitution as the page loads, and its frontmatter (`:16`) pre-approves it with
 `allowed-tools: Bash(node *codex/scripts/status.mjs*)`; `plugins/entrust/plugin/skills/advisor/SKILL.md:13` loads the codex
 page first, and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:36` loads it once a plan has a Codex agent. On 2026-09-29,
@@ -270,20 +261,22 @@ restate it, or the table should move to a file both pages point at.
 
 ## E105. "On the first line of `<DIR>/err.txt`" names a line `kill` cannot take a pid from
 
-**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:268` and
-`plugins/entrust/plugin/skills/orchestrate/SKILL.md:106,116,142` tell the reader to signal or check an agent by the
-pid "on the first line of" `<DIR>/err.txt`. `driver.mjs:4723-4724` writes that line as
+**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:106,116,142` tell the reader to signal or
+check an agent by the pid "on the first line of" `<DIR>/err.txt`. `driver.mjs:4745` writes that line as
 `entrust: pid=<n> identity=lstart:<…> reportPath=<…>`, not the bare number. Measured 2026-09-29 by the coordinator
 during the E67 probe: `kill -TERM $(head -1 err.txt)` failed with "kill: entrust: … arguments must be process or
-job IDs".
+job IDs". The codex page (`codex/SKILL.md:235-236`) and its internals reference
+(`codex/references/environment-and-internals.md:249-250`) say "the pid on the driver's pid line in `<DIR>/err.txt`,
+`entrust: pid=<n> identity=… reportPath=…`", as the launcher's `--help` does. The line is one record that
+`agent-run.mjs:279` and `cleanup.mjs:373` parse whole, so the pages change and the driver does not.
 
-**Check.** `head -1 <any agent's err.txt>` prints the `entrust: pid=… identity=…` line, not a bare number;
-`kill -TERM $(head -1 <that file>)` reports the error above.
+**Check.** `grep -n 'first line of' plugins/entrust/plugin/skills/orchestrate/SKILL.md` prints the three lines;
+`head -1 <any agent's err.txt>` prints the `entrust: pid=…` line, not a bare number.
 
-**Issue text.** Both pages tell the reader to take the pid from the first line of `err.txt`, and the first line is
-not the pid alone: a reader who follows the instruction literally, with `$(head -1 …)`, hands `kill` a string it
-refuses. The pages should say to read the number after `pid=` on that line, or the driver should put the bare pid
-on a line of its own.
+**Issue text.** The orchestrate page tells the reader to take the pid from the first line of `err.txt`, and the
+first line is not the pid alone: a reader who follows it literally, with `$(head -1 …)`, hands `kill` a string it
+refuses. The three sentences should say what the codex page and the launcher's `--help` say: the pid on the
+driver's pid line, `entrust: pid=<n> …`.
 
 ## E108. A Claude agent's overflow file goes under the coordinator's own `$TMPDIR`, the collision E92 fixed for Codex agents
 
@@ -426,3 +419,29 @@ only the failed checks: "the driver had no child to signal", and a recycled pid 
 with exit 10. Whether the cause is timing, a limit the sandbox puts on signals or process ids, or something else is
 not known, so a suite run from a Codex agent cannot yet tell these two failures from real ones. Find the cause,
 then either make the two cases pass there or have the suite say that they cannot run under that sandbox.
+
+## E115. The codex page and the launcher's `--help` say a decline stops a run, and the driver only answers the request
+
+**Evidence, level 2 (code reading; no live decline was run to see whether the turn ends).**
+`plugins/entrust/plugin/skills/codex/SKILL.md:236-238`, in the stop bullet: "that pid is what reaches it, or, after a
+waiting result, `--decide '<ID>' --decline` and the same `--run`"; `agent-run.mjs:169-170` (`--help`, under `--run`): "After a waiting result no call holds the driver, so stop it
+with --decide --decline and the same --run, or kill -TERM the pid on its pid line in DIR/err.txt". A coordinator's
+decision reaches the server through `closeApproval` (`driver.mjs:3181-3200`), which settles the entry, records it in
+the mailbox and sends the server `{ decision: "decline" }` for that one request (`:3197`); nothing there cuts the
+turn. The driver cuts a turn only through `cutTurn`, called at `:3008` (idle silence, which does not fire while a
+request is open), `:3490` (the command budget), `:4633` (the wall clock) and `:4935` (a signal). Exit 6 is decided
+after the turn ends (`driver.mjs --help`, "Decided after the turn"), so the declined command does not run and the
+turn goes on for as long as the model continues it. `codex/references/approvals.md:33-35` already describes a decline
+that way: decline, then send the same message again, and "`--run` picks the run back up".
+
+**Check.** Launch an agent whose task needs one command outside its sandbox and more work after it, decline the
+request with `--decide '<ID>' --decline`, run the same `--run` again, and read the report: `turnStatus: completed`
+with exit 6 and commands after the declined one show the decline did not stop the turn; `driver.mjs:3181-3200` and
+the four `cutTurn` calls show why.
+
+**Issue text.** The codex page's stop instruction and the launcher's `--help` both offer "decline the waiting request
+and run `--run` again" as a way to stop an agent. In the driver a decline answers that one request and nothing more:
+the command is not run, and the turn goes on until the model ends it or a bound cuts it, with exit 6 decided at the
+end. A coordinator who follows the instruction
+to stop a runaway agent keeps it running. Stopping should be named as what the driver does stop on, its pid with
+`kill -TERM` or Stop on the wrapper, and a decline described as an answer to one request.
