@@ -30,15 +30,16 @@ export const FRAGMENTS = [
       { file: "skills/codex/SKILL.md", heading: "## Composition", extent: "section" },
       { file: "skills/codex/SKILL.md", heading: "## Rights", extent: "through the paragraph after its table" },
     ],
-    // The page that plans from the copy must link it, and the row it says it replaces must be in the source.
+    // The page that plans from the copy must link it, and the row its plan reference says it replaces must be in
+    // the source.
     linkedFrom: "skills/orchestrate/SKILL.md",
-    rows: [{ page: "skills/orchestrate/SKILL.md", says: 'the "nothing" row', row: /^\| nothing \|/m }],
+    rows: [{ page: "skills/orchestrate/references/plan.md", says: 'the "nothing" row', row: /^\| nothing \|/m }],
   },
   {
     id: "five-field-schema",
     kind: "inline-json",
     source: "skills/codex/schemas/five-fields.schema.json",
-    copies: ["skills/orchestrate/SKILL.md", "skills/swarm/SKILL.md"],
+    copies: ["skills/swarm/SKILL.md"],
     locate: /^ {4}(\{"type":"object".*)$/m,
   },
   {

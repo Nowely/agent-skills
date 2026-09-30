@@ -13,7 +13,7 @@ forensics remain in the repository references and release notes.
   lines would have been cut; it now counts 17,930.
 - **`codex/SKILL.md` fits in what Claude Code re-attaches after a compaction**: `evals/skills.test.mjs` counts
   19,867 characters against the 20,001 it keeps whole, where the page counted 28,393 and was cut at line 262 of 358
-  (E77, which stays open for `orchestrate`). What the coordinator does at every launch and completion stays on the
+  (E77, now fixed on both pages). What the coordinator does at every launch and completion stays on the
   page; what it does on an event stands as one line at the event's place with its procedure behind a link: the
   approval steps — the waiting result, the accept's heredoc, a blocked accept, what an accept runs as, the
   `approvals=` count and exit 6 after a run — in the new `references/approvals.md`; stopping an agent and a
@@ -29,8 +29,26 @@ forensics remain in the repository references and release notes.
   reference list.
 - **The codex page's stop instruction names the pid on the driver's pid line, `entrust: pid=<n> …`**, where it
   said "the first line of `<DIR>/err.txt`", which is that line and not a bare number: `kill -TERM $(head -1 …)`
-  failed on it (E105; the orchestrate page's three sentences stay open). The line is one record the launcher and
+  failed on it (E105, now fixed on both pages). The line is one record the launcher and
   the cleanup script parse whole, so the page changes and the driver does not.
+- **The orchestrate page keeps its standing rules and its five steps, and what a coordinator does at one moment of a
+  run moves into four references named by that moment**: `references/plan.md`, read at step 1 beside the composition
+  page, holds the composition, the card, the estimates and the stop line, the environment check, a worktree agent's
+  fitness, the bulk row's unit, count and pilot, the effort rows and a Workflow's facts; `results.md` holds `DONE=`,
+  the next report path, the Result table, the harvest and the repair of colliding writers; `approvals.md` the waiting
+  request, the approval rule and its synthesis; `answer.md` the checks before the answer goes out, the options analysis and the completeness
+  critic. The sentence on the page where each moment comes links its file. What another file already said leaves the
+  page for that file: the brief and return of the split critic, the refuter, the cross-reviewer and the judge for
+  `roles.md`, whose rows gain the three clauses they lacked; the Result table's restatements of the codex page's
+  "Reading the result", which the table now links and adds to; the `--pending` markers for the launcher's `--help`;
+  the Workflow signatures for the `workflow-authoring` skill; and the inline five-field schema for the shipped file,
+  which the page names by path. The maintainer's clause on where driver changes are logged goes. Why:
+  `evals/skills.test.mjs` counted 36,075 characters in what Claude Code re-attaches of the page after a compaction,
+  past the 20,001 it keeps whole, so a long session lost the approvals, verification, the Result table and the
+  agent's return at its first compaction; it now counts 19,556 (E77, now fixed on both pages).
+- **Orchestrate's stop, liveness and process-parent instructions name the pid on the driver's pid line, `entrust:
+  pid=<n> identity=… reportPath=…`**, where they said "the first line of `<DIR>/err.txt`", which is that whole line and
+  not a bare number, so `kill -TERM $(head -1 …)` failed on it (E105, now fixed on both pages).
 
 ## 0.23.0 — 2026-09-30
 
