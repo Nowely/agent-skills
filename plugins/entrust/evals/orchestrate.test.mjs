@@ -117,15 +117,30 @@ test("the tier table pairs all eight model names, one tier per row",
 
 // ------------------------------------------------------------------ A: what the mode is
 
-test("A1 the mode adds no header field or flag, what it asks of the driver and the launcher is the sibling's, its own scripts write only under $TMPDIR, and every agent has a mailbox",
-  "the owner, 2026-09-27: the \"prompt only\" sentence goes, because the fixes for #15 and #16 change the driver and the launcher and add the runner and the linter; a header field of the mode's own would still change its scope, and a script of its own that wrote beside the repository would be a second state directory. The mode names no flag for approvals either: every agent already has a mailbox",
+test("A1 the mode adds no header field or flag, its own scripts write only under $TMPDIR, and every agent has a mailbox",
+  "the owner, 2026-09-27: the \"prompt only\" sentence goes, because the fixes for #15 and #16 change the driver and the launcher and add the runner and the linter; a header field of the mode's own would still change its scope, and a script of its own that wrote beside the repository would be a second state directory. The mode names no flag for approvals either: every agent already has a mailbox. The owner, 2026-09-30: the clause saying that what the mode asks of the driver and the launcher is changed in the sibling under its own changelog line went, unclear to a coordinator and a maintainer's rule the repository's CLAUDE.md already states",
   () => {
     const said = says(
-      "The mode adds no header field or flag and leaves the agent's own prompt file where the sibling puts it; what it asks of the driver and the launcher is the sibling's and is changed there under its own changelog line, and its own scripts, the runner and the linter, run a command or read a draft and write only under `$TMPDIR`.",
+      "The mode adds no header field or flag and leaves the agent's own prompt file where the sibling puts it, and its own scripts, the runner and the linter, run a command or read a draft and write only under `$TMPDIR`.",
       "Every agent has a mailbox, so it can ask instead of being declined at once.",
     );
     if (said !== true) return said;
     return !/The mode is prompt only/.test(flat) || "the page still says the mode is prompt only";
+  });
+
+test("A4 the page sends the coordinator to each moment reference from the step or sentence where that moment comes, and step 1 reads plan.md by its substituted path",
+  "the four references hold what the page moved out of the block Claude Code re-attaches after a compaction; a reference no page sentence links is one a coordinator never opens, and its pins below would stay green over a procedure nobody follows. plan.md is read at step 1 like the composition page, because the plan is made before any event could send the coordinator there (2026-09-30)",
+  () => {
+    const step = (n) => lines.find((l) => l.startsWith(`${n}. `)) ?? "";
+    const problems = [];
+    if (!step(1).includes("Read [plan.md](references/plan.md) the same way, `${CLAUDE_SKILL_DIR}/references/plan.md`")) problems.push("step 1 does not read plan.md");
+    if (!/\]\(references\/plan\.md#the-card\)/.test(step(2))) problems.push("step 2 does not send the card to plan.md");
+    if (!/\]\(references\/results\.md#a-worktree-agents-harvest\)/.test(step(4))) problems.push("step 4 does not send the harvest to results.md");
+    if (!/\]\(references\/answer\.md\)/.test(step(5)) || !/\]\(references\/approvals\.md#the-synthesis\)/.test(step(5))) problems.push("step 5 does not send the answer's checks to answer.md and the approvals synthesis to approvals.md");
+    const mechanism = text.split("## Mechanism")[1]?.split("\n## ")[0] ?? "";
+    if (!/`DONE=<id>`[^\n]*\]\(references\/results\.md\)/.test(mechanism)) problems.push("the DONE= sentence does not send the report to results.md");
+    if (!/`ASK=<id>`[^\n]*\]\(references\/approvals\.md\)/.test(mechanism)) problems.push("the ASK= sentence does not send the request to approvals.md");
+    return problems.length === 0 || problems.join("; ");
   });
 
 test("A3 step 1 reads the generated composition page first, the sibling is loaded once the plan has a Codex agent, and this page re-cuts only what the mode changes",
@@ -310,7 +325,7 @@ test("C13 the plan is a card of five rows over agents the launcher registered, a
       says(
         "With a Codex agent in the plan, register every agent, Claude or Codex, through the sibling's launcher, `--plan --run-dir <run>` (its `--help` gives the rows), and build the card from the rows it prints. An all-Claude plan skips the registration.",
         "The launcher refuses a Codex agent the registered plan does not list, and a Claude agent the card does not list is one you do not launch: amend the plan (`--plan --amend` when it was registered), show the amendment and wait for a word, as for the plan.",
-        "Give it a description of the form \"<Model> <id>: <task in a few words>\", the id the card gave it, as a Codex agent's card carries \"Codex <short name> <id>\".",
+        "Give it a description of the form \"<Model> <id>: <task in a few words>\", the id the card gave it, as a Codex agent's card carries \"Codex <short name> <id>: <task in a few words>\".",
       ),
       saysIn(plan,
         "— work: what will be done; who: each agent by model name and role; writes: what each may write",
@@ -398,9 +413,9 @@ test("D3 every Claude Agent call is tagged, fable only for Fable agents within t
     "is spent on the wrapper alone and never reaches Codex",
   ));
 
-test("D4 one Fable agent and one Astra agent alive at a time",
-  "the top tier is the expensive one and it is the one a fan-out multiplies fastest; the cap is the only thing between a five-agent batch and five top-tier agents",
-  () => saysIn(plan, "at most one Fable agent and one Astra agent alive at a time"));
+// D4, "at most one Fable agent and one Astra agent alive at a time", left with the numbers of plan.md's pool
+// sentence (the owner, 2026-09-30, option h): the caps are the Bounds table's row, pinned by E4, and the card
+// states them in the words C6 pins.
 
 test("D5 the pool does not depend on the orchestrator's model, and the top pair takes its roles in turn",
   "the pool is the user's, not the session's: an Opus orchestrator that designed for itself and reviewed with a fresh Opus spent the strong tier on the top tier's work while a Fable agent sat unused; one Fable agent, one role at a time, is available to every orchestrator",
@@ -419,13 +434,13 @@ test("D7 a Fable agent never spawns Fable, and only the orchestrator or a forema
 test("D8 effort is chosen per agent below the top row, and low effort only for mechanical Sonnet stages in a Workflow",
   "measured 2026-09-17: two Luna read agents at an inherited xhigh took 480 and 557 s and 1.2M and 2.3M tokens for a ledger and a grep task. The earlier rule inherited the user's effort everywhere because, measured on codex-cli 0.153.4, no effort level bought the evidence guarantee an exception once claimed; this rule claims cost, not evidence. The bulk row left `low` after issue #22's pilot (11 false positives in 22 at low, 1 in 13 at medium, tokens within 5 %); `high` over `medium` is the owner's choice from the writing replication's pilot",
   () => {
-    const prose = saysIn(plan,
+    const prose = all(says("Every Codex agent carries an `EFFORT:` line chosen for its work"), saysIn(plan,
       "Every Codex agent carries an `EFFORT:` line chosen for its work",
       "`high` for the bulk row's extraction, classification and verification",
       "`low` for mechanical work only",
       "only Astra in the top row goes without one and inherits the configured effort, and a model standing in for Astra carries `EFFORT: xhigh`",
       "In a Workflow, `effort: 'low'` is for mechanical Claude Sonnet stages only.",
-    );
+    ));
     // The negative half: the old rule, which a later edit could restore beside the new sentences.
     if (/Send no `EFFORT:` line/.test(text + plan.text)) return "the page or plan.md tells the orchestrator to send no EFFORT line again";
     return prose;
@@ -500,21 +515,22 @@ test("F1 a Codex agent is one Agent call of the shipped codex-agent type, and a 
     return prose;
   });
 
-test("F2 the seven verification bullets, one line each",
-  "the list is read while composing a fan-out, so each bullet has to be one glance; a bullet that grew into a paragraph is a bullet that stops being read, and a bullet added or dropped changes the count the fan-out is checked against (measured 2026-09-17: five sentences, three of them bullets here, were deleted from the page in memory and 45 registered cases stayed green). The judge bullet went to its owners, the judge row of roles.md (E9, E10) and the sibling's `EXPECT:` row; the critic's procedure and the options analysis went to answer.md (F2b), read when the draft is linted; the split critic's and the refuter's brief content went to their rows of roles.md (E10) (2026-09-30)",
+test("F2 the eight verification bullets, one line each",
+  "the list is read while composing a fan-out, so each bullet has to be one glance; a bullet that grew into a paragraph is a bullet that stops being read, and a bullet added or dropped changes the count the fan-out is checked against (measured 2026-09-17: five sentences, three of them bullets here, were deleted from the page in memory and 45 registered cases stayed green). The judge bullet went to its owners, the judge row of roles.md (E9, E10) and the sibling's `EXPECT:` row; the critic's procedure and the options analysis went to answer.md (F2b), read when the draft is linted; the split critic's and the refuter's brief content went to their rows of roles.md (E10), which the bullets name (2026-09-30)",
   () => {
     const section = text.split("## Verification")[1]?.split("\n## ")[0] ?? "";
     const bullets = section.split("\n").filter((l) => l.startsWith("- "));
-    if (bullets.length !== 7) return `the Verification list has ${bullets.length} bullets, not seven`;
+    if (bullets.length !== 8) return `the Verification list has ${bullets.length} bullets, not eight`;
     // The owner, 2026-09-27 (option B): "could not check" is not "false", so the old default must not return.
     if (/defaults to `refuted`|`refuted` when (it is )?uncertain/.test(section)) return "a refuter defaults to refuted when uncertain again";
     return shows(
       /^- Scout inline first: the work-list is yours, before any fan-out\.$/m,
-      /^- Critique the split before the fan-out: a top-row agent reads the decomposition, not the subject; twenty agents on a bad split agree and are all wrong \(\[measured [\d-]+\]\(references\/incidents\.md#the-split-critique\)\)\. It returns the corrected split as a file\. No worker brief exists before that file: each is written from it and names its path, and before a worker launches you check the files and interfaces its brief touches against the file's owners\.$/m,
+      /^- Critique the split before the fan-out: a top-row agent reads the decomposition, not the subject; twenty agents on a bad split agree and are all wrong \(\[measured [\d-]+\]\(references\/incidents\.md#the-split-critique\)\)\. It returns the corrected split as a file, the split critic row of \[roles\.md\]\(references\/roles\.md\)\. No worker brief exists before that file: each is written from it and names its path, and before a worker launches you check the files and interfaces its brief touches against the file's owners\.$/m,
       /^- (Open|Read) one assembled brief whole before (the|any) fan-out; check its input paths in the agent's planned tree, its output paths against the agent's writable roots, its item count and each quoted claim against its source\.$/m,
-      /^- Adversarial verify: a refuter returns `refuted` when its check ran and contradicted the claim and `unknown` when its decisive check could not run, never `refuted` for want of evidence\.$/m,
+      /^- Adversarial verify: a refuter returns `refuted` when its check ran and contradicted the claim and `unknown` when its decisive check could not run, never `refuted` for want of evidence; its brief is the refuter row of \[roles\.md\]\(references\/roles\.md\)\.$/m,
       /^- Perspective-diverse verify: vary the angle across verifiers instead of N identical refuters\.$/m,
       /^- Read a unanimous fan-out as evidence about the prompt first: open one return whole before you trust the tally \(\[measured [\d-]+\]\(references\/incidents\.md#nineteen-of-twenty-on-one-broken-path\)\)\.$/m,
+      /^- Recommend only what an analysis stands behind: for each item the user must decide, the options analysis \[answer\.md\]\(references\/answer\.md#a-recommendation\) describes; an item with no such analysis goes to the user as a question with the options known so far, never as a recommendation\.$/m,
       /^- No silent caps: name every agent, check or item you dropped\.$/m,
     );
   });
@@ -523,7 +539,7 @@ test("F2b answer.md carries the options analysis behind a recommendation and the
   "both are read at the moment the answer is drafted, and each is a procedure the coordinator follows step by step: the analysis's criteria and who relies on what (the owner, 2026-09-29: 9 of 16 shallow recommendations lost to the analysis), and the critic's frozen draft, digest, cited hunks and read count (#15 F4, P8b; measured 2026-09-29: the fourth and fifth reads of a report found nothing new). A paragraph that lost a clause is a step the coordinator skips",
   () => showsIn(answer,
     /^Recommend only what an analysis stands behind\. For each item the user must decide: the problem, what it costs the user, two or more options with closing it among them, each judged by minimalism \(removing beats adding\), no crutches \(the cause is fixed where it arises, never compensated downstream\) and clean architecture \(each fact has one owner and is defined in one place, a page says what the code does\); an outside critic on each recommendation, and a top-row judge where the two disagree\. Each option names what it removes or moves and who relies on it: users, coordinators, tools, tests, leftover state; what stays and how a user finds it is made to happen or `unknown`\. An item with no such analysis goes to the user as a question with the options known so far, never as a recommendation\.$/m,
-    /^Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. What it reads is the linted draft, frozen with a manifest beside it: `shasum -a 256` over the draft, every artifact it cites, the run's ledger and the runner's log behind each number it states\. The critic returns the manifest's sha256 as the first line of its `evidence`\. Before the answer goes out, compute the manifest's sha256 again and compare it with the critic's, and run `shasum -a 256 -c` on the manifest: a different digest or a failed check voids the verdict, and the critic reads again\. Freeze the first draft after the last owner decision and the last return, so the first read covers the whole answer\. For each gap the critic writes the fix into a copy of the draft under its temporary directory and returns the copy's path and one diff hunk per gap, each citing the line of a return or artifact it rests on and changing nothing outside the gap\. Take the copy whole, or without the hunks you object to, and send each objection with its source into the critic's next read; the citations stay in its return, never in the draft, and you never restate a fix in your own words\. A later read covers the changed lines, the lines that state the same facts, and the rest for anything they contradict\. Count the reads of one answer or publication across its drafts, voided ones included: after the third, or after two that repeat the same gap, take the critic's copy, name its remaining gaps as open in the answer, or in a publication's own open items, lint it and send it without another read \(measured [\d-]+: of a report's five reads, the fourth and fifth found nothing new in its subject\); the fix rounds below, with their two-round limit, escalation and stall, are not these reads\. A `not done` verdict means you fix the answer or name the gap in it, or in a publication's own open items\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
+    /^Completeness critic at the end: one fresh strong-row reader (chosen|selected) by the agreed composition and named in the plan, given the user's request, the final answer and its evidence once, before the answer goes out, never per return; it returns done, partial or not done with what is missing, unverified or unread, and the answer carries its verdict\. What it reads is the linted draft, frozen with a manifest beside it: `shasum -a 256` over the draft, every artifact it cites, the run's ledger and the runner's log behind each number it states\. The critic returns the manifest's sha256 as the first line of its `evidence`\. Before the answer goes out, compute the manifest's sha256 again and compare it with the critic's, and run `shasum -a 256 -c` on the manifest: a different digest or a failed check voids the verdict, and the critic reads again\. Freeze the first draft after the last owner decision and the last return, so the first read covers the whole answer\. For each gap the critic writes the fix into a copy of the draft under its temporary directory and returns the copy's path and one diff hunk per gap, each citing the line of a return or artifact it rests on and changing nothing outside the gap\. Take the copy whole, or without the hunks you object to, and send each objection with its source into the critic's next read; the citations stay in its return, never in the draft, and you never restate a fix in your own words\. A later read covers the changed lines, the lines that state the same facts, and the rest for anything they contradict\. Count the reads of one answer or publication across its drafts, voided ones included: after the third, or after two that repeat the same gap, take the critic's copy, name its remaining gaps as open in the answer, or in a publication's own open items, lint it and send it without another read \(measured [\d-]+: of a report's five reads, the fourth and fifth found nothing new in its subject\); the page's fix rounds under Verification, with their two-round limit, escalation and stall, are not these reads\. A `not done` verdict means you fix the answer or name the gap in it, or in a publication's own open items\. A publication \(a README, a changelog, a synthesis\) is read the same way before it goes out\.$/m,
   ));
 
 test("F3 two rounds of fix and cross-review, then escalate",
@@ -543,9 +559,9 @@ test("F4 every row of the Result table: what this mode adds to the sibling's rea
     /^\| a Claude agent that returns `blocked` \| do not retry, report it \|$/m,
   ));
 
-test("F5 the wrapper's description names the agent by its model",
-  "a Codex agent surfaces as the wrapper's card, so without a description the user reads a generic agent where a Claude agent shows its task; the two sides stop looking like one run, which is the whole point of naming it there, and the model is the name a person can use, where the word this page calls it by is one they cannot",
-  () => says("The Agent call carries a `description` of the form \"Codex <short name> <id>: <task in a few words>\", so the card the user sees names the agent, its vendor and its task, not the command line."));
+// F5, the Mechanism sentence on the wrapper's description, left with the sentence (2026-09-30): the sibling's
+// One call states it whole, and the template "Codex <short name> <id>: <task in a few words>" stays in the tag
+// bullet, where C13 pins it and agent-contract.test.mjs pins it on both pages as a pair.
 
 test("F6 the one agent you wait for is a foreground call, background agents are waited for by their notifications and never blocked on, one poll over every alive Codex agent's exit and approvals/pending markers says DONE= or ASK= and is launched again after, and a headless turn never ends with an agent alive",
   "Claude Code 2.1.277 removed the tool the page used to block on (E50), and the replacement its changelog names, the task's output file, is an agent's whole transcript; a background agent's return arrives as its message and then its notification with nothing called (measured 2026-09-26), a poll on the driver's markers notifies with one line even after a wrapper handed back RUNNING= (2026-09-27), an interactive session takes each completion as a new turn (2026-09-27), and a headless session kills its background tasks with the turn (2026-09-08), so there the wait is a foreground call, whose hand-back arrives inside the turn (2026-09-17). The poll is one task over every alive agent's exit and pending markers that exits on the first marker rather than looping on, because a request that arrives after a RUNNING= hand-back has no call in flight to hand it back",
@@ -559,10 +575,12 @@ test("F6 the one agent you wait for is a foreground call, background agents are 
       "In an interactive session you may end your turn with agents alive: they go on, and each completion arrives as a turn of its own (measured 2026-09-27).",
       "A headless session ends with the turn and its background tasks are killed with it (measured 2026-09-08), so there never end a turn with an agent alive: launch each agent in the foreground, and its hand-back arrives inside the same turn ([measured 2026-09-17](../codex/references/incidents.md#foreground-background-and-the-ceiling)).",
       "in the background when agents run side by side and you work while they do, in the foreground for the one agent you wait for and for every agent in a headless session.",
+      "`DONE=<id>` is that agent's own exit marker: read its report as [results.md](references/results.md) says",
+      "`ASK=<id>` is that agent's own request waiting on your decision, as a wrapper's hand-back may be: decide it as [approvals.md](references/approvals.md) says, then launch the poll again over the agents still alive and keep waiting.",
     ),
     saysIn(results, "`DONE=<id>` is that agent's own exit marker: it says the run has ended even after a `RUNNING=` hand-back, and you read the report file after it (measured 2026-09-27)."),
     saysIn(approvals,
-      "`ASK=<id>` is that agent's own request waiting on your decision, and the wrapper's own hand-back may carry the same waiting block instead of the nine lines: read it whole from that hand-back or with `--pending`, decide it as Approvals below says, send the wrapper the very same message block again, then launch the poll again over the agents still alive and keep waiting",
+      "`ASK=<id>` is that agent's own request waiting on your decision, and the wrapper's own hand-back may carry the same waiting block instead of the nine lines: read it whole from that hand-back or with `--pending`, decide it as the rule below says, send the wrapper the very same message block again, then launch the poll again over the agents still alive and keep waiting",
       "an armed agent is launched and waited for like any other",
     ),
   ));
@@ -714,11 +732,16 @@ test("G1 the five template lines, their indentation, and no BRIEF: line",
 
 test("G8 a Codex agent names the shipped five-field schema file, and a field past its cap goes whole into a file with a summary left in the field",
   "#15 F20b: a coordinator wrote the schema by hand each run and once handed the review schema instead; P11a: returns overran \"at most 30 lines\"; the shipped file is the easy path, its caps are checked by the driver, and the overflow keeps the whole text recoverable (09, D16)",
-  () => says(
+  () => all(says(
     "A Codex agent's `OUTPUT_SCHEMA:` line names the five-field schema file the sibling ships, the path its `OUTPUT_SCHEMA:` row gives, and you read the fields from `answerJson` in its report file.",
     "A field past the schema's cap goes whole into a file under the agent's temporary directory, named in `artifacts`, and the field keeps a summary with every material finding.",
     "A brief that wants a longer return names a copy of the schema file with larger caps.",
-  ));
+  ), (() => {
+    // The path, with ${CLAUDE_SKILL_DIR} resolved the way Claude Code resolves it in this body.
+    const named = /The file is `\$\{CLAUDE_SKILL_DIR\}\/([^`]+)`, strict/.exec(flat)?.[1];
+    if (!named) return "the page does not name the schema file by a ${CLAUDE_SKILL_DIR} path";
+    return fs.existsSync(path.join(SKILL_DIR, named)) || `the page names ${named}, which is not beside the skill`;
+  })()));
 
 test("G3 the run directory: its path, why it needs no .gitignore, kept after the task, and what a Codex agent's artifacts are",
   "one directory per run is what keeps an agent's artifacts findable and out of the tree the run works in; the plugin's data directory is outside every repository, so nothing has to be ignored and nothing lands in a payload, and `.claude/` is the one path whose writes prompt however the permissions are set",
@@ -848,7 +871,7 @@ test("D15 a bulk batch of either unit may run as a swarm the plan proposes, star
       "Read [swarm](../swarm/SKILL.md) at `${CLAUDE_SKILL_DIR}/../swarm/SKILL.md` whole with the Read tool",
       "`CLAUDE_PLUGIN_DATA=\"${CLAUDE_PLUGIN_DATA}\" node \"${CLAUDE_SKILL_DIR}/../swarm/scripts/swarm.mjs\" --units <file> --brief <template> --run <run directory> --concurrency <n>`",
       "each swarm in a run directory of its own, since the launcher refuses a swarm's agent ids under a registered plan (E90)",
-      "A bulk batch the plan gives no swarm runs as ordinary Codex agents, launched as Mechanism below says.",
+      "Its unit, its pilot, its count and its effort are set as [plan.md](references/plan.md#a-bulk-row) says, whether the batch runs as a swarm the plan proposed or as ordinary Codex agents launched as Mechanism says.",
     ),
   ));
 

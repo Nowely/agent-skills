@@ -6,6 +6,8 @@
 
 ## The result
 
+Read the sibling's [Reading the result](../../codex/SKILL.md#reading-the-result) for the report's fields, the exit codes and `PATH=taken`; under this mode:
+
 | Result | What to do |
 | --- | --- |
 | `FILE=missing`, or `PATH=taken` | Read `RECEIPT=` first: an `approvals=` token whose first number is not 0 says a command ran with your rights and no report says how it ended — that count is a decision, not an execution outcome. Read `<DIR>/approvals/` and check the tree and whatever the command touched before any relaunch, and never relaunch a prompt that would ask for the same thing again. Only once that is clear, treat the rest as unknown and relaunch once, same rights, under the agent's next report path where work remains. With `DRIVER_EXIT=unknown` nothing ended it: `kill -0 <pid>` with the pid on the first line of the stderr file says whether it is still running |
@@ -23,4 +25,4 @@ Land the harvest by proposal: apply `worktreeDiffPath` and restore `worktreeUntr
 
 ## Writers collided
 
-when their work collides anyway, stop the writers, restate the contract, let each owner repair only its own files, then have an agent that wrote neither verify the combined tree.
+When two writers' work collides anyway, stop the writers, restate the contract, let each owner repair only its own files, then have an agent that wrote neither verify the combined tree.

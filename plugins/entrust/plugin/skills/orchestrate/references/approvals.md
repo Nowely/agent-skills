@@ -2,7 +2,7 @@
 
 ## Deciding a request
 
-`ASK=<id>` is that agent's own request waiting on your decision, and the wrapper's own hand-back may carry the same waiting block instead of the nine lines: read it whole from that hand-back or with `--pending`, decide it as Approvals below says, send the wrapper the very same message block again, then launch the poll again over the agents still alive and keep waiting; an armed agent is launched and waited for like any other.
+`ASK=<id>` is that agent's own request waiting on your decision, and the wrapper's own hand-back may carry the same waiting block instead of the nine lines: read it whole from that hand-back or with `--pending`, decide it as the rule below says, send the wrapper the very same message block again, then launch the poll again over the agents still alive and keep waiting; an armed agent is launched and waited for like any other. The block's other lines, `LATE=`, `STALE=` and `ORPHANED=`, mean what the launcher's `--help` says under `--pending`, and an accept restates the command between `COMMAND<<TOKEN` and `COMMAND>>TOKEN` as the sibling's page shows.
 
 ## The rule
 
