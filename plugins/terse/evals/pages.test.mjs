@@ -282,7 +282,7 @@ test("three damaged README and genre-link copies fail their catalogue checks", (
     fs.writeFileSync(readmeCopy, readme.replace(/^\| `\/terse:clarity`.*\n/m, "")
       .replace("| `/terse:audit` |", "| `/terse:audit`, `/terse:clarity` |"));
     const combinedRowCaught = missingSkills(fs.readFileSync(readmeCopy, "utf8")).includes("clarity");
-    const linksCaught = missingGenres(fs.readFileSync(clarityCopy, "utf8")).some((n) => n.endsWith("code-comments.md"));
+    const linksCaught = missingGenres(fs.readFileSync(clarityCopy, "utf8")).some((n) => n.endsWith("commit-title.md"));
     return rowCaught && combinedRowCaught && linksCaught ||
       `damaged copy escaped: missing row=${rowCaught}, combined row=${combinedRowCaught}, genres=${linksCaught}`;
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }

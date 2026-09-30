@@ -28,6 +28,23 @@ harness hook refuses a subagent's report file.
 | harness | Claude Sonnet | beside the writer, or from the audit's first step; full mode only | 12 |
 | cold readers, two | Codex Astra and Codex Sol | `rewrite`: on the repaired text; `audit`: on the entry file | 11 |
 
+## Contents
+
+- [Light and full](#light-and-full)
+- [1. The writer](#1-the-writer)
+- [2. The genre scout](#2-the-genre-scout)
+- [3. Truth, one agent per group of sections](#3-truth-one-agent-per-group-of-sections)
+- [4. The rationalizer](#4-the-rationalizer)
+- [5. Form](#5-form)
+- [6. Terms](#6-terms)
+- [8. A question reader](#8-a-question-reader)
+- [9. The task reader](#9-the-task-reader)
+- [10. Sentences](#10-sentences)
+- [11. A cold reader](#11-a-cold-reader)
+- [12. The harness, full mode only](#12-the-harness-full-mode-only)
+- [13. Owner feedback](#13-owner-feedback)
+- [Why this shape](#why-this-shape)
+
 ## Light and full
 
 A run is light by default: every role reads and runs nothing. It is full when the user asks: one agent

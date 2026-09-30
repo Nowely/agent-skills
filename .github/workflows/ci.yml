@@ -76,3 +76,22 @@ jobs:
       - name: Suites
         run: node evals/pages.test.mjs && node plugin/skills/rewrite/scripts/selftest.mjs
 
+  skills:
+    name: skills (node ${{ matrix.node }})
+    # Every plugin's skill pages against the vendor's skill rules; it reads all plugins, so it runs from the root.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22", "24"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Parse every repository-wide script under this engine
+        run: for f in evals/*.mjs; do node --check "$f"; done
+      - name: Skill pages
+        run: node evals/skills.test.mjs
+

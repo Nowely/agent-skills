@@ -12,7 +12,9 @@ license: MIT
 
 The shape first, when the user wants to see it before any prose. The same roles `rewrite` runs, stopped
 at the plan: [roles.md](../../references/roles.md), working from
-[rules.md](../../references/rules.md), a pleasant read first.
+[rules.md](../../references/rules.md), a pleasant read first. The writer gets the sentence layer,
+[writing-rules.md](../../references/writing-rules.md) and [curse-of-knowledge.md](../../references/curse-of-knowledge.md),
+as its brief's `<SENTENCES>`; how a claim is checked against its world is in [truth.md](../../references/truth.md).
 
 1. **One message to the user**, as `rewrite` step 1: what the text is for and who reads it, what it must
    and must not say. It names no mode: no role here runs code. Announce the agents below and wait for the

@@ -3,6 +3,15 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- **prepare-feedback's list of its script's commands moves to `skills/prepare-feedback/references/commands.md`**,
+  which the page links in a line naming the nine commands. Why: `evals/skills.test.mjs` counts 20,602 characters in
+  what Claude Code re-attaches of the page after a compaction, past the 20,001 it keeps whole, so the page's last
+  lines would have been cut; it now counts 17,930.
+
 ## 0.23.0 — 2026-09-30
 
 ### Added
