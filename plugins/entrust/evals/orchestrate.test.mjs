@@ -140,6 +140,7 @@ test("A4 the page sends the coordinator to each moment reference from the step o
     const mechanism = text.split("## Mechanism")[1]?.split("\n## ")[0] ?? "";
     if (!/`DONE=<id>`[^\n]*\]\(references\/results\.md\)/.test(mechanism)) problems.push("the DONE= sentence does not send the report to results.md");
     if (!/`ASK=<id>`[^\n]*\]\(references\/approvals\.md\)/.test(mechanism)) problems.push("the ASK= sentence does not send the request to approvals.md");
+    if (!flat.includes("When two writers' work collides, repair it as [results.md](references/results.md#writers-collided) says.")) problems.push("the page does not send a collision of two writers to results.md");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -328,6 +329,7 @@ test("C13 the plan is a card of five rows over agents the launcher registered, a
         "Give it a description of the form \"<Model> <id>: <task in a few words>\", the id the card gave it, as a Codex agent's card carries \"Codex <short name> <id>: <task in a few words>\".",
       ),
       saysIn(plan,
+        "Write the card's five rows in the user's own language and in ordinary words",
         "— work: what will be done; who: each agent by model name and role; writes: what each may write",
         "except a worktree agent's own tree, which is made and removed inside the repository, in a hidden folder;",
         "; cost: the tokens by agent, and your own inline work beside them; checks: which agent verifies what, the critic, and for a design round the criterion that picks the survivors.",
@@ -337,7 +339,9 @@ test("C13 the plan is a card of five rows over agents the launcher registered, a
     // E89: the launcher prints no counts, since the role vocabulary is open and a word classifier refused 12 of 22 roles.
     if (/WORKERS=|CHECKING=/.test(flat + plan.flat)) problems.push("the card is still built from the launcher's worker and checker counts");
     // The card is read by the user: the sentence that tells what it says carries no machinery (R1, 2026-09-27).
-    const card = plan.flat.split("in the user's own language and in ordinary words")[1]?.split("Name no path and no header field")[0] ?? "";
+    // Cut between two pinned phrases (C13 above, C2), so a lost key is a failure, never an empty card that passes.
+    const card = plan.flat.split("Write the card's five rows in the user's own language and in ordinary words")[1]?.split("Name no path and no header field")[0] ?? "";
+    if (!card) problems.push("plan.md's card sentence cannot be cut out between its pinned phrases");
     for (const word of ["driver", ".claude"]) if (card.includes(word)) problems.push(`the card's sentence says ${JSON.stringify(word)}`);
     // The flags the page hands over are the launcher's: a renamed or dropped one is a plan step that exits 2.
     const launcher = path.join(SCRIPTS, "agent-run.mjs");
@@ -422,6 +426,7 @@ test("D5 the pool does not depend on the orchestrator's model, and the top pair 
   () => all(
     saysIn(plan,
       "You are outside the pool, and the pool is the same whatever you are",
+      "the top pair, the Fable agent and the Astra agent the page's [Bounds](../SKILL.md#bounds) allow",
       "each taking the top-row roles in turn, architect for one task and judge for the next",
     ),
     shows(/^\| plan \| design: the Fable agent, whatever your own model \|$/m),
@@ -516,7 +521,7 @@ test("F1 a Codex agent is one Agent call of the shipped codex-agent type, and a 
   });
 
 test("F2 the eight verification bullets, one line each",
-  "the list is read while composing a fan-out, so each bullet has to be one glance; a bullet that grew into a paragraph is a bullet that stops being read, and a bullet added or dropped changes the count the fan-out is checked against (measured 2026-09-17: five sentences, three of them bullets here, were deleted from the page in memory and 45 registered cases stayed green). The judge bullet went to its owners, the judge row of roles.md (E9, E10) and the sibling's `EXPECT:` row; the critic's procedure and the options analysis went to answer.md (F2b), read when the draft is linted; the split critic's and the refuter's brief content went to their rows of roles.md (E10), which the bullets name (2026-09-30)",
+  "the list is read while composing a fan-out, so each bullet has to be one glance; a bullet that grew into a paragraph is a bullet that stops being read, and a bullet added or dropped changes the count the fan-out is checked against (measured 2026-09-17: five sentences, three of them bullets here, were deleted from the page in memory and 45 registered cases stayed green). The judge bullet went to the judge row of roles.md (E9, E10), which names the sibling's `EXPECT:` rule for a Codex check; the critic's procedure and the options analysis went to answer.md (F2b), read when the draft is linted; the split critic's and the refuter's brief content went to their rows of roles.md (E10), which the bullets name, and the finding rule to the page's return section (G7) (2026-09-30)",
   () => {
     const section = text.split("## Verification")[1]?.split("\n## ")[0] ?? "";
     const bullets = section.split("\n").filter((l) => l.startsWith("- "));
@@ -547,13 +552,13 @@ test("F3 two rounds of fix and cross-review, then escalate",
   () => says("Fix, then cross-review, at most two rounds; then escalate to the Fable agent or the Astra agent, and to the user only when that round fails too."));
 
 test("F4 every row of the Result table: what this mode adds to the sibling's reading of a result",
-  "this table is read at the one moment judgement is worst, when an agent has just failed; a missing row is a relaunch that duplicates a live run, or a gate verdict retried until it costs real money. What the sibling's \"Reading the result\" and the driver's --help-all already say, the stderr file's reason, `out.json`, the two shapes of exit 2 and 4, the partial of a cut, reading the answer and the `pgrep` check before a second writer (agent-contract.test.mjs), is theirs; each row keeps this mode's own step, and the `FILE=missing` row keeps the receipt's precondition beside its relaunch, since the sibling's section lies where a coordinator reads it only by path (the owner, 2026-09-30)",
+  "this table is read at the one moment judgement is worst, when an agent has just failed; a missing row is a relaunch that duplicates a live run, or a gate verdict retried until it costs real money. What the sibling's \"Reading the result\" and the driver's --help-all already say, the stderr file's reason, `out.json`, the two shapes of exit 2 and 4, the partial of a cut and reading the answer, is theirs; each row keeps this mode's own step, the `FILE=missing` row keeps the receipt's precondition beside its relaunch, since the sibling's section lies where a coordinator reads it only by path (the owner, 2026-09-30), and the `exitCode: 10` row keeps the survivors check, which the sibling states under stopping an agent and a fresh reader at a held lock found there and did not apply (Sonnet R1, 2026-09-30)",
   () => showsIn(results,
     /^\| `FILE=missing`, or `PATH=taken` \| Read `RECEIPT=` first: an `approvals=` token whose first number is not 0 says a command ran with your rights and no report says how it ended — that count is a decision, not an execution outcome\. Read `<DIR>\/approvals\/` and check the tree and whatever the command touched before any relaunch, and never relaunch a prompt that would ask for the same thing again\. Only once that is clear, treat the rest as unknown and relaunch once, same rights, under the agent's next report path where work remains\. With `DRIVER_EXIT=unknown` nothing ended it: `kill -0 <pid>` with the pid on the first line of the stderr file says whether it is still running \|$/m,
     /^\| a stderr file naming no driver \| report it; no relaunch fixes an install \|$/m,
     /^\| `exitCode: 3`, a cut \| if the work is unfinished, continue that thread once with `RESUME:`, under the agent's next report path \|$/m,
-    /^\| `exitCode: 10` \| a held lock or a busy thread: read `error` and the stderr file, wait for the holder, then run again; not a retry\. A holder that waits on your own decision has an `ASK=` in your poll: answer it before you wait on the holder\. \|$/m,
-    /^\| exit 2 or 4 \| Exit 2 WITH a `turnStatus` is a turn the server rejected: read `turnError`\. A `DRIVER_EXIT=2` beside `PATH=taken` is neither: the path was already taken, nothing of this run reached the file \|$/m,
+    /^\| `exitCode: 10` \| a held lock or a busy thread: read `error` and the stderr file, wait for the holder, then run again; not a retry\. A holder that waits on your own decision has an `ASK=` in your poll: answer it before you wait on the holder\. Before a second writer enters a directory where a command was approved, check for its survivors yourself: `pgrep -fl '<the approved command>'` and wait for it — the lock does not prove they are gone \|$/m,
+    /^\| exit 2 or 4 \| Exit 2 WITH a `turnStatus` is a turn the server rejected: read `turnError`\. A `DRIVER_EXIT=2` beside `PATH=taken` is neither a turn that never ran nor one the server rejected: the path was already taken, nothing of this run reached the file \|$/m,
     /^\| exit 4 with a `turnStatus` \| the server died mid-turn or the report was not delivered: the report is complete, read it as a gate verdict \|$/m,
     /^\| any other non-zero `exitCode` with an answer \| a gate verdict: do not retry \|$/m,
     /^\| a Claude agent that returns `blocked` \| do not retry, report it \|$/m,
@@ -576,7 +581,7 @@ test("F6 the one agent you wait for is a foreground call, background agents are 
       "A headless session ends with the turn and its background tasks are killed with it (measured 2026-09-08), so there never end a turn with an agent alive: launch each agent in the foreground, and its hand-back arrives inside the same turn ([measured 2026-09-17](../codex/references/incidents.md#foreground-background-and-the-ceiling)).",
       "in the background when agents run side by side and you work while they do, in the foreground for the one agent you wait for and for every agent in a headless session.",
       "`DONE=<id>` is that agent's own exit marker: read its report as [results.md](references/results.md) says",
-      "`ASK=<id>` is that agent's own request waiting on your decision, as a wrapper's hand-back may be: decide it as [approvals.md](references/approvals.md) says, then launch the poll again over the agents still alive and keep waiting.",
+      "`ASK=<id>` is that agent's own request waiting on your decision, as a wrapper's hand-back may be: decide it as [approvals.md](references/approvals.md) says.",
     ),
     saysIn(results, "`DONE=<id>` is that agent's own exit marker: it says the run has ended even after a `RUNNING=` hand-back, and you read the report file after it (measured 2026-09-27)."),
     saysIn(approvals,
@@ -894,11 +899,12 @@ test("F8 two selection rounds on the same blocker are a stall, re-planned for th
     /Fix, then cross-review, at most two rounds; then escalate to the Fable agent or the Astra agent/,
   ));
 
-test("G7 a verifier's brief names its target and whole scope, and its return separates what it checked from what it did not",
-  "a verifier that ran one or two checks and declared the whole passed is the early-victory shape (S1-40); locally the coordinator bounded a clipped 50 k-character report to the parts it had read (426:33, 2026-09-16) where three earlier overclaims from partial evidence were cut by agents (T1-08, T1-12, T1-49)",
+test("G7 a verifier's brief names its target and whole scope, its return separates what it checked from what it did not, and a finding is what changes correctness or a stated requirement",
+  "a verifier that ran one or two checks and declared the whole passed is the early-victory shape (S1-40); locally the coordinator bounded a clipped 50 k-character report to the parts it had read (426:33, 2026-09-16) where three earlier overclaims from partial evidence were cut by agents (T1-08, T1-12, T1-49). The finding rule stood in the refuter's bullet and covered the cross-review too; it sits here since 2026-09-30, once for every verifying role, and the cross-reviewer row of roles.md points at it (E10)",
   () => shows(
     /A verifier's brief (names|states) its target and the (whole|full) scope it must cover/,
     /its return says what it checked and, in `open`, what it did not/,
+    /A finding is (one|what) that changes correctness or a stated requirement, the rest (its|in) `open`/,
   ));
 
 test("D11 the caps count turns in progress, and a thread waiting for another message uses no slot",
@@ -927,7 +933,7 @@ test("C12 the completeness critic reads the request, the answer and the evidence
 
 test("E8 the roles reference is linked from the page and from plan.md's composition",
   "the role set was the tier table's four rows in practice; the reference is where the coordinator's variety lives, and a page without the link never sends anyone there",
-  () => all(shows(/\]\(references\/roles\.md\)/), showsIn(plan, /\[roles\.md\]\(roles\.md\)/)));
+  () => all(shows(/\[roles\.md\]\(references\/roles\.md\)/), showsIn(plan, /\[roles\.md\]\(roles\.md\)/)));
 
 test("E11 a Claude agent starts with the CLAUDE.md files and the memory index, and a Codex agent without them",
   "E53, 2026-09-26: an analyst told to work from episodes only and not to open CLAUDE.md or memory had all three attached by the harness; the plugin cannot remove them, so the page says it where roles are assigned",
@@ -961,18 +967,21 @@ test("E10 the roles reference carries what #15 and #16 asked of each role's brie
     const want = [
       [null, "Every brief whose commands may print more than twenty lines names the runner, the page's `scripts/capture-check.mjs`, by its absolute path, and the agent quotes each run's `EXIT=` line in its `evidence`."],
       ["split critic", "the corrected split as a file under its temporary directory, naming each unit's owner and every shared interface's one owner; every worker brief names that file"],
+      ["split critic", "reads the decomposition, not the subject: what the cut lost, what the wording added, which items are two, which the rights cannot decide"],
       ["advisor, standing", "under `/entrust:advisor`, before the run's first decision; the workers' plan names it"],
       ["cross-reviewer", "against the requirement, the owning unit and its consumers, all named in the brief; a valid change in the wrong unit is a finding"],
       ["cross-reviewer", "the diff's path in `TASK:`"],
-      ["cross-reviewer", "findings that change correctness or a stated requirement; the rest in `open`"],
+      ["cross-reviewer", "findings, as the page's return section defines a finding"],
       ["refuter", "`refuted` when its check ran and contradicted the claim, `unknown` when its decisive check could not run"],
       ["refuter", "a shared prerequisite runs once, by one agent, and its receipt goes into every refuter's brief"],
+      ["refuter", "attacks one claim, or one cluster the dedup-and-rank made, keeping its origins"],
       ["strong reader", "the decision the answer feeds and the evidence that ends the read; it stops at that evidence"],
       ["strong reader", "a negative result told apart from an input it could not reach"],
       ["live prober", "it takes its baseline capture before any write and never while a writer runs, and freezes it as a file with its sha256, the revision, the mode, the platform, the control it is compared with and the time"],
       ["blind proposer", "after the plan has named the criterion that selects the survivors"],
       ["judge", "the final verdict by the criterion the plan named, which its brief quotes"],
       ["judge", "the verdict and a marked-up artifact, naming a missing check in `open`"],
+      ["judge", "use the sibling's [`EXPECT:`](../../codex/SKILL.md#header-fields) rule for a Codex check"],
       ["dedup-and-rank", "merges a wave's returns into clusters of one claim each, keeps every origin on its cluster"],
       ["dedup-and-rank", "before the refutation of a wave's claims"],
       ["completeness critic", "the verdict, the manifest's sha256, the missing items, and the copy's path with one cited diff hunk per gap"],
