@@ -7,7 +7,7 @@ description: >-
   on your word.
 disable-model-invocation: true
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
 license: MIT
 ---
 
