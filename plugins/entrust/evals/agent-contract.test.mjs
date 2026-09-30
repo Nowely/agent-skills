@@ -242,7 +242,7 @@ test("the report file is what the coordinator reads, and a missing one is unknow
       "`<REPORT>` is the report, the same JSON the run also wrote to `<DIR>/out.json`",
       "it is written whole or not at all, and a missing one means unknown, never success",
       "with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed",
-      "To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or send `SIGTERM` to the pid on the first line of `<DIR>/err.txt`",
+      "To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or `kill -TERM` the pid on the driver's pid line in `<DIR>/err.txt`, `entrust: pid=<n> identity=… reportPath=…`",
     ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
     // Each of those is a promise the driver has to keep. The mode, the no-clobber rule, the pid line and
     // the signal handling are MEASURED elsewhere — cli.test.mjs's report-file flows and the lock suite's

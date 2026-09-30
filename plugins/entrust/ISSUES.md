@@ -13,12 +13,12 @@ pinned to a commit is that commit's address, with today's beside it.
 - 2026-09-29, measured once: `/bin/zsh -c 'sleep 913 && echo done-913'` run inside the sandbox, in its own process
   group; `SIGTERM` to the driver's pid; neither the shell nor `sleep` alive 10 s later. `driver.mjs:2676-2681`
   records it in the comment above `killGroupOf`/`killGroup`, and
-  `plugins/entrust/plugin/skills/codex/references/environment-and-internals.md:251-252` says so: "A command the
+  `plugins/entrust/plugin/skills/codex/references/environment-and-internals.md:252` says so: "A command the
   agent was running inside the sandbox ends with it (measured once, 2026-09-29)".
 - The same sentence continues, `:252-253`: "a command run after an approval, outside the sandbox, has not been
   measured", and the reference keeps the manual step for it: before a second writer enters a directory where a
   command was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it
-  (`codex/references/environment-and-internals.md:252-254`);
+  (`codex/references/environment-and-internals.md:253-255`);
   `orchestrate/SKILL.md:145` carries the same check in its Result table's `exitCode: 10` row.
 - An accepted command runs as the user, with no sandbox (the codex page's Rights section); whether the driver's
   `SIGTERM` to its own pid reaches a process running outside any sandbox that would otherwise bound it is what
@@ -261,21 +261,22 @@ restate it, or the table should move to a file both pages point at.
 
 ## E105. "On the first line of `<DIR>/err.txt`" names a line `kill` cannot take a pid from
 
-**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:228-229`,
-`plugins/entrust/plugin/skills/codex/references/environment-and-internals.md:249-250` and
-`plugins/entrust/plugin/skills/orchestrate/SKILL.md:106,116,142` tell the reader to signal or check an agent by the
-pid "on the first line of" `<DIR>/err.txt`. `driver.mjs:4723-4724` writes that line as
+**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:106,116,142` tell the reader to signal or
+check an agent by the pid "on the first line of" `<DIR>/err.txt`. `driver.mjs:4745` writes that line as
 `entrust: pid=<n> identity=lstart:<…> reportPath=<…>`, not the bare number. Measured 2026-09-29 by the coordinator
 during the E67 probe: `kill -TERM $(head -1 err.txt)` failed with "kill: entrust: … arguments must be process or
-job IDs".
+job IDs". The codex page (`codex/SKILL.md:228-229`) and its internals reference
+(`codex/references/environment-and-internals.md:249-250`) say "the pid on the driver's pid line in `<DIR>/err.txt`,
+`entrust: pid=<n> identity=… reportPath=…`", as the launcher's `--help` does. The line is one record that
+`agent-run.mjs:279` and `cleanup.mjs:373` parse whole, so the pages change and the driver does not.
 
-**Check.** `head -1 <any agent's err.txt>` prints the `entrust: pid=… identity=…` line, not a bare number;
-`kill -TERM $(head -1 <that file>)` reports the error above.
+**Check.** `grep -n 'first line of' plugins/entrust/plugin/skills/orchestrate/SKILL.md` prints the three lines;
+`head -1 <any agent's err.txt>` prints the `entrust: pid=…` line, not a bare number.
 
-**Issue text.** Both pages tell the reader to take the pid from the first line of `err.txt`, and the first line is
-not the pid alone: a reader who follows the instruction literally, with `$(head -1 …)`, hands `kill` a string it
-refuses. The pages should say to read the number after `pid=` on that line, or the driver should put the bare pid
-on a line of its own.
+**Issue text.** The orchestrate page tells the reader to take the pid from the first line of `err.txt`, and the
+first line is not the pid alone: a reader who follows it literally, with `$(head -1 …)`, hands `kill` a string it
+refuses. The three sentences should say what the codex page and the launcher's `--help` say: the pid on the
+driver's pid line, `entrust: pid=<n> …`.
 
 ## E108. A Claude agent's overflow file goes under the coordinator's own `$TMPDIR`, the collision E92 fixed for Codex agents
 

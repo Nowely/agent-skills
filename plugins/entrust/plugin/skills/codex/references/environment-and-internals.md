@@ -246,12 +246,13 @@ line, because verification runs an unsandboxed `/bin/sh` with the coordinator's 
   handler entirely and leaves the keeper computing 128 plus the signal number for the marker (137 for
   `SIGKILL`), and a request still open at that moment is left `ORPHANED` in the mailbox, which `--pending`
   reports once the marker exists.
-- To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or send `SIGTERM` to the pid on
-  the first line of `DIR/err.txt`: the driver cuts the turn, sweeps the codex app-server's own process group and
-  publishes the report as `turnStatus: interrupted`, exit 1. A command the agent was running inside the sandbox
-  ends with it (measured once, 2026-09-29); a command run after an approval, outside the sandbox, has not been
-  measured, so before a second writer enters a directory where a command was approved, run
-  `pgrep -fl '<the approved command>'` yourself and wait for it — no driver code checks this for you.
+- To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or `kill -TERM` the pid on the
+  driver's pid line in `DIR/err.txt`, `entrust: pid=<n> identity=… reportPath=…`: the driver cuts the turn,
+  sweeps the codex app-server's own process group and publishes the report as `turnStatus: interrupted`, exit 1.
+  A command the agent was running inside the sandbox ends with it (measured once, 2026-09-29); a command run
+  after an approval, outside the sandbox, has not been measured, so before a second writer enters a directory
+  where a command was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it — no driver
+  code checks this for you.
 
 ## Receipt validation and reporting
 

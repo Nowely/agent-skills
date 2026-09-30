@@ -225,9 +225,10 @@ run with approvals ends: [approvals.md](references/approvals.md).
   same message again, or wait on `<DIR>/exit`; nothing was lost.
 - `worktreePreserved` not null: the tree is the artifact, not a harvest
   ([Worktree ledger and destination](references/environment-and-internals.md#worktree-ledger-and-destination)).
-- To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or send `SIGTERM` to the pid on
-  the first line of `<DIR>/err.txt`; after a waiting result or a `RUNNING=` hand-back no call holds the driver,
-  so that pid, or `--decide '<ID>' --decline` and the same `--run`, is what reaches it
+- To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or `kill -TERM` the pid on the
+  driver's pid line in `<DIR>/err.txt`, `entrust: pid=<n> identity=… reportPath=…`; after a waiting result or a
+  `RUNNING=` hand-back no call holds the driver, so that pid, or `--decide '<ID>' --decline` and the same
+  `--run`, is what reaches it
   ([Bounding or stopping an agent](references/environment-and-internals.md#bounding-or-stopping-an-agent)).
 
 ## What the user reads
