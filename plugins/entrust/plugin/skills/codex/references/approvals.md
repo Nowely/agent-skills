@@ -9,10 +9,9 @@ the codex skill's directory, the one the page's own call names; the report's `es
 
 ## The waiting result
 
-The wrapper hands back what `--pending` prints for each request waiting: `REQUEST=<id>`, `THREAD=`, `METHOD=`,
-`CAUSE=`, `CWD=`, `REASON=`, `ROOTS=`, `DEADLINE=`, then the command whole between `COMMAND<<TOKEN` and
-`COMMAND>>TOKEN`, then `REQUESTS=`, `WAITING=` and `REPORT=`; `--help` has each field. The wrapper hands it back
-like any result — its step 2 reruns only on a result ending in `RUNNING=` or on the harness's background notice
+The wrapper hands back what `--pending` prints for each request waiting: its ID on `REQUEST=`, the command whole
+between `COMMAND<<TOKEN` and `COMMAND>>TOKEN`, and the fields `--help` describes. The wrapper hands it back like
+any result — its step 2 reruns only on a result ending in `RUNNING=` or on the harness's background notice
 — so read it whole and decide under the plan's own rule. An accept runs the command as you, with no sandbox.
 
 ## Accept

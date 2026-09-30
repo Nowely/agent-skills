@@ -421,9 +421,14 @@ test("FILE=missing reads RECEIPT's approvals= count as a decision, not an execut
   });
 
 test("exit 6 is a request declined or expired unanswered, never one accepted, and the internals reference gives escalations its cause and unclipped detail",
-  "an auto-yes must never surface as a gate failure, and a coordinator reading `detail` clipped at 200 characters cannot judge the very command it is asked to approve; the page states the exit and links the fields, which live once, in environment-and-internals.md",
+  "an auto-yes must never surface as a gate failure, and a coordinator reading `detail` clipped at 200 characters cannot judge the very command it is asked to approve; the page states the exit where it lists the exits and links approvals.md, which states it whole and links the fields, which live once, in environment-and-internals.md",
   () => {
     const problems = [];
+    const exitSix = skill.split(/\n(?=- )/).find((b) => /exit 6 is/.test(b)) ?? "";
+    if (!/exit 6 is an approval declined or expired/.test(exitSix.replace(/\s+/g, " ")))
+      problems.push("the page no longer says what exit 6 is where it lists the exits");
+    if (!exitSix.includes("](references/approvals.md#after-the-run)"))
+      problems.push("the page's exit 6 no longer links approvals.md's After the run");
     if (!approvalsFlat.includes("`exitCode: 6` is a request declined or expired unanswered, never one accepted"))
       problems.push("approvals.md no longer says what exit 6 is");
     if (!approvalsFlat.includes("[Observability](environment-and-internals.md#observability)"))

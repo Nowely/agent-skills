@@ -76,19 +76,23 @@ Choose the smallest `RIGHTS` that can complete and check the work:
 `$TMPDIR` is granted at every level and `/tmp` at none; a write agent adds each settled `WRITABLE:` root
 to what its row names. Every output path a `TASK:` names lies under the agent's writable roots: a write outside them is refused. The driver refuses a server whose sandbox answers differently.
 
-Each `WRITABLE: <dir>` widens a write agent, as does removing a `NETWORK: no` the user settled: settle each
-with the user before adding it, and never translate a refusal into broader rights: an approval under the plan is
-a decision on one request, not a rights change.
+Each `WRITABLE: <dir>` widens a write agent, as does removing a `NETWORK: no` the user settled
+([egress](references/parity.md#isolation-mcp-and-search)): settle each with the user before adding it, and never
+translate a refusal into broader rights: an approval under the plan is a decision on one request, not a rights
+change.
 
-A worktree agent's tree starts at `HEAD`: uncommitted, untracked and ignored files and installed dependencies
-are not in it, and a stash does not reach it (`--help`, `--worktree`), so work it must see is committed first,
-with the user's word. It cannot commit; its work comes back as `worktreeDiffPath` and `worktreeUntrackedPath`
+A worktree agent's tree starts at `HEAD`, or at its recorded base when resumed: uncommitted, untracked and
+ignored files and installed dependencies are not in it, and a stash does not reach it (`--help`, `--worktree`),
+so work it must see is committed first, with the user's word. Without `WRITABLE: <repo>/.git` it cannot commit;
+its work comes back as `worktreeDiffPath` and, for untracked files not ignored, `worktreeUntrackedPath`
 ([Git-directory grant](references/environment-and-internals.md#git-directory-grant)).
 
 Read agents may share one cwd, and each has a `$TMPDIR` of its own, but a repository whose tooling keeps a
 daemon, a socket, or a pid/state file in the tree needs a distinct cwd per concurrent agent; the failure is a
 native crash, not a sandbox refusal. A write agent sharing a live tree must not change what the tree shares: no
-stash, branch switch, reset, clean or rebase while another writer holds part of it; no sandbox refuses them.
+stash, branch switch, reset, clean or rebase while another writer holds part of it; no sandbox refuses them. A
+second writer waits until a command approved in its directory has ended
+([check](references/environment-and-internals.md#bounding-or-stopping-an-agent)).
 
 ## Header fields
 
@@ -203,8 +207,8 @@ more command of the same shape; a session with no message tool spawns a second w
 `--run`'s one call may hand back a **waiting result** instead of the nine status lines: a request is pending,
 and it hands back what `--pending` prints, ending in `REQUESTS=`, `WAITING=` and `REPORT=`. Read it whole and
 decide under the plan's own rule; a request nobody answers is declined as expired after thirty minutes and the
-turn goes on. The `--decide` call that accepts or declines it, what an accept runs as, and what to read when a
-run with approvals ends: [approvals.md](references/approvals.md).
+turn goes on. The `--decide` call that answers it, what an accept runs as, and what to read after such a run:
+[approvals.md](references/approvals.md).
 
 ## Reading the result
 
@@ -213,14 +217,17 @@ run with approvals ends: [approvals.md](references/approvals.md).
 - `exitCode: 0` means the completed turn passed its declared evidence gates. `answer` is the agent's text;
   with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed, and `answerPath` holds the
   complete answer where a size cap clipped either. `receiptOk: false` on a run that claims success is a red flag
-  ([what the receipt proves](references/environment-and-internals.md#receipt-validation-and-reporting)).
-- Any other exit judges the evidence, not whether an answer exists: read the answer before relaunching, or a
-  paid turn is thrown away; `driver.mjs --help` lists every code. A cut, exit 3, keeps the partial and a `RESUME:`
-  hint; exit 6 is an approval declined or expired, and a `RECEIPT=` that counts `approvals=` is read before any
-  relaunch ([After the run](references/approvals.md#after-the-run)).
+  ([receipts](references/environment-and-internals.md#receipt-validation-and-reporting)).
+- `turnStatus: null` means no turn ran, and `error` says why
+  ([Observability](references/environment-and-internals.md#observability)). With any other, the exit judges the
+  evidence, not whether an answer exists: read the turn's commands, answer and receipt before relaunching, or a
+  paid turn is thrown away; `driver.mjs --help` lists every code. A cut, exit 3, keeps the answer or partial and a
+  `RESUME:` hint; exit 6 is an approval declined or expired
+  ([After the run](references/approvals.md#after-the-run)).
 - `PATH=taken` means the file at `<REPORT>` is an earlier run's, whatever the numbers beside it say, and
   `FILE=missing` a run that ended without a report: `<DIR>/err.txt` has the reason and `<DIR>/out.json` the
-  report a turn wrote where publication failed.
+  report a turn wrote where publication failed. For either, a `RECEIPT=` that counts `approvals=` is read before
+  any relaunch ([After the run](references/approvals.md#after-the-run)).
 - `RUNNING=` in place of `REPORT=` is a run still going whose wrapper handed back early: send the wrapper the
   same message again, or wait on `<DIR>/exit`; nothing was lost.
 - `worktreePreserved` not null: the tree is the artifact, not a harvest
@@ -243,7 +250,7 @@ what an agent may write, and where, in ordinary words, because that is what the 
 
 ## References
 
-- `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`: the flags and the exit codes, `--help-all` the rarely needed ones, the `ENTRUST_*` variables and the internals; `agent-run.mjs --help` beside it: the wrapper's one command, its refusals, the nine status lines, the waiting result and `--decide`.
+- `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`: the flags and the exit codes, and where the rest is; `agent-run.mjs --help` beside it: the wrapper's one command, its refusals, the nine status lines, the waiting result and `--decide`.
 - [approvals.md](references/approvals.md): the coordinator's approval steps.
 - [environment-and-internals.md](references/environment-and-internals.md): environment, prompt files, stopping an agent, receipts, worktrees, locks, the commit grant, config drift.
 - [result-gates.md](references/result-gates.md): evidence gates and the verifier.

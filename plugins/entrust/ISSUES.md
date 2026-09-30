@@ -13,12 +13,12 @@ pinned to a commit is that commit's address, with today's beside it.
 - 2026-09-29, measured once: `/bin/zsh -c 'sleep 913 && echo done-913'` run inside the sandbox, in its own process
   group; `SIGTERM` to the driver's pid; neither the shell nor `sleep` alive 10 s later. `driver.mjs:2676-2681`
   records it in the comment above `killGroupOf`/`killGroup`, and
-  `plugins/entrust/plugin/skills/codex/references/environment-and-internals.md:252` says so: "A command the
+  `plugins/entrust/plugin/skills/codex/references/environment-and-internals.md:251-252` says so: "A command the
   agent was running inside the sandbox ends with it (measured once, 2026-09-29)".
 - The same sentence continues, `:252-253`: "a command run after an approval, outside the sandbox, has not been
   measured", and the reference keeps the manual step for it: before a second writer enters a directory where a
   command was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it
-  (`codex/references/environment-and-internals.md:253-255`);
+  (`codex/references/environment-and-internals.md:253-254`);
   `orchestrate/SKILL.md:145` carries the same check in its Result table's `exitCode: 10` row.
 - An accepted command runs as the user, with no sandbox (the codex page's Rights section); whether the driver's
   `SIGTERM` to its own pid reaches a process running outside any sandbox that would otherwise bound it is what
@@ -154,8 +154,8 @@ come from the subagent's transcript, as `prepare-feedback.mjs process` sums it.
 
 **Evidence, level 3 for plan rows, level 2 for prompts.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:37` has the
 coordinator register the plan with the launcher's `--plan --run-dir <run>`, which reads its rows on stdin, and a write
-agent's row names its absolute directory (`write <absolute dir>`). `plugins/entrust/plugin/skills/codex/SKILL.md:151-156`
-writes every Codex agent's prompt with `--new` from a quoted heredoc, and `codex/references/approvals.md:28-30` does the
+agent's row names its absolute directory (`write <absolute dir>`). `plugins/entrust/plugin/skills/codex/SKILL.md:155-160`
+writes every Codex agent's prompt with `--new` from a quoted heredoc, and `codex/references/approvals.md:27-29` does the
 same for `--decide --accept`.
 On 2026-09-29 a coordinator session entered its worktree with EnterWorktree, in a repository whose path contains a
 directory named `Git`, and ran `--plan --amend` with the row `W2 | opus | implementer | write <worktree path> | unknown`
@@ -193,7 +193,7 @@ cases could run through it instead of through a reading of a real invocation's t
 
 ## E102. A Codex agent can run as one background Bash task, as the swarm runs fifty, but the codex page offers only the Haiku wrapper, for a reason the swarm page contradicts
 
-**Evidence, level 1 for the pages and scripts, level 3 for the task list.** `plugins/entrust/plugin/skills/codex/SKILL.md:144-147`
+**Evidence, level 1 for the pages and scripts, level 3 for the task list.** `plugins/entrust/plugin/skills/codex/SKILL.md:148-151`
 makes the wrapper the one route: "One Agent call per agent … It gives a Codex agent what a Claude agent has — a card,
 Stop on it, one completion notification, a message to continue it — where a Bash task has none", linking
 `codex/references/incidents.md:273-276`: "Measured 2026-09-12 against the VS Code extension 2.1.269 … a Bash task,
@@ -265,7 +265,7 @@ restate it, or the table should move to a file both pages point at.
 check an agent by the pid "on the first line of" `<DIR>/err.txt`. `driver.mjs:4745` writes that line as
 `entrust: pid=<n> identity=lstart:<…> reportPath=<…>`, not the bare number. Measured 2026-09-29 by the coordinator
 during the E67 probe: `kill -TERM $(head -1 err.txt)` failed with "kill: entrust: … arguments must be process or
-job IDs". The codex page (`codex/SKILL.md:228-229`) and its internals reference
+job IDs". The codex page (`codex/SKILL.md:235-236`) and its internals reference
 (`codex/references/environment-and-internals.md:249-250`) say "the pid on the driver's pid line in `<DIR>/err.txt`,
 `entrust: pid=<n> identity=… reportPath=…`", as the launcher's `--help` does. The line is one record that
 `agent-run.mjs:279` and `cleanup.mjs:373` parse whole, so the pages change and the driver does not.
