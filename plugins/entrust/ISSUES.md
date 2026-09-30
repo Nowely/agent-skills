@@ -19,7 +19,7 @@ pinned to a commit is that commit's address, with today's beside it.
   measured", and the reference keeps the manual step for it: before a second writer enters a directory where a
   command was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it
   (`codex/references/environment-and-internals.md:253-254`);
-  orchestrate's Result table, now `orchestrate/references/results.md`, no longer carries it.
+  `orchestrate/references/results.md:16` carries the same check in its Result table's `exitCode: 10` row.
 - An accepted command runs as the user, with no sandbox (the codex page's Rights section); whether the driver's
   `SIGTERM` to its own pid reaches a process running outside any sandbox that would otherwise bound it is what
   remains unmeasured.
@@ -442,9 +442,9 @@ units with the plan saying why that many, before the launch", and "Pilot first: 
 units, the swarm's model runs the same units, and recall, false positives and tokens against that marking decide the
 brief's fixes and its effort". `evals/orchestrate.test.mjs` pins the first copy (D9, D12, D14) and
 `evals/swarm.test.mjs` the second (U1); nothing compares them. Both copies were on main before 2026-09-30, the first on
-`orchestrate/SKILL.md:67-69` at `4a3f0d7`; that day's cut of the page moved it into the reference word for word, and
-the owner kept both, because the swarm page describes a swarm and a bulk batch may also run as ordinary Codex agents,
-which it cannot own. Found by Fable F1 and Codex Luna L1.
+`orchestrate/SKILL.md:67-69` at `4a3f0d7`; that day's cut of the page moved it into the reference word for word and
+kept both copies, because the swarm page describes a swarm and a bulk batch may also run as ordinary Codex agents,
+which it cannot own. Found by Fable F1.
 
 **Check.** `grep -n 'closed set that describes the subject' plugins/entrust/plugin/skills/orchestrate/references/plan.md plugins/entrust/plugin/skills/swarm/SKILL.md`
 prints one line in each file.
