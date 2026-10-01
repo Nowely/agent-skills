@@ -31,9 +31,9 @@ are `<name>@X.Y.Z`.
   are updated together, never the text alone.
 - **terse's shared pages**: a definition two terse skills use lives once, under
   `plugins/terse/plugin/references/`; a skill page holds its steps and links it, and a brief names the file
-  instead of restating it. The one exception is the run-directory line, kept identical in each SKILL.md of a
-  skill that makes a run because Claude Code substitutes `${CLAUDE_PLUGIN_DATA}` only in a skill's body. After
-  any edit to terse's pages, run `node plugins/terse/evals/pages.test.mjs`: it checks that line, relative
+  instead of restating it. A skill that makes a run links `references/run.md`, the sole owner of its portable
+  creation recipe and lifecycle. After
+  any edit to terse's pages, run `node plugins/terse/evals/pages.test.mjs`: it checks that recipe, invocation policy, relative
   links and anchors, the frozen digests, skill frontmatter and versions, the README's skill rows and the links
   to genre notes.
 - **Checks run by need.** A suite runs when a change touches what it reads, which its header states; entrust's

@@ -14,7 +14,8 @@ codex plugin list --marketplace nowely --available --json
 Invoke `$entrust:orchestrate` to coordinate native Codex subagents. The `codex` skill is the
 Claude-to-Codex adapter and is not needed for native Codex delegation. The other external-run
 features still depend on that adapter; installing them does not establish native compatibility.
-`terse` is discoverable from the same catalogue; its agent workflows have not been adapted here.
+Install `terse` with `codex plugin add terse@nowely`; its four skills use native host instructions.
+Invoke `$terse:rethink`, `$terse:rewrite`, or `$terse:audit` explicitly; `$terse:clarity` may also be selected automatically.
 
 The existing `.claude-plugin/marketplace.json` is a
 [Codex-supported catalogue format](https://learn.chatgpt.com/docs/enterprise/plugin-management).
@@ -32,7 +33,7 @@ Then install what you need:
 | Plugin | Install | What it does |
 | --- | --- | --- |
 | [entrust](plugins/entrust/plugin/) | `/plugin install entrust@nowely` | Orchestrates native agents in either host; in Claude, also runs external Codex agents with per-call rights and evidence. |
-| [terse](plugins/terse/plugin/) | `/plugin install terse@nowely` | Assesses and improves any text — a README, code comments, an essay. Fresh readers find where it stumbles, each claim is checked against what backs it, and one writer with critics working at once rewrites it on your word. |
+| [terse](plugins/terse/plugin/) | `/plugin install terse@nowely` | Assesses and improves any text — a README, code comments, an essay. Fresh readers find where it stumbles, each claim is checked against what backs it, and one writer with independent critics rewrites it on your word. |
 
 ## Layout
 

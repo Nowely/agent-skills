@@ -32,12 +32,8 @@ Settle five things with the user in one exchange, not six:
 - The mode: [light, or full](../../references/roles.md#light-and-full) on their word. In a full run, start
   the harness, brief 12, as soon as the run directory exists: the truth pass runs the code in its copy.
 
-Then make the run directory for the working files, `<slug>` naming the audited document; where it lives,
-how long, and what its path is for: [run.md](../../references/run.md).
-
-```bash
-D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
-```
+Then create the working directory by [run.md](../../references/run.md), with `<slug>` naming the audited
+document: temporary by default, or under the durable directory the user supplied.
 
 Write nothing into the audited repository but the report, in the folder they named. Not a note, not a fix,
 not a commit.
@@ -78,7 +74,8 @@ from a reader who knew. Benchmarks that do this plant about one in ten.
 ## Step 5. The readers
 
 Announce the plan before spawning anything: the mode, how many readers of each kind below, which model,
-roughly what it costs. Wait for the user's word. Fan-outs that surprise the user are not measurements, they
+the host's capacity, and cost when exposed (otherwise say it is unexposed). Choose available models by
+`roles.md`. Wait for the user's word. Fan-outs that surprise the user are not measurements, they
 are bills.
 
 One fresh reader per question: brief 8 of [roles.md](../../references/roles.md), in its form for a set of
@@ -92,7 +89,7 @@ this arm found the effect large enough to swallow a result our size. It doubles 
 
 ## Step 5b. The cold readers
 
-In the same launch, two cold readers, brief 11 of [roles.md](../../references/roles.md), each on the entry
+In the same approved batches, two cold readers, brief 11 of [roles.md](../../references/roles.md), each on the entry
 file alone: what makes it hard or unpleasant to read, each point quoting its line. A pleasant read comes
 first in [rules.md](../../references/rules.md#a-pleasant-read), and their findings come first in the
 report. They give no mark, as brief 11 says, and the user's own read decides; what a cold reader would write
@@ -152,7 +149,7 @@ also that nothing was run, so no claim is above level 2 and no recipe was tried.
 only on the user's word: that they agree to a named plan (`rethink` step 5), whose file name and SHA-256
 go into the report, or, quoted, that the document's current shape stands. A plan they read without saying
 they agree to it is not agreement; anything short of their word is `shape: not agreed`. Agreed, offer
-`rewrite` as the next step, given the report's path. Not agreed, offer `/terse:rethink`, and say why
+`rewrite` as the next step, given the report's path. Not agreed, offer `rethink`, and say why
 not `rewrite` alone: a polished text can still have the wrong shape
 ([M29](../../references/measurements.md#m29)). Run neither. For the human hand-over, follow
 [relayed results](../../references/genres/relayed-result.md).

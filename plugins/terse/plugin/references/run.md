@@ -1,26 +1,32 @@
 # The run directory
 
-Each skill that makes a run keeps it in a directory of its own, outside the repository that holds the text, and makes
-it with one line in its own SKILL.md. The line is there and nowhere else: Claude Code writes the plugin's
-data directory into `${CLAUDE_PLUGIN_DATA}` only in a skill's own body and exports nothing to Bash, so the
-same line copied from any other page sends an installed run to the temporary directory. The plugin's
-`plugins/terse/evals/pages.test.mjs` fails when the three copies differ.
+Each skill that makes a run uses this recipe, with Node 22 or newer. Keep the run outside the repository
+that holds the text unless the user explicitly chooses otherwise. Set the local `RUN_ROOT` to empty for
+the runtime's temporary root, or to an absolute durable directory only when the user supplies
+one. Temporary storage may be purged by the operating system, so a run needed later requires that choice
+or a copy to durable storage. A durable directory and its cleanup belong to the user.
 
-`D` is the plugin's data directory when Claude Code supplies one, and empty otherwise, as in a bare source
-checkout; then the run falls back to the temporary directory. A run in the data directory survives plugin
-updates and goes when the plugin's last installation is removed: by `claude plugin uninstall` without
-`--keep-data`, or by `claude plugin marketplace remove`, which has no such option. A checkout loaded with
-`claude --plugin-dir` gets a data directory of its own, `plugins/data/terse-inline` under Claude Code's
-configuration directory, which no uninstall removes: its runs are the user's to delete. In the temporary
-directory the operating system may purge a run. A run that must outlive any of these is the user's to copy
-somewhere durable, and the report says so.
+`<slug>` is a single filename naming the text; a `rethink` slug ends in `-rethink`.
 
-The data directory is under `~/.claude`, which Claude Code protects: in the `default` and `acceptEdits`
-permission modes each file written there asks first, until the user allows edits in `~/.claude` for the
-session, and no allow rule or `additionalDirectories` entry approves it in advance; in auto mode its
-classifier decides.
+```bash
+RUN_ROOT=""
+RUN=$(node --input-type=module - "$RUN_ROOT" "<slug>" <<'NODE'
+import { mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+const [suppliedRoot, slug] = process.argv.slice(2);
+const root = path.resolve(suppliedRoot || tmpdir());
+mkdirSync(root, { recursive: true });
+const run = path.join(root, `terse-${randomUUID()}-${slug}`);
+mkdirSync(run);
+console.log(run);
+NODE
+) && printf '%s\n' "$RUN"
+```
 
-`<slug>` names the text, and a `rethink` run ends it in `-rethink`. Name the run's absolute path to the
-user and in the run's own files: the next skill is given a path by the user and cannot guess it. An audit's
-report is the one file that may go into the repository, to the folder the user settles, and every path in
-it is relative to the repository.
+The recipe sets local `RUN` to the printed absolute path; pass it in later commands and agent briefs. Keep the owner's words in
+`purpose.md`; name the path to the user and in the run's files. The next skill receives a path from the
+user and cannot guess it. An audit's report may go into the repository only in the folder the user
+settles; every path in that report is relative to the repository. Running code in full mode still uses
+a disposable copy under the runtime's temporary root, even when the report directory is durable.

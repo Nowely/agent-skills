@@ -5,14 +5,14 @@
 //
 // A definition two skills use lives once, under references/, and every page links it. What moving text
 // cannot keep in agreement, these cases check: that every link still opens after a page moves; that the
-// run-directory line, which each skill that makes a run carries in its own body because Claude Code substitutes
-// ${CLAUDE_PLUGIN_DATA} only in a skill body and exports nothing to Bash, is one line in all of them; and
-// that a frozen block still hashes to the digest its page records.
+// shared run recipe creates the promised paths; that the installed rewrite helper runs from another
+// directory; that invocation policy agrees across hosts; and that a frozen block still hashes to its digest.
 
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "plugin");
@@ -164,28 +164,66 @@ test("every relative link in the plugin's pages opens, its anchor included", () 
   return broken.length === 0 || broken.join("; ");
 });
 
-test("each skill that makes a run carries the same run-directory line, in the exact ${...} form", () => {
-  const lines = RUN_SKILLS.map((s) => {
-    const body = fs.readFileSync(path.join(ROOT, "skills", s, "SKILL.md"), "utf8");
-    return [s, body.split("\n").filter((l) => l.includes("${CLAUDE_PLUGIN_DATA}")).map((l) => l.trim())];
-  });
-  const problems = lines.filter(([, ls]) => ls.length !== 1).map(([s, ls]) => `${s} has ${ls.length} such lines`);
-  const distinct = new Set(lines.map(([, ls]) => ls[0]));
-  if (!problems.length && distinct.size !== 1)
-    problems.push(`the lines differ: ${lines.map(([s, ls]) => `${s}: ${ls[0]}`).join(" | ")}`);
-  return problems.length === 0 || problems.join("; ");
+const shellQuote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
+const bashBlocks = (file) => [...fs.readFileSync(file, "utf8").matchAll(/```bash\n([\s\S]*?)\n```/g)].map((m) => m[1]);
+const withoutClaudePaths = (tmp) => {
+  const env = { ...process.env, TMPDIR: tmp };
+  for (const name of ["CLAUDE_PLUGIN_ROOT", "CLAUDE_PLUGIN_DATA", "CLAUDE_SKILL_DIR"]) delete env[name];
+  return env;
+};
+
+test("the shared run recipe creates distinct absolute temporary and supplied durable paths", () => {
+  const recipe = bashBlocks(path.join(ROOT, "references/run.md"))[0];
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "terse-pages-run-"));
+  const problems = [];
+  try {
+    for (const skill of RUN_SKILLS) {
+      const body = fs.readFileSync(path.join(ROOT, "skills", skill, "SKILL.md"), "utf8");
+      if (!body.includes("](../../references/run.md)")) problems.push(`${skill}: no shared recipe link`);
+    }
+    const paths = [];
+    for (const supplied of ["", "", path.join(tmp, "durable"), path.join(tmp, "durable")]) {
+      const command = recipe.replace('RUN_ROOT=""', `RUN_ROOT=${shellQuote(supplied)}`).replaceAll("<slug>", "pages-rethink");
+      const run = execFileSync("bash", ["-c", command], { cwd: tmp, env: withoutClaudePaths(tmp), encoding: "utf8" }).trim();
+      if (!path.isAbsolute(run) || path.dirname(run) !== (supplied || tmp) || !run.endsWith("-rethink") || !fs.statSync(run).isDirectory())
+        problems.push(`unexpected run path: ${run}`);
+      paths.push(run);
+    }
+    if (new Set(paths).size !== paths.length) problems.push("run paths repeated");
+    return problems.length === 0 || problems.join("; ");
+  } catch (e) { return e.message; }
+  finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 
-test("every Claude Code placeholder is written in the exact ${...} form it substitutes", () => {
-  // A bare $VAR is neither substituted nor exported, and a ${VAR:-default} is never substituted: either
-  // runs on an empty value. The changelog names the old forms where it records the fixes; it instructs no one.
-  const problems = [];
-  for (const file of pages().filter((f) => path.basename(f) !== "CHANGELOG.md")) {
-    const text = fs.readFileSync(file, "utf8");
-    for (const [m] of text.matchAll(/\$(?:CLAUDE_PLUGIN_ROOT|CLAUDE_PLUGIN_DATA|CLAUDE_SKILL_DIR)\b|\$\{(?:CLAUDE_PLUGIN_ROOT|CLAUDE_PLUGIN_DATA|CLAUDE_SKILL_DIR)\s*:-/g))
-      problems.push(`${path.relative(ROOT, file)} writes ${m}`);
-  }
-  return problems.length === 0 || problems.join("; ");
+test("deep skills require explicit invocation in both hosts and clarity remains implicit-eligible", () => {
+  const implicit = (skill) => {
+    const file = path.join(ROOT, "skills", skill, "agents/openai.yaml");
+    if (!fs.existsSync(file)) return true;
+    const policy = fs.readFileSync(file, "utf8").match(/^policy:\n((?: {2}.+(?:\n|$))+)/m)?.[1];
+    const value = policy?.match(/^  allow_implicit_invocation: (true|false)$/m)?.[1];
+    if (!value) throw new Error(`${skill}: missing boolean Codex invocation policy`);
+    return value === "true";
+  };
+  try {
+    const problems = RUN_SKILLS.filter((skill) =>
+      frontmatterYaml(path.join(ROOT, "skills", skill, "SKILL.md"))["disable-model-invocation"] !== true || implicit(skill));
+    if (!implicit("clarity")) problems.push("clarity");
+    return problems.length === 0 || `invocation policy mismatch: ${problems.join(", ")}`;
+  } catch (e) { return e.message; }
+});
+
+test("rewrite's installed helper invocation works from another directory without Claude variables", () => {
+  const recipe = bashBlocks(path.join(ROOT, "skills/rewrite/SKILL.md")).find((b) => b.includes("scripts/sections.mjs"));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "terse-pages-sections-"));
+  try {
+    fs.writeFileSync(path.join(tmp, "01-draft.md"), "## A\none two\n## B\nthree\n");
+    fs.writeFileSync(path.join(tmp, "02-repaired.md"), "## A\none two three\n## C\nfour\n");
+    const command = recipe.replace('SKILL_DIR="<installed-rewrite>"', `SKILL_DIR=${shellQuote(path.join(ROOT, "skills/rewrite"))}`);
+    const out = execFileSync("bash", ["-c", command], { cwd: tmp, env: { ...withoutClaudePaths(tmp), RUN: tmp }, encoding: "utf8" });
+    return /\+1\s+A$/m.test(out) && /B\s+\(only before\)/.test(out) && /C\s+\(only after\)/.test(out)
+      && /1 section\(s\) grew, 2 in one version only/.test(out) || `unexpected sections report: ${out}`;
+  } catch (e) { return e.message; }
+  finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 
 test("each frozen block hashes to the SHA-256 its page records", () => {

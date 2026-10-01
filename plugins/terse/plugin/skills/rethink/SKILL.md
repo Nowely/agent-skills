@@ -18,21 +18,18 @@ as its brief's `<SENTENCES>`; how a claim is checked against its world is in [tr
 
 1. **One message to the user**, as `rewrite` step 1: what the text is for and who reads it, what it must
    and must not say. It names no mode: no role here runs code. Announce the agents below and wait for the
-   word. Keep the answer in `purpose.md` of the run directory, `<slug>` naming the text and ending in
-   `-rethink` ([run.md](../../references/run.md)):
-
-   ```bash
-   D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
-   ```
+   word. Keep the answer in `purpose.md` of the run directory, created by
+   [run.md](../../references/run.md) with a slug ending in `-rethink`.
 2. **The best texts of its kind.** From [genres/](../../references/genres/) where the kind has notes;
    otherwise the genre scout, brief 2, first, and its table is kept there on the user's word.
 3. **The context, then the plan.** The writer, brief 1, stopped before the text: `context.md` first —
    what the thing is, who reads it, what they need first, what would make them want it and choose it over
    what it resembles, the one thought — then each part, what it gives this reader, the device that carries
-   it — the plan's share of a pleasant read — and a word budget. One screen.
-4. **Two critics at once on the plan**: form, brief 5, and the rationalizer, brief 4, each asking of every
-   part whether this reader needs it here or would want it.
-5. **The hand-over.** The plan with the critics' findings applied or declined, and what is asked of the
+   it — the plan's share of a pleasant read — and a word budget, in `01-plan.md`. One screen.
+4. **Two independent critics on the frozen plan**: form, brief 5, and the rationalizer, brief 4, each asking of every
+   part whether this reader needs it here or would want it. Batch them to the host's capacity as `roles.md` says.
+5. **The hand-over.** Continue the same writer with both reports, still stopped before prose, to write
+   `02-plan.md` and the list of findings applied or declined with reasons. Return that plan and what is asked of the
    user: their word on it, or the sections that are wrong. Then stop. `rewrite` starts from the plan they
    agreed, given its path. Use the [relayed-result note](../../references/genres/relayed-result.md), and
    account for later objections through the [owner-feedback brief](../../references/roles.md#13-owner-feedback).
