@@ -1,14 +1,21 @@
 # terse
 
-terse is a Claude Code plugin for assessing and improving any text. Its aim is text in which every word carries weight and meaning, without AI slop. Three deep skills use several AI agents; `clarity` is a page Claude may choose while writing everyday text.
+terse is a plugin for Codex and Claude Code for assessing and improving any text. Its aim is text in which every word carries weight and meaning, without AI slop. Three deep skills use several AI agents; `clarity` is a page the assistant may choose while writing everyday text.
 
 ## Quick start
 
-### Install
+### Install in Claude Code
 
 ```bash
 claude plugin marketplace add Nowely/agent-skills
 claude plugin install terse@nowely
+```
+
+### Install in Codex
+
+```bash
+codex plugin marketplace add Nowely/agent-skills
+codex plugin add terse@nowely
 ```
 
 You need: Node 22 or newer.
@@ -20,6 +27,11 @@ In Claude Code:
 ```text
 /terse:audit
 ```
+
+In Codex, invoke `$terse:audit`, `$terse:rethink`, `$terse:rewrite`, or `$terse:clarity`.
+The workflow below uses the Claude Code command names; both hosts use their native agents, available
+models and capacity. The deep skills require explicit invocation in both; `clarity` remains eligible
+for automatic selection.
 
 It asks for the scope — which files to check, every tracked `.md` by default — where your readers start, and whether its report goes into a folder of your repository or stays in its own folder outside it. Before starting agents, `rethink`, `rewrite`, and `audit` say how many and on which model, and wait until you say so. Its report starts with what makes your text hard to read, then lists the questions it answers wrong, why, and where — file and line when a sentence is at fault.
 
@@ -42,9 +54,9 @@ Recommended orders, each command run by you:
 - `/terse:audit` → `/terse:rewrite`, which asks the audit's questions of your text before and after
 - `/terse:rethink` → `/terse:rewrite` → `/terse:audit`
 
-For an answer, plan, report, commit, PR, comment, or message, Claude may choose `/terse:clarity` from
+For an answer, plan, report, commit, PR, comment, or message, the assistant may choose `clarity` from
 its description; you can call it yourself too. Automatic choice is not guaranteed. It starts no agents.
-There is no separate switch for this plugin skill; use `/plugin` to disable the plugin.
+In Claude Code, use `/plugin` to disable the plugin.
 
 ### Update
 
@@ -61,15 +73,15 @@ Restart Claude Code to apply it.
 | `/terse:audit` | You cannot tell whether your document is fine | A summary in the chat and the report as a file, in your repository if you choose: what makes the text hard to read, then which questions it answers wrong, why, and where — file and line when a sentence is at fault; no rewording |
 | `/terse:rethink` | No document yet, or it says the wrong things in the wrong order | A plan: the sections, each with what it gives the reader and its size, to agree to before the text is written |
 | `/terse:rewrite` | You want the text written or rewritten | A new draft of the whole document, and its diff |
-| `/terse:clarity` | Claude may choose it while writing for a person or agent; you may call it yourself | Reader-side questions and genre notes applied to the text at hand; no run |
+| `/terse:clarity` | The assistant may choose it while writing for a person or agent; you may call it yourself | Reader-side questions and genre notes applied to the text at hand; no run |
 
-You start `audit`, `rethink`, and `rewrite` yourself. Claude may choose `clarity` on its own.
+You start `audit`, `rethink`, and `rewrite` yourself. The assistant may choose `clarity` on its own.
 
 ## How it works
 
 - **audit** — a profile of who reads it → every claim checked by reading the code or a named source → questions and an answer key → a fresh AI reader per question, with and without your text, starting where your readers start, and two more on what makes it hard to read → a cause for each wrong answer: false, missing, misplaced, hard to find, misleading steps. Ask for a full run and the claims are also run, and two AI readers carry out tasks from your text. [Its page](skills/audit/SKILL.md)
 - **rethink** — what your text is and who it is for → how the best texts of its kind are built → a plan on one screen: each part, what it gives the reader and the form it takes → form and relevance critics on the plan → a plan you agree to. [Its page](skills/rethink/SKILL.md)
-- **rewrite** — one writer, who first works out what your text is, who reads it and what they need → every critic at once: truth by reading the code, relevance for your reader, form, terms, sentences, fresh AI readers asked the same questions before and after → one repair → a check of what it changed → your read. Ask for a full run and the truth critics also run the code, and an AI reader carries out a task from your text. [Its page](skills/rewrite/SKILL.md)
+- **rewrite** — one writer, who first works out what your text is, who reads it and what they need → independent critics on the same draft, in batches that fit the host: truth by reading the code, relevance for your reader, form, terms, sentences, fresh AI readers asked the same questions before and after → the same writer's repair → a check of what it changed → your read. Ask for a full run and the truth critics also run the code, and an AI reader carries out a task from your text. [Its page](skills/rewrite/SKILL.md)
 - **clarity** — three questions before writing, six reader-side mechanisms while writing, six checks after; the relevant [genre note](references/genres/) only when needed. It can help with everyday text, including comments written in files and agent briefs. [Its page](skills/clarity/SKILL.md)
 
 For a README, there are genre notes for [plugin or skill libraries](references/genres/readme-tools.md) and [terminal tools](references/genres/readme-terminal-tools.md).
@@ -84,6 +96,6 @@ For a README, there are genre notes for [plugin or skill libraries](references/g
 
 [The field's practices](references/prior-art.md), gathered and ranked.
 
-**How the deep skills work:** A run goes in the plugin's data directory when Claude Code gives the plugin one, and in a temporary directory otherwise; [how long it stays and what asks for permission](references/run.md). An audit's report goes into your repository only if you choose, and nothing is committed. In `rewrite`, a sentence the truth critics refute goes back to the writer before you see the text. The skills ask for your word before applying a draft to your repository.
+**How the deep skills work:** A run uses temporary storage by default, or a durable directory you supply; [creation, lifetime and path hand-over](references/run.md). The local path variables are `RUN_ROOT` and `RUN`, with `SKILL_DIR` for rewrite's installed helper. An audit's report goes into your repository only if you choose, and nothing is committed. In `rewrite`, a sentence the truth critics refute goes back to the same writer before you see the text. The skills ask for your word before applying a draft to your repository.
 
 **Not guaranteed:** that a person reads the result better; what is measured is what AI readers get from the text.

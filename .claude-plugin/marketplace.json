@@ -17,7 +17,7 @@
     },
     {
       "name": "terse",
-      "description": "Three skills you invoke to assess and improve a standalone text: `audit` measures it, `rethink` agrees its shape, and `rewrite` writes it. `clarity` is reader-side guidance Claude may choose while writing an answer, plan, commit, PR, comment, message, or agent brief; it starts no agents. The deep skills use agents, work in a run directory and ask before applying a text to your files.",
+      "description": "Three skills you invoke to assess and improve a standalone text: `audit` measures it, `rethink` agrees its shape, and `rewrite` writes it. `clarity` is reader-side guidance the assistant may choose while writing an answer, plan, commit, PR, comment, message, or agent brief; it starts no agents. The deep skills use agents, work in a run directory and ask before applying a text to your files.",
       "author": {
         "name": "Nowely"
       },

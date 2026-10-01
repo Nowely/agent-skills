@@ -2,7 +2,7 @@
 name: rewrite
 description: >-
   Writes or rewrites a text pleasant to read and true within its world: a writer first works out what the
-  text is and who reads it, every critic reads the draft at once — truth, a rationalizer, form, terms,
+  text is and who reads it, every critic reads the same frozen draft independently — truth, a rationalizer, form, terms,
   sentences, fresh readers — the writer repairs once, and a check reads the repair. Touches your files only
   on your word.
 disable-model-invocation: true
@@ -11,8 +11,8 @@ metadata:
 license: MIT
 ---
 
-One writer, then every critic at once, then the writer once more and a check of what it changed, then
-your read. Each critic holds one concern, so none waits for another. Every role works from
+One writer, then independent critics in batches that fit the host, then the same writer once more and a
+check of what it changed, then your read. Each critic holds one concern. Every role works from
 [rules.md](../../references/rules.md) — two requirements, a pleasant read and truth within the text's world,
 and advice taken where it helps; the briefs are in [roles.md](../../references/roles.md). The writer and the
 sentences critic get [writing-rules.md](../../references/writing-rules.md) and
@@ -30,19 +30,15 @@ Ask once, in one message, and announce the run in the same message:
 - for an existing text, whether its shape stands or should follow the genre.
 
 The announcement names the mode, [light or full](../../references/roles.md#light-and-full), and that mode's
-agents with their models from `roles.md`: the writer, the genre scout when the genre has no notes, and the critics.
+agents with models chosen from the available tiers in `roles.md`: the writer, the genre scout when the genre has no notes, and the critics.
 Wait for the word. Keep the answer verbatim in `purpose.md` of the run directory. A behaviour the user
 asks the text to state is a claim like any other: one the text's world does not hold goes back to them as a
 question.
 
 ## Step 2. The run directory
 
-Outside the repository that holds the text, `<slug>` naming the text; where it lives, how long, and what
-its path is for: [run.md](../../references/run.md).
-
-```bash
-D="${CLAUDE_PLUGIN_DATA}"; RUN="${D:-${TMPDIR:-/tmp}/terse}/runs/$(date +%Y%m%d-%H%M%S)-<slug>" && mkdir -p "$RUN" && echo "$RUN"
-```
+Create it by [run.md](../../references/run.md): temporary by default, or under the durable directory the
+user supplied, with `<slug>` naming the text. That page owns its lifetime and path hand-over.
 
 Nothing goes into the repository without the user's word.
 
@@ -74,9 +70,9 @@ genre's notes and the best texts of the kind, and writes `01-draft.md` — from 
 context, the plan and its evidence; save them as `writer-notes.md`. In full mode the harness, brief 12,
 runs beside it.
 
-## Step 4. Every critic at once
+## Step 4. Every critic on the same draft
 
-Launch them in one message, on the draft:
+Freeze the draft, then launch independent critics in capacity-sized batches as `roles.md` says:
 
 - truth, brief 3, one agent per group of sections — a few hundred words each, so each finishes fast;
 - the rationalizer, brief 4: does this reader need it here, or does it make them want the thing;
@@ -84,20 +80,22 @@ Launch them in one message, on the draft:
 - the question readers, brief 8, one per question in `questions.md`; in full mode, one task reader, brief 9.
 
 In full mode each truth critic's brief carries the line brief 3 gives for it. Each returns its report;
-save it into `critics/` of the run directory. No agent merges them: the writer reads them all.
+save it verbatim into `critics/` of the run directory. No agent merges them: the writer reads them all.
 
 ## Step 5. One repair, and a check of it
 
-The writer again, on the repair brief of `roles.md`, sent every report: it takes a finding where the text
+Continue the same writer, on the repair brief of `roles.md`, sent every report: it takes a finding where the text
 becomes truer for its reader or easier to read, declines one that adds words the reader does not need
-there with a reason from the context, and writes `02-repaired.md` with that list. Then, in one message:
-truth, brief 3, on the sentences the repair changed; the question readers again; the two cold readers,
-brief 11. Run the script on it too, with Node 22 or newer, from this skill's `scripts/`, the directory beside
-this file — words per section of the draft and the repair side by side, a report: a section that grew, or one
-only one of them has, is where the repair added or lost text:
+there with a reason from the context, and writes `02-repaired.md` with that list. Then, independently in
+capacity-sized batches: truth, brief 3, on the sentences the repair changed; fresh question readers; the two
+cold readers, brief 11. Run the script too, with Node 22 or newer. Set local `SKILL_DIR` to the absolute
+directory containing this loaded SKILL.md, resolved from its installed skill location. `RUN` is the
+absolute path set by `run.md`. The report shows words per section side by side: a section that grew,
+or one only one version has, is where the repair added or lost text:
 
 ```bash
-node "${CLAUDE_SKILL_DIR}/scripts/sections.mjs" 01-draft.md 02-repaired.md
+SKILL_DIR="<installed-rewrite>"
+node "$SKILL_DIR/scripts/sections.mjs" "$RUN/01-draft.md" "$RUN/02-repaired.md"
 ```
 
 A sentence truth finds wrong for the reader, a contradiction, a question now answered wrong or a line a
@@ -127,5 +125,5 @@ applied-and-declined list; the scripts' output; `diff.patch` for a text that exi
 The writer starts from context because a rule-led draft once lost the demo and routes its reader needed;
 the repair check catches what the repair itself breaks. The dated runs and limits are
 [M26–M30](../../references/measurements.md#m26).
-The before and after here read one file; for the documentation as its readers walk it, `/terse:audit`
+The before and after here read one file; for the documentation as its readers walk it, `audit`
 measures anew, with questions of its own.

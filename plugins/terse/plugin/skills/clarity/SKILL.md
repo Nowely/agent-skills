@@ -4,8 +4,8 @@ description: >-
   Reader-side checks when drafting or revising text for a person or another agent, even a single
   line written during coding: commit titles, changelog entries, docstrings, code and review
   comments, PR descriptions, captions, messages, plans, reports, and summaries in your own words of
-  what agents, tests, or tools found, including replies to the user in chat. Claude can choose it
-  automatically, or you can call /terse:clarity. It starts no agents or run directory. Skip bare
+  what agents, tests, or tools found, including replies to the user in chat. The assistant can choose it
+  automatically, or you can invoke clarity explicitly. It starts no agents or run directory. Skip bare
   acknowledgements and steps that only run tools, change identifiers, or copy existing output
   verbatim on request. For a standalone document requested by its owner, suggest rethink, rewrite,
   or audit; the user starts them.

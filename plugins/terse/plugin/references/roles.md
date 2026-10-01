@@ -1,32 +1,42 @@
 # The roles
 
-Every agent the three skills start, with its model and its brief. `rewrite` runs one writer, then every
-critic at once on the writer's draft, then the writer once more, then a check of what the repair changed;
+Every agent the three skills start, with its model tier and its brief. `rewrite` runs one writer, then every
+critic independently on the writer's draft, then the same writer once more, then a check of what the repair changed;
 `rethink` runs the writer, the genre scout, form and the rationalizer on a plan; `audit` runs the readers,
-and in a full run the harness. Each critic holds one concern and nothing else, so they run in parallel and
-none waits for another. Fill `<DOC>` (the text under review), `<CODE>` (what the text describes: for
+and in a full run the harness. Freeze the artifact before the first critic starts. Run independent roles
+in batches that fit the host's available capacity, without sharing one critic's findings with another;
+the writer resumes only after all reports arrive. Use the host's delegation, continuation and completion
+facilities. An external-model adapter belongs only to an explicitly requested external run.
+Fill `<DOC>` (the text under review), `<CODE>` (what the text describes: for
 documentation, the repository), `<CONTEXT>` (the `context.md` the writer writes first), `<GENRE>` (the notes
 for this kind of text, or the scout's table and the best documents it fetched), `<RULES>` (`rules.md` beside
 this page), `<SENTENCES>` (`writing-rules.md` and `curse-of-knowledge.md` beside this page), `<TRUTH>`
 (`truth.md` beside this page), `<PURPOSE>` (the owner's words: what the text is for and who reads it),
 `<AUDIT>` (an audit's report, where one was given), `<OUT>` (the run directory); send nothing else.
-Every brief ends with: do not modify the repository, write only under `$TMPDIR`, never `cd` inside a
-compound command. Every agent returns its report as its final message, and the coordinator saves it: a
-harness hook refuses a subagent's report file.
+Each brief names its readable inputs, writable paths under the absolute run directory, and the runtime's
+temporary root for executable checks. The repository is read-only. The writer owns its numbered artifacts;
+critics may write only their assigned reports. When the host accepts report files, use those paths;
+otherwise return the report as the final message and the coordinator saves it verbatim.
 
-| Role | Model | Runs | Brief |
+Map the tiers below to models actually available in the host: top for the hardest judgement, strong for
+bounded skilled work, cheap for a narrow fresh read. If only one model is available, use it for all tiers.
+If the host exposes no model override, inherit its settings and say so. Announce the actual selection and
+capacity before starting agents; report cost only when the host exposes it. Fresh readers are new agents,
+not continuations of readers that already saw the text. Keep the writer's identity for repairs and feedback.
+
+| Role | Tier | Runs | Brief |
 |---|---|---|---|
-| writer | Claude Opus | first, and again for the repair | 1 |
-| genre scout | Codex Sol | before the writer, only when the kind has no notes | 2 |
-| truth, one per group of sections | Claude Opus | on the draft; one more on the sentences the repair changed | 3 |
-| rationalizer | Claude Opus | on the draft | 4 |
-| form | Claude Sonnet | on the draft | 5 |
-| terms | Claude Sonnet | on the draft | 6 |
-| sentences | Claude Sonnet | on the draft | 10 |
-| question readers | Codex Luna | `rewrite`: one per question, on the existing text, the draft and the repaired text; `audit`: one per question | 8 |
-| task reader | Codex Sol | `rewrite`: one, on the draft; `audit`: two, on the documentation; full mode only | 9 |
-| harness | Claude Sonnet | beside the writer, or from the audit's first step; full mode only | 12 |
-| cold readers, two | Codex Astra and Codex Sol | `rewrite`: on the repaired text; `audit`: on the entry file | 11 |
+| writer | top | first, and again for the repair | 1 |
+| genre scout | strong | before the writer, only when the kind has no notes | 2 |
+| truth, one per group of sections | top | on the draft; one more on the sentences the repair changed | 3 |
+| rationalizer | top | on the draft | 4 |
+| form | strong | on the draft | 5 |
+| terms | strong | on the draft | 6 |
+| sentences | strong | on the draft | 10 |
+| question readers | cheap | `rewrite`: one per question, on the existing text, the draft and the repaired text; `audit`: one per question, the same model in both arms | 8 |
+| task reader | strong | `rewrite`: one, on the draft; `audit`: two, on the documentation; full mode only | 9 |
+| harness | strong | beside the writer, or from the audit's first step; full mode only | 12 |
+| cold readers, two | top and strong | `rewrite`: on the repaired text; `audit`: on the entry file | 11 |
 
 ## Contents
 
@@ -47,10 +57,13 @@ harness hook refuses a subagent's report file.
 
 ## Light and full
 
-A run is light by default: every role reads and runs nothing. It is full when the user asks: one agent
+A run is light by default: roles read without executing the code the text describes. Reading and run/report
+bookkeeping remain available. It is full when the user asks: one agent
 builds a runnable copy of the code while the rest of the run goes on (brief 12), the truth checks may run
 the code there, and a task reader carries out what the text tells it to do (brief 9). A skill that starts
-a role able to run code names the mode when it announces its agents.
+a role able to run code names the mode when it announces its agents. Truth checks and task readers wait
+for the harness's readiness report before using its copy. A behaviour that cannot run there remains
+unverified; execution rights cover only that disposable copy and isolated configuration and data.
 
 ## 1. The writer
 
@@ -96,7 +109,7 @@ reader, so that a count or a name said twice agrees with itself. Write the text 
 and to <OUT>/02-repairs.md one line per finding: the critic, the finding, applied or declined, the reason.
 ```
 
-Then, at once: truth, brief 3, on the sentences the repair changed; the question readers again; and the two
+Then, independently in capacity-sized batches: truth, brief 3, on the sentences the repair changed; fresh question readers; and the two
 cold readers, brief 11. What they find goes back to the writer for those lines only:
 
 ```
@@ -113,7 +126,7 @@ No text is called final: the user's word makes it so.
 
 ```
 Find how documents of this kind are written: <KIND>. Fetch five to eight of the most used — by stars,
-downloads or listings — as raw text with curl, never through a summarising tool, and save them
+downloads or listings — as raw text through an available download tool, rather than a summary, and save them
 under <OUT>/fetched/. Return one table: each place from the top, what the genre puts there, in N of M
 documents, and how it is formatted there — headings, bold lead-ins, tables, fenced blocks, lists. Then
 name the two or three best, and what their first 150 words do for their reader. Cite nothing you did not
@@ -180,10 +193,10 @@ diagnosable: it names the line that misled the reader and where the repair goes.
 For one text, as `rewrite` sends it:
 
 ```
-You are a fresh reader. Read ONE file and nothing else, with cat: <DOC>. Do not use anything you
+You are a fresh reader. Read ONE file and nothing else, using the host's file reader: <DOC>. Do not use anything you
 already know about this software. Answer from that document alone: <QUESTION>. Quote the sentence the
 answer comes from and name its section. If the document does not answer it, write GUESSED, give your
-best guess, and the sentence you wished were there. Run no command other than that one cat.
+best guess, and the sentence you wished were there. Open no other input and run none of the described code.
 ```
 
 For a set of documents, as `audit` sends it, starting where its readers start:
@@ -209,15 +222,15 @@ Return:
 
 ```
 You are a fresh reader carrying a task. You may read <READ>, and nothing else. Starting state:
-<STATE>, created under $TMPDIR. Point every application the document runs at configuration and data under
-$TMPDIR too — its configuration-directory setting, or HOME — never at this machine's own; a command you cannot
+<STATE>, created under the assigned temporary root. Point every application the document runs at isolated
+configuration and data there, through its configuration setting or the host's isolated home; a command you cannot
 point there, do not run, and report it as a step you could not take. Goal: <GOAL>. Do what the document says,
 then show the resulting state.
 Report every command with its output, every point where you had to guess and the sentence you wished
 were there, and every sentence that turned out untrue. End with one line: GOAL: achieved | partly | not.
 ```
 
-`rewrite` fills <READ> with "ONE file, with cat: <DOC>"; `audit` with "the .md files in <REPO>, starting at
+`rewrite` fills <READ> with "ONE file: <DOC>"; `audit` with "the .md files in <REPO>, starting at
 <ENTRY FILE>".
 
 ## 10. Sentences
@@ -232,7 +245,7 @@ plainer sentence that says the same, or "cut" where it carries nothing.
 ## 11. A cold reader
 
 ```
-You are a fresh reader. Read ONE file, with cat, and nothing else: <DOC>. Assess the quality of this
+You are a fresh reader. Read ONE file, using the host's file reader, and nothing else: <DOC>. Assess the quality of this
 <KIND>. Quote the line for every point you make.
 ```
 
@@ -242,8 +255,8 @@ no mark: a past mark did not separate the owner's choices ([M26](measurements.md
 ## 12. The harness, full mode only
 
 ```
-Build a runnable copy of <CODE> under $TMPDIR for the truth checks, while the rest of the run goes on:
-install its dependencies with every cache under $TMPDIR, build what the repository builds, and stub what
+Build a runnable copy of <CODE> under the assigned temporary root for the truth checks, while the rest of the run goes on:
+install its dependencies with every cache there, build what the repository builds, and stub what
 cannot run outside its host. Change nothing in <CODE>. Return as your final message the copy's path, how to
 start each part, and what could not be built and why; give the path as <HARNESS> to every truth check.
 ```

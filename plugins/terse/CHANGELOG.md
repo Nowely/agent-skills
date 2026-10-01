@@ -7,6 +7,11 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- All four skills use native host instructions for Codex and Claude Code: available model tiers,
+  independent critics batched to capacity, and continuation of the same writer. Run creation lives in
+  one recipe with local `RUN_ROOT` and `RUN`, temporary by default and durable only at the user's supplied
+  path; rewrite resolves local `SKILL_DIR` for its helper. The three deep skills remain explicit-only,
+  with Codex invocation policy alongside Claude's existing frontmatter; `clarity` remains eligible for automatic use.
 - The genre note for skill pages says how a page cut to fit what a compaction keeps loses no fact: a restated fact
   goes only where its owner states it in the same words at the moment the reader meets it, every event the page
   handles keeps a line on the page, and a rewritten sentence keeps the old one's conditions. Why: the two cuts of
