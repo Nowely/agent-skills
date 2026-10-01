@@ -4,12 +4,12 @@
     "name": "Nowely"
   },
   "metadata": {
-    "description": "Nowely's plugins for Claude Code."
+    "description": "Nowely's plugins for Codex and Claude Code."
   },
   "plugins": [
     {
       "name": "entrust",
-      "description": "Run Codex as a subagent from Claude Code: rights declared per call, the network on by default at both levels and off by one line, exit codes derived from evidence, a receipt per completed turn. Adds an orchestration mode over Claude and Codex agents, an approved cleanup, an experiment mode that keeps its protocol and verdicts on record, a standing advisor, a swarm launcher and a feedback mode that turns your own sessions into a report on a plugin.",
+      "description": "Orchestrate native subagents in Codex or Claude with scoped tasks, independent verification and attributable results. In Claude, the codex adapter also launches external Codex agents with per-call rights, worktrees, evidence gates and receipts. External-run helpers include cleanup, experiments, an advisor, swarms and feedback reports.",
       "author": {
         "name": "Nowely"
       },

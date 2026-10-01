@@ -435,8 +435,9 @@ const lines = (text) => text.split("\n").filter((l) => l.trim());
 // Everything below the tool checks is a heuristic over free text, and reads as one: a plan can satisfy
 // every line here and still be a bad plan. The artifact plan.txt is what the release reader judges; these
 // catch the plan that never names a tier at all, and each failure quotes the line it judged.
-function planProblems({ s, scratch, head0, codexPlanned = true }) {
+function planProblems({ s, scratch, head0, codexPlanned }) {
   const text = s.planText, toolUses = s.toolUses;
+  codexPlanned ??= s.toolUses.some((u) => u.input?.skill === "entrust:codex");
   const problems = stoppedAtPlan(toolUses, scratch, head0);
   // D5: the codex page is loaded once the plan has a Codex agent, before the launcher's --plan; a plan
   // with none never loads it and never registers (D6: an all-Claude plan skips the registration).
@@ -465,8 +466,8 @@ function planProblems({ s, scratch, head0, codexPlanned = true }) {
   // No Claude-agent requirement: the page lets the coordinator take a quick targeted edit itself, and
   // measured, an Opus plan for the slug task did exactly that with one Codex verifier beside it. Whether
   // every Claude Agent call that does run carries a tag is judged after "go", on the calls themselves.
-  if (!/\bCodex\b/.test(text)
-      || !/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/i.test(text))
+  if (codexPlanned && (!/\bCodex\b/.test(text)
+      || !/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/i.test(text)))
     problems.push("the plan announces no composition: the word Codex and a count or \"zero\"");
   // A Fable session describing itself is not an agent tagged fable: counting those sentences made the cap
   // unmeetable in case 2.
@@ -488,7 +489,7 @@ function planProblems({ s, scratch, head0, codexPlanned = true }) {
   // effort; measured on case 7 of 2026-09-28, the cost row's "Astra will use its configured default effort"
   // made a second Astra of the one the who row named.
   const sequenced = /alive at a time|one at a time|one after the other|sequential|runs after|then the (second|other)|по очереди|последовательн|не одновременно|друг за другом|после (перв|первого)|сначала .{0,40}(затем|потом)/i.test(text);
-  for (const name of ["Fable", "Astra"]) {
+  for (const name of codexPlanned ? ["Fable", "Astra"] : []) {
     const t = topRowAgents(text, name, { isAgent });
     if (t.max > 1 && !sequenced)
       problems.push(`${t.max} ${name.toLowerCase()} agents in one wave with no sequencing stated, and the cap is one alive at a time: ${t.where.slice(0, 3).map(quote).join(" ")}`);
@@ -621,7 +622,7 @@ test("plan only under Opus: the first attempt stops at a plan",
 
 // --------------------------------------------------------------- 2
 
-test("plan only under Fable: the top pair is capped",
+test("plan only under Fable: model choices follow the selected integration",
   "the pool is the same in every session and a design task is where its caps bite: at most one Fable agent and one Astra agent alive at a time, the only thing between a design fan-out and a batch of top-tier agents, and the astra agent named at all only proves the session read the tier table",
   async () => {
     const dir = caseDir(2, "plan-fable");
@@ -655,8 +656,8 @@ test("plan only under Fable: the top pair is capped",
     problems.push(...planProblems({ s, scratch, head0 }));
     // The top Codex agent by name, not by tier table membership: planProblems accepts any of the three
     // rows, and for a design task the top row is the whole claim.
-    if (!lines(s.planText).some((l) => /\bastra\b/i.test(l)))
-      problems.push("the plan names no Astra agent");
+    // An all-native plan has no obligation to activate an external Codex model.
+
     return settle(dir, problems);
   });
 
@@ -819,7 +820,7 @@ test("the full run under Opus: plan, go, run",
 
     // The two turns are one session, so --no-session-persistence is dropped for both: it is the flag that
     // makes a session unresumable, and --resume is the whole point of turn 2.
-    const t1 = await session({ model: "opus", maxTurns: 60, prompt: SLUG_TASK, sessionId, resumable: true },
+    const t1 = await session({ model: "opus", maxTurns: 60, prompt: SLUG_TASK + " Include one external Codex verifier through the codex adapter.", sessionId, resumable: true },
       { cwd: scratch, timeoutMs: PLAN_TIMEOUT });
     const s1 = parseStream(t1.out);
     if (t1.killed) stopAgents(scratch, dir, s1.toolUses);
@@ -947,7 +948,7 @@ const NO_CODEX_TASK =
   + "that did not write the code. RETURN: the files and the test count.";
 
 test("plan only, no codex: the codex page is never loaded, nothing is registered, and the card still shows",
-  "D5 (#15 F18): the codex page is the 4,511 words a plan with no Codex agent never needed, and the generated composition page is what that plan reads instead; D6: an all-Claude plan skips the launcher's registration and still shows the five rows",
+  "D5 (#15 F18): the codex page is the 4,511 words a plan with no Codex agent never needed, and the common plan reference is what that plan reads instead; D6: an all-Claude plan skips the launcher's registration and still shows the five rows",
   async () => {
     const dir = caseDir(6, "plan-no-codex");
     const scratch = scratchClone(dir);
@@ -964,9 +965,9 @@ test("plan only, no codex: the codex page is never loaded, nothing is registered
     if (wrong) problems.push(wrong);
     if (r.killed) problems.push("the session was killed at the timeout");
     problems.push(...planProblems({ s, scratch, head0, codexPlanned: false }));
-    // The plan's composition came from the generated page, the one place it can come from without the codex page.
-    const readIt = s.toolUses.some((u) => u.parent === null && /codex-composition\.md/.test(JSON.stringify(u.input)));
-    if (!readIt) problems.push("the plan never read references/codex-composition.md, the composition it plans from");
+    // Native composition comes from the common plan reference without loading the external adapter.
+    const readIt = s.toolUses.some((u) => u.parent === null && /references[\\/]plan\.md/.test(JSON.stringify(u.input)));
+    if (!readIt) problems.push("the plan never read references/plan.md before composing");
     return settle(dir, problems);
   });
 

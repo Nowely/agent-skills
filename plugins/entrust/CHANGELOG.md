@@ -7,6 +7,12 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- `orchestrate` now uses native delegation without requiring the external `codex` adapter.
+  Its coordinator remains a role, models and capacity follow the host, and the existing adapter
+  owns Claude-to-Codex transport, registration, state, approvals and external results.
+- Codex keeps `orchestrate` explicit-only through skill policy metadata. The common draft linter
+  no longer imports the external driver. The existing marketplace is documented for both hosts.
+
 - **prepare-feedback's list of its script's commands moves to `skills/prepare-feedback/references/commands.md`**,
   which the page links in a line naming the nine commands. Why: `evals/skills.test.mjs` counts 20,602 characters in
   what Claude Code re-attaches of the page after a compaction, past the 20,001 it keeps whole, so the page's last

@@ -13,7 +13,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { FIELDS } from "../../codex/scripts/driver.mjs";
 
 export const MAX_WORDS = 400;
 
@@ -41,9 +40,8 @@ Rules:
   path          an absolute machine path (/Users/, /home/, /var/, /private/,
                 /tmp/, /opt/, /Volumes/, ~/, C:\\), \${VAR}, $TMPDIR or $CLAUDE_*.
                 A path relative to the repository (lib/slug.mjs) is allowed.
-  field         a header field name the driver knows, or TASK:, CHECK:,
-                RETURN:, ENVIRONMENT:, written as NAME: (or NAME_WITH_UNDERSCORE
-                anywhere); a status key such as PATH=, REPORT= or EXIT=.
+  field         an uppercase prompt header written as NAME: or an uppercase
+                NAME_WITH_UNDERSCORE token; a status key such as PATH= or EXIT=.
   five-fields   two or more of status:, result:, evidence:, artifacts:, open:
                 at line starts: a pasted return.
   machinery     wrapper, driver, report.json, prompt.txt, out.json, err.txt,
@@ -79,13 +77,11 @@ Rules:
 Reads and prints; writes nothing.
 `;
 
-// Every field the driver's parser knows, plus the body lines a brief carries: a user reads neither.
-const FIELD_NAMES = [...new Set([...FIELDS.map((f) => f.name), "TASK", "CHECK", "RETURN", "ENVIRONMENT"])];
 const RULES = [
   ["path", /(?:^|[\s(\[{"'`=:])((?:\/(?:Users|home|var|private|tmp|opt|Volumes)\/|~\/|[A-Za-z]:\\)\S*)/],
   ["path", /\$\{[A-Za-z_][A-Za-z0-9_]*\}|\$TMPDIR\b|\$CLAUDE_[A-Z_]+/],
-  ["field", new RegExp(`\\b(?:${FIELD_NAMES.join("|")}):`)],
-  ["field", new RegExp(`\\b(?:${FIELD_NAMES.filter((n) => n.includes("_")).join("|")})\\b`)],
+  ["field", /\b[A-Z][A-Z_]{2,}:/],
+  ["field", /\b[A-Z][A-Z_]*_[A-Z_]+\b/],
   ["field", /\b[A-Z][A-Z_]{2,}=/],
   ["machinery", /\b(?:wrappers?|driver|exitCode|answerJson|turnStatus|threadId|RESUME)\b|\b(?:report|out)\.json\b|\b(?:prompt|err)\.txt\b|\bexit(?: code)? \d+\b/],
   ["machinery", /(?<!\p{L})(?:обёртк|обертк|драйвер)\p{L}*/u],

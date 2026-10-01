@@ -18,9 +18,9 @@ import { DRIVER, FIELDS, ROOT, PROMPT_FIELDS, SCRIPTS, registry, runCases, summa
 import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../plugin/skills/codex/scripts/agent-run.mjs";
 
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
-const ORCHESTRATE = path.join(ROOT, "skills", "orchestrate", "SKILL.md");
+const ORCHESTRATE = path.join(ROOT, "skills", "codex", "references", "orchestration.md");
 // The orchestrate references a coordinator opens at a moment of the run; approvals.md holds its approval rule.
-const ORCHESTRATE_REFS = ["plan", "results", "approvals", "answer"].map((n) => path.join(ROOT, "skills", "orchestrate", "references", `${n}.md`));
+const ORCHESTRATE_REFS = [ORCHESTRATE];
 const ENV_MD = path.join(ROOT, "skills", "codex", "references", "environment-and-internals.md");
 const APPROVALS_MD = path.join(ROOT, "skills", "codex", "references", "approvals.md");
 
@@ -172,7 +172,7 @@ test("every driver path and every state directory on both pages is the exact ${.
     const REL = "skills/codex/scripts/driver.mjs";
     if (path.relative(ROOT, DRIVER).split(path.sep).join("/") !== REL) return `the shipped layout moved: ${path.relative(ROOT, DRIVER)}`;
     const problems = [];
-    for (const [label, text] of [["SKILL.md", skill], ["orchestrate/SKILL.md", orchestrate], ["references/approvals.md", approvals]]) {
+    for (const [label, text] of [["SKILL.md", skill], ["references/approvals.md", approvals]]) {
       for (const v of ["CLAUDE_SKILL_DIR", "CLAUDE_PLUGIN_DATA"])
         if (new RegExp(`${v}\\s*:-`).test(text))
           problems.push(`${label} writes \${${v}:-...}, which Claude Code does not substitute: the agent would run on the default, not on what the install resolved`);
@@ -369,9 +369,9 @@ test("the waiting result ends in REPORT=, the constant is thirty minutes, and ne
     for (const [label, text] of [["SKILL.md", flat], ["orchestrate/SKILL.md", orchestrateFlat], ...refs])
       for (const gone of ["sandboxWidened", "REPEAT_OF", "ACCESS=", "NETWORK=", "repeatOf", "a widening for named paths", "Prefer a widening", "state or cache", "permission features", "`policy`"])
         if (text.includes(gone)) problems.push(`${label} still names ${JSON.stringify(gone)}`);
-    const approvalsFlat = refs.find(([label]) => label.endsWith("approvals.md"))[1];
+    const approvalsFlat = orchestrateFlat;
     if (!approvalsFlat.includes("`asked`, Codex asked before running the command, and nothing on our side changes it"))
-      problems.push("orchestrate/references/approvals.md's synthesis sentence for cause asked is not the driver's own");
+      problems.push("codex/references/orchestration.md's synthesis sentence for cause asked is not the driver's own");
     return problems.length === 0 || problems.join("; ");
   });
 
