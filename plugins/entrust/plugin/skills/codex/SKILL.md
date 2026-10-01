@@ -1,15 +1,10 @@
 ---
 name: codex
 description: >-
-  Delegates tasks to Codex as a subagent with per-call rights: analysis that writes nothing of yours, or
-  writing and tests in a managed git worktree, each reaching the network unless the call denies it. Use
-  when a panel, refuters, or competing designs need an agent that does not share Claude's bias;
-  when fanning out reviewers or adversarial verifiers; after two hypotheses fail;
-  when a second independent implementation is wanted; or when the user names Codex, GPT, or "the other
-  model" (через codex, через gpt, вторая имплементация, панель ревьюеров), or names a Codex model by its
-  short name (Astra, Sol, Terra, Luna; астра, сол, терра, луна). It also governs requested
-  mixes ("one of them codex", "half codex", "only codex") and refusals ("no codex", "just you"). Skip
-  trivia and mechanical fact-gathering.
+  Claude-to-Codex adapter: launch external Codex agents with per-call rights, isolated worktrees,
+  evidence gates and receipts. Use in Claude when external Codex is requested or chosen for an
+  independent review, competing implementation or multi-provider panel. Native Codex subagents
+  use the host's own delegation facilities instead.
 metadata:
   version: "0.23.0"
 license: MIT
@@ -18,8 +13,9 @@ allowed-tools: Bash(node *codex/scripts/status.mjs*)
 
 # Delegating to Codex
 
-The **user** requests the work; the **coordinator** chooses and synthesises the composition; one Codex
-**agent** performs one deliverable under rights declared in its prompt.
+Under `orchestrate`, first read [orchestration.md](references/orchestration.md) whole before
+`--plan` or `--new`: it owns registration, schema, state and external lifecycle.
+Its `<codex-skill-dir>` is `${CLAUDE_SKILL_DIR}` and `<state>` is `${CLAUDE_PLUGIN_DATA}`.
 
 The Codex this machine can run, asked of its server as this page loaded:
 
@@ -240,10 +236,9 @@ turn goes on. The `--decide` call that answers it, what an accept runs as, and w
 
 ## What the user reads
 
-Every word on this page is addressed to the coordinator, and an agent's return is too. What reaches the user is
+What reaches the user is
 prose the coordinator writes: in the user's own language, naming an agent by its model and id and saying what it
-did ("Sonnet W5 replaced four flaky width checks", "Codex Astra A6 reviewed the retry instructions") and not by
-this page's own vocabulary. Keep `Codex` on a Codex agent: it is the only word in the name that says whose model ran. The sentence about an agent has one shape: the agent by name is the subject and what it does or did is the verb ("Codex Sol R1 reads the diff"); whatever runs beside it, and how long, follows in the user's own words for the tools. The model slug is machinery too, and so are `wrapper` and `driver`: the name is `Codex Sol R1`, never the slug the report carries. A header field name, a status block, an internal
+did. Keep `Codex` on a Codex agent: it is the only word in the name that says whose model ran. The sentence about an agent has one shape: the agent by name is the subject and what it does or did is the verb ("Codex Sol R1 reads the diff"). The model slug is machinery too, and so are `wrapper` and `driver`: the name is `Codex Sol R1`, never the slug the report carries. A header field name, a status block, an internal
 table's row name and an absolute path are machinery; they belong in a prompt or a report, and putting them in
 front of a person says nothing they can act on ([the wrapper's message](references/incidents.md#the-wrappers-message)). Rights are the one thing that must survive the translation: say
 what an agent may write, and where, in ordinary words, because that is what the user is being asked to approve.

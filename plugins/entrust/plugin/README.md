@@ -1,12 +1,25 @@
 # entrust
 
-A Claude Code plugin that runs another vendor's coding agent as one of Claude Code's own subagents, today
-OpenAI Codex, with the rights for each call declared up front: analysis that reads and runs but writes nothing of yours, or writing
-and running tests inside a git worktree the driver manages itself. Every completed turn leaves a receipt
-— a rollout the driver locates, opens and checks — and the exit code is derived from what actually
-happened rather than from a process status that says nothing about the task, so an agent that did nothing
-cannot report as though it had. Two more skills ship beside it, both described below and both invoked by
-the user rather than by the model.
+A plugin for native subagent orchestration in Codex and Claude Code. `orchestrate` owns the plan,
+roles, independent verification and synthesis. In Claude, the existing `codex` adapter can also
+launch external OpenAI Codex agents with per-call rights, worktrees, evidence gates and receipts.
+
+## In Codex
+
+```bash
+codex plugin marketplace add Nowely/agent-skills
+codex plugin add entrust@nowely
+```
+
+Invoke `$entrust:orchestrate`. It uses native delegation without loading the `codex` adapter.
+Models, concurrency and nested delegation follow the current host's capabilities. The coordinator
+is a role in `skills/orchestrate/references/foreman.md`, not a separate skill. Other skills can be
+used when the task needs them. The external-run helpers described below retain their Claude
+adapter requirements; native compatibility of every installed skill is not implied.
+
+## In Claude
+
+The sections below describe the external Codex adapter and its dependent features.
 
 ## Goal
 
@@ -22,8 +35,7 @@ this repository, not in the coordinator.
 
 A second, user-invoked skill applies the same goal to the whole session. `/entrust:orchestrate`
 turns the main conversation into an orchestrator that scouts inline, agrees one plan, and pushes every
-verbose step onto Claude and Codex agents; it is prompt only, adds no flag or field, and is a delta over
-this skill ([skills/orchestrate/SKILL.md](skills/orchestrate/SKILL.md)).
+verbose step onto agents; its common protocol is independent of the external adapter ([skills/orchestrate/SKILL.md](skills/orchestrate/SKILL.md)).
 
 A third, `/entrust:cleanup`, is the cleanup: it lists what the plugin has left on this machine and
 removes only what you pick by number ([skills/cleanup/SKILL.md](skills/cleanup/SKILL.md)). It
@@ -275,11 +287,11 @@ re-check [the dated parity reference](skills/codex/references/parity.md).
 ```
 skills/codex/                    the main skill: SKILL.md (the operating manual), scripts/ (the driver
                                  and its companions, each self-describing under --help), references/
-skills/orchestrate/              the orchestrator mode: SKILL.md (a delta over the codex skill), scripts/
+skills/orchestrate/              the orchestrator mode: SKILL.md (the common orchestration protocol), scripts/
                                  (capture-check.mjs, the check runner; lint-draft.mjs, the answer's linter;
                                  each self-describing under --help), references/ (roles, the foreman, the
-                                 incidents behind the page's dated rules, and codex-composition.md,
-                                 generated from the codex page by ../evals/fragments.mjs)
+                                 incidents behind dated rules); agents/openai.yaml keeps explicit
+                                 invocation in Codex. External mechanics live in codex/references/orchestration.md
 skills/cleanup/SKILL.md          the cleanup mode: runs scripts/cleanup.mjs, shows its listing and
                                  deletes what the user chose
 skills/experiment/               the experiment mode: SKILL.md (protocol, arms, two verdicts), scripts/experiment.mjs
@@ -307,8 +319,8 @@ Canonical homes for repeated stories:
 
 | Subject | Canonical home |
 | --- | --- |
-| composition, rights, workflow | [`SKILL.md`](skills/codex/SKILL.md) |
-| orchestration: tiers, Codex share, agent bounds, returns | [`skills/orchestrate/SKILL.md`](skills/orchestrate/SKILL.md) |
+| external composition, rights, workflow | [`SKILL.md`](skills/codex/SKILL.md), [orchestration.md](skills/codex/references/orchestration.md) |
+| common orchestration: roles, capacity, returns | [`skills/orchestrate/SKILL.md`](skills/orchestrate/SKILL.md) |
 | what the plugin leaves behind, and removing it | [`skills/cleanup/SKILL.md`](skills/cleanup/SKILL.md), `node skills/codex/scripts/cleanup.mjs --help` |
 | experiments: protocol, arms, verdicts, the record | [`skills/experiment/SKILL.md`](skills/experiment/SKILL.md), `node skills/experiment/scripts/experiment.mjs --help` |
 | the standing advisor | [`skills/advisor/SKILL.md`](skills/advisor/SKILL.md) |
