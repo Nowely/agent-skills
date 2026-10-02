@@ -42,7 +42,7 @@ const LEVELS = new Set(["read", "write"]);
 const READ_PROFILE = "entrust_read";
 // The codex-cli release the protocol facts were measured against, matching schema-<version>/.
 // The initialize response's userAgent reports the running server's version so drift is visible.
-const PINNED_CODEX = "0.155.1";
+const PINNED_CODEX = "0.159.3";
 // This plugin's version, printed by --help and carried as driverVersion, must agree with
 // every place plugins/entrust/evals/package.test.mjs compares.
 const VERSION = "0.23.0";
