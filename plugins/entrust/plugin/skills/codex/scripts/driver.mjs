@@ -353,9 +353,10 @@ const HELP = [
   os.tmpdir() (TMPDIR, else TMP or TEMP, else /tmp), never your whole one:
     <tmp>/entrust/<project>/<run>/agents/<agent>
   Project is the canonical repository root (cwd outside git), with a path
-  hash; run is the full report run path with a hash, or fresh if absent.
+  hash; run is a structured report run path with a hash, or fresh otherwise.
   Swarms and coordinators pass ENTRUST_TEMP_CONTEXT to share the project/run;
-  the driver scopes that context to the agent, including child checks.
+  the driver scopes that context to a fresh agent leaf on every invocation,
+  including child checks. Report publication still refuses overwrites.
   <tmp>/entrust must be a directory of yours and no link; anything else is
   exit 2. The report names it as tmpDir. It is exported for the turn AND the
   verifier, and it OUTLIVES the run, because --brief tells the agent to leave
@@ -1373,8 +1374,9 @@ function runTmpDir() {
   const state = canonPath(stateDir());
   const from = reportFilePath === null ? null : canonPath(path.dirname(reportFilePath));
   const rel = state && from ? path.relative(state, from).split(path.sep) : [];
-  const runPath = rel[0] === "orchestrate" && rel.length === 4 ? path.dirname(from)
-    : from;
+  const conventional = path.basename(reportFilePath ?? "") === "report.json";
+  const runPath = conventional && rel[0] === "orchestrate" && rel.length === 4 ? path.dirname(from)
+    : conventional && rel[0] === "reports" && rel.length === 2 ? from : null;
   try {
     const made = createAgentTemp({ cwd, reportPath: reportFilePath, runPath });
     runTmp = made.dir;
@@ -1382,9 +1384,7 @@ function runTmpDir() {
     runTmpNamespace = made.namespace;
     return runTmp;
   } catch (e) {
-    fail(EXIT.USAGE, e.code === "EEXIST"
-      ? `the run's $TMPDIR already exists: another invocation owns this report's agent directory`
-      : `the run's $TMPDIR could not be created (${e.message})`);
+    fail(EXIT.USAGE, `the run's $TMPDIR could not be created (${e.message})`);
   }
 }
 // Named in the report, because it is where the agent's own file paths resolve and it is still there when

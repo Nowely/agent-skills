@@ -14,7 +14,7 @@ const CONTEXT_ENV = "ENTRUST_TEMP_CONTEXT";
 const component = (s) => typeof s === "string" && s.length > 0 && !s.includes("\0")
   && path.basename(s) === s && s !== "." && s !== "..";
 const under = (p, base) => p === base || p.startsWith(base + path.sep);
-const key = (p) => `${path.basename(p).replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 24) || "project"}-${crypto.createHash("sha256").update(p).digest("hex").slice(0, 12)}`;
+const key = (p, label = path.basename(p)) => `${label.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 24) || "project"}-${crypto.createHash("sha256").update(p).digest("hex").slice(0, 12)}`;
 
 function privateDirectory(dir) {
   try { fs.lstatSync(dir); }
@@ -44,6 +44,14 @@ function canonicalPath(p) {
   const tail = [];
   while (!fs.existsSync(at) && path.dirname(at) !== at) { tail.unshift(path.basename(at)); at = path.dirname(at); }
   return path.join(fs.realpathSync(at), ...tail);
+}
+
+function temporaryRoot(root) {
+  if (!path.isAbsolute(root)) throw new Error("the temporary root must be absolute");
+  let at = path.resolve(root);
+  const tail = [];
+  while (!fs.existsSync(at) && path.dirname(at) !== at) { tail.unshift(path.basename(at)); at = path.dirname(at); }
+  return directoryChain(fs.realpathSync(at), tail);
 }
 
 function inheritedContext(root) {
@@ -76,8 +84,7 @@ function inheritedContext(root) {
 }
 
 export function createTempContext({ root = os.tmpdir(), cwd = process.cwd(), runPath = null, inherit = true } = {}) {
-  if (!path.isAbsolute(root)) throw new Error("the temporary root must be absolute");
-  root = fs.realpathSync(root);
+  root = temporaryRoot(root);
   const prior = inherit ? inheritedContext(root) : null;
   if (prior) { process.env[CONTEXT_ENV] = JSON.stringify(prior); return prior; }
   cwd = fs.realpathSync(cwd);
@@ -110,9 +117,8 @@ function writeOwner(dir, kind, extra = {}) {
 export function createAgentTemp({ cwd, reportPath, runPath } = {}) {
   const c = createTempContext({ cwd, runPath });
   const base = directoryChain(c.scope, ["agents"]);
-  const name = reportPath ? key(canonicalPath(path.dirname(reportPath))) : `agent-${Date.now()}-${process.pid}`;
-  const dir = path.join(base, name);
-  fs.mkdirSync(dir, { mode: 0o700 });
+  const name = reportPath ? key(canonicalPath(reportPath), path.basename(path.dirname(reportPath))) : "agent";
+  const dir = fs.mkdtempSync(path.join(base, `${name}-`));
   writeOwner(dir, "agents", { reportPath: reportPath ? path.resolve(reportPath) : null });
   process.env[CONTEXT_ENV] = JSON.stringify({ ...c, scope: dir });
   return { dir, bases: [base, path.join(fs.realpathSync(os.tmpdir()), "entrust")], namespace: path.join(c.root, "entrust") };
@@ -150,9 +156,9 @@ export function createTempDir(kind, prefix, root = os.tmpdir()) {
   if (!TEMP_KINDS.includes(kind) || kind === "agents") throw new Error(`unknown temporary artifact kind ${kind}`);
   if (!prefix || path.basename(prefix) !== prefix || prefix === "." || prefix === "..")
     throw new Error("the temporary prefix must be one path component");
-  if (!path.isAbsolute(root)) throw new Error("the temporary root must be absolute");
+  root = temporaryRoot(root);
   const category = kind === "cleanup"
-    ? directoryChain(fs.realpathSync(root), ["entrust", "_global", "cleanup"])
+    ? directoryChain(root, ["entrust", "_global", "cleanup"])
     : directoryChain(createTempContext({ root }).scope, [kind]);
   const dir = fs.mkdtempSync(path.join(category, prefix));
   writeOwner(dir, kind);

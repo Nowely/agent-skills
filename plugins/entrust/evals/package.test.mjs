@@ -303,10 +303,10 @@ test("run-all fails on a suite a signal killed",
     const d = tempDir("codex-runall-");
     fs.mkdirSync(path.join(d, "lib"));
     fs.copyFileSync(path.join(EVALS, "run-all.mjs"), path.join(d, "run-all.mjs"));
-    // The real harness through a one-line re-export: run-all resolves it relatively, and a copy of it
+    // The real counts through a one-line re-export: run-all resolves it relatively, and a copy of it
     // would be a second parseCount that could disagree with the one being tested.
-    fs.writeFileSync(path.join(d, "lib", "harness.mjs"),
-      `export * from ${JSON.stringify(pathToFileURL(path.join(EVALS, "lib", "harness.mjs")).href)};\n`);
+    fs.writeFileSync(path.join(d, "lib", "counts.mjs"),
+      `export * from ${JSON.stringify(pathToFileURL(path.join(EVALS, "lib", "counts.mjs")).href)};\n`);
     // run-all refuses to start unless its hand-ordered list matches the directory, so the stub tree
     // carries every suite name — each one killing itself, whichever the runner reaches first.
     for (const f of fs.readdirSync(EVALS).filter((n) => n.endsWith(".test.mjs")))

@@ -879,7 +879,7 @@ flow("the run's $TMPDIR outlives its run, a later run leaves it alone, and the s
     return !fs.existsSync(path.join(state, "tmp")) || `the driver still made ${path.join(state, "tmp")}`;
   });
 
-flow("agents share a project/run parent, reports in different state directories stay separate, and an existing agent leaf is refused",
+flow("agents share a project/run parent, reports in different state directories stay separate, and every invocation gets a fresh leaf",
   "the full report run path identifies its run; the exclusive agent grant must never be reused",
   async () => {
     const tmp = tempDir("entrust-named-tmp-"), problems = [];
@@ -900,7 +900,7 @@ flow("agents share a project/run parent, reports in different state directories 
     if (b.code !== EXIT.OK || path.dirname(JSON.parse(b.out).tmpDir) === path.dirname(want)) problems.push("distinct state roots shared a run");
     fs.unlinkSync(report(state));
     const duplicate = await run({ scenario: "happy", args: ["--report-file", report(state)], env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
-    if (duplicate.code !== EXIT.USAGE || !duplicate.err.includes("$TMPDIR already exists")) problems.push(`existing agent leaf was reused: ${duplicate.code}, ${duplicate.err}`);
+    if (duplicate.code !== EXIT.OK || JSON.parse(duplicate.out).tmpDir === want || !fs.existsSync(want)) problems.push(`agent leaf was reused or discarded: ${duplicate.code}, ${duplicate.err}`);
     const outside = path.join(tempDir("entrust-outside-report-"), "report.json");
     const c = await run({ scenario: "happy", args: ["--report-file", outside], env: { ENTRUST_STATE_DIR: flowState(), TMPDIR: tmp } });
     if (c.code !== EXIT.OK || !isAgentTmp(tmp, JSON.parse(c.out).tmpDir)) problems.push(`outside report: ${c.code}, ${c.err}`);
