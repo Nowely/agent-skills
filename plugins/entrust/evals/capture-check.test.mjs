@@ -104,7 +104,7 @@ test("the log is under $TMPDIR/entrust/<project>/<run>/checks, private, and hold
     if (!fs.realpathSync(log).startsWith(fs.realpathSync(TMP) + path.sep)) problems.push(`the log is at ${log}, outside ${TMP}`);
     if (!/check-order\.[0-9a-f]{8}\.log$/.test(log)) problems.push(`the log is not named for its label: ${log}`);
     const dir = path.dirname(log);
-    if (!/^[^/]+-[a-f0-9]{12}\/run-[a-f0-9]{12}\/checks$/.test(path.relative(path.join(fs.realpathSync(TMP), "entrust"), path.dirname(dir)))) problems.push(`ungrouped directory: ${dir}`);
+    if (!/^[^/]+\/run-[a-f0-9]{12}\/checks$/.test(path.relative(path.join(fs.realpathSync(TMP), "entrust"), path.dirname(dir)))) problems.push(`ungrouped directory: ${dir}`);
     if ((fs.statSync(dir).mode & 0o777) !== 0o700) problems.push("the check directory is not private");
     const mode = fs.statSync(log).mode & 0o777;
     if (mode !== 0o600) problems.push(`mode ${mode.toString(8)}`);
@@ -217,7 +217,7 @@ const contextFor = (root, cwd) => {
   return r.stdout.trim();
 };
 
-test("one context keeps checks together after cwd changes; independent projects with the same name remain distinct",
+test("one context keeps checks together after cwd changes; same-named projects share a bucket and have separate runs",
   "the initiating project/run must be inherited rather than rediscovered in each child",
   async () => {
     const projects = [path.join(TMP, "first", "project"), path.join(TMP, "second", "project")];
@@ -226,9 +226,21 @@ test("one context keeps checks together after cwd changes; independent projects 
     const c = JSON.parse(context), other = JSON.parse(contextFor(TMP, projects[1]));
     const a = await run(["--", "echo first"], { cwd: projects[0], env: { ENTRUST_TEMP_CONTEXT: context } });
     const b = await run(["--", "echo second"], { cwd: projects[1], env: { ENTRUST_TEMP_CONTEXT: context } });
-    return (c.project !== other.project && [a, b].every((r) => r.code === 0
+    return (c.project === "project" && other.project === "project" && c.run !== other.run
+      && path.dirname(c.scope) === path.dirname(other.scope) && [a, b].every((r) => r.code === 0
       && path.dirname(path.dirname(r.field("LOG"))) === path.join(c.scope, "checks"))
-      && path.dirname(a.field("LOG")) !== path.dirname(b.field("LOG"))) || "context changed with cwd or projects collided";
+      && path.dirname(a.field("LOG")) !== path.dirname(b.field("LOG"))) || "project names changed, runs collided or inherited context changed with cwd";
+  });
+
+test("project names retain spaces, Unicode and long basenames; the filesystem root has an explicit name",
+  "project grouping uses the directory name without hashing, rewriting or truncating it",
+  () => {
+    const name = "my project+β.with-a-long-directory-name";
+    const cwd = path.join(TMP, name); fs.mkdirSync(cwd);
+    const named = JSON.parse(contextFor(TMP, cwd));
+    const root = JSON.parse(contextFor(TMP, path.parse(TMP).root));
+    return (named.project === name && path.basename(path.dirname(named.scope)) === name && root.project === "root")
+      || "project basename was rewritten or filesystem root was unnamed";
   });
 
 test("an agent scope keeps checks in its TMPDIR; an unrelated temporary root resets context; traversal is refused",

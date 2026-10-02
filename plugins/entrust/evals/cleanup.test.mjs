@@ -35,7 +35,7 @@ import { EXIT, PINNED_CODEX, ROOT, SCRIPTS, registry, runCases, skip, spawnNode,
 // one it stops exporting would fail at load and report nothing at all rather than failing case by case.
 import * as driver from "../plugin/skills/codex/scripts/driver.mjs";
 import { SESSION_MARKS } from "../plugin/skills/codex/scripts/cleanup.mjs";
-import { TEMP_OWNER } from "../plugin/skills/orchestrate/scripts/temp-dir.mjs";
+import { TEMP_OWNER, TEMP_CONTEXT } from "../plugin/skills/orchestrate/scripts/temp-dir.mjs";
 
 const CLEANUP = path.join(SCRIPTS, "cleanup.mjs");
 const CLEANUP_PAGE = path.join(ROOT, "skills", "cleanup", "SKILL.md");
@@ -2410,7 +2410,7 @@ test("54 · the cleanup recipe creates separate private grouped snapshots and ea
       const p = /^snapshot: (.+)$/m.exec(r.stdout)?.[1];
       if (!p) return `no snapshot path: ${r.stdout.slice(-200)}`;
       paths.push(p);
-      m.eq(path.dirname(path.dirname(p)), path.join(w.tmp, "entrust", "_global", "cleanup"), "snapshot category");
+      m.eq(path.dirname(path.dirname(p)), path.join(w.tmp, "entrust", ".cleanup"), "snapshot category");
       m.eq(fs.statSync(path.dirname(p)).mode & 0o777, 0o700, "snapshot privacy");
       const j = JSON.parse(fs.readFileSync(p, "utf8"));
       m.eq(rowAt(j, path.dirname(p))?.status, "kept", "current snapshot retention");
@@ -2434,13 +2434,13 @@ test("56 · project/run parents stay unnumbered, new leaves are independent, and
   "the legacy orphan fallback must not expose a project containing multiple runs for whole-tree deletion",
   async () => {
     const w = makeWorld("project-leaves"), m = misses();
-    const project = "project-123456789abc", run = "run-123456789abc";
+    const project = "project with spaces", run = "run-123456789abc";
     const a = plantArtifact(w, "checks", "first", { pid: DEAD_PID }, [project, run, "checks"]);
     const b = plantArtifact(w, "swarm", "second", { pid: DEAD_PID }, [project, "run-abcdef123456", "swarm"]);
     const unknown = plantArtifact(w, "checks", "unmarked", null, [project, run, "checks"]);
-    const snap = plantArtifact(w, "cleanup", "snapshot", null, ["_global", "cleanup"]);
+    const snap = plantArtifact(w, "cleanup", "snapshot", null, [".cleanup"]);
     const s = await snapshot(w); const bad = need(w, s); if (bad) return bad;
-    for (const p of [path.join(w.tmp, "entrust", project), path.dirname(path.dirname(a)), path.dirname(a), path.join(w.tmp, "entrust", "_global")])
+    for (const p of [path.join(w.tmp, "entrust", project), path.dirname(path.dirname(a)), path.dirname(a), path.join(w.tmp, "entrust", ".cleanup")])
       m.ok(!rowAt(s.j, p), `parent became numbered: ${p}`);
     m.eq(rowAt(s.j, unknown)?.status, "kept", "unmarked new leaf");
     m.eq(rowAt(s.j, snap)?.status, "kept", "global snapshot");
@@ -2464,7 +2464,7 @@ test("57 · new agent scratch is kept by live descendants or report provenance, 
     const child = path.join(live, "checks", "check-child"); fs.mkdirSync(child, { recursive: true });
     fs.writeFileSync(path.join(child, TEMP_OWNER), JSON.stringify({ version: 1, kind: "checks", pid: process.pid }));
     const approval = plantArtifact(w, "agents", "approval", { pid: DEAD_PID, reportPath: null }, parts);
-    const saved = path.join(approval, "entrust", "_global", "cleanup", "saved"); fs.mkdirSync(saved, { recursive: true });
+    const saved = path.join(approval, "entrust", ".cleanup", "saved"); fs.mkdirSync(saved, { recursive: true });
     fs.writeFileSync(path.join(saved, TEMP_OWNER), JSON.stringify({ version: 1, kind: "cleanup", pid: DEAD_PID }));
     const r = await list(w); const bad = need(w, r); if (bad) return bad;
     m.eq(rowAt(r.j, stopped)?.selectable, true, "stopped agent selection");
@@ -2482,11 +2482,57 @@ test("57 · new agent scratch is kept by live descendants or report provenance, 
 test("58 · project-first live conversation slugs match only complete generated shapes",
   "saved conversation names may outlive their test scratch and must retain the new project/run grouping",
   () => {
-    const tail = "entrust-project-123456789abc-run-abcdef123456-evals-orchestrate-live-2026-09-28T10-20-30-123Z-Ab12Cd-1-task-scratch";
+    const tail = "entrust-project-run-abcdef123456-evals-orchestrate-live-2026-09-28T10-20-30-123Z-Ab12Cd-1-task-scratch";
     const recognizes = (name) => SESSION_MARKS.some(([re]) => re.test(name));
-    return (recognizes(tail) && !recognizes(tail.replace("123456789abc", "unknown"))
+    return (recognizes(tail) && recognizes(tail.replace("entrust-project-", "entrust-project-123456789abc-"))
+      && !recognizes(tail.replace("abcdef123456", "unknown"))
       && !recognizes(tail.replace("-evals-", "-notes-")) && !recognizes(tail + "-notes"))
       || "project-first conversation recognition was missing or too broad";
+  });
+
+test("59 · reserved project names coexist with legacy scratch without exposing run parents",
+  "plain project names must not hide legacy neighbors or turn a new run into a removable legacy unit",
+  async () => {
+    const m = misses();
+    for (const project of ["checks", "swarm", "cleanup", "evals", "agents", "reports", "runs", "orchestrate", "_global", ".cleanup"]) {
+      const w = makeWorld(`reserved-${project}`), run = "run-123456789abc";
+      const fresh = plantArtifact(w, "checks", "check-finished", { pid: DEAD_PID }, [project, run, "checks"]);
+      const runDir = path.dirname(path.dirname(fresh));
+      fs.writeFileSync(path.join(runDir, TEMP_CONTEXT), "opaque record");
+      let legacy;
+      if (["checks", "swarm", "cleanup", "evals", "agents"].includes(project))
+        legacy = plantArtifact(w, project, "legacy", { pid: DEAD_PID, reportPath: null });
+      else if (["_global", ".cleanup"].includes(project))
+        legacy = plantArtifact(w, "cleanup", "legacy", null, project === "_global" ? ["_global", "cleanup"] : [".cleanup"]);
+      else {
+        legacy = path.join(w.tmp, "entrust", project, ...(project === "orchestrate" ? ["legacy-project", "legacy-run"] : [project === "runs" ? `123-${DEAD_PID}` : "legacy-run"]));
+        fs.mkdirSync(legacy, { recursive: true }); fs.writeFileSync(path.join(legacy, "output.txt"), "legacy");
+      }
+      const s = await snapshot(w); const bad = need(w, s); if (bad) return bad;
+      m.ok(!rowAt(s.j, runDir), `${project}: run parent became numbered`);
+      m.ok(!rowAt(s.j, path.dirname(runDir)), `${project}: project parent became numbered`);
+      const row = rowAt(s.j, fresh);
+      m.ok(row?.selectable, `${project}: finished leaf not selectable`);
+      m.ok(rowAt(s.j, legacy), `${project}: legacy neighbor was hidden`);
+      if (row) {
+        const d = await pick(w, s.file, [row.n]); m.eq(d.code, EXIT.OK, `${project}: leaf deletion`);
+        m.ok(!fs.existsSync(fresh) && fs.existsSync(runDir) && fs.existsSync(legacy), `${project}: deletion crossed the leaf`);
+      }
+    }
+    return m.done();
+  });
+
+test("60 · an unpublished or opaque run record keeps a named project out of orphan deletion",
+  "cleanup can race run creation before the record is written, and unreadable metadata must not widen deletion",
+  async () => {
+    const w = makeWorld("run-publication"), m = misses();
+    const project = path.join(w.tmp, "entrust", "plain-project");
+    const pending = path.join(project, "run-123456789abc"); fs.mkdirSync(pending, { recursive: true });
+    const opaque = path.join(project, "custom run"); fs.mkdirSync(opaque);
+    fs.writeFileSync(path.join(opaque, TEMP_CONTEXT), "opaque record");
+    const r = await list(w); const bad = need(w, r); if (bad) return bad;
+    for (const p of [project, pending, opaque]) m.ok(!rowAt(r.j, p), `run parent became numbered: ${p}`);
+    return m.done();
   });
 
 const failed = await runCases(CASES);

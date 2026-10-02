@@ -352,8 +352,8 @@ const HELP = [
   made fresh at 0700 inside the system's temporary directory, Node's
   os.tmpdir() (TMPDIR, else TMP or TEMP, else /tmp), never your whole one:
     <tmp>/entrust/<project>/<run>/agents/<agent>
-  Project is the canonical repository root (cwd outside git), with a path
-  hash; run is a structured report run path with a hash, or fresh otherwise.
+  Project is the name of the canonical repository root (cwd outside git);
+  run is a structured report run path with a hash, or fresh otherwise.
   Swarms and coordinators pass ENTRUST_TEMP_CONTEXT to share the project/run;
   the driver scopes that context to a fresh agent leaf on every invocation,
   including child checks. Report publication still refuses overwrites.

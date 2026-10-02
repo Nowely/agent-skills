@@ -9,7 +9,8 @@ forensics remain in the repository references and release notes.
 
 - Temporary artifacts are grouped by project and run under
   `<temp>/entrust/<project>/<run>/{agents,checks,swarm,evals}/`; cleanup snapshots use
-  `<temp>/entrust/_global/cleanup/`. An inherited context keeps child operations in the initiating run,
+  `<temp>/entrust/.cleanup/`. Project folders use only the directory name, without a path hash
+  or truncation. An inherited context keeps child operations in the initiating run,
   and each agent retains an exclusive TMPDIR with child checks beneath it. Cleanup selects leaves,
   preserves active or uncertain owners and snapshots, and continues to recognize legacy scratch paths.
   Agent scratch is fresh per invocation, including repeat deliveries; publication still refuses overwrites.

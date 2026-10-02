@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 export const TEMP_KINDS = ["checks", "swarm", "cleanup", "evals", "agents"];
 export const TEMP_OWNER = ".entrust-owner.json";
 export const TEMP_CONTEXT = ".entrust-run.json";
-export const PROJECT_KEY = /^[a-zA-Z0-9._-]+-[a-f0-9]{12}$/;
+export const PATH_KEY = /^[a-zA-Z0-9._-]+-[a-f0-9]{12}$/;
 const CONTEXT_ENV = "ENTRUST_TEMP_CONTEXT";
 const component = (s) => typeof s === "string" && s.length > 0 && !s.includes("\0")
   && path.basename(s) === s && s !== "." && s !== "..";
@@ -59,7 +59,7 @@ function inheritedContext(root) {
   let c;
   try { c = JSON.parse(process.env[CONTEXT_ENV]); }
   catch { throw new Error("the temporary run context is not valid JSON"); }
-  if (c?.version !== 1 || !path.isAbsolute(c.root ?? "") || !PROJECT_KEY.test(c.project)
+  if (c?.version !== 1 || !path.isAbsolute(c.root ?? "") || !component(c.project)
       || !component(c.run) || !path.isAbsolute(c.scope ?? "") || !path.isAbsolute(c.projectRoot ?? "")
       || c.root !== path.resolve(c.root) || c.scope !== path.resolve(c.scope))
     throw new Error("the temporary run context is invalid");
@@ -90,7 +90,7 @@ export function createTempContext({ root = os.tmpdir(), cwd = process.cwd(), run
   cwd = fs.realpathSync(cwd);
   const git = spawnSync("git", ["-C", cwd, "rev-parse", "--show-toplevel"], { encoding: "utf8", timeout: 5000 });
   const projectRoot = git.status === 0 ? fs.realpathSync(git.stdout.trim()) : cwd;
-  const project = key(projectRoot);
+  const project = path.basename(projectRoot) || "root";
   runPath = runPath ? canonicalPath(runPath) : null;
   const run = runPath ? key(runPath) : `run-${crypto.randomBytes(6).toString("hex")}`;
   const scope = directoryChain(root, ["entrust", project, run]);
@@ -130,7 +130,7 @@ export function agentTempAncestor(candidate, namespace) {
   const known = new Set();
   for (let at = candidate; ; at = path.dirname(at)) {
     if (path.basename(path.dirname(at)) === "agents") possibleAgent = at;
-    if (possibleAgent && PROJECT_KEY.test(path.basename(at)) && path.basename(path.dirname(at)) === "entrust")
+    if (possibleAgent && path.basename(path.dirname(at)) === "entrust")
       return possibleAgent;
     try {
       const owner = path.join(at, TEMP_OWNER);
@@ -140,7 +140,7 @@ export function agentTempAncestor(candidate, namespace) {
       const record = path.join(at, TEMP_CONTEXT);
       if (fs.lstatSync(record).isFile()) {
         const c = JSON.parse(fs.readFileSync(record, "utf8"));
-        if (c?.version === 1 && path.isAbsolute(c.root ?? "") && PROJECT_KEY.test(c.project)
+        if (c?.version === 1 && path.isAbsolute(c.root ?? "") && component(c.project)
             && component(c.run) && path.join(c.root, "entrust", c.project, c.run) === at) {
           if (possibleAgent) return possibleAgent;
           known.add(path.join(c.root, "entrust"));
@@ -158,7 +158,7 @@ export function createTempDir(kind, prefix, root = os.tmpdir()) {
     throw new Error("the temporary prefix must be one path component");
   root = temporaryRoot(root);
   const category = kind === "cleanup"
-    ? directoryChain(root, ["entrust", "_global", "cleanup"])
+    ? directoryChain(root, ["entrust", ".cleanup"])
     : directoryChain(createTempContext({ root }).scope, [kind]);
   const dir = fs.mkdtempSync(path.join(category, prefix));
   writeOwner(dir, kind);

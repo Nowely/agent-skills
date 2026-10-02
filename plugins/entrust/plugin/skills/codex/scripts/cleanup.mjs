@@ -33,7 +33,7 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { EXIT, VERSION, canonPath, dropReclaimMarker, holderAlive, holdsReclaimMarker, reclaimable,
          takeReclaimMarker } from "./driver.mjs";
-import { TEMP_KINDS, TEMP_OWNER, PROJECT_KEY } from "../../orchestrate/scripts/temp-dir.mjs";
+import { TEMP_KINDS, TEMP_OWNER, TEMP_CONTEXT, PATH_KEY } from "../../orchestrate/scripts/temp-dir.mjs";
 
 // A removal that was attempted and failed. The other three codes are the driver's own.
 const EXIT_FAILED = 1;
@@ -63,7 +63,7 @@ const EVAL_KINDS = [["entrust-test-", "the delegation tests"],
 // named `my-orchestrate-live-notes` under the temp root has neither shape, which is what keeps the
 // collision closed, and nothing outside the temp root is read at all.
 const SESSION_MARKS = [
-  [/^entrust-[A-Za-z0-9-]+-[a-f0-9]{12}-(?:run-[a-f0-9]{12}|[A-Za-z0-9-]+-[a-f0-9]{12})-evals-orchestrate-live-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-[A-Za-z0-9]{6}-\d+-[A-Za-z0-9-]+-scratch$/,
+  [/^entrust-[A-Za-z0-9-]+-(?:run-[a-f0-9]{12}|[A-Za-z0-9-]+-[a-f0-9]{12})-evals-orchestrate-live-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-[A-Za-z0-9]{6}-\d+-[A-Za-z0-9-]+-scratch$/,
    "the orchestration tests"],
   [/^entrust-evals-orchestrate-live-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-[A-Za-z0-9]{6}-\d+-[A-Za-z0-9-]+$/,
    "the orchestration tests"],
@@ -103,7 +103,7 @@ never runs git, and never removes anything it could not fully read.
 Check output, swarm summaries, test files and agent scratch are listed per invocation under
 <tmp>/entrust/<project>/<run>/{checks,swarm,evals,agents}. Their recorded process must be gone
 before deletion; missing or uncertain ownership keeps them. Project/run parents are never
-selected. Snapshots under <tmp>/entrust/_global/cleanup are listed and
+selected. Snapshots under <tmp>/entrust/.cleanup are listed and
 kept because approval may still refer to them. Earlier root-level scratch is still covered.
 
 An item is in use when a live pid is recorded under it or names it: an agent's startup line, a run's
@@ -620,12 +620,27 @@ function artifactUse(dir, kind, agents = []) {
   return descend(dir);
 }
 
-function listArtifacts(roots, owned, ps, agents) {
+function groupedRun(dir) {
+  const rec = statAt(path.join(dir, TEMP_CONTEXT));
+  // The generated name also protects a run before its record is published.
+  return !rec.ok || rec.value !== null || PATH_KEY.test(path.basename(dir));
+}
+
+function listProjects(roots) {
+  const base = path.join(roots.tmp, "entrust");
+  return new Set(namesIn(base).filter((project) => PATH_KEY.test(project)
+    || (chainCheck(roots.T, ["entrust", project]).ok
+      && namesIn(path.join(base, project)).some((run) =>
+        chainCheck(roots.T, ["entrust", project, run]).ok && groupedRun(path.join(base, project, run))))));
+}
+
+function listArtifacts(roots, owned, ps, agents, projects) {
   const rows = [];
   const category = (parts, kind) => {
     const base = path.join(roots.tmp, "entrust", ...parts);
     if (!chainCheck(roots.T, ["entrust", ...parts]).ok) return;
     for (const name of namesIn(base).sort()) {
+      if (parts.length === 1 && projects.has(parts[0]) && groupedRun(path.join(base, name))) continue;
       const rel = [...parts, name];
       if (owned.has(path.join(...rel))) continue;
       const row = scratchRow("artifact", roots.T, ["entrust", ...rel], path.join(base, name),
@@ -641,12 +656,15 @@ function listArtifacts(roots, owned, ps, agents) {
   };
   // Keep recognizing leaves left by the earlier type-first layout.
   for (const kind of TEMP_KINDS) category([kind], kind);
+  category([".cleanup"], "cleanup");
   category(["_global", "cleanup"], "cleanup");
   const base = path.join(roots.tmp, "entrust");
-  for (const project of namesIn(base).filter((n) => PROJECT_KEY.test(n)).sort()) {
+  for (const project of [...projects].sort()) {
     if (!chainCheck(roots.T, ["entrust", project]).ok) continue;
-    for (const run of namesIn(path.join(base, project)).sort())
+    for (const run of namesIn(path.join(base, project)).sort()) {
+      if (!PATH_KEY.test(project) && !groupedRun(path.join(base, project, run))) continue;
       for (const kind of TEMP_KINDS) category([project, run, kind], kind);
+    }
   }
   return rows;
 }
@@ -665,7 +683,7 @@ function tempInUse(roots, m, agents) {
   return agentHolds(agents, run) ? "live" : "free";
 }
 
-function listTemps(roots, owned, agents) {
+function listTemps(roots, owned, agents, projects) {
   const rows = [];
   const base = path.join(roots.tmp, "entrust");
   const unit = (parts) => {
@@ -677,15 +695,17 @@ function listTemps(roots, owned, agents) {
     if (use !== "free") { row.inUse = true; if (row.readable) row.cond = use; }
   };
   for (const top of namesIn(base).sort()) {
-    if (TEMP_KINDS.includes(top) || top === "_global" || PROJECT_KEY.test(top)) continue;
+    if (TEMP_KINDS.includes(top) || top === "_global" || top === ".cleanup") continue;
     if (top === "orchestrate") {
-      for (const s of namesIn(path.join(base, top)).sort())
+      for (const s of namesIn(path.join(base, top)).sort()) {
+        if (groupedRun(path.join(base, top, s))) continue;
         for (const r of namesIn(path.join(base, top, s)).sort())
           if (!owned.has(path.join(top, s, r))) unit([top, s, r]);
+      }
     } else if (top === "reports" || top === "runs") {
       for (const r of namesIn(path.join(base, top)).sort())
-        if (!owned.has(path.join(top, r))) unit([top, r]);
-    } else if (!owned.has(top)) unit([top]);
+        if (!owned.has(path.join(top, r)) && !groupedRun(path.join(base, top, r))) unit([top, r]);
+    } else if (!projects.has(top) && !owned.has(top)) unit([top]);
   }
   return rows;
 }
@@ -1312,8 +1332,9 @@ function inventory(roots) {
     s.ours = j.paths.every((p) => under(p, roots.project));
   }
   const owned = new Set([...runs, ...reports.rows].filter((r) => r.twin).map((r) => path.join(...r.parts)));
-  const rows = [...runs, ...reports.rows, ...listTemps(roots, owned, agents), ...listOldTmp(roots),
-                ...agents, ...listArtifacts(roots, owned, ps, agents), ...listEvals(roots, ps), ...listSessions(roots),
+  const projects = listProjects(roots);
+  const rows = [...runs, ...reports.rows, ...listTemps(roots, owned, agents, projects), ...listOldTmp(roots),
+                ...agents, ...listArtifacts(roots, owned, ps, agents, projects), ...listEvals(roots, ps), ...listSessions(roots),
                 ...answers.rows,
                 ...listWorktrees(roots), ...listLocks(roots), ...listHome(roots), ...listDataDirs(roots)];
   for (const row of rows) {

@@ -30,7 +30,7 @@ const armedBox = path.join(armedState, "run", "agent", "approvals");
 fs.mkdirSync(armedBox, { recursive: true, mode: 0o700 });
 // A mailbox inside another run's $TMPDIR, which lies under the state directory when the caller's TMPDIR
 // does: the case below exports the state directory itself as TMPDIR.
-const isAgentTmp = (tmp, dir) => /^[^/]+-[a-f0-9]{12}\/[^/]+\/agents\/[^/]+$/.test(path.relative(path.join(fs.realpathSync(tmp), "entrust"), dir));
+const isAgentTmp = (tmp, dir) => /^[^/]+\/[^/]+\/agents\/[^/]+$/.test(path.relative(path.join(fs.realpathSync(tmp), "entrust"), dir));
 const mailUnderRunTmp = path.join(armedState, "entrust", "runs", "another-run", "approvals");
 fs.mkdirSync(mailUnderRunTmp, { recursive: true, mode: 0o700 });
 const realOf = (p) => fs.realpathSync(p);

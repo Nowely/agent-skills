@@ -27,7 +27,9 @@ exactly as the command printed it.
 
        F="$(node "${CLAUDE_SKILL_DIR}/../orchestrate/scripts/temp-dir.mjs" cleanup)" && CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../codex/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
 
-   The helper gives each listing its own file under `<temp>/entrust/_global/cleanup/`.
+   The helper gives each listing its own file at
+   `<temp>/entrust/.cleanup/snapshot-<six random characters>/listing.json`,
+   for example `snapshot-Ab12Cd/listing.json` beneath that `.cleanup` directory.
    Cleanup keeps these snapshots because approval may still refer to one. A name built from the shell's
    `$$` does not: two listings in one shell would share it, and a number from
    the first would then be read against the second. Keep the snapshot path
@@ -119,7 +121,7 @@ takes its temporary folder with it, `<tmp>/entrust/<rel>` for the report at
 own rule, so a run still going keeps both. New scratch under
 `<tmp>/entrust/<project>/<run>/{agents,checks,swarm,evals}` is listed per invocation,
 kept while its owner or a recorded child is running, and removed only by its own number.
-Project and run parents are never selected; approval snapshots under `_global/cleanup` are kept.
+Project and run parents are never selected; approval snapshots under `.cleanup` are kept.
 A legacy folder under `<tmp>/entrust`
 whose run is no longer in the state directory, or a `runs/<startedAtMs>-<pid>`
 folder whose process has ended, is a row of its own, suggested for deletion;

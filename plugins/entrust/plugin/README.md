@@ -113,11 +113,12 @@ Temporary artifacts are grouped by project, then run:
   checks/check-<random>/      # coordinator check logs
   swarm/swarm-<random>/summary.json
   evals/<suite>-<random>/
-<tmp>/entrust/_global/cleanup/snapshot-<random>/listing.json
+<tmp>/entrust/.cleanup/snapshot-<random>/listing.json
 ```
 
-Project keys use the canonical repository root (canonical cwd outside git), a readable basename and
-12 hex digits of its path hash. Run keys use the full canonical structured report/run path with a hash, or a fresh
+Projects use the directory name of the canonical repository root (canonical cwd outside git),
+without a hash or truncation. Same-named projects share that folder; the filesystem root is named `root`.
+Run keys use the full canonical structured report/run path with a hash, or a fresh
 random ID for standalone invocations. `temp-dir.mjs run` emits the internal `ENTRUST_TEMP_CONTEXT`
 JSON that a native coordinator passes to subsequent commands; drivers and swarms create or inherit it
 and forward it to children. This keeps a changed cwd or agent worktree in the initiating run.
@@ -128,6 +129,9 @@ Cleanup lists invocation leaves, keeps active or uncertain owners and approval s
 selects project/run parents. Each agent invocation gets a unique scratch leaf, including retries to the same report path; publication
 still refuses report overwrites. New agent scratch is selected separately from state reports; legacy
 mirrored scratch still goes with its report. Earlier type-first and root-level scratch remain covered.
+Each cleanup listing has its own snapshot directory, for example
+`<tmp>/entrust/.cleanup/snapshot-Ab12Cd/listing.json`. `.cleanup` is the service directory name;
+`listing.json` is the file, and the six-character suffix separates successive or concurrent listings.
 
 ## Install
 

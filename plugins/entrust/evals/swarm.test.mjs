@@ -252,7 +252,7 @@ test("S3 three units at concurrency two: each agent at <run>/<id>/report.json wi
     const m = /^summary=(.+)$/m.exec(r.out)[1];
     if (m.startsWith(runDir + path.sep)) problems.push("the summary lies under the run");
     const dir = path.dirname(m);
-    if (!/^[^/]+-[a-f0-9]{12}\/run-units-[a-f0-9]{12}\/swarm$/.test(path.relative(path.join(fs.realpathSync(env.TMPDIR), "entrust"), path.dirname(dir)))) problems.push(`the summary is not grouped by project/run/swarm: ${m}`);
+    if (!/^[^/]+\/run-units-[a-f0-9]{12}\/swarm$/.test(path.relative(path.join(fs.realpathSync(env.TMPDIR), "entrust"), path.dirname(dir)))) problems.push(`the summary is not grouped by project/run/swarm: ${m}`);
     if ((fs.statSync(dir).mode & 0o777) !== 0o700) problems.push("the summary directory is not private");
     if (s.count !== 3 || s.agents.length !== 3 || s.concurrency !== 2 || s.mode !== "units" || s.stopped) problems.push("summary header wrong");
     const p2 = path.join(runDir, "002", "agent", "prompt.txt");
