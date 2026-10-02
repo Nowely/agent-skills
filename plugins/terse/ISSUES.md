@@ -13,7 +13,7 @@ pinned to a commit is that commit's address, with today's beside it.
 "Run the script on it too, with Node 22 or newer, from this skill's `scripts/`" carry the number. `plugins/terse/evals/pages.test.mjs`
 reads the README for its skill rows (`:262-265`) and nothing for the floor; no file under `evals/` mentions `engines`
 or a Node version. `plugins/terse/plugin/skills/audit/references/ledgers.md:61` names `engines.node` as an example
-inside a sample ledger, not as a fourth statement. The repository's rule for terse (`CLAUDE.md`, "terse's shared
+inside a sample ledger, not as a fourth statement. The repository's rule for terse (`AGENT.md`, "terse's shared
 pages") puts a definition two skills use in one place; terse's `rules.md:29` keeps a version where "compatibility,
 reproduction or the next action depends on" it. For entrust the README names no number: `plugins/entrust/plugin/README.md:67`
 "Node at or above the floor `package.json` declares (`engines`)".
