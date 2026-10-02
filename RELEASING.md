@@ -41,7 +41,7 @@ the GitHub release.
    stops the release.
 6. **Merge and compare the plugin's tree.** `gh pr merge <n> --squash --match-head-commit <head>`, `<head>` being
    the commit the word approved. Then `git fetch origin` and, with `<merge>` from `gh pr view <n> --json mergeCommit`,
-   confirm that `git diff --stat <head> <merge> -- plugins/<plugin> CLAUDE.md RELEASING.md .claude-plugin` prints
+   confirm that `git diff --stat <head> <merge> -- plugins/<plugin> AGENT.md RELEASING.md .claude-plugin` prints
    nothing: a squash merge folds in whatever landed on main under the PR, and another plugin's commit there changes
    the whole tree without touching the release (entrust 0.21.0: a terse commit under #28). A difference inside
    those paths means main moved under the plugin, and the release stops. CI on main after the merge is not waited
