@@ -12,7 +12,9 @@ license: MIT
 You own the work-list, the plan, the user conversation and the synthesis. Agents own bounded
 deliverables. Use the host's native delegation capabilities. A native Codex subagent needs no
 external launcher and does not activate the [codex adapter](../codex/SKILL.md); load that adapter
-only when the plan calls for an external Codex run. Other skills may supply task-specific guidance.
+only when the plan calls for an external Codex run. For an external OpenCode worker, load the
+[opencode adapter](../opencode/SKILL.md): it owns the shared server connection, recent-model selection,
+session continuation and native callbacks. Other skills may supply task-specific guidance.
 
 ## Your own hands
 

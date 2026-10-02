@@ -80,7 +80,25 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DRIVER = path.join(HERE, "driver.mjs");
+const OPENCODE_DRIVER = path.resolve(HERE, "../../opencode/scripts/driver.mjs");
 const SELF = fileURLToPath(import.meta.url);
+const ADAPTERS = new Set(["codex", "opencode"]);
+
+function backendOf(dir, requested = null) {
+  const file = path.join(dir, "backend.json");
+  const saved = readJsonFile(file);
+  if (fs.existsSync(file) && (!saved || !ADAPTERS.has(saved.adapter))) throw new Error("invalid backend.json; refusing to guess the adapter");
+  const adapter = saved?.adapter ?? requested ?? "codex";
+  if (saved && requested && adapter !== requested) throw new Error(`this invocation belongs to ${adapter}, not ${requested}`);
+  return { adapter, driver: adapter === "opencode" ? OPENCODE_DRIVER : DRIVER, saved };
+}
+function backendEnv(backend) {
+  return { ...process.env,
+    ...(backend.saved?.serverUrl ? { ENTRUST_OPENCODE_URL: backend.saved.serverUrl } : {}),
+    ...(backend.saved?.connectionFile ? { ENTRUST_OPENCODE_CONNECTION: backend.saved.connectionFile } : {}),
+    ...(backend.saved?.planModel ? { ENTRUST_PLAN_MODEL: backend.saved.planModel } : {}),
+    ...(backend.saved?.planWrites ? { ENTRUST_PLAN_WRITES: backend.saved.planWrites } : {}) };
+}
 
 // The driver's own words, looked for in DIR/err.txt to tell whose run the file at REPORT is: its pid
 // line names the path it accepted, and its two refusals name a path it did not publish to.
@@ -109,6 +127,14 @@ const SIGNALS = ["SIGTERM", "SIGINT", "SIGHUP"];
 export const agentDirOf = (report) => path.join(path.dirname(report), "agent");
 
 const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
+
+  --adapter codex|opencode selects the backend at --new and is pinned in agent/backend.json.
+  OpenCode needs ENTRUST_OPENCODE_URL or ENTRUST_OPENCODE_CONNECTION (JSON url/username/password).
+  Extended plan rows: id | adapter | model | role | writes | tokens; adapter is native, codex or
+  opencode. An OpenCode row pins its full provider/model ID. Existing five-column plans still work.
+  Typed OpenCode requests print REQUEST_BODY<<TOKEN / REQUEST_BODY>>TOKEN. --accept restates that
+  JSON on stdin and grants once. Questions use --decide ID --answer with {answers: string[][]} on
+  stdin, or --decline. --answer is never a command or permission approval.
 
   node agent-run.mjs --plan --run-dir RUN < rows
       Register rows id | model | role | writes | tokens in RUN/plan.txt at 0600; RUN is 0700.
@@ -241,7 +267,7 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
 
 function parse(argv) {
   const o = { run: false, status: false, isNew: false, isPlan: false, amend: false, runDir: null, orphan: false, keeper: false,
-              dir: null, report: null, help: false, pending: false, decide: null, decision: null, why: null };
+              dir: null, report: null, help: false, pending: false, decide: null, decision: null, why: null, adapter: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--help" || a === "-h") o.help = true;
@@ -255,17 +281,19 @@ function parse(argv) {
     else if (a === "--keeper") o.keeper = true;
     else if (a === "--dir") o.dir = argv[++i];
     else if (a === "--report-file") o.report = argv[++i];
+    else if (a === "--adapter") o.adapter = argv[++i];
     else if (a === "--pending") o.pending = true;
     else if (a === "--decide") o.decide = argv[++i] ?? "";
-    else if (a === "--accept" || a === "--decline") {
-      if (o.decision !== null) return { error: "--accept and --decline: one decision per call" };
-      o.decision = a === "--accept" ? "accept" : "decline";
+    else if (a === "--accept" || a === "--decline" || a === "--answer") {
+      if (o.decision !== null) return { error: "--accept, --decline and --answer: one decision per call" };
+      o.decision = a === "--answer" ? "answer" : a === "--accept" ? "accept" : "decline";
     }
     else if (a === "--why") o.why = argv[++i] ?? "";
     else return { error: `unknown argument: ${a}` };
   }
   if (o.decide !== null && o.decision === null) return { error: "--decide needs --accept or --decline" };
   if (o.decide === null && (o.decision !== null || o.why !== null)) return { error: "--accept, --decline and --why belong to --decide" };
+  if (o.adapter !== null && !ADAPTERS.has(o.adapter)) return { error: "--adapter must be codex or opencode" };
   return o;
 }
 
@@ -310,7 +338,11 @@ const REQUEST_ID = /^\d+-[0-9a-f]{8}$/;
 // Whether a decision file is the one for this request of this run: the identity --decide copies out of the
 // request, and the one the driver checks before it takes a decision.
 const decisionFits = (d, q) => d?.id === q.id && d?.run?.pid === q.run?.pid && d?.run?.startedAtMs === q.run?.startedAtMs
-  && (d?.run?.turnId ?? null) === (q.run?.turnId ?? null) && (d?.decision === "accept" || d?.decision === "decline");
+  && (d?.run?.turnId ?? null) === (q.run?.turnId ?? null)
+  && (q.type?.startsWith("opencode.")
+    ? d?.requestHash === q.requestHash && JSON.stringify(d?.remote) === JSON.stringify(q.remote)
+      && (q.type === "opencode.question" ? ["answer", "decline"].includes(d?.decision) : ["accept", "decline"].includes(d?.decision))
+    : d?.decision === "accept" || d?.decision === "decline");
 
 // What DIR/approvals holds, read from the files alone: every request in the order the driver offered them,
 // the ids `pending` lists, and the decisions nobody took. A decision whose identity is not its request's is
@@ -361,6 +393,8 @@ function launch(dir, report, { onExit, onRefuse, mailbox = false }) {
   // err.txt or a marker written there would be read by the run that holds the directory.
   const refuse = (why) => { process.stderr.write(`${REFUSED}: ${why}\n`); onRefuse(); };
   if (!dir || !isDirectory(dir)) return refuse(`--dir ${JSON.stringify(dir ?? "")} is not a directory`);
+  let backend;
+  try { backend = backendOf(dir); } catch (e) { return refuse(e.message); }
   // A marker already there makes DIR an earlier run's: its files are that run's record, and a line added
   // to its err.txt would turn the run's PATH=own into PATH=none on every later read.
   if (fs.existsSync(path.join(dir, "exit")))
@@ -391,8 +425,9 @@ function launch(dir, report, { onExit, onRefuse, mailbox = false }) {
   }
   const outFd = fs.openSync(path.join(dir, "out.json"), "w");
   const approvalArgs = mailbox ? ["--approval-dir", box] : [];
+  const DRIVER = backend.driver;
   const child = spawn(process.execPath, [DRIVER, "--prompt-file", promptPath, "--report-file", report, ...approvalArgs],
-    { stdio: ["ignore", outFd, errFd], env: process.env });
+    { stdio: ["ignore", outFd, errFd], env: backendEnv(backend) });
   for (const sig of SIGNALS) process.on(sig, () => { try { child.kill(sig); } catch {} });
   child.on("error", (e) => {
     fs.closeSync(outFd); fs.closeSync(errFd);
@@ -413,6 +448,7 @@ const oneLine = (s) => String(s).replace(/\s*\n\s*/g, " / ");
 const PLAN_MODELS = new Set(["astra", "sol", "terra", "luna", "opus", "sonnet", "haiku", "fable"]);
 const CLAUDE_MODELS = new Set(["opus", "sonnet", "haiku", "fable"]);
 const PLAN_HEADER = "id | model | role | writes | tokens";
+const ADAPTER_PLAN_HEADER = "id | adapter | model | role | writes | tokens";
 const planError = (why) => { process.stdout.write(`ERROR=${why}\n`); process.exit(2); };
 // Return the registered row and the preceding link for a launch, or null for an unlisted name.
 // A gate may use the row without probing the marker; the launcher requires it before creating a prompt.
@@ -429,19 +465,23 @@ export function planRowOf(name, rows, runDir) {
 }
 const planRows = (body) => {
   const lines = body.split(/\r?\n/).map((s) => s.trim()).filter((s) => s && !s.startsWith("#"));
-  if (lines[0] === PLAN_HEADER) lines.shift();
+  if ([PLAN_HEADER, ADAPTER_PLAN_HEADER].includes(lines[0])) lines.shift();
   if (!lines.length) planError("the plan has no agent rows");
   const rows = lines.map((line) => {
     const fields = line.split("|").map((s) => s.trim());
-    if (fields.length !== 5) planError(`expected ${PLAN_HEADER}: ${line}`);
-    const [id, model, role, writes, tokens] = fields;
+    if (![5, 6].includes(fields.length)) planError(`expected ${PLAN_HEADER} or ${ADAPTER_PLAN_HEADER}: ${line}`);
+    const extended = fields.length === 6;
+    const [id, declaredAdapter, model, role, writes, tokens] = extended ? fields : [fields[0], null, ...fields.slice(1)];
+    const adapter = declaredAdapter ?? (CLAUDE_MODELS.has(model.toLowerCase()) ? "native" : "codex");
     if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(id)) planError(`invalid agent id: ${id}`);
     if (/-\d+$/.test(id)) planError(`invalid agent id ${id}: the -<n> form names a continuation`);
-    if (!PLAN_MODELS.has(model.toLowerCase())) planError(`invalid model for ${id}: ${model}`);
+    if (!["native", "codex", "opencode"].includes(adapter)) planError(`invalid adapter for ${id}: ${adapter}`);
+    if (adapter === "opencode" ? !/^[^\s/|]+\/[^\s|]+$/.test(model) : !PLAN_MODELS.has(model.toLowerCase()))
+      planError(`invalid model for ${id}: ${model}${adapter === "opencode" ? "; resolve and pin provider/model before registering" : ""}`);
     if (!role) planError(`missing role for ${id}`);
     if (!/^(nothing|worktree|live tree|write \/\S.*)$/.test(writes)) planError(`invalid writes for ${id}: ${writes}`);
     if (!/^(unknown|0|[1-9]\d*)$/.test(tokens)) planError(`invalid tokens for ${id}: ${tokens}`);
-    return { id, model, role, writes, tokens };
+    return { id, adapter, model, role, writes, tokens, extended };
   });
   if (new Set(rows.map((r) => r.id.toLowerCase())).size !== rows.length) planError("duplicate agent id");
   return rows;
@@ -460,7 +500,7 @@ function registerPlan(runDir, amend) {
   const rows = planRows(body);
   if (rows.some((r) => prior.some((p) => p.id.toLowerCase() === r.id.toLowerCase()))) planError("duplicate agent id in amendment");
   fs.mkdirSync(runDir, { recursive: true, mode: 0o700 });
-  const serialized = rows.map((r) => [r.id, r.model, r.role, r.writes, r.tokens].join(" | ")).join("\n");
+  const serialized = rows.map((r) => (r.extended ? [r.id, r.adapter, r.model, r.role, r.writes, r.tokens] : [r.id, r.model, r.role, r.writes, r.tokens]).join(" | ")).join("\n");
   if (amend) fs.appendFileSync(file, `# amended ${new Date().toISOString()}\n${serialized}\n`);
   else fs.writeFileSync(file, `${PLAN_HEADER}\n${serialized}\n`, { mode: 0o600, flag: "wx" });
   process.stdout.write(`${amend ? "AMENDED" : "PLAN"}=${file}\n${rows.map((r) => `AGENT=${r.id} ${r.model} ${r.writes}`).join("\n")}\n`);
@@ -510,7 +550,7 @@ export function statusLines(dir, report) {
 // --new: the agent's directory beside the report, the prompt from stdin. The prompt travels coordinator →
 // stdin → file, never through the wrapper's model and never through this script's own reading of it as
 // text: it is copied byte for byte.
-function newAgent(report, dirOverride) {
+function newAgent(report, dirOverride, adapter = "codex") {
   const refuse = (why) => { process.stderr.write(`${REFUSED}: ${why}\n`); process.exit(2); };
   if (!report || !path.isAbsolute(report)) refuse(`--report-file ${JSON.stringify(report ?? "")} is not an absolute path`);
   if (dirOverride !== null && dirOverride !== undefined && !path.isAbsolute(dirOverride)) refuse(`--dir ${JSON.stringify(dirOverride)} is not an absolute path`);
@@ -518,6 +558,8 @@ function newAgent(report, dirOverride) {
   const id = path.basename(path.dirname(report));
   const ancestors = [path.dirname(report), runDir, path.dirname(runDir)];
   const planDir = ancestors.find((d) => fs.existsSync(path.join(d, "plan.txt")));
+  let planModel = null;
+  let planWrites = null;
   if (planDir) {
     const plan = path.join(planDir, "plan.txt");
     if (path.basename(report) !== "report.json" || path.dirname(path.dirname(report)) !== planDir)
@@ -525,12 +567,33 @@ function newAgent(report, dirOverride) {
     const rows = planRows(read(plan) ?? "");
     const matched = planRowOf(id, rows, planDir);
     if (!matched) planError(`${id} is not in the approved plan at ${plan}; amend it with --plan --amend and show the amendment`);
-    if (CLAUDE_MODELS.has(matched.row.model.toLowerCase()))
+    if (matched.row.adapter === "native")
       planError(`${id} is a Claude agent in the plan at ${plan}; a Codex agent needs a row of its own: amend it with --plan --amend and show the amendment`);
+    if (matched.row.adapter !== adapter) planError(`${id} belongs to adapter ${matched.row.adapter}, not ${adapter}`);
+    if (adapter === "opencode") { planModel = matched.row.model; planWrites = matched.row.writes; }
     if (!matched.ended)
       planError(`${id} continues ${matched.previous}, which has not ended; wait for it, or amend the plan and show the amendment`);
   }
   const dir = dirOverride ?? agentDirOf(report);
+  let backend;
+  try { backend = backendOf(dir, adapter); } catch (e) { refuse(e.message); }
+  let backendRecord = null;
+  if (adapter === "opencode") {
+    const connectionFile = process.env.ENTRUST_OPENCODE_CONNECTION ?? null;
+    if (connectionFile && !path.isAbsolute(connectionFile)) refuse("ENTRUST_OPENCODE_CONNECTION must be absolute");
+    const savedConnection = connectionFile ? readJsonFile(connectionFile) : null;
+    const raw = process.env.ENTRUST_OPENCODE_URL || savedConnection?.url;
+    let serverUrl;
+    try {
+      const u = new URL(raw);
+      if (!["http:", "https:"].includes(u.protocol) || u.username || u.password || u.search || u.hash) throw new Error();
+      serverUrl = u.href.replace(/\/$/, "");
+      if (savedConnection?.url && new URL(savedConnection.url).href.replace(/\/$/, "") !== serverUrl) throw new Error();
+    } catch { refuse("OpenCode needs a pinned http(s) server URL without credentials, query or fragment; connection and URL must agree"); }
+    backendRecord = { adapter, planModel, planWrites, serverUrl, connectionFile };
+    if (backend.saved && JSON.stringify(backend.saved) !== JSON.stringify(backendRecord))
+      refuse("OpenCode backend, endpoint and approved plan are immutable for this invocation; use a fresh report path");
+  }
   const promptPath = path.join(dir, "prompt.txt");
   if (fs.existsSync(promptPath)) refuse(`${promptPath} already exists: one prompt per report path, a relaunch gets a fresh one`);
   // Every agent gets a mailbox, and a mailbox is only safe inside the driver's state directory, which no
@@ -564,8 +627,8 @@ function newAgent(report, dirOverride) {
   // spawned, and coordinators swapped in the mode it named (2026-09-17 and 2026-09-25).
   const checked = `${promptPath}.check`;
   fs.writeFileSync(checked, body, { mode: 0o600 });
-  const c = spawnSync(process.execPath, [DRIVER, "--check-prompt-file", checked],
-    { stdio: ["ignore", "pipe", "pipe"], encoding: "utf8", env: process.env, timeout: 30000 });
+  const c = spawnSync(process.execPath, [backend.driver, "--check-prompt-file", checked],
+    { stdio: ["ignore", "pipe", "pipe"], encoding: "utf8", env: { ...process.env, ...(planModel ? { ENTRUST_PLAN_MODEL: planModel } : {}), ...(planWrites ? { ENTRUST_PLAN_WRITES: planWrites } : {}) }, timeout: 30000 });
   if (c.status !== 0) {
     fs.rmSync(checked, { force: true });
     const said = String(c.stderr ?? "").trim();
@@ -578,6 +641,9 @@ function newAgent(report, dirOverride) {
   // The mailbox before the prompt's name appears, so a --run in the same turn finds both.
   const box = path.join(dir, "approvals");
   fs.mkdirSync(box, { recursive: true, mode: 0o700 });
+  if (adapter === "opencode" && !backend.saved) {
+    fs.writeFileSync(path.join(dir, "backend.json"), `${JSON.stringify(backendRecord)}\n`, { mode: 0o600, flag: "wx" });
+  }
   fs.renameSync(checked, promptPath);
   process.stdout.write(`PROMPT=${promptPath}\nAPPROVALS=${box}\n`);
   process.exit(0);
@@ -589,6 +655,15 @@ function newAgent(report, dirOverride) {
 // a script-shaped command read on one clipped line is a command approved unread. A request is waiting when
 // `pending` lists it, the driver's own open set.
 function requestLines(q) {
+  if (q.type === "opencode.permission" || q.type === "opencode.question") {
+    const body = String(q.presented ?? JSON.stringify(q.payload, null, 2));
+    let token;
+    do token = crypto.randomBytes(6).toString("hex"); while (body.includes(token));
+    return [`REQUEST=${q.id}`, `TYPE=${q.type}`, `SERVER=${field(q.remote?.serverURL)}`,
+      `SESSION=${field(q.remote?.sessionID)}`, `INVOCATION=${field(q.remote?.invocationId)}`,
+      `METHOD=${field(q.method)}`, `CAUSE=${field(q.cause)}`, `CWD=${field(q.cwd)}`, `REASON=${field(q.reason)}`,
+      `DEADLINE=${field(q.deadlineAt)}`, `REQUEST_BODY<<${token}`, body, `REQUEST_BODY>>${token}`];
+  }
   const command = String(q.command ?? "");
   let token;
   do token = crypto.randomBytes(6).toString("hex"); while (command.includes(token));
@@ -640,6 +715,24 @@ function decideRequest(dir, id, decision, why) {
   // `pending` is the driver's own list of what it is waiting on; a request file it does not list is not
   // one it will read a decision for.
   if (!mailbox(dir).pending.includes(id)) refuse(`is not waiting: ${path.join(box, "pending")} does not list it`);
+  const typed = q.type === "opencode.permission" || q.type === "opencode.question";
+  if (typed && (q.requestHash !== crypto.createHash("sha256").update(JSON.stringify(q.payload)).digest("hex")
+    || q.presented !== JSON.stringify(q.payload, null, 2) || q.remote?.requestID !== q.payload?.id
+    || q.remote?.sessionID !== q.payload?.sessionID)) refuse("typed request content or remote identity does not match its immutable envelope");
+  let answer;
+  if (typed && q.type === "opencode.question") {
+    if (decision === "accept") refuse("a question needs --answer (JSON answers on stdin) or --decline");
+    if (decision === "answer") {
+      try { answer = JSON.parse(fs.readFileSync(0, "utf8")); } catch { refuse("--answer expects JSON {answers: string[][]} on stdin"); }
+      const questions = q.payload?.questions;
+      if (!answer || Object.keys(answer).some((k) => k !== "answers") || !Array.isArray(answer.answers)
+        || !Array.isArray(questions) || answer.answers.length !== questions.length
+        || answer.answers.some((a, i) => !Array.isArray(a) || !a.length || a.some((s) => typeof s !== "string" || !s.trim())
+          || (!questions[i].multiple && a.length !== 1)
+          || (questions[i].custom === false && a.some((s) => !(questions[i].options ?? []).some((o) => o.label === s)))))
+        refuse("answers do not match the pending questions");
+    }
+  } else if (decision === "answer") refuse("--answer is only for an OpenCode question");
   // An accept restates the command it approves, so the call a classifier or the owner judges carries the
   // command and not an id. What runs is the request's own command, never stdin: so the comparison is on
   // bytes and exact, the heredoc's one trailing newline aside. A decline restates nothing and never reads
@@ -647,7 +740,7 @@ function decideRequest(dir, id, decision, why) {
   if (decision === "accept") {
     let said = Buffer.alloc(0);
     try { said = fs.readFileSync(0); } catch {}
-    const want = Buffer.from(String(q.command ?? ""), "utf8");
+    const want = Buffer.from(String(typed ? q.presented ?? JSON.stringify(q.payload, null, 2) : q.command ?? ""), "utf8");
     // A request with no command has nothing to restate, and an accept of it would carry no command to judge.
     if (want.length === 0) refuse("the request carries no command to restate: decline it with --decline; nothing was published");
     if (said.length === 0) refuse("the restated command is empty: an accept reads the command it approves on stdin, a quoted heredoc whose delimiter you build from ACCEPT_, the printed token and hex of your own and check is no line of the command; nothing was published");
@@ -661,7 +754,8 @@ function decideRequest(dir, id, decision, why) {
   const target = path.join(box, `${id}.decision.json`);
   const tmp = `${target}.${crypto.randomBytes(8).toString("hex")}.tmp`;
   const record = { id: q.id, run: { pid: q.run?.pid ?? null, startedAtMs: q.run?.startedAtMs ?? null, turnId: q.run?.turnId ?? null },
-                   decision, by: "coordinator", why, decidedAt: new Date().toISOString() };
+                   decision, by: "coordinator", why, decidedAt: new Date().toISOString(),
+                   ...(typed ? { requestHash: q.requestHash, remote: q.remote } : {}), ...(answer ? { answer } : {}) };
   let failure = null;
   try {
     fs.writeFileSync(tmp, `${JSON.stringify(record, null, 2)}\n`, { mode: 0o600, flag: "wx" });
@@ -787,9 +881,10 @@ if (isMain) {
   if (o.isPlan) { if (o.report || o.dir || o.run || o.status || o.isNew || o.orphan) planError("--plan cannot be combined with agent modes"); registerPlan(o.runDir, o.amend); process.exit(0); }
   if (o.amend || o.runDir) { process.stderr.write("agent-run: --amend and --run-dir require --plan\n"); process.exit(2); }
   if (!o.report) { process.stderr.write(`agent-run: --report-file is required\n${USAGE}`); process.exit(2); }
-  if (o.isNew) newAgent(o.report, o.dir);
+  if (o.isNew) newAgent(o.report, o.dir, o.adapter ?? "codex");
   const dir = o.dir ?? (path.isAbsolute(o.report) ? agentDirOf(o.report) : null);
   if (dir === null) { process.stderr.write(`${REFUSED}: --report-file ${JSON.stringify(o.report)} is not an absolute path\n`); process.exit(2); }
+  if (o.adapter) { try { backendOf(dir, o.adapter); } catch (e) { process.stderr.write(`${REFUSED}: ${e.message}\n`); process.exit(2); } }
   if (o.status) { process.stdout.write(`${statusLines(dir, o.report).join("\n")}\n`); process.exit(0); }
   if (o.pending) pendingRequests(dir);
   if (o.decide !== null) decideRequest(dir, o.decide, o.decision, o.why);

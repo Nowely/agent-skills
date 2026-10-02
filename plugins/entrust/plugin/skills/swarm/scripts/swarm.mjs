@@ -43,6 +43,8 @@ summary.json (default: <temp>/entrust/<project>/<run>/swarm/swarm-<random>/summa
 agent its id, unit, report path, the launcher's DRIVER_EXIT, PATH, EXIT and FIRST lines, and when it ran.
 Environment is forwarded unchanged to the launcher (CLAUDE_PLUGIN_DATA or ENTRUST_STATE_DIR). A signal stops
 further launches and reaches every running agent; the summary is still written.
+--adapter codex|opencode selects the external backend (default codex). OpenCode defaults to concurrency 2,
+needs its existing server connection, and requires a pinned provider/model in the brief before fan-out.
 Exit: 0 summary written, every agent launched; 1 cut by a signal, or the summary could not be written; 2 usage.
 `;
 
@@ -65,14 +67,18 @@ function args(argv) {
 const opt = args(process.argv.slice(2));
 if (opt.help || process.argv.length === 2) { process.stdout.write(usage()); process.exit(opt.help ? EXIT.OK : EXIT.USAGE); }
 if (!fs.existsSync(LAUNCHER)) fail(EXIT.USAGE, `the sibling launcher is missing: ${LAUNCHER}`);
+const adapter = opt.adapter ?? "codex";
+if (!["codex", "opencode"].includes(adapter)) fail(EXIT.USAGE, "--adapter must be codex or opencode");
 if ((opt.units ? 1 : 0) + (opt.agents ? 1 : 0) !== 1) fail(EXIT.USAGE, "exactly one of --units <file> or --agents <n> is required");
 if (!opt.brief) fail(EXIT.USAGE, "--brief <template> is required");
 if (!opt.run || !path.isAbsolute(opt.run)) fail(EXIT.USAGE, "--run <dir> is required and absolute");
-const concurrency = opt.concurrency === undefined ? 10 : Number(opt.concurrency);
+const concurrency = opt.concurrency === undefined ? (adapter === "opencode" ? 2 : 10) : Number(opt.concurrency);
 if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > MAX) fail(EXIT.USAGE, `--concurrency must be 1 to ${MAX}`);
 let template;
 try { template = fs.readFileSync(opt.brief, "utf8"); } catch (e) { fail(EXIT.USAGE, `--brief cannot be read: ${opt.brief}: ${e.message}`); }
 if (template.trim() === "") fail(EXIT.USAGE, "--brief is empty");
+if (adapter === "opencode" && !/^MODEL:\s*[^\s/]+\/[^\s]+\s*$/m.test(template))
+  fail(EXIT.USAGE, "an OpenCode swarm needs a pinned MODEL: provider/model before fan-out");
 
 let units;
 if (opt.units) {
@@ -109,7 +115,7 @@ const agents = units.map((unit, k) => {
 });
 
 const runLauncher = (argv, input) => new Promise((resolve) => {
-  const child = spawn(process.execPath, [LAUNCHER, ...argv], { stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"], env: process.env });
+  const child = spawn(process.execPath, [LAUNCHER, "--adapter", adapter, ...argv], { stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"], env: process.env });
   let out = "", err = "";
   child.stdout.on("data", (d) => { out += d; }); child.stderr.on("data", (d) => { err += d; });
   child.on("error", (e) => resolve({ code: null, out, err: err + String(e), child }));
@@ -139,7 +145,7 @@ async function runOne(a) {
 }
 
 function finish() {
-  const summary = { run: opt.run, mode: opt.units ? "units" : "agents", count: agents.length, concurrency, startedAt,
+  const summary = { run: opt.run, adapter, mode: opt.units ? "units" : "agents", count: agents.length, concurrency, startedAt,
                     finishedAt: new Date().toISOString(), stopped, agents };
   try {
     fs.mkdirSync(path.dirname(summaryPath), { recursive: true, mode: 0o700 });
