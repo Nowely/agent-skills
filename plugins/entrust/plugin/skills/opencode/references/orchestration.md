@@ -21,8 +21,9 @@ session/report binds both. Continuations inherit them, and a changed API family 
 
 Every invocation has `<run>/<id>/report.json`; a continuation has `<run>/<id>-2/report.json`, then
 `-3`, and waits until its predecessor ended. One session can have several invocations, each with a
-new report. Each concurrent worker has a different session. The server address is shared and is not
-a concurrency slot or a reason to create another server.
+new report. Each concurrent worker has a different session. Local workers start private loopback
+servers; workers explicitly attached to one remote endpoint share that server. A server is not a
+concurrency slot.
 
 Return [five fields](../../codex/schemas/five-fields.schema.json) through `OUTPUT_SCHEMA:`. The
 driver validates them locally and allows one corrective turn. Give a fresh verifier the requirements

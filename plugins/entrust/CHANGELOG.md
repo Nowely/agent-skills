@@ -3,6 +3,13 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- OpenCode runs now start and stop a private loopback server from the installed CLI by default, using the user's existing configuration and credentials. Remote servers remain an explicit option; local agents need no endpoint setup.
+- OpenCode workers launched through the shared agent launcher save the local-server mode and can continue a session across a fresh ephemeral server URL. Package and marketplace descriptions now describe the default accurately.
+
 ## 0.24.0 — 2026-10-02
 
 ### Added
