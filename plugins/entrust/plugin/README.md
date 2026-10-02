@@ -105,6 +105,13 @@ leaves.
   them (`--model`, `--effort`); the driver sets no defaults of its own
   ([the isolated home](skills/codex/references/environment-and-internals.md#the-isolated-home)).
 
+Temporary check logs, swarm summaries, cleanup snapshots and test files are grouped under
+`<tmp>/entrust/checks/`, `swarm/`, `cleanup/` and `evals/`, each invocation in a private directory.
+Cleanup lists each invocation separately and keeps files whose recorded process is still running
+or whose ownership cannot be established. It keeps snapshots because approval may still refer to one.
+Unmarked directories inside these categories are kept too. The existing root-level agent and eval
+scans remain covered by cleanup.
+
 ## Install
 
 As a plugin — the full set: all seven skills and the driver (the repo is its own marketplace):

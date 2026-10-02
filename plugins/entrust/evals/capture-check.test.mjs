@@ -95,7 +95,7 @@ test("a SIGTERM to the runner reaches the command, and the receipt and EXIT stil
     return (last === "EXIT=signal SIGTERM" && r.code === 143 && ms < 10_000) || `last ${JSON.stringify(last)}, exit ${r.code}, after ${ms} ms`;
   });
 
-test("the log is under $TMPDIR, private, and holds stdout and stderr merged in order",
+test("the log is under $TMPDIR/entrust/checks, private, and holds stdout and stderr merged in order",
   "the page's own words say the runner writes only under $TMPDIR; a log elsewhere is a write the plan did not list",
   async () => {
     const r = await run(["--label", "order", "--", "echo one; echo two >&2; echo three"]);
@@ -103,11 +103,44 @@ test("the log is under $TMPDIR, private, and holds stdout and stderr merged in o
     const problems = [];
     if (!fs.realpathSync(log).startsWith(fs.realpathSync(TMP) + path.sep)) problems.push(`the log is at ${log}, outside ${TMP}`);
     if (!/check-order\.[0-9a-f]{8}\.log$/.test(log)) problems.push(`the log is not named for its label: ${log}`);
+    const dir = path.dirname(log);
+    if (path.dirname(dir) !== path.join(fs.realpathSync(TMP), "entrust", "checks")) problems.push(`ungrouped directory: ${dir}`);
+    if ((fs.statSync(dir).mode & 0o777) !== 0o700) problems.push("the check directory is not private");
     const mode = fs.statSync(log).mode & 0o777;
     if (mode !== 0o600) problems.push(`mode ${mode.toString(8)}`);
     const body = fs.readFileSync(log, "utf8");
     if (body !== "one\ntwo\nthree\n") problems.push(`the log reads ${JSON.stringify(body)}`);
     return problems.length === 0 || problems.join("; ");
+  });
+
+test("a linked namespace, linked category or regular-file namespace refuses the check before its command runs",
+  "a fixed shared name must not let a pre-existing link redirect the plugin's temporary writes",
+  async () => {
+    const problems = [];
+    for (const shape of ["namespace-link", "category-link", "namespace-file"]) {
+      const root = path.join(TMP, shape);
+      const outside = path.join(TMP, `${shape}-outside`);
+      fs.mkdirSync(root); fs.mkdirSync(outside);
+      const base = path.join(root, "entrust");
+      if (shape === "namespace-file") fs.writeFileSync(base, "file");
+      else if (shape === "namespace-link") fs.symlinkSync(outside, base);
+      else { fs.mkdirSync(base); fs.symlinkSync(outside, path.join(base, "checks")); }
+      const marker = path.join(root, "ran");
+      const r = await run(["--", `touch '${marker}'`], { env: { TMPDIR: root } });
+      if (r.code !== 2 || !r.last.startsWith("ERROR=")) problems.push(`${shape}: exit ${r.code}, ${r.last}`);
+      if (fs.existsSync(marker) || fs.readdirSync(outside).length) problems.push(`${shape}: wrote despite refusal`);
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("parallel checks use separate directories and retain both complete logs",
+  "two coordinators can ask the same check question at once without sharing a temporary leaf",
+  async () => {
+    const results = await Promise.all([run(["--", "echo first"]), run(["--", "echo second"])]);
+    const logs = results.map((r) => r.field("LOG"));
+    return (results.every((r) => r.code === 0) && path.dirname(logs[0]) !== path.dirname(logs[1])
+      && fs.readFileSync(logs[0], "utf8") === "first\n" && fs.readFileSync(logs[1], "utf8") === "second\n")
+      || "parallel checks shared a directory or lost output";
   });
 
 test("a long line is clipped to 200 characters, a carriage-return progress line shows its last state, a 2 MB unterminated line stays bounded",

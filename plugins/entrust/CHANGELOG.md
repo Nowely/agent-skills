@@ -7,6 +7,10 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- Temporary check logs, swarm summaries, cleanup snapshots and test artifacts are grouped under
+  `<temp>/entrust/{checks,swarm,cleanup,evals}/`, with a private directory per invocation.
+  Cleanup lists grouped artifacts individually, keeps live or uncertain owners and approval snapshots,
+  and continues to recognize legacy scratch paths. Standalone native orchestration remains supported.
 - `orchestrate` now uses native delegation without requiring the external `codex` adapter.
   Its coordinator remains a role, models and capacity follow the host, and the existing adapter
   owns Claude-to-Codex transport, registration, state, approvals and external results.

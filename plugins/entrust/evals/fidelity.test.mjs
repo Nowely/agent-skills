@@ -27,6 +27,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 import { sampleItems } from "./fake-app-server.mjs";
+import { createTempDir } from "../plugin/skills/orchestrate/scripts/temp-dir.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FAKE = path.join(HERE, "fake-app-server.mjs");
@@ -144,7 +145,7 @@ function shapeOf(r, limits) {
 // compared above and asserted independently below.
 
 const workDirs = [];
-const freshDir = (n) => { const d = fs.mkdtempSync(path.join(os.tmpdir(), `fidelity-${n}-`)); workDirs.push(d); return d; };
+const freshDir = (n) => { const d = createTempDir("evals", `fidelity-${n}-`); workDirs.push(d); return d; };
 let cleaned = false;
 function cleanup() {
   if (cleaned) return;

@@ -25,10 +25,10 @@ exactly as the command printed it.
 1. Run the listing with the Bash description "List files left by
    entrust."
 
-       F="$(mktemp "${TMPDIR:-/tmp}/entrust-cleanup.XXXXXXXX")"
-       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../codex/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
+       F="$(node "${CLAUDE_SKILL_DIR}/../orchestrate/scripts/temp-dir.mjs" cleanup)" && CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../codex/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
 
-   `mktemp` gives each listing its own file. A name built from the shell's
+   The helper gives each listing its own file under `<temp>/entrust/cleanup/`.
+   Cleanup keeps these snapshots because approval may still refer to one. A name built from the shell's
    `$$` does not: two listings in one shell would share it, and a number from
    the first would then be read against the second. Keep the snapshot path
    from the last line; step 3 needs that exact path. Show the `text`

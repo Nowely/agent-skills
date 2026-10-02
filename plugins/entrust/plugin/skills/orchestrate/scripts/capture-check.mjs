@@ -22,6 +22,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createTempDir } from "./temp-dir.mjs";
 
 // The page's bound is twenty lines read back in all: five of them are this script's own (LABEL, LOG,
 // LINES, BYTES, EXIT), so the tail is fifteen at most.
@@ -39,8 +40,9 @@ const USAGE = `capture-check — run one check; its whole output goes to a log, 
 The words after -- are joined with spaces into one command line and run by
 \`bash -o pipefail -c\`, so a pipeline's status is its failing stage's and a
 \`| tail\` of your own cannot hide a failure. Its stdout and stderr go, merged
-in the order written, into a new file under $TMPDIR:
-check-<label>.<random>.log, mode 0600. None of it is printed but the tail,
+in the order written, into a new file under <temp>/entrust/checks/check-<random>/:
+check-<label>.<random>.log, mode 0600; the directory is 0700. <temp> is
+Node's os.tmpdir(). None of it is printed but the tail,
 so a pipe into head or tail is never needed; under pipefail a producer that
 head cuts off exits 141 (SIGPIPE), and that is the status reported.
 
@@ -99,7 +101,6 @@ function parse(argv) {
   return o;
 }
 
-const tmpRoot = () => process.env.TMPDIR || os.tmpdir();
 const slugOf = (label) => (label.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "check");
 
 export function readLedger(file) {
@@ -206,7 +207,9 @@ function run(o) {
       refuse(`"${label}" already ran ${prior} time${prior === 1 ? "" : "s"} in this ledger: a second command on the same question goes to an agent`);
     }
   }
-  const dir = tmpRoot();
+  let dir;
+  try { dir = createTempDir("checks", "check-"); }
+  catch (e) { refuse(`cannot create the check directory: ${e.message}`); }
   let log, fd;
   for (let tries = 0; ; tries++) {
     log = path.resolve(dir, `check-${slugOf(label)}.${crypto.randomBytes(4).toString("hex")}.log`);

@@ -108,6 +108,7 @@ import {
   skillCalls, splitAdmissionProblems, topRowAgents, workflowCalls,
 } from "./lib/gate-checks.mjs";
 import { parseReceipts } from "../plugin/skills/orchestrate/scripts/lint-draft.mjs";
+import { createTempDir } from "../plugin/skills/orchestrate/scripts/temp-dir.mjs";
 
 const { cases: CASES, test } = registry();
 
@@ -117,7 +118,8 @@ const { cases: CASES, test } = registry();
 // directory under the $TMPDIR the driver inherits is refused, since the read level grants $TMPDIR.
 // Colons are legal in a path on both supported platforms and awkward in every shell that will open these,
 // so the ISO stamp keeps its order and loses its punctuation.
-const ART = path.join(SYSTEM_TMP, `orchestrate-live-${new Date().toISOString().replace(/[:.]/g, "-")}`);
+const ART = process.env.ENTRUST_LIVE_ORCHESTRATE === "1"
+  ? createTempDir("evals", `orchestrate-live-${new Date().toISOString().replace(/[:.]/g, "-")}-`, SYSTEM_TMP) : null;
 const caseDir = (n, slug) => {
   const d = path.join(ART, `${n}-${slug}`);
   fs.mkdirSync(d, { recursive: true });

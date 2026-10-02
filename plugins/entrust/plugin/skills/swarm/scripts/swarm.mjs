@@ -11,8 +11,8 @@
 // --agents: n identical briefs for a queue arm, fifty at most; the template must not contain {{UNIT}}.
 // --run: absolute, the orchestrate run directory; agent <id> is <run>/<id>/report.json with the launcher's
 //   agent/ beside it, which is what the cleanup expects of a run. --concurrency: 1 to 50, default 10.
-// --summary: where summary.json goes, default a fresh codex-agent.* directory under the temporary directory,
-//   the agent-scratch shape the cleanup lists; never under <run>, where only the launcher and the driver write.
+// --summary: where summary.json goes, default <temp>/entrust/swarm/swarm-<random>/summary.json;
+//   never under <run>, where only the launcher and the driver write.
 // Environment: what the launcher needs, forwarded unchanged (CLAUDE_PLUGIN_DATA or ENTRUST_STATE_DIR).
 // A signal (SIGTERM, SIGINT, SIGHUP) stops further launches, goes to every running launcher, and the
 // summary is written for what ran; the exit is then 1.
@@ -20,11 +20,10 @@
 // 1 a signal cut the swarm or the summary could not be written; 2 usage.
 
 import { spawn } from "node:child_process";
-import crypto from "node:crypto";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createTempDir } from "../../orchestrate/scripts/temp-dir.mjs";
 
 const EXIT = { OK: 0, FAILED: 1, USAGE: 2 };
 const MAX = 50;
@@ -40,7 +39,7 @@ const usage = () => `swarm.mjs — launch a swarm of bulk agents through the sib
 
 Agent <id> is <run>/<id>/report.json with the launcher's agent/ beside it, made by the launcher from the brief;
 at most --concurrency (1 to ${MAX}, default 10) run at once. When every agent has finished the script writes
-summary.json (default: a fresh codex-agent.* directory under the temporary directory, never under <run>): per
+summary.json (default: <temp>/entrust/swarm/swarm-<random>/summary.json, never under <run>): per
 agent its id, unit, report path, the launcher's DRIVER_EXIT, PATH, EXIT and FIRST lines, and when it ran.
 Environment is forwarded unchanged to the launcher (CLAUDE_PLUGIN_DATA or ENTRUST_STATE_DIR). A signal stops
 further launches and reaches every running agent; the summary is still written.
@@ -95,17 +94,8 @@ if (summaryPath) {
   const real = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
   if (real(path.dirname(summaryPath)).startsWith(real(opt.run))) fail(EXIT.USAGE, "--summary must not lie under --run, where only the launcher and the driver write");
 } else {
-  // The agent-scratch shape the cleanup lists is codex-agent. followed by eight characters, the page's own
-  // mktemp template; mkdtemp would give six, so the name is drawn here and the directory made create-only.
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let dir = null;
-  for (let tries = 0; tries < 20 && !dir; tries++) {
-    const name = "codex-agent." + Array.from(crypto.randomBytes(8), (b) => alphabet[b % alphabet.length]).join("");
-    const candidate = path.join(os.tmpdir(), name);
-    try { fs.mkdirSync(candidate, { mode: 0o700 }); dir = candidate; } catch (e) { if (e.code !== "EEXIST") fail(EXIT.USAGE, `cannot make the summary directory: ${e.message}`); }
-  }
-  if (!dir) fail(EXIT.USAGE, "cannot make the summary directory under the temporary directory");
-  summaryPath = path.join(dir, "summary.json");
+  try { summaryPath = path.join(createTempDir("swarm", "swarm-"), "summary.json"); }
+  catch (e) { fail(EXIT.USAGE, `cannot make the summary directory: ${e.message}`); }
 }
 
 // A function replacement: a string one would expand $&, $` and $' inside the unit.
