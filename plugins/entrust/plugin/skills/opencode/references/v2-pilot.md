@@ -6,6 +6,10 @@ assistant results. A further approved interaction window passed six native cases
 singleton was restored after every window; V2 selection in the adapter is explicit, with V1 retained
 as the compatibility default.
 
+Sections: [Original SDK configuration](#original-sdk-configuration-result) · [Source and conclusion](#source-and-conclusion) ·
+[Offline transport gate](#offline-transport-gate) · [Native transport comparison](#approved-native-transport-comparison) ·
+[Native interaction gate](#approved-native-interaction-gate) · [Adapter acceptance](#approved-adapter-acceptance-passed).
+
 ## Original SDK configuration result
 
 - Binary: OpenCode `1.18.34`, SHA256

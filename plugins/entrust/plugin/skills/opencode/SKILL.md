@@ -81,3 +81,4 @@ request and rerun. A missing report or uncertain cancellation is unknown, never 
 
 Read [parity.md](references/parity.md) before relying on active clarification, schema delivery,
 attachments, tool selection or billing. API presence alone is not evidence of working execution.
+See [v2-pilot.md](references/v2-pilot.md) for the recorded native API and adapter acceptance results.
