@@ -67,16 +67,16 @@ const RESPONSE_SCHEMAS = {
 // still counting itself validated. It has a schema of its own.
 const JSONRPC_ERROR = load("JSONRPCError.json");
 
-// The directory tracks what this suite loads and nothing else. A schema no case reads is validated
-// against nothing, goes stale at the next codex upgrade unnoticed, and makes the tracked count a number
-// nobody can act on. The regeneration recipe in README copies the whole tree; this is what prunes it.
+// The pinned directory tracks only what this suite loads. An explicit upgrade override may point at
+// the full generated bundle; the ordinary run still enforces pruning after the pin moves.
 const unloaded = fs.readdirSync(SCHEMAS, { recursive: true })
   .map((p) => String(p).split(path.sep).join("/"))
   .filter((p) => p.endsWith(".json") && !loaded.has(p));
-if (unloaded.length) {
+if (unloaded.length && !override) {
   console.log(`FAIL  ${schemaDir} tracks ${unloaded.length} schema(s) this suite never loads: ${unloaded.join(", ")}`);
   process.exit(1);
 }
+if (unloaded.length) console.log(`note  upgrade override has ${unloaded.length} generated schema(s) this suite does not load; the pinned tree is still required to be pruned`);
 
 const unchecked = new Set();
 const KNOWN = new Set(["$ref", "oneOf", "anyOf", "allOf", "type", "enum", "const", "required", "properties",

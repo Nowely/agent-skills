@@ -258,31 +258,6 @@ agent has no driver to grant it a private directory, so two Claude agents told t
 the same brief can still overwrite each other's file with no error. The page should give each Claude agent's
 artifact a name, or a subdirectory, that cannot collide with a sibling's.
 
-## E109. The paths a run creates are long and were never designed as a whole: the project part repeats the working directory's full path
-
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:27`: the run directory is
-"`<state>/orchestrate/<project-slug>/<run>/`, … `<project-slug>` the working directory's absolute path with every
-character that is not a letter or a digit replaced by `-`". For a checkout at `~/Git/agent-skills` the slug is
-`-Users-<user>-Git-agent-skills`, so an agent's report sits at
-`<state>/orchestrate/-Users-<user>-Git-agent-skills/<run>/<agent>/report.json`, and E92's rework on this branch
-names each run's temporary folder by the same relative path under the system temporary directory; on a macOS
-machine the path to a socket file `s.sock` in an orchestrate agent's folder measured 141 bytes, over the 104-byte
-limit of a Unix socket path (the plugin makes no socket there; a tool an agent runs might, not measured). The places a run
-leaves files — the plugin's data directory, the system temporary directory, the repository's `.claude/worktrees/` —
-were each chosen by the change that needed them. Raised by the owner, 2026-09-30.
-
-**Check.** `grep -n 'project-slug' plugins/entrust/plugin/skills/orchestrate/SKILL.md`.
-
-**Issue text.** The paths a run creates are long and were never designed as a whole. The project part of an
-orchestrate run's path is the working directory's full absolute path with every separator turned into a dash, so the
-user's home path repeats in every report and temporary path a coordinator names, and each place a run leaves files
-was picked by the change that needed it. Analyse the naming and the locations together — a shorter project key (the
-repository's name, or a short hash of the path), what lives where, who removes it, and how a user finds everything
-one run left behind — and change them in one step with the pages and the cleanup skill. Candidate directions for
-the socket-path limit to weigh in that analysis: create sockets in a short parent folder (the `<tmp>/entrust` base,
-for instance) rather than the run's own folder; have the parent, the coordinator or the driver, hand the agent a
-short directory for sockets; or another option the analysis finds better (raised by the owner, 2026-09-30).
-
 ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
 
 **Evidence, level 1 for the pages, level 3 for the run's outcomes, level 2 for the generalisation.**
