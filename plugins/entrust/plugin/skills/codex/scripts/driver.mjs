@@ -45,7 +45,7 @@ const READ_PROFILE = "entrust_read";
 const PINNED_CODEX = "0.159.3";
 // This plugin's version, printed by --help and carried as driverVersion, must agree with
 // every place plugins/entrust/evals/package.test.mjs compares.
-const VERSION = "0.23.0";
+const VERSION = "0.24.0";
 let codexVersion = null;   // what the server reported this run, parsed out of InitializeResponse.userAgent
 // The union of the model catalogue's supported_reasoning_levels and the server's accepted efforts.
 // `none` and `minimal` appear in the server's rejection list; `ultra` is absent there but completes live turns.
