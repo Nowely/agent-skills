@@ -911,7 +911,8 @@ flow("a temporary base <tmp>/entrust that is a link, not a directory, or another
       if (r.code !== EXIT.USAGE || !r.err.includes(`the temporary base ${path.join(tmp, "entrust")} ${want}`))
         problems.push(`${label}: exit ${r.code}, ${r.err.trim().slice(-200)}`);
     };
-    const linked = tempDir("entrust-base-link-"), target = tempDir("entrust-base-target-");
+    const linked = tempDir("entrust-base-link-"), target = path.join(tempDir("entrust-base-target-"), "empty");
+    fs.mkdirSync(target);
     fs.symlinkSync(target, path.join(linked, "entrust"));
     await refused("a symbolic link", linked, "is a symbolic link");
     if (fs.readdirSync(target).length) problems.push(`the run wrote through the link: ${fs.readdirSync(target).join(", ")}`);
