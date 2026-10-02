@@ -25,10 +25,12 @@ exactly as the command printed it.
 1. Run the listing with the Bash description "List files left by
    entrust."
 
-       F="$(mktemp "${TMPDIR:-/tmp}/entrust-cleanup.XXXXXXXX")"
-       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../codex/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
+       F="$(node "${CLAUDE_SKILL_DIR}/../orchestrate/scripts/temp-dir.mjs" cleanup)" && CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../codex/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
 
-   `mktemp` gives each listing its own file. A name built from the shell's
+   The helper gives each listing its own file at
+   `<temp>/entrust/.cleanup/snapshot-<six random characters>/listing.json`,
+   for example `snapshot-Ab12Cd/listing.json` beneath that `.cleanup` directory.
+   Cleanup keeps these snapshots because approval may still refer to one. A name built from the shell's
    `$$` does not: two listings in one shell would share it, and a number from
    the first would then be read against the second. Keep the snapshot path
    from the last line; step 3 needs that exact path. Show the `text`
@@ -113,10 +115,14 @@ entries in the coordinator's temporary directory. Say "To list those entries
 without removing them, run this command." and show `notCovered.listCommand`;
 for removal, `notCovered.removeCommand`. An agent started under another
 temporary root is outside the agent scan; its report is kept while
-`report.json` is absent. A run or standalone report the cleanup removes
+`report.json` is absent. A legacy run or standalone report the cleanup removes
 takes its temporary folder with it, `<tmp>/entrust/<rel>` for the report at
 `<state>/<rel>/report.json`, on the same row and number and under the run's
-own rule, so a run still going keeps both. A folder under `<tmp>/entrust`
+own rule, so a run still going keeps both. New scratch under
+`<tmp>/entrust/<project>/<run>/{agents,checks,swarm,evals}` is listed per invocation,
+kept while its owner or a recorded child is running, and removed only by its own number.
+Project and run parents are never selected; approval snapshots under `.cleanup` are kept.
+A legacy folder under `<tmp>/entrust`
 whose run is no longer in the state directory, or a `runs/<startedAtMs>-<pid>`
 folder whose process has ended, is a row of its own, suggested for deletion;
 one whose process is alive, or whose run is still there, is kept. What an

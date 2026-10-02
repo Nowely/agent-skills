@@ -40,7 +40,7 @@ verbose step onto agents; its common protocol is independent of the external ada
 A third, `/entrust:cleanup`, is the cleanup: it lists what the plugin has left on this machine and
 removes only what you pick by number ([skills/cleanup/SKILL.md](skills/cleanup/SKILL.md)). It
 removes seven kinds — this project's orchestrate run directories and agent scratch, standalone report
-runs, each run with its temporary folder, the temporary folders whose run is gone, what an earlier
+runs, legacy runs with their temporary folders, the temporary folders whose run is gone, what an earlier
 version left in the data directory's `tmp/`, the test suites' scratch directories and the saved
 conversations they leave behind. Five more
 it only ever reports: the driver's saved answers, managed worktrees and their ledger, write locks,
@@ -87,16 +87,16 @@ leaves.
   `schema-<version>/` directory beside the plugin in the repository is that build's protocol reference. After
   upgrading codex, run the fidelity suite (below) before trusting a run.
 - **Node at or above the floor `package.json` declares** (`engines`); CI runs that floor and a current
-  release, Linux and macOS. No dependencies: the driver is one file importing only `node:` builtins.
+  release, Linux and macOS. No dependencies: shipped scripts use only `node:` builtins and sibling modules.
 - **macOS and Linux are both measured.** CI runs every suite that needs no `codex` binary on both;
   the macOS-only call (the managed-preferences plist) is guarded. On both, an agent's `$TMPDIR` is its
   run's own directory, never your whole one: the driver makes it fresh at 0700 inside the system's
-  temporary directory `<tmp>`, Node's `os.tmpdir()`: your `TMPDIR`, else `TMP` or `TEMP`, else `/tmp`. A report at
-  `<rel>/report.json` under the driver's state directory gets `<tmp>/entrust/<rel>`, and a run with no
-  report there gets `<tmp>/entrust/runs/<startedAtMs>-<pid>`. The report names it as `tmpDir`
+  temporary directory `<tmp>`, Node's `os.tmpdir()`: your `TMPDIR`, else `TMP` or `TEMP`, else `/tmp`.
+  Its path is `<tmp>/entrust/<project>/<run>/agents/<agent>`, sharing the initiating project and run
+  with its coordinator or swarm while keeping each agent's writable leaf exclusive. The report names it as `tmpDir`
   ([Environment](skills/codex/references/environment-and-internals.md#environment)); it outlives the run,
   and the driver never removes it: it stays until the system clears its temporary directory or
-  `/entrust:cleanup` removes it with its run (below). At read level it is
+  `/entrust:cleanup` removes its selected entry (below). At read level it is
   the only place an agent may write; at write level it is one more writable root beside the directories
   you chose. An earlier version kept these folders in the state directory's `tmp/`; the cleanup offers
   what is left there too.
@@ -104,6 +104,34 @@ leaves.
   Model, reasoning effort and the other keys the driver inherits come from it unless a call overrides
   them (`--model`, `--effort`); the driver sets no defaults of its own
   ([the isolated home](skills/codex/references/environment-and-internals.md#the-isolated-home)).
+
+Temporary artifacts are grouped by project, then run:
+
+```text
+<tmp>/entrust/<project>/<run>/
+  agents/<agent>/             # exclusive agent TMPDIR; child checks live here under checks/
+  checks/check-<random>/      # coordinator check logs
+  swarm/swarm-<random>/summary.json
+  evals/<suite>-<random>/
+<tmp>/entrust/.cleanup/snapshot-<random>/listing.json
+```
+
+Projects use the directory name of the canonical repository root (canonical cwd outside git),
+without a hash or truncation. Same-named projects share that folder; the filesystem root is named `root`.
+Run keys use the full canonical structured report/run path with a hash, or a fresh
+random ID for standalone invocations. `temp-dir.mjs run` emits the internal `ENTRUST_TEMP_CONTEXT`
+JSON that a native coordinator passes to subsequent commands; drivers and swarms create or inherit it
+and forward it to children. This keeps a changed cwd or agent worktree in the initiating run.
+A marked child evaluation directory narrows the local scope; changing `TMPDIR` to an unrelated root
+starts a separate context. A caller's `--summary` or `--ledger` path remains its choice.
+
+Cleanup lists invocation leaves, keeps active or uncertain owners and approval snapshots, and never
+selects project/run parents. Each agent invocation gets a unique scratch leaf, including retries to the same report path; publication
+still refuses report overwrites. New agent scratch is selected separately from state reports; legacy
+mirrored scratch still goes with its report. Earlier type-first and root-level scratch remain covered.
+Each cleanup listing has its own snapshot directory, for example
+`<tmp>/entrust/.cleanup/snapshot-Ab12Cd/listing.json`. `.cleanup` is the service directory name;
+`listing.json` is the file, and the six-character suffix separates successive or concurrent listings.
 
 ## Install
 

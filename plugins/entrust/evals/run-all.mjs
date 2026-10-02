@@ -15,7 +15,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { measured, parseCount } from "./lib/harness.mjs";
+import { measured, parseCount } from "./lib/counts.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // Hand-ordered, because the order is information (cheapest first), and checked against the directory,

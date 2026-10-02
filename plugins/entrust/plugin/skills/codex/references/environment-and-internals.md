@@ -30,11 +30,10 @@ intended value is the plugin's own data directory, which the skill recipes pass 
 must also be absolute.
 
 `$TMPDIR` is the run's own directory, made fresh at 0700 inside the system's temporary directory (what
-Node's `os.tmpdir()` returns for the driver's environment), never your whole one: a report at
-`<state>/<rel>/report.json` gets `<tmp>/entrust/<rel>`, and a run with no report under `<state>` gets
-`<tmp>/entrust/runs/<startedAtMs>-<pid>`; the report names it as `tmpDir`, it outlives the run, and the
+Node's `os.tmpdir()` returns for the driver's environment), never your whole one:
+`<tmp>/entrust/<project>/<run>/agents/<agent>`; the report names it as `tmpDir`, it outlives the run, and the
 driver never removes it: it stays until the system clears its temporary directory or `/entrust:cleanup`
-removes it with its run. What `--help-all` does not carry: the agent's shell also receives `TMPPREFIX` under
+removes its selected entry. What `--help-all` does not carry: the agent's shell also receives `TMPPREFIX` under
 the run's `$TMPDIR`, because zsh keeps here-document temp files at `$TMPPREFIX*`, default `/tmp/zsh`,
 which no grant covers ([incidents](incidents.md#here-documents-under-the-grant)).
 

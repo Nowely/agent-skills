@@ -140,7 +140,7 @@ function run(c) {
        ...(c.noPrompt ? [] : ["--prompt", "irrelevant, the server is scripted"]), ...(c.args ?? [])],
       // Use private state so fixture config, locks and answer logs cannot affect real delegations.
       { env: { PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: c.scenario,
-               ENTRUST_STATE_DIR: stateRoot,
+               ENTRUST_STATE_DIR: stateRoot, ENTRUST_TEMP_CONTEXT: "",
                ...(c.env ? Object.fromEntries(Object.entries(c.env).map(([k, v]) => [k, v ?? shimDir])) : {}) },
         unsetEnv: c.unsetEnv ?? [], killAfterMs: 30000 });
     // A consumer that stops reading, one that merely pauses, and one that pauses and never comes back:

@@ -9,7 +9,7 @@
 // without that check (the ones before E44) is paused before its single rename or unlink of the lock, which
 // comes right after its final ownership read. When the text shows neither shape exactly once, the copy is
 // refused with the function's name, so a changed driver fails the case aloud instead of running unpaused.
-// The copy runs from anywhere because the driver imports node: builtins only.
+// Relative imports in the copy resolve against the original driver's directory.
 //
 // The pause is a handshake, not a delay: the driver writes <lock>.window and waits for
 // <lock>.window.go, and removes both when it goes on. A case reads a `.go` still present after the run
@@ -17,7 +17,13 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { tempDir } from "./harness.mjs";
+
+function readDriver(source) {
+  return fs.readFileSync(source, "utf8").replace(/\bfrom\s+["'](\.[^"']+)["']/g,
+    (_, rel) => `from ${JSON.stringify(pathToFileURL(path.resolve(path.dirname(source), rel)).href)}`);
+}
 
 export const WINDOW_ENV = "ENTRUST_TEST_LOCK_WINDOW";
 export const windowMark = (lock) => `${lock}.window`;
@@ -42,7 +48,7 @@ function __lockWindow(phase) {
 
 // Returns the path of the instrumented copy of `source`, in a temporary directory removed on exit.
 export function instrumentLockWindow(source) {
-  let text = fs.readFileSync(source, "utf8");
+  let text = readDriver(source);
   for (const [phase, fn] of Object.entries(FUNCTIONS)) {
     const start = text.indexOf(`\nfunction ${fn}(`);
     const end = start < 0 ? -1 : text.indexOf("\n}\n", start);
@@ -104,7 +110,7 @@ function __markerPause(lock, point) {
 }
 `;
 export function instrumentMarkerTakeover(source) {
-  let text = fs.readFileSync(source, "utf8");
+  let text = readDriver(source);
   for (const { point, fn, re, at, count: [min, max] } of POINTS) {
     const start = text.indexOf(`\nfunction ${fn}(`);
     const end = start < 0 ? -1 : text.indexOf("\n}\n", start);
