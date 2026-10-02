@@ -1,6 +1,6 @@
 {
   "name": "entrust",
-  "version": "0.24.0",
+  "version": "0.24.1",
   "description": "Orchestrate native subagents in Codex or Claude with scoped tasks, independent verification and attributable results. External Codex and OpenCode adapters provide sessions, scoped worktrees, evidence gates and receipts; OpenCode starts a private local server by default and selects recent router models. Helpers include cleanup, experiments, an advisor, swarms and feedback reports.",
   "author": {
     "name": "Nowely"

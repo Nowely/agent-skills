@@ -5,7 +5,7 @@ description: >-
   OpenCode worker, continuation, permission or question callback, or an orchestration plan
   using router models. Native subagents use the host's delegation tools.
 metadata:
-  version: "0.24.0"
+  version: "0.24.1"
 license: MIT
 ---
 
