@@ -40,9 +40,11 @@ const USAGE = `capture-check — run one check; its whole output goes to a log, 
 The words after -- are joined with spaces into one command line and run by
 \`bash -o pipefail -c\`, so a pipeline's status is its failing stage's and a
 \`| tail\` of your own cannot hide a failure. Its stdout and stderr go, merged
-in the order written, into a new file under <temp>/entrust/checks/check-<random>/:
+in the order written, into a new file under <temp>/entrust/<project>/<run>/checks/check-<random>/:
 check-<label>.<random>.log, mode 0600; the directory is 0700. <temp> is
-Node's os.tmpdir(). None of it is printed but the tail,
+Node's os.tmpdir(). An inherited ENTRUST_TEMP_CONTEXT shares the project/run;
+inside an agent the log is under its own TMPDIR/checks instead. A standalone
+check creates a fresh run. None of it is printed but the tail,
 so a pipe into head or tail is never needed; under pipefail a producer that
 head cuts off exits 141 (SIGPIPE), and that is the status reported.
 

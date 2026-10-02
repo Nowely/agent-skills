@@ -18,8 +18,8 @@ const { cases: CASES, test } = registry();
 const RUNNER = path.join(ROOT, "skills", "orchestrate", "scripts", "capture-check.mjs");
 const TMP = tempDir("capture-check-test-");
 
-const runner = (args, { env = {}, killAfterMs = 60_000 } = {}) =>
-  spawnNode([RUNNER, ...args], { env: { TMPDIR: TMP, ...env }, killAfterMs });
+const runner = (args, { env = {}, cwd, killAfterMs = 60_000 } = {}) =>
+  spawnNode([RUNNER, ...args], { cwd, env: { TMPDIR: TMP, ...env }, killAfterMs });
 const run = async (args, opts) => {
   const r = await runner(args, opts).done;
   const lines = r.out.replace(/\n$/, "").split("\n");
@@ -95,16 +95,16 @@ test("a SIGTERM to the runner reaches the command, and the receipt and EXIT stil
     return (last === "EXIT=signal SIGTERM" && r.code === 143 && ms < 10_000) || `last ${JSON.stringify(last)}, exit ${r.code}, after ${ms} ms`;
   });
 
-test("the log is under $TMPDIR/entrust/checks, private, and holds stdout and stderr merged in order",
+test("the log is under $TMPDIR/entrust/<project>/<run>/checks, private, and holds stdout and stderr merged in order",
   "the page's own words say the runner writes only under $TMPDIR; a log elsewhere is a write the plan did not list",
   async () => {
-    const r = await run(["--label", "order", "--", "echo one; echo two >&2; echo three"]);
+    const r = await run(["--label", "order", "--", "echo one; echo two >&2; echo three"], { env: { ENTRUST_TEMP_CONTEXT: "" } });
     const log = r.field("LOG") ?? "";
     const problems = [];
     if (!fs.realpathSync(log).startsWith(fs.realpathSync(TMP) + path.sep)) problems.push(`the log is at ${log}, outside ${TMP}`);
     if (!/check-order\.[0-9a-f]{8}\.log$/.test(log)) problems.push(`the log is not named for its label: ${log}`);
     const dir = path.dirname(log);
-    if (path.dirname(dir) !== path.join(fs.realpathSync(TMP), "entrust", "checks")) problems.push(`ungrouped directory: ${dir}`);
+    if (!/^[^/]+-[a-f0-9]{12}\/run-[a-f0-9]{12}\/checks$/.test(path.relative(path.join(fs.realpathSync(TMP), "entrust"), path.dirname(dir)))) problems.push(`ungrouped directory: ${dir}`);
     if ((fs.statSync(dir).mode & 0o777) !== 0o700) problems.push("the check directory is not private");
     const mode = fs.statSync(log).mode & 0o777;
     if (mode !== 0o600) problems.push(`mode ${mode.toString(8)}`);
@@ -124,7 +124,16 @@ test("a linked namespace, linked category or regular-file namespace refuses the 
       const base = path.join(root, "entrust");
       if (shape === "namespace-file") fs.writeFileSync(base, "file");
       else if (shape === "namespace-link") fs.symlinkSync(outside, base);
-      else { fs.mkdirSync(base); fs.symlinkSync(outside, path.join(base, "checks")); }
+      else {
+        const ctx = spawnSync(process.execPath, [path.join(path.dirname(RUNNER), "temp-dir.mjs"), "run"],
+          { encoding: "utf8", env: { ...process.env, TMPDIR: root, ENTRUST_TEMP_CONTEXT: "" } });
+        const context = ctx.stdout.trim();
+        fs.symlinkSync(outside, path.join(JSON.parse(context).scope, "checks"));
+        const marker = path.join(root, "ran");
+        const r = await run(["--", `touch '${marker}'`], { env: { TMPDIR: root, ENTRUST_TEMP_CONTEXT: context } });
+        if (r.code !== 2 || fs.existsSync(marker) || fs.readdirSync(outside).length) problems.push(`${shape}: wrote despite refusal`);
+        continue;
+      }
       const marker = path.join(root, "ran");
       const r = await run(["--", `touch '${marker}'`], { env: { TMPDIR: root } });
       if (r.code !== 2 || !r.last.startsWith("ERROR=")) problems.push(`${shape}: exit ${r.code}, ${r.last}`);
@@ -152,7 +161,7 @@ test("a long line is clipped to 200 characters, a carriage-return progress line 
     if (!clipped) problems.push("no line clipped to 200 characters with its count");
     if (!r.lines.includes("progress 100%")) problems.push("the progress line is not shown as its last state");
     if (!r.lines.some((l) => /^x{200} …\(\+2096952 bytes\)$/.test(l))) problems.push("the 2 MB line is not shown as 200 characters and the bytes cut");
-    if (r.lines.some((l) => l.length > 260)) problems.push(`a printed line is ${Math.max(...r.lines.map((l) => l.length))} characters`);
+    if (r.lines.some((l) => !l.startsWith("LOG=") && l.length > 260)) problems.push(`a printed line is ${Math.max(...r.lines.map((l) => l.length))} characters`);
     if (Buffer.byteLength(r.out) > 8000) problems.push(`${Buffer.byteLength(r.out)} bytes printed`);
     if (r.last !== "EXIT=0") problems.push(`last ${JSON.stringify(r.last)}`);
     return problems.length === 0 || problems.join("; ");
@@ -199,6 +208,56 @@ test("--help is the canonical reference: it names the output lines, pipefail, th
     const missing = ["pipefail", "LABEL=", "LOG=", "LINES=", "BYTES=", "EXIT=<status>", "signal <NAME>", "--ledger FILE", "refused", "--summary", "LATER_READS=unknown", "128 + the signal number", "20 lines at most in all", "default 15, at most 15"]
       .filter((s) => !r.out.includes(s));
     return (r.code === 0 && missing.length === 0) || `exit ${r.code}; --help lacks ${missing.join(", ")}`;
+  });
+
+const contextFor = (root, cwd) => {
+  const r = spawnSync(process.execPath, [path.join(path.dirname(RUNNER), "temp-dir.mjs"), "run"],
+    { cwd, encoding: "utf8", env: { ...process.env, TMPDIR: root, ENTRUST_TEMP_CONTEXT: "" } });
+  if (r.status !== 0) throw new Error(r.stderr);
+  return r.stdout.trim();
+};
+
+test("one context keeps checks together after cwd changes; independent projects with the same name remain distinct",
+  "the initiating project/run must be inherited rather than rediscovered in each child",
+  async () => {
+    const projects = [path.join(TMP, "first", "project"), path.join(TMP, "second", "project")];
+    for (const p of projects) fs.mkdirSync(p, { recursive: true });
+    const context = contextFor(TMP, projects[0]);
+    const c = JSON.parse(context), other = JSON.parse(contextFor(TMP, projects[1]));
+    const a = await run(["--", "echo first"], { cwd: projects[0], env: { ENTRUST_TEMP_CONTEXT: context } });
+    const b = await run(["--", "echo second"], { cwd: projects[1], env: { ENTRUST_TEMP_CONTEXT: context } });
+    return (c.project !== other.project && [a, b].every((r) => r.code === 0
+      && path.dirname(path.dirname(r.field("LOG"))) === path.join(c.scope, "checks"))
+      && path.dirname(a.field("LOG")) !== path.dirname(b.field("LOG"))) || "context changed with cwd or projects collided";
+  });
+
+test("an agent scope keeps checks in its TMPDIR; an unrelated temporary root resets context; traversal is refused",
+  "shared run metadata is not permission to write to the run's parent or a different temporary root",
+  async () => {
+    const context = JSON.parse(contextFor(TMP, TMP));
+    const agent = path.join(context.scope, "agents", "worker"); fs.mkdirSync(agent, { recursive: true });
+    const scoped = JSON.stringify({ ...context, scope: agent });
+    const a = await run(["--", "echo scoped"], { env: { TMPDIR: agent, ENTRUST_TEMP_CONTEXT: scoped } });
+    if (a.code !== 0 || path.dirname(path.dirname(a.field("LOG"))) !== path.join(agent, "checks"))
+      return `child escaped its agent scope: ${a.out}`;
+    const unrelated = path.join(TMP, "unrelated"); fs.mkdirSync(unrelated);
+    const b = await run(["--", "echo isolated"], { env: { TMPDIR: unrelated, ENTRUST_TEMP_CONTEXT: scoped } });
+    if (b.code !== 0 || !b.field("LOG").startsWith(unrelated + path.sep)) return `changed root escaped: ${b.out}`;
+    const bad = JSON.stringify({ ...context, scope: context.scope + "/../escape" });
+    const marker = path.join(TMP, "escape-ran");
+    const refused = await run(["--", `touch '${marker}'`], { env: { ENTRUST_TEMP_CONTEXT: bad } });
+    return (refused.code === 2 && !fs.existsSync(marker)) || "traversing context ran its command";
+  });
+
+test("a marked evaluation TMPDIR narrows the inherited run without adding another namespace",
+  "nested test processes need local scratch while retaining the initiating project/run",
+  async () => {
+    const context = JSON.parse(contextFor(TMP, TMP));
+    const suite = path.join(context.scope, "evals", "suite with spaces"); fs.mkdirSync(suite, { recursive: true });
+    fs.writeFileSync(path.join(suite, ".entrust-owner.json"), JSON.stringify({ version: 1, kind: "evals", pid: process.pid }));
+    const r = await run(["--", "echo nested"], { env: { TMPDIR: suite, ENTRUST_TEMP_CONTEXT: JSON.stringify(context) } });
+    return (r.code === 0 && path.dirname(path.dirname(r.field("LOG"))) === path.join(suite, "checks"))
+      || `marked child added a new namespace: ${r.out}`;
   });
 
 const failed = await runCases(CASES);

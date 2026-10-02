@@ -146,7 +146,7 @@ test("L1 the launch line, the run layout the cleanup expects, the summary outsid
       /The run directory is `<state>\/orchestrate\/<project-slug>\/<run>\/`: `<run>` unique, `<project-slug>` the working directory's absolute path with every character but letters and digits replaced by `-`/,
       /make agent `<id>` at `<run directory>\/<id>\/report\.json` with its `agent\/` beside it, the shape the cleanup expects of a run/,
       /at most `--concurrency` at once, fifty at most/,
-    /writes `summary\.json` outside the run, under `<temp>\/entrust\/swarm\/swarm-<random>\/`/,
+    /writes `summary\.json` outside the run, under `<temp>\/entrust\/<project>\/<run>\/swarm\/swarm-<random>\/`/,
       /the swarm's agents are not on the agent map, the task is, and Stop on it stops further launches and reaches every running agent, the summary still written/,
       /`--agents <n>` in place of `--units` launches n agents on one identical brief, for the queue arm below/,
     );
@@ -252,7 +252,7 @@ test("S3 three units at concurrency two: each agent at <run>/<id>/report.json wi
     const m = /^summary=(.+)$/m.exec(r.out)[1];
     if (m.startsWith(runDir + path.sep)) problems.push("the summary lies under the run");
     const dir = path.dirname(m);
-    if (path.dirname(dir) !== path.join(fs.realpathSync(env.TMPDIR), "entrust", "swarm")) problems.push(`the summary is not grouped under entrust/swarm: ${m}`);
+    if (!/^[^/]+-[a-f0-9]{12}\/run-units-[a-f0-9]{12}\/swarm$/.test(path.relative(path.join(fs.realpathSync(env.TMPDIR), "entrust"), path.dirname(dir)))) problems.push(`the summary is not grouped by project/run/swarm: ${m}`);
     if ((fs.statSync(dir).mode & 0o777) !== 0o700) problems.push("the summary directory is not private");
     if (s.count !== 3 || s.agents.length !== 3 || s.concurrency !== 2 || s.mode !== "units" || s.stopped) problems.push("summary header wrong");
     const p2 = path.join(runDir, "002", "agent", "prompt.txt");

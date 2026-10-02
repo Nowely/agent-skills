@@ -35,6 +35,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { createAgentTemp, agentTempAncestor, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
 
 const EXIT = { OK: 0, TURN_NOT_COMPLETED: 1, USAGE: 2, TIMEOUT: 3, TRANSPORT: 4, NO_COMMANDS: 5, ESCALATED: 6, INTERACTION: 7, NO_ANSWER: 8, VERIFY_FAILED: 9, BUSY: 10, VERIFY_UNMEASURABLE: 12, SCHEMA: 13 };
 const LEVELS = new Set(["read", "write"]);
@@ -350,8 +351,11 @@ const HELP = [
   --cwd at write level; /tmp is not, at either. It is the run's own directory,
   made fresh at 0700 inside the system's temporary directory, Node's
   os.tmpdir() (TMPDIR, else TMP or TEMP, else /tmp), never your whole one:
-    a report at <state>/<rel>/report.json: <tmp>/entrust/<rel>
-    no report under <state>: <tmp>/entrust/runs/<startedAtMs>-<pid>
+    <tmp>/entrust/<project>/<run>/agents/<agent>
+  Project is the canonical repository root (cwd outside git), with a path
+  hash; run is the full report run path with a hash, or fresh if absent.
+  Swarms and coordinators pass ENTRUST_TEMP_CONTEXT to share the project/run;
+  the driver scopes that context to the agent, including child checks.
   <tmp>/entrust must be a directory of yours and no link; anything else is
   exit 2. The report names it as tmpDir. It is exported for the turn AND the
   verifier, and it OUTLIVES the run, because --brief tells the agent to leave
@@ -488,7 +492,7 @@ const HELP = [
   (kind writeStdin, the legacy pair, a thread nobody announced, a turn that is
   over or closing), and all of them when --approval-dir is absent. D may not
   lie in one of this driver's own subdirectories of <state> (home/, locks/ and
-  the rest), nor under <tmp>/entrust, where every run's $TMPDIR is.
+  the rest), nor within agent scratch, including an enclosing or another run's $TMPDIR.
   D/owner.json names the driver that owns D, published by link(2); a second one
   exits 2 whether that one is alive or has ended, so D serves one driver, ever,
   and each launch gets a D of its own. Nothing is written to D once
@@ -1362,55 +1366,26 @@ function refuseWebSearchMode(mode, network) {
   }
 }
 
-// A $TMPDIR of this run's own, made at EITHER level for every run, in the system's temporary directory —
-// Node's os.tmpdir(), which reads TMPDIR, then TMP and TEMP, then falls back to /tmp — under entrust/,
-// and named after the run so whose it is can be read off the path: a report at <state>/<rel>/report.json gets
-// entrust/<rel>, the agent's own report directory mirrored, and a run with no report under the state
-// directory gets entrust/runs/<startedAtMs>-<pid>, the start its answer file is named by. Every level made
-// is 0700, and the leaf is made fresh: an existing one is another run's, and sharing it is how two agents
-// overwrote each other's files (E92). It OUTLIVES the run — --brief tells the agent to leave long output in
-// a file there, so a directory removed at exit takes with it every path the answer names — and the driver
-// never removes it.
-let runTmp = null, runTmpBase = null;
-// What is wrong with the base <tmp>/entrust as lstat saw it, or null when it is a directory of this user's.
-function tmpBaseProblem(st) {
-  if (st.isSymbolicLink()) return "is a symbolic link";
-  if (!st.isDirectory()) return "is not a directory";
-  if (typeof process.getuid === "function" && st.uid !== process.getuid()) return `belongs to uid ${st.uid}, not to this user`;
-  return null;
-}
+// Every agent gets a fresh exclusive leaf under its shared project/run context. It outlives the turn:
+// answers may cite files there. Child checks stay under that leaf, the agent's only temporary grant.
+let runTmp = null, runTmpBases = [], runTmpNamespace = null;
 function runTmpDir() {
-  const base = path.join(path.resolve(os.tmpdir()), "entrust");
   const state = canonPath(stateDir());
   const from = reportFilePath === null ? null : canonPath(path.dirname(reportFilePath));
-  const rel = state && from ? path.relative(state, from) : "";
-  const mirrored = rel !== "" && rel.split(path.sep)[0] !== ".." && !path.isAbsolute(rel);
-  const dir = path.join(base, mirrored ? rel : path.join("runs", `${startedAtMs}-${process.pid}`));
-  // The base is a fixed name, and where TMPDIR is unset on Linux it sits in a /tmp every user shares: a
-  // link planted there, or another user's directory, would decide where the agent's files go. So it is
-  // looked at with lstat before it is used and again once it is made, and anything but a directory of
-  // this user's is refused.
-  const refuseBase = () => {
-    let st = null;
-    try { st = fs.lstatSync(base); } catch (e) { if (e.code !== "ENOENT") throw e; }
-    const why = st === null ? null : tmpBaseProblem(st);
-    if (why) fail(EXIT.USAGE, `the temporary base ${base} ${why}, so no run's $TMPDIR is made in it: a link or another user's directory there would decide where the agent's files go; remove it, or export a TMPDIR of your own`);
-  };
+  const rel = state && from ? path.relative(state, from).split(path.sep) : [];
+  const runPath = rel[0] === "orchestrate" && rel.length === 4 ? path.dirname(from)
+    : from;
   try {
-    refuseBase();
-    fs.mkdirSync(base, { recursive: true, mode: 0o700 });
-    refuseBase();
-    fs.mkdirSync(path.dirname(dir), { recursive: true, mode: 0o700 });
-    fs.mkdirSync(dir, { mode: 0o700 });
+    const made = createAgentTemp({ cwd, reportPath: reportFilePath, runPath });
+    runTmp = made.dir;
+    runTmpBases = made.bases;
+    runTmpNamespace = made.namespace;
+    return runTmp;
   } catch (e) {
-    if (e instanceof Bail) throw e;
     fail(EXIT.USAGE, e.code === "EEXIST"
-      ? `the run's $TMPDIR ${dir} already exists: it is named after ${mirrored ? "the report's directory" : "the run"}, so another run made it; name a report path of this run's own`
-      : `the run's $TMPDIR ${dir} could not be created (${e.message})`);
+      ? `the run's $TMPDIR already exists: another invocation owns this report's agent directory`
+      : `the run's $TMPDIR could not be created (${e.message})`);
   }
-  runTmpBase = base;
-  runTmp = dir;
-  return dir;
 }
 // Named in the report, because it is where the agent's own file paths resolve and it is still there when
 // the coordinator reads the answer. null only on a report written before setup() made it.
@@ -1418,7 +1393,7 @@ const keptTmpDir = () => runTmp;
 // Did the agent actually leave anything of its own?
 const tmpHasAgentFiles = () => {
   if (!runTmp) return false;
-  try { return fs.readdirSync(runTmp).length > 0; } catch { return false; }
+  try { return fs.readdirSync(runTmp).some((name) => name !== TEMP_OWNER); } catch { return false; }
 };
 // Record the source of the agent's model and effort so a fresh probe, stale config and account defaults
 // remain distinguishable.
@@ -3281,10 +3256,13 @@ function claimMailbox(d) {
   // None of the driver's own subdirectories may hold a mailbox, and neither may another run's $TMPDIR,
   // which that run's sandbox writes and this run's roots do not cover: a run directory,
   // <state>/reports/<run> or the orchestrate page's, is the only place for one.
-  for (const own of [...STATE_SUBDIRS.map(([sub]) => path.join(stateDir(), sub.replace(/\/$/, ""))), runTmpBase]) {
+  for (const own of [...STATE_SUBDIRS.map(([sub]) => path.join(stateDir(), sub.replace(/\/$/, ""))), ...runTmpBases]) {
     if (within(real, own))
       fail(EXIT.USAGE, `--approval-dir ${real} lies inside ${own}, which this driver keeps for itself or hands to agents as a writable root: a run there could publish another's decision`);
   }
+  const ancestor = agentTempAncestor(real, runTmpNamespace);
+  if (ancestor !== null)
+    fail(EXIT.USAGE, `--approval-dir ${real} lies inside another agent's temporary grant ${ancestor}: it could publish this run's decision`);
   for (const r of agentRoots())
     if (within(real, r)) fail(EXIT.USAGE, `--approval-dir ${real} lies inside ${r}, which this agent may write: it could publish its own decision`);
   mailboxOwnerPath = path.join(real, "owner.json");

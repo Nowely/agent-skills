@@ -29,6 +29,12 @@ reported even when a pipeline fails. Put the ledger under an approved temporary 
 `<skill-dir>` from this skill's installed location;
 give workers the resolved absolute script path and ask them to cite its exit status and counts.
 
+Start one temporary context with `node "<skill-dir>/scripts/temp-dir.mjs" run`; it returns JSON.
+Pass that JSON as `ENTRUST_TEMP_CONTEXT` on check and worker commands so they share the initiating
+project and run even when their working directory changes. Without that context, separate commands
+create separate runs. External drivers and swarms establish and forward the context themselves.
+An external agent scopes child checks to its own `TMPDIR`, so they cannot write into another agent's files.
+
 ## The plan
 
 1. Read [plan.md](references/plan.md) before composing. Check which models, concurrency, context

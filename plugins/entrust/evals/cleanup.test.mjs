@@ -34,6 +34,7 @@ import { EXIT, PINNED_CODEX, ROOT, SCRIPTS, registry, runCases, skip, spawnNode,
 // A NAMESPACE import, not named bindings: the liveness helpers are the driver's, and a named import of
 // one it stops exporting would fail at load and report nothing at all rather than failing case by case.
 import * as driver from "../plugin/skills/codex/scripts/driver.mjs";
+import { SESSION_MARKS } from "../plugin/skills/codex/scripts/cleanup.mjs";
 import { TEMP_OWNER } from "../plugin/skills/orchestrate/scripts/temp-dir.mjs";
 
 const CLEANUP = path.join(SCRIPTS, "cleanup.mjs");
@@ -2323,8 +2324,8 @@ test("50 · every folder under <tmp>/entrust is on a row, so the closing line sa
     return m.done();
   });
 
-function plantArtifact(w, kind, name, owner = { pid: DEAD_PID, identity: DEAD_IDENTITY }) {
-  const dir = path.join(w.tmp, "entrust", kind, name);
+function plantArtifact(w, kind, name, owner = { pid: DEAD_PID, identity: DEAD_IDENTITY }, parts = [kind]) {
+  const dir = path.join(w.tmp, "entrust", ...parts, name);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "output.txt"), "retained output\n");
   if (owner) fs.writeFileSync(path.join(dir, TEMP_OWNER), JSON.stringify({ version: 1, kind, ...owner }));
@@ -2409,7 +2410,7 @@ test("54 · the cleanup recipe creates separate private grouped snapshots and ea
       const p = /^snapshot: (.+)$/m.exec(r.stdout)?.[1];
       if (!p) return `no snapshot path: ${r.stdout.slice(-200)}`;
       paths.push(p);
-      m.eq(path.dirname(path.dirname(p)), path.join(w.tmp, "entrust", "cleanup"), "snapshot category");
+      m.eq(path.dirname(path.dirname(p)), path.join(w.tmp, "entrust", "_global", "cleanup"), "snapshot category");
       m.eq(fs.statSync(path.dirname(p)).mode & 0o777, 0o700, "snapshot privacy");
       const j = JSON.parse(fs.readFileSync(p, "utf8"));
       m.eq(rowAt(j, path.dirname(p))?.status, "kept", "current snapshot retention");
@@ -2421,12 +2422,71 @@ test("54 · the cleanup recipe creates separate private grouped snapshots and ea
 test("55 · both grouped and legacy live-test conversation paths remain covered",
   "grouping retained live-suite artifacts changes the slug in the saved conversation name",
   async () => {
-    const w = makeWorld("grouped-session"), m = misses();
+    const w = makeWorld("s"), m = misses();
     const old = plantSession(w, liveScratch("2026-09-28T10-20-30-123Z", "1-task"));
     const grouped = plantSession(w, path.join("entrust", "evals", "orchestrate-live-2026-09-28T10-20-30-123Z-Ab12Cd", "1-task", "scratch"));
     const r = await list(w); const bad = need(w, r); if (bad) return bad;
     for (const p of [old, grouped]) m.eq(rowAt(r.j, p)?.selectable, true, "saved test conversation");
     return m.done();
+  });
+
+test("56 · project/run parents stay unnumbered, new leaves are independent, and unknown owners stay kept",
+  "the legacy orphan fallback must not expose a project containing multiple runs for whole-tree deletion",
+  async () => {
+    const w = makeWorld("project-leaves"), m = misses();
+    const project = "project-123456789abc", run = "run-123456789abc";
+    const a = plantArtifact(w, "checks", "first", { pid: DEAD_PID }, [project, run, "checks"]);
+    const b = plantArtifact(w, "swarm", "second", { pid: DEAD_PID }, [project, "run-abcdef123456", "swarm"]);
+    const unknown = plantArtifact(w, "checks", "unmarked", null, [project, run, "checks"]);
+    const snap = plantArtifact(w, "cleanup", "snapshot", null, ["_global", "cleanup"]);
+    const s = await snapshot(w); const bad = need(w, s); if (bad) return bad;
+    for (const p of [path.join(w.tmp, "entrust", project), path.dirname(path.dirname(a)), path.dirname(a), path.join(w.tmp, "entrust", "_global")])
+      m.ok(!rowAt(s.j, p), `parent became numbered: ${p}`);
+    m.eq(rowAt(s.j, unknown)?.status, "kept", "unmarked new leaf");
+    m.eq(rowAt(s.j, snap)?.status, "kept", "global snapshot");
+    const row = rowAt(s.j, a);
+    m.ok(row?.selectable, "finished check not selectable");
+    if (row) {
+      const d = await pick(w, s.file, [row.n]); m.eq(d.code, EXIT.OK, "new leaf deletion");
+      m.ok(!fs.existsSync(a), "selected new leaf survived");
+      for (const p of [b, unknown, snap, path.dirname(a)]) m.ok(fs.existsSync(p), `unselected item deleted: ${p}`);
+    }
+    return m.done();
+  });
+
+test("57 · new agent scratch is kept by live descendants or report provenance, and stopped scratch is removable",
+  "a stopped parent is insufficient evidence that its children finished or that another launcher stopped using its report",
+  async () => {
+    const w = makeWorld("agent-leaves"), m = misses();
+    const parts = ["project-123456789abc", "run-123456789abc", "agents"];
+    const stopped = plantArtifact(w, "agents", "stopped", { pid: DEAD_PID, reportPath: null }, parts);
+    const live = plantArtifact(w, "agents", "child-live", { pid: DEAD_PID, reportPath: null }, parts);
+    const child = path.join(live, "checks", "check-child"); fs.mkdirSync(child, { recursive: true });
+    fs.writeFileSync(path.join(child, TEMP_OWNER), JSON.stringify({ version: 1, kind: "checks", pid: process.pid }));
+    const approval = plantArtifact(w, "agents", "approval", { pid: DEAD_PID, reportPath: null }, parts);
+    const saved = path.join(approval, "entrust", "_global", "cleanup", "saved"); fs.mkdirSync(saved, { recursive: true });
+    fs.writeFileSync(path.join(saved, TEMP_OWNER), JSON.stringify({ version: 1, kind: "cleanup", pid: DEAD_PID }));
+    const r = await list(w); const bad = need(w, r); if (bad) return bad;
+    m.eq(rowAt(r.j, stopped)?.selectable, true, "stopped agent selection");
+    for (const p of [live, approval]) m.eq(rowAt(r.j, p)?.status, "kept", "descendant protection");
+    const activeReport = path.join(w.state, "orchestrate", w.slug, "run-live", "A", "report.json");
+    const worker = liveChild();
+    plantAgent(w, "codex-agent.Prv00001", { pid: worker.pid, identity: processIdentity(worker.pid), reportPath: activeReport });
+    fs.writeFileSync(path.join(stopped, TEMP_OWNER), JSON.stringify({ version: 1, kind: "agents", pid: DEAD_PID, reportPath: activeReport }));
+    const held = await list(w); const badHeld = need(w, held); if (badHeld) return badHeld;
+    m.eq(rowAt(held.j, stopped)?.status, "kept", "recorded report provenance");
+    await stopChild(worker);
+    return m.done();
+  });
+
+test("58 · project-first live conversation slugs match only complete generated shapes",
+  "saved conversation names may outlive their test scratch and must retain the new project/run grouping",
+  () => {
+    const tail = "entrust-project-123456789abc-run-abcdef123456-evals-orchestrate-live-2026-09-28T10-20-30-123Z-Ab12Cd-1-task-scratch";
+    const recognizes = (name) => SESSION_MARKS.some(([re]) => re.test(name));
+    return (recognizes(tail) && !recognizes(tail.replace("123456789abc", "unknown"))
+      && !recognizes(tail.replace("-evals-", "-notes-")) && !recognizes(tail + "-notes"))
+      || "project-first conversation recognition was missing or too broad";
   });
 
 const failed = await runCases(CASES);

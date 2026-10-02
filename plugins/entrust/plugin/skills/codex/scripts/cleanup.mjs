@@ -33,7 +33,7 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { EXIT, VERSION, canonPath, dropReclaimMarker, holderAlive, holdsReclaimMarker, reclaimable,
          takeReclaimMarker } from "./driver.mjs";
-import { TEMP_KINDS, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
+import { TEMP_KINDS, TEMP_OWNER, PROJECT_KEY } from "../../orchestrate/scripts/temp-dir.mjs";
 
 // A removal that was attempted and failed. The other three codes are the driver's own.
 const EXIT_FAILED = 1;
@@ -63,6 +63,8 @@ const EVAL_KINDS = [["entrust-test-", "the delegation tests"],
 // named `my-orchestrate-live-notes` under the temp root has neither shape, which is what keeps the
 // collision closed, and nothing outside the temp root is read at all.
 const SESSION_MARKS = [
+  [/^entrust-[A-Za-z0-9-]+-[a-f0-9]{12}-(?:run-[a-f0-9]{12}|[A-Za-z0-9-]+-[a-f0-9]{12})-evals-orchestrate-live-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-[A-Za-z0-9]{6}-\d+-[A-Za-z0-9-]+-scratch$/,
+   "the orchestration tests"],
   [/^entrust-evals-orchestrate-live-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-[A-Za-z0-9]{6}-\d+-[A-Za-z0-9-]+$/,
    "the orchestration tests"],
   [/^orchestrate-live-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-\d+-[A-Za-z0-9-]+$/,
@@ -90,7 +92,7 @@ finds now is the row the listing showed — same kind, name, status, paths, iden
 last-change times. Everything else is refused untouched, and the fresh listing follows.
 
 It removes orchestrate run directories and agent scratch directories of THIS project, published
-standalone report run directories, each run with its temporary folder under <tmp>/entrust, the
+standalone report run directories, legacy runs with their temporary folders under <tmp>/entrust, the
 temporary folders there whose run is gone, the folders an earlier driver kept under <state>/tmp, the
 suites' scratch directories, the saved conversations the suites leave behind, and write locks nobody
 holds: a released lock's leftover link, an abandoned lock with its record, and a lock record no link
@@ -98,9 +100,10 @@ names. It only REPORTS the driver's saved answers, managed worktrees and their l
 still held or in the previous shape, the shared Codex home, and another copy's data directory. It
 never runs git, and never removes anything it could not fully read.
 
-Check output, swarm summaries and grouped test files are listed per invocation under
-<tmp>/entrust/checks, swarm and evals. Their recorded process must be gone before deletion;
-missing or uncertain ownership keeps them. Snapshots under <tmp>/entrust/cleanup are listed and
+Check output, swarm summaries, test files and agent scratch are listed per invocation under
+<tmp>/entrust/<project>/<run>/{checks,swarm,evals,agents}. Their recorded process must be gone
+before deletion; missing or uncertain ownership keeps them. Project/run parents are never
+selected. Snapshots under <tmp>/entrust/_global/cleanup are listed and
 kept because approval may still refer to them. Earlier root-level scratch is still covered.
 
 An item is in use when a live pid is recorded under it or names it: an agent's startup line, a run's
@@ -585,33 +588,65 @@ function attachTemp(roots, row) {
   if (!t.readable) { row.readable = false; row.cond = "unreadable"; }
 }
 
-function artifactUse(dir, kind) {
+function artifactUse(dir, kind, agents = []) {
   if (kind === "cleanup") return "snapshot";
+  if (!TEMP_KINDS.includes(kind)) return "no-record";
   const rec = jsonAt(path.join(dir, TEMP_OWNER));
   const v = rec.value;
   if (!rec.ok || !isObj(v) || v.version !== 1 || v.kind !== kind
       || !Number.isInteger(v.pid) || v.pid < 1)
     return "no-record";
   try { process.kill(v.pid, 0); return "live"; }
-  catch (e) { return e.code === "ESRCH" ? "free" : e.code === "EPERM" ? "live" : "no-record"; }
+  catch (e) { if (e.code !== "ESRCH") return e.code === "EPERM" ? "live" : "no-record"; }
+  if (kind === "agents" && v.reportPath !== null && (typeof v.reportPath !== "string" || !path.isAbsolute(v.reportPath)))
+    return "no-record";
+  if (kind === "agents" && v.reportPath && agentHolds(agents, canonLoose(v.reportPath) ?? v.reportPath)) return "live";
+  // A stopped driver can have a child check still running, or a cleanup snapshot awaiting approval.
+  const descend = (at) => {
+    const kids = entriesAt(at);
+    if (!kids.ok || kids.value === null) return "no-record";
+    for (const name of kids.value) {
+      const child = path.join(at, name), st = statAt(child);
+      if (!st.ok) return "no-record";
+      if (!st.value?.isDirectory() || st.value.isSymbolicLink()) continue;
+      const owner = statAt(path.join(child, TEMP_OWNER));
+      if (!owner.ok) return "no-record";
+      const use = owner.value === null ? descend(child)
+        : artifactUse(child, jsonAt(path.join(child, TEMP_OWNER)).value?.kind, agents);
+      if (use !== "free") return use;
+    }
+    return "free";
+  };
+  return descend(dir);
 }
 
-function listArtifacts(roots, owned, ps) {
+function listArtifacts(roots, owned, ps, agents) {
   const rows = [];
-  for (const category of TEMP_KINDS) {
-    const base = path.join(roots.tmp, "entrust", category);
+  const category = (parts, kind) => {
+    const base = path.join(roots.tmp, "entrust", ...parts);
+    if (!chainCheck(roots.T, ["entrust", ...parts]).ok) return;
     for (const name of namesIn(base).sort()) {
-      if (owned.has(path.join(category, name))) continue;
-      const row = scratchRow("artifact", roots.T, ["entrust", category, name], path.join(base, name),
-        { category, ours: true });
+      const rel = [...parts, name];
+      if (owned.has(path.join(...rel))) continue;
+      const row = scratchRow("artifact", roots.T, ["entrust", ...rel], path.join(base, name),
+        { category: kind, ours: true, key: rel.join("/") });
       rows.push(row);
       if (!row.chainOk) continue;
-      let use = artifactUse(row.path, category);
-      if (category === "evals" && use === "free" && (!ps.ok || ps.suites.length))
+      let use = artifactUse(row.path, kind, agents);
+      if (kind === "evals" && use === "free" && (!ps.ok || ps.suites.length))
         use = ps.ok ? "suite" : "no-ps";
       row.inUse = use !== "free";
       if (row.readable) row.cond = use;
     }
+  };
+  // Keep recognizing leaves left by the earlier type-first layout.
+  for (const kind of TEMP_KINDS) category([kind], kind);
+  category(["_global", "cleanup"], "cleanup");
+  const base = path.join(roots.tmp, "entrust");
+  for (const project of namesIn(base).filter((n) => PROJECT_KEY.test(n)).sort()) {
+    if (!chainCheck(roots.T, ["entrust", project]).ok) continue;
+    for (const run of namesIn(path.join(base, project)).sort())
+      for (const kind of TEMP_KINDS) category([project, run, kind], kind);
   }
   return rows;
 }
@@ -642,7 +677,7 @@ function listTemps(roots, owned, agents) {
     if (use !== "free") { row.inUse = true; if (row.readable) row.cond = use; }
   };
   for (const top of namesIn(base).sort()) {
-    if (TEMP_KINDS.includes(top)) continue;
+    if (TEMP_KINDS.includes(top) || top === "_global" || PROJECT_KEY.test(top)) continue;
     if (top === "orchestrate") {
       for (const s of namesIn(path.join(base, top)).sort())
         for (const r of namesIn(path.join(base, top, s)).sort())
@@ -1050,7 +1085,7 @@ function nameRow(roots, row) {
       return `the temporary directory from ${row.evalKind}`;
     case "artifact": {
       const what = { checks: "check output", swarm: "swarm summary", cleanup: "cleanup snapshot",
-                     evals: "test files" }[row.category];
+                     evals: "test files", agents: "agent scratch" }[row.category];
       return `the ${what} in ${JSON.stringify(row.key)}`;
     }
     case "temp": {
@@ -1278,7 +1313,7 @@ function inventory(roots) {
   }
   const owned = new Set([...runs, ...reports.rows].filter((r) => r.twin).map((r) => path.join(...r.parts)));
   const rows = [...runs, ...reports.rows, ...listTemps(roots, owned, agents), ...listOldTmp(roots),
-                ...agents, ...listArtifacts(roots, owned, ps), ...listEvals(roots, ps), ...listSessions(roots),
+                ...agents, ...listArtifacts(roots, owned, ps, agents), ...listEvals(roots, ps), ...listSessions(roots),
                 ...answers.rows,
                 ...listWorktrees(roots), ...listLocks(roots), ...listHome(roots), ...listDataDirs(roots)];
   for (const row of rows) {
@@ -1620,7 +1655,9 @@ function stillFree(roots, m) {
   // same row was being removed protects every member that has not gone yet.
   if (m.kind === "eval") { const ps = suiteScan(); return ps.ok && ps.suites.length === 0; }
   if (m.kind === "artifact") {
-    if (artifactUse(m.path, m.category) !== "free") return false;
+    const agents = listAgents(roots);
+    for (const s of agents) if (!s.inUse && s.chainOk && jobHolds(jobs, s.path)) s.inUse = true;
+    if (artifactUse(m.path, m.category, agents) !== "free") return false;
     if (m.category !== "evals") return true;
     const ps = suiteScan();
     return ps.ok && ps.suites.length === 0;

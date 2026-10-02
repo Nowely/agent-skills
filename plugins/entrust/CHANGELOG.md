@@ -7,10 +7,12 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
-- Temporary check logs, swarm summaries, cleanup snapshots and test artifacts are grouped under
-  `<temp>/entrust/{checks,swarm,cleanup,evals}/`, with a private directory per invocation.
-  Cleanup lists grouped artifacts individually, keeps live or uncertain owners and approval snapshots,
-  and continues to recognize legacy scratch paths. Standalone native orchestration remains supported.
+- Temporary artifacts are grouped by project and run under
+  `<temp>/entrust/<project>/<run>/{agents,checks,swarm,evals}/`; cleanup snapshots use
+  `<temp>/entrust/_global/cleanup/`. An inherited context keeps child operations in the initiating run,
+  and each agent retains an exclusive TMPDIR with child checks beneath it. Cleanup selects leaves,
+  preserves active or uncertain owners and snapshots, and continues to recognize legacy scratch paths.
+  New agent scratch is selected separately from state reports. Standalone native orchestration remains supported.
 - `orchestrate` now uses native delegation without requiring the external `codex` adapter.
   Its coordinator remains a role, models and capacity follow the host, and the existing adapter
   owns Claude-to-Codex transport, registration, state, approvals and external results.

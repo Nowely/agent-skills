@@ -14,7 +14,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { DRIVER, EXIT, FAKE, readJson, registry, runCases, skip, summarize, tempDir } from "./lib/harness.mjs";
+import { DRIVER, ROOT, EXIT, FAKE, readJson, registry, runCases, skip, summarize, tempDir } from "./lib/harness.mjs";
 import { SHIM, assertKnownScenarios, explicitTmp, flowState, laxSchemaFile, looseNestedSchemaFile,
          looseSchemaFile, mismatchSessions, notExec, oneOfSchemaFile, optionalSchemaFile,
          run, runTable, sessionsDir, survivorPidName, unknownModelLog, until } from "./lib/scenarios.mjs";
@@ -30,6 +30,7 @@ const armedBox = path.join(armedState, "run", "agent", "approvals");
 fs.mkdirSync(armedBox, { recursive: true, mode: 0o700 });
 // A mailbox inside another run's $TMPDIR, which lies under the state directory when the caller's TMPDIR
 // does: the case below exports the state directory itself as TMPDIR.
+const isAgentTmp = (tmp, dir) => /^[^/]+-[a-f0-9]{12}\/[^/]+\/agents\/[^/]+$/.test(path.relative(path.join(fs.realpathSync(tmp), "entrust"), dir));
 const mailUnderRunTmp = path.join(armedState, "entrust", "runs", "another-run", "approvals");
 fs.mkdirSync(mailUnderRunTmp, { recursive: true, mode: 0o700 });
 const realOf = (p) => fs.realpathSync(p);
@@ -369,12 +370,12 @@ const CASES = [
   // With no TMPDIR exported the base is Node's os.tmpdir(), which reads TMP next: set here, so the case
   // writes nothing into the machine's own /tmp.
   { scenario: "happy",            expect: EXIT.OK, unsetEnv: ["TMPDIR"], env: { TMP: osTmp },
-    why: "a directory of the run's own permits scratch writes without granting all of the temporary directory: made fresh at 0700 under <tmp>/entrust/runs/<startedAtMs>-<pid> when there is no report to name it after, every level it made 0700 too, and still there after the run",
+    why: "a directory of the run's own permits scratch writes without granting all of the temporary directory: made fresh at 0700 under <tmp>/entrust/<project>/<run>/agents/<agent> when there is no report to name it after, every level it made 0700 too, and still there after the run",
     assert: (r) => {
       const roots = r.sandbox?.writableRoots ?? [];
       if (roots.length !== 1) return `the private temp grant is not exactly one root: ${JSON.stringify(roots)}`;
-      if (!r.tmpDir || !/^runs\/\d+-\d+$/.test(path.relative(path.join(osTmp, "entrust"), r.tmpDir)))
-        return `the run's directory is not <tmp>/entrust/runs/<startedAtMs>-<pid>: ${JSON.stringify(r.tmpDir)}`;
+      if (!r.tmpDir || !isAgentTmp(osTmp, r.tmpDir))
+        return `the run's directory is not <tmp>/entrust/<project>/<run>/agents/<agent>: ${JSON.stringify(r.tmpDir)}`;
       if (fs.realpathSync(r.tmpDir) !== roots[0]) return `the grant is not the reported directory: ${JSON.stringify({ tmpDir: r.tmpDir, root: roots[0] })}`;
       for (const d of [r.tmpDir, path.dirname(r.tmpDir), path.join(osTmp, "entrust")])
         if ((fs.statSync(d).mode & 0o777) !== 0o700) return `${d} is not 0700: ${(fs.statSync(d).mode & 0o777).toString(8)}`;
@@ -400,7 +401,7 @@ const CASES = [
     why: "a caller's TMPDIR is never the agent's whole grant: every agent a coordinator starts inherits the same one, and two that named one file there overwrote each other with no error (E92), so the grant is the run's own directory inside it and the report names it",
     assert: (r) => {
       const roots = r.sandbox?.writableRoots ?? [];
-      if (!r.tmpDir || path.dirname(r.tmpDir) !== path.join(explicitTmp, "entrust", "runs")) return `the run's own directory is not under the caller's TMPDIR at entrust/runs: ${JSON.stringify(r.tmpDir)}`;
+      if (!r.tmpDir || !isAgentTmp(explicitTmp, r.tmpDir)) return `the run's own directory is not grouped by project/run/agents under the caller's TMPDIR: ${JSON.stringify(r.tmpDir)}`;
       return (roots.length === 1 && roots[0] === fs.realpathSync(r.tmpDir))
         || `the grant is not the run's own directory (the caller's is ${fs.realpathSync(explicitTmp)}): ${JSON.stringify(roots)}`;
     } },
@@ -409,7 +410,7 @@ const CASES = [
     assert: (r) => {
       const roots = r.sandbox?.writableRoots ?? [];
       if (roots.length) return `a write run with no --writable reported extra roots: ${JSON.stringify(roots)}`;
-      if (!r.tmpDir || path.dirname(r.tmpDir) !== path.join(explicitTmp, "entrust", "runs")) return `the run's own directory is not under the caller's TMPDIR at entrust/runs: ${JSON.stringify(r.tmpDir)}`;
+      if (!r.tmpDir || !isAgentTmp(explicitTmp, r.tmpDir)) return `the run's own directory is not grouped by project/run/agents under the caller's TMPDIR: ${JSON.stringify(r.tmpDir)}`;
       return (r.sandbox?.excludeSlashTmp === true && r.sandbox?.excludeTmpdirEnvVar === false)
         || `the temp exclusions are not what was sent: ${JSON.stringify({ slash: r.sandbox?.excludeSlashTmp, env: r.sandbox?.excludeTmpdirEnvVar })}`;
     } },
@@ -878,28 +879,88 @@ flow("the run's $TMPDIR outlives its run, a later run leaves it alone, and the s
     return !fs.existsSync(path.join(state, "tmp")) || `the driver still made ${path.join(state, "tmp")}`;
   });
 
-flow("the run's $TMPDIR is named after its report: <tmp>/entrust/<rel> for a report at <state>/<rel>/report.json, every level made 0700, one already there refused, and a report outside <state> named by the run",
-  "the owner of a scratch directory has to be readable off its path, and a directory another run made is that run's: sharing one is how two agents overwrote each other's files (E92)",
+flow("agents share a project/run parent, reports in different state directories stay separate, and an existing agent leaf is refused",
+  "the full report run path identifies its run; the exclusive agent grant must never be reused",
   async () => {
     const tmp = tempDir("entrust-named-tmp-"), problems = [];
     const rel = path.join("orchestrate", "slug-x", "run-1", "a1");
     const report = (state) => path.join(state, rel, "report.json");
     const state = flowState();
     const a = await run({ scenario: "happy", args: ["--report-file", report(state)], env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
-    const want = path.join(tmp, "entrust", rel);
-    if (a.code !== EXIT.OK || JSON.parse(a.out).tmpDir !== want) problems.push(`exit ${a.code}, tmpDir ${JSON.stringify(a.out && JSON.parse(a.out).tmpDir)}, expected ${want}`);
-    for (let d = want; d !== tmp; d = path.dirname(d))
-      if (fs.existsSync(d) && (fs.statSync(d).mode & 0o777) !== 0o700) problems.push(`${d} is ${(fs.statSync(d).mode & 0o777).toString(8)}, not 0700`);
-    // Another state directory with the same relative report path under the same TMPDIR: the leaf is there.
+    if (a.code !== EXIT.OK) return `first agent: ${a.code}, ${a.err}`;
+    const want = JSON.parse(a.out).tmpDir;
+    if (!isAgentTmp(tmp, want)) problems.push(`not project/run/agents: ${want}`);
+    for (let d = want; d !== fs.realpathSync(tmp); d = path.dirname(d))
+      if ((fs.statSync(d).mode & 0o777) !== 0o700) problems.push(`${d} is not 0700`);
+    const sibling = path.join(state, "orchestrate", "slug-x", "run-1", "a2", "report.json");
+    const s = await run({ scenario: "happy", args: ["--report-file", sibling], env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
+    if (s.code !== EXIT.OK || path.dirname(JSON.parse(s.out).tmpDir) !== path.dirname(want)) problems.push(`sibling did not share its run: ${s.code}, ${s.err}`);
     const other = flowState();
     const b = await run({ scenario: "happy", args: ["--report-file", report(other)], env: { ENTRUST_STATE_DIR: other, TMPDIR: tmp } });
-    if (b.code !== EXIT.USAGE || !b.err.includes(`the run's $TMPDIR ${want} already exists`))
-      problems.push(`a leaf already there: exit ${b.code}, ${b.err.trim().slice(-200)}`);
+    if (b.code !== EXIT.OK || path.dirname(JSON.parse(b.out).tmpDir) === path.dirname(want)) problems.push("distinct state roots shared a run");
+    fs.unlinkSync(report(state));
+    const duplicate = await run({ scenario: "happy", args: ["--report-file", report(state)], env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
+    if (duplicate.code !== EXIT.USAGE || !duplicate.err.includes("$TMPDIR already exists")) problems.push(`existing agent leaf was reused: ${duplicate.code}, ${duplicate.err}`);
     const outside = path.join(tempDir("entrust-outside-report-"), "report.json");
     const c = await run({ scenario: "happy", args: ["--report-file", outside], env: { ENTRUST_STATE_DIR: flowState(), TMPDIR: tmp } });
-    const got = c.code === EXIT.OK ? path.relative(path.join(tmp, "entrust"), JSON.parse(c.out).tmpDir) : null;
-    if (!/^runs\/\d+-\d+$/.test(got ?? "")) problems.push(`a report outside <state>: exit ${c.code}, tmpDir under entrust/ is ${JSON.stringify(got)}`);
+    if (c.code !== EXIT.OK || !isAgentTmp(tmp, JSON.parse(c.out).tmpDir)) problems.push(`outside report: ${c.code}, ${c.err}`);
     return problems.length === 0 || problems.join("; ");
+  });
+
+flow("the verifier's child check stays under the agent's exclusive TMPDIR without another entrust namespace",
+  "context rebasing must preserve the declared grant when a child command uses the same capture helper",
+  async () => {
+    const runner = path.join(ROOT, "skills", "orchestrate", "scripts", "capture-check.mjs");
+    const command = `node '${runner}' -- 'echo scoped' > "$TMPDIR/receipt.txt"`;
+    const r = await run({ scenario: "happy", args: ["--verify", command] });
+    if (r.code !== EXIT.OK) return `exit ${r.code}: ${r.err}`;
+    const dir = JSON.parse(r.out).tmpDir;
+    const receipt = fs.readFileSync(path.join(dir, "receipt.txt"), "utf8");
+    const log = /^LOG=(.+)$/m.exec(receipt)?.[1];
+    return (log && path.dirname(path.dirname(log)) === path.join(dir, "checks") && fs.readFileSync(log, "utf8") === "scoped\n")
+      || `child log escaped: ${receipt}`;
+  });
+
+flow("approval mailboxes may use evaluator storage, but ancestor and cross-run agent grants remain forbidden",
+  "shared run provenance is not a writable grant, and an agent must not forge another run's approval",
+  async () => {
+    const helper = path.join(ROOT, "skills", "orchestrate", "scripts", "temp-dir.mjs");
+    const contextAt = (root) => {
+      const r = spawnSync(process.execPath, [helper, "run"], { cwd: SHIM, encoding: "utf8",
+        env: { ...process.env, TMPDIR: root, ENTRUST_TEMP_CONTEXT: "" } });
+      if (r.status !== 0) throw new Error(r.stderr);
+      return JSON.parse(r.stdout);
+    };
+    const mark = (dir, kind) => {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, ".entrust-owner.json"), JSON.stringify({ version: 1, kind, pid: process.pid, reportPath: null }));
+    };
+    const root = flowState(), c = contextAt(root);
+    const suite = path.join(c.scope, "evals", "suite"); mark(suite, "evals");
+    const control = path.join(suite, "reports", "control", "approvals"); fs.mkdirSync(control, { recursive: true });
+    const ok = await run({ scenario: "happy", args: ["--approval-dir", control],
+      env: { ENTRUST_STATE_DIR: suite, TMPDIR: suite, ENTRUST_TEMP_CONTEXT: JSON.stringify(c) } });
+    if (ok.code !== EXIT.OK) return `evaluator control refused: ${ok.code}, ${ok.err}`;
+    const parent = path.join(c.scope, "agents", "parent"); mark(parent, "agents");
+    const childSuite = path.join(parent, "evals", "child"); mark(childSuite, "evals");
+    const nestedState = path.join(childSuite, "state"); fs.mkdirSync(nestedState);
+    const nested = path.join(nestedState, "reports", "nested", "approvals"); fs.mkdirSync(nested, { recursive: true });
+    const denied = await run({ scenario: "happy", args: ["--approval-dir", nested],
+      env: { ENTRUST_STATE_DIR: nestedState, TMPDIR: childSuite, ENTRUST_TEMP_CONTEXT: JSON.stringify({ ...c, scope: childSuite }) } });
+    if (denied.code !== EXIT.USAGE || !denied.err.includes("another agent's temporary grant"))
+      return `ancestor grant accepted: ${denied.code}, ${denied.err}`;
+    const other = contextAt(root);
+    const foreign = path.join(other.scope, "agents", "foreign"); mark(foreign, "agents");
+    const cross = path.join(foreign, "approvals"); fs.mkdirSync(cross);
+    const refused = await run({ scenario: "happy", args: ["--approval-dir", cross],
+      env: { ENTRUST_STATE_DIR: root, TMPDIR: suite, ENTRUST_TEMP_CONTEXT: JSON.stringify(c) } });
+    if (refused.code !== EXIT.USAGE || !refused.err.includes("another agent's temporary grant"))
+      return `cross-run grant accepted: ${refused.code}, ${refused.err}`;
+    fs.unlinkSync(path.join(foreign, ".entrust-owner.json"));
+    const unmarked = await run({ scenario: "happy", args: ["--approval-dir", cross],
+      env: { ENTRUST_STATE_DIR: root, TMPDIR: suite, ENTRUST_TEMP_CONTEXT: JSON.stringify(c) } });
+    return (unmarked.code === EXIT.USAGE && unmarked.err.includes("another agent's temporary grant"))
+      || `missing grant marker widened approval rights: ${unmarked.code}, ${unmarked.err}`;
   });
 
 flow("a temporary base <tmp>/entrust that is a link, not a directory, or another user's is refused with exit 2, whether it was there before or turns out so once made",
@@ -908,7 +969,7 @@ flow("a temporary base <tmp>/entrust that is a link, not a directory, or another
     const problems = [];
     const refused = async (label, tmp, want, env = {}) => {
       const r = await run({ scenario: "happy", env: { TMPDIR: tmp, ...env } });
-      if (r.code !== EXIT.USAGE || !r.err.includes(`the temporary base ${path.join(tmp, "entrust")} ${want}`))
+      if (r.code !== EXIT.USAGE || !r.err.includes(`temporary directory ${path.join(fs.realpathSync(tmp), "entrust")} ${want}`))
         problems.push(`${label}: exit ${r.code}, ${r.err.trim().slice(-200)}`);
     };
     const linked = tempDir("entrust-base-link-"), target = path.join(tempDir("entrust-base-target-"), "empty");
@@ -945,7 +1006,7 @@ flow("a caller TMPDIR above the state directory or inside it is never granted: t
       const rep = r.code === EXIT.OK ? JSON.parse(r.out) : null;
       const leaf = rep?.tmpDir;
       const label = `TMPDIR ${shape} the state directory, ${level} level`;
-      if (!leaf || path.dirname(leaf) !== path.join(tmp, "entrust", "runs")) { problems.push(`${label}: exit ${r.code}, tmpDir ${JSON.stringify(leaf)}; ${r.err.trim().slice(-160)}`); continue; }
+      if (!leaf || !isAgentTmp(tmp, leaf)) { problems.push(`${label}: exit ${r.code}, tmpDir ${JSON.stringify(leaf)}; ${r.err.trim().slice(-160)}`); continue; }
       const roots = rep.sandbox?.writableRoots ?? [];
       const granted = level === "read" ? roots : [...roots, ...(rep.sandbox?.excludeTmpdirEnvVar === false ? [leaf] : [])];
       if (granted.length !== 1 || fs.realpathSync(granted[0]) !== fs.realpathSync(leaf)) problems.push(`${label}: the temp grant is ${JSON.stringify(granted)}, not the leaf alone`);

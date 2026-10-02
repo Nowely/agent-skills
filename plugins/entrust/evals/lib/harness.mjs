@@ -10,7 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createTempDir } from "../../plugin/skills/orchestrate/scripts/temp-dir.mjs";
+import { createTempContext, createTempDir } from "../../plugin/skills/orchestrate/scripts/temp-dir.mjs";
 
 // Straight out of the driver, never restated: a suite holding its own copy of EXIT, of the prompt-file
 // vocabulary or of the lock's key has a copy that can disagree with the thing it is testing. Importing
@@ -35,6 +35,7 @@ process.on("exit", () => {
 // Removed on EXIT, not only at the happy end of a suite: a crashed run left the whole tree behind, and
 // they accumulate silently in $TMPDIR.
 export const SYSTEM_TMP = os.tmpdir();
+createTempContext({ root: SYSTEM_TMP, cwd: path.dirname(ROOT) });
 export function tempDir(prefix) {
   const d = createTempDir("evals", prefix, SYSTEM_TMP);
   temps.push(d);

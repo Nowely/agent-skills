@@ -11,7 +11,7 @@
 // --agents: n identical briefs for a queue arm, fifty at most; the template must not contain {{UNIT}}.
 // --run: absolute, the orchestrate run directory; agent <id> is <run>/<id>/report.json with the launcher's
 //   agent/ beside it, which is what the cleanup expects of a run. --concurrency: 1 to 50, default 10.
-// --summary: where summary.json goes, default <temp>/entrust/swarm/swarm-<random>/summary.json;
+// --summary: where summary.json goes, default <temp>/entrust/<project>/<run>/swarm/swarm-<random>/summary.json;
 //   never under <run>, where only the launcher and the driver write.
 // Environment: what the launcher needs, forwarded unchanged (CLAUDE_PLUGIN_DATA or ENTRUST_STATE_DIR).
 // A signal (SIGTERM, SIGINT, SIGHUP) stops further launches, goes to every running launcher, and the
@@ -23,7 +23,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createTempDir } from "../../orchestrate/scripts/temp-dir.mjs";
+import { createTempContext, createTempDir } from "../../orchestrate/scripts/temp-dir.mjs";
 
 const EXIT = { OK: 0, FAILED: 1, USAGE: 2 };
 const MAX = 50;
@@ -39,7 +39,7 @@ const usage = () => `swarm.mjs — launch a swarm of bulk agents through the sib
 
 Agent <id> is <run>/<id>/report.json with the launcher's agent/ beside it, made by the launcher from the brief;
 at most --concurrency (1 to ${MAX}, default 10) run at once. When every agent has finished the script writes
-summary.json (default: <temp>/entrust/swarm/swarm-<random>/summary.json, never under <run>): per
+summary.json (default: <temp>/entrust/<project>/<run>/swarm/swarm-<random>/summary.json, never under <run>): per
 agent its id, unit, report path, the launcher's DRIVER_EXIT, PATH, EXIT and FIRST lines, and when it ran.
 Environment is forwarded unchanged to the launcher (CLAUDE_PLUGIN_DATA or ENTRUST_STATE_DIR). A signal stops
 further launches and reaches every running agent; the summary is still written.
@@ -88,6 +88,8 @@ if (opt.units) {
   if (template.includes("{{UNIT}}")) fail(EXIT.USAGE, "a queue arm's template must not contain {{UNIT}}");
   units = Array.from({ length: n }, () => null);
 }
+try { createTempContext({ runPath: opt.run }); }
+catch (e) { fail(EXIT.USAGE, `cannot resolve the run's temporary context: ${e.message}`); }
 let summaryPath = opt.summary;
 if (summaryPath) {
   if (!path.isAbsolute(summaryPath)) fail(EXIT.USAGE, "--summary must be absolute");

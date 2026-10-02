@@ -27,7 +27,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 import { sampleItems } from "./fake-app-server.mjs";
-import { createTempDir } from "../plugin/skills/orchestrate/scripts/temp-dir.mjs";
+import { createTempContext, createTempDir } from "../plugin/skills/orchestrate/scripts/temp-dir.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FAKE = path.join(HERE, "fake-app-server.mjs");
@@ -144,6 +144,7 @@ function shapeOf(r, limits) {
 // the driver uses it to attribute every event and to start the turn, so its required non-empty shape is
 // compared above and asserted independently below.
 
+createTempContext();
 const workDirs = [];
 const freshDir = (n) => { const d = createTempDir("evals", `fidelity-${n}-`); workDirs.push(d); return d; };
 let cleaned = false;
