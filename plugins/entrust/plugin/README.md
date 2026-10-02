@@ -320,6 +320,7 @@ Canonical homes for repeated stories:
 | Subject | Canonical home |
 | --- | --- |
 | external composition, rights, workflow | [`SKILL.md`](skills/codex/SKILL.md), [orchestration.md](skills/codex/references/orchestration.md) |
+| OpenCode router workers, recent models and callbacks | [OpenCode skill](skills/opencode/SKILL.md), [measured API limits](skills/opencode/references/parity.md) |
 | common orchestration: roles, capacity, returns | [`skills/orchestrate/SKILL.md`](skills/orchestrate/SKILL.md) |
 | what the plugin leaves behind, and removing it | [`skills/cleanup/SKILL.md`](skills/cleanup/SKILL.md), `node skills/codex/scripts/cleanup.mjs --help` |
 | experiments: protocol, arms, verdicts, the record | [`skills/experiment/SKILL.md`](skills/experiment/SKILL.md), `node skills/experiment/scripts/experiment.mjs --help` |

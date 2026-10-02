@@ -110,7 +110,9 @@ test("the codex page injects the line, it runs this script, its allowed-tools co
     for (const skill of fs.readdirSync(path.join(ROOT, "skills")).filter((s) => s !== "codex")) {
       let other = "";
       try { other = fs.readFileSync(path.join(ROOT, "skills", skill, "SKILL.md"), "utf8"); } catch { continue; }
-      if (/status\.mjs/.test(other)) problems.push(`${skill}/SKILL.md runs or names status.mjs`);
+      if (/status\.mjs/.test(other) && skill !== "opencode") problems.push(`${skill}/SKILL.md runs or names Codex status.mjs`);
+      if (skill === "opencode" && /(?:\.\.\/codex|skills\/codex)\/scripts\/status\.mjs/.test(other))
+        problems.push("opencode/SKILL.md must use its own discovery, not Codex status.mjs");
     }
     return problems.length === 0 || problems.join("; ");
   });
