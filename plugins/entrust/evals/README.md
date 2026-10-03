@@ -1,8 +1,9 @@
 # Evals for entrust
 
 Two kinds of check live here. The suites run offline against a fixture and are meant to stay green.
-`evals.json` holds the trigger and behaviour cases: the prompts this skill must fire on, the prompts it
-must stay silent on, and the things it must get right once it has fired. Those are run by hand.
+`evals.json` holds the Codex trigger and behaviour cases; `opencode-routing.json` holds OpenCode's
+model-routing trigger cases. They name prompts each skill must fire on, prompts it must stay silent on,
+and what it must get right once it has fired. Those are run by hand.
 
 ## Running the suites
 
@@ -129,6 +130,11 @@ grep -oE '"skill":"(entrust:)?codex"' <transcript>.jsonl | wc -l   # plugin inpu
 The count is the verdict. Match the whole `"skill":"…"` value, never the bare word `codex`: it appears in
 every transcript as part of the available-skills listing in the system prompt, and again throughout this
 repository's own prose, so a skill that never fired still matches.
+
+For `opencode-routing.json`, use a fresh session with the updated plugin, give each prompt verbatim,
+and count actual OpenCode Skill calls with
+`grep -oE '"skill":"(entrust:)?opencode"' <transcript>.jsonl | wc -l`. For positive model cases,
+also inspect the worker report to confirm its resolved provider/model matches every requested family.
 
 Ask the agent to self-report as well, but treat that as a cross-check only. An agent's account of which
 tools it used is exactly the kind of claim this skill exists to distrust.

@@ -1,9 +1,9 @@
 ---
 name: opencode
 description: >-
-  Delegate work to OpenCode agents through its installed CLI. Use for an
-  OpenCode worker, continuation, permission or question callback, or an orchestration plan
-  using router models. Native subagents use the host's delegation tools.
+  OpenCode: use when the user asks to call, use or pool a model outside native Codex or Claude agents,
+  even without naming OpenCode (for example, DeepSeek or GLM), or requests an OpenCode worker,
+  continuation, permission or question callback.
 metadata:
   version: "0.24.1"
 license: MIT
@@ -15,6 +15,14 @@ uses the user's existing OpenCode configuration and credentials; no server URL o
 needed. Every worker gets its own session. Continuing a worker reuses that session under a fresh report
 path. Set `ENTRUST_OPENCODE_URL` or `ENTRUST_OPENCODE_CONNECTION` only when attaching to a remote server.
 
+## Route named models
+
+When the user asks to call, use or include a named model outside Codex and Claude in an agent pool, route
+that worker through OpenCode even when the user does not say “OpenCode”. “Позови DeepSeek, GLM” and
+“Use DeepSeek, GLM in pool” request one worker for each named family. “Задействуй модели OpenCode”
+explicitly selects this adapter; choose its model by the ordinary recent-model rule. A model mentioned
+only for information or discussion does not request a worker.
+
 ## Select and launch
 
 1. Run `node <skill-dir>/scripts/status.mjs`. The adapter starts a private local server automatically,
@@ -25,9 +33,12 @@ path. Set `ENTRUST_OPENCODE_URL` or `ENTRUST_OPENCODE_CONNECTION` only when atta
    `password`. Keep credentials out of prompts and reports. For native V2 use
    `--api-family v2 --directory <cwd> --agent <profile>` to check that location, exact model SDK, and
    profile; V2 requires that profile in the user's OpenCode configuration.
-2. Choose `MODEL: inherit` for an ordinary new invocation: it selects the first recent model.
-   A continuation retains its previous model and variant. Explicit `MODEL: provider/model` overrides selection;
-   preserve slashes inside the model ID. A failed model is reported rather than replaced by the second.
+2. Choose `MODEL: inherit` only when the user did not name a model family: it selects the first recent
+   model. When the user names a family such as DeepSeek or GLM, widen discovery with `--limit N` as
+   needed, then pin an available exact `provider/model` from that family; never use `inherit` or a
+   different recent model for that request. If no matching available model is listed, report the
+   unresolved family before launching. A continuation retains its previous model and variant. Explicit
+   `MODEL: provider/model` overrides selection; preserve slashes inside the model ID.
    `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant.
 3. For orchestration, read [orchestration.md](references/orchestration.md). Resolve and pin the model
    before registering the approved plan. Use the shared [five-field schema](../codex/schemas/five-fields.schema.json).
