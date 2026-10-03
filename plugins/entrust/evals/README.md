@@ -1,8 +1,9 @@
 # Evals for entrust
 
 Two kinds of check live here. The suites run offline against a fixture and are meant to stay green.
-`evals.json` holds the trigger and behaviour cases: the prompts this skill must fire on, the prompts it
-must stay silent on, and the things it must get right once it has fired. Those are run by hand.
+`evals.json` holds the legacy Codex trigger cases for manual transcript checks. `opencode-routing/` is a
+Claude Code plugin-eval suite for OpenCode's real skill trigger: it checks prompts that must fire and
+prompts that must stay silent.
 
 ## Running the suites
 
@@ -113,9 +114,8 @@ decorrelated when it was not.
 
 ## Running the trigger cases
 
-There is no harness for those. `claude plugin eval` exists in the documentation but is early access and
-absent from this build — `claude plugin --help` lists no `eval` subcommand. Another installed skill keeps
-its `evals.json` as a document for the same reason.
+The Codex cases in `evals.json` use a legacy document format that `claude plugin eval` does not read.
+Run them in a fresh session and inspect actual Skill calls in the transcript as below.
 
 What does work is observing a real invocation. Give an agent the case prompt verbatim, with no hint that
 it is a test, then read its transcript rather than its self-report:
@@ -129,6 +129,24 @@ grep -oE '"skill":"(entrust:)?codex"' <transcript>.jsonl | wc -l   # plugin inpu
 The count is the verdict. Match the whole `"skill":"…"` value, never the bare word `codex`: it appears in
 every transcript as part of the available-skills listing in the system prompt, and again throughout this
 repository's own prose, so a skill that never fired still matches.
+
+The OpenCode cases use the current `claude plugin eval` format. The repository keeps working eval data
+beside the installed plugin, so stage a temporary plugin copy and run the seven cases with Skill as the
+only permitted tool; the one-turn cap records routing before worker launch, without spending provider
+tokens:
+
+```bash
+tmp=$(mktemp -d)
+cp -R plugins/entrust/plugin "$tmp/plugin"
+mkdir -p "$tmp/plugin/evals/opencode-routing"
+cp -R plugins/entrust/evals/opencode-routing/. "$tmp/plugin/evals/opencode-routing/"
+claude plugin eval "$tmp/plugin" --eval-dir evals/opencode-routing --ablation none \
+  --model haiku --max-cost-usd 1 --no-publish --trust-plugin
+```
+
+The positive cases grade an actual `Skill` call naming `entrust:opencode`; the negative cases grade
+that no such call occurred. Worker model selection remains covered by the offline adapter evals and
+real-model checks.
 
 Ask the agent to self-report as well, but treat that as a cross-check only. An agent's account of which
 tools it used is exactly the kind of claim this skill exists to distrust.

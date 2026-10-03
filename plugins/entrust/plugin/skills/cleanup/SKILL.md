@@ -5,7 +5,7 @@ description: >-
   user's selection after approval.
 disable-model-invocation: true
 metadata:
-  version: "0.24.0"
+  version: "0.24.1"
 license: MIT
 ---
 

@@ -93,11 +93,17 @@ function backendOf(dir, requested = null) {
   return { adapter, driver: adapter === "opencode" ? OPENCODE_DRIVER : DRIVER, saved };
 }
 function backendEnv(backend) {
-  return { ...process.env,
+  const env = { ...process.env,
     ...(backend.saved?.serverUrl ? { ENTRUST_OPENCODE_URL: backend.saved.serverUrl } : {}),
     ...(backend.saved?.connectionFile ? { ENTRUST_OPENCODE_CONNECTION: backend.saved.connectionFile } : {}),
     ...(backend.saved?.planModel ? { ENTRUST_PLAN_MODEL: backend.saved.planModel } : {}),
     ...(backend.saved?.planWrites ? { ENTRUST_PLAN_WRITES: backend.saved.planWrites } : {}) };
+  if (backend.saved?.localServer) {
+    env.ENTRUST_OPENCODE_LOCAL = "1";
+    delete env.ENTRUST_OPENCODE_URL;
+    delete env.ENTRUST_OPENCODE_CONNECTION;
+  }
+  return env;
 }
 
 // The driver's own words, looked for in DIR/err.txt to tell whose run the file at REPORT is: its pid
@@ -129,7 +135,7 @@ export const agentDirOf = (report) => path.join(path.dirname(report), "agent");
 const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
 
   --adapter codex|opencode selects the backend at --new and is pinned in agent/backend.json.
-  OpenCode needs ENTRUST_OPENCODE_URL or ENTRUST_OPENCODE_CONNECTION (JSON url/username/password).
+  OpenCode starts a private loopback server automatically; ENTRUST_OPENCODE_URL or ENTRUST_OPENCODE_CONNECTION selects a remote server.
   Extended plan rows: id | adapter | model | role | writes | tokens; adapter is native, codex or
   opencode. An OpenCode row pins its full provider/model ID. Existing five-column plans still work.
   Typed OpenCode requests print REQUEST_BODY<<TOKEN / REQUEST_BODY>>TOKEN. --accept restates that
@@ -581,16 +587,24 @@ function newAgent(report, dirOverride, adapter = "codex") {
   if (adapter === "opencode") {
     const connectionFile = process.env.ENTRUST_OPENCODE_CONNECTION ?? null;
     if (connectionFile && !path.isAbsolute(connectionFile)) refuse("ENTRUST_OPENCODE_CONNECTION must be absolute");
-    const savedConnection = connectionFile ? readJsonFile(connectionFile) : null;
+    let savedConnection = null;
+    try { savedConnection = connectionFile ? readJsonFile(connectionFile) : null; }
+    catch { refuse("ENTRUST_OPENCODE_CONNECTION could not be read as JSON"); }
+    if (connectionFile && !savedConnection) refuse("ENTRUST_OPENCODE_CONNECTION could not be read as JSON");
     const raw = process.env.ENTRUST_OPENCODE_URL || savedConnection?.url;
-    let serverUrl;
-    try {
-      const u = new URL(raw);
-      if (!["http:", "https:"].includes(u.protocol) || u.username || u.password || u.search || u.hash) throw new Error();
-      serverUrl = u.href.replace(/\/$/, "");
-      if (savedConnection?.url && new URL(savedConnection.url).href.replace(/\/$/, "") !== serverUrl) throw new Error();
-    } catch { refuse("OpenCode needs a pinned http(s) server URL without credentials, query or fragment; connection and URL must agree"); }
-    backendRecord = { adapter, planModel, planWrites, serverUrl, connectionFile };
+    if (raw) {
+      let serverUrl;
+      try {
+        const u = new URL(raw);
+        if (!["http:", "https:"].includes(u.protocol) || u.username || u.password || u.search || u.hash) throw new Error();
+        serverUrl = u.href.replace(/\/$/, "");
+        if (savedConnection?.url && new URL(savedConnection.url).href.replace(/\/$/, "") !== serverUrl) throw new Error();
+      } catch { refuse("OpenCode remote server URL must be http(s), without credentials, query or fragment; connection and URL must agree"); }
+      backendRecord = { adapter, planModel, planWrites, serverUrl, connectionFile };
+    } else {
+      if (connectionFile) refuse("ENTRUST_OPENCODE_CONNECTION does not contain a server URL");
+      backendRecord = { adapter, planModel, planWrites, localServer: true };
+    }
     if (backend.saved && JSON.stringify(backend.saved) !== JSON.stringify(backendRecord))
       refuse("OpenCode backend, endpoint and approved plan are immutable for this invocation; use a fresh report path");
   }

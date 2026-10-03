@@ -49,6 +49,7 @@ test("server URL cannot carry credentials, redirects of ownership or query data"
   fs.writeFileSync(file, JSON.stringify({ url: "http://localhost:80", password: "private" }));
   assert.equal(connection({ ENTRUST_OPENCODE_CONNECTION: file, ENTRUST_OPENCODE_URL: "http://localhost/" }).url, "http://localhost");
   assert.throws(() => connection({ ENTRUST_OPENCODE_CONNECTION: file, ENTRUST_OPENCODE_URL: "http://localhost:81" }), /another server/);
+  assert.deepEqual(connection({}), { local: true });
 });
 test("default answer schema comes from the existing Codex contract", () => {
   assert.equal(FIVE_FIELDS_SCHEMA, path.join(ROOT, "skills/codex/schemas/five-fields.schema.json"));
@@ -117,11 +118,14 @@ test("new invocation persists its backend and server without copying credentials
   const mismatch = await invoke([SHARED, "--adapter", "codex", "--status", "--report-file", report], "", env);
   assert.equal(mismatch.code, 2); assert.match(mismatch.out + mismatch.err, /belongs to opencode/);
 });
-test("new invocation refuses a missing endpoint before publishing the prompt", async () => {
+test("new invocation defaults to a managed local server without endpoint configuration", async () => {
   const state = tempDir("entrust-opencode-new-"); const report = path.join(state, "run/a/report.json");
   const r = await invoke([ENTRY, "--new", "--report-file", report], prompt(), { ENTRUST_STATE_DIR: state,
     ENTRUST_OPENCODE_CONNECTION: undefined, ENTRUST_OPENCODE_URL: undefined });
-  assert.equal(r.code, 2); assert.equal(fs.existsSync(path.join(path.dirname(report), "agent/prompt.txt")), false);
+  assert.equal(r.code, 0, r.out + r.err);
+  assert.equal(fs.existsSync(path.join(path.dirname(report), "agent/prompt.txt")), true);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(path.dirname(report), "agent/backend.json"), "utf8")),
+    { adapter: "opencode", planModel: null, planWrites: null, localServer: true });
 });
 function mailbox(type = "opencode.permission") {
   const dir = tempDir("entrust-opencode-mailbox-");
@@ -188,13 +192,23 @@ test("catalogue needs positive connection evidence and never substitutes a model
   assert.equal(count, 1);
 });
 const DRIVER = path.join(ROOT, "skills/opencode/scripts/driver.mjs");
-async function driverRun(server, { headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash" } = {}) {
+function fakeCli(url, dir) {
+  const bin = path.join(dir, "fake-bin"); fs.mkdirSync(bin, { recursive: true });
+  const stopFile = path.join(dir, "opencode-stopped");
+  const script = path.join(bin, "opencode");
+  fs.writeFileSync(script, `#!/usr/bin/env node\nconst fs=require("node:fs");\nconsole.log("server listening on "+process.env.FAKE_OPENCODE_URL);\nprocess.on("SIGTERM",()=>{fs.writeFileSync(process.env.FAKE_OPENCODE_STOP_FILE,"stopped");process.exit(0)});\nsetInterval(()=>{},1000);\n`, { mode: 0o755 });
+  return { stopFile, env: { PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}`,
+    FAKE_OPENCODE_URL: url, FAKE_OPENCODE_STOP_FILE: stopFile } };
+}
+async function driverRun(server, { headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", localServer = false, localUrl = server.url } = {}) {
   const state = tempDir("entrust-opencode-driver-");
   const dir = path.join(state, "invocation"); fs.mkdirSync(dir);
   const input = path.join(dir, "prompt.txt"), report = path.join(dir, "report.json"), box = path.join(dir, "approvals");
   fs.writeFileSync(input, prompt(`ALLOW_NO_COMMANDS: yes\n${resume ? `RESUME: ${resume}\n` : ""}${headers}`, rights));
-  const env = { ENTRUST_STATE_DIR: state, ENTRUST_OPENCODE_URL: server.url, ENTRUST_OPENCODE_CONNECTION: undefined,
+  const env = { ENTRUST_STATE_DIR: state, ENTRUST_OPENCODE_URL: localServer ? undefined : server.url, ENTRUST_OPENCODE_CONNECTION: undefined,
     ...recent({ recent: [{ providerID: "router", modelID: savedModel }], variant: { "router/deepseek/flash": "high" } }) };
+  const cli = localServer ? fakeCli(localUrl, state) : null;
+  if (cli) Object.assign(env, cli.env);
   const p = spawnNode([DRIVER, "--prompt-file", input, "--report-file", report, "--timeout", "9", "--idle-timeout", "4",
     ...(approval ? ["--approval-dir", box] : [])], { env, killAfterMs: 20000 });
   const promptsBefore = server.prompts;
@@ -226,9 +240,25 @@ async function driverRun(server, { headers = "", approval = null, resume = null,
       p.child.kill("SIGTERM");
     }
     const result = await p.done;
-    return { ...result, report: fs.existsSync(report) ? JSON.parse(fs.readFileSync(report)) : null, path: report, box };
+    return { ...result, report: fs.existsSync(report) ? JSON.parse(fs.readFileSync(report)) : null, path: report, box, stopFile: cli?.stopFile };
   } finally { if (p.child.exitCode === null) p.child.kill("SIGKILL"); }
 }
+test("a default run starts and stops its private loopback server", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const r = await driverRun(s, { localServer: true });
+    assert.equal(r.code, 0, r.err); assert.equal(r.report.serverMode, "local");
+    assert.equal(fs.readFileSync(r.stopFile, "utf8"), "stopped");
+  } finally { await s.close(); }
+});
+test("local continuation can reconnect through a fresh server URL", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const first = await driverRun(s, { localServer: true }); assert.equal(first.code, 0, first.err);
+    const second = await driverRun(s, { localServer: true, localUrl: s.url.replace("127.0.0.1", "localhost"), resume: first.path });
+    assert.equal(second.code, 0, second.err); assert.equal(second.report.resume, true);
+  } finally { await s.close(); }
+});
 test("driver uses first recent model and stays within one HTTP execution family", async () => {
   const s = await fakeOpenCode();
   try {
@@ -441,6 +471,16 @@ test("V2 status checks the chosen profile and only the two recent models", async
     assert.equal(r.code, 0, r.err); assert.match(r.out, /apiFamily:v2/); assert.match(r.out, /AGENT=bridge/);
     assert.match(r.out, /UNAVAILABLE=router\/glm/); assert.equal(r.out.includes("never-listed"), false);
     assert.equal(s.prompts, 0); assert.ok(s.calls.every((c) => c.method === "GET"));
+  } finally { await s.close(); }
+});
+test("status starts a private local server when no endpoint is configured", async () => {
+  const s = await fakeOpenCode(), state = tempDir("entrust-opencode-status-local-");
+  const cli = fakeCli(s.url, state);
+  try {
+    const r = await invoke([STATUS], "", { ...recent({ recent: [{ providerID: "router", modelID: "deepseek/flash" }] }), ...cli.env });
+    assert.equal(r.code, 0, r.out + r.err); assert.match(r.out, /OPENCODE=ready/);
+    assert.match(r.out, /MODEL=router\/deepseek\/flash/);
+    assert.equal(fs.readFileSync(cli.stopFile, "utf8"), "stopped");
   } finally { await s.close(); }
 });
 test("V2 selection is explicit and a new invocation needs its native profile", () => {

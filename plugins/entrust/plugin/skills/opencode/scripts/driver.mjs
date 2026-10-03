@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Attach to the owner-managed OpenCode server and publish one invocation's attributed report.
+// Run one invocation against a private local OpenCode server or an explicitly selected remote server.
 //
 //   node driver.mjs --check-prompt-file FILE
 //   node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS]
@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "./client.mjs";
 import { V2Client } from "./v2-client.mjs";
 import { connection, recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
+import { startLocalServer } from "./local-server.mjs";
 import {
   EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionFits, canonical, within,
   commandEvidence, expectation,
@@ -37,7 +38,7 @@ const USAGE = `driver — run one OpenCode invocation for the shared entrust lau
   node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS]
                   [--timeout seconds] [--idle-timeout seconds] [--max-commands N]
                   [--verify COMMAND]
-      Attach to the pinned OpenCode server, run one selected invocation and publish
+      Start a private local server or attach to the pinned remote server, run one selected invocation and publish
       the report JSON to stdout and exclusively to the report path. No overwrite.
       --timeout is the wall clock (default ${DEFAULT_TIMEOUT_S}s), --idle-timeout the no-progress
       clock (default ${DEFAULT_IDLE_S}s), --max-commands a cap on executed bash commands
@@ -705,7 +706,7 @@ const sessionRecordPath = (ctx, sid) => path.join(ctx.stateDir, "opencode-sessio
 
 function writeSessionRecord(ctx, extra = {}) {
   atomicJson(sessionRecordPath(ctx, ctx.sessionID), {
-    adapter: "opencode", sessionID: ctx.sessionID, serverUrl: ctx.server.url, cwd: ctx.cwd,
+    adapter: "opencode", sessionID: ctx.sessionID, serverMode: ctx.serverMode, serverUrl: ctx.server.url, cwd: ctx.cwd,
     model: ctx.ref ? modelKey(ctx.ref) : null, rights: ctx.scope, invocationId: ctx.invocationId,
     variant: ctx.variant ?? null, apiFamily: ctx.apiFamily, agent: ctx.agent ?? null, profileHash: ctx.profileHash ?? null,
     worktreePath: ctx.worktreePath ?? null, worktreeRepo: ctx.worktreeRepo ?? null,
@@ -714,7 +715,7 @@ function writeSessionRecord(ctx, extra = {}) {
   });
 }
 
-function pickLastReport(report, url, cwd) {
+function pickLastReport(report, serverMode, url, cwd) {
   const roots = [path.dirname(report), path.dirname(path.dirname(report))];
   const found = [];
   for (const root of roots) {
@@ -725,7 +726,9 @@ function pickLastReport(report, url, cwd) {
         try {
           if (!fs.statSync(p).isFile()) continue;
           const r = readJson(p);
-          if (r?.adapter === "opencode" && r?.sessionID && r?.server?.url === url && (r?.cwd === cwd || r?.worktreeRepo === cwd))
+          const priorMode = r?.serverMode ?? "remote";
+          const sameServer = priorMode === serverMode && (serverMode === "local" || r?.server?.url === url);
+          if (r?.adapter === "opencode" && r?.sessionID && sameServer && (r?.cwd === cwd || r?.worktreeRepo === cwd))
             found.push({ p, mtime: fs.statSync(p).mtimeMs, r });
         } catch {}
       }
@@ -751,7 +754,9 @@ function applyPrior(ctx, prior) {
   ctx.priorProfileHash = prior.profileHash ?? null;
   ctx.client = clientFor(ctx, ctx.cwd);
   ctx.routes = resolveRoutes(family);
-  if (prior.serverUrl ?? prior.server?.url) {
+  const priorMode = prior.serverMode ?? "remote";
+  if (priorMode !== ctx.serverMode) return "the record belongs to another server mode";
+  if (priorMode !== "local" && (prior.serverUrl ?? prior.server?.url)) {
     const url = prior.serverUrl ?? prior.server.url;
     if (url !== ctx.server.url) return "the record belongs to another server";
   }
@@ -785,7 +790,7 @@ async function resolveResume(ctx) {
   if (value === undefined) return { ok: true };
   let sessionID = null, failure = null;
   if (value === "last") {
-    const hit = pickLastReport(ctx.report, ctx.server.url, ctx.cwd);
+    const hit = pickLastReport(ctx.report, ctx.serverMode, ctx.server.url, ctx.cwd);
     if (!hit) return { error: "RESUME last: no earlier invocation for this server and working directory" };
     sessionID = hit.r.sessionID;
     failure = applyPrior(ctx, hit.r);
@@ -872,6 +877,7 @@ function buildReport(ctx, base) {
     partial: Boolean(base.partial),
     cancellation: base.cancellation ?? ctx.cancellation ?? null,
     cwd: ctx.cwd ?? null,
+    serverMode: ctx.serverMode ?? "remote",
     rights: ctx.scope ? { kind: ctx.scope.kind, roots: ctx.scope.roots ?? [] } : null,
     resume: Boolean(ctx.resume),
     admission: base.admission ?? ctx.admission ?? null,
@@ -951,8 +957,14 @@ async function execute(opts, parsed) {
   ctx.transcriptPath = path.join(path.dirname(ctx.report), "transcript.json");
 
   try { ctx.config = connection(); } catch (e) { return fail(ctx, e.message, EXIT.USAGE); }
-  try { ctx.client = clientFor(ctx, null); ctx.server = await ctx.client.probe(); }
-  catch (e) { return fail(ctx, `the OpenCode server is not reachable: ${e.message}`, EXIT.TRANSPORT); }
+  try {
+    if (ctx.config.local) {
+      ctx.serverMode = "local";
+      ctx.localServer = await startLocalServer({ cwd: process.cwd() });
+      ctx.config = ctx.localServer.config;
+    } else ctx.serverMode = "remote";
+    ctx.client = clientFor(ctx, null); ctx.server = await ctx.client.probe();
+  } catch (e) { return fail(ctx, `the OpenCode server could not be started or reached: ${e.message}`, EXIT.TRANSPORT); }
   ctx.routes = resolveRoutes(ctx.apiFamily);
   if (parsed.resume === undefined) {
     const missing = routeError(ctx);
@@ -1089,7 +1101,7 @@ async function execute(opts, parsed) {
   return await conclude(ctx, turn.reply, parsed);
   } catch (e) {
     return await fail(ctx, `invocation failed: ${e.message}`, EXIT.TRANSPORT, { partial: ctx.admission !== "pending" });
-  }
+  } finally { await ctx.localServer?.close(); }
 }
 
 async function resolveModel(ctx) {

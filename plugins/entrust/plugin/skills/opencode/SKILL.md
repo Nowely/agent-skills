@@ -1,30 +1,47 @@
 ---
 name: opencode
 description: >-
-  Delegate work to external OpenCode agents through one existing HTTP server. Use for an
-  OpenCode worker, continuation, permission or question callback, or an orchestration plan
-  using router models. Native subagents use the host's delegation tools.
+  OpenCode: use immediately when the user says “Задействуй модели OpenCode,” asks for an OpenCode worker,
+  continuation, permission or question callback, or asks to call or pool a model family outside native
+  Codex and Claude (for example, “Позови DeepSeek, GLM” or “Use deepseek, glm in pool”), even without a
+  task; ask for missing task details after choosing OpenCode. For requests limited to Codex and Claude,
+  use native agents.
 metadata:
-  version: "0.24.0"
+  version: "0.24.1"
 license: MIT
 ---
 
-Resolve `<skill-dir>` to this installed directory. The adapter attaches to one existing server;
-every worker gets its own session. Continuing a worker reuses that session under a fresh report path.
-Server startup and shutdown belong to the owner, never to an agent's lifecycle.
+Resolve `<skill-dir>` to this installed directory. By default, the adapter starts a private loopback
+server with the installed `opencode` CLI for each worker and stops it when that worker finishes. It
+uses the user's existing OpenCode configuration and credentials; no server URL or connection file is
+needed. Every worker gets its own session. Continuing a worker reuses that session under a fresh report
+path. Set `ENTRUST_OPENCODE_URL` or `ENTRUST_OPENCODE_CONNECTION` only when attaching to a remote server.
+
+## Route named models
+
+When the user asks to call, use or include a named model outside Codex and Claude in an agent pool, route
+that worker through OpenCode even when the user does not say “OpenCode” or has not stated the task yet.
+Choose the route first; when task details are missing, ask for them before checking status or starting a
+worker. “Позови DeepSeek, GLM” and “Use DeepSeek, GLM in pool” request one worker for each named family.
+“Задействуй модели OpenCode” explicitly selects this adapter; choose its model by the ordinary recent-model
+rule. A model mentioned only for information or discussion does not request a worker.
 
 ## Select and launch
 
-1. Set `ENTRUST_OPENCODE_URL`, with `OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD` when
-   needed, or `ENTRUST_OPENCODE_CONNECTION` to a private JSON file containing `url`, `username`,
-   `password`. Keep credentials out of prompts and reports. Run `node <skill-dir>/scripts/status.mjs`.
-   It shows two recent models, in their saved order, and checks availability without printing the
-   full catalogue. `--limit N` explicitly widens discovery.
-   For native V2 use `--api-family v2 --directory <cwd> --agent <profile>` to check that location,
-   exact model SDK and profile. The owner configures the profile; workers do not change the server.
-2. Choose `MODEL: inherit` for an ordinary new invocation: it selects the first recent model.
-   A continuation retains its previous model and variant. Explicit `MODEL: provider/model` overrides selection;
-   preserve slashes inside the model ID. A failed model is reported rather than replaced by the second.
+1. Run `node <skill-dir>/scripts/status.mjs`. The adapter starts a private local server automatically,
+   shows two recent models in their saved order, and checks availability without printing the full
+   catalogue. `--limit N` explicitly widens discovery. To attach to a remote server, set
+   `ENTRUST_OPENCODE_URL` (and `OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD` if needed), or
+   point `ENTRUST_OPENCODE_CONNECTION` at a private JSON file containing `url`, `username`, and
+   `password`. Keep credentials out of prompts and reports. For native V2 use
+   `--api-family v2 --directory <cwd> --agent <profile>` to check that location, exact model SDK, and
+   profile; V2 requires that profile in the user's OpenCode configuration.
+2. Choose `MODEL: inherit` only when the user did not name a model family: it selects the first recent
+   model. When the user names a family such as DeepSeek or GLM, widen discovery with `--limit N` as
+   needed, then pin an available exact `provider/model` from that family; never use `inherit` or a
+   different recent model for that request. If no matching available model is listed, report the
+   unresolved family before launching. A continuation retains its previous model and variant. Explicit
+   `MODEL: provider/model` overrides selection; preserve slashes inside the model ID.
    `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant.
 3. For orchestration, read [orchestration.md](references/orchestration.md). Resolve and pin the model
    before registering the approved plan. Use the shared [five-field schema](../codex/schemas/five-fields.schema.json).
@@ -40,7 +57,8 @@ Server startup and shutdown belong to the owner, never to an agent's lifecycle.
    PROMPT
    ```
 
-   New invocations default to the V1 compatibility path. Select native V2 explicitly with
+   New invocations default to the V1 compatibility path and start a private loopback server on the
+   first run call. Select native V2 explicitly with
    `API_FAMILY: v2` and `AGENT: <verified native profile>` after `RIGHTS:`. V2 must expose the exact
    model through a supported native SDK; there is no transport or API-family fallback.
    A continuation inherits its recorded family and agent when those headers are absent.

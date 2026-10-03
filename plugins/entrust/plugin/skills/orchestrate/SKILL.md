@@ -5,7 +5,7 @@ description: >-
   verify independently and synthesise their evidence while keeping the main context small.
 disable-model-invocation: true
 metadata:
-  version: "0.24.0"
+  version: "0.24.1"
 license: MIT
 ---
 

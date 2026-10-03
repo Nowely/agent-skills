@@ -35,13 +35,17 @@ export function recentModels({ limit = 2, env = process.env } = {}) {
   return result;
 }
 export function connection(env = process.env) {
+  if (env.ENTRUST_OPENCODE_LOCAL === "1") return { local: true };
   const file = env.ENTRUST_OPENCODE_CONNECTION;
   let saved = {};
   if (file) saved = JSON.parse(fs.readFileSync(file, "utf8"));
   const raw = env.ENTRUST_OPENCODE_URL || saved.url;
   if (env.ENTRUST_OPENCODE_URL && saved.url && new URL(env.ENTRUST_OPENCODE_URL).href.replace(/\/$/, "") !== new URL(saved.url).href.replace(/\/$/, ""))
     throw new Error("connection file points at another server than the invocation's pinned URL");
-  if (!raw) throw new Error("set ENTRUST_OPENCODE_URL or ENTRUST_OPENCODE_CONNECTION; the adapter only attaches to an existing server");
+  if (!raw) {
+    if (file) throw new Error("ENTRUST_OPENCODE_CONNECTION does not contain a server URL");
+    return { local: true };
+  }
   const u = new URL(raw);
   if (!["http:", "https:"].includes(u.protocol) || u.username || u.password || u.search || u.hash)
     throw new Error("server URL must be http(s), without credentials, query or fragment");

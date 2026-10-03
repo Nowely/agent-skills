@@ -14,6 +14,9 @@ R1 | opencode | <second provider/model from recent status> | verifier | nothing 
 
 Register with `node <skill-dir>/scripts/agent-run.mjs --plan --run-dir <run>`. Every OpenCode row
 uses a concrete model ID, never `inherit` or a display name. Its prompt carries the same `MODEL:`.
+For a requested model family, widen status discovery with `--limit N` until its available exact ID is
+listed, then pin one matching ID per requested family; report any family with no available match
+without substituting another recent model.
 The saved backend and plan model follow the detached keeper; mutable defaults cannot reroute it.
 Amend the approved plan before adding a worker or changing its model or write scope.
 Each prepared V2 prompt adds `API_FAMILY: v2` and `AGENT: <verified native profile>`; the resulting
@@ -21,8 +24,9 @@ session/report binds both. Continuations inherit them, and a changed API family 
 
 Every invocation has `<run>/<id>/report.json`; a continuation has `<run>/<id>-2/report.json`, then
 `-3`, and waits until its predecessor ended. One session can have several invocations, each with a
-new report. Each concurrent worker has a different session. The server address is shared and is not
-a concurrency slot or a reason to create another server.
+new report. Each concurrent worker has a different session. Local workers start private loopback
+servers; workers explicitly attached to one remote endpoint share that server. A server is not a
+concurrency slot.
 
 Return [five fields](../../codex/schemas/five-fields.schema.json) through `OUTPUT_SCHEMA:`. The
 driver validates them locally and allows one corrective turn. Give a fresh verifier the requirements

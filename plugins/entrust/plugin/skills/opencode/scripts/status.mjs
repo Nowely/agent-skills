@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { Client } from "./client.mjs";
 import { V2Client } from "./v2-client.mjs";
-import { recentModels, modelKey } from "./config.mjs";
+import { connection, recentModels, modelKey } from "./config.mjs";
+import { startLocalServer } from "./local-server.mjs";
 import path from "node:path";
 
 const args = process.argv.slice(2);
@@ -20,9 +21,13 @@ for (let i = 0; i < args.length; i += 2) {
 }
 if (!["v1", "v2"].includes(apiFamily) || (cwd && !path.isAbsolute(cwd))
   || (agent && (apiFamily !== "v2" || !/^[\w-]+$/.test(agent)))) { console.error("invalid API family, directory or native agent"); process.exit(2); }
+let local = null;
 try {
   const models = recentModels({ limit });
-  const client = new (apiFamily === "v2" ? V2Client : Client)({ cwd }), server = await client.probe();
+  const configured = connection();
+  local = configured.local ? await startLocalServer({ cwd: cwd ?? process.cwd() }) : null;
+  const client = new (apiFamily === "v2" ? V2Client : Client)({ config: local?.config ?? configured, cwd });
+  const server = await client.probe();
   console.log(`OPENCODE=ready version=${server.version} url=${server.url}`);
   console.log(`ROUTES=v1:${server.legacy} v2:${server.v2}`);
   console.log(`ADAPTER=apiFamily:${apiFamily} strictSteer:unsupported`);
@@ -33,3 +38,4 @@ try {
   }
   if (!models.length) console.log("MODEL=none (recent list is empty; choose an explicit provider/model)");
 } catch (e) { console.log(`OPENCODE=unchecked ${e.message}`); process.exitCode = 1; }
+finally { await local?.close(); }
