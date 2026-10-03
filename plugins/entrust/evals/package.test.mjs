@@ -130,7 +130,8 @@ test("no skill page names a Codex model by its version",
 // names that directory, and `git -C ROOT ls-files` lists it and nothing above or beside it.
 const tracked = (() => {
   const r = git(["ls-files", "-z"]);
-  return r.status === 0 ? r.stdout.split("\0").filter(Boolean) : null;
+  return r.status === 0 ? r.stdout.split("\0").filter(Boolean)
+    .filter((f) => fs.existsSync(path.join(ROOT, f))) : null;
 })();
 
 test("git can list the payload (the content cases below are sound)",
@@ -236,7 +237,8 @@ const NESTED = process.env.ENTRUST_EVAL_NESTED === "1";
 const TOP = (() => { let t = ROOT; while (path.relative(t, EVALS).startsWith("..")) t = path.dirname(t); return t; })();
 function payloadCopy(name) {
   const d = tempDir(`codex-payload-${name}-`);
-  const suites = git(["-C", EVALS, "ls-files", "-z"]).stdout.split("\0").filter(Boolean);
+  const suites = git(["-C", EVALS, "ls-files", "-z"]).stdout.split("\0").filter(Boolean)
+    .filter((f) => fs.existsSync(path.join(EVALS, f)));
   for (const [from, files] of [[ROOT, tracked], [EVALS, suites]]) for (const f of files) {
     const dest = path.join(d, path.relative(TOP, from), f);
     fs.mkdirSync(path.dirname(dest), { recursive: true });

@@ -1,9 +1,11 @@
 ---
 name: opencode
 description: >-
-  OpenCode: use when the user asks to call, use or pool a model outside native Codex or Claude agents,
-  even without naming OpenCode (for example, DeepSeek or GLM), or requests an OpenCode worker,
-  continuation, permission or question callback.
+  OpenCode: use immediately when the user says “Задействуй модели OpenCode,” asks for an OpenCode worker,
+  continuation, permission or question callback, or asks to call or pool a model family outside native
+  Codex and Claude (for example, “Позови DeepSeek, GLM” or “Use deepseek, glm in pool”), even without a
+  task; ask for missing task details after choosing OpenCode. For requests limited to Codex and Claude,
+  use native agents.
 metadata:
   version: "0.24.1"
 license: MIT
@@ -18,10 +20,11 @@ path. Set `ENTRUST_OPENCODE_URL` or `ENTRUST_OPENCODE_CONNECTION` only when atta
 ## Route named models
 
 When the user asks to call, use or include a named model outside Codex and Claude in an agent pool, route
-that worker through OpenCode even when the user does not say “OpenCode”. “Позови DeepSeek, GLM” and
-“Use DeepSeek, GLM in pool” request one worker for each named family. “Задействуй модели OpenCode”
-explicitly selects this adapter; choose its model by the ordinary recent-model rule. A model mentioned
-only for information or discussion does not request a worker.
+that worker through OpenCode even when the user does not say “OpenCode” or has not stated the task yet.
+Choose the route first; when task details are missing, ask for them before checking status or starting a
+worker. “Позови DeepSeek, GLM” and “Use DeepSeek, GLM in pool” request one worker for each named family.
+“Задействуй модели OpenCode” explicitly selects this adapter; choose its model by the ordinary recent-model
+rule. A model mentioned only for information or discussion does not request a worker.
 
 ## Select and launch
 
