@@ -7,7 +7,7 @@ description: >-
   task; ask for missing task details after choosing OpenCode. For requests limited to Codex and Claude,
   use native agents.
 metadata:
-  version: "0.24.1"
+  version: "0.24.2"
 license: MIT
 ---
 

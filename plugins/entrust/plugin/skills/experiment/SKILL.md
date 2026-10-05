@@ -6,7 +6,7 @@ description: >-
   user's verdict. A script records them under the plugin's data directory; the repository gets a copy later.
 disable-model-invocation: true
 metadata:
-  version: "0.24.1"
+  version: "0.24.2"
 license: MIT
 ---
 
