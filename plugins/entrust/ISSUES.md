@@ -6,6 +6,18 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
+## E118. Two advisor text checks can pass when their required wording is missing
+
+**Evidence, level 2 (source and Boolean evaluation). Pre-existing at `a11346a`.**
+
+`evals/advisor.test.mjs:11-14` returns a non-empty diagnostic string from `has` when a required
+pattern is missing. The checks at `:25-32` and the external-adapter check near the end combine
+that result with `&&` and a Boolean negative check. A missing-pattern string is truthy: when the
+negative check passes, the combined expression returns `true`, discarding the failure. The
+explicit-consultation check added in this release returns `has` directly and is not affected.
+These text checks therefore do not independently prove every requirement they list. The
+existing checks are recorded here without changing their Boolean composition in this release.
+
 ## E67. A command run after an approval, outside the sandbox, is not established to end when its agent is stopped
 
 **Evidence, level 3 for the sandboxed case (measured), level 1 for the escaped case (unmeasured).**

@@ -7,9 +7,26 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- OpenCode workers on Codex use one native Luna medium proxy per external session. Continuations reuse that native thread; callbacks remain intermediate while the attached watcher waits. Tasks and full replies are forwarded without summaries, and existing authorization governs callback decisions.
+- “Прокси на GLM” selects the external model as the main conversation's coordinator. It owns planning, delegation and the final answer; the host executes its concrete requests using runtime tool declarations. This is an instruction-driven mode, and does not switch the host's model automatically or provide a universal tool-schema exporter.
+- The OpenCode output validator enforces `oneOf`, so the main proxy envelope accepts either calls or a complete final answer. Invalid envelopes use the driver's existing corrective turn.
+- An explicit advisor request now authorizes its consultation without another approval. Advice remains separate from implementation authority.
 - Orchestration plans now recommend balanced, speed or quality model profiles, keep model roles in one team row, and omit default effort and cost estimates from approval cards.
 - The standing advisor now covers every material decision within one approved scope without a preset question count; approval cards show the selected route and model without unused resource inventory or transport details.
 - Codex model selection follows the approved plan, preserves the current coordinator, and requires approval for unavailable-model fallbacks.
+
+### Fixed
+
+- The OpenCode answer artifact now keeps the full latest reply, including a failed correction or a partial answer received after an earlier completed step.
+
+### Known issues
+
+- Open ledger entries: E67, E90–E91, E94–E96, E100–E104, E108, E110–E115 and E117–E118; evidence and details are in [`ISSUES.md`](ISSUES.md). E118 is a pre-existing text-check weakness recorded without a fix.
+- Fresh candidate live orchestration, routing and cross-plugin gates have not run. Earlier operational and main-coordinator prototypes cover bounded scenarios; they do not establish the final instruction loop's reliability on arbitrary tasks or recovery after an interrupted native mutation.
+
+### Release environment
+
+- Targeted offline checks used Node.js `v24.11.0`, with available Codex CLI `0.159.3` and Claude Code `2.1.280`. No CLI protocol-pin change is included.
 
 ## 0.24.2 — 2026-10-05
 
