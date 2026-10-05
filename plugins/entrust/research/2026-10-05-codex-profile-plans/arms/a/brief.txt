@@ -1,0 +1,1 @@
+Arm A: balanced default. Same task as all arms. Read the current orchestrate SKILL.md and references/plan.md, then return one Russian approval card only. No tools that execute work, no subagents, no writes. Avoid repeating canonical model IDs where the model name already identifies them; omit default effort and any standalone models/cost section. Stop before approval.

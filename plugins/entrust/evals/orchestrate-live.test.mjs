@@ -26,7 +26,7 @@
 //   F12c         the advisor's assembled prompts: MODEL astra, the shipped schema, no EFFORT line            8
 //   F2, P14a     a slash command first expands the page; the command last is recorded, not judged          9
 //   F18, P5      the codex page loaded only by a plan with a Codex agent, before the launcher's first call  1, 5, 6
-//   F13, P9a, F3 the card's five rows and every registered agent on it                                      1, 5, 6
+//   F13, P9a, F3 the card's four rows and every registered agent on it                                      1, 5, 6
 //   F14, P9b     launches and each agent's writes reconciled with its registered row; a dropped one named  5, 7
 //   F6, Q3a      briefs only after the split critic, each naming its file; the shared file has one writer   7
 //   F4, P8b      the critic returns its manifest's sha256; nothing changed after; the answer is the draft  5, 7
@@ -447,7 +447,7 @@ function planProblems({ s, scratch, head0, codexPlanned }) {
   const reg = registeredPlan(scratch);
   if (codexPlanned && !reg) problems.push("a plan with a Codex agent registered nothing with the launcher's --plan");
   if (!codexPlanned && reg) problems.push(`an all-Claude plan registered ${reg.file}`);
-  // D6/D9: the card of five rows and every registered agent on it.
+  // D6/D9: the card of four rows and every registered agent on it.
   problems.push(...cardProblems(text, reg?.rows ?? null));
   // The plan no longer prints the run directory. A resolved path is machinery aimed at the one reader who
   // cannot act on it, and the page now asks for the fact in ordinary words instead, so there is nothing
@@ -488,8 +488,8 @@ function planProblems({ s, scratch, head0, codexPlanned }) {
   const isAgent = (l) => !/under fable|fable session|orchestrator|coordinator|powered by|you are|координ|оркестр|под fable|сам работаю|эта сессия|текущая сессия|я на fable|вне пула|limits? (are|is)|caps? (are|is)|at a time|neither fable|ни fable|предел|лимит/i.test(l);
   // Counted by lib/gate-checks.mjs topRowAgents: where an agent is named as one ("<Model> <id>", the who
   // row, an agent table's row), never the card's work, writes, cost or checks rows or a sentence about
-  // effort; measured on case 7 of 2026-09-28, the cost row's "Astra will use its configured default effort"
-  // made a second Astra of the one the who row named.
+  // effort; measured on case 7 of 2026-09-28, "Astra will use its configured default effort"
+  // made a second Astra of the one the team row named.
   const sequenced = /alive at a time|one at a time|one after the other|sequential|runs after|then the (second|other)|по очереди|последовательн|не одновременно|друг за другом|после (перв|первого)|сначала .{0,40}(затем|потом)/i.test(text);
   for (const name of codexPlanned ? ["Fable", "Astra"] : []) {
     const t = topRowAgents(text, name, { isAgent });
@@ -950,7 +950,7 @@ const NO_CODEX_TASK =
   + "that did not write the code. RETURN: the files and the test count.";
 
 test("plan only, no codex: the codex page is never loaded, nothing is registered, and the card still shows",
-  "D5 (#15 F18): the codex page is the 4,511 words a plan with no Codex agent never needed, and the common plan reference is what that plan reads instead; D6: an all-Claude plan skips the launcher's registration and still shows the five rows",
+  "D5 (#15 F18): the codex page is the 4,511 words a plan with no Codex agent never needed, and the common plan reference is what that plan reads instead; D6: an all-Claude plan skips the launcher's registration and still shows the four rows",
   async () => {
     const dir = caseDir(6, "plan-no-codex");
     const scratch = scratchClone(dir);
@@ -1045,8 +1045,8 @@ const ADVISOR_TURNS = [
   "ask the advisor whether lib/shared.mjs needs a test of its own. RETURN: its answer in one sentence.",
 ];
 
-test("the advisor: consulted before any stop, again at a later decision on its one thread, silent after \"no advisor\", back on \"ask the advisor\"",
-  "D1 (#15 F1, P1: the advisor was chosen by the composition it was to advise on, and a plan stop came before advice the invocation had already asked for); D2 (F12c: the advisor's prompt carried an EFFORT line and no schema): the lifecycle and the assembled prompt are only visible in a session",
+test("the advisor route is approved before launch, then continues on its thread until the user pauses or resumes it",
+  "a Claude-hosted advisor must load the Codex adapter to verify Astra, stop before the model call for approval, and retain the adapter schema on continuation",
   async () => {
     const dir = caseDir(8, "advisor");
     const scratch = splitProject(dir);
@@ -1067,19 +1067,15 @@ test("the advisor: consulted before any stop, again at a later decision on its o
     const skills = skillCalls(t1.s.toolUses);
     if (!skills.some((n) => n === "entrust:codex" || n === "codex")) problems.push(`turn 1 never loaded the codex page; Skill calls: ${skills.join(", ") || "none"}`);
     if (skills.some((n) => /orchestrate/.test(n))) problems.push("turn 1 loaded the orchestrate page through the Skill tool");
-    const a1 = advisorBriefs(t1.s);
-    const advisorCalls = new Set(a1.map((b) => b.call).filter(Boolean));
-    const others = agentCalls(t1.s.toolUses).filter((u) => u.parent === null && !advisorCalls.has(u));
-    if (!a1.length) problems.push("turn 1 ended with no advice: the invocation was the word for the advisor's turns");
-    else {
-      if (a1[0].done === null) problems.push("the advisor's first turn never returned inside turn 1");
-      if (others.some((u) => u.seq < a1[0].seq)) problems.push("another agent ran before the advisor's first advice");
-    }
-    if (t1.dirty || t1.head !== head0) problems.push("the advice turn changed the repository");
-    // The review's readers need no word of their own under the codex page, so the run may finish inside
-    // turn 1 or wait for "go": the later consultation is looked for in either, after the first.
-    const a2 = advisorBriefs(t2.s);
-    if (a1.length + a2.length < 2) problems.push("the advisor was never consulted again after its first advice");
+    const beforeApproval = advisorBriefs(t1.s);
+    if (beforeApproval.length) problems.push("the advisor launched before the user approved its route and model");
+    if (agentCalls(t1.s.toolUses).length) problems.push("an agent launched before approval");
+    if (!t1.s.planText) problems.push("turn 1 showed no advisor route/model plan to approve");
+    if (t1.dirty || t1.head !== head0) problems.push("the proposal turn changed the repository");
+
+    const approved = advisorBriefs(t2.s);
+    if (!approved.length) problems.push("the approved plan did not start the advisor");
+    if (approved.length && approved[0].done === null) problems.push("the advisor's first turn never returned inside turn 2");
     if (advisorBriefs(t3.s).length) problems.push("the advisor was consulted after \"no advisor\"");
     if (!advisorBriefs(t4.s).length) problems.push("\"ask the advisor\" did not bring it back");
     for (const [i, t] of turns.entries()) {
@@ -1087,9 +1083,9 @@ test("the advisor: consulted before any stop, again at a later decision on its o
       if (t.head !== head0) problems.push(`turn ${i + 1} moved HEAD`);
       if (t.killed) problems.push(`turn ${i + 1} was killed at the timeout`);
     }
-    const first = a1[0] ? readJsonFile(a1[0].report) : null;
-    const texts = [...a1, ...a2, ...advisorBriefs(t4.s)].map((b) => b.text);
-    note(`advisor prompts by turn: ${[a1, a2, advisorBriefs(t3.s), advisorBriefs(t4.s)].map((a) => a.length).join(", ")}; other agents in turn 1: ${others.length}`);
+    const first = approved[0] ? readJsonFile(approved[0].report) : null;
+    const texts = [...approved, ...advisorBriefs(t4.s)].map((b) => b.text);
+    note(`advisor prompts by turn: ${[beforeApproval, approved, advisorBriefs(t3.s), advisorBriefs(t4.s)].map((a) => a.length).join(", ")}`);
     save(dir, "advisor-prompts.txt", texts.join("\n\n---\n\n"));
     problems.push(...advisorPromptProblems(texts, { threadId: first?.threadId ?? null, shipped: readJsonFile(SCHEMA_FILE) }));
     return settle(dir, problems);

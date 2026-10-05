@@ -1,0 +1,1 @@
+The full blind prompt is composed from the preregistered profile taxonomy and structural rubric in the experiment protocol, followed by blind-cards.md. The judge saw only cards A/B/C, not the arm prompts or the mapping.

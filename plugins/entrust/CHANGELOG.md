@@ -3,6 +3,14 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- Orchestration plans now recommend balanced, speed or quality model profiles, keep model roles in one team row, and omit default effort and cost estimates from approval cards.
+- The standing advisor now covers every material decision within one approved scope without a preset question count; approval cards show the selected route and model without unused resource inventory or transport details.
+- Codex model selection follows the approved plan, preserves the current coordinator, and requires approval for unavailable-model fallbacks.
+
 ## 0.24.2 — 2026-10-05
 
 ### Changed

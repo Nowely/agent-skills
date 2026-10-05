@@ -119,20 +119,21 @@ test("five fields: a template return parses and validates against the shipped sc
 
 const CARD = [
   "**Work:** add slug(title) to lib/slug.mjs with a test.",
-  "**Who:** one worker, Opus W1 (implementer); two checking agents, Codex Terra C1 (verifier) and Opus K1 (completeness critic).",
+  "**Team:** one worker, Opus W1 (implementer); two checking agents, Codex Terra C1 (verifier) and Opus K1 (completeness critic).",
   "**Writes:** W1 writes lib/slug.mjs and test/slug.test.mjs in the live tree; C1 and K1 write nothing. Every agent reaches the network; reports land outside the repository.",
-  "**Cost:** W1 about 40k tokens, C1 unknown, K1 unknown; my own inline reads are small.",
   "**Checks:** C1 runs node --test, K1 reads the answer.",
 ].join("\n");
 const ROWS = G.planRecord("id | model | role | writes | tokens\nW1 | opus | implementer | live tree | 40000\nC1 | terra | verifier | nothing | 0\nK1 | opus | completeness critic | nothing | 0\n");
 
-test("the card: five rows by the page's labels, and every registered agent on it",
-  "D6/D9: the card is what \"go\" covers; a card that drops a row or an agent asks for a word on something else",
+test("the card: four required rows, no models/cost rows, and every registered agent on it",
+  "the card is what \"go\" covers; redundant rows and dropped agents ask for approval on a word not in the work",
   () => all(
     expectNone(G.cardProblems(CARD, ROWS)),
-    expectSome(G.cardProblems(CARD.replace(/^\*\*Cost:\*\*.*$/m, ""), ROWS), /no cost row/),
+    expectSome(G.cardProblems(CARD.replace(/^\*\*Team:\*\*.*$/m, ""), ROWS), /no team row/),
     expectSome(G.cardProblems(CARD, [...ROWS, { id: "R9", model: "sol", role: "refuter", writes: "nothing" }]), /does not show R9/),
-    expectNone(G.cardProblems("| Работа | slug |\n| Кто | Opus W1 |\n| Пишет | W1 |\n| Стоимость | 40k |\n| Проверки | C1 |")),
+    expectNone(G.cardProblems("| Работа | slug |\n| Команда | Opus W1 |\n| Права | W1 |\n| Проверки | C1 |")),
+    expectSome(G.cardProblems("| Работа | slug |\n| Команда | Opus W1 |\n| Права | W1 |\n| Стоимость | 40k |\n| Проверки | C1 |"), /redundant cost row/),
+    expectSome(G.cardProblems("| Работа | slug |\n| Команда | Opus W1 |\n| Модели | Luna |\n| Права | W1 |\n| Проверки | C1 |"), /redundant models row/),
     // E62: a row the launcher admits with `unknown` tokens reads without the column, not as NaN.
     JSON.stringify(G.planRecord("A1 | opus | worker | live tree | unknown")) === '[{"id":"A1","model":"opus","role":"worker","writes":"live tree"}]'
       || `planRecord read ${JSON.stringify(G.planRecord("A1 | opus | worker | live tree | unknown"))}`,
@@ -143,18 +144,22 @@ test("the card: five rows by the page's labels, and every registered agent on it
 const CASE7_PLAN = "The plan is registered below. Nothing has been launched yet, and I'm waiting for your word.\n\n**Scouting:** `fmt` appears in exactly 3 places: its definition on `lib/shared.mjs:1`, and the import plus one call in each of `lib/a.mjs` and `lib/b.mjs`. The tests don't mention it. There are 2 test files.\n\n**Assumptions:**\n- \"One worker per file\" means three workers, one each for `shared.mjs`, `a.mjs` and `b.mjs`.\n- It's a straight rename: no `fmt` alias is kept, and the output of `labelA` and `labelB` doesn't change.\n\nOne worker doing all three edits would be cheaper and never leave the tree half-renamed. I'm keeping the split you asked for.\n\n| | |\n|---|---|\n| **Work** | Rename `fmt` to `format` in `shared.mjs`, then change the import and call in `a.mjs` and `b.mjs` to match, and run `node --test` on the finished result. |\n| **Who** | 6 agents: 3 do the work, 3 check it. **Codex Astra S1** checks how the task is split and settles what the three files must agree on before anyone edits. **Sonnet W1, W2, W3** each edit one file: `shared.mjs`, `a.mjs`, `b.mjs`. **Codex Sol V1** runs the tests and reviews the combined change; it writes nothing. **Opus C1** reads my final answer before you get it. Two of the three checkers are Codex. None of the editors are, because only one Codex agent may write in a given folder, and all three files are in `lib/`. |\n| **Writes** | Each Sonnet worker changes only its own one file, in your working copy. There are no commits. S1, V1 and C1 change nothing in the repo; they only write scratch files in the temp folder. Every agent can reach the network, and I'm not blocking any of them. Reports go outside the repository. No worktree is created. |\n| **Cost** | All agents: `unknown`, because I have no measured run of this shape to compare with. Astra will use its configured default effort, which may be high for a job this small. Sol runs on medium effort. My own work so far: 3 quick reads (a file listing, a search, the test imports). |\n| **Checks** | S1 checks the split, and the worker instructions are written only from its corrected version. V1 has written none of the code; it runs `node --test` on all three edits together and reports how many tests ran and passed, and it also reviews the changes. C1 reads my final answer, which lists the changed files and the test count. |\n\n**Limits:** my own model is Opus 5.5. At most one Fable and one Astra agent run at a time, and at most 6 agents at once.\n\n**Options:**\n1. **(Recommended)** I launch the three workers myself, all at the same time, after S1 returns. Then V1 checks, then C1 reads.\n2. The same, but an Opus supervisor launches the workers and V1, so you see one card per worker instead of every step. It adds one Opus agent to coordinate what are three one-line edits. It would be added to the plan, and I'd show you that change first.\n\n\"go\" means option 1.";
 const CASE7_ROWS = "S1 | astra | split critic | nothing | unknown\nW1 | sonnet | implementer | live tree | unknown\nW2 | sonnet | implementer | live tree | unknown\nW3 | sonnet | implementer | live tree | unknown\nV1 | sol | cross-reviewer | nothing | unknown\nC1 | opus | completeness critic | nothing | unknown";
 
-test("the live gate's case-7 card passes: every registered agent is on it, one Astra is named, and the cost row's effort sentence names none",
-  "measured 2026-09-28: the first live run over the fixed tree failed case 7 for \"2 astra agents\" (the cost row said Astra's effort)",
+const CASE7_CURRENT_PLAN = CASE7_PLAN
+  .replace("| **Who** |", "| **Team** |")
+  .replace(/^\| \*\*Cost\*\* \|.*\n/m, "");
+
+test("the legacy case-7 plan maps to the four-row card and lists every registered agent",
+  "the old captured live plan is adapted to the current card labels before model-count regressions are checked",
   () => {
     const rows = G.planRecord(CASE7_ROWS);
     return all(
-      expectNone(G.cardProblems(CASE7_PLAN, rows)),
-      G.topRowAgents(CASE7_PLAN, "Astra").max === 1 || `Astra counted ${G.topRowAgents(CASE7_PLAN, "Astra").max}: ${G.topRowAgents(CASE7_PLAN, "Astra").where.join(" / ")}`,
-      G.topRowAgents(CASE7_PLAN, "Fable").max === 0 || "a Fable agent was counted",
+      expectNone(G.cardProblems(CASE7_CURRENT_PLAN, rows)),
+      G.topRowAgents(CASE7_CURRENT_PLAN, "Astra").max === 1 || `Astra counted ${G.topRowAgents(CASE7_CURRENT_PLAN, "Astra").max}: ${G.topRowAgents(CASE7_CURRENT_PLAN, "Astra").where.join(" / ")}`,
+      G.topRowAgents(CASE7_CURRENT_PLAN, "Fable").max === 0 || "a Fable agent was counted",
     );
   });
 
-test("top-row agents are counted where an agent is named: an id, the who row, an agent table's row; per wave; the same agent once",
+test("top-row agents are counted where an agent is named: an id, the team row, an agent table's row; per wave; the same agent once",
   "the cap is one Fable and one Astra alive at a time; a counter that reads every mention fails plans that honour it, and one that reads none passes plans that break it",
   () => {
     const two = "| **Who** | Codex Astra S1 critiques the split, and Codex Astra S2 judges it. |\n| **Cost** | unknown |";

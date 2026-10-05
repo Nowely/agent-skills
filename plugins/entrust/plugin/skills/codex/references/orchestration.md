@@ -47,12 +47,18 @@ run directory: its artifact is its report, and a brief that asks a Codex read ag
 
 | Tier | Claude | Codex | Work |
 | --- | --- | --- | --- |
-| top | Fable | Astra | design, mentoring, [final review](../../orchestrate/references/roles.md) and verdict, decomposition you cannot do, a case stuck after two failed attempts. Never implementation |
-| strong | Opus | Sol | write agents, non-trivial analysis |
-| cheap | Sonnet | Terra | mechanical, hard-to-get-wrong work |
-| bulk | Haiku | Luna | **outside the pool, with a pool of its own**: up to 50 alive at once. Fast, cheap and not clever — work that is wide rather than deep, and where a wrong answer does not quietly corrupt something. What to spend them on is yours to decide |
+| top | Fable | Astra | consequential design and plan critique, mentoring, [final review](../../orchestrate/references/roles.md) and verdict, decomposition you cannot do, or a case stuck after two failed attempts. Never implementation |
+| strong | Opus | Sol | non-trivial analysis, implementation and independent review |
+| cheap | Sonnet | Terra | bounded work where mistakes are easy to detect and repair |
+| bulk | Haiku | Luna | independent units after the model/task fit passes; Luna is fast and low-cost, not inherently limited to shallow reasoning |
 
-**Prefer Luna to Haiku in the bulk row**: measured better. The external bulk row uses its launcher's pool rather than Claude wrapper slots and never takes a top-row role; announce its count before spawning, like any other fan-out. Its unit, its pilot and count follow [plan.md](../../orchestrate/references/plan.md#a-bulk-row), and its effort follows this page, whether the batch runs as a swarm the plan proposed or as ordinary Codex agents launched as Mechanism says. Read [swarm](../../swarm/SKILL.md) at `<codex-skill-dir>/../swarm/SKILL.md` whole with the Read tool and launch it as that page says, forwarding the data directory, `CLAUDE_PLUGIN_DATA="<state>" node "<codex-skill-dir>/../swarm/scripts/swarm.mjs" --units <file> --brief <template> --run <run directory> --concurrency <n>`, each swarm in a run directory of its own, since the launcher refuses a swarm's agent ids under a registered plan (E90).
+The tier table maps role demands to this adapter's model names; it does not rank capability. Follow the
+standing allocation in [Capacity and models](../../orchestrate/SKILL.md#capacity-and-models): Astra for
+consequential plan/architecture critique, Luna first for scouting and independent work, and Sol as a
+same-material pilot reference or justified upgrade. Use current or user-supplied price estimates with
+their source; do not hard-code volatile ratios. For bulk batches, keep the unit and pilot rules in
+[plan.md](../../orchestrate/references/plan.md#a-bulk-row). The adapter's pool and launch protocol remain
+authoritative for an actual swarm.
 
 - Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable` only for Fable agents within the agreed cap;
   untagged, a subagent inherits your session model. Give it a description of the form "<Model> <id>: <task in a few words>", the id the card gave it, as a Codex agent's card carries "Codex <short name> <id>: <task in a few words>". A Codex agent's model is its `MODEL:` line, and every Codex agent carries one
@@ -72,10 +78,10 @@ agreed limits. Bulk launches must fit the machine and any external launcher limi
 | comparison or design | 2 to 4 agents |
 | complex | 5 agents or more, launched in batches inside the alive cap |
 | alive at once | 6, Claude and Codex together, the top pair counted in |
-| Fable agents, Astra agents | 1 each, alive at a time |
+| Fable/Astra workers | 1 each, alive at a time; standing advisor excluded |
 | Codex write agents per directory | 1: a second on the same directory exits 10 at once, before its turn runs |
 
-The caps count turns in progress: separate advisor, critic and architect threads may take turns within them, and a thread waiting for another message uses no slot. A Claude agent starts with the user's and the project's CLAUDE.md and the memory index in its context, whatever its brief says, and a Codex agent starts without them, so a blind or independent role on the Claude side still sees them. While another writer holds part of a checkout, nobody changes what they share: no stash, branch switch, reset, clean or rebase, and that binds you too when you run a check of your own. When two writers' work collides, repair it as [results.md](../../orchestrate/references/results.md#writers-collided) says. Run a check only when its result can change what happens next: a writer runs the checks that read the files it changed while it iterates, and the evidence that decides is those same checks run once on the tree that goes out, by an agent that did not write the code or by you under the redirect rule; a brief names those checks, not the whole suite.
+The Fable/Astra worker caps count turns in progress and exclude the standing advisor. The advisor has no question budget; a waiting thread frees a slot only when the runtime says so. The host's alive-at-once cap remains a parallel execution limit. A Claude agent starts with the user's and the project's CLAUDE.md and the memory index in its context, whatever its brief says, and a Codex agent starts without them, so a blind or independent role on the Claude side still sees them. While another writer holds part of a checkout, nobody changes what they share: no stash, branch switch, reset, clean or rebase, and that binds you too when you run a check of your own. When two writers' work collides, repair it as [results.md](../../orchestrate/references/results.md#writers-collided) says. Run a check only when its result can change what happens next: a writer runs the checks that read the files it changed while it iterates, and the evidence that decides is those same checks run once on the tree that goes out, by an agent that did not write the code or by you under the redirect rule; a brief names those checks, not the whole suite.
 
 
 ## Effort
