@@ -50,59 +50,60 @@ test("the page stays inside its budget: 40 lines, one heading level, no fence",
     return problems.length === 0 || problems.join("; ");
   });
 
-test("A0 the page loads codex through the Skill tool, and no sentence asks it to load orchestrate",
-  "orchestrate is `disable-model-invocation`, so the Skill tool refuses to load it: on 2026-09-25 the advisor did not start because its first sentence asked for that load (E39)",
-  () => {
-    const problems = [];
-    const asks = /\bload\b[^.;]*\borchestrate\b/i.exec(flat) ?? /Skill tool[^)]*entrust:orchestrate/.exec(flat);
-    if (asks) problems.push(`a sentence asks to load orchestrate: ${asks[0].slice(0, 120)}`);
-    const loads = [...flat.matchAll(/Skill tool, `entrust:([a-z-]+)`/g)].map((m) => m[1]);
-    if (loads.join() !== "codex") problems.push(`the Skill-tool loads the page asks for: ${loads.join(", ") || "none"}`);
-    const prose = says("Load [codex](../codex/SKILL.md) now (Skill tool, `entrust:codex`)");
-    if (prose !== true) problems.push(prose);
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("A1 the mode adds one thread of the other family to whatever run it is invoked in, needs no other page, and is prompt only",
-  "the owner, 2026-09-25: the advisor does not pull orchestrate; it adds one thread of the other model family to whatever run it is invoked in (E39)",
+test("A0 the resource inventory identifies the host, uses Codex-native resources, and does not offer the unavailable Claude adapter",
+  "driver status describes an external resource; the runtime identifies the current host and native model roster",
   () => says(
-    /Adds a standing advisor to the run it is invoked in/,
-    /adds one standing thread of the other model family to whatever run it is invoked in, and needs no other page/,
+    /Identify the coordinator host from the runtime, then inventory the native models and limits it exposes/,
+    /Codex: use native subagents and their actual model list; do not load the external \[Codex adapter\](?:\([^)]*\))? or call its status/,
+    /Claude\/Fable is unavailable until a Claude adapter is exposed/,
+    /if one appears, check it and propose Fable only when confirmed/,
+    /Otherwise, propose Astra if the native model list includes it/,
+    /Claude: load the Codex adapter and use its current status, model catalogue and launch protocol/,
+    /Use Fable only when the user's composition or Codex status rules out Codex/,
+    /Other or unclear host: use native resources only when exposed; check an external driver only when its adapter is available/,
+    /Mark unobservable resources unknown/,
+  ));
+
+test("A1 the mode discovers and plans before running an independent advisor whose contribution is recorded",
+  "the invocation authorizes resource discovery and a plan; the advisor starts only after approval of the model roster",
+  () => says(
+    /Checks available resources, proposes a model roster for approval, then runs one standing advisor/,
+    /questions are independent of the coordinator's view/,
     /The mode is prompt only: no driver change, no new header field or flag/,
   ));
 
-test("D1 the advisor is a top-row agent of the other family, consulted from the first decision on the invocation's word, named in the workers' plan with its turns, and ended or restarted by the user's words",
-  "the value the sources claim for an advisor is a different lineage (Amp's oracle). #15 F1 and #16: the page chose the advisor by the composition it was to advise on and stopped for \"go\" before read-only advice the invocation had already asked for, so the advisor never advised the first decision; a stop stays for what the invocation did not grant, and the user can end and restart the thread in words",
+test("D1 resource discovery produces an approved plan that mandates each listed advisor turn",
+  "the advisor invocation authorizes inventory and proposal, not launch; approval covers the listed turns, while new points or a changed model need approval again",
   () => {
     const said = says(
-      /One top-row agent from the other model family than your own: Astra under a Claude coordinator, or the model the sibling's Codex status puts in Astra's place, and Fable only when the user's composition words or that status rule Codex out/,
-      /Your user's invocation of this command is the word for its turns: consult it before the first decision, the composition included, with no plan stop of its own/,
-      /The plan the run shows for its workers names it as the advisor, with its expected turns/,
-      /a stop is for authority the invocation did not grant — the workers' plan, an edit, a commit, a publication — under the rules of the run it joins/,
-      /"No advisor" \(без советника\) from the user ends the thread for the run, and "ask the advisor" \(спроси советника\) starts it again/,
+      /1\. Identify the coordinator host from the runtime, then inventory the native models and limits it exposes/,
+      /2\. Show the checked resource roster and proposed plan before launch: advisor, route, model, planned decision points, expected turns and applicable capacity/,
+      /The invocation authorizes discovery and planning only/,
+      /Wait for explicit approval of the plan and model roster; launch only after approval/,
+      /A route or roster change needs approval again/,
+      /After approval, use one standing top-row advisor from the accepted plan, beginning before the first decision, composition included/,
+      /The accepted plan authorizes its stated model and turns; a route or model change requires new approval/,
+      /Consult at every material decision point named in the accepted plan/,
+      /The plan assigns one advisor turn to each listed point; use every approved turn without asking again/,
+      /Keep routine operational choices inline/,
+      /A new point beyond the plan or a route\/model change requires an amended plan and approval/,
+      /"No advisor" \(без советника\) ends the thread for the run; "ask the advisor" \(спроси советника\) starts it again/,
     );
     if (said !== true) return said;
-    // The negative half: the two sentences the fix removed.
-    if (/chosen by the agreed composition/.test(flat)) return "the advisor is chosen by the composition it advises on again";
-    if (/stop until "go"/.test(flat)) return "the page stops for \"go\" before the first advice again";
     return true;
   });
 
-test("D3 the advisor's prompt carries its model and the five-field schema, no effort line on Astra, and xhigh on a stand-in",
-  "#15 F12c: the page loads codex alone, so orchestrate's top-row rule (no EFFORT:) never reaches it and the codex row invites one, and an advisor once answered in 111 lines of prose with no schema. On 2026-09-29 a Luna advisor on a plan without Astra ran at xhigh only because the owner's config said so",
+test("D3 the external Codex prompt carries the selected model and five-field schema without an unsolicited effort line",
+  "the Claude-to-Codex adapter validates a model and schema in its prompt; inherited effort stays with the selected model's configuration",
   () => {
-    const standIn = "and a stand-in carries `EFFORT: xhigh`";
-    const said = says(
-      /Its prompt carries `MODEL: astra` \(or its stand-in's short name, or the Fable agent's `model: "fable"` tag\), an `OUTPUT_SCHEMA:` line naming the five-field schema file the sibling ships, and no `EFFORT:` line on Astra: Astra inherits the configured effort/,
-      standIn,
-    );
+    const said = says(/For a Claude-hosted external Codex advisor, use the selected model and the sibling's five-field schema in the first prompt/);
     if (said !== true) return said;
-    const effort = /EFFORT: ?(none|minimal|low|medium|high|xhigh|max|ultra)\b/.exec(text.replace(standIn, ""));
+    const effort = /^\s+EFFORT:/m.exec(text);
     return !effort || `the page gives the advisor an effort: ${effort[0]}`;
   });
 
-test("D4 the advisor's prompt, as the page writes it, registers through the launcher with Astra, the shipped five-field schema and no effort, and a continuation's header (RESUME: above the same prompt, under the next report path) registers the same way",
-  "#15 F12c and the judge (06, row F12c): check the assembled brief, not the page's words; the prompt is filled the way a coordinator fills it, the schema path from the codex page's OUTPUT_SCHEMA row, and the launcher's --new runs the driver's own check on it. This case checks the header shape of a RESUME: prompt only: that the continuation reaches the thread of the first report is the live gate's advisor case, since offline there is no first turn",
+test("D4 the Claude-hosted external Codex prompt and its continuation register with the selected model, shipped schema and neutral task",
+  "check the assembled neutral brief through the external launcher, then ensure a RESUME prompt keeps the same schema and reaches the next report path",
   () => {
     const block = /^((?: {4}[A-Z_]+: .*\n)+)/m.exec(text)?.[1];
     if (!block) return "the page shows no indented prompt block";
@@ -111,8 +112,9 @@ test("D4 the advisor's prompt, as the page writes it, registers through the laun
     if (!rel) return "the codex page's OUTPUT_SCHEMA row names no five-field schema under ${CLAUDE_SKILL_DIR}";
     const schema = path.join(ROOT, "skills", "codex", rel);
     const filled = block.replace(/^ {4}/gm, "")
+      .replace(/<selected model short name>/, "astra")
       .replace(/<the five-field schema file the sibling ships>/, schema)
-      .replace(/^TASK: <[^>]*>$/m, "TASK: the split before the fan-out; without advice I would cut by file; the evidence is two files sharing one interface.");
+      .replace(/^TASK: <[^>]*>$/m, "TASK: Which split best preserves the shared interface? Facts: two files use it. Constraint: keep ownership clear.");
     if (/<[^>]*>/.test(filled)) return `a placeholder the page never says how to fill: ${/<[^>]*>/.exec(filled)[0]}`;
     const problems = [];
     const dir = tempDir("advisor-prompt.");
@@ -125,8 +127,7 @@ test("D4 the advisor's prompt, as the page writes it, registers through the laun
       if (r.status !== 0 || !at) { problems.push(`${id}: --new exited ${r.status}: ${(r.stdout + r.stderr).trim()}`); return ""; }
       return fs.readFileSync(at, "utf8");
     };
-    if (!/each under the next report path, the agent's id with `-2`, then `-3`, added \(`<run>\/<id>-<n>\/report\.json`\)/.test(flat)) problems.push("the page no longer names the continuation's report path");
-    if (/report path of its own/.test(flat)) problems.push("the page still sends a continuation to a report path of its own");
+    if (!/continue that same thread with `RESUME: <threadId>` above it, writing successive answers under `<run>\/<id>-2\/report\.json`, then `-3`/.test(flat)) problems.push("the page no longer names the continuation header and report paths");
     const first = register("advisor", filled);
     const next = register("advisor-2", `RESUME: last\n${filled}`);
     for (const [id, p] of [["advisor", first], ["advisor-2", next]]) {
@@ -145,25 +146,29 @@ test("D4 the advisor's prompt, as the page writes it, registers through the laun
     return problems.length === 0 || problems.join("; ");
   });
 
-test("D2 the advisor is one thread kept for the run, holds a slot only while a turn of its runs, and the slot is one of six alive and its family's only top-row agent",
-  "the owner's reading of the pool on 2026-09-17: the caps count turns in progress, and an idle thread uses no slot; the caps are orchestrate's, stated here because the page loads codex alone",
+test("D2 the advisor uses one continuing thread and counts active turns against the selected route's actual capacity",
+  "native host and external adapter limits are route-specific; an idle advisor thread consumes no active turn",
   () => says(
-    /one thread kept for the run/,
-    /holds a slot only while (a turn of its runs|one of its turns runs); between questions it is not alive/,
-    /That slot is one of six alive at a time, and the only Astra or the only Fable among them/,
+    /Keep one thread for the run/,
+    /continue it through the host's native mechanism or the chosen adapter/,
+    /count its active turns against that route's reported limit/,
   ));
 
-test("Q1 the decision points are named, one question per message carries the coordinator's own decision, and the coordinator asks for a result that is a recommendation with reasons, an alternative and what would change its mind",
-  "an advisor asked open questions is a second coordinator; one asked to react to a decision already formed is measurable against that decision; the result's shape reaches the advisor only in what the coordinator sends, so the page instructs the coordinator instead of describing the advisor (E98)",
+test("Q1 the advisor receives a neutral decision brief without the coordinator's provisional answer and is asked to reason independently",
+  "showing the coordinator's decision can prime the advisor; the pre-question note keeps that decision for later comparison without putting it in the brief",
   () => {
     const said = says(
-      /the split before a fan-out, the composition, a verdict you are about to adopt, a stall, and any point the plan names/,
-      /One question per message, carrying the decision you would take without advice and the evidence in a few lines/,
-      /Its return is five fields: `status` \(done, partial or blocked\), `result`, `evidence`, `artifacts` and `open`/,
-      /Ask it for a `result` that gives a recommendation with the reasons that decide it, one alternative, and what it would need to see to change its mind/,
+      /Before each question, record the coordinator's provisional decision in a private notes file under its temporary directory/,
+      /Consult at every material decision point named in the accepted plan, such as the split before a fan-out, the composition, a verdict to adopt or a stall/,
+      /Send a neutral brief containing the decision to be made, relevant facts and sources, uncertainty and constraints; present real alternatives evenly/,
+      /The brief carries no preferred answer or evaluative framing/,
+      /Ask one question per message/,
+      /Its return has five fields: `status` \(done, partial or blocked\), `result`, `evidence`, `artifacts` and `open`/,
+      /Request a recommendation with deciding reasons, one alternative and what evidence would change the recommendation/,
     );
     if (said !== true) return said;
-    return !/Its `result` is a recommendation/.test(flat) || "the result's shape is written as a description of the advisor again (E98)";
+    if (/without advice I would|my recommendation is|I think we should/i.test(text)) return "the page's task example includes the coordinator's view";
+    return true;
   });
 
 test("Q2 the advisor never implements, writes, judges its own advice or spawns, answers unknown when it cannot answer, and no sentence hands it one of those roles",
@@ -171,7 +176,7 @@ test("Q2 the advisor never implements, writes, judges its own advice or spawns, 
   () => {
     const prose = says(
       /never implements, never writes under the repository, never judges a result it advised on, and never spawns agents/,
-      /returns `unknown` with the missing check named/,
+      /returns `unknown` and names the missing check/,
     );
     if (prose !== true) return prose;
     for (const m of flat.matchAll(/[^.]*\b(advisor|it)\b[^.]*\b(may|can|should|will)\b[^.]*\b(implement|judge|spawn|write under)[^.]*\./gi))
@@ -182,16 +187,18 @@ test("Q2 the advisor never implements, writes, judges its own advice or spawns, 
 test("Q3 the coordinator asks the advisor to list the premises its recommendation rests on, those in the message included, each checked or taken as given, and counts its agreement only on the checked ones",
   "an advisor asked whether a list was complete refuted the premise its question pointed at and kept another item in the wrong group its context had set, holding the file that showed where the item lives; agreement with an untested premise is not an independent check",
   () => says(
-    /Ask it to list in `evidence` the premises the recommendation rests on, including those in your message, each marked checked at a source or taken as given/,
-    /Its agreement counts as independent only on the premises it checked/,
+    /Ask it to list each premise behind its recommendation in `evidence`, marked checked at a source or taken as given/,
+    /count agreement as independent only on checked premises/,
   ));
 
 test("R1 every decision point is recorded before and after in a notes file the synthesis names, the synthesis names what the advice changed, and the page states no benefit until E3 runs",
   "the 2026-09-17 research found no source that measured a standing advisor and priced a continued thread at 1.23 times a fresh agent; a page that promised a benefit would be the claim the research refused to make; the coordinator cannot write under the data directory, so the notes live in its temporary directory",
   () => says(
-    /Before each question, write the decision you would take without advice into a notes file under your temporary directory, whose path the synthesis names; after the answer, write what changed and why/,
-    /The synthesis names the decisions the advisor changed, with the outcome of each, and the advisor's turns and tokens beside the run's/,
-    /Protocol E3 of the experiment skill measures a standing advisor against per-call advice and against no advice/,
+    /Before each question, record the coordinator's provisional decision in a private notes file under its temporary directory/,
+    /whose path the synthesis names/,
+    /After each answer, write what changed and why beside the private pre-question decision/,
+    /The synthesis names the decisions the advisor changed, their outcomes, and the advisor's turns and tokens beside the run's/,
+    /Protocol E3 of the experiment skill measures a standing advisor against per-call advice and no advice/,
     /this page states no benefit/,
   ));
 

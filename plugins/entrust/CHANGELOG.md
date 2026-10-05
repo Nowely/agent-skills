@@ -3,6 +3,20 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.24.2 — 2026-10-05
+
+### Changed
+
+- The advisor now checks the host's available resources, proposes its route and model roster for approval, and waits for approval before launch. The accepted plan names consultation points and turns; every listed turn is used, routine choices stay inline, and advisor prompts omit the coordinator's provisional answer.
+
+### Known issues
+
+- Open ledger entries at release: E67, E90–E91, E94–E96, E100–E104, E108, E110–E115 and E117; evidence and details are in [`ISSUES.md`](ISSUES.md).
+
+### Release environment
+
+- Offline checks used Node.js `v24.11.0`; the available Codex CLI was `0.159.3` and Claude Code was `2.1.280`.
+
 ## 0.24.1 — 2026-10-03
 
 ### Changed
