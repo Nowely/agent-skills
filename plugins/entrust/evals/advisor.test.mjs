@@ -27,20 +27,30 @@ test("the proposal names the selected advisor route and model, not unrelated inv
     /Codex: use native subagents and check Astra in the native model list/,
     /Claude: load the Codex adapter, check its current status, and select Astra when available/,
     /If the chosen model is unavailable, offer supported alternatives and wait for approval/,
-    /names only the selected route and model/,
-    /wait for explicit approval before starting/,
+    /Show only the selected route and model/,
+    /proceed without another approval/,
   ) && !/coordinator model.*unknown|expected turns|unused adapter/i.test(flat));
 
-test("one approval covers material questions in scope; scope and roster changes need approval",
+test("the consultation request covers material questions in scope; scope and roster changes need approval",
   "the skill should not invent a per-question approval gate or a fixed consultation count",
   () => has(
-    /One approval covers all material questions within that scope/,
+    /Existing authorization covers all material questions within that scope/,
     /Get approval again only if the task scope, route or model changes/,
     /every material decision in scope until it is resolved/,
     /no preset question count or advisor-specific cap/,
     /without per-question approval/,
     /user says “no advisor”/,
     /“ask the advisor” resumes the same thread within scope/,
+  ));
+
+test("explicit consultation authorizes advice and keeps implementation separate",
+  "an advisor request must not add another approval or authorize unrelated edits",
+  () => has(
+    /Treat an explicit consultation request, including this invocation, as authorization to launch and complete the advice/,
+    /Honor a user-selected model/,
+    /Keep research and implementation in separate plans/,
+    /Return findings, a recommendation and unresolved checks before proposing implementation/,
+    /A consultation grants no implementation authority/,
   ));
 
 test("the advisor stays independent and reports evidence status",

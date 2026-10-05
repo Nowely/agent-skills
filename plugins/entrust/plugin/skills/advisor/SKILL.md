@@ -1,7 +1,7 @@
 ---
 name: advisor
 description: >-
-  Runs one approved standing advisor for independent, evidence-based counsel
+  Runs one requested standing advisor for independent, evidence-based counsel
   through material decisions in the current task.
 disable-model-invocation: true
 metadata:
@@ -14,7 +14,9 @@ license: MIT
    - Claude: load the Codex adapter, check its current status, and select Astra when available.
    - Other hosts: use a native route or a selected adapter that can confirm the requested model.
    If the chosen model is unavailable, offer supported alternatives and wait for approval. Show only the selected route and model, plus a constraint that changes the plan.
-2. Show the advice scope, route and exact model, then wait for explicit approval before starting. Invoking this skill authorizes advice, not implementation. One approval covers all material questions within that scope. Get approval again only if the task scope, route or model changes.
+2. Treat an explicit consultation request, including this invocation, as authorization to launch and complete the advice. Honor a user-selected model. Show the advice scope, route and exact model, then proceed without another approval. Existing authorization covers all material questions within that scope. Get approval again only if the task scope, route or model changes.
+
+Keep research and implementation in separate plans. Return findings, a recommendation and unresolved checks before proposing implementation. A consultation grants no implementation authority; use existing authority or obtain it before edits.
 
 ## The advisor
 

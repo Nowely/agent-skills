@@ -1038,9 +1038,9 @@ test("the split critic: no worker brief before it returns, each brief names its 
 // --------------------------------------------------------------- 8
 
 const ADVISOR_TURNS = [
-  "/entrust:advisor TASK: review lib/a.mjs and lib/b.mjs, which both import lib/shared.mjs, for bugs, one reviewer "
-    + "per file, and settle any disagreement between them; change nothing. RETURN: the findings, each with its file and line.",
-  "go",
+  "/entrust:advisor Consult Astra first about possible bugs in lib/a.mjs and lib/b.mjs, which both import lib/shared.mjs. "
+    + "Use one standing advisor; change nothing. RETURN: its recommendation and unresolved checks.",
+  "Continue this research with the same advisor: decide whether the findings support a change. Change nothing. RETURN: the recommendation and unresolved checks.",
   "no advisor. TASK: count the functions lib/shared.mjs exports, yourself. RETURN: the count.",
   "ask the advisor whether lib/shared.mjs needs a test of its own. RETURN: its answer in one sentence.",
 ];
@@ -1067,15 +1067,13 @@ test("the advisor route is approved before launch, then continues on its thread 
     const skills = skillCalls(t1.s.toolUses);
     if (!skills.some((n) => n === "entrust:codex" || n === "codex")) problems.push(`turn 1 never loaded the codex page; Skill calls: ${skills.join(", ") || "none"}`);
     if (skills.some((n) => /orchestrate/.test(n))) problems.push("turn 1 loaded the orchestrate page through the Skill tool");
-    const beforeApproval = advisorBriefs(t1.s);
-    if (beforeApproval.length) problems.push("the advisor launched before the user approved its route and model");
-    if (agentCalls(t1.s.toolUses).length) problems.push("an agent launched before approval");
-    if (!t1.s.planText) problems.push("turn 1 showed no advisor route/model plan to approve");
-    if (t1.dirty || t1.head !== head0) problems.push("the proposal turn changed the repository");
+    const initial = advisorBriefs(t1.s);
+    if (!initial.length) problems.push("the explicit consultation did not start the advisor in turn 1");
+    if (initial.length && initial[0].done === null) problems.push("the advisor's first turn never returned inside turn 1");
+    if (t1.dirty || t1.head !== head0) problems.push("the advice turn changed the repository");
 
-    const approved = advisorBriefs(t2.s);
-    if (!approved.length) problems.push("the approved plan did not start the advisor");
-    if (approved.length && approved[0].done === null) problems.push("the advisor's first turn never returned inside turn 2");
+    const later = advisorBriefs(t2.s);
+    if (!later.length) problems.push("the same advisor was not consulted again in turn 2");
     if (advisorBriefs(t3.s).length) problems.push("the advisor was consulted after \"no advisor\"");
     if (!advisorBriefs(t4.s).length) problems.push("\"ask the advisor\" did not bring it back");
     for (const [i, t] of turns.entries()) {
@@ -1083,9 +1081,9 @@ test("the advisor route is approved before launch, then continues on its thread 
       if (t.head !== head0) problems.push(`turn ${i + 1} moved HEAD`);
       if (t.killed) problems.push(`turn ${i + 1} was killed at the timeout`);
     }
-    const first = approved[0] ? readJsonFile(approved[0].report) : null;
-    const texts = [...approved, ...advisorBriefs(t4.s)].map((b) => b.text);
-    note(`advisor prompts by turn: ${[beforeApproval, approved, advisorBriefs(t3.s), advisorBriefs(t4.s)].map((a) => a.length).join(", ")}`);
+    const first = initial[0] ? readJsonFile(initial[0].report) : null;
+    const texts = [...initial, ...later, ...advisorBriefs(t4.s)].map((b) => b.text);
+    note(`advisor prompts by turn: ${[initial, later, advisorBriefs(t3.s), advisorBriefs(t4.s)].map((a) => a.length).join(", ")}`);
     save(dir, "advisor-prompts.txt", texts.join("\n\n---\n\n"));
     problems.push(...advisorPromptProblems(texts, { threadId: first?.threadId ?? null, shipped: readJsonFile(SCHEMA_FILE) }));
     return settle(dir, problems);
