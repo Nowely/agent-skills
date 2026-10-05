@@ -36,9 +36,11 @@ the GitHub release.
 4. **One word for the package.** Show in one message the versions, the diff, the notes, which conditional checks
    ran and why, and that the agent merges. The owner's word covers push, PR, squash merge, tag, release, and the
    local update when the message lists it. Any change to the tree after the word voids it: show the package again.
-5. **CI on the PR is the full run.** Push the branch, open the PR, and wait for `gh pr checks <n> --watch`. Suites
-   run locally while the work is under way and are not repeated once CI is green on the same tree. A red run
-   stops the release.
+5. **CI on the PR is the full run.** While preparing the branch, run locally only suites covering changed behavior
+   and the plugin's conditional checks. Leave the full matrix to PR CI; do not run the full local suite just to
+   duplicate that matrix. After an edit, rerun the affected local suites. Push the branch, open the PR, and wait for
+   `gh pr checks <n> --watch`. Do not repeat local checks once CI is green on the same tree. A red run stops the
+   release.
 6. **Merge and compare the plugin's tree.** `gh pr merge <n> --squash --match-head-commit <head>`, `<head>` being
    the commit the word approved. Then `git fetch origin` and, with `<merge>` from `gh pr view <n> --json mergeCommit`,
    confirm that `git diff --stat <head> <merge> -- plugins/<plugin> AGENT.md RELEASING.md .claude-plugin` prints
