@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "properties": {
+    "plan": { "type": "string" },
+    "calls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "tool": { "type": "string", "minLength": 1 },
+          "input": { "type": "string" }
+        },
+        "required": ["id", "tool", "input"],
+        "additionalProperties": false
+      }
+    },
+    "final_answer": { "type": "string" }
+  },
+  "required": ["plan", "calls", "final_answer"],
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "properties": {
+        "calls": { "minItems": 1 },
+        "final_answer": { "enum": [""] }
+      }
+    },
+    {
+      "properties": {
+        "calls": { "maxItems": 0 },
+        "final_answer": { "minLength": 1 }
+      }
+    }
+  ]
+}

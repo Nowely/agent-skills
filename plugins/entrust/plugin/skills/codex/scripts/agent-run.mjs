@@ -170,6 +170,10 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       agent/exit exists. planRowOf matches the listed row and its continuation.
       A second agent needs a row of its own.
   node agent-run.mjs --run --report-file REPORT
+      With --watch, newly pending requests are emitted once as EVENT=waiting frames between
+      EVENT<<TOKEN and EVENT>>TOKEN. The call keeps waiting, including while a decision is pending;
+      --decide may run separately. Signals still reach this run's driver. Terminal status and the
+      RUNNING= checkpoint retain their existing meaning. --watch requires --run alone.
       One foreground call, idempotent; DIR is agent/ beside REPORT unless --dir names it, and a prompt
       not there yet is waited for up to ${PROMPT_WAIT_MS / 1000} s (a --new issued in the same turn).
       A fresh DIR: starts the launch-only mode below as a keeper in a session of its own, outside this
@@ -273,11 +277,12 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
 
 function parse(argv) {
   const o = { run: false, status: false, isNew: false, isPlan: false, amend: false, runDir: null, orphan: false, keeper: false,
-              dir: null, report: null, help: false, pending: false, decide: null, decision: null, why: null, adapter: null };
+              dir: null, report: null, help: false, pending: false, decide: null, decision: null, why: null, adapter: null, watch: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--help" || a === "-h") o.help = true;
     else if (a === "--run") o.run = true;
+    else if (a === "--watch") o.watch = true;
     else if (a === "--new") o.isNew = true;
     else if (a === "--plan") o.isPlan = true;
     else if (a === "--amend") o.amend = true;
@@ -300,6 +305,8 @@ function parse(argv) {
   if (o.decide !== null && o.decision === null) return { error: "--decide needs --accept or --decline" };
   if (o.decide === null && (o.decision !== null || o.why !== null)) return { error: "--accept, --decline and --why belong to --decide" };
   if (o.adapter !== null && !ADAPTERS.has(o.adapter)) return { error: "--adapter must be codex or opencode" };
+  if (o.watch && (!o.run || o.isNew || o.isPlan || o.status || o.orphan || o.pending || o.decide !== null))
+    return { error: "--watch requires --run alone" };
   return o;
 }
 
@@ -812,9 +819,10 @@ function waitForPrompt(dir, cb) {
 // The one foreground call. Ends, on every path, by printing nine lines or the requests waiting on a
 // decision, and exiting 0: the wrapper runs the command again only on a result that ends in RUNNING=,
 // which the early return prints in place of REPORT=, and hands every other result back as it is.
-function run(dir, report) {
+function run(dir, report, watch = false) {
   const t0 = Date.now();
   let pid = null, kept = null;
+  const emitted = new Set();
   // A Stop on the card, whichever call is in flight: no call is the driver's parent, so the signal goes to
   // the pid on the driver's pid line. One that comes before that line is kept until it appears, and
   // dropped if the line names another report path; one after RETURN_MS is dropped, because a call past its
@@ -827,8 +835,15 @@ function run(dir, report) {
   const print = (lines) => { process.stdout.write(`${lines.join("\n")}\n`); process.exit(0); };
   const finish = () => print(statusLines(dir, report));
   // The requests the run waits on, for the coordinator to decide; the run goes on under its keeper.
-  const handBack = (waiting) => print([...waiting.flatMap(requestLines), `REQUESTS=${waiting.length}`,
-    `WAITING=${waiting.map((q) => q.id).join(",")}`, `REPORT=${report}`]);
+  const requestBatch = (waiting) => [...waiting.flatMap(requestLines), `REQUESTS=${waiting.length}`,
+    `WAITING=${waiting.map((q) => q.id).join(",")}`, `REPORT=${report}`];
+  const handBack = (waiting) => print(requestBatch(waiting));
+  const emit = (waiting) => {
+    const body = requestBatch(waiting).join("\n");
+    let token;
+    do token = crypto.randomBytes(6).toString("hex"); while (body.includes(token));
+    process.stdout.write(`EVENT=waiting\nEVENT<<${token}\n${body}\nEVENT>>${token}\n`);
+  };
   // A refusal that reads no run: this call's own lines, and nothing written to DIR.
   const refused = (why) => print(["DRIVER_EXIT=unknown", "PATH=none", "EXIT=unknown", "FIRST=", "ANSWER=", `ERROR=${why.slice(0, ERROR_MAX)}`,
     "RECEIPT=", `FILE=${report && fs.existsSync(report) ? "exists" : "missing"}`, `REPORT=${report ?? ""}`]);
@@ -873,7 +888,14 @@ function run(dir, report) {
         if (kept) { try { process.kill(pid, kept); } catch {} }
       }
       const waiting = waitingRequests(dir);
-      if (waiting.length) return handBack(waiting);
+      if (waiting.length) {
+        if (!watch) return handBack(waiting);
+        const fresh = waiting.filter((q) => !emitted.has(q.id));
+        if (fresh.length) {
+          fresh.forEach((q) => emitted.add(q.id));
+          emit(fresh);
+        }
+      }
       if (!alive(pid) && ++gone > 4) return finish();
       if (Date.now() - t0 >= RETURN_MS) {
         const lines = statusLines(dir, report);
@@ -905,6 +927,6 @@ if (isMain) {
   // The orphaning step: its child's parent is gone as soon as it is started, and --keeper tells that
   // child it is --run's keeper, the one launch-only form that hands the driver the mailbox.
   if (o.orphan) { spawnDetached(["--keeper", "--dir", dir, "--report-file", o.report]); process.exit(0); }
-  if (o.run) run(dir, o.report);
+  if (o.run) run(dir, o.report, o.watch);
   else launch(dir, o.report, { onExit: (status) => process.exit(status), onRefuse: () => process.exit(2), mailbox: o.keeper });
 }

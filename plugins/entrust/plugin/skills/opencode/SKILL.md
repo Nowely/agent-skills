@@ -2,9 +2,10 @@
 name: opencode
 description: >-
   OpenCode: use immediately when the user says “Задействуй модели OpenCode,” asks for an OpenCode worker,
-  continuation, permission or question callback, or asks to call or pool a model family outside native
-  Codex and Claude (for example, “Позови DeepSeek, GLM” or “Use deepseek, glm in pool”), even without a
-  task; ask for missing task details after choosing OpenCode. For requests limited to Codex and Claude,
+  continuation, permission or question callback, selects the main session as a proxy (“Прокси на GLM”),
+  or asks to call or pool a model family outside native Codex and Claude (for example, “Позови DeepSeek,
+  GLM” or “Use deepseek, glm in pool”), even without a task; ask for missing task details after choosing
+  OpenCode. For requests limited to Codex and Claude,
   use native agents.
 metadata:
   version: "0.24.2"
@@ -18,6 +19,11 @@ needed. Every worker gets its own session. Continuing a worker reuses that sessi
 path. Set `ENTRUST_OPENCODE_URL` or `ENTRUST_OPENCODE_CONNECTION` only when attaching to a remote server.
 
 ## Route named models
+
+An affirmative “Прокси на GLM” selects the main conversation as a proxy, with GLM owning its substantive
+decisions. Read [main-proxy.md](references/main-proxy.md) and use that loop instead of creating a
+per-worker proxy; its return uses [main-proxy.schema.json](schemas/main-proxy.schema.json). An ordinary
+request such as “Позови DeepSeek: проверь diff” delegates one worker and follows the launch steps below.
 
 When the user asks to call, use or include a named model outside Codex and Claude in an agent pool, route
 that worker through OpenCode even when the user does not say “OpenCode” or has not stated the task yet.
@@ -63,12 +69,20 @@ rule. A model mentioned only for information or discussion does not request a wo
    model through a supported native SDK; there is no transport or API-family fallback.
    A continuation inherits its recorded family and agent when those headers are absent.
 
-5. Launch one host-native wrapper that runs `node <skill-dir>/scripts/agent-run.mjs --run
-   --report-file <report>`. A `RUNNING=` return means rerun the same command; it waits for the same
-   invocation. A waiting request means read [interactions.md](references/interactions.md), decide,
-   then rerun that command. Preserve the wrapper's completion, continuation and Stop facilities.
-   Claude hosts may use [opencode-agent](../../agents/opencode-agent.md); Codex hosts use their native
-   delegation tool with the same relay instructions and an available host model.
+5. Use one native proxy for each external session and reuse its thread for continuations. On Codex,
+   explicitly select an available Luna with `medium` effort and a fresh context. Report unavailable
+   settings before launching rather than silently inheriting another model. Name its task with the
+   worker ID, external model and proxy role. Give it the agreed `TASK`, existing `RIGHTS`, applicable
+   user instructions, prepared command and report path; no separate permissions configuration is needed.
+   Use [proxy.md](references/proxy.md) for its operating instructions.
+
+   The Codex proxy runs `node <skill-dir>/scripts/agent-run.mjs --run --watch --report-file <report>`.
+   Callbacks are intermediate events; the proxy applies existing authority or messages the coordinator
+   and keeps waiting. Read [interactions.md](references/interactions.md) for the complete decision
+   procedure. A `RUNNING=` checkpoint repeats the same command without starting another turn.
+   Its final return contains the worker's full answer or its complete artifact, with status separate.
+   Claude hosts may retain [opencode-agent](../../agents/opencode-agent.md) and the ordinary `--run`
+   hand-back until their streaming and intermediate-message facilities are verified.
 
 ## Scope and results
 
@@ -92,10 +106,11 @@ The pinned session-create handler ignores its advertised `permissions` field: ru
 to the native agent. Scope declarations do not configure a sandbox. Custom/MCP tools and native
 task delegation are outside this V2 profile; the host launches independent workers for fan-out.
 
-Stop the wrapper while it is waiting, or signal the adapter driver identified by that invocation's
-pid line. The driver aborts its own sessions and records cancellation; the singleton stays running.
-After a waiting hand-back there is no wrapper call in flight: rerun it to regain Stop or decline the
-request and rerun. A missing report or uncertain cancellation is unknown, never success.
+Stop the attached watcher or signal the adapter driver identified by that invocation's pid line.
+The driver aborts its own sessions and records cancellation; the singleton stays running. In ordinary
+`--run` mode, a waiting hand-back leaves no wrapper call in flight: rerun it to regain Stop. The
+coordinator cleans up an interrupted proxy whose watcher did not stop. Verify the external outcome;
+a missing report or uncertain cancellation is unknown, never success.
 
 Read [parity.md](references/parity.md) before relying on active clarification, schema delivery,
 attachments, tool selection or billing. API presence alone is not evidence of working execution.

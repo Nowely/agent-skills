@@ -17,6 +17,14 @@ is a role in `skills/orchestrate/references/foreman.md`, not a separate skill. O
 used when the task needs them. The external-run helpers described below retain their Claude
 adapter requirements; native compatibility of every installed skill is not implied.
 
+“Прокси на GLM” selects an external main coordinator through
+[opencode](skills/opencode/SKILL.md). It makes the plan, chooses subagents and interprets results;
+the current conversation forwards complete messages and executes concrete host-tool requests.
+The same external session continues across user messages. This selects a role, not the host's model:
+choose Luna medium in the interface when that is the desired gateway. “Позови DeepSeek: проверь diff”
+continues to delegate one worker. In Codex, external workers use native Luna medium proxies by default,
+one native thread per external session, with intermediate callbacks and full replies.
+
 ## In Claude
 
 The sections below describe the external Codex adapter and its dependent features.

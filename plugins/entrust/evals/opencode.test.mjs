@@ -70,10 +70,33 @@ test("approved write root rejects another root even when rights kind matches", (
   const error = parsePrompt(prompt("", `write ${outside}`), { ENTRUST_PLAN_WRITES: `write ${cwd}` }).error;
   assert.ok(error && !error.includes("schema"), String(error));
 });
-test("unsupported schema keywords are refused, and required fields are checked", () => {
+test("malformed schema branches are refused, and required fields are checked", () => {
   assert.equal(checkSchemaSubset({ type: "object", oneOf: [] }).ok, false);
   const s = JSON.parse(fs.readFileSync(path.join(ROOT, "skills/codex/schemas/five-fields.schema.json"), "utf8"));
   assert.equal(validateOutput(s, { status: "done" }).ok, false);
+});
+test("oneOf validates exactly one branch and checks every nested schema", () => {
+  const schema = { oneOf: [{ type: "string" }, { type: "integer" }] };
+  assert.equal(checkSchemaSubset(schema).ok, true);
+  assert.equal(validateOutput(schema, "text").ok, true);
+  assert.equal(validateOutput(schema, 2).ok, true);
+  assert.equal(validateOutput(schema, null).ok, false);
+  assert.equal(validateOutput({ oneOf: [{ type: "number" }, { type: "integer" }] }, 2).ok, false);
+  for (const oneOf of [null, {}, [], [{ oneOf: [] }], [{ not: {} }]])
+    assert.equal(checkSchemaSubset({ oneOf }).ok, false);
+});
+test("main proxy schema accepts calls or a full answer, rejects empty, mixed and mistyped replies", () => {
+  const schema = JSON.parse(fs.readFileSync(path.join(ROOT, "skills/opencode/schemas/main-proxy.schema.json"), "utf8"));
+  assert.equal(checkSchemaSubset(schema).ok, true);
+  const call = { id: "a", tool: "spawn_agent", input: JSON.stringify({ task_name: "a" }) };
+  assert.equal(validateOutput(schema, { plan: "delegate", calls: [call], final_answer: "" }).ok, true);
+  assert.equal(validateOutput(schema, { plan: "", calls: [], final_answer: "complete reply" }).ok, true);
+  for (const answer of [
+    { plan: "", calls: [], final_answer: "" },
+    { plan: "", calls: [call], final_answer: "reply" },
+    { plan: "", calls: [], final_answer: "reply", kind: "calls" },
+    { plan: "", calls: [{ ...call, input: {} }], final_answer: "" },
+  ]) assert.equal(validateOutput(schema, answer).ok, false, JSON.stringify(answer));
 });
 test("schema bounds and prototype-named fields cannot bypass validation", () => {
   assert.equal(checkSchemaSubset({ type: "number", minimum: "bad" }).ok, false);
@@ -297,6 +320,87 @@ test("one schema correction is included in invocation usage", async () => {
   const s = await fakeOpenCode("correction");
   try { const r = await driverRun(s); assert.equal(r.code, 0, r.err); assert.equal(s.prompts, 2); assert.ok(r.report.usage?.input >= 10, JSON.stringify(r.report.usage)); }
   finally { await s.close(); }
+});
+test("main proxy mixed reply is corrected by the driver before reaching the host", async () => {
+  const s = await fakeOpenCode("main-proxy-correction");
+  try {
+    const schema = path.join(ROOT, "skills/opencode/schemas/main-proxy.schema.json");
+    const r = await driverRun(s, { headers: `OUTPUT_SCHEMA: ${schema}\n` });
+    assert.equal(r.code, 0, r.err);
+    assert.equal(s.prompts, 2);
+    assert.equal(r.report.receiptOk, true);
+    assert.equal(r.report.outputSchemaOk, true);
+    assert.deepEqual(r.report.answerJson, { plan: "", calls: [], final_answer: "Complete coordinator reply" });
+    const submitted = s.calls.filter((c) => c.path.endsWith("prompt_async"));
+    assert.equal(submitted[0].path, submitted[1].path);
+    assert.match(JSON.stringify(submitted[1].body), /oneOf/);
+  } finally { await s.close(); }
+});
+test("main proxy continuation repeats its schema and permits a host-only round", async () => {
+  const s = await fakeOpenCode("main-proxy-correction");
+  try {
+    const headers = `OUTPUT_SCHEMA: ${path.join(ROOT, "skills/opencode/schemas/main-proxy.schema.json")}\n`;
+    const first = await driverRun(s, { headers });
+    assert.equal(first.code, 0, first.err);
+    const next = await driverRun(s, { headers, resume: first.path });
+    assert.equal(next.code, 0, next.err);
+    assert.equal(next.report.sessionID, first.report.sessionID);
+    assert.equal(next.report.outputSchemaOk, true);
+    assert.equal(next.report.commands.length, 0);
+    assert.equal(next.report.answerJson.final_answer, "Complete coordinator reply");
+    assert.equal(s.prompts, 3);
+  } finally { await s.close(); }
+});
+test("a failed schema correction retains the latest answer and its complete artifact", async () => {
+  const s = await fakeOpenCode("invalid-correction");
+  try {
+    const r = await driverRun(s);
+    assert.notEqual(r.code, 0);
+    assert.equal(s.prompts, 2);
+    assert.equal(r.report.outputSchemaOk, false);
+    assert.equal(r.report.answerJson.result, "SECOND");
+    assert.equal(r.report.answer, "SECOND");
+    const latest = s.sessions.get(r.report.sessionID).messages.at(-1).parts[0].text;
+    assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), latest);
+  } finally { await s.close(); }
+});
+test("a cut correction preserves its latest received answer as partial", async () => {
+  const s = await fakeOpenCode("invalid-correction-busy");
+  try {
+    const r = await driverRun(s);
+    assert.notEqual(r.code, 0);
+    assert.equal(s.prompts, 2);
+    assert.equal(r.report.partial, true);
+    assert.equal(r.report.receiptOk, false);
+    assert.equal(r.report.answerJson.result, "SECOND");
+    const latest = s.sessions.get(r.report.sessionID).messages.at(-1).parts[0].text;
+    assert.equal(r.report.answer, latest);
+    assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), latest);
+  } finally { await s.close(); }
+});
+test("a cut keeps the latest partial text after an earlier completed assistant step", async () => {
+  const s = await fakeOpenCode("partial-after-complete");
+  try {
+    const r = await driverRun(s);
+    assert.notEqual(r.code, 0);
+    assert.equal(s.prompts, 1);
+    assert.equal(r.report.partial, true);
+    assert.equal(r.report.answer, "Latest partial details");
+    assert.equal(r.report.answerJson, null);
+    assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), "Latest partial details");
+  } finally { await s.close(); }
+});
+test("the answer artifact preserves details outside the parsed JSON preview", async () => {
+  const s = await fakeOpenCode("answer-context");
+  try {
+    const r = await driverRun(s);
+    assert.equal(r.code, 0, r.err);
+    assert.equal(s.prompts, 1);
+    assert.equal(r.report.answer, "checked");
+    const original = s.sessions.get(r.report.sessionID).messages.at(-1).parts[0].text;
+    assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), original);
+    assert.ok(original.startsWith("Detail before the JSON.") && original.endsWith("Detail after the JSON."));
+  } finally { await s.close(); }
 });
 test("continuation retains session and model but excludes old command evidence", async () => {
   const s = await fakeOpenCode("old-history");

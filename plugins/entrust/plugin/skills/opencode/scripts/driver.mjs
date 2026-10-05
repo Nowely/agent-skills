@@ -1169,7 +1169,8 @@ async function conclude(ctx, firstReply, parsed) {
         rawText = answerText(reply);
         const parsed2 = extractJson(rawText);
         const check2 = parsed2 === null ? { ok: false, errors: ["the corrected reply contained no JSON object"] } : validateOutput(parsed.outputSchema, parsed2);
-        if (check2.ok) { parsedJson = parsed2; check = check2; }
+        parsedJson = parsed2;
+        if (check2.ok) check = check2;
         else check = { ok: false, errors: [...check.errors, ...check2.errors] };
       } else {
         correction.reply = null;
@@ -1203,8 +1204,7 @@ async function conclude(ctx, firstReply, parsed) {
     tools, usage: usage.usage, cost: usage.cost, error: info.error ?? null,
   });
 
-  const answerPath = path.join(path.dirname(ctx.report), "answer.txt");
-  fs.writeFileSync(answerPath, parsedJson ? JSON.stringify(parsedJson, null, 2) : rawText, { mode: 0o600 });
+  const answerPath = saveAnswer(ctx, rawText);
 
   // Independent VERIFY, outside the worker context.
   let verify = null, verifyUnmeasured = false, verifyFailed = false;
@@ -1272,15 +1272,25 @@ async function stopIfNeeded(ctx, turn) {
   return Promise.resolve();
 }
 
+function saveAnswer(ctx, text) {
+  if (!text) return null;
+  const answerPath = path.join(path.dirname(ctx.report), "answer.txt");
+  fs.writeFileSync(answerPath, text, { mode: 0o600 });
+  return answerPath;
+}
+
 async function cutExit(ctx, why) {
   await cleanup(ctx, false);
   const tools = collectTools(invocationMessages(ctx));
+  const reply = [...(ctx.invocationInputs ?? [])].reverse()
+    .map((inputID) => allReplies(ctx, inputID).filter((candidate) => answerText(candidate)).at(-1)).find(Boolean);
+  const answer = answerText(reply) || null;
   const base = {
     exitCode: EXIT.TIMEOUT, error: why, partial: true,
     cancellation: ctx.cancellation ?? { reason: why, signal: ctx.signal ?? null, abort: [], observed: "unknown" },
     turnStatus: "aborted", receiptOk: false,
     commands: commandEvidence(tools).commands, tools,
-    answer: answerText(finalReply(ctx, ctx.rootInputID)) || null,
+    answer, answerJson: answer ? extractJson(answer) : null, answerPath: saveAnswer(ctx, answer),
     admission: ctx.admission,
   };
   const final = publish(ctx, base);
