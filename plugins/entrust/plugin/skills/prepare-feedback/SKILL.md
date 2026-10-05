@@ -7,7 +7,7 @@ description: >-
   title and body, or a research run when started inside a checkout of agent-skills.
 disable-model-invocation: true
 metadata:
-  version: "0.24.2"
+  version: "0.25.0"
 license: MIT
 ---
 

@@ -8,7 +8,7 @@ description: >-
   OpenCode. For requests limited to Codex and Claude,
   use native agents.
 metadata:
-  version: "0.24.2"
+  version: "0.25.0"
 license: MIT
 ---
 
