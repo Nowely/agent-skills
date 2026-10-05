@@ -25,8 +25,8 @@ The Codex this machine can run, asked of its server as this page loaded:
 
 Apply all six rules:
 
-1. Announce the composition **before** starting any Codex run, naming the count and which agents are Codex; a
-   read agent's rights need no sentence, since nothing is being approved.
+1. Show the Codex agents and their exact model allocations in the approved plan before launch. Read-only
+   rights need no write grant; they do not remove model selection from the plan.
 2. Treat refusal as composition: for “no codex” or “just you”, run zero Codex agents and say the resulting
    panel is all-Claude and shares one model bias.
 3. Attribute every finding; if a Codex agent failed or returned nothing, say so and never backfill it with
@@ -35,9 +35,9 @@ Apply all six rules:
 5. Never add allow-rules on the user's behalf.
 6. Compose from the Codex status the codex page printed as it loaded: a `CODEX=` line and, when it reads
    `ready`, one `MODEL=` line per model the account lists.
-   - `ready`: every Codex agent's `MODEL:` is a listed short name. A model the user, a page or a tier names
-     that is not listed is taken by the nearest listed one below it in Astra, Sol, Terra, Luna, or above it
-     when none is below, and the plan says in one clause who stands in for whom.
+   - `ready`: every Codex agent's `MODEL:` resolves to a listed model. If the selected model is unavailable,
+     report it and propose available alternatives. Use a replacement only when the approved standing policy
+     names that fallback or the user approves the amended plan; nearest-model order alone grants no authority.
    - `signed-out`, `missing`, or `MODEL=none`: zero Codex agents; the plan's first line says Codex is not
      signed in, not installed, or lists no model, and that the panel is all-Claude and shares one model bias.
    - `unchecked`: compose by the other rules, and the plan says Codex was not checked. A launch is no check:
@@ -49,15 +49,15 @@ Apply all six rules:
 | What the user says | Composition |
 | --- | --- |
 | “no codex”, “just you” | zero Codex agents |
-| nothing | panels, refutation, competing designs: one dissenting Codex agent; mechanical fan-out or one ordinary task: zero |
+| nothing | follow [orchestrate's model policy](../orchestrate/SKILL.md#capacity-and-models); add a Codex agent only for a role that improves quality, time or cost |
 | “a codex agent”, “one of them codex” | exactly one |
 | “half codex” | half the agents, rounded up |
 | “mostly codex” | every agent except the coordinator |
 | “only codex”, “all codex” | every agent, including a one-agent task |
 | “two of five codex” | exactly as stated |
 
-A dissenting agent pays for decorrelation; mechanical fan-out does not. “Only codex” means Codex does the
-task while the coordinator orchestrates and checks it.
+Add another model only when its perspective or independent coverage can improve the result. “Only codex”
+means Codex does the task while the coordinator checks it.
 
 ## Rights
 

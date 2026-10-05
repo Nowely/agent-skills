@@ -39,22 +39,29 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
 
 ## The plan
 
-1. Read [plan.md](references/plan.md) before composing. Check which models, concurrency, context
-   isolation, continuation and nested delegation the runtime actually exposes. Treat an unproven
-   capability as unknown; put any unmet prerequisite or requested allocation in the plan.
-2. Assign tasks by ownership and shared interfaces, using [roles.md](references/roles.md). Critique
-   a nontrivial split before writing worker briefs; each brief names the corrected split and its
-   owner's files. With several workers, consider the coordinator role in [foreman.md](references/foreman.md)
-   when the runtime supports nested delegation and enough slots remain for its workers.
-3. Show the plan's work, agents, writes, cost and checks, then wait for approval unless the user
-   already authorised that concrete scope. An amendment that expands scope or rights needs a new
-   decision. Approval covers the listed work; commits and publication need their own authority.
+1. Read [plan.md](references/plan.md) before composing. Check available models and their supported
+   effort settings, plus the context and delegation features this task needs. Apply the approved
+   model policy; treat unverified capabilities as unknown and name any unresolved prerequisite.
+2. Assign tasks by ownership and shared interfaces, using [roles.md](references/roles.md). For a
+   nontrivial split, include the split critic and its exact model in the proposed plan. Launch it only
+   after the allocation is covered by the approved policy or the user approves the plan. Apply its
+   findings before worker briefs; if they change scope or model allocation, get approval for the change.
+   With several workers, consider the coordinator role in [foreman.md](references/foreman.md) when the
+   runtime supports nested delegation and enough slots remain for its workers.
+3. Show the work plan, roles with their model, write rights and checks. Show effort only when it
+   departs from the profile default or needs a decision. Recommend a profile from
+   [Capacity and models](#capacity-and-models), and show an alternative only when it changes quality
+   or speed materially. Wait for approval unless the user already authorised that concrete scope and
+   allocation. A model or route outside the approved policy needs approval before launch. Scope or
+   rights changes need a new decision; commits and publication need their own authority.
 4. Launch within the approved ownership and the runtime's limits. Read [approvals.md](references/approvals.md)
    when an agent needs a decision, and [results.md](references/results.md) when work fails, a worktree
    needs landing or writers collide. Continue a worker to correct its own work; give verification
    a fresh agent with the raw artifacts and requirements, rather than the writer's conclusions.
-5. Read every return, reconcile what actually ran with the plan, and synthesise attributable
-   findings. At each phase report what is verified, pending and blocked in the user's language.
+5. Read every return and compare each launch's requested model and effort with the approved plan.
+   Use host-reported effective-model data when available; otherwise mark effective use unknown.
+   Reconcile deviations before continuing, then synthesise attributable findings. At each phase report
+   what is verified, pending and blocked in the user's language.
    Before drafting the final answer, read [answer.md](references/answer.md) whole. Lint the draft
    with `node "<skill-dir>/scripts/lint-draft.mjs" --agents "<Model> <id>, …" --receipts <ledger> <draft>`
    (its `--help` describes receipts and request vocabulary), then have a fresh completeness critic
@@ -62,23 +69,45 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
 
 ## Capacity and models
 
-Choose the smallest team that can do the work and verify it. A comparison may need independent
-proposals; a complex task may need batches. Count the orchestrator, a delegated coordinator and
-nested workers wherever the runtime counts them. A waiting thread frees a slot only if the
-runtime says so. Model diversity is useful when available; a fresh same-model agent is a fresh
-context, not evidence of a different model bias or of hidden project instructions.
+Choose the smallest team that meets the work and verification needs. Tiers describe work demands, not
+fixed model ability or a quality ranking.
 
 | Tier | Work |
 | --- | --- |
-| top | design, split critique, judgement and a case stuck after two approaches |
-| strong | implementation, nontrivial analysis and independent review |
-| cheap | bounded mechanical work |
-| bulk | independent shallow units after a pilot establishes quality and cost |
+| top | consequential design, plan critique, judgement and a case stuck after two approaches |
+| strong | nontrivial analysis, implementation and independent review |
+| cheap | bounded work where mistakes are easy to detect and repair |
+| bulk | independent units after the candidate model meets the acceptance rule |
 
-Map tiers to models the host actually permits; use inherited settings when selection is unavailable
-and say so in the plan. Respect user-set model and effort choices. Bulk work consumes the runtime's
-capacity too. Writers sharing a tree need explicit ownership and a settled interface; avoid shared
-checkout mutations such as switching branches while another writer is active.
+Choose models and effort by required quality, uncertainty, consequences, context and latency. Use cost
+as a selection input when it can change the choice; omit cost estimates from the approval plan. For
+Codex, use xhigh by default when supported, and preserve a stronger configured max or ultra setting.
+On another host, use its highest supported effort unless the user selects the speed profile.
+
+Recommend one of these profiles:
+
+| Profile | Allocation |
+|---|---|
+| balanced (default) | Keep the user's model as coordinator; use Luna for scouting, Astra for consequential planning or architecture, and an independent verifier for material findings. For a new Luna/task pairing, compare Luna with Sol on the same representative material before expanding. |
+| speed | For bounded, recoverable work with a proven model/task pairing, use Luna with a supported medium effort, one scout per independent unit, and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Preserve the needed review when consequences warrant it. |
+| quality | Keep the user's model as coordinator. Use Astra for consequential planning or architecture; add independent Luna and Sol reviewers on the same material when distinct perspectives can change the decision, and use a separate strong judge for consequential disagreement. |
+
+For a new model/task pairing, define the pass criteria before a representative pilot. Compare coverage,
+incorrect findings and usefulness against a stronger reference; use elapsed time and reliable usage data
+to guide the profile. Reuse a successful result only for comparable work. Model diversity is useful when
+it can change a decision; a fresh same-model context does not prove a different model perspective.
+
+The user's model remains coordinator unless the user requests otherwise. In the card, name the
+coordinator role without restating its model or calling it unknown. Astra is a planning or review role,
+not a replacement coordinator. Put each worker role and one model display name together. Do not append
+an equivalent canonical model ID when it adds no distinction; include a provider ID only when it
+disambiguates.
+Show effort only when it departs from the selected profile's default or needs a separate decision. Name
+whether the allocation is covered by the approved standing policy. Include a route only when it differs
+from the host's native route, and context details only when they affect the assignment. An unavailable
+model or unsupported effort is a proposal to resolve, not permission to substitute. Inherit settings
+only when the runtime resolves them and the approved policy covers that exact allocation; otherwise
+mark them unknown and obtain a decision before launch.
 
 ## Verification
 

@@ -1,36 +1,27 @@
 ---
 name: advisor
 description: >-
-  Checks available resources, proposes a model roster for approval, then runs one standing advisor whose
-  questions are independent of the coordinator's view and whose contribution is recorded.
+  Runs one approved standing advisor for independent, evidence-based counsel
+  through material decisions in the current task.
 disable-model-invocation: true
 metadata:
   version: "0.24.2"
 license: MIT
 ---
 
-1. Identify the coordinator host from the runtime, then inventory the native models and limits it exposes. A driver status describes an external resource, not the host's identity.
-   - Codex: use native subagents and their actual model list; do not load the external [Codex adapter](../codex/SKILL.md) or call its status. Claude/Fable is unavailable until a Claude adapter is exposed; if one appears, check it and propose Fable only when confirmed. Otherwise, propose Astra if the native model list includes it.
-   - Claude: load the Codex adapter and use its current status, model catalogue and launch protocol. Use Fable only when the user's composition or Codex status rules out Codex.
-   - Other or unclear host: use native resources only when exposed; check an external driver only when its adapter is available. Mark unobservable resources unknown.
-2. Show the checked resource roster and proposed plan before launch: advisor, route, model, planned decision points, expected turns and applicable capacity. The invocation authorizes discovery and planning only. Wait for explicit approval of the plan and model roster; launch only after approval. A route or roster change needs approval again.
-
-The mode is prompt only: no driver change, no new header field or flag.
+1. Identify the active host and resolve a top-row advisor model through the route it exposes:
+   - Codex: use native subagents and check Astra in the native model list.
+   - Claude: load the Codex adapter, check its current status, and select Astra when available.
+   - Other hosts: use a native route or a selected adapter that can confirm the requested model.
+   If the chosen model is unavailable, offer supported alternatives and wait for approval. Show only the selected route and model, plus a constraint that changes the plan.
+2. Show the advice scope, route and exact model, then wait for explicit approval before starting. Invoking this skill authorizes advice, not implementation. One approval covers all material questions within that scope. Get approval again only if the task scope, route or model changes.
 
 ## The advisor
 
-After approval, use one standing top-row advisor from the accepted plan, beginning before the first decision, composition included. Keep one thread for the run and continue it through the host's native mechanism or the chosen adapter; count its active turns against that route's reported limit. "No advisor" (без советника) ends the thread for the run; "ask the advisor" (спроси советника) starts it again. The accepted plan authorizes its stated model and turns; a route or model change requires new approval.
+Start one standing advisor before the first material decision and continue the same thread through the task. Ask about every material decision in scope until it is resolved; there is no preset question count or advisor-specific cap. Continue without per-question approval. Stop when the work is resolved or the user says “no advisor”; “ask the advisor” resumes the same thread within scope.
 
-## What it is asked, and what it never does
+Before each question, privately record the coordinator's provisional decision; do not include it in the advisor brief. Send a neutral question with relevant facts, sources, uncertainty and constraints. Ask one question at a time. The answer gives a recommendation, decisive reasons with premises marked checked or assumed, one alternative, and what evidence would change the recommendation. If a needed check cannot be made, mark it unknown and name the check.
 
-Consult at every material decision point named in the accepted plan, such as the split before a fan-out, the composition, a verdict to adopt or a stall. The plan assigns one advisor turn to each listed point; use every approved turn without asking again. Keep routine operational choices inline. A new point beyond the plan or a route/model change requires an amended plan and approval. Before each question, record the coordinator's provisional decision in a private notes file under its temporary directory, whose path the synthesis names. Send a neutral brief containing the decision to be made, relevant facts and sources, uncertainty and constraints; present real alternatives evenly. The brief carries no preferred answer or evaluative framing. Ask one question per message. Request a recommendation with deciding reasons, one alternative and what evidence would change the recommendation. Its return has five fields: `status` (done, partial or blocked), `result`, `evidence`, `artifacts` and `open`. Ask it to list each premise behind its recommendation in `evidence`, marked checked at a source or taken as given; count agreement as independent only on checked premises. The advisor never implements, never writes under the repository, never judges a result it advised on, and never spawns agents; if it cannot answer from the given material, it returns `unknown` and names the missing check.
+After each answer, record whether the coordinator's decision changed and why. The advisor gives counsel only: it does not edit the repository, delegate work or judge an outcome it advised on. Use an independent reviewer for affected results. The final synthesis states the advice's effect on decisions and any open checks; omit turn counts, token totals, unused routes and private-note paths unless they change what the user should do.
 
-For a Claude-hosted external Codex advisor, use the selected model and the sibling's five-field schema in the first prompt; continue that same thread with `RESUME: <threadId>` above it, writing successive answers under `<run>/<id>-2/report.json`, then `-3`:
-
-    MODEL: <selected model short name>
-    OUTPUT_SCHEMA: <the five-field schema file the sibling ships>
-    TASK: <neutral question, relevant facts, uncertainty and constraints>
-
-## The record, because the advisor is an experiment
-
-After each answer, write what changed and why beside the private pre-question decision. The synthesis names the decisions the advisor changed, their outcomes, and the advisor's turns and tokens beside the run's. Protocol E3 of the experiment skill measures a standing advisor against per-call advice and no advice; until it runs, this page states no benefit: the 2026-09-17 research found no source measuring a standing advisor thread, and that round's retrospective priced a continued thread at 1.23 times a fresh agent.
+For an external route, follow the adapter's model, effort, continuation and report protocol, including its output schema. On the Claude-hosted Codex route, Astra is top row and inherits configured effort; omit an EFFORT field. Keep transport details out of the user-facing plan.

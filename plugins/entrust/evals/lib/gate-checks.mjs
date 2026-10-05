@@ -206,8 +206,9 @@ export function planRecord(text) {
 const label = (alts) => new RegExp(`^(?:${alts})(?!\\p{L})`, "iu");
 const CARD = {
   work: label("work|what will be done|работа|что будет сделано"),
-  who: label("who|кто"),
-  writes: label("writes?|writing|что пишет|пишет|запись|права"),
+  team: label("team|who|кто|команда"),
+  models: label("models?|модели|model choices|выбор моделей"),
+  writes: label("writes?|writing|что пишет|пишет|запись|права|изменения"),
   cost: label("costs?|стоимость|цена|токены"),
   checks: label("checks?|verification|проверки|проверка"),
 };
@@ -217,12 +218,15 @@ export function cardLabelOf(line) {
   return Object.entries(CARD).find(([, re]) => re.test(l))?.[0] ?? null;
 }
 
-// The card's five rows by the labels the page names, and, against the registered plan, every agent on it.
+// The card's four required rows, absence of redundant rows, and every registered agent.
 export function cardProblems(text, rows = null) {
   const problems = [];
   const labels = new Set(String(text).split("\n").map(cardLabelOf).filter(Boolean));
-  const missing = Object.keys(CARD).filter((k) => !labels.has(k));
+  const required = ["work", "team", "writes", "checks"];
+  const missing = required.filter((k) => !labels.has(k));
   if (missing.length) problems.push(`the card has no ${missing.join(", ")} row`);
+  const redundant = ["models", "cost"].filter((k) => labels.has(k));
+  if (redundant.length) problems.push(`the card has a redundant ${redundant.join(" and ")} row`);
   if (rows) {
     const absent = rows.filter((r) => !new RegExp(`(?<![A-Za-z0-9])${r.id}(?![A-Za-z0-9])`, "i").test(text)).map((r) => r.id);
     if (absent.length) problems.push(`the card does not show ${absent.join(", ")}, registered in the plan`);
@@ -232,9 +236,9 @@ export function cardProblems(text, rows = null) {
 
 // How many agents of one top-row model (Fable, Astra) a plan names, per wave when its table has a wave
 // column. An agent counts where it is named as one: "<Model> <id>" anywhere outside the card's work,
-// writes, cost and checks rows, and in the who row or an agent table's row by the model's name alone.
+// writes, cost and checks rows, and in the team row or an agent table's row by the model's name alone.
 // A sentence about effort ("Astra will use its configured default effort") names no agent (measured on
-// the live gate's case 7, 2026-09-28, where the cost row made a second Astra). In a plan with a table,
+// the live gate's case 7, 2026-09-28). In a plan with a table,
 // prose outside it is commentary (measured: a bullet "one Fable agent, one gpt-6-astra agent, caps
 // respected" once counted as a second agent), so only a named id counts there. `isAgent` excludes the
 // caller's own sentences about itself and the caps. Heuristic over free text.
@@ -246,7 +250,7 @@ export function topRowAgents(text, model, { isAgent = () => true } = {}) {
   const groupOf = (l) => (waveCol >= 0 ? (l.split("|")[waveCol] ?? "").trim() : "");
   const named = new RegExp(`(?<![A-Za-z])(?:Codex\\s+|Claude\\s+)?${model}\\s+([A-Z][A-Za-z]*\\d[\\w-]*)\\b`, "gi");
   const bare = new RegExp(`\\b${model}\\b`, "gi");
-  const counted = all.filter((l) => { const c = cardLabelOf(l); return (!c || c === "who") && isAgent(l); })
+  const counted = all.filter((l) => { const c = cardLabelOf(l); return (!c || c === "team") && isAgent(l); })
     .map((l) => ({ line: l, card: cardLabelOf(l), kept: l.split(/(?<=[.!?;])\s+/).filter((t) => !/\beffort\b|усили/i.test(t)).join(" ") }));
   // Every id the plan names with the model, so a table row that names the same agent by id is not a second one.
   const known = new Set(counted.flatMap((c) => [...c.kept.matchAll(named)].map((m) => m[1].toUpperCase())));

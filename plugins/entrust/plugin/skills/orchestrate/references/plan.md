@@ -2,39 +2,41 @@
 
 ## Composition
 
-Allocate by the work, not to fill a team size. One implementer owns each deliverable. Keep dependent
-execution together, settle shared interfaces before parallel writes and verify with an agent that
-did not write the artifact. Honour requested models, providers and exclusions; report a requested
-capability that is unavailable rather than substituting silently. Independent context and model
-diversity are separate properties: check what instructions and history a native agent inherits.
+Allocate by the work, not to fill a team size. Give each deliverable one owner, keep dependent
+execution together, settle shared interfaces before parallel writes, and verify with someone who did
+not write the artifact. Honour requested models, routes and exclusions. A tier does not select a model
+or authorize a fallback. If the chosen model is unavailable, show the available alternatives and wait
+for approval unless the user's standing policy explicitly covers one.
 
-Use the capabilities and limits exposed by the current host. An external integration's model
-selection, rights and lifecycle belong to its adapter. Native delegation needs no external
-integration merely because the native model has the same vendor or name.
+Use the active host's capabilities. An adapter owns its provider's model lookup, launch parameters and
+runtime metadata; native delegation needs no external adapter merely because a model has the same vendor.
 
 ## The card
 
-Write five rows in the user's language:
+Write four rows in the user's language. Recommend the balanced profile by default; name speed or
+quality only when it materially changes the allocation.
 
 | Row | Contents |
 | --- | --- |
 | work | deliverables, ownership, interfaces and completion criteria |
-| who | each agent's role and model, or inherited model when it cannot be selected; coordinator and verifier included |
+| team | coordinator role and each agent's role, one model display name and policy coverage in one place; do not restate the coordinator's model or call it unknown; show effort only when it departs from the profile default or needs a decision; do not repeat an equivalent model slug |
 | writes | allowed directories, temporary artifacts, any isolated worktrees and network constraints |
-| cost | estimates by agent and your inline work; unknown for unmeasured roles |
-| checks | who verifies what and which evidence decides; completeness critic and selection criterion where relevant |
+| checks | who verifies what and which evidence decides; include allocation and result checks |
 
-State the available concurrency and any user cap. Count nested workers according to the host's
-rules, reserving capacity for a delegated coordinator. Give viable alternatives when the choice
-matters, with their costs and a recommendation; make clear which approval selects which scope.
+Show the concrete team in every plan. Mark choices covered by the standing policy in
+[Capacity and models](../SKILL.md#capacity-and-models). Approval covers the listed work and in-policy
+allocations; ask separately before any model, route or fallback outside that policy. Show worker
+concurrency only when it affects parallel work, and count nested workers by the host's actual rules.
+It does not set an advisor question budget. Keep alternative profiles to choices that materially change
+quality or speed, and state which approval selects each scope.
 
-## Estimates and the stop line
+## Model fit and estimates
 
-Base estimates on comparable runs, with their source and uncertainty. For a bulk batch, pilot a
-few representative units and compare quality and cost against a stronger reader's marking before
-launching the rest. Estimate per-unit usage times the unit count, with a rerun margin. When usage
-is observable, a run exceeding three times its pilot's median per agent stops further launches
-until the estimate and remaining scope have been reconsidered with the user. Unknown usage stays unknown.
+For a role/model pairing without comparable evidence, define the acceptance rule and pilot representative
+work. Compare the same inputs with a stronger reference; check omissions, incorrect results and usefulness.
+Expand when the rule passes. Estimate batches from comparable runs, including a rerun margin. When
+observable usage exceeds three times the pilot's median per agent, pause that batch and review its
+remaining scope with the user.
 
 ## Environment and worktrees
 
@@ -47,6 +49,6 @@ snapshot or access to that work, without implying authority to commit it.
 ## A bulk row
 
 Define independent units and a fixed return shape. A verdict describes the subject, not a broken
-input path. Keep a shared prerequisite's execution with one owner and supply its evidence to
-every dependent brief. Announce the unit count and how it was derived. A bulk launcher is an
-optional integration for a batch whose scale warrants it, within its own and the host's limits.
+input path. Keep a shared prerequisite's execution with one owner and supply its evidence to every
+dependent brief. Announce the unit count and how it was derived. Use a bulk launcher only when its
+scale improves throughput or cost under the model-fit rule, and within actual host limits.

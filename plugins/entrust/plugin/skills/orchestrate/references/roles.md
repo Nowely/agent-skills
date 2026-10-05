@@ -1,16 +1,15 @@
 # Roles
 
-A role defines responsibility, writable scope, return and when the agent is needed. Choose it by
-work, then map its tier to available models. Every agent returns the page's five fields. Read
-agents may return text or write artifacts under their permitted temporary roots. Briefs name the
-resolved capture runner when commands may print more than twenty lines and ask for exit statuses
-and counts. Roles divide ownership and judgement rather than phases of the same implementation.
-The work-list, approval, synthesis and landing of results stay with the parent orchestrator.
+A role defines responsibility, writable scope, return and when the agent is needed. Choose roles by
+work; select exact models under [Capacity and models](../SKILL.md#capacity-and-models). A tier describes
+the work, not a model's inherent ability. Every agent returns the page's five fields. Read agents may
+return text or write permitted temporary artifacts. Roles divide ownership and judgement; the parent
+orchestrator owns the work-list, approval, synthesis and landing of results.
 
 | Role | What it does | May write | Returns | Spawn it when | Tier |
 |---|---|---|---|---|---|
-| area scout | bounded findings over one area for the coordinator's work-list, from cheap commands and reading | nothing | a ranked list of items with addresses | before a review or a design, one per area | top or strong |
-| split critic | reads the decomposition, not the subject: what the cut lost, what the wording added, which items are two, which the rights cannot decide | nothing | the corrected split as a file under its temporary directory, naming each unit's owner and every shared interface's one owner; every worker brief names that file | before every fan-out wider than one agent, and before any worker brief is written | top |
+| area scout | bounded findings over one area for the coordinator's work-list | nothing | a ranked list of findings with addresses | before a review or design, one per area | strong for ranked analysis; bulk for fixed-output scouting when the model-fit rule passes; top for architectural judgement |
+| split critic | independently critiques a nontrivial plan's scope, role/model allocation, decomposition, sequence and shared interfaces | nothing | missing work and a corrected split with owners and reasons | after its model allocation is approved, before worker briefs or fan-out | top |
 | architect | designs: competing designs, a page delta, a schema; never implements | nothing | the design with its evidence and open questions | a design task | top |
 | advisor, per call | counsel on a plan, a stuck case or a verdict; one question, one answer | nothing | counsel with its reasons | on the coordinator's explicit call, by the agreed composition | top |
 | advisor, standing | one thread kept for a run, asked one question at each decision point; never implements, never judges its own advice | nothing | a recommendation with its reasons, one alternative, what would change its mind | a standing advisor in the approved plan, before the run's first decision; the workers' plan names it; when the task benefits from repeated counsel | top |
