@@ -3,6 +3,29 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.25.1 — 2026-10-06
+
+### Changed
+
+- Orchestration can collect read-only status from registered adapters before composing a plan, without loading every adapter skill. `--skip codex` excludes the external Codex adapter when the active host already supplies its native route. Planning remains in the active host.
+- OpenCode status now inspects at most two saved recent model references and an already-configured endpoint. It does not start a local server or request a model catalogue; cached references retain unknown availability until the launch path validates the exact model.
+- Adapter-specific model selection guidance has one owner in each adapter skill. Unavailable recent-model data is distinguished from an empty saved list.
+
+### Validation
+
+- The implementation in PR #58 passed all eight CI jobs: skill checks on Node 22/24, the full suite matrix on Linux/macOS with Node 22/24, and terse checks on Node 22/24.
+- Release metadata must pass the release PR's CI before publication. The version and annotated tag are checked against the published tree.
+- Opt-in live fidelity, orchestration and cross-plugin sessions were skipped for this accelerated release. No new model sessions or live routing reliability claims are included.
+
+### Known issues
+
+- Open ledger entries remain E67, E90–E91, E94–E96, E100–E104, E108, E110–E115 and E117–E120; see [`ISSUES.md`](ISSUES.md).
+- Passive status is a bounded planning observation, not a complete model inventory or proof that a model can run. Native model inventory still comes from the active host. Advisor continuation reliability remains unverified.
+
+### Release environment
+
+- Release preparation used Node.js `v24.11.0`, Codex CLI `0.159.3` and Claude Code `2.1.280`. The CLI protocol pin is unchanged.
+
 ## 0.25.0 — 2026-10-06
 
 ### Changed
