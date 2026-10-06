@@ -21,10 +21,9 @@ The Codex this machine can run, asked of its server as this page loaded:
 
 !`node "${CLAUDE_SKILL_DIR}/scripts/status.mjs"`
 
-The orchestration status collector may call `status.mjs --json` directly without loading this skill
-page. That form returns account and limit status only; the Codex CLI status path has no recent-model
-source and does not request `model/list`. It does not identify the current host or its native
-subagent list. The active host supplies native model choices directly to orchestration.
+`status.mjs --json` returns account limits only, with recent models unsupported; it does not identify
+the host or native subagents. The orchestration collector reads it without this page, and the active
+runtime supplies native model choices.
 
 ## Composition
 
@@ -241,12 +240,11 @@ turn goes on. The `--decide` call that answers it, what an accept runs as, and w
 
 ## What the user reads
 
-What reaches the user is
-prose the coordinator writes: in the user's own language, naming an agent by its model and id and saying what it
-did. Keep `Codex` on a Codex agent: it is the only word in the name that says whose model ran. The sentence about an agent has one shape: the agent by name is the subject and what it does or did is the verb ("Codex Sol R1 reads the diff"). The model slug is machinery too, and so are `wrapper` and `driver`: the name is `Codex Sol R1`, never the slug the report carries. A header field name, a status block, an internal
-table's row name and an absolute path are machinery; they belong in a prompt or a report, and putting them in
-front of a person says nothing they can act on ([the wrapper's message](references/incidents.md#the-wrappers-message)). Rights are the one thing that must survive the translation: say
-what an agent may write, and where, in ordinary words, because that is what the user is being asked to approve.
+Write results in the user's language; name each agent by model and ID and say what it did. Keep `Codex` only
+on Codex agents (`Codex Sol R1`, never a report slug). Make the agent the sentence's subject and its action the
+verb. Keep field names, status blocks, table row names and paths in prompts or reports, not user-facing prose
+([the wrapper's message](references/incidents.md#the-wrappers-message)). State write rights and paths plainly so
+the user knows what they are approving.
 
 ## References
 
