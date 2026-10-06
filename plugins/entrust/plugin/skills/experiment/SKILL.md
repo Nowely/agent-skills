@@ -20,7 +20,17 @@ Register the experiment before any agent, in a protocol the user reads as the pl
 2. Arms: each a composition named by model, tier, effort, count and rights. One arm is the comparator the hypothesis calls for, a single agent or no delegation where the question is whether delegation pays. The tiers are top Fable and Astra, strong Opus and Sol, cheap Sonnet and Terra, bulk Haiku and Luna. Each arm's plan is in the protocol, so one "go" covers every arm and no arm stops for a plan of its own.
 3. Material: the same tasks or claims for every arm, frozen before the run, with the ground truth or the acceptance check written down before any arm sees it; the arms never see each other's returns.
 4. Metrics: what the research's ruler names, unique coordinator incidents by stage with their severity, owner corrections, outcomes verified independently, and agents and paid turns counted per outcome so that arms of different cost compare; for a bulk hypothesis, correctness per claim; n stated, with an interval where n is under fifty, and paired where the material is the same across arms.
-5. Judge: cross-family or human. It gets each arm's returns with their first line removed, the line every brief asks to name the agent's model and id, and the arms named by letters. Where the returns name the model in their body, the judge is cross-family with the arm named and the protocol says so. Its verdict names the check it ran or is `unknown`.
+5. Judge: cross-family or human. Its default scope is read-only: `RIGHTS: read <cwd>` for
+   adapters that consume this header, or the equivalent native scope. Keep write access off.
+   - **Inputs:** provide each arm's complete return with its first line removed, lettered arms, the
+     ground truth or acceptance check, and the rubric. Inline the contents by default; a path alone
+     is not input.
+   - **File-backed inputs:** permit reading the exact files and verify before dispatch that the route
+     can access them. For tool-free judging, inline every required input.
+   - **External judges:** name the exact payload and provider/model destination, including any proxy
+     route, in the approved protocol. If a return names its model, disclose that and use a cross-family
+     judge.
+   - Its verdict names the check it ran or is `unknown`.
 6. Stop rule and budget: the tokens and paid turns each arm may spend, and what ends the run early.
 
 Show the protocol and stop; "go" covers the arms as listed and nothing else.
