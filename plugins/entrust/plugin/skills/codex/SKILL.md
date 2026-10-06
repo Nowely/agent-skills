@@ -240,11 +240,11 @@ turn goes on. The `--decide` call that answers it, what an accept runs as, and w
 
 ## What the user reads
 
-Write results in the user's language; name each agent by model and ID and say what it did. Keep `Codex` only
-on Codex agents (`Codex Sol R1`, never a report slug). Make the agent the sentence's subject and its action the
-verb. Keep field names, status blocks, table row names and paths in prompts or reports, not user-facing prose
-([the wrapper's message](references/incidents.md#the-wrappers-message)). State write rights and paths plainly so
-the user knows what they are approving.
+What reaches the user is prose the coordinator writes, in the user's own language, naming an agent by its model
+and id and saying what it did. Keep `Codex` on a Codex agent; the agent by name is the subject and what it does or did is the verb ("Codex Sol R1 reads the diff"); the name is `Codex Sol R1`, never the slug the report carries.
+A header field name, a status block, an internal table's row name and an absolute path are machinery; keep them
+in prompts or reports ([the wrapper's message](references/incidents.md#the-wrappers-message)). The coordinator must
+say what an agent may write, and where, in ordinary words, so the user knows what they are approving.
 
 ## References
 
