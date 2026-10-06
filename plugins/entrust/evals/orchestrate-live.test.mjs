@@ -1045,8 +1045,8 @@ const ADVISOR_TURNS = [
   "ask the advisor whether lib/shared.mjs needs a test of its own. RETURN: its answer in one sentence.",
 ];
 
-test("the advisor route is approved before launch, then continues on its thread until the user pauses or resumes it",
-  "a Claude-hosted advisor must load the Codex adapter to verify Astra, stop before the model call for approval, and retain the adapter schema on continuation",
+test("an explicit advisor request starts consultation and continues until the user pauses or resumes it",
+  "a Claude-hosted advisor verifies Astra through the Codex adapter, uses the request's authority without duplicate approval, and retains the adapter schema on continuation",
   async () => {
     const dir = caseDir(8, "advisor");
     const scratch = splitProject(dir);
