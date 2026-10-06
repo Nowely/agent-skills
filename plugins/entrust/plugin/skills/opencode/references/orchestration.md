@@ -1,8 +1,15 @@
 # OpenCode workers in a plan
 
 Keep the orchestration workflow in [orchestrate](../../orchestrate/SKILL.md). Load this adapter only
-for an external OpenCode worker. The host's native agent remains the wrapper, not the model doing
-the work. Use the smallest approved pool, within both host capacity and router limits.
+for an external OpenCode worker. Each worker uses the native proxy from the adapter's launch step;
+the external model does the task. Count each active proxy against host capacity and each external
+session against router limits. Use the smallest approved pool.
+
+Record the native proxy's model and thread alongside the external worker's model, session and report.
+The plan's model column names the external worker; it must not be replaced with the proxy's Luna.
+Reuse that native thread when a session continues. Its brief uses the agreed task, rights and user
+instructions already present in the run. An interrupted proxy is the coordinator's cleanup duty:
+stop only the driver bound to that report and verify its external outcome before another invocation.
 
 The common launcher accepts an extended plan alongside existing five-column Codex/Claude plans:
 

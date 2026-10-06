@@ -5,7 +5,7 @@ description: >-
   verify independently and synthesise their evidence while keeping the main context small.
 disable-model-invocation: true
 metadata:
-  version: "0.24.2"
+  version: "0.25.0"
 license: MIT
 ---
 
@@ -123,13 +123,16 @@ with the relevant checks, independently of its writers.
 
 ## The agent's return
 
-Ask every agent for these fields, in text or structured output supported by the host:
+Ask task and review agents for these fields, in text or structured output supported by the host:
 
     status:    done | partial | blocked
     result:    one standalone sentence, then a summary of material findings, at most 30 lines
     evidence:  what ran, with exit status and counts; unknown where it could not run
     artifacts: paths to the full outputs under the agent's permitted roots
     open:      missing coverage, questions and risks
+
+A proxy forwards the worker's complete return, with transport status separate; an artifact replaces
+clipped display, not the worker's answer with a summary.
 
 A large result goes into an artifact with a summary retaining every material finding. An artifact
 path must be writable for that agent; returning text requires no new filesystem grant. A verifier

@@ -10,6 +10,7 @@ import { Client } from "../plugin/skills/opencode/scripts/client.mjs";
 import { V2Client, validateProfile, normalizeMessages } from "../plugin/skills/opencode/scripts/v2-client.mjs";
 import { parsePrompt, FIVE_FIELDS_SCHEMA, checkSchemaSubset, validateOutput, decisionFits, extractJson } from "../plugin/skills/opencode/scripts/contract.mjs";
 import { outOfScope } from "../plugin/skills/opencode/scripts/driver.mjs";
+import { readAgentOrders } from "../plugin/skills/opencode/scripts/agent-orders.mjs";
 import { fakeOpenCode, fakeOpenCodeV2 } from "./fake-opencode.mjs";
 
 const { cases, test: register } = registry();
@@ -70,16 +71,82 @@ test("approved write root rejects another root even when rights kind matches", (
   const error = parsePrompt(prompt("", `write ${outside}`), { ENTRUST_PLAN_WRITES: `write ${cwd}` }).error;
   assert.ok(error && !error.includes("schema"), String(error));
 });
-test("unsupported schema keywords are refused, and required fields are checked", () => {
+test("malformed schema branches are refused, and required fields are checked", () => {
   assert.equal(checkSchemaSubset({ type: "object", oneOf: [] }).ok, false);
   const s = JSON.parse(fs.readFileSync(path.join(ROOT, "skills/codex/schemas/five-fields.schema.json"), "utf8"));
   assert.equal(validateOutput(s, { status: "done" }).ok, false);
+});
+test("oneOf validates exactly one branch and checks every nested schema", () => {
+  const schema = { oneOf: [{ type: "string" }, { type: "integer" }] };
+  assert.equal(checkSchemaSubset(schema).ok, true);
+  assert.equal(validateOutput(schema, "text").ok, true);
+  assert.equal(validateOutput(schema, 2).ok, true);
+  assert.equal(validateOutput(schema, null).ok, false);
+  assert.equal(validateOutput({ oneOf: [{ type: "number" }, { type: "integer" }] }, 2).ok, false);
+  for (const oneOf of [null, {}, [], [{ oneOf: [] }], [{ not: {} }]])
+    assert.equal(checkSchemaSubset({ oneOf }).ok, false);
+});
+test("main proxy accepts concrete agent orders or a full answer, never host tool code", () => {
+  const schema = JSON.parse(fs.readFileSync(path.join(ROOT, "skills/opencode/schemas/main-proxy.schema.json"), "utf8"));
+  assert.equal(checkSchemaSubset(schema).ok, true);
+  const order = { id: "a", action: "delegate", agent_id: "reviewer", task: "Review the diff: preserve \"quotes\", \\ and $ signs.", scope: "read-only", model: "Sol", effort: "high" };
+  const reply = (requests) => ({ plan: "delegate", requests, final_answer: "" });
+  assert.equal(validateOutput(schema, reply([order])).ok, true);
+  assert.equal(validateOutput(schema, reply([{ ...order, model: null, effort: null }])).ok, true);
+  for (const request of [
+    { id: "b", action: "continue", agent_id: "reviewer", task: "Check the source again" },
+    { id: "c", action: "collect", agent_ids: ["reviewer"] },
+    { id: "d", action: "stop", agent_ids: ["reviewer"] },
+  ]) assert.equal(validateOutput(schema, reply([request])).ok, true);
+  assert.equal(validateOutput(schema, { plan: "", requests: [], final_answer: "complete reply" }).ok, true);
+  for (const answer of [
+    { plan: "", requests: [], final_answer: "" },
+    { plan: "", requests: [order], final_answer: "reply" },
+    { plan: "", calls: [], final_answer: "reply" },
+    reply([{ id: "e", tool: "functions.exec", input: "dangerous code" }]),
+    reply([{ id: "f", action: "execute", command: "arbitrary host command" }]),
+    reply([{ ...order, task: "" }]),
+    reply([{ ...order, scope: "" }]),
+    reply([{ id: "g", action: "collect", agent_ids: [] }]),
+    reply([{ id: "h", action: "continue", agent_id: "reviewer", task: "Next", model: "other" }]),
+  ]) assert.equal(validateOutput(schema, answer).ok, false, JSON.stringify(answer));
 });
 test("schema bounds and prototype-named fields cannot bypass validation", () => {
   assert.equal(checkSchemaSubset({ type: "number", minimum: "bad" }).ok, false);
   assert.equal(checkSchemaSubset({ type: "array", minItems: -1 }).ok, false);
   assert.equal(validateOutput({ type: "object", required: ["toString"] }, {}).ok, false);
   assert.equal(validateOutput({ type: "object", properties: {}, additionalProperties: false }, JSON.parse('{"toString":"x"}')).ok, false);
+});
+test("agent order reader rejects the whole batch before unknown, repeated or partial actions", () => {
+  const delegate = { id: "d", action: "delegate", agent_id: "a", task: 'Read \"quotes\", \\, $ and Unicode: мир', scope: "read-only", model: null, effort: null };
+  const report = (requests) => ({ ok: true, receiptOk: true, outputSchemaOk: true, partial: false, sessionID: "coordinator", answerJson: { plan: "", requests, final_answer: "" } });
+  const mode = (agents = {}) => ({ external_session: "coordinator", agents });
+  const collect = { id: "c", action: "collect", agent_ids: ["a"] };
+  const binding = { native_agent: "/root/worker-a", model: "Sol", effort: "high" };
+  const batch = report([delegate, collect]);
+  assert.strictEqual(readAgentOrders(batch, mode()).requests[0], delegate);
+  assert.equal(readAgentOrders(batch, mode()).requests[0].task, delegate.task);
+  for (const request of [{ ...delegate, task: " \n\t" }, { ...delegate, scope: " \t" }])
+    assert.throws(() => readAgentOrders(report([request]), mode()), /nonblank text/);
+  assert.throws(() => readAgentOrders(report([{ id: "n", action: "continue", agent_id: "a", task: " \n" }]), mode({ a: binding })), /nonblank text/);
+  assert.throws(() => readAgentOrders({ ...batch, answerJson: { plan: "", requests: [], final_answer: " \n" } }, mode()), /nonblank text/);
+  for (const request of [collect, { id: "s", action: "stop", agent_ids: ["a"] }, { id: "n", action: "continue", agent_id: "a", task: "Next" }]) {
+    assert.strictEqual(readAgentOrders(report([request]), mode({ a: binding })).requests[0], request);
+    const lostRequest = request.agent_ids ? { ...request, agent_ids: ["lost"] } : { ...request, agent_id: "lost" };
+    for (const lost of [null, {}, "", "   ", [], { native_agent: "" }, { native_agent: "  " }, Object.create(binding)])
+      assert.throws(() => readAgentOrders(report([delegate, lostRequest]), mode({ lost })), /missing native agent binding/);
+  }
+  assert.throws(() => readAgentOrders(report([collect]), mode()), /unknown agent/);
+  assert.throws(() => readAgentOrders(report([delegate, { ...collect, id: "d" }]), mode()), /duplicate request/);
+  assert.throws(() => readAgentOrders(report([delegate]), mode({ a: {} })), /already exists/);
+  assert.throws(() => readAgentOrders(report([{ ...collect, agent_ids: ["a", "a"] }]), mode({ a: {} })), /repeated agent/);
+  assert.throws(() => readAgentOrders({ ...batch, partial: true }, mode()), /complete coordinator reply/);
+  assert.throws(() => readAgentOrders({ ...batch, receiptOk: false }, mode()), /attributed/);
+  assert.throws(() => readAgentOrders({ ...batch, ok: false }, mode()), /successful/);
+  assert.throws(() => readAgentOrders(batch, {}), /session binding/);
+  assert.throws(() => readAgentOrders({ ...batch, sessionID: null }, mode()), /session binding/);
+  assert.throws(() => readAgentOrders(batch, { ...mode(), external_session: "foreign" }), /another external session/);
+  assert.throws(() => readAgentOrders(batch, { ...mode(), agents: null }), /agent bindings object/);
 });
 test("wrapped JSON preserves escaped quotes, braces and nested objects", () => {
   for (const value of [{ result: 'a"b' }, { result: 'a"{b' }, { result: 'a\\\"{' }, { result: { nested: "}" } }])
@@ -297,6 +364,87 @@ test("one schema correction is included in invocation usage", async () => {
   const s = await fakeOpenCode("correction");
   try { const r = await driverRun(s); assert.equal(r.code, 0, r.err); assert.equal(s.prompts, 2); assert.ok(r.report.usage?.input >= 10, JSON.stringify(r.report.usage)); }
   finally { await s.close(); }
+});
+test("main proxy mixed reply is corrected by the driver before reaching the host", async () => {
+  const s = await fakeOpenCode("main-proxy-correction");
+  try {
+    const schema = path.join(ROOT, "skills/opencode/schemas/main-proxy.schema.json");
+    const r = await driverRun(s, { headers: `OUTPUT_SCHEMA: ${schema}\n` });
+    assert.equal(r.code, 0, r.err);
+    assert.equal(s.prompts, 2);
+    assert.equal(r.report.receiptOk, true);
+    assert.equal(r.report.outputSchemaOk, true);
+    assert.deepEqual(r.report.answerJson, { plan: "", requests: [], final_answer: "Complete coordinator reply" });
+    const submitted = s.calls.filter((c) => c.path.endsWith("prompt_async"));
+    assert.equal(submitted[0].path, submitted[1].path);
+    assert.match(JSON.stringify(submitted[1].body), /oneOf/);
+  } finally { await s.close(); }
+});
+test("main proxy continuation repeats its schema and permits a host-only round", async () => {
+  const s = await fakeOpenCode("main-proxy-correction");
+  try {
+    const headers = `OUTPUT_SCHEMA: ${path.join(ROOT, "skills/opencode/schemas/main-proxy.schema.json")}\n`;
+    const first = await driverRun(s, { headers });
+    assert.equal(first.code, 0, first.err);
+    const next = await driverRun(s, { headers, resume: first.path });
+    assert.equal(next.code, 0, next.err);
+    assert.equal(next.report.sessionID, first.report.sessionID);
+    assert.equal(next.report.outputSchemaOk, true);
+    assert.equal(next.report.commands.length, 0);
+    assert.equal(next.report.answerJson.final_answer, "Complete coordinator reply");
+    assert.equal(s.prompts, 3);
+  } finally { await s.close(); }
+});
+test("a failed schema correction retains the latest answer and its complete artifact", async () => {
+  const s = await fakeOpenCode("invalid-correction");
+  try {
+    const r = await driverRun(s);
+    assert.notEqual(r.code, 0);
+    assert.equal(s.prompts, 2);
+    assert.equal(r.report.outputSchemaOk, false);
+    assert.equal(r.report.answerJson.result, "SECOND");
+    assert.equal(r.report.answer, "SECOND");
+    const latest = s.sessions.get(r.report.sessionID).messages.at(-1).parts[0].text;
+    assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), latest);
+  } finally { await s.close(); }
+});
+test("a cut correction preserves its latest received answer as partial", async () => {
+  const s = await fakeOpenCode("invalid-correction-busy");
+  try {
+    const r = await driverRun(s);
+    assert.notEqual(r.code, 0);
+    assert.equal(s.prompts, 2);
+    assert.equal(r.report.partial, true);
+    assert.equal(r.report.receiptOk, false);
+    assert.equal(r.report.answerJson.result, "SECOND");
+    const latest = s.sessions.get(r.report.sessionID).messages.at(-1).parts[0].text;
+    assert.equal(r.report.answer, latest);
+    assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), latest);
+  } finally { await s.close(); }
+});
+test("a cut keeps the latest partial text after an earlier completed assistant step", async () => {
+  const s = await fakeOpenCode("partial-after-complete");
+  try {
+    const r = await driverRun(s);
+    assert.notEqual(r.code, 0);
+    assert.equal(s.prompts, 1);
+    assert.equal(r.report.partial, true);
+    assert.equal(r.report.answer, "Latest partial details");
+    assert.equal(r.report.answerJson, null);
+    assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), "Latest partial details");
+  } finally { await s.close(); }
+});
+test("the answer artifact preserves details outside the parsed JSON preview", async () => {
+  const s = await fakeOpenCode("answer-context");
+  try {
+    const r = await driverRun(s);
+    assert.equal(r.code, 0, r.err);
+    assert.equal(s.prompts, 1);
+    assert.equal(r.report.answer, "checked");
+    const original = s.sessions.get(r.report.sessionID).messages.at(-1).parts[0].text;
+    assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), original);
+    assert.ok(original.startsWith("Detail before the JSON.") && original.endsWith("Detail after the JSON."));
+  } finally { await s.close(); }
 });
 test("continuation retains session and model but excludes old command evidence", async () => {
   const s = await fakeOpenCode("old-history");

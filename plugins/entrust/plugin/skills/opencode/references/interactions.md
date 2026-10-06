@@ -16,6 +16,12 @@ Rerun the same `--run` after a decision. Decision publication is exclusive; stal
 changed request contents, wrong decision types and late answers are refused. A repeated operation
 does not authorize a second native action. The driver checks the native request again before sending.
 
+With `--run --watch`, a request is an intermediate `EVENT=waiting` frame and the call remains
+attached. Publish the decision separately; the watcher observes continuation without relaunching.
+An operational proxy may decide within the existing task authority and supplies its reason through
+`--why`. Ambiguity goes to the coordinator. Keep the complete worker answer and technical status
+separate; neither approval nor a successful command proves the task's content correct.
+
 Native permission rejection affects every pending permission in its session, including ordinary
 decline, automatic denial and expiry. The driver serializes decisions and requires an exact owned
 match for every affected request. Sibling envelopes record the native rejection and its causing

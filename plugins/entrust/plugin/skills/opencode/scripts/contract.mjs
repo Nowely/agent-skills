@@ -249,7 +249,7 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
 export const SCHEMA_KEYWORDS = new Set([
   "type", "properties", "required", "additionalProperties", "enum", "items",
   "maxLength", "minLength", "maxItems", "minItems", "minimum", "maximum", "pattern",
-  "description", "title", "default", "$schema",
+  "oneOf", "description", "title", "default", "$schema",
 ]);
 const ANNOTATION_KEYWORDS = new Set(["description", "title", "default", "$schema"]);
 const TYPES = new Set(["string", "number", "integer", "boolean", "array", "object", "null"]);
@@ -259,6 +259,10 @@ export function checkSchemaSubset(schema, where = "$") {
   const walk = (s, at) => {
     if (typeof s !== "object" || s === null || Array.isArray(s)) { errors.push(`${at}: a schema must be an object`); return; }
     for (const k of Object.keys(s)) if (!SCHEMA_KEYWORDS.has(k)) errors.push(`${at}: unsupported keyword ${k}`);
+    if (s.oneOf !== undefined) {
+      if (!Array.isArray(s.oneOf) || s.oneOf.length === 0) errors.push(`${at}.oneOf: must be a non-empty array of schemas`);
+      else s.oneOf.forEach((branch, i) => walk(branch, `${at}.oneOf[${i}]`));
+    }
     if (s.type !== undefined) {
       const types = Array.isArray(s.type) ? s.type : [s.type];
       for (const t of types) if (!TYPES.has(t)) errors.push(`${at}: unsupported type ${JSON.stringify(t)}`);
@@ -304,6 +308,10 @@ const typeMatches = (type, value) => {
 
 export function validateValue(schema, value, where = "$", errors = []) {
   if (typeof schema !== "object" || schema === null) return errors;
+  if (schema.oneOf !== undefined) {
+    const matches = schema.oneOf.filter((branch) => validateValue(branch, value, where, []).length === 0).length;
+    if (matches !== 1) errors.push(`${where}: oneOf requires exactly one matching branch, found ${matches}`);
+  }
   const types = schema.type === undefined ? [] : Array.isArray(schema.type) ? schema.type : [schema.type];
   if (types.length && !types.some((t) => typeMatches(t, value))) {
     errors.push(`${where}: expected ${types.join(" or ")}`);

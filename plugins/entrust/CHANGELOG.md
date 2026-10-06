@@ -3,13 +3,35 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.25.0 — 2026-10-06
 
 ### Changed
 
+- OpenCode workers on Codex use one native Luna medium proxy per external session. Continuations reuse that native thread; callbacks remain intermediate while the attached watcher waits. Tasks and full replies are forwarded without summaries, and existing authorization governs callback decisions.
+- “Прокси на GLM” selects the external model as coordinator. It plans, gives concrete agent orders and interprets full results; the host resolves native/adapter invocations and owns lifecycle. The order protocol supports delegation, continuation, collection and Stop. It exposes worker capabilities and existing authority rather than arbitrary host tools or JavaScript. This instruction-driven mode does not switch the host model automatically.
+- The OpenCode output validator enforces `oneOf`, so the main proxy envelope accepts either agent requests or a complete final answer. Invalid envelopes use the driver's existing corrective turn.
+- An explicit advisor request now authorizes its consultation without another approval. Advice remains separate from implementation authority.
 - Orchestration plans now recommend balanced, speed or quality model profiles, keep model roles in one team row, and omit default effort and cost estimates from approval cards.
 - The standing advisor now covers every material decision within one approved scope without a preset question count; approval cards show the selected route and model without unused resource inventory or transport details.
 - Codex model selection follows the approved plan, preserves the current coordinator, and requires approval for unavailable-model fallbacks.
+
+### Fixed
+
+- The OpenCode answer artifact now keeps the full latest reply, including a failed correction or a partial answer received after an earlier completed step.
+
+### Validation
+
+- Targeted offline checks: OpenCode 77/77, launcher 53/53, advisor 8/8, orchestration 12/12, gates 24/24, fragments 4/4, skill pages 8/8; package 13 passed with the release-tag check skipped before publication.
+- A native Luna medium emulation used GLM through one external session, two native reviewers and existing-worker continuations. Earlier manual copying changed technical escaping; after switching native returns to canonical artifacts, two substantive turns forwarded 15,140 and 11,276 bytes with decoded equality, matching source identifiers and preserved previous files. Root resolved one automatic-review rejection through verified offline RESUME preparation. This is bounded transport evidence, not an uninterrupted autonomous pass or a primary-host model switch.
+
+### Known issues
+
+- Open ledger entries: E67, E90–E91, E94–E96, E100–E104, E108, E110–E115 and E117–E120; evidence and details are in [`ISSUES.md`](ISSUES.md). E118 is a pre-existing text-check weakness; E119 loses a partial answer on admitted transport failure; E120 overwrites sidecar artifacts when reports share a directory. The producer defects are recorded for separate fixes.
+- The broad live orchestration, routing and cross-plugin gates have not run. Main-mode Stop, interrupted-operation recovery and arbitrary-task reliability remain unverified. GLM's final text contained a native-name typo; recorded host bindings and forwarded identifiers matched their sources, and the model's answer was preserved without correction.
+
+### Release environment
+
+- Targeted offline checks used Node.js `v24.11.0`, with available Codex CLI `0.159.3` and Claude Code `2.1.280`. No CLI protocol-pin change is included.
 
 ## 0.24.2 — 2026-10-05
 

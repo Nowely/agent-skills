@@ -24,7 +24,16 @@ export async function fakeOpenCode(mode = "normal") {
       providerID: "router", modelID: "deepseek/flash", time: { created: Date.now(), completed: Date.now() }, finish: "stop",
       tokens: { input: 5, output: 3, reasoning: 1, cache: { read: 0, write: 0 } }, cost: 0.01 };
     if (mode === "unknown-model") { delete info.providerID; delete info.modelID; }
-    s.messages.push({ info, parts: [{ type: "text", text: valid ? answer() : "invalid output" }] });
+    let text = valid ? answer() : "invalid output";
+    if (mode === "invalid-correction" || mode === "invalid-correction-busy") text = JSON.stringify({ status: "invalid", result: state.prompts === 1 ? "FIRST" : "SECOND", evidence: [], artifacts: [], open: [] });
+    if (mode === "answer-context") text = `Detail before the JSON.\n${answer()}\nDetail after the JSON.`;
+    if (mode === "main-proxy-correction") text = JSON.stringify({ plan: "", requests: state.prompts === 1
+      ? [{ id: "inspect", action: "collect", agent_ids: ["reviewer"] }] : [], final_answer: "Complete coordinator reply" });
+    s.messages.push({ info, parts: [{ type: "text", text }] });
+    if (mode === "partial-after-complete") {
+      s.messages.push({ info: { ...info, id: `msg_partial_${state.prompts}`, time: { created: Date.now() + 1 } },
+        parts: [{ type: "text", text: "Latest partial details" }] });
+    }
     if (mode === "old-history" && state.prompts === 1)
       s.messages.at(-1).parts.push({ type: "tool", tool: "bash", callID: "call_old", state: { status: "completed", input: { command: "old command" }, output: "OLD_OUTPUT", metadata: { exit: 0 } } });
     s.busy = false;
@@ -122,7 +131,11 @@ export async function fakeOpenCode(mode = "normal") {
       }
       s.messages.push({ info: { id: "msg_partial", parentID: body.messageID, role: "assistant", sessionID: s.id, providerID: "router", modelID: "deepseek/flash" },
         parts: [{ type: "text", text: "partial work" }, { type: "tool", tool: "bash", callID: "call_running", state: { status: "running", input: { command: "long work" } } }] });
-    } else complete(s, body.messageID, mode !== "correction" || state.prompts > 1);
+    } else {
+      complete(s, body.messageID, mode !== "correction" || state.prompts > 1);
+      if (mode === "invalid-correction-busy" && state.prompts > 1) s.busy = true;
+      if (mode === "partial-after-complete") s.busy = true;
+    }
     if (mode === "lost-response") { req.socket.destroy(); return; }
     res.writeHead(204); res.end();
   });

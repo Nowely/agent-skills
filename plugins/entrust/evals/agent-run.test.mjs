@@ -966,6 +966,74 @@ test("--run always hands the driver its mailbox, making one for a directory an o
     return problems.length === 0 || problems.join("; ");
   });
 
+test("--watch requires the run mode and refuses other modes before touching a run",
+  "watching is a modifier of the signal-owning foreground wait, not a second launch or a pending-file read",
+  async () => {
+    for (const args of [["--watch"], ["--watch", "--new"], ["--watch", "--run", "--status"], ["--watch", "--run", "--pending"]]) {
+      const r = await spawnNode([LAUNCHER, ...args], { killAfterMs: 20000 }).done;
+      if (r.code !== 2 || !r.err.includes("--watch requires --run alone")) return `${args.join(" ")}: exit ${r.code}, ${r.err.slice(0, 100)}`;
+    }
+    return true;
+  });
+
+test("a watched callback is complete, emitted once, and the same attached call finishes after a separate decision",
+  "a pending approval must leave the signal-owning watcher alive rather than marking its proxy done",
+  async () => {
+    const state = tempDir("agent-run-watch.");
+    const report = path.join(state, "run", "report.json");
+    const dir = agentDirOf(report);
+    await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
+    const h = spawnNode([LAUNCHER, "--run", "--watch", "--report-file", report], { env: env(state, "approval-wait"), killAfterMs: 30000 });
+    try {
+      let frame;
+      for (const until = Date.now() + 15000; Date.now() < until; await sleep(50)) {
+        frame = /^EVENT<<([0-9a-f]{12})\n([\s\S]*?)\nEVENT>>\1$/m.exec(h.stdoutSoFar());
+        if (frame) break;
+      }
+      if (!frame) return `no complete callback event: ${h.stdoutSoFar().slice(0, 120)}`;
+      const id = /^REQUEST=(.+)$/m.exec(frame[2])?.[1];
+      const q = readJson(path.join(dir, "approvals", `${id}.request.json`));
+      if (!q || !frame[2].includes(q.command) || !frame[2].endsWith(`REPORT=${report}`)) return "the event lost request content or its report binding";
+      await sleep(300);
+      if (h.child.exitCode !== null || !alive(pidOf(dir))) return "the watcher or driver ended while the decision was pending";
+      if ((h.stdoutSoFar().match(/^EVENT=waiting$/gm) ?? []).length !== 1) return "the unchanged request was emitted more than once";
+      const decision = await launcherLines(["--decide", id, "--accept", "--why", "authorized fixture command", "--report-file", report], { input: `${q.command}\n` });
+      if (decision.code !== 0 || decision.out !== `DECIDED=${id} accept\n`) return `the separate decision failed: ${decision.out}`;
+      const ended = await h.done;
+      const tail = ended.out.trimEnd().split("\n").slice(-STATUS_LINES.length);
+      if (ended.code !== 0 || shapeOf(tail) !== "ended" || valueOf(tail, "EXIT") !== "0") return `the attached watcher did not finish: ${JSON.stringify(tail)}`;
+      if (readJson(path.join(dir, "approvals", `${id}.decision.json`))?.why !== "authorized fixture command") return "the decision lost its authorization reason";
+      return true;
+    } finally {
+      if (h.child.exitCode === null) { h.child.kill("SIGTERM"); await h.done; }
+      stopRun(dir);
+    }
+  });
+
+test("Stop reaches the owned driver while a watched callback waits",
+  "keeping the callback as an event must preserve signal forwarding through the same foreground call",
+  async () => {
+    const state = tempDir("agent-run-watch-stop.");
+    const report = path.join(state, "run", "report.json");
+    const dir = agentDirOf(report);
+    await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
+    const h = spawnNode([LAUNCHER, "--run", "--watch", "--report-file", report], { env: env(state, "approval-wait"), killAfterMs: 30000 });
+    try {
+      for (const until = Date.now() + 15000; Date.now() < until; await sleep(50)) if (/^EVENT>>[0-9a-f]{12}$/m.test(h.stdoutSoFar())) break;
+      if (!/^EVENT>>[0-9a-f]{12}$/m.test(h.stdoutSoFar())) return "no callback before Stop";
+      const pid = pidOf(dir);
+      h.child.kill("SIGTERM");
+      const ended = await h.done;
+      const tail = ended.out.trimEnd().split("\n").slice(-STATUS_LINES.length);
+      if (ended.code !== 0 || valueOf(tail, "DRIVER_EXIT") !== "1" || !tail.includes(`REPORT=${report}`)) return `Stop lost terminal status or ownership: ${JSON.stringify(tail)}`;
+      for (const until = Date.now() + 2000; Date.now() < until && pid !== null && alive(pid); await sleep(50)) {}
+      return pid !== null && !alive(pid) || "the owned driver remained alive after Stop";
+    } finally {
+      if (h.child.exitCode === null) { h.child.kill("SIGTERM"); await h.done; }
+      stopRun(dir);
+    }
+  });
+
 test("a --run whose agent asks hands the request back: the --pending block for it, REQUESTS=, WAITING= and REPORT= last, while the run goes on",
   "the wrapper hands back whatever its one call printed unless it ends in RUNNING=: ending the call on a request, with REPORT= last, is what puts the question in front of the coordinator as an agent's return, in the foreground case where no poll exists",
   async () => {
