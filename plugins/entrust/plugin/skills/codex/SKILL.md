@@ -21,6 +21,11 @@ The Codex this machine can run, asked of its server as this page loaded:
 
 !`node "${CLAUDE_SKILL_DIR}/scripts/status.mjs"`
 
+The orchestration status collector may call `status.mjs --json` directly without loading this skill
+page. That form returns account and limit status only; the Codex CLI status path has no recent-model
+source and does not request `model/list`. It does not identify the current host or its native
+subagent list. The active host supplies native model choices directly to orchestration.
+
 ## Composition
 
 Apply all six rules:

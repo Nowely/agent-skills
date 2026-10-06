@@ -2,40 +2,85 @@
 import { Client } from "./client.mjs";
 import { V2Client } from "./v2-client.mjs";
 import { connection, recentModels, modelKey } from "./config.mjs";
-import { startLocalServer } from "./local-server.mjs";
 import path from "node:path";
 
 const args = process.argv.slice(2);
-let limit = 2, apiFamily = "v1", cwd = null, agent = null;
+let apiFamily = null, cwd = null, agent = null, format = "text";
 const flags = new Set();
 for (let i = 0; i < args.length; i += 2) {
   const flag = args[i], value = args[i + 1];
-  if (!["--limit", "--api-family", "--directory", "--agent"].includes(flag) || !value || flags.has(flag)) {
-    console.error("usage: status.mjs [--limit 1..100] [--api-family v1|v2] [--directory ABS] [--agent NAME]"); process.exit(2);
+  if (!["--api-family", "--directory", "--agent", "--format"].includes(flag) || !value || flags.has(flag)) {
+    console.error("usage: status.mjs [--api-family v1|v2] [--directory ABS] [--agent NAME] [--format text|json]"); process.exit(2);
   }
   flags.add(flag);
-  if (flag === "--limit") limit = Number(value);
   if (flag === "--api-family") apiFamily = value;
   if (flag === "--directory") cwd = value;
   if (flag === "--agent") agent = value;
+  if (flag === "--format") format = value;
 }
-if (!["v1", "v2"].includes(apiFamily) || (cwd && !path.isAbsolute(cwd))
-  || (agent && (apiFamily !== "v2" || !/^[\w-]+$/.test(agent)))) { console.error("invalid API family, directory or native agent"); process.exit(2); }
-let local = null;
+apiFamily ??= format === "json" ? "auto" : "v1";
+if (!["v1", "v2", "auto"].includes(apiFamily) || (cwd && !path.isAbsolute(cwd))
+  || (format === "text" && apiFamily === "auto")
+  || (format === "json" && (apiFamily !== "auto" || agent))
+  || (agent && (apiFamily !== "v2" || !/^[\w-]+$/.test(agent))) || !["text", "json"].includes(format)) {
+  console.error("invalid API family, directory, native agent or format"); process.exit(2);
+}
+
+function recentState() {
+  try {
+    const models = recentModels({ limit: 2 });
+    return { status: models.length ? "available" : "empty", source: "saved_recent", models };
+  } catch { return { status: "unavailable", source: "saved_recent", models: [] }; }
+}
+
+function result({ status, configured, endpointStatus, connectionMode, routes = [], recent, checkedAt, error = null }) {
+  return { schemaVersion: 1, adapter: "opencode", status, configured, endpointStatus, connectionMode,
+    checkedAt, routes, recent, modelAvailability: "unknown",
+    usage: { status: "unknown", scope: "route", source: "opencode-status", windows: [] },
+    ...(error ? { error } : {}) };
+}
+
 try {
-  const models = recentModels({ limit });
+  const recent = recentState();
   const configured = connection();
-  local = configured.local ? await startLocalServer({ cwd: cwd ?? process.cwd() }) : null;
-  const client = new (apiFamily === "v2" ? V2Client : Client)({ config: local?.config ?? configured, cwd });
-  const server = await client.probe();
-  console.log(`OPENCODE=ready version=${server.version} url=${server.url}`);
-  console.log(`ROUTES=v1:${server.legacy} v2:${server.v2}`);
-  console.log(`ADAPTER=apiFamily:${apiFamily} strictSteer:unsupported`);
-  if (agent) { await client.profile(agent); console.log(`AGENT=${agent} profile:default-deny`); }
-  for (const ref of models) {
-    try { const m = await client.model(ref); console.log(`MODEL=${modelKey(m)} name=${JSON.stringify(m.name)} variants=${m.variants.join(",")}`); }
-    catch { console.log(`UNAVAILABLE=${modelKey(ref)}`); }
+  const directory = cwd ?? process.cwd();
+  if (configured.local) {
+    const status = result({ status: "local_unprobed", configured: true, endpointStatus: "unknown", connectionMode: "local",
+      recent, checkedAt: new Date().toISOString() });
+    if (format === "json") console.log(JSON.stringify(status));
+    else {
+      console.log("OPENCODE=local-unprobed");
+      console.log("ROUTES=v1:unknown v2:unknown");
+      for (const model of recent.models) console.log(`MODEL=${modelKey(model)} variant=${model.variant ?? "none"} availability=unknown`);
+      if (!recent.models.length) console.log("MODEL=none (no saved recent model)");
+    }
+  } else {
+    const client = new Client({ config: configured, cwd: directory });
+    const server = await client.probe();
+    const routes = [
+      { apiFamily: "v1", status: server.legacy ? "available" : "unavailable" },
+      { apiFamily: "v2", status: server.v2 ? "available" : "unavailable" },
+    ];
+    const status = result({ status: "ready", configured: true, endpointStatus: "ready", connectionMode: "remote",
+      routes, recent, checkedAt: new Date().toISOString() });
+    if (format === "json") console.log(JSON.stringify(status));
+    else {
+      console.log(`OPENCODE=ready version=${server.version}`);
+      console.log(`ROUTES=v1:${server.legacy} v2:${server.v2}`);
+      console.log(`ADAPTER=apiFamily:${apiFamily} strictSteer:unsupported`);
+      if (agent) {
+        const v2 = new V2Client({ config: configured, cwd: directory });
+        await v2.profile(agent);
+        console.log(`AGENT=${agent} profile:default-deny`);
+      }
+      for (const model of recent.models) console.log(`MODEL=${modelKey(model)} variant=${model.variant ?? "none"} availability=unknown`);
+      if (!recent.models.length) console.log("MODEL=none (no saved recent model)");
+    }
   }
-  if (!models.length) console.log("MODEL=none (recent list is empty; choose an explicit provider/model)");
-} catch (e) { console.log(`OPENCODE=unchecked ${e.message}`); process.exitCode = 1; }
-finally { await local?.close(); }
+} catch (error) {
+  const status = result({ status: "unchecked", configured: null, endpointStatus: "unknown", connectionMode: null,
+    recent: recentState(), checkedAt: new Date().toISOString(), error: format === "json" ? "probe_unchecked" : undefined });
+  if (format === "json") console.log(JSON.stringify(status));
+  else console.log(`OPENCODE=unchecked ${String(error.message).replace(/[\r\n\x00-\x1f]/g, " ").slice(0, 300)}`);
+  process.exitCode = format === "json" ? 0 : 1;
+}

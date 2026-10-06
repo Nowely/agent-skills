@@ -21,7 +21,7 @@ quality only when it materially changes the allocation.
 | work | deliverables, ownership, interfaces and completion criteria |
 | team | coordinator role and each agent's role, one model display name and policy coverage in one place; do not restate the coordinator's model or call it unknown; show effort only when it departs from the profile default or needs a decision; do not repeat an equivalent model slug |
 | writes | allowed directories, temporary artifacts, any isolated worktrees and network constraints |
-| checks | who verifies what and which evidence decides; include allocation and result checks |
+| checks | who verifies what and which evidence decides; include host runtime facts, passive adapter-status source/freshness, recent-list scope, quota windows, allocation and exact launch validation |
 
 Show the concrete team in every plan. Mark choices covered by the standing policy in
 [Capacity and models](../SKILL.md#capacity-and-models). Approval covers the listed work and in-policy
@@ -37,6 +37,9 @@ work. Compare the same inputs with a stronger reference; check omissions, incorr
 Expand when the rule passes. Estimate batches from comparable runs, including a rerun margin. When
 observable usage exceeds three times the pilot's median per agent, pause that batch and review its
 remaining scope with the user.
+
+A model name does not establish price or quota consumption. Keep provider prices, measured usage and
+account/route/model limit windows as separate sourced facts; unknown or stale values are not unlimited.
 
 ## Environment and worktrees
 

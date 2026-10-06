@@ -17,9 +17,9 @@ const STATUS = path.join(SCRIPTS, "status.mjs");
 const shim = codexShim(tempDir("entrust-status-shim-"));
 const { cases: CASES, test } = registry();
 
-async function status(env = {}) {
+async function status(env = {}, args = []) {
   const log = path.join(tempDir("entrust-status-log-"), "rpc.log");
-  const { done } = spawnNode([STATUS], { env: { ENTRUST_CODEX: shim, FAKE_RPC_LOG: log, ...env }, killAfterMs: 20000 });
+  const { done } = spawnNode([STATUS, ...args], { env: { ENTRUST_CODEX: shim, FAKE_RPC_LOG: log, ...env }, killAfterMs: 20000 });
   const r = await done;
   let rpc = "";
   try { rpc = fs.readFileSync(log, "utf8"); } catch {}
@@ -36,6 +36,34 @@ test("a signed-in account prints its plan and one MODEL line per short name, the
       `MODEL=sol gpt-6-sol efforts=${efforts}`, `MODEL=luna gpt-6.10-luna efforts=${efforts}`].join("\n");
     if (exitedZero(r) !== true) return exitedZero(r);
     return r.out.trim() === want || `printed ${JSON.stringify(r.out.trim())}, want ${JSON.stringify(want)}`;
+  });
+
+test("JSON status returns account limits without requesting the model catalogue",
+  "orchestration status must not turn the Codex adapter's full model/list into its recent-model inventory",
+  async () => {
+    const r = await status({ FAKE_RATELIMITS_MULTIPLE: "1" }, ["--json"]);
+    if (exitedZero(r) !== true) return exitedZero(r);
+    let data;
+    try { data = JSON.parse(r.out); } catch { return `invalid JSON: ${r.out}`; }
+    if (data.adapter !== "codex" || data.configured !== true || data.modelAvailability !== "unknown") return "wrong connection state";
+    if (data.recent?.status !== "unsupported" || data.recent.models.length !== 0) return "invented a recent model list";
+    if (data.usage?.scope !== "account" || data.usage?.status !== "available") return "missing account usage state";
+    if (data.usage.rateLimitsByLimitId?.primary?.usedPercent !== 99 || data.usage.rateLimitsByLimitId?.secondary?.usedPercent !== 52)
+      return "did not preserve all rate-limit windows";
+    if (/^model\/list/m.test(r.rpc)) return "JSON status requested the full model catalogue";
+    if (/thread\/start|turn\/start/.test(r.rpc)) return "status started a model task";
+    return r.out.includes("fixture@example.invalid") || /model\/list.*email/i.test(r.out) ? "status leaked account identity" : true;
+  });
+
+test("JSON status keeps a signed-in catalog ready when rate-limit telemetry is unavailable",
+  "an unavailable usage endpoint is unknown budget, not missing models or an unlimited window",
+  async () => {
+    const r = await status({ FAKE_RATELIMITS_ERROR: "1" }, ["--json"]);
+    if (exitedZero(r) !== true) return exitedZero(r);
+    let data;
+    try { data = JSON.parse(r.out); } catch { return `invalid JSON: ${r.out}`; }
+    return data.status === "ready" && data.usage?.status === "unknown" && data.usage?.windows?.length === 0
+      || `wrong result: ${JSON.stringify(data)}`;
   });
 
 test("signed out: one line, and the catalogue is never asked",
@@ -110,7 +138,7 @@ test("the codex page injects the line, it runs this script, its allowed-tools co
     for (const skill of fs.readdirSync(path.join(ROOT, "skills")).filter((s) => s !== "codex")) {
       let other = "";
       try { other = fs.readFileSync(path.join(ROOT, "skills", skill, "SKILL.md"), "utf8"); } catch { continue; }
-      if (/status\.mjs/.test(other) && skill !== "opencode") problems.push(`${skill}/SKILL.md runs or names Codex status.mjs`);
+      if (/codex\/scripts\/status\.mjs/.test(other) && skill !== "codex") problems.push(`${skill}/SKILL.md runs or names Codex status.mjs`);
       if (skill === "opencode" && /(?:\.\.\/codex|skills\/codex)\/scripts\/status\.mjs/.test(other))
         problems.push("opencode/SKILL.md must use its own discovery, not Codex status.mjs");
     }

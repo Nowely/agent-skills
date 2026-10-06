@@ -36,18 +36,20 @@ rule. A model mentioned only for information or discussion does not request a wo
 
 ## Select and launch
 
-1. Run `node <skill-dir>/scripts/status.mjs`. The adapter starts a private local server automatically,
-   shows two recent models in their saved order, and checks availability without printing the full
-   catalogue. `--limit N` explicitly widens discovery. To attach to a remote server, set
+1. Run `node <skill-dir>/scripts/status.mjs`. Status is passive: it reads at most two saved recent
+   model references and checks only an already-configured remote endpoint; it never starts a server or
+   requests a model catalogue. A default local setup reports `local_unprobed` and retains its saved
+   recent references; whether a local server is already running remains unknown. Model availability remains unknown until the launch path
+   validates the exact selection. To attach to a remote server, set
    `ENTRUST_OPENCODE_URL` (and `OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD` if needed), or
    point `ENTRUST_OPENCODE_CONNECTION` at a private JSON file containing `url`, `username`, and
    `password`. Keep credentials out of prompts and reports. For native V2 use
-   `--api-family v2 --directory <cwd> --agent <profile>` to check that location, exact model SDK, and
-   profile; V2 requires that profile in the user's OpenCode configuration.
+   `--api-family v2 --directory <cwd> --agent <profile>` to check that location and the named profile;
+   V2 requires that profile in the user's OpenCode configuration.
 2. Choose `MODEL: inherit` only when the user did not name a model family: it selects the first recent
-   model. When the user names a family such as DeepSeek or GLM, widen discovery with `--limit N` as
-   needed, then pin an available exact `provider/model` from that family; never use `inherit` or a
-   different recent model for that request. If no matching available model is listed, report the
+   model. When the user names a family such as DeepSeek or GLM, use a matching recent reference if
+   present; never use `inherit` or a different recent model for that request. If no matching recent
+   reference is listed, report the
    unresolved family before launching. A continuation retains its previous model and variant. Explicit
    `MODEL: provider/model` overrides selection; preserve slashes inside the model ID.
    `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant.

@@ -6,7 +6,6 @@ export async function fakeOpenCode(mode = "normal") {
   const state = { mode, sessions, calls, replies, questions, mutations, prompts: 0, aborts: [], url: null };
   const paths = Object.fromEntries([
     ["/session", "post"],
-    ["/api/session/{sessionID}/prompt", "post"],
     ["/session/{sessionID}/permissions/{permissionID}", "post"],
     ["/api/session/{sessionID}/message", "get"],
     ["/session/{sessionID}/prompt_async", "post"],
@@ -46,9 +45,16 @@ export async function fakeOpenCode(mode = "normal") {
     try { body = chunks.length ? JSON.parse(Buffer.concat(chunks)) : null; } catch { body = null; }
     calls.push({ method: req.method, path: p, body });
     const json = (value, status = 200) => { res.writeHead(status, { "Content-Type": "application/json" }); res.end(JSON.stringify(value)); };
+    if (p === "/global/health" && mode === "health-error") return json({ healthy: false }, 503);
     if (p === "/global/health") return json({ healthy: true, version: "1.18.34" });
-    if (p === "/doc") return json({ paths });
-    if (p === "/provider") return json({ connected: ["router"], all: [{ id: "router", models: { "deepseek/flash": { name: "Flash", variants: { high: {} }, capabilities: { toolcall: true } }, "glm/flash": { name: "GLM", variants: {} } } }] });
+    if (p === "/doc") {
+      if (mode === "slow-doc") await new Promise((resolve) => setTimeout(resolve, 10000));
+      return json({ paths });
+    }
+    if (p === "/provider") return json({ connected: ["router"], all: [
+      { id: "router", models: { "deepseek/flash": { name: "Flash", variants: { high: {} }, capabilities: { toolcall: true } }, "glm/flash": { name: "GLM", variants: {} } } },
+      { id: "not-connected", models: { hidden: { name: "Hidden", variants: {}, capabilities: {} } } },
+    ] });
     if (p === "/event") { res.writeHead(200, { "Content-Type": "text/event-stream" }); res.write('data: {"type":"server.connected"}\n\n'); return; }
     if (p === "/session" && req.method === "POST") {
       const s = { id: `ses_owned_${++seq}`, directory: u.searchParams.get("directory"), permission: body.permission, messages: [], busy: false, children: [], time: { created: Date.now() } };
@@ -150,6 +156,7 @@ export async function fakeOpenCodeV2(mode = "normal") {
   const state = { sessions, calls, replies: permissions, questions, mutations, prompts: 0, aborts: [] };
   const paths = Object.fromEntries([
     ["/api/session", ["get", "post"]], ["/api/model", ["get"]], ["/api/agent", ["get"]],
+    ["/session/{sessionID}/prompt_async", ["post"]],
     ["/api/session/active", ["get"]], ["/api/session/{sessionID}", ["get"]],
     ["/api/session/{sessionID}/prompt", ["post"]], ["/api/session/{sessionID}/message", ["get"]],
     ["/api/session/{sessionID}/history", ["get"]], ["/api/session/{sessionID}/interrupt", ["post"]],
@@ -198,8 +205,16 @@ export async function fakeOpenCodeV2(mode = "normal") {
     };
     if (p === "/global/health") return json({ healthy: true, version: "1.18.34" });
     if (p === "/doc") return json({ paths });
-    if (p === "/api/model") return json({ data: [{ id: "deepseek/flash", providerID: "router", enabled: true,
-      api: { package: mode === "unsupported-sdk" ? "@openrouter/ai-sdk-provider" : "@ai-sdk/openai-compatible" }, variants: [{ id: "high" }], name: "Flash" }] });
+    if (p === "/provider") return json({ connected: ["router"], all: [{ id: "router", models: {
+      "deepseek/flash": { name: "Flash V1", variants: { high: {} }, capabilities: { toolcall: true } },
+    } }] });
+    if (p === "/api/model" && mode === "v2-model-error") return json({ error: "catalog unavailable" }, 503);
+    if (p === "/api/model") return json({ data: [
+      { id: "deepseek/flash", providerID: "router", enabled: true,
+        api: { package: mode === "unsupported-sdk" ? "@openrouter/ai-sdk-provider" : "@ai-sdk/openai-compatible" }, variants: [{ id: "high" }], name: "Flash", capabilities: { toolcall: true } },
+      { id: "glm", providerID: "router", enabled: true, api: { package: "@openrouter/ai-sdk-provider" }, variants: [], name: "GLM" },
+      { id: "disabled", providerID: "router", enabled: false, api: { package: "@ai-sdk/openai-compatible" }, variants: [], name: "Disabled" },
+    ] });
     if (p === "/api/agent") return json({ data: [{ id: "default", mode: "primary", permissions: [
       { action: "*", resource: "*", effect: "allow" },
     ] }, { id: "bridge", mode: "primary", permissions: [

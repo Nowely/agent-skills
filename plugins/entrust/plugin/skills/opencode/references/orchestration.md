@@ -5,6 +5,11 @@ for an external OpenCode worker. Each worker uses the native proxy from the adap
 the external model does the task. Count each active proxy against host capacity and each external
 session against router limits. Use the smallest approved pool.
 
+Orchestration status calls `scripts/status.mjs --format json` directly; it does not load this skill
+page, start a local server or submit a model task. It returns up to two saved recent model references
+and route health from an already-configured endpoint. It does not query V1/V2 model catalogues or prove
+that a saved model is still available; the launch path validates the exact selection.
+
 Record the native proxy's model and thread alongside the external worker's model, session and report.
 The plan's model column names the external worker; it must not be replaced with the proxy's Luna.
 Reuse that native thread when a session continues. Its brief uses the agreed task, rights and user
@@ -21,9 +26,10 @@ R1 | opencode | <second provider/model from recent status> | verifier | nothing 
 
 Register with `node <skill-dir>/scripts/agent-run.mjs --plan --run-dir <run>`. Every OpenCode row
 uses a concrete model ID, never `inherit` or a display name. Its prompt carries the same `MODEL:`.
-For a requested model family, widen status discovery with `--limit N` until its available exact ID is
-listed, then pin one matching ID per requested family; report any family with no available match
-without substituting another recent model.
+For a requested model family, use only a matching reference in the two-item recent list. If none is
+present, report the gap and ask for an exact `provider/model` or an approved wider lookup; do not
+expand a catalog or substitute another recent model silently. The launch path validates an explicit
+exact model before creating a session.
 The saved backend and plan model follow the detached keeper; mutable defaults cannot reroute it.
 Amend the approved plan before adding a worker or changing its model or write scope.
 Each prepared V2 prompt adds `API_FAMILY: v2` and `AGENT: <verified native profile>`; the resulting

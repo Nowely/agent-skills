@@ -488,7 +488,10 @@ function onLine(line) {
     w(reply(m.id, { rateLimits: {
       primary: { usedPercent: SCENARIO === "rate-limited" ? 100 : 25,
                  windowDurationMins: 300, resetsAt: 1780003600 }
-    }, rateLimitsByLimitId: null, rateLimitResetCredits: null }));
+    }, rateLimitsByLimitId: process.env.FAKE_RATELIMITS_MULTIPLE ? {
+      primary: { usedPercent: SCENARIO === "rate-limited" ? 100 : 99, windowDurationMins: 300, resetsAt: 1780003600 },
+      secondary: { usedPercent: 52, windowDurationMins: 10080, resetsAt: 1780060000 },
+    } : null, rateLimitResetCredits: null }));
     return;
   }
 
