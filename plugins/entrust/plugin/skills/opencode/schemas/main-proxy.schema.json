@@ -1,35 +1,186 @@
 {
   "type": "object",
   "properties": {
-    "plan": { "type": "string" },
-    "calls": {
+    "plan": {
+      "type": "string"
+    },
+    "requests": {
       "type": "array",
       "items": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "tool": { "type": "string", "minLength": 1 },
-          "input": { "type": "string" }
-        },
-        "required": ["id", "tool", "input"],
-        "additionalProperties": false
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "delegate"
+                ]
+              },
+              "agent_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "task": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scope": {
+                "type": "string",
+                "minLength": 1
+              },
+              "model": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1
+              },
+              "effort": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "action",
+              "agent_id",
+              "task",
+              "scope",
+              "model",
+              "effort"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "continue"
+                ]
+              },
+              "agent_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "task": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "action",
+              "agent_id",
+              "task"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "collect"
+                ]
+              },
+              "agent_ids": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "id",
+              "action",
+              "agent_ids"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "stop"
+                ]
+              },
+              "agent_ids": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "id",
+              "action",
+              "agent_ids"
+            ],
+            "additionalProperties": false
+          }
+        ]
       }
     },
-    "final_answer": { "type": "string" }
+    "final_answer": {
+      "type": "string"
+    }
   },
-  "required": ["plan", "calls", "final_answer"],
+  "required": [
+    "plan",
+    "requests",
+    "final_answer"
+  ],
   "additionalProperties": false,
   "oneOf": [
     {
       "properties": {
-        "calls": { "minItems": 1 },
-        "final_answer": { "enum": [""] }
+        "requests": {
+          "minItems": 1
+        },
+        "final_answer": {
+          "enum": [
+            ""
+          ]
+        }
       }
     },
     {
       "properties": {
-        "calls": { "maxItems": 0 },
-        "final_answer": { "minLength": 1 }
+        "requests": {
+          "maxItems": 0
+        },
+        "final_answer": {
+          "minLength": 1
+        }
       }
     }
   ]

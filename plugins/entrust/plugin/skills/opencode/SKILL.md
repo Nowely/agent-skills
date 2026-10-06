@@ -24,6 +24,8 @@ An affirmative “Прокси на GLM” selects the main conversation as a pr
 decisions. Read [main-proxy.md](references/main-proxy.md) and use that loop instead of creating a
 per-worker proxy; its return uses [main-proxy.schema.json](schemas/main-proxy.schema.json). An ordinary
 request such as “Позови DeepSeek: проверь diff” delegates one worker and follows the launch steps below.
+The proxy reads complete order batches with `node <skill-dir>/scripts/agent-orders.mjs <report> <mode>`;
+that helper validates orders and saved binding shape, while the host verifies ownership and executes them.
 
 When the user asks to call, use or include a named model outside Codex and Claude in an agent pool, route
 that worker through OpenCode even when the user does not say “OpenCode” or has not stated the task yet.

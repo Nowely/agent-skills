@@ -7,8 +7,8 @@ agents may return text or write permitted temporary artifacts. Roles divide owne
 the parent orchestrator owns the work-list, changes of authority, synthesis and landing of results.
 An operational proxy may apply existing authority from its brief; it forwards the worker's complete
 return and keeps transport status separate. In the [main proxy mode](../../opencode/SKILL.md), the
-external coordinator owns those orchestration decisions and the current host executes concrete
-requests through its available tools.
+external coordinator owns those orchestration decisions and gives concrete agent orders; the current
+host launches the workers and owns their transport and lifecycle.
 
 | Role | What it does | May write | Returns | Spawn it when | Tier |
 |---|---|---|---|---|---|

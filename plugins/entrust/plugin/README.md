@@ -19,7 +19,9 @@ adapter requirements; native compatibility of every installed skill is not impli
 
 “Прокси на GLM” selects an external main coordinator through
 [opencode](skills/opencode/SKILL.md). It makes the plan, chooses subagents and interprets results;
-the current conversation forwards complete messages and executes concrete host-tool requests.
+the current conversation forwards complete messages, executes concrete agent orders and manages
+worker lifecycle. The coordinator requests delegation, continuation, collection or Stop; it does not
+write the host's invocation code.
 The same external session continues across user messages. This selects a role, not the host's model:
 choose Luna medium in the interface when that is the desired gateway. “Позови DeepSeek: проверь diff”
 continues to delegate one worker. In Codex, external workers use native Luna medium proxies by default,

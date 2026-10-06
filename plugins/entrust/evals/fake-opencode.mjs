@@ -27,8 +27,8 @@ export async function fakeOpenCode(mode = "normal") {
     let text = valid ? answer() : "invalid output";
     if (mode === "invalid-correction" || mode === "invalid-correction-busy") text = JSON.stringify({ status: "invalid", result: state.prompts === 1 ? "FIRST" : "SECOND", evidence: [], artifacts: [], open: [] });
     if (mode === "answer-context") text = `Detail before the JSON.\n${answer()}\nDetail after the JSON.`;
-    if (mode === "main-proxy-correction") text = JSON.stringify({ plan: "", calls: state.prompts === 1
-      ? [{ id: "inspect", tool: "list_agents", input: "{}" }] : [], final_answer: "Complete coordinator reply" });
+    if (mode === "main-proxy-correction") text = JSON.stringify({ plan: "", requests: state.prompts === 1
+      ? [{ id: "inspect", action: "collect", agent_ids: ["reviewer"] }] : [], final_answer: "Complete coordinator reply" });
     s.messages.push({ info, parts: [{ type: "text", text }] });
     if (mode === "partial-after-complete") {
       s.messages.push({ info: { ...info, id: `msg_partial_${state.prompts}`, time: { created: Date.now() + 1 } },
