@@ -6,7 +6,7 @@ description: >-
   independent review, competing implementation or multi-provider panel. Native Codex subagents
   use the host's own delegation facilities instead.
 metadata:
-  version: "0.25.0"
+  version: "0.25.1"
 license: MIT
 allowed-tools: Bash(node *codex/scripts/status.mjs*)
 ---
