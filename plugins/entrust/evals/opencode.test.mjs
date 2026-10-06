@@ -262,10 +262,11 @@ const DRIVER = path.join(ROOT, "skills/opencode/scripts/driver.mjs");
 function fakeCli(url, dir) {
   const bin = path.join(dir, "fake-bin"); fs.mkdirSync(bin, { recursive: true });
   const stopFile = path.join(dir, "opencode-stopped");
+  const startFile = path.join(dir, "opencode-started");
   const script = path.join(bin, "opencode");
-  fs.writeFileSync(script, `#!/usr/bin/env node\nconst fs=require("node:fs");\nconsole.log("server listening on "+process.env.FAKE_OPENCODE_URL);\nprocess.on("SIGTERM",()=>{fs.writeFileSync(process.env.FAKE_OPENCODE_STOP_FILE,"stopped");process.exit(0)});\nsetInterval(()=>{},1000);\n`, { mode: 0o755 });
+  fs.writeFileSync(script, `#!/usr/bin/env node\nconst fs=require("node:fs");\nfs.writeFileSync(process.env.FAKE_OPENCODE_START_FILE,"started");\nconsole.log("server listening on "+process.env.FAKE_OPENCODE_URL);\nprocess.on("SIGTERM",()=>{fs.writeFileSync(process.env.FAKE_OPENCODE_STOP_FILE,"stopped");process.exit(0)});\nsetInterval(()=>{},1000);\n`, { mode: 0o755 });
   return { stopFile, env: { PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}`,
-    FAKE_OPENCODE_URL: url, FAKE_OPENCODE_STOP_FILE: stopFile } };
+    FAKE_OPENCODE_URL: url, FAKE_OPENCODE_START_FILE: startFile, FAKE_OPENCODE_STOP_FILE: stopFile }, startFile };
 }
 async function driverRun(server, { headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", localServer = false, localUrl = server.url } = {}) {
   const state = tempDir("entrust-opencode-driver-");
@@ -608,7 +609,7 @@ test("incomplete initial descendants refuse admission and preserve unknown cance
   } finally { await s.close(); }
 });
 const V2 = "API_FAMILY: v2\nAGENT: bridge\n";
-test("V2 status checks the chosen profile and only the two recent models", async () => {
+test("V2 text status checks only an explicitly named profile and prints two saved recent refs", async () => {
   const s = await fakeOpenCodeV2();
   try {
     const r = await invoke([STATUS, "--api-family", "v2", "--directory", cwd, "--agent", "bridge"], "", {
@@ -617,19 +618,70 @@ test("V2 status checks the chosen profile and only the two recent models", async
         { providerID: "router", modelID: "never-listed" }] }),
     });
     assert.equal(r.code, 0, r.err); assert.match(r.out, /apiFamily:v2/); assert.match(r.out, /AGENT=bridge/);
-    assert.match(r.out, /UNAVAILABLE=router\/glm/); assert.equal(r.out.includes("never-listed"), false);
+    assert.match(r.out, /MODEL=router\/deepseek\/flash variant=none availability=unknown/);
+    assert.match(r.out, /MODEL=router\/glm variant=none availability=unknown/);
+    assert.equal(r.out.includes("never-listed"), false);
     assert.equal(s.prompts, 0); assert.ok(s.calls.every((c) => c.method === "GET"));
+    assert.equal(s.calls.some((c) => c.path === "/api/model"), false);
   } finally { await s.close(); }
 });
-test("status starts a private local server when no endpoint is configured", async () => {
+test("JSON status returns at most two saved recent refs and does not query model catalogs", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const r = await invoke([STATUS, "--format", "json"], "", {
+      ENTRUST_OPENCODE_URL: s.url, ENTRUST_OPENCODE_CONNECTION: undefined,
+      ...recent({ recent: [{ providerID: "router", modelID: "deepseek/flash" }, { providerID: "router", modelID: "glm/flash" },
+        { providerID: "router", modelID: "not-in-top-two" }], variant: { "router/deepseek/flash": "high" } }),
+    });
+    assert.equal(r.code, 0, r.out + r.err);
+    const data = JSON.parse(r.out);
+    assert.equal(data.adapter, "opencode"); assert.equal(data.configured, true); assert.equal(data.status, "ready");
+    assert.deepEqual(data.routes.map((route) => [route.apiFamily, route.status]), [["v1", "available"], ["v2", "unavailable"]]);
+    assert.deepEqual(data.recent.models.map((m) => `${m.providerID}/${m.modelID}`), ["router/deepseek/flash", "router/glm/flash"]);
+    assert.equal(data.recent.models[0].variant, "high");
+    assert.equal(data.modelAvailability, "unknown"); assert.equal(data.usage.status, "unknown");
+    assert.ok(s.calls.every((c) => c.method === "GET"));
+    assert.equal(s.calls.some((c) => ["/provider", "/api/model", "/api/agent"].includes(c.path)), false);
+    assert.equal(s.calls.some((c) => c.path === "/session" || c.path.startsWith("/session/")), false);
+  } finally { await s.close(); }
+});
+test("JSON status reports both route families without loading their catalogs or profiles", async () => {
+  const s = await fakeOpenCodeV2();
+  try {
+    const r = await invoke([STATUS, "--format", "json"], "", {
+      ENTRUST_OPENCODE_URL: s.url, ENTRUST_OPENCODE_CONNECTION: undefined,
+      ...recent({ recent: [{ providerID: "router", modelID: "deepseek/flash" }] }),
+    });
+    assert.equal(r.code, 0, r.out + r.err);
+    const data = JSON.parse(r.out);
+    assert.deepEqual(data.routes.map((route) => [route.apiFamily, route.status]), [["v1", "available"], ["v2", "available"]]);
+    assert.deepEqual(data.recent.models.map((m) => m.modelID), ["deepseek/flash"]);
+    assert.equal(data.modelAvailability, "unknown");
+    assert.equal(s.calls.some((c) => ["/provider", "/api/model", "/api/agent"].includes(c.path)), false);
+    assert.equal(s.calls.some((c) => c.path.includes("/prompt") || c.path === "/api/session"), false);
+  } finally { await s.close(); }
+});
+test("passive status does not start a local server when none is configured", async () => {
   const s = await fakeOpenCode(), state = tempDir("entrust-opencode-status-local-");
   const cli = fakeCli(s.url, state);
   try {
-    const r = await invoke([STATUS], "", { ...recent({ recent: [{ providerID: "router", modelID: "deepseek/flash" }] }), ...cli.env });
-    assert.equal(r.code, 0, r.out + r.err); assert.match(r.out, /OPENCODE=ready/);
-    assert.match(r.out, /MODEL=router\/deepseek\/flash/);
-    assert.equal(fs.readFileSync(cli.stopFile, "utf8"), "stopped");
+    const r = await invoke([STATUS, "--format", "json"], "", { ...recent({ recent: [{ providerID: "router", modelID: "deepseek/flash" }] }), ...cli.env,
+      ENTRUST_OPENCODE_URL: undefined, ENTRUST_OPENCODE_CONNECTION: undefined });
+    assert.equal(r.code, 0, r.out + r.err);
+    const data = JSON.parse(r.out);
+    assert.equal(data.status, "local_unprobed"); assert.equal(data.modelAvailability, "unknown");
+    assert.deepEqual(data.recent.models.map((m) => m.modelID), ["deepseek/flash"]);
+    assert.equal(fs.existsSync(cli.startFile), false);
   } finally { await s.close(); }
+});
+test("text status distinguishes a missing recent source from an empty recent list", async () => {
+  const r = await invoke([STATUS], "", {
+    ENTRUST_OPENCODE_URL: undefined, ENTRUST_OPENCODE_CONNECTION: undefined, ENTRUST_OPENCODE_LOCAL: undefined,
+    ENTRUST_OPENCODE_MODEL_STATE: undefined, XDG_STATE_HOME: tempDir("entrust-opencode-no-recent-text-"),
+  });
+  assert.equal(r.code, 0, r.out + r.err);
+  assert.match(r.out, /MODEL=unknown \(recent source unavailable\)/);
+  assert.equal(r.out.includes("MODEL=none"), false);
 });
 test("V2 selection is explicit and a new invocation needs its native profile", () => {
   assert.match(parsePrompt(prompt("API_FAMILY: auto\n")).error, /v1 or v2/);

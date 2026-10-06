@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "adapters": [
+    {
+      "id": "codex",
+      "script": "../codex/scripts/status.mjs",
+      "args": ["--json"]
+    },
+    {
+      "id": "opencode",
+      "script": "../opencode/scripts/status.mjs",
+      "args": ["--format", "json"]
+    }
+  ]
+}

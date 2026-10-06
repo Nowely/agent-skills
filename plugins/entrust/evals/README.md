@@ -12,7 +12,7 @@ node evals/run-all.mjs        # every suite, cheapest first, stopping at the fir
 node evals/cli.test.mjs       # one suite, when it is the thing being worked on
 ```
 
-`run-all.mjs` lists the twenty-two, cheapest first: orchestrate, advisor, fragments, lint-draft, gate-checks, package, capture-check, agent-contract, agent-run, swarm, attach-pasted, experiment, status, prepare-feedback, cleanup, worktree, cli, conformance, lock, protocol, fidelity, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
+`run-all.mjs` lists the twenty-four suites cheapest first: orchestrate, adapter-status, advisor, fragments, lint-draft, gate-checks, package, capture-check, agent-contract, agent-run, opencode, swarm, attach-pasted, experiment, status, prepare-feedback, cleanup, worktree, cli, conformance, lock, protocol, fidelity, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
 listed cannot go unrun. A suite killed by a signal is a failure, not a pass: a killed child reports
 `code` null and `process.exit(null)` exits 0. A suite that skipped or never ran is deducted from the
 green count and named in the last line, which is the line to read.
@@ -34,6 +34,12 @@ pages name. It runs before `package`, so a release run stops on drift. `capture-
 reading of a session, `lib/gate-checks.mjs`, against fixture streams, so what the paid gate concludes is
 checked on every run. `status.test.mjs` drives `scripts/status.mjs` against the fake server in each state it
 prints, and reads the line the codex page injects to run it.
+
+`adapter-status.test.mjs` checks raw adapter-report collection, `--skip codex`, and that discovery
+does not accept host JSON or load adapter skill prose. OpenCode status tests assert that preflight
+returns at most two saved recent references, never requests model catalogs, and never starts a local
+server. Codex JSON status retains account limit windows without requesting `model/list`; its recent
+model source is reported as unsupported.
 
 The counts are deliberately not written down here — the last one was wrong twice in two days. The
 `CASES` arrays are the inventory, and each suite states its own count in its last line. A case that

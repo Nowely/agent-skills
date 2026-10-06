@@ -142,9 +142,13 @@ export class V2Client extends Client {
     throw new ApiError(`V2 model ${ref.providerID}/${ref.modelID} is unavailable; no substitute selected`);
   }
   async profile(name) {
+    const rows = await this.agentRows();
+    return validateProfile(rows.find((agent) => agent.id === name));
+  }
+  async agentRows() {
     const rows = await this.call("GET", "/api/agent");
     if (!Array.isArray(rows)) throw new ApiError("V2 agent catalogue is not an array");
-    return validateProfile(rows.find((agent) => agent.id === name));
+    return rows.filter((agent) => typeof agent?.id === "string");
   }
   async events(onEvent, signal) {
     return super.events(onEvent, signal, { route: "/api/event", mapEvent: (e) => ({ ...e, properties: e.data }) });

@@ -21,6 +21,10 @@ The Codex this machine can run, asked of its server as this page loaded:
 
 !`node "${CLAUDE_SKILL_DIR}/scripts/status.mjs"`
 
+`status.mjs --json` returns account limits only, with recent models unsupported; it does not identify
+the host or native subagents. The orchestration collector reads it without this page, and the active
+runtime supplies native model choices.
+
 ## Composition
 
 Apply all six rules:
@@ -236,12 +240,11 @@ turn goes on. The `--decide` call that answers it, what an accept runs as, and w
 
 ## What the user reads
 
-What reaches the user is
-prose the coordinator writes: in the user's own language, naming an agent by its model and id and saying what it
-did. Keep `Codex` on a Codex agent: it is the only word in the name that says whose model ran. The sentence about an agent has one shape: the agent by name is the subject and what it does or did is the verb ("Codex Sol R1 reads the diff"). The model slug is machinery too, and so are `wrapper` and `driver`: the name is `Codex Sol R1`, never the slug the report carries. A header field name, a status block, an internal
-table's row name and an absolute path are machinery; they belong in a prompt or a report, and putting them in
-front of a person says nothing they can act on ([the wrapper's message](references/incidents.md#the-wrappers-message)). Rights are the one thing that must survive the translation: say
-what an agent may write, and where, in ordinary words, because that is what the user is being asked to approve.
+What reaches the user is prose the coordinator writes, in the user's own language, naming an agent by its model
+and id and saying what it did. Keep `Codex` on a Codex agent; the agent by name is the subject and what it does or did is the verb ("Codex Sol R1 reads the diff"); the name is `Codex Sol R1`, never the slug the report carries.
+A header field name, a status block, an internal table's row name and an absolute path are machinery; keep them
+in prompts or reports ([the wrapper's message](references/incidents.md#the-wrappers-message)). The coordinator must
+say what an agent may write, and where, in ordinary words, so the user knows what they are approving.
 
 ## References
 

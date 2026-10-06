@@ -13,8 +13,9 @@ You own the work-list, the plan, the user conversation and the synthesis. Agents
 deliverables. Use the host's native delegation capabilities. A native Codex subagent needs no
 external launcher and does not activate the [codex adapter](../codex/SKILL.md); load that adapter
 only when the plan calls for an external Codex run. For an external OpenCode worker, load the
-[opencode adapter](../opencode/SKILL.md): it owns the shared server connection, recent-model selection,
-session continuation and native callbacks. Other skills may supply task-specific guidance.
+[opencode adapter](../opencode/SKILL.md): it owns the shared server connection, model selection,
+session continuation and native callbacks. Do not load adapter skill text for capability discovery;
+use the capability snapshot below, then load only the selected worker's adapter instructions.
 
 ## Your own hands
 
@@ -39,9 +40,27 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
 
 ## The plan
 
-1. Read [plan.md](references/plan.md) before composing. Check available models and their supported
-   effort settings, plus the context and delegation features this task needs. Apply the approved
-   model policy; treat unverified capabilities as unknown and name any unresolved prerequisite.
+1. Read [plan.md](references/plan.md) before composing. Take host identity, native model/effort
+   choices, delegation features and read-only usage windows directly from the active runtime. Do not
+   serialize them into a status-script input or infer them from another CLI; missing facts stay
+   `unknown`. Then run the read-only adapter collector:
+   `node <skill-dir>/scripts/adapter-status.mjs`. Pass `--skip codex` when Codex is the active native
+   host, so its external adapter status is not queried a second time. The collector returns registered
+   adapter reports without host JSON, loading adapter skill pages, normalizing a plan or launching a
+   worker. Use only recent model references with an adapter-sourced recent state; absent or unsupported
+   sources remain `unknown`/`unsupported`, never a substitute from the first catalog entries. A recent
+   reference is not proof it is currently runnable; the chosen adapter validates the exact model and
+   variant before execution. If an explicit model family has no recent candidate, report that gap; do
+   not silently expand to a full catalog or substitute.
+
+   Keep native host facts, adapter status and the plan's allowed-route policy separate. Preserve each
+   usage window's account/route/model scope, source and observation time; do not sum overlapping
+   windows or infer remaining calls from a percentage. Account windows include the coordinator and
+   workers/proxies using that account, but do not give per-model call counts. Missing telemetry is
+   `unknown`; age an observation against the current time and treat stale data as stale, never
+   unlimited. At the configured near-limit threshold (default 99% used), hold large work when its
+   estimate is unknown; use Luna only when task fit and quota savings are evidenced. Do not downgrade
+   silently.
 2. Assign tasks by ownership and shared interfaces, using [roles.md](references/roles.md). For a
    nontrivial split, include the split critic and its exact model in the proposed plan. Launch it only
    after the allocation is covered by the approved policy or the user approves the plan. Apply its
@@ -115,6 +134,11 @@ Check one assembled brief's input paths, output rights and completion criteria b
 Vary verifier perspectives rather than commissioning identical refuters. A decisive check that
 could not run yields `unknown`, not a refutation. Open one complete return before trusting a
 unanimous tally: agreement may be evidence of one broken prompt or prerequisite.
+
+Before dispatch, refresh passive adapter status and the relevant usage observations. The adapter's
+launch path validates the exact chosen model/variant/profile before creating a worker or submitting
+its task. That check is not a planning catalog: if it fails, stop and amend the plan; never substitute
+silently. Availability, authorization and budget remain separate coordinator decisions.
 
 Fix and cross-review at most two rounds, then use a stronger available reviewer or return the
 remaining blocker to the user. Two rounds repeating the same blocker require a revised plan.

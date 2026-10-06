@@ -21,9 +21,10 @@ R1 | opencode | <second provider/model from recent status> | verifier | nothing 
 
 Register with `node <skill-dir>/scripts/agent-run.mjs --plan --run-dir <run>`. Every OpenCode row
 uses a concrete model ID, never `inherit` or a display name. Its prompt carries the same `MODEL:`.
-For a requested model family, widen status discovery with `--limit N` until its available exact ID is
-listed, then pin one matching ID per requested family; report any family with no available match
-without substituting another recent model.
+Model selection and launch-time validation follow [Select and launch](../SKILL.md#select-and-launch).
+If a requested family cannot be resolved from recent references, report the gap and ask for an exact
+`provider/model` or an approved wider lookup; do not expand a catalog or substitute another recent
+model silently.
 The saved backend and plan model follow the detached keeper; mutable defaults cannot reroute it.
 Amend the approved plan before adding a worker or changing its model or write scope.
 Each prepared V2 prompt adds `API_FAMILY: v2` and `AGENT: <verified native profile>`; the resulting
