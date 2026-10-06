@@ -40,6 +40,13 @@ function result({ status, configured, endpointStatus, connectionMode, routes = [
     ...(error ? { error } : {}) };
 }
 
+function printRecent(recent) {
+  if (recent.status === "available") {
+    for (const model of recent.models) console.log(`MODEL=${modelKey(model)} variant=${model.variant ?? "none"} availability=unknown`);
+  } else if (recent.status === "empty") console.log("MODEL=none (no saved recent model)");
+  else console.log("MODEL=unknown (recent source unavailable)");
+}
+
 try {
   const recent = recentState();
   const configured = connection();
@@ -51,8 +58,7 @@ try {
     else {
       console.log("OPENCODE=local-unprobed");
       console.log("ROUTES=v1:unknown v2:unknown");
-      for (const model of recent.models) console.log(`MODEL=${modelKey(model)} variant=${model.variant ?? "none"} availability=unknown`);
-      if (!recent.models.length) console.log("MODEL=none (no saved recent model)");
+      printRecent(recent);
     }
   } else {
     const client = new Client({ config: configured, cwd: directory });
@@ -73,8 +79,7 @@ try {
         await v2.profile(agent);
         console.log(`AGENT=${agent} profile:default-deny`);
       }
-      for (const model of recent.models) console.log(`MODEL=${modelKey(model)} variant=${model.variant ?? "none"} availability=unknown`);
-      if (!recent.models.length) console.log("MODEL=none (no saved recent model)");
+      printRecent(recent);
     }
   }
 } catch (error) {

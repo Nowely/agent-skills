@@ -45,17 +45,13 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
    serialize them into a status-script input or infer them from another CLI; missing facts stay
    `unknown`. Then run the read-only adapter collector:
    `node <skill-dir>/scripts/adapter-status.mjs`. Pass `--skip codex` when Codex is the active native
-   host, so its adapter status is not queried a second time. The collector returns each registered
-   adapter's status response without loading adapter skill pages, normalizing a plan or launching a
-   worker. OpenCode status reads at most two saved recent model references and inspects only an
-   explicitly configured endpoint; it does not start a server or query V1/V2 model catalogs. With
-   the default local setup it reports `local_unprobed`; whether a local endpoint is already running is
-   unknown.
-   Codex CLI status reports account/limit state but has no recent-model source in this path, so its
-   recent list is `unsupported`. Never replace missing recent data with the first items from a full
-   catalog. A recent model reference is not proof it is currently runnable; the chosen adapter checks
-   the exact model and variant before execution. If an explicit model family has no recent candidate,
-   report that gap; do not silently expand to a full catalog or substitute.
+   host, so its external adapter status is not queried a second time. The collector returns registered
+   adapter reports without host JSON, loading adapter skill pages, normalizing a plan or launching a
+   worker. Use only recent model references with an adapter-sourced recent state; absent or unsupported
+   sources remain `unknown`/`unsupported`, never a substitute from the first catalog entries. A recent
+   reference is not proof it is currently runnable; the chosen adapter validates the exact model and
+   variant before execution. If an explicit model family has no recent candidate, report that gap; do
+   not silently expand to a full catalog or substitute.
 
    Keep native host facts, adapter status and the plan's allowed-route policy separate. Preserve each
    usage window's account/route/model scope, source and observation time; do not sum overlapping

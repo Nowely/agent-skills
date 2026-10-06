@@ -674,6 +674,15 @@ test("passive status does not start a local server when none is configured", asy
     assert.equal(fs.existsSync(cli.startFile), false);
   } finally { await s.close(); }
 });
+test("text status distinguishes a missing recent source from an empty recent list", async () => {
+  const r = await invoke([STATUS], "", {
+    ENTRUST_OPENCODE_URL: undefined, ENTRUST_OPENCODE_CONNECTION: undefined, ENTRUST_OPENCODE_LOCAL: undefined,
+    ENTRUST_OPENCODE_MODEL_STATE: undefined, XDG_STATE_HOME: tempDir("entrust-opencode-no-recent-text-"),
+  });
+  assert.equal(r.code, 0, r.out + r.err);
+  assert.match(r.out, /MODEL=unknown \(recent source unavailable\)/);
+  assert.equal(r.out.includes("MODEL=none"), false);
+});
 test("V2 selection is explicit and a new invocation needs its native profile", () => {
   assert.match(parsePrompt(prompt("API_FAMILY: auto\n")).error, /v1 or v2/);
   assert.match(parsePrompt(prompt("API_FAMILY: v2\n")).error, /AGENT/);
