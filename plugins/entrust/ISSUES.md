@@ -174,30 +174,26 @@ fixes weighed on 2026-09-29 were rejected by the owner as not good enough: an al
 the page dead until someone reads the README, and an explicit first step in place of the substitution adds a visible Bash call
 to every load and a step the model can skip.
 
-## E104. The effort policy is stated three times, and the three disagree
+## E104. A role's effort over the default is stated twice, in codex's parity and orchestration references, and the two differ on refutation
 
-**Evidence, level 1.** `plugins/entrust/plugin/skills/codex/references/parity.md:85-92` gives effort by task: `low`
-fact lookup, `medium` ordinary review, `high`/`xhigh` refutation, competing designs and a second implementation,
-`max`/`ultra` the hardest problems. `plugins/entrust/plugin/skills/codex/references/orchestration.md:90`, under its
-own Effort heading, gives it by row: `high` for the bulk row's extraction, classification and verification, `low` for
-mechanical work only, `medium` for review, refutation and judgement in the strong and cheap rows, Astra inheriting
-the configured effort and a stand-in for Astra `xhigh`; its line 68 says the same in one sentence.
-`plugins/entrust/plugin/skills/orchestrate/SKILL.md:102-104` gives one default: "For Codex, use xhigh by default when
-supported, and preserve a stronger configured max or ultra setting. On another host, use its highest supported
-effort unless the user selects the speed profile." A review is `medium` on the first two pages and `xhigh` on the
-third; refutation is `high` or `xhigh` on the first and `medium` on the second. When the entry was recorded the
-second statement was `orchestrate/references/plan.md:35`; since then it moved and the third was added. Found by
-Fable F1; re-checked 2026-10-07.
+**Evidence, level 1.** The default is `plugins/entrust/plugin/skills/orchestrate/SKILL.md:102-104`, `xhigh` for a
+Codex agent where supported; a role's effort overrides it locally. That override is stated twice.
+`plugins/entrust/plugin/skills/codex/references/parity.md:85-92`, the effort table: `low` fact lookup, `medium`
+ordinary review, `high`/`xhigh` refutation, competing designs and a second implementation, `max`/`ultra` the hardest
+problems. `plugins/entrust/plugin/skills/codex/references/orchestration.md:90`, in its own words: `high` for the bulk
+row's extraction, classification and verification, `low` for mechanical work only, `medium` for review, refutation and
+judgement in the strong and cheap rows; its line 68 points there. A refuter gets `high` or `xhigh` by the first and
+`medium` by the second. When the entry was recorded the second statement was `orchestrate/references/plan.md:35`.
+Found by Fable F1; re-checked 2026-10-07.
 
-**Check.** `sed -n '85,92p' plugins/entrust/plugin/skills/codex/references/parity.md`,
-`sed -n '90p' plugins/entrust/plugin/skills/codex/references/orchestration.md` and
-`sed -n '101,104p' plugins/entrust/plugin/skills/orchestrate/SKILL.md` print the three.
+**Check.** `sed -n '85,92p' plugins/entrust/plugin/skills/codex/references/parity.md` and
+`sed -n '90p' plugins/entrust/plugin/skills/codex/references/orchestration.md` print the two statements.
 
-**Issue text.** Three pages each carry the rule for which effort a Codex agent gets, and they no longer agree: the
-codex parity and orchestration references set it per task or per row, from `low` to `xhigh`, and the orchestrate
-page sets `xhigh` for every Codex agent by default. A coordinator that reads the orchestrate page and the adapter's
-reference gets two answers for the same review agent. Decide which rule holds, keep it in one place, and have the
-other pages link it.
+**Issue text.** Two pages each carry the rule for which effort a role gets over the `xhigh` default, in their own
+words, and they already differ: a refuter gets `high` or `xhigh` by the parity table and `medium` by the orchestration
+reference. A later change to one is a drift from the other unless both are edited by hand. Decide which effort a
+refuter gets, then have the orchestration reference link the table rather than restate it, or move the table to a
+file both pages point at.
 
 ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
 
