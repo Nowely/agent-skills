@@ -346,43 +346,6 @@ transport-neutral core (plan registry, report paths, the pending/decide mailbox,
 and per-adapter hooks (driver path, backend environment, request types, plan-model validation) declared beside each
 adapter's `adapter.json`.
 
-## E124. prepare-feedback still steps through Claude Code's tools
-
-**Evidence, level 1.** `plugins/entrust/plugin/skills/prepare-feedback/SKILL.md:14` has the coordinator read orchestrate
-"with the Read tool" and not "with the Skill tool", with `${CLAUDE_SKILL_DIR}` filled in by hand, and its output steps
-enter a worktree "with EnterWorktree". The cleanup and swarm pages now take `<skill-dir>` and no state variable; the
-`claude` adapter owns Claude Code's tools and explicit-only skills.
-
-**Issue text.** prepare-feedback names Claude Code's tools in its own steps instead of leaving them to the `claude`
-adapter, so its procedure cannot be read on another host. It reads Claude Code's own sessions, so the skill stays Claude
-Code's by purpose, but its steps should say what to do and let the adapter say with which tool.
-
-## E129. prepare-feedback ships this repository's own procedures
-
-**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/prepare-feedback/`. `SKILL.md:18` detects a
-checkout by `"name": "nowely"`, and its output section commits a research run on a worktree branch of this
-repository; `references/focuses.md` takes its layouts from this repository's issues #1 and #15 and reads
-`~/.claude/plugins/marketplaces/nowely/plugins/<name>/CHANGELOG.md`. The same procedures on orchestrate's pages (the
-research record's paths, AGENT.md's design principles) and the swarm page's link to `research/protocols.md` left in
-the change that trimmed those pages.
-
-**Issue text.** prepare-feedback serves this repository's maintenance (where its research runs go, how one is
-committed here, which of its issues set the layouts) and ships to every user. Keep those procedures in AGENT.md or the
-repository's own tooling, and the skill on its goal: feedback on a skill from the user's sessions.
-
-## E130. prepare-feedback runs a research pipeline where its goal is a feedback report
-
-**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/prepare-feedback/`. `SKILL.md` is 99 lines and 2,861
-words; five lines run 1,162 to 1,878 characters (`:14, 64, 68, 72, 74`). It drives nine script commands
-(`references/commands.md`), two ways of reading, a pilot, swarms, a reducer, coverage and quote checks, two analyses,
-a stress test, a judge, a publication reviewer and a completeness critic over numbered drafts, and a commit on a
-worktree branch (`SKILL.md:57-87`). `references/focuses.md` adds 172 lines and `scripts/prepare-feedback.mjs` 1,472.
-
-**Issue text.** The owner's goal for the skill is narrow: on request, analyse one session or several and write
-feedback to study. The page instead runs a full research pipeline with publication review and a repository commit,
-in paragraphs of up to 1,900 characters a coordinator must hold whole. Cut it to that goal: pick the sessions, have
-agents read them under the user's question, return the feedback.
-
 ## E132. The README restates the skill pages in 3,656 words
 
 **Evidence, level 1.** `plugins/entrust/plugin/README.md` is 377 lines. Its Goal (`:34-48`), the temporary layout

@@ -58,13 +58,11 @@ launcher, with a concurrency cap and one summary for a cheap reducer
 ([skills/swarm/SKILL.md](skills/swarm/SKILL.md)); an orchestrate plan may also propose one for a bulk batch, which
 the user's "go" starts. Shared state and free messaging between agents are E4's arms, never the default.
 
-A sixth, `/entrust:prepare-feedback`, turns your own Claude Code sessions into a report on a plugin: it finds
-the sessions where entrust or terse loaded, has orchestrated agents read them under one focus (a release, one
-run, where its time and tokens went, your feedback on a topic, all of these at once, or a question of your own) and
-hands back an issue title and body, or, inside a checkout of this repository, a research run on a worktree branch
+A sixth, `/entrust:prepare-feedback`, is for reflecting on how a skill worked: it finds your own Claude Code
+sessions where entrust or terse loaded, has agents read them under your question and hands back findings with
+transcript addresses and proposals to improve the skill
 ([skills/prepare-feedback/SKILL.md](skills/prepare-feedback/SKILL.md)). What it reads stays in a private folder
-under the state directory, and an agent that wrote none of the report checks every detail before it
-leaves.
+under the state directory, and an agent that wrote none of the report checks every detail before it leaves.
 
 ## Prerequisites
 
@@ -297,9 +295,8 @@ skills/cleanup/SKILL.md          the cleanup mode: runs scripts/cleanup.mjs, sho
                                  deletes what the user chose
 skills/advisor/SKILL.md          the advisor mode: one standing top-row thread per run, prompt only
 skills/swarm/                    the swarm mode: SKILL.md (units, launch, reducer, arms), scripts/swarm.mjs (the launcher)
-skills/prepare-feedback/         the report mode: SKILL.md (focus, corpus, two ways of reading, output),
-                                 scripts/prepare-feedback.mjs (the private folder under the state directory),
-                                 references/focuses.md (each focus's unit, labels and layout)
+skills/prepare-feedback/         the reflection mode: SKILL.md (the question, the sessions, reading, the report),
+                                 scripts/prepare-feedback.mjs (the private folder under the state directory)
 .claude-plugin/                  plugin + marketplace manifests
 ../evals/                        not installed: the suites, one file each; run-all.mjs lists them and runs them
                                  side by side, longest first, lib/harness.mjs and lib/scenarios.mjs are their
@@ -326,7 +323,7 @@ Canonical homes for repeated stories:
 | experiments on these rules: protocol, verdicts, the record | [`plan.md`](skills/orchestrate/references/plan.md#an-experiment-on-these-rules), [open protocols](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/research/protocols.md) |
 | the standing advisor | [`skills/advisor/SKILL.md`](skills/advisor/SKILL.md) |
 | swarms: units, launch, reducer, coordination arms | [`skills/swarm/SKILL.md`](skills/swarm/SKILL.md), `node skills/swarm/scripts/swarm.mjs --help` |
-| feedback reports: focuses, scope, the private folder, the export | [`skills/prepare-feedback/SKILL.md`](skills/prepare-feedback/SKILL.md), `node skills/prepare-feedback/scripts/prepare-feedback.mjs --help` |
+| feedback on a skill: the question, the sessions, the private folder | [`skills/prepare-feedback/SKILL.md`](skills/prepare-feedback/SKILL.md), `node skills/prepare-feedback/scripts/prepare-feedback.mjs --help` |
 | flags and field formats | `node skills/codex/scripts/driver.mjs --help` (`--help-all` for the rest) |
 | environment, prompt files, receipts, worktree internals | [`environment-and-internals.md`](skills/codex/references/environment-and-internals.md) |
 | native capability parity and dated measurements | [`parity.md`](skills/codex/references/parity.md) |
