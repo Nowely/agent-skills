@@ -106,8 +106,10 @@ Never launch an agent under another state directory while an armed agent is aliv
 ## Delegated coordinator
 
 A Claude foreman is a `general-purpose` Agent, `model: opus`. Give it the approved plan and
-quoted user authority, the generic foreman role and this adapter's paths and rules. It cannot
-invoke an explicit-only skill with the Skill tool: pass the relevant files directly. It keeps
+quoted user authority, the generic foreman role and this adapter's paths and rules. The Skill
+tool has loaded an explicit-only skill only in a turn whose user message typed its command (13
+loads and 6 refusals, 2026-09-29), and nobody types one to a subagent: pass the relevant files
+directly. It keeps
 the parent's user conversation out of its return. Foreground worker calls reduce timeline
 noise in the measured Claude UI; this is not a portable guarantee of native delegation.
 

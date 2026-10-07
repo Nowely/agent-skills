@@ -109,20 +109,6 @@ carries no tokens for the plan's re-estimate and stop line, and its agents canno
 run's plan, so each swarm needs a run directory of its own. Decide which of these stay limits the plan states, and
 lift the rest.
 
-## E91. `foreman.md:24` gives a broader cause than observed: the Skill tool loads a user-only skill whose command the user typed
-
-**Evidence, level 3 for the pairing; the mechanism is a guess.** `plugins/entrust/plugin/skills/orchestrate/references/foreman.md:24-25`:
-"It cannot load this skill: the Skill tool refuses a skill marked `disable-model-invocation`." On 2026-09-29 Opus O1 of
-the prepare-feedback design run (`plugins/entrust/research/2026-09-29-prepare-feedback/`) counted the Skill tool's
-results for entrust's user-only skills in one machine's transcripts: 13 loads (orchestrate 11, advisor 2), each with
-the skill's command in the user's last message, and 6 refusals, none with it. The same day the Skill tool loaded
-`entrust:orchestrate` in a session whose user had typed `/entrust:orchestrate`. The foreman's own conclusion may still
-hold, since nobody types a command to a subagent; the stated cause does not. E82 is the neighbouring tension.
-
-**Issue text.** The foreman page says the Skill tool refuses every user-only skill, but it loads one whose command the
-user typed. A reader who takes the stated cause as the rule will route around a load that works. The sentence should
-state the observed condition, or only the conclusion.
-
 ## E121. A second `--decide` that lands while the driver settles the request is refused as "not waiting", not as already decided
 
 **Evidence, level 3 for the refusal (CI, PR #61), level 2 for the window. Pre-existing.**
