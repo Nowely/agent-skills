@@ -418,19 +418,6 @@ where each story's real home is.
 cleanup inventory, the storage layout and the adapter's goal. A reader who wants to install the plugin and learn what
 each skill does reads 3,656 words. Keep install, prerequisites and a line per skill, and link the pages for the rest.
 
-## E133. The roles table offers 27 roles, and none gathers shared context for the agents after it
-
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/roles.md:13-40` defines 27 roles in 1,712
-words; six serve only research and feedback runs (page dry run, recognition reader, blind proposer, surveyor,
-measurer, retrospective analyst). The area scout (`:15`) writes nothing and returns ranked findings to the
-coordinator; no role collects a task's context into a folder that later agents read.
-
-**Issue text.** Orchestrate offers 27 roles where a plan uses a handful, the "too many options" Anthropic's skill
-authoring guide warns against, and the research roles load with every plan. The role the owner needs is missing: an
-analyst/scout that gathers the context a task has (files, history, earlier returns) into a temporary folder the
-coordinator names, so that the agents after it read that folder instead of scouting again. Move the research roles to
-the page that uses them and add that role.
-
 ## E134. The OpenCode adapter's description says when, not what, and quotes one user's phrases
 
 **Evidence, level 1.** `plugins/entrust/plugin/skills/opencode/SKILL.md:3-9` opens "OpenCode: use immediately when the
