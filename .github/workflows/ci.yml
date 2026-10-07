@@ -1,8 +1,7 @@
 name: CI
 
 # Every suite that needs no `codex` binary and calls no model, on both OSes: the driver has a macOS-only
-# call (the managed preferences plist), and Linux is otherwise unmeasured. entrust runs its suites on the
-# current Node only; terse and skills still cover the Node floor package.json declares.
+# call (the managed preferences plist), and Linux is otherwise unmeasured. Every job runs on Node 24 only.
 on:
   push:
     branches: [main]
@@ -53,22 +52,18 @@ jobs:
         run: node evals/run-all.mjs
 
   terse:
-    name: terse (node ${{ matrix.node }})
-    # terse's scripts make no OS-specific call, so one OS; both engines, because the floor is a claim.
+    name: terse
+    # terse's scripts make no OS-specific call, so one OS.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
       run:
         working-directory: plugins/terse
-    strategy:
-      fail-fast: false
-      matrix:
-        node: ["22", "24"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: "24"
       - name: Parse every shipped script under this engine
         run: for f in plugin/skills/*/scripts/*.mjs evals/*.mjs; do node --check "$f"; done
       # The page checks (links, the run-directory line, the frozen digests) and the rewrite scripts' selftest.
@@ -76,19 +71,15 @@ jobs:
         run: node evals/pages.test.mjs && node plugin/skills/rewrite/scripts/selftest.mjs
 
   skills:
-    name: skills (node ${{ matrix.node }})
+    name: skills
     # Every plugin's skill pages against the vendor's skill rules; it reads all plugins, so it runs from the root.
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        node: ["22", "24"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: "24"
       - name: Parse every repository-wide script under this engine
         run: for f in evals/*.mjs; do node --check "$f"; done
       - name: Skill pages
