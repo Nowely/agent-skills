@@ -80,7 +80,8 @@ split-critic and advisor cases choose. Its header lists the cases and what each 
 
 A finding that came back after a page sentence was written for it gets a regression that observes the
 behaviour: offline, where a script owns the behaviour, and in the live gate, where only a session shows it.
-A `says` or `shows` pin on the page stays as the cheap layer, and is never the only check on a recurring
+The page suites check what a coordinator or a tool reads off a page, such as its frontmatter, command lines
+and links; they do not pin its prose sentence by sentence, and no page check is the only check on a recurring
 finding. The index below is the offline half, for the findings of #15 and #16 fixed on 2026-09-27; the live
 half is the header of `orchestrate-live.test.mjs`, beside the cases it names. A case added is not a case run:
 the offline ones run on every `run-all`, the live ones only when the owner arms the gate. All nine live cases

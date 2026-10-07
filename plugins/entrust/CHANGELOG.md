@@ -3,6 +3,12 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- The page suites (advisor, orchestrate, agent-contract, experiment and swarm) no longer pin the pages sentence by sentence. They keep what a coordinator or a tool reads off a page: frontmatter, page budgets, the skill a page loads, command lines, the field table against the driver, placeholders, schema lines and links. The two advisor checks that could not fail went with the advisor's sentence pins (E118).
+
 ## 0.25.1 — 2026-10-06
 
 ### Changed

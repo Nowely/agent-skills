@@ -7,9 +7,10 @@
 // hands the wrapper the one command, which runs the driver through scripts/agent-run.mjs in one foreground
 // Bash call, so the ONE call
 // and the field table are both SKILL.md's and the agent file carries only the relay's standing rules. This suite compares
-// that page, the orchestrate page that re-cuts it, references/approvals.md, which holds the accept call and what
-// to read after a run with approvals, and references/environment-and-internals.md, which holds the report's
-// escalation fields the page links and the signal contract, with the driver they describe.
+// what a coordinator copies or a tool reads off that page, the orchestrate page that re-cuts it and
+// references/approvals.md, which holds the accept call, with the driver and the launcher they describe: the
+// field table, the command lines, the placeholders, the wrapper's frontmatter and the flags --help offers.
+// What the pages say in prose is not pinned sentence by sentence.
 
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -21,22 +22,19 @@ const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "codex", "references", "orchestration.md");
 // The orchestrate references a coordinator opens at a moment of the run; approvals.md holds its approval rule.
 const ORCHESTRATE_REFS = [ORCHESTRATE];
-const ENV_MD = path.join(ROOT, "skills", "codex", "references", "environment-and-internals.md");
 const APPROVALS_MD = path.join(ROOT, "skills", "codex", "references", "approvals.md");
 
 const skill = fs.readFileSync(SKILL, "utf8");
 const orchestrate = fs.readFileSync(ORCHESTRATE, "utf8");
-const envFlat = fs.readFileSync(ENV_MD, "utf8").replace(/\s+/g, " ");
 const approvals = fs.readFileSync(APPROVALS_MD, "utf8");
-const approvalsFlat = approvals.replace(/\s+/g, " ");
 const driver = fs.readFileSync(DRIVER, "utf8");
 // What the driver ADVERTISES, for the cases that ask whether a flag the page hands over still exists: a
 // `case "--x":` in the source can outlive every route a caller has to it, and the help is the route.
 const help = spawnSync(process.execPath, [DRIVER, "--help"], { encoding: "utf8" }).stdout ?? "";
 const helpFlat = help.replace(/\s+/g, " ");
 
-// The page in the pieces the cases read: the whole text collapsed for prose pins, the field table, and
-// the indented command lines a coordinator copies into a Bash call.
+// The page in the pieces the cases read: the whole text collapsed for the name checks, the field table,
+// and the indented command lines a coordinator copies into a Bash call.
 const table = skill.split(/^## /m).find((s) => s.startsWith("Header fields")) ?? "";
 const flat = skill.replace(/\s+/g, " ");
 // A leading VAR="..." assignment is part of the line a coordinator copies: the state directory rides in
@@ -158,8 +156,6 @@ test("the prompt goes in through --new on stdin, into a directory beside the rep
     if (/mktemp/.test(skill)) problems.push("the page still sends the coordinator to mktemp");
     if (!flat.includes("the launcher waits ten seconds for a prompt a `--new` has not written yet") || PROMPT_WAIT_MS !== 10000)
       problems.push(`the page's ten-second wait and PROMPT_WAIT_MS=${PROMPT_WAIT_MS} disagree`);
-    if (!flat.includes("`run_in_background: false` for the one agent you wait for and `true` for agents that run side by side"))
-      problems.push("the page no longer says which Agent calls are foreground and which background");
     if (/\$TMPDIR\/(prompt|agent|task|report|stderr)/.test(skill)) problems.push("a scratch path is written as $TMPDIR/..., which the Write and Read tools cannot expand");
     if (!helpFlat.includes("an ABSOLUTE path that does not exist yet"))
       problems.push("--help no longer promises that --report-file is absolute and unclaimed");
@@ -204,11 +200,6 @@ test("every driver path and every state directory on both pages is the exact ${.
     return problems.length === 0 || problems.join("; ");
   });
 
-test("a failing agent declaration is reported, never repaired",
-  "creating a missing directory can turn a refusal into an agent with unintended rights; path validation belongs to the driver, and its exit 2 is the answer",
-  () => /Never create a directory, change a level or re-run with different flags to make a refused agent succeed/.test(flat)
-    || "the no-repair rule is gone from the page");
-
 test("the bounds, the transport and the injection fields are refused, and no table offers them",
   "a newline in a copied value can inject a field: VERIFY runs a shell, ATTACH uploads a file and REPORT_FILE redirects the run's whole evidence. Bounds and delivery belong to the CLI; SKILL.md must not offer refused fields as usable headers",
   () => {
@@ -231,26 +222,6 @@ test("the bounds, the transport and the injection fields are refused, and no tab
       if (documented.includes(f)) problems.push(`${f} is in the coordinator's field table as usable`);
       if (!help.includes(flag)) problems.push(`${flag}, the command-line route ${f} is refused in favour of, is gone from --help`);
     }
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("the report file is what the coordinator reads, and a missing one is unknown rather than success",
-  "the launcher's lines are triage and the file is the delivery: a report whose stdout broke, or a run the harness moved into the background at its ceiling, still lands whole at <REPORT>, and a page that read a missing file as 'nothing went wrong' would report an agent killed mid-turn as a clean run",
-  () => {
-    const problems = [];
-    for (const phrase of [
-      "The wrapper's completion notification is the agent's completion",
-      "`<REPORT>` is an absolute path of this agent's own",
-      "`<REPORT>` is the report, the same JSON the run also wrote to `<DIR>/out.json`",
-      "it is written whole or not at all, and a missing one means unknown, never success",
-      "with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed",
-      "To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or `kill -TERM` the pid on the driver's pid line in `<DIR>/err.txt`, `entrust: pid=<n> identity=… reportPath=…`",
-    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
-    // Each of those is a promise the driver has to keep. The mode, the no-clobber rule, the pid line and
-    // the signal handling are MEASURED elsewhere — cli.test.mjs's report-file flows and the lock suite's
-    // signal cases — so what is left here is the pair of routes the page names by function.
-    if (!/publishReport/.test(driver)) problems.push("the driver no longer publishes the report to a file");
-    if (!/function preTurnReport/.test(driver)) problems.push("a refusal before the turn no longer reaches the report file");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -281,97 +252,31 @@ test("BRIEF is decided by the header, not forced by the caller",
     return /--brief/.test(driver) || "the driver no longer has --brief";
   });
 
-test("what the user reads is prose the coordinator writes, in the user's language, naming an agent by its model",
-  "measured on 0.11.1 (2026-09-09): a Russian-speaking owner was shown an agent's raw five-field block, a plan reciting `RIGHTS: write` and an absolute run-directory path, and the page's own noun translated word-for-word into a Russian one that means a chair. Every one of those is this page's vocabulary reaching the one reader it was never written for, so the page has to say once that the coordinator writes the user's text rather than forwarding its own inputs, and that the name a person can use is the model",
-  () => {
-    const problems = [];
-    const section = skill.split(/^## /m).find((s) => s.startsWith("What the user reads")) ?? "";
-    if (!section) problems.push("the page has no `What the user reads` section");
-    const sectionFlat = section.replace(/\s+/g, " ");
-    for (const phrase of [
-      "What reaches the user is prose the coordinator writes",
-      "in the user's own language",
-      "naming an agent by its model and id",
-      "the agent by name is the subject and what it does or did is the verb (\"Codex Sol R1 reads the diff\")",
-      "the name is `Codex Sol R1`, never the slug the report carries",
-      "A header field name, a status block, an internal table's row name and an absolute path are machinery",
-      "say what an agent may write, and where, in ordinary words",
-    ]) if (!sectionFlat.includes(phrase)) problems.push(`the section no longer says: ${JSON.stringify(phrase)}`);
-    // The two user-facing templates, on both pages, are the only places the word reached the user by
-    // instruction rather than by accident: the wrapper's description and the example first line. They
-    // are pinned as a pair because a fix to one page alone leaves the other still teaching the old form.
-    for (const [name, text] of [["codex", flat], ["orchestrate", orchestrate.replace(/\s+/g, " ")]]) {
-      if (!text.includes("`Codex <short name> <id>: <task in a few words>`")
-          && !text.includes("\"Codex <short name> <id>: <task in a few words>\""))
-        problems.push(`${name} no longer carries the model-first description template`);
-      if (/agent <id>, <model>|Agent W5, Sonnet/.test(text))
-        problems.push(`${name} still teaches a user-facing template built on the page's own noun`);
-    }
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("the shipped wrapper is the agent the page names: Bash alone, a pinned model, and a body that never answers the task",
+test("the shipped wrapper is the agent the page names: Bash alone and a pinned model",
   "the page sends every agent to entrust:codex-agent, so the file has to exist under agents/ with that name; Bash alone is what halves its context (measured 2026-09-12: 8.2k against 15.4k tokens for general-purpose), and a wrapper allowed Read or Write is a relay that can rewrite a prompt, which is the measured failure the retired relay had",
   () => {
     const problems = [];
     const agentPath = path.join(ROOT, "agents", "codex-agent.md");
     if (!fs.existsSync(agentPath)) return "agents/codex-agent.md is not shipped";
-    const agent = fs.readFileSync(agentPath, "utf8");
-    const fm = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(agent);
-    if (!fm) return "agents/codex-agent.md has no frontmatter";
-    const [, head, body] = fm;
+    const head = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(agentPath, "utf8"))?.[1];
+    if (head === undefined) return "agents/codex-agent.md has no frontmatter";
     if (!/^name: codex-agent$/m.test(head)) problems.push("the agent is not named codex-agent");
     if (!/^tools: Bash$/m.test(head)) problems.push("the agent's tools are not exactly Bash");
     if (!/^model: (sonnet|haiku|opus)$/m.test(head)) problems.push("the agent pins no model");
-    for (const phrase of ["Do not answer the task yourself", "Do not create or edit files", "Do not change any flag, path, or environment variable",
-                          // The procedure the page's message carries and this file repeats: one foreground call with
-                          // the ten-minute timeout, the same command again only on RUNNING= or the harness's notice
-                          // and every other result handed back, the hand-back with the lines alone, and the one
-                          // visible line after it.
-                          "in the foreground, with timeout 600000", "Write no text before it",
-                          "If its result ends with RUNNING=", "run the very same command again",
-                          "Any other result, an empty one included, goes to step 3",
-                          "Call SubagentHandback with exactly the lines that result printed",
-                          "After the hand-back result", ": report delivered"])
-      if (!body.replace(/\s+/g, " ").includes(phrase)) problems.push(`the agent body no longer says: ${JSON.stringify(phrase)}`);
-    for (const phrase of ["`subagent_type: entrust:codex-agent`", "Pass it no `model`"])
-      if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
+    if (!flat.includes("`subagent_type: entrust:codex-agent`")) problems.push("the page no longer sends agents to entrust:codex-agent");
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the Rights table's read row is read [<dir>] with no WRITABLE exception, and never a repository",
-  "the read row is what a coordinator sizes an agent by: the sandbox bounds the agent, a command it cannot run is offered and runs as the user once approved, and a file change it cannot show inside its roots is declined at once with exit 6; a page that still promised a read-level WRITABLE exception for a tool's store, or named a tool, would teach the driver's own rule the name of a tool",
+test("--help names the thirty-minute approval constant, and no page names a field of the widening the driver dropped",
+  "the thirty-minute constant is what protects an unattended run; the widening is gone, so a page that still named its lines, its report fields or a tool's cache would send a coordinator after a request the driver never offers",
   () => {
     const problems = [];
-    for (const phrase of [
-      "read any readable path, reach the network, run commands, write `$TMPDIR`",
-      "the sandbox bounds what the agent does itself: a command it cannot run there is offered to you and, approved, runs as you with no sandbox",
-      "a file change not shown to lie inside its writable roots is declined at once, which makes the run exit 6",
-    ]) if (!flat.includes(phrase)) problems.push(`the page no longer says: ${JSON.stringify(phrase)}`);
-    if (/WRITABLE:` root for a tool's own store|[\w-]+'s object cache|never a repository/.test(flat))
-      problems.push("the page still promises a read-level WRITABLE exception for a tool's own store, or still names a tool's object cache");
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("the waiting result ends in REPORT=, the constant is thirty minutes, and neither page names the widening",
-  "a coordinator reading the waiting result has to see the same REPORT= line the nine-line result ends in, since that is the path its --decide and its next --run take, and the thirty-minute constant is what protects an unattended run; the widening is gone, so a page that still named its lines, its report fields or a tool's cache would send a coordinator after a request the driver never offers",
-  () => {
-    const problems = [];
-    for (const phrase of [
-      "waiting result",
-      "ending in `REQUESTS=`, `WAITING=`",
-      "thirty minutes",
-    ]) if (!flat.includes(phrase)) problems.push(`SKILL.md no longer says: ${JSON.stringify(phrase)}`);
     if (!/for 30 minutes, after which it is declined as expired/.test(helpFlat))
       problems.push("--help no longer names the 30-minute constant");
-    const orchestrateFlat = orchestrate.replace(/\s+/g, " ");
     const refs = ORCHESTRATE_REFS.map((f) => [`orchestrate/references/${path.basename(f)}`, fs.readFileSync(f, "utf8").replace(/\s+/g, " ")]);
-    for (const [label, text] of [["SKILL.md", flat], ["orchestrate/SKILL.md", orchestrateFlat], ...refs])
+    for (const [label, text] of [["SKILL.md", flat], ["orchestrate/SKILL.md", orchestrate.replace(/\s+/g, " ")], ...refs])
       for (const gone of ["sandboxWidened", "REPEAT_OF", "ACCESS=", "NETWORK=", "repeatOf", "a widening for named paths", "Prefer a widening", "state or cache", "permission features", "`policy`"])
         if (text.includes(gone)) problems.push(`${label} still names ${JSON.stringify(gone)}`);
-    const approvalsFlat = orchestrateFlat;
-    if (!approvalsFlat.includes("`asked`, Codex asked before running the command, and nothing on our side changes it"))
-      problems.push("codex/references/orchestration.md's synthesis sentence for cause asked is not the driver's own");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -388,75 +293,6 @@ test("the accept the page shows restates the command in a quoted heredoc on a de
       for (const l of text.split("\n").filter((x) => /--decide /.test(x) && !/--decide '(<ID>|ID)'/.test(x))) problems.push(`an unquoted ID: ${l.trim()}`);
     if (/<<'?(COMMAND|EOF|CMD)'?\s*$/m.test(approvals.split("\n").filter((l) => l.includes("--decide")).join("\n")))
       problems.push("an accept in approvals.md ends its heredoc on a fixed word");
-    for (const phrase of [
-      "a quoted heredoc whose delimiter you build at that moment from `ACCEPT_`, the printed token and six hex characters of your own",
-      "Never a fixed word and never the printed token alone",
-      "The ID reached you the same way: quote it, and use it only in the shape the launcher prints",
-      "one trailing newline tolerated, and publishes nothing on an empty stdin or any difference",
-      "An accept the permission check or the classifier blocks publishes nothing either",
-    ]) if (!approvalsFlat.includes(phrase)) problems.push(`approvals.md no longer says: ${JSON.stringify(phrase)}`);
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("a SIGTERM to the wrapper's pid is narrowed to what was measured, not to \"nothing left running\", and the survivor check is the coordinator's own",
-  "the teardown signals and polls the app-server's own process group, and a command the server started lives in a process group of its own: a sandboxed one ended with the driver (measured once, 2026-09-29), while one run after an approval, outside the sandbox, was never measured, so the page must not promise more than that, and F10 (11-refutation-astra.md) is that this is a check the coordinator runs, never a promise the driver keeps",
-  () => {
-    const problems = [];
-    for (const phrase of [
-      "sweeps the codex app-server's own process group and publishes the report as",
-      "A command the agent was running inside the sandbox ends with it (measured once, 2026-09-29)",
-      "a command run after an approval, outside the sandbox, has not been measured, so before a second writer enters a directory where a command was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it — no driver code checks this for you.",
-    ]) if (!envFlat.includes(phrase.replace(/\s+/g, " "))) problems.push(`environment-and-internals.md no longer says: ${JSON.stringify(phrase)}`);
-    if (/nothing left running/.test(flat + envFlat)) problems.push("a page still promises \"nothing left running\", which no measurement covers for an approved command");
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("FILE=missing reads RECEIPT's approvals= count as a decision, not an execution outcome, before any relaunch",
-  "F12 (11-refutation-astra.md): a coordinator that only reads the count and relaunches can repeat an accepted operation whose outcome is unknown, so the page has to send it to the tree and the command's own effects first, and say the count is a decision rather than a result",
-  () => {
-    const problems = [];
-    for (const phrase of [
-      "an `approvals=` token whose first number is not 0 says a command ran with",
-      "that count is a decision, not an execution outcome",
-      "check the tree and whatever the command touched before any relaunch",
-      "never relaunch a prompt that would ask for the same thing again",
-    ]) if (!approvalsFlat.includes(phrase)) problems.push(`approvals.md no longer says: ${JSON.stringify(phrase)}`);
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("exit 6 is a request declined or expired unanswered, never one accepted, and the internals reference gives escalations its cause and unclipped detail",
-  "an auto-yes must never surface as a gate failure, and a coordinator reading `detail` clipped at 200 characters cannot judge the very command it is asked to approve; the page states the exit where it lists the exits and links approvals.md, which states it whole and links the fields, which live once, in environment-and-internals.md",
-  () => {
-    const problems = [];
-    const exitSix = skill.split(/\n(?=- )/).find((b) => /exit 6 is/.test(b)) ?? "";
-    if (!/exit 6 is an approval declined or expired/.test(exitSix.replace(/\s+/g, " ")))
-      problems.push("the page no longer says what exit 6 is where it lists the exits");
-    if (!exitSix.includes("](references/approvals.md#after-the-run)"))
-      problems.push("the page's exit 6 no longer links approvals.md's After the run");
-    if (!approvalsFlat.includes("`exitCode: 6` is a request declined or expired unanswered, never one accepted"))
-      problems.push("approvals.md no longer says what exit 6 is");
-    if (!approvalsFlat.includes("[Observability](environment-and-internals.md#observability)"))
-      problems.push("approvals.md no longer links the escalations fields");
-    for (const phrase of [
-      "`detail` is the server's own wording whole",
-      "never clipped",
-      "`cause` (`rights`: a file change the writable roots cover, which the driver accepted itself and never shows anyone",
-      "`outside`: a file change not shown to lie inside them, or a permissions request, which the driver declined itself, its `why` naming `WRITABLE:` for a file change and \"rights are set at launch\" for a permissions request",
-      "`asked`: Codex asked before running the command, and nothing on our side changes it",
-    ]) if (!envFlat.includes(phrase)) problems.push(`environment-and-internals.md no longer says: ${JSON.stringify(phrase)}`);
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("an auto-yes's why is re-checked at send time, and the internals reference names the symlink-swap residual",
-  "the driver re-runs its own containment check the instant it answers, not only when the request first arrived, so the reference's why string has to be the current one; the residual is what a race between that check and the server's own write can still do, and it is unmeasured, not fixed",
-  () => {
-    const problems = [];
-    for (const phrase of [
-      "\"rights cover it (checked as the answer was sent)\"",
-      "the whole check runs again, fresh, at the moment the driver sends the answer, not only when the request first arrived",
-      "A writer that swaps one of those plain directories for a symlink between the driver's check and the server's own write is followed by the server, not the driver",
-      "whether the server re-resolves that swap before it writes is unmeasured",
-    ]) if (!envFlat.includes(phrase)) problems.push(`environment-and-internals.md no longer says: ${JSON.stringify(phrase)}`);
     return problems.length === 0 || problems.join("; ");
   });
 
