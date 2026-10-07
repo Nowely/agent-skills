@@ -135,6 +135,21 @@ hold, since nobody types a command to a subagent; the stated cause does not. E82
 user typed. A reader who takes the stated cause as the rule will route around a load that works. The sentence should
 state the observed condition, or only the conclusion.
 
+## E121. A second `--decide` that lands while the driver settles the request is refused as "not waiting", not as already decided
+
+**Evidence, level 3 for the refusal (CI, PR #61), level 2 for the window. Pre-existing.**
+
+`decideRequest` in `plugin/skills/codex/scripts/agent-run.mjs:731-738` reads `<id>.request.json` for
+`settled`, then reads `pending` in a second step. `closeApproval` in
+`plugin/skills/codex/scripts/driver.mjs:3164-3173` writes the settlement and then rewrites `pending`.
+A `--decide` whose first read comes before the settlement and whose second comes after it refuses with
+`is not waiting: …/pending does not list it` for a request that was decided and settled a moment
+earlier. Nothing is published and the exit is 2, so no decision is lost or doubled; only the stated
+reason is wrong. On CI the agent-run case "--pending shows the waiting request whole…" hit this window
+once on Linux under parallel suites; the case now polls every 4 s so it measures the duplicate-decision
+refusal it names. A fix would re-read the request when `pending` does not list it and report the
+settlement.
+
 ## E94. The entrust README says two more skills ship beside the main one; the plugin ships five more
 
 **Evidence, level 1.** `plugins/entrust/plugin/README.md:8-9`: "Two more skills ship beside it, both described below

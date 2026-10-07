@@ -8,12 +8,15 @@ prompts that must stay silent.
 ## Running the suites
 
 ```bash
-node evals/run-all.mjs        # every suite, cheapest first, stopping at the first red
+node evals/run-all.mjs        # every suite, one per core at a time, longest first
 node evals/cli.test.mjs       # one suite, when it is the thing being worked on
 ```
 
-`run-all.mjs` lists the twenty-four suites cheapest first: orchestrate, adapter-status, advisor, fragments, lint-draft, gate-checks, package, capture-check, agent-contract, agent-run, opencode, swarm, attach-pasted, experiment, status, prepare-feedback, cleanup, worktree, cli, conformance, lock, protocol, fidelity, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
-listed cannot go unrun. A suite killed by a signal is a failure, not a pass: a killed child reports
+`run-all.mjs` lists the twenty-four suites longest first: protocol, opencode, agent-run, lock, worktree, conformance, cli, cleanup, swarm, prepare-feedback, capture-check, fidelity, package, agent-contract, orchestrate, attach-pasted, experiment, status, adapter-status, advisor, fragments, lint-draft, gate-checks, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
+listed cannot go unrun. It runs as many suites at once as the machine has cores: they mostly wait on the
+driver's real timers, so a full run takes about as long as its longest suite rather than ten minutes. Each
+suite's output is printed whole when it ends. A red suite does not stop the run, so one run names every
+red suite. A suite killed by a signal is a failure, not a pass: a killed child reports
 `code` null and `process.exit(null)` exits 0. A suite that skipped or never ran is deducted from the
 green count and named in the last line, which is the line to read.
 
@@ -58,7 +61,7 @@ copy of the driver with a pause before the lock's one rename or unlink, for the 
 `lock.test.mjs` that land a peer's lock in that gap (E44). `driver.mjs` runs `main()` only when it IS the entry
 point, which is what makes importing it safe.
 
-`.github/workflows/ci.yml` runs `node evals/run-all.mjs` on every leg of its OS × Node matrix; the suites
+`.github/workflows/ci.yml` runs `node evals/run-all.mjs` on Linux and macOS; the suites
 that need a real `codex` or `claude` skip there. It installs nothing and calls no model.
 
 `fidelity.test.mjs` runs LOCALLY, before a release: it needs the real `codex` and an
