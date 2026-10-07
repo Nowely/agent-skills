@@ -195,7 +195,7 @@ and call no model:
 
 ```bash
 git clone https://github.com/Nowely/agent-skills.git && cd agent-skills
-node plugins/entrust/evals/run-all.mjs    # every suite, cheapest first, stops at the first red
+node plugins/entrust/evals/run-all.mjs    # every suite, one per core at a time, longest first
 ```
 
 The `fidelity` suite is what to watch after a `codex` upgrade: it performs a real handshake and diffs
@@ -341,7 +341,7 @@ skills/prepare-feedback/         the report mode: SKILL.md (focus, corpus, two w
                                  references/focuses.md (each focus's unit, labels and layout)
 .claude-plugin/                  plugin + marketplace manifests
 ../evals/                        not installed: the suites, one file each; run-all.mjs lists them and runs them
-                                 cheapest first, lib/harness.mjs and lib/scenarios.mjs are their
+                                 side by side, longest first, lib/harness.mjs and lib/scenarios.mjs are their
                                  shared machinery
 package.json                     private; the Node floor
 .github/workflows/ci.yml         the suites that need no `codex` binary, on its OS × Node matrix
