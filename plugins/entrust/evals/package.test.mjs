@@ -157,7 +157,7 @@ test("every file the plugin needs to run is in the payload",
       "LICENSE", "README.md",
       ...skillPages,
       ...under(path.relative(ROOT, SCRIPTS)),
-      ...under("skills/experiment/scripts"), ...under("skills/swarm/scripts"),
+      ...under("skills/swarm/scripts"),
       ...under("skills/orchestrate/scripts"), ...under("skills/prepare-feedback/scripts"),
     ];
     // The suites are not in that list: they sit beside ROOT, and what installs is ROOT alone.

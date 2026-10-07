@@ -1,6 +1,6 @@
-# Protocols registered first
+# Open experiment protocols
 
-Six experiments, five the 2026-09-17 research round left as hypotheses and one the 2026-09-27 field audit asked for, each with the six protocol fields the page requires and the one thing it cannot show. A run fills what a protocol leaves blank, the material above all, and records the filled protocol as its own `protocol.md`.
+Six experiments on entrust's own rules, five the 2026-09-17 research round left as hypotheses and one the 2026-09-27 field audit asked for, each with the six fields of [an experiment's protocol](../plugin/skills/orchestrate/references/plan.md#an-experiment-on-these-rules) and the one thing it cannot show. A run fills what a protocol leaves blank, the material above all, records the filled protocol as its own `protocol.md` in `research/<date>-<slug>/`, and adds its row to [the index](README.md).
 
 ## E1 Width: one Sol against thirty-four Luna
 

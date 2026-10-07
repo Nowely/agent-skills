@@ -55,3 +55,17 @@ Define independent units and a fixed return shape. A verdict describes the subje
 input path. Keep a shared prerequisite's execution with one owner and supply its evidence to every
 dependent brief. Announce the unit count and how it was derived. Use a bulk launcher only when its
 scale improves throughput or cost under the model-fit rule, and within actual host limits.
+
+## An experiment on these rules
+
+When the user asks to measure one of these rules or a composition rather than to finish a task, the
+plan is a protocol written before any agent: a hypothesis that can be false; arms, one of them the
+comparator the hypothesis needs; material with its ground truth or acceptance check, frozen before any
+arm sees it; metrics, with n and an interval where n is under fifty; a judge from the other model family
+or the user, reading the returns by letter with each model's name removed; and a budget with a stop
+rule. Arms get the same brief except the composition and never see each other's returns. Record a
+failed arm with its reason; never rerun it for a better number. Write the metrics and a conclusion that
+names n, what stayed unmeasured and the confounds; the user's verdict decides, and neither is rewritten.
+In a checkout of agent-skills the record is `plugins/entrust/research/<date>-<slug>/` with `protocol.md`,
+`arms/<arm>/`, `metrics.md`, `conclusion.md` and `verdict.md`; open protocols are in
+`plugins/entrust/research/protocols.md`.

@@ -64,23 +64,16 @@ these open with none of that behind it is not something it can see. With `TMPDIR
 the listing scans Node's fallback temporary directory and says that agent scratch elsewhere may not
 have been seen.
 
-A fourth, `/entrust:experiment`, runs one registered experiment on the orchestrator's own rules: a
-protocol before any agent (hypothesis, arms with a comparator, frozen material, the ruler's metrics, a
-judge that does not see the arm, a stop rule), each arm an orchestrated run, the orchestrator's
-conclusion and then the user's verdict. Its one script keeps the record under the plugin's data
-directory beside the orchestrate runs, and copies it unchanged into a checkout as
-`plugins/entrust/research/<date>-<slug>/` ([skills/experiment/SKILL.md](skills/experiment/SKILL.md)); the five
-protocols registered first are in its references.
-
 Two more are experiments with a page of their own. `/entrust:advisor` adds a standing top-row advisor of
 the other model family to one run, asked one question at each decision point, with every decision
 recorded before and after ([skills/advisor/SKILL.md](skills/advisor/SKILL.md)); it states no benefit until
-protocol E3 has run. `/entrust:swarm` has one script make up to fifty bulk agents over a file of units
-through the sibling launcher, with a concurrency cap and one summary for a cheap reducer
+[protocol E3](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/research/protocols.md#e3-the-standing-advisor-against-per-call-advice) has run.
+`/entrust:swarm` has one script make up to fifty bulk agents over a file of units through the sibling
+launcher, with a concurrency cap and one summary for a cheap reducer
 ([skills/swarm/SKILL.md](skills/swarm/SKILL.md)); an orchestrate plan may also propose one for a bulk batch, which
 the user's "go" starts. Shared state and free messaging between agents are E4's arms, never the default.
 
-A seventh, `/entrust:prepare-feedback`, turns your own Claude Code sessions into a report on a plugin: it finds
+A sixth, `/entrust:prepare-feedback`, turns your own Claude Code sessions into a report on a plugin: it finds
 the sessions where entrust or terse loaded, has orchestrated agents read them under one focus (a release, one
 run, where its time and tokens went, your feedback on a topic, all of these at once, or a question of your own) and
 hands back an issue title and body, or, inside a checkout of this repository, a research run on a worktree branch
@@ -153,8 +146,8 @@ As a plugin — the full set: all seven skills and the driver (the repo is its o
 ```
 
 This route exposes the skill as `entrust:codex`, the modes as `/entrust:orchestrate`, `/entrust:cleanup`,
-`/entrust:experiment`, `/entrust:advisor`, `/entrust:swarm` and `/entrust:prepare-feedback`, which only the user
-can turn on, and the wrapper every Codex run goes through as `entrust:codex-agent`.
+`/entrust:advisor`, `/entrust:swarm` and `/entrust:prepare-feedback`, which only the user can turn on,
+and the wrapper every Codex run goes through as `entrust:codex-agent`.
 
 The same two steps from a shell: `claude plugin marketplace add Nowely/agent-skills`, then
 `claude plugin install entrust@nowely`. To update, update the plugin, which refreshes
@@ -173,8 +166,8 @@ only the items you pick by number. A run or standalone report it removes takes i
 folder with it, and a run still going keeps both. A folder there whose run is gone from the state
 directory, or whose process has ended, is an item of its own and is suggested; so is what an earlier
 version left in `tmp/`, once no process its `owner.json` names is alive. Here `<tmp>` is what the cleanup
-sees: a non-empty `TMPDIR`, else Node's `os.tmpdir()`. Experiment records under `experiments/` and report
-folders under `prepare-feedback/` it neither lists nor removes.
+sees: a non-empty `TMPDIR`, else Node's `os.tmpdir()`. Report folders under `prepare-feedback/`, and
+experiment records an earlier version left under `experiments/`, it neither lists nor removes.
 The driver keeps no default of its own: with neither that variable nor `ENTRUST_STATE_DIR` it
 exits 2. Add that directory to `permissions.additionalDirectories` once to read the agents' reports
 without prompts — this plugin adds no rules on your behalf. You never need to write there: the plugin's
@@ -332,8 +325,6 @@ skills/orchestrate/              the orchestrator mode: SKILL.md (the common orc
                                  invocation in Codex. External mechanics live in codex/references/orchestration.md
 skills/cleanup/SKILL.md          the cleanup mode: runs scripts/cleanup.mjs, shows its listing and
                                  deletes what the user chose
-skills/experiment/               the experiment mode: SKILL.md (protocol, arms, two verdicts), scripts/experiment.mjs
-                                 (the record under the data directory), references/protocols.md (the six registered)
 skills/advisor/SKILL.md          the advisor mode: one standing top-row thread per run, prompt only
 skills/swarm/                    the swarm mode: SKILL.md (units, launch, reducer, arms), scripts/swarm.mjs (the launcher)
 skills/prepare-feedback/         the report mode: SKILL.md (focus, corpus, two ways of reading, output),
@@ -361,7 +352,7 @@ Canonical homes for repeated stories:
 | OpenCode router workers, recent models and callbacks | [OpenCode skill](skills/opencode/SKILL.md), [measured API limits](skills/opencode/references/parity.md) |
 | common orchestration: roles, capacity, returns | [`skills/orchestrate/SKILL.md`](skills/orchestrate/SKILL.md) |
 | what the plugin leaves behind, and removing it | [`skills/cleanup/SKILL.md`](skills/cleanup/SKILL.md), `node skills/codex/scripts/cleanup.mjs --help` |
-| experiments: protocol, arms, verdicts, the record | [`skills/experiment/SKILL.md`](skills/experiment/SKILL.md), `node skills/experiment/scripts/experiment.mjs --help` |
+| experiments on these rules: protocol, verdicts, the record | [`plan.md`](skills/orchestrate/references/plan.md#an-experiment-on-these-rules), [open protocols](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/research/protocols.md) |
 | the standing advisor | [`skills/advisor/SKILL.md`](skills/advisor/SKILL.md) |
 | swarms: units, launch, reducer, coordination arms | [`skills/swarm/SKILL.md`](skills/swarm/SKILL.md), `node skills/swarm/scripts/swarm.mjs --help` |
 | feedback reports: focuses, scope, the private folder, the export | [`skills/prepare-feedback/SKILL.md`](skills/prepare-feedback/SKILL.md), `node skills/prepare-feedback/scripts/prepare-feedback.mjs --help` |

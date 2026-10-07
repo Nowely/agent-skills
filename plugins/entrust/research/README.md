@@ -2,7 +2,8 @@
 
 Every measurement the `entrust` plugin's rules rest on, and the runs that produced them. Nothing here is
 installed with the plugin or read at runtime. Each directory has its own README with the result; this is
-the index. terse's runs have [their own index](../../terse/research/README.md).
+the index. terse's runs have [their own index](../../terse/research/README.md). Experiments registered and not
+yet run are in [protocols.md](protocols.md); a run of one adds its row here.
 
 | Directory | Question | Result |
 |---|---|---|
