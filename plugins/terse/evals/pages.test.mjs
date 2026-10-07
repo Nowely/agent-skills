@@ -6,7 +6,8 @@
 // A definition two skills use lives once, under references/, and every page links it. What moving text
 // cannot keep in agreement, these cases check: that every link still opens after a page moves; that the
 // shared run recipe creates the promised paths; that the installed rewrite helper runs from another
-// directory; that invocation policy agrees across hosts; and that a frozen block still hashes to its digest.
+// directory; that invocation policy agrees across hosts; that a frozen block still hashes to its digest;
+// and that the README's Node floor is the one `engines` declares.
 
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -301,6 +302,14 @@ test("README Skills table has a row for every skill directory", () => {
   const readme = fs.readFileSync(path.join(ROOT, "README.md"), "utf8");
   const missing = missingSkills(readme);
   return missing.length === 0 || `missing or duplicate README rows: ${missing.join(", ")}`;
+});
+
+test("the README's Node floor is the one package.json's engines declares", () => {
+  const engines = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")).engines?.node;
+  const floor = engines?.match(/^>=(\d+)$/)?.[1];
+  if (!floor) return `engines.node is ${JSON.stringify(engines)}, not >=N`;
+  const stated = fs.readFileSync(path.join(ROOT, "README.md"), "utf8").match(/^You need: Node (\d+) or newer\.$/m)?.[1];
+  return stated === floor || `README says Node ${stated ?? "(no floor line)"}, engines.node is ${engines}`;
 });
 
 test("each genre note has an incoming link from a skill page", () => {

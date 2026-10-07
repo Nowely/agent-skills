@@ -1,6 +1,6 @@
 # The run directory
 
-Each skill that makes a run uses this recipe, with Node 22 or newer. Keep the run outside the repository
+Each skill that makes a run uses this recipe. Keep the run outside the repository
 that holds the text unless the user explicitly chooses otherwise. Set the local `RUN_ROOT` to empty for
 the runtime's temporary root, or to an absolute durable directory only when the user supplies
 one. Temporary storage may be purged by the operating system, so a run needed later requires that choice

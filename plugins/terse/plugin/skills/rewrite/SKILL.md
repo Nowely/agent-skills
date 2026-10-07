@@ -88,7 +88,7 @@ Continue the same writer, on the repair brief of `roles.md`, sent every report: 
 becomes truer for its reader or easier to read, declines one that adds words the reader does not need
 there with a reason from the context, and writes `02-repaired.md` with that list. Then, independently in
 capacity-sized batches: truth, brief 3, on the sentences the repair changed; fresh question readers; the two
-cold readers, brief 11. Run the script too, with Node 22 or newer. Set local `SKILL_DIR` to the absolute
+cold readers, brief 11. Run the script too. Set local `SKILL_DIR` to the absolute
 directory containing this loaded SKILL.md, resolved from its installed skill location. `RUN` is the
 absolute path set by `run.md`. The report shows words per section side by side: a section that grew,
 or one only one version has, is where the repair added or lost text:
