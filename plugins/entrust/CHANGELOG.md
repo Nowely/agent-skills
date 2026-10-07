@@ -12,6 +12,7 @@ forensics remain in the repository references and release notes.
 ### Fixed
 
 - **`evals/evals.json` no longer says `claude plugin eval` is missing from the build (E101).** The build has it, and `opencode-routing/` already runs through it; the legacy Codex cases stay manual because the command does not read their format, as the evals README already said. The file also names the README's section by its current title, "Running the trigger cases".
+- **The README says what the cleanup does with write locks (E112).** It removes a released lock's leftover link, an abandoned lock with its record, and a lock record no link names, and only reports a lock still held or in the previous shape, as `cleanup.mjs --help` and the cleanup page say. Before, the README put every write lock among what the cleanup only reports, so a reader of it alone would not expect it to delete anything lock-shaped.
 - **The README names every skill the plugin ships (E94).** The opening that counted two skills went in #46, but the install paragraph still left out `entrust:opencode` and its `entrust:opencode-agent` wrapper; it now lists them, and "all seven skills" matches `plugin/skills/` with the experiment skill gone.
 
 ### Changed

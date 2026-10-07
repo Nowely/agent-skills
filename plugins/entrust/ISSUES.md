@@ -316,25 +316,6 @@ model, scored by which dissents the judge or the owner upheld; and, for the swar
 Luna to dissent rather than to match adds catches. If the result holds, give Luna a critic role in the tier table and
 the effort rule that fits it.
 
-## E112. The README says the cleanup only reports write locks; `cleanup.mjs --help` says it removes three kinds of them
-
-**Evidence, level 1.** `plugins/entrust/plugin/README.md:30-34`: "It removes seven kinds — … the test suites'
-scratch directories and the saved conversations they leave behind. Five more it only ever reports: the driver's
-saved answers, managed worktrees and their ledger, write locks, the shared Codex home, and another copy of the
-plugin's data"; the seven-kinds list names no lock. `plugins/entrust/plugin/skills/codex/scripts/cleanup.mjs:92-95`,
-its own `--help` text: "It removes … write locks nobody holds: a released lock's leftover link, an abandoned lock
-with its record, and a lock record no link names. It only REPORTS … write locks still held or in the previous
-shape". Pre-existing, on `main` before this branch. Found by Opus W3.
-
-**Check.** `sed -n '30,34p' plugins/entrust/plugin/README.md` and `sed -n '92,95p'
-plugins/entrust/plugin/skills/codex/scripts/cleanup.mjs`.
-
-**Issue text.** The README's intro puts every write lock in the list of what the cleanup only reports, while the
-tool's own `--help` removes three kinds of them — a released lock's leftover link, an abandoned lock with its
-record, and a lock record no link names — and reports only a lock still held or in the lock's previous shape. A
-reader of the README alone would not know the cleanup deletes anything lock-shaped at all. The README should say
-what the cleanup does with locks, matching `--help`.
-
 ## E113. The driver's check of the temporary base leaves a window before the run's folder is made, and never checks the base's mode
 
 **Evidence, level 2, from reading.** `driver.mjs:1376-1381` (`tmpBaseProblem`) refuses a base that is a symbolic
