@@ -253,25 +253,6 @@ page sets `xhigh` for every Codex agent by default. A coordinator that reads the
 reference gets two answers for the same review agent. Decide which rule holds, keep it in one place, and have the
 other pages link it.
 
-## E108. A Claude agent's overflow file goes under the coordinator's own `$TMPDIR`, the collision E92 fixed for Codex agents
-
-**Evidence, level 1 for the page line, level 2 for the collision.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:30`:
-"A Claude agent's artifact is its returned text, and a file it must leave goes under `$TMPDIR` with the path in that
-text". E92's fix gives every Codex run its own fresh `$TMPDIR`, named after the run inside the system temporary
-directory (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs`), so two Codex agents launched together no
-longer share one; a Claude agent is a native subagent of the coordinator's own process, with no driver to give it a
-directory of its own, so several launched together still write under the one `$TMPDIR` the coordinator's session
-holds. Found by Fable J1.
-
-**Check.** `grep -n 'a file it must leave goes under' plugins/entrust/plugin/skills/orchestrate/SKILL.md` finds the
-line at :30; nothing in the codex or orchestrate pages gives a Claude agent a temporary directory of its own.
-
-**Issue text.** The page tells a Claude agent to leave an overflow file under `$TMPDIR`, the same directory E92
-found two side-by-side Codex agents colliding on. E92's fix reaches only Codex runs, through the driver; a Claude
-agent has no driver to grant it a private directory, so two Claude agents told to leave a file under `$TMPDIR` in
-the same brief can still overwrite each other's file with no error. The page should give each Claude agent's
-artifact a name, or a subdirectory, that cannot collide with a sibling's.
-
 ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
 
 **Evidence, level 1 for the pages, level 3 for the run's outcomes, level 2 for the generalisation.**
