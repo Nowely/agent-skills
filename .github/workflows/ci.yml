@@ -1,8 +1,7 @@
 name: CI
 
-# Every suite that needs no `codex` binary and calls no model, on both OSes and on the Node floor
-# package.json declares: the driver has a macOS-only call (the managed preferences plist), Linux is
-# otherwise unmeasured, and the floor was a claim nothing tested.
+# Every suite that needs no `codex` binary and calls no model, on both OSes: the driver has a macOS-only
+# call (the managed preferences plist), and Linux is otherwise unmeasured. Every job runs on Node 24 only.
 on:
   push:
     branches: [main]
@@ -13,9 +12,9 @@ permissions:
   contents: read
 
 jobs:
-  suites:
-    name: suites (${{ matrix.os }}, node ${{ matrix.node }})
-    runs-on: ${{ matrix.os }}
+  entrust:
+    name: entrust (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 25
     # This repository is a marketplace: the workflow lives at its root, the plugin's tree does not.
     # Every path below is the plugin's own, so the whole job runs from inside it.
@@ -25,8 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        node: ["22", "24"]
+        os: [ubuntu, macos]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,8 +33,8 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
-      # Parsed before anything runs: a syntax error under the older engine is the one failure that must
+          node-version: "24"
+      # Parsed before anything runs: a syntax error under the engine is the one failure that must
       # not arrive disguised as a broken test. The list is the directories, so a new script is covered
       # the day it is added.
       - name: Parse every shipped script under this engine
@@ -54,22 +52,18 @@ jobs:
         run: node evals/run-all.mjs
 
   terse:
-    name: terse (node ${{ matrix.node }})
-    # terse's scripts make no OS-specific call, so one OS; both engines, because the floor is a claim.
+    name: terse
+    # terse's scripts make no OS-specific call, so one OS.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
       run:
         working-directory: plugins/terse
-    strategy:
-      fail-fast: false
-      matrix:
-        node: ["22", "24"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: "24"
       - name: Parse every shipped script under this engine
         run: for f in plugin/skills/*/scripts/*.mjs evals/*.mjs; do node --check "$f"; done
       # The page checks (links, the run-directory line, the frozen digests) and the rewrite scripts' selftest.
@@ -77,19 +71,15 @@ jobs:
         run: node evals/pages.test.mjs && node plugin/skills/rewrite/scripts/selftest.mjs
 
   skills:
-    name: skills (node ${{ matrix.node }})
+    name: skills
     # Every plugin's skill pages against the vendor's skill rules; it reads all plugins, so it runs from the root.
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        node: ["22", "24"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: "24"
       - name: Parse every repository-wide script under this engine
         run: for f in evals/*.mjs; do node --check "$f"; done
       - name: Skill pages
