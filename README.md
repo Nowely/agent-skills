@@ -42,6 +42,7 @@ Then install what you need:
 plugins/<name>/plugin/            one plugin as it installs: its manifest, skills and docs
 plugins/<name>/                   beside it, what does not install: changelog, suites, ledger, research,
                                   entrust's protocol schema
+scripts/                          checks that read every plugin at once: skills.test.mjs
 ```
 
 A plugin owns everything under `plugins/<name>/`, and an install copies only its `plugin/`. The
