@@ -145,9 +145,9 @@ As a plugin — the full set: all seven skills and the driver (the repo is its o
 /plugin install entrust@nowely
 ```
 
-This route exposes the skill as `entrust:codex`, the modes as `/entrust:orchestrate`, `/entrust:cleanup`,
-`/entrust:advisor`, `/entrust:swarm` and `/entrust:prepare-feedback`, which only the user can turn on,
-and the wrapper every Codex run goes through as `entrust:codex-agent`.
+This route exposes the adapters as `entrust:codex` and `entrust:opencode`, the modes as `/entrust:orchestrate`,
+`/entrust:cleanup`, `/entrust:advisor`, `/entrust:swarm` and `/entrust:prepare-feedback`, which only the user can
+turn on, and the wrappers their runs go through as `entrust:codex-agent` and `entrust:opencode-agent`.
 
 The same two steps from a shell: `claude plugin marketplace add Nowely/agent-skills`, then
 `claude plugin install entrust@nowely`. To update, update the plugin, which refreshes
