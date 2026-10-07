@@ -13,9 +13,9 @@ permissions:
   contents: read
 
 jobs:
-  suites:
-    name: suites (${{ matrix.os }}, node ${{ matrix.node }})
-    runs-on: ${{ matrix.os }}
+  entrust:
+    name: entrust (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 25
     # This repository is a marketplace: the workflow lives at its root, the plugin's tree does not.
     # Every path below is the plugin's own, so the whole job runs from inside it.
@@ -25,8 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        node: ["24"]
+        os: [ubuntu, macos]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,8 +34,8 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
-      # Parsed before anything runs: a syntax error under the older engine is the one failure that must
+          node-version: "24"
+      # Parsed before anything runs: a syntax error under the engine is the one failure that must
       # not arrive disguised as a broken test. The list is the directories, so a new script is covered
       # the day it is added.
       - name: Parse every shipped script under this engine
