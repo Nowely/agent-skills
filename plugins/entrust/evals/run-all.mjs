@@ -29,7 +29,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // 4-core Linux run (protocol 131 s, opencode 105 s, agent-run 103 s, lock 84 s, worktree 66 s,
 // conformance 61 s, cli 43 s, cleanup 14 s, the rest a few seconds). The list is checked against the
 // directory, because a suite file nobody listed here would otherwise never run.
-const SUITES = ["protocol", "opencode", "agent-run", "lock", "worktree", "conformance", "cli", "cleanup", "swarm", "prepare-feedback", "capture-check", "fidelity", "package", "agent-contract", "orchestrate", "attach-pasted", "experiment", "status", "adapter-status", "advisor", "fragments", "lint-draft", "gate-checks", "orchestrate-live"];
+const SUITES = ["protocol", "opencode", "agent-run", "lock", "worktree", "conformance", "cli", "cleanup", "swarm", "prepare-feedback", "capture-check", "fidelity", "package", "agent-contract", "orchestrate", "attach-pasted", "status", "adapter-status", "advisor", "fragments", "lint-draft", "gate-checks", "orchestrate-live"];
 const onDisk = fs.readdirSync(HERE).filter((f) => f.endsWith(".test.mjs")).map((f) => f.slice(0, -".test.mjs".length));
 const unlisted = onDisk.filter((n) => !SUITES.includes(n)), missing = SUITES.filter((n) => !onDisk.includes(n));
 if (unlisted.length || missing.length) {

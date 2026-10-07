@@ -5,6 +5,14 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Removed
+
+- **The `/entrust:experiment` skill and its record script.** None of its six registered protocols ran in the three weeks since 0.20.0 shipped it, and the two experiments recorded in that time (`research/2026-10-05-codex-profile-plans` and its rerun) were Codex-native runs, while the page opened by loading the Claude-only `codex` adapter. The method is one paragraph in the orchestrate plan, [An experiment on these rules](plugin/skills/orchestrate/references/plan.md#an-experiment-on-these-rules), and the record goes straight to `research/<date>-<slug>/` in a checkout. The protocols E1 to E6 moved unchanged to [`research/protocols.md`](research/protocols.md); the swarm page, the prepare-feedback focuses and the README point there. Records an earlier version wrote under the data directory's `experiments/` stay where they are; cleanup never listed them.
+
+### Fixed
+
+- **The README names every skill the plugin ships (E94).** The opening that counted two skills went in #46, but the install paragraph still left out `entrust:opencode` and its `entrust:opencode-agent` wrapper; it now lists them, and "all seven skills" matches `plugin/skills/` with the experiment skill gone.
+
 ### Changed
 
 - The page suites (advisor, orchestrate, agent-contract, experiment and swarm) no longer pin the pages sentence by sentence. They keep what a coordinator or a tool reads off a page: frontmatter, page budgets, the skill a page loads, command lines, the field table against the driver, placeholders, schema lines and links. The two advisor checks that could not fail went with the advisor's sentence pins (E118).

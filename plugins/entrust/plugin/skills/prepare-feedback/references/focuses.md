@@ -108,7 +108,7 @@ what was measured; `process` says where the time and tokens went.
   each brief carrying its task's rows and its timeline slice. Which pages were read before which draft, and what the
   owner said while the model worked come from the timeline; a measurer's script
   only for a number the script does not give, such as the coordinator's context by source, as issue #15 counted it.
-  An experiment a finding proposes goes to `/entrust:experiment` as a protocol and is not run here.
+  An experiment a finding proposes is returned as a protocol in the fields of `plugins/entrust/research/protocols.md` and is not run here.
 - **Judges:** two on the usefulness rows, as issue #16 had, one applying the labels' rules and one auditing the
   sources independently; then a refuter on the rows they dispute.
 

@@ -12,7 +12,7 @@ node evals/run-all.mjs        # every suite, one per core at a time, longest fir
 node evals/cli.test.mjs       # one suite, when it is the thing being worked on
 ```
 
-`run-all.mjs` lists the twenty-four suites longest first: protocol, opencode, agent-run, lock, worktree, conformance, cli, cleanup, swarm, prepare-feedback, capture-check, fidelity, package, agent-contract, orchestrate, attach-pasted, experiment, status, adapter-status, advisor, fragments, lint-draft, gate-checks, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
+`run-all.mjs` lists the twenty-three suites longest first: protocol, opencode, agent-run, lock, worktree, conformance, cli, cleanup, swarm, prepare-feedback, capture-check, fidelity, package, agent-contract, orchestrate, attach-pasted, status, adapter-status, advisor, fragments, lint-draft, gate-checks, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
 listed cannot go unrun. It runs as many suites at once as the machine has cores: they mostly wait on the
 driver's real timers, so a full run takes about as long as its longest suite rather than ten minutes. Each
 suite's output is printed whole when it ends. A red suite does not stop the run, so one run names every

@@ -138,15 +138,6 @@ once on Linux under parallel suites; the case now polls every 4 s so it measures
 refusal it names. A fix would re-read the request when `pending` does not list it and report the
 settlement.
 
-## E94. The entrust README says two more skills ship beside the main one; the plugin ships five more
-
-**Evidence, level 1.** `plugins/entrust/plugin/README.md:8-9`: "Two more skills ship beside it, both described below
-and both invoked by the user rather than by the model." `plugins/entrust/plugin/skills/` on `main` holds `codex` and
-five more: `advisor`, `cleanup`, `experiment`, `orchestrate` and `swarm`.
-
-**Issue text.** The README's opening undercounts the plugin's skills, so a reader who stops there misses three of
-them. The sentence should give the count the directory holds, or not count.
-
 ## E95. `research/2026-09-28-command-gate/` has no README and no row in the research index
 
 **Evidence, level 1.** `plugins/entrust/research/2026-09-28-command-gate/` holds ten numbered files and no README,
