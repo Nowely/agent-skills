@@ -138,15 +138,6 @@ once on Linux under parallel suites; the case now polls every 4 s so it measures
 refusal it names. A fix would re-read the request when `pending` does not list it and report the
 settlement.
 
-## E95. `research/2026-09-28-command-gate/` has no README and no row in the research index
-
-**Evidence, level 1.** `plugins/entrust/research/2026-09-28-command-gate/` holds ten numbered files and no README,
-and `plugins/entrust/research/README.md` has no row for it, while its opening says "Each directory has its own README
-with the result; this is the index."
-
-**Issue text.** The command-gate run cannot be found from the research index, and its folder does not say what it
-found. It needs a README with the result and a row in the index, as its neighbours have.
-
 ## E96. The harness's token figure for a Claude subagent is its last call's context, and the plan's comparables are built on it
 
 **Evidence, level 3.** On 2026-09-29 Opus R2 of the prepare-feedback run compared, for 233 subagents in one machine's
