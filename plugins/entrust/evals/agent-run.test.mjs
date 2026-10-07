@@ -1176,7 +1176,11 @@ test("--pending shows the waiting request whole, --decide publishes it at 0600 w
     const state = tempDir("agent-run-state.");
     const report = path.join(state, "run", "report.json");
     await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
-    const first = await runOnce(report, state, "approval-wait");
+    // The driver looks for decisions every 4 s here, so the second --decide meets the first one's file
+    // and not a settlement in progress: at the default 250 ms a loaded machine let the driver settle
+    // between the launcher's two reads, and the refusal named the wrong reason (E121).
+    const slow = { ENTRUST_APPROVAL_POLL_MS: "4000" };
+    const first = await runOnce(report, state, "approval-wait", slow);
     const pending = await launcherLines(["--pending", "--report-file", report]);
     const id = valueOf(pending.lines, "REQUEST");
     if (!id || id !== valueOf(first.lines, "REQUEST")) return `--pending does not list the request handed back: ${JSON.stringify(pending.lines.slice(0, 2))}`;
@@ -1192,7 +1196,7 @@ test("--pending shows the waiting request whole, --decide publishes it at 0600 w
         || d?.decision !== "accept" || d?.why !== "plan: the probe") problems.push(`the decision does not carry the run's identity: ${JSON.stringify(d)}`);
     const again = await launcherLines(["--decide", id, "--decline", "--report-file", report]);
     if (again.code !== 2 || !again.out.startsWith(`REFUSED=${id} was already`)) problems.push(`a second decision: exit ${again.code}, ${again.out}`);
-    await runOnce(report, state, "approval-wait");
+    await runOnce(report, state, "approval-wait", slow);
     const after = await launcherLines(["--pending", "--report-file", report]);
     if (after.out !== "REQUESTS=0\n") problems.push(`--pending after the run: ${after.out}`);
     const over = await launcherLines(["--decide", id, "--accept", "--report-file", report], { input: `${q?.command}\n` });
