@@ -17,8 +17,8 @@ import { ROOT, registry, runCases, summarize, tempDir } from "./lib/harness.mjs"
 import * as G from "./lib/gate-checks.mjs";
 
 const { cases: CASES, test } = registry();
-const SCHEMA = JSON.parse(fs.readFileSync(path.join(ROOT, "skills", "codex", "schemas", "five-fields.schema.json"), "utf8"));
-const SCHEMA_PATH = path.join(ROOT, "skills", "codex", "schemas", "five-fields.schema.json");
+const SCHEMA = JSON.parse(fs.readFileSync(path.join(ROOT, "skills", "orchestrate", "schemas", "five-fields.schema.json"), "utf8"));
+const SCHEMA_PATH = path.join(ROOT, "skills", "orchestrate", "schemas", "five-fields.schema.json");
 const LAUNCHER = "/plugin/skills/codex/scripts/agent-run.mjs";
 const TMP = tempDir("gate-checks-test-");
 

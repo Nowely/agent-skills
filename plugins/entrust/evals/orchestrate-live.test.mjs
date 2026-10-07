@@ -502,7 +502,7 @@ function planProblems({ s, scratch, head0, codexPlanned }) {
 
 // --------------------------------------------------------------- the run assertions
 
-const SCHEMA_FILE = path.join(ROOT, "skills", "codex", "schemas", "five-fields.schema.json");
+const SCHEMA_FILE = path.join(ROOT, "skills", "orchestrate", "schemas", "five-fields.schema.json");
 const readJsonFile = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return null; } };
 
 // What a run left: each agent's prompt file and report under the run directories, keyed by the agent's

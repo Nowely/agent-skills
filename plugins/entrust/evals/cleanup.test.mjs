@@ -34,10 +34,10 @@ import { EXIT, PINNED_CODEX, ROOT, SCRIPTS, registry, runCases, skip, spawnNode,
 // A NAMESPACE import, not named bindings: the liveness helpers are the driver's, and a named import of
 // one it stops exporting would fail at load and report nothing at all rather than failing case by case.
 import * as driver from "../plugin/skills/codex/scripts/driver.mjs";
-import { SESSION_MARKS } from "../plugin/skills/codex/scripts/cleanup.mjs";
+import { SESSION_MARKS } from "../plugin/skills/cleanup/scripts/cleanup.mjs";
 import { TEMP_OWNER, TEMP_CONTEXT } from "../plugin/skills/orchestrate/scripts/temp-dir.mjs";
 
-const CLEANUP = path.join(SCRIPTS, "cleanup.mjs");
+const CLEANUP = path.join(ROOT, "skills", "cleanup", "scripts", "cleanup.mjs");
 const CLEANUP_PAGE = path.join(ROOT, "skills", "cleanup", "SKILL.md");
 // The ladder the contract names: 0 everything went, 10 something was refused and untouched, 1 a removal
 // was attempted and failed, 2 bad arguments or no state directory.
@@ -47,8 +47,8 @@ const DEAD_PID = 2147483646;
 const DEAD_IDENTITY = "lstart:Thu Jan  1 00:00:00 1970";
 const processIdentity = typeof driver.processIdentity === "function" ? driver.processIdentity : () => null;
 
-// Both recipe commands must use the same quoted script expression. Resolve it the way Node resolves
-// its entry argument: lexically first, then through whatever sibling link the install supplied.
+// Both recipe commands must use the same quoted script expression, resolved the way Node resolves its
+// entry argument: lexically.
 function cleanupRecipePath(skillDir) {
   const page = fs.readFileSync(CLEANUP_PAGE, "utf8");
   const expressions = [...page.matchAll(/\bnode "(\$\{CLAUDE_SKILL_DIR\}\/[^\"]*cleanup\.mjs)"/g)]
@@ -363,17 +363,17 @@ test("1 · the cleanup recipe resolves through clone-style sibling skill links",
     return m.done();
   });
 
-test("2 · the cleanup recipe fails without its sibling codex skill",
-  "a clone layout that links cleanup alone has no agent entry at the lexical sibling path, so the recipe depends on the codex skill sitting beside cleanup, not on where a cleanup link points",
+test("2 · the cleanup recipe finds its script inside the cleanup skill, even when that skill is linked alone",
+  "the script belongs to the skill that runs it; a recipe that reached into a sibling skill's directory broke in a layout that links cleanup alone",
   async () => {
-    const w = makeWorld("recipe-without-sibling");
+    const w = makeWorld("recipe-linked-alone");
     const skills = path.join(w.root, "linked-skills");
     fs.mkdirSync(skills, { recursive: true });
     const cleanupLink = path.join(skills, "cleanup");
     fs.symlinkSync(path.join(ROOT, "skills", "cleanup"), cleanupLink);
     const resolved = cleanupRecipePath(cleanupLink);
-    return fs.existsSync(resolved)
-      ? `the recipe unexpectedly found cleanup.mjs without the sibling codex link: ${resolved}` : true;
+    return resolved.startsWith(cleanupLink + path.sep) && fs.existsSync(resolved)
+      || `the recipe does not find cleanup.mjs under the cleanup skill: ${resolved}`;
   });
 
 test("3 · an agent's line parses whole: running it is kept, gone it is suggested",
@@ -2089,7 +2089,7 @@ export default { ...real,
 `);
   let text = fs.readFileSync(CLEANUP, "utf8");
   for (const [from, to] of [[`import fs from "node:fs";`, `import fs from ${JSON.stringify(pathToFileURL(shim).href)};`],
-                            [`from "./driver.mjs"`, `from ${JSON.stringify(pathToFileURL(path.join(SCRIPTS, "driver.mjs")).href)}`],
+                            [`from "../../codex/scripts/driver.mjs"`, `from ${JSON.stringify(pathToFileURL(path.join(SCRIPTS, "driver.mjs")).href)}`],
                             [`from "../../orchestrate/scripts/temp-dir.mjs"`, `from ${JSON.stringify(pathToFileURL(path.join(ROOT, "skills/orchestrate/scripts/temp-dir.mjs")).href)}`]]) {
     if (text.split(from).length !== 2) throw new Error(`cleanup.mjs does not carry ${from} exactly once, so it cannot be instrumented`);
     text = text.replace(from, to);

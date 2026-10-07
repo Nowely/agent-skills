@@ -3,15 +3,14 @@
 //
 //   node evals/fragments.test.mjs
 //
-// evals/fragments.mjs holds the five-field schema copied into the swarm page and the external
-// state path shared by the adapter and its dependent features. One case per fragment runs the check on this tree. The mutation cases run it on a
+// evals/fragments.mjs holds the external state path shared by the adapter and its dependent features. One case per fragment runs the check on this tree. The mutation cases run it on a
 // scratch copy of the pages with one word changed, because a drift check that stays green under a changed
 // word is measuring nothing (#15 P12b asks for the release to fail on drift, and run-all runs this suite).
 
 import fs from "node:fs";
 import path from "node:path";
 import { registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
-import { FRAGMENTS, PLUGIN, check, write } from "./fragments.mjs";
+import { FRAGMENTS, PLUGIN, check } from "./fragments.mjs";
 
 const { cases: CASES, test } = registry();
 const byId = (id) => FRAGMENTS.find((f) => f.id === id);
@@ -42,28 +41,6 @@ for (const f of FRAGMENTS)
       const drift = check(PLUGIN, [f]);
       return drift.length === 0 || say(drift);
     });
-
-test("mutation: a size cap changed in a page's inline schema is red, and --write puts the source back on that one line",
-  "D16's caps are enforced from the schema file; a page whose inline copy says another cap tells the coordinator a bound the driver does not hold",
-  () => {
-    const root = scratch();
-    const f = byId("five-field-schema");
-    write(root, [f]);
-    const page = "skills/swarm/SKILL.md";
-    const text = fs.readFileSync(path.join(root, page), "utf8");
-    const m = f.locate.exec(text);
-    if (!m) return `${page} carries no inline schema`;
-    const mutated = m[1].replace(/"maxItems":(\d+)/, (_, n) => `"maxItems":${Number(n) + 1}`);
-    if (mutated === m[1]) return `the inline schema of ${page} carries no maxItems to mutate`;
-    fs.writeFileSync(path.join(root, page), text.replace(m[1], mutated));
-    const red = check(root, [f]);
-    const others = text.split("\n").length;
-    write(root, [f]);
-    const after = fs.readFileSync(path.join(root, page), "utf8");
-    const green = check(root, [f]);
-    return (red.some((d) => d.copy === page) && green.length === 0 && after.split("\n").length === others && after === text)
-      || `mutated: ${say(red) || "green"}; after --write: ${say(green) || "green"}, page ${after === text ? "restored" : "changed elsewhere"}`;
-  });
 
 test("mutation: a page that loses the run-directory path is red",
   "four pages name one directory the launcher and cleanup walk; a page that renamed it sends agents' reports where nothing looks",

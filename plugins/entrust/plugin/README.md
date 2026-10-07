@@ -339,7 +339,7 @@ Canonical homes for repeated stories:
 | OpenCode router workers, recent models and callbacks | [OpenCode skill](skills/opencode/SKILL.md), [measured API limits](skills/opencode/references/parity.md) |
 | common orchestration: roles, capacity, returns | [`skills/orchestrate/SKILL.md`](skills/orchestrate/SKILL.md) |
 | Claude Code delegation and Claude's models | [`skills/claude/SKILL.md`](skills/claude/SKILL.md), [models](skills/claude/references/models.md) |
-| what the plugin leaves behind, and removing it | [`skills/cleanup/SKILL.md`](skills/cleanup/SKILL.md), `node skills/codex/scripts/cleanup.mjs --help` |
+| what the plugin leaves behind, and removing it | [`skills/cleanup/SKILL.md`](skills/cleanup/SKILL.md), `node skills/cleanup/scripts/cleanup.mjs --help` |
 | experiments on these rules: protocol, verdicts, the record | [`plan.md`](skills/orchestrate/references/plan.md#an-experiment-on-these-rules), [open protocols](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/research/protocols.md) |
 | the standing advisor | [`skills/advisor/SKILL.md`](skills/advisor/SKILL.md) |
 | swarms: units, launch, reducer, coordination arms | [`skills/swarm/SKILL.md`](skills/swarm/SKILL.md), `node skills/swarm/scripts/swarm.mjs --help` |

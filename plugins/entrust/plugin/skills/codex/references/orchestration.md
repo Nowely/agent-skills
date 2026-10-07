@@ -30,7 +30,7 @@ Claude or Codex, with `node "<codex-skill-dir>/scripts/agent-run.mjs" --plan --r
 Use `--plan --amend` for an approved amendment; the launcher refuses an unlisted Codex agent.
 An all-native plan needs no driver registration or state directory.
 
-Every external worker uses `OUTPUT_SCHEMA: <codex-skill-dir>/schemas/five-fields.schema.json`
+Every external worker uses `OUTPUT_SCHEMA: <codex-skill-dir>/../orchestrate/schemas/five-fields.schema.json`
 for the shared return, without `BRIEF:` (which would clip its answer). Read those fields from
 `answerJson` in the report. A requested larger return uses a copied schema with adjusted caps.
 
@@ -56,20 +56,13 @@ authoritative for an actual swarm.
 
 ## Bounds
 
-These Claude-mode defaults are capped further by the host's actual capacity and the user's
-agreed limits. Bulk launches must fit the machine and any external launcher limits.
-
-| Bound | Default |
-| --- | --- |
-| simple task | 1 worker; the completeness critic beside it, not counted, and its verifier is you under the redirect rule or one agent when the check cannot run there |
-| comparison or design | 2 to 4 agents |
-| complex | 5 agents or more, launched in batches inside the alive cap |
-| alive at once | 6, Claude and Codex together, the top pair counted in |
-| top-tier workers | 1 per model family alive at a time; standing advisor excluded |
-| Codex write agents per directory | 1: a second on the same directory exits 10 at once, before its turn runs |
-
-The top-tier caps count turns in progress and exclude the standing advisor. The advisor has no question budget; a waiting thread frees a slot only when the runtime says so. The host's alive-at-once cap remains a parallel execution limit. A Codex agent starts without the user's and the project's CLAUDE.md and memory index, which every Claude agent has. While another writer holds part of a checkout, nobody changes what they share: no stash, branch switch, reset, clean or rebase, and that binds you too when you run a check of your own. When two writers' work collides, repair it as [results.md](../../orchestrate/references/results.md#writers-collided) says. Run a check only when its result can change what happens next: a writer runs the checks that read the files it changed while it iterates, and the evidence that decides is those same checks run once on the tree that goes out, by an agent that did not write the code or by you under the redirect rule; a brief names those checks, not the whole suite.
-
+Orchestrate's [bounds](../../orchestrate/SKILL.md#capacity-and-models) hold, and one Codex write agent per
+directory: a second on the same directory exits 10 at once, before its turn runs. A waiting thread frees a slot
+only when the runtime says so. A Codex agent starts without the user's and the project's CLAUDE.md and memory
+index, which every Claude agent has. While another writer holds part of a checkout, nobody changes what they
+share: no stash, branch switch, reset, clean or rebase, and that binds you too when you run a check of your own.
+When two writers' work collides, repair it as [results.md](../../orchestrate/references/results.md#writers-collided)
+says. A brief names the checks that read the files its writer changed, not the whole suite.
 
 ## A Workflow
 

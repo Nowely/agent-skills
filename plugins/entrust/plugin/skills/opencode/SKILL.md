@@ -54,7 +54,7 @@ rule. A model mentioned only for information or discussion does not request a wo
    `MODEL: provider/model` overrides selection; preserve slashes inside the model ID.
    `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant.
 3. For orchestration, read [orchestration.md](references/orchestration.md). Resolve and pin the model
-   before registering the approved plan. Use the shared [five-field schema](../codex/schemas/five-fields.schema.json).
+   before registering the approved plan. Use the shared [five-field schema](../orchestrate/schemas/five-fields.schema.json).
 4. Choose an absolute report path under `ENTRUST_STATE_DIR` (or `CLAUDE_PLUGIN_DATA`), outside the
    worker's checkout. Prepare the prompt verbatim:
 

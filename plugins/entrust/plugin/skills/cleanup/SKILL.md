@@ -25,7 +25,7 @@ exactly as the command printed it.
 1. Run the listing with the Bash description "List files left by
    entrust."
 
-       F="$(node "${CLAUDE_SKILL_DIR}/../orchestrate/scripts/temp-dir.mjs" cleanup)" && CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../codex/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
+       F="$(node "${CLAUDE_SKILL_DIR}/../orchestrate/scripts/temp-dir.mjs" cleanup)" && CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
 
    The helper gives each listing its own file at
    `<temp>/entrust/.cleanup/snapshot-<six random characters>/listing.json`,
@@ -63,7 +63,7 @@ exactly as the command printed it.
    leave it out. Then run, with the description "Delete the cleanup items the
    user selected.":
 
-       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/../codex/scripts/cleanup.mjs" --delete --from "<SNAPSHOT>" <numbers>
+       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/cleanup.mjs" --delete --from "<SNAPSHOT>" <numbers>
 
    Do not run the listing again between the user's word and this call: the
    snapshot is what binds each number to what was shown, and an item that

@@ -11,7 +11,7 @@ import { digest, splitModel, modelKey } from "./config.mjs";
 
 // The shared five-field answer schema lives with the other adapters; it is never duplicated here.
 // From scripts/ the path is skills/codex/schemas, i.e. two levels up, not one.
-export const FIVE_FIELDS_SCHEMA = fileURLToPath(new URL("../../codex/schemas/five-fields.schema.json", import.meta.url));
+export const FIVE_FIELDS_SCHEMA = fileURLToPath(new URL("../../orchestrate/schemas/five-fields.schema.json", import.meta.url));
 
 // Resolve a path through its longest existing prefix and then realpath, so a symlinked directory
 // compares as the place a file will actually land. Mirrors the launcher's own resolveLoose.

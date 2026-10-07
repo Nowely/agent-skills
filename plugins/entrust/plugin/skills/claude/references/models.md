@@ -9,5 +9,3 @@ Orchestrate's tiers describe the work; this table names the Claude model for eac
 | strong | Opus | `opus` |
 | cheap | Sonnet | `sonnet` |
 | bulk | Haiku | `haiku` |
-
-At most one top-tier worker is alive at a time; a standing advisor is not counted.

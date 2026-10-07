@@ -53,7 +53,7 @@ test("server URL cannot carry credentials, redirects of ownership or query data"
   assert.deepEqual(connection({}), { local: true });
 });
 test("default answer schema comes from the existing Codex contract", () => {
-  assert.equal(FIVE_FIELDS_SCHEMA, path.join(ROOT, "skills/codex/schemas/five-fields.schema.json"));
+  assert.equal(FIVE_FIELDS_SCHEMA, path.join(ROOT, "skills/orchestrate/schemas/five-fields.schema.json"));
   assert.equal(parsePrompt(prompt(), {}).error, undefined);
 });
 test("registered model cannot inherit or silently substitute", () => {
@@ -73,7 +73,7 @@ test("approved write root rejects another root even when rights kind matches", (
 });
 test("malformed schema branches are refused, and required fields are checked", () => {
   assert.equal(checkSchemaSubset({ type: "object", oneOf: [] }).ok, false);
-  const s = JSON.parse(fs.readFileSync(path.join(ROOT, "skills/codex/schemas/five-fields.schema.json"), "utf8"));
+  const s = JSON.parse(fs.readFileSync(path.join(ROOT, "skills/orchestrate/schemas/five-fields.schema.json"), "utf8"));
   assert.equal(validateOutput(s, { status: "done" }).ok, false);
 });
 test("oneOf validates exactly one branch and checks every nested schema", () => {

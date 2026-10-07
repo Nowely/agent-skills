@@ -329,44 +329,22 @@ batch the plan gives no swarm runs as ordinary Codex agents. Decide which page o
 link them, or generate the second copy from the first as the codex page's composition rules are generated into
 orchestrate's references.
 
-## E122. The answer linter recognises model slugs by a vendor list of its own
+## E123. The external-run launcher is a Codex adapter file that carries OpenCode's and Claude's specifics
 
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/scripts/lint-draft.mjs:88`:
-`["model-slug", /\bgpt-\d|\bclaude-(?:opus|sonnet|haiku|fable|\d)/i]`. The shared pages, the swarm and advisor pages,
-prepare-feedback and the README no longer name models; each adapter's `references/models.md` owns its table, and the
-linter's agent names no longer special-case `Codex`.
+**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`. `codex/scripts/agent-run.mjs` launches every
+external worker: the OpenCode entry point is a shim that runs it with `--adapter opencode`
+(`opencode/scripts/agent-run.mjs:6-14`). It hardcodes the adapters (`:85` `new Set(["codex", "opencode"])`, `:83` the
+OpenCode driver's path), OpenCode's server variables and request types (`backendEnv`, `opencode.permission`,
+`opencode.question`), and registers every plan row, "Claude or Codex", against model names of its own (`:464-465`
+`PLAN_MODELS`, `CLAUDE_MODELS`). The schema, the cleanup script, the session's bounds and the swarm's adapter choice
+left the codex adapter in the change that recorded this narrowing; each adapter now declares its status probe,
+launcher, swarm defaults and model slugs in `skills/<id>/adapter.json`.
 
-**Issue text.** The shared linter carries the Codex and Claude slug shapes itself, so a new adapter's slugs pass
-unflagged and a vendor's renaming edits the shared layer. Let each adapter declare its slug pattern where it
-declares itself, and have the linter read those declarations.
-
-## E123. Shared scripts, contracts and limits live in the codex adapter, and the swarm hardcodes the adapter list the registry already holds
-
-**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`.
-- The cleanup skill runs `../codex/scripts/cleanup.mjs` (`cleanup/SKILL.md:28, 66`), which inventories what every
-  skill leaves, not only Codex runs.
-- Orchestrate defines the five-field return (`orchestrate/SKILL.md:150-156`); its schema is
-  `codex/schemas/five-fields.schema.json`, which opencode loads across the adapter boundary (`opencode/SKILL.md:57`,
-  `opencode/references/orchestration.md:39`, `opencode/scripts/contract.mjs:14`).
-- `swarm/scripts/swarm.mjs:31` fixes the launcher at `codex/scripts/agent-run.mjs`, and `:70-80` accepts only
-  `codex|opencode`, each with defaults of its own (concurrency 10 or 2, an OpenCode model regex), while
-  `orchestrate/adapters.json` is the adapter registry.
-- `orchestrate/SKILL.md:47` names one adapter id: "Pass `--skip codex` when Codex is the active native host".
-- The session-wide caps, "6, Claude and Codex together" and "Fable/Astra workers: 1 each", are defined in
-  `codex/references/orchestration.md:80-81`; `swarm/SKILL.md:13` ("the alive cap of six") and
-  `prepare-feedback/SKILL.md:64` ("six alive at most per batch") rely on them.
-- Every agent, "Claude or Codex", is registered through the codex launcher's `--plan`
-  (`codex/references/orchestration.md:27-28`), and the OpenCode entry point is a shim that runs that same launcher
-  with `--adapter opencode` (`opencode/scripts/agent-run.mjs:6-14`): the shared launcher is a Codex adapter file.
-
-**Check.** `grep -rnE '\.\./codex/|"codex", "(scripts|schemas)"' plugins/entrust/plugin/skills | grep -v '^plugins/entrust/plugin/skills/codex/'`
-prints the paths that cross into the adapter.
-
-**Issue text.** What every route uses — the cleanup inventory, the five-field schema, the plan registry and the
-session's agent caps — is owned by the Codex adapter, and the swarm picks among adapters by hardcoded names instead of
-the registry orchestrate already reads. Removing or replacing the Codex adapter breaks cleanup, the OpenCode adapter
-and swarms; adding an adapter means editing the swarm script. Each belongs to the skill that defines it, orchestrate
-or cleanup, and the swarm should take its launcher and defaults from `adapters.json`.
+**Issue text.** The launcher that registers plans and runs external workers lives in the Codex adapter and branches on
+OpenCode inside it, so an adapter cannot be added, removed or replaced without editing Codex's file. Split it into a
+transport-neutral core (plan registry, report paths, the pending/decide mailbox, the keeper) owned by orchestrate,
+and per-adapter hooks (driver path, backend environment, request types, plan-model validation) declared beside each
+adapter's `adapter.json`.
 
 ## E124. Shared pages still carry Claude Code's variables and tools
 

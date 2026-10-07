@@ -152,12 +152,12 @@ test("every file the plugin needs to run is in the payload",
     const required = [
       ".claude-plugin/plugin.json",
       "skills/codex/schemas/review-output.schema.json",
-      "skills/codex/schemas/five-fields.schema.json",
-      "skills/orchestrate/adapters.json",
+      "skills/orchestrate/schemas/five-fields.schema.json",
+      "skills/claude/adapter.json", "skills/codex/adapter.json", "skills/opencode/adapter.json",
       "LICENSE", "README.md",
       ...skillPages,
       ...under(path.relative(ROOT, SCRIPTS)),
-      ...under("skills/swarm/scripts"),
+      ...under("skills/swarm/scripts"), ...under("skills/cleanup/scripts"),
       ...under("skills/orchestrate/scripts"), ...under("skills/prepare-feedback/scripts"),
     ];
     // The suites are not in that list: they sit beside ROOT, and what installs is ROOT alone.
@@ -184,7 +184,7 @@ test("every file the plugin needs to run is in the payload",
 test("the shipped five-field schema is strict and carries the default size caps",
   "an orchestrated return gets one installed contract, with local limits the driver can enforce",
   () => {
-    const file = path.join(ROOT, "skills/codex/schemas/five-fields.schema.json");
+    const file = path.join(ROOT, "skills/orchestrate/schemas/five-fields.schema.json");
     const s = JSON.parse(fs.readFileSync(file, "utf8"));
     const names = ["status", "result", "evidence", "artifacts", "open"];
     if (s.type !== "object" || s.additionalProperties !== false || JSON.stringify(s.required) !== JSON.stringify(names)

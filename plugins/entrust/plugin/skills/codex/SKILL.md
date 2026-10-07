@@ -106,7 +106,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | `WRITABLE:` | `<dir>`, repeatable | a write agent needs one more root than the directory it was given |
 | `RESUME:` | `<threadId>`, `last` | this agent continues an earlier thread instead of opening one |
 | `EXPECT:` | `<regex>` | the answer is evidence only if a command matching it ran and succeeded; none is exit 5. Do not point it at a check whose failure IS the finding |
-| `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>`; the five-field schema for orchestrated agents ships at `${CLAUDE_SKILL_DIR}/schemas/five-fields.schema.json` | the answer must parse as one JSON object |
+| `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>`; the five-field schema for orchestrated agents ships at `${CLAUDE_SKILL_DIR}/../orchestrate/schemas/five-fields.schema.json` | the answer must parse as one JSON object |
 | `MODEL:` | `astra`, `sol`, `terra`, `luna`, the newest listed model of that name, or a full slug | this agent needs a model other than the configured default; in prose the name is capitalised |
 | `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`, and `ultra` where the model lists it; no line inherits `~/.codex/config.toml` | the task is worth more or less thinking than the configured default; `low` for a one-line task |
 | `WEB_SEARCH:` | `cached`, `indexed`, `live`: the provider's search tool, not the network | the user asked for the provider's web search; "the network is allowed" is not that ask |

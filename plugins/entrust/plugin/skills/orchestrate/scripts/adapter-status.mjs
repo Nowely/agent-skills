@@ -3,18 +3,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { SKILLS_ROOT, adapters } from "./adapters.mjs";
 
-const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const SKILL_DIR = path.resolve(SCRIPT_DIR, "..");
-const SKILLS_ROOT = path.resolve(SKILL_DIR, "..");
-const MANIFEST = path.join(SKILL_DIR, "adapters.json");
+const SKILL_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MAX_OUTPUT = 1024 * 1024;
 const TIMEOUT_MS = 30000;
 
+// The adapters that declare a status probe, as { id, script, args }.
 export function adapterRegistry() {
-  const manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
-  if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.adapters)) throw new Error("invalid adapter manifest");
-  return manifest.adapters;
+  return adapters().filter((a) => a.status).map((a) => ({ id: a.id, script: a.status.script, args: a.status.args }));
 }
 
 export function parseArgs(args, manifest = adapterRegistry()) {
@@ -22,7 +19,7 @@ export function parseArgs(args, manifest = adapterRegistry()) {
   for (let i = 0; i < args.length; i += 2) {
     const flag = args[i], id = args[i + 1];
     if (flag !== "--skip" || !id || !manifest.some((entry) => entry.id === id) || skip.has(id))
-      throw new Error("usage: adapter-status.mjs [--skip codex] [--skip adapter-id]");
+      throw new Error("usage: adapter-status.mjs [--skip adapter-id]...");
     skip.add(id);
   }
   return skip;

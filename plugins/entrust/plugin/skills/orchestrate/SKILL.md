@@ -45,8 +45,8 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
    choices, delegation features and read-only usage windows directly from the active runtime. Do not
    serialize them into a status-script input or infer them from another CLI; missing facts stay
    `unknown`. Then run the read-only adapter collector:
-   `node <skill-dir>/scripts/adapter-status.mjs`. Pass `--skip codex` when Codex is the active native
-   host, so its external adapter status is not queried a second time. The collector returns registered
+   `node <skill-dir>/scripts/adapter-status.mjs`. Pass `--skip <id>` for an adapter whose provider is
+   the active host, so its status is not queried a second time. The collector returns registered
    adapter reports without host JSON, loading adapter skill pages, normalizing a plan or launching a
    worker. Use only recent model references with an adapter-sourced recent state; absent or unsupported
    sources remain `unknown`/`unsupported`. A recent reference is not proof it is currently runnable; the
@@ -97,6 +97,16 @@ recent models ([opencode](../opencode/SKILL.md)). On another host, take the mode
 | strong | nontrivial analysis, implementation and independent review |
 | cheap | bounded work where mistakes are easy to detect and repair |
 | bulk | independent units after the candidate model meets the acceptance rule |
+
+Default bounds, capped further by the host's capacity and the user's agreed limits:
+
+| Bound | Default |
+| --- | --- |
+| simple task | 1 worker, with the completeness critic beside it, not counted |
+| comparison or design | 2 to 4 agents |
+| complex | 5 or more, launched in batches |
+| alive at once | 6, every route counted |
+| top tier | 1 alive at a time per model family; a standing advisor is not counted |
 
 Choose models and effort by required quality, uncertainty, consequences, context and latency. Use cost
 as a selection input when it can change the choice; omit cost estimates from the approval plan. Use the

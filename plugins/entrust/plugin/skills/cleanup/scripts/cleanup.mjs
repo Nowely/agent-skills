@@ -32,7 +32,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { EXIT, VERSION, canonPath, dropReclaimMarker, holderAlive, holdsReclaimMarker, reclaimable,
-         takeReclaimMarker } from "./driver.mjs";
+         takeReclaimMarker } from "../../codex/scripts/driver.mjs";
 import { TEMP_KINDS, TEMP_OWNER, TEMP_CONTEXT, PATH_KEY } from "../../orchestrate/scripts/temp-dir.mjs";
 
 // A removal that was attempted and failed. The other three codes are the driver's own.

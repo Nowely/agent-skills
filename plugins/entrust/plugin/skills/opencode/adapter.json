@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "status": { "script": "scripts/status.mjs", "args": ["--format", "json"] },
+  "launcher": "scripts/agent-run.mjs",
+  "swarm": {
+    "concurrency": 2,
+    "briefModel": "^MODEL:\\s*[^\\s/]+\\/[^\\s]+\\s*$",
+    "briefModelRule": "a pinned MODEL: provider/model"
+  }
+}

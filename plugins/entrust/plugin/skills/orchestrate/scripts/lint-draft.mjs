@@ -13,6 +13,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
+import { adapters } from "./adapters.mjs";
 
 export const MAX_WORDS = 400;
 
@@ -47,7 +48,7 @@ Rules:
   machinery     wrapper, driver, report.json, prompt.txt, out.json, err.txt,
                 exitCode, answerJson, turnStatus, threadId, RESUME, "exit <n>",
                 обёртка, драйвер.
-  model-slug    gpt-<digit>, claude-<model>: the user reads model names.
+  model-slug    a slug in the shape an installed adapter declares: the user reads model names.
   agent-id      a harness id (agent-<12+ hex>) or a thread id (a UUID).
   length        more than --max-words words (default ${MAX_WORDS}).
   bare-id       an agent's id from --agents written without its model before it.
@@ -79,13 +80,14 @@ Reads and prints; writes nothing.
 
 const RULES = [
   ["path", /(?:^|[\s(\[{"'`=:])((?:\/(?:Users|home|var|private|tmp|opt|Volumes)\/|~\/|[A-Za-z]:\\)\S*)/],
-  ["path", /\$\{[A-Za-z_][A-Za-z0-9_]*\}|\$TMPDIR\b|\$CLAUDE_[A-Z_]+/],
+  ["path", /\$\{[A-Za-z_][A-Za-z0-9_]*\}|\$TMPDIR\b|\$[A-Z][A-Z0-9]*_[A-Z0-9_]+/],
   ["field", /\b[A-Z][A-Z_]{2,}:/],
   ["field", /\b[A-Z][A-Z_]*_[A-Z_]+\b/],
   ["field", /\b[A-Z][A-Z_]{2,}=/],
   ["machinery", /\b(?:wrappers?|driver|exitCode|answerJson|turnStatus|threadId|RESUME)\b|\b(?:report|out)\.json\b|\b(?:prompt|err)\.txt\b|\bexit(?: code)? \d+\b/],
   ["machinery", /(?<!\p{L})(?:обёртк|обертк|драйвер)\p{L}*/u],
-  ["model-slug", /\bgpt-\d|\bclaude-(?:opus|sonnet|haiku|fable|\d)/i],
+  // Each installed adapter declares the shape of its model slugs; with none installed the rule has nothing to match.
+  ...adapters().filter((a) => a.modelSlug).map((a) => ["model-slug", new RegExp(a.modelSlug, "i")]),
   ["agent-id", /\bagent-[0-9a-f]{12,}\b|\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i],
 ];
 const FIVE = /^\s*(?:[-*]\s+)?(?:\*\*)?(status|result|evidence|artifacts|open)(?:\*\*)?:/i;

@@ -112,10 +112,10 @@ test("native header leakage is caught without importing an integration's vocabul
     return p.status === 1 && /LINT=field/.test(p.stdout) || `exit=${p.status}; ${p.stdout}`;
   });
 
-test("the adapter's external schema implements the shared return",
-  "the external transport must still return the common five fields",
+test("the shipped schema implements the shared return",
+  "every external transport returns the common five fields through one installed contract",
   () => {
-    const schema = JSON.parse(fs.readFileSync(path.join(ROOT, "skills/codex/schemas/five-fields.schema.json"), "utf8"));
+    const schema = JSON.parse(fs.readFileSync(path.join(ROOT, "skills/orchestrate/schemas/five-fields.schema.json"), "utf8"));
     const fields = [...page.matchAll(/^ {4}(status|result|evidence|artifacts|open):/gm)].map((m) => m[1]);
     return JSON.stringify([...schema.required].sort()) === JSON.stringify(fields.sort())
       && schema.additionalProperties === false;
