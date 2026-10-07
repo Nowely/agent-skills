@@ -43,8 +43,10 @@ export const SCENARIOS = {
   // The app-server process DIES mid-turn, after the thread and one command exist.
   "server-crash": {},
   // Two unbounded growth paths in the main transport: notifications with no turn/start response to
-  // attribute them to, and a line that never ends.
-  "early-flood": {}, "unterminated-line": {},
+  // attribute them to, and a line that never ends. The second is left out of the conformance suite: its
+  // own output is 34 MB with no newline, which no message can be, and the frames before it are the
+  // happy scenario's, so validating it spent thirteen seconds checking what other scenarios check.
+  "early-flood": {}, "unterminated-line": { conformance: false },
   // A line that is valid JSON and no JSON-RPC frame at all, between two well-formed ones.
   "null-frame": {},
   // A single-action parse over a MULTI-LINE script: the server's own parse, taken at face value, would

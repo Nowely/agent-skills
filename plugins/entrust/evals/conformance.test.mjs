@@ -144,8 +144,10 @@ function check(value, schemaIn, root, at = "$") {
 }
 
 // Every scenario the fixture implements, taken from its exported inventory so dispatches outside the
-// turn/start switch are included.
-const scenarios = Object.keys(SCENARIOS);
+// turn/start switch are included, less those the inventory marks as having no message of their own to
+// validate; those are named at the end, so leaving one out is never silent.
+const scenarios = Object.keys(SCENARIOS).filter((s) => SCENARIOS[s].conformance !== false);
+const leftOut = Object.keys(SCENARIOS).filter((s) => SCENARIOS[s].conformance === false);
 
 // A few scenarios only emit their interesting messages when the driver asks for the matching feature.
 const shimDir = tempDir("codex-conformance-");
@@ -236,5 +238,6 @@ console.log(`\n${validated} message(s) validated: ${notifications} notification(
 if (unchecked.size) console.log(`keywords the validator does not check: ${[...unchecked].sort().join(", ")}`);
 if (unvalidatedMethods.size) console.log(`responses not validated (no schema mapped): ${[...unvalidatedMethods].join(", ")}`);
 for (const d of deliberate) console.log(`excluded, deliberately malformed — ${d}`);
+for (const s of leftOut) console.log(`not run here — ${s}: the fixture's inventory marks it as having no message of its own to validate`);
 console.log(failed ? `\n${failed}/${scenarios.length} scenario(s) failed` : `\nall ${scenarios.length} scenarios conform to ${schemaDir}`);
 process.exit(failed ? 1 : 0);

@@ -401,12 +401,11 @@ const CASES = [
     why: "turn-scoped notifications held before turn/start responds need a bound so a broken server cannot exhaust memory while the response never arrives",
     assertStderr: (e) => /before answering turn\/start/.test(e)
       || `the early buffer was not bounded: ${e.slice(0, 200)}` },
+  // One run for both questions: the scenario pushes 34 MB through the pipe, so a second row cost ten seconds.
   { scenario: "unterminated-line", expect: EXIT.TRANSPORT,
-    why: "the main transport must bound unterminated lines so one broken server write cannot exhaust memory",
+    why: "the main transport must bound unterminated lines so one broken server write cannot exhaust memory, and an abort taken after the thread exists hands back what the turn already produced: the pre-turn shape would report a command that ran and an answer that arrived as `turnStatus: null, answer: \"\"`, which is a coordinator relaunching work that is finished",
     assertStderr: (e) => /with no newline/.test(e)
-      || `an unterminated line was buffered without a bound: ${e.slice(0, 200)}` },
-  { scenario: "unterminated-line", expect: EXIT.TRANSPORT,
-    why: "an abort taken after the thread exists hands back what the turn already produced: the pre-turn shape would report a command that ran and an answer that arrived as `turnStatus: null, answer: \"\"`, which is a coordinator relaunching work that is finished",
+      || `an unterminated line was buffered without a bound: ${e.slice(0, 200)}`,
     assert: (r) => (r.turnStatus === "failed" && r.commandsSucceeded === 1 && r.answer === "the answer"
       && !("error" in r) && r.turnError?.codexErrorInfo === "aborted")
       || `the abort discarded the turn's evidence: ${JSON.stringify({ turnStatus: r.turnStatus, cmds: r.commandsSucceeded, answer: r.answer, err: r.turnError })}` },
