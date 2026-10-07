@@ -329,3 +329,240 @@ coordinator who reads both meets two phrasings of one rule. The swarm page canno
 batch the plan gives no swarm runs as ordinary Codex agents. Decide which page owns these rules and have the other
 link them, or generate the second copy from the first as the codex page's composition rules are generated into
 orchestrate's references.
+
+## E122. The shared skills name Codex and Claude models, so the shared layer fills in the tier table the adapters should own
+
+**Evidence, level 1.** Paths under `plugins/entrust/plugin/`.
+- `skills/orchestrate/SKILL.md:106-112` builds the three profiles from Luna, Astra and Sol; `:62` "use Luna only when
+  task fit and quota savings are evidenced"; `:102-104` "For Codex, use xhigh by default when supported, and preserve
+  a stronger configured max or ultra setting"; `:120` "Astra is a planning or review role".
+- `skills/advisor/SKILL.md:13-14, 29` select Astra on both hosts.
+- `skills/swarm/SKILL.md:13` "A Terra swarm counts as a Luna one does"; `:23` "Every brief carries `MODEL: luna` or
+  `MODEL: terra`, `EFFORT: high` for Luna and `medium` for Terra"; `:35` "one Sonnet or Terra agent".
+- `skills/prepare-feedback/SKILL.md:60` "4 batches of up to 50 Luna"; `skills/cleanup/SKILL.md:46, 74` an example
+  agent `u1-astra`.
+- `skills/orchestrate/scripts/lint-draft.mjs:66-67` documents `--agents` as "Opus W2, Codex Sol D0, Sonnet W5", `:109`
+  strips a `Codex` prefix, `:88` lists `gpt-` and `claude-(opus|sonnet|haiku|fable)` slugs.
+- `README.md:20-27` ("Прокси на GLM", "Позови DeepSeek", "Luna medium") and `:36` ("A coordinator agent, Sonnet or
+  Opus").
+- The adapter defers to the shared page for its own models: `skills/codex/references/orchestration.md:55-57` "Follow
+  the standing allocation in Capacity and models: Astra for consequential plan/architecture critique, Luna first…".
+- `skills/orchestrate/SKILL.md:94-99` already defines model-free tiers (top, strong, cheap, bulk). 0.25.1's changelog
+  says "Adapter-specific model selection guidance has one owner in each adapter skill".
+
+**Check.** `grep -rnwiE 'luna|astra|sol|terra|sonnet|opus|haiku|fable|glm|deepseek|xhigh|ultra'
+plugins/entrust/plugin/skills/{orchestrate,advisor,swarm,cleanup,prepare-feedback}` prints lines; after the fix it
+prints none.
+
+**Issue text.** The shared pages (orchestrate, advisor, swarm, prepare-feedback, the answer linter, the README) name
+concrete models, mostly Codex's, although they already define model-free tiers and the adapters exist to own their
+provider's models. A host whose model names differ meets profiles it cannot apply, and every model release edits the
+shared layer. The shared pages should speak in tiers and roles; each adapter should own its tier-to-model table and
+default effort, and the linter should take model names as data.
+
+## E123. Shared scripts, contracts and limits live in the codex adapter, and the swarm hardcodes the adapter list the registry already holds
+
+**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`.
+- The cleanup skill runs `../codex/scripts/cleanup.mjs` (`cleanup/SKILL.md:28, 66`), which inventories what every
+  skill leaves, not only Codex runs.
+- Orchestrate defines the five-field return (`orchestrate/SKILL.md:150-156`); its schema is
+  `codex/schemas/five-fields.schema.json`, which opencode loads across the adapter boundary (`opencode/SKILL.md:57`,
+  `opencode/references/orchestration.md:39`, `opencode/scripts/contract.mjs:14`).
+- `swarm/scripts/swarm.mjs:31` fixes the launcher at `codex/scripts/agent-run.mjs`, and `:70-80` accepts only
+  `codex|opencode`, each with defaults of its own (concurrency 10 or 2, an OpenCode model regex), while
+  `orchestrate/adapters.json` is the adapter registry.
+- `orchestrate/SKILL.md:47` names one adapter id: "Pass `--skip codex` when Codex is the active native host".
+- The session-wide caps, "6, Claude and Codex together" and "Fable/Astra workers: 1 each", are defined in
+  `codex/references/orchestration.md:80-81`; `swarm/SKILL.md:13` ("the alive cap of six") and
+  `prepare-feedback/SKILL.md:64` ("six alive at most per batch") rely on them.
+- Every agent, "Claude or Codex", is registered through the codex launcher's `--plan`
+  (`codex/references/orchestration.md:27-28`), and the OpenCode entry point is a shim that runs that same launcher
+  with `--adapter opencode` (`opencode/scripts/agent-run.mjs:6-14`): the shared launcher is a Codex adapter file.
+
+**Check.** `grep -rnE '\.\./codex/|"codex", "(scripts|schemas)"' plugins/entrust/plugin/skills | grep -v '^plugins/entrust/plugin/skills/codex/'`
+prints the paths that cross into the adapter.
+
+**Issue text.** What every route uses — the cleanup inventory, the five-field schema, the plan registry and the
+session's agent caps — is owned by the Codex adapter, and the swarm picks among adapters by hardcoded names instead of
+the registry orchestrate already reads. Removing or replacing the Codex adapter breaks cleanup, the OpenCode adapter
+and swarms; adding an adapter means editing the swarm script. Each belongs to the skill that defines it, orchestrate
+or cleanup, and the swarm should take its launcher and defaults from `adapters.json`.
+
+## E124. There is no Claude adapter: Claude Code's rules sit in the Codex adapter and in the shared pages
+
+**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`.
+- `codex/references/orchestration.md` holds the native Claude rules: the Claude column of the tier table (`:48-53`:
+  Fable, Opus, Sonnet, Haiku), "Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable`
+  only…" and "a Fable agent never spawns Fable" (`:63-66`), Claude agents' artifacts (`:42`), "the name Claude Code
+  gives it under `~/.claude/projects/`" (`:40`), the Workflow tool (`:93-96`).
+- Shared pages carry Claude Code mechanics: `swarm/SKILL.md:13` (the Skill tool), `:29` (`CLAUDE_PLUGIN_DATA`,
+  `CLAUDE_SKILL_DIR`), `:31` (one background Bash task, the agent map, a headless session); `cleanup/SKILL.md:28, 66,
+  133`; `prepare-feedback/SKILL.md:14` (the Read and Skill tools, `CLAUDE_SKILL_DIR`), `:80` (EnterWorktree);
+  `orchestrate/references/incidents.md:24-37` (background agents, headless sessions, Workflow).
+- A Codex-host coordinator never loads the codex adapter, and a Claude-host one loads it only for an external Codex run
+  (`orchestrate/SKILL.md:13-14`), so a Claude session without Codex never reads its own host's model and Agent-call
+  rules.
+
+**Issue text.** Claude Code is the one route without an adapter. Its model tiers and Agent-call rules are written into
+the Codex adapter's orchestration reference, and its tools and environment variables into the shared swarm, cleanup
+and prepare-feedback pages. A Claude session that plans no Codex agent never reads its own rules, and the shared pages
+cannot run on another host. Add a `claude` adapter skill, the counterpart of `codex` and `opencode`, as the one owner
+of Claude-specific facts: its models and tiers, the Agent-call rules, and the Claude Code mechanics the shared pages
+now carry.
+
+## E125. The proxy is a shared role, but its protocol is owned by the OpenCode adapter and each adapter writes its own relay
+
+**Evidence, level 1.** Paths under `plugins/entrust/plugin/`.
+- The main-proxy mode, an external model as coordinator with the host executing its agent orders, is defined in
+  `skills/opencode/references/main-proxy.md:1-8`, `skills/opencode/schemas/main-proxy.schema.json` and
+  `skills/opencode/scripts/agent-orders.mjs`; `skills/orchestrate/references/roles.md:9-11` points to it as "the main
+  proxy mode (../../opencode/SKILL.md)"; `README.md:20-27` presents it as OpenCode's.
+- The per-worker proxy is written three times: `skills/opencode/references/proxy.md`, the Haiku relays
+  `agents/codex-agent.md:8-24` and `agents/opencode-agent.md:32-43` (the same four steps in different words), and
+  `skills/codex/SKILL.md:185-193`, which restates them as the relay's message.
+- `skills/orchestrate/references/roles.md:21` already defines the proxy without a provider: "accompanies one external
+  session: launch, callbacks, existing-authority decisions, continuation and cancellation".
+
+**Issue text.** Every run of another model as a subagent goes through a proxy: the Haiku relay for Codex, a native
+proxy for OpenCode, the main conversation itself when an external model coordinates. The proxy is a shared
+orchestration role, yet its protocol lives in the OpenCode adapter, the main-proxy mode works only through OpenCode,
+and the relay's steps are written three times. Orchestrate should own the proxy role and the main-proxy protocol
+(orders, schema, lifecycle), and each adapter only its transport.
+
+## E126. The plugin keeps two storage roots, one tied to Claude Code, with layouts every page must explain
+
+**Evidence, level 1.** Paths under `plugins/entrust/plugin/`.
+- State lives in `${CLAUDE_PLUGIN_DATA}` or `ENTRUST_STATE_DIR`, and the driver exits 2 with neither
+  (`README.md:161-173`); scratch lives in `<tmp>/entrust/<project>/<run>/{agents,checks,swarm,evals}`
+  (`README.md:112-139`), tied together by an `ENTRUST_TEMP_CONTEXT` the coordinator passes on
+  (`skills/orchestrate/SKILL.md:35-39`).
+- Pages restate which root a path is under: `skills/swarm/SKILL.md:31` (`<state>/orchestrate/<project-slug>/<run>/` and
+  `<temp>/entrust/<project>/<run>/swarm/…`), `skills/prepare-feedback/SKILL.md:14, 93` (`<state>/prepare-feedback/…`),
+  `skills/codex/references/orchestration.md:37-44`.
+- The data directory is under `.claude`, a protected path, so the coordinator's own writes there are refused
+  (`skills/codex/references/orchestration.md:41`; `skills/prepare-feedback/SKILL.md:93` "your own write under the state
+  directory is refused") and every write goes through a script.
+- Managing both takes a 135-line skill (`skills/cleanup/SKILL.md`) and a 1,863-line script
+  (`skills/codex/scripts/cleanup.mjs`).
+
+**Issue text.** entrust writes to two places: the host's plugin data directory, which exists only under Claude Code and
+refuses the coordinator's own writes, and a project/run tree under the temporary directory. The split costs a context
+variable threaded through every command, path rules on every page, scripts that write on the coordinator's behalf and
+a large cleanup. The owner's direction is to keep only the temporary folder. Where the state that must outlive a run
+goes then (the worktree ledger, write locks, the isolated Codex home, reports a continuation reads) is decided with
+that change.
+
+## E127. Orchestrate states one rule in up to five places
+
+**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`.
+- No silent model substitution: `orchestrate/SKILL.md:51-54`, `:62-63`, `:127`, `:140-141`,
+  `orchestrate/references/plan.md:8-9`.
+- Effort shown only when it departs from the default: `orchestrate/SKILL.md:70-71`, `:124`, `plan.md:22`.
+- A tier is not a model ranking: `orchestrate/SKILL.md:91-92`, `orchestrate/references/roles.md:4-5`,
+  `codex/references/orchestration.md:55`.
+- The coordinator's model is not restated: `orchestrate/SKILL.md:119-120`, `plan.md:22`.
+- Unknown or stale usage is not unlimited: `orchestrate/SKILL.md:59-61`, `plan.md:41-42`.
+- The five-field schema is pasted whole into `swarm/SKILL.md:25`, identical to `codex/schemas/five-fields.schema.json`.
+- The bulk row's unit, count and pilot, twice: E117.
+
+**Check.** `grep -rnE 'substitut|silently' plugins/entrust/plugin/skills/orchestrate` prints seven lines.
+
+**Issue text.** The orchestrate page and its references repeat the same rules in different words, five times for "never
+substitute a model silently", and the swarm page pastes a schema the plugin ships as a file. Every copy costs tokens
+on each load and drifts on the next edit. Give each rule one owner, the card rules in `plan.md` and the substitution
+rule once, and link the schema file.
+
+## E128. Skill pages carry their history: dated measurements, issue numbers and research verdicts
+
+**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`.
+- `codex/SKILL.md:48` "(measured 2026-09-29)"; `swarm/SKILL.md:31` "(measured 2026-09-29)", `:39` the E4 protocol and
+  "The 2026-09-17 research put peer messaging and debate…"; `prepare-feedback/SKILL.md:68` "(issue #22: at 36 alive on
+  eight cores, 24 of 36 agents missed a page)", `:74` "(on 2026-09-29 a date the third reviewer caught…)" and "(on
+  2026-09-29 such lines kept going stale…)"; `orchestrate/references/answer.md:13` "(measured 2026-09-29: of a
+  report's five reads…)"; `prepare-feedback/references/focuses.md` "The case behind the rule".
+- `orchestrate/references/incidents.md` is linked from no orchestrate page, only from the codex adapter's reference
+  (`codex/references/orchestration.md:41, 44`) and the README (`README.md:363`).
+
+**Issue text.** Skill pages justify rules inline with dates, issue numbers and research verdicts. The model that
+executes a page needs the rule, not its story ("State what to do rather than narrating how or why", row M-206 in
+`plugins/terse/research/2026-09-28-vendor-guides/m1-map.md`), and the story has homes already: the incidents
+references and `research/`. Move each justification there, keeping a link only where the reader must judge the rule,
+and give orchestrate's incidents page a reader or fold it into the adapter's.
+
+## E129. The installed plugin carries this repository's own procedures
+
+**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`.
+- `orchestrate/references/plan.md:69-71`: "In a checkout of agent-skills the record is
+  `plugins/entrust/research/<date>-<slug>/`…".
+- `orchestrate/references/answer.md:9` copies AGENT.md's design principles (minimalism, no crutches, clean
+  architecture) into the rule for every user's recommendations.
+- `prepare-feedback/SKILL.md:18` detects a checkout by `"name": "nowely"`, `:78-87` commits a research run on a
+  worktree branch of this repository; `prepare-feedback/references/focuses.md` takes its layouts from this
+  repository's issues #1 and #15 and reads `~/.claude/plugins/marketplaces/nowely/plugins/<name>/CHANGELOG.md`.
+- `swarm/SKILL.md:39` and `orchestrate/references/plan.md:71` send the reader to this repository's
+  `research/protocols.md`.
+
+**Issue text.** Rules that serve only this repository's maintenance (where research records go, the owner's design
+principles, how a feedback run is committed here) ship to every user and load with the skills. For anyone else they
+are noise, and they tie the pages to this repository's layout. Keep them in AGENT.md or the repository's own tooling.
+
+## E130. prepare-feedback runs a research pipeline where its goal is a feedback report
+
+**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/prepare-feedback/`. `SKILL.md` is 99 lines and 2,861
+words; five lines run 1,162 to 1,878 characters (`:14, 64, 68, 72, 74`). It drives nine script commands
+(`references/commands.md`), two ways of reading, a pilot, swarms, a reducer, coverage and quote checks, two analyses,
+a stress test, a judge, a publication reviewer and a completeness critic over numbered drafts, and a commit on a
+worktree branch (`SKILL.md:57-87`). `references/focuses.md` adds 172 lines and `scripts/prepare-feedback.mjs` 1,472.
+
+**Issue text.** The owner's goal for the skill is narrow: on request, analyse one session or several and write
+feedback to study. The page instead runs a full research pipeline with publication review and a repository commit,
+in paragraphs of up to 1,900 characters a coordinator must hold whole. Cut it to that goal: pick the sessions, have
+agents read them under the user's question, return the feedback.
+
+## E131. The cleanup page and the README retell what the cleanup script prints
+
+**Evidence, level 1.** `plugins/entrust/plugin/skills/cleanup/SKILL.md:97-135`, 39 lines, restates what the script
+keeps or proposes (lock shapes, the previous name `codex-delegate-<marketplace>`, legacy `runs/<startedAtMs>-<pid>`
+folders, `<state>/tmp`), while each listing row carries its own reason (`:36-40` "whether each is suggested,
+selectable by its number or kept, and why"). `plugins/entrust/plugin/README.md:50-66` restates the inventory a third
+time.
+
+**Issue text.** The cleanup skill shows the listing, proposes its `proposed` set and deletes the numbers the user
+picks; the listing already gives each row's reason. The page's 39-line "What it never touches" and the README's
+paragraph restate the script's rules, so each change to the script is three edits. Keep the rules in the script and
+its `--help`, and on the page only what the coordinator does.
+
+## E132. The README restates the skill pages in 3,656 words
+
+**Evidence, level 1.** `plugins/entrust/plugin/README.md` is 377 lines. Its Goal (`:34-48`), the temporary layout
+(`:112-139`), the state directory (`:161-185`), Rights (`:234-247`) and Trust and verification (`:256-276`) restate
+`skills/codex/SKILL.md`, `skills/cleanup/SKILL.md` and the codex references, and a table (`:348-364`) is needed to say
+where each story's real home is.
+
+**Issue text.** The README is the human install page, yet it restates the codex adapter's rights and gates, the
+cleanup inventory, the storage layout and the adapter's goal. A reader who wants to install the plugin and learn what
+each skill does reads 3,656 words. Keep install, prerequisites and a line per skill, and link the pages for the rest.
+
+## E133. The roles table offers 27 roles, and none gathers shared context for the agents after it
+
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/roles.md:13-40` defines 27 roles in 1,712
+words; six serve only research and feedback runs (page dry run, recognition reader, blind proposer, surveyor,
+measurer, retrospective analyst). The area scout (`:15`) writes nothing and returns ranked findings to the
+coordinator; no role collects a task's context into a folder that later agents read.
+
+**Issue text.** Orchestrate offers 27 roles where a plan uses a handful, the "too many options" Anthropic's skill
+authoring guide warns against, and the research roles load with every plan. The role the owner needs is missing: an
+analyst/scout that gathers the context a task has (files, history, earlier returns) into a temporary folder the
+coordinator names, so that the agents after it read that folder instead of scouting again. Move the research roles to
+the page that uses them and add that role.
+
+## E134. The OpenCode adapter's description says when, not what, and quotes one user's phrases
+
+**Evidence, level 1.** `plugins/entrust/plugin/skills/opencode/SKILL.md:3-9` opens "OpenCode: use immediately when the
+user says “Задействуй модели OpenCode,”…" and quotes three Russian requests; it never says what the skill does, as the
+codex description does (`skills/codex/SKILL.md:4` "Claude-to-Codex adapter: launch external Codex agents…").
+Anthropic's skill authoring guide: "Always write in third person" and "include both what the Skill does and when to
+use it". `plugins/entrust/evals/opencode-routing/` pins routing on these phrases.
+
+**Issue text.** The opencode description is a list of trigger quotes in one user's language with no statement of what
+the adapter does. Write it as what plus when, keeping the trigger words, and rerun `evals/opencode-routing/`.
