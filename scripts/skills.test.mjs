@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Do the plugins' skill pages keep the vendor's mechanical rules for a skill?
 //
-//   node evals/skills.test.mjs
+//   node scripts/skills.test.mjs
 //
 // Reads every plugins/*/plugin/skills/*/SKILL.md and the markdown files each one reaches by relative links
 // inside its plugin's plugin/ directory; run it after an edit to any of them. Agent files

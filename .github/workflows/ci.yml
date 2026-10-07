@@ -81,7 +81,7 @@ jobs:
         with:
           node-version: "24"
       - name: Parse every repository-wide script under this engine
-        run: for f in evals/*.mjs; do node --check "$f"; done
+        run: for f in scripts/*.mjs; do node --check "$f"; done
       - name: Skill pages
-        run: node evals/skills.test.mjs
+        run: node scripts/skills.test.mjs
 

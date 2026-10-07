@@ -315,7 +315,7 @@ and 821k tokens. The swarm runs Luna for verdict units (`plugins/entrust/plugin/
 owner, 2026-09-30.
 
 A second run, level 3 for its outcome: on 2026-09-30, at the owner's request, Luna at `high` ran in parallel as the
-dissenting critic of one recommendation, how the skill-page test (`evals/skills.test.mjs`) and this ledger should
+dissenting critic of one recommendation, how the skill-page test (`scripts/skills.test.mjs`) and this ledger should
 hold E77 and E78. It agreed with two of the recommendation's five points and amended three; all three amendments
 were taken, and one was decisive: E77's `wc -w` check was the entry's only reproducible measurement, so it was kept
 rather than replaced (the owner later moved it to the Evidence). Its verdicts are in the run's report, kept outside
