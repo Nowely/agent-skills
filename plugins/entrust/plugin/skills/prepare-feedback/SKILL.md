@@ -57,7 +57,7 @@ The user limits the scope in words, and "go" covers only what the plan showed. A
 Orchestrate's rules for the bulk row, in its Model tiers and its plan step, hold as written: an extraction batch runs as the swarm its plan proposes. A report needs four things beyond those pages:
 
 1. **A batch's unit is a corpus part.** `{{UNIT}}` carries the part's full path, `corpus/parts/P###.md` in the private folder, and the fixed answer schema is the focus's closed labels with verbatim quotes. The agent reads the part's pages, `corpus/pages/P###-NN.md`, one `cat` each, so that `coverage` finds each page whole in one output. The verdict unit stays for the stress test.
-2. **The card shows the batches as a line of text**, "4 batches of up to 50 Luna", not as launcher rows, each swarm in a run directory of its own, `<state>/orchestrate/<project-slug>/<run>/`.
+2. **The card shows the batches as a line of text**, "4 batches of up to 50 bulk-tier agents", not as launcher rows, each swarm in a run directory of its own, `<state>/orchestrate/<project-slug>/<run>/`.
 3. **A launcher row names its role's class.** Plan registration refuses a role with neither a worker nor a checking word, and most roles.md names have neither: write the roles.md name and the class word, as [focuses.md](references/focuses.md#role-words) lists. An all-Claude plan registers nothing.
 4. **The script counts what the swarm's summary lacks.** `tokens` reads the tokens in a batch's reports, and `coverage` checks its page reads in the Codex rollout logs.
 

@@ -43,7 +43,7 @@ exactly as the command printed it.
    covered by this cleanup."
 2. Propose in one sentence exactly what `proposed` holds, by those rows' names
    and their total size: "I suggest deleting the temporary files for agent
-   u1-astra and 172 temporary directories from the lock tests, about 11 MB;
+   u1 and 172 temporary directories from the lock tests, about 11 MB;
    shall I?" When `selectable` holds numbers that are not in `proposed`, add
    one sentence naming them: "Item 1, the 9 September 2026 cleanup, item 7,
    the standalone report from run 42, and item 18, 43 saved conversations from
@@ -71,7 +71,7 @@ exactly as the command printed it.
 4. The command prints one paragraph per outcome, then the fresh listing.
    Report every outcome it printed in your own message, keeping its names and
    reasons and adding none —
-   "I deleted the temporary files for agent u1-astra and 172 temporary
+   "I deleted the temporary files for agent u1 and 172 temporary
    directories from the lock tests, and left the 9 September 2026 cleanup in
    place because it changed since it was listed." Then show the fresh listing
    in a code block when anything remains, and say "I have no further cleanup

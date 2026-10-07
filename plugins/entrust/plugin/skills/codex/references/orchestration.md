@@ -12,7 +12,7 @@ when a reference is read as a plain file.
 ## Contents
 
 - [Composition](#composition), [registering the plan](#registering-the-plan), [state](#state-and-artifacts)
-- [Models](#model-tiers), [bounds](#bounds), [effort](#effort), [Workflow](#a-workflow), [mechanism](#mechanism)
+- [Models](#model-tiers), [bounds](#bounds), [Workflow](#a-workflow), [mechanism](#mechanism)
 - [Coordinator](#delegated-coordinator), [completion](#done-running-and-the-next-report-path), [result](#the-result)
 - [Harvest](#a-worktree-agents-harvest), [collisions](#writers-collided), [request](#deciding-a-request), [rule](#the-rule), [synthesis](#the-synthesis)
 
@@ -38,34 +38,21 @@ for the shared return, without `BRIEF:` (which would clip its answer). Read thos
 The run directory is
 `<state>/orchestrate/<project-slug>/<run>/`, `<state>` the driver's state directory, `<run>` unique and `<project-slug>` the working directory's absolute path with every character that is not a letter or
 a digit replaced by `-`, the name Claude Code gives it under `~/.claude/projects/`. It is outside every repository, so no `.gitignore`; not the repository root, not the project's
-`.claude/`, whose writes prompt whatever the allow rules say. The launcher and the driver create it, through `--report-file`, and it is what they make of it: a report per agent and, beside it, the launcher's `agent/` with the four files of the run, and the plan the launcher registered; nothing else is written there. Never run `mkdir`, Write or a shell redirect under that data directory yourself, because a headless session refuses each of them as a sensitive file with no prompt anyone can answer ([measured 2026-09-08](../../orchestrate/references/incidents.md#writes-under-the-data-directory)); and never write a decision file by hand: `--decide` is the one path.
+`.claude/`, whose writes prompt whatever the allow rules say. The launcher and the driver create it, through `--report-file`, and it is what they make of it: a report per agent and, beside it, the launcher's `agent/` with the four files of the run, and the plan the launcher registered; nothing else is written there. Never run `mkdir`, Write or a shell redirect under that data directory yourself, because a headless session refuses each of them as a sensitive file with no prompt anyone can answer ([measured](../../claude/references/incidents.md#writes-under-the-data-directory)); and never write a decision file by hand: `--decide` is the one path.
 A Claude agent's artifact is its returned text, and a file it must leave goes in a directory of its own that it makes with `mktemp -d`, with the path in that text: Claude agents launched together share the session's `$TMPDIR`, and a fixed name there is a sibling's to overwrite. Codex artifacts are the paths the agent's
 own report names, under the same data directory; it is kept after the task and the user deletes it. A read agent is never asked to write, not under the repository and not in the
-run directory: its artifact is its report, and a brief that asks a Codex read agent for a file there costs a refused write and exit 6 ([measured 2026-09-08](../../orchestrate/references/incidents.md#a-read-agent-asked-for-a-file)).
+run directory: its artifact is its report, and a brief that asks a Codex read agent for a file there costs a refused write and exit 6 ([measured](incidents.md#a-read-agent-asked-for-a-file)).
 
 ## Model tiers
 
-| Tier | Claude | Codex | Work |
-| --- | --- | --- | --- |
-| top | Fable | Astra | consequential design and plan critique, mentoring, [final review](../../orchestrate/references/roles.md) and verdict, decomposition you cannot do, or a case stuck after two failed attempts. Never implementation |
-| strong | Opus | Sol | non-trivial analysis, implementation and independent review |
-| cheap | Sonnet | Terra | bounded work where mistakes are easy to detect and repair |
-| bulk | Haiku | Luna | independent units after the model/task fit passes; Luna is fast and low-cost, not inherently limited to shallow reasoning |
-
-The tier table maps role demands to this adapter's model names; it does not rank capability. Follow the
-standing allocation in [Capacity and models](../../orchestrate/SKILL.md#capacity-and-models): Astra for
-consequential plan/architecture critique, Luna first for scouting and independent work, and Sol as a
-same-material pilot reference or justified upgrade. Use current or user-supplied price estimates with
-their source; do not hard-code volatile ratios. For bulk batches, keep the unit and pilot rules in
+A Codex agent's model and effort come from [models.md](models.md), a Claude agent's from the
+[claude adapter](../../claude/SKILL.md). Every Codex agent carries a `MODEL:` line with a name from the
+table, never the config default, and the `EFFORT:` line its row gives; pass its Agent call no `model` and
+no `effort`: either is spent on the wrapper alone and never reaches Codex. Its card description is
+"Codex <short name> <id>: <task in a few words>". Use current or user-supplied price estimates with their
+source; do not hard-code volatile ratios. For bulk batches, keep the unit and pilot rules in
 [plan.md](../../orchestrate/references/plan.md#a-bulk-row). The adapter's pool and launch protocol remain
 authoritative for an actual swarm.
-
-- Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable` only for Fable agents within the agreed cap;
-  untagged, a subagent inherits your session model. Give it a description of the form "<Model> <id>: <task in a few words>", the id the card gave it, as a Codex agent's card carries "Codex <short name> <id>: <task in a few words>". A Codex agent's model is its `MODEL:` line, and every Codex agent carries one
-  with a name from the table, never the config default; pass its Agent call no `model` and no `effort`: either is spent on the wrapper alone and never reaches Codex.
-- Subagents may spawn subagents, but a Fable agent never spawns Fable: it tags its own Agent calls `opus` or `sonnet`; only you, or a
-  foreman you launched, launch Fable agents.
-- Every Codex agent carries an `EFFORT:` line chosen for its work, as it carries its `MODEL:` line, by the row [Effort](#effort) gives it; only Astra in the top row goes without one.
 
 ## Bounds
 
@@ -78,46 +65,31 @@ agreed limits. Bulk launches must fit the machine and any external launcher limi
 | comparison or design | 2 to 4 agents |
 | complex | 5 agents or more, launched in batches inside the alive cap |
 | alive at once | 6, Claude and Codex together, the top pair counted in |
-| Fable/Astra workers | 1 each, alive at a time; standing advisor excluded |
+| top-tier workers | 1 per model family alive at a time; standing advisor excluded |
 | Codex write agents per directory | 1: a second on the same directory exits 10 at once, before its turn runs |
 
-The Fable/Astra worker caps count turns in progress and exclude the standing advisor. The advisor has no question budget; a waiting thread frees a slot only when the runtime says so. The host's alive-at-once cap remains a parallel execution limit. A Claude agent starts with the user's and the project's CLAUDE.md and the memory index in its context, whatever its brief says, and a Codex agent starts without them, so a blind or independent role on the Claude side still sees them. While another writer holds part of a checkout, nobody changes what they share: no stash, branch switch, reset, clean or rebase, and that binds you too when you run a check of your own. When two writers' work collides, repair it as [results.md](../../orchestrate/references/results.md#writers-collided) says. Run a check only when its result can change what happens next: a writer runs the checks that read the files it changed while it iterates, and the evidence that decides is those same checks run once on the tree that goes out, by an agent that did not write the code or by you under the redirect rule; a brief names those checks, not the whole suite.
-
-
-## Effort
-
-
-Every Codex agent carries an `EFFORT:` line chosen for its work, as it carries its `MODEL:` line: `high` for the bulk row's extraction, classification and verification, `low` for mechanical work only, `medium` for review, refutation and judgement in the strong and cheap rows; only Astra in the top row goes without one and inherits the configured effort, and a model standing in for Astra carries `EFFORT: xhigh`. Measured 2026-09-17: two Luna read agents at an inherited `xhigh` took 480 and 557 seconds and 1.2M and 2.3M tokens for a ledger and a grep task. In a Workflow, `effort: 'low'` is for mechanical Claude Sonnet stages only.
+The top-tier caps count turns in progress and exclude the standing advisor. The advisor has no question budget; a waiting thread frees a slot only when the runtime says so. The host's alive-at-once cap remains a parallel execution limit. A Codex agent starts without the user's and the project's CLAUDE.md and memory index, which every Claude agent has. While another writer holds part of a checkout, nobody changes what they share: no stash, branch switch, reset, clean or rebase, and that binds you too when you run a check of your own. When two writers' work collides, repair it as [results.md](../../orchestrate/references/results.md#writers-collided) says. Run a check only when its result can change what happens next: a writer runs the checks that read the files it changed while it iterates, and the evidence that decides is those same checks run once on the tree that goes out, by an agent that did not write the code or by you under the redirect rule; a brief names those checks, not the whole suite.
 
 
 ## A Workflow
 
-Your user's invocation of this skill authorises Workflow. A Workflow reports nothing until its last agent returns, so an agent that ends early stays invisible behind its siblings ([measured 2026-09-08](../../orchestrate/references/incidents.md#a-workflow-hid-an-early-exit)). Load the `workflow-authoring` skill before writing the script when the session lists it. In the script, a Codex agent's `agentType` is `entrust:codex-agent`.
+Use a Workflow as the [claude adapter](../../claude/SKILL.md#workflow) says; in the script, a Codex agent's
+`agentType` is `entrust:codex-agent`.
 
 ## Mechanism
 
 
 A Codex agent is one Agent call, the sibling's `One call` verbatim: in the background when agents run side by side and you work while they do, in the foreground for the one agent you wait for and for every agent in a headless session. `<REPORT>` is `<run>/<agent>/report.json` under the run directory above, and `<DIR>` the agent's directory, `agent/` beside it.
-Wait for the agents you launch in the background, Claude or Codex, never on them: each one's return arrives on its own, its message first and its completion notification after (measured 2026-09-26). Never read an Agent task's output file for that return: it is the agent's whole transcript. For the Codex agents in the background, also launch one poll as a background Bash task over every alive one's `exit` and `approvals/pending` markers, one wake per event: `while :; do for d in <DIR>...; do [ -s "$d/exit" ] && { echo "DONE=<id>"; exit 0; }; [ -s "$d/approvals/pending" ] && { echo "ASK=<id>"; exit 0; }; done; sleep 5; done` — one task for the whole batch, not one per agent, and it exits the moment it prints either marker rather than looping on. Its line arrives as a notification beside the wrappers' hand-backs. `DONE=<id>` is that agent's own exit marker: read its report as [the result](#the-result) says, which also holds the next report path, a failed result and a harvest. `ASK=<id>` is that agent's own request waiting on your decision, as a wrapper's hand-back may be: decide it as [the rule](#the-rule) says. In an interactive session you may end your turn with agents alive: they go on, and each completion arrives as a turn of its own (measured 2026-09-27). A headless session ends with the turn and its background tasks are killed with it (measured 2026-09-08), so there never end a turn with an agent alive: launch each agent in the foreground, and its hand-back arrives inside the same turn ([measured 2026-09-17](incidents.md#foreground-background-and-the-ceiling)).
-Launch independent Claude agents as background Agent calls, one notification each (in the foreground in a headless session); use Workflow only for a chain a script must decide (refute, then judge), as [A Workflow](#a-workflow) says, and the Agent tool for continuing an agent. A subagent's final text is its return value, not a message to a human: say so in the brief.
+Wait for background agents as the [claude adapter](../../claude/SKILL.md#waiting) says. For the Codex agents in the background, also launch one poll as a background Bash task over every alive one's `exit` and `approvals/pending` markers, one wake per event: `while :; do for d in <DIR>...; do [ -s "$d/exit" ] && { echo "DONE=<id>"; exit 0; }; [ -s "$d/approvals/pending" ] && { echo "ASK=<id>"; exit 0; }; done; sleep 5; done` — one task for the whole batch, not one per agent, and it exits the moment it prints either marker rather than looping on. Its line arrives as a notification beside the wrappers' hand-backs. `DONE=<id>` is that agent's own exit marker: read its report as [the result](#the-result) says, which also holds the next report path, a failed result and a harvest. `ASK=<id>` is that agent's own request waiting on your decision, as a wrapper's hand-back may be: decide it as [the rule](#the-rule) says. In a headless session launch each agent in the foreground, as the [claude adapter](../../claude/SKILL.md#waiting) says; its hand-back arrives inside the same turn.
 Never launch an agent under another state directory while an armed agent is alive: containment is the driver's own inode check against its one state directory, and a peer under another one is outside what that check can see.
 
 
 ## Delegated coordinator
 
-A Claude foreman is a `general-purpose` Agent, `model: opus`. Give it the approved plan and
-quoted user authority, the generic foreman role and this adapter's paths and rules. The Skill
-tool has loaded an explicit-only skill only in a turn whose user message typed its command (13
-loads and 6 refusals, 2026-09-29), and nobody types one to a subagent: pass the relevant files
-directly. It keeps
-the parent's user conversation out of its return. Foreground worker calls reduce timeline
-noise in the measured Claude UI; this is not a portable guarantee of native delegation.
-
-Launch its Claude workers and `entrust:codex-agent` wrappers in the foreground, parallel calls
-for independent workers of similar length. Continue work with SendMessage; use a fresh worker
-for independent verification. An approval relayed mid-run is quoted exactly and an approved
-external action is run by a fresh worker whose first brief includes it and the concrete command.
-
+A foreman is launched as the [claude adapter](../../claude/SKILL.md#the-foreman) says. Give it the
+approved plan and quoted user authority, the generic foreman role and this adapter's paths and rules; it
+keeps the parent's user conversation out of its return. Its `entrust:codex-agent` wrappers run in the
+foreground like its Claude workers.
 
 ## DONE, RUNNING and the next report path
 

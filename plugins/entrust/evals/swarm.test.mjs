@@ -54,26 +54,23 @@ test("the page stays inside its budget: 60 lines, one heading level, no fence",
     return problems.length === 0 || problems.join("; ");
   });
 
-test("A0 the page loads codex through the Skill tool, and no sentence asks it to load orchestrate",
+test("A0 the page loads codex, and no sentence asks it to load orchestrate",
   "orchestrate is `disable-model-invocation`, so the Skill tool refuses to load it and a page that asks for that load does not start (E39)",
   () => {
     const problems = [];
-    const asks = /\bload\b[^.;]*\borchestrate\b/i.exec(flat) ?? /Skill tool[^)]*entrust:orchestrate/.exec(flat);
+    const asks = /\bload\b[^.;]*\borchestrate\b/i.exec(flat) ?? /`entrust:orchestrate`/.exec(flat);
     if (asks) problems.push(`a sentence asks to load orchestrate: ${asks[0].slice(0, 120)}`);
-    const loads = [...flat.matchAll(/Skill tool, `entrust:([a-z-]+)`/g)].map((m) => m[1]);
-    if (loads.join() !== "codex") problems.push(`the Skill-tool loads the page asks for: ${loads.join(", ") || "none"}`);
+    const loads = [...flat.matchAll(/\(`entrust:([a-z-]+)`\)/g)].map((m) => m[1]);
+    if (loads.join() !== "codex") problems.push(`the skill loads the page asks for: ${loads.join(", ") || "none"}`);
     return problems.length === 0 || problems.join("; ");
   });
 
-test("U1 every brief the page shows carries a bulk or cheap model, and no strong or top model is named",
-  "a top-row model in a swarm is the pool cap multiplied by fifty",
+test("U1 every brief takes its model from the bulk or cheap row of the adapter's table, and the page names no model",
+  "a top-tier model in a swarm is the pool cap multiplied by fifty; a model named on the shared page is the adapter's table copied out of its owner",
   () => {
-    const models = [...flat.matchAll(/`MODEL: ([^`]+)`/g)].map((m) => m[1]);
-    if (!models.length) return "the page shows no `MODEL:` line for a brief";
-    const bad = models.filter((m) => !/^(luna|terra)$/i.test(m));
-    if (bad.length) return `the page admits a swarm model outside the bulk and cheap rows: ${bad.join(", ")}`;
-    if (/\b(astra|sol)\b/i.test(flat) || /\b(Opus|Fable)\b/.test(flat)) return "the page names a strong or top model";
-    return true;
+    if (!/bulk or cheap row of the adapter's model table/.test(flat)) return "the page does not send the brief's model to the bulk or cheap row";
+    const named = /`MODEL: [a-z]/.exec(flat) ?? /\b(?:astra|sol|terra|luna|fable|opus|sonnet|haiku)\b/i.exec(flat);
+    return !named || `the page names a model: ${named[0]}`;
   });
 
 test("U2 the brief's OUTPUT_SCHEMA is the five-field file the codex skill ships, and that file parses, is strict and names the five fields in order",

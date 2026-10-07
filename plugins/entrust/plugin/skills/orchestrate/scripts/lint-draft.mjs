@@ -63,9 +63,9 @@ Rules:
                 check passes). A digit or an agent's name is not a receipt.
 
 --agents LIST    every agent that ran, as "<Model> <id>" separated by commas or
-                 newlines: "Opus W2, Codex Sol D0, Sonnet W5". A Codex agent is
-                 named by "Codex Sol D0" or "Sol D0". Repeatable; --agent SPEC
-                 adds one.
+                 newlines: "Reader W2, Vendor Model D0". A model of two or more
+                 words is also named by its last word: "Model D0". Repeatable;
+                 --agent SPEC adds one.
 --receipt LABEL  a check that supports a success claim; the claim's sentence
                  contains the label ("node --test", "the slug suite").
 --receipts FILE  receipts, one per line: a plain label, or a JSON object with a
@@ -106,7 +106,7 @@ export function parseAgents(list) {
     const words = spec.split(/\s+/);
     const id = words.pop();
     const model = words.join(" ");
-    const short = model.replace(/^Codex\s+/i, "");
+    const short = words.length > 1 ? words.at(-1) : model;
     return { spec, id, model, short };
   });
 }

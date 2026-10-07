@@ -249,6 +249,7 @@ say what an agent may write, and where, in ordinary words, so the user knows wha
 ## References
 
 - `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`: the flags and the exit codes, `--help-all` the rest; `agent-run.mjs --help` beside it: the wrapper's one command, its refusals, the nine status lines, the waiting result and `--decide`.
+- [models.md](references/models.md): the model and effort for each tier.
 - [approvals.md](references/approvals.md): the coordinator's approval steps.
 - [environment-and-internals.md](references/environment-and-internals.md): environment, prompt files, stopping an agent, receipts, worktrees, locks, the commit grant, config drift.
 - [result-gates.md](references/result-gates.md): evidence gates and the verifier.

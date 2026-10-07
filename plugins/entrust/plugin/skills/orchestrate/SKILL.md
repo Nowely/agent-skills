@@ -10,12 +10,13 @@ license: MIT
 ---
 
 You own the work-list, the plan, the user conversation and the synthesis. Agents own bounded
-deliverables. Use the host's native delegation capabilities. A native Codex subagent needs no
-external launcher and does not activate the [codex adapter](../codex/SKILL.md); load that adapter
-only when the plan calls for an external Codex run. For an external OpenCode worker, load the
-[opencode adapter](../opencode/SKILL.md): it owns the shared server connection, model selection,
-session continuation and native callbacks. Do not load adapter skill text for capability discovery;
-use the capability snapshot below, then load only the selected worker's adapter instructions.
+deliverables. Use the host's native delegation capabilities; in Claude Code, load the
+[claude adapter](../claude/SKILL.md) (`entrust:claude`) before composing, since it owns how Claude Code
+runs agents. An external worker needs its adapter: [codex](../codex/SKILL.md) for an external Codex run
+(a native Codex subagent needs none), [opencode](../opencode/SKILL.md) for an OpenCode worker, which owns
+the server connection, model selection, session continuation and callbacks. Do not load adapter skill
+text for capability discovery; use the capability snapshot below, then load only the selected worker's
+adapter.
 
 ## Your own hands
 
@@ -58,7 +59,7 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
    workers/proxies using that account, but do not give per-model call counts. Missing telemetry is
    `unknown`; age an observation against the current time and treat stale data as stale, never
    unlimited. At the configured near-limit threshold (default 99% used), hold large work when its
-   estimate is unknown; use Luna only when task fit and quota savings are evidenced.
+   estimate is unknown; use the bulk tier only when its task fit and quota savings are evidenced.
 2. Assign tasks by ownership and shared interfaces, using [roles.md](references/roles.md). For a
    nontrivial split, include the split critic and its exact model in the proposed plan. Launch it only
    after the allocation is covered by the approved policy or the user approves the plan. Apply its
@@ -86,7 +87,9 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
 ## Capacity and models
 
 Choose the smallest team that meets the work and verification needs. Tiers describe work demands, not
-fixed model ability or a quality ranking.
+fixed model ability or a quality ranking. Each adapter names its models for them:
+[Claude Code](../claude/references/models.md), [Codex](../codex/references/models.md), and OpenCode's
+recent models ([opencode](../opencode/SKILL.md)). On another host, take the models from its runtime.
 
 | Tier | Work |
 | --- | --- |
@@ -96,17 +99,17 @@ fixed model ability or a quality ranking.
 | bulk | independent units after the candidate model meets the acceptance rule |
 
 Choose models and effort by required quality, uncertainty, consequences, context and latency. Use cost
-as a selection input when it can change the choice; omit cost estimates from the approval plan. For
-Codex, use xhigh by default when supported, and preserve a stronger configured max or ultra setting.
-On another host, use its highest supported effort unless the user selects the speed profile.
+as a selection input when it can change the choice; omit cost estimates from the approval plan. Use the
+host's highest supported effort, or a stronger configured setting, unless the user selects the speed
+profile.
 
 Recommend one of these profiles:
 
 | Profile | Allocation |
 |---|---|
-| balanced (default) | Keep the user's model as coordinator; use Luna for scouting, Astra for consequential planning or architecture, and an independent verifier for material findings. For a new Luna/task pairing, compare Luna with Sol on the same representative material before expanding. |
-| speed | For bounded, recoverable work with a proven model/task pairing, use Luna with a supported medium effort, one scout per independent unit, and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Preserve the needed review when consequences warrant it. |
-| quality | Keep the user's model as coordinator. Use Astra for consequential planning or architecture; add independent Luna and Sol reviewers on the same material when distinct perspectives can change the decision, and use a separate strong judge for consequential disagreement. |
+| balanced (default) | Keep the user's model as coordinator; the bulk tier for scouting, the top tier for consequential planning or architecture, and an independent verifier for material findings. |
+| speed | For bounded, recoverable work with a proven model/task pairing: the bulk tier at a medium effort, one scout per independent unit, and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Keep the review the consequences warrant. |
+| quality | Keep the user's model as coordinator. The top tier for consequential planning or architecture; independent bulk- and strong-tier reviewers on the same material when distinct perspectives can change the decision, and a separate strong judge for consequential disagreement. |
 
 A new model/task pairing gets a pilot ([model fit](references/plan.md#model-fit-and-estimates)); reuse
 a successful result only for comparable work. Model diversity is useful when it can change a decision;

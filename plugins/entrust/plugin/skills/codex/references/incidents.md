@@ -42,6 +42,10 @@ rule ever looks like ceremony, this is what it cost to learn.
 - [A reused agent directory](#a-reused-agent-directory)
 - [Language and name in a return](#language-and-name-in-a-return)
 - [A signed-out server lists models](#a-signed-out-server-lists-models)
+- [A read agent asked for a file](#a-read-agent-asked-for-a-file)
+- [Nineteen of twenty on one broken path](#nineteen-of-twenty-on-one-broken-path)
+- [The split critique](#the-split-critique)
+- [Effort inherited by a bulk agent](#effort-inherited-by-a-bulk-agent)
 
 ## Isolation
 
@@ -310,3 +314,24 @@ told its name answered «GPT-5 Codex, id T1».
 
 Measured 2026-09-29: a server whose account was signed out still listed Astra and Sol, so a launch that finds a
 model proves nothing about sign-in; only the status line does.
+
+## A read agent asked for a file
+
+2026-09-08: a read agent whose brief demanded a file spent its whole turn asking for an approval the driver
+refused, and the run ended at exit 6 with nothing written and nothing answered.
+
+## Nineteen of twenty on one broken path
+
+2026-09-12: one broken path reached every brief of a twenty-agent fan-out, and nineteen of the twenty verdicts
+answered that path. The page's bulk unit keeps the brief out of the verdict set for this reason, and a unanimous
+fan-out is read as evidence about the prompt first.
+
+## The split critique
+
+2026-09-12: the split critic caught two claims that were true at one release and false at the next, and they
+never reached the fan-out.
+
+## Effort inherited by a bulk agent
+
+Measured 2026-09-17: two Luna read agents at an inherited `xhigh` took 480 and 557 seconds and 1.2M and 2.3M
+tokens for a ledger and a grep task.

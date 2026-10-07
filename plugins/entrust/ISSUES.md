@@ -174,26 +174,25 @@ fixes weighed on 2026-09-29 were rejected by the owner as not good enough: an al
 the page dead until someone reads the README, and an explicit first step in place of the substitution adds a visible Bash call
 to every load and a step the model can skip.
 
-## E104. A role's effort over the default is stated twice, in codex's parity and orchestration references, and the two differ on refutation
+## E104. A role's effort over the default is stated twice, in codex's parity reference and its model table, and the two differ on refutation
 
-**Evidence, level 1.** The default is `plugins/entrust/plugin/skills/orchestrate/SKILL.md:102-104`, `xhigh` for a
-Codex agent where supported; a role's effort overrides it locally. That override is stated twice.
-`plugins/entrust/plugin/skills/codex/references/parity.md:85-92`, the effort table: `low` fact lookup, `medium`
-ordinary review, `high`/`xhigh` refutation, competing designs and a second implementation, `max`/`ultra` the hardest
-problems. `plugins/entrust/plugin/skills/codex/references/orchestration.md:90`, in its own words: `high` for the bulk
-row's extraction, classification and verification, `low` for mechanical work only, `medium` for review, refutation and
-judgement in the strong and cheap rows; its line 68 points there. A refuter gets `high` or `xhigh` by the first and
-`medium` by the second. When the entry was recorded the second statement was `orchestrate/references/plan.md:35`.
-Found by Fable F1; re-checked 2026-10-07.
+**Evidence, level 1.** The default is orchestrate's "the host's highest supported effort, or a stronger configured
+setting" (`plugins/entrust/plugin/skills/orchestrate/SKILL.md`, Capacity and models); a role's effort overrides it
+locally, and that override is stated twice. `plugins/entrust/plugin/skills/codex/references/parity.md:85-92`, the
+effort table: `low` fact lookup, `medium` ordinary review, `high`/`xhigh` refutation, competing designs and a second
+implementation, `max`/`ultra` the hardest problems. `plugins/entrust/plugin/skills/codex/references/models.md`, the
+tier table's `EFFORT:` column: `high` for the bulk row's extraction, classification and verification, `medium` for
+review, refutation and judgement, `low` for mechanical work only. A refuter gets `high` or `xhigh` by the first and
+`medium` by the second. Earlier homes of the second statement: `codex/references/orchestration.md:90` until
+2026-10-07, `orchestrate/references/plan.md:35` before that. Found by Fable F1; re-checked 2026-10-07.
 
 **Check.** `sed -n '85,92p' plugins/entrust/plugin/skills/codex/references/parity.md` and
-`sed -n '90p' plugins/entrust/plugin/skills/codex/references/orchestration.md` print the two statements.
+`grep -n 'refutation' plugins/entrust/plugin/skills/codex/references/models.md` print the two statements.
 
-**Issue text.** Two pages each carry the rule for which effort a role gets over the `xhigh` default, in their own
-words, and they already differ: a refuter gets `high` or `xhigh` by the parity table and `medium` by the orchestration
-reference. A later change to one is a drift from the other unless both are edited by hand. Decide which effort a
-refuter gets, then have the orchestration reference link the table rather than restate it, or move the table to a
-file both pages point at.
+**Issue text.** Two pages each carry the rule for which effort a role gets over the default, in their own words, and
+they already differ: a refuter gets `high` or `xhigh` by the parity table and `medium` by the model table. A later
+change to one is a drift from the other unless both are edited by hand. Decide which effort a refuter gets, then keep
+the rule in the model table and have the parity reference link it.
 
 ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
 
@@ -330,35 +329,16 @@ batch the plan gives no swarm runs as ordinary Codex agents. Decide which page o
 link them, or generate the second copy from the first as the codex page's composition rules are generated into
 orchestrate's references.
 
-## E122. The shared skills name Codex and Claude models, so the shared layer fills in the tier table the adapters should own
+## E122. The answer linter recognises model slugs by a vendor list of its own
 
-**Evidence, level 1.** Paths under `plugins/entrust/plugin/`.
-- `skills/orchestrate/SKILL.md:106-112` builds the three profiles from Luna, Astra and Sol; `:62` "use Luna only when
-  task fit and quota savings are evidenced"; `:102-104` "For Codex, use xhigh by default when supported, and preserve
-  a stronger configured max or ultra setting"; `:120` "Astra is a planning or review role".
-- `skills/advisor/SKILL.md:13-14, 29` select Astra on both hosts.
-- `skills/swarm/SKILL.md:13` "A Terra swarm counts as a Luna one does"; `:23` "Every brief carries `MODEL: luna` or
-  `MODEL: terra`, `EFFORT: high` for Luna and `medium` for Terra"; `:35` "one Sonnet or Terra agent".
-- `skills/prepare-feedback/SKILL.md:60` "4 batches of up to 50 Luna"; `skills/cleanup/SKILL.md:46, 74` an example
-  agent `u1-astra`.
-- `skills/orchestrate/scripts/lint-draft.mjs:66-67` documents `--agents` as "Opus W2, Codex Sol D0, Sonnet W5", `:109`
-  strips a `Codex` prefix, `:88` lists `gpt-` and `claude-(opus|sonnet|haiku|fable)` slugs.
-- `README.md:20-27` ("Прокси на GLM", "Позови DeepSeek", "Luna medium") and `:36` ("A coordinator agent, Sonnet or
-  Opus").
-- The adapter defers to the shared page for its own models: `skills/codex/references/orchestration.md:55-57` "Follow
-  the standing allocation in Capacity and models: Astra for consequential plan/architecture critique, Luna first…".
-- `skills/orchestrate/SKILL.md:94-99` already defines model-free tiers (top, strong, cheap, bulk). 0.25.1's changelog
-  says "Adapter-specific model selection guidance has one owner in each adapter skill".
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/scripts/lint-draft.mjs:88`:
+`["model-slug", /\bgpt-\d|\bclaude-(?:opus|sonnet|haiku|fable|\d)/i]`. The shared pages, the swarm and advisor pages,
+prepare-feedback and the README no longer name models; each adapter's `references/models.md` owns its table, and the
+linter's agent names no longer special-case `Codex`.
 
-**Check.** `grep -rnwiE 'luna|astra|sol|terra|sonnet|opus|haiku|fable|glm|deepseek|xhigh|ultra'
-plugins/entrust/plugin/skills/{orchestrate,advisor,swarm,cleanup,prepare-feedback}` prints lines; after the fix it
-prints none.
-
-**Issue text.** The shared pages (orchestrate, advisor, swarm, prepare-feedback, the answer linter, the README) name
-concrete models, mostly Codex's, although they already define model-free tiers and the adapters exist to own their
-provider's models. A host whose model names differ meets profiles it cannot apply, and every model release edits the
-shared layer. The shared pages should speak in tiers and roles; each adapter should own its tier-to-model table and
-default effort, and the linter should take model names as data.
+**Issue text.** The shared linter carries the Codex and Claude slug shapes itself, so a new adapter's slugs pass
+unflagged and a vendor's renaming edits the shared layer. Let each adapter declare its slug pattern where it
+declares itself, and have the linter read those declarations.
 
 ## E123. Shared scripts, contracts and limits live in the codex adapter, and the swarm hardcodes the adapter list the registry already holds
 
@@ -388,27 +368,17 @@ the registry orchestrate already reads. Removing or replacing the Codex adapter 
 and swarms; adding an adapter means editing the swarm script. Each belongs to the skill that defines it, orchestrate
 or cleanup, and the swarm should take its launcher and defaults from `adapters.json`.
 
-## E124. There is no Claude adapter: Claude Code's rules sit in the Codex adapter and in the shared pages
+## E124. Shared pages still carry Claude Code's variables and tools
 
-**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`.
-- `codex/references/orchestration.md` holds the native Claude rules: the Claude column of the tier table (`:48-53`:
-  Fable, Opus, Sonnet, Haiku), "Tag every Claude Agent call with an explicit `model`: `opus` or `sonnet`, and `fable`
-  only…" and "a Fable agent never spawns Fable" (`:63-66`), Claude agents' artifacts (`:42`), "the name Claude Code
-  gives it under `~/.claude/projects/`" (`:40`), the Workflow tool (`:93-96`).
-- Shared pages carry Claude Code mechanics: `swarm/SKILL.md:13` (the Skill tool), `:29` (`CLAUDE_PLUGIN_DATA`,
-  `CLAUDE_SKILL_DIR`), `:31` (one background Bash task, the agent map, a headless session); `cleanup/SKILL.md:28, 66,
-  133`; `prepare-feedback/SKILL.md:14` (the Read and Skill tools, `CLAUDE_SKILL_DIR`), `:80` (EnterWorktree);
-  `orchestrate/references/incidents.md:24-37` (background agents, headless sessions, Workflow).
-- A Codex-host coordinator never loads the codex adapter, and a Claude-host one loads it only for an external Codex run
-  (`orchestrate/SKILL.md:13-14`), so a Claude session without Codex never reads its own host's model and Agent-call
-  rules.
+**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`. The `claude` adapter now owns Claude's models,
+Agent-call rules, waiting, Workflow and the foreman, which left the codex adapter and the swarm page. What remains:
+`${CLAUDE_SKILL_DIR}` and `${CLAUDE_PLUGIN_DATA}` in the cleanup and swarm commands (`cleanup/SKILL.md`, the cycle's
+two commands; `swarm/SKILL.md`, the launch line), and prepare-feedback's Read and Skill tools, `${CLAUDE_SKILL_DIR}`
+and EnterWorktree (`prepare-feedback/SKILL.md:14, 80`).
 
-**Issue text.** Claude Code is the one route without an adapter. Its model tiers and Agent-call rules are written into
-the Codex adapter's orchestration reference, and its tools and environment variables into the shared swarm, cleanup
-and prepare-feedback pages. A Claude session that plans no Codex agent never reads its own rules, and the shared pages
-cannot run on another host. Add a `claude` adapter skill, the counterpart of `codex` and `opencode`, as the one owner
-of Claude-specific facts: its models and tiers, the Agent-call rules, and the Claude Code mechanics the shared pages
-now carry.
+**Issue text.** Three shared skills still address Claude Code directly in their commands and steps, so they cannot run
+on another host. The commands should take the skill directory and the storage root as the other hosts do, and
+prepare-feedback's Claude Code steps should go to the `claude` adapter or be marked as Claude Code's.
 
 ## E125. The proxy is a shared role, but its protocol is owned by the OpenCode adapter and each adapter writes its own relay
 
@@ -451,19 +421,6 @@ variable threaded through every command, path rules on every page, scripts that 
 a large cleanup. The owner's direction is to keep only the temporary folder. Where the state that must outlive a run
 goes then (the worktree ledger, write locks, the isolated Codex home, reports a continuation reads) is decided with
 that change.
-
-## E128. orchestrate's incidents page has no reader on orchestrate's own pages
-
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/incidents.md` is linked from no
-orchestrate page, only from the codex adapter's reference (`skills/codex/references/orchestration.md:41, 44`) and the
-README (`plugins/entrust/plugin/README.md`, the canonical-homes table). Its entries are Claude Code's (background
-agents, headless sessions, Workflow) and the codex driver's (writes under the data directory, a read agent asked for
-a file). The inline dates, issue numbers and research verdicts this entry also named left the skill pages in the
-change that trimmed them.
-
-**Issue text.** orchestrate keeps an incidents page that none of its own pages links, so no coordinator reads it from
-orchestrate; its entries belong to the Claude Code and Codex adapters whose rules they justify. Move each entry to the
-adapter it concerns and delete the page.
 
 ## E129. prepare-feedback ships this repository's own procedures
 

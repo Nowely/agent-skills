@@ -17,15 +17,13 @@ is a role in `skills/orchestrate/references/foreman.md`, not a separate skill. O
 used when the task needs them. The external-run helpers described below retain their Claude
 adapter requirements; native compatibility of every installed skill is not implied.
 
-“Прокси на GLM” selects an external main coordinator through
-[opencode](skills/opencode/SKILL.md). It makes the plan, chooses subagents and interprets results;
-the current conversation forwards complete messages, executes concrete agent orders and manages
-worker lifecycle. The coordinator requests delegation, continuation, collection or Stop; it does not
-write the host's invocation code.
-The same external session continues across user messages. This selects a role, not the host's model:
-choose Luna medium in the interface when that is the desired gateway. “Позови DeepSeek: проверь diff”
-continues to delegate one worker. In Codex, external workers use native Luna medium proxies by default,
-one native thread per external session, with intermediate callbacks and full replies.
+Asking for an external model as the main coordinator (“Прокси на <model>”) makes that model, through
+[opencode](skills/opencode/SKILL.md), own the plan, the choice of subagents and the interpretation of
+results; the current conversation forwards complete messages, executes its agent orders and manages
+worker lifecycle, and the same external session continues across user messages. This selects a role,
+not the host's model. Asking to call one external model (“Позови <model>: проверь diff”) delegates one
+worker. In Codex, each external session gets one native bulk-tier proxy thread, with intermediate
+callbacks and full replies.
 
 ## In Claude
 
@@ -33,7 +31,7 @@ The sections below describe the external Codex adapter and its dependent feature
 
 ## Goal
 
-A coordinator agent, Sonnet or Opus, that has loaded this skill must be able to launch a Codex subagent
+A coordinator agent that has loaded this skill must be able to launch a Codex subagent
 on the first attempt and get a finished, verifiable answer back, with nothing to configure and nothing
 to know in advance. The defaults have to produce what a native Claude Code subagent does: one call, it
 waits as long as the work takes, it returns the answer, and it is stopped only by silence or by the
@@ -125,14 +123,14 @@ Each cleanup listing has its own snapshot directory, for example
 
 ## Install
 
-As a plugin — the full set: all seven skills and the driver (the repo is its own marketplace):
+As a plugin — the full set: all eight skills and the driver (the repo is its own marketplace):
 
 ```
 /plugin marketplace add Nowely/agent-skills
 /plugin install entrust@nowely
 ```
 
-This route exposes the adapters as `entrust:codex` and `entrust:opencode`, the modes as `/entrust:orchestrate`,
+This route exposes the adapters as `entrust:claude`, `entrust:codex` and `entrust:opencode`, the modes as `/entrust:orchestrate`,
 `/entrust:cleanup`, `/entrust:advisor`, `/entrust:swarm` and `/entrust:prepare-feedback`, which only the user can
 turn on, and the wrappers their runs go through as `entrust:codex-agent` and `entrust:opencode-agent`.
 
@@ -308,8 +306,10 @@ skills/codex/                    the main skill: SKILL.md (the operating manual)
 skills/orchestrate/              the orchestrator mode: SKILL.md (the common orchestration protocol), scripts/
                                  (capture-check.mjs, the check runner; lint-draft.mjs, the answer's linter;
                                  each self-describing under --help), references/ (roles, the foreman, the
-                                 incidents behind dated rules); agents/openai.yaml keeps explicit
-                                 invocation in Codex. External mechanics live in codex/references/orchestration.md
+                                 plan, the answer); agents/openai.yaml keeps explicit invocation in Codex.
+                                 External mechanics live in codex/references/orchestration.md
+skills/claude/                   the Claude Code host adapter: SKILL.md (Agent calls, waiting, Workflow, the
+                                 foreman), references/ (the model table, the incidents behind its rules)
 skills/cleanup/SKILL.md          the cleanup mode: runs scripts/cleanup.mjs, shows its listing and
                                  deletes what the user chose
 skills/advisor/SKILL.md          the advisor mode: one standing top-row thread per run, prompt only
@@ -338,6 +338,7 @@ Canonical homes for repeated stories:
 | external composition, rights, workflow | [`SKILL.md`](skills/codex/SKILL.md), [orchestration.md](skills/codex/references/orchestration.md) |
 | OpenCode router workers, recent models and callbacks | [OpenCode skill](skills/opencode/SKILL.md), [measured API limits](skills/opencode/references/parity.md) |
 | common orchestration: roles, capacity, returns | [`skills/orchestrate/SKILL.md`](skills/orchestrate/SKILL.md) |
+| Claude Code delegation and Claude's models | [`skills/claude/SKILL.md`](skills/claude/SKILL.md), [models](skills/claude/references/models.md) |
 | what the plugin leaves behind, and removing it | [`skills/cleanup/SKILL.md`](skills/cleanup/SKILL.md), `node skills/codex/scripts/cleanup.mjs --help` |
 | experiments on these rules: protocol, verdicts, the record | [`plan.md`](skills/orchestrate/references/plan.md#an-experiment-on-these-rules), [open protocols](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/research/protocols.md) |
 | the standing advisor | [`skills/advisor/SKILL.md`](skills/advisor/SKILL.md) |
@@ -346,7 +347,7 @@ Canonical homes for repeated stories:
 | flags and field formats | `node skills/codex/scripts/driver.mjs --help` (`--help-all` for the rest) |
 | environment, prompt files, receipts, worktree internals | [`environment-and-internals.md`](skills/codex/references/environment-and-internals.md) |
 | native capability parity and dated measurements | [`parity.md`](skills/codex/references/parity.md) |
-| measured failures behind rules | [`incidents.md`](skills/codex/references/incidents.md), and orchestrate's own [`incidents.md`](skills/orchestrate/references/incidents.md) |
+| measured failures behind rules | [Codex](skills/codex/references/incidents.md), [Claude Code](skills/claude/references/incidents.md) |
 | suite coverage and mutations | [`plugins/entrust/evals/README.md`](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/evals/README.md) |
 
 ## Status
