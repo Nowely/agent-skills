@@ -599,14 +599,16 @@ test("two concurrent runs: exactly one wins",
     return true;
   });
 
-test("eight concurrent runs against a STALE lock hold it one at a time",
+test("twelve concurrent runs against a STALE lock hold it one at a time",
   "a late peer reclaiming a stale lock must not delete the fresh lock that replaced it; the critical section must admit only one holder",
   async () => {
     // Probe mutual exclusion with atomic mkdir in --verify while the lock is held: sequential successes
     // are legitimate, but overlapping holders produce a VERIFY_FAILED.
     const CRIT = "mkdir .crit 2>/dev/null || exit 9; sleep 0.35; rmdir .crit";
     // Repeat a broad fan-out because reclaim races are probabilistic and narrow rounds can miss them.
-    for (let round = 0; round < 10; round++) {
+    // Three rounds, not ten: each costs two seconds, and the windows themselves are pinned one by one
+    // by the lock-window and reclaim-marker cases, so this is the backstop, not the only check.
+    for (let round = 0; round < 3; round++) {
       const d = freshDir(`stampede-${round}`);
       fs.mkdirSync(LOCK_DIR, { recursive: true, mode: 0o700 });
       // Exactly what a hard-killed prior run leaves behind, and what makes a reused worktree name start
@@ -1221,7 +1223,9 @@ test("--host-home sweeps the group and releases the lock exactly as an isolated 
     return true;
   });
 
-for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"]) {
+// SIGINT has the same handler (driver.mjs registers all three in one loop) and is sent by the two
+// cases below that cancel a config probe and a verifier, so it needs no four-second run of its own here.
+for (const sig of ["SIGTERM", "SIGHUP"]) {
   test(`${sig} reports the turn to its --report-file, sweeps the group and releases the lock`,
     sig === "SIGHUP"
       ? "SIGHUP is the signal from a closing terminal; it must preserve the report, reap descendants and release the lock like other cancellation signals"
