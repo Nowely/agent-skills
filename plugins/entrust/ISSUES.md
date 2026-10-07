@@ -84,21 +84,6 @@ carries no tokens for the plan's re-estimate and stop line, and its agents canno
 run's plan, so each swarm needs a run directory of its own. Decide which of these stay limits the plan states, and
 lift the rest.
 
-## E121. A second `--decide` that lands while the driver settles the request is refused as "not waiting", not as already decided
-
-**Evidence, level 3 for the refusal (CI, PR #61), level 2 for the window. Pre-existing.**
-
-`decideRequest` in `plugin/skills/codex/scripts/agent-run.mjs:731-738` reads `<id>.request.json` for
-`settled`, then reads `pending` in a second step. `closeApproval` in
-`plugin/skills/codex/scripts/driver.mjs:3164-3173` writes the settlement and then rewrites `pending`.
-A `--decide` whose first read comes before the settlement and whose second comes after it refuses with
-`is not waiting: …/pending does not list it` for a request that was decided and settled a moment
-earlier. Nothing is published and the exit is 2, so no decision is lost or doubled; only the stated
-reason is wrong. On CI the agent-run case "--pending shows the waiting request whole…" hit this window
-once on Linux under parallel suites; the case now polls every 4 s so it measures the duplicate-decision
-refusal it names. A fix would re-read the request when `pending` does not list it and report the
-settlement.
-
 ## E96. The harness's token figure for a Claude subagent is its last call's context, and the plan's comparables are built on it
 
 **Evidence, level 3.** On 2026-09-29 Opus R2 of the prepare-feedback run compared, for 233 subagents in one machine's
