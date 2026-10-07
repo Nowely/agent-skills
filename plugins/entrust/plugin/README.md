@@ -132,7 +132,7 @@ As a plugin — the full set: all eight skills and the driver (the repo is its o
 
 This route exposes the adapters as `entrust:claude`, `entrust:codex` and `entrust:opencode`, the modes as `/entrust:orchestrate`,
 `/entrust:cleanup`, `/entrust:advisor`, `/entrust:swarm` and `/entrust:prepare-feedback`, which only the user can
-turn on, and the wrappers their runs go through as `entrust:codex-agent` and `entrust:opencode-agent`.
+turn on, and the proxy agent their runs go through as `entrust:proxy`.
 
 The same two steps from a shell: `claude plugin marketplace add Nowely/agent-skills`, then
 `claude plugin install entrust@nowely`. To update, update the plugin, which refreshes
@@ -206,7 +206,7 @@ say what that does and does not prove).
 Inside Claude Code you rarely type this yourself: the skill's `SKILL.md` is the operating manual the
 agent reads mid-task, including when to give a panel agent to Codex at all. With the plugin installed it
 is `entrust:codex`. An agent is the
-`codex-agent` wrapper, an Agent call (foreground for the one agent you wait for, background for those that run side by
+`proxy` wrapper, an Agent call (foreground for the one agent you wait for, background for those that run side by
 side) that runs that same driver through the launcher in one foreground Bash call: the prompt through the launcher's
 `--new`, the report at `--report-file`; add `RIGHTS: worktree <repo>`
 above `TASK:` for a managed writer. The

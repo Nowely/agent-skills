@@ -67,7 +67,7 @@ says. A brief names the checks that read the files its writer changed, not the w
 ## A Workflow
 
 Use a Workflow as the [claude adapter](../../claude/SKILL.md#workflow) says; in the script, a Codex agent's
-`agentType` is `entrust:codex-agent`.
+`agentType` is `entrust:proxy`.
 
 ## Mechanism
 
@@ -81,7 +81,7 @@ Never launch an agent under another state directory while an armed agent is aliv
 
 A foreman is launched as the [claude adapter](../../claude/SKILL.md#the-foreman) says. Give it the
 approved plan and quoted user authority, the generic foreman role and this adapter's paths and rules; it
-keeps the parent's user conversation out of its return. Its `entrust:codex-agent` wrappers run in the
+keeps the parent's user conversation out of its return. Its `entrust:proxy` wrappers run in the
 foreground like its Claude workers.
 
 ## DONE, RUNNING and the next report path

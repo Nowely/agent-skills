@@ -358,25 +358,6 @@ and EnterWorktree (`prepare-feedback/SKILL.md:14, 80`).
 on another host. The commands should take the skill directory and the storage root as the other hosts do, and
 prepare-feedback's Claude Code steps should go to the `claude` adapter or be marked as Claude Code's.
 
-## E125. The proxy is a shared role, but its protocol is owned by the OpenCode adapter and each adapter writes its own relay
-
-**Evidence, level 1.** Paths under `plugins/entrust/plugin/`.
-- The main-proxy mode, an external model as coordinator with the host executing its agent orders, is defined in
-  `skills/opencode/references/main-proxy.md:1-8`, `skills/opencode/schemas/main-proxy.schema.json` and
-  `skills/opencode/scripts/agent-orders.mjs`; `skills/orchestrate/references/roles.md:9-11` points to it as "the main
-  proxy mode (../../opencode/SKILL.md)"; `README.md:20-27` presents it as OpenCode's.
-- The per-worker proxy is written three times: `skills/opencode/references/proxy.md`, the Haiku relays
-  `agents/codex-agent.md:8-24` and `agents/opencode-agent.md:32-43` (the same four steps in different words), and
-  `skills/codex/SKILL.md:185-193`, which restates them as the relay's message.
-- `skills/orchestrate/references/roles.md:21` already defines the proxy without a provider: "accompanies one external
-  session: launch, callbacks, existing-authority decisions, continuation and cancellation".
-
-**Issue text.** Every run of another model as a subagent goes through a proxy: the Haiku relay for Codex, a native
-proxy for OpenCode, the main conversation itself when an external model coordinates. The proxy is a shared
-orchestration role, yet its protocol lives in the OpenCode adapter, the main-proxy mode works only through OpenCode,
-and the relay's steps are written three times. Orchestrate should own the proxy role and the main-proxy protocol
-(orders, schema, lifecycle), and each adapter only its transport.
-
 ## E126. The plugin keeps two storage roots, one tied to Claude Code, with layouts every page must explain
 
 **Evidence, level 1.** Paths under `plugins/entrust/plugin/`.

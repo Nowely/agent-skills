@@ -32,6 +32,7 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- **The proxy is orchestrate's, and one agent relays every external run (E125).** The main proxy mode (an external model as coordinator, the host executing its agent orders), the operational proxy that accompanies one external session, their schema `main-proxy.schema.json` and the order reader `agent-orders.mjs` moved from the OpenCode adapter to orchestrate; the adapter is the coordinator's transport, and the reader accepts a Codex report's `threadId` as the session. The JSON-schema subset both use is `orchestrate/scripts/json-schema.mjs`. **Breaking:** the relays `entrust:codex-agent` and `entrust:opencode-agent` are one agent, `entrust:proxy`; a Workflow script or saved prompt naming either old type must name `entrust:proxy`. The relay's steps stay in its message as well as its file, as measured.
 - The page suites (advisor, orchestrate, agent-contract, experiment and swarm) no longer pin the pages sentence by sentence. They keep what a coordinator or a tool reads off a page: frontmatter, page budgets, the skill a page loads, command lines, the field table against the driver, placeholders, schema lines and links. The two advisor checks that could not fail went with the advisor's sentence pins (E118).
 
 ## 0.25.1 — 2026-10-06

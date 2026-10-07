@@ -165,12 +165,12 @@ refusal prints its reason on an `ERROR=` line and no
 never to another mode. Never create a directory, change a level or re-run with different flags to make a
 refused agent succeed ([A relay on a small model](references/incidents.md#a-relay-on-a-small-model)).
 
-On `PROMPT=`, spawn the wrapper with the Agent tool: `subagent_type: entrust:codex-agent`,
+On `PROMPT=`, spawn the wrapper with the Agent tool: `subagent_type: entrust:proxy`,
 `run_in_background: false` for the one agent you wait for and `true` for agents that run side by side or
 while you work ([foreground and background](references/incidents.md#foreground-background-and-the-ceiling)),
 and a `description` of `Codex <short name> <id>: <task in a few words>`, the name on the `MODEL:` line, so the
 card names the agent, its vendor and its task. Pass it no `model`: the wrapper,
-[agents/codex-agent.md](../../agents/codex-agent.md), pins its own, and the agent's model is the `MODEL:` line
+[agents/proxy.md](../../agents/proxy.md), pins its own, and the agent's model is the `MODEL:` line
 in its prompt file. Under a background call, the hand-back message and the task notification that follows it
 are one completion: read the first, and give the second the shortest reply the harness accepts; a foreground
 call has no notification.

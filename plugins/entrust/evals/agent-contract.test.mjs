@@ -3,7 +3,7 @@
 //
 //   node evals/agent-contract.test.mjs
 //
-// The shipped agent, agents/codex-agent.md, is a mechanical wrapper: the coordinator writes the prompt and
+// The shipped agent, agents/proxy.md, is a mechanical wrapper: the coordinator writes the prompt and
 // hands the wrapper the one command, which runs the driver through scripts/agent-run.mjs in one foreground
 // Bash call, so the ONE call
 // and the field table are both SKILL.md's and the agent file carries only the relay's standing rules. This suite compares
@@ -253,17 +253,17 @@ test("BRIEF is decided by the header, not forced by the caller",
   });
 
 test("the shipped wrapper is the agent the page names: Bash alone and a pinned model",
-  "the page sends every agent to entrust:codex-agent, so the file has to exist under agents/ with that name; Bash alone is what halves its context (measured 2026-09-12: 8.2k against 15.4k tokens for general-purpose), and a wrapper allowed Read or Write is a relay that can rewrite a prompt, which is the measured failure the retired relay had",
+  "the page sends every agent to entrust:proxy, so the file has to exist under agents/ with that name; Bash alone is what halves its context (measured 2026-09-12: 8.2k against 15.4k tokens for general-purpose), and a wrapper allowed Read or Write is a relay that can rewrite a prompt, which is the measured failure the retired relay had",
   () => {
     const problems = [];
-    const agentPath = path.join(ROOT, "agents", "codex-agent.md");
-    if (!fs.existsSync(agentPath)) return "agents/codex-agent.md is not shipped";
+    const agentPath = path.join(ROOT, "agents", "proxy.md");
+    if (!fs.existsSync(agentPath)) return "agents/proxy.md is not shipped";
     const head = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(agentPath, "utf8"))?.[1];
-    if (head === undefined) return "agents/codex-agent.md has no frontmatter";
-    if (!/^name: codex-agent$/m.test(head)) problems.push("the agent is not named codex-agent");
+    if (head === undefined) return "agents/proxy.md has no frontmatter";
+    if (!/^name: proxy$/m.test(head)) problems.push("the agent is not named proxy");
     if (!/^tools: Bash$/m.test(head)) problems.push("the agent's tools are not exactly Bash");
     if (!/^model: (sonnet|haiku|opus)$/m.test(head)) problems.push("the agent pins no model");
-    if (!flat.includes("`subagent_type: entrust:codex-agent`")) problems.push("the page no longer sends agents to entrust:codex-agent");
+    if (!flat.includes("`subagent_type: entrust:proxy`")) problems.push("the page no longer sends agents to entrust:proxy");
     return problems.length === 0 || problems.join("; ");
   });
 

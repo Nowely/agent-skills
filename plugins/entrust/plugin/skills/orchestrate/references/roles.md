@@ -6,8 +6,8 @@ review agents return the page's five fields. Read
 agents may return text or write permitted temporary artifacts. Roles divide ownership and judgement;
 the parent orchestrator owns the work-list, changes of authority, synthesis and landing of results.
 An operational proxy may apply existing authority from its brief; it forwards the worker's complete
-return and keeps transport status separate. In the [main proxy mode](../../opencode/SKILL.md), the
-external coordinator owns those orchestration decisions and gives concrete agent orders; the current
+return and keeps transport status separate ([proxy.md](proxy.md)). In the [main proxy mode](main-proxy.md),
+an external coordinator owns those orchestration decisions and gives concrete agent orders; the current
 host launches the workers and owns their transport and lifecycle.
 
 | Role | What it does | May write | Returns | Spawn it when | Tier |

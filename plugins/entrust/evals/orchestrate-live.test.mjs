@@ -52,7 +52,7 @@
 //     build's stream carry `Agent`, so both spellings count and neither alone is safe;
 //   - the last line is {type:"result"} and its `result` is the final text;
 //   - --plugin-dir loaded entrust:codex and entrust:orchestrate. A Codex agent is an Agent call to the
-//     entrust:codex-agent relay, which runs the launcher in one foreground Bash call and reruns it while
+//     entrust:proxy relay, which runs the launcher in one foreground Bash call and reruns it while
 //     the call returns RUNNING= at 570 s; isCodexCall below counts that call, and the older driver shape;
 //   - this machine's managed settings set disableBypassPermissionsMode: "disable", so
 //     --dangerously-skip-permissions is accepted and then ignored, and in -p mode there is no prompt to
@@ -887,9 +887,9 @@ test("the full run under Opus: plan, go, run",
     } catch (e) { problems.push(`lib/slug.mjs does not import: ${e.message}`); }
 
     // Every Claude Agent call is tagged. The one exemption is the shipped Codex wrapper, whose model is
-    // pinned in agents/codex-agent.md and which the page tells the coordinator to pass no model to.
+    // pinned in agents/proxy.md and which the page tells the coordinator to pass no model to.
     const untagged = agentCalls(s2.toolUses)
-      .filter((u) => !/codex-agent$/.test(String(u.input.subagent_type ?? "")))
+      .filter((u) => !/(proxy|codex-agent)$/.test(String(u.input.subagent_type ?? "")))
       .filter((u) => !["opus", "sonnet", "fable"].includes(String(u.input.model ?? "")));
     if (untagged.length)
       problems.push(`${untagged.length} Claude Agent call(s) carry no opus/sonnet/fable tag: ${untagged.map((u) => `${u.input.subagent_type ?? "?"}=${JSON.stringify(u.input.model ?? null)}`).join(", ")}`);
@@ -905,7 +905,7 @@ test("the full run under Opus: plan, go, run",
     // where to look and the files answer for what ran.
     const codexCallsRan = codexCalls(s2.toolUses);
     if (!codexCallsRan.length)
-      problems.push(`no Codex agent ran: ${agentCalls(s2.toolUses).length} Agent call(s), none of type entrust:codex-agent or carrying agent-run.mjs --run --report-file or driver.mjs --prompt-file`);
+      problems.push(`no Codex agent ran: ${agentCalls(s2.toolUses).length} Agent call(s), none of type entrust:proxy or carrying agent-run.mjs --run --report-file or driver.mjs --prompt-file`);
     const inBackground = codexCallsRan.filter((u) => u.input.run_in_background === true);
     if (inBackground.length)
       problems.push(`${inBackground.length} agent wrapper(s) ran in the background, where the headless turn could end with them alive`);

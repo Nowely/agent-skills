@@ -10,7 +10,7 @@ import { Client } from "../plugin/skills/opencode/scripts/client.mjs";
 import { V2Client, validateProfile, normalizeMessages } from "../plugin/skills/opencode/scripts/v2-client.mjs";
 import { parsePrompt, FIVE_FIELDS_SCHEMA, checkSchemaSubset, validateOutput, decisionFits, extractJson } from "../plugin/skills/opencode/scripts/contract.mjs";
 import { outOfScope } from "../plugin/skills/opencode/scripts/driver.mjs";
-import { readAgentOrders } from "../plugin/skills/opencode/scripts/agent-orders.mjs";
+import { readAgentOrders } from "../plugin/skills/orchestrate/scripts/agent-orders.mjs";
 import { fakeOpenCode, fakeOpenCodeV2 } from "./fake-opencode.mjs";
 
 const { cases, test: register } = registry();
@@ -87,7 +87,7 @@ test("oneOf validates exactly one branch and checks every nested schema", () => 
     assert.equal(checkSchemaSubset({ oneOf }).ok, false);
 });
 test("main proxy accepts concrete agent orders or a full answer, never host tool code", () => {
-  const schema = JSON.parse(fs.readFileSync(path.join(ROOT, "skills/opencode/schemas/main-proxy.schema.json"), "utf8"));
+  const schema = JSON.parse(fs.readFileSync(path.join(ROOT, "skills/orchestrate/schemas/main-proxy.schema.json"), "utf8"));
   assert.equal(checkSchemaSubset(schema).ok, true);
   const order = { id: "a", action: "delegate", agent_id: "reviewer", task: "Review the diff: preserve \"quotes\", \\ and $ signs.", scope: "read-only", model: "Sol", effort: "high" };
   const reply = (requests) => ({ plan: "delegate", requests, final_answer: "" });
@@ -370,7 +370,7 @@ test("one schema correction is included in invocation usage", async () => {
 test("main proxy mixed reply is corrected by the driver before reaching the host", async () => {
   const s = await fakeOpenCode("main-proxy-correction");
   try {
-    const schema = path.join(ROOT, "skills/opencode/schemas/main-proxy.schema.json");
+    const schema = path.join(ROOT, "skills/orchestrate/schemas/main-proxy.schema.json");
     const r = await driverRun(s, { headers: `OUTPUT_SCHEMA: ${schema}\n` });
     assert.equal(r.code, 0, r.err);
     assert.equal(s.prompts, 2);
@@ -385,7 +385,7 @@ test("main proxy mixed reply is corrected by the driver before reaching the host
 test("main proxy continuation repeats its schema and permits a host-only round", async () => {
   const s = await fakeOpenCode("main-proxy-correction");
   try {
-    const headers = `OUTPUT_SCHEMA: ${path.join(ROOT, "skills/opencode/schemas/main-proxy.schema.json")}\n`;
+    const headers = `OUTPUT_SCHEMA: ${path.join(ROOT, "skills/orchestrate/schemas/main-proxy.schema.json")}\n`;
     const first = await driverRun(s, { headers });
     assert.equal(first.code, 0, first.err);
     const next = await driverRun(s, { headers, resume: first.path });
