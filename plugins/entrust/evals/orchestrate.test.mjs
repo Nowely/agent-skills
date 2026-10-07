@@ -59,32 +59,6 @@ test("every operational link resolves within an installed plugin",
     return bad.length === 0 || bad.join("; ");
   });
 
-test("the model policy gives one xhigh default and speed/quality profiles",
-  "the coordinator needs a default effort and role recipes without a duplicate model or cost row",
-  () => {
-    const modelPolicy = fs.readFileSync(path.join(dir, "SKILL.md"), "utf8");
-    const plan = fs.readFileSync(path.join(dir, "references/plan.md"), "utf8");
-    const codex = fs.readFileSync(path.join(ROOT, "skills/codex/SKILL.md"), "utf8");
-    return /use xhigh by default when supported/.test(modelPolicy)
-      && /balanced \(default\)/.test(modelPolicy)
-      && /speed \|/.test(modelPolicy)
-      && /quality \| Keep the user's model as coordinator/.test(modelPolicy)
-      && /Keep the user's model as coordinator/.test(modelPolicy)
-      && /use Luna for scouting, Astra for consequential planning or architecture/.test(modelPolicy)
-      && /new Luna\/task pairing, compare Luna with Sol on the same representative material/.test(modelPolicy)
-      && /if the pairing is unproven, keep its pilot and state that this limits the speed gain/i.test(modelPolicy)
-      && /independent Luna and Sol reviewers on the same material/.test(modelPolicy)
-      && /Do not append\s+an equivalent canonical model ID/.test(modelPolicy)
-      && /name the\s+coordinator role without restating its model or calling it unknown/i.test(modelPolicy)
-      && /Show effort only when it departs from the selected profile's default/.test(modelPolicy)
-      && /\| team \| coordinator role and each agent's role, one model display name and policy coverage in one place/.test(plan)
-      && /show effort only when it departs from the profile default/.test(plan)
-      && /do not repeat an equivalent model slug/.test(plan)
-      && !/\| models \||\| cost \|/.test(plan)
-      && /nearest-model order alone grants no authority/.test(codex)
-      || "the standing allocation or its approval boundary is missing";
-  });
-
 test("the capture recipe works with only the orchestration skill installed",
   "native checks must not require the external adapter; the full output and true failure survive",
   () => {

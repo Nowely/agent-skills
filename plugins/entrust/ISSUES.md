@@ -6,18 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E118. Two advisor text checks can pass when their required wording is missing
-
-**Evidence, level 2 (source and Boolean evaluation). Pre-existing at `a11346a`.**
-
-`evals/advisor.test.mjs:11-14` returns a non-empty diagnostic string from `has` when a required
-pattern is missing. The checks at `:25-32` and the external-adapter check near the end combine
-that result with `&&` and a Boolean negative check. A missing-pattern string is truthy: when the
-negative check passes, the combined expression returns `true`, discarding the failure. The
-explicit-consultation check added in this release returns `has` directly and is not affected.
-These text checks therefore do not independently prove every requirement they list. The
-existing checks are recorded here without changing their Boolean composition in this release.
-
 ## E119. An admitted OpenCode transport failure drops an already received partial answer
 
 **Evidence, level 2 for the failure path; level 3 for the report builder. Pre-existing.**
@@ -447,8 +435,8 @@ address, a verbatim quote, and a verdict from a closed set that describes the su
 of the material for extraction, with a fixed answer schema the brief states", "Announce the count, derived from the
 units with the plan saying why that many, before the launch", and "Pilot first: a stronger model marks the pilot's
 units, the swarm's model runs the same units, and recall, false positives and tokens against that marking decide the
-brief's fixes and its effort". `evals/orchestrate.test.mjs` pins the first copy (D9, D12, D14) and
-`evals/swarm.test.mjs` the second (U1); nothing compares them. Both copies were on main before 2026-09-30, the first on
+brief's fixes and its effort". No suite pins either copy, since the page suites stopped pinning prose, and
+nothing compares them. Both copies were on main before 2026-09-30, the first on
 `orchestrate/SKILL.md:67-69` at `4a3f0d7`; that day's cut of the page moved it into the reference word for word and
 kept both copies, because the swarm page describes a swarm and a bulk batch may also run as ordinary Codex agents,
 which it cannot own. Found by Fable F1.
@@ -457,8 +445,8 @@ which it cannot own. Found by Fable F1.
 prints one line in each file.
 
 **Issue text.** The rules for a bulk fan-out's unit, its derived count and its pilot are written twice: once in
-orchestrate's plan reference, for every bulk batch, and once on the swarm page, for a swarm, in different words and
-pinned by different suites. A change to one is a drift from the other unless both are edited by hand, and a
+orchestrate's plan reference, for every bulk batch, and once on the swarm page, for a swarm, in different words.
+A change to one is a drift from the other unless both are edited by hand, and a
 coordinator who reads both meets two phrasings of one rule. The swarm page cannot simply own the rule, since a bulk
 batch the plan gives no swarm runs as ordinary Codex agents. Decide which page owns these rules and have the other
 link them, or generate the second copy from the first as the codex page's composition rules are generated into

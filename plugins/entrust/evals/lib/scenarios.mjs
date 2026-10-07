@@ -165,13 +165,14 @@ export async function runTable(cases) {
     try { report = JSON.parse(out); } catch {}
     // Check report contents as well as exit codes so opposite verifier results cannot look identical.
     // An assertion returns true or a reason; a thrown assertion fails its case without aborting the suite.
+    // A row may carry a stderr assertion and an output one; both must hold.
     let assertion;
     try {
-      assertion = c.assertStderr ? c.assertStderr(err, ms)
-        : c.assertText ? c.assertText(out)
-          // ms as well as the report: a rung whose whole content is WHEN it fires (or does not) cannot be
-          // told from one that never armed by reading the report alone.
-          : c.assert ? (report ? c.assert(report, ms, stateRoot) : "expected a JSON report, but stdout was not JSON") : true;
+      assertion = c.assertStderr ? c.assertStderr(err, ms) : true;
+      if (assertion === true) assertion = c.assertText ? c.assertText(out)
+        // ms as well as the report: a rung whose whole content is WHEN it fires (or does not) cannot be
+        // told from one that never armed by reading the report alone.
+        : c.assert ? (report ? c.assert(report, ms, stateRoot) : "expected a JSON report, but stdout was not JSON") : true;
     } catch (e) { assertion = `assert threw: ${e.message}`; }
     const ok = code === c.expect && assertion === true;
     if (!ok) {

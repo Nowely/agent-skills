@@ -4,8 +4,9 @@
 //
 //   node evals/experiment.test.mjs
 //
-// The page cases pin the rules by the words that carry them, with alternation where a rewording keeps
-// the rule, and a negative case where a sentence could quietly undo one. The script cases run it against
+// The page cases check what a coordinator or a tool reads off the page: the frontmatter, the budget, the
+// one skill it loads, the command line it copies, the protocols reference's fields and every link. What
+// the page says in prose is not pinned sentence by sentence. The script cases run it against
 // a scratch state directory under one harness temp directory: ENTRUST_STATE_DIR points there and
 // CLAUDE_PLUGIN_DATA is unset, so nothing can reach the machine's own data directory.
 
@@ -24,10 +25,6 @@ const lines = text.replace(/\n+$/, "").split("\n");
 const front = text.split("---")[1] ?? "";
 const flat = text.replace(/\s+/g, " ");
 
-const says = (...res) => {
-  const missing = res.filter((r) => !(r instanceof RegExp ? r.test(flat) : flat.includes(r)));
-  return missing.length === 0 || `the page no longer says: ${missing.map(String).join(" | ")}`;
-};
 const shows = (...res) => {
   const missing = res.filter((r) => !r.test(text));
   return missing.length === 0 || `no line matches: ${missing.map(String).join(" | ")}`;
@@ -66,78 +63,12 @@ test("A0 the page loads codex through the Skill tool, and no sentence asks it to
     if (asks) problems.push(`a sentence asks to load orchestrate: ${asks[0].slice(0, 120)}`);
     const loads = [...flat.matchAll(/Skill tool, `entrust:([a-z-]+)`/g)].map((m) => m[1]);
     if (loads.join() !== "codex") problems.push(`the Skill-tool loads the page asks for: ${loads.join(", ") || "none"}`);
-    const prose = says("Load the sibling [codex](../codex/SKILL.md) now (Skill tool, `entrust:codex`)");
-    if (prose !== true) problems.push(prose);
     return problems.length === 0 || problems.join("; ");
   });
 
-test("A1 every arm runs under codex and this page, the mode adds no driver change, and a run needs no checkout",
-  "the page carries the orchestrate rules an arm needs, since it loads codex alone (E39); the owner runs some experiments on machines without the repository",
-  () => says(
-    /every arm runs under that page and this one\. This page holds the rules an arm needs\. An experiment adds a protocol before any agent, matched material, a judge that does not see the arm, two verdicts, and a record kept by a script/,
-    /adds no driver change, no header field and no flag/,
-    /A run (needs|requires) no checkout of the repository/,
-  ));
-
-test("P1 the protocol has its six fields: a falsifiable hypothesis, arms with a comparator and one \"go\", frozen material, the ruler's metrics per outcome, a judge that does not see the arm, a stop rule",
-  "an experiment without a comparator or with material an arm has seen measures nothing (S2-48, S2-42, S2-44 in the 2026-09-17 research); a judge that knows the arm is the self-preference bias with a title; a metric per rollout instead of per outcome is what S2-48 rules out",
-  () => says(
-    /Hypothesis: an id and one sentence that can be (false|falsified|refuted)/,
-    /Arms: each a composition named by model, tier, effort, count and rights/,
-    /[Oo]ne arm is the comparator the hypothesis calls for, a single agent or no delegation/,
-    /The tiers are top Fable and Astra, strong Opus and Sol, cheap Sonnet and Terra, bulk Haiku and Luna/,
-    /one "go" covers every arm and no arm stops for a plan of its own/,
-    /frozen before the run, with the ground truth or the acceptance check written (down )?before any arm sees it/,
-    /unique coordinator incidents by stage with their severity, owner corrections, outcomes verified independently/,
-    /agents and paid turns counted per outcome/,
-    /n stated, with an interval where n is under fifty/,
-    /returns with their first line removed, the line every brief asks to name the agent's model and id, and the arms named by letters/,
-    /Its verdict names the check it ran or is `unknown`/,
-    /Stop rule and budget: the tokens and paid turns each arm may spend, and what ends the run early/,
-  ));
-
-test("P2 the protocol is shown and the run stops, and \"go\" covers the arms as listed",
-  "the same gate the orchestrate page keeps: the user approves the arms and their cost before any agent runs",
-  () => says(/Show the protocol(,| and) (then )?stop/, /"go" covers the arms as listed and nothing else/));
-
-test("R1 each arm is its own run in the layout the cleanup lists, with the same brief, orchestrate's caps and the model tag, and a failed arm is never re-run to a better number",
-  "an arm re-run until it wins is the experiment choosing its result; a brief that differs between arms in more than the composition confounds the comparison; the run layout, the caps and the tag are orchestrate's, carried here because the page loads codex alone, and an untagged Claude agent runs the coordinator's model, not the arm's",
-  () => says(
-    /Each arm is one run with a run directory of its own, `<state>\/orchestrate\/<project-slug>\/<run>\/`, the same brief text in every arm except the composition/,
-    /`<run>` is unique; `<project-slug>` is the working directory's absolute path with every character but letters and digits replaced by `-`/,
-    /An arm keeps six alive at most, one Fable and one Astra among them; its bulk agents are a pool of their own, fifty at most, outside that cap/,
-    /Tag every Claude Agent call with its `model`/,
-    /A failed arm is reported with its reason and (never|not) re-run to a better number; a repeat is a new experiment with the first in its record/,
-  ));
-
-test("V1 two verdicts: the orchestrator's conclusion states no cause the design cannot carry, the user's verdict decides, and neither is rewritten",
-  "the 2026-09-17 round's own rule: a catalogue, a mapping or a metric table is not evidence that anything improved; the owner said the user concludes after the orchestrator, and a verdict rewritten later is not a record",
-  () => {
-    const prose = says(
-      /The orchestrator writes the metric table and a conclusion that says what the numbers show and what they do not/,
-      /a conclusion states no cause the design cannot carry/,
-      /Then the user writes the verdict, kept, refuted, inconclusive or run again/,
-      /the user's is the one that decides what changes/,
-      /neither is rewritten afterwards/,
-    );
-    if (prose !== true) return prose;
-    if (/\b(rewrit|replac|amend|overwrit)\w* (the|a) (verdict|conclusion|record)\b(?![^.]*\b(never|not|refuses)\b)/i.test(flat) && !/neither is rewritten afterwards/.test(flat)) return "the page allows a verdict or record to be rewritten";
-    for (const m of flat.matchAll(/[^.]*\b(verdict|conclusion|record)\b[^.]*\b(rewrites|replaces|amends|overwrites)\b[^.]*\./g)) return `a sentence lets the record change after the fact: ${m[0].trim().slice(0, 120)}`;
-    return true;
-  });
-
-test("E1 the record lives under the state directory, is written by the script and never by hand, closes at the verdict, and is exported as plugins/entrust/research/<date>-<slug>/ with a row in the index",
+test("E1 the page hands over the script's command line, and names no research layout the repository does not have",
   "the owner chose the plugin's data directory as the one predictable place; a coordinator's write there is refused (measured 2026-09-08), so the script is the only pen; and the repository's research layout is plugins/entrust/research/<date>-<slug>/ with plugins/entrust/research/README.md as its index, not a second layout",
   () => {
-    const prose = says(
-      /`experiments\/<date>-<slug>\/` under the state directory, beside the orchestrate runs, written by `scripts\/experiment\.mjs` and never by hand/,
-      /\(measured 2026-09-08\)/,
-      /after `verdict\.md` the script refuses every change/,
-      /copies the record unchanged, as `plugins\/entrust\/research\/<date>-<slug>\/` in a checkout, where a row goes into `plugins\/entrust\/research\/README\.md`/,
-      /Codex reports stay where the driver put them and are copied in by path/,
-      /Cleanup (neither lists nor removes|never lists or removes) a record/,
-    );
-    if (prose !== true) return prose;
     if (/research\/experiments\//.test(flat)) return "the page names a research/experiments/ layout the repository does not have";
     return shows(/^ {4}CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/experiment\.mjs" <command>/m);
   });
