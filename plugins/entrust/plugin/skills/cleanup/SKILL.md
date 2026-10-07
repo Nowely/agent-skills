@@ -94,42 +94,13 @@ Use the listing's names; omit outcomes that did not occur.
 | 10 | each refusal in its own sentence, carrying the command's own reason: it changed since it was listed; it is being kept and cannot be chosen; it changed while it was being removed |
 | no readable result | "Cleanup did not return a readable result, so I cannot yet confirm what was deleted." Establish the outcome first |
 
-## What it never touches
+## What it only reports
 
-Answers, managed worktrees and their ledger, write locks still held or in the
-older single-file shape, and the shared Codex home are listed and never
-removed: the driver prunes answers and reconciles the next two itself, and the
-last is shared by every agent. A write lock is a link and the record it names.
-A normal release removes both; a release that cannot take the lock's reclaim
-marker, a crashed run and an older driver leave the link, and a release whose owner file is not its own leaves both. A link that
-names nothing is proposed, and so is a record no link names once the run that
-wrote it is gone. A lock whose run stopped without releasing it goes
-with its record by its number; the driver reclaims it anyway on its next run
-in that directory. The data directory
-of another copy of this plugin is the user's own to remove — when they ask
-how, say "This command removes it." and show that row's `command` from
-`manual` in its own block. The one directory this does not cover is the plugin's own under its previous
-name, `codex-delegate-<marketplace>`: listed as such, proposed, removed by number like scratch, unless a
-plugin of that name is still installed. The `notCovered` commands apply only to other
-entries in the coordinator's temporary directory. Say "To list those entries
-without removing them, run this command." and show `notCovered.listCommand`;
-for removal, `notCovered.removeCommand`. An agent started under another
-temporary root is outside the agent scan; its report is kept while
-`report.json` is absent. A legacy run or standalone report the cleanup removes
-takes its temporary folder with it, `<tmp>/entrust/<rel>` for the report at
-`<state>/<rel>/report.json`, on the same row and number and under the run's
-own rule, so a run still going keeps both. New scratch under
-`<tmp>/entrust/<project>/<run>/{agents,checks,swarm,evals}` is listed per invocation,
-kept while its owner or a recorded child is running, and removed only by its own number.
-Project and run parents are never selected; approval snapshots under `.cleanup` are kept.
-A legacy folder under `<tmp>/entrust`
-whose run is no longer in the state directory, or a `runs/<startedAtMs>-<pid>`
-folder whose process has ended, is a row of its own, suggested for deletion;
-one whose process is alive, or whose run is still there, is kept. What an
-earlier driver left in `<state>/tmp` is one row, suggested once no
-`owner.json` in it names a live process. `<tmp>` is the temporary directory as
-the cleanup sees it: a non-empty `TMPDIR`, else Node's `os.tmpdir()`.
+A row the listing keeps cannot be chosen; the listing gives each one's reason. When the user asks how to
+remove another copy of this plugin's data directory, say "This command removes it." and show that row's
+`command` from `manual` in its own block. For the other entries in the coordinator's temporary directory,
+say "To list those entries without removing them, run this command." and show `notCovered.listCommand`;
+for removal, `notCovered.removeCommand`.
 
-Forward `CLAUDE_PLUGIN_DATA` as shown. The script uses
-`ENTRUST_STATE_DIR` first, then `CLAUDE_PLUGIN_DATA`; setup follows the
-sibling's [One call](../codex/SKILL.md#one-call).
+Forward `CLAUDE_PLUGIN_DATA` as shown. The script uses `ENTRUST_STATE_DIR` first, then
+`CLAUDE_PLUGIN_DATA`; setup follows the sibling's [One call](../codex/SKILL.md#one-call).

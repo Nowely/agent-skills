@@ -20,11 +20,6 @@ timeline answers is never taken from memory: which plugin pages were read before
 typed and which the model called, what the owner said while the model worked, queued messages included, and what an
 agent was told in its prompt against what it read itself.
 
-The case behind the rule: in a field report on terse's clarity skill (2026-09-29), two facts changed the conclusions
-most, the pages the model had opened while it drafted and two messages the owner sent while it worked. The writing
-model's own account held neither and contradicted itself three times, and the first reading of the transcript
-missed both messages.
-
 ## version
 
 How a plugin behaved in real work in one release or a window of releases.

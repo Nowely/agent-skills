@@ -45,7 +45,7 @@ Apply all six rules:
    - `signed-out`, `missing`, or `MODEL=none`: zero Codex agents; the plan's first line says Codex is not
      signed in, not installed, or lists no model, and that the panel is all-Claude and shares one model bias.
    - `unchecked`: compose by the other rules, and the plan says Codex was not checked. A launch is no check:
-     a signed-out server lists Astra and Sol too (measured 2026-09-29).
+     a signed-out server lists models too.
    - The command itself in place of those lines was not run: run it with the Bash tool before composing.
 
    The status lines stay with you: the plan names Codex's state only where it changed the composition.

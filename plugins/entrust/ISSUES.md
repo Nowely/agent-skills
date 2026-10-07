@@ -452,59 +452,31 @@ a large cleanup. The owner's direction is to keep only the temporary folder. Whe
 goes then (the worktree ledger, write locks, the isolated Codex home, reports a continuation reads) is decided with
 that change.
 
-## E127. Orchestrate states one rule in up to five places
+## E128. orchestrate's incidents page has no reader on orchestrate's own pages
 
-**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`.
-- No silent model substitution: `orchestrate/SKILL.md:51-54`, `:62-63`, `:127`, `:140-141`,
-  `orchestrate/references/plan.md:8-9`.
-- Effort shown only when it departs from the default: `orchestrate/SKILL.md:70-71`, `:124`, `plan.md:22`.
-- A tier is not a model ranking: `orchestrate/SKILL.md:91-92`, `orchestrate/references/roles.md:4-5`,
-  `codex/references/orchestration.md:55`.
-- The coordinator's model is not restated: `orchestrate/SKILL.md:119-120`, `plan.md:22`.
-- Unknown or stale usage is not unlimited: `orchestrate/SKILL.md:59-61`, `plan.md:41-42`.
-- The five-field schema is pasted whole into `swarm/SKILL.md:25`, identical to `codex/schemas/five-fields.schema.json`.
-- The bulk row's unit, count and pilot, twice: E117.
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/incidents.md` is linked from no
+orchestrate page, only from the codex adapter's reference (`skills/codex/references/orchestration.md:41, 44`) and the
+README (`plugins/entrust/plugin/README.md`, the canonical-homes table). Its entries are Claude Code's (background
+agents, headless sessions, Workflow) and the codex driver's (writes under the data directory, a read agent asked for
+a file). The inline dates, issue numbers and research verdicts this entry also named left the skill pages in the
+change that trimmed them.
 
-**Check.** `grep -rnE 'substitut|silently' plugins/entrust/plugin/skills/orchestrate` prints seven lines.
+**Issue text.** orchestrate keeps an incidents page that none of its own pages links, so no coordinator reads it from
+orchestrate; its entries belong to the Claude Code and Codex adapters whose rules they justify. Move each entry to the
+adapter it concerns and delete the page.
 
-**Issue text.** The orchestrate page and its references repeat the same rules in different words, five times for "never
-substitute a model silently", and the swarm page pastes a schema the plugin ships as a file. Every copy costs tokens
-on each load and drifts on the next edit. Give each rule one owner, the card rules in `plan.md` and the substitution
-rule once, and link the schema file.
+## E129. prepare-feedback ships this repository's own procedures
 
-## E128. Skill pages carry their history: dated measurements, issue numbers and research verdicts
+**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/prepare-feedback/`. `SKILL.md:18` detects a
+checkout by `"name": "nowely"`, and its output section commits a research run on a worktree branch of this
+repository; `references/focuses.md` takes its layouts from this repository's issues #1 and #15 and reads
+`~/.claude/plugins/marketplaces/nowely/plugins/<name>/CHANGELOG.md`. The same procedures on orchestrate's pages (the
+research record's paths, AGENT.md's design principles) and the swarm page's link to `research/protocols.md` left in
+the change that trimmed those pages.
 
-**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`.
-- `codex/SKILL.md:48` "(measured 2026-09-29)"; `swarm/SKILL.md:31` "(measured 2026-09-29)", `:39` the E4 protocol and
-  "The 2026-09-17 research put peer messaging and debate…"; `prepare-feedback/SKILL.md:68` "(issue #22: at 36 alive on
-  eight cores, 24 of 36 agents missed a page)", `:74` "(on 2026-09-29 a date the third reviewer caught…)" and "(on
-  2026-09-29 such lines kept going stale…)"; `orchestrate/references/answer.md:13` "(measured 2026-09-29: of a
-  report's five reads…)"; `prepare-feedback/references/focuses.md` "The case behind the rule".
-- `orchestrate/references/incidents.md` is linked from no orchestrate page, only from the codex adapter's reference
-  (`codex/references/orchestration.md:41, 44`) and the README (`README.md:363`).
-
-**Issue text.** Skill pages justify rules inline with dates, issue numbers and research verdicts. The model that
-executes a page needs the rule, not its story ("State what to do rather than narrating how or why", row M-206 in
-`plugins/terse/research/2026-09-28-vendor-guides/m1-map.md`), and the story has homes already: the incidents
-references and `research/`. Move each justification there, keeping a link only where the reader must judge the rule,
-and give orchestrate's incidents page a reader or fold it into the adapter's.
-
-## E129. The installed plugin carries this repository's own procedures
-
-**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`.
-- `orchestrate/references/plan.md:69-71`: "In a checkout of agent-skills the record is
-  `plugins/entrust/research/<date>-<slug>/`…".
-- `orchestrate/references/answer.md:9` copies AGENT.md's design principles (minimalism, no crutches, clean
-  architecture) into the rule for every user's recommendations.
-- `prepare-feedback/SKILL.md:18` detects a checkout by `"name": "nowely"`, `:78-87` commits a research run on a
-  worktree branch of this repository; `prepare-feedback/references/focuses.md` takes its layouts from this
-  repository's issues #1 and #15 and reads `~/.claude/plugins/marketplaces/nowely/plugins/<name>/CHANGELOG.md`.
-- `swarm/SKILL.md:39` and `orchestrate/references/plan.md:71` send the reader to this repository's
-  `research/protocols.md`.
-
-**Issue text.** Rules that serve only this repository's maintenance (where research records go, the owner's design
-principles, how a feedback run is committed here) ship to every user and load with the skills. For anyone else they
-are noise, and they tie the pages to this repository's layout. Keep them in AGENT.md or the repository's own tooling.
+**Issue text.** prepare-feedback serves this repository's maintenance (where its research runs go, how one is
+committed here, which of its issues set the layouts) and ships to every user. Keep those procedures in AGENT.md or the
+repository's own tooling, and the skill on its goal: feedback on a skill from the user's sessions.
 
 ## E130. prepare-feedback runs a research pipeline where its goal is a feedback report
 
@@ -518,19 +490,6 @@ worktree branch (`SKILL.md:57-87`). `references/focuses.md` adds 172 lines and `
 feedback to study. The page instead runs a full research pipeline with publication review and a repository commit,
 in paragraphs of up to 1,900 characters a coordinator must hold whole. Cut it to that goal: pick the sessions, have
 agents read them under the user's question, return the feedback.
-
-## E131. The cleanup page and the README retell what the cleanup script prints
-
-**Evidence, level 1.** `plugins/entrust/plugin/skills/cleanup/SKILL.md:97-135`, 39 lines, restates what the script
-keeps or proposes (lock shapes, the previous name `codex-delegate-<marketplace>`, legacy `runs/<startedAtMs>-<pid>`
-folders, `<state>/tmp`), while each listing row carries its own reason (`:36-40` "whether each is suggested,
-selectable by its number or kept, and why"). `plugins/entrust/plugin/README.md:50-66` restates the inventory a third
-time.
-
-**Issue text.** The cleanup skill shows the listing, proposes its `proposed` set and deletes the numbers the user
-picks; the listing already gives each row's reason. The page's 39-line "What it never touches" and the README's
-paragraph restate the script's rules, so each change to the script is three edits. Keep the rules in the script and
-its `--help`, and on the page only what the coordinator does.
 
 ## E132. The README restates the skill pages in 3,656 words
 

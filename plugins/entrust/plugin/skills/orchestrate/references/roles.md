@@ -1,8 +1,8 @@
 # Roles
 
 A role defines responsibility, writable scope, return and when the agent is needed. Choose roles by
-work; select exact models under [Capacity and models](../SKILL.md#capacity-and-models). A tier describes
-the work, not a model's inherent ability. Task and review agents return the page's five fields. Read
+work; select exact models under [Capacity and models](../SKILL.md#capacity-and-models). Task and
+review agents return the page's five fields. Read
 agents may return text or write permitted temporary artifacts. Roles divide ownership and judgement;
 the parent orchestrator owns the work-list, changes of authority, synthesis and landing of results.
 An operational proxy may apply existing authority from its brief; it forwards the worker's complete

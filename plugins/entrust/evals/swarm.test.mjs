@@ -76,13 +76,14 @@ test("U1 every brief the page shows carries a bulk or cheap model, and no strong
     return true;
   });
 
-test("U2 the five fields' schema on the page parses, is strict, and names the five fields in order",
-  "a Codex agent's `OUTPUT_SCHEMA:` must be a strict JSON Schema file; the schema was orchestrate's, and the page now carries it because it loads codex alone",
+test("U2 the brief's OUTPUT_SCHEMA is the five-field file the codex skill ships, and that file parses, is strict and names the five fields in order",
+  "a Codex agent's `OUTPUT_SCHEMA:` must be a strict JSON Schema file; a copy pasted onto the page drifts from the file the driver enforces",
   () => {
-    const m = /^ {4}(\{"type":"object".*)$/m.exec(text);
-    if (!m) return "no indented schema line on the page";
+    const named = /`\$\{CLAUDE_SKILL_DIR\}\/\.\.\/(codex\/schemas\/five-fields\.schema\.json)`/.exec(text)?.[1];
+    if (!named) return "the page names no shipped five-field schema for the brief's OUTPUT_SCHEMA";
+    if (/^ {4}\{"type":"object"/m.test(text)) return "the page still pastes a schema line of its own";
     let s;
-    try { s = JSON.parse(m[1]); } catch (e) { return `the schema does not parse: ${e.message}`; }
+    try { s = JSON.parse(fs.readFileSync(path.join(ROOT, "skills", named), "utf8")); } catch (e) { return `the schema does not parse: ${e.message}`; }
     const five = ["status", "result", "evidence", "artifacts", "open"];
     const problems = [];
     if (s.additionalProperties !== false) problems.push("additionalProperties is not false");
@@ -92,18 +93,14 @@ test("U2 the five fields' schema on the page parses, is strict, and names the fi
     return problems.length === 0 || problems.join("; ");
   });
 
-test("U3 the page's schema line is the five-field file the codex skill ships, byte for byte once minified, caps included",
-  "#15 P11a: returns overran their bound, so the shipped schema caps each field and the driver enforces the caps (D16); a swarm brief copies this line into its OUTPUT_SCHEMA: file, and an uncapped copy here is a swarm whose returns nothing bounds",
+test("U3 the shipped five-field schema caps every free-text field",
+  "#15 P11a: returns overran their bound, so the shipped schema caps each field and the driver enforces the caps (D16); a swarm whose schema caps nothing is a swarm whose returns nothing bounds",
   () => {
     const file = path.join(ROOT, "skills", "codex", "schemas", "five-fields.schema.json");
     if (!fs.existsSync(file)) return `the shipped schema ${file} does not exist`;
-    const shipped = JSON.stringify(JSON.parse(fs.readFileSync(file, "utf8")));
-    const line = /^ {4}(\{"type":"object".*)$/m.exec(text)?.[1];
-    if (line !== shipped) return `the page's schema line differs from ${path.basename(file)}: ${line} against ${shipped}`;
-    // The negative half: the file and the line drifting back to uncapped together would still be equal.
-    const props = JSON.parse(line).properties ?? {};
+    const props = JSON.parse(fs.readFileSync(file, "utf8")).properties ?? {};
     const uncapped = ["result", "evidence", "artifacts", "open"].filter((f) => !("maxLength" in (props[f] ?? {}) || "maxItems" in (props[f] ?? {})));
-    return uncapped.length === 0 || `the schema line caps no size on: ${uncapped.join(", ")}`;
+    return uncapped.length === 0 || `the schema caps no size on: ${uncapped.join(", ")}`;
   });
 
 test("L1 the page hands over the launch line the script takes",

@@ -41,6 +41,7 @@ rule ever looks like ceremony, this is what it cost to learn.
 - [Foreground, background and the ceiling](#foreground-background-and-the-ceiling)
 - [A reused agent directory](#a-reused-agent-directory)
 - [Language and name in a return](#language-and-name-in-a-return)
+- [A signed-out server lists models](#a-signed-out-server-lists-models)
 
 ## Isolation
 
@@ -304,3 +305,8 @@ first run's record, which is why the launcher refuses a directory that ran for a
 
 Measured 2026-09-17: a `TASK:` written in English about a Russian «хай» came back in English, and an agent not
 told its name answered «GPT-5 Codex, id T1».
+
+## A signed-out server lists models
+
+Measured 2026-09-29: a server whose account was signed out still listed Astra and Sol, so a launch that finds a
+model proves nothing about sign-in; only the status line does.

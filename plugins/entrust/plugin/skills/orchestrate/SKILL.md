@@ -48,10 +48,9 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
    host, so its external adapter status is not queried a second time. The collector returns registered
    adapter reports without host JSON, loading adapter skill pages, normalizing a plan or launching a
    worker. Use only recent model references with an adapter-sourced recent state; absent or unsupported
-   sources remain `unknown`/`unsupported`, never a substitute from the first catalog entries. A recent
-   reference is not proof it is currently runnable; the chosen adapter validates the exact model and
-   variant before execution. If an explicit model family has no recent candidate, report that gap; do
-   not silently expand to a full catalog or substitute.
+   sources remain `unknown`/`unsupported`. A recent reference is not proof it is currently runnable; the
+   chosen adapter validates the exact model and variant before execution. If an explicit model family
+   has no recent candidate, report that gap.
 
    Keep native host facts, adapter status and the plan's allowed-route policy separate. Preserve each
    usage window's account/route/model scope, source and observation time; do not sum overlapping
@@ -59,20 +58,18 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
    workers/proxies using that account, but do not give per-model call counts. Missing telemetry is
    `unknown`; age an observation against the current time and treat stale data as stale, never
    unlimited. At the configured near-limit threshold (default 99% used), hold large work when its
-   estimate is unknown; use Luna only when task fit and quota savings are evidenced. Do not downgrade
-   silently.
+   estimate is unknown; use Luna only when task fit and quota savings are evidenced.
 2. Assign tasks by ownership and shared interfaces, using [roles.md](references/roles.md). For a
    nontrivial split, include the split critic and its exact model in the proposed plan. Launch it only
    after the allocation is covered by the approved policy or the user approves the plan. Apply its
    findings before worker briefs; if they change scope or model allocation, get approval for the change.
    With several workers, consider the coordinator role in [foreman.md](references/foreman.md) when the
    runtime supports nested delegation and enough slots remain for its workers.
-3. Show the work plan, roles with their model, write rights and checks. Show effort only when it
-   departs from the profile default or needs a decision. Recommend a profile from
-   [Capacity and models](#capacity-and-models), and show an alternative only when it changes quality
-   or speed materially. Wait for approval unless the user already authorised that concrete scope and
-   allocation. A model or route outside the approved policy needs approval before launch. Scope or
-   rights changes need a new decision; commits and publication need their own authority.
+3. Show the card [plan.md](references/plan.md#the-card) defines, with a profile from
+   [Capacity and models](#capacity-and-models). Wait for approval unless the user already authorised
+   that concrete scope and allocation. A model or route outside the approved policy needs approval
+   before launch. Scope or rights changes need a new decision; commits and publication need their own
+   authority.
 4. Launch within the approved ownership and the runtime's limits. Read [approvals.md](references/approvals.md)
    when an agent needs a decision, and [results.md](references/results.md) when work fails, a worktree
    needs landing or writers collide. Continue a worker to correct its own work; give verification
@@ -111,20 +108,13 @@ Recommend one of these profiles:
 | speed | For bounded, recoverable work with a proven model/task pairing, use Luna with a supported medium effort, one scout per independent unit, and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Preserve the needed review when consequences warrant it. |
 | quality | Keep the user's model as coordinator. Use Astra for consequential planning or architecture; add independent Luna and Sol reviewers on the same material when distinct perspectives can change the decision, and use a separate strong judge for consequential disagreement. |
 
-For a new model/task pairing, define the pass criteria before a representative pilot. Compare coverage,
-incorrect findings and usefulness against a stronger reference; use elapsed time and reliable usage data
-to guide the profile. Reuse a successful result only for comparable work. Model diversity is useful when
-it can change a decision; a fresh same-model context does not prove a different model perspective.
+A new model/task pairing gets a pilot ([model fit](references/plan.md#model-fit-and-estimates)); reuse
+a successful result only for comparable work. Model diversity is useful when it can change a decision;
+a fresh same-model context does not prove a different model perspective.
 
-The user's model remains coordinator unless the user requests otherwise. In the card, name the
-coordinator role without restating its model or calling it unknown. Astra is a planning or review role,
-not a replacement coordinator. Put each worker role and one model display name together. Do not append
-an equivalent canonical model ID when it adds no distinction; include a provider ID only when it
-disambiguates.
-Show effort only when it departs from the selected profile's default or needs a separate decision. Name
-whether the allocation is covered by the approved standing policy. Include a route only when it differs
-from the host's native route, and context details only when they affect the assignment. An unavailable
-model or unsupported effort is a proposal to resolve, not permission to substitute. Inherit settings
+The user's model remains coordinator unless the user requests otherwise. An unavailable model or
+unsupported effort is a proposal to resolve, not permission to substitute: show the available
+alternatives and wait for approval unless the approved policy names that fallback. Inherit settings
 only when the runtime resolves them and the approved policy covers that exact allocation; otherwise
 mark them unknown and obtain a decision before launch.
 
@@ -137,8 +127,8 @@ unanimous tally: agreement may be evidence of one broken prompt or prerequisite.
 
 Before dispatch, refresh passive adapter status and the relevant usage observations. The adapter's
 launch path validates the exact chosen model/variant/profile before creating a worker or submitting
-its task. That check is not a planning catalog: if it fails, stop and amend the plan; never substitute
-silently. Availability, authorization and budget remain separate coordinator decisions.
+its task. That check is not a planning catalog: if it fails, stop and amend the plan. Availability,
+authorization and budget remain separate coordinator decisions.
 
 Fix and cross-review at most two rounds, then use a stronger available reviewer or return the
 remaining blocker to the user. Two rounds repeating the same blocker require a revised plan.

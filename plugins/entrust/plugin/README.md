@@ -47,23 +47,9 @@ A second, user-invoked skill applies the same goal to the whole session. `/entru
 turns the main conversation into an orchestrator that scouts inline, agrees one plan, and pushes every
 verbose step onto agents; its common protocol is independent of the external adapter ([skills/orchestrate/SKILL.md](skills/orchestrate/SKILL.md)).
 
-A third, `/entrust:cleanup`, is the cleanup: it lists what the plugin has left on this machine and
-removes only what you pick by number ([skills/cleanup/SKILL.md](skills/cleanup/SKILL.md)). It
-removes eight kinds — this project's orchestrate run directories and agent scratch, standalone report
-runs, legacy runs with their temporary folders, the temporary folders whose run is gone, what an earlier
-version left in the data directory's `tmp/`, the test suites' scratch directories, the saved
-conversations they leave behind, and write locks nobody holds: a released lock's leftover link, an
-abandoned lock with its record, and a lock record no link names. Five more
-it only ever reports: the driver's saved answers, managed worktrees and their ledger, write locks still
-held or in the previous shape, the shared Codex home, and another copy of the plugin's data, which is yours to remove with the
-shell-quoted command the listing hands you. A report is never suggested: once the agent has written
-it you can delete it by number, and until then it is kept. It suggests nothing that is running or
-that it could not fully read, never another project's, never a run or a saved conversation without
-your number, and never on age. It runs no git. "Running" means what this plugin records — an agent's
-startup line, a run's unreported agent, a job record, a live test suite — so a process holding one of
-these open with none of that behind it is not something it can see. With `TMPDIR` unset or empty,
-the listing scans Node's fallback temporary directory and says that agent scratch elsewhere may not
-have been seen.
+A third, `/entrust:cleanup`, lists what the plugin has left on this machine, suggests what is safe to remove
+and deletes only the items you pick by number; the listing gives the reason it keeps each other item
+([skills/cleanup/SKILL.md](skills/cleanup/SKILL.md)).
 
 Two more are experiments with a page of their own. `/entrust:advisor` adds a standing top-row advisor of
 the other model family to one run, asked one question at each decision point, with every decision
