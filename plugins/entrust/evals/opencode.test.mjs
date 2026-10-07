@@ -435,6 +435,20 @@ test("a cut keeps the latest partial text after an earlier completed assistant s
     assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), "Latest partial details");
   } finally { await s.close(); }
 });
+test("a transport failure after admission keeps the partial answer it already received (E119)", async () => {
+  const s = await fakeOpenCode("transport-after-partial");
+  try {
+    const r = await driverRun(s);
+    assert.notEqual(r.code, 0);
+    assert.equal(s.prompts, 1);
+    assert.equal(r.report.ok, false);
+    assert.equal(r.report.partial, true);
+    assert.equal(r.report.receiptOk, false);
+    assert.match(r.report.error, /^invocation failed: /);
+    assert.equal(r.report.answer, "partial work");
+    assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), "partial work");
+  } finally { await s.close(); }
+});
 test("the answer artifact preserves details outside the parsed JSON preview", async () => {
   const s = await fakeOpenCode("answer-context");
   try {

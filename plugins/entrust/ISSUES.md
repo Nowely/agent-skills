@@ -6,19 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E119. An admitted OpenCode transport failure drops an already received partial answer
-
-**Evidence, level 2 for the failure path; level 3 for the report builder. Pre-existing.**
-
-`plugin/skills/opencode/scripts/driver.mjs:1103` passes an admitted exception to `fail` with
-`partial: true`. `finishFailure` at `:1301-1305` publishes exit/error fields without snapshotting
-cached invocation messages; `buildReport` at `:852-854` substitutes null for answer, answerJson
-and answerPath. A pure offline call to the public buildReport with a cached assistant text and
-`exitCode: 4, partial: true` returned all three answer fields as null. Transcript capture occurs in
-conclude, which this path skips. The newly improved cutExit retains cached text, but generic failure
-does not. The path existed in main before this release. Record and repair this producer defect
-separately; a proxy must not turn such failure into success or recover missing evidence by guessing.
-
 ## E120. OpenCode reports in one directory overwrite earlier answer and transcript artifacts
 
 **Evidence, level 3. Pre-existing.**

@@ -1279,18 +1279,24 @@ function saveAnswer(ctx, text) {
   return answerPath;
 }
 
-async function cutExit(ctx, why) {
-  await cleanup(ctx, false);
-  const tools = collectTools(invocationMessages(ctx));
+// The latest reply with text that this invocation already received, newest input first. A run cut or
+// failed after admission reports it as partial instead of dropping it; nothing is guessed or fetched.
+function receivedAnswer(ctx) {
   const reply = [...(ctx.invocationInputs ?? [])].reverse()
     .map((inputID) => allReplies(ctx, inputID).filter((candidate) => answerText(candidate)).at(-1)).find(Boolean);
   const answer = answerText(reply) || null;
+  return { answer, answerJson: answer ? extractJson(answer) : null, answerPath: saveAnswer(ctx, answer) };
+}
+
+async function cutExit(ctx, why) {
+  await cleanup(ctx, false);
+  const tools = collectTools(invocationMessages(ctx));
   const base = {
     exitCode: EXIT.TIMEOUT, error: why, partial: true,
     cancellation: ctx.cancellation ?? { reason: why, signal: ctx.signal ?? null, abort: [], observed: "unknown" },
     turnStatus: "aborted", receiptOk: false,
     commands: commandEvidence(tools).commands, tools,
-    answer, answerJson: answer ? extractJson(answer) : null, answerPath: saveAnswer(ctx, answer),
+    ...receivedAnswer(ctx),
     admission: ctx.admission,
   };
   const final = publish(ctx, base);
@@ -1301,7 +1307,7 @@ async function cutExit(ctx, why) {
 function finishFailure(ctx, exitCode, extra = {}) {
   const base = { exitCode, error: ctx.lastRefusal ?? "refused before the model call", ...extra };
   let final;
-  try { final = publish(ctx, base); }
+  try { final = publish(ctx, base.partial ? { ...base, ...receivedAnswer(ctx) } : base); }
   catch { final = { adapter: "opencode", ok: false, exitCode, error: base.error }; }
   process.stdout.write(`${JSON.stringify(final, null, 2)}\n`);
   return exitCode;
