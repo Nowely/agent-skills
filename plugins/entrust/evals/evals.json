@@ -1,6 +1,6 @@
 {
   "skill_name": "codex",
-  "how_these_run": "By hand. No runner reads this file: run-all.mjs discovers only *.test.mjs, and `claude plugin eval` is early access and absent from this build. The method — give an agent the prompt verbatim, then count Skill calls in its transcript rather than believing its self-report — is in evals/README.md under 'The trigger cases'.",
+  "how_these_run": "By hand. No runner reads this file: run-all.mjs discovers only *.test.mjs, and `claude plugin eval` does not read this legacy format. The method — give an agent the prompt verbatim, then count Skill calls in its transcript rather than believing its self-report — is in evals/README.md under 'Running the trigger cases'.",
   "evals": [
     {
       "id": 1,

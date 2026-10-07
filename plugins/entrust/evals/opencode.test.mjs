@@ -268,10 +268,11 @@ function fakeCli(url, dir) {
   return { stopFile, env: { PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}`,
     FAKE_OPENCODE_URL: url, FAKE_OPENCODE_START_FILE: startFile, FAKE_OPENCODE_STOP_FILE: stopFile }, startFile };
 }
-async function driverRun(server, { headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", localServer = false, localUrl = server.url } = {}) {
-  const state = tempDir("entrust-opencode-driver-");
-  const dir = path.join(state, "invocation"); fs.mkdirSync(dir);
-  const input = path.join(dir, "prompt.txt"), report = path.join(dir, "report.json"), box = path.join(dir, "approvals");
+// `beside` is an earlier report: this run writes report-2.json into its directory, under the same state.
+async function driverRun(server, { headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", localServer = false, localUrl = server.url, beside = null } = {}) {
+  const state = beside ? path.dirname(path.dirname(beside)) : tempDir("entrust-opencode-driver-");
+  const dir = beside ? path.dirname(beside) : path.join(state, "invocation"); if (!beside) fs.mkdirSync(dir);
+  const input = path.join(dir, "prompt.txt"), report = path.join(dir, beside ? "report-2.json" : "report.json"), box = path.join(dir, "approvals");
   fs.writeFileSync(input, prompt(`ALLOW_NO_COMMANDS: yes\n${resume ? `RESUME: ${resume}\n` : ""}${headers}`, rights));
   const env = { ENTRUST_STATE_DIR: state, ENTRUST_OPENCODE_URL: localServer ? undefined : server.url, ENTRUST_OPENCODE_CONNECTION: undefined,
     ...recent({ recent: [{ providerID: "router", modelID: savedModel }], variant: { "router/deepseek/flash": "high" } }) };
@@ -435,6 +436,20 @@ test("a cut keeps the latest partial text after an earlier completed assistant s
     assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), "Latest partial details");
   } finally { await s.close(); }
 });
+test("a transport failure after admission keeps the partial answer it already received (E119)", async () => {
+  const s = await fakeOpenCode("transport-after-partial");
+  try {
+    const r = await driverRun(s);
+    assert.notEqual(r.code, 0);
+    assert.equal(s.prompts, 1);
+    assert.equal(r.report.ok, false);
+    assert.equal(r.report.partial, true);
+    assert.equal(r.report.receiptOk, false);
+    assert.match(r.report.error, /^invocation failed: /);
+    assert.equal(r.report.answer, "partial work");
+    assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), "partial work");
+  } finally { await s.close(); }
+});
 test("the answer artifact preserves details outside the parsed JSON preview", async () => {
   const s = await fakeOpenCode("answer-context");
   try {
@@ -455,6 +470,25 @@ test("continuation retains session and model but excludes old command evidence",
     assert.equal(second.report.sessionID, first.report.sessionID); assert.equal(second.report.model, first.report.model);
     assert.deepEqual(second.report.commands, []); assert.equal(second.report.usage.input, 5);
     assert.equal(second.report.variant, "high"); assert.equal(s.calls.filter((c) => c.path.endsWith("prompt_async")).at(-1).body.variant, "high");
+  } finally { await s.close(); }
+});
+test("a continuation's report beside the first keeps each one's answer, transcript and runtime files (E120)", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const first = await driverRun(s); assert.equal(first.code, 0, first.err);
+    const second = await driverRun(s, { resume: first.path, beside: first.path }); assert.equal(second.code, 0, second.err);
+    assert.equal(path.dirname(second.path), path.dirname(first.path));
+    assert.notDeepEqual(second.report.turnIds, first.report.turnIds);
+    for (const r of [first, second]) {
+      for (const k of ["answerPath", "transcriptPath", "runtimePath"]) {
+        assert.equal(path.dirname(r.report[k]), path.dirname(r.path), k);
+        assert.notEqual(r.report[k], (r === first ? second : first).report[k], k);
+      }
+      assert.deepEqual(JSON.parse(fs.readFileSync(r.report.transcriptPath, "utf8")).inputIds, r.report.turnIds);
+      assert.equal(JSON.parse(fs.readFileSync(r.report.runtimePath, "utf8")).inputId, r.report.turnId);
+      assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), s.sessions.get(r.report.sessionID).messages
+        .find((m) => m.info.role === "assistant" && m.info.parentID === r.report.turnId).parts[0].text);
+    }
   } finally { await s.close(); }
 });
 test("cancelled report retains the selected model for continuation", async () => {

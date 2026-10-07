@@ -32,6 +32,11 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- **The Node floor has one copy besides `engines`, and a test keeps it true (E107).** The README keeps
+  "Node 22 or newer", the reader's install decision; `pages.test.mjs` now fails when it differs from
+  `package.json`'s `engines.node`. The rewrite page and the run recipe dropped their copies: the model that runs
+  them cannot change the machine's Node, and an older one fails on its own. Before, a change to `engines` left
+  two copies wrong and no test noticed.
 - `audit`, `clarity` and `rethink` link directly the files they reached only through `rules.md`: all three
   `writing-rules.md` and `curse-of-knowledge.md`, `audit` also `genres/code-comments.md`, `clarity`
   `measurements.md`, and `rethink` `truth.md`, naming its writer as the role that gets the sentence rules. Before, a

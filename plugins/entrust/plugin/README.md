@@ -49,12 +49,13 @@ verbose step onto agents; its common protocol is independent of the external ada
 
 A third, `/entrust:cleanup`, is the cleanup: it lists what the plugin has left on this machine and
 removes only what you pick by number ([skills/cleanup/SKILL.md](skills/cleanup/SKILL.md)). It
-removes seven kinds — this project's orchestrate run directories and agent scratch, standalone report
+removes eight kinds — this project's orchestrate run directories and agent scratch, standalone report
 runs, legacy runs with their temporary folders, the temporary folders whose run is gone, what an earlier
-version left in the data directory's `tmp/`, the test suites' scratch directories and the saved
-conversations they leave behind. Five more
-it only ever reports: the driver's saved answers, managed worktrees and their ledger, write locks,
-the shared Codex home, and another copy of the plugin's data, which is yours to remove with the
+version left in the data directory's `tmp/`, the test suites' scratch directories, the saved
+conversations they leave behind, and write locks nobody holds: a released lock's leftover link, an
+abandoned lock with its record, and a lock record no link names. Five more
+it only ever reports: the driver's saved answers, managed worktrees and their ledger, write locks still
+held or in the previous shape, the shared Codex home, and another copy of the plugin's data, which is yours to remove with the
 shell-quoted command the listing hands you. A report is never suggested: once the agent has written
 it you can delete it by number, and until then it is kept. It suggests nothing that is running or
 that it could not fully read, never another project's, never a run or a saved conversation without

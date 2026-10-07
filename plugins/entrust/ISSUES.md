@@ -6,31 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E119. An admitted OpenCode transport failure drops an already received partial answer
-
-**Evidence, level 2 for the failure path; level 3 for the report builder. Pre-existing.**
-
-`plugin/skills/opencode/scripts/driver.mjs:1103` passes an admitted exception to `fail` with
-`partial: true`. `finishFailure` at `:1301-1305` publishes exit/error fields without snapshotting
-cached invocation messages; `buildReport` at `:852-854` substitutes null for answer, answerJson
-and answerPath. A pure offline call to the public buildReport with a cached assistant text and
-`exitCode: 4, partial: true` returned all three answer fields as null. Transcript capture occurs in
-conclude, which this path skips. The newly improved cutExit retains cached text, but generic failure
-does not. The path existed in main before this release. Record and repair this producer defect
-separately; a proxy must not turn such failure into success or recover missing evidence by guessing.
-
-## E120. OpenCode reports in one directory overwrite earlier answer and transcript artifacts
-
-**Evidence, level 3. Pre-existing.**
-
-`plugin/skills/opencode/scripts/driver.mjs:956-957` places runtime and transcript artifacts beside the
-report under fixed names; `:1277` does the same for `answer.txt`. Distinct report files and agent
-directories in one parent therefore share those sidecar paths. A live continuation with two reports
-observed the same answerPath, transcriptPath and runtimePath: the answer file matched the newer
-answerJson and no longer matched the earlier report. Both report payloads retained their own answerJson.
-The same path construction exists in main. Historical artifact links can return a later invocation's
-data; record this producer defect separately from the new agent-order loop.
-
 ## E67. A command run after an approval, outside the sandbox, is not established to end when its agent is stopped
 
 **Evidence, level 3 for the sandboxed case (measured), level 1 for the escaped case (unmeasured).**
@@ -109,44 +84,6 @@ carries no tokens for the plan's re-estimate and stop line, and its agents canno
 run's plan, so each swarm needs a run directory of its own. Decide which of these stay limits the plan states, and
 lift the rest.
 
-## E91. `foreman.md:24` gives a broader cause than observed: the Skill tool loads a user-only skill whose command the user typed
-
-**Evidence, level 3 for the pairing; the mechanism is a guess.** `plugins/entrust/plugin/skills/orchestrate/references/foreman.md:24-25`:
-"It cannot load this skill: the Skill tool refuses a skill marked `disable-model-invocation`." On 2026-09-29 Opus O1 of
-the prepare-feedback design run (`plugins/entrust/research/2026-09-29-prepare-feedback/`) counted the Skill tool's
-results for entrust's user-only skills in one machine's transcripts: 13 loads (orchestrate 11, advisor 2), each with
-the skill's command in the user's last message, and 6 refusals, none with it. The same day the Skill tool loaded
-`entrust:orchestrate` in a session whose user had typed `/entrust:orchestrate`. The foreman's own conclusion may still
-hold, since nobody types a command to a subagent; the stated cause does not. E82 is the neighbouring tension.
-
-**Issue text.** The foreman page says the Skill tool refuses every user-only skill, but it loads one whose command the
-user typed. A reader who takes the stated cause as the rule will route around a load that works. The sentence should
-state the observed condition, or only the conclusion.
-
-## E121. A second `--decide` that lands while the driver settles the request is refused as "not waiting", not as already decided
-
-**Evidence, level 3 for the refusal (CI, PR #61), level 2 for the window. Pre-existing.**
-
-`decideRequest` in `plugin/skills/codex/scripts/agent-run.mjs:731-738` reads `<id>.request.json` for
-`settled`, then reads `pending` in a second step. `closeApproval` in
-`plugin/skills/codex/scripts/driver.mjs:3164-3173` writes the settlement and then rewrites `pending`.
-A `--decide` whose first read comes before the settlement and whose second comes after it refuses with
-`is not waiting: …/pending does not list it` for a request that was decided and settled a moment
-earlier. Nothing is published and the exit is 2, so no decision is lost or doubled; only the stated
-reason is wrong. On CI the agent-run case "--pending shows the waiting request whole…" hit this window
-once on Linux under parallel suites; the case now polls every 4 s so it measures the duplicate-decision
-refusal it names. A fix would re-read the request when `pending` does not list it and report the
-settlement.
-
-## E95. `research/2026-09-28-command-gate/` has no README and no row in the research index
-
-**Evidence, level 1.** `plugins/entrust/research/2026-09-28-command-gate/` holds ten numbered files and no README,
-and `plugins/entrust/research/README.md` has no row for it, while its opening says "Each directory has its own README
-with the result; this is the index."
-
-**Issue text.** The command-gate run cannot be found from the research index, and its folder does not say what it
-found. It needs a README with the result and a row in the index, as its neighbours have.
-
 ## E96. The harness's token figure for a Claude subagent is its last call's context, and the plan's comparables are built on it
 
 **Evidence, level 3.** On 2026-09-29 Opus R2 of the prepare-feedback run compared, for 233 subagents in one machine's
@@ -183,24 +120,6 @@ text names git, and the orchestrate and codex pages feed the launcher exactly th
 agent's directory, and agent prompts that mention the repository. The refusal comes before the command runs and names no
 way around it, so the mode stops at registration unless the coordinator happens to write `live tree` instead. The pages
 should give a form measured to pass in a worktree session.
-
-## E101. entrust's evals README says `claude plugin eval` is missing from the build, and the build has it
-
-**Evidence, level 3.** `plugins/entrust/evals/README.md:115-117`: "There is no harness for those. `claude plugin eval`
-exists in the documentation but is early access and absent from this build — `claude plugin --help` lists no `eval`
-subcommand." On 2026-09-29 `claude plugin --help` of Claude Code 2.1.280 lists `eval [options] [target]  Run eval cases
-… against a plugin and report scored results`, and terse's trigger suite has run it through
-`plugins/terse/evals/clarity-trigger.official.mjs` since 2026-09-26
-(`plugins/terse/research/2026-09-26-writing-replication/measures/clarity-trigger.md:33`). The documentation isolates each
-run: "Your user settings, hooks, `CLAUDE.md` files, MCP servers, other installed plugins, memory, and skills are absent"
-(code.claude.com/docs/en/plugin-evals.md, "How runs are isolated").
-
-**Check.** `claude plugin --help` lists an `eval` command.
-
-**Issue text.** entrust's evals README says the trigger cases have no harness because `claude plugin eval` is missing
-from the build. The build has it now, and it runs each case in a configuration with no installed plugins or user
-instructions, the harness terse already uses for its own trigger suite. The README should say so, and the trigger
-cases could run through it instead of through a reading of a real invocation's transcript.
 
 ## E102. A Codex agent can run as one background Bash task, as the swarm runs fifty, but the codex page offers only the Haiku wrapper, for a reason the swarm page contradicts
 
@@ -255,39 +174,26 @@ fixes weighed on 2026-09-29 were rejected by the owner as not good enough: an al
 the page dead until someone reads the README, and an explicit first step in place of the substitution adds a visible Bash call
 to every load and a step the model can skip.
 
-## E104. The effort policy is stated twice: codex's parity reference and orchestrate's own EFFORT bullet
+## E104. A role's effort over the default is stated twice, in codex's parity and orchestration references, and the two differ on refutation
 
-**Evidence, level 1.** `plugins/entrust/plugin/skills/codex/references/parity.md:87-92` carries the effort table
-(`low` fact lookup, `medium` ordinary review, `high`/`xhigh` refutation and competing designs, `max`/`ultra` the
-hardest problems); `plugins/entrust/plugin/skills/orchestrate/references/plan.md:35` states the same policy in its own
-words: `high` for the bulk row's extraction, classification and verification, `low` for mechanical work only,
-`medium` for review, refutation and judgement in the strong and cheap rows. Found by Fable F1.
+**Evidence, level 1.** The default is `plugins/entrust/plugin/skills/orchestrate/SKILL.md:102-104`, `xhigh` for a
+Codex agent where supported; a role's effort overrides it locally. That override is stated twice.
+`plugins/entrust/plugin/skills/codex/references/parity.md:85-92`, the effort table: `low` fact lookup, `medium`
+ordinary review, `high`/`xhigh` refutation, competing designs and a second implementation, `max`/`ultra` the hardest
+problems. `plugins/entrust/plugin/skills/codex/references/orchestration.md:90`, in its own words: `high` for the bulk
+row's extraction, classification and verification, `low` for mechanical work only, `medium` for review, refutation and
+judgement in the strong and cheap rows; its line 68 points there. A refuter gets `high` or `xhigh` by the first and
+`medium` by the second. When the entry was recorded the second statement was `orchestrate/references/plan.md:35`.
+Found by Fable F1; re-checked 2026-10-07.
 
 **Check.** `sed -n '85,92p' plugins/entrust/plugin/skills/codex/references/parity.md` and
-`sed -n '35p' plugins/entrust/plugin/skills/orchestrate/references/plan.md` print the two statements.
+`sed -n '90p' plugins/entrust/plugin/skills/codex/references/orchestration.md` print the two statements.
 
-**Issue text.** Two pages each carry the rule for which effort a role gets, in their own words; a later change to
-one is a drift from the other unless both are edited by hand. `orchestrate` should link the table rather than
-restate it, or the table should move to a file both pages point at.
-
-## E108. A Claude agent's overflow file goes under the coordinator's own `$TMPDIR`, the collision E92 fixed for Codex agents
-
-**Evidence, level 1 for the page line, level 2 for the collision.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:30`:
-"A Claude agent's artifact is its returned text, and a file it must leave goes under `$TMPDIR` with the path in that
-text". E92's fix gives every Codex run its own fresh `$TMPDIR`, named after the run inside the system temporary
-directory (`plugins/entrust/plugin/skills/codex/scripts/driver.mjs`), so two Codex agents launched together no
-longer share one; a Claude agent is a native subagent of the coordinator's own process, with no driver to give it a
-directory of its own, so several launched together still write under the one `$TMPDIR` the coordinator's session
-holds. Found by Fable J1.
-
-**Check.** `grep -n 'a file it must leave goes under' plugins/entrust/plugin/skills/orchestrate/SKILL.md` finds the
-line at :30; nothing in the codex or orchestrate pages gives a Claude agent a temporary directory of its own.
-
-**Issue text.** The page tells a Claude agent to leave an overflow file under `$TMPDIR`, the same directory E92
-found two side-by-side Codex agents colliding on. E92's fix reaches only Codex runs, through the driver; a Claude
-agent has no driver to grant it a private directory, so two Claude agents told to leave a file under `$TMPDIR` in
-the same brief can still overwrite each other's file with no error. The page should give each Claude agent's
-artifact a name, or a subdirectory, that cannot collide with a sibling's.
+**Issue text.** Two pages each carry the rule for which effort a role gets over the `xhigh` default, in their own
+words, and they already differ: a refuter gets `high` or `xhigh` by the parity table and `medium` by the orchestration
+reference. A later change to one is a drift from the other unless both are edited by hand. Decide which effort a
+refuter gets, then have the orchestration reference link the table rather than restate it, or move the table to a
+file both pages point at.
 
 ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
 
@@ -323,25 +229,6 @@ Measure it: the same set of recommendations criticised by Luna at `high`, by Lun
 model, scored by which dissents the judge or the owner upheld; and, for the swarm, whether a verdict unit that asks
 Luna to dissent rather than to match adds catches. If the result holds, give Luna a critic role in the tier table and
 the effort rule that fits it.
-
-## E112. The README says the cleanup only reports write locks; `cleanup.mjs --help` says it removes three kinds of them
-
-**Evidence, level 1.** `plugins/entrust/plugin/README.md:30-34`: "It removes seven kinds — … the test suites'
-scratch directories and the saved conversations they leave behind. Five more it only ever reports: the driver's
-saved answers, managed worktrees and their ledger, write locks, the shared Codex home, and another copy of the
-plugin's data"; the seven-kinds list names no lock. `plugins/entrust/plugin/skills/codex/scripts/cleanup.mjs:92-95`,
-its own `--help` text: "It removes … write locks nobody holds: a released lock's leftover link, an abandoned lock
-with its record, and a lock record no link names. It only REPORTS … write locks still held or in the previous
-shape". Pre-existing, on `main` before this branch. Found by Opus W3.
-
-**Check.** `sed -n '30,34p' plugins/entrust/plugin/README.md` and `sed -n '92,95p'
-plugins/entrust/plugin/skills/codex/scripts/cleanup.mjs`.
-
-**Issue text.** The README's intro puts every write lock in the list of what the cleanup only reports, while the
-tool's own `--help` removes three kinds of them — a released lock's leftover link, an abandoned lock with its
-record, and a lock record no link names — and reports only a lock still held or in the lock's previous shape. A
-reader of the README alone would not know the cleanup deletes anything lock-shaped at all. The README should say
-what the cleanup does with locks, matching `--help`.
 
 ## E113. The driver's check of the temporary base leaves a window before the run's folder is made, and never checks the base's mode
 

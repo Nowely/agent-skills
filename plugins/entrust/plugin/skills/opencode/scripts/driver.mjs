@@ -953,8 +953,8 @@ async function execute(opts, parsed) {
   process.stderr.write(`entrust: pid=${process.pid} identity=${ctx.invocationId} reportPath=${ctx.report}\n`);
 
   try {
-  ctx.runtimePath = path.join(path.dirname(ctx.report), "runtime.json");
-  ctx.transcriptPath = path.join(path.dirname(ctx.report), "transcript.json");
+  ctx.runtimePath = sidecar(ctx, "runtime.json");
+  ctx.transcriptPath = sidecar(ctx, "transcript.json");
 
   try { ctx.config = connection(); } catch (e) { return fail(ctx, e.message, EXIT.USAGE); }
   try {
@@ -1272,25 +1272,35 @@ async function stopIfNeeded(ctx, turn) {
   return Promise.resolve();
 }
 
+// A file beside the report is named after the report: a continuation's report shares the directory, and
+// a fixed name there left the earlier report's paths showing the later invocation's files.
+const sidecar = (ctx, name) => path.join(path.dirname(ctx.report), `${path.basename(ctx.report, ".json")}.${name}`);
+
 function saveAnswer(ctx, text) {
   if (!text) return null;
-  const answerPath = path.join(path.dirname(ctx.report), "answer.txt");
+  const answerPath = sidecar(ctx, "answer.txt");
   fs.writeFileSync(answerPath, text, { mode: 0o600 });
   return answerPath;
+}
+
+// The latest reply with text that this invocation already received, newest input first. A run cut or
+// failed after admission reports it as partial instead of dropping it; nothing is guessed or fetched.
+function receivedAnswer(ctx) {
+  const reply = [...(ctx.invocationInputs ?? [])].reverse()
+    .map((inputID) => allReplies(ctx, inputID).filter((candidate) => answerText(candidate)).at(-1)).find(Boolean);
+  const answer = answerText(reply) || null;
+  return { answer, answerJson: answer ? extractJson(answer) : null, answerPath: saveAnswer(ctx, answer) };
 }
 
 async function cutExit(ctx, why) {
   await cleanup(ctx, false);
   const tools = collectTools(invocationMessages(ctx));
-  const reply = [...(ctx.invocationInputs ?? [])].reverse()
-    .map((inputID) => allReplies(ctx, inputID).filter((candidate) => answerText(candidate)).at(-1)).find(Boolean);
-  const answer = answerText(reply) || null;
   const base = {
     exitCode: EXIT.TIMEOUT, error: why, partial: true,
     cancellation: ctx.cancellation ?? { reason: why, signal: ctx.signal ?? null, abort: [], observed: "unknown" },
     turnStatus: "aborted", receiptOk: false,
     commands: commandEvidence(tools).commands, tools,
-    answer, answerJson: answer ? extractJson(answer) : null, answerPath: saveAnswer(ctx, answer),
+    ...receivedAnswer(ctx),
     admission: ctx.admission,
   };
   const final = publish(ctx, base);
@@ -1301,7 +1311,7 @@ async function cutExit(ctx, why) {
 function finishFailure(ctx, exitCode, extra = {}) {
   const base = { exitCode, error: ctx.lastRefusal ?? "refused before the model call", ...extra };
   let final;
-  try { final = publish(ctx, base); }
+  try { final = publish(ctx, base.partial ? { ...base, ...receivedAnswer(ctx) } : base); }
   catch { final = { adapter: "opencode", ok: false, exitCode, error: base.error }; }
   process.stdout.write(`${JSON.stringify(final, null, 2)}\n`);
   return exitCode;

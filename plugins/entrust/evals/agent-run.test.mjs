@@ -11,7 +11,7 @@ import crypto from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { DRIVER, EXIT, FAKE, SCRIPTS, codexShim, readJson, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
+import { DRIVER, EXIT, FAKE, SCRIPTS, codexShim, readJson, registry, runCases, skip, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
 import { ACCEPTED, REFUSED, STATUS_LINES, TAKEN, agentDirOf, planRowOf, shortName } from "../plugin/skills/codex/scripts/agent-run.mjs";
 
 const LAUNCHER = path.join(SCRIPTS, "agent-run.mjs");
@@ -1325,6 +1325,32 @@ test("--decide refuses what it cannot publish, and prints LATE= and exits 3 when
     m.put("4-dddddddd.request.json", m.request("4-dddddddd"));
     await refusedWith(m.dir, m.report, "4-dddddddd", /run that is over/);
     return problems.length === 0 || problems.join("; ");
+  });
+
+test("--decide that lands while the driver settles the request says it was settled, not that it is not waiting (E121)",
+  "the driver writes a request's settlement and then drops it from pending; a --decide that read the request before the settlement and pending after it called a decided request not waiting, a reason that sends the coordinator after a fault that is not there",
+  async () => {
+    const m = handMailbox();
+    m.put("1-aaaaaaaa.request.json", m.request("1-aaaaaaaa"));
+    const fifo = path.join(m.box, "pending");
+    if (spawnSync("mkfifo", [fifo]).status !== 0) return skip("no mkfifo here");
+    // --decide's read of pending blocks on the pipe until it is written: the settlement lands then, and the
+    // pending written after it no longer lists the request, the driver's own order.
+    const run = spawnNode([LAUNCHER, "--decide", "1-aaaaaaaa", "--decline", "--dir", m.dir, "--report-file", m.report], { killAfterMs: 20000 });
+    const opening = fs.promises.open(fifo, "w");
+    const writer = await Promise.race([opening, run.done.then(() => null)]);
+    if (!writer) {
+      // A reader of our own releases the open still waiting on the pipe, so the suite can exit.
+      const reader = fs.openSync(fifo, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK);
+      await (await opening).close(); fs.closeSync(reader);
+      const r = await run.done;
+      return `--decide ended before it read pending: exit ${r.code}, ${r.out.trim()}`;
+    }
+    m.put("1-aaaaaaaa.request.json", m.request("1-aaaaaaaa", { settled: { decision: "expired", by: "driver", why: "deadline", settledAt: "t", waitMs: 1 } }));
+    await writer.close();
+    const r = await run.done;
+    return r.code === 2 && r.out === "REFUSED=1-aaaaaaaa was already settled: expired by driver (deadline) at t\n"
+      || `exit ${r.code}, ${r.out.trim()}`;
   });
 
 test("--decide --accept reads the restated command on stdin and publishes on an exact match, with one trailing newline or none",

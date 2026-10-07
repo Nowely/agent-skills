@@ -39,7 +39,7 @@ The run directory is
 `<state>/orchestrate/<project-slug>/<run>/`, `<state>` the driver's state directory, `<run>` unique and `<project-slug>` the working directory's absolute path with every character that is not a letter or
 a digit replaced by `-`, the name Claude Code gives it under `~/.claude/projects/`. It is outside every repository, so no `.gitignore`; not the repository root, not the project's
 `.claude/`, whose writes prompt whatever the allow rules say. The launcher and the driver create it, through `--report-file`, and it is what they make of it: a report per agent and, beside it, the launcher's `agent/` with the four files of the run, and the plan the launcher registered; nothing else is written there. Never run `mkdir`, Write or a shell redirect under that data directory yourself, because a headless session refuses each of them as a sensitive file with no prompt anyone can answer ([measured 2026-09-08](../../orchestrate/references/incidents.md#writes-under-the-data-directory)); and never write a decision file by hand: `--decide` is the one path.
-A Claude agent's artifact is its returned text, and a file it must leave goes under `$TMPDIR` with the path in that text; Codex artifacts are the paths the agent's
+A Claude agent's artifact is its returned text, and a file it must leave goes in a directory of its own that it makes with `mktemp -d`, with the path in that text: Claude agents launched together share the session's `$TMPDIR`, and a fixed name there is a sibling's to overwrite. Codex artifacts are the paths the agent's
 own report names, under the same data directory; it is kept after the task and the user deletes it. A read agent is never asked to write, not under the repository and not in the
 run directory: its artifact is its report, and a brief that asks a Codex read agent for a file there costs a refused write and exit 6 ([measured 2026-09-08](../../orchestrate/references/incidents.md#a-read-agent-asked-for-a-file)).
 
@@ -106,8 +106,10 @@ Never launch an agent under another state directory while an armed agent is aliv
 ## Delegated coordinator
 
 A Claude foreman is a `general-purpose` Agent, `model: opus`. Give it the approved plan and
-quoted user authority, the generic foreman role and this adapter's paths and rules. It cannot
-invoke an explicit-only skill with the Skill tool: pass the relevant files directly. It keeps
+quoted user authority, the generic foreman role and this adapter's paths and rules. The Skill
+tool has loaded an explicit-only skill only in a turn whose user message typed its command (13
+loads and 6 refusals, 2026-09-29), and nobody types one to a subagent: pass the relevant files
+directly. It keeps
 the parent's user conversation out of its return. Foreground worker calls reduce timeline
 noise in the measured Claude UI; this is not a portable guarantee of native delegation.
 

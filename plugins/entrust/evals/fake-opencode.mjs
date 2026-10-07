@@ -68,6 +68,9 @@ export async function fakeOpenCode(mode = "normal") {
       return json(Object.fromEntries([...sessions.values()].filter((s) => s.busy).map((s) => [s.id, { type: "busy" }])));
     }
     if (p === "/permission") {
+      // The second read after the prompt, once the partial reply has been fetched, fails.
+      if (mode === "transport-after-partial" && state.prompts > 0 && (state.permissionReads = (state.permissionReads ?? 0) + 1) >= 2)
+        return json({ error: "permissions unavailable" }, 503);
       const own = replies.find((q) => q.sessionID !== foreign.id);
       if (mode === "cancel-request-read" && own && ++state.permissionReads === 3) {
         own.metadata.command = "changed request"; state.requestReadInFlight = true;
@@ -130,7 +133,7 @@ export async function fakeOpenCode(mode = "normal") {
     } else if (mode === "intermediate") {
       complete(s, body.messageID); s.messages.at(-1).parts[0].text = answer("intermediate"); s.busy = true;
       setTimeout(() => complete(s, body.messageID), 3500);
-    } else if (["cancel", "cancel-unknown-tool", "cancel-before-admission", "cancel-child-scan"].includes(mode)) {
+    } else if (["cancel", "cancel-unknown-tool", "cancel-before-admission", "cancel-child-scan", "transport-after-partial"].includes(mode)) {
       if (mode === "cancel-child-scan") {
         state.childScans = 0; s.children = [{ id: "ses_child" }];
         sessions.set("ses_child", { id: "ses_child", messages: [], busy: true, children: [] });

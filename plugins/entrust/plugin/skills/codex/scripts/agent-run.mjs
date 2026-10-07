@@ -357,6 +357,9 @@ const decisionFits = (d, q) => d?.id === q.id && d?.run?.pid === q.run?.pid && d
       && (q.type === "opencode.question" ? ["answer", "decline"].includes(d?.decision) : ["accept", "decline"].includes(d?.decision))
     : d?.decision === "accept" || d?.decision === "decline");
 
+// The ids the driver's `pending` file in the mailbox `box` lists.
+const pendingIds = (box) => (read(path.join(box, "pending")) ?? "").split("\n").filter((l) => REQUEST_ID.test(l));
+
 // What DIR/approvals holds, read from the files alone: every request in the order the driver offered them,
 // the ids `pending` lists, and the decisions nobody took. A decision whose identity is not its request's is
 // stale, whenever it came; a valid one is late when the driver settled the request without it, or the run
@@ -370,7 +373,7 @@ function mailbox(dir) {
   const requests = names.filter((n) => n.endsWith(".request.json")).map((n) => [n, readJsonFile(path.join(box, n))])
     .filter(([n, q]) => q && typeof q.id === "string" && REQUEST_ID.test(q.id) && n === `${q.id}.request.json`)
     .map(([, q]) => q).sort((a, b) => seqOf(a.id) - seqOf(b.id));
-  const pending = (read(path.join(box, "pending")) ?? "").split("\n").filter((l) => REQUEST_ID.test(l));
+  const pending = pendingIds(box);
   const late = [], stale = [];
   for (const q of requests) {
     if (!names.includes(`${q.id}.decision.json`)) continue;
@@ -729,13 +732,15 @@ function decideRequest(dir, id, decision, why) {
   if (!REQUEST_ID.test(id)) refuse("is not a request id");
   const box = path.join(dir, "approvals");
   const requestPath = path.join(box, `${id}.request.json`);
+  // `pending` is the driver's own list of what it is waiting on; a request file it does not list is not
+  // one it will read a decision for. It is read before the request: the driver writes a settlement before
+  // it drops the request from `pending`, so in this order a request missing there is settled or not waiting.
+  const pending = pendingIds(box);
   const q = readJsonFile(requestPath);
   if (!q || q.id !== id) refuse(`has no request in ${box}`);
   if (fs.existsSync(path.join(dir, "exit"))) refuse("belongs to a run that is over; nothing can take a decision now");
   if (q.settled) refuse(`was already settled: ${q.settled.decision} by ${q.settled.by}${q.settled.why ? ` (${q.settled.why})` : ""} at ${q.settled.settledAt}`);
-  // `pending` is the driver's own list of what it is waiting on; a request file it does not list is not
-  // one it will read a decision for.
-  if (!mailbox(dir).pending.includes(id)) refuse(`is not waiting: ${path.join(box, "pending")} does not list it`);
+  if (!pending.includes(id)) refuse(`is not waiting: ${path.join(box, "pending")} does not list it`);
   const typed = q.type === "opencode.permission" || q.type === "opencode.question";
   if (typed && (q.requestHash !== crypto.createHash("sha256").update(JSON.stringify(q.payload)).digest("hex")
     || q.presented !== JSON.stringify(q.payload, null, 2) || q.remote?.requestID !== q.payload?.id
