@@ -6,18 +6,6 @@ can become an issue unchanged. An entry leaves when its fix lands and the change
 shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it.
 
-## E120. OpenCode reports in one directory overwrite earlier answer and transcript artifacts
-
-**Evidence, level 3. Pre-existing.**
-
-`plugin/skills/opencode/scripts/driver.mjs:956-957` places runtime and transcript artifacts beside the
-report under fixed names; `:1277` does the same for `answer.txt`. Distinct report files and agent
-directories in one parent therefore share those sidecar paths. A live continuation with two reports
-observed the same answerPath, transcriptPath and runtimePath: the answer file matched the newer
-answerJson and no longer matched the earlier report. Both report payloads retained their own answerJson.
-The same path construction exists in main. Historical artifact links can return a later invocation's
-data; record this producer defect separately from the new agent-order loop.
-
 ## E67. A command run after an approval, outside the sandbox, is not established to end when its agent is stopped
 
 **Evidence, level 3 for the sandboxed case (measured), level 1 for the escaped case (unmeasured).**

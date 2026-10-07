@@ -953,8 +953,8 @@ async function execute(opts, parsed) {
   process.stderr.write(`entrust: pid=${process.pid} identity=${ctx.invocationId} reportPath=${ctx.report}\n`);
 
   try {
-  ctx.runtimePath = path.join(path.dirname(ctx.report), "runtime.json");
-  ctx.transcriptPath = path.join(path.dirname(ctx.report), "transcript.json");
+  ctx.runtimePath = sidecar(ctx, "runtime.json");
+  ctx.transcriptPath = sidecar(ctx, "transcript.json");
 
   try { ctx.config = connection(); } catch (e) { return fail(ctx, e.message, EXIT.USAGE); }
   try {
@@ -1272,9 +1272,13 @@ async function stopIfNeeded(ctx, turn) {
   return Promise.resolve();
 }
 
+// A file beside the report is named after the report: a continuation's report shares the directory, and
+// a fixed name there left the earlier report's paths showing the later invocation's files.
+const sidecar = (ctx, name) => path.join(path.dirname(ctx.report), `${path.basename(ctx.report, ".json")}.${name}`);
+
 function saveAnswer(ctx, text) {
   if (!text) return null;
-  const answerPath = path.join(path.dirname(ctx.report), "answer.txt");
+  const answerPath = sidecar(ctx, "answer.txt");
   fs.writeFileSync(answerPath, text, { mode: 0o600 });
   return answerPath;
 }
