@@ -910,8 +910,8 @@ const shapeOf = (lines) => (lines[0] ?? "").startsWith("REQUEST=") ? "waiting" :
 const runOnce = (report, state, scenario, extraEnv = {}) =>
   launcherLines(["--run", "--report-file", report], { env: { ...env(state, scenario), ...extraEnv }, killAfterMs: 60000 });
 
-test("--new makes the mailbox for every agent and says where; it refuses no state directory, and a report or a directory outside it",
-  "every agent has a mailbox, and a mailbox is only safe inside the state directory, which no agent's sandbox can write; no flag arms it, so --new needs the variable that names the state directory and checks both paths against it — the launcher's refusal is the early one in the caller's own call, the driver's inode check is the wall",
+test("--new makes the mailbox for every agent and says where; it takes <tmp>/entrust-state with no variable set, and refuses a report or a directory outside the state directory",
+  "every agent has a mailbox, and a mailbox is only safe inside the state directory, which no agent's sandbox can write; no flag arms it, so --new resolves the state directory as the driver does and checks both paths against it — the launcher's refusal is the early one in the caller's own call, the driver's inode check is the wall",
   async () => {
     const problems = [];
     const state = tempDir("agent-run-state.");
@@ -936,12 +936,17 @@ test("--new makes the mailbox for every agent and says where; it refuses no stat
       if (s.code !== 2 || !/inside the state directory/.test(s.err)) problems.push(`${label}: exit ${s.code}, ${s.err.slice(0, 160)}`);
       if (fs.existsSync(dirArg)) problems.push(`${label}: the refused --new made the directory anyway`);
     }
-    const none = await newAgent(path.join(state, "run-c", "report.json"), PROMPT, { env: {}, unsetEnv: ["ENTRUST_STATE_DIR", "CLAUDE_PLUGIN_DATA"] });
-    if (none.code !== 2 || !/--new needs the driver's state directory/.test(none.err) || !/CLAUDE_PLUGIN_DATA/.test(none.err))
-      problems.push(`no state directory named: exit ${none.code}, ${none.err.slice(0, 200)}`);
+    // No variable: the state directory is <tmp>/entrust-state, so a report there is taken and one in the
+    // variable's old directory is not.
+    const tmp = fs.realpathSync(tempDir("agent-run-tmp."));
+    const byDefault = path.join(tmp, "entrust-state", "run-d", "report.json");
+    const d = await newAgent(byDefault, PROMPT, { env: { TMPDIR: tmp }, unsetEnv: ["ENTRUST_STATE_DIR"] });
+    if (d.code !== 0 || !fs.existsSync(path.join(tmp, "entrust-state", "run-d", "agent", "approvals")))
+      problems.push(`the default state directory: exit ${d.code}, ${d.err.slice(0, 160)}`);
+    const none = await newAgent(path.join(state, "run-c", "report.json"), PROMPT, { env: { TMPDIR: tmp }, unsetEnv: ["ENTRUST_STATE_DIR"] });
+    if (none.code !== 2 || !/inside the state directory/.test(none.err))
+      problems.push(`a report outside the default state directory: exit ${none.code}, ${none.err.slice(0, 200)}`);
     if (fs.existsSync(path.join(state, "run-c"))) problems.push("the refused --new made the directory anyway");
-    const plugin = await newAgent(path.join(state, "run-d", "report.json"), PROMPT, { unsetEnv: ["ENTRUST_STATE_DIR"], env: { CLAUDE_PLUGIN_DATA: state } });
-    if (plugin.code !== 0 || !fs.existsSync(path.join(state, "run-d", "agent", "approvals"))) problems.push(`CLAUDE_PLUGIN_DATA as the state directory: exit ${plugin.code}, ${plugin.err.slice(0, 160)}`);
     for (const gone of ["--approvals", "--approval-timeout"]) {
       const g = await launcherLines(["--new", gone, "--report-file", path.join(state, "run-e", "report.json")], { env: { ENTRUST_STATE_DIR: state } });
       if (g.code !== 2 || !g.err.includes(`unknown argument: ${gone}`)) problems.push(`${gone} was not refused as unknown: exit ${g.code}`);

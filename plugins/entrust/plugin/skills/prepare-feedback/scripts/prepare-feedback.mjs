@@ -26,7 +26,7 @@
 // copies was written with a machine path in it. Summary lines print last, RUN= the very last, so a runner's
 // tail keeps them.
 //
-// Environment: ENTRUST_STATE_DIR, else CLAUDE_PLUGIN_DATA (absolute; no default of its own); transcripts under
+// Environment: ENTRUST_STATE_DIR (absolute), else <tmp>/entrust-state; transcripts under
 // $CLAUDE_CONFIG_DIR/projects, else ~/.claude/projects; Codex rollouts under $CODEX_HOME/sessions, else
 // ~/.codex/sessions. The runs root <state>/prepare-feedback must be a real directory, never a symbolic link.
 // Exit: 0 done; 2 usage, or no state directory, or a path that is not what the command needs; 10 refused — a
@@ -37,6 +37,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 
 const EXIT = { OK: 0, FAILED: 1, USAGE: 2, REFUSED: 10 };
 const PLUGINS = ["entrust", "terse"];
@@ -164,7 +165,7 @@ process.json holds counts, addresses, basenames, Claude Code's own tool and agen
 reported plugins' agent types, model names and two folded names: mcp for every MCP tool, custom for every other
 agent type; the full names stay in index.json.
 
-Environment: ENTRUST_STATE_DIR, else CLAUDE_PLUGIN_DATA (absolute); CLAUDE_CONFIG_DIR, else ~/.claude, for the
+Environment: ENTRUST_STATE_DIR (absolute), else <tmp>/entrust-state; CLAUDE_CONFIG_DIR, else ~/.claude, for the
 transcripts; CODEX_HOME, else ~/.codex, for the rollouts. Nothing is overwritten, ever.
 Exit: 0 done; 2 usage, no state directory, or a wrong kind of path; 10 refused (exists, out of order,
 destination taken or under the state directory); 1 a write failed.
@@ -201,13 +202,11 @@ function parse(cmd, argv) {
 }
 
 function stateDir() {
-  const named = process.env.ENTRUST_STATE_DIR ? "ENTRUST_STATE_DIR" : process.env.CLAUDE_PLUGIN_DATA ? "CLAUDE_PLUGIN_DATA" : null;
-  if (!named) fail(EXIT.USAGE, "no state directory: set ENTRUST_STATE_DIR, or pass CLAUDE_PLUGIN_DATA");
-  const s = process.env[named];
-  if (!path.isAbsolute(s)) fail(EXIT.USAGE, `${named} is not absolute: ${s}`);
+  let s;
+  try { s = stateDirectory(); } catch (e) { fail(EXIT.USAGE, `no usable state directory: ${e.message}`); }
   let st;
-  try { st = fs.statSync(s); } catch { fail(EXIT.USAGE, `${named} does not exist: ${s}`); }
-  if (!st.isDirectory()) fail(EXIT.USAGE, `${named} is not a directory: ${s}`);
+  try { st = fs.statSync(s); } catch { fail(EXIT.USAGE, `ENTRUST_STATE_DIR does not exist: ${s}`); }
+  if (!st.isDirectory()) fail(EXIT.USAGE, `ENTRUST_STATE_DIR is not a directory: ${s}`);
   return fs.realpathSync(s);
 }
 

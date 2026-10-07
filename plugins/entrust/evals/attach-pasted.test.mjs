@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { SCRIPTS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
+import { ROOT, SCRIPTS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
 
 const FRONT = path.join(SCRIPTS, "attach-pasted.mjs");
 
@@ -54,7 +54,19 @@ function transcript(name, lines) {
 // A driver shim: records argv, exits with whatever RC says.
 const shimDir = tempDir("codex-attach-shim-");
 const argvLog = path.join(shimDir, "argv.json");
-const driverShim = path.join(shimDir, "driver.mjs");
+// The front-end resolves the driver as its own sibling and the state directory through orchestrate's
+// temp-dir.mjs, so each copy sits in the installed layout: skills/codex/scripts beside skills/orchestrate/scripts.
+const placeFront = (dir) => {
+  const scripts = path.join(dir, "skills", "codex", "scripts");
+  fs.mkdirSync(scripts, { recursive: true });
+  fs.mkdirSync(path.join(dir, "skills", "orchestrate", "scripts"), { recursive: true });
+  fs.copyFileSync(path.join(ROOT, "skills", "orchestrate", "scripts", "temp-dir.mjs"),
+    path.join(dir, "skills", "orchestrate", "scripts", "temp-dir.mjs"));
+  fs.copyFileSync(FRONT, path.join(scripts, "attach-pasted.mjs"));
+  return path.join(scripts, "attach-pasted.mjs");
+};
+const frontCopy = placeFront(shimDir);
+const driverShim = path.join(path.dirname(frontCopy), "driver.mjs");
 // It records the argv AND the bytes of each attachment while they still exist: the front-end removes
 // them when the run ends, which is the point of the hygiene case below, so a test that stats them
 // afterwards is testing its own timing rather than the contract.
@@ -65,9 +77,6 @@ fs.writeFileSync(driverShim,
   `fs.writeFileSync(${JSON.stringify(argvLog)}, JSON.stringify({ argv, files }));\n` +
   `process.exit(Number(process.env.SHIM_RC ?? 0));\n`);
 
-// The front-end resolves the driver as its own sibling, so the shim has to sit beside a copy of it.
-const frontCopy = path.join(shimDir, "attach-pasted.mjs");
-fs.copyFileSync(FRONT, frontCopy);
 
 const stateDir = path.join(work, "state");
 
@@ -188,9 +197,7 @@ test("the extracted images are 0600 under the state dir, and are removed when th
       `import fs from "node:fs";\n` +
       `const p = process.argv[process.argv.indexOf("--attach") + 1];\n` +
       `fs.writeFileSync(${JSON.stringify(argvLog)}, JSON.stringify({ path: p, mode: (fs.statSync(p).mode & 0o777).toString(8), dir: (fs.statSync(p.replace(/\\/[^/]+$/, "")).mode & 0o777).toString(8) }));\n`);
-    const front2 = path.join(shimDir, "sub", "attach-pasted.mjs");
-    fs.mkdirSync(path.dirname(front2), { recursive: true });
-    fs.copyFileSync(FRONT, front2);
+    const front2 = placeFront(path.join(shimDir, "sub"));
     fs.copyFileSync(probe, path.join(path.dirname(front2), "driver.mjs"));
     const r = spawnSync(process.execPath, [front2, "--pasted-transcript", t, "--", "--cwd", work],
       { encoding: "utf8", env: { ...process.env, ENTRUST_STATE_DIR: stateDir, CLAUDE_CODE_SESSION_ID: "" } });

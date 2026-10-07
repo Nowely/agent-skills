@@ -265,7 +265,7 @@ function untaggedAgentCalls(text) {
   return found;
 }
 
-// `${CLAUDE_PLUGIN_DATA}/orchestrate/<project-slug>/<run>/`, where the slug is the working directory's
+// `<state>/orchestrate/<project-slug>/<run>/`, where the slug is the working directory's
 // absolute path with every character that is not a letter or a digit replaced by `-`. Both spellings of
 // that path are tried: a macOS temp directory is reached through /var and resolves to /private/var, and
 // the session's own cwd decides which one the slug was built from.

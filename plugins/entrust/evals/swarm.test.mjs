@@ -76,7 +76,7 @@ test("U1 every brief takes its model from the bulk or cheap row of the adapter's
 test("U2 the brief's OUTPUT_SCHEMA is the shipped five-field file, and that file parses, is strict and names the five fields in order",
   "a Codex agent's `OUTPUT_SCHEMA:` must be a strict JSON Schema file; a copy pasted onto the page drifts from the file the driver enforces",
   () => {
-    const named = /`\$\{CLAUDE_SKILL_DIR\}\/\.\.\/(orchestrate\/schemas\/five-fields\.schema\.json)`/.exec(text)?.[1];
+    const named = /`<skill-dir>\/\.\.\/(orchestrate\/schemas\/five-fields\.schema\.json)`/.exec(text)?.[1];
     if (!named) return "the page names no shipped five-field schema for the brief's OUTPUT_SCHEMA";
     if (/^ {4}\{"type":"object"/m.test(text)) return "the page still pastes a schema line of its own";
     let s;
@@ -102,7 +102,7 @@ test("U3 the shipped five-field schema caps every free-text field",
 
 test("L1 the page hands over the launch line the script takes",
   "the line is copied into a Bash call as it stands; the run layout behind it is orchestrate's, carried here because the page loads codex alone",
-  () => shows(/^ {4}CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/swarm\.mjs" --adapter <codex\|opencode> --units <file> --brief <template> --run <run directory> --concurrency <n>$/m));
+  () => shows(/^ {4}node "<skill-dir>\/scripts\/swarm\.mjs" --adapter <codex\|opencode> --units <file> --brief <template> --run <run directory> --concurrency <n>$/m));
 
 test("every relative link resolves, inside this repository, to a file and to a heading that exists",
   "the page delegates its whole mechanism to the codex page by link; a moved file turns the mode into a 404 only a reader notices",
@@ -132,7 +132,7 @@ const state = path.join(world, "state"); fs.mkdirSync(state);
 const env = { PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: "happy", ENTRUST_STATE_DIR: state, TMPDIR: path.join(world, "tmp") };
 fs.mkdirSync(env.TMPDIR);
 const draft = (name, body) => { const p = path.join(world, name); fs.writeFileSync(p, body); return p; };
-const start = (argv) => spawnNode([SCRIPT, ...(argv.includes("--adapter") ? [] : ["--adapter", "codex"]), ...argv], { env, unsetEnv: ["CLAUDE_PLUGIN_DATA"], killAfterMs: 240000 });
+const start = (argv) => spawnNode([SCRIPT, ...(argv.includes("--adapter") ? [] : ["--adapter", "codex"]), ...argv], { env, killAfterMs: 240000 });
 const run = (argv) => start(argv).done;
 const template = draft("brief.txt", `RIGHTS: read ${shimDir}\nTASK: unit {{UNIT_ID}}: {{UNIT}}\nRETURN: the verdict\n`);
 const unitsFile = draft("units.txt", "first claim\n\nsecond claim $' with a dollar quote\nthird claim\n");

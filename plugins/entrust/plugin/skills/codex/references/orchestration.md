@@ -5,7 +5,7 @@ host's delegation facilities and do not use these commands. The orchestration sk
 plan, roles, five-field return and verification; this page owns the external transport.
 
 Resolve `<codex-skill-dir>` from the loaded codex skill and `<orchestrate-skill-dir>` from its
-sibling installed directory. `<state>` is the plugin data directory supplied by the codex
+sibling installed directory. `<state>` is the driver's state directory named by the codex
 skill; substitute the resolved paths in commands. Dynamic skill variables are not expanded
 when a reference is read as a plain file.
 
@@ -35,13 +35,18 @@ for the shared return, without `BRIEF:` (which would clip its answer). Read thos
 `answerJson` in the report. A requested larger return uses a copied schema with adjusted caps.
 
 ## State and artifacts
-The run directory is
-`<state>/orchestrate/<project-slug>/<run>/`, `<state>` the driver's state directory, `<run>` unique and `<project-slug>` the working directory's absolute path with every character that is not a letter or
-a digit replaced by `-`, the name Claude Code gives it under `~/.claude/projects/`. It is outside every repository, so no `.gitignore`; not the repository root, not the project's
-`.claude/`, whose writes prompt whatever the allow rules say. The launcher and the driver create it, through `--report-file`, and it is what they make of it: a report per agent and, beside it, the launcher's `agent/` with the four files of the run, and the plan the launcher registered; nothing else is written there. Never run `mkdir`, Write or a shell redirect under that data directory yourself, because a headless session refuses each of them as a sensitive file with no prompt anyone can answer ([measured](../../claude/references/incidents.md#writes-under-the-data-directory)); and never write a decision file by hand: `--decide` is the one path.
-A Claude agent's artifact is its returned text, and a file it must leave goes in a directory of its own that it makes with `mktemp -d`, with the path in that text: Claude agents launched together share the session's `$TMPDIR`, and a fixed name there is a sibling's to overwrite. Codex artifacts are the paths the agent's
-own report names, under the same data directory; it is kept after the task and the user deletes it. A read agent is never asked to write, not under the repository and not in the
-run directory: its artifact is its report, and a brief that asks a Codex read agent for a file there costs a refused write and exit 6 ([measured](incidents.md#a-read-agent-asked-for-a-file)).
+
+The run directory is `<state>/orchestrate/<project-slug>/<run>/`, `<state>` the driver's state directory,
+`<run>` unique and `<project-slug>` the working directory's absolute path with every character that is not a
+letter or a digit replaced by `-`. It is outside every repository, so no `.gitignore`. The launcher and the
+driver create it, through `--report-file`, and it is what they make of it: a report per agent and, beside it,
+the launcher's `agent/` with the four files of the run, and the plan the launcher registered; nothing else is
+written there, by you included, and never a decision file by hand: `--decide` is the one path.
+A Claude agent's artifact is as the [claude adapter](../../claude/SKILL.md#agent-calls) says. Codex artifacts
+are the paths the agent's own report names, under the state directory; they stay until the system clears its
+temporary directory or the cleanup removes them. A read agent is never asked to write, not under the
+repository and not in the run directory: its artifact is its report, and a brief that asks a Codex read agent
+for a file there costs a refused write and exit 6 ([measured](incidents.md#a-read-agent-asked-for-a-file)).
 
 ## Model tiers
 

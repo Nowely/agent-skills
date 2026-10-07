@@ -25,9 +25,9 @@ explains environment, state, wrappers, operational bounds, and lifecycle details
 ## Environment
 
 The variables, the subdirectories of the state directory `<state>` stands for below, the order the driver
-resolves it in, and what `TMPDIR` grants a read agent are all under `--help-all`. There is no default: the
-intended value is the plugin's own data directory, which the skill recipes pass on every call. `<state>`
-must also be absolute.
+resolves it in, and what `TMPDIR` grants a read agent are all under `--help-all`. `<state>` is
+`ENTRUST_STATE_DIR` when set, which must be absolute, else `<tmp>/entrust-state` beside the scratch tree; it
+stays until the system clears its temporary directory.
 
 `$TMPDIR` is the run's own directory, made fresh at 0700 inside the system's temporary directory (what
 Node's `os.tmpdir()` returns for the driver's environment), never your whole one:
@@ -90,8 +90,8 @@ before it writes is unmeasured.
 Every agent gets one: `agent-run.mjs --new` makes `<DIR>/approvals` beside the prompt for every launch, no
 flag needed, and `--run` always hands the driver `--approval-dir` for it. `--approval-dir D` has to lie
 inside the driver's own state directory, and so does `--report-file` beside it: `--new` checks both paths
-strictly inside that directory before the agent's directory even exists, and refuses without the state
-directory in `ENTRUST_STATE_DIR` or `CLAUDE_PLUGIN_DATA`; it also refuses a mailbox placed under one of the
+strictly inside that directory before the agent's directory even exists; it also refuses a mailbox placed
+under one of the
 driver's own subtrees there —
 `home/`, `locks/`, `answers/`, `jobs/`, `worktrees/` or `pasted/` — or under `<tmp>/entrust`, where every
 run's `$TMPDIR` is; `reports/<run>` and an orchestrate run directory are both fine, being neither. The

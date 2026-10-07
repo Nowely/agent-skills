@@ -8,7 +8,7 @@
 // nine commands, the two directory forms, the link to focuses.md and the page's budget; none of its prose. The
 // script cases run it in a synthetic world under one harness temp directory: transcripts under
 // CLAUDE_CONFIG_DIR, Codex rollouts under CODEX_HOME, reports beside them, and ENTRUST_STATE_DIR pointing at a
-// scratch state with CLAUDE_PLUGIN_DATA unset, so nothing reaches the machine's own data or transcripts. Every
+// scratch state, so nothing reaches the machine's own data or transcripts. Every
 // record is built here in the shapes Claude Code and Codex write; no line of a real transcript is in it.
 
 import crypto from "node:crypto";
@@ -51,10 +51,10 @@ test("the page stays inside its budget: a body of 20,000 bytes at most and two h
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the page calls the script in one indented line that forwards the data directory",
-  "Claude Code substitutes ${CLAUDE_PLUGIN_DATA} only in a skill's body, and the script refuses to run without a state directory",
-  () => /^ {4}CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/prepare-feedback\.mjs" <command>/m.test(text)
-    || "no line reads `    CLAUDE_PLUGIN_DATA=\"${CLAUDE_PLUGIN_DATA}\" node \"${CLAUDE_SKILL_DIR}/scripts/prepare-feedback.mjs\" <command> …`");
+test("the page calls the script in one indented line",
+  "the coordinator copies the line as it stands; the script resolves its state directory itself",
+  () => /^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/prepare-feedback\.mjs" <command>/m.test(text)
+    || "no line reads `    node \"${CLAUDE_SKILL_DIR}/scripts/prepare-feedback.mjs\" <command> …`");
 
 test("the page names each of the script's nine commands",
   "a command the page never names is one the coordinator never runs, and the step it serves is done by hand",
@@ -86,7 +86,7 @@ const draft = (name, content) => { const p = path.join(scratch, name); fs.writeF
 const write = (file, lines) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${lines.join("\n")}\n`); };
 const run = (argv, env = {}) => spawnNode([SCRIPT, ...argv], {
   env: { ENTRUST_STATE_DIR: state, CLAUDE_CONFIG_DIR: config, CODEX_HOME: codexHome, ...env },
-  unsetEnv: ["CLAUDE_PLUGIN_DATA"], cwd: world, killAfterMs: 30000 }).done;
+  cwd: world, killAfterMs: 30000 }).done;
 const value = (out, key) => new RegExp(`^${key}=(.*)$`, "m").exec(out)?.[1];
 const today = new Date().toISOString().slice(0, 10);
 const walk = (dir, base = dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) => {
@@ -400,7 +400,7 @@ test("S1 --help exits 0 and names every command, the environment and the refusal
     const r = await run(["--help"]);
     const problems = [];
     if (r.code !== 0) problems.push(`exit ${r.code}`);
-    for (const w of [...COMMANDS, "ENTRUST_STATE_DIR", "CLAUDE_PLUGIN_DATA", "CLAUDE_CONFIG_DIR", "CODEX_HOME", "10 refused", "turns.jsonl"])
+    for (const w of [...COMMANDS, "ENTRUST_STATE_DIR", "entrust-state", "CLAUDE_CONFIG_DIR", "CODEX_HOME", "10 refused", "turns.jsonl"])
       if (!r.out.includes(w)) problems.push(`--help does not mention ${w}`);
     const bogus = await run(["bogus", "--help"]);
     if (bogus.code !== 2) problems.push(`bogus --help exit ${bogus.code}`);
@@ -414,12 +414,17 @@ test("S2 the script parses under this engine (node --check)",
     return r.code === 0 || `exit ${r.code}: ${r.err.slice(0, 200)}`;
   });
 
-test("S3 without a state directory nothing runs: exit 2 and nothing written",
-  "the private folder's home is the data directory the page forwards; a script that invented a default would write where cleanup and the owner do not look",
+test("S3 without ENTRUST_STATE_DIR the private folder is under <tmp>/entrust-state, and a relative one runs nothing",
+  "the private folder lives where the driver's state does, in the temporary directory, so cleanup and the owner find both in one place; a relative value would resolve against whatever cwd the caller had",
   async () => {
-    const r = await run(["corpus", "--slug", "nostate"], { ENTRUST_STATE_DIR: undefined });
-    if (r.code !== 2) return `exit ${r.code}: ${r.err.slice(0, 160)}`;
-    return fs.readdirSync(state).length === 0 || "something was written under the scratch state";
+    const tmp = fs.realpathSync(fs.mkdtempSync(path.join(world, "tmp-")));
+    const r = await run(["corpus", "--slug", "nostate"], { ENTRUST_STATE_DIR: undefined, TMPDIR: tmp });
+    if (r.code !== 0) return `exit ${r.code}: ${r.err.slice(0, 160)}`;
+    const at = value(r.out, "RUN");
+    if (!at || !at.startsWith(path.join(tmp, "entrust-state", "prepare-feedback") + path.sep)) return `RUN= is not under <tmp>/entrust-state: ${at}`;
+    const rel = await run(["corpus", "--slug", "relative"], { ENTRUST_STATE_DIR: "state" });
+    if (rel.code !== 2) return `a relative ENTRUST_STATE_DIR: exit ${rel.code}`;
+    return !fs.readdirSync(state).some((n) => n.includes("relative")) || "a relative value wrote under the scratch state";
   });
 
 test("C1 corpus makes <state>/prepare-feedback/<date>-<slug>/ at mode 0700 and prints the plan's numbers, the PROJECT= lines first and RUN= last",

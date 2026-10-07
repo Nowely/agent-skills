@@ -346,40 +346,16 @@ transport-neutral core (plan registry, report paths, the pending/decide mailbox,
 and per-adapter hooks (driver path, backend environment, request types, plan-model validation) declared beside each
 adapter's `adapter.json`.
 
-## E124. Shared pages still carry Claude Code's variables and tools
+## E124. prepare-feedback still steps through Claude Code's tools
 
-**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`. The `claude` adapter now owns Claude's models,
-Agent-call rules, waiting, Workflow and the foreman, which left the codex adapter and the swarm page. What remains:
-`${CLAUDE_SKILL_DIR}` and `${CLAUDE_PLUGIN_DATA}` in the cleanup and swarm commands (`cleanup/SKILL.md`, the cycle's
-two commands; `swarm/SKILL.md`, the launch line), and prepare-feedback's Read and Skill tools, `${CLAUDE_SKILL_DIR}`
-and EnterWorktree (`prepare-feedback/SKILL.md:14, 80`).
+**Evidence, level 1.** `plugins/entrust/plugin/skills/prepare-feedback/SKILL.md:14` has the coordinator read orchestrate
+"with the Read tool" and not "with the Skill tool", with `${CLAUDE_SKILL_DIR}` filled in by hand, and its output steps
+enter a worktree "with EnterWorktree". The cleanup and swarm pages now take `<skill-dir>` and no state variable; the
+`claude` adapter owns Claude Code's tools and explicit-only skills.
 
-**Issue text.** Three shared skills still address Claude Code directly in their commands and steps, so they cannot run
-on another host. The commands should take the skill directory and the storage root as the other hosts do, and
-prepare-feedback's Claude Code steps should go to the `claude` adapter or be marked as Claude Code's.
-
-## E126. The plugin keeps two storage roots, one tied to Claude Code, with layouts every page must explain
-
-**Evidence, level 1.** Paths under `plugins/entrust/plugin/`.
-- State lives in `${CLAUDE_PLUGIN_DATA}` or `ENTRUST_STATE_DIR`, and the driver exits 2 with neither
-  (`README.md:161-173`); scratch lives in `<tmp>/entrust/<project>/<run>/{agents,checks,swarm,evals}`
-  (`README.md:112-139`), tied together by an `ENTRUST_TEMP_CONTEXT` the coordinator passes on
-  (`skills/orchestrate/SKILL.md:35-39`).
-- Pages restate which root a path is under: `skills/swarm/SKILL.md:31` (`<state>/orchestrate/<project-slug>/<run>/` and
-  `<temp>/entrust/<project>/<run>/swarm/…`), `skills/prepare-feedback/SKILL.md:14, 93` (`<state>/prepare-feedback/…`),
-  `skills/codex/references/orchestration.md:37-44`.
-- The data directory is under `.claude`, a protected path, so the coordinator's own writes there are refused
-  (`skills/codex/references/orchestration.md:41`; `skills/prepare-feedback/SKILL.md:93` "your own write under the state
-  directory is refused") and every write goes through a script.
-- Managing both takes a 135-line skill (`skills/cleanup/SKILL.md`) and a 1,863-line script
-  (`skills/codex/scripts/cleanup.mjs`).
-
-**Issue text.** entrust writes to two places: the host's plugin data directory, which exists only under Claude Code and
-refuses the coordinator's own writes, and a project/run tree under the temporary directory. The split costs a context
-variable threaded through every command, path rules on every page, scripts that write on the coordinator's behalf and
-a large cleanup. The owner's direction is to keep only the temporary folder. Where the state that must outlive a run
-goes then (the worktree ledger, write locks, the isolated Codex home, reports a continuation reads) is decided with
-that change.
+**Issue text.** prepare-feedback names Claude Code's tools in its own steps instead of leaving them to the `claude`
+adapter, so its procedure cannot be read on another host. It reads Claude Code's own sessions, so the skill stays Claude
+Code's by purpose, but its steps should say what to do and let the adapter say with which tool.
 
 ## E129. prepare-feedback ships this repository's own procedures
 

@@ -36,8 +36,7 @@
 //
 // What it keeps: it NEVER opens prompt.txt except as the driver's argument, because a relay that reads a
 // prompt can rewrite it (incidents.md, "A relay on a small model"); it passes the driver exactly the two
-// flags the page used to, plus the mailbox under --run, and the environment as it found it,
-// CLAUDE_PLUGIN_DATA included; the driver's
+// flags the page used to, plus the mailbox under --run, and the environment as it found it; the driver's
 // own stderr is what lands in DIR/err.txt, its pid line the first line of the whole pid-line shape (a preload's
 // output may stand before it). DIR is `agent/` beside the report, made
 // by --new at 0700 with the prompt it read on stdin at 0600, so one run's four files (prompt.txt on
@@ -77,6 +76,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DRIVER = path.join(HERE, "driver.mjs");
@@ -158,8 +158,8 @@ const USAGE = `agent-run — make, run or read one Codex agent for the wrapper.
       refusal prints ERROR=<the driver's reason> and no PROMPT= line, exits 2 and leaves no prompt.txt:
       a --run finds nothing to start, and the same command with the prompt corrected is the retry. A
       check that neither passes nor refuses is a fault in the driver, and ERROR= says so, exit 2 the same
-      way. Needs the driver's state directory in ENTRUST_STATE_DIR, else CLAUDE_PLUGIN_DATA, absolute,
-      and REPORT and DIR both inside it, where no agent's sandbox can write a decision. Refuses (exit 2)
+      way. Needs REPORT and DIR both inside the driver's state directory (ENTRUST_STATE_DIR, else
+      <tmp>/entrust-state), where no agent's sandbox can write a decision. Refuses (exit 2)
       a REPORT that is not absolute, no state directory, a REPORT or a DIR outside it, an empty prompt,
       and a directory that already holds a prompt: a relaunch gets a fresh report path. A directory that
       holds a launch's exit, err.txt or out.json and no prompt (a --run came after a refused --new) is
@@ -626,9 +626,9 @@ function newAgent(report, dirOverride, adapter = "codex") {
   // the caller's own call; the driver's inode check on the mailbox is the wall. The report is checked as
   // well as the directory: --dir can put the mailbox under the state directory while the report, which a
   // relaunch reads the run back from, lands anywhere.
-  const state = process.env.ENTRUST_STATE_DIR || process.env.CLAUDE_PLUGIN_DATA || "";
-  if (!path.isAbsolute(state))
-    refuse(`--new needs the driver's state directory, where the agent's mailbox goes: pass CLAUDE_PLUGIN_DATA on this call as the run call does, or export ENTRUST_STATE_DIR, as an absolute path (got ${JSON.stringify(state)})`);
+  let state;
+  try { state = stateDirectory(); }
+  catch (e) { refuse(`--new needs the driver's state directory, where the agent's mailbox goes: ${e.message}`); }
   const stateReal = resolveLoose(state);
   for (const [what, p] of [["report", report], ["agent's directory", dir]])
     if (!within(resolveLoose(p), stateReal) || resolveLoose(p) === stateReal)

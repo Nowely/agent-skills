@@ -35,7 +35,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { createAgentTemp, agentTempAncestor, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
+import { createAgentTemp, agentTempAncestor, stateDirectory, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
 
 const EXIT = { OK: 0, TURN_NOT_COMPLETED: 1, USAGE: 2, TIMEOUT: 3, TRANSPORT: 4, NO_COMMANDS: 5, ESCALATED: 6, INTERACTION: 7, NO_ANSWER: 8, VERIFY_FAILED: 9, BUSY: 10, VERIFY_UNMEASURABLE: 12, SCHEMA: 13 };
 const LEVELS = new Set(["read", "write"]);
@@ -641,19 +641,12 @@ const HELP = [
   process start` },
 
   { s: "Environment", all: true,
-    text: `  ENTRUST_STATE_DIR             where everything this driver owns lives, and the
-                                first place <state> is read from; must be
-                                absolute. For test harnesses: two runs under
-                                different values do NOT exclude each other
+    text: `  ENTRUST_STATE_DIR             where everything this driver owns lives; must be
+                                absolute. Unset, <state> is <tmp>/entrust-state,
+                                <tmp> the system's temporary directory. For test
+                                harnesses: two runs under different values do NOT
+                                exclude each other
 ${stateSubdirHelp()}
-  CLAUDE_PLUGIN_DATA            <state> where the variable above is unset: the
-                                plugin's own data directory, \${CLAUDE_PLUGIN_DATA}
-                                in a skill body, which Claude Code substitutes and
-                                the skill recipes pass on the command line; must be
-                                absolute. There is NO built-in default: with
-                                neither variable set the run is exit 2, because a
-                                default under your home would be state no
-                                uninstall reaches
   ENTRUST_SESSIONS_DIR          where to look for the rollout receipt
   ENTRUST_CODEX                 absolute path to the codex executable; without
                                 it the driver searches PATH, then
@@ -1195,11 +1188,10 @@ function passwdHome(what) {
   catch (e) { fail(EXIT.USAGE, `cannot resolve your home directory from the passwd database, which ${what} needs (${e.code ?? e.message}); this happens for a uid with no passwd entry`); }
 }
 
-// One base for everything in STATE_SUBDIRS, named by $ENTRUST_STATE_DIR, else by
-// $CLAUDE_PLUGIN_DATA — the plugin's own data directory, which the skill recipes pass — and by nothing
-// else: a default under the home directory would be answers, an isolated home and a worktree ledger
-// that no uninstall reaches and that the caller never named. A harness that points the first variable
-// somewhere private therefore cannot reach the state a real delegation uses; the price is that two runs
+// One base for everything in STATE_SUBDIRS: $ENTRUST_STATE_DIR, else <tmp>/entrust-state
+// (orchestrate's temp-dir.mjs owns the rule). The temporary directory, not the home: what it holds goes
+// when the system clears it, and nothing is left that no uninstall reaches. A harness that points the
+// variable somewhere private cannot reach the state a real delegation uses; the price is that two runs
 // under different values do not exclude each other — per harness, never per user. Absolute only, so it
 // cannot resolve against a caller's cwd.
 //
@@ -1211,16 +1203,9 @@ function passwdHome(what) {
 let stateRoot = null;
 function stateDir() {
   if (stateRoot !== null) return stateRoot;
-  const named = process.env.ENTRUST_STATE_DIR ? "ENTRUST_STATE_DIR"
-    : process.env.CLAUDE_PLUGIN_DATA ? "CLAUDE_PLUGIN_DATA" : null;
-  if (named === null)
-    fail(EXIT.USAGE, "no state directory: set ENTRUST_STATE_DIR, or pass CLAUDE_PLUGIN_DATA, "
-      + "the plugin's data directory ${CLAUDE_PLUGIN_DATA}, which the skill recipes carry; "
-      + "this driver keeps no default of its own");
-  const dir = process.env[named];
-  if (!path.isAbsolute(dir))
-    fail(EXIT.USAGE, `${named} must be an absolute path, got ${JSON.stringify(dir)}`);
-  return (stateRoot = dir);
+  try { stateRoot = stateDirectory(); }
+  catch (e) { fail(EXIT.USAGE, `no usable state directory: ${e.message}`); }
+  return stateRoot;
 }
 const lockDir = () => path.join(stateDir(), "locks");
 

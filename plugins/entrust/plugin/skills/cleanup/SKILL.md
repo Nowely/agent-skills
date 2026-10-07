@@ -10,7 +10,7 @@ license: MIT
 ---
 
 Run the script, show its listing as it is, propose a set, and wait for the
-user's word. Speak in short sentences when proposing, when clarifying, after
+user's word. `<skill-dir>` in the commands below is this skill's installed directory. Speak in short sentences when proposing, when clarifying, after
 deleting, and on every refusal or error. Read the JSON yourself for the
 numbers; never read it, paths or exit codes to the user, and never retell the
 listing in your own words.
@@ -25,7 +25,7 @@ exactly as the command printed it.
 1. Run the listing with the Bash description "List files left by
    entrust."
 
-       F="$(node "${CLAUDE_SKILL_DIR}/../orchestrate/scripts/temp-dir.mjs" cleanup)" && CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
+       F="$(node "<skill-dir>/../orchestrate/scripts/temp-dir.mjs" cleanup)" && node "<skill-dir>/scripts/cleanup.mjs" --list --json >"$F" && cat "$F" && echo "snapshot: $F"
 
    The helper gives each listing its own file at
    `<temp>/entrust/.cleanup/snapshot-<six random characters>/listing.json`,
@@ -63,7 +63,7 @@ exactly as the command printed it.
    leave it out. Then run, with the description "Delete the cleanup items the
    user selected.":
 
-       CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/cleanup.mjs" --delete --from "<SNAPSHOT>" <numbers>
+       node "<skill-dir>/scripts/cleanup.mjs" --delete --from "<SNAPSHOT>" <numbers>
 
    Do not run the listing again between the user's word and this call: the
    snapshot is what binds each number to what was shown, and an item that
@@ -87,7 +87,6 @@ Use the listing's names; omit outcomes that did not occur.
 | --- | --- |
 | 0 | every deletion the command reported, then the fresh listing |
 | 1 | "I could not remove <name> because <reason>; check it by hand." beside the confirmed deletions |
-| 2, no data directory | "Cleanup could not start because this session has no plugin data directory configured; nothing was deleted." |
 | 2, relative `TMPDIR` | "Cleanup could not start because `TMPDIR` is not absolute; nothing was deleted." |
 | 2, a stale or unreadable snapshot | "The list I showed you is no longer usable, so nothing was deleted; here is the current list." Then start again at step 1 |
 | 2, invalid command | "Cleanup could not start because the command was invalid; nothing was deleted." Correct the call |
@@ -101,6 +100,3 @@ remove another copy of this plugin's data directory, say "This command removes i
 `command` from `manual` in its own block. For the other entries in the coordinator's temporary directory,
 say "To list those entries without removing them, run this command." and show `notCovered.listCommand`;
 for removal, `notCovered.removeCommand`.
-
-Forward `CLAUDE_PLUGIN_DATA` as shown. The script uses `ENTRUST_STATE_DIR` first, then
-`CLAUDE_PLUGIN_DATA`; setup follows the sibling's [One call](../codex/SKILL.md#one-call).

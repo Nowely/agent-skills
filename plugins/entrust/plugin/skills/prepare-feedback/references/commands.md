@@ -1,6 +1,6 @@
 # The script's commands
 
-Each runs through the one command line in SKILL.md's "The private folder", which forwards the data directory.
+Each runs through the one command line in SKILL.md's "The private folder".
 
 - `corpus --slug <slug>`, scoped by `--plugin entrust|terse`, `--version <v>`, `<v>..<v>` or `unknown`, `--since YYYY-MM-DD`, `--until YYYY-MM-DD`, `--project <cwd>` and `--session <session-id>` (`--version`, `--project` and `--session` repeatable), and `--all-sessions` for every session with a user message: makes `<run>` and writes `corpus/index.json` and `corpus/turns.jsonl`. It prints one `PROJECT=` line per project, then its summary lines with `RUN=` last: `PLUGINS=` and `HUMAN_SESSIONS=` counted before any filter, and the counts the plan shows.
 - `parts --run <run>`: cuts `corpus/turns.jsonl` into parts of about 60k characters and pages of 18k at most, listed with their digests in `corpus/parts.json`.

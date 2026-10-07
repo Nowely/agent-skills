@@ -15,7 +15,8 @@ allowed-tools: Bash(node *codex/scripts/status.mjs*)
 
 Under `orchestrate`, first read [orchestration.md](references/orchestration.md) whole before
 `--plan` or `--new`: it owns registration, schema, state and external lifecycle.
-Its `<codex-skill-dir>` is `${CLAUDE_SKILL_DIR}` and `<state>` is `${CLAUDE_PLUGIN_DATA}`.
+Its `<codex-skill-dir>` is `${CLAUDE_SKILL_DIR}` and `<state>` is the driver's state directory, `<tmp>/entrust-state`
+(`ENTRUST_STATE_DIR` when set).
 
 The Codex this machine can run, asked of its server as this page loaded:
 
@@ -152,7 +153,7 @@ completion notification, a message to continue it — where a Bash task has none
 
 Write the prompt with one Bash call, the launcher's `--new`, the heredoc quoted so nothing in it expands:
 
-    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --new --report-file "<REPORT>" <<'PROMPT'
+    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --new --report-file "<REPORT>" <<'PROMPT'
     MODEL: terra
     TASK: …
     CHECK: …
@@ -184,7 +185,7 @@ The Agent call, its message this block:
 
     1. Run this command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>". Write no text before it.
 
-    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --report-file "<REPORT>"
+    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --report-file "<REPORT>"
 
     2. If its result ends with RUNNING=, or is the harness's notice that it moved the command to the background, run the very same command again at once, and again each time either comes back. Each run is safe: the command waits for the run it already started. Do not open, tail or wait on the output file that notice names, and write nothing in between. Any other result, an empty one included, goes to step 3 as it is.
 
@@ -196,8 +197,8 @@ Both calls may go in one turn: the launcher waits ten seconds for a prompt a `--
 wrapper started beside a refused `--new` spends that report path. `<DESCRIPTION>` is the Agent call's own
 description. `<REPORT>` is an absolute path of this agent's own under the driver's state directory,
 `<state>/reports/<run>/report.json` with `<run>` unique, or the path the orchestrate page names; a relaunch
-takes a fresh one. The launcher makes every directory it needs, so it may name a root your own Write and
-`mkdir` are refused. `<DIR>` is the agent's directory, `agent/` beside `<REPORT>`.
+takes a fresh one. The launcher makes every directory it needs. `<DIR>` is the agent's directory, `agent/`
+beside `<REPORT>`.
 
 The wrapper's completion notification is the agent's completion: read its lines first, and the file after a
 `PATH=own` when they leave a question. To continue an agent, write a second prompt file with `RESUME: <threadId>`

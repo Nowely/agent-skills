@@ -13,7 +13,7 @@
 //   agent/ beside it, which is what the cleanup expects of a run. --concurrency: 1 to 50, default 10.
 // --summary: where summary.json goes, default <temp>/entrust/<project>/<run>/swarm/swarm-<random>/summary.json;
 //   never under <run>, where only the launcher and the driver write.
-// Environment: what the launcher needs, forwarded unchanged (CLAUDE_PLUGIN_DATA or ENTRUST_STATE_DIR).
+// Environment: what the launcher needs, forwarded unchanged (ENTRUST_STATE_DIR when set).
 // A signal (SIGTERM, SIGINT, SIGHUP) stops further launches, goes to every running launcher, and the
 // summary is written for what ran; the exit is then 1.
 // Exit: 0 the summary was written and every agent was launched (per-agent outcomes are inside it);
@@ -40,7 +40,7 @@ Agent <id> is <run>/<id>/report.json with the launcher's agent/ beside it, made 
 at most --concurrency (1 to ${MAX}; default the adapter's own, else 1) run at once. When every agent has finished the script writes
 summary.json (default: <temp>/entrust/<project>/<run>/swarm/swarm-<random>/summary.json, never under <run>): per
 agent its id, unit, report path, the launcher's DRIVER_EXIT, PATH, EXIT and FIRST lines, and when it ran.
-Environment is forwarded unchanged to the launcher (CLAUDE_PLUGIN_DATA or ENTRUST_STATE_DIR). A signal stops
+Environment is forwarded unchanged to the launcher (ENTRUST_STATE_DIR when set). A signal stops
 further launches and reaches every running agent; the summary is still written.
 --adapter names an installed adapter with a launcher (${ROUTES.map((a) => a.id).join(", ") || "none installed"}); its
 adapter.json gives its default concurrency and any MODEL: line its briefs must carry.

@@ -61,10 +61,9 @@ calls for independent workers of similar length. An approval relayed mid-run is 
 approved external action is run by a fresh worker whose first brief carries it and the concrete
 command.
 
-## Skills and the plugin's data
+## Skills
 
-- A skill marked `disable-model-invocation` loads with the Skill tool only in a turn whose user message
-  typed its command; in any other turn, read its SKILL.md with the Read tool. A page read by path has
-  nothing filled in: write `${CLAUDE_SKILL_DIR}` and `${CLAUDE_PLUGIN_DATA}` into its commands yourself.
-- The plugin's data directory is under `~/.claude`, a protected path: never `mkdir`, Write or redirect
-  into it yourself. The scripts that own it create what they need.
+A skill marked `disable-model-invocation` loads with the Skill tool only in a turn whose user message
+typed its command; in any other turn, read its SKILL.md with the Read tool. A page read by path has
+nothing filled in: write `${CLAUDE_SKILL_DIR}` into its commands yourself, and resolve `<skill-dir>` to
+the skill's installed directory as on any page.

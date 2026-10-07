@@ -17,6 +17,7 @@ import { Client } from "./client.mjs";
 import { V2Client } from "./v2-client.mjs";
 import { connection, recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
 import { startLocalServer } from "./local-server.mjs";
+import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import {
   EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionFits, canonical, within,
   commandEvidence, expectation,
@@ -698,8 +699,7 @@ async function observeStop(ctx) {
 // Resume and session ownership records
 
 function stateDirOf(ctx) {
-  const s = process.env.ENTRUST_STATE_DIR || process.env.CLAUDE_PLUGIN_DATA;
-  return s && path.isAbsolute(s) ? s : path.join(path.dirname(ctx.report), "state");
+  try { return stateDirectory(); } catch { return path.join(path.dirname(ctx.report), "state"); }
 }
 
 const sessionRecordPath = (ctx, sid) => path.join(ctx.stateDir, "opencode-sessions", `${sid}.json`);

@@ -63,7 +63,7 @@ the sessions where entrust or terse loaded, has orchestrated agents read them un
 run, where its time and tokens went, your feedback on a topic, all of these at once, or a question of your own) and
 hands back an issue title and body, or, inside a checkout of this repository, a research run on a worktree branch
 ([skills/prepare-feedback/SKILL.md](skills/prepare-feedback/SKILL.md)). What it reads stays in a private folder
-under the plugin's data directory, and an agent that wrote none of the report checks every detail before it
+under the state directory, and an agent that wrote none of the report checks every detail before it
 leaves.
 
 ## Prerequisites
@@ -142,31 +142,14 @@ the marketplace clone itself, and restart Claude Code:
 claude plugin update entrust@nowely
 ```
 
-**Where the driver's state lives.** `${CLAUDE_PLUGIN_DATA}`, the plugin's own data directory, which
-Claude Code substitutes into the skill's recipes and which this install resolves to
-`~/.claude/plugins/data/entrust-nowely/` (the plugin's name, then the marketplace's). The answers
-and the isolated Codex home, the write locks, the worktree ledger and the orchestrator mode's run
-directories are all there. It survives plugin updates. `/entrust:cleanup` lists what is there and removes
-only the items you pick by number. A run or standalone report it removes takes its `<tmp>/entrust/`
-folder with it, and a run still going keeps both. A folder there whose run is gone from the state
-directory, or whose process has ended, is an item of its own and is suggested; so is what an earlier
-version left in `tmp/`, once no process its `owner.json` names is alive. Here `<tmp>` is what the cleanup
-sees: a non-empty `TMPDIR`, else Node's `os.tmpdir()`. Report folders under `prepare-feedback/`, and
-experiment records an earlier version left under `experiments/`, it neither lists nor removes.
-The driver keeps no default of its own: with neither that variable nor `ENTRUST_STATE_DIR` it
-exits 2. Add that directory to `permissions.additionalDirectories` once to read the agents' reports
-without prompts — this plugin adds no rules on your behalf. You never need to write there: the plugin's
-own scripts do, and a write there by Claude Code's own tools still asks in the `default` and
-`acceptEdits` modes whatever your settings say, because the directory is under `.claude`, a protected
-path. Claude Code's [permissions page](https://code.claude.com/docs/en/permissions.md) says files in
-additional directories "become readable without prompts, and file editing permissions follow the current
-permission mode", and its [permission modes page](https://code.claude.com/docs/en/permission-modes.md)
-says "`permissions.allow` rules in settings files do not pre-approve protected-path writes". A shell outside Claude Code has no `CLAUDE_PLUGIN_DATA`; to run the driver by hand, as under
-First run, export an absolute path of your own. The driver reads `ENTRUST_STATE_DIR` first, so wherever it is set it overrides the plugin's directory:
-
-```bash
-export ENTRUST_STATE_DIR="$HOME/.local/state/entrust"
-```
+**Where the state lives.** In the system's temporary directory `<tmp>`, Node's `os.tmpdir()`: scratch
+under `<tmp>/entrust/` and what outlives one command (reports, mailboxes, write locks, the worktree ledger,
+the isolated Codex home, feedback runs) under `<tmp>/entrust-state/`, both made 0700 and refused when they
+are someone else's or a link. They stay until the system clears its temporary directory or
+`/entrust:cleanup` removes what you pick by number. `ENTRUST_STATE_DIR`, an absolute path, moves the state
+elsewhere. An earlier version kept the state in Claude Code's plugin data directory,
+`~/.claude/plugins/data/entrust-nowely/`; nothing reads it any more, and the cleanup lists it and leaves its
+removal to you.
 
 The suites do not install with the plugin; they run from a checkout of this repository, cost nothing
 and call no model:
@@ -187,7 +170,7 @@ The plugin root, where First run starts, is the install path announced when the 
 
 ## First run
 
-From the plugin root, with the state directory exported as Install says:
+From the plugin root:
 
 ```bash
 node skills/codex/scripts/driver.mjs --cwd . --brief \
@@ -315,7 +298,7 @@ skills/cleanup/SKILL.md          the cleanup mode: runs scripts/cleanup.mjs, sho
 skills/advisor/SKILL.md          the advisor mode: one standing top-row thread per run, prompt only
 skills/swarm/                    the swarm mode: SKILL.md (units, launch, reducer, arms), scripts/swarm.mjs (the launcher)
 skills/prepare-feedback/         the report mode: SKILL.md (focus, corpus, two ways of reading, output),
-                                 scripts/prepare-feedback.mjs (the private folder under the data directory),
+                                 scripts/prepare-feedback.mjs (the private folder under the state directory),
                                  references/focuses.md (each focus's unit, labels and layout)
 .claude-plugin/                  plugin + marketplace manifests
 ../evals/                        not installed: the suites, one file each; run-all.mjs lists them and runs them
