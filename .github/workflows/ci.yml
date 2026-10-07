@@ -1,8 +1,8 @@
 name: CI
 
-# Every suite that needs no `codex` binary and calls no model, on both OSes and on the Node floor
-# package.json declares: the driver has a macOS-only call (the managed preferences plist), Linux is
-# otherwise unmeasured, and the floor was a claim nothing tested.
+# Every suite that needs no `codex` binary and calls no model, on both OSes: the driver has a macOS-only
+# call (the managed preferences plist), and Linux is otherwise unmeasured. entrust runs its suites on the
+# current Node only; terse and skills still cover the Node floor package.json declares.
 on:
   push:
     branches: [main]
@@ -26,7 +26,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        node: ["22", "24"]
+        node: ["24"]
     steps:
       - uses: actions/checkout@v4
         with:
