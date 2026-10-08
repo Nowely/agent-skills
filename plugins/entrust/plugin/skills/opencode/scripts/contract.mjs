@@ -8,10 +8,10 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { digest, splitModel } from "./config.mjs";
-import { SCHEMA_KEYWORDS, checkSchemaSubset, validateValue, validateOutput } from "../../orchestrate/scripts/json-schema.mjs";
-import { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, flagValue, parseRights, planWritesToRights, resolveModel, resolveRights, within } from "../../orchestrate/scripts/drivers.mjs";
+import { checkSchemaSubset, validateOutput } from "../../orchestrate/scripts/json-schema.mjs";
+import { EXIT, canonical, flagValue, resolveModel, resolveRights, within } from "../../orchestrate/scripts/drivers.mjs";
 
-export { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, parseRights, planWritesToRights, within };
+export { EXIT, canonical, within };
 
 // The shared five-field answer schema lives with the other adapters; it is never duplicated here.
 // From scripts/ the path is skills/codex/schemas, i.e. two levels up, not one.
@@ -30,8 +30,6 @@ export function requestId(seq, rand = crypto.randomBytes) {
   if (!Number.isInteger(seq) || seq < 0) throw new Error("request sequence must be a non-negative integer");
   return `${seq}-${rand(4).toString("hex")}`;
 }
-
-export function isRequestId(value) { return typeof value === "string" && REQUEST_ID.test(value); }
 
 // The prompt is a run of `KEY: value` header lines, then `TASK:` which begins the body. Blank
 // lines before TASK are tolerated; anything else before TASK, an unknown uppercase header, a
@@ -74,7 +72,7 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   if (task.trim() === "") return { error: "the TASK body is empty" };
   if (headers.RIGHTS && order[0] !== "RIGHTS") return { error: "RIGHTS must be the first header when present" };
 
-  const out = { headers, order, task, taskSet: true };
+  const out = { headers, order, task };
   // A continuation of a report keeps that run's rights, which the driver reads from it; any other run declares them.
   const kept = headers.RESUME !== undefined && path.isAbsolute(headers.RESUME) && headers.RIGHTS === undefined && !env.ENTRUST_PLAN_WRITES;
   const rights = kept ? null : resolveRights(headers.RIGHTS, env.ENTRUST_PLAN_WRITES, cwd);
@@ -101,7 +99,6 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
     if (out.variant !== undefined && out.variant !== headers.EFFORT)
       return { error: `EFFORT ${headers.EFFORT} disagrees with VARIANT ${out.variant}` };
     out.variant = headers.EFFORT;
-    out.effortAlias = true;
   }
 
   if (headers.RESUME !== undefined) {
@@ -122,7 +119,6 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
     catch (e) { return { error: `OUTPUT_SCHEMA ${p} is not readable JSON: ${e.message}` }; }
     const sub = checkSchemaSubset(schema);
     if (!sub.ok) return { error: `OUTPUT_SCHEMA ${p} uses unsupported keywords: ${sub.errors.join("; ")}` };
-    out.outputSchemaPath = p;
     out.outputSchema = schema;
   } else {
     let schema;
@@ -130,14 +126,12 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
     catch (e) { return { error: `the shared five-field schema is unreadable: ${e.message}` }; }
     const sub = checkSchemaSubset(schema);
     if (!sub.ok) return { error: `the shared five-field schema uses unsupported keywords: ${sub.errors.join("; ")}` };
-    out.outputSchemaPath = FIVE_FIELDS_SCHEMA;
     out.outputSchema = schema;
   }
 
   if (headers.EXPECT !== undefined) {
     try { out.expect = new RegExp(headers.EXPECT); }
     catch (e) { return { error: `EXPECT is not a valid regular expression: ${e.message}` }; }
-    out.expectSource = headers.EXPECT;
   }
   for (const key of ["ALLOW_NO_COMMANDS", "BRIEF"]) {
     if (headers[key] === undefined) continue;
@@ -149,7 +143,7 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
 }
 
 // The schema subset is orchestrate's; the driver and the suites import it from here.
-export { SCHEMA_KEYWORDS, checkSchemaSubset, validateValue, validateOutput };
+export { checkSchemaSubset, validateOutput };
 
 export function extractJson(text) {
   if (typeof text !== "string") return null;

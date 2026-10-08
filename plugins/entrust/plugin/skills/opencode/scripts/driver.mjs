@@ -5,8 +5,8 @@
 //   node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS]
 //                   [--timeout seconds] [--idle-timeout seconds] [--max-commands N] [--help]
 //
-// API selection is explicit and inherited on resume. Native wait is not used; history and active
-// state establish completion. Neither execution family provides verified generation-bound steer.
+// Native wait is not used; history and active state establish completion. There is no steer: a coordinator
+// continues an agent with RESUME after its turn.
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -51,15 +51,8 @@ const USAGE = `driver — run one OpenCode invocation for the shared entrust lau
 const read = (p) => { try { return fs.readFileSync(p, "utf8"); } catch { return null; } };
 const now = () => Date.now();
 const isRegularFile = (p) => { try { return fs.statSync(p).isFile(); } catch { return false; } };
-const firstLine = (s, n = 300) => String(s ?? "").split("\n")[0].slice(0, n);
 
-function fillRoute(tpl, params) {
-  return tpl.replace(/\{([^}]+)\}/g, (_, k) => {
-    if (params[k] !== undefined) return encodeURIComponent(params[k]);
-    if (/session/i.test(k)) return encodeURIComponent(params.sessionID);
-    return encodeURIComponent(params.requestID);
-  });
-}
+const fillRoute = (tpl, params) => tpl.replace(/\{([^}]+)\}/g, (_, k) => encodeURIComponent(params[k]));
 
 function parseArgs(argv) {
   const o = {
@@ -116,7 +109,6 @@ function routeError(ctx) {
 async function listOrEmpty(client, route) {
   const r = await client.call("GET", route);
   if (Array.isArray(r)) return r;
-  if (Array.isArray(r?.data)) return r.data;
   throw new Error(`${route}: expected a native request or message array`);
 }
 
@@ -574,14 +566,11 @@ async function postAndReconcile(ctx, messageID, text) {
 }
 
 async function admitOnce(ctx, messageID, text) {
-  atomicJson(ctx.runtimePath, { invocationId: ctx.invocationId, sessionID: ctx.sessionID, inputId: messageID, model: modelKey(ctx.ref), admission: "pending", at: new Date(now()).toISOString() });
   try {
     await postPrompt(ctx, messageID, text);
-    atomicJson(ctx.runtimePath, { invocationId: ctx.invocationId, sessionID: ctx.sessionID, inputId: messageID, model: modelKey(ctx.ref), admission: "admitted", at: new Date(now()).toISOString() });
     return { admitted: true };
   } catch (e) {
     if (e.status != null && e.status < 500) {
-      atomicJson(ctx.runtimePath, { invocationId: ctx.invocationId, sessionID: ctx.sessionID, inputId: messageID, model: modelKey(ctx.ref), admission: "rejected", error: e.message, at: new Date(now()).toISOString() });
       return { admitted: false, rejected: true, error: e.message, status: e.status };
     }
     for (let i = 0; i < CLAIM_POLLS; i++) {
@@ -590,10 +579,9 @@ async function admitOnce(ctx, messageID, text) {
         await updateOwned(ctx);
         await refresh(ctx);
         if (ctx.messages.some((m) => m.info?.id === messageID || m.info?.parentID === messageID))
-          { atomicJson(ctx.runtimePath, { invocationId: ctx.invocationId, sessionID: ctx.sessionID, inputId: messageID, model: modelKey(ctx.ref), admission: "admitted", at: new Date(now()).toISOString() }); return { admitted: true }; }
+          return { admitted: true };
       } catch {}
     }
-    atomicJson(ctx.runtimePath, { invocationId: ctx.invocationId, sessionID: ctx.sessionID, inputId: messageID, model: modelKey(ctx.ref), admission: "unknown", at: new Date(now()).toISOString() });
     return { admitted: false, unknown: true };
   }
 }
@@ -810,7 +798,7 @@ function buildReport(ctx, base) {
     rights: ctx.scope ? { kind: ctx.scope.kind, roots: ctx.scope.roots ?? [] } : null,
     resume: Boolean(ctx.resume),
     admission: base.admission ?? ctx.admission ?? null,
-    runtimePath: ctx.runtimePath ?? null,
+    correction: base.correction ?? null,
     startedAt: new Date(ctx.startedAtMs).toISOString(),
     endedAt: new Date(now()).toISOString(),
     // Fields the shared launcher reads directly.
@@ -881,7 +869,6 @@ async function execute(opts, parsed) {
   }
 
   try {
-  ctx.runtimePath = sidecar(ctx, "runtime.json");
   ctx.transcriptPath = sidecar(ctx, "transcript.json");
 
   try {
@@ -890,10 +877,8 @@ async function execute(opts, parsed) {
     ctx.client = clientFor(ctx, null); ctx.server = await ctx.client.probe();
   } catch (e) { return fail(ctx, `the OpenCode server could not be started: ${e.message}`, EXIT.TRANSPORT); }
   ctx.routes = ROUTES;
-  if (parsed.resume === undefined) {
-    const missing = routeError(ctx);
-    if (missing) return fail(ctx, missing, EXIT.USAGE);
-  }
+  const missing = routeError(ctx);
+  if (missing) return fail(ctx, missing, EXIT.USAGE);
 
   // A continuation with no RIGHTS line keeps the rights its report recorded.
   if (!parsed.rights) {
@@ -923,8 +908,6 @@ async function execute(opts, parsed) {
   const resumed = await resolveResume(ctx);
   if (resumed.busy) return fail(ctx, `session ${resumed.sessionID} is busy; a live invocation is not relaunched`, EXIT.BUSY);
   if (resumed.error) return fail(ctx, resumed.error, EXIT.USAGE);
-  const missing = routeError(ctx);
-  if (missing) return fail(ctx, missing, EXIT.USAGE);
   // The session keeps the permission rules it was created with, so a continuation keeps its rights: a resume
   // that names others would report them while the server enforces the old ones.
   if (ctx.resume && ctx.priorRights) {
@@ -936,7 +919,7 @@ async function execute(opts, parsed) {
   // Model: pinned by the plan, inherited by a resume, else the first recent model. No fallback.
   const model = await resolveModel(ctx);
   if (model.error) return fail(ctx, model.error, EXIT.USAGE);
-  ctx.ref = model.ref; ctx.variant = model.variant; ctx.modelInfo = model.info;
+  ctx.ref = model.ref; ctx.variant = model.variant;
 
   // Create the session (a resume reuses the existing one).
   if (!ctx.resume) {
@@ -961,14 +944,13 @@ async function execute(opts, parsed) {
   ctx.eventsAbort = new AbortController();
   ctx.client.events((ev) => {
     const sid = ev?.properties?.sessionID ?? ev?.sessionID ?? null;
-    if (sid && ctx.invocationSessions?.has(sid)) { ctx.lastProgressMs = now(); ctx.lastEvent = ev?.type ?? null; }
+    if (sid && ctx.invocationSessions?.has(sid)) ctx.lastProgressMs = now();
   }, ctx.eventsAbort.signal).catch(() => {});
 
   const stop = (reason) => {
     if (ctx.abortRequested) return ctx.stopping ?? Promise.resolve();
     ctx.abortRequested = true;
     ctx.stopDuringAdmission = Boolean(ctx.admissionInFlight);
-    ctx.abortReason = reason;
     ctx.cancellation = { reason, signal: ctx.signal ?? null, abort: [], observed: "unknown" };
     ctx.stopping = stopOwned(ctx);
     return ctx.stopping;

@@ -16,18 +16,11 @@ Live probes established:
   corrective turn. Invalid output fails the schema gate; successful delivery is not assumed.
 - Legacy async input can be consumed at the next model boundary. It does not offer an atomic
   `expectedTurnId` equivalent or immediate preemption.
-- Legacy abort can leave a native question pending. Stop aborts owned sessions first, then rejects
-  exact owned callbacks and checks status, pending requests and tool states. The live question-Stop
-  probe observed an idle session, a rejected question tool and no own pending requests. These are
-  snapshots, not a generation fence. Unknown cancellation blocks continuation. Native permission
-  rejection affects all pending permissions in that session; any rejection refuses an unmatched
-  request. Stop during admission is reconciled after admission without resending input; owned
-  descendants are retained across failed discovery, which prevents claiming confirmed idle.
+- Legacy abort can leave a native question pending. After the driver's Stop, the live question-Stop
+  probe observed an idle session, a rejected question tool and no own pending requests: snapshots, not a
+  generation fence. [interactions.md](interactions.md) has the Stop procedure.
 
-Strict active steer remains an unmet capability. Queue and abort/resume must retain their own names.
-Do not claim full parity until a server-side binding and its race tests establish delivery to the
-expected active invocation. Additional server changes require a concrete approved scope.
-The adapter runs V1 only. The V2 pilot (native API probes and adapter acceptance) and the V2 path it
+There is no steer: continue an agent with `RESUME:` after its turn. The adapter runs V1 only. The V2 pilot (native API probes and adapter acceptance) and the V2 path it
 had until 2026-10-08, its client, fake and cases, are in the repository's research
 (`research/2026-10-02-opencode-v2-pilot/`); a report recorded as V2 is refused on continuation.
 

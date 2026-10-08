@@ -48,6 +48,9 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- **An OpenCode report says whether a corrective turn ran.** The driver computed the outcome of the one corrective
+  turn it spends on an answer that failed `OUTPUT_SCHEMA`, then dropped it; the report now carries it as
+  `correction`.
 - **A write root is checked the same way in all three drivers, before any agent exists.** An OpenCode `write` root
   could contain the state directory, and its allowed edits then reached the run's own mailbox, so the agent could
   write its own accept; Codex refused such a root only at run time, after the pid line. One check in
@@ -118,6 +121,11 @@ forensics remain in the repository references and release notes.
   user's `opencode` CLI and stops it when the worker ends, which is how the adapter is used.
   `ENTRUST_OPENCODE_URL` and `ENTRUST_OPENCODE_CONNECTION` are no longer read, `status.mjs` probes nothing and
   takes only `--format`, and a report made on a remote server is refused on continuation (decision 5).
+- **OpenCode's dead state.** The `report.runtime.json` sidecar, written five times during admission and read by
+  nothing, is gone with the report's `runtimePath`, as are values set and never read (in the driver, the contract
+  and the client), re-exports no importer takes, a second route check on every new run, and a route-filling
+  fallback no route reaches. The steer disclaimers are one sentence: there is no steer, continue with `RESUME:`.
+  `interactions.md` and `parity.md` keep what a decision needs and point at the shared call page for the commands.
 
 ## 0.27.0 — 2026-10-08
 

@@ -1,26 +1,17 @@
 # Native requests, immutable decisions
 
-Read each `--pending` or `--run` waiting result whole. An OpenCode request carries its type, server,
-session, invocation, deadline and complete JSON between `REQUEST_BODY<<TOKEN` and
-`REQUEST_BODY>>TOKEN`. These identifiers bind the decision to the displayed native request.
+An OpenCode request is a permission or a question. The waiting result prints its type, server, session,
+invocation, deadline and complete JSON between `REQUEST_BODY<<TOKEN` and `REQUEST_BODY>>TOKEN`; these
+identifiers bind the decision to the request. Read it whole and decide it with the commands of the shared
+call page's [Decide a request](../../orchestrate/references/external.md#5-decide-a-request). What OpenCode
+adds:
 
-- Permission: `--decide <id> --accept --report-file <report>` reads that exact JSON on stdin and
-  replies `once`. It never saves an `always` rule. Use a quoted heredoc; preserve the body byte for
-  byte. Grant only the displayed action within the approved task and scope.
-- Question: `--decide <id> --answer --report-file <report>` reads `{"answers":[["answer"]]}` on
-  stdin, one array for each displayed question. Choices and multiplicity are validated. This does
-  not grant a command or permission.
-- Either type: `--decide <id> --decline --why <reason> --report-file <report>` rejects it.
-
-Rerun the same `--run` after a decision. Decision publication is exclusive; stale identities,
-changed request contents, wrong decision types and late answers are refused. A repeated operation
-does not authorize a second native action. The driver checks the native request again before sending.
-
-With `--run --watch`, a request is an intermediate `EVENT=waiting` frame and the call remains
-attached. Publish the decision separately; the watcher observes continuation without relaunching.
-An operational proxy may decide within the existing task authority and supplies its reason through
-`--why`. Ambiguity goes to the coordinator. Keep the complete worker answer and technical status
-separate; neither approval nor a successful command proves the task's content correct.
+- A permission accept restates that JSON byte for byte and replies `once`; it never saves an `always`
+  rule. Grant only the displayed action within the approved task and scope.
+- A question's answer is `{"answers":[["answer"]]}`, one array for each displayed question; its choices
+  and multiplicity are validated, and an answer grants no command or permission.
+- Publication is exclusive: stale identities, changed request contents, wrong decision types and late
+  answers are refused, and the driver checks the native request again before sending.
 
 Native permission rejection affects every pending permission in its session, including ordinary
 decline, automatic denial and expiry. The driver serializes decisions and requires an exact owned
@@ -29,13 +20,10 @@ request; they are not fabricated as separate coordinator decisions. A changed pa
 request leaves the outcome unknown without a rejection. A lost group-rejection response leaves
 every affected outcome unknown and is not resent. Questions are rejected individually.
 
-The default request deadline is thirty minutes. Pending requests pause idle accounting; a declared
-wall deadline remains active. Without an interactive mailbox, reject and report the request.
-Model questions and permissions have distinct outcomes and exits.
-
-An accepted decision is permission to proceed, not proof that its tool executed or succeeded. Read
-the observed command/tool result and report. A lost HTTP response is reconciled, not retried blindly;
-an outcome that cannot be established stays unknown. Investigate it before repeating the action.
+Without a mailbox the driver rejects the request and reports it. An accepted decision is permission to
+proceed, not proof that its tool executed or succeeded: read the observed result in the report. A lost
+HTTP response is reconciled, not retried blindly; an outcome that cannot be established stays unknown.
+Investigate it before repeating the action.
 
 Cancellation is session-scoped. Its report separates request acceptance from observed stopped work.
 Neither idle nor a successful abort rolls back an external effect that already happened.

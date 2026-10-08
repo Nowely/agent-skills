@@ -438,7 +438,11 @@ test("lost prompt response is reconciled by input ID without resending", async (
 });
 test("one schema correction is included in invocation usage", async () => {
   const s = await fakeOpenCode("correction");
-  try { const r = await driverRun(s); assert.equal(r.code, 0, r.err); assert.equal(s.prompts, 2); assert.ok(r.report.usage?.input >= 10, JSON.stringify(r.report.usage)); }
+  try {
+    const r = await driverRun(s); assert.equal(r.code, 0, r.err); assert.equal(s.prompts, 2); assert.ok(r.report.usage?.input >= 10, JSON.stringify(r.report.usage));
+    // The report says the corrective turn ran: it was computed and dropped before (03-audit-opencode, 4).
+    assert.equal(r.report.correction?.admitted, true, JSON.stringify(r.report.correction));
+  }
   finally { await s.close(); }
 });
 test("main proxy mixed reply is corrected by the driver before reaching the host", async () => {
@@ -570,7 +574,7 @@ test("a report an earlier release made on a remote server is refused on continua
     assert.equal(s.prompts, before);
   } finally { await s.close(); }
 });
-test("a continuation's report beside the first keeps each one's answer, transcript and runtime files (E120)", async () => {
+test("a continuation's report beside the first keeps each one's answer and transcript files (E120)", async () => {
   const s = await fakeOpenCode();
   try {
     const first = await driverRun(s); assert.equal(first.code, 0, first.err);
@@ -578,12 +582,12 @@ test("a continuation's report beside the first keeps each one's answer, transcri
     assert.equal(path.dirname(second.path), path.dirname(first.path));
     assert.notDeepEqual(second.report.turnIds, first.report.turnIds);
     for (const r of [first, second]) {
-      for (const k of ["answerPath", "transcriptPath", "runtimePath"]) {
+      for (const k of ["answerPath", "transcriptPath"]) {
         assert.equal(path.dirname(r.report[k]), path.dirname(r.path), k);
         assert.notEqual(r.report[k], (r === first ? second : first).report[k], k);
       }
       assert.deepEqual(JSON.parse(fs.readFileSync(r.report.transcriptPath, "utf8")).inputIds, r.report.turnIds);
-      assert.equal(JSON.parse(fs.readFileSync(r.report.runtimePath, "utf8")).inputId, r.report.turnId);
+      assert.equal(fs.existsSync(r.path.replace(/\.json$/, ".runtime.json")), false);
       assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), s.sessions.get(r.report.sessionID).messages
         .find((m) => m.info.role === "assistant" && m.info.parentID === r.report.turnId).parts[0].text);
     }
