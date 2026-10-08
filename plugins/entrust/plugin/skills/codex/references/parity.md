@@ -17,7 +17,7 @@ re-check them on your own machine before sizing a fan-out against them.
 
 ## Capability table
 
-The driver's `--help` and `--help-all` are canonical for flags and formats; each cell here gives only the routing choice
+The driver's `--help` is canonical for flags, with the formats in [environment-and-internals.md](environment-and-internals.md); each cell here gives only the routing choice
 and one qualification.
 
 | Native capability | Codex equivalent | Parity |
@@ -30,7 +30,7 @@ and one qualification.
 | stopping a running agent | `SIGTERM` to the announced pid, or stopping its task | the turn is interrupted and the report it earned is still written; see `--help` |
 | continuing an agent's context | `--resume <threadId\|last>` | rights are declared again per call; see `--help` |
 | a subagent's MCP tools | none | a Codex agent runs in an isolated Codex home, without your MCP servers, plugins or skills; `--host-home` brings them, on the driver's own command line only, which the one call does not reach |
-| web search | `--web-search <mode>` | the provider's own tool is off unless requested; the shell reaches the network either way; see `--help-all` |
+| web search | `--web-search <mode>` | the provider's own tool is off unless requested; the shell reaches the network either way; see `--help` |
 | a local image or audio file | `--attach <file>` | repeatable and command-line only; see `--help` |
 | an image the user pasted | `scripts/attach-pasted.mjs` | decodes transcript images before delegation; see `--help` |
 | a schema-validated return | `--output-schema <file>` | spends one corrective turn before exit 13; see `--help` |
@@ -94,7 +94,7 @@ requested one, which no response field reports; where such a policy exists the d
 
 `--attach` emits protocol `localImage` or `localAudio` items before the prompt and validates every file
 before starting a turn. It is unavailable in prompt files because an injected field could upload an
-unapproved file. Formats and limits are canonical in `--help` and `--help-all`; ordering details are in
+unapproved file. Flags are canonical in `--help`, formats and limits in [environment-and-internals.md](environment-and-internals.md); ordering details are in
 [environment-and-internals.md](environment-and-internals.md).
 
 Claude Code retains pasted images only inside its transcript. `attach-pasted.mjs` decodes them before it

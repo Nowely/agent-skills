@@ -711,7 +711,7 @@ test("Astra answers on its own thread when not invited to delegate",
     // No --effort: the page sends no EFFORT: line, so the agent inherits the configured effort and this is
     // the agent the page describes. What the server selected is noted beside the case, never asserted.
     const base = ["--level", "read", "--cwd", scratch, "--model", "astra"];
-    // A release gate leaves no job record on the machine it runs on: --help-all documents
+    // A release gate leaves no job record on the machine it runs on: --help documents
     // ENTRUST_STATE_DIR as where everything the driver owns lives, and it must be absolute.
     const env = { ...process.env, ENTRUST_STATE_DIR: path.join(dir, "state") };
 

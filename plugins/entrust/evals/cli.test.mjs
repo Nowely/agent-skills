@@ -955,75 +955,71 @@ let failed = await runTable(CASES);
 
 // --- the help surface: what a coordinator is shown, and what the parser will actually take ---
 
-flow("--help says the mailbox is the launcher's, that a request waits thirty minutes at most, and what exit 6 now means; --help-all names the mailbox, the entry and the deadline's seam, and --help does not",
+const helpRun = (flag) => spawnSync(process.execPath, [DRIVER, flag], { encoding: "utf8" });
+const INTERNALS = path.join(ROOT, "skills", "codex", "references", "environment-and-internals.md");
+const internalsFlat = () => fs.readFileSync(INTERNALS, "utf8").replace(/\s+/g, " ");
+
+flow("--help says the mailbox is the launcher's, that a request waits thirty minutes at most, and what exit 6 means; the internals page holds the mailbox's files and the seams, and --help names no seam",
   "the pages quote this text: a person who thinks --approval-dir is theirs to set would run a driver nobody answers, the deadline is a constant with a reason rather than a flag, and a coordinator reading exit 6 has to know an accepted request is never one; a test seam in --help reads as a setting",
   () => {
-    const core = helpRun("--help").stdout.replace(/\s+/g, " "), all = helpRun("--help-all").stdout.replace(/\s+/g, " ");
+    const core = helpRun("--help").stdout.replace(/\s+/g, " "), page = internalsFlat();
     const problems = [];
-    for (const s of ["--approval-dir D", "set by the launcher (agent-run.mjs --run) and never by a person", "for 30 minutes, after which it is declined as expired",
-                     "accepted by the driver itself, with or without D",
+    for (const s of ["--approval-dir D", "set by the launcher and never by a person", "for 30 minutes, after which it is declined as expired",
+                     "a file change inside the writable roots is accepted by the driver",
                      "an approval request was declined or expired unanswered", "refuses ~/.codex, <state> and every directory above either",
                      "--writable DIR grant one more root (write level only, repeatable)"])
       if (!core.includes(s)) problems.push(`--help lacks ${JSON.stringify(s)}`);
-    for (const s of ["--approval-timeout", "ENTRUST_APPROVAL_TIMEOUT_S", "tool's own store"])
+    for (const s of ["--approval-timeout", "ENTRUST_APPROVAL_TIMEOUT_S", "ENTRUST_APPROVAL_POLL_MS", "ENTRUST_LOCK_SEAM_MS", "tool's own store"])
       if (core.includes(s)) problems.push(`--help still says ${JSON.stringify(s)}`);
-    for (const s of ["owner.json", "is stale: counted, left in place", "counted late", "approvalsAutoAccepted",
-                     "outcome ({status, exitCode, durationMs}", "ENTRUST_APPROVAL_POLL_MS", "ENTRUST_APPROVAL_TIMEOUT_S",
-                     "(default 1800)"])
-      if (!all.includes(s)) problems.push(`--help-all lacks ${JSON.stringify(s)}`);
-    if (all.includes("--approval-timeout")) problems.push("--help-all still names --approval-timeout");
+    for (const s of ["`D/owner.json` claims the mailbox", "`decisionFile`", "approvalsAutoAccepted", "`outcome` (the matching item's own completion",
+                     "`ENTRUST_APPROVAL_POLL_MS`", "`ENTRUST_APPROVAL_TIMEOUT_S`", "(default 1800)"])
+      if (!page.includes(s)) problems.push(`environment-and-internals.md lacks ${JSON.stringify(s)}`);
+    if (page.includes("--approval-timeout")) problems.push("environment-and-internals.md still names --approval-timeout");
     return problems.length === 0 || problems.join("; ");
   });
 
-flow("--help says an accepted command runs with no sandbox and a file change not shown inside the roots is declined at once; --help-all names no permission feature and no widening field",
+flow("--help says an accepted command runs with no sandbox and a file change not shown inside the roots is declined at once; neither it nor the internals page names a permission feature or a widening field",
   "the widening is gone: a help that still names its feature rows or its report fields sends a coordinator after fields no report carries, and one that still offers a file change outside the roots promises a question the driver never asks",
   () => {
-    const core = helpRun("--help").stdout.replace(/\s+/g, " "), all = helpRun("--help-all").stdout.replace(/\s+/g, " ");
+    const core = helpRun("--help").stdout.replace(/\s+/g, " "), page = internalsFlat();
     const problems = [];
-    for (const s of ["An accepted command runs with no sandbox, as you.", "and one not shown to lie inside them is declined at once"])
+    for (const s of ["An accepted command runs with no sandbox, as you", "and one not shown inside them is declined at once"])
       if (!core.includes(s)) problems.push(`--help lacks ${JSON.stringify(s)}`);
-    for (const s of ["a permissions request, with the empty profile, why \"rights are set at launch\"", "its why naming the WRITABLE: line"])
-      if (!all.includes(s)) problems.push(`--help-all lacks ${JSON.stringify(s)}`);
-    for (const s of ["features.", "experimentalApi", "serverWarnings", "featuresRequested", "sandboxWidened", "repeatOf", "widening"])
-      if (all.includes(s)) problems.push(`--help-all still names ${JSON.stringify(s)}`);
+    for (const s of ["\"rights are set at launch\" for a permissions request", "its `why` naming `WRITABLE:`"])
+      if (!page.includes(s)) problems.push(`environment-and-internals.md lacks ${JSON.stringify(s)}`);
+    for (const s of ["features.", "experimentalApi", "serverWarnings", "featuresRequested", "sandboxWidened", "repeatOf"])
+      for (const [label, text] of [["--help", core], ["environment-and-internals.md", page]])
+        if (text.includes(s)) problems.push(`${label} still names ${JSON.stringify(s)}`);
     return problems.length === 0 || problems.join("; ");
   });
 
-const helpRun = (flag) => spawnSync(process.execPath, [DRIVER, flag], { encoding: "utf8" });
-
-flow("--help fits a screenful and ends by pointing at --help-all",
-  "the short --help has a line cap so a coordinator can read it; measuring that cap prevents it growing one flag at a time",
+flow("--help fits a screenful, ends by naming the internals page, and --help-all is gone",
+  "one help a reader takes in whole: a line cap keeps it from growing one flag at a time, and its last line is where the rest is",
   () => {
-    const core = helpRun("--help"), all = helpRun("--help-all");
+    const core = helpRun("--help");
+    if (core.status !== 0) return `--help exited ${core.status}: ${String(core.stderr).trim().slice(0, 160)}`;
     const problems = [];
-    for (const [flag, r] of [["--help", core], ["--help-all", all]])
-      if (r.status !== 0) problems.push(`${flag} exited ${r.status}: ${String(r.stderr).trim().slice(0, 160)}`);
-    if (problems.length) return problems.join("; ");
     // The trailing newline is not a line of help; count what a reader sees.
     const body = core.stdout.replace(/\n$/, "").split("\n");
-    if (body.length > 200) problems.push(`--help is ${body.length} lines, the cap is 200`);
-    if (body.at(-1) !== "Rarely needed flags, environment variables and internals: --help-all")
-      problems.push(`--help does not end on the pointer line: ${JSON.stringify(body.at(-1))}`);
-    if (all.stdout.length <= core.stdout.length)
-      problems.push("--help-all is no bigger than --help, so it is not the union");
+    if (body.length > 100) problems.push(`--help is ${body.length} lines, the cap is 100`);
+    if (!/environment-and-internals\.md\.$/.test(body.at(-1))) problems.push(`--help does not end naming the internals page: ${JSON.stringify(body.at(-1))}`);
+    if (!fs.existsSync(INTERNALS)) problems.push("the internals page --help names is not shipped");
+    const all = helpRun("--help-all");
+    if (all.status !== EXIT.USAGE) problems.push(`--help-all exited ${all.status}, not 2: one help, not two tiers`);
     return problems.length === 0 || problems.join("; ");
   });
 
-flow("every flag the parser accepts appears in --help or --help-all",
+flow("every flag the parser accepts appears in --help",
   "the help is prose beside a switch statement: a flag in one and not the other is either a capability nobody can find or a promise the parser refuses. The flag list is read off the parser's own case labels, so a flag added without a help entry fails here rather than being remembered",
   () => {
     const parsed = [...new Set([...fs.readFileSync(DRIVER, "utf8").matchAll(/case "(-{1,2}[a-z-]+)":/g)].map((m) => m[1]))];
     // A pattern that stopped matching would pass this case with nothing to check.
-    if (parsed.length < 25) return `only ${parsed.length} case labels matched in the parser; the pattern has drifted`;
-    const core = helpRun("--help").stdout, all = helpRun("--help-all").stdout;
+    if (parsed.length < 20) return `only ${parsed.length} case labels matched in the parser; the pattern has drifted`;
+    const core = helpRun("--help").stdout;
     // Word-boundary on the right, or --wait would be "documented" by --wait-timeout.
     const names = (text, f) => new RegExp(`(?<![a-z-])${f}(?![a-z-])`).test(text);
-    const undocumented = parsed.filter((f) => !names(core, f) && !names(all, f));
-    const dropped = parsed.filter((f) => names(core, f) && !names(all, f));
-    const problems = [];
-    if (undocumented.length) problems.push(`in the parser, in neither tier: ${undocumented.join(", ")}`);
-    if (dropped.length) problems.push(`in --help but not in --help-all, which is meant to be the union: ${dropped.join(", ")}`);
-    return problems.length === 0 || problems.join("; ");
+    const undocumented = parsed.filter((f) => !names(core, f));
+    return undocumented.length === 0 || `in the parser, not in --help: ${undocumented.join(", ")}`;
   });
 
 flow("--json and --footer are refused like any other unknown flag",
@@ -1222,14 +1218,12 @@ flow("D16 invalid size limits are refused before a turn",
     return refusal(r, /maxLength must be a nonnegative integer/);
   });
 
-flow("D16 help documents both local size keywords and per-run schema copies",
+flow("D16 the internals page documents both local size keywords and per-run schema copies",
   "a coordinator can set a smaller limit without guessing which server keywords are safe",
   () => {
-    const brief = helpRun("--help"), full = helpRun("--help-all");
-    return brief.status === 0 && full.status === 0
-      && brief.stdout.includes("maxLength and maxItems")
-      && full.stdout.includes("Copy the shipped schema under")
-      || `size help missing: ${JSON.stringify({ brief: brief.status, full: full.status })}`;
+    const page = internalsFlat();
+    return page.includes("`maxLength` and `maxItems` are local caps") && page.includes("copy the shipped schema under `$TMPDIR`")
+      || "the size caps are not documented on environment-and-internals.md";
   });
 
 failed += await runCases(FLOWS);

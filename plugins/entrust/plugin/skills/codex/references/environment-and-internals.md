@@ -3,8 +3,8 @@
 Moved out of `SKILL.md` because none of it is needed at the moment of deciding *whether* and *how* to
 delegate — the recipes at the top of that file cover the decision.
 
-The canonical flag inventory lives in `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`, with the rarely needed flags and the environment table under `--help-all`. This file
-explains environment, state, wrappers, operational bounds, and lifecycle details behind those flags.
+The flag inventory, the exit ladder and the state layout are `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`.
+This file explains environment, state, wrappers, operational bounds, and lifecycle details behind those flags.
 
 ## Contents
 
@@ -24,8 +24,7 @@ explains environment, state, wrappers, operational bounds, and lifecycle details
 
 ## Environment
 
-The variables, the subdirectories of the state directory `<state>` stands for below, the order the driver
-resolves it in, and what `TMPDIR` grants a read agent are all under `--help-all`. `<state>` is
+The variables and the subdirectories of the state directory `<state>` stands for below are under `--help`. `<state>` is
 `ENTRUST_STATE_DIR` when set, which must be absolute, else `<tmp>/entrust-state` beside the scratch tree; it
 stays until the system clears its temporary directory.
 
@@ -33,9 +32,14 @@ stays until the system clears its temporary directory.
 Node's `os.tmpdir()` returns for the driver's environment), never your whole one:
 `<tmp>/entrust/<project>/<run>/agents/<agent>`; the report names it as `tmpDir`, it outlives the run, and the
 driver never removes it: it stays until the system clears its temporary directory or `/entrust:cleanup`
-removes its selected entry. What `--help-all` does not carry: the agent's shell also receives `TMPPREFIX` under
+removes its selected entry. The agent's shell also receives `TMPPREFIX` under
 the run's `$TMPDIR`, because zsh keeps here-document temp files at `$TMPPREFIX*`, default `/tmp/zsh`,
 which no grant covers ([incidents](incidents.md#here-documents-under-the-grant)).
+
+Three variables are the suites' seams and no settings for a real run: `ENTRUST_LOCK_SEAM_MS` pauses between the
+lock's ownership check and the act it guards, `ENTRUST_APPROVAL_POLL_MS` sets how often an open request's
+decision file is looked for (default 250), and `ENTRUST_APPROVAL_TIMEOUT_S` how long a request waits before it
+expires (default 1800).
 
 ## Observability
 
@@ -188,8 +192,10 @@ orchestration; whatever it is, it hands the prompt over unchanged, never answers
 reports a failure as the failure it is.
 
 Wrappers write ONE file: a header of `FIELD: value` lines, then the prompt. The driver caps the file's
-size and exits 2 past it, naming the byte count. The header grammar — where it ends, which names open the
-body, what an unknown name costs — is in `--help`; everything below the header is the body, verbatim, even
+size and exits 2 past it, naming the byte count. A header line is an upper-case `NAME:` at column 0, its
+value literal to the end of the line; a blank line, a `#` line or any other line ends the header, and a
+`TASK:`, `CHECK:` or `RETURN:` line always opens the body. An ALL-CAPS name above the body that is no field is
+exit 2 naming its line, never a silently ignored one. Everything below the header is the body, verbatim, even
 when a later line looks like a field.
 
 `RIGHTS`, where it appears, must be first; a header that declares none — with or without other fields — is
@@ -197,12 +203,20 @@ a read agent in the current directory. A file with no body leaves the prompt to 
 providing both is exit 2. Explicit command-line flags override file fields, and `promptFileFields` reports
 the declared fields in their original order. The complete field list is in `--help`.
 
+`OUTPUT_SCHEMA:` takes a strict schema only: every object carries `"additionalProperties": false` and lists
+every one of its properties in `required` (use `"type": ["string", "null"]` where a field is optional); both
+are checked before the turn, since the server rejects them after it. `maxLength` and `maxItems` are local
+caps: removed from the copy the server gets and checked here, because the server cuts a field at its cap,
+which would pass the check with nothing kept (Luna, 2026-09-27). A mismatch costs one corrective turn, then
+exit 13; a final overflow keeps the whole answer at `answerPath` and clips `answerJson` to its caps. To change
+a cap, copy the shipped schema under `$TMPDIR` for one run and edit only its caps.
+
 The format avoids constructing a shell command from relayed values: an injected quote stays literal
 instead of becoming flags. Attachments, the bounds and `--report-file` remain command-line-only because
 an injected field could otherwise upload, truncate or redirect a run that the user never named. A header
 naming one exits 2 and names the flag to use.
 
-The refused names, and the flag each must be passed as instead, are listed under `--help-all`. Boolean
+The refused names, and the flag each must be passed as instead, are listed under `--help`. Boolean
 fields take `yes|true|1` and `no|false|0`, and omitting the line leaves the field's own default. That
 default is off everywhere except `NETWORK:`, where it is egress: `NETWORK: no` denies the sandbox its
 network and an absent line grants it, so dropping that line is the opposite of writing it, not a
@@ -217,8 +231,13 @@ the driver has no verifier, and `--attach` is no field. The measured failure is 
 
 ## Bounding or stopping an agent
 
-`--timeout`, `--idle-timeout` and `--max-commands`, their defaults and what each cut looks like are in
-`--help` under Bounds; the report file and the signal contract are under Run. What help does not say:
+`--timeout`, `--idle-timeout` and `--max-commands` and their defaults are in `--help` under Bounds. What help
+does not say:
+
+- A declared `--timeout` is at most 7200 s and anchored at process start, so the config probe counts against
+  it. At its end less a grace (a quarter of the budget, at most 10 s) the driver interrupts the turn, and the
+  report says whether the server closed it inside the grace; at its end the report is written anyway.
+  `--idle-timeout` is reset by every notification and server request on the thread, a subagent's included.
 
 - There is no token budget. `tokenUsage` in the report is the server's own accounting, not a bound, and
   `--brief` controls answer size and context consumption without stopping a turn.
@@ -256,8 +275,7 @@ indistinguishable from one that found nothing. The driver searches `~/.codex/ses
 and verifies that its opening `session_meta` record names the reported thread. Thus `receiptOk: true`
 proves that a session record exists for that id, not merely that a filename contains it.
 
-The provenance fields `--help-all` lists under Report come from that record; `receiptWhy` explains why
-validation failed. Treat `receiptOk: false` on a claimed success as a red flag. A process able to
+`receiptWhy` explains why validation failed. Treat `receiptOk: false` on a claimed success as a red flag. A process able to
 fabricate the whole report can fabricate these fields too, so inspect the rollout directly when the
 answer warrants stronger assurance.
 

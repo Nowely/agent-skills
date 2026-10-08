@@ -185,7 +185,7 @@ As the shared page's [What the user reads](../orchestrate/references/external.md
 
 ## References
 
-- `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`: the flags and the exit codes, `--help-all` the rest; the launcher's `--help`: its refusals, the nine status lines, the waiting result and `--decide`.
+- `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`: the flags, the fields and the exit codes; the launcher's `--help`: its refusals, the nine status lines, the waiting result and `--decide`.
 - [models.md](references/models.md): the model and effort for each tier.
 - [approvals.md](references/approvals.md): what an accepted command runs as, and what to read after.
 - [environment-and-internals.md](references/environment-and-internals.md): environment, prompt files, stopping an agent, receipts, worktrees, locks, the commit grant, config drift.

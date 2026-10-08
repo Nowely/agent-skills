@@ -294,377 +294,73 @@ function wrapJoined(items, sep, indent, width = 79) {
 
 // ---------------------------------------------------------------- help
 
-// Two tiers over ONE list. Each subject is written once: --help prints `text`, --help-all prints `text`
-// with `more` beneath it and adds the blocks marked `all`, so a flag cannot reach one tier alone.
-const HELP = [
-  { s: "Rights",
-    text: `  --level read       the default: read anything, write only the run's own
-                     $TMPDIR; no lock is taken, so read agents run in parallel
-                     over one directory
-  --level write      write under --cwd, each --writable root and $TMPDIR, and
-                     nothing else — /tmp is excluded; takes a per-directory lock
-  --cwd DIR          where the turn runs. Required at --level write: the writable
-                     root is a grant, and a defaulted grant is one nobody made
-  --worktree REPO    create a detached worktree under REPO/.claude/worktrees, run
-                     there at write level, harvest the work to
-                     <state>/answers/ (paths in the report) and remove
-                     the tree. A new thread's is cut at HEAD — the LAST COMMIT —
-                     and a resumed one at its recorded base, so uncommitted
-                     changes, untracked and ignored files and installed
-                     dependencies are NOT in it: an agent asked about work in
-                     progress finds an empty diff and reports success. A stash
-                     reaches neither. Commit first, or run on the live tree with
-                     --level write --cwd REPO
-  --writable DIR     grant one more root (write level only, repeatable)
-  --no-network       deny egress. BOTH levels have it by default, as Claude's own
-                     subagents do; --network says so explicitly. There is no host
-                     allowlist — name the hosts in the prompt
-  every root you grant — a write-level --cwd and each --writable — refuses
-  ~/.codex, <state> and every directory above either, which hold the receipts
-  and this driver's own state`,
-    more: `  $TMPDIR is writable at BOTH levels: the whole grant at read level, beside
-  --cwd at write level; /tmp is not, at either. It is the run's own directory,
-  made fresh at 0700 inside the system's temporary directory, Node's
-  os.tmpdir() (TMPDIR, else TMP or TEMP, else /tmp), never your whole one:
-    <tmp>/entrust/<project>/<run>/agents/<agent>
-  Project is the name of the canonical repository root (cwd outside git);
-  run is a structured report run path with a hash, or fresh otherwise.
-  Swarms and coordinators pass ENTRUST_TEMP_CONTEXT to share the project/run;
-  the driver scopes that context to a fresh agent leaf on every invocation,
-  including child checks. Report publication still refuses overwrites.
-  <tmp>/entrust must be a directory of yours and no link; anything else is
-  exit 2. The report names it as tmpDir. It is exported for the turn, and it
-  OUTLIVES the run, because --brief tells the agent to leave
-  long output in a file there; the driver never removes it.
-  A worktree turn that did not complete, or a harvest
-  that failed, PRESERVES the tree and the report says why and how to remove it; a
-  clean tree whose turn never started is removed too. With --resume the tree is
-  REBUILT rather than cut from HEAD: the base commit of that thread's own tree,
-  plus the diff and untracked archive its harvest saved (implies --level write;
-  replaces --cwd). Without a job record holding that base commit,
-  \`--worktree REPO --resume ID\` is REFUSED rather than run against a fresh tree.` },
+// One help, rendered from the tables the parser and the ladder read, so a field or a rung cannot reach one
+// and not the other. What a coordinator needs is on the shared call page; the internals behind each flag are
+// codex/references/environment-and-internals.md.
+function helpText() {
+  return `entrust ${VERSION} — run one Codex turn with rights declared per call.
 
-  { s: "Turn",
-    text: `  --prompt TEXT      the task; omit to read it from stdin
-  --prompt-file F    read the agent from F: a HEADER of "FIELD: value" lines, each
-                     value literal to end of line, then the BODY — the prompt —
-                     from the first line that is not one. RIGHTS, where present,
-                     must come FIRST; a file with none is a read agent in the
-                     current directory. Explicit flags override the file. Fields:
+The launcher (orchestrate's agent-run.mjs) runs this driver with a prompt file, a report path and a
+mailbox; a coordinator never types it. A person reads this to know what that run does.
+
+  node driver.mjs --prompt-file F --report-file ABS --approval-dir D
+  node driver.mjs --check-prompt-file F     exit 2 on what --prompt-file F would refuse, offline
+  node driver.mjs [--level read|write] [--cwd DIR] [options] --prompt TEXT   (or the prompt on stdin)
+  node driver.mjs -h | --help                 this text
+
+Prompt file: "FIELD: value" header lines, RIGHTS first when present, then the body, from the first
+line that is not one; a TASK:, CHECK: or RETURN: line always opens it. No RIGHTS line is a read agent
+in the current directory, and an unknown ALL-CAPS name above the body is exit 2. Fields:
                      ${wrapJoined([...PROMPT_FIELDS], "/", 21)}
-  --check-prompt-file F  exit 2 on what --prompt-file F would refuse offline
-  --attach FILE      attach a local image (${attachExts("localImage").join("/")}) or audio
-                     file (${attachExts("localAudio").join("/")}) to the prompt; repeatable
-  --output-schema F  demand a JSON object matching the schema in file F: the
-                     server constrains generation, the driver checks the result
-                     independently, and one corrective turn is spent on a mismatch
-                     before exit 13. The report carries answerJson and
-                     answerJsonError. Takes a STRICT schema only. maxLength and maxItems are local caps; set them
-                     in a per-run schema file to change the shipped defaults — see --help-all
-  --brief            ask for a summary, not a working note, and cap what comes
-                     back inline. The full answer is at answerPath either way:
-                     <state>/answers/<threadId>-<startedAtMs>.md, startedAtMs the
-                     run's start in epoch milliseconds
-  --model NAME       a slug from model/list, or a short name (astra, sol, terra,
-                     luna) that becomes the newest listed model ending in it;
-                     omit to use whatever config.toml chose
-  --effort LEVEL     low|medium|high|xhigh|max, and ultra where the model
-                     advertises it; checked against model/list before the turn;
-                     omit to inherit config.toml
-  --resume THREAD    continue a thread; "--resume last" continues the run most
-                     recently STARTED for this --cwd or, with --worktree, this
-                     repository — not the one most recently active, so a long
-                     agent still running does not outrank a shorter one begun
-                     after it and already finished; that thread still refuses a
-                     resume with exit 10 while its turn is open.
-                     The report names it as resumedFrom — check it after "last"`,
-    more: `  --output-schema: the server takes a STRICT schema only — every object must
-  carry "additionalProperties": false and list every one of its properties in
-  "required" (use "type": ["string","null"] where you wanted optional). Both are
-  checked here, before the turn, because the server rejects them after it.
-  maxLength (string characters) and maxItems (array entries) are validated here,
-  removed from the copy sent to the server and checked locally. Codex 0.155.1
-  accepts both keywords (two Luna turns, 2026-09-27); Luna P6 returned exactly
-  40 characters when asked for about 400 under maxLength 40: the server cuts a
-  field at its cap, which would pass the local check with nothing kept. A final
-  overflow keeps the complete answer at answerPath and clips answerJson to its
-  caps. Copy the shipped schema under $TMPDIR for one run and edit only its caps;
-  the original file remains the default.
-  A prompt file's header lines are NAME: at column 0, upper-case; a blank, a # or
-  any other line ends the header, and what follows is body even if it looks like
-  a field. A TASK:, CHECK: or RETURN: line always opens the body. An ALL-CAPS
-  name above the body that is not a field is exit 2 naming its line, never a
-  silently ignored one. A file with no body leaves the prompt to stdin or
-  --prompt; both at once is exit 2. --attach is NOT a field: an injected line
-  would upload a file nobody named. Neither are the bounds and the transport,
-  whose defaults are chosen so an agent needs no header to size them, and naming
-  one is exit 2:
-                     ${wrapJoined(Object.keys(CLI_ONLY_FIELDS), "/", 21)}
-  A NEWLINE inside a value ends that value and starts a new field — a wrapper
-  handed caller-supplied text cannot prevent that. For a wrapper: write the
-  values, do not build a command line out of them.` },
-  { s: "Turn", all: true,
-    text: `  --web-search ${[...WEB_SEARCH].join("|")}
-                     off by default: a search makes the turn depend on what the
-                     index says today` },
+Command-line only, refused in a file, so an injected line can neither size nor redirect a run:
+                     ${wrapJoined(Object.values(CLI_ONLY_FIELDS), " ", 21)}
+                     and --attach FILE (${[...attachExts("localImage"), ...attachExts("localAudio")].join("/")})
 
-  { s: "Gate — what counts as the turn having done the work",
-    text: `  --expect-command RE   a command matching RE must have run. RE is matched
-                     against the command the SERVER parsed as well as the wrapper
-                     string it reports (\`/bin/zsh -lc '...'\`), so \`^pnpm\` works
-  --allow-no-commands   accept a turn that ran nothing. A command that FAILED is
-                     no rung at all: the report counts it, and --expect-command
-                     (exit 5) is what judges the work`,
-    more: `  commandsFailed, commandsDeclined, commandsBlocked (a command that reached the
-  client with no verdict at all, neither failed nor declined), fileChangesFailed
-  and commandsProbeNegative are report fields and no exit code: read them before
-  acting on the answer. commandsDeclined counts commands an approval refusal
-  stopped before they ran, commandsFailed commands that ran and failed, and
-  escalations every approval request whatever became of it, so the first and the
-  third can differ: an accepted request declines nothing, and a sandboxed attempt
-  can end with no item at all.` },
+Rights
+  --level read       the default: read anything, write only the run's own $TMPDIR
+  --level write      write under --cwd, each --writable root and $TMPDIR; /tmp is excluded, and a
+                     per-directory lock is taken. --cwd is then required
+  --cwd DIR          where the turn runs
+  --worktree REPO    run in a detached worktree of REPO cut at HEAD, the LAST COMMIT, harvest its
+                     work to <state>/answers/ and remove the tree; uncommitted work is not in it
+  --writable DIR     grant one more root (write level only, repeatable)
+  --no-network       deny the agent's own commands the network, which both levels have by default;
+                     --network says so explicitly
+  --web-search ${[...WEB_SEARCH].join("|")}   the provider's search tool, off by default
+  --host-home        run against the caller's ~/.codex instead of the driver's isolated home
+  every granted root refuses ~/.codex, <state> and every directory above either
 
-  { s: "Approvals",
-    text: `  --approval-dir D   the agent's mailbox, set by the launcher (agent-run.mjs
-                     --run) and never by a person: every agent it runs has one.
-                     A request is written whole to D/<id>.request.json and its id
-                     listed in D/pending; the turn waits until D/<id>.decision.json
-                     says accept or decline (agent-run.mjs --decide writes it), or
-                     for ${LIMITS.APPROVAL_TIMEOUT_S / 60} minutes, after which it is declined as expired and
-                     the turn goes on. D is absolute, exists, lies inside <state>
-                     and inside no root the agent can write; one driver per D.
-                     Without it every request is declined at once
-  a file change whose every path lies inside the agent's writable roots is
-  accepted by the driver itself, with or without D, and one not shown to lie
-  inside them is declined at once. An accepted command runs with no sandbox,
-  as you. Exit 6 is a request declined or expired, never one accepted`,
-    more: `  Offered through D, from the root thread's current turn or from the current
-  turn of a subagent thread the root announced: a command request (kind
-  command), and nothing else. Declined at once, with offered false and the
-  reason in why: a file change not shown to lie inside the writable roots, its
-  why naming the WRITABLE: line that would grant one; a permissions request,
-  with the empty profile, why "rights are set at launch"; every other request
-  (kind writeStdin, the legacy pair, a thread nobody announced, a turn that is
-  over or closing), and all of them when --approval-dir is absent. D may not
-  lie in one of this driver's own subdirectories of <state> (home/, locks/ and
-  the rest), nor within agent scratch, including an enclosing or another run's $TMPDIR.
-  D/owner.json names the driver that owns D, published by link(2); a second one
-  exits 2 whether that one is alive or has ended, so D serves one driver, ever,
-  and each launch gets a D of its own. Nothing is written to D once
-  owner.json names another run, and a request whose file or pending entry cannot
-  be written is settled at once as expired, declined, why "mailbox write failed:
-  <error>"; an accept goes out only after its settlement is written, and a
-  decision that could not be recorded goes out as a decline. A request file
-  holds the server's params, the command never clipped,
-  beside run {pid, identity, startedAtMs, threadId, turnId}, the paths of a file
-  change, the cause, the agent's level, sandbox and writable roots, askedAt and
-  deadlineAt, and gains a settled object once answered, {decision, by, why,
-  settledAt, waitMs, decisionFile}: what the decision file held as it settled,
-  taken, none, stale or late. pending lists the open ids, one per line, and is
-  removed when none is open. A decision file is {id, run {pid, startedAtMs,
-  turnId}, decision accept|decline, by, why, decidedAt}, published once by
-  link(2); one whose id or run is not this request's is stale: counted, left in
-  place, and the request keeps waiting. A request id the server sends twice is
-  one request, recorded and answered once.
-  While any request is open the idle guard is paused. The deadline, a cut, a
-  signal, the end of the request's own turn and the end of the run each settle
-  an open request as expired first, declining it and naming itself in why; only
-  the deadline takes a decision already there, and a valid decision the driver
-  did not take is counted late. A file change is accepted by
-  the driver only when every path it names lies inside $TMPDIR, --writable or a
-  write-level --cwd, found by identity, with nothing but existing plain
-  directories between that root and the file, the file itself regular or not
-  there yet, and nothing under a .git, .codex or .agents in any spelling; the
-  check is made again as the answer is sent, and why says so. A directory
-  swapped for a link after that is the server's to follow, and no check here
-  reaches it` },
+Turn
+  --prompt TEXT      the task; without it the task is read on stdin
+  --model NAME, --effort LEVEL, --resume THREAD, --output-schema F, --brief, --expect-command RE,
+  --allow-no-commands: the prompt-file fields of the same names
+  --report-file ABS  publish the report there as well as on stdout: an ABSOLUTE path that does not
+                     exist yet, written whole or not at all, so a missing file means unknown
+  --approval-dir D   the agent's mailbox, set by the launcher and never by a person. A request waits
+                     for D/<id>.decision.json, or for ${LIMITS.APPROVAL_TIMEOUT_S / 60} minutes, after which it is declined as
+                     expired and the turn goes on; without D every request is declined at once. An
+                     accepted command runs with no sandbox, as you; a file change inside the writable
+                     roots is accepted by the driver, and one not shown inside them is declined at once
 
-  { s: "Bounds",
-    text: `  --timeout SECONDS  none by default (0): the turn runs as long as the work takes,
-                     bounded by --idle-timeout and --max-commands. A declared
-                     budget is anchored at process start: at T minus a grace the
-                     turn is CUT (exit 3, cut.kind wall), at T the report is
-                     written anyway
-  --idle-timeout S   default ${LIMITS.DEFAULT_IDLE_TIMEOUT_S}, 0 disables — how long the thread may say NOTHING
-                     before the turn is cut with cut.kind idle. Every notification
-                     resets it. This, not --timeout, is the hang guard
-  --max-commands N   default ${LIMITS.DEFAULT_MAX_COMMANDS}, 0 disables — how many commands the turn may run
-                     before it is cut with cut.kind commands (exit 3, the report
-                     holding the answer so far): the bound that catches a loop`,
-    more: `  --timeout is at most ${LIMITS.MAX_TIMEOUT_S}. The grace is ${LIMITS.CUT_GRACE_MAX_MS / 1000} s, at most a
-  quarter of the budget — turn/interrupt, then that long for the server to close
-  the turn, and the report says whether it did. --idle-timeout is reset by every
-  notification AND server request on the thread (item starts and completions,
-  answer deltas, token usage), so a long inference step does not trip it either.` },
+Bounds
+  --timeout S        none by default; a declared wall clock cuts the turn at T minus a grace (exit 3)
+  --idle-timeout S   default ${LIMITS.DEFAULT_IDLE_TIMEOUT_S}, 0 disables: how long the thread may say nothing (exit 3)
+  --max-commands N   default ${LIMITS.DEFAULT_MAX_COMMANDS}, 0 disables: how many commands the turn may run (exit 3)
 
-  { s: "Run",
-    text: `  --report-file F    write the JSON report to F as well as to stdout, and make F
-                     the delivery that counts: an ABSOLUTE path that does not
-                     exist yet, under a parent this run creates at 0700 when it
-                     is absent, published by hard link at 0600, never over an
-                     existing entry, so a reader finds either the whole report or
-                     no file at all. A caller that
-                     stopped reading stdout then costs the run nothing — the file
-                     carries the same bytes under the same exit code. A refusal
-                     reached before the turn is written there too, as an object
-                     with ok false and the error in it, so a MISSING file means
-                     "unknown", never "success"`,
-    more: `  An agent is stopped by SIGTERM to this process: its pid is on stderr from the
-  first line, the handler asks the server to end the turn, and the report the
-  turn had earned is written anyway, at exit 1. A command the agent was running
-  inside the sandbox ends with it (measured once); one run after an approval,
-  outside the sandbox, has not been measured. There is no run registry and no
-  collector — the caller that started the agent owns its lifetime — and
-  <state>/jobs/ keeps only what \`--resume last\` and a worktree rebuild need.` },
-
-  { s: "Report",
-    text: `  the JSON report is the only report — on stdout, and at --report-file where one
-  was named: beyond the flags above it carries receiptPath/receiptOk, tokenUsage,
-  timing, cut — null, or the budget that ended the turn — answerPath,
-  the command and file counts the exit ladder reads and the
-  ones it does not, and escalations: one entry per approval request, with its
-  decision, who made it, why, and what the item then reported. --help-all lists
-  the rest
-  pid is announced on stderr before anything else, and threadId as soon as the
-  thread exists, so a long turn's rollout can be tailed and the run can be
-  stopped; SIGINT/SIGTERM/SIGHUP after that report what the turn did so far and
-  exit 1, and before it they exit 4
-  -h, --help         this text
-  --help-all         this text, plus the rarely needed flags and the internals`,
-    more: `  the rest of the report: receiptOk, read out of the rollout's own
-  session_meta record (the file is OPENED, not merely matched by name);
-  codexVersion, what the server reported, beside the
-  version this plugin was measured against; configInherited, whether model and
-  effort came from a fresh probe of your config, a stale last-known-good, or
-  nothing; commandsPipedToPager, commands whose output the agent cut with
-  head/tail/less; fileChanges, one {path, kind, move} per completed write, where
-  filesTouched keeps only the path a rename ends at; escalations, one entry per
-  approval request whichever thread asked: id (null where it was not offered),
-  method, kind, detail (the command whole, else the reason, else the message; a
-  file change's paths as "add /a; update /b"), thread, subagent, agentPath, cause
-  (rights: a file change the writable roots cover, which the driver accepted;
-  outside: a file change not shown to lie inside them, or a permissions
-  request, which it declined; asked: Codex asked before running the command,
-  and nothing on our side changes it), offered, decision (accepted,
-  declined or expired), by (driver or coordinator), why, askedAt, settledAt,
-  waitMs, resolved (the server acknowledged the answer), outcome ({status,
-  exitCode, durationMs} from the item's own completion, or null when none
-  came), cwd, reason and fileChanges ({path, kind, move} each, or null where no
-  item named them); beside it
-  approvalsAccepted (by the caller), approvalsAutoAccepted (by the driver) and
-  approvalDir, the mailbox. A command the sandbox denied
-  need not raise a request; exit 6 sits below timeout, so a cut run carries
-  entries and exits 3. interactions, the requests that needed a human and no
-  sandbox change could answer. sandbox is the server's echo at thread/start.
-  tokenUsage is the server's own accounting: total is the root thread's token use
-  for the current turn, per turn as of codex 0.153.4 (measured 2026-09-15); to cost
-  a thread, sum one report per turn. last is the most recent API request within it.
-  cut is {kind, limit, observed, completedInGrace};
-  timing is {wallMs, setupMs, commandMs, modelMs}, commandMs being the server's
-  own per-command durations and modelMs the ARITHMETIC REMAINDER, wallMs minus
-  setup minus commands: residual time, never a measurement of thinking;
-  answerPartial is what the model had written
-  when the turn was cut, reassembled from the answer stream because the server
-  discards the in-flight message — UNFINISHED text the model never delivered,
-  never promoted to answer;
-  commentaryPath is where a turn that produced no answer at all had its messages
-  written; rateLimits is the setup-time account snapshot; and turnDiffPath is the
-  last streamed turn diff at <state>/answers/<threadId>.diff.
-  saved answers are <state>/answers/<threadId>-<startedAtMs>.md, startedAtMs the
-  run's start in epoch milliseconds, so a --resume leaves the earlier turn's file
-  in place; the turn diff and the worktree harvest stay named for the thread.
-  On a signal, either way, the app-server's process group is waited out before
-  the lock is released.` },
-
-  { s: "Isolation", all: true,
-    text: `  by default the turn runs against a CODEX_HOME private to this driver — one
-  directory shared by every run, not a fresh one per turn — so the caller's own
-  plugins, skills and memories cannot steer it and it writes no trust records
-  back; auth.json and sessions stay linked to the real home, and the caches and
-  databases codex keeps there persist between runs, which is what makes an
-  isolated run faster than a host-home one rather than slower
-  --host-home        use the caller's ~/.codex instead, plugins and all
-  the private home is filled by asking the caller's own codex what its settings
-  resolve to, which costs one short process before the turn: bounded by
-  ${LIMITS.CONFIG_PROBE_MAX_MS / 1000} s, or min(${LIMITS.CONFIG_PROBE_MAX_MS / 1000} s, max(${LIMITS.CONFIG_PROBE_MIN_MS / 1000} s, --timeout)) where a wall clock was declared, and
-  normally ~120 ms. It counts against that one budget, which is anchored at
-  process start` },
-
-  { s: "Environment", all: true,
-    text: `  ENTRUST_STATE_DIR             where everything this driver owns lives; must be
-                                absolute. Unset, <state> is <tmp>/entrust-state,
-                                <tmp> the system's temporary directory. For test
-                                harnesses: two runs under different values do NOT
-                                exclude each other
-${stateSubdirHelp()}
-  ENTRUST_SESSIONS_DIR          where to look for the rollout receipt
-  ENTRUST_CODEX                 absolute path to the codex executable; without
-                                it the driver searches PATH, then
-                                ${CODEX_FALLBACK_DIRS.join(", ")}
-  ENTRUST_LOCK_SEAM_MS          a test seam: how long to pause between the
-                                lock's ownership check and the act it guards,
-                                touching <lock>.seam while it pauses. The
-                                suites set it to put a peer in a window a real
-                                peer reaches only by timing, and nothing else
-                                in this plugin sets it; setting it yourself
-                                slows this run's startup and teardown by that
-                                much and protects nothing
-  ENTRUST_APPROVAL_POLL_MS      a test seam: how often an open approval request's
-                                decision file is looked for (default ${LIMITS.APPROVAL_POLL_MS}). The
-                                protocol suite raises it so a decision lands on
-                                a deadline's own tick; a larger value is only a
-                                slower answer
-  ENTRUST_APPROVAL_TIMEOUT_S    a test seam: how many seconds an approval request
-                                waits before it is declined as expired (default
-                                ${LIMITS.APPROVAL_TIMEOUT_S}). The suites set it so an expiry lands in
-                                seconds; it is no setting for a real run, which
-                                the default is sized for` },
-
-  { s: "Exit codes. Raised the moment they happen, before any turn could run:",
-    text: `  2  bad arguments
-  3  a stalled probe or stdin under a short --timeout, or a prompt that never
-     arrives on stdin within the silence budget; like a 2, it lands before a turn
-  4  transport, and every sandbox / approval assertion
-  10 another run holds the lock on this directory, or a resumed thread still
-     has a turn open
-
-  A report has two delivery surfaces, stdout and --report-file. Before a turn
-  stdout carries no report; the file carries the refusal as {ok:false, exitCode,
-  turnStatus:null, error}. Where this run could not publish there — the path was
-  not absolute, its parent unusable, an entry was already there (a symlink
-  counts), or another run published first — stderr says so, and says why.
-
-  Decided after the turn, first match wins, in this order:
+Exit codes. Before a turn: 2 bad arguments or a refused prompt; 3 a stalled probe, or no prompt on
+stdin within the silence budget; 4 transport, and every sandbox or mailbox assertion; 10 a held lock,
+or a resumed thread still open. After the turn, first match wins:
 ${ladderHelp()}
+  and 4 again if the report could not be delivered. A report with turnStatus null had no turn.
 
-  and 4 once more at the very end, if the report could not reach stdout — a closed
-  pipe, or a consumer that never drained it within what was left of --timeout (at
-  least ${LIMITS.STDOUT_DRAIN_MIN_MS / 1000} s, and exactly ${LIMITS.STDOUT_DRAIN_MIN_MS / 1000} s where no wall clock was set). So 2 means either, and
-  turnStatus tells them apart: null is the refusal that came before a turn.
-  Codes decided after the turn can all carry executed work. 4 too, when the server
-  died mid-turn: turnStatus is then failed, never null.` },
-];
+State: <state> is ENTRUST_STATE_DIR, absolute, else <tmp>/entrust-state:
+${stateSubdirHelp()}
+Environment: ENTRUST_CODEX, an absolute codex path, else PATH, then ${CODEX_FALLBACK_DIRS.join(", ")};
+ENTRUST_SESSIONS_DIR, where the rollout receipts are.
 
-const HELP_HEAD = `entrust ${VERSION} — run one Codex turn with rights declared per call.
-
-  node driver.mjs [--level ${[...LEVELS].join("|")}] --cwd DIR [options] --prompt TEXT
-  node driver.mjs --cwd DIR < task.txt
-
-  <state> below is this driver's state directory; Environment, under --help-all,
-  says where it is and that a run without it is exit 2`;
-// --help ends on this line and nothing else; the pin in plugins/entrust/evals/protocol.test.mjs reads it verbatim.
-const HELP_POINTER = "Rarely needed flags, environment variables and internals: --help-all";
-
-function helpText(full) {
-  const out = [HELP_HEAD];
-  let section = null;
-  for (const b of HELP) {
-    if (b.all && !full) continue;
-    if (b.s !== section) { out.push(`\n${b.s}`); section = b.s; }
-    out.push(full && b.more ? `${b.text}\n${b.more}` : b.text);
-  }
-  if (!full) out.push(`\n${HELP_POINTER}`);
-  return `${out.join("\n")}\n`;
+The report, the mailbox, $TMPDIR, the worktree, the isolated home and the lock:
+codex/references/environment-and-internals.md.
+`;
 }
 
 // ---------------------------------------------------------------- arguments
@@ -845,8 +541,8 @@ function parseArgs(argv) {
       case "--host-home": o.hostHome = true; break;
       // Asking for help is not a usage error: it goes to stdout and exits 0, so `--help | head` works.
       // No process.exit() behind the write: on an asynchronous pipe (macOS) that truncates the text.
-      case "-h": case "--help": case "--help-all":
-        process.stdout.write(helpText(a === "--help-all")); process.exitCode = EXIT.SUCCESS; settled = true; throw new Bail();
+      case "-h": case "--help":
+        process.stdout.write(helpText()); process.exitCode = EXIT.SUCCESS; settled = true; throw new Bail();
       default: fail(EXIT.USAGE, `unknown argument: ${a}`);
     }
   }

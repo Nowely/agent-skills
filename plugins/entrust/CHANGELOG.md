@@ -37,6 +37,12 @@ forensics remain in the repository references and release notes.
   its exit code), `rights` (`{kind, roots}`) and `requestedModel`, which the OpenCode and Claude reports already
   had, so a coordinator reads the same fields whichever adapter ran. Its own fields stay; `usage` keeps each CLI's
   shape and is not part of the core.
+- **The Codex driver's `--help` is one page of 80 lines, and `--help-all` is gone.** The two tiers ran to 170 and 370
+  lines for a command line the launcher types, and restated `environment-and-internals.md`. The help now gives the
+  usage forms, the fields and the command-line-only flags (rendered from the field table), each flag in a line or
+  two, the exit ladder (rendered from the rungs), the state layout and the environment. The prompt-file grammar,
+  the output-schema caps, the wall-clock grace and the suites' seams, which only the old help carried, are on
+  that page.
 - **One page for calling an external agent.** `orchestrate/references/external.md` holds the steps every adapter
   shares, written for a coordinator of any host: the prompt's core lines, `--new`, the run in Claude Code (the
   Agent call and its block) or in Codex and OpenCode (a native proxy on the host's smallest model), the status
