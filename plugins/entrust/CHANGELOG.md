@@ -22,6 +22,11 @@ forensics remain in the repository references and release notes.
   the caller's rights (run on the fake `claude`). Every shared git now carries the Codex driver's overrides (no
   fsmonitor, no hooks, no external diff or textconv), and a worktree is read through the git directory its
   repository records, never through the tree's own `.git` (X10).
+- **An agent runs where its prompt was checked.** `--new` checks a prompt in the coordinator's directory, but `--run`
+  started the driver in the directory of whoever called it, the relay, so a bare `RIGHTS: read`, a `live tree`
+  or a `nothing` row could run in another tree than the one checked (run on the fake app server). `--new` now
+  records its working directory and state directory in `agent/launch.json`, and the driver runs there, under
+  that state directory (X4).
 
 ## 0.27.0 — 2026-10-08
 

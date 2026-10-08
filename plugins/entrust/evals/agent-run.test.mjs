@@ -771,6 +771,22 @@ test("D6 --plan registers rows, --new refuses an unlisted id, and an explicit am
     return scope.code === 2 && scope.out.startsWith("ERROR=invalid writes") || `bad scope: exit ${scope.code}, ${JSON.stringify(scope.out)}`;
   });
 
+test("the driver runs in the directory --new checked the prompt in, whichever directory calls --run",
+  "a relay's shell need not stand where its coordinator's does, and a bare RIGHTS: read, a live tree or a nothing row resolves against the working directory",
+  async () => {
+    const report = path.join(runUnderState("where."), "run", "report.json");
+    const checkedIn = tempDir("agent-run-checked-in."), runFrom = tempDir("agent-run-run-from.");
+    const made = spawnNode([LAUNCHER, "--new", "--report-file", report],
+      { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 20000, env: { ENTRUST_STATE_DIR: newState }, cwd: checkedIn });
+    made.child.stdin.end("RIGHTS: read\nTASK: irrelevant, the server is scripted\n");
+    const m = await made.done;
+    if (m.code !== 0) return `--new: exit ${m.code}, ${m.out}`;
+    const run = await spawnNode([LAUNCHER, "--run", "--report-file", report], { env: env(newState), cwd: runFrom, killAfterMs: 60000 }).done;
+    const r = JSON.parse(read(report) ?? "null");
+    return run.code === 0 && r?.cwd === fs.realpathSync(checkedIn)
+      || `the run: exit ${run.code}, cwd ${r?.cwd}, checked in ${fs.realpathSync(checkedIn)}, called from ${runFrom}`;
+  });
+
 test("D6 a Codex row binds its prompt's model and writes: an absent one is the row's, another is refused (E138)",
   "a plan bound a Codex agent's id alone, so a prompt could name another model and wider rights than the row the user approved; OpenCode and Claude prompts were already held to their rows",
   async () => {
@@ -1497,7 +1513,7 @@ test("the accept the pages show — a quoted heredoc on a delimiter the caller m
     return problems.length === 0 || problems.join("; ");
   });
 
-test("--new puts a sound prompt through the driver's check, then prints PROMPT= and APPROVALS= alone and leaves the prompt, its mailbox and its backend record and nothing else",
+test("--new puts a sound prompt through the driver's check, then prints PROMPT= and APPROVALS= alone and leaves the prompt, its mailbox, its backend record and where it ran, and nothing else",
   "the check runs before every agent, so a pass must look to the coordinator like no check at all: the PROMPT= line and the mailbox every agent has, the prompt byte for byte at 0600, and no second copy beside it",
   async () => {
     const problems = [];
@@ -1508,7 +1524,7 @@ test("--new puts a sound prompt through the driver's check, then prints PROMPT= 
     if (r.code !== 0 || r.out !== `PROMPT=${path.join(dir, "prompt.txt")}\nAPPROVALS=${path.join(dir, "approvals")}\n`) problems.push(`a sound prompt: exit ${r.code}, ${JSON.stringify(r.out)} ${r.err.slice(0, 120)}`);
     if (read(path.join(dir, "prompt.txt")) !== PROMPT) problems.push("the prompt on disk is not the stdin bytes");
     const left = fs.existsSync(dir) ? fs.readdirSync(dir) : [];
-    if (JSON.stringify(left) !== JSON.stringify(["approvals", "backend.json", "prompt.txt"])) problems.push(`the agent's directory holds ${JSON.stringify(left)}`);
+    if (JSON.stringify(left) !== JSON.stringify(["approvals", "backend.json", "launch.json", "prompt.txt"])) problems.push(`the agent's directory holds ${JSON.stringify(left)}`);
     const checks = (read(spy) ?? "").split("\n").filter(Boolean);
     if (checks.length !== 1 || !checks[0].startsWith(`--check-prompt-file ${dir}${path.sep}`)) problems.push(`the checks --new ran: ${JSON.stringify(checks)}`);
     return problems.length === 0 || problems.join("; ");
