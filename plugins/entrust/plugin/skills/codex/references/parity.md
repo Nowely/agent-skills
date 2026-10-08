@@ -52,15 +52,14 @@ A read agent matches native reading, grep, git, node, lint, and node-environment
 `--worktree` starts a new thread's tree at repository HEAD, not the live tree, and a resumed one at its
 recorded base: commit relevant WIP first, since a stash does not reach either, or use
 `--level write --cwd <repo>` after settling that blast radius with the user. Dependencies and ignored
-files are absent; a verifier that needs them fails (exit 9) or measures nothing (exit 12) unless they are
-installed in the agent's tree.
+files are absent; a check that needs them fails unless they are installed in the agent's tree.
 Browser tests need the serial Chromium override in
 [Browser-mode sandbox](#browser-mode-sandbox) and no file parallelism. Egress is not what makes an install
 work: the caches live under `$HOME`, which no level grants, so `npm install --cache "$PWD/.npm-cache"`
 keeps its cache in the tree, while `pnpm install --frozen-lockfile` works against a warm store.
 
 An agent cannot commit under the grant a `RIGHTS:` line makes, so `worktreeCommitsRef` carries commits only
-where the caller's own `--verify` made them; a completed agent retains them even when the tree is
+where a `WRITABLE: <repo>/.git` grant let it; a completed agent retains them even when the tree is
 otherwise clean. `WRITABLE: <repo>/.git` re-grants the common dir a commit needs and is a widening to
 settle first ([Git-directory grant](environment-and-internals.md#git-directory-grant)).
 
@@ -110,7 +109,7 @@ retained at `turnDiffPath`.
 
 `--output-schema` constrains generation and then validates independently. Every object in the schema
 must set `additionalProperties: false` and list all properties in `required`; express optionality with a
-nullable type. `--answer-json` is the lighter syntax-only requirement.
+nullable type.
 
 `--brief` both asks the model for a short answer and caps the inline copy. The full text the model
 actually generated is normally at `answerPath`, but text it never generated cannot be recovered; a null

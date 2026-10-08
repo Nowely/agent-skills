@@ -38,9 +38,7 @@ export const EXIT = Object.freeze({
   APPROVAL: 6,
   NEEDS_INPUT: 7,
   NO_ANSWER: 8,
-  VERIFY_FAILED: 9,
   BUSY: 10,
-  VERIFY_UNMEASURED: 12,
   SCHEMA: 13,
 });
 

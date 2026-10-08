@@ -117,9 +117,9 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 Under a registered plan, a prompt with no `RIGHTS:` or `MODEL:` runs on its row's writes and model, and one naming
 others, or a `WRITABLE:` root outside the row's writes, is refused at `--new`.
 
-`VERIFY` is refused in a prompt file without `--allow-prompt-verify`, which the launcher does not pass: an agent
-that could write its own gate would grade itself. The launcher passes the driver no other flag either, so check the
-result yourself after you have read it ([result-gates.md](references/result-gates.md)).
+The launcher passes the driver nothing beyond the prompt file and the report path, and the driver runs no check
+after the turn, so check the result yourself after you have read it
+([result-gates.md](references/result-gates.md#checking-the-end-state)).
 
 ## Prompt shape
 
@@ -189,7 +189,7 @@ As the shared page's [What the user reads](../orchestrate/references/external.md
 - [models.md](references/models.md): the model and effort for each tier.
 - [approvals.md](references/approvals.md): what an accepted command runs as, and what to read after.
 - [environment-and-internals.md](references/environment-and-internals.md): environment, prompt files, stopping an agent, receipts, worktrees, locks, the commit grant, config drift.
-- [result-gates.md](references/result-gates.md): evidence gates and the verifier.
+- [result-gates.md](references/result-gates.md): how the evidence gates can be fooled, and checking the end state.
 - [parity.md](references/parity.md): parity with native subagents, browser tests, pasted images.
 - [incidents.md](references/incidents.md): the measured failures behind the rules.
 - [adversarial-review.md](references/adversarial-review.md), [why-not-the-plugin.md](references/why-not-the-plugin.md), and the install page, [README.md](../../README.md).

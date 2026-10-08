@@ -102,6 +102,14 @@ forensics remain in the repository references and release notes.
 - **The V2 pilot's run log left the plugin.** `opencode/references/v2-pilot.md` shipped a private model endpoint
   and machine paths with every install. It is now `research/2026-10-02-opencode-v2-pilot/01-pilot-record.md`, with
   the endpoint and the evidence paths removed; the earlier text remains in the repository's history (X18).
+- **The driver features no call reaches.** The Codex driver's `--verify` (with `--verify-sandboxed`,
+  `--allow-prompt-verify` and the `VERIFY` field), its exit codes 9 and 12, the wrap-up steer that asked an agent
+  for its answer before a declared wall clock ran out, and `--answer-json` are gone, as is the OpenCode driver's
+  `--verify`. The one call passes the driver no flag, so none of them could run, and a verifier in a write agent's
+  tree runs the agent's own code with the caller's rights (decision 3 of the driver audit). `--output-schema`
+  still asks for one bare JSON object; `--timeout`, `--idle-timeout` and `--max-commands` stay as driver flags.
+  Check an end state yourself after reading the report (codex `result-gates.md`). The suites' agent writes its
+  tree through the fake server's `FAKE_AGENT_SH` instead.
 
 ## 0.27.0 — 2026-10-08
 

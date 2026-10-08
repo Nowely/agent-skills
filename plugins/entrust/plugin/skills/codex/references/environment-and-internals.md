@@ -210,14 +210,10 @@ shorter way to write it.
 
 ### The injection limit
 
-A newline is a field separator. Require `RIGHTS` first and refuse `VERIFY` unless the harness explicitly
-passes command-line `--allow-prompt-verify`; a wrapper cannot distinguish an injected field from an
-intended one. The measured failure is recorded in
+A newline is a field separator, and a wrapper cannot distinguish an injected field from an intended one.
+So `RIGHTS` comes first, an injected one is always a duplicate, and no field runs a shell or uploads a file:
+the driver has no verifier, and `--attach` is no field. The measured failure is recorded in
 [incidents.md](incidents.md#prompt-file-newline-injection).
-
-`VERIFY` is refused from a prompt file unless the harness supplies `--allow-prompt-verify` on the command
-line, because verification runs an unsandboxed `/bin/sh` with the coordinator's rights. Prefer passing
-`--verify` explicitly rather than allowing a relayed value to introduce it.
 
 ## Bounding or stopping an agent
 
@@ -382,7 +378,7 @@ There is none by default, so an agent cannot commit under the grant a `RIGHTS:` 
 the main clone's common dir. Measured in a linked worktree whose main `.git` was read-only, `git commit`
 fails at `Unable to create '.../worktrees/<name>/index.lock': Permission denied`. An agent's work comes
 back as `worktreeDiffPath` and its untracked archive; `worktreeCommitsRef` is populated only where the
-caller's own `--verify`, which runs unsandboxed, committed.
+agent committed under the grant below.
 
 `WRITABLE: <repo>/.git` re-grants the common dir — it is the grant the retired `--commit` made, and
 `checkRoot` accepts it — so it is a widening to settle with the user like any other, because it hands the
@@ -405,8 +401,8 @@ spawns carries
 `-c core.fsmonitor=false -c core.hooksPath=/dev/null -c diff.external=`, every diff adds
 `--no-ext-diff --no-textconv`, and each call has a bounded timeout with `SIGKILL`. Without that,
 harvest, worktree removal, and the next checkout ran the agent's hooks, fsmonitor, and external diff with
-the caller's rights before anyone read the report. This does not protect the agent's own commands or
-`--verify`, which run with the rights granted to them.
+the caller's rights before anyone read the report. This does not protect the agent's own commands, which
+run with the rights granted to them.
 
 ## Configuration key oracle
 

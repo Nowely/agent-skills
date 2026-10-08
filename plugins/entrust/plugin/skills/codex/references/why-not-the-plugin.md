@@ -94,7 +94,7 @@ call with typed arguments: `tools/list` returns `codex` (`prompt`, `cwd`, `model
 `codex-reply` (`threadId`, `conversationId`, `prompt`). It is still not a substitute. It takes a
 `sandbox` parameter — the defect above, which suppresses the permission profile read-level test runs
 need. It returns prose, so nothing carries the evidence the exit ladder is derived from: no per-command
-status, no receipt, no place for `--verify` or `--expect-command`, no worktree lifecycle or cwd lock.
+status, no receipt, no place for `--expect-command`, no worktree lifecycle or cwd lock.
 Its `prompt` is a string, so pasted images cannot travel through it. And its approvals arrive at the
 CLIENT as elicitations, which makes the coordinator the approver — the opposite of this driver's fixed
 rule: an approval request is declined and recorded, without diagnosing the rights as too narrow or

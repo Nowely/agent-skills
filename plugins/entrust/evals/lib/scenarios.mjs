@@ -18,7 +18,6 @@ const shimDir = tempDir("entrust-test-");
 // the cases' --cwd, and a write-level cwd above a state directory is refused as an ancestor of it.
 const stateBase = tempDir("entrust-state-");
 // Use a unique name per run to avoid collisions in the shared $TMPDIR.
-const survivorPidName = `verify-survivor-${crypto.randomBytes(4).toString("hex")}.pid`;
 codexShim(shimDir);
 
 // A STRICT schema for --output-schema and a non-executable file for verify-126. Measured against the
@@ -211,7 +210,7 @@ async function until(fn, ms = 15000) {
 // What the two suites read off this module: the shim directory they resolve <CWD> against, the files
 // a case points the driver at, the runner and the flow helpers.
 export {
-  shimDir as SHIM, REVIEW_SCHEMA, survivorPidName, schemaFile, explicitTmp, notExec, laxSchemaFile,
+  shimDir as SHIM, REVIEW_SCHEMA, schemaFile, explicitTmp, notExec, laxSchemaFile,
   oneOfSchemaFile, looseSchemaFile, looseNestedSchemaFile, optionalSchemaFile, protoSchemaFile,
   sessionsDir, rolloutDay, rolloutLine, spacedDir, attachFile,
   attachFile2, mismatchSessions, mismatchDay, interruptLog, modelListLog, unknownModelLog,

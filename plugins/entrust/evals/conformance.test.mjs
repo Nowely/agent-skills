@@ -59,7 +59,6 @@ const RESPONSE_SCHEMAS = {
   "turn/start": load("v2/TurnStartResponse.json"),
   "config/read": load("v2/ConfigReadResponse.json"),
   "turn/interrupt": load("v2/TurnInterruptResponse.json"),
-  "turn/steer": load("v2/TurnSteerResponse.json"),
   "model/list": load("v2/ModelListResponse.json"),
   "account/rateLimits/read": load("v2/GetAccountRateLimitsResponse.json"),
 };

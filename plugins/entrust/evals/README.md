@@ -209,8 +209,8 @@ the lock, and by the time the run ends the lock has already been released.
 by counting how many of eight racing runs exited 0, and that number proves nothing: runs that acquire in
 sequence all legitimately succeed. Two independent reviews and one implementer read those exit codes as a
 violation. What settles it is whether two runs are ever inside the critical section *at the same time*, so
-the stampede case makes `--verify` — which executes while the lock is still held — do an atomic `mkdir`
-and fail if the section is occupied. Deciding which of two competing designs was correct took logging
+the stampede case has the scripted agent (`FAKE_AGENT_SH`, which runs while the lock is still held) do an
+atomic `mkdir` and leave a marker if the section is occupied. Deciding which of two competing designs was correct took logging
 every acquire/release interval and looking for genuine overlap: the old code reached three simultaneous
 holders, the new one never exceeds one.
 
@@ -235,8 +235,7 @@ there.
 A green suite is not the same as a suite that bites. Check the second property by mutating the driver in a
 copy and confirming the right cases go red — removing the `threadId` filter must fail the attribution
 cases; reverting the read-level guard to a name-only check must fail `profile-effect-dropped` and
-`profile-widened`; re-gating `--verify` behind the weaker checks must fail the verify cases, some on the
-report rather than the exit code; moving the lock back into the cwd must fail most of the lock suite.
+`profile-widened`; moving the lock back into the cwd must fail most of the lock suite.
 A suite that stays green under mutation is measuring nothing.
 
 **That check was run against every case, and six mutations survived it.** An external audit
@@ -263,9 +262,8 @@ by the bug.
 
 Write the mutation faithfully or it proves nothing. Disabling one clause of a multi-clause guard leaves the
 other clauses catching the case, which reads as "the test is weak" when the mutation was. And some
-mutations are *equivalent* — after `--verify` was moved above the proxy checks, swapping `!verifyPassed`
-back to `!opts.verify` changes no reachable behaviour, because a failing verify now short-circuits first.
-An equivalent mutant surviving is information about the code, not a hole in the suite; say so rather than
+mutations are *equivalent*: a guard that a rung above it already short-circuits changes no reachable
+behaviour when it is mutated (the verifier rung, before its removal, made one such pair). An equivalent mutant surviving is information about the code, not a hole in the suite; say so rather than
 inventing a test to cover it.
 
 ## The Russian trigger cases (20–23)

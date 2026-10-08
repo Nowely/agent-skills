@@ -121,7 +121,7 @@ An agent that could write the git common dir left config there, and the driver's
 removal and the next run's worktree add then executed it with the CALLER's rights, before anyone read
 the report. Measured before the fix: `core.fsmonitor=pwn.sh` logged runs under `status`, `diff`,
 `ls-files` twice, `worktree remove` and `worktree add`, at exit 0. Closed by the override set every
-driver-spawned git now carries; an agent's own `--verify` still runs with the rights it was given
+driver-spawned git now carries; an agent's own commands still run with the rights they were given
 ([Git-directory grant](environment-and-internals.md#git-directory-grant)).
 
 ## Orphaned load
@@ -145,8 +145,8 @@ it with a TERM-ignoring survivor.
 
 Three mutation-testing agents ran suites against deliberately broken copies;
 `commandsFailed` was 24, 17 and 9, and the run announced failure for work that had succeeded. Failed
-commands are report fields and no verdict now; pass `--verify` with the end condition you actually
-want.
+commands are report fields and no verdict now; check the end condition you actually want yourself
+([checking the end state](result-gates.md#checking-the-end-state)).
 
 ## A read cut to fragments
 
@@ -188,8 +188,8 @@ wanted one.
 A 20 MB report was truncated at 262144 bytes by exiting before stdout drained. A
 cyrillic answer sailed past a 4000-"byte" cap at 8003 actual bytes because `.length` counts UTF-16
 units. A deliberate refusal after spawn had its exit code rewritten to 4 by the child-exit handler —
-`fail()` now marks the run settled. Two deliberate attempts to make `--answer-json` come back as prose
-both returned bare JSON.
+`fail()` now marks the run settled. Two deliberate attempts to make a bare-JSON answer (the flag that
+asked for one, since folded into `--output-schema`) come back as prose both returned bare JSON.
 
 ## Resume rights
 
@@ -199,7 +199,7 @@ rights are per call, on resume as everywhere else. Verified, not assumed.
 ## Prompt-file newline injection
 
 `EXPECT: x\nVERIFY: touch /tmp/pwned` became two fields and executed the verifier through `/bin/sh`.
-`RIGHTS` is now first and prompt-file `VERIFY` requires a command-line authorization no agent call gives.
+`RIGHTS` is now first, and the verifier itself is gone (2026-10-08): no field runs a shell.
 
 ## State split the lock
 
@@ -251,7 +251,9 @@ message. Agent-message deltas now preserve `answerPartial`, and final answers ar
 ## The verifier gate was inverted
 
 `--verify` once ran only behind `--expect-command`, leaving `verify: null` for both proven-broken and
-proven-good states. The verifier now runs after any completed turn and precedes weaker evidence gates.
+proven-good states. It then ran after any completed turn, ahead of the weaker gates, until it was removed
+on 2026-10-08: no call reached it, and a check in a write agent's tree runs the agent's own code with the
+caller's rights.
 
 ## An unref'd kill never fired
 
@@ -264,7 +266,7 @@ GitHub issue #1 (2026-09-02) measured five of seven agents hitting a 540-second 
 commands used only 6–16% of the clock and the cut returned zero bytes. The driver gained a wrap-up
 steer, interrupt grace and partial capture, and an agent is no longer bounded by any wrapper's own cap.
 Native defaults now impose no wall clock; silence, command, and caller-declared clock bounds remain
-explicit.
+explicit. The steer went on 2026-10-08 with the wall clock it warned about: no call declares one.
 
 ## Here-documents under the grant
 

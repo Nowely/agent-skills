@@ -77,15 +77,6 @@ const LIMITS = {
   DEFAULT_MAX_COMMANDS: 1000,
   // Caps a DECLARED wall clock only; the default, 0, is no wall clock at all.
   MAX_TIMEOUT_S: 7200,
-  // The verifier is the caller's own command, bounded by what is left of --timeout and by this.
-  VERIFY_TIMEOUT_S: 300,
-  // How much of each verifier stream the report carries, and how much is held in memory: how much a
-  // verifier prints says nothing about the work, so neither bound may fail the check.
-  VERIFY_TAIL_CHARS: 2000,
-  VERIFY_BUFFER_CHARS: 65536,
-  // Too little of the budget left to start the verifier in at all; ENTRUST_VERIFY_FLOOR_MS
-  // overrides it, which is also the only way to reach that branch without racing the clock.
-  VERIFY_FLOOR_MS: 100,
   // Retention for the answers and job records this driver keeps: age first, then count, never the newest
   // entry.
   PRUNE_DAYS: 14,
@@ -100,11 +91,8 @@ const LIMITS = {
   // and how much of the rollout it reads: everything it needs is in the opening record.
   RECEIPT_LOOKBACK_DAYS: 2,
   RECEIPT_HEAD_BYTES: 64 * 1024,
-  // A budget the model cannot plan against is spent entirely on investigation: a quarter of the clock is
-  // reserved for writing the answer, bounded both ways, and the cut keeps a grace of the same shape for
-  // the server to close the turn in.
-  WALL_RESERVE_MIN_MS: 60000,
-  WALL_RESERVE_MAX_MS: 300000,
+  // The cut keeps a grace, a quarter of a declared wall clock bounded both ways, for the server to close
+  // the turn in.
   CUT_GRACE_MIN_MS: 50,
   CUT_GRACE_MAX_MS: 10000,
   // A transient failure is retried only where the clock still leaves the backoff plus a turn worth having.
@@ -152,8 +140,7 @@ const LIMITS = {
 };
 // Not a limit: where to look for codex when PATH does not have it.
 const CODEX_FALLBACK_DIRS = ["/opt/homebrew/bin", "/usr/local/bin", "~/.local/bin"];
-// --timeout is the caller's whole budget, so anything the driver spends after the turn — the verifier —
-// has to come out of what is left of it rather than out of a private allowance.
+// --timeout is the caller's whole budget, counted from the process start.
 const startedAtMs = Date.now();
 
 // Both handshakes share this payload: `name` records the rollout originator as "Claude Code",
@@ -210,7 +197,6 @@ const FIELDS = [
   { name: "RIGHTS", kind: "rights", flag: null },
   { name: "EFFORT", kind: "value", flag: "--effort" },
   { name: "EXPECT", kind: "value", flag: "--expect-command" },
-  { name: "VERIFY", kind: "value", flag: "--verify" },
   { name: "NETWORK", kind: "bool", flag: "--network", off: "--no-network" },
   { name: "MODEL", kind: "value", flag: "--model" },
   { name: "WEB_SEARCH", kind: "value", flag: "--web-search" },
@@ -272,17 +258,7 @@ const LADDER = [
   { code: EXIT.APPROVAL,
     help: "an approval request was declined or expired unanswered; inspect the\n      report, if delivered, before judging task completeness",
     when: (c) => c.escalations.some((e) => e.decision !== "accepted") },
-  // Above every proxy below it, and distinct from "the check said no". Two shapes of the same finding,
-  // so one rung: a check the budget left no room for never ran, and a check that ran without an
-  // observable exit status measured nothing. Either leaves verifyResult null or unmeasured, which every
-  // gate below reads as "nothing to complain about" — so the ladder would fall through to the weaker
-  // gates and a run with an unrun --verify could reach 0.
-  { code: EXIT.VERIFY_UNMEASURED, help: "--verify was declared and could not be measured",
-    when: (c) => c.verifySkipped === "budget-exhausted" || (c.verifyResult != null && !c.verifyResult.measured) },
-  { code: EXIT.VERIFY_FAILED, help: "--verify ran and failed",
-    when: (c) => c.verifyFailed },
-  // --allow-no-commands waives the floor and must not waive a declared --expect-command; a passing
-  // --verify does not waive it either, since the end state can be right while the work drifted.
+  // --allow-no-commands waives the floor and must not waive a declared --expect-command.
   // The floor asks only whether the turn RAN anything: with rung 11 retired, judging a command by its
   // exit code here would reinstate it under another number, and the hint below would tell a turn whose
   // commands all failed to re-run as if it had been recall-only. A declared --expect-command is the
@@ -297,7 +273,7 @@ const LADDER = [
   // No rung for a failed command. Both records of one were harm: a turn whose work had succeeded was
   // announced as a failure, and a ten-finding answer was discarded on it. commandsFailed,
   // commandsBlocked, fileChangesFailed and commandsProbeNegative stay in the report, where a caller
-  // reads them; --expect-command (exit 5) and --verify (exit 9) are the gates that judge.
+  // reads them; --expect-command (exit 5) is the gate that judges.
 ];
 const ladderHelp = () => LADDER.map((r) => `  ${String(r.code).padStart(2)}  ${r.help}`).join("\n");
 const stateSubdirHelp = () => STATE_SUBDIRS
@@ -357,8 +333,8 @@ const HELP = [
   the driver scopes that context to a fresh agent leaf on every invocation,
   including child checks. Report publication still refuses overwrites.
   <tmp>/entrust must be a directory of yours and no link; anything else is
-  exit 2. The report names it as tmpDir. It is exported for the turn AND the
-  verifier, and it OUTLIVES the run, because --brief tells the agent to leave
+  exit 2. The report names it as tmpDir. It is exported for the turn, and it
+  OUTLIVES the run, because --brief tells the agent to leave
   long output in a file there; the driver never removes it.
   A worktree turn that did not complete, or a harvest
   that failed, PRESERVES the tree and the report says why and how to remove it; a
@@ -379,13 +355,11 @@ const HELP = [
   --check-prompt-file F  exit 2 on what --prompt-file F would refuse offline
   --attach FILE      attach a local image (${attachExts("localImage").join("/")}) or audio
                      file (${attachExts("localAudio").join("/")}) to the prompt; repeatable
-  --answer-json      demand one bare JSON object as the answer; the report then
-                     carries answerJson and answerJsonError
   --output-schema F  demand a JSON object matching the schema in file F: the
                      server constrains generation, the driver checks the result
                      independently, and one corrective turn is spent on a mismatch
-                     before exit 13. Implies --answer-json, and takes a STRICT
-                     schema only. maxLength and maxItems are local caps; set them
+                     before exit 13. The report carries answerJson and
+                     answerJsonError. Takes a STRICT schema only. maxLength and maxItems are local caps; set them
                      in a per-run schema file to change the shipped defaults — see --help-all
   --brief            ask for a summary, not a working note, and cap what comes
                      back inline. The full answer is at answerPath either way:
@@ -430,12 +404,7 @@ const HELP = [
   handed caller-supplied text cannot prevent that. For a wrapper: write the
   values, do not build a command line out of them.` },
   { s: "Turn", all: true,
-    text: `  --allow-prompt-verify  permit VERIFY in a prompt file. Without it VERIFY there
-                     is refused, because --verify runs an unsandboxed shell with
-                     your own rights and a value copied into a prompt file must
-                     not be able to introduce one. Pass --verify on the command
-                     line instead
-  --web-search ${[...WEB_SEARCH].join("|")}
+    text: `  --web-search ${[...WEB_SEARCH].join("|")}
                      off by default: a search makes the turn depend on what the
                      index says today` },
 
@@ -443,24 +412,10 @@ const HELP = [
     text: `  --expect-command RE   a command matching RE must have run. RE is matched
                      against the command the SERVER parsed as well as the wrapper
                      string it reports (\`/bin/zsh -lc '...'\`), so \`^pnpm\` works
-  --verify CMD       run CMD after the turn, in the agent's tree; its exit code
-                     decides. CMD is a shell command with YOUR rights, env and
-                     network, bounded by what is left of --timeout, at most ${LIMITS.VERIFY_TIMEOUT_S} s
-  --verify-sandboxed run --verify through \`codex sandbox\` under the read-only
-                     profile --level read uses: the tree is readable, \$TMPDIR is
-                     writable, nothing else is, so a verifier that must WRITE fails
   --allow-no-commands   accept a turn that ran nothing. A command that FAILED is
                      no rung at all: the report counts it, and --expect-command
-                     (exit 5) or --verify (exit 9) is what judges the work`,
-    more: `  --verify: prefer a command that does not execute anything out of the tree the
-  agent just wrote (\`npm test\` runs the agent's own package.json script). The
-  report carries verify.budgetMs, verify.timedOut and verify.sandboxed, and the
-  last ${LIMITS.VERIFY_TAIL_CHARS} characters of each stream; the output is streamed, never buffered
-  whole, and the last ${LIMITS.VERIFY_BUFFER_CHARS} characters are kept in memory. Most build and test
-  runners write, so most fail
-  under --verify-sandboxed; it passes the exit code through,
-  and is a usage error where this codex has no \`sandbox\` subcommand.
-  commandsFailed, commandsDeclined, commandsBlocked (a command that reached the
+                     (exit 5) is what judges the work`,
+    more: `  commandsFailed, commandsDeclined, commandsBlocked (a command that reached the
   client with no verdict at all, neither failed nor declined), fileChangesFailed
   and commandsProbeNegative are report fields and no exit code: read them before
   acting on the answer. commandsDeclined counts commands an approval refusal
@@ -527,17 +482,16 @@ const HELP = [
   { s: "Bounds",
     text: `  --timeout SECONDS  none by default (0): the turn runs as long as the work takes,
                      bounded by --idle-timeout and --max-commands. A declared
-                     budget is anchored at process start: at T minus a reserve the
-                     turn is STEERED to answer now, at T minus a grace it is CUT
-                     (exit 3, cut.kind wall), at T the report is written anyway
+                     budget is anchored at process start: at T minus a grace the
+                     turn is CUT (exit 3, cut.kind wall), at T the report is
+                     written anyway
   --idle-timeout S   default ${LIMITS.DEFAULT_IDLE_TIMEOUT_S}, 0 disables — how long the thread may say NOTHING
                      before the turn is cut with cut.kind idle. Every notification
                      resets it. This, not --timeout, is the hang guard
   --max-commands N   default ${LIMITS.DEFAULT_MAX_COMMANDS}, 0 disables — how many commands the turn may run
                      before it is cut with cut.kind commands (exit 3, the report
                      holding the answer so far): the bound that catches a loop`,
-    more: `  --timeout is at most ${LIMITS.MAX_TIMEOUT_S}. The reserve is a quarter of the budget, at least
-  ${LIMITS.WALL_RESERVE_MIN_MS / 1000} s and at most ${LIMITS.WALL_RESERVE_MAX_MS / 1000} s, and only where that fits; the grace is ${LIMITS.CUT_GRACE_MAX_MS / 1000} s, at most a
+    more: `  --timeout is at most ${LIMITS.MAX_TIMEOUT_S}. The grace is ${LIMITS.CUT_GRACE_MAX_MS / 1000} s, at most a
   quarter of the budget — turn/interrupt, then that long for the server to close
   the turn, and the report says whether it did. --idle-timeout is reset by every
   notification AND server request on the thread (item starts and completions,
@@ -650,10 +604,6 @@ ${stateSubdirHelp()}
   ENTRUST_CODEX                 absolute path to the codex executable; without
                                 it the driver searches PATH, then
                                 ${CODEX_FALLBACK_DIRS.join(", ")}
-  ENTRUST_VERIFY_FLOOR_MS       how little of the --timeout budget is too
-                                little to start --verify in (default ${LIMITS.VERIFY_FLOOR_MS}).
-                                Also a test seam: the branch is otherwise
-                                reachable only by landing inside a ${LIMITS.VERIFY_FLOOR_MS} ms window
   ENTRUST_POLICY_SEAM           a test seam: a plist read like the device's
                                 managed Codex policy, beside it; a --web-search
                                 mode must pass both, so it narrows and never widens
@@ -735,12 +685,11 @@ function helpText(full) {
 // so a copied value carrying one ends its own field and opens another, and the wrapper cannot tell an
 // injected line from one it meant to write. Two structural answers, both here rather than in the
 // wrapper, which is the component that cannot know which of its values came from somewhere else:
-//   * RIGHTS must be the FIRST field, so an injected RIGHTS is always a duplicate and already a usage error.
-//   * VERIFY runs an unsandboxed /bin/sh with the caller's own rights, so from a prompt file it needs
-//     --allow-prompt-verify on the COMMAND LINE — the one place no copied value can reach.
-// Two flags are deliberately NOT fields, each because an injected line would be a grant nobody made:
-// ATTACH uploads a local file, and --report-file would let a copied line choose where another run's
-// report lands. VERIFY is a field only behind --allow-prompt-verify, because it executes a shell. CLI_ONLY_FIELDS above are refused for a different reason: they are bounds and transport, not
+// The answer here rather than in the wrapper, the component that cannot know which of its values came from
+// somewhere else: RIGHTS must be the FIRST field, so an injected RIGHTS is always a duplicate and already a
+// usage error. Two flags are deliberately NOT fields, each because an injected line would be a grant nobody
+// made: ATTACH uploads a local file, and --report-file would let a copied line choose where another run's
+// report lands. CLI_ONLY_FIELDS above are refused for a different reason: they are bounds and transport, not
 // rights, and the driver's own defaults are what let an agent run with nothing configured.
 let promptFileFields = null;   // what the file actually declared, for the report
 let promptFileBody = null;     // the prompt the file carried under its header, or null when it carried none
@@ -749,7 +698,7 @@ let promptFileBody = null;     // the prompt the file carried under its header, 
 // of leading FIELD: lines, and everything from the first line that is not one is the prompt, verbatim.
 const RIGHTS_HEADER_RE = /^([A-Z][A-Z_]*):/;
 const BODY_LABELS = new Set(["TASK", "CHECK", "RETURN"]);
-function argvFromPromptFile(file, allowPromptVerify) {
+function argvFromPromptFile(file) {
   let raw;
   try { raw = fs.readFileSync(file, "utf8"); }
   catch (e) { fail(EXIT.USAGE, `--prompt-file cannot read ${file}: ${e.message}`); }
@@ -774,8 +723,6 @@ function argvFromPromptFile(file, allowPromptVerify) {
     if (!PROMPT_FIELDS.has(field))
       fail(EXIT.USAGE, `unknown header field ${field} at line ${bodyAt + 1} of ${file} — a typo, or a command-line-only flag; the body starts at the first TASK: line`);
     if (field !== "WRITABLE" && seen.has(field)) fail(EXIT.USAGE, `--prompt-file: ${field} appears more than once`);
-    if (field === "VERIFY" && !allowPromptVerify)
-      fail(EXIT.USAGE, "--prompt-file: VERIFY runs an unsandboxed shell with your own rights, so it is refused from a prompt file unless --allow-prompt-verify is given on the command line; pass --verify there instead");
     seen.add(field);
     declared.push(field);
     // RIGHTS is the rights declaration and the only field that expands to more than one flag, once the
@@ -880,7 +827,6 @@ function parseArgs(argv) {
       // Validated in readOpts, off the raw command line, so a refusal the prompt file causes reaches it too.
       case "--report-file": o.reportFile = need(++i, a); break;
       // Only ever read off the command line, never out of a prompt file — that is the whole of its value.
-      case "--allow-prompt-verify": o.allowPromptVerify = true; break;
       case "--level": o.level = need(++i, a); o.levelExplicit = true; break;
       case "--cwd": o.cwd = need(++i, a); break;
       case "--worktree": o.worktree = need(++i, a); break;
@@ -897,12 +843,9 @@ function parseArgs(argv) {
       case "--resume": o.resume = need(++i, a); break;
       case "--allow-no-commands": o.allowNoCommands = true; break;
       case "--expect-command": o.expect = need(++i, a); break;
-      case "--verify": o.verify = need(++i, a); break;
-      case "--verify-sandboxed": o.verifySandboxed = true; break;
       case "--network": o.network = true; break;
       case "--no-network": o.network = false; break;
       case "--web-search": o.webSearch = need(++i, a); break;
-      case "--answer-json": o.answerJson = true; break;
       case "--output-schema": o.outputSchemaFile = need(++i, a); break;
       case "--brief": o.brief = true; break;
       case "--host-home": o.hostHome = true; break;
@@ -962,7 +905,6 @@ function parseArgs(argv) {
     if (o.level !== "read") fail(EXIT.USAGE, "--cwd is required at --level write: the writable root is a grant, and a defaulted grant is one nobody made");
     o.cwd = canonPath(process.cwd()) ?? process.cwd();
   }
-  if (o.verifySandboxed && o.verify === undefined) fail(EXIT.USAGE, "--verify-sandboxed sandboxes --verify, which was not given");
   // Compile it now: an invalid pattern thrown from inside the report handler kills the run long after
   // the work is done, and costs the whole delegation.
   if (o.expect !== undefined) {
@@ -2174,7 +2116,7 @@ function restorePriorWork(dir, prior) {
   return restored;
 }
 
-// Runs AFTER the turn settled and after --verify (the verifier executes in the tree).
+// Runs AFTER the turn settled.
 // A COMPLETED turn's tree is disposed of entirely: the work is harvested first — the tracked diff
 // (staged and unstaged, --binary so a binary edit survives `git apply`) and an archive of the
 // untracked files, both under the answers dir — and only then is the tree removed, --force included,
@@ -2490,10 +2432,8 @@ function readOpts(argv = process.argv.slice(2), { resolveState = true } = {}) {
     fail(EXIT.USAGE, "--prompt-file given more than once; only one prompt file defines an agent");
   if (at >= 0 && (argv[at + 1] === undefined || argv[at + 1].startsWith("--")))
     fail(EXIT.USAGE, "--prompt-file requires a non-empty value");
-  // Scanned off the raw command line on purpose: a prompt file must not be able to authorise itself.
-  const allowPromptVerify = argv.includes("--allow-prompt-verify");
   const o = at >= 0
-    ? parseArgs([...argvFromPromptFile(argv[at + 1], allowPromptVerify),
+    ? parseArgs([...argvFromPromptFile(argv[at + 1]),
                  ...argv.filter((_, i) => i !== at && i !== at + 1)])
     : parseArgs(argv);
   if (promptFileBody !== null) {
@@ -2578,16 +2518,6 @@ async function setup() {
   // grants nothing beside itself.
   // Set on process.env because the codex spawn and `codex sandbox :tmpdir` read it.
   process.env.TMPDIR = runTmpDir();
-
-  // Asked here rather than at the deadline: an opt-in sandbox that turns out to be unavailable must not
-  // be discovered after the turn has been paid for, and must never silently fall back to running the
-  // verifier with the caller's own rights.
-  if (opts.verifySandboxed) {
-    const r = spawnSync(codexBin, ["sandbox", "--help"],
-      { encoding: "utf8", timeout: 20000, stdio: ["ignore", "pipe", "pipe"] });
-    if (r.status !== 0)
-      fail(EXIT.USAGE, `--verify-sandboxed needs \`${codexBin} sandbox\`, which this installation does not provide (${r.error ? String(r.error.code ?? r.error.message) : `exit ${r.status}`}); drop the flag to run the verifier unsandboxed, or upgrade codex`);
-  }
 
   // Probe the caller's settings before taking the write lock so a stalled config request does not occupy the directory.
   codexHome = opts.hostHome ? null : await isolatedHome();
@@ -2791,7 +2721,6 @@ function shutdown() {
   if (shutdownDone) return shutdownDone;
   shutdownDone = (async () => {
     if (probeConn) probeConn.close({ kill: "SIGKILL" });   // kills the group once and settles the probe
-    killVerifier();                   // the verifier is a child too, and it must never outlive the driver
     clearInterval(approvalPoll);
     for (const o of openApprovals.values()) clearTimeout(o.timer);
     if (child) {
@@ -2905,7 +2834,6 @@ let turnError = null;
 let selectedModel = null;   // what the server resolved, which may not be what was asked for
 let selectedEffort = null;  // likewise: with no --effort this is whatever config.toml chose
 let effectiveSandbox = null;   // the sandbox the SERVER applied, not the one we asked for
-let verifyResult = null;    // the caller-run check, the one piece of evidence the model cannot author
 let tokenUsage = null;      // the latest thread/tokenUsage/updated payload: what this agent cost
 let rateLimits = null;      // the account snapshot read once before any thread is started
 let turnDiffPath = null;    // where the last turn/diff/updated payload was persisted, or null when it could not be written
@@ -3775,7 +3703,7 @@ function startCorrectiveTurn(errs) {
 }
 
 // A Claude subagent can be handed a schema and the tool layer retries until the shape matches. There is no
-// such layer here, so --answer-json asks for the shape and then reports honestly whether it arrived: a
+// such layer here, so --output-schema asks for the shape and then reports honestly whether it arrived: a
 // caller that machine-reads the answer must be able to tell a parse failure from a null field. The fence
 // strip is not politeness — instructed or not, a fenced block is the single most common way the answer
 // comes back unparseable, and treating it as a failure would throw away a good answer.
@@ -4077,128 +4005,6 @@ function classifyEvidence() {
            answerPartial, answerPartialPath: answerPartial ? answerPartialPath : null };
 }
 
-// The verifier's own process, at module scope so shutdown(), a signal and the exit handler can all reach
-// its GROUP. A synchronous spawn is unreachable by construction, and ignores every signal until it ends.
-let verifyChild = null;
-const killVerifier = () => { if (verifyChild) killGroupOf(verifyChild, "SIGKILL"); };
-// The verifier is the caller's command, run in the agent's tree. --verify-sandboxed puts it behind the
-// same read profile the read level uses (`codex sandbox -P <profile> -C <cwd>`): exit codes pass
-// through, the tree is readable, $TMPDIR is writable and nothing else is — measured on codex 0.150.1.
-// The same profile means the same egress, including the caller's denial of it: a verifier that can reach
-// what the turn could not is not checking the work the turn was allowed to do.
-function verifyArgv() {
-  if (!opts.verifySandboxed) return ["/bin/sh", ["-c", opts.verify]];
-  return [codexBin, ["sandbox",
-    "-c", `permissions.${READ_PROFILE}.extends=":read-only"`,
-    "-c", `permissions.${READ_PROFILE}.filesystem={":tmpdir"="write"}`,
-    "-c", `permissions.${READ_PROFILE}.network={enabled=${opts.network}}`,
-    "-P", READ_PROFILE, "-C", cwd, "--", "/bin/sh", "-c", opts.verify]];
-}
-// Spawn asynchronously so signals and deadlines can reach the verifier's process group.
-// Resolve its observed status, output and timeout state.
-function runVerifyProcess(budgetMs) {
-  return new Promise((resolve) => {
-    const [bin, argv] = verifyArgv();
-    let done = false, timedOut = false, status = null, signal = null, error = null;
-    let out = "", err = "";
-    let child2;
-    try {
-      // The caller's environment, but for the run's own $TMPDIR, for the plain verifier: it is the
-      // caller's own command and nothing else here may reshape what it sees. CODEX_HOME is set only for
-      // the sandboxed form, where the profile must resolve against the same home the turn used.
-      const env = opts.verifySandboxed && codexHome !== null ? { ...process.env, CODEX_HOME: codexHome } : process.env;
-      // detached: its own group, so a verifier that backgrounds a server is swept with it rather than
-      // outliving the run.
-      child2 = spawn(bin, argv, { cwd, stdio: ["ignore", "pipe", "pipe"], detached: true, env });
-    } catch (e) {
-      return resolve({ status: null, signal: null, error: e, stdout: "", stderr: "", timedOut: false });
-    }
-    verifyChild = child2;
-    // A rolling tail, not a cap that fails the run: how much a verifier prints says nothing about the
-    // work; VERIFY_BUFFER_CHARS bounds memory and VERIFY_TAIL_CHARS bounds the report.
-    const keep = (s, d) => (s + d).slice(-LIMITS.VERIFY_BUFFER_CHARS);
-    child2.stdout.setEncoding("utf8"); child2.stdout.on("data", (d) => { out = keep(out, d); });
-    child2.stderr.setEncoding("utf8"); child2.stderr.on("data", (d) => { err = keep(err, d); });
-    const settle = () => {
-      if (done) return;
-      done = true;
-      clearTimeout(bell);
-      clearTimeout(grace);
-      killVerifier();     // sweep whatever the verifier backgrounded before the group is forgotten
-      verifyChild = null;
-      resolve({ status, signal, error, stdout: out, stderr: err, timedOut });
-    };
-    let grace = null;
-    // Only when no exit has been observed: the bell can land inside the grace after a real exit, and an
-    // `exitCode: 0` beside `timedOut: true` describes a run that did not happen.
-    const bell = setTimeout(() => {
-      if (status === null && signal === null) { timedOut = true; error = error ?? { code: "ETIMEDOUT" }; }
-      killVerifier();
-    }, budgetMs);
-    child2.on("error", (e) => { error = e; settle(); });
-    child2.on("exit", (code, sig) => {
-      status = code; signal = sig;
-      // The exit status is the answer even when something the verifier backgrounded still holds the
-      // pipes open; the grace is for the output already in flight, not for the verdict.
-      grace = setTimeout(settle, 200);
-      grace.unref?.();
-    });
-    child2.on("close", settle);
-  });
-}
-
-// --verify runs on its OWN schedule, not as a reward for having passed the weaker gates: --expect-command
-// greps command strings the MODEL wrote and is defeated by `true # vitest`, while --verify is a command
-// the CALLER runs afterwards and cannot be authored by the model. Gating the strong check on the weak
-// ones passing leaves `verify: null`, printing a proven-broken end state and a proven-good one alike.
-//
-// Skipped on a timeout only, and for a reason: the deadline fires while Codex is still alive and
-// possibly mid-write, so the check would read a torn tree. verifySkipped (the return value) records
-// which it was, because "not measured" and "not requested" are different facts about the run.
-// Sets the module-level verifyResult; the ladder and the report read it from there.
-async function runVerifier() {
-  let verifySkipped = opts.verify ? null : "not-requested";
-  if (opts.verify) {
-    if (turnStatus === "timedOut") verifySkipped = "turn-timed-out";
-    else if (turnStatus !== "completed") verifySkipped = `turn-${turnStatus}`;
-    else {
-      // Cap the verifier at VERIFY_TIMEOUT_S and the caller's remaining wall clock, with no minimum allowance.
-      // Kill its whole group with SIGKILL at the deadline so backgrounded processes cannot outlive the check.
-      const remainingMs = opts.timeout > 0 ? startedAtMs + opts.timeout * 1000 - Date.now() : LIMITS.VERIFY_TIMEOUT_S * 1000;
-      // The VERIFY_FLOOR_MS default is overridable so tests can reach the budget-exhausted branch
-      // without racing the turn's completion against the end of the wall clock.
-      const verifyFloorMs = Number(process.env.ENTRUST_VERIFY_FLOOR_MS ?? LIMITS.VERIFY_FLOOR_MS);
-      if (remainingMs < verifyFloorMs) { verifySkipped = "budget-exhausted"; verifyResult = null; }
-      else {
-      const budgetMs = Math.min(LIMITS.VERIFY_TIMEOUT_S * 1000, remainingMs);
-      const v = await runVerifyProcess(budgetMs);
-      // "Exited non-zero" and "could not be run at all" are different facts and must not render alike:
-      // one means the work is missing, the other means the verifier is broken, and they call for opposite
-      // responses. The classification is on the OBSERVED EXIT STATUS, never on whether anything went
-      // wrong around it:
-      //   127 / 126  the shell never ran the command — a typo, or a tool missing from the DRIVER's PATH
-      //              (a launchd or hook context routinely lacks pnpm). Says nothing about the work.
-      //   no status  never observed an exit at all: killed at the deadline, or spawn itself failed.
-      //   status 0   the command DID exit successfully, whatever its output did afterwards — a verifier
-      //              that passes while something it backgrounded still holds the pipe is a pass we are
-      //              holding proof of, and reporting it as unmeasurable throws the proof away.
-      const noStatus = v.status === null || v.status === undefined;
-      const notRunnable = v.status === 127 || v.status === 126;
-      const measured = !noStatus && !notRunnable;
-      verifyResult = {
-        command: opts.verify, exitCode: v.status, signal: v.signal ?? null,
-        ok: measured && v.status === 0, measured,
-        error: v.error ? String(v.error.code ?? v.error.message) : null,
-        // Report which budget applied and whether it ended the check, alongside the observed exit status.
-        budgetMs, timedOut: v.timedOut === true, sandboxed: Boolean(opts.verifySandboxed),
-        stdout: String(v.stdout ?? "").slice(-LIMITS.VERIFY_TAIL_CHARS), stderr: String(v.stderr ?? "").slice(-LIMITS.VERIFY_TAIL_CHARS)
-      };
-      }
-    }
-  }
-  return verifySkipped;
-}
-
 // Why a delegating turn exits 5: the root ran nothing and the children did the work. Naming them keeps
 // "no command ran" from reading as a dead turn, and says in the same breath that their commands are not
 // this agent's evidence. The path list is capped: a wide fan-out must not turn the cause into a page.
@@ -4213,28 +4019,12 @@ function subagentCause() {
 
 // The ordered exit ladder, first match wins. A declined approval records an unmet permission request;
 // it does not establish task incompleteness or answer loss, and the report is what settles either.
-function decideExitCode(ev, verifySkipped) {
-  // Everything any rung reads, in one object: the turn's outcome (ev), the verifier's, and the module
-  // state the rungs used to reach around their argument for.
-  const ctx = { ...ev, verifySkipped, verifyFailed: verifyResult != null && verifyResult.ok !== true,
-                turnStatus, turnError, interactions, escalations, verifyResult, opts };
+function decideExitCode(ev) {
+  // Everything any rung reads, in one object: the turn's outcome (ev) and the module state the rungs used
+  // to reach around their argument for.
+  const ctx = { ...ev, turnStatus, turnError, interactions, escalations, opts };
   for (const rung of LADDER) if (rung.when(ctx)) return rung.code;
   return EXIT.SUCCESS;
-}
-
-// One steer at a time: the guard is what keeps a slow server from overlapping two sends on one turn.
-let steerInFlight = false;
-// The one place a turn/steer is sent. Returns false when nothing was sent — there is no live turn to
-// steer, a send is already out, or the turn is being cut, in which case steering it is pointless.
-function steerOnce(text, { onSent = () => {}, onRejected = () => {} } = {}) {
-  const body = String(text ?? "").trim();
-  if (!body || settled || pendingCut || steerInFlight || rootThreadId === null || rootTurnId === null || !requestFn) return false;
-  steerInFlight = true;
-  requestFn("turn/steer", { threadId: rootThreadId, expectedTurnId: rootTurnId,
-    input: [{ type: "text", text: body, text_elements: [] }] })
-    .then(() => { steerInFlight = false; onSent(); })
-    .catch((e) => { steerInFlight = false; onRejected(e); });
-  return true;
 }
 
 // codeOverride keeps a rung the ladder cannot reach on its own: a server that DIED mid-turn is a
@@ -4248,14 +4038,12 @@ function finish(reason, codeOverride = null) {
   settleOpenApprovals("run ended");
   countLateDecisions();
   const ev = classifyEvidence();
-  // Catch failures in both halves of the verifier continuation: abort() is a no-op once settled,
-  // so neither failure may leave the run hanging without a report.
-  runVerifier()
-    .then((verifySkipped) => writeReport(ev, verifySkipped, codeOverride))
-    .catch((e) => {
-      process.stderr.write(`entrust: the report could not be produced (${e.message})\n`);
-      exitWith(EXIT.TRANSPORT);
-    });
+  // abort() is a no-op once settled, so a failure here must not leave the run hanging without a report.
+  try { writeReport(ev, codeOverride); }
+  catch (e) {
+    process.stderr.write(`entrust: the report could not be produced (${e.message})\n`);
+    exitWith(EXIT.TRANSPORT);
+  }
 }
 
 // endedAt is what says this thread's run is over — a `--resume last` looks no further than the record,
@@ -4269,19 +4057,19 @@ function closeJobRecord(finalCode) {
   writeJob({ ...closingFields, exitCode: finalCode, endedAt: new Date().toISOString() });
 }
 
-function writeReport(ev, verifySkipped, codeOverride) {
+function writeReport(ev, codeOverride) {
   // Quiesce the turn's process group BEFORE harvesting a tree that is about to be removed. A command
   // the turn backgrounded can still be writing; snapshotting around it would archive a half-written
   // file and the removal would then delete the rest. Bounded and synchronous — finish() is — and only
   // on the path that actually removes a tree, so an ordinary run's teardown timing is unchanged.
   if (worktreeInfo && !worktreeInfo.disposed && turnStatus === "completed" && child) quiesceGroupSync();
-  // After the verifier (which runs in the tree), before the report (which carries the outcome).
+  // Before the report, which carries the outcome.
   const worktree = disposeWorktree(turnStatus === "completed");
   // The receipt is the one artefact no wrapper can fabricate; locate it, READ it, and say what it says,
   // so the coordinator does not have to glob for it and does not have to trust a filename.
   const receipt = findRollout(rootThreadId);
   const receiptPath = receipt?.path ?? null;
-  const code = codeOverride ?? decideExitCode(ev, verifySkipped);
+  const code = codeOverride ?? decideExitCode(ev);
   const { ran, blocked, probeNegatives, failedCmds, declinedCmds, failedPatches, expected, pipedToPager, final,
           fullAnswer, schemaErrs, answerPath, answer, sizeOverflow, bounded, commentaryOnly, commentaryPath,
           answerPartial, answerPartialPath } = ev;
@@ -4411,7 +4199,6 @@ function writeReport(ev, verifySkipped, codeOverride) {
       ? { kind: pendingCut.kind, limit: pendingCut.limit, observed: pendingCut.observed,
           completedInGrace: pendingCut.completedInGrace } : null,
     timing,
-    verify: verifyResult, verifySkipped,
     answerPhase: final?.phase ?? null, commentaryOnly,
     // The messages of a turn that answered nothing, on disk; null when there was an answer.
     commentaryPath,
@@ -4552,7 +4339,7 @@ function developerInstructions() {
     // Ask for a summary and leave details in files so the coordinator opens them only when needed.
     ...(opts.brief
       ? [`Answer in at most ${LIMITS.BRIEF_LINES} lines: the conclusion, then only what changes what the reader does next.`,
-         // Withheld under --answer-json, which has just demanded ONE JSON object and nothing else: the
+         // Withheld under --output-schema, which has just demanded ONE JSON object and nothing else: the
          // two sentences together tell the agent to answer in JSON and to put the rest beside it.
          ...(opts.answerJson ? []
            : ["Put anything longer — diffs, transcripts, tables, evidence — in a file under $TMPDIR and give its absolute path."])]
@@ -4565,34 +4352,17 @@ function developerInstructions() {
 const armAt = (whenMs, fn) => { const t = setTimeout(fn, Math.max(50, whenMs - Date.now())); t.unref?.(); return t; };
 
 function armWallClock() {
-  // Three rungs on one clock, because a budget the model cannot plan against is a budget it spends on
-  // investigation and then has nothing left to write with. Anchored on the PROCESS start, not on this
-  // line: the config probe runs before this timer is armed, and a relative deadline overshoots the
-  // caller's whole budget by however long that took.
-  //   T−reserve  ask for the final answer NOW (the only recovery that works: E1 measured that an
-  //              interrupt DISCARDS the in-flight message, so nothing after this rung can produce one)
+  // Two rungs on one clock, anchored on the PROCESS start, not on this line: the config probe runs before
+  // this timer is armed, and a relative deadline overshoots the caller's whole budget by however long that
+  // took.
   //   T−grace    stop the turn, and give the server the grace to close it
   //   T          report whatever arrived, if the grace has not already
-  // All three are armed only when a wall clock was declared. Without one the turn is bounded by silence
+  // Both are armed only when a wall clock was declared. Without one the turn is bounded by silence
   // (--idle-timeout), by volume (--max-commands) and by the coordinator, which is what a native subagent
-  // is bounded by — so there is no deadline to steer towards, nothing to cut at, and nothing to report
-  // early. A rung armed at T = start would fire at once and cut the run this default exists to allow.
+  // is bounded by. A rung armed at T = start would fire at once and cut the run this default exists to allow.
   const endAtMs = startedAtMs + opts.timeout * 1000;
-  const reserveMs = Math.min(LIMITS.WALL_RESERVE_MAX_MS, Math.max(LIMITS.WALL_RESERVE_MIN_MS, opts.timeout * 250));
   const graceMs = Math.min(LIMITS.CUT_GRACE_MAX_MS, Math.max(LIMITS.CUT_GRACE_MIN_MS, opts.timeout * 250));
   if (!(opts.timeout > 0)) return;
-  // Armed only where the reserve actually fits inside what is left: on a short agent there is nothing to
-  // reserve, and a wrap-up steer that fires immediately would be an interruption, not a warning.
-  if (endAtMs - reserveMs > Date.now() + 1000) armAt(endAtMs - reserveMs, () => {
-    if (settled) return;
-    const left = Math.max(0, Math.round((endAtMs - Date.now()) / 1000));
-    const sent = steerOnce(`About ${left} seconds of wall clock remain. Stop investigating now; write your final answer `
-      + `with what you have and say what you did not get to.`,
-      { onRejected: (e) => process.stderr.write(`entrust: the wrap-up steer was rejected (${e.message})\n`) });
-    // Announced because it changes what the turn does: a coordinator reading stderr should know the agent
-    // was told to stop investigating, and when.
-    if (sent) process.stderr.write(`entrust: wrap-up: about ${left}s of the budget remain; asked the agent for its final answer now\n`);
-  });
   // Once a child exists, a timeout hands back the partial result rather than discarding it; before that
   // there is nothing to interrupt, so this rung has nothing to do and T below does the aborting.
   armAt(endAtMs - graceMs, () => {
@@ -4876,14 +4646,6 @@ if (RUN_AS_MAIN) {
       if (shutdownDone) { killGroup("SIGKILL"); return; }
       if (settled) {
         if (flushing) return;   // the report is mid-write; let it finish or hit its own timer
-        // A verifier is the one thing that can still be RUNNING after the turn settled. Kill its group and
-        // let finish() report what the turn did with the check marked unmeasured, rather than exiting on
-        // the spot and throwing away a report the run has already earned. A second signal falls through.
-        if (verifyChild) {
-          process.stderr.write(`entrust: ${sig} during --verify; killing the verifier's process group\n`);
-          killVerifier();
-          return;
-        }
         exitWith(process.exitCode ?? EXIT.TRANSPORT);
         return;
       }
@@ -4909,7 +4671,6 @@ if (RUN_AS_MAIN) {
   // process.exit directly. After a clean teardown every one of these is a no-op.
   process.on("exit", () => {
     if (child) killGroup("SIGKILL");
-    killVerifier();
     if (probeConn) probeConn.close({ kill: "SIGKILL" });
     releaseLock();
     worktreeLastResort();

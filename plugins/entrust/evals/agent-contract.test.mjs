@@ -106,15 +106,10 @@ test("SKILL.md's table names every field the driver accepts, and the driver acce
     const problems = [];
     if (!table) return "SKILL.md has no `## Header fields` section: the coordinator has no field vocabulary at all";
     if (!/the body starts at `TASK:`/.test(table)) problems.push("the section no longer says where the header ends and the body starts");
-    // VERIFY is the one field the driver parses that no header may carry: it needs --allow-prompt-verify
-    // on the command line, which this relay never passes. It belongs in the refusal sentence below.
-    const missing = promptFields.filter((f) => f !== "VERIFY" && !documented.includes(f));
+    const missing = promptFields.filter((f) => !documented.includes(f));
     if (missing.length) problems.push(`accepted by the driver, absent from the table: ${missing.join(", ")}`);
     const bogus = documented.filter((f) => !promptFields.includes(f));
     if (bogus.length) problems.push(`in the table, rejected by the driver: ${bogus.join(", ")}`);
-    if (documented.includes("VERIFY")) problems.push("VERIFY is written as a usable header field");
-    if (!/`VERIFY` is refused in a prompt file without `--allow-prompt-verify`/.test(table))
-      problems.push("the section does not name VERIFY as refused");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -218,7 +213,7 @@ test("the block the coordinator pastes and the proxy agent's own steps are the s
   });
 
 test("the bounds, the transport and the injection fields are refused, and no table offers them",
-  "a newline in a copied value can inject a field: VERIFY runs a shell, ATTACH uploads a file and REPORT_FILE redirects the run's whole evidence. Bounds and delivery belong to the CLI; SKILL.md must not offer refused fields as usable headers",
+  "a newline in a copied value can inject a field: ATTACH uploads a file and REPORT_FILE redirects the run's whole evidence. Bounds and delivery belong to the CLI; SKILL.md must not offer refused fields as usable headers",
   () => {
     const problems = [];
     // Named by the driver's own map, so a knob quietly promoted back to a field fails here rather than in
@@ -231,9 +226,7 @@ test("the bounds, the transport and the injection fields are refused, and no tab
       if (documented.includes(f)) problems.push(`${f} is back in the coordinator's field table as usable`);
       if (!help.includes(flag)) problems.push(`${f} was removed as a field and ${flag} went with it`);
     }
-    if (!/--allow-prompt-verify/.test(driver)) problems.push("the driver lost --allow-prompt-verify");
-    if (!/`VERIFY` is refused in a prompt file without `--allow-prompt-verify`/.test(table))
-      problems.push("VERIFY is not named as refused in SKILL.md");
+    if (promptFields.includes("VERIFY") || /--verify\b/.test(help)) problems.push("a verifier is back: VERIFY ran an unsandboxed shell with the caller's rights");
     for (const [f, flag] of [["ATTACH", "--attach"]]) {
       if (promptFields.includes(f)) problems.push(`${f} is an agent field again`);
       if (documented.includes(f)) problems.push(`${f} is in the coordinator's field table as usable`);

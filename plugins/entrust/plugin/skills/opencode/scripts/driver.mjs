@@ -3,15 +3,13 @@
 //
 //   node driver.mjs --check-prompt-file FILE
 //   node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS]
-//                   [--timeout seconds] [--idle-timeout seconds] [--max-commands N]
-//                   [--verify COMMAND] [--help]
+//                   [--timeout seconds] [--idle-timeout seconds] [--max-commands N] [--help]
 //
 // API selection is explicit and inherited on resume. Native wait is not used; history and active
 // state establish completion. Neither execution family provides verified generation-bound steer.
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "./client.mjs";
 import { V2Client } from "./v2-client.mjs";
@@ -30,7 +28,6 @@ const DEFAULT_IDLE_S = 600;
 // The volume bound every adapter has, as Codex's 1,000 commands.
 const DEFAULT_MAX_COMMANDS = 1000;
 const APPROVAL_DEADLINE_MS = 30 * 60 * 1000;
-const VERIFY_TIMEOUT_MS = 300000;
 const CLAIM_POLLS = 6;
 const SIGNALS = ["SIGTERM", "SIGINT", "SIGHUP"];
 
@@ -41,12 +38,11 @@ const USAGE = `driver — run one OpenCode invocation for the shared entrust lau
       "entrust: refused: <reason>" on stderr, exactly. No server is contacted.
   node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS]
                   [--timeout seconds] [--idle-timeout seconds] [--max-commands N]
-                  [--verify COMMAND]
       Start a private local server or attach to the pinned remote server, run one selected invocation and publish
       the report JSON to stdout and exclusively to the report path. No overwrite.
       --timeout is the wall clock (default ${DEFAULT_TIMEOUT_S}s), --idle-timeout the no-progress
       clock (default ${DEFAULT_IDLE_S}s), --max-commands a cap on executed bash commands
-      (default 0, unlimited), --verify an independent command run after the turn.
+      (default ${DEFAULT_MAX_COMMANDS}, 0 unlimited).
   node driver.mjs --help
 `;
 
@@ -68,7 +64,7 @@ function fillRoute(tpl, params) {
 
 function parseArgs(argv) {
   const o = {
-    check: null, prompt: null, report: null, approvalDir: null, verify: null,
+    check: null, prompt: null, report: null, approvalDir: null,
     timeout: DEFAULT_TIMEOUT_S, idle: DEFAULT_IDLE_S, maxCommands: DEFAULT_MAX_COMMANDS, help: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -78,7 +74,6 @@ function parseArgs(argv) {
     else if (a === "--prompt-file") o.prompt = argv[++i];
     else if (a === "--report-file") o.report = argv[++i];
     else if (a === "--approval-dir") o.approvalDir = argv[++i];
-    else if (a === "--verify") o.verify = argv[++i];
     else if (a === "--timeout") o.timeout = Number(argv[++i]);
     else if (a === "--idle-timeout") o.idle = Number(argv[++i]);
     else if (a === "--max-commands") o.maxCommands = Number(argv[++i]);
@@ -858,7 +853,6 @@ function buildReport(ctx, base) {
     resume: Boolean(ctx.resume),
     admission: base.admission ?? ctx.admission ?? null,
     runtimePath: ctx.runtimePath ?? null,
-    verify: base.verify ?? null,
     startedAt: new Date(ctx.startedAtMs).toISOString(),
     endedAt: new Date(now()).toISOString(),
     // Fields the shared launcher reads directly.
@@ -1194,17 +1188,6 @@ async function conclude(ctx, firstReply, parsed) {
 
   const answerPath = saveAnswer(ctx, rawText);
 
-  // Independent VERIFY, outside the worker context.
-  let verify = null, verifyUnmeasured = false, verifyFailed = false;
-  if (typeof ctx.opts.verify === "string" && ctx.opts.verify.length) {
-    const command = ctx.opts.verify;
-    const r = spawnSync(process.env.SHELL || "/bin/sh", ["-c", command], {
-      cwd: ctx.cwd, encoding: "utf8", timeout: VERIFY_TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024,
-    });
-    if (r.error) { verifyUnmeasured = true; verify = { command, exitCode: null, error: r.error.message }; }
-    else { verify = { command, exitCode: r.status, signal: r.signal ?? null, output: (r.stdout ?? "") + (r.stderr ?? "") }; verifyFailed = r.status !== 0; }
-  }
-
   const reads = tools.filter((t) => READ_TOOLS.has(t.tool) && t.status === "completed").length;
   const expect = expectation({ expect: parsed.expect, successful, observations: successful.length + reads, allowNoCommands: parsed.allowNoCommands });
   const declined = ctx.declined > 0 || ctx.expired > 0;
@@ -1226,8 +1209,6 @@ async function conclude(ctx, firstReply, parsed) {
     error = "the reply has no completion timestamp; the receipt is incomplete";
   }
   else if (!parsedJson || !check.ok) { exitCode = EXIT.SCHEMA; error = `the answer did not satisfy OUTPUT_SCHEMA (${check.errors.slice(0, 5).join("; ")})`; }
-  else if (verifyFailed) { exitCode = EXIT.VERIFY_FAILED; error = `VERIFY exited ${verify.exitCode}`; }
-  else if (verifyUnmeasured) { exitCode = EXIT.VERIFY_UNMEASURED; error = "VERIFY could not be measured"; }
   else if (ctx.needsInput) { exitCode = EXIT.NEEDS_INPUT; error = "an approval was needed and no approval directory was configured"; }
   else if (declined) { exitCode = EXIT.APPROVAL; error = "an approval was declined or expired"; }
   else if (!expect.ok) { exitCode = EXIT.COMMANDS; error = expect.why; }
@@ -1242,7 +1223,7 @@ async function conclude(ctx, firstReply, parsed) {
     usage: usage.usage, cost: usage.cost,
     childUsage,
     outputSchemaOk: check.ok, schemaErrors: check.ok ? [] : check.errors,
-    partial: false, verify, turnError: info.error ?? null,
+    partial: false, turnError: info.error ?? null,
     admission: ctx.admission,
     cancellation: ctx.cancellation ?? null,
     correction,

@@ -101,11 +101,10 @@ const CASES = [
     why: "one retry is the whole budget: a cause that persists reports the failure instead of looping",
     assert: (r) => (r.transientRetries?.length === 1 && r.turnStatus === "failed")
       || `the retry budget was not one: ${JSON.stringify({ retries: r.transientRetries, status: r.turnStatus })}` },
-  { scenario: "stalled-turn",     expect: EXIT.TIMEOUT, args: ["--timeout", "1", "--verify", "true"],
-    why: "an expired turn budget is exit 3 and cannot verify a tree the model may still be writing; 1s, not 0.25s (E49) — a budget under about 0.25s can expire before the driver has even processed thread/start, on a loaded machine, which is a pre-turn refusal (exit 3, no stdout) rather than the timed-out turn this case means to measure",
+  { scenario: "stalled-turn",     expect: EXIT.TIMEOUT, args: ["--timeout", "1"],
+    why: "an expired turn budget is exit 3; 1s, not 0.25s (E49) — a budget under about 0.25s can expire before the driver has even processed thread/start, on a loaded machine, which is a pre-turn refusal (exit 3, no stdout) rather than the timed-out turn this case means to measure",
     assert: (r) => r.ok === false && r.exitCode === EXIT.TIMEOUT && r.turnStatus === "timedOut"
-        && r.verify === null && r.verifySkipped === "turn-timed-out"
-      || `timeout report lost its verdict or verify skip: ${JSON.stringify({ ok: r.ok, exitCode: r.exitCode, turnStatus: r.turnStatus, verify: r.verify, verifySkipped: r.verifySkipped })}` },
+      || `timeout report lost its verdict: ${JSON.stringify({ ok: r.ok, exitCode: r.exitCode, turnStatus: r.turnStatus })}` },
   { scenario: "no-answer",        expect: EXIT.NO_ANSWER,           why: "commentary is not a final answer" },
   { scenario: "rich-items",       expect: EXIT.SUCCESS,
     why: "reasoning summaries, tool/search items and subagent threads must be visible in the report while the child's command counts for no root evidence",
@@ -189,12 +188,6 @@ const CASES = [
     why: "the demoted rung takes nothing with it: asking for proof and then accepting its absence is the failure --expect-command exists to prevent",
     assert: (r) => r.commandsMatchingExpectation === 0
       || `the expectation was not measured: ${JSON.stringify(r.commandsMatchingExpectation)}` },
-  { scenario: "hidden-failure",  expect: EXIT.VERIFY_FAILED,
-    args: ["--verify", "false"],
-    why: "a check the caller ran and that said no is still exit 9, because it measured the end state instead of inferring it from the command list",
-    assert: (r) => r.verify?.ok === false || `the failed check was not reported: ${JSON.stringify(r.verify)}` },
-  { scenario: "hidden-failure",  expect: EXIT.SUCCESS,                 args: ["--verify", "true"],
-    why: "a passing check beside a failed command is exit 0, and both reach the report" },
   { scenario: "null-phase",      expect: EXIT.SUCCESS,                 why: "the schema permits phase: null; an unphased answer is still an answer" },
   { scenario: "early-request",   expect: EXIT.NEEDS_INPUT,        why: "a blocking request before the turn id exists still belongs to us" },
   { scenario: "mcp-null-turn",   expect: EXIT.NEEDS_INPUT,        why: "MCP turnId is nullable; a null one must not read as someone else's" },
@@ -282,20 +275,6 @@ const CASES = [
   { scenario: "reviewer-auto",    expect: EXIT.TRANSPORT,
     why: "approvals routed to the server's own reviewer never reach this driver, so the refusal policy is disarmed while the sandbox object stays byte-identical — nothing else in the response can catch it" },
 
-  // --- the caller's own check must not be cancelled by the model-authored one ---
-  { scenario: "wrong-command",    expect: EXIT.VERIFY_FAILED, args: ["--expect-command", "vitest", "--verify", "false"],
-    why: "a failing --verify outranks a missed expectation: the end state was measured broken, which is stronger than 'the command list looks wrong'",
-    assert: (r) => r.verify?.ok === false || `verify did not run: ${JSON.stringify(r.verify)}` },
-  { scenario: "wrong-command",    expect: EXIT.COMMANDS, args: ["--expect-command", "vitest", "--verify", "true"],
-    why: "a passing --verify does NOT waive a declared expectation — a stale artefact satisfies the end state while the work never ran — but it must still be REPORTED",
-    assert: (r) => r.verify?.ok === true || `verify was suppressed by the expectation miss: ${JSON.stringify(r.verify)}` },
-  { scenario: "hidden-failure",   expect: EXIT.COMMANDS, args: ["--expect-command", "zzz_never", "--verify", "true"],
-    why: "a missed expectation is exit 5 whatever the verifier said, and the verifier must still have run and been reported",
-    assert: (r) => r.verify?.ok === true || `the verifier was suppressed by the expectation miss: ${JSON.stringify(r.verify)}` },
-  { scenario: "turn-failed",      expect: EXIT.MODEL, args: ["--verify", "true"],
-    why: "a passing verify cannot rescue a turn that never completed, and on a non-completed turn the end state is recorded as unmeasured rather than guessed",
-    assert: (r) => r.verify === null && typeof r.verifySkipped === "string"
-      || `expected verify skipped with a reason, got verify=${JSON.stringify(r.verify)} skipped=${JSON.stringify(r.verifySkipped)}` },
 
   // --- teardown: nothing this driver started may outlive it ---
   { scenario: "spawn-survivor",   expect: EXIT.SUCCESS,
@@ -453,22 +432,12 @@ const CASES = [
     why: "--brief's second sentence is what keeps a capped answer from losing its detail; it must still be sent when it is not contradicted",
     assert: (r) => /Put anything longer/.test(String(r.answer))
       || `--brief lost its forwarding instruction: ${String(r.answer).slice(0, 200)}` },
-  { scenario: "echo-instructions", expect: EXIT.SUCCESS, args: ["--brief", "--answer-json"],
-    why: "under --answer-json the agent has just been told to answer with ONE JSON object and nothing else; telling it in the same breath to put the rest in a file is a contradiction the agent has to resolve on its own",
+  { scenario: "echo-instructions", expect: EXIT.SCHEMA, args: ["--brief", "--output-schema", schemaFile],
+    why: "under --output-schema the agent has just been told to answer with ONE JSON object and nothing else; telling it in the same breath to put the rest in a file is a contradiction the agent has to resolve on its own",
     assert: (r) => (!/Put anything longer/.test(String(r.answer)) && /ONE JSON object/.test(String(r.answer)))
       || `the contradictory pair was still sent: ${String(r.answer).slice(0, 300)}` },
 
-  // --- the wall clock as three rungs: warn, cut, report ---
-  { scenario: "wrap-up",          expect: EXIT.SUCCESS, args: ["--timeout", "65"],
-    why: "the only recovery that works. E1 measured that turn/interrupt DISCARDS the in-flight answer, so nothing at the deadline can produce one: the run has to ask for the final answer while the model can still write it, a quarter of the budget out and never less than a minute",
-    assert: (r) => {
-      const a = String(r.answer);
-      const n = Number(/About (\d+) seconds of wall clock remain/.exec(a)?.[1]);
-      if (!Number.isFinite(n)) return `no wrap-up steer reached the turn: ${a.slice(0, 160)}`;
-      if (!(n > 50 && n <= 61)) return `the wrap-up steer named ${n}s left of a 65 s budget with a 60 s reserve`;
-      return /Stop investigating now; write your final answer/.test(a)
-        || `the steer did not ask for the final answer: ${a.slice(0, 200)}`;
-    } },
+  // --- the wall clock: cut, then report ---
   { scenario: "cut-flush",        expect: EXIT.TIMEOUT, args: ["--timeout", "1"],
     why: "a cut asks the server to end the turn and grants time to do so; an answer delivered inside that grace must reach the caller",
     assert: (r) => {
@@ -1290,7 +1259,6 @@ let failed = await runTable(CASES);
 const LADDER_OPTS = { expectRe: null, allowNoCommands: true, outputSchema: null };
 // A completed turn that ran a command, answered, and tripped nothing.
 const LADDER_BASE = { turnStatus: "completed", turnError: null, interactions: [], escalations: [],
-  verifyResult: null, verifySkipped: null, verifyFailed: false,
   expected: [{}], commandsRan: 1, answer: "an answer", schemaErrs: [], failedCmds: [], failedPatches: [], blocked: [] };
 const ladderCtx = ({ opts = {}, ...over } = {}) =>
   ({ ...LADDER_BASE, ...over, opts: { ...LADDER_OPTS, ...opts } });
@@ -1316,34 +1284,25 @@ const RUNGS = [
   { at: 4, code: EXIT.APPROVAL, ctx: { escalations: [{ decision: "accepted" }, { decision: "expired" }] },
     what: "an approval that expired beside one that was accepted",
     why: "a request nobody answered in time is a refusal nobody made, and one acceptance beside it does not answer it" },
-  { at: 5, code: EXIT.VERIFY_UNMEASURED, ctx: { verifySkipped: "budget-exhausted" },
-    what: "a --verify the budget left no room for",
-    why: "a declared check that never ran leaves verifyResult null, which every gate below reads as 'nothing to complain about' — the run would reach 0 with its verifier unrun" },
-  { at: 5, code: EXIT.VERIFY_UNMEASURED, ctx: { verifyResult: { ok: false, measured: false }, verifyFailed: true },
-    what: "a --verify that ran and measured nothing",
-    why: "'the check could not be measured' and 'the check said no' are different findings, and the unmeasurable one must not be reported as a failure the agent caused" },
-  { at: 6, code: EXIT.VERIFY_FAILED, ctx: { verifyResult: { ok: false, measured: true }, verifyFailed: true },
-    what: "a --verify that ran and failed",
-    why: "the verifier is the gate this repository prefers over every command-shaped proxy below it; a failing one reaching exit 0 makes --verify decorative" },
-  { at: 7, code: EXIT.COMMANDS, ctx: { commandsRan: 0, expected: [], opts: { allowNoCommands: false } },
+  { at: 5, code: EXIT.COMMANDS, ctx: { commandsRan: 0, expected: [], opts: { allowNoCommands: false } },
     what: "a turn that ran nothing",
     why: "an answer with no command behind it is recall, not evidence; the floor is what separates the two" },
-  { at: 7, code: EXIT.COMMANDS, ctx: { commandsRan: 3, expected: [], opts: { expectRe: /vitest/, allowNoCommands: true } },
+  { at: 5, code: EXIT.COMMANDS, ctx: { commandsRan: 3, expected: [], opts: { expectRe: /vitest/, allowNoCommands: true } },
     what: "a declared --expect-command with no successful match",
     why: "the floor asks whether anything ran, but a declared expectation asks for a command that succeeded and matched; folding them into one question would let three failed commands satisfy the caller's claim" },
-  { at: 8, code: EXIT.NO_ANSWER, ctx: { answer: "" },
+  { at: 6, code: EXIT.NO_ANSWER, ctx: { answer: "" },
     what: "a turn that produced no answer",
     why: "a run with no answer has nothing for its caller to read, and every gate below it grades the answer's content" },
-  { at: 9, code: EXIT.SCHEMA, ctx: { opts: { outputSchema: {} }, schemaErrs: ["/: missing 'verdict'"] },
+  { at: 7, code: EXIT.SCHEMA, ctx: { opts: { outputSchema: {} }, schemaErrs: ["/: missing 'verdict'"] },
     what: "an answer that failed --output-schema",
     why: "an unusable answer is what a caller parsing it fails on, and it is the LAST rung: a failed command is a report field and no exit at all" },
 ];
 
-flow("the ladder's contexts and its rungs are the same ten",
+flow("the ladder's contexts and its rungs are the same eight",
   "a rung added to the driver without a case here is a rung nothing measures, and the ladder is the whole of what an exit code means",
   async () => {
-    // Counted by POSITION, not by case: two contexts reach the one VERIFY_UNMEASURED rung, and each
-    // still has to be shown reaching it rather than something above it.
+    // Counted by POSITION, not by case: two contexts reach the APPROVAL rung and two the COMMANDS rung,
+    // and each still has to be shown reaching it rather than something above it.
     const named = new Set(RUNGS.map((r) => r.at)).size;
     return LADDER.length === named || `the driver has ${LADDER.length} rungs and this suite names ${named}`;
   });

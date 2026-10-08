@@ -17,7 +17,7 @@ import path from "node:path";
 import { DRIVER, ROOT, EXIT, FAKE, readJson, registry, runCases, skip, summarize, tempDir } from "./lib/harness.mjs";
 import { SHIM, assertKnownScenarios, explicitTmp, flowState, laxSchemaFile, looseNestedSchemaFile,
          looseSchemaFile, mismatchSessions, notExec, oneOfSchemaFile, optionalSchemaFile,
-         run, runTable, sessionsDir, survivorPidName, unknownModelLog, until } from "./lib/scenarios.mjs";
+         run, runTable, sessionsDir, unknownModelLog, until } from "./lib/scenarios.mjs";
 
 const shimDir = SHIM;
 
@@ -48,8 +48,6 @@ fs.mkdirSync(decoyHome, { recursive: true });
 
 // One log per row that reads it: the fixture APPENDS its `codex sandbox` argv, so a shared file would
 // let one row match the other's invocation and both settings would look present whichever was sent.
-const sandboxNetLog = path.join(shimDir, "sandbox-verify-net.log");
-const sandboxNoNetLog = path.join(shimDir, "sandbox-verify-nonet.log");
 // One log per level for the `cfg:` lines the fixture writes for every -c it was spawned with. The two
 // implicit temp grants ride the spawn args and appear in NO report field — sandbox.writableRoots never
 // shows them — so a key the driver stopped sending leaves every other sandbox row green.
@@ -58,17 +56,6 @@ const readCfgLog = path.join(shimDir, "cfg-read.log");
 const cfgKeys = (log) => (fs.existsSync(log) ? fs.readFileSync(log, "utf8") : "")
   .split("\n").filter((l) => l.startsWith("cfg:")).map((l) => l.slice("cfg:".length));
 const TMP_KEYS = ["sandbox_workspace_write.exclude_slash_tmp", "sandbox_workspace_write.exclude_tmpdir_env_var"];
-// The argv the driver built for `codex sandbox`, read back out of the fixture's log. The verifier's own
-// rights appear in no report field, so a -c the driver stopped sending leaves every other verifier case
-// green: the exit code still passes through, the profile is still applied, and nothing measures the
-// grant that was dropped.
-const sandboxArgvHas = (log, needle) => {
-  const line = (fs.existsSync(log) ? fs.readFileSync(log, "utf8") : "")
-    .split("\n").find((l) => l.startsWith("sandbox:")) ?? "";
-  if (!line) return `the verifier did not go through \`codex sandbox\` at all: ${log}`;
-  return line.includes(needle) || `the sandbox invocation lacks ${needle}: ${line}`;
-};
-
 const CASES = [
   { scenario: "happy",            expect: EXIT.SUCCESS,                  why: "a real command succeeded and a final answer arrived" },
   { scenario: "happy",            expect: EXIT.USAGE, args: ["--model", "missing-model"],
@@ -115,13 +102,6 @@ const CASES = [
   { scenario: "happy",            expect: EXIT.USAGE, args: ["--attach", "/nonexistent/shot.png"],
     why: "a missing attachment is the caller's error, raised before anything runs — the server would otherwise refuse it mid-turn, after the delegation was paid for",
     assertStderr: (e) => /--attach.*does not exist/.test(e) || `the missing file was not named: ${e.slice(0, 140)}` },
-  { scenario: "happy",           expect: EXIT.VERIFY_FAILED,      args: ["--verify", "false"],
-    why: "the caller's own check decides: a clean turn still fails when the work is not there" },
-  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--verify", "yes abcdefghij | head -c 100000000; exit 0"],
-    why: "a verifier that exits 0 has passed even when its output exceeds the verifier tail cap; streaming a bounded tail must preserve its exit status",
-    assert: (r) => (r.verify?.ok === true && r.verify?.measured === true
-      && String(r.verify?.stdout ?? "").length <= 2000)
-      || `a passing loud verifier was not measured: ${JSON.stringify({ ...r.verify, stdout: String(r.verify?.stdout ?? "").length })}` },
   { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "with no --effort the driver must send no override so the caller's config decides; a forced default can silently downgrade the requested effort",
     assert: (r) => r.effort === null && r.reasoningEffort === null
@@ -163,33 +143,7 @@ const CASES = [
     why: "a failed config probe must say so out loud — the silent path changed which model answers and made identical runs nondeterministic",
     assertStderr: (e) => /could not read the caller's Codex config/.test(e)
       || `the downgrade was silent: ${e.slice(0, 160)}` },
-  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURED, args: ["--verify", "definitely_not_a_command_xyz"],
-    why: "127 means the shell never ran the command — a typo or a tool missing from the DRIVER's PATH — which says nothing about the work and must not read as 'the work is not there'",
-    assert: (r) => r.verify?.measured === false
-      || `a broken verifier was reported as a measured failure: ${JSON.stringify(r.verify)}` },
-  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--verify", "sleep 0.2 & exit 0"],
-    why: "the command exited 0 while a background process still held the pipe; the observed exit status is proof of a pass and must not be thrown away as unmeasurable",
-    assert: (r) => r.verify?.ok === true && r.verify?.measured === true
-      || `a passing exit status was discarded: ${JSON.stringify(r.verify)}` },
-  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURED, args: ["--verify", "kill -TERM $$"],
-    why: "a verifier killed by a signal reports exitCode null — that is 'could not run', which must fail closed rather than read as success",
-    assert: (r) => r.verify?.ok === false && r.verify?.signal === "SIGTERM"
-      || `expected a recorded signal, got ${JSON.stringify(r.verify)}` },
-  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--expect-command", "echo", "--verify", "true"],
-    why: "both checks agreeing is the ordinary success, and both verdicts appear in the report",
-    assert: (r) => r.expectationOk === true && r.verify?.ok === true || `report lost a verdict: ${JSON.stringify({ e: r.expectationOk, v: r.verify })}` },
-  // Detach the background child's stdio so it cannot hold the verifier's pipe open. The group sweep must
   // be the mechanism that ends the child.
-  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--verify", `sh -c 'trap "" TERM; echo $$ > "$TMPDIR/${survivorPidName}"; exec sleep 30' >/dev/null 2>&1 </dev/null & sleep 0.3; exit 0`],
-    why: "the verifier runs in its own process group, which must be swept afterwards so background descendants cannot outlive the run",
-    assert: (r) => {
-      if (r.verify?.ok !== true) return `the verifier itself did not pass: ${JSON.stringify(r.verify)}`;
-      let pid = 0;
-      try { pid = Number(fs.readFileSync(path.join(r.tmpDir, survivorPidName), "utf8").trim()); } catch {}
-      if (!pid) return "the verifier's background child never wrote its pid";
-      try { process.kill(pid, 0); return `the verifier's background child ${pid} outlived the run`; }
-      catch { return true; }
-    } },
 
   // --- report shape: defaults, receipt, exit-5 hint ---
   { scenario: "happy",            expect: EXIT.SUCCESS,
@@ -295,15 +249,11 @@ const CASES = [
     assert: (r) => (r.level === "write" && r.network === false && r.sandbox?.networkAccess === false)
       || `the header's negative did not reach the write sandbox: ${JSON.stringify({ l: r.level, n: r.network, sb: r.sandbox })}` },
 
-  // --- token accounting and verifier execution errors ---
+  // --- token accounting ---
   { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "the report must carry the ROOT thread's token accounting; a later subagent usage event with a larger total exposes a missing thread filter",
     assert: (r) => r.tokenUsage?.total?.totalTokens === 135
       || `tokenUsage missing, wrong, or taken from another thread: ${JSON.stringify(r.tokenUsage)}` },
-  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURED, args: ["--verify", notExec],
-    why: "exit 126 means the verifier was found but is not executable: fix the verifier, not the work",
-    assert: (r) => (r.verify?.measured === false && r.verify?.exitCode === 126)
-      || `a non-executable verifier was not classified as unmeasurable: ${JSON.stringify(r.verify)}` },
 
   // --- receipt location and identity ---
   { scenario: "happy",            expect: EXIT.SUCCESS, env: { ENTRUST_SESSIONS_DIR: sessionsDir },
@@ -336,22 +286,13 @@ const CASES = [
     assert: (r) => (r.level === "read" && !(r.promptFileFields ?? []).includes("RIGHTS"))
       || `a header-less file did not default to a read agent: ${JSON.stringify({ level: r.level, fields: r.promptFileFields })}` },
   { scenario: "happy", agent: "RIGHTS: read <CWD>\nVERIFY: touch <CWD>/agent-verify-must-not-run\n", expect: EXIT.USAGE,
-    why: "VERIFY runs an unsandboxed shell with the caller's rights, so a newline-injected header must not enable it; prompt-file use requires --allow-prompt-verify on the command line",
-    assertStderr: (e) => /allow-prompt-verify/.test(e) || `a prompt file supplied a verifier unasked: ${e.slice(0, 200)}` },
-  { scenario: "happy", agent: "RIGHTS: read <CWD>\nEXPECT: echo\nVERIFY: true\n", expect: EXIT.SUCCESS, args: ["--allow-prompt-verify"],
-    why: "the escape hatch works and is explicit: with --allow-prompt-verify on the command line the same file runs its verifier",
-    assert: (r) => (r.verify?.ok === true && r.promptFileFields?.includes("VERIFY"))
-      || `the permitted agent verifier did not run: ${JSON.stringify({ v: r.verify, f: r.promptFileFields })}` },
+    why: "a newline in a copied value can inject a header line, and a VERIFY one once ran an unsandboxed shell with the caller's rights; the driver has no verifier now, so the name is refused as unknown, never ignored",
+    assertStderr: (e) => /unknown header field VERIFY/.test(e) || `an injected VERIFY was not refused: ${e.slice(0, 200)}` },
   { scenario: "happy", agent: "RIGHTS: read <CWD>\nEXPECT: echo\n", expect: EXIT.SUCCESS,
     why: "the report names what the FILE declared, so a wrapped agent is not indistinguishable from a hand-typed one",
     assert: (r) => (Array.isArray(r.promptFileFields) && r.promptFileFields.join(",") === "RIGHTS,EXPECT")
       || `promptFileFields wrong: ${JSON.stringify(r.promptFileFields)}` },
 
-  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURED, args: ["--verify", "true"],
-    env: { ENTRUST_VERIFY_FLOOR_MS: "600000" },
-    why: "a declared verifier with no remaining budget is unrun and must fail closed rather than fall through to weaker gates",
-    assert: (r) => (r.verifySkipped === "budget-exhausted" && r.verify === null)
-      || `the skipped verifier was not reported as such: ${JSON.stringify({ s: r.verifySkipped, v: r.verify })}` },
 
   // --- the agent's $TMPDIR is always the run's own, whatever the caller exported ---
   // With no TMPDIR exported the base is Node's os.tmpdir(), which reads TMP next: set here, so the case
@@ -453,34 +394,6 @@ const CASES = [
         && r.promptFileFields?.join(",") === "RIGHTS,EXPECT,NETWORK,ALLOW_NO_COMMANDS,BRIEF")
       || `a negated boolean was mishandled: ${JSON.stringify({ net: r.network, sb: r.sandbox?.networkAccess, fields: r.promptFileFields })}` },
 
-  // --- --verify: the budget that killed it, and the sandbox that is opt-in ---
-  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURED, args: ["--timeout", "3", "--verify", "sleep 20"],
-    why: "a verifier killed at its budget must report that the clock caused the cut, rather than leave a null exit code and signal unexplained",
-    assert: (r) => (r.verify?.timedOut === true && r.verify?.budgetMs > 0 && r.verify?.measured === false)
-      || `the budget that ended the verifier was not reported: ${JSON.stringify(r.verify)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, args: ["--verify-sandboxed"],
-    why: "--verify-sandboxed sandboxes a verifier; without --verify there is nothing to sandbox, and silently doing nothing is how a caller believes a check ran",
-    assertStderr: (e) => /--verify, which was not given/.test(e) || `the empty flag was accepted: ${e.slice(0, 160)}` },
-  { scenario: "happy",            expect: EXIT.USAGE, args: ["--verify", "true", "--verify-sandboxed"],
-    why: "where `codex sandbox` does not exist the sandbox cannot be applied, and falling back to running the verifier with the caller's own rights is the one thing the flag exists to prevent",
-    assertStderr: (e) => /--verify-sandboxed needs/.test(e)
-      || `an unavailable sandbox did not stop the run: ${e.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.VERIFY_FAILED, env: { FAKE_SANDBOX: "1" },
-    args: ["--verify", "exit 3", "--verify-sandboxed"],
-    why: "`codex sandbox` passes the command's exit code through — measured live, exit 7 came back as 7 — so a sandboxed verifier's verdict is the verifier's, not the sandbox's",
-    assert: (r) => (r.verify?.exitCode === 3 && r.verify?.sandboxed === true && r.verify?.measured === true)
-      || `the sandboxed verifier's exit code was not passed through: ${JSON.stringify(r.verify)}` },
-  { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_SANDBOX: "1", FAKE_RPC_LOG: sandboxNetLog },
-    args: ["--verify", "true", "--verify-sandboxed"],
-    why: "the sandboxed verifier runs under the profile the READ level runs under, so it has to be handed the agent's egress and not a fixed setting: a verifier that reaches what the turn could not is measuring the work under rights the turn never held",
-    assert: () => sandboxArgvHas(sandboxNetLog, "permissions.entrust_read.network={enabled=true}") },
-  { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_SANDBOX: "1", FAKE_RPC_LOG: sandboxNoNetLog },
-    args: ["--no-network", "--verify", "true", "--verify-sandboxed"],
-    why: "and the denial has to travel with it, which is the direction a fixed `{enabled=true}` would pass: the caller who took egress away from the agent did not hand it to the check that judges the agent",
-    assert: () => sandboxArgvHas(sandboxNoNetLog, "permissions.entrust_read.network={enabled=false}") },
-  { scenario: "happy",            expect: EXIT.SUCCESS,
-    why: "and it must not fire where the reserve does not fit: on a 20 s agent a wrap-up steer would land in the first tick, which is an interruption rather than a warning — the rung is armed only when it leaves the model real time to write",
-    assertStderr: (e) => !/wrap-up:/.test(e) || `a short agent was steered anyway: ${e.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "durationMs on commandExecution items distinguishes time spent running commands from time spent in the model",
     assert: (r) => {
@@ -904,12 +817,12 @@ flow("agents share a project/run parent, reports in different state directories 
     return problems.length === 0 || problems.join("; ");
   });
 
-flow("the verifier's child check stays under the agent's exclusive TMPDIR without another entrust namespace",
+flow("an agent's child check stays under the agent's exclusive TMPDIR without another entrust namespace",
   "context rebasing must preserve the declared grant when a child command uses the same capture helper",
   async () => {
     const runner = path.join(ROOT, "skills", "orchestrate", "scripts", "capture-check.mjs");
     const command = `node '${runner}' -- 'echo scoped' > "$TMPDIR/receipt.txt"`;
-    const r = await run({ scenario: "happy", args: ["--verify", command] });
+    const r = await run({ scenario: "happy", env: { FAKE_AGENT_SH: command } });
     if (r.code !== EXIT.SUCCESS) return `exit ${r.code}: ${r.err}`;
     const dir = JSON.parse(r.out).tmpDir;
     const receipt = fs.readFileSync(path.join(dir, "receipt.txt"), "utf8");
