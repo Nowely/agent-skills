@@ -71,12 +71,13 @@ test("--check-prompt-file passes silently and refuses with one entrust: refused 
   }
 });
 
-test("a registered plan's model and writes are enforced offline", () => {
+test("a registered plan's model and writes fill an absent field and refuse another, offline", () => {
   const s = setup();
   const pinned = { ENTRUST_PLAN_MODEL: "opus", ENTRUST_PLAN_WRITES: "nothing" };
   assert.equal(check(s, `RIGHTS: read ${s.work}\nMODEL: opus\nTASK: look\n`, pinned).status, 0);
   assert.match(check(s, `RIGHTS: read ${s.work}\nMODEL: haiku\nTASK: look\n`, pinned).stderr, /does not match the approved plan's opus/);
-  assert.match(check(s, `RIGHTS: read ${s.work}\nTASK: look\n`, pinned).stderr, /pins MODEL opus/);
+  assert.equal(parsePrompt(`RIGHTS: read ${s.work}\nTASK: look\n`, pinned, s.work).model, "opus");
+  assert.equal(check(s, "TASK: look\n", pinned).status, 0);
   assert.match(check(s, `RIGHTS: write ${s.work}\nMODEL: opus\nTASK: look\n`, pinned).stderr, /does not match the approved plan's read/);
 });
 

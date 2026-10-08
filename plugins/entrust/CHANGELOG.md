@@ -31,6 +31,10 @@ forensics remain in the repository references and release notes.
 - **The Codex driver's exit codes are the shared table (E137, in part).** It defined the same numbers under names of
   its own (`OK`, `TURN_NOT_COMPLETED`, `ESCALATED`, `INTERACTION`, `VERIFY_UNMEASURABLE`); it now imports
   `EXIT` from `orchestrate/scripts/drivers.mjs`. No code changed its number.
+- **A prompt with no `MODEL:` runs on its plan row's model.** Under a registered plan the OpenCode and Claude
+  drivers refused a prompt that named no model; it now takes the row's, as an absent `RIGHTS:` takes the row's
+  writes. A prompt naming another model, or OpenCode's `inherit`, is still refused. The rule is one function,
+  `resolveModel` in `orchestrate/scripts/drivers.mjs`.
 
 ### Fixed
 

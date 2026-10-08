@@ -1,6 +1,6 @@
 // What every external agent's driver shares beside the launcher's contract: the exit codes, the request id,
-// the RIGHTS grammar and the scope it grants, and the worktree a `worktree` agent runs in. The OpenCode and
-// Claude drivers import it; nothing here runs on import.
+// the RIGHTS grammar and the scope it grants, the plan's model pin, and the worktree a `worktree` agent runs
+// in. The Codex, OpenCode and Claude drivers import it; nothing here runs on import.
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -91,6 +91,14 @@ export function resolveRights(value, planWrites, cwd = process.cwd()) {
     if (rp !== pp) return { error: `RIGHTS worktree ${rp} is not the approved plan worktree ${pp}` };
   }
   return rights;
+}
+
+// The MODEL a prompt runs on: the plan's when a registered plan pins one and the prompt names none, as RIGHTS takes
+// the plan's writes. A prompt naming another model is refused; `same` says when two names are one model.
+export function resolveModel(value, planModel, same = (a, b) => a.toLowerCase() === b.toLowerCase()) {
+  if (!planModel || value === undefined) return { model: value ?? planModel ?? null };
+  if (!same(value, planModel)) return { error: `MODEL ${value} does not match the approved plan's ${planModel}` };
+  return { model: value };
 }
 
 const resolveCwd = (p) => canonical(p ?? process.cwd());

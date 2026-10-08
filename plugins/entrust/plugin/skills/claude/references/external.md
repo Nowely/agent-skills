@@ -13,12 +13,12 @@ It needs the `claude` CLI at 2.1.259 or later, signed in. `node <skill-dir>/scri
 
 A plan row whose adapter column is `claude` is an external run: `<id> | claude | <opus|sonnet|haiku|fable> |
 <role> | <writes> | <tokens>`. A five-column row naming a Claude model stays a native agent of the host. The row
-pins the model and the writes; the prompt must name the same.
+pins the model and the writes: a prompt that names neither runs on the row's, one that names others is refused.
 
 | Field | Values | Effect |
 | --- | --- | --- |
-| `RIGHTS:` (first) | `read [dir]`, `write <dir>`, `worktree <repo>` | the table below |
-| `MODEL:` | `opus`, `sonnet`, `haiku`, `fable`, or a full `claude-…` id | absent: the user's default model |
+| `RIGHTS:` (first) | `read [dir]`, `write <dir>`, `worktree <repo>` | the table below; absent: the plan row's writes |
+| `MODEL:` | `opus`, `sonnet`, `haiku`, `fable`, or a full `claude-…` id | absent: the plan row's, else the user's default |
 | `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max` | absent: the user's default |
 | `OUTPUT_SCHEMA:` | an absolute path | absent: the [five-field schema](../../orchestrate/schemas/five-fields.schema.json); Claude Code validates the answer against it |
 | `RESUME:` | the absolute path of an earlier claude report | continues that run's session, in its directory, with its rights |
