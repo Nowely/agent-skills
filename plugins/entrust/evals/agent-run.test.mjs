@@ -91,17 +91,22 @@ const preload = (file) => ({ NODE_OPTIONS: `--require "${file}"` });
 
 const { cases: CASES, test } = registry();
 
-test("--help names the plan, new and run modes and exits 0",
-  "the page sends a reader here for what the launcher does; a script with no help is a promise nobody can check",
+test("--help names every mode a coordinator uses and exits 0, and --help-all adds the launcher's own steps",
+  "the page sends a reader here for what the launcher does; a script with no help is a promise nobody can check, and the keeper and the edge cases are no coordinator's to act on",
   async () => {
     const { code, out } = await spawnNode([LAUNCHER, "--help"], { killAfterMs: 10000 }).done;
     if (code !== 0) return `--help exited ${code}`;
-    for (const s of ["--plan --run-dir RUN", "--plan --amend", "--new --report-file REPORT", "--run --report-file REPORT", "--status",
-                     "RUNNING=", "--check-prompt-file", "planRowOf", "the role is any non-empty text", "unknown", "<absolute dir>", ...STATUS_LINES,
+    for (const s of ["--plan [--amend] --run-dir RUN", "--new [--adapter ID] --report-file REPORT", "--run [--watch] --report-file REPORT", "--status",
+                     "RUNNING=", "--check-prompt-file", "the role is any non-empty text", "unknown", "<absolute dir>", ...STATUS_LINES,
                      "APPROVALS=", "WAITING=<id>[,<id>]", "waiting —", "ended —", "refused —", "--pending --report-file REPORT",
-                     "--decide ID --accept|--decline [--why TEXT]", "COMMAND<<", "COMMAND>>", "REQUESTS=", "ORPHANED=",
-                     "DECIDED=", "LATE=", "STALE=", "REFUSED=", "approvals=A/D/E/O", "auto=N", "late=N", "stale=N"])
+                     "--decide ID --accept|--decline|--answer [--why TEXT]", "COMMAND<<", "COMMAND>>", "REQUEST_BODY<<", "REQUESTS=", "ORPHANED=",
+                     "DECIDED=", "LATE=", "STALE=", "REFUSED=", "approvals=A/D/E/O", "auto=N", "late=N", "stale=N", "external.md"])
       if (!out.includes(s)) return `--help does not mention ${s}`;
+    for (const s of ["--orphan", "--keeper"]) if (out.includes(s)) return `--help names ${s}, a step of the launcher's own`;
+    const all = await spawnNode([LAUNCHER, "--help-all"], { killAfterMs: 10000 }).done;
+    if (all.code !== 0 || !all.out.startsWith(out)) return `--help-all exited ${all.code}, or does not begin with --help`;
+    for (const s of ["--orphan --dir DIR --report-file REPORT", "--keeper", "Launch only", "A REPORT that is not absolute"])
+      if (!all.out.includes(s)) return `--help-all does not mention ${s}`;
     return true;
   });
 
