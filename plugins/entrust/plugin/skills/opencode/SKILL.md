@@ -92,8 +92,8 @@ carry the complete native request; grant one action within the approved scope or
 Each concurrent writer gets a distinct worktree. Rights changes need their own authority.
 Read-only agents may share a directory when its tooling permits it.
 
-Continue with `RESUME: <previous report path>` under a fresh report path; use an explicit session ID
-only when its server, directory and scope are known. Read the report even when the exit is nonzero:
+Continue with `RESUME: <previous report path>` under a fresh report path. The continuation keeps the earlier
+run's directory and rights: leave `RIGHTS:` out, or name the same. A run still going is refused with exit 10. Read the report even when the exit is nonzero:
 partial answers, native command outcomes and callback decisions remain useful evidence.
 `receiptOk` establishes attribution, while independent gates establish the result.
 The report's `model` is observed attribution; `requestedModel` preserves the selection even after Stop.

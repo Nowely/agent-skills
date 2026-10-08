@@ -245,12 +245,18 @@ test("a continuation forks the earlier session into a new id, in the earlier run
   assert.equal(flagOf(call.argv, "--resume"), first.json.sessionID); assert.ok(call.argv.includes("--fork-session"));
   assert.notEqual(flagOf(call.argv, "--session-id"), first.json.sessionID); assert.equal(next.json.sessionID, flagOf(call.argv, "--session-id"));
   assert.equal(call.cwd, first.json.cwd); assert.equal(next.json.resumedFrom, first.report);
-  assert.match(check(s, `RIGHTS: read ${s.work}\nRESUME: ${first.report}\nTASK: go on\n`).stderr, /had RIGHTS write/);
-  assert.match(check(s, `RIGHTS: write ${elsewhere}\nRESUME: ${first.report}\nTASK: go on\n`).stderr, /widens past/);
+  // A RIGHTS line names the run's own rights or nothing: a narrower kind, another directory and a wider kind
+  // are each refused, so the session never runs in a directory nobody checked under rights it did not have.
+  for (const other of [`read ${s.work}`, `write ${elsewhere}`])
+    assert.match(check(s, `RIGHTS: ${other}\nRESUME: ${first.report}\nTASK: go on\n`).stderr, /keeps its rights, write /);
+  const reader = await drive(s, `RIGHTS: read ${elsewhere}\nTASK: look\n`);
+  assert.match(check(s, `RIGHTS: write ${s.work}\nRESUME: ${reader.report}\nTASK: go on\n`).stderr, /keeps its rights, read /);
+  const kept = await drive(s, `RESUME: ${first.report}\nTASK: go on\n`);
+  assert.equal(kept.code, 0, kept.err); assert.deepEqual(kept.json.rights, first.json.rights);
   const gone = tempDir("entrust-claude-gone-");
   const earlier = await drive(s, `RIGHTS: read ${gone}\nTASK: start\n`);
   fs.rmSync(gone, { recursive: true });
-  assert.match(check(s, `RIGHTS: read\nRESUME: ${earlier.report}\nTASK: go on\n`).stderr, /no longer exists/);
+  assert.match(check(s, `RESUME: ${earlier.report}\nTASK: go on\n`).stderr, /no longer exists/);
 });
 
 test("SAFE_MODE runs with --safe-mode and no mailbox, even when one is given", async () => {

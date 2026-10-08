@@ -20,7 +20,7 @@ const STATUS = path.join(ROOT, "skills/opencode/scripts/status.mjs");
 const SHARED = path.join(ROOT, "skills/codex/scripts/agent-run.mjs");
 const cwd = tempDir("entrust-opencode-cwd-");
 const model = "router/deepseek/deepseek-flash";
-const prompt = (extra = "", rights = `read ${cwd}`) => `RIGHTS: ${rights}\n${extra}TASK: inspect the supplied evidence\n`;
+const prompt = (extra = "", rights = `read ${cwd}`) => `${rights === null ? "" : `RIGHTS: ${rights}\n`}${extra}TASK: inspect the supplied evidence\n`;
 function invoke(args, input = "", env = {}) {
   const p = spawnNode(args, { env, stdio: ["pipe", "pipe", "pipe"], killAfterMs: 15000 });
   p.child.stdin.end(input);
@@ -386,6 +386,37 @@ test("an accept the mailbox cannot record is never answered once", async () => {
     await driverRun(s, { approval: "unrecordable" });
     assert.equal(s.mutations.some((m) => m.body?.reply === "once"), false, JSON.stringify(s.mutations));
   } finally { await s.close(); }
+});
+test("a continuation keeps its rights: a write session resumed as read is refused, and one naming none stays write", async () => {
+  const s = await fakeOpenCode("normal");
+  try {
+    const first = await driverRun(s, { rights: `write ${cwd}` }); assert.equal(first.code, 0, first.err);
+    const narrowed = await driverRun(s, { rights: `read ${cwd}`, resume: first.path, beside: first.path });
+    assert.equal(narrowed.code, 2, narrowed.err); assert.match(narrowed.err, /a continuation keeps its rights \(write /);
+    const kept = await driverRun(s, { rights: null, resume: first.path });
+    assert.equal(kept.code, 0, kept.err); assert.equal(kept.report.rights.kind, "write");
+  } finally { await s.close(); }
+});
+test("RESUME of a run still going exits 10, and of one that died before it published exits 2", async () => {
+  const s = await fakeOpenCode("normal");
+  try {
+    const claim = path.join(tempDir("entrust-opencode-claim-"), "report.json");
+    fs.writeFileSync(claim, JSON.stringify({ adapter: "opencode", ok: false, status: "starting", pid: process.pid }));
+    const live = await driverRun(s, { resume: claim }); assert.equal(live.code, 10, live.err);
+    fs.writeFileSync(claim, JSON.stringify({ adapter: "opencode", ok: false, status: "starting", pid: spawnSync("true").pid }));
+    const dead = await driverRun(s, { resume: claim }); assert.equal(dead.code, 2); assert.match(dead.err, /ended without a report/);
+  } finally { await s.close(); }
+});
+test("RESUME last is refused: under a plan the newest report beside this one is another worker's", () => {
+  assert.match(parsePrompt(prompt("RESUME: last\n"), {}).error, /RESUME last is not accepted/);
+});
+test("a run that cannot make its mailbox never writes over an earlier report at its path", () => {
+  const dir = tempDir("entrust-opencode-earlier-"), report = path.join(dir, "report.json"), input = path.join(dir, "prompt.txt");
+  fs.writeFileSync(report, '{"answer":"EARLIER"}\n'); fs.writeFileSync(path.join(dir, "notadir"), ""); fs.writeFileSync(input, prompt(`MODEL: ${model}\n`));
+  const r = spawnSync(process.execPath, [path.join(ROOT, "skills/opencode/scripts/driver.mjs"), "--prompt-file", input, "--report-file", report,
+    "--approval-dir", path.join(dir, "notadir", "approvals")], { env: { ...process.env, ENTRUST_STATE_DIR: dir, ENTRUST_OPENCODE_URL: "http://127.0.0.1:9" }, encoding: "utf8" });
+  assert.equal(r.status, 2, r.stderr);
+  assert.equal(fs.readFileSync(report, "utf8"), '{"answer":"EARLIER"}\n');
 });
 test("native question receives a structured answer through its separate route", async () => {
   const s = await fakeOpenCode("question");

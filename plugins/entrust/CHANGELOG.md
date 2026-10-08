@@ -35,6 +35,14 @@ forensics remain in the repository references and release notes.
   command could run with the user's rights while the mailbox, and the launcher's `approvals=` count, showed no
   accept. Both now record the settlement first: Claude answers deny when it cannot, OpenCode leaves the request
   unanswered for its deadline. The Codex driver already worked this way (X3).
+- **A continuation keeps its rights.** OpenCode sets a session's permission rules when it creates the session, so a
+  write session resumed with `RIGHTS: read` reported read while the server still allowed writes; Claude demanded a
+  `RIGHTS:` line on a resume and then ignored a different `read` directory. In both, a resume now keeps the earlier
+  run's rights: a `RIGHTS:` line names the same or is left out, and anything else is refused (N1, X9).
+- **OpenCode resumes and refusals.** `RESUME: last` took the newest report beside this one, which under a plan is
+  another worker's, and is now refused (X6). A resume of a run still going exits 10, as in Claude, and one whose
+  run died before publishing says so (X14). The report is claimed before any refusal, so a run that cannot make
+  its mailbox no longer writes over an earlier report at its path (X12).
 
 ## 0.27.0 — 2026-10-08
 

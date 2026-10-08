@@ -220,6 +220,16 @@ function sessionPermissions(scope) {
   return rules;
 }
 
+// The rights a report's run had, as a RIGHTS line would name them.
+function keptRights(prior) {
+  const kind = prior.rights?.kind;
+  if (kind === "read") return prior.cwd ? { kind, path: prior.cwd } : null;
+  if (kind === "write" && prior.rights.roots?.[0]) return { kind, path: prior.rights.roots[0] };
+  if (kind === "worktree" && prior.worktreeRepo) return { kind, path: prior.worktreeRepo };
+  return null;
+}
+const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === "EPERM"; } };
+
 // A write root must exist and pass the shared check: not the home or above it, not over the state directory,
 // where the mailboxes are (an agent allowed to edit there could approve its own requests), nor over OpenCode's
 // own configuration and data.
@@ -709,29 +719,6 @@ function writeSessionRecord(ctx, extra = {}) {
   });
 }
 
-function pickLastReport(report, serverMode, url, cwd) {
-  const roots = [path.dirname(report), path.dirname(path.dirname(report))];
-  const found = [];
-  for (const root of roots) {
-    let names = [];
-    try { names = fs.readdirSync(root); } catch { continue; }
-    for (const name of names) {
-      for (const p of [path.join(root, name, "report.json"), path.join(root, name)]) {
-        try {
-          if (!fs.statSync(p).isFile()) continue;
-          const r = readJson(p);
-          const priorMode = r?.serverMode ?? "remote";
-          const sameServer = priorMode === serverMode && (serverMode === "local" || r?.server?.url === url);
-          if (r?.adapter === "opencode" && r?.sessionID && sameServer && (r?.cwd === cwd || r?.worktreeRepo === cwd))
-            found.push({ p, mtime: fs.statSync(p).mtimeMs, r });
-        } catch {}
-      }
-    }
-  }
-  found.sort((a, b) => b.mtime - a.mtime);
-  return found[0] ?? null;
-}
-
 function clientFor(ctx, cwd) {
   const client = new (ctx.apiFamily === "v2" ? V2Client : Client)({ config: ctx.config, cwd });
   if (ctx.apiFamily === "v2") client.ownedSessions = () => ctx.invocationSessions ?? new Set(ctx.sessionID ? [ctx.sessionID] : []);
@@ -783,14 +770,13 @@ async function resolveResume(ctx) {
   const value = ctx.parsed.resume;
   if (value === undefined) return { ok: true };
   let sessionID = null, failure = null;
-  if (value === "last") {
-    const hit = pickLastReport(ctx.report, ctx.serverMode, ctx.server.url, ctx.cwd);
-    if (!hit) return { error: "RESUME last: no earlier invocation for this server and working directory" };
-    sessionID = hit.r.sessionID;
-    failure = applyPrior(ctx, hit.r);
-  } else if (path.isAbsolute(value)) {
+  if (path.isAbsolute(value)) {
     const prior = readJson(value);
     if (!prior || prior.adapter !== "opencode") return { error: `RESUME ${value}: not an OpenCode report` };
+    // A report with no exit code is a claim: its driver still runs, or died before it published.
+    if (typeof prior.exitCode !== "number")
+      return Number.isInteger(prior.pid) && alive(prior.pid) ? { busy: true, sessionID: value }
+        : { error: `RESUME ${value} names a run that ended without a report; there is nothing to continue` };
     sessionID = prior.sessionID;
     failure = applyPrior(ctx, prior);
   } else {
@@ -917,20 +903,21 @@ async function execute(opts, parsed) {
   };
   ctx.stateDir = stateDirOf(ctx);
 
-  if (ctx.approvalDir) {
-    try { fs.mkdirSync(ctx.approvalDir, { recursive: true, mode: 0o700 }); }
-    catch (e) { return fail(ctx, `approval directory ${ctx.approvalDir} cannot be made: ${e.message}`, EXIT.USAGE); }
-  }
-
-  // Claim the report path exclusively, refusing any overwrite. A refusal publishes nothing.
+  // Claim the report path exclusively, before anything can refuse, so no refusal publishes over an earlier
+  // report. A refusal of the claim itself publishes nothing. The claim's pid tells a live run from a dead one.
   const claim = (() => {
-    try { const fd = fs.openSync(ctx.report, "wx", 0o600); fs.writeSync(fd, `${JSON.stringify({ adapter: "opencode", ok: false, status: "starting" })}\n`); fs.closeSync(fd); return null; }
+    try { const fd = fs.openSync(ctx.report, "wx", 0o600); fs.writeSync(fd, `${JSON.stringify({ adapter: "opencode", ok: false, status: "starting", pid: process.pid })}\n`); fs.closeSync(fd); return null; }
     catch (e) { return e.code === "EEXIST" ? `${ctx.report} already exists, or is a symbolic link` : `could not be published at ${ctx.report}`; }
   })();
   if (claim) { process.stderr.write(`entrust: refused: ${claim}\n`); return EXIT.USAGE; }
 
   // The pid line the launcher uses to own this run and to forward a Stop.
   process.stderr.write(`entrust: pid=${process.pid} identity=${ctx.invocationId} reportPath=${ctx.report}\n`);
+
+  if (ctx.approvalDir) {
+    try { fs.mkdirSync(ctx.approvalDir, { recursive: true, mode: 0o700 }); }
+    catch (e) { return fail(ctx, `approval directory ${ctx.approvalDir} cannot be made: ${e.message}`, EXIT.USAGE); }
+  }
 
   try {
   ctx.runtimePath = sidecar(ctx, "runtime.json");
@@ -949,6 +936,14 @@ async function execute(opts, parsed) {
   if (parsed.resume === undefined) {
     const missing = routeError(ctx);
     if (missing) return fail(ctx, missing, EXIT.USAGE);
+  }
+
+  // A continuation with no RIGHTS line keeps the rights its report recorded.
+  if (!parsed.rights) {
+    const prior = readJson(parsed.resume);
+    const kept = prior?.adapter === "opencode" ? keptRights(prior) : null;
+    if (!kept) return fail(ctx, `RESUME ${parsed.resume} records no rights to keep; name them with RIGHTS`, EXIT.USAGE);
+    parsed.rights = kept;
   }
 
   // Rights → working directory and roots.
@@ -973,9 +968,12 @@ async function execute(opts, parsed) {
   if (resumed.error) return fail(ctx, resumed.error, EXIT.USAGE);
   const missing = routeError(ctx);
   if (missing) return fail(ctx, missing, EXIT.USAGE);
-  if (ctx.resume) {
-    const widened = ctx.priorRights && !scopeWithin(ctx.scope, ctx.priorRights);
-    if (widened) return fail(ctx, "the requested RIGHTS widen the scope recorded for the resumed session", EXIT.USAGE);
+  // The session keeps the permission rules it was created with, so a continuation keeps its rights: a resume
+  // that names others would report them while the server enforces the old ones.
+  if (ctx.resume && ctx.priorRights) {
+    const roots = (r) => JSON.stringify((r.roots ?? []).map((p) => canonical(p)));
+    if (ctx.priorRights.kind !== ctx.scope.kind || roots(ctx.priorRights) !== roots(ctx.scope))
+      return fail(ctx, `a continuation keeps its rights (${ctx.priorRights.kind}${ctx.priorRights.roots?.length ? ` ${ctx.priorRights.roots.join(" ")}` : ""}); name the same or leave RIGHTS out`, EXIT.USAGE);
   }
 
   // Model: pinned by the plan, inherited by a resume, else the first recent model. No fallback.

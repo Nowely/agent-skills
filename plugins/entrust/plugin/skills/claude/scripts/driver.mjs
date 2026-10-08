@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
-import { EXIT, canonical, makeWorktree, passwdHome, resolveModel, resolveRights, rightsScope, scopeWithin, within, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, canonical, makeWorktree, passwdHome, resolveModel, resolveRights, rightsScope, within, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { TOOL } from "./approvals.mjs";
 
@@ -92,8 +92,10 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   if (!task.trim()) return refusal("the TASK body is empty");
   if (headers.RIGHTS !== undefined && order[0] !== "RIGHTS") return refusal("RIGHTS must be the first header when present");
 
-  const rights = resolveRights(headers.RIGHTS, env.ENTRUST_PLAN_WRITES, cwd);
-  if (rights.error) return refusal(rights.error);
+  // A continuation keeps its run's rights, which RESUME below supplies; any other run declares them.
+  let rights = headers.RESUME === undefined || headers.RIGHTS !== undefined || env.ENTRUST_PLAN_WRITES
+    ? resolveRights(headers.RIGHTS, env.ENTRUST_PLAN_WRITES, cwd) : null;
+  if (rights?.error) return refusal(rights.error);
 
   const planModel = env.ENTRUST_PLAN_MODEL || null;
   const pinned = resolveModel(headers.MODEL, planModel);
@@ -127,17 +129,27 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
       return Number.isInteger(prior.pid) && alive(prior.pid) ? { error: `RESUME ${at} names a run that has not finished`, busy: true }
         : refusal(`RESUME ${at} names a run that ended without a report; there is nothing to continue`);
     if (typeof prior.sessionID !== "string" || !prior.cwd) return refusal(`RESUME ${at} records no session to continue`);
-    const was = prior.rights?.kind;
-    if (was !== rights.kind) return refusal(`RESUME: the run had RIGHTS ${was}; a continuation keeps it`);
-    if (rights.kind === "write" && !scopeWithin({ kind: "write", roots: [canonical(rights.path, cwd)] }, prior.rights))
-      return refusal(`RESUME: RIGHTS write ${canonical(rights.path, cwd)} widens past the run's ${prior.rights.roots}`);
-    if (rights.kind === "worktree" && canonical(rights.path, cwd) !== prior.worktreeRepo)
-      return refusal(`RESUME: RIGHTS worktree ${canonical(rights.path, cwd)} is not the run's repository ${prior.worktreeRepo}`);
+    // The session runs in the run's directory with the run's rights: a RIGHTS line names the same, or none.
+    const kept = keptRights(prior);
+    if (!kept) return refusal(`RESUME ${at} records no rights to keep`);
+    if (rights && !sameRights(rights, kept, cwd))
+      return refusal(`RESUME: a continuation keeps its rights, ${kept.kind} ${kept.path}; name the same or leave RIGHTS out`);
+    rights = kept;
     resume = { report: at, prior };
   }
 
   return { task, rights, model, effort, schemaPath, schemaText: JSON.stringify(schema), safeMode: headers.SAFE_MODE === "yes", resume };
 }
+
+// The rights a report's run had, as a RIGHTS line would name them; and whether a declared one names the same.
+function keptRights(prior) {
+  const kind = prior.rights?.kind;
+  if (kind === "read") return { kind, path: prior.cwd };
+  if (kind === "write" && prior.rights.roots?.[0]) return { kind, path: prior.rights.roots[0] };
+  if (kind === "worktree" && prior.worktreeRepo) return { kind, path: prior.worktreeRepo };
+  return null;
+}
+const sameRights = (a, b, cwd) => a.kind === b.kind && canonical(a.path ?? cwd, cwd) === canonical(b.path, cwd);
 
 // A run's working directory and the roots it may write without a prompt. A write root passes the shared check:
 // not the home or above it, not over the state directory, where the mailboxes are, nor over ~/.claude, whose
