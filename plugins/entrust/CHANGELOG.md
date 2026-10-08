@@ -43,6 +43,10 @@ forensics remain in the repository references and release notes.
   two, the exit ladder (rendered from the rungs), the state layout and the environment. The prompt-file grammar,
   the output-schema caps, the wall-clock grace and the suites' seams, which only the old help carried, are on
   that page.
+- **The Codex driver's comments state each reason once.** The narrative, the history and the restatements went
+  (about 280 comment lines, from 1,461): a fact the file told up to seven times is told where it applies and
+  pointed at elsewhere, measurements are summarised beside the code they justify, and the details a page already
+  explains are a link to it. The driver is about 4,000 lines, from 4,600 before the help and the comments.
 - **One page for calling an external agent.** `orchestrate/references/external.md` holds the steps every adapter
   shares, written for a coordinator of any host: the prompt's core lines, `--new`, the run in Claude Code (the
   Agent call and its block) or in Codex and OpenCode (a native proxy on the host's smallest model), the status
