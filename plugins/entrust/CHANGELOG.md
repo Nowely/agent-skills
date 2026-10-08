@@ -28,16 +28,17 @@ forensics remain in the repository references and release notes.
 - **What an external driver shares is orchestrate's.** The exit-code table, the request-id shape, the RIGHTS grammar,
   its check against a registered plan's writes and the scope it grants, and the worktree a `worktree` agent runs in moved, unchanged, from the OpenCode adapter to
   `orchestrate/scripts/drivers.mjs`, which the OpenCode driver imports, so a second driver does not copy them.
-- **The Codex driver's exit codes are the shared table (E137, in part).** It defined the same numbers under names of
-  its own (`OK`, `TURN_NOT_COMPLETED`, `ESCALATED`, `INTERACTION`, `VERIFY_UNMEASURABLE`); it now imports
-  `EXIT` from `orchestrate/scripts/drivers.mjs`. No code changed its number.
+- **The Codex driver's exit codes and RIGHTS grammar are the shared ones (E137).** It defined the same exit numbers
+  under names of its own (`OK`, `TURN_NOT_COMPLETED`, `ESCALATED`, `INTERACTION`, `VERIFY_UNMEASURABLE`) and parsed
+  RIGHTS itself; it now imports `EXIT`, `parseRights` and `resolveRights` from `orchestrate/scripts/drivers.mjs`.
+  No exit code changed its number; a bare `RIGHTS: write` or `worktree` is refused in the shared words. Its
+  worktree code stays its own: it is not a copy of the shared `makeWorktree` but more of it, a ledger written
+  before `git worktree add`, reconciliation after a crash and a continuation rebuilt at its base (E139 records
+  that the other drivers' trees have none of it).
 - **A prompt with no `MODEL:` runs on its plan row's model.** Under a registered plan the OpenCode and Claude
   drivers refused a prompt that named no model; it now takes the row's, as an absent `RIGHTS:` takes the row's
   writes. A prompt naming another model, or OpenCode's `inherit`, is still refused. The rule is one function,
   `resolveModel` in `orchestrate/scripts/drivers.mjs`.
-- **The Codex driver reads RIGHTS with the shared grammar (E137, in part).** It parses a `RIGHTS:` line with
-  `parseRights` and checks it against the plan with `resolveRights`; a bare `RIGHTS: write` or `worktree` is
-  refused in the shared words.
 
 ### Fixed
 

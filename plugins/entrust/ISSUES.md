@@ -328,16 +328,3 @@ A change to one is a drift from the other unless both are edited by hand, and a
 coordinator who reads both meets two phrasings of one rule. The swarm page cannot simply own the rule, since a bulk
 batch the plan gives no swarm runs as ordinary agents. Decide which page owns these rules and have the other
 link them, or hold one wording and pin it on both pages as `evals/fragments.mjs` pins the run directory.
-
-## E137. The Codex driver keeps its own RIGHTS grammar and worktree code beside the shared ones
-
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs` holds the RIGHTS grammar and
-the worktree code the OpenCode and Claude drivers use. `codex/scripts/driver.mjs:790` parses RIGHTS itself; `:2102`
-adds its worktree itself. Its exit codes are the shared table since the change that names this entry.
-
-**Check.** `grep -n "RIGHTS must be\|worktree\", \"add\"" plugins/entrust/plugin/skills/codex/scripts/driver.mjs`.
-
-**Issue text.** Three drivers launch external agents, and the facts they share (what a RIGHTS line grants, how a
-worktree is made) are defined once for two of them and again inside the Codex driver. A change to one copy leaves
-the other behind. The Codex driver should import them from `orchestrate/scripts/drivers.mjs`, keeping its own
-ledger and harvest, which only it has.
