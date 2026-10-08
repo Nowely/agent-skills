@@ -32,9 +32,8 @@ Amend the approved plan before adding a worker or changing its model or write sc
 
 Every invocation has `<run>/<id>/report.json`; a continuation has `<run>/<id>-2/report.json`, then
 `-3`, and waits until its predecessor ended. One session can have several invocations, each with a
-new report. Each concurrent worker has a different session. Local workers start private loopback
-servers; workers explicitly attached to one remote endpoint share that server. A server is not a
-concurrency slot.
+new report. Each concurrent worker has a different session and starts its own private loopback
+server. A server is not a concurrency slot.
 
 Return [five fields](../../orchestrate/schemas/five-fields.schema.json) through `OUTPUT_SCHEMA:`. The
 driver validates them locally and allows one corrective turn. Give a fresh verifier the requirements

@@ -47,7 +47,6 @@ export async function fakeOpenCode(mode = "normal") {
     try { body = chunks.length ? JSON.parse(Buffer.concat(chunks)) : null; } catch { body = null; }
     calls.push({ method: req.method, path: p, body });
     const json = (value, status = 200) => { res.writeHead(status, { "Content-Type": "application/json" }); res.end(JSON.stringify(value)); };
-    if (p === "/global/health" && mode === "health-error") return json({ healthy: false }, 503);
     if (p === "/global/health") return json({ healthy: true, version: "1.18.34" });
     if (p === "/doc") {
       if (mode === "slow-doc") await new Promise((resolve) => setTimeout(resolve, 10000));

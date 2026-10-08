@@ -11,11 +11,10 @@ metadata:
 license: MIT
 ---
 
-Resolve `<skill-dir>` to this installed directory. By default, the adapter starts a private loopback
-server with the installed `opencode` CLI for each worker and stops it when that worker finishes. It
-uses the user's existing OpenCode configuration and credentials; no server URL or connection file is
-needed. Every worker gets its own session. Continuing a worker reuses that session under a fresh report
-path. Set `ENTRUST_OPENCODE_URL` or `ENTRUST_OPENCODE_CONNECTION` only when attaching to a remote server.
+Resolve `<skill-dir>` to this installed directory. The adapter starts a private loopback server with the
+installed `opencode` CLI for each worker and stops it when that worker finishes. It uses the user's
+existing OpenCode configuration and credentials; there is no server to configure. Every worker gets its
+own session. Continuing a worker reuses that session under a fresh report path.
 
 ## Route named models
 
@@ -34,13 +33,8 @@ rule. A model mentioned only for information or discussion does not request a wo
 ## Select and launch
 
 1. Run `node <skill-dir>/scripts/status.mjs`. Status is passive: it reads at most two saved recent
-   model references and checks only an already-configured remote endpoint; it never starts a server or
-   requests a model catalogue. A default local setup reports `local_unprobed` and retains its saved
-   recent references; whether a local server is already running remains unknown. Model availability remains unknown until the launch path
-   validates the exact selection. To attach to a remote server, set
-   `ENTRUST_OPENCODE_URL` (and `OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD` if needed), or
-   point `ENTRUST_OPENCODE_CONNECTION` at a private JSON file containing `url`, `username`, and
-   `password`. Keep credentials out of prompts and reports.
+   model references and reports `local_unprobed`; it never starts a server or requests a model
+   catalogue. Model availability remains unknown until the launch path validates the exact selection.
 2. Choose `MODEL: inherit` only when the user did not name a model family: it selects the first recent
    model. When the user names a family such as DeepSeek or GLM, use a matching recent reference if
    present; never use `inherit` or a different recent model for that request. If no matching recent
@@ -77,7 +71,7 @@ The report's `model` is observed attribution; `requestedModel` preserves the sel
 Scope declarations do not configure a sandbox.
 
 Stop the attached watcher or signal the adapter driver identified by that invocation's pid line.
-The driver aborts its own sessions and records cancellation; the singleton stays running. In ordinary
+The driver aborts its own sessions, records cancellation and stops its server. In ordinary
 `--run` mode, a waiting hand-back leaves no wrapper call in flight: rerun it to regain Stop. The
 coordinator cleans up an interrupted proxy whose watcher did not stop. Verify the external outcome;
 a missing report or uncertain cancellation is unknown, never success.

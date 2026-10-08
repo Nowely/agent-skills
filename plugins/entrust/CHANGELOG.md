@@ -114,6 +114,10 @@ forensics remain in the repository references and release notes.
   fields, `status.mjs` takes no `--api-family` or `--agent`, and a report or session an earlier release recorded as
   V2 is refused on continuation. V2's client, its fake server, its cases and the pilot that measured it are in
   `research/2026-10-02-opencode-v2-pilot/` (decision 4 of the driver audit).
+- **Attaching OpenCode workers to a remote server.** The driver always starts a private loopback server with the
+  user's `opencode` CLI and stops it when the worker ends, which is how the adapter is used.
+  `ENTRUST_OPENCODE_URL` and `ENTRUST_OPENCODE_CONNECTION` are no longer read, `status.mjs` probes nothing and
+  takes only `--format`, and a report made on a remote server is refused on continuation (decision 5).
 
 ## 0.27.0 — 2026-10-08
 

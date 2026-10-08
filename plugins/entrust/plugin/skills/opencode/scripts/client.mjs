@@ -1,10 +1,10 @@
-import { connection, sleep } from "./config.mjs";
+import { sleep } from "./config.mjs";
 
 export class ApiError extends Error {
   constructor(message, status = null) { super(message); this.status = status; }
 }
 export class Client {
-  constructor({ config = connection(), cwd = null, timeoutMs = 20000 } = {}) {
+  constructor({ config, cwd = null, timeoutMs = 20000 }) {
     this.config = config; this.cwd = cwd; this.timeoutMs = timeoutMs;
   }
   headers() {

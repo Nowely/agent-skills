@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Run one invocation against a private local OpenCode server or an explicitly selected remote server.
+// Run one invocation against a private local OpenCode server the driver starts and stops.
 //
 //   node driver.mjs --check-prompt-file FILE
 //   node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS]
@@ -12,7 +12,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { Client } from "./client.mjs";
-import { connection, recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
+import { recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
 import { startLocalServer } from "./local-server.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { git, makeWorktree, passwdHome, rightsScope, scopeWithin, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
@@ -37,7 +37,7 @@ const USAGE = `driver — run one OpenCode invocation for the shared entrust lau
       "entrust: refused: <reason>" on stderr, exactly. No server is contacted.
   node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS]
                   [--timeout seconds] [--idle-timeout seconds] [--max-commands N]
-      Start a private local server or attach to the pinned remote server, run one selected invocation and publish
+      Start a private local server, run one selected invocation and publish
       the report JSON to stdout and exclusively to the report path. No overwrite.
       --timeout is the wall clock (default ${DEFAULT_TIMEOUT_S}s), --idle-timeout the no-progress
       clock (default ${DEFAULT_IDLE_S}s), --max-commands a cap on executed bash commands
@@ -692,7 +692,7 @@ const sessionRecordPath = (ctx, sid) => path.join(ctx.stateDir, "opencode-sessio
 
 function writeSessionRecord(ctx, extra = {}) {
   atomicJson(sessionRecordPath(ctx, ctx.sessionID), {
-    adapter: "opencode", sessionID: ctx.sessionID, serverMode: ctx.serverMode, serverUrl: ctx.server.url, cwd: ctx.cwd,
+    adapter: "opencode", sessionID: ctx.sessionID, serverMode: "local", cwd: ctx.cwd,
     model: ctx.ref ? modelKey(ctx.ref) : null, rights: ctx.scope, invocationId: ctx.invocationId,
     variant: ctx.variant ?? null,
     worktreePath: ctx.worktreePath ?? null, worktreeRepo: ctx.worktreeRepo ?? null,
@@ -707,12 +707,8 @@ function applyPrior(ctx, prior) {
   // An earlier release could run a session through the V2 API, which this driver no longer speaks.
   if ((prior.apiFamily ?? "v1") !== "v1") return "the record is a V2 session, which this adapter no longer runs";
   ctx.client = clientFor(ctx, ctx.cwd);
-  const priorMode = prior.serverMode ?? "remote";
-  if (priorMode !== ctx.serverMode) return "the record belongs to another server mode";
-  if (priorMode !== "local" && (prior.serverUrl ?? prior.server?.url)) {
-    const url = prior.serverUrl ?? prior.server.url;
-    if (url !== ctx.server.url) return "the record belongs to another server";
-  }
+  // An earlier release could attach to a remote server; a session there is not in the local server's store.
+  if ((prior.serverMode ?? "remote") !== "local") return "the record belongs to a remote server, which this adapter no longer attaches to";
   if (ctx.scope?.kind === "worktree") {
     const root = prior.worktreePath;
     if (prior.rights?.kind !== "worktree" || prior.worktreeRepo !== ctx.worktreeRepo || !root
@@ -810,7 +806,7 @@ function buildReport(ctx, base) {
     partial: Boolean(base.partial),
     cancellation: base.cancellation ?? ctx.cancellation ?? null,
     cwd: ctx.cwd ?? null,
-    serverMode: ctx.serverMode ?? "remote",
+    serverMode: "local",
     rights: ctx.scope ? { kind: ctx.scope.kind, roots: ctx.scope.roots ?? [] } : null,
     resume: Boolean(ctx.resume),
     admission: base.admission ?? ctx.admission ?? null,
@@ -888,15 +884,11 @@ async function execute(opts, parsed) {
   ctx.runtimePath = sidecar(ctx, "runtime.json");
   ctx.transcriptPath = sidecar(ctx, "transcript.json");
 
-  try { ctx.config = connection(); } catch (e) { return fail(ctx, e.message, EXIT.USAGE); }
   try {
-    if (ctx.config.local) {
-      ctx.serverMode = "local";
-      ctx.localServer = await startLocalServer({ cwd: process.cwd() });
-      ctx.config = ctx.localServer.config;
-    } else ctx.serverMode = "remote";
+    ctx.localServer = await startLocalServer({ cwd: process.cwd() });
+    ctx.config = ctx.localServer.config;
     ctx.client = clientFor(ctx, null); ctx.server = await ctx.client.probe();
-  } catch (e) { return fail(ctx, `the OpenCode server could not be started or reached: ${e.message}`, EXIT.TRANSPORT); }
+  } catch (e) { return fail(ctx, `the OpenCode server could not be started: ${e.message}`, EXIT.TRANSPORT); }
   ctx.routes = ROUTES;
   if (parsed.resume === undefined) {
     const missing = routeError(ctx);

@@ -1,8 +1,8 @@
 # Measured interaction contract
 
 The target is the [Codex adapter's interaction contract](../../codex/references/parity.md), with
-sandbox excluded. Keep server, session, invocation and message separate. One server serves many
-sessions; its process is never an agent-owned teardown target.
+sandbox excluded. Keep server, session, invocation and message separate: a Stop aborts the run's own
+sessions, and its private server goes only when the run itself ends.
 
 ## Version 1.18.34
 
@@ -41,8 +41,6 @@ Discovery reads the local OpenCode `model.json` recent list: two entries by defa
 duplicates removed. It retains provider and model IDs separately. A router display name is not the
 provider key. An ordinary new invocation selects the first entry; a plan pins its resolved ID.
 Explicit models outside those two are checked by exact ID rather than expanding discovery.
-For a remote server, provide the owner's recent-state snapshot through
-`ENTRUST_OPENCODE_MODEL_STATE`; a client's local recent list is not the server owner's preference.
 
 Reports attribute only observed invocation messages and commands. Root and child usage are distinct.
 Unknown command exit, usage, delivery or cancellation cannot become a fabricated zero or success.

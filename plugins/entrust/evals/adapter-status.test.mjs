@@ -5,7 +5,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { adapterRegistry, collectStatuses, parseArgs } from "../plugin/skills/orchestrate/scripts/adapter-status.mjs";
 import { registry, runCases, summarize, spawnNode, tempDir } from "./lib/harness.mjs";
-import { fakeOpenCode } from "./fake-opencode.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../plugin");
 const SCRIPT = path.join(ROOT, "skills/orchestrate/scripts/adapter-status.mjs");
@@ -37,7 +36,6 @@ add("the public skip flag accepts codex and rejects unknown adapters", () => {
 add("the CLI applies --skip codex without host JSON or a Codex probe", async () => {
   const state = tempDir("entrust-adapter-status-state-");
   const { child, done } = spawnNode([SCRIPT, "--skip", "codex"], { stdio: ["ignore", "pipe", "pipe"], env: {
-    ENTRUST_OPENCODE_URL: undefined, ENTRUST_OPENCODE_CONNECTION: undefined, ENTRUST_OPENCODE_LOCAL: undefined,
     ENTRUST_OPENCODE_MODEL_STATE: undefined, XDG_STATE_HOME: state,
   }, killAfterMs: 10000 });
   const r = await done;
@@ -50,25 +48,21 @@ add("the CLI applies --skip codex without host JSON or a Codex probe", async () 
   assert.equal(child.killed, false);
 });
 
-add("a failed OpenCode endpoint preserves its saved recent refs as unchecked", async () => {
-  const server = await fakeOpenCode("health-error");
+add("OpenCode's status carries its two saved recent refs, with no server to probe", async () => {
   const state = tempDir("entrust-adapter-status-recent-");
   const modelState = path.join(state, "model.json");
   fs.writeFileSync(modelState, JSON.stringify({ recent: [
     { providerID: "router", modelID: "first" }, { providerID: "router", modelID: "second" }, { providerID: "router", modelID: "third" },
   ] }));
-  try {
-    const { done } = spawnNode([SCRIPT, "--skip", "codex"], { stdio: ["ignore", "pipe", "pipe"], env: {
-      ENTRUST_OPENCODE_URL: server.url, ENTRUST_OPENCODE_CONNECTION: undefined,
-      ENTRUST_OPENCODE_LOCAL: undefined, ENTRUST_OPENCODE_MODEL_STATE: modelState,
-    }, killAfterMs: 10000 });
-    const r = await done;
-    assert.equal(r.code, 0, r.out + r.err);
-    const report = JSON.parse(r.out).adapters.find((adapter) => adapter.id === "opencode").result;
-    assert.equal(report.status, "unchecked");
-    assert.equal(report.recent.status, "available");
-    assert.deepEqual(report.recent.models.map((model) => model.modelID), ["first", "second"]);
-  } finally { await server.close(); }
+  const { done } = spawnNode([SCRIPT, "--skip", "codex"], { stdio: ["ignore", "pipe", "pipe"], env: {
+    ENTRUST_OPENCODE_MODEL_STATE: modelState,
+  }, killAfterMs: 10000 });
+  const r = await done;
+  assert.equal(r.code, 0, r.out + r.err);
+  const report = JSON.parse(r.out).adapters.find((adapter) => adapter.id === "opencode").result;
+  assert.equal(report.status, "local_unprobed");
+  assert.equal(report.recent.status, "available");
+  assert.deepEqual(report.recent.models.map((model) => model.modelID), ["first", "second"]);
 });
 
 add("the status collector has no host-context input or adapter skill loading", () => {
