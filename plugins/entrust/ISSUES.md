@@ -328,20 +328,3 @@ coordinator who reads both meets two phrasings of one rule. The swarm page canno
 batch the plan gives no swarm runs as ordinary Codex agents. Decide which page owns these rules and have the other
 link them, or generate the second copy from the first as the codex page's composition rules are generated into
 orchestrate's references.
-
-## E123. The external-run launcher is a Codex adapter file that carries OpenCode's and Claude's specifics
-
-**Evidence, level 1.** Paths under `plugins/entrust/plugin/skills/`. `codex/scripts/agent-run.mjs` launches every
-external worker: the OpenCode entry point is a shim that runs it with `--adapter opencode`
-(`opencode/scripts/agent-run.mjs:6-14`). It hardcodes the adapters (`:85` `new Set(["codex", "opencode"])`, `:83` the
-OpenCode driver's path), OpenCode's server variables and request types (`backendEnv`, `opencode.permission`,
-`opencode.question`), and registers every plan row, "Claude or Codex", against model names of its own (`:464-465`
-`PLAN_MODELS`, `CLAUDE_MODELS`). The schema, the cleanup script, the session's bounds and the swarm's adapter choice
-left the codex adapter in the change that recorded this narrowing; each adapter now declares its status probe,
-launcher, swarm defaults and model slugs in `skills/<id>/adapter.json`.
-
-**Issue text.** The launcher that registers plans and runs external workers lives in the Codex adapter and branches on
-OpenCode inside it, so an adapter cannot be added, removed or replaced without editing Codex's file. Split it into a
-transport-neutral core (plan registry, report paths, the pending/decide mailbox, the keeper) owned by orchestrate,
-and per-adapter hooks (driver path, backend environment, request types, plan-model validation) declared beside each
-adapter's `adapter.json`.

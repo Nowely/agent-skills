@@ -25,7 +25,7 @@ Allocate inside the page's bounds by judgement, not to fill a band; [roles.md](.
 ## Registering the plan
 
 After the adapter's status check has established the available models, register every agent,
-Claude or Codex, with `node "<codex-skill-dir>/scripts/agent-run.mjs" --plan --run-dir <run>`
+Claude or Codex, with `node "<orchestrate-skill-dir>/scripts/agent-run.mjs" --plan --run-dir <run>`
 (the launcher's `--help` defines the rows). Build the card from those rows before presenting it.
 Use `--plan --amend` for an approved amendment; the launcher refuses an unlisted Codex agent.
 An all-native plan needs no driver registration or state directory.

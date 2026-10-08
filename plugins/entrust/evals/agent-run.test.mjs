@@ -11,12 +11,12 @@ import crypto from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { DRIVER, EXIT, FAKE, SCRIPTS, codexShim, readJson, registry, runCases, skip, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
+import { DRIVER, EXIT, FAKE, LAUNCHER_CORE, SCRIPTS, codexShim, readJson, registry, runCases, skip, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
 import { ACCEPTED, REFUSED, STATUS_LINES, TAKEN, agentDirOf, planRowOf, shortName } from "../plugin/skills/codex/scripts/agent-run.mjs";
 
 const LAUNCHER = path.join(SCRIPTS, "agent-run.mjs");
 const DRIVER_SRC = fs.readFileSync(path.join(SCRIPTS, "driver.mjs"), "utf8");
-const LAUNCHER_SRC = fs.readFileSync(LAUNCHER, "utf8");
+const LAUNCHER_SRC = fs.readFileSync(LAUNCHER_CORE, "utf8");
 
 const shimDir = tempDir("agent-run-shim.");
 codexShim(shimDir, FAKE);
@@ -796,7 +796,7 @@ test("D6 plan continuations, Claude rows, report shape, case, roles and unknown 
       if (r.code !== 2 || !r.out.includes("not in the approved plan")) return `bad suffix ${name}: ${r.code} ${r.out}`;
     }
     const claude = await launch("Opus-R3");
-    if (claude.code !== 2 || !claude.out.includes("is a Claude agent")) return `Claude row: ${claude.code} ${claude.out}`;
+    if (claude.code !== 2 || !claude.out.includes("is a native agent")) return `Claude row: ${claude.code} ${claude.out}`;
     const wrong = await launch("B", "other.json");
     const deep = await newAgent(path.join(runDir, "C", "x", "report.json"));
     if (wrong.code !== 2 || deep.code !== 2 || !wrong.out.includes("/<row id or continuation>/report.json")

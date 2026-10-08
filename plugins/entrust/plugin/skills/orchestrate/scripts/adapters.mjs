@@ -1,6 +1,8 @@
 // The adapters this plugin installs. Each declares itself in skills/<id>/adapter.json, its directory name
-// being its id: a read-only status probe, a launcher for external workers, its swarm defaults and the shape
-// of its model slugs, each optional. Paths in a declaration are relative to the adapter's directory.
+// being its id: a read-only status probe, the entry point that launches its external workers, the hooks the
+// shared launcher takes from it (launch), the models a plan row may give it (plan, native when its agents are
+// the host's own), its swarm defaults and the shape of its model slugs, each optional. Paths in a declaration
+// are relative to the adapter's directory.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,7 +23,8 @@ export function adapters(root = SKILLS_ROOT) {
     const at = (rel) => (typeof rel === "string" ? path.join(dir, rel) : null);
     found.push({ id, dir,
       status: a.status ? { script: at(a.status.script), args: a.status.args ?? [] } : null,
-      launcher: at(a.launcher), swarm: a.swarm ?? {}, modelSlug: a.modelSlug ?? null });
+      launcher: at(a.launcher), launch: at(a.launch), plan: a.plan ?? null,
+      swarm: a.swarm ?? {}, modelSlug: a.modelSlug ?? null });
   }
   return found;
 }

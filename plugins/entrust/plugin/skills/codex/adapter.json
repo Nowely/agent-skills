@@ -2,6 +2,8 @@
   "schemaVersion": 1,
   "status": { "script": "scripts/status.mjs", "args": ["--json"] },
   "launcher": "scripts/agent-run.mjs",
+  "launch": "scripts/launch.mjs",
+  "plan": { "models": ["astra", "sol", "terra", "luna"] },
   "swarm": { "concurrency": 10 },
   "modelSlug": "\\bgpt-\\d"
 }

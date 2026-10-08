@@ -23,6 +23,8 @@ export const EVALS = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const ROOT = path.join(path.dirname(EVALS), "plugin");
 export const SCRIPTS = path.join(ROOT, "skills", "codex", "scripts");
 export const DRIVER = path.join(SCRIPTS, "driver.mjs");
+// The launcher every adapter's agent-run.mjs enters.
+export const LAUNCHER_CORE = path.join(ROOT, "skills", "orchestrate", "scripts", "agent-run.mjs");
 export const FAKE = path.join(EVALS, "fake-app-server.mjs");
 
 // One exit handler for every temp directory, not one per directory: Node warns past ten listeners, and a

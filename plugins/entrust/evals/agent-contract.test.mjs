@@ -15,8 +15,8 @@
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { DRIVER, FIELDS, ROOT, PROMPT_FIELDS, SCRIPTS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
-import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../plugin/skills/codex/scripts/agent-run.mjs";
+import { DRIVER, FIELDS, LAUNCHER_CORE, ROOT, PROMPT_FIELDS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
+import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../plugin/skills/orchestrate/scripts/agent-run.mjs";
 
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "codex", "references", "orchestration.md");
@@ -136,7 +136,7 @@ test("the ONE call is agent-run.mjs --run with --report-file in one foreground c
       problems.push("the page does not say the launcher is one foreground call with no `&` of its own");
     // The launcher's own spawn: exactly the two driver flags, prompt.txt as an argument only, the
     // environment untouched. agent-run.test.mjs runs it; this reads the promise off the source.
-    const launcher = fs.readFileSync(path.join(SCRIPTS, "agent-run.mjs"), "utf8");
+    const launcher = fs.readFileSync(LAUNCHER_CORE, "utf8");
     if (!/\[DRIVER, "--prompt-file", promptPath, "--report-file", report, \.\.\.approvalArgs\]/.test(launcher))
       problems.push("the launcher does not spawn the driver with exactly --prompt-file, --report-file and the approval arguments");
     if (/(readFileSync|openSync|createReadStream|readFile)\([^)]*prompt/i.test(launcher)) problems.push("the launcher reads prompt.txt");
@@ -292,7 +292,7 @@ test("the launcher sorts a report by the driver's own words, so the two move tog
   () => {
     const problems = [];
     for (const needle of [ACCEPTED, ...TAKEN]) if (!driver.includes(needle)) problems.push(`the driver no longer prints ${JSON.stringify(needle)}`);
-    if (!/PATH=\$\{where\}/.test(fs.readFileSync(path.join(SCRIPTS, "agent-run.mjs"), "utf8"))) problems.push("the launcher's status read no longer prints a PATH line");
+    if (!/PATH=\$\{where\}/.test(fs.readFileSync(LAUNCHER_CORE, "utf8"))) problems.push("the launcher's status read no longer prints a PATH line");
     return problems.length === 0 || problems.join("; ");
   });
 
