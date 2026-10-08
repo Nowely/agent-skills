@@ -29,6 +29,8 @@ const PROTECTED = [{ dir: path.join(passwdHome(), ".claude"), label: "~/.claude"
 const READ_TOOLS = ["Read", "Grep", "Glob", "Bash"];
 const WRITE_TOOLS = [...READ_TOOLS, "Edit", "Write"];
 const DEFAULT_TIMEOUT_S = 1800;
+// The volume bound every adapter has: Codex cuts at 1,000 commands, this driver at 1,000 tool calls.
+const DEFAULT_MAX_TOOL_CALLS = 1000;
 const STOP_GRACE_MS = 10000, KILL_GRACE_MS = 5000;
 // Above the approval deadline: without a per-server timeout an MCP_TOOL_TIMEOUT in the environment cuts the
 // wait (60 s cut a 70 s wait, and Claude Code cancelled the call and retried it).
@@ -46,7 +48,8 @@ const USAGE = `driver — run one external Claude agent (claude -p) for the shar
   node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS] [--timeout seconds]
       Run the prompt's TASK in one claude -p turn and publish the report JSON to stdout and,
       exclusively, to the report path. With --approval-dir every permission prompt is offered there;
-      without it whatever would prompt is denied. --timeout is the wall clock (default ${DEFAULT_TIMEOUT_S} s).
+      without it whatever would prompt is denied. --timeout is the wall clock (default ${DEFAULT_TIMEOUT_S} s),
+      paused while a request waits; --max-tool-calls the volume bound (default ${DEFAULT_MAX_TOOL_CALLS}).
 
   The prompt: header lines, then TASK: and the task.
     RIGHTS: read [dir] | write <dir> | worktree <repo>   first; the plan's writes when a plan pins them
@@ -214,7 +217,7 @@ export function childEnv(env) {
 }
 
 function parseArgs(argv) {
-  const o = { check: null, prompt: null, report: null, approvalDir: null, timeout: DEFAULT_TIMEOUT_S, help: false };
+  const o = { check: null, prompt: null, report: null, approvalDir: null, timeout: DEFAULT_TIMEOUT_S, maxToolCalls: DEFAULT_MAX_TOOL_CALLS, help: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], v = argv[i + 1];
     if (a === "--help") o.help = true;
@@ -223,6 +226,7 @@ function parseArgs(argv) {
     else if (a === "--report-file" && v) { o.report = v; i++; }
     else if (a === "--approval-dir" && v) { o.approvalDir = v; i++; }
     else if (a === "--timeout" && /^\d+$/.test(v ?? "") && Number(v) > 0) { o.timeout = Number(v); i++; }
+    else if (a === "--max-tool-calls" && /^\d+$/.test(v ?? "") && Number(v) > 0) { o.maxToolCalls = Number(v); i++; }
     else return { error: `unknown or incomplete argument ${a}` };
   }
   return o;
@@ -331,7 +335,16 @@ async function run(o, text) {
     ctx.transcriptPath = `${base}.transcript.jsonl`;
     const transcript = fs.openSync(ctx.transcriptPath, "wx", 0o600);
     const child = ctx.child = spawn("claude", args, { cwd: scope.cwd, env: childEnv(process.env), stdio: ["pipe", "pipe", "inherit"] });
-    const timer = setTimeout(() => stop(`timed out after ${o.timeout} s`), o.timeout * 1000);
+    // The wall clock counts the agent's own time: it stands still while a request waits in the mailbox, since
+    // that wait is the coordinator's, and an approval given late must not find the run already cut.
+    let worked = 0, tick = Date.now();
+    const waiting = () => { try { return box && fs.readFileSync(path.join(box, "pending"), "utf8").trim() !== ""; } catch { return false; } };
+    const timer = setInterval(() => {
+      const t = Date.now();
+      if (!waiting()) worked += t - tick;
+      tick = t;
+      if (worked > o.timeout * 1000) stop(`timed out after ${o.timeout} s of work`);
+    }, 250);
 
     const lines = readline.createInterface({ input: child.stdout });
     lines.on("line", (line) => {
@@ -339,6 +352,7 @@ async function run(o, text) {
       let e;
       try { e = JSON.parse(line); } catch { return; }
       observe(ctx, e);
+      if (ctx.tools.size > o.maxToolCalls) stop(`cut at its volume bound: more than ${o.maxToolCalls} tool calls`);
     });
     child.stdin.on("error", () => {});
     child.stdin.end(parsed.task);
@@ -350,7 +364,7 @@ async function run(o, text) {
       child.on("exit", (code, sig) => { exited = [code, sig, null]; done(); });
       lines.on("close", () => { closed = true; done(); });
     });
-    clearTimeout(timer);
+    clearInterval(timer);
     fs.closeSync(transcript);
     const denials = ctx.result?.permission_denials ?? [];
     return publish(verdict({ result: ctx.result, stopped: ctx.stopped, spawnError, exitCode, signal, box, denials, hasMailbox: Boolean(mcpConfig),

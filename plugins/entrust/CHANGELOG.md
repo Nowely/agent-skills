@@ -26,6 +26,13 @@ forensics remain in the repository references and release notes.
   page's template failed a valid answer from an agent that only read files, and Claude had no such gate; OpenCode
   now counts its read, list, glob and grep tools, and Claude counts Bash, Read, Grep and Glob and takes the field
   (X7, the exit-5 half).
+- **One budget in three parts, in every adapter.** Each agent is bounded by silence, by volume and by a wall clock
+  that stands still while a request waits for the coordinator. Codex already was (900 s idle, 1,000 commands, no
+  wall clock unless asked); Claude had only a 30-minute wall clock that kept running through an approval wait, and
+  OpenCode had no volume bound. Claude now cuts at 1,000 tool calls and OpenCode at 1,000 commands, both with exit
+  3, and both wall clocks pause while a request is open. OpenCode counts a session its server reports busy as
+  progress, so a long quiet command is no longer cut as idle (X13). The numbers are unchanged until a live run
+  measures better ones.
 
 ### Fixed
 

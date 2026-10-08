@@ -27,6 +27,8 @@ import {
 const POLL_MS = 900;
 const DEFAULT_TIMEOUT_S = 1800;
 const DEFAULT_IDLE_S = 600;
+// The volume bound every adapter has, as Codex's 1,000 commands.
+const DEFAULT_MAX_COMMANDS = 1000;
 const APPROVAL_DEADLINE_MS = 30 * 60 * 1000;
 const VERIFY_TIMEOUT_MS = 300000;
 const CLAIM_POLLS = 6;
@@ -67,7 +69,7 @@ function fillRoute(tpl, params) {
 function parseArgs(argv) {
   const o = {
     check: null, prompt: null, report: null, approvalDir: null, verify: null,
-    timeout: DEFAULT_TIMEOUT_S, idle: DEFAULT_IDLE_S, maxCommands: 0, help: false,
+    timeout: DEFAULT_TIMEOUT_S, idle: DEFAULT_IDLE_S, maxCommands: DEFAULT_MAX_COMMANDS, help: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -522,11 +524,18 @@ function finalReply(ctx, inputID) {
 // ---------------------------------------------------------------------------------------------
 // The turn
 
+// The budget: a wall clock that stands still while a request waits for the coordinator, an idle bound, and a
+// command count. A session the server reports busy is progress: a long quiet command is still work.
+const openRequests = (ctx) => [...ctx.requests.values()].some((q) => !q.settled);
 async function awaitTurn(ctx, inputID) {
-  let stable = 0, lastSig = "";
+  let stable = 0, lastSig = "", tick = now();
+  ctx.waitedMs ??= 0;
   while (true) {
     if (ctx.abortRequested) return { aborted: true };
-    if (now() - ctx.startedAtMs > ctx.timeoutMs) return { timedOut: true };
+    const t = now();
+    if (openRequests(ctx)) ctx.waitedMs += t - tick;
+    tick = t;
+    if (t - ctx.startedAtMs - ctx.waitedMs > ctx.timeoutMs) return { timedOut: true };
     await updateOwned(ctx);
     ctx.processingRequests = processRequests(ctx);
     try { await ctx.processingRequests; } finally { ctx.processingRequests = null; }
@@ -540,8 +549,9 @@ async function awaitTurn(ctx, inputID) {
     if (ctx.maxCommands > 0 && ctx.liveCommands > ctx.maxCommands) return { capped: true };
     const reply = finalReply(ctx, inputID);
     const replies = allReplies(ctx, inputID);
-    const idle = !refreshFailed && ctx.statusKnown && ctx.discoveryComplete && ctx.requests.size === 0
-      && [...ctx.invocationSessions].every((sid) => !isBusy(ctx.status, sid));
+    const busy = !refreshFailed && ctx.statusKnown && [...ctx.invocationSessions].some((sid) => isBusy(ctx.status, sid));
+    if (busy) ctx.lastProgressMs = now();
+    const idle = !refreshFailed && ctx.statusKnown && ctx.discoveryComplete && ctx.requests.size === 0 && !busy;
     if (idle && reply && reply.info?.time?.completed) {
       if (++stable >= 2) return { reply, completed: true };
     } else if (idle && replies.length) {

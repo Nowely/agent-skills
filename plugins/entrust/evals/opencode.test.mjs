@@ -291,7 +291,7 @@ function fakeCli(url, dir) {
     FAKE_OPENCODE_URL: url, FAKE_OPENCODE_START_FILE: startFile, FAKE_OPENCODE_STOP_FILE: stopFile }, startFile };
 }
 // `beside` is an earlier report: this run writes report-2.json into its directory, under the same state.
-async function driverRun(server, { allowNoCommands = true, headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", localServer = false, localUrl = server.url, beside = null } = {}) {
+async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4, approvalDelayMs = 0, headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", localServer = false, localUrl = server.url, beside = null } = {}) {
   const state = beside ? path.dirname(path.dirname(beside)) : tempDir("entrust-opencode-driver-");
   const dir = beside ? path.dirname(beside) : path.join(state, "invocation"); if (!beside) fs.mkdirSync(dir);
   const input = path.join(dir, "prompt.txt"), report = path.join(dir, beside ? "report-2.json" : "report.json"), box = path.join(dir, "approvals");
@@ -300,7 +300,7 @@ async function driverRun(server, { allowNoCommands = true, headers = "", approva
     ...recent({ recent: [{ providerID: "router", modelID: savedModel }], variant: { "router/deepseek/flash": "high" } }) };
   const cli = localServer ? fakeCli(localUrl, state) : null;
   if (cli) Object.assign(env, cli.env);
-  const p = spawnNode([DRIVER, "--prompt-file", input, "--report-file", report, "--timeout", "9", "--idle-timeout", "4",
+  const p = spawnNode([DRIVER, "--prompt-file", input, "--report-file", report, "--timeout", String(timeout), "--idle-timeout", String(idle),
     ...(approval ? ["--approval-dir", box] : [])], { env, killAfterMs: 20000 });
   const promptsBefore = server.prompts;
   try {
@@ -314,6 +314,7 @@ async function driverRun(server, { allowNoCommands = true, headers = "", approva
           if (file && files.length >= pendingCount) {
             if (cancel && cancelWhenPending) { p.child.kill("SIGTERM"); acted = true; break; }
             const q = JSON.parse(fs.readFileSync(path.join(box, file)));
+            if (approvalDelayMs) await new Promise((resolve) => setTimeout(resolve, approvalDelayMs));
             if (approval === "unrecordable") {
               // The request's record cannot be rewritten, and an accept fitting it is published beside it.
               fs.rmSync(path.join(box, file)); fs.mkdirSync(path.join(box, file));
@@ -435,6 +436,16 @@ test("a run that cannot make its mailbox never writes over an earlier report at 
     "--approval-dir", path.join(dir, "notadir", "approvals")], { env: { ...process.env, ENTRUST_STATE_DIR: dir, ENTRUST_OPENCODE_URL: "http://127.0.0.1:9" }, encoding: "utf8" });
   assert.equal(r.status, 2, r.stderr);
   assert.equal(fs.readFileSync(report, "utf8"), '{"answer":"EARLIER"}\n');
+});
+test("the budget: the wall clock stands still while a request waits, and a session the server reports busy is not idle", async () => {
+  const waited = await fakeOpenCode("permission");
+  try {
+    const r = await driverRun(waited, { approval: "accept", timeout: 2, approvalDelayMs: 3000 });
+    assert.equal(r.code, 0, r.err);
+  } finally { await waited.close(); }
+  const busy = await fakeOpenCode("intermediate");
+  try { const r = await driverRun(busy, { idle: 2 }); assert.equal(r.code, 0, r.err); }
+  finally { await busy.close(); }
 });
 test("native question receives a structured answer through its separate route", async () => {
   const s = await fakeOpenCode("question");
