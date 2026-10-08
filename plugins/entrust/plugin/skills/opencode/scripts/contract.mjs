@@ -89,8 +89,10 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   if (headers.RESUME === undefined && out.agent && out.apiFamily !== "v2")
     return { error: "AGENT requires API_FAMILY v2" };
 
-  const rights = resolveRights(headers.RIGHTS, env.ENTRUST_PLAN_WRITES, cwd);
-  if (rights.error) return { error: rights.error };
+  // A continuation of a report keeps that run's rights, which the driver reads from it; any other run declares them.
+  const kept = headers.RESUME !== undefined && path.isAbsolute(headers.RESUME) && headers.RIGHTS === undefined && !env.ENTRUST_PLAN_WRITES;
+  const rights = kept ? null : resolveRights(headers.RIGHTS, env.ENTRUST_PLAN_WRITES, cwd);
+  if (rights?.error) return { error: rights.error };
   out.rights = rights;
 
   // MODEL: inherit or provider/model; under a registered plan, its model, which `inherit` departs from.
@@ -118,9 +120,10 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
 
   if (headers.RESUME !== undefined) {
     const r = headers.RESUME;
-    if (r === "") return { error: "RESUME must be a session id, an absolute report path or last" };
-    if (r !== "last" && !path.isAbsolute(r) && !/^[A-Za-z0-9_][A-Za-z0-9_.-]*$/.test(r))
-      return { error: "RESUME must be a session id, an absolute report path or last" };
+    // Not `last`: under a plan the newest report beside this one is another worker's.
+    if (r === "last") return { error: "RESUME last is not accepted: name the earlier run's report path" };
+    if (!path.isAbsolute(r) && !/^[A-Za-z0-9_][A-Za-z0-9_.-]*$/.test(r))
+      return { error: "RESUME must be an absolute report path or a session id" };
     out.resume = r;
   }
 

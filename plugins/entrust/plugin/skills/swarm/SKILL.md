@@ -17,7 +17,9 @@ For a Codex batch, load the sibling [codex](../codex/SKILL.md) now (`entrust:cod
 For an approved OpenCode batch, load the [OpenCode adapter](../opencode/SKILL.md) instead of the
 Codex adapter and pass `--adapter opencode` below. Pin one provider/model from its recent-model status
 in the brief, use an advertised `VARIANT:` and run a pilot before widening the pool; every agent gets a
-separate session. Each adapter's default concurrency is its own.
+separate session. Each adapter's default concurrency is its own. A swarm agent has no mailbox, so whatever would
+ask is declined: an OpenCode worker asks for every shell command, so its first one is declined and the run ends
+with exit 7. A unit that needs a command goes to a Codex batch.
 
 A unit is one claim, one address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief, or one part of the material for extraction, with a fixed answer schema the brief states. Write the units to a file, one per line, fifty at most, and one brief template with `{{UNIT}}` where the unit goes and `{{UNIT_ID}}` where its number goes. Assemble one brief and open it whole before the launch, checking its paths, its count and each quote against its source. Every brief carries the `MODEL:` and `EFFORT:` of the bulk or cheap row of the adapter's model table ([Codex](../codex/references/models.md)). Its `OUTPUT_SCHEMA:` is the shipped five-field schema, `<skill-dir>/../orchestrate/schemas/five-fields.schema.json`, `<skill-dir>` being this skill's installed directory. A swarm never carries a top- or strong-tier model, and it never writes: every agent is a read agent. Announce the count, derived from the units with the plan saying why that many, before the launch. Show the plan, the pilot's units in it, and stop; "go" covers the pilot and the swarm as announced and nothing else. Pilot first: a stronger model marks the pilot's units, the swarm's model runs the same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort; then launch the swarm at that effort.
 

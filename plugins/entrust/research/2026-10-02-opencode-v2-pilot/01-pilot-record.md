@@ -15,7 +15,7 @@ Sections: [Original SDK configuration](#original-sdk-configuration-result) · [S
 - Binary: OpenCode `1.18.34`, SHA256
   `7b63b34fafabded7d9231f6a9032755d0cdeaf8b9d2b70df8e25535471469eea`.
 - Model: `openrouter/deepseek/deepseek-v4.1-flash`; API ID
-  `deepseek/deepseek-v4.1-flash`; endpoint `https://api.eliza.yandex.net/openrouter/v1/`.
+  `deepseek/deepseek-v4.1-flash`; endpoint: a private OpenRouter-compatible router.
 - Actual selected V1 model SDK: `@openrouter/ai-sdk-provider`. The provider configuration instead
   declares `@ai-sdk/openai-compatible`; V1 resolves the SDK from the model's API metadata. The pilot
   preserved the actual SDK, API ID and `high` variant body `{"reasoning":{"effort":"high"}}`.
@@ -38,7 +38,7 @@ Sections: [Original SDK configuration](#original-sdk-configuration-result) · [S
   during the window. Restoring the original process environment, authentication and working directory
   yielded healthy `1.18.34` and the original DeepSeek and GLM model availability.
 
-The run's private evidence root is `/private/tmp/entrust-opencode-runtime/v2-config-pilot`:
+The run's private evidence root is `<the run's private evidence directory>`:
 `result.json`, `observations.json`, and `data/opencode/log/opencode.log`. Credentials were supplied
 through a child-process environment variable; none belong in the result or model prompt.
 
@@ -61,7 +61,7 @@ the final HTTP request before transport, after native protocol lowering, validat
 ```json
 {
   "method": "POST",
-  "url": "https://api.eliza.yandex.net/openrouter/v1/chat/completions",
+  "url": "<the private router>/chat/completions",
   "model": "deepseek/deepseek-v4.1-flash",
   "reasoning": { "effort": "high" },
   "stream": true
@@ -74,9 +74,9 @@ serialization from native route defaults through the executor boundary; catalog 
 merging was checked in source, not executed through a live session resolver.
 A second offline gate captured the native OpenAI Responses request at `/responses`, with the same
 model, `reasoning` body and credential checks. No model request was sent by either wire gate.
-Evidence: `/private/tmp/entrust-opencode-runtime/wire-gate-result.json`,
+Evidence: `<the run's private evidence directory>`,
 `wire-gate-responses-result.json` and the retained harness in
-`/private/tmp/entrust-opencode-runtime/wire-gate`. Temporary dependencies are outside the plugin payload.
+`<the run's private evidence directory>`. Temporary dependencies are outside the plugin payload.
 
 ## Approved native transport comparison
 
@@ -106,7 +106,7 @@ and admitted two inputs total. Configuration, recent-model state and DB hashes r
 during that window. Restoring the original environment, authentication and directory produced
 healthy `1.18.34`; no global model/default or adapter API-family migration was made.
 
-Evidence: `/private/tmp/entrust-opencode-runtime/v2-transports-final/result.json`, with per-transport
+Evidence: `<the run's private evidence directory>`, with per-transport
 model metadata, observations and native logs in that directory. Private credentials are excluded
 from these results and prompts.
 
@@ -144,7 +144,7 @@ end-to-end implementation.
 Only one server ran at the original address. Configuration, recent-state and original DB hashes
 were unchanged during the stopped-original window. Restoration returned healthy 1.18.34 with both
 recent models, at PID 80024. Evidence:
-`/private/tmp/entrust-opencode-runtime/v2-interactions/result.json`, including callback payloads,
+`<the run's private evidence directory>`, including callback payloads,
 native messages/history, process identities and restoration checks. Private credentials are excluded.
 
 This corrects the earlier blanket claim that V2 cannot provide a workable result wait. Native
@@ -196,11 +196,11 @@ including its potential one schema repair, and reserves time for restoration. Co
 state and original DB hashes matched during every stopped-original window. Final restoration returned
 healthy 1.18.34 and both recent models, at PID 26386; only one server ran at the address.
 
-Final evidence: `/private/tmp/entrust-opencode-runtime/v2-adapter-live-4/result.json`, containing CLI
+Final evidence: `<the run's private evidence directory>`, containing CLI
 handoffs, full callback payloads, four adapter reports, durable admissions and restoration checks.
 Earlier evidence is in `v2-adapter-live`, `v2-adapter-live-2` and `v2-adapter-live-3`; the two diagnostic
 receipts identify the native limits. The machine-specific ignored harness is
-`.claude/pilots/v2-adapter-gate.py` in this worktree, outside the distributed plugin payload.
+a gate script kept outside the repository.
 
 The final GLM continuation reviewed the current adapter and pinned agent/session protocols. It
 identified an undeclared `title` in V2 session creation; the adapter now sends only agent, location

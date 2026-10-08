@@ -21,7 +21,7 @@ pins the model and the writes: a prompt that names neither runs on the row's, on
 | `MODEL:` | `opus`, `sonnet`, `haiku`, `fable`, or a full `claude-…` id | absent: the plan row's, else the user's default |
 | `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max` | absent: the user's default |
 | `OUTPUT_SCHEMA:` | an absolute path | absent: the [five-field schema](../../orchestrate/schemas/five-fields.schema.json); Claude Code validates the answer against it |
-| `RESUME:` | the absolute path of an earlier claude report | continues that run's session, in its directory, with its rights |
+| `RESUME:` | the absolute path of an earlier claude report | continues that run's session, in its directory, with its rights; a `RIGHTS:` line names the same or is left out |
 | `SAFE_MODE: yes` | | no CLAUDE.md, memory, skills, plugins, hooks or MCP servers, and so no approvals |
 | `TASK:` | the task, then every line after it | name absolute paths: Claude Code's prompt names a scratchpad, and "the current directory" alone can land there |
 
@@ -34,7 +34,8 @@ pins the model and the writes: a prompt that names neither runs on the row's, on
 Everything else a run tries asks: a command outside the read-only set, a write outside its directory. The
 agent has no web tools and no Agent tool. It runs with the user's own configuration: their allow rules run
 without asking, their hooks and MCP servers are there, and the report's `context` says which. A `write`
-directory may not overlap `<state>`, and no file tool, redirect or `tee` may reach a mailbox; any other Bash
+directory may not be your home or above it, nor lie inside or above `<state>` or `~/.claude`, and no file tool,
+redirect or `tee` may reach a mailbox; any other Bash
 write there (`cp`, `mv`, a script) still asks, unless the user's own allow rules cover it.
 
 ## The launch

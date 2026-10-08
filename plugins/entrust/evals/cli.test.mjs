@@ -415,6 +415,16 @@ const CASES = [
     assert: (r) => (r.configInherited?.source === "probe" && r.configInherited.keys.includes("model"))
       || `a healthy probe was not reported as one: ${JSON.stringify(r.configInherited)}` },
   { scenario: "happy",            expect: EXIT.SUCCESS,
+    env: { FAKE_CONFIG_PROVIDER: "1" },
+    why: "isolating the environment must not isolate the account: a caller whose config selects a provider of its own would otherwise run on the default provider",
+    assert: (r) => {
+      const toml = fs.readFileSync(path.join(r.codexHome, "config.toml"), "utf8");
+      return (toml.includes('model_provider = "corp"') && toml.includes('[model_providers."corp"]')
+        && toml.includes('"base_url" = "https://llm.example.invalid/v1"') && toml.includes('"query_params" = { "api-version" = "2025-01-01" }')
+        && toml.includes('"request_max_retries" = 4') && !toml.includes("nested") && r.configInherited.keys.includes("model_providers"))
+        || `the provider was not carried: ${toml}`;
+    } },
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     env: { FAKE_CONFIG_FAIL: "1" },
     why: "the same field must distinguish the unhealthy case: a probe that failed with no last-known-good to keep means the turn ran on the account defaults",
     assert: (r) => (r.configInherited?.source === "none" && r.configInherited.keys.length === 0)
@@ -1206,6 +1216,26 @@ flow("a policy dictionary without the search key narrows no WEB_SEARCH: mode",
       + `<key>other_setting</key><string>x</string></dict></plist>\n`);
     return passed(checkRun(`RIGHTS: read ${shimDir}\nWEB_SEARCH: cached\nTASK: find the release notes\n`,
       { env: { ENTRUST_POLICY_SEAM: policy } }));
+  });
+
+flow("--check-prompt-file refuses a write root over the state directory, with the run's own reason",
+  "the launcher checks before an agent exists, and a root the run would refuse after its pid line passed the check: a refusal only the run gives arrives after the relay was spent",
+  () => {
+    const root = flowState(), state = path.join(root, "state");
+    fs.mkdirSync(state);
+    return refusal(checkRun(`RIGHTS: write ${root}\nTASK: x\n`, { env: { ENTRUST_STATE_DIR: state } }),
+      /refusing to grant write access to .*: it is an ancestor of this driver's state directory/);
+  });
+
+flow("--check-prompt-file refuses a WRITABLE: root outside a registered plan's writes, and admits one inside",
+  "a plan's writes are the user's approval of what an agent may write, and a WRITABLE: root is a write grant like the RIGHTS line",
+  () => {
+    const a = flowState(), b = flowState(), sub = path.join(a, "sub");
+    fs.mkdirSync(sub);
+    const env = { ENTRUST_PLAN_WRITES: `write ${a}` };
+    const outside = refusal(checkRun(`RIGHTS: write ${a}\nWRITABLE: ${b}\nTASK: x\n`, { env }), /WRITABLE .* lies outside the approved plan's writes/);
+    if (outside !== true) return outside;
+    return passed(checkRun(`RIGHTS: write ${a}\nWRITABLE: ${sub}\nTASK: x\n`, { env }));
   });
 
 flow("--check-prompt-file refuses an unknown upper-case field",

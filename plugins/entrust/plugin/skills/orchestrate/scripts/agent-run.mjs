@@ -425,8 +425,11 @@ function launch(dir, report, { onExit, onRefuse, mailbox = false }) {
   if (fs.existsSync(path.join(dir, "exit")))
     return refuse(`${path.join(dir, "exit")} already exists: one launch per directory, a relaunch gets a fresh one`);
   const promptPath = path.join(dir, "prompt.txt");
+  // Where --new checked the prompt: the driver runs there, under that state directory, whoever calls --run.
+  const at = readJsonFile(path.join(dir, "launch.json"));
   let why = !isRegularFile(promptPath) ? `${promptPath} is not a regular file`
-    : !report || !path.isAbsolute(report) ? `--report-file ${JSON.stringify(report ?? "")} is not an absolute path` : null;
+    : !report || !path.isAbsolute(report) ? `--report-file ${JSON.stringify(report ?? "")} is not an absolute path`
+      : at?.cwd && !isDirectory(at.cwd) ? `the directory --new ran in, ${at.cwd}, no longer exists` : null;
   // The claim on DIR, before anything is written there: a second keeper racing this one (a --run and its
   // rerun each starting one) finds err.txt there and leaves with nothing written.
   let errFd;
@@ -452,7 +455,7 @@ function launch(dir, report, { onExit, onRefuse, mailbox = false }) {
   const approvalArgs = mailbox ? ["--approval-dir", box] : [];
   const DRIVER = backend.driver;
   const child = spawn(process.execPath, [DRIVER, "--prompt-file", promptPath, "--report-file", report, ...approvalArgs],
-    { stdio: ["ignore", outFd, errFd], env: backendEnv(backend) });
+    { stdio: ["ignore", outFd, errFd], cwd: at?.cwd, env: { ...backendEnv(backend), ...(at?.stateDir ? { ENTRUST_STATE_DIR: at.stateDir } : {}) } });
   for (const sig of SIGNALS) process.on(sig, () => { try { child.kill(sig); } catch {} });
   child.on("error", (e) => {
     fs.closeSync(outFd); fs.closeSync(errFd);
@@ -668,6 +671,9 @@ function newAgent(report, dirOverride, adapter) {
   if (backendRecord && !backend.saved) {
     fs.writeFileSync(path.join(dir, "backend.json"), `${JSON.stringify(backendRecord)}\n`, { mode: 0o600, flag: "wx" });
   }
+  // The directory and the state directory the check ran under, which the run keeps: the relay that calls --run
+  // may stand elsewhere, and a `live tree`, `nothing` or bare `read` resolves against the working directory.
+  fs.writeFileSync(path.join(dir, "launch.json"), `${JSON.stringify({ cwd: process.cwd(), stateDir: stateReal })}\n`, { mode: 0o600, flag: "wx" });
   fs.renameSync(checked, promptPath);
   process.stdout.write(`PROMPT=${promptPath}\nAPPROVALS=${box}\n`);
   process.exit(0);

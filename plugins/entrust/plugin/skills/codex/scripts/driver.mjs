@@ -36,7 +36,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createAgentTemp, agentTempAncestor, stateDirectory, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
-import { EXIT, parseRights, resolveModel, resolveRights } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, canonical, parseRights, planWritesToRights, resolveModel, resolveRights, within, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import { shortName } from "./launch.mjs";
 
 const LEVELS = new Set(["read", "write"]);
@@ -56,9 +56,7 @@ const EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh", "m
 // The server's accepted web-search modes, learned from its rejection message.
 // Search stays disabled by default because it makes repository work depend on today's index.
 const WEB_SEARCH = new Set(["cached", "indexed", "live"]);
-// Every tuning number this driver runs on, in one table, each with the reason it is that number. They
-// were scattered over the file beside whichever line first needed one, so "what does this bound, and
-// why that value" was a question only a full read could answer.
+// The tuning numbers this driver runs on, each with the reason it is that number.
 const LIMITS = {
   // --brief is about the coordinator's context, not the agent's thoroughness: the full answer is always
   // written to disk, so capping what comes back inline costs nothing but a second read when it matters.
@@ -147,7 +145,7 @@ const LIMITS = {
   // server waits without bound (P1, 180 s held); the idle guard is paused while a request is open; so
   // this is the ONLY clock on a wait. Not a flag: nobody could say who would set it or why the default
   // cannot decide. Thirty minutes is the owner's figure: three times the coordinator's longest blind
-  // spot (one 600 s TaskOutput block, then the decision), and short enough that an agent whose
+  // spot (one ten-minute foreground call, then the decision), and short enough that an agent whose
   // coordinator is gone still delivers its report within the hour instead of never.
   // ENTRUST_APPROVAL_TIMEOUT_S overrides it for the suites, which cannot wait half an hour for an expiry.
   APPROVAL_TIMEOUT_S: 1800,
@@ -760,6 +758,7 @@ function argvFromPromptFile(file, allowPromptVerify) {
     fail(EXIT.USAGE, `--prompt-file exceeds ${LIMITS.MAX_PROMPT_BYTES} bytes, the prompt cap: the file carries the body as well as the header`);
   const out = [], seen = new Set(), declared = [];
   let rightsValue, modelValue;
+  const writableValues = [];
   const lines = raw.split("\n");
   let bodyAt = 0;
   for (; bodyAt < lines.length; bodyAt++) {
@@ -788,6 +787,7 @@ function argvFromPromptFile(file, allowPromptVerify) {
       continue;
     }
     if (field === "MODEL") modelValue = value;
+    if (field === "WRITABLE") writableValues.push(value);
     if (BOOLS[field]) {
       // A negative header value omits the flag, just as omitting the line does — except where the field
       // is granted by default, where omitting it is what GRANTS the thing the line refused: there the
@@ -818,6 +818,13 @@ function argvFromPromptFile(file, allowPromptVerify) {
   const rights = rightsValue === undefined && !planWrites ? { kind: "read", path: null }
     : resolveRights(rightsValue, planWrites, process.cwd());
   if (rights.error) fail(EXIT.USAGE, `--prompt-file: ${rights.error}`);
+  // A WRITABLE: root is a write grant too, so a plan's writes bind it: it lies inside the row's write root.
+  if (planWrites) {
+    const planned = planWritesToRights(planWrites, process.cwd());
+    for (const w of writableValues)
+      if (planned.kind !== "write" || !within(canonical(w), canonical(planned.path)))
+        fail(EXIT.USAGE, `--prompt-file: WRITABLE ${w} lies outside the approved plan's writes (${planWrites})`);
+  }
   out.unshift(...(rights.kind === "worktree" ? ["--worktree", rights.path]
     : ["--level", rights.kind, ...(rights.path ? ["--cwd", rights.path] : [])]));
   const model = resolveModel(modelValue, process.env.ENTRUST_PLAN_MODEL || undefined,
@@ -1038,81 +1045,23 @@ function resolveDir(p, what) {
   return real;
 }
 
-// A writable root must not grant the home directory or its ancestors.
-// Compare by dev:ino identity: macOS realpath preserves letter case, so string equality cannot
-// protect against alternate spellings, symlinks or aliases of the same directory.
+// A writable root must not grant the home directory or its ancestors, ~/.codex (a writable ~/.codex/sessions
+// makes the receipt forgeable) or the state directory (the locks, the mailboxes, the isolated home): the shared
+// check, by dev:ino.
 function checkRoot(dir) {
-  let target;
-  try { target = fs.statSync(dir); }
-  catch (e) { fail(EXIT.USAGE, `cannot stat ${dir}: ${e.message}`); }
-  const same = (st) => st.dev === target.dev && st.ino === target.ino;
-  // Refuse every ancestor of the passwd home as well as the home itself: granting an ancestor grants it too.
-  // The passwd entry is independent of $HOME; unresolved paths still require a spelling comparison.
-  const canon = (a) => canonPath(a) ?? path.resolve(a);
-  const hit = (p, why) => {
-    let st = null;
-    try { st = fs.statSync(p); } catch {}
-    if (st && same(st)) fail(EXIT.USAGE, `refusing to grant write access to ${dir}: it is ${why}`);
-  };
-  // The passwd home and everything ABOVE it: granting an ancestor grants the home too.
-  for (let cur = canon(passwdHome("the home-directory guard")); ; ) {
-    hit(cur, cur === canon(passwdHome("the home-directory guard")) ? "your home directory" : `an ancestor of your home directory (${cur})`);
-    const parent = path.dirname(cur);
-    if (parent === cur) break;
-    cur = parent;
-  }
-  // An absolute $HOME adds an exact-match refusal only; walking its ancestors would reject hermetic
-  // workspaces containing their own home, and a relative value would anchor on an arbitrary cwd.
-  const envHome = process.env.HOME;
-  if (envHome && path.isAbsolute(envHome)) hit(canon(envHome), `the directory $HOME points at (${envHome})`);
-  // The receipt story and the driver's own state must never become writable roots: a writable
-  // ~/.codex/sessions makes the "unforgeable" receipt forgeable, and the state directory holds the
-  // locks, the answer log and the isolated home.
-  // Compared by IDENTITY, like every other guard here — a string-prefix compare is bypassed by a
-  // case-variant spelling on a case-insensitive volume — and by walking the TARGET's ancestors against
-  // the protected inode, which is the "inside" semantics a single stat cannot give.
-  // The state directory is listed by its RESOLVED path, so the guarantee follows wherever the caller
-  // pointed it rather than following a name.
-  const home = canon(passwdHome("the home-directory guard"));
-  const protectedRoots = [
-    [path.join(home, ".codex"), "~/.codex"],
-    [stateDir(), "this driver's state directory"],
-  ];
-  for (const [prot, label] of protectedRoots) {
-    let protSt = null;
-    try { protSt = fs.statSync(prot); } catch {}
-    for (let cur = dir; protSt; ) {
-      let st = null;
-      try { st = fs.statSync(cur); } catch {}
-      if (st && st.dev === protSt.dev && st.ino === protSt.ino)
-        fail(EXIT.USAGE, `refusing to grant write access to ${dir}: it is inside ${label}, which holds the rollout receipts and this driver's own state`);
-      const parent = path.dirname(cur);
-      if (parent === cur) break;
-      cur = parent;
-    }
-    // The other direction: a root that CONTAINS the protected one grants it as surely as the root itself
-    // (~/.claude holds the plugin's data directory). Walked from the protected path's own ancestors, which
-    // exist even before a first run creates the state directory under them.
-    const real = canonLoose(prot) ?? path.resolve(prot);
-    for (let cur = path.dirname(real); ; ) {
-      hit(cur, `an ancestor of ${label} (${real}), which holds the rollout receipts and this driver's own state`);
-      const parent = path.dirname(cur);
-      if (parent === cur) break;
-      cur = parent;
-    }
-  }
+  const home = passwdHome("the home-directory guard");
+  const why = writeRootProblem(dir, { home, stateDir: stateDir(), protectedDirs: [
+    { dir: path.join(canonPath(home) ?? home, ".codex"), label: "~/.codex", holds: "the rollout receipts" }] });
+  if (why) fail(EXIT.USAGE, why);
   return dir;
 }
 
 // The anchor for everything this driver owns, and the reason mutual exclusion holds: a write-capable run
 // owns its cwd for the duration, and two runs that resolve the state root differently take two locks and
-// both proceed.
-//
-// So the anchor is the PASSWD entry, not $HOME and not the protected directory itself. Inside the
-// directory, an agent's `git add -A` stages the lock. Under $TMPDIR, that is a mutable variable AND the one
-// place --level read may write. Through os.homedir(), which prefers $HOME, two HOME values are two homes,
-// and HOME="" makes the path RELATIVE to the invocation directory. os.userInfo() reads passwd and ignores
-// the environment.
+// both proceed. The state root is ENTRUST_STATE_DIR, else <tmp>/entrust-state, so writers on one tree exclude
+// each other only when they resolve the same one; the launcher records the one --new resolved, so the relay
+// that calls --run cannot move it. Never inside the protected directory: an agent's `git add -A` would stage
+// the lock.
 //
 // ---------------------------------------------------------------- the report file
 //
@@ -1255,7 +1204,21 @@ function resolveCodexBin() {
   fail(EXIT.TRANSPORT, `codex not found on PATH or in ${fallbacks.join(", ")}; install it, or set ENTRUST_CODEX to its absolute path`);
 }
 
-const INHERITED = ["model", "model_reasoning_effort", "personality", "service_tier"];
+const INHERITED = ["model", "model_reasoning_effort", "personality", "service_tier", "model_provider"];
+
+// The selected provider's table, so that a provider of the caller's own is the one an isolated agent answers on:
+// its scalars, string lists and one-level string maps (headers, query parameters); anything deeper is not carried.
+function providerTable(cfg) {
+  const name = cfg.model_provider, table = cfg.model_providers?.[name];
+  if (typeof name !== "string" || !table || typeof table !== "object" || Array.isArray(table)) return "";
+  const value = (v) => typeof v === "string" ? tomlString(v)
+    : (typeof v === "number" && Number.isFinite(v)) || typeof v === "boolean" ? String(v)
+      : Array.isArray(v) && v.every((x) => typeof x === "string") ? `[${v.map(tomlString).join(", ")}]`
+        : v && typeof v === "object" && Object.values(v).every((x) => typeof x === "string")
+          ? `{ ${Object.entries(v).map(([k, x]) => `${tomlString(k)} = ${tomlString(x)}`).join(", ")} }` : null;
+  const lines = Object.entries(table).map(([k, v]) => [k, value(v)]).filter(([, v]) => v !== null);
+  return `\n[model_providers.${tomlString(name)}]\n${lines.map(([k, v]) => `${tomlString(k)} = ${v}\n`).join("")}`;
+}
 
 // Resolve { entries, failed } so a failed config request cannot be mistaken for an empty config.
 async function inheritedConfig() {
@@ -1300,7 +1263,7 @@ async function inheritedConfig() {
     const wrong = INHERITED.filter((k) => cfg[k] !== undefined && cfg[k] !== null && typeof cfg[k] !== "string");
     if (wrong.length)
       process.stderr.write(`entrust: the caller's Codex config reports ${wrong.join(", ")} as something other than text; those are not carried across\n`);
-    return { entries: INHERITED.filter((k) => typeof cfg[k] === "string").map((k) => [k, tomlString(cfg[k])]), failed: false };
+    return { entries: INHERITED.filter((k) => typeof cfg[k] === "string").map((k) => [k, tomlString(cfg[k])]), table: providerTable(cfg), failed: false };
   } catch (e) {
     // Warn when asking for config fails, but stay quiet for an empty config or a shutdown cancellation.
     // A cancellation is still a failed config request, so it must not replace the last-known-good config
@@ -1497,12 +1460,12 @@ async function isolatedHome() {
     configInherited = { source: "last-known-good", keys: keysInConfig(cfg) };
     return home;
   }
-  configInherited = { source: probe.failed ? "none" : "probe", keys: probe.entries.map(([k]) => k) };
+  configInherited = { source: probe.failed ? "none" : "probe", keys: [...probe.entries.map(([k]) => k), ...(probe.table ? ["model_providers"] : [])] };
   // Use a random temp name because different PID namespaces can share a pid on one mounted home.
   // "wx" refuses an existing name instead of following a symlink onto another file.
   const tmp = `${cfg}.${crypto.randomBytes(8).toString("hex")}.tmp`;
   try {
-    const body = probe.entries.map(([k, v]) => `${k} = ${v}\n`).join("");
+    const body = probe.entries.map(([k, v]) => `${k} = ${v}\n`).join("") + (probe.table ?? "");
     fs.writeFileSync(tmp, body, { mode: 0o600, flag: "wx" });
     fs.renameSync(tmp, cfg);    // atomic, so a concurrent agent never reads a half-written file
   } catch (e) {
@@ -1969,7 +1932,7 @@ const ledgerDir = () => path.join(stateDir(), "worktrees");
 // Write the ledger BEFORE git worktree add so an interrupted checkout is already named, then record its
 // base commit. Returns the entry's path, or null when it could not be written — createWorktree REFUSES
 // on that rather than proceeding: a run refused costs the run, while an add that proceeds unnamed costs
-// a tree nothing points at, and 22 of 64 such trees held uncommitted work (references/incidents.md).
+// a tree nothing points at, which may hold the agent's only copy of its work.
 function writeLedger(name, fields) {
   try {
     const dir = ledgerDir();
@@ -2532,7 +2495,7 @@ function readOpts(argv = process.argv.slice(2), { resolveState = true } = {}) {
 // the run refuses with. The launcher's --new runs it before an agent is spawned, with neither state
 // variable set. A pass is silent and 0; a refusal is 2 and one line, `entrust: refused: <reason>`. The
 // model catalogue behind MODEL: and EFFORT:, and the directories RIGHTS: and WRITABLE: name, stay the
-// run's to refuse.
+// run's to refuse; the write roots RIGHTS: and WRITABLE: grant are refused here too, by the run's own check.
 function checkPromptFile(argv) {
   checkOnly = true;
   if (argv.length !== 2 || argv[0] !== "--check-prompt-file" || !argv[1] || argv[1].startsWith("--"))
@@ -2541,6 +2504,9 @@ function checkPromptFile(argv) {
   // The launcher gives the run no stdin, so a file with no body is the run's own "empty prompt".
   if (o.prompt === undefined) fail(EXIT.USAGE, "empty prompt");
   refuseWebSearchMode(o.webSearch, o.network);
+  if (o.worktree) checkRoot(resolveDir(o.worktree, "--worktree"));
+  else if (o.level !== "read") checkRoot(resolveDir(o.cwd, "--cwd"));
+  for (const d of o.writable) checkRoot(resolveDir(d, "--writable"));
 }
 
 async function setup() {
@@ -4523,7 +4489,7 @@ function developerInstructions() {
   // only by the branch below that has a budget to report.
   const budgetLeftS = Math.max(1, Math.round((startedAtMs + opts.timeout * 1000 - Date.now()) / 1000));
   return [
-    "You are being driven by a Claude Code coordinator, unattended. Nobody will answer a question.",
+    "You are being driven by a coordinating agent, unattended. Nobody will answer a question.",
     // Advisory: the model has no clock unless it runs `date`. It costs one sentence and it is the only
     // thing that makes the wall clock something the turn can plan against rather than be surprised by.
     // Without a wall clock the sentence has to say so: told "you have about N seconds" when nothing is

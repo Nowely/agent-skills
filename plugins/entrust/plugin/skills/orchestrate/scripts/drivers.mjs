@@ -1,7 +1,8 @@
 // What every external agent's driver shares beside the launcher's contract: the exit codes, the request id,
-// the RIGHTS grammar and the scope it grants, the plan's model pin, and the worktree a `worktree` agent runs
-// in. The Codex, OpenCode and Claude drivers import it; nothing here runs on import.
+// the RIGHTS grammar and the scope it grants, the plan's model pin, the write-root check, and the worktree a
+// `worktree` agent runs in. The Codex, OpenCode and Claude drivers import it; nothing here runs on import.
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -121,8 +122,45 @@ export function scopeWithin(scope, prior) {
   return scope.roots.every((r) => priorRoots.some((p) => within(r, p)));
 }
 
+// Why a directory may not be a write root, or null. Not the home directory or an ancestor of it (the passwd
+// entry, and an absolute $HOME exactly), and not equal to, inside or above the state directory, where the
+// mailboxes are, or a directory the adapter protects. Compared by dev:ino, not by spelling: a case variant, a
+// link or an alias of the same directory is the same directory. `protectedDirs` is [{ dir, label, holds }].
+export function writeRootProblem(dir, { stateDir, protectedDirs = [], home = passwdHome() }) {
+  const statOf = (p) => { try { return fs.statSync(p); } catch { return null; } };
+  const target = statOf(dir);
+  if (!target) return `cannot stat ${dir}`;
+  const same = (st) => Boolean(st) && st.dev === target.dev && st.ino === target.ino;
+  const upward = (p) => { const out = [p]; while (path.dirname(out.at(-1)) !== out.at(-1)) out.push(path.dirname(out.at(-1))); return out; };
+  const refuse = (why) => `refusing to grant write access to ${dir}: it is ${why}`;
+  const h = canonical(home);
+  for (const cur of upward(h)) if (same(statOf(cur))) return refuse(cur === h ? "your home directory" : `an ancestor of your home directory (${cur})`);
+  const envHome = process.env.HOME;
+  if (envHome && path.isAbsolute(envHome) && same(statOf(canonical(envHome)))) return refuse(`the directory $HOME points at (${envHome})`);
+  for (const p of [{ dir: stateDir, label: "this driver's state directory", holds: "the run's approvals" }, ...protectedDirs]) {
+    if (!p.dir) continue;
+    const protSt = statOf(p.dir);
+    if (protSt && upward(canonical(dir)).some((cur) => { const st = statOf(cur); return st && st.dev === protSt.dev && st.ino === protSt.ino; }))
+      return refuse(`inside ${p.label}, which holds ${p.holds}`);
+    const real = canonical(p.dir);
+    for (const cur of upward(path.dirname(real))) if (same(statOf(cur))) return refuse(`an ancestor of ${p.label} (${real}), which holds ${p.holds}`);
+  }
+  return null;
+}
+
+// The passwd home, which $HOME cannot move; $HOME's own value for a uid with no passwd entry.
+export function passwdHome() {
+  try { return os.userInfo().homedir; } catch { return os.homedir(); }
+}
+
+// Every git the driver runs: no fsmonitor, no hooks and no external diff, whatever the repository asks. A tree an
+// agent wrote can name programs for git to run, with the caller's rights (codex/references/incidents.md, "Hooks
+// run by the driver's own git"). A diff also takes `DIFF_SAFE`, since a gitattributes driver or a textconv is a
+// second way to run one, and `diff.external=` alone makes git fail to run "".
+const SAFE = ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "diff.external="];
+const DIFF_SAFE = ["--no-ext-diff", "--no-textconv"];
 export function git(args, cwd) {
-  const r = spawnSync("git", args, { cwd, encoding: "utf8", timeout: 60000, maxBuffer: 8 * 1024 * 1024 });
+  const r = spawnSync("git", [...SAFE, ...args], { cwd, encoding: "utf8", timeout: 60000, maxBuffer: 8 * 1024 * 1024 });
   return { status: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "", error: r.error };
 }
 
@@ -139,19 +177,41 @@ export function makeWorktree(repo, stateDir, name) {
   return { worktreePath: wt, base: head.stdout.trim(), repo };
 }
 
-// What a worktree run's report says about its tree; `run` holds worktreePath, worktreeRepo and worktreeBase.
+// The git directory of `repo`'s worktree at `wt`, found from the repository, never from the tree: its `.git` file
+// is the agent's to rewrite, and a rewritten one points every later git in the tree at a repository the agent
+// made. git names the admin directory after the tree, with a number on a clash; its `gitdir` names the tree's
+// `.git`. Null when no entry names it.
+export function worktreeGitDir(repo, wt) {
+  const common = git(["-C", repo, "rev-parse", "--git-common-dir"]);
+  if (common.status !== 0) return null;
+  const admin = path.resolve(repo, common.stdout.trim(), "worktrees");
+  let names = [];
+  try { names = fs.readdirSync(admin); } catch { return null; }
+  const want = path.join(canonical(wt), ".git");
+  for (const n of names) {
+    let named = null;
+    try { named = fs.readFileSync(path.join(admin, n, "gitdir"), "utf8").trim(); } catch {}
+    if (named && canonical(named) === want) return path.join(admin, n);
+  }
+  return null;
+}
+
+// What a worktree run's report says about its tree; `ctx` holds worktreePath, worktreeRepo and worktreeBase.
 // The diff is taken against the commit the tree started at, not the index: an agent that staged or committed
-// its work would otherwise report none of it.
+// its work would otherwise report none of it. Both read the tree through the git directory its repository
+// records; a tree whose entry is gone reports no diff rather than one its own `.git` chose.
 export function worktreeFacts(ctx) {
   if (!ctx.worktreePath) return {};
-  const diff = git(["-C", ctx.worktreePath, "diff", ...(ctx.worktreeBase ? [ctx.worktreeBase] : [])]);
-  const status = git(["-C", ctx.worktreePath, "status", "--porcelain"]);
+  const gitDir = ctx.worktreeRepo ? worktreeGitDir(ctx.worktreeRepo, ctx.worktreePath) : null;
+  const inTree = (args) => gitDir ? git(["--git-dir", gitDir, "--work-tree", ctx.worktreePath, ...args], ctx.worktreePath) : null;
+  const diff = inTree(["diff", ...DIFF_SAFE, ...(ctx.worktreeBase ? [ctx.worktreeBase] : [])]);
+  const status = inTree(["status", "--porcelain"]);
   return {
     worktreePath: ctx.worktreePath,
     worktreeRepo: ctx.worktreeRepo,
     worktreeBase: ctx.worktreeBase ?? null,
     base: ctx.worktreeBase ?? null,
-    diff: diff.status === 0 ? diff.stdout : null,
-    untracked: status.status === 0 ? status.stdout.split("\n").filter(Boolean) : null,
+    diff: diff?.status === 0 ? diff.stdout : null,
+    untracked: status?.status === 0 ? status.stdout.split("\n").filter(Boolean) : null,
   };
 }

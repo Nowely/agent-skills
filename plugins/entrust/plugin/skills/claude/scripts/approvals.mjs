@@ -60,13 +60,16 @@ export const fits = (d, q) => Boolean(d) && d.id === q.id && d.run?.pid === q.ru
   && (d.run?.turnId ?? null) === null && ["accept", "decline"].includes(d.decision)
   && (q.type !== "claude.permission" || d.requestHash === q.requestHash);
 
+// `recorded` says whether the request's record now holds the settlement: an accept it does not hold is never
+// answered allow.
 function settle(rpcId, decision, by, why) {
   const entry = open.get(rpcId);
   if (!entry) return null;
   open.delete(rpcId);
   clearInterval(entry.timer);
   entry.q.settled = { decision, by, why: why ?? null, settledAt: new Date().toISOString() };
-  try { writeRequest(entry.q); writePending(); } catch {}
+  try { writeRequest(entry.q); entry.recorded = true; } catch { entry.recorded = false; }
+  try { writePending(); } catch {}
   return entry;
 }
 
@@ -92,8 +95,10 @@ function poll(rpcId) {
   const { q, input } = entry;
   const d = readJson(path.join(box, `${q.id}.decision.json`));
   if (fits(d, q)) {
-    settle(rpcId, d.decision === "accept" ? "accepted" : "declined", "coordinator", d.why);
-    return answer(rpcId, d.decision === "accept" ? { behavior: "allow", updatedInput: input }
+    const accept = d.decision === "accept";
+    const { recorded } = settle(rpcId, accept ? "accepted" : "declined", "coordinator", d.why);
+    if (accept && !recorded) return answer(rpcId, { behavior: "deny", message: "entrust could not record the accept, so the call is declined" });
+    return answer(rpcId, accept ? { behavior: "allow", updatedInput: input }
       : { behavior: "deny", message: d.why ? `declined by the coordinator: ${d.why}` : "declined by the coordinator" });
   }
   if (Date.now() > Date.parse(q.deadlineAt)) {

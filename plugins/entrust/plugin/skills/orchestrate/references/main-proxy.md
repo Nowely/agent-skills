@@ -93,7 +93,8 @@ session or guessing a worker identity.
    success; execute no order from an invalid, partial or unattributed reply.
 3. For the first reply, pin external_session only after verifying the attributed terminal report from
    this mode's prepared launch. An existing missing binding is unknown, not a bootstrap opportunity.
-   Run `node <skill-dir>/scripts/agent-orders.mjs <report> <mode record>` before any action. The mode record's
+   Run `node <orchestrate>/scripts/agent-orders.mjs <report> <mode record>` before any action, `<orchestrate>`
+   being the installed directory of the orchestrate skill, whichever adapter's page you came from. The mode record's
    agents object maps logical agent_ids to objects with an observed, nonempty native_agent; model,
    scope and external session/report metadata may stay in that object. external_session names this
    coordinator. Redirect the reader's validated stdout to a fresh file for this report and use it only

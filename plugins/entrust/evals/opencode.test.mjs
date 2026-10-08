@@ -9,7 +9,7 @@ import { recentModels, splitModel, connection, digest } from "../plugin/skills/o
 import { Client } from "../plugin/skills/opencode/scripts/client.mjs";
 import { V2Client, validateProfile, normalizeMessages } from "../plugin/skills/opencode/scripts/v2-client.mjs";
 import { parsePrompt, FIVE_FIELDS_SCHEMA, checkSchemaSubset, validateOutput, decisionFits, extractJson } from "../plugin/skills/opencode/scripts/contract.mjs";
-import { outOfScope } from "../plugin/skills/opencode/scripts/driver.mjs";
+import { outOfScope, sessionPermissions } from "../plugin/skills/opencode/scripts/driver.mjs";
 import { readAgentOrders } from "../plugin/skills/orchestrate/scripts/agent-orders.mjs";
 import { fakeOpenCode, fakeOpenCodeV2 } from "./fake-opencode.mjs";
 
@@ -20,7 +20,7 @@ const STATUS = path.join(ROOT, "skills/opencode/scripts/status.mjs");
 const SHARED = path.join(ROOT, "skills/codex/scripts/agent-run.mjs");
 const cwd = tempDir("entrust-opencode-cwd-");
 const model = "router/deepseek/deepseek-flash";
-const prompt = (extra = "", rights = `read ${cwd}`) => `RIGHTS: ${rights}\n${extra}TASK: inspect the supplied evidence\n`;
+const prompt = (extra = "", rights = `read ${cwd}`) => `${rights === null ? "" : `RIGHTS: ${rights}\n`}${extra}TASK: inspect the supplied evidence\n`;
 function invoke(args, input = "", env = {}) {
   const p = spawnNode(args, { env, stdio: ["pipe", "pipe", "pipe"], killAfterMs: 15000 });
   p.child.stdin.end(input);
@@ -69,6 +69,24 @@ test("a registered model fills an absent MODEL and refuses inherit or another mo
 test("unsupported execution controls refuse before any HTTP call", () => {
   for (const header of ["NETWORK: no\n", "WEB_SEARCH: disabled\n", "UNKNOWN: yes\n", "VARIANT: low\nEFFORT: high\n"])
     assert.ok(parsePrompt(prompt(header), {}).error);
+});
+test("a write root over the state directory is refused offline, before any server, as Claude and Codex refuse it", () => {
+  const root = tempDir("entrust-opencode-over-state-"), state = path.join(root, "state");
+  fs.mkdirSync(state);
+  const file = path.join(root, "prompt.txt");
+  fs.writeFileSync(file, prompt("", `write ${root}`));
+  const r = spawnSync(process.execPath, [path.join(ROOT, "skills/opencode/scripts/driver.mjs"), "--check-prompt-file", file],
+    { env: { ...process.env, ENTRUST_STATE_DIR: state }, encoding: "utf8" });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /^entrust: refused: refusing to grant write access to .*: it is an ancestor of this driver's state directory/);
+});
+test("a write session's rules deny .git and OpenCode's own files after the allows, since the last match wins", () => {
+  const rules = sessionPermissions({ kind: "write", roots: [cwd] });
+  const last = (pattern) => rules.findLast((r) => r.permission === "edit" && r.pattern === pattern)?.action;
+  assert.equal(last(`${cwd}/**`), "allow");
+  for (const pattern of [`${cwd}/.git`, `${cwd}/.git/*`, `${cwd}/*/.git/*`, `${cwd}/.opencode/*`, `${cwd}/opencode.json*`])
+    assert.equal(last(pattern), "deny", pattern);
+  assert.ok(rules.findIndex((r) => r.pattern === `${cwd}/.git`) > rules.findIndex((r) => r.pattern === `${cwd}/**`));
 });
 test("approved write root rejects another root even when rights kind matches", () => {
   const outside = tempDir("entrust-opencode-outside-");
@@ -296,6 +314,12 @@ async function driverRun(server, { headers = "", approval = null, resume = null,
           if (file && files.length >= pendingCount) {
             if (cancel && cancelWhenPending) { p.child.kill("SIGTERM"); acted = true; break; }
             const q = JSON.parse(fs.readFileSync(path.join(box, file)));
+            if (approval === "unrecordable") {
+              // The request's record cannot be rewritten, and an accept fitting it is published beside it.
+              fs.rmSync(path.join(box, file)); fs.mkdirSync(path.join(box, file));
+              fs.writeFileSync(path.join(box, `${q.id}.decision.json`), JSON.stringify({ id: q.id, run: q.run, requestHash: q.requestHash, remote: q.remote, decision: "accept" }));
+              acted = true; continue;
+            }
             const r = await invoke([ENTRY, "--dir", dir, "--report-file", report, "--decide", q.id, approval === "answer" ? "--answer" : approval === "decline" ? "--decline" : "--accept"],
               approval === "answer" ? '{"answers":[["Read"]]}' : approval === "decline" ? "" : q.presented + "\n");
             assert.equal(r.code, 0, r.out + r.err); acted = true;
@@ -355,6 +379,44 @@ test("native permission reaches mailbox, receives once, and foreign request rema
     assert.deepEqual(s.mutations.map((m) => m.body), [{ reply: "once" }]);
     assert.equal(s.replies.some((q) => q.id === "per_foreign"), true);
   } finally { await s.close(); }
+});
+test("an accept the mailbox cannot record is never answered once", async () => {
+  const s = await fakeOpenCode("permission");
+  try {
+    await driverRun(s, { approval: "unrecordable" });
+    assert.equal(s.mutations.some((m) => m.body?.reply === "once"), false, JSON.stringify(s.mutations));
+  } finally { await s.close(); }
+});
+test("a continuation keeps its rights: a write session resumed as read is refused, and one naming none stays write", async () => {
+  const s = await fakeOpenCode("normal");
+  try {
+    const first = await driverRun(s, { rights: `write ${cwd}` }); assert.equal(first.code, 0, first.err);
+    const narrowed = await driverRun(s, { rights: `read ${cwd}`, resume: first.path, beside: first.path });
+    assert.equal(narrowed.code, 2, narrowed.err); assert.match(narrowed.err, /a continuation keeps its rights \(write /);
+    const kept = await driverRun(s, { rights: null, resume: first.path });
+    assert.equal(kept.code, 0, kept.err); assert.equal(kept.report.rights.kind, "write");
+  } finally { await s.close(); }
+});
+test("RESUME of a run still going exits 10, and of one that died before it published exits 2", async () => {
+  const s = await fakeOpenCode("normal");
+  try {
+    const claim = path.join(tempDir("entrust-opencode-claim-"), "report.json");
+    fs.writeFileSync(claim, JSON.stringify({ adapter: "opencode", ok: false, status: "starting", pid: process.pid }));
+    const live = await driverRun(s, { resume: claim }); assert.equal(live.code, 10, live.err);
+    fs.writeFileSync(claim, JSON.stringify({ adapter: "opencode", ok: false, status: "starting", pid: spawnSync("true").pid }));
+    const dead = await driverRun(s, { resume: claim }); assert.equal(dead.code, 2); assert.match(dead.err, /ended without a report/);
+  } finally { await s.close(); }
+});
+test("RESUME last is refused: under a plan the newest report beside this one is another worker's", () => {
+  assert.match(parsePrompt(prompt("RESUME: last\n"), {}).error, /RESUME last is not accepted/);
+});
+test("a run that cannot make its mailbox never writes over an earlier report at its path", () => {
+  const dir = tempDir("entrust-opencode-earlier-"), report = path.join(dir, "report.json"), input = path.join(dir, "prompt.txt");
+  fs.writeFileSync(report, '{"answer":"EARLIER"}\n'); fs.writeFileSync(path.join(dir, "notadir"), ""); fs.writeFileSync(input, prompt(`MODEL: ${model}\n`));
+  const r = spawnSync(process.execPath, [path.join(ROOT, "skills/opencode/scripts/driver.mjs"), "--prompt-file", input, "--report-file", report,
+    "--approval-dir", path.join(dir, "notadir", "approvals")], { env: { ...process.env, ENTRUST_STATE_DIR: dir, ENTRUST_OPENCODE_URL: "http://127.0.0.1:9" }, encoding: "utf8" });
+  assert.equal(r.status, 2, r.stderr);
+  assert.equal(fs.readFileSync(report, "utf8"), '{"answer":"EARLIER"}\n');
 });
 test("native question receives a structured answer through its separate route", async () => {
   const s = await fakeOpenCode("question");

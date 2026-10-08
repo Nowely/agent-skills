@@ -3,6 +3,65 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Fixed
+
+- **A write root is checked the same way in all three drivers, before any agent exists.** An OpenCode `write` root
+  could contain the state directory, and its allowed edits then reached the run's own mailbox, so the agent could
+  write its own accept; Codex refused such a root only at run time, after the pid line. One check in
+  `orchestrate/scripts/drivers.mjs`, `writeRootProblem`, now runs in every driver's `--check-prompt-file` and
+  again at launch: no home directory or ancestor of it, nothing equal to, inside or above the state directory, and
+  each adapter's own directories (`~/.codex`; `~/.claude`; OpenCode's configuration and data), compared by
+  dev:ino. An OpenCode write session also denies edits to `.git`, `.opencode/` and `opencode.json` inside its
+  roots, after the allows, so a rewritten gitlink cannot point the driver's own git at a repository the agent made
+  (research/2026-10-08-driver-audit, X1).
+- **The git a driver runs in an agent's worktree cannot be turned against the caller.** The shared `git()` that
+  OpenCode and Claude worktree reports use ran plain `git diff` and `git status` in the tree, so an agent that
+  rewrote its tree's `.git` file to point at a repository of its own had its fsmonitor run under the driver, with
+  the caller's rights (run on the fake `claude`). Every shared git now carries the Codex driver's overrides (no
+  fsmonitor, no hooks, no external diff or textconv), and a worktree is read through the git directory its
+  repository records, never through the tree's own `.git` (X10).
+- **An agent runs where its prompt was checked.** `--new` checks a prompt in the coordinator's directory, but `--run`
+  started the driver in the directory of whoever called it, the relay, so a bare `RIGHTS: read`, a `live tree`
+  or a `nothing` row could run in another tree than the one checked (run on the fake app server). `--new` now
+  records its working directory and state directory in `agent/launch.json`, and the driver runs there, under
+  that state directory (X4).
+- **A Codex `WRITABLE:` root is bound by the plan.** Under a registered plan only the `RIGHTS:` line was checked
+  against the row's writes, so `RIGHTS: write A` with `WRITABLE: B` passed and the run wrote B. A `WRITABLE:` root
+  must now lie inside the row's write root (X2).
+- **No accept is answered before the mailbox holds it.** Claude's approval server answered allow even when the
+  request's record could not be rewritten, and OpenCode answered the server first and recorded afterwards, so a
+  command could run with the user's rights while the mailbox, and the launcher's `approvals=` count, showed no
+  accept. Both now record the settlement first: Claude answers deny when it cannot, OpenCode leaves the request
+  unanswered for its deadline. The Codex driver already worked this way (X3).
+- **A continuation keeps its rights.** OpenCode sets a session's permission rules when it creates the session, so a
+  write session resumed with `RIGHTS: read` reported read while the server still allowed writes; Claude demanded a
+  `RIGHTS:` line on a resume and then ignored a different `read` directory. In both, a resume now keeps the earlier
+  run's rights: a `RIGHTS:` line names the same or is left out, and anything else is refused (N1, X9).
+- **OpenCode resumes and refusals.** `RESUME: last` took the newest report beside this one, which under a plan is
+  another worker's, and is now refused (X6). A resume of a run still going exits 10, as in Claude, and one whose
+  run died before publishing says so (X14). The report is claimed before any refusal, so a run that cannot make
+  its mailbox no longer writes over an earlier report at its path (X12).
+- **An isolated Codex agent answers on the caller's provider.** The isolated home carried the model, effort,
+  personality and service tier but not `model_provider`, so a caller whose config selects a provider of its own ran
+  against the default one. It now carries `model_provider` and that provider's `[model_providers.<name>]` table
+  (its scalars, string lists and one-level string maps). Checked on the fake app server; the shape the real
+  `config/read` gives a provider table is unmeasured (X11).
+- **Pages and comments that no longer held.** The codex page told the coordinator to declare gates on the command
+  line, and `parity.md` offered `--host-home` for MCP tools, though the one call passes the driver nothing but its
+  prompt, report and mailbox; both now say what a coordinator can do. `main-proxy.md` named `agent-orders.mjs`
+  under whichever skill the reader came from; it names orchestrate's. The swarm page says an OpenCode worker in a
+  batch cannot run a shell command. The Codex driver's comments on the lock's anchor, the worktree ledger's reason,
+  the approval deadline and `LIMITS` are corrected, its standing rules no longer tell the agent its coordinator is
+  Claude Code, and `ISSUES.md` E113 and E115 cite the code where it now is (X15, X17, X7).
+
+### Removed
+
+- **The V2 pilot's run log left the plugin.** `opencode/references/v2-pilot.md` shipped a private model endpoint
+  and machine paths with every install. It is now `research/2026-10-02-opencode-v2-pilot/01-pilot-record.md`, with
+  the endpoint and the evidence paths removed; the earlier text remains in the repository's history (X18).
+
 ## 0.27.0 — 2026-10-08
 
 ### Added

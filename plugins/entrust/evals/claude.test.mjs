@@ -6,7 +6,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import readline from "node:readline";
+import { spawn, spawnSync } from "node:child_process";
 import { EVALS, ROOT, registry, runCases, skip, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
 import { childEnv, mailboxRules, parsePrompt } from "../plugin/skills/claude/scripts/driver.mjs";
 import { requestOf } from "../plugin/skills/claude/scripts/approvals.mjs";
@@ -60,7 +61,7 @@ test("--check-prompt-file passes silently and refuses with one entrust: refused 
     [`RIGHTS: read ${s.work}\nEFFORT: huge\nTASK: look\n`, /EFFORT must be/],
     [`RIGHTS: read ${s.work}\nSAFE_MODE: no\nTASK: look\n`, /SAFE_MODE takes only yes/],
     [`RIGHTS: read ${s.work}\nRESUME: relative/report.json\nTASK: look\n`, /RESUME must be the absolute path/],
-    [`RIGHTS: write ${s.state}\nTASK: look\n`, /overlaps the state directory/],
+    [`RIGHTS: write ${s.state}\nTASK: look\n`, /refusing to grant write access to .*: it is inside this driver's state directory/],
     [`RIGHTS: read ${s.work}/missing\nTASK: look\n`, /is not an existing directory/],
     [`RIGHTS: write ${s.work}/missing\nTASK: look\n`, /is not an existing directory/],
     [`RIGHTS: read ${s.work}\nTASK:\n`, /TASK body is empty/],
@@ -169,6 +170,41 @@ test("write and worktree runs: acceptEdits, edit tools, the right working direct
   assert.equal(t.json.worktreePath, cwd); assert.equal(t.json.worktreeRepo, fs.realpathSync(repo)); assert.match(t.json.base, /^[0-9a-f]{40}$/);
 });
 
+test("a worktree's report is read through the git directory its repository records, not the tree's own .git", async () => {
+  const s = setup();
+  const repo = tempDir("entrust-claude-repo-");
+  const git = (...a) => spawnSync("git", ["-C", repo, "-c", "user.name=t", "-c", "user.email=t@example.invalid", ...a], { encoding: "utf8" });
+  if (git("init").status !== 0) return skip("no git");
+  git("commit", "--allow-empty", "-m", "base");
+  const fake = path.join(tempDir("entrust-claude-gitlink-"), "fake");
+  const t = await drive(s, `RIGHTS: worktree ${repo}\nTASK: change\n`, { mode: "gitlink", more: { FAKE_CLAUDE_GITLINK: fake } });
+  assert.equal(t.code, 0, t.err);
+  assert.equal(fs.existsSync(`${fake}.ran`), false, "the agent's fsmonitor ran under the driver's git");
+  assert.deepEqual(t.json.untracked, ["?? planted.txt"]);
+});
+
+test("an accept the mailbox cannot record is answered deny, never allow", async () => {
+  const box = tempDir("entrust-claude-box-");
+  const server = spawn(process.execPath, [path.join(ROOT, "skills/claude/scripts/approvals.mjs")], {
+    env: { ...process.env, ENTRUST_APPROVAL_DIR: box, ENTRUST_RUN_PID: "4242", ENTRUST_RUN_STARTED_MS: "1", ENTRUST_RUN_CWD: box, ENTRUST_RUN_ROOTS: "[]" },
+    stdio: ["pipe", "pipe", "inherit"] });
+  const replies = [];
+  readline.createInterface({ input: server.stdout }).on("line", (l) => replies.push(JSON.parse(l)));
+  const call = (id, method, params) => server.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
+  call(1, "initialize", { protocolVersion: "2025-06-18" });
+  call(2, "tools/call", { name: "decide", arguments: { tool_name: "Bash", input: { command: "touch /x/y" } } });
+  const until = async (ok) => { for (let i = 0; i < 100 && !ok(); i++) await new Promise((r) => setTimeout(r, 50)); };
+  await until(() => fs.readdirSync(box).some((n) => n.endsWith(".request.json")));
+  const name = fs.readdirSync(box).find((n) => n.endsWith(".request.json"));
+  const q = JSON.parse(fs.readFileSync(path.join(box, name), "utf8"));
+  fs.rmSync(path.join(box, name)); fs.mkdirSync(path.join(box, name));
+  fs.writeFileSync(path.join(box, `${q.id}.decision.json`), JSON.stringify({ id: q.id, run: q.run, decision: "accept" }));
+  await until(() => replies.some((m) => m.id === 2));
+  server.kill();
+  const answer = JSON.parse(replies.find((m) => m.id === 2).result.content[0].text);
+  assert.equal(answer.behavior, "deny");
+});
+
 test("an error result exits 1, no structured answer 13, a dead claude 4, a missing one 4", async () => {
   const s = setup();
   const text = `RIGHTS: read ${s.work}\nTASK: look\n`;
@@ -209,12 +245,18 @@ test("a continuation forks the earlier session into a new id, in the earlier run
   assert.equal(flagOf(call.argv, "--resume"), first.json.sessionID); assert.ok(call.argv.includes("--fork-session"));
   assert.notEqual(flagOf(call.argv, "--session-id"), first.json.sessionID); assert.equal(next.json.sessionID, flagOf(call.argv, "--session-id"));
   assert.equal(call.cwd, first.json.cwd); assert.equal(next.json.resumedFrom, first.report);
-  assert.match(check(s, `RIGHTS: read ${s.work}\nRESUME: ${first.report}\nTASK: go on\n`).stderr, /had RIGHTS write/);
-  assert.match(check(s, `RIGHTS: write ${elsewhere}\nRESUME: ${first.report}\nTASK: go on\n`).stderr, /widens past/);
+  // A RIGHTS line names the run's own rights or nothing: a narrower kind, another directory and a wider kind
+  // are each refused, so the session never runs in a directory nobody checked under rights it did not have.
+  for (const other of [`read ${s.work}`, `write ${elsewhere}`])
+    assert.match(check(s, `RIGHTS: ${other}\nRESUME: ${first.report}\nTASK: go on\n`).stderr, /keeps its rights, write /);
+  const reader = await drive(s, `RIGHTS: read ${elsewhere}\nTASK: look\n`);
+  assert.match(check(s, `RIGHTS: write ${s.work}\nRESUME: ${reader.report}\nTASK: go on\n`).stderr, /keeps its rights, read /);
+  const kept = await drive(s, `RESUME: ${first.report}\nTASK: go on\n`);
+  assert.equal(kept.code, 0, kept.err); assert.deepEqual(kept.json.rights, first.json.rights);
   const gone = tempDir("entrust-claude-gone-");
   const earlier = await drive(s, `RIGHTS: read ${gone}\nTASK: start\n`);
   fs.rmSync(gone, { recursive: true });
-  assert.match(check(s, `RIGHTS: read\nRESUME: ${earlier.report}\nTASK: go on\n`).stderr, /no longer exists/);
+  assert.match(check(s, `RESUME: ${earlier.report}\nTASK: go on\n`).stderr, /no longer exists/);
 });
 
 test("SAFE_MODE runs with --safe-mode and no mailbox, even when one is given", async () => {
