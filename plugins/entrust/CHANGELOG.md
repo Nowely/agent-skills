@@ -27,6 +27,9 @@ forensics remain in the repository references and release notes.
   or a `nothing` row could run in another tree than the one checked (run on the fake app server). `--new` now
   records its working directory and state directory in `agent/launch.json`, and the driver runs there, under
   that state directory (X4).
+- **A Codex `WRITABLE:` root is bound by the plan.** Under a registered plan only the `RIGHTS:` line was checked
+  against the row's writes, so `RIGHTS: write A` with `WRITABLE: B` passed and the run wrote B. A `WRITABLE:` root
+  must now lie inside the row's write root (X2).
 
 ## 0.27.0 — 2026-10-08
 

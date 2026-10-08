@@ -115,7 +115,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | `ALLOW_NO_COMMANDS:` | `yes` | the agent is recall-only and will run nothing |
 
 Under a registered plan, a prompt with no `RIGHTS:` or `MODEL:` runs on its row's writes and model, and one naming
-others is refused at `--new`.
+others, or a `WRITABLE:` root outside the row's writes, is refused at `--new`.
 
 `VERIFY` is refused in a prompt file without `--allow-prompt-verify`, which the one call does not pass: an agent
 that could write its own gate would grade itself. Declare gates on the command line

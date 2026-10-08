@@ -1217,6 +1217,17 @@ flow("--check-prompt-file refuses a write root over the state directory, with th
       /refusing to grant write access to .*: it is an ancestor of this driver's state directory/);
   });
 
+flow("--check-prompt-file refuses a WRITABLE: root outside a registered plan's writes, and admits one inside",
+  "a plan's writes are the user's approval of what an agent may write, and a WRITABLE: root is a write grant like the RIGHTS line",
+  () => {
+    const a = flowState(), b = flowState(), sub = path.join(a, "sub");
+    fs.mkdirSync(sub);
+    const env = { ENTRUST_PLAN_WRITES: `write ${a}` };
+    const outside = refusal(checkRun(`RIGHTS: write ${a}\nWRITABLE: ${b}\nTASK: x\n`, { env }), /WRITABLE .* lies outside the approved plan's writes/);
+    if (outside !== true) return outside;
+    return passed(checkRun(`RIGHTS: write ${a}\nWRITABLE: ${sub}\nTASK: x\n`, { env }));
+  });
+
 flow("--check-prompt-file refuses an unknown upper-case field",
   "a typo in a header is a different agent, and the check is what stops it before one is spawned",
   () => {

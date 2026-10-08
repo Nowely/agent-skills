@@ -36,7 +36,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createAgentTemp, agentTempAncestor, stateDirectory, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
-import { EXIT, parseRights, resolveModel, resolveRights, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, canonical, parseRights, planWritesToRights, resolveModel, resolveRights, within, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import { shortName } from "./launch.mjs";
 
 const LEVELS = new Set(["read", "write"]);
@@ -760,6 +760,7 @@ function argvFromPromptFile(file, allowPromptVerify) {
     fail(EXIT.USAGE, `--prompt-file exceeds ${LIMITS.MAX_PROMPT_BYTES} bytes, the prompt cap: the file carries the body as well as the header`);
   const out = [], seen = new Set(), declared = [];
   let rightsValue, modelValue;
+  const writableValues = [];
   const lines = raw.split("\n");
   let bodyAt = 0;
   for (; bodyAt < lines.length; bodyAt++) {
@@ -788,6 +789,7 @@ function argvFromPromptFile(file, allowPromptVerify) {
       continue;
     }
     if (field === "MODEL") modelValue = value;
+    if (field === "WRITABLE") writableValues.push(value);
     if (BOOLS[field]) {
       // A negative header value omits the flag, just as omitting the line does — except where the field
       // is granted by default, where omitting it is what GRANTS the thing the line refused: there the
@@ -818,6 +820,13 @@ function argvFromPromptFile(file, allowPromptVerify) {
   const rights = rightsValue === undefined && !planWrites ? { kind: "read", path: null }
     : resolveRights(rightsValue, planWrites, process.cwd());
   if (rights.error) fail(EXIT.USAGE, `--prompt-file: ${rights.error}`);
+  // A WRITABLE: root is a write grant too, so a plan's writes bind it: it lies inside the row's write root.
+  if (planWrites) {
+    const planned = planWritesToRights(planWrites, process.cwd());
+    for (const w of writableValues)
+      if (planned.kind !== "write" || !within(canonical(w), canonical(planned.path)))
+        fail(EXIT.USAGE, `--prompt-file: WRITABLE ${w} lies outside the approved plan's writes (${planWrites})`);
+  }
   out.unshift(...(rights.kind === "worktree" ? ["--worktree", rights.path]
     : ["--level", rights.kind, ...(rights.path ? ["--cwd", rights.path] : [])]));
   const model = resolveModel(modelValue, process.env.ENTRUST_PLAN_MODEL || undefined,
