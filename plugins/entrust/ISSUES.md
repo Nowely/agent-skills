@@ -328,3 +328,19 @@ A change to one is a drift from the other unless both are edited by hand, and a
 coordinator who reads both meets two phrasings of one rule. The swarm page cannot simply own the rule, since a bulk
 batch the plan gives no swarm runs as ordinary agents. Decide which page owns these rules and have the other
 link them, or hold one wording and pin it on both pages as `evals/fragments.mjs` pins the run directory.
+
+## E139. An OpenCode or Claude worktree is in no ledger, and cleanup does not list it
+
+**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs:130` `makeWorktree` adds the
+tree at `<state>/worktrees/<name>` and records it nowhere else. `cleanup/scripts/cleanup.mjs:793` lists the `.json`
+entries of that directory, the Codex driver's ledger, and `:804` the trees under `<project>/.claude/worktrees`. Run
+on 2026-10-08: a tree made by `makeWorktree` and a Codex ledger entry beside it in a fresh state directory;
+`cleanup.mjs --list` showed the entry as "the saved worktree" and nothing for the tree, which `git worktree list`
+still named.
+
+**Check.** The run above.
+
+**Issue text.** A worktree agent of the OpenCode or Claude adapter leaves its tree under `<state>/worktrees/` when
+the coordinator does not remove it, and nothing names it afterwards: the Codex driver's ledger and reconciliation
+cover only its own trees, and `/entrust:cleanup` does not list it. The shared worktree code should record its trees
+where cleanup reads, or cleanup should list the trees under `<state>/worktrees/`.
