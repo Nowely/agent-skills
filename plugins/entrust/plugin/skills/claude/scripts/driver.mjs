@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
-import { EXIT, canonical, makeWorktree, resolveRights, rightsScope, scopeWithin, within, worktreeFacts } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, canonical, makeWorktree, resolveModel, resolveRights, rightsScope, scopeWithin, within, worktreeFacts } from "../../orchestrate/scripts/drivers.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { TOOL } from "./approvals.mjs";
 
@@ -95,13 +95,12 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   if (rights.error) return refusal(rights.error);
 
   const planModel = env.ENTRUST_PLAN_MODEL || null;
+  const pinned = resolveModel(headers.MODEL, planModel);
+  if (pinned.error) return refusal(pinned.error);
   // An alias is passed as Claude Code spells it; a full id as written.
-  const model = headers.MODEL === undefined ? null : MODELS.includes(headers.MODEL.toLowerCase()) ? headers.MODEL.toLowerCase() : headers.MODEL;
+  const model = pinned.model === null ? null : MODELS.includes(pinned.model.toLowerCase()) ? pinned.model.toLowerCase() : pinned.model;
   if (model !== null && !MODELS.includes(model.toLowerCase()) && !/^claude-[a-z0-9][a-z0-9.-]*$/i.test(model))
     return refusal(`MODEL must be ${MODELS.join(", ")} or a claude-… model id, not ${JSON.stringify(model)}`);
-  if (planModel && model === null) return refusal(`a registered plan pins MODEL ${planModel}; the prompt must name it`);
-  if (planModel && model.toLowerCase() !== planModel.toLowerCase())
-    return refusal(`MODEL ${model} does not match the approved plan's ${planModel}`);
 
   const effort = headers.EFFORT ?? null;
   if (effort !== null && !EFFORTS.includes(effort)) return refusal(`EFFORT must be one of ${EFFORTS.join(", ")}`);

@@ -3,7 +3,7 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.27.0 — 2026-10-08
 
 ### Added
 
@@ -18,7 +18,7 @@ forensics remain in the repository references and release notes.
   writer: a plain Bash command comes back as a command request, any other call as `claude.permission` with the
   whole call to restate. The plan pins the model and the writes; a `write` directory may not overlap the state
   directory, and Edit deny rules keep every file tool, redirect and `tee` out of the mailboxes. A refusal at launch
-  is a published report, its reason on `ERROR=`. The driver is 426 lines, measured against Claude Code
+  is a published report, its reason on `ERROR=`. The driver is 425 lines, measured against Claude Code
   2.1.294 (research/2026-10-08-claude-adapter); `evals/claude.test.mjs` runs it on a fake `claude`, and
   `ENTRUST_LIVE_CLAUDE=1` runs one approval through the real one on Haiku. The advisor in a Codex host reaches
   Claude through it.
@@ -28,6 +28,17 @@ forensics remain in the repository references and release notes.
 - **What an external driver shares is orchestrate's.** The exit-code table, the request-id shape, the RIGHTS grammar,
   its check against a registered plan's writes and the scope it grants, and the worktree a `worktree` agent runs in moved, unchanged, from the OpenCode adapter to
   `orchestrate/scripts/drivers.mjs`, which the OpenCode driver imports, so a second driver does not copy them.
+- **The Codex driver's exit codes and RIGHTS grammar are the shared ones (E137).** It defined the same exit numbers
+  under names of its own (`OK`, `TURN_NOT_COMPLETED`, `ESCALATED`, `INTERACTION`, `VERIFY_UNMEASURABLE`) and parsed
+  RIGHTS itself; it now imports `EXIT`, `parseRights` and `resolveRights` from `orchestrate/scripts/drivers.mjs`.
+  No exit code changed its number; a bare `RIGHTS: write` or `worktree` is refused in the shared words. Its
+  worktree code stays its own: it is not a copy of the shared `makeWorktree` but more of it, a ledger written
+  before `git worktree add`, reconciliation after a crash and a continuation rebuilt at its base (E139 records
+  that the other drivers' trees have none of it).
+- **A prompt with no `MODEL:` runs on its plan row's model.** Under a registered plan the OpenCode and Claude
+  drivers refused a prompt that named no model; it now takes the row's, as an absent `RIGHTS:` takes the row's
+  writes. A prompt naming another model, or OpenCode's `inherit`, is still refused. The rule is one function,
+  `resolveModel` in `orchestrate/scripts/drivers.mjs`.
 
 ### Fixed
 
@@ -38,6 +49,52 @@ forensics remain in the repository references and release notes.
   that does not exist, or a `RESUME` whose run's directory is gone, passed `--check-prompt-file` and then failed the
   spawn with ENOENT, which the Claude driver reported as "claude is not on PATH", exit 4. `--check-prompt-file` now
   refuses it.
+- **A plan row's model is its own adapter's (E135).** The registry checked a row's model against every adapter's
+  list, so `x | codex | opus` registered and the Codex driver would have run a row approved as a Claude model. A
+  row's model is now checked against its adapter's declaration alone, and a `native` row's against a native
+  adapter's.
+- **A Codex row's model and writes bind its prompt (E138).** A registered plan bound a Codex agent's id alone: its
+  prompt could name another model and wider rights than its row, and `--new` admitted it. The Codex adapter now
+  records the row's model and writes, as OpenCode and Claude do, and its driver refuses a prompt that departs
+  from them; a prompt naming neither runs on the row's. A Codex model named by its slug, `gpt-…-sol`, matches a
+  `sol` row.
+
+### Compatibility
+
+- External Claude agents need the `claude` CLI at 2.1.259 or later, signed in; nothing else changes for a host that
+  does not use them.
+- Under a registered plan a Codex prompt is held to its row (E138): one naming another model or other writes than the
+  row is refused at `--new`, as OpenCode and Claude prompts already were, so a coordinator that relied on naming
+  another amends the plan. A prompt naming no `MODEL:` or `RIGHTS:` runs on the row's, in all three adapters; an
+  OpenCode or Claude prompt with no `MODEL:` used to be refused.
+- A plan row naming another adapter's model, `x | codex | opus`, no longer registers (E135), and a `plan.txt` already
+  holding one is refused at `--new`.
+- The Codex driver's exported `EXIT` uses the shared names, `SUCCESS`, `MODEL`, `COMMANDS`, `APPROVAL`, `NEEDS_INPUT`
+  and `VERIFY_UNMEASURED` for `OK`, `TURN_NOT_COMPLETED`, `NO_COMMANDS`, `ESCALATED`, `INTERACTION` and
+  `VERIFY_UNMEASURABLE`; no number changed. A Codex `--new` now writes `agent/backend.json`, as the others do.
+
+### Validation
+
+- Locally, in a Linux container running as root on Node 22: every entrust suite but protocol, lock and cli is green,
+  agent-run at 55, claude at 19 with its live case skipped and opencode at 82; the failing cases of those three
+  (process-group sweeps and permission refusals) fail the same way on the tree before this release's Codex changes
+  and passed in CI on #68. `scripts/skills.test.mjs` passes 8 of 8 and terse's pages 12 of 12. CI's four jobs run on
+  the release PR, and a red run stops the release.
+- The Claude driver's live case passed twice on Haiku against Claude Code 2.1.294 during #68, before the model pin
+  moved to the shared rule; the pin is covered offline.
+- Not run: the live fidelity gate, the live orchestrate gate and the cross-plugin terse brief, which this release's
+  launcher and driver changes call for; the preparing machine has no Codex CLI. The Codex plan binding is covered
+  by the fake app server only.
+
+### Known issues
+
+- Open ledger entries remain E67, E90, E96, E100, E102–E104, E110, E111, E113–E115, E117 and E139; see
+  [`ISSUES.md`](ISSUES.md).
+
+### Release environment
+
+- Release preparation used Node.js `v22.22.0` and Claude Code `2.1.294`, with no Codex CLI. The CLI protocol pin,
+  `0.159.3`, is unchanged.
 
 ## 0.26.0 — 2026-10-08
 

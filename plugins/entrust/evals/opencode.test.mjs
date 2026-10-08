@@ -56,11 +56,15 @@ test("default answer schema comes from the existing Codex contract", () => {
   assert.equal(FIVE_FIELDS_SCHEMA, path.join(ROOT, "skills/orchestrate/schemas/five-fields.schema.json"));
   assert.equal(parsePrompt(prompt(), {}).error, undefined);
 });
-test("registered model cannot inherit or silently substitute", () => {
+test("a registered model fills an absent MODEL and refuses inherit or another model", () => {
   const env = { ENTRUST_PLAN_MODEL: model };
-  for (const header of ["", "MODEL: inherit\n", "MODEL: router/other\n"])
-    assert.ok(parsePrompt(prompt(header), env).error);
-  assert.equal(parsePrompt(prompt(`MODEL: ${model}\n`), env).error, undefined);
+  for (const header of ["MODEL: inherit\n", "MODEL: router/other\n"])
+    assert.match(parsePrompt(prompt(header), env).error, /does not match the approved plan's/);
+  for (const header of ["", `MODEL: ${model}\n`]) {
+    const parsed = parsePrompt(prompt(header), env);
+    assert.equal(parsed.error, undefined);
+    assert.equal(`${parsed.model.providerID}/${parsed.model.modelID}`, model);
+  }
 });
 test("unsupported execution controls refuse before any HTTP call", () => {
   for (const header of ["NETWORK: no\n", "WEB_SEARCH: disabled\n", "UNKNOWN: yes\n", "VARIANT: low\nEFFORT: high\n"])

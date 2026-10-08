@@ -1796,7 +1796,7 @@ function runDelete(roots, snapPath, numbers) {
   // The proof is in the same shape the user consented on, one blank line below the outcomes.
   process.stdout.write(`${lines.join("\n")}${lines.length ? "\n" : ""}${formA(inventory(roots))}`);
   // 10 outranks 1: a refusal is a decision this made, a failure is one it could not carry out.
-  return refused ? EXIT.BUSY : failed ? EXIT_FAILED : EXIT.OK;
+  return refused ? EXIT.BUSY : failed ? EXIT_FAILED : EXIT.SUCCESS;
 }
 
 // ---------------------------------------------------------------- arguments
@@ -1828,7 +1828,7 @@ function parseArgs(argv) {
 
 function main(argv) {
   const opts = parseArgs(argv);
-  if (opts === null) return EXIT.OK;
+  if (opts === null) return EXIT.SUCCESS;
   const roots = resolveRoots();
   if (opts.del) return runDelete(roots, opts.from, opts.numbers);
   const inv = inventory(roots);
@@ -1836,7 +1836,7 @@ function main(argv) {
   // The same text, byte for byte, in both shapes: the block a coordinator shows and the numbers it
   // submits then come from one inventory.
   process.stdout.write(opts.json ? `${JSON.stringify(listJson(inv, text), null, 2)}\n` : text);
-  return EXIT.OK;
+  return EXIT.SUCCESS;
 }
 
 // Imported by the suite for its constants; a direct invocation is the only thing that runs main.

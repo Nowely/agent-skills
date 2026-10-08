@@ -36,8 +36,9 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createAgentTemp, agentTempAncestor, stateDirectory, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
+import { EXIT, parseRights, resolveModel, resolveRights } from "../../orchestrate/scripts/drivers.mjs";
+import { shortName } from "./launch.mjs";
 
-const EXIT = { OK: 0, TURN_NOT_COMPLETED: 1, USAGE: 2, TIMEOUT: 3, TRANSPORT: 4, NO_COMMANDS: 5, ESCALATED: 6, INTERACTION: 7, NO_ANSWER: 8, VERIFY_FAILED: 9, BUSY: 10, VERIFY_UNMEASURABLE: 12, SCHEMA: 13 };
 const LEVELS = new Set(["read", "write"]);
 const READ_PROFILE = "entrust_read";
 // The codex-cli release the protocol facts were measured against, matching schema-<version>/.
@@ -45,7 +46,7 @@ const READ_PROFILE = "entrust_read";
 const PINNED_CODEX = "0.159.3";
 // This plugin's version, printed by --help and carried as driverVersion, must agree with
 // every place plugins/entrust/evals/package.test.mjs compares.
-const VERSION = "0.26.0";
+const VERSION = "0.27.0";
 let codexVersion = null;   // what the server reported this run, parsed out of InitializeResponse.userAgent
 // The union of the model catalogue's supported_reasoning_levels and the server's accepted efforts.
 // `none` and `minimal` appear in the server's rejection list; `ultra` is absent there but completes live turns.
@@ -263,14 +264,14 @@ const LADDER = [
   // own list verbatim.
   { code: EXIT.USAGE, help: "the server refused the request",
     when: (c) => c.turnStatus !== "completed" && invalidRequest(c.turnError) },
-  { code: EXIT.TURN_NOT_COMPLETED, help: "the turn did not complete",
+  { code: EXIT.MODEL, help: "the turn did not complete",
     when: (c) => c.turnStatus !== "completed" },
   // Not an escalation: no sandbox change answers a question that needed a human.
-  { code: EXIT.INTERACTION, help: "the turn wanted input no sandbox change can supply",
+  { code: EXIT.NEEDS_INPUT, help: "the turn wanted input no sandbox change can supply",
     when: (c) => c.interactions.length > 0 },
-  // Above NO_COMMANDS: a refused approval explains the missing command, and "nothing ran" would hide why.
+  // Above COMMANDS: a refused approval explains the missing command, and "nothing ran" would hide why.
   // An accepted one is no rung: the command ran, and the report counts it like any other.
-  { code: EXIT.ESCALATED,
+  { code: EXIT.APPROVAL,
     help: "an approval request was declined or expired unanswered; inspect the\n      report, if delivered, before judging task completeness",
     when: (c) => c.escalations.some((e) => e.decision !== "accepted") },
   // Above every proxy below it, and distinct from "the check said no". Two shapes of the same finding,
@@ -278,7 +279,7 @@ const LADDER = [
   // observable exit status measured nothing. Either leaves verifyResult null or unmeasured, which every
   // gate below reads as "nothing to complain about" — so the ladder would fall through to the weaker
   // gates and a run with an unrun --verify could reach 0.
-  { code: EXIT.VERIFY_UNMEASURABLE, help: "--verify was declared and could not be measured",
+  { code: EXIT.VERIFY_UNMEASURED, help: "--verify was declared and could not be measured",
     when: (c) => c.verifySkipped === "budget-exhausted" || (c.verifyResult != null && !c.verifyResult.measured) },
   { code: EXIT.VERIFY_FAILED, help: "--verify ran and failed",
     when: (c) => c.verifyFailed },
@@ -288,7 +289,7 @@ const LADDER = [
   // exit code here would reinstate it under another number, and the hint below would tell a turn whose
   // commands all failed to re-run as if it had been recall-only. A declared --expect-command is the
   // stricter question and still demands a SUCCESSFUL match.
-  { code: EXIT.NO_COMMANDS,
+  { code: EXIT.COMMANDS,
     help: "no command ran (--allow-no-commands waives this, --expect-command does\n      not)",
     when: (c) => c.opts.expectRe ? c.expected.length === 0 : (!c.opts.allowNoCommands && c.commandsRan === 0) },
   { code: EXIT.NO_ANSWER, help: "the turn produced no answer",
@@ -758,6 +759,7 @@ function argvFromPromptFile(file, allowPromptVerify) {
   if (Buffer.byteLength(raw) > LIMITS.MAX_PROMPT_BYTES)
     fail(EXIT.USAGE, `--prompt-file exceeds ${LIMITS.MAX_PROMPT_BYTES} bytes, the prompt cap: the file carries the body as well as the header`);
   const out = [], seen = new Set(), declared = [];
+  let rightsValue, modelValue;
   const lines = raw.split("\n");
   let bodyAt = 0;
   for (; bodyAt < lines.length; bodyAt++) {
@@ -777,19 +779,15 @@ function argvFromPromptFile(file, allowPromptVerify) {
       fail(EXIT.USAGE, "--prompt-file: VERIFY runs an unsandboxed shell with your own rights, so it is refused from a prompt file unless --allow-prompt-verify is given on the command line; pass --verify there instead");
     seen.add(field);
     declared.push(field);
-    // RIGHTS is the rights declaration and the only field that expands to more than one flag.
+    // RIGHTS is the rights declaration and the only field that expands to more than one flag, once the
+    // header is read and the plan's writes are known.
     if (field === "RIGHTS") {
-      // Split at the FIRST whitespace run only to preserve interior whitespace in the declared path:
-      // rewriting it could grant write access to a different directory.
-      const sp = value.search(/\s/);
-      const kind = sp < 0 ? value : value.slice(0, sp);
-      const arg = sp < 0 ? "" : value.slice(sp).trim();
-      if (kind === "read") { out.push("--level", "read", ...(arg ? ["--cwd", arg] : [])); }
-      else if (kind === "worktree") { if (!arg) fail(EXIT.USAGE, "--prompt-file: RIGHTS worktree needs a repository path"); out.push("--worktree", arg); }
-      else if (kind === "write") { if (!arg) fail(EXIT.USAGE, "--prompt-file: RIGHTS write needs a directory"); out.push("--level", "write", "--cwd", arg); }
-      else fail(EXIT.USAGE, `--prompt-file: RIGHTS must be read | worktree <repo> | write <dir>, got ${JSON.stringify(value)}`);
+      const rights = parseRights(value);
+      if (rights.error) fail(EXIT.USAGE, `--prompt-file: ${rights.error}`);
+      rightsValue = value;
       continue;
     }
+    if (field === "MODEL") modelValue = value;
     if (BOOLS[field]) {
       // A negative header value omits the flag, just as omitting the line does — except where the field
       // is granted by default, where omitting it is what GRANTS the thing the line refused: there the
@@ -814,7 +812,18 @@ function argvFromPromptFile(file, allowPromptVerify) {
   // there is — read, in the current directory, with no writable root beyond $TMPDIR; egress it carries
   // because every agent does, header or none. The header is only the LEADING run of fields, so a later
   // RIGHTS: line is body. A file that DOES declare rights still declares them first, refused above.
-  if (!seen.has("RIGHTS")) out.push("--level", "read");
+  // Under a registered plan (the launcher's ENTRUST_PLAN_WRITES and ENTRUST_PLAN_MODEL) an absent RIGHTS or
+  // MODEL is the row's, and one that departs from the row is refused.
+  const planWrites = process.env.ENTRUST_PLAN_WRITES || undefined;
+  const rights = rightsValue === undefined && !planWrites ? { kind: "read", path: null }
+    : resolveRights(rightsValue, planWrites, process.cwd());
+  if (rights.error) fail(EXIT.USAGE, `--prompt-file: ${rights.error}`);
+  out.unshift(...(rights.kind === "worktree" ? ["--worktree", rights.path]
+    : ["--level", rights.kind, ...(rights.path ? ["--cwd", rights.path] : [])]));
+  const model = resolveModel(modelValue, process.env.ENTRUST_PLAN_MODEL || undefined,
+    (value, planned) => shortName(value).toLowerCase() === planned.toLowerCase());
+  if (model.error) fail(EXIT.USAGE, `--prompt-file: ${model.error}`);
+  if (modelValue === undefined && model.model) out.push("--model", model.model);
   // In the report, so a coordinator reading a wrapped agent can see what the FILE declared rather than
   // inferring it from the flags the run ended up with.
   promptFileFields = declared;
@@ -872,7 +881,7 @@ function parseArgs(argv) {
       // Asking for help is not a usage error: it goes to stdout and exits 0, so `--help | head` works.
       // No process.exit() behind the write: on an asynchronous pipe (macOS) that truncates the text.
       case "-h": case "--help": case "--help-all":
-        process.stdout.write(helpText(a === "--help-all")); process.exitCode = EXIT.OK; settled = true; throw new Bail();
+        process.stdout.write(helpText(a === "--help-all")); process.exitCode = EXIT.SUCCESS; settled = true; throw new Bail();
       default: fail(EXIT.USAGE, `unknown argument: ${a}`);
     }
   }
@@ -2822,7 +2831,7 @@ function shutdown() {
 // once, last, and only when every part of it holds — a looser condition would promise a retained answer
 // on a cut turn, on one that answered nothing, or on a report that never reached the caller.
 function announceDeclinedApproval(reportCode, finalCode) {
-  if (reportCode !== EXIT.ESCALATED || finalCode !== EXIT.ESCALATED) return;
+  if (reportCode !== EXIT.APPROVAL || finalCode !== EXIT.APPROVAL) return;
   if (!reportFileWritten || closingFields === null) return;
   if (closingFields.turnStatus !== "completed" || !closingFields.answerPath) return;
   const refused = escalations.filter((e) => e.decision !== "accepted").length;
@@ -4223,7 +4232,7 @@ function decideExitCode(ev, verifySkipped) {
   const ctx = { ...ev, verifySkipped, verifyFailed: verifyResult != null && verifyResult.ok !== true,
                 turnStatus, turnError, interactions, escalations, verifyResult, opts };
   for (const rung of LADDER) if (rung.when(ctx)) return rung.code;
-  return EXIT.OK;
+  return EXIT.SUCCESS;
 }
 
 // One steer at a time: the guard is what keeps a slow server from overlapping two sends on one turn.
@@ -4303,7 +4312,7 @@ function writeReport(ev, verifySkipped, codeOverride) {
     process.stderr.write(`entrust: the agent left files in its private $TMPDIR ${tmpDir}; it outlives the run, and the driver never removes it\n`);
 
   const report = {
-    ok: code === EXIT.OK, exitCode: code, level: opts.level, sandbox: effectiveSandbox, cwd,
+    ok: code === EXIT.SUCCESS, exitCode: code, level: opts.level, sandbox: effectiveSandbox, cwd,
     // Report requested roots separately from sandbox.writableRoots, which is the grant the server applied;
     // assertWriteSandbox refuses any difference. `network` is the effective grant, not a flag someone
     // passed: it is on unless the agent denied it, and sandbox.networkAccess is asserted to agree.
@@ -4385,7 +4394,7 @@ function writeReport(ev, verifySkipped, codeOverride) {
     // A completed turn that ran nothing exits 5; when no expectation was declared, the two legitimate
     // shapes of that run are a recall-only follow-up, which has a flag, and a delegation, whose work was
     // the children's. The report names whichever one this was.
-    ...(code === EXIT.NO_COMMANDS && !opts.expectRe
+    ...(code === EXIT.COMMANDS && !opts.expectRe
       ? { hint: subagentThreads.size ? subagentCause()
                                      : "if running nothing was the point, re-run with --allow-no-commands" } : {}),
     // Exit 3 is a budget the CALLER set, so the caller is the one who can change the outcome. Resuming is

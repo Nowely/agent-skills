@@ -329,31 +329,18 @@ coordinator who reads both meets two phrasings of one rule. The swarm page canno
 batch the plan gives no swarm runs as ordinary agents. Decide which page owns these rules and have the other
 link them, or hold one wording and pin it on both pages as `evals/fragments.mjs` pins the run directory.
 
-## E135. A plan row's model is checked against every adapter's list, so a Codex row can name a Claude model
+## E139. An OpenCode or Claude worktree is in no ledger, and cleanup does not list it
 
-**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/scripts/agent-run.mjs:473` builds `LISTED` from every
-planned adapter's `plan.models`, and `:507` accepts a row whose adapter declares no `plan.model` pattern when its model
-is in `LISTED`, whichever adapter listed it. Run on 2026-10-08: `printf 'x | codex | opus | reviewer | nothing |
-unknown\n' | node agent-run.mjs --plan --run-dir <fresh dir>` printed `PLAN=` and `AGENT=x opus nothing`, exit 0.
-The same row with adapter `opencode` is refused, because OpenCode declares a pattern. Found by the critic of
-`research/2026-10-08-claude-adapter` (03-critique-c1.md, finding 8).
+**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs:130` `makeWorktree` adds the
+tree at `<state>/worktrees/<name>` and records it nowhere else. `cleanup/scripts/cleanup.mjs:793` lists the `.json`
+entries of that directory, the Codex driver's ledger, and `:804` the trees under `<project>/.claude/worktrees`. Run
+on 2026-10-08: a tree made by `makeWorktree` and a Codex ledger entry beside it in a fresh state directory;
+`cleanup.mjs --list` showed the entry as "the saved worktree" and nothing for the tree, which `git worktree list`
+still named.
 
-**Check.** The command above, on a fresh run directory.
+**Check.** The run above.
 
-**Issue text.** The plan registry accepts a row whose model belongs to a different adapter than its adapter column
-names: `x | codex | opus` registers, and the Codex driver is then launched for a row the user approved as a Claude
-model. A row's model should be checked against its own adapter's declaration only.
-
-## E137. The Codex driver keeps its own exit codes, RIGHTS grammar and worktree code beside the shared ones
-
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs` holds the exit-code table,
-the RIGHTS grammar and the worktree code the OpenCode driver uses. `codex/scripts/driver.mjs:40` defines its own
-`EXIT`, the same numbers under other names (`OK`, `TURN_NOT_COMPLETED`, `ESCALATED`, `INTERACTION`,
-`VERIFY_UNMEASURABLE`); `:790` parses RIGHTS itself; `:2102` adds its worktree itself.
-
-**Check.** `grep -n "const EXIT\|RIGHTS must be\|worktree\", \"add\"" plugins/entrust/plugin/skills/codex/scripts/driver.mjs`.
-
-**Issue text.** Three drivers launch external agents, and the facts they share (what each exit code means, what a
-RIGHTS line grants, how a worktree is made) are defined once for two of them and again inside the Codex driver. A
-change to one copy leaves the other behind. The Codex driver should import them from `orchestrate/scripts/drivers.mjs`,
-keeping its own ledger and harvest, which only it has.
+**Issue text.** A worktree agent of the OpenCode or Claude adapter leaves its tree under `<state>/worktrees/` when
+the coordinator does not remove it, and nothing names it afterwards: the Codex driver's ledger and reconciliation
+cover only its own trees, and `/entrust:cleanup` does not list it. The shared worktree code should record its trees
+where cleanup reads, or cleanup should list the trees under `<state>/worktrees/`.

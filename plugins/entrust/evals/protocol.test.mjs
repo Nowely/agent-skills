@@ -48,56 +48,56 @@ const CASES = [
       return (/account\/rateLimits\/read/.test(log) && !/thread\/start/.test(log) && /primary.*100%/.test(e) && ms < 7000)
         || `rate-limit refusal was late or missing: ${JSON.stringify({ ms, log, err: e.slice(0, 180) })}`;
     } },
-  { scenario: "turn-diff",        expect: EXIT.OK,
+  { scenario: "turn-diff",        expect: EXIT.SUCCESS,
     why: "the last turn/diff/updated payload is persisted under the answer log and named in the report",
     assert: (r) => (typeof r.turnDiffPath === "string" && fs.readFileSync(r.turnDiffPath, "utf8") === "last diff\n")
       || `the last diff was not persisted: ${JSON.stringify(r.turnDiffPath)}` },
-  { scenario: "async-question",   expect: EXIT.INTERACTION,
+  { scenario: "async-question",   expect: EXIT.NEEDS_INPUT,
     why: "since 0.153.0 a human question can arrive as an agentMessage with questions, phased final_answer; it is an interaction, and the turn's real answer must remain the answer",
     assert: (r) => (Array.isArray(r.interactions) && r.interactions.some((i) => /^item\/agentMessage\/questions: Which database/.test(i)) && r.answer === "DONE-ANSWER")
       || `async question mishandled: ${JSON.stringify({ i: r.interactions, a: r.answer })}` },
-  { scenario: "stale-turn",       expect: EXIT.NO_COMMANDS,         why: "the command and answer belong to an earlier turn on the same thread" },
-  { scenario: "early-completion", expect: EXIT.OK,                  why: "events that overtake the turn/start response are held and replayed, not lost" },
-  { scenario: "foreign-thread",   expect: EXIT.NO_COMMANDS,         why: "a subagent's work on another thread is not ours" },
-  { scenario: "command-failed",   expect: EXIT.OK,
+  { scenario: "stale-turn",       expect: EXIT.COMMANDS,         why: "the command and answer belong to an earlier turn on the same thread" },
+  { scenario: "early-completion", expect: EXIT.SUCCESS,                  why: "events that overtake the turn/start response are held and replayed, not lost" },
+  { scenario: "foreign-thread",   expect: EXIT.COMMANDS,         why: "a subagent's work on another thread is not ours" },
+  { scenario: "command-failed",   expect: EXIT.SUCCESS,
     why: "`false` exits 1; a failed command is a report field, not a rung, and the floor asks only whether anything ran — reading it as 'nothing ran' also prints the recall-only hint at a turn that ran a command",
     assert: (r) => (r.commandsFailed === 1 && r.commandsSucceeded === 0 && r.ok === true && r.hint === undefined)
       || `an all-failed turn was judged by the command floor: ${JSON.stringify({ failed: r.commandsFailed, ok: r.ok, hint: r.hint })}` },
-  { scenario: "command-failed",   expect: EXIT.NO_COMMANDS,         args: ["--expect-command", "false"],
+  { scenario: "command-failed",   expect: EXIT.COMMANDS,         args: ["--expect-command", "false"],
     why: "a failed command never satisfies --expect-command: the expectation asks for proof, and an exit code of 1 is not it",
     assert: (r) => r.commandsMatchingExpectation === 0
       || `a failed command matched the expectation: ${JSON.stringify(r.commandsMatchingExpectation)}` },
-  { scenario: "needs-user",       expect: EXIT.INTERACTION,         why: "a request no unattended client can answer is never a success" },
-  { scenario: "elicitation",      expect: EXIT.INTERACTION,         why: "an MCP form needs a human, not a wider sandbox" },
-  { scenario: "escalated",        expect: EXIT.ESCALATED,           why: "a refused approval outranks 'nothing ran' — it explains why" },
-  { scenario: "escalated-file-change", expect: EXIT.ESCALATED,
+  { scenario: "needs-user",       expect: EXIT.NEEDS_INPUT,         why: "a request no unattended client can answer is never a success" },
+  { scenario: "elicitation",      expect: EXIT.NEEDS_INPUT,         why: "an MCP form needs a human, not a wider sandbox" },
+  { scenario: "escalated",        expect: EXIT.APPROVAL,           why: "a refused approval outranks 'nothing ran' — it explains why" },
+  { scenario: "escalated-file-change", expect: EXIT.APPROVAL,
     why: "file-change approvals use decline, not the legacy abort shape, and must remain sandbox escalations",
     assert: (r) => r.commandsSucceeded === 1 && r.escalations?.[0]?.method === "item/fileChange/requestApproval"
       || `file-change refusal was not accepted by the fixture: ${JSON.stringify({ commands: r.commandsSucceeded, escalations: r.escalations })}` },
-  { scenario: "escalated-apply-patch", expect: EXIT.ESCALATED,
+  { scenario: "escalated-apply-patch", expect: EXIT.APPROVAL,
     why: "the legacy apply-patch approval uses abort and must not fall through as an interaction",
     assert: (r) => r.commandsSucceeded === 1 && r.escalations?.[0]?.method === "applyPatchApproval"
       || `apply-patch refusal was not accepted by the fixture: ${JSON.stringify({ commands: r.commandsSucceeded, escalations: r.escalations })}` },
-  { scenario: "escalated-exec-command", expect: EXIT.ESCALATED,
+  { scenario: "escalated-exec-command", expect: EXIT.APPROVAL,
     why: "the legacy exec-command approval uses abort and must not fall through as an interaction",
     assert: (r) => r.commandsSucceeded === 1 && r.escalations?.[0]?.method === "execCommandApproval"
       || `exec-command refusal was not accepted by the fixture: ${JSON.stringify({ commands: r.commandsSucceeded, escalations: r.escalations })}` },
-  { scenario: "escalated-permissions", expect: EXIT.ESCALATED,
+  { scenario: "escalated-permissions", expect: EXIT.APPROVAL,
     why: "a permissions request is refused with an empty granted profile and must remain a sandbox escalation",
     assert: (r) => r.commandsSucceeded === 1 && r.escalations?.[0]?.method === "item/permissions/requestApproval"
       && r.escalations[0].why === "rights are set at launch"
       || `permissions refusal was not accepted by the fixture: ${JSON.stringify({ commands: r.commandsSucceeded, escalations: r.escalations })}` },
-  { scenario: "turn-failed",      expect: EXIT.TURN_NOT_COMPLETED,  why: "arrival of turn/completed is not success; the status is — and a failure AFTER observable work is never retried",
+  { scenario: "turn-failed",      expect: EXIT.MODEL,  why: "arrival of turn/completed is not success; the status is — and a failure AFTER observable work is never retried",
     assert: (r) => (r.transientRetries?.length === 0) || `a turn with visible work was retried: ${JSON.stringify(r.transientRetries)}` },
-  { scenario: "transient-then-ok", expect: EXIT.OK,
+  { scenario: "transient-then-ok", expect: EXIT.SUCCESS,
     why: "one bounded backoff absorbs an enumerated transient failure only when the turn produced no observable work",
     assert: (r) => (r.transientRetries?.length === 1 && r.transientRetries[0].cause === "responseStreamDisconnected" && r.commandsSucceeded === 1)
       || `the retry did not happen or was miscounted: ${JSON.stringify({ retries: r.transientRetries, cmds: r.commandsSucceeded })}` },
-  { scenario: "transient-after-tool", expect: EXIT.TURN_NOT_COMPLETED,
+  { scenario: "transient-after-tool", expect: EXIT.MODEL,
     why: "an MCP tool call is observable work with side effects the replay would duplicate — the no-work guard must count the items the evidence gates ignore, not only commands, files and messages",
     assert: (r) => (r.transientRetries?.length === 0 && r.otherItemCounts?.mcpToolCall === 1)
       || `a turn that had already called a tool was retried: ${JSON.stringify({ retries: r.transientRetries, other: r.otherItemCounts })}` },
-  { scenario: "transient-always", expect: EXIT.TURN_NOT_COMPLETED,
+  { scenario: "transient-always", expect: EXIT.MODEL,
     why: "one retry is the whole budget: a cause that persists reports the failure instead of looping",
     assert: (r) => (r.transientRetries?.length === 1 && r.turnStatus === "failed")
       || `the retry budget was not one: ${JSON.stringify({ retries: r.transientRetries, status: r.turnStatus })}` },
@@ -107,7 +107,7 @@ const CASES = [
         && r.verify === null && r.verifySkipped === "turn-timed-out"
       || `timeout report lost its verdict or verify skip: ${JSON.stringify({ ok: r.ok, exitCode: r.exitCode, turnStatus: r.turnStatus, verify: r.verify, verifySkipped: r.verifySkipped })}` },
   { scenario: "no-answer",        expect: EXIT.NO_ANSWER,           why: "commentary is not a final answer" },
-  { scenario: "rich-items",       expect: EXIT.OK,
+  { scenario: "rich-items",       expect: EXIT.SUCCESS,
     why: "reasoning summaries, tool/search items and subagent threads must be visible in the report while the child's command counts for no root evidence",
     assert: (r) => (/Weighed A/.test(r.reasoningSummary ?? "") && r.otherItemCounts?.webSearch === 1
         && r.otherItems?.some((x) => x.type === "webSearch" && x.detail === "node atomics")
@@ -117,7 +117,7 @@ const CASES = [
         // announcement does, and null is the honest answer for both rather than a guess.
         && r.subagentThreads[0].agentPath === null && r.subagentThreads[0].status === null)
       || `visibility fields wrong: ${JSON.stringify({ reasoning: r.reasoningSummary, other: r.otherItemCounts, items: r.otherItems, sub: r.subagentThreads, cmds: r.commandsSucceeded })}` },
-  { scenario: "echo-input",       expect: EXIT.OK, args: ["--attach", attachFile, "--attach", attachFile2],
+  { scenario: "echo-input",       expect: EXIT.SUCCESS, args: ["--attach", attachFile, "--attach", attachFile2],
     why: "--attach maps local images into the turn input as localImage items, IMAGES FIRST and in the order given — the layout every one of the 29 image-carrying user turns on this machine has, so an agent asked about 'the first screenshot' sees what its coordinator saw",
     assert: (r) => {
       let inp = null;
@@ -135,7 +135,7 @@ const CASES = [
       try { log = fs.readFileSync(interruptLog, "utf8"); } catch {}
       return /turn\/interrupt/.test(log) || `the driver never sent turn/interrupt: ${JSON.stringify(log)}`;
     } },
-  { scenario: "probe-negative",   expect: EXIT.OK,
+  { scenario: "probe-negative",   expect: EXIT.SUCCESS,
     why: "a no-match grep or false test is a probe answering no; the server reports wrapped commands, so classification must use the parsed command rather than match the wrapper",
     assert: (r) => {
       if (!(r.commands ?? []).every((c) => /^\/bin\/zsh -c /.test(c.command)))
@@ -143,19 +143,19 @@ const CASES = [
       return (r.commandsFailed === 0 && r.commandsProbeNegative === 2)
         || `probe verdicts miscounted: failed=${r.commandsFailed} probes=${r.commandsProbeNegative}`;
     } },
-  { scenario: "probe-quoted",     expect: EXIT.OK,
+  { scenario: "probe-quoted",     expect: EXIT.SUCCESS,
     why: "the server wraps a script carrying a double quote in double quotes and escapes the inner ones — measured live — so the bare command survives only in commandActions; unwrapping the text by hand cannot recover it, and the probe exemption dies again for exactly the agents that use quoted patterns",
     assert: (r) => (r.commandsFailed === 0 && r.commandsProbeNegative === 1)
       || `a quoted probe was not recovered from the server's own parse: failed=${r.commandsFailed} probes=${r.commandsProbeNegative}` },
-  { scenario: "probe-piped",      expect: EXIT.OK,
+  { scenario: "probe-piped",      expect: EXIT.SUCCESS,
     why: "a probe piped into another command exits with the LAST command's status, and the server parses it into two actions — classifying on the first one would launder `grep x | tail` exiting 1 into 'the probe answered no'",
     assert: (r) => (r.commandsFailed === 1 && r.commandsProbeNegative === 0)
       || `a pipeline was laundered into a probe: failed=${r.commandsFailed} probes=${r.commandsProbeNegative}` },
-  { scenario: "escalated",        expect: EXIT.ESCALATED,
+  { scenario: "escalated",        expect: EXIT.APPROVAL,
     why: "a refused approval completes its item as DECLINED with no exit code: never an unresolved command, and never a probe answering 'no' however grep-shaped its text — it is counted as declined, because a command an approval stopped never ran and so never failed",
     assert: (r) => (r.commandsDeclined === 2 && r.commandsFailed === 0 && r.commandsBlocked === 0 && r.commandsProbeNegative === 0)
       || `a declined command was misclassified: ${JSON.stringify({ d: r.commandsDeclined, f: r.commandsFailed, b: r.commandsBlocked, p: r.commandsProbeNegative })}` },
-  { scenario: "escalated",        expect: EXIT.ESCALATED,
+  { scenario: "escalated",        expect: EXIT.APPROVAL,
     why: "commandsFailed and commandsDeclined are disjoint, and neither is escalations: here ONE approval request was refused and TWO commands were declined by it, so a caller adding the counts, or reading one as the other, counts one refusal three times — and the split is a report change only, the exit still 6",
     assert: (r) => {
       const declined = (r.commands ?? []).filter((c) => c.status === "declined");
@@ -164,27 +164,27 @@ const CASES = [
       return (r.commandsDeclined === declined.length && r.commandsFailed === 0 && r.escalations?.length === 1)
         || `the declined commands were not split off the failures: ${JSON.stringify({ d: r.commandsDeclined, f: r.commandsFailed, esc: r.escalations?.length })}`;
     } },
-  { scenario: "blocked-command",  expect: EXIT.OK,
+  { scenario: "blocked-command",  expect: EXIT.SUCCESS,
     why: "a command with no numeric exit code that is neither failed nor declined has no verdict; that is a report field and no exit code, so a caller reads commandsBlocked instead of being told the run failed",
     assert: (r) => (r.commandsBlocked === 1 && r.commandsFailed === 0 && r.commandsSucceeded === 1)
       || `the unresolved command was not counted: ${JSON.stringify({ b: r.commandsBlocked, f: r.commandsFailed, s: r.commandsSucceeded })}` },
-  { scenario: "probe-multiline",  expect: EXIT.OK,
+  { scenario: "probe-multiline",  expect: EXIT.SUCCESS,
     why: "codex sends multi-line bash scripts; a newline is a command separator too, so 'grep -q x file\\npnpm test' exiting 1 is a failed suite, not a probe answering no",
     assert: (r) => (r.commandsFailed === 1 && r.commandsProbeNegative === 0)
       || `a multi-line script was laundered into a probe: failed=${r.commandsFailed} probes=${r.commandsProbeNegative}` },
-  { scenario: "probe-error",      expect: EXIT.OK,
+  { scenario: "probe-error",      expect: EXIT.SUCCESS,
     why: "probes reserve exit 2 for real trouble — a bad pattern is a failure, not a 'no'",
     assert: (r) => (r.commandsFailed === 1 && r.commandsProbeNegative === 0)
       || `a probe error was read as a 'no': failed=${r.commandsFailed} probes=${r.commandsProbeNegative}` },
-  { scenario: "probe-compound",   expect: EXIT.OK,
+  { scenario: "probe-compound",   expect: EXIT.SUCCESS,
     why: "a compound command starting with a probe keeps failure semantics: its exit 1 may belong to the other command",
     assert: (r) => (r.commandsFailed === 1 && r.commandsProbeNegative === 0)
       || `a compound command was laundered into a probe: failed=${r.commandsFailed} probes=${r.commandsProbeNegative}` },
-  { scenario: "hidden-failure",  expect: EXIT.OK,
+  { scenario: "hidden-failure",  expect: EXIT.SUCCESS,
     why: "a completed turn that answered exits 0 whatever its commands did: both records of the old rung were harm, and the failure stays counted for the caller to read",
     assert: (r) => (r.commandsFailed === 1 && r.ok === true)
       || `the failure left the report, or the run was still failed: ${JSON.stringify({ failed: r.commandsFailed, ok: r.ok })}` },
-  { scenario: "hidden-failure",  expect: EXIT.NO_COMMANDS,
+  { scenario: "hidden-failure",  expect: EXIT.COMMANDS,
     args: ["--expect-command", "zzz_never"],
     why: "the demoted rung takes nothing with it: asking for proof and then accepting its absence is the failure --expect-command exists to prevent",
     assert: (r) => r.commandsMatchingExpectation === 0
@@ -193,27 +193,27 @@ const CASES = [
     args: ["--verify", "false"],
     why: "a check the caller ran and that said no is still exit 9, because it measured the end state instead of inferring it from the command list",
     assert: (r) => r.verify?.ok === false || `the failed check was not reported: ${JSON.stringify(r.verify)}` },
-  { scenario: "hidden-failure",  expect: EXIT.OK,                 args: ["--verify", "true"],
+  { scenario: "hidden-failure",  expect: EXIT.SUCCESS,                 args: ["--verify", "true"],
     why: "a passing check beside a failed command is exit 0, and both reach the report" },
-  { scenario: "null-phase",      expect: EXIT.OK,                 why: "the schema permits phase: null; an unphased answer is still an answer" },
-  { scenario: "early-request",   expect: EXIT.INTERACTION,        why: "a blocking request before the turn id exists still belongs to us" },
-  { scenario: "mcp-null-turn",   expect: EXIT.INTERACTION,        why: "MCP turnId is nullable; a null one must not read as someone else's" },
-  { scenario: "no-ids-request",  expect: EXIT.INTERACTION,        why: "attestation carries no ids at all and must fail closed" },
+  { scenario: "null-phase",      expect: EXIT.SUCCESS,                 why: "the schema permits phase: null; an unphased answer is still an answer" },
+  { scenario: "early-request",   expect: EXIT.NEEDS_INPUT,        why: "a blocking request before the turn id exists still belongs to us" },
+  { scenario: "mcp-null-turn",   expect: EXIT.NEEDS_INPUT,        why: "MCP turnId is nullable; a null one must not read as someone else's" },
+  { scenario: "no-ids-request",  expect: EXIT.NEEDS_INPUT,        why: "attestation carries no ids at all and must fail closed" },
   { scenario: "blank-answer",    expect: EXIT.NO_ANSWER,          why: "whitespace is not a final answer" },
-  { scenario: "late-item",       expect: EXIT.NO_COMMANDS,        why: "an item arriving after the turn ended cannot supply the evidence the turn lacked" },
-  { scenario: "double-completion", expect: EXIT.OK,               why: "a second completion for the same turn must not overwrite the first verdict" },
-  { scenario: "completion-foreign-thread", expect: EXIT.OK,       why: "a completion carrying our turn id on another thread is not ours" },
+  { scenario: "late-item",       expect: EXIT.COMMANDS,        why: "an item arriving after the turn ended cannot supply the evidence the turn lacked" },
+  { scenario: "double-completion", expect: EXIT.SUCCESS,               why: "a second completion for the same turn must not overwrite the first verdict" },
+  { scenario: "completion-foreign-thread", expect: EXIT.SUCCESS,       why: "a completion carrying our turn id on another thread is not ours" },
   { scenario: "turn-start-error", expect: EXIT.TRANSPORT,         why: "turn/start failed, so there is no turn and no possible success" },
-  { scenario: "unknown-response-id", expect: EXIT.OK,             why: "a response with an id nobody sent is discarded, not matched to a pending request" },
-  { scenario: "null-frame",      expect: EXIT.OK,
+  { scenario: "unknown-response-id", expect: EXIT.SUCCESS,             why: "a response with an id nobody sent is discarded, not matched to a pending request" },
+  { scenario: "null-frame",      expect: EXIT.SUCCESS,
     why: "`null` parses as JSON and is no JSON-RPC frame: read as one it threw out of the stdout reader into abort(), which publishes the pre-turn shape and drops the command and the answer already collected",
     assert: (r) => (r.unparsedLines === 1 && r.commandsSucceeded === 1 && r.answer === "the answer")
       || `a non-object frame was not counted as unparsed: ${JSON.stringify({ unparsed: r.unparsedLines, cmds: r.commandsSucceeded, answer: r.answer })}` },
-  { scenario: "wrong-command",   expect: EXIT.NO_COMMANDS,        args: ["--expect-command", "vitest", "--allow-no-commands"],
+  { scenario: "wrong-command",   expect: EXIT.COMMANDS,        args: ["--expect-command", "vitest", "--allow-no-commands"],
     why: "--allow-no-commands waives the command floor, never an expectation the caller declared" },
-  { scenario: "wrong-command",    expect: EXIT.NO_COMMANDS,         args: ["--expect-command", "vitest"],
+  { scenario: "wrong-command",    expect: EXIT.COMMANDS,         args: ["--expect-command", "vitest"],
     why: "a successful command that is not the demanded one must not satisfy the gate" },
-  { scenario: "wrong-command",    expect: EXIT.OK,                  args: [],
+  { scenario: "wrong-command",    expect: EXIT.SUCCESS,                  args: [],
     why: "without --expect-command the same run passes: the gate is only as strong as the caller's claim" },
   { scenario: "profile-missing",  expect: EXIT.TRANSPORT,
     why: "read level asks for its permission profile via -c; if the server did not apply it, the run is under an unknown sandbox and must stop" },
@@ -250,13 +250,13 @@ const CASES = [
   { scenario: "profile-slash-tmp-open", expect: EXIT.TRANSPORT,
     why: "the read level's promise is that $TMPDIR is writable and nothing else is; with $TMPDIR outside /tmp the explicit root list reads back correct while all of /tmp is writable beside it",
     assertStderr: (t) => /excludeSlashTmp/.test(t) || `the refusal did not name the field that differed: ${JSON.stringify(t.trim().slice(0, 160))}` },
-  { scenario: "failed-null-exit", expect: EXIT.OK,
+  { scenario: "failed-null-exit", expect: EXIT.SUCCESS,
     why: "the schema permits a FAILED command with exitCode null; failure classification must not depend on a numeric exit code",
     assert: (r) => r.commandsFailed === 1 || `the failed command was not counted: failed=${r.commandsFailed} blocked=${r.commandsBlocked}` },
-  { scenario: "escalated-subagent", expect: EXIT.ESCALATED,
+  { scenario: "escalated-subagent", expect: EXIT.APPROVAL,
     why: "the refusal is sent whoever asked, so a subagent really was blocked — evidence of FAILURE must be inclusive even though evidence of SUCCESS is root-only",
     assert: (r) => r.escalations?.length === 1 || `a refused subagent escalation went unrecorded: ${JSON.stringify(r.escalations)}` },
-  { scenario: "file-changes",     expect: EXIT.OK,
+  { scenario: "file-changes",     expect: EXIT.SUCCESS,
     why: "a failed patch must reach the report; PatchChangeKind is an object whose type and move_path must be rendered as meaningful fields",
     assert: (r) => (r.fileChangesFailed?.length === 1 && r.fileChangesFailed[0].kind === "update"
         && JSON.stringify(r.filesTouched) === JSON.stringify(["/tmp/wrote.txt", "/tmp/new.txt"])
@@ -286,19 +286,19 @@ const CASES = [
   { scenario: "wrong-command",    expect: EXIT.VERIFY_FAILED, args: ["--expect-command", "vitest", "--verify", "false"],
     why: "a failing --verify outranks a missed expectation: the end state was measured broken, which is stronger than 'the command list looks wrong'",
     assert: (r) => r.verify?.ok === false || `verify did not run: ${JSON.stringify(r.verify)}` },
-  { scenario: "wrong-command",    expect: EXIT.NO_COMMANDS, args: ["--expect-command", "vitest", "--verify", "true"],
+  { scenario: "wrong-command",    expect: EXIT.COMMANDS, args: ["--expect-command", "vitest", "--verify", "true"],
     why: "a passing --verify does NOT waive a declared expectation — a stale artefact satisfies the end state while the work never ran — but it must still be REPORTED",
     assert: (r) => r.verify?.ok === true || `verify was suppressed by the expectation miss: ${JSON.stringify(r.verify)}` },
-  { scenario: "hidden-failure",   expect: EXIT.NO_COMMANDS, args: ["--expect-command", "zzz_never", "--verify", "true"],
+  { scenario: "hidden-failure",   expect: EXIT.COMMANDS, args: ["--expect-command", "zzz_never", "--verify", "true"],
     why: "a missed expectation is exit 5 whatever the verifier said, and the verifier must still have run and been reported",
     assert: (r) => r.verify?.ok === true || `the verifier was suppressed by the expectation miss: ${JSON.stringify(r.verify)}` },
-  { scenario: "turn-failed",      expect: EXIT.TURN_NOT_COMPLETED, args: ["--verify", "true"],
+  { scenario: "turn-failed",      expect: EXIT.MODEL, args: ["--verify", "true"],
     why: "a passing verify cannot rescue a turn that never completed, and on a non-completed turn the end state is recorded as unmeasured rather than guessed",
     assert: (r) => r.verify === null && typeof r.verifySkipped === "string"
       || `expected verify skipped with a reason, got verify=${JSON.stringify(r.verify)} skipped=${JSON.stringify(r.verifySkipped)}` },
 
   // --- teardown: nothing this driver started may outlive it ---
-  { scenario: "spawn-survivor",   expect: EXIT.OK,
+  { scenario: "spawn-survivor",   expect: EXIT.SUCCESS,
     why: "group teardown must wait out TERM-ignoring descendants so test servers and watchers cannot outlive normal completion",
     assert: (r) => {
       const pid = Number((String(r.answer).match(/survivor (\d+)/) ?? [])[1]);
@@ -306,19 +306,19 @@ const CASES = [
       try { process.kill(pid, 0); return `survivor ${pid} is still alive after the driver exited`; }
       catch { return true; }
     } },
-  { scenario: "stale-turn",       expect: EXIT.NO_COMMANDS,
+  { scenario: "stale-turn",       expect: EXIT.COMMANDS,
     why: "exit 5 with no declared expectation names the flag that waives it, so a recall-only caller has a self-serve path",
     assert: (r) => /allow-no-commands/.test(r.hint ?? "") || `exit 5 carried no hint: ${JSON.stringify(r.hint)}` },
-  { scenario: "wrong-command",    expect: EXIT.NO_COMMANDS, args: ["--expect-command", "vitest"],
+  { scenario: "wrong-command",    expect: EXIT.COMMANDS, args: ["--expect-command", "vitest"],
     why: "with a declared expectation the hint would be a lie — --allow-no-commands never waives an expectation",
     assert: (r) => r.hint === undefined || `a hint appeared beside a declared expectation: ${JSON.stringify(r.hint)}` },
 
   // --- --output-schema: the server constrains, the driver checks, one corrective turn is spent ---
-  { scenario: "schema-good",      expect: EXIT.OK, args: ["--output-schema", schemaFile],
+  { scenario: "schema-good",      expect: EXIT.SUCCESS, args: ["--output-schema", schemaFile],
     why: "a first-try match spends no corrective turn, reports the parsed object, and SAYS it matched — an outputSchemaOk read off the absence of errors cannot tell a schema that passed from one never checked",
     assert: (r) => (r.outputAttempts === 1 && r.outputSchemaOk === true && r.schemaErrors === null && r.answerJson?.verdict === "ok")
       || `schema-good report wrong: ${JSON.stringify({ a: r.outputAttempts, ok: r.outputSchemaOk, errs: r.schemaErrors, j: r.answerJson })}` },
-  { scenario: "schema-retry",     expect: EXIT.OK, args: ["--output-schema", schemaFile],
+  { scenario: "schema-retry",     expect: EXIT.SUCCESS, args: ["--output-schema", schemaFile],
     why: "prose on the first attempt gets ONE corrective turn carrying the validation errors, mirroring a Claude subagent's tool-layer retry",
     assert: (r) => (r.outputAttempts === 2 && r.outputSchemaOk === true && r.answerJson?.verdict === "ok" && r.commandsSucceeded === 2)
       || `schema-retry report wrong: ${JSON.stringify({ a: r.outputAttempts, ok: r.outputSchemaOk, j: r.answerJson, c: r.commandsSucceeded })}` },
@@ -330,7 +330,7 @@ const CASES = [
     why: "the shipped adversarial-review schema passes strict-schema admission and reaches the turn; the scripted invalid answer then fails at output validation, not setup",
     assert: (r) => (r.outputAttempts === 2 && r.outputSchemaOk === false && Array.isArray(r.schemaErrors))
       || `the shipped schema did not reach output validation: ${JSON.stringify({ a: r.outputAttempts, ok: r.outputSchemaOk, e: r.schemaErrors })}` },
-  { scenario: "schema-good",      expect: EXIT.OK, args: ["--output-schema", oneOfSchemaFile],
+  { scenario: "schema-good",      expect: EXIT.SUCCESS, args: ["--output-schema", oneOfSchemaFile],
     why: "keywords the shallow validator ignores must be NAMED in the report, so outputSchemaOk can never silently mean 'nothing was checked'",
     assert: (r) => (r.outputSchemaOk === true && Array.isArray(r.schemaKeywordsUnchecked) && r.schemaKeywordsUnchecked.includes("oneOf"))
       || `unchecked keywords not reported: ${JSON.stringify(r.schemaKeywordsUnchecked)}` },
@@ -351,7 +351,7 @@ const CASES = [
     } },
 
   // --- caps and bounds published by the driver ---
-  { scenario: "long-answer",      expect: EXIT.OK, args: ["--brief"],
+  { scenario: "long-answer",      expect: EXIT.SUCCESS, args: ["--brief"],
     why: "the --brief cap includes the clipped marker; appending the marker after clipping would exceed the bound",
     assert: (r) => {
       const bytes = Buffer.byteLength(String(r.answer), "utf8");
@@ -359,7 +359,7 @@ const CASES = [
       if (r.answerTruncated !== true) return "a 200-line answer was not marked truncated";
       return /full answer at/.test(String(r.answer)) || "the clip marker lost its forwarding address";
     } },
-  { scenario: "tmp-write",        expect: EXIT.OK,
+  { scenario: "tmp-write",        expect: EXIT.SUCCESS,
     why: "the private directory is the read agent's only writable root, whatever TMPDIR the caller exported, and may hold files named by --brief; it must outlive the run so those answer paths remain usable",
     assert: (r) => {
       const named = /full notes at (\S+)/.exec(String(r.answer))?.[1];
@@ -369,7 +369,7 @@ const CASES = [
       if (path.dirname(named) !== r.tmpDir) return `the report's tmpDir is not the directory the file is in: ${JSON.stringify({ tmpDir: r.tmpDir, named })}`;
       return true;
     } },
-  { scenario: "env-tmpprefix",    expect: EXIT.OK, unsetEnv: ["TMPPREFIX"],
+  { scenario: "env-tmpprefix",    expect: EXIT.SUCCESS, unsetEnv: ["TMPPREFIX"],
     why: "zsh keeps every here-document in a file under TMPPREFIX, default /tmp/zsh, which no grant covers: the agent's shell must see it under the run's TMPDIR or every <<EOF fails (measured, 15 rollouts)",
     assert: (r) => {
       const got = /TMPPREFIX=(\S+)/.exec(String(r.answer))?.[1];
@@ -380,7 +380,7 @@ const CASES = [
   // The same question at WRITE level, which excludes /tmp: without the run's own directory, os.tmpdir()
   // and TMPPREFIX would both point into a directory the sandbox refuses, and every heredoc and mkdtemp in
   // the turn would fail with nothing in the report saying why.
-  { scenario: "env-tmpprefix",    expect: EXIT.OK, unsetEnv: ["TMPPREFIX"], args: ["--level", "write"],
+  { scenario: "env-tmpprefix",    expect: EXIT.SUCCESS, unsetEnv: ["TMPPREFIX"], args: ["--level", "write"],
     why: "the private $TMPDIR is not a read-level convenience: with /tmp excluded from the write sandbox, a write agent has no writable temp root at all unless the driver makes one",
     assert: (r) => {
       const got = /TMPPREFIX=(\S+)/.exec(String(r.answer))?.[1];
@@ -410,7 +410,7 @@ const CASES = [
       && !("error" in r) && r.turnError?.codexErrorInfo === "aborted")
       || `the abort discarded the turn's evidence: ${JSON.stringify({ turnStatus: r.turnStatus, cmds: r.commandsSucceeded, answer: r.answer, err: r.turnError })}` },
 
-  { scenario: "no-trailing-newline", expect: EXIT.OK,
+  { scenario: "no-trailing-newline", expect: EXIT.SUCCESS,
     why: "EOF terminates a line as surely as a newline; the final turn/completed must still be processed when its trailing newline is missing",
     assert: (r) => (r.turnStatus === "completed" && r.commandsSucceeded === 1 && /the answer/.test(String(r.answer)))
       || `a final line without its newline was dropped: ${JSON.stringify({ turn: r.turnStatus, cmds: r.commandsSucceeded, answer: String(r.answer).slice(0, 40) })}` },
@@ -420,7 +420,7 @@ const CASES = [
     why: "a consumer that stops reading makes the report write fail EPIPE; this must be the documented transport failure, not an uncaught exception",
     assertStderr: (e) => /EPIPE|did not reach the caller/.test(e)
       || `a closed stdout was not reported as a transport failure: ${e.slice(0, 200)}` },
-  { scenario: "long-answer",      expect: EXIT.OK, pauseStdout: 8000, args: ["--timeout", "40"],
+  { scenario: "long-answer",      expect: EXIT.SUCCESS, pauseStdout: 8000, args: ["--timeout", "40"],
     why: "a paused reader must have the remaining report-drain budget to resume; a short fixed wait can truncate a report the reader would have drained",
     assert: (r) => (typeof r.answer === "string" && r.answer.length > 60000)
       || `the report was truncated for a consumer that paused: ${String(r.answer ?? "").length} bytes of answer` },
@@ -429,37 +429,37 @@ const CASES = [
     why: "a reader that pauses and never resumes is the only thing the drain watchdog answers for, and nothing had ever fired it: every path that writes stdout now leaves through the one funnel, so the bound that funnel carries is the bound of them all",
     assertStderr: (e) => /stdout did not drain within \d+ms/.test(e)
       || `a reader that never resumed was not bounded by the drain watchdog: ${e.slice(0, 200)}` },
-  { scenario: "probe-piped",      expect: EXIT.OK,
+  { scenario: "probe-piped",      expect: EXIT.SUCCESS,
     why: "the report must name commands piped to a pager because an agent can mistake a slice of its evidence for the whole result",
     assert: (r) => (r.commandsPipedToPager === 1 && /head\/tail\/less/.test(String(r.pipedToPagerHint ?? "")))
       || `a command ending in a pager was not counted: ${JSON.stringify({ n: r.commandsPipedToPager, hint: r.pipedToPagerHint })}` },
 
   // --- the server's parse is evidence, not authority ---
-  { scenario: "probe-laundered",  expect: EXIT.OK,
+  { scenario: "probe-laundered",  expect: EXIT.SUCCESS,
     why: "one tidy commandAction for a multi-line script must not hide a failed command on a later line behind a probe exemption",
     assert: (r) => (r.commandsProbeNegative === 0 && r.commandsFailed === 1)
       || `a multi-line script was read as a probe: ${JSON.stringify({ probe: r.commandsProbeNegative, failed: r.commandsFailed })}` },
 
   // --- the standing rules the driver puts on the thread ---
-  { scenario: "echo-instructions", expect: EXIT.OK,
+  { scenario: "echo-instructions", expect: EXIT.SUCCESS,
     why: "an agent holding egress and told to use the local shell and filesystem only does not use it: the standing rules are what the turn plans against, so a grant they do not name is a grant that was paid for and left unspent",
     assert: (r) => (/network/i.test(String(r.answer)) && !/no network access/i.test(String(r.answer)))
       || `the default agent was not told it has egress: ${String(r.answer).slice(0, 300)}` },
-  { scenario: "echo-instructions", expect: EXIT.OK, args: ["--no-network"],
+  { scenario: "echo-instructions", expect: EXIT.SUCCESS, args: ["--no-network"],
     why: "the denied agent has to be told too, or it spends the turn on fetches the sandbox refuses and reports the refusals as findings",
     assert: (r) => /no network access/i.test(String(r.answer))
       || `an agent with egress denied was not told: ${String(r.answer).slice(0, 300)}` },
-  { scenario: "echo-instructions", expect: EXIT.OK, args: ["--brief"],
+  { scenario: "echo-instructions", expect: EXIT.SUCCESS, args: ["--brief"],
     why: "--brief's second sentence is what keeps a capped answer from losing its detail; it must still be sent when it is not contradicted",
     assert: (r) => /Put anything longer/.test(String(r.answer))
       || `--brief lost its forwarding instruction: ${String(r.answer).slice(0, 200)}` },
-  { scenario: "echo-instructions", expect: EXIT.OK, args: ["--brief", "--answer-json"],
+  { scenario: "echo-instructions", expect: EXIT.SUCCESS, args: ["--brief", "--answer-json"],
     why: "under --answer-json the agent has just been told to answer with ONE JSON object and nothing else; telling it in the same breath to put the rest in a file is a contradiction the agent has to resolve on its own",
     assert: (r) => (!/Put anything longer/.test(String(r.answer)) && /ONE JSON object/.test(String(r.answer)))
       || `the contradictory pair was still sent: ${String(r.answer).slice(0, 300)}` },
 
   // --- the wall clock as three rungs: warn, cut, report ---
-  { scenario: "wrap-up",          expect: EXIT.OK, args: ["--timeout", "65"],
+  { scenario: "wrap-up",          expect: EXIT.SUCCESS, args: ["--timeout", "65"],
     why: "the only recovery that works. E1 measured that turn/interrupt DISCARDS the in-flight answer, so nothing at the deadline can produce one: the run has to ask for the final answer while the model can still write it, a quarter of the budget out and never less than a minute",
     assert: (r) => {
       const a = String(r.answer);
@@ -499,14 +499,14 @@ const CASES = [
   { scenario: "no-thread",        expect: EXIT.TIMEOUT, args: ["--timeout", "0.5"],
     why: "the pre-thread rung is unchanged by the cut: with no thread there is nothing to interrupt and nothing to report, so it aborts with the code and prints no report — the same contract --help publishes",
     assertStderr: (e) => /timed out after 0.5s/.test(e) || `the pre-thread timeout did not announce itself: ${e.slice(0, 200)}` },
-  { scenario: "echo-instructions", expect: EXIT.OK,
+  { scenario: "echo-instructions", expect: EXIT.SUCCESS,
     why: "the model has no clock unless it runs `date`, so a wall-clock budget it is never told about is one it cannot plan against — the sentence is the whole of P1 and it costs nothing",
     assert: (r) => {
       const n = Number(/You have about (\d+) seconds of wall clock/.exec(String(r.answer))?.[1]);
       if (!Number.isFinite(n)) return `the budget never reached the agent: ${String(r.answer).slice(0, 200)}`;
       return (n > 0 && n <= 20) || `the agent was told ${n}s of a 20 s budget`;
     } },
-  { scenario: "echo-instructions", expect: EXIT.OK, args: ["--resume", "thr_root"],
+  { scenario: "echo-instructions", expect: EXIT.SUCCESS, args: ["--resume", "thr_root"],
     why: "developerInstructions are per-request, not per-thread: a resumed turn that did not carry the budget sentence would be the only turn running blind, and --resume is exactly where a long agent continues",
     assert: (r) => (/You have about \d+ seconds of wall clock/.test(String(r.answer)) && r.resumedFrom === "thr_root")
       || `a resumed turn lost the budget sentence: ${JSON.stringify({ a: String(r.answer).slice(0, 160), from: r.resumedFrom })}` },
@@ -516,7 +516,7 @@ const CASES = [
     why: "a turn that says NOTHING is the hang the wall clock cannot name: --timeout is a budget a healthy turn may spend in full, so only silence distinguishes them, and every root event rearms it",
     assert: (r) => (r.cut?.kind === "idle" && r.cut.limit === 1 && r.cut.observed >= 1 && r.turnStatus === "timedOut")
       || `the silent turn was not cut on the idle budget: ${JSON.stringify({ cut: r.cut, t: r.turnStatus })}` },
-  { scenario: "idle-subagent",    expect: EXIT.OK, args: ["--idle-timeout", "1", "--timeout", "20"],
+  { scenario: "idle-subagent",    expect: EXIT.SUCCESS, args: ["--idle-timeout", "1", "--timeout", "20"],
     why: "subagent notifications prove liveness even while the root is silent; success evidence stays root-only so the child's command satisfies no gate",
     assert: (r) => {
       if (r.cut !== null) return `a turn whose subagent was working throughout was cut: ${JSON.stringify(r.cut)}`;
@@ -525,7 +525,7 @@ const CASES = [
       return (r.commandsSucceeded === 1 && r.tokenUsage?.total?.totalTokens === 100)
         || `a child thread's work leaked into the root's evidence: ${JSON.stringify({ cmds: r.commandsSucceeded, usage: r.tokenUsage?.total })}`;
     } },
-  { scenario: "idle-delegation",  expect: EXIT.OK, args: ["--idle-timeout", "1", "--timeout", "20"],
+  { scenario: "idle-delegation",  expect: EXIT.SUCCESS, args: ["--idle-timeout", "1", "--timeout", "20"],
     why: "the liveness rule has to hold for the shape 0.153.4 emits: the child is known only from the root's announcement, and every event it then sends under its own threadId (turn/started, its status changes, its usage, its items) rearms the guard",
     assert: (r) => {
       if (r.cut !== null) return `a turn whose announced child was working throughout was cut: ${JSON.stringify(r.cut)}`;
@@ -536,7 +536,7 @@ const CASES = [
       return (t.commands === 12 && r.commandsSucceeded === 1)
         || `the child's work and the root's were confused: ${JSON.stringify({ child: t, root: r.commandsSucceeded })}`;
     } },
-  { scenario: "delegation",       expect: EXIT.NO_COMMANDS,
+  { scenario: "delegation",       expect: EXIT.COMMANDS,
     why: "on 0.153.4 a child thread never sends thread/started, so the root's subAgentActivity item is the registration: it names the child, its agentPath and, on the second announcement, that it completed; and the item arrives twice without registering the child twice",
     assert: (r) => {
       const s = r.subagentThreads ?? [];
@@ -546,7 +546,7 @@ const CASES = [
           && t.items === 2 && t.commands === 1 && r.commandsSucceeded === 0)
         || `the child's registration is wrong: ${JSON.stringify({ child: t, root: r.commandsSucceeded })}`;
     } },
-  { scenario: "delegation",       expect: EXIT.NO_COMMANDS,
+  { scenario: "delegation",       expect: EXIT.COMMANDS,
     why: "the evidence rule is unchanged by a child's work: the root ran nothing, so this is exit 5. But the cause has to say the children ran, or 'no command ran' reads as a dead turn beside an answer that is plainly the product of work",
     assert: (r) => {
       const h = String(r.hint ?? "");
@@ -566,11 +566,11 @@ const CASES = [
     } },
 
   // --- the default: no wall clock at all, the way a native subagent runs ---
-  { scenario: "slow-turn",        expect: EXIT.OK, noTimeout: true,
+  { scenario: "slow-turn",        expect: EXIT.SUCCESS, noTimeout: true,
     why: "the default arms no wall-clock rung: a turn that takes its time finishes and reports cut: null",
     assert: (r, ms) => (r.cut === null && r.turnStatus === "completed" && ms > 1200)
       || `the default run was bounded by something: ${JSON.stringify({ cut: r.cut, turnStatus: r.turnStatus, ms })}` },
-  { scenario: "echo-instructions", expect: EXIT.OK, noTimeout: true,
+  { scenario: "echo-instructions", expect: EXIT.SUCCESS, noTimeout: true,
     why: "the model has no clock, so what it is TOLD is the whole of what it can plan against: told 'about N seconds' when nothing is counting, it rushes work it had time for",
     assert: (r) => {
       const a = String(r.answer);
@@ -599,11 +599,11 @@ const CASES = [
       return /split the task or raise --max-commands/.test(String(r.hint))
         || `exit 3 on a command cut did not name the budget that ran out: ${JSON.stringify(r.hint)}`;
     } },
-  { scenario: "many-commands",    expect: EXIT.OK, noTimeout: true, args: ["--max-commands", "0"],
+  { scenario: "many-commands",    expect: EXIT.SUCCESS, noTimeout: true, args: ["--max-commands", "0"],
     why: "0 disables it, like --idle-timeout's 0: the same six-command turn then runs to its own end",
     assert: (r) => (r.cut === null && r.commandsSucceeded === 6)
       || `--max-commands 0 did not disable the cap: ${JSON.stringify({ cut: r.cut, cmds: r.commandsSucceeded })}` },
-  { scenario: "many-commands",    expect: EXIT.OK, noTimeout: true,
+  { scenario: "many-commands",    expect: EXIT.SUCCESS, noTimeout: true,
     why: "the default command cap is a safety net that this short command sequence must not reach",
     assert: (r) => (r.cut === null && r.commandsSucceeded === 6)
       || `the default command cap bit an ordinary turn: ${JSON.stringify({ cut: r.cut, cmds: r.commandsSucceeded })}` },
@@ -614,7 +614,7 @@ const CASES = [
       || `the flag did not bound a prompt-file run: ${JSON.stringify({ fields: r.promptFileFields, cut: r.cut })}` },
 
   // --- one file, both halves: the header is the leading FIELD: lines and the rest is the prompt ---
-  { scenario: "echo-input", expect: EXIT.OK, noPrompt: true,
+  { scenario: "echo-input", expect: EXIT.SUCCESS, noPrompt: true,
     agent: "RIGHTS: read <CWD>\nEXPECT: echo\nTASK: count the files\nand say how many\n",
     why: "the caller writes one file; the driver preserves everything from the first non-header line as the body, including its label",
     assert: (r) => {
@@ -622,7 +622,7 @@ const CASES = [
       if (!/TASK: count the files\\nand say how many/.test(answer)) return `the body did not reach the turn verbatim: ${answer.slice(0, 200)}`;
       return (r.promptFileFields ?? []).join(",") === "RIGHTS,EXPECT"
         || `a body line was read as a header field: ${JSON.stringify(r.promptFileFields)}` } },
-  { scenario: "echo-input", expect: EXIT.OK, noPrompt: true,
+  { scenario: "echo-input", expect: EXIT.SUCCESS, noPrompt: true,
     agent: "RIGHTS: read <CWD>\nEXPECT: echo\nTASK: do it\nNETWORK: no\nMODEL: gpt-5\n",
     why: "below the body's first line nothing is a header however field-like it looks — otherwise a task that quotes a header, or a copied value carrying a newline, silently re-declares the agent's rights. The line is a NEGATIVE because an ignored positive lands on the default and proves nothing",
     assert: (r) => (r.network === true && r.model !== "gpt-5" && (r.promptFileFields ?? []).join(",") === "RIGHTS,EXPECT")
@@ -635,7 +635,7 @@ const CASES = [
     assertText: (out) => out.trim() === "" || `a pre-turn refusal printed ${out.length} bytes on stdout` },
 
   // --- approval requests with no mailbox: declined at once, every one recorded whole ---
-  { scenario: "approval-wait",    expect: EXIT.ESCALATED,
+  { scenario: "approval-wait",    expect: EXIT.APPROVAL,
     why: "without --approval-dir nothing can answer, so the request is declined at once as before; the entry now says so in its own fields, and its detail is the command whole — a clipped one is a command nobody can judge",
     assert: (r) => {
       const e = entry0(r);
@@ -646,27 +646,27 @@ const CASES = [
       return (r.approvalDir === null && r.approvalsAccepted === 0 && e.resolved === true && e.outcome?.status === "declined")
         || `the counts, the receipt or the outcome are wrong: ${JSON.stringify({ dir: r.approvalDir, acc: r.approvalsAccepted, resolved: e.resolved, outcome: e.outcome })}`;
     } },
-  { scenario: "approval-wait-error", expect: EXIT.ESCALATED, env: { FAKE_RPC_LOG: approvalErrorLog },
+  { scenario: "approval-wait-error", expect: EXIT.APPROVAL, env: { FAKE_RPC_LOG: approvalErrorLog },
     why: "the refusal is a decision, never a JSON-RPC error: the server honours an error too, but the model then reads a broken tool and the item completes failed, which the report counts as a failed command (P1 Q3 error)",
     assert: () => {
       const log = fs.existsSync(approvalErrorLog) ? fs.readFileSync(approvalErrorLog, "utf8") : "";
       return (/^answer:9401:decline$/m.test(log) && !/^answer:\d+:error/m.test(log)) || `the refusal did not go out as a decline: ${JSON.stringify(log.split("\n").filter((l) => l.startsWith("answer:")))}`;
     } },
-  { scenario: "escalated-subagent", expect: EXIT.ESCALATED,
+  { scenario: "escalated-subagent", expect: EXIT.APPROVAL,
     why: "a thread the root never announced is nobody this run can answer for: declined at once, whether or not a mailbox is armed",
     assert: (r) => (entry0(r).why === "unknown thread" && entry0(r).subagent === true && entry0(r).offered === false)
       || `an unannounced thread's request was not refused as one: ${JSON.stringify(entry0(r))}` },
-  { scenario: "approval-after-failed-attempt", expect: EXIT.ESCALATED,
+  { scenario: "approval-after-failed-attempt", expect: EXIT.APPROVAL,
     why: "a request right after the same command failed inside the sandbox has the cause a request with no attempt before it has (approval-wait): an attempt the sandbox stopped can leave no trace (P1), so any split between the two would be a guess, and nothing on the plugin's side changes either",
     assert: (r) => entry0(r).cause === "asked" || `cause is ${JSON.stringify(entry0(r).cause)}, not asked` },
-  { scenario: "approval-writestdin", expect: EXIT.ESCALATED,
+  { scenario: "approval-writestdin", expect: EXIT.APPROVAL,
     why: "input to a terminal already running cannot be read as a command, so it is never offered; the kind is checked before the mailbox is",
     assert: (r) => (entry0(r).why === "kind writeStdin" && entry0(r).kind === "writeStdin")
       || `a writeStdin request was not refused by its kind: ${JSON.stringify(entry0(r))}` },
-  { scenario: "approval-then-transient", expect: EXIT.ESCALATED,
+  { scenario: "approval-then-transient", expect: EXIT.APPROVAL,
     why: "the control for the retry guard: a request declined at once did nothing, so the transient failure after it is retried as before, and the declined entry still reads 6",
     assert: (r) => r.transientRetries?.length === 1 || `the declined request suppressed the retry: ${JSON.stringify(r.transientRetries)}` },
-  { scenario: "filechange-child", expect: EXIT.OK,
+  { scenario: "filechange-child", expect: EXIT.SUCCESS,
     why: "a subagent the root announced writing inside $TMPDIR is covered by the same rights, and the driver answers it the same way; it stays the child's, never root evidence",
     assert: (r) => {
       const e = entry0(r);
@@ -674,38 +674,38 @@ const CASES = [
           && e.cause === "rights" && r.approvalsAutoAccepted === 1 && (r.filesTouched ?? []).length === 0)
         || `the child's covered write was not accepted by the driver: ${JSON.stringify({ e, touched: r.filesTouched })}`;
     } },
-  { scenario: "filechange-no-started", expect: EXIT.ESCALATED,
+  { scenario: "filechange-no-started", expect: EXIT.APPROVAL,
     why: "a file change whose item/started never came names no path, and the driver does not guess one: not shown inside the roots, so never answered yes",
     assert: (r) => (entry0(r).fileChanges === null && entry0(r).cause === "outside" && entry0(r).decision === "declined")
       || `a pathless file change was treated as covered: ${JSON.stringify(entry0(r))}` },
-  { scenario: "approval-duplicate", expect: EXIT.ESCALATED, env: { FAKE_RPC_LOG: duplicateLog },
+  { scenario: "approval-duplicate", expect: EXIT.APPROVAL, env: { FAKE_RPC_LOG: duplicateLog },
     why: "one request id is one request: a copy the server sends again must not become a second entry or draw a second response to an id the server matches once",
     assert: (r) => {
       const log = answers(duplicateLog).filter((l) => l.startsWith("answer:9430:"));
       return (r.escalations?.length === 1 && r.approvalsDuplicate === 1 && log.length === 1)
         || `the duplicate was not one request: ${JSON.stringify({ entries: r.escalations?.length, dup: r.approvalsDuplicate, answers: log })}`;
     } },
-  { scenario: "filechange-at",    expect: EXIT.OK,
+  { scenario: "filechange-at",    expect: EXIT.SUCCESS,
     env: { FAKE_FILECHANGE_PATH: "<TMPDIR>/rename-from.md", FAKE_FILECHANGE_MOVE: "<TMPDIR>/rename-to.md" },
     why: "a rename names two paths and both are judged; inside $TMPDIR at both ends it is a write the rights cover",
     assert: (r) => (entry0(r).decision === "accepted" && entry0(r).by === "driver" && entry0(r).fileChanges?.[0]?.move?.endsWith("rename-to.md"))
       || `a covered rename was not accepted by the driver: ${JSON.stringify(entry0(r))}` },
-  { scenario: "filechange-at",    expect: EXIT.ESCALATED,
+  { scenario: "filechange-at",    expect: EXIT.APPROVAL,
     env: { FAKE_FILECHANGE_PATH: "<TMPDIR>/rename-out.md", FAKE_FILECHANGE_MOVE: `/etc/entrust-rename-${process.pid}.md` },
     why: "a rename from inside the roots to outside them moves a file where the rights do not reach: the destination is judged as well as the source",
     assert: (r) => (entry0(r).cause === "outside" && entry0(r).decision === "declined" && / -> \/etc\/entrust-rename-/.test(entry0(r).detail))
       || `a rename out of the roots was treated as covered: ${JSON.stringify(entry0(r))}` },
-  { scenario: "filechange-child-late", expect: EXIT.ESCALATED,
+  { scenario: "filechange-child-late", expect: EXIT.APPROVAL,
     why: "a subagent's request that arrives after its own turn completed answers to nobody, whatever its paths: a request is answered only inside the turn that asked, a child's as the root's",
     assert: (r) => (entry0(r).why === "turn ended" && entry0(r).decision === "declined" && entry0(r).subagent === true && r.approvalsAutoAccepted === 0)
       || `a request for a finished child turn was answered: ${JSON.stringify(entry0(r))}` },
-  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_RPC_LOG: initializeLog },
+  { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_RPC_LOG: initializeLog },
     why: "initialize asks for no experimental API: the driver reads no experimental field, and the report carries none of the fields the permission features once needed",
     assert: (r) => (logLines(initializeLog).includes("initialize:experimentalApi=false")
         && ["experimentalApi", "featuresRequested", "serverWarnings", "sandboxWidened"].every((k) => !(k in r))
         && !logLines(initializeLog).some((l) => /^cfg:features\./.test(l)))
       || `initialize or the report still carries the widening: ${JSON.stringify({ sent: logLines(initializeLog).filter((l) => /^(initialize|cfg:features)/.test(l)), keys: Object.keys(r).filter((k) => /experimental|feature|Warning|Widened/.test(k)) })}` },
-  { scenario: "filechange-at",    expect: EXIT.OK, args: ["--level", "write"],
+  { scenario: "filechange-at",    expect: EXIT.SUCCESS, args: ["--level", "write"],
     env: { FAKE_FILECHANGE_PATH: path.join(shimDir, "notes.md") },
     why: "at write level the cwd is a root the rights cover, so a write there is answered by the driver like one in $TMPDIR",
     assert: (r) => (entry0(r).decision === "accepted" && entry0(r).cause === "rights")
@@ -785,7 +785,7 @@ flow("the job record is private resume metadata, and a record from an older rele
       return r && r.pid !== 2147483646 && !r.endedAt ? r : null;
     });
     const { code, out, err } = await pending;
-    if (code !== EXIT.OK) return `the resumed run exited ${code}: ${err.trim().slice(-200)}`;
+    if (code !== EXIT.SUCCESS) return `the resumed run exited ${code}: ${err.trim().slice(-200)}`;
     if (!live) return "the resumed run kept the earlier run's endedAt while its own turn was going";
     if (live.turnStatus !== undefined || live.exitCode !== undefined)
       return `the resumed run kept the earlier run's verdict while its own turn was going: ${JSON.stringify({ t: live.turnStatus, e: live.exitCode })}`;
@@ -798,7 +798,7 @@ flow("the job record is private resume metadata, and a record from an older rele
     if (extra.length) return `the record carries what only the report should: ${extra.join(", ")}`;
     for (const k of ["threadId", "pid", "identity", "cwd", "started", "endedAt", "exitCode", "turnStatus", "answerPath"])
       if (rec[k] === undefined) return `the record has no ${k}: ${JSON.stringify(Object.keys(rec))}`;
-    if (rec.exitCode !== EXIT.OK || rec.turnStatus !== "completed")
+    if (rec.exitCode !== EXIT.SUCCESS || rec.turnStatus !== "completed")
       return `the record does not close on the run's own verdict: ${JSON.stringify({ e: rec.exitCode, t: rec.turnStatus })}`;
     // And the run it closed on is the one that just ran, not the record it inherited.
     return JSON.parse(out).threadId === rec.threadId
@@ -810,7 +810,7 @@ flow("the report's tokenUsage is the root thread's total, and no record carries 
   async () => {
     const state = flowState();
     const { code, out, err } = await run({ scenario: "happy", env: { ENTRUST_STATE_DIR: state } });
-    if (code !== EXIT.OK) return `the run exited ${code}: ${err.trim().slice(-200)}`;
+    if (code !== EXIT.SUCCESS) return `the run exited ${code}: ${err.trim().slice(-200)}`;
     const report = JSON.parse(out);
     if (report.tokenUsage?.total?.totalTokens !== 135)
       return `the report's root-thread total is ${JSON.stringify(report.tokenUsage?.total?.totalTokens)}; the fixture's is 135`;
@@ -867,7 +867,7 @@ flow("a request waits for the caller under the thirty-minute deadline: still ope
     child.kill("SIGTERM");
     const { code, out, err } = await a.done;
     const r = parsed(out);
-    if (code !== EXIT.TURN_NOT_COMPLETED) problems.push(`exit ${code}, not 1`);
+    if (code !== EXIT.MODEL) problems.push(`exit ${code}, not 1`);
     if (!r) return [...problems, "no report"].join("; ");
     const e = entry0(r);
     if (e.id !== q.id || e.offered !== true || e.decision !== "expired" || e.by !== "driver" || e.why !== "signal SIGTERM")
@@ -899,7 +899,7 @@ flow("an accepted request runs, and the entry says who accepted it, that the ser
     decide(a.box, q, "accept");
     const { code, out } = await a.done;
     const r = parsed(out);
-    if (code !== EXIT.OK || !r) return `exit ${code}: ${out.slice(0, 200)}`;
+    if (code !== EXIT.SUCCESS || !r) return `exit ${code}: ${out.slice(0, 200)}`;
     const e = entry0(r);
     const problems = [];
     if (e.decision !== "accepted" || e.by !== "coordinator" || e.why !== "the plan covers it" || typeof e.waitMs !== "number")
@@ -923,7 +923,7 @@ flow("an accepted request whose item never completes has outcome null",
     decide(a.box, q, "accept");
     const { code, out } = await a.done;
     const e = entry0(parsed(out) ?? {});
-    return (code === EXIT.OK && e.decision === "accepted" && e.resolved === true && e.outcome === null)
+    return (code === EXIT.SUCCESS && e.decision === "accepted" && e.resolved === true && e.outcome === null)
       || `exit ${code}, entry ${JSON.stringify(e)}`;
   });
 
@@ -936,7 +936,7 @@ flow("a request the caller declines is exit 6, declined by the caller, with the 
     decide(a.box, q, "decline", { why: "outside the plan" });
     const { code, out } = await a.done;
     const e = entry0(parsed(out) ?? {});
-    return (code === EXIT.ESCALATED && e.decision === "declined" && e.by === "coordinator" && e.why === "outside the plan")
+    return (code === EXIT.APPROVAL && e.decision === "declined" && e.by === "coordinator" && e.why === "outside the plan")
       || `exit ${code}, entry ${JSON.stringify(e)}`;
   });
 
@@ -949,7 +949,7 @@ flow("the deadline expires an unanswered request as declined, and the turn goes 
     const { code, out } = await a.done;
     const e = entry0(parsed(out) ?? {});
     if (typeof q.deadlineAt !== "string") return `the request file carries no deadline: ${JSON.stringify(q.deadlineAt)}`;
-    return (code === EXIT.ESCALATED && e.decision === "expired" && e.why === "deadline" && answers(a.log).includes("answer:9401:decline"))
+    return (code === EXIT.APPROVAL && e.decision === "expired" && e.why === "deadline" && answers(a.log).includes("answer:9401:decline"))
       || `exit ${code}, entry ${JSON.stringify(e)}, log ${JSON.stringify(answers(a.log))}`;
   });
 
@@ -962,7 +962,7 @@ flow("a decision on disk when the deadline fires is the caller's, not an expiry"
     decide(a.box, q, "accept");
     const { code, out } = await a.done;
     const e = entry0(parsed(out) ?? {});
-    return (code === EXIT.OK && e.decision === "accepted" && e.by === "coordinator" && e.waitMs >= 1500)
+    return (code === EXIT.SUCCESS && e.decision === "accepted" && e.by === "coordinator" && e.waitMs >= 1500)
       || `exit ${code}, entry ${JSON.stringify(e)}`;
   });
 
@@ -984,7 +984,7 @@ flow("a decision for another run or another turn is stale: counted once each, le
     decide(a.box, q, "accept");
     const { code, out } = await a.done;
     const r = parsed(out) ?? {};
-    if (code !== EXIT.OK || entry0(r).decision !== "accepted") problems.push(`the valid decision did not settle it: exit ${code}, ${JSON.stringify(entry0(r))}`);
+    if (code !== EXIT.SUCCESS || entry0(r).decision !== "accepted") problems.push(`the valid decision did not settle it: exit ${code}, ${JSON.stringify(entry0(r))}`);
     if (r.approvalsStale !== 2) problems.push(`approvalsStale is ${r.approvalsStale}, not 2`);
     return problems.length === 0 || problems.join("; ");
   });
@@ -1005,7 +1005,7 @@ flow("a request open when the root turn ends is settled then, a decision for it 
     const r = parsed(out) ?? {};
     const [e1, e2] = r.escalations ?? [];
     const problems = [];
-    if (code !== EXIT.ESCALATED) problems.push(`exit ${code}, not 6 for the first turn's expired request`);
+    if (code !== EXIT.APPROVAL) problems.push(`exit ${code}, not 6 for the first turn's expired request`);
     if (e1?.decision !== "expired" || e1?.why !== "turn ended" || settled.why !== "turn ended") problems.push(`the first request: ${JSON.stringify(e1)}`);
     if (e2?.decision !== "accepted" || q2.run.turnId !== "turn_root_retry" || q1.run.turnId !== "turn_root")
       problems.push(`the second request: ${JSON.stringify({ e2, turns: [q1.run.turnId, q2.run.turnId] })}`);
@@ -1053,7 +1053,7 @@ flow("a writeStdin request is not offered even with a mailbox",
     const a = armed("approval-writestdin");
     const { code, out } = await a.done;
     const e = entry0(parsed(out) ?? {});
-    return (code === EXIT.ESCALATED && e.offered === false && e.why === "kind writeStdin" && requestsIn(a.box).length === 0)
+    return (code === EXIT.APPROVAL && e.offered === false && e.why === "kind writeStdin" && requestsIn(a.box).length === 0)
       || `exit ${code}, entry ${JSON.stringify(e)}, ${requestsIn(a.box).length} request file(s)`;
   });
 
@@ -1066,7 +1066,7 @@ flow("a file change inside $TMPDIR is accepted by the driver, spelled either way
       const { code, out } = await a.done;
       const r = parsed(out) ?? {};
       const e = entry0(r);
-      if (code !== EXIT.OK) problems.push(`${spelling}: exit ${code}`);
+      if (code !== EXIT.SUCCESS) problems.push(`${spelling}: exit ${code}`);
       if (e.decision !== "accepted" || e.by !== "driver" || e.why !== "rights cover it (checked as the answer was sent)" || e.cause !== "rights" || r.approvalsAutoAccepted !== 1)
         problems.push(`${spelling}: ${JSON.stringify(e)}`);
       if (!e.fileChanges?.[0]?.path?.endsWith(".md")) problems.push(`${spelling}: the paths were not recorded: ${JSON.stringify(e.fileChanges)}`);
@@ -1090,7 +1090,7 @@ flow("with a mailbox armed, a file change outside the roots, one with no item/st
       const { code, out } = await a.done;
       const r = parsed(out) ?? {};
       const e = entry0(r);
-      if (code !== EXIT.ESCALATED || e.method !== "item/fileChange/requestApproval" || e.cause !== "outside" || e.offered !== false
+      if (code !== EXIT.APPROVAL || e.method !== "item/fileChange/requestApproval" || e.cause !== "outside" || e.offered !== false
           || e.decision !== "declined" || e.by !== "driver" || e.why !== OUTSIDE_WHY || !want(e.fileChanges, r))
         problems.push(`${scenario}: exit ${code}, ${JSON.stringify(e)}`);
       if (requestsIn(a.box).length || fs.existsSync(path.join(a.box, "pending"))) problems.push(`${scenario}: the mailbox was written`);
@@ -1105,7 +1105,7 @@ flow("with a mailbox armed, a permissions request is declined at once with the e
     const a = armed("escalated-permissions");
     const { code, out } = await a.done;
     const e = entry0(parsed(out) ?? {});
-    return (code === EXIT.ESCALATED && e.method === "item/permissions/requestApproval" && e.offered === false && e.by === "driver"
+    return (code === EXIT.APPROVAL && e.method === "item/permissions/requestApproval" && e.offered === false && e.by === "driver"
         && e.why === "rights are set at launch" && requestsIn(a.box).length === 0
         && answers(a.log).some((l) => /^answer:\d+:\{"permissions":\{"fileSystem":null,"network":null\}\}$/.test(l)))
       || `exit ${code}, ${JSON.stringify({ e, files: requestsIn(a.box).length, said: answers(a.log).filter((l) => l.startsWith("answer:")) })}`;
@@ -1124,7 +1124,7 @@ flow("a subagent's request is offered, and its acceptance is not root evidence",
     const { code, out } = await a.done;
     const r = parsed(out) ?? {};
     const e = entry0(r);
-    if (code !== EXIT.OK || e.decision !== "accepted" || e.subagent !== true || e.outcome?.exitCode !== 0) problems.push(`exit ${code}, entry ${JSON.stringify(e)}`);
+    if (code !== EXIT.SUCCESS || e.decision !== "accepted" || e.subagent !== true || e.outcome?.exitCode !== 0) problems.push(`exit ${code}, entry ${JSON.stringify(e)}`);
     if (r.commandsSucceeded !== 1 || r.subagentThreads?.[0]?.commands !== 1)
       problems.push(`the child's command leaked into the root's evidence: ${JSON.stringify({ root: r.commandsSucceeded, child: r.subagentThreads })}`);
     return problems.length === 0 || problems.join("; ");
@@ -1136,7 +1136,7 @@ flow("a subagent's own turn ending settles the requests it left open",
     const a = armed("approval-subagent-wait");
     const { code, out } = await a.done;
     const e = entry0(parsed(out) ?? {});
-    return (code === EXIT.ESCALATED && e.offered === true && e.decision === "expired" && e.why === "turn ended" && e.thread === "thr_sub")
+    return (code === EXIT.APPROVAL && e.offered === true && e.decision === "expired" && e.why === "turn ended" && e.thread === "thr_sub")
       || `exit ${code}, entry ${JSON.stringify(e)}`;
   });
 
@@ -1151,7 +1151,7 @@ flow("a file change under .git, .codex or .agents inside a root is not the drive
         const r = parsed(out) ?? {};
         const e = entry0(r);
         const target = path.join(root === "<TMPDIR>" ? String(r.tmpDir) : root, sub, "config");
-        if (code !== EXIT.ESCALATED || e.decision !== "declined" || e.cause !== "outside" || e.fileChanges?.[0]?.path !== target)
+        if (code !== EXIT.APPROVAL || e.decision !== "declined" || e.cause !== "outside" || e.fileChanges?.[0]?.path !== target)
           problems.push(`${level} ${sub}: exit ${code}, ${JSON.stringify(e)}`);
       }
     return problems.length === 0 || problems.join("; ");
@@ -1167,7 +1167,7 @@ flow("a guarded directory is guarded under every spelling: .GIT where .git exist
     for (const target of [path.join(root, ".GIT", "config"), path.join(root, ".CODEX", "config"), path.join(root, "sub", ".Agents", "x")]) {
       const { code, out } = await run({ scenario: "filechange-at", args: ["--level", "write", "--writable", root], env: { FAKE_FILECHANGE_PATH: target } });
       const e = entry0(parsed(out) ?? {});
-      if (code !== EXIT.ESCALATED || e.decision !== "declined" || e.cause !== "outside") problems.push(`${target}: exit ${code}, ${JSON.stringify(e)}`);
+      if (code !== EXIT.APPROVAL || e.decision !== "declined" || e.cause !== "outside") problems.push(`${target}: exit ${code}, ${JSON.stringify(e)}`);
     }
     return problems.length === 0 || problems.join("; ");
   });
@@ -1190,7 +1190,7 @@ flow("below the root only existing plain directories and a regular or absent fil
     for (const target of [path.join(link, "x.md"), path.join(root, "not-made", "x.md"), fileLink]) {
       const { code, out } = await run({ scenario: "filechange-at", args, env: { FAKE_FILECHANGE_PATH: target } });
       const e = entry0(parsed(out) ?? {});
-      if (code !== EXIT.ESCALATED || e.decision !== "declined" || e.cause !== "outside") problems.push(`${target}: exit ${code}, ${JSON.stringify(e)}`);
+      if (code !== EXIT.APPROVAL || e.decision !== "declined" || e.cause !== "outside") problems.push(`${target}: exit ${code}, ${JSON.stringify(e)}`);
     }
     return problems.length === 0 || problems.join("; ");
   });
@@ -1206,7 +1206,7 @@ flow("a pending marker that cannot be written settles the request at once as exp
       env: { ENTRUST_STATE_DIR: state, FAKE_RPC_LOG: log } });
     const r = parsed(out) ?? {};
     const e = entry0(r);
-    return (code === EXIT.ESCALATED && e.decision === "expired" && /^mailbox write failed: /.test(e.why ?? "") && r.cut === null
+    return (code === EXIT.APPROVAL && e.decision === "expired" && /^mailbox write failed: /.test(e.why ?? "") && r.cut === null
         && answers(log).includes("answer:9401:decline") && /mailbox write failed/.test(err))
       || `exit ${code}, ${JSON.stringify({ e, cut: r.cut, log: answers(log) })}, ${err.slice(-200)}`;
   });
@@ -1224,7 +1224,7 @@ flow("an accept whose settlement cannot be written goes out as a decline, and th
     const r = parsed(res.out) ?? {};
     const e = entry0(r);
     const said = answers(a.log).filter((l) => l.startsWith("answer:9401:"));
-    return (res.code === EXIT.ESCALATED && e.decision === "expired" && /^mailbox write failed: /.test(e.why ?? "")
+    return (res.code === EXIT.APPROVAL && e.decision === "expired" && /^mailbox write failed: /.test(e.why ?? "")
         && JSON.stringify(said) === JSON.stringify(["answer:9401:decline"]) && r.approvalsAccepted === 0
         && !readJson(path.join(a.box, `${q.id}.request.json`))?.settled)
       || `exit ${res.code}, ${JSON.stringify({ e, said, accepted: r.approvalsAccepted })}`;
@@ -1244,7 +1244,7 @@ flow("a request delivered twice under one id is offered once and answered once",
     decide(a.box, q, "accept");
     const { code, out, err } = await a.done;
     const r = parsed(out) ?? {};
-    if (code !== EXIT.OK || r.escalations?.length !== 1 || r.approvalsDuplicate !== 1) problems.push(`exit ${code}, ${JSON.stringify({ entries: r.escalations?.length, dup: r.approvalsDuplicate })}`);
+    if (code !== EXIT.SUCCESS || r.escalations?.length !== 1 || r.approvalsDuplicate !== 1) problems.push(`exit ${code}, ${JSON.stringify({ entries: r.escalations?.length, dup: r.approvalsDuplicate })}`);
     const said = answers(a.log).filter((l) => l.startsWith("answer:9430:"));
     if (JSON.stringify(said) !== JSON.stringify(["answer:9430:accept"])) problems.push(`the server got ${JSON.stringify(said)}`);
     if (!/approval request id 9430 .* arrived again/.test(err)) problems.push("the duplicate was not said on stderr");
@@ -1261,7 +1261,7 @@ flow("a stale decision on disk when the deadline fires is stale, not late, and t
     const { code, out } = await a.done;
     const r = parsed(out) ?? {};
     const settledAs = readJson(path.join(a.box, `${q.id}.request.json`))?.settled;
-    return (code === EXIT.ESCALATED && entry0(r).decision === "expired" && r.approvalsStale === 1 && r.approvalsLate === 0
+    return (code === EXIT.APPROVAL && entry0(r).decision === "expired" && r.approvalsStale === 1 && r.approvalsLate === 0
         && settledAs?.decisionFile === "stale")
       || `exit ${code}, ${JSON.stringify({ e: entry0(r), stale: r.approvalsStale, late: r.approvalsLate, settled: settledAs })}`;
   });
@@ -1275,7 +1275,7 @@ flow("an accepted request blocks the transient retry",
     decide(a.box, q, "accept");
     const { code, out } = await a.done;
     const r = parsed(out) ?? {};
-    return (code === EXIT.TURN_NOT_COMPLETED && r.transientRetries?.length === 0 && entry0(r).decision === "accepted")
+    return (code === EXIT.MODEL && r.transientRetries?.length === 0 && entry0(r).decision === "accepted")
       || `exit ${code}, retries ${JSON.stringify(r.transientRetries)}, entry ${JSON.stringify(entry0(r))}`;
   });
 
@@ -1304,31 +1304,31 @@ const RUNGS = [
   { at: 1, code: EXIT.USAGE, ctx: { turnStatus: "failed", turnError: { codexErrorInfo: "badRequest" } },
     what: "a request the server refused",
     why: "the set of efforts and models is per-model and knowable only at runtime; reported as a transport failure the caller retries it forever instead of fixing the parameter" },
-  { at: 2, code: EXIT.TURN_NOT_COMPLETED, ctx: { turnStatus: "failed" },
+  { at: 2, code: EXIT.MODEL, ctx: { turnStatus: "failed" },
     what: "a turn that did not complete",
     why: "an incomplete turn's answer is whatever arrived before it stopped; exit 0 on it claims a finished piece of work" },
-  { at: 3, code: EXIT.INTERACTION, ctx: { interactions: [{ q: "which branch?" }] },
+  { at: 3, code: EXIT.NEEDS_INPUT, ctx: { interactions: [{ q: "which branch?" }] },
     what: "a turn that asked for input",
     why: "no sandbox change answers a question that needed a human, so this must outrank the escalation rung below it" },
-  { at: 4, code: EXIT.ESCALATED, ctx: { escalations: [{ decision: "declined" }] },
+  { at: 4, code: EXIT.APPROVAL, ctx: { escalations: [{ decision: "declined" }] },
     what: "a refused approval",
-    why: "a refused escalation explains the missing command; below NO_COMMANDS it would be reported as 'nothing ran', which hides why" },
-  { at: 4, code: EXIT.ESCALATED, ctx: { escalations: [{ decision: "accepted" }, { decision: "expired" }] },
+    why: "a refused escalation explains the missing command; below COMMANDS it would be reported as 'nothing ran', which hides why" },
+  { at: 4, code: EXIT.APPROVAL, ctx: { escalations: [{ decision: "accepted" }, { decision: "expired" }] },
     what: "an approval that expired beside one that was accepted",
     why: "a request nobody answered in time is a refusal nobody made, and one acceptance beside it does not answer it" },
-  { at: 5, code: EXIT.VERIFY_UNMEASURABLE, ctx: { verifySkipped: "budget-exhausted" },
+  { at: 5, code: EXIT.VERIFY_UNMEASURED, ctx: { verifySkipped: "budget-exhausted" },
     what: "a --verify the budget left no room for",
     why: "a declared check that never ran leaves verifyResult null, which every gate below reads as 'nothing to complain about' — the run would reach 0 with its verifier unrun" },
-  { at: 5, code: EXIT.VERIFY_UNMEASURABLE, ctx: { verifyResult: { ok: false, measured: false }, verifyFailed: true },
+  { at: 5, code: EXIT.VERIFY_UNMEASURED, ctx: { verifyResult: { ok: false, measured: false }, verifyFailed: true },
     what: "a --verify that ran and measured nothing",
     why: "'the check could not be measured' and 'the check said no' are different findings, and the unmeasurable one must not be reported as a failure the agent caused" },
   { at: 6, code: EXIT.VERIFY_FAILED, ctx: { verifyResult: { ok: false, measured: true }, verifyFailed: true },
     what: "a --verify that ran and failed",
     why: "the verifier is the gate this repository prefers over every command-shaped proxy below it; a failing one reaching exit 0 makes --verify decorative" },
-  { at: 7, code: EXIT.NO_COMMANDS, ctx: { commandsRan: 0, expected: [], opts: { allowNoCommands: false } },
+  { at: 7, code: EXIT.COMMANDS, ctx: { commandsRan: 0, expected: [], opts: { allowNoCommands: false } },
     what: "a turn that ran nothing",
     why: "an answer with no command behind it is recall, not evidence; the floor is what separates the two" },
-  { at: 7, code: EXIT.NO_COMMANDS, ctx: { commandsRan: 3, expected: [], opts: { expectRe: /vitest/, allowNoCommands: true } },
+  { at: 7, code: EXIT.COMMANDS, ctx: { commandsRan: 3, expected: [], opts: { expectRe: /vitest/, allowNoCommands: true } },
     what: "a declared --expect-command with no successful match",
     why: "the floor asks whether anything ran, but a declared expectation asks for a command that succeeded and matched; folding them into one question would let three failed commands satisfy the caller's claim" },
   { at: 8, code: EXIT.NO_ANSWER, ctx: { answer: "" },
@@ -1342,7 +1342,7 @@ const RUNGS = [
 flow("the ladder's contexts and its rungs are the same ten",
   "a rung added to the driver without a case here is a rung nothing measures, and the ladder is the whole of what an exit code means",
   async () => {
-    // Counted by POSITION, not by case: two contexts reach the one VERIFY_UNMEASURABLE rung, and each
+    // Counted by POSITION, not by case: two contexts reach the one VERIFY_UNMEASURED rung, and each
     // still has to be shown reaching it rather than something above it.
     const named = new Set(RUNGS.map((r) => r.at)).size;
     return LADDER.length === named || `the driver has ${LADDER.length} rungs and this suite names ${named}`;

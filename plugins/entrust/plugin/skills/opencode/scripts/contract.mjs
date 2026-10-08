@@ -7,9 +7,9 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { digest, splitModel, modelKey } from "./config.mjs";
+import { digest, splitModel } from "./config.mjs";
 import { SCHEMA_KEYWORDS, checkSchemaSubset, validateValue, validateOutput } from "../../orchestrate/scripts/json-schema.mjs";
-import { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, parseRights, planWritesToRights, resolveRights, within } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, parseRights, planWritesToRights, resolveModel, resolveRights, within } from "../../orchestrate/scripts/drivers.mjs";
 
 export { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, parseRights, planWritesToRights, within };
 
@@ -93,17 +93,14 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   if (rights.error) return { error: rights.error };
   out.rights = rights;
 
-  // MODEL: inherit or provider/model, with the plan's pin enforced offline.
-  const planModel = env.ENTRUST_PLAN_MODEL;
-  if (headers.MODEL === undefined || headers.MODEL === "inherit") {
-    if (planModel) return { error: "a registered plan pins MODEL; inherit and an absent MODEL are refused" };
-    out.model = { inherit: true };
-  } else {
+  // MODEL: inherit or provider/model; under a registered plan, its model, which `inherit` departs from.
+  const pinned = resolveModel(headers.MODEL, env.ENTRUST_PLAN_MODEL, (value, planned) => value === planned);
+  if (pinned.error) return { error: pinned.error };
+  if (pinned.model === null || pinned.model === "inherit") out.model = { inherit: true };
+  else {
     try {
-      out.model = { inherit: false, ...splitModel(headers.MODEL) };
+      out.model = { inherit: false, ...splitModel(pinned.model) };
     } catch (e) { return { error: e.message }; }
-    if (planModel && modelKey(out.model) !== planModel)
-      return { error: `MODEL ${headers.MODEL} does not match the approved plan's ${planModel}` };
   }
 
   // EFFORT is an alias of VARIANT when it is explicit; a disagreement is refused.

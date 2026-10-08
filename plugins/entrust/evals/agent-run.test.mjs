@@ -122,8 +122,8 @@ test("a launch runs the driver on DIR/prompt.txt and REPORT, leaves out.json, er
     const { dir, state, report } = fresh();
     const { code, err } = await launch(dir, report, state).done;
     const problems = [];
-    if (code !== EXIT.OK) problems.push(`the launch exited ${code}, not ${EXIT.OK}: ${err.slice(0, 200)}`);
-    if ((read(path.join(dir, "exit")) ?? "").trim() !== String(EXIT.OK)) problems.push(`DIR/exit holds ${JSON.stringify(read(path.join(dir, "exit")))}`);
+    if (code !== EXIT.SUCCESS) problems.push(`the launch exited ${code}, not ${EXIT.SUCCESS}: ${err.slice(0, 200)}`);
+    if ((read(path.join(dir, "exit")) ?? "").trim() !== String(EXIT.SUCCESS)) problems.push(`DIR/exit holds ${JSON.stringify(read(path.join(dir, "exit")))}`);
     const out = read(path.join(dir, "out.json"));
     let r = null; try { r = JSON.parse(out ?? ""); } catch {}
     if (!r) problems.push("DIR/out.json is not the JSON report");
@@ -760,10 +760,42 @@ test("D6 --plan registers rows, --new refuses an unlisted id, and an explicit am
       return `amended agent: exit ${admitted.code}, ${JSON.stringify(admitted.out)}`;
     const bad = await plan("C | alien | writer | worktree | 100\n", true);
     if (bad.code !== 2 || !bad.out.startsWith("ERROR=invalid model")) return `bad model: exit ${bad.code}, ${JSON.stringify(bad.out)}`;
+    for (const row of ["C | codex | opus | writer | worktree | 100", "C | native | sol | writer | worktree | 100"]) {
+      const foreign = await plan(`${row}\n`, true);
+      if (foreign.code !== 2 || foreign.out !== "ERROR=invalid model for C: " + row.split(" | ")[2] + "\n")
+        return `another adapter's model: ${row}: exit ${foreign.code}, ${JSON.stringify(foreign.out)}`;
+    }
     const duplicate = await plan("A | sol | writer | worktree | 100\n", true);
     if (duplicate.code !== 2 || !duplicate.out.startsWith("ERROR=duplicate agent id")) return `duplicate: exit ${duplicate.code}, ${JSON.stringify(duplicate.out)}`;
     const scope = await plan("C | sol | writer | everywhere | 100\n", true);
     return scope.code === 2 && scope.out.startsWith("ERROR=invalid writes") || `bad scope: exit ${scope.code}, ${JSON.stringify(scope.out)}`;
+  });
+
+test("D6 a Codex row binds its prompt's model and writes: an absent one is the row's, another is refused (E138)",
+  "a plan bound a Codex agent's id alone, so a prompt could name another model and wider rights than the row the user approved; OpenCode and Claude prompts were already held to their rows",
+  async () => {
+    const runDir = runUnderState("pins.");
+    const h = spawnNode([LAUNCHER, "--plan", "--run-dir", runDir], { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 10000 });
+    h.child.stdin.end("P | sol | reviewer | nothing | unknown\n");
+    const planned = await h.done;
+    if (planned.code !== 0) return `plan: exit ${planned.code}, ${planned.out}`;
+    const report = path.join(runDir, "P", "report.json");
+    for (const [body, why] of [
+      [`RIGHTS: write ${shimDir}\nTASK: x\n`, "RIGHTS write does not match the approved plan's read writes scope"],
+      [`RIGHTS: read ${shimDir}\nMODEL: luna\nTASK: x\n`, "MODEL luna does not match the approved plan's sol"]]) {
+      const r = await newAgent(report, body);
+      if (r.code !== 2 || r.out !== `ERROR=--prompt-file: ${why}\n`) return `a departure from the row: exit ${r.code}, ${JSON.stringify(r.out)}`;
+    }
+    const admitted = await newAgent(report, "TASK: irrelevant, the server is scripted\n");
+    if (admitted.code !== 0) return `a prompt naming neither: exit ${admitted.code}, ${JSON.stringify(admitted.out)}`;
+    const dir = agentDirOf(report);
+    const backend = read(path.join(dir, "backend.json"));
+    if (backend !== `${JSON.stringify({ adapter: "codex", planModel: "sol", planWrites: "nothing" })}\n`) return `backend.json: ${backend}`;
+    const run = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report],
+      { env: { ...env(newState), FAKE_MODEL_FAMILIES: "1" }, killAfterMs: 60000 }).done;
+    const r = JSON.parse(read(report) ?? "null");
+    return run.code === 0 && /-sol$/.test(r?.model ?? "") && r?.level === "read"
+      || `the run: exit ${run.code}, model ${r?.model}, level ${r?.level}: ${run.out.slice(0, 300)}`;
   });
 
 test("D6 plan continuations, Claude rows, report shape, case, roles and unknown tokens",
@@ -781,7 +813,7 @@ test("D6 plan continuations, Claude rows, report shape, case, roles and unknown 
     if (first.code !== 0 || /^(WORKERS|CHECKING)=/m.test(first.out)) return `plan exit=${first.code}: ${first.out}`;
     const registered = [{ id: "Sol-W3", model: "sol" }, { id: "Opus-R3", model: "opus" }];
     if (planRowOf("sol-w3-2", registered, runDir)?.previous !== "Sol-W3") return "exported matcher missed the continuation";
-    const launch = (name, tail = "report.json") => newAgent(path.join(runDir, name, tail));
+    const launch = (name, tail = "report.json") => newAgent(path.join(runDir, name, tail), "TASK: irrelevant, the server is scripted\n");
     const before = await launch("Sol-W3-2");
     if (before.code !== 2 || !before.out.includes("has not ended")) return `continuation before exit: ${before.code} ${before.out}`;
     const base = await launch("Sol-W3");
@@ -1465,7 +1497,7 @@ test("the accept the pages show — a quoted heredoc on a delimiter the caller m
     return problems.length === 0 || problems.join("; ");
   });
 
-test("--new puts a sound prompt through the driver's check, then prints PROMPT= and APPROVALS= alone and leaves the prompt and its mailbox and nothing else",
+test("--new puts a sound prompt through the driver's check, then prints PROMPT= and APPROVALS= alone and leaves the prompt, its mailbox and its backend record and nothing else",
   "the check runs before every agent, so a pass must look to the coordinator like no check at all: the PROMPT= line and the mailbox every agent has, the prompt byte for byte at 0600, and no second copy beside it",
   async () => {
     const problems = [];
@@ -1476,7 +1508,7 @@ test("--new puts a sound prompt through the driver's check, then prints PROMPT= 
     if (r.code !== 0 || r.out !== `PROMPT=${path.join(dir, "prompt.txt")}\nAPPROVALS=${path.join(dir, "approvals")}\n`) problems.push(`a sound prompt: exit ${r.code}, ${JSON.stringify(r.out)} ${r.err.slice(0, 120)}`);
     if (read(path.join(dir, "prompt.txt")) !== PROMPT) problems.push("the prompt on disk is not the stdin bytes");
     const left = fs.existsSync(dir) ? fs.readdirSync(dir) : [];
-    if (JSON.stringify(left) !== JSON.stringify(["approvals", "prompt.txt"])) problems.push(`the agent's directory holds ${JSON.stringify(left)}`);
+    if (JSON.stringify(left) !== JSON.stringify(["approvals", "backend.json", "prompt.txt"])) problems.push(`the agent's directory holds ${JSON.stringify(left)}`);
     const checks = (read(spy) ?? "").split("\n").filter(Boolean);
     if (checks.length !== 1 || !checks[0].startsWith(`--check-prompt-file ${dir}${path.sep}`)) problems.push(`the checks --new ran: ${JSON.stringify(checks)}`);
     return problems.length === 0 || problems.join("; ");

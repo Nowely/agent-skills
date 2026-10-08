@@ -40,7 +40,7 @@ const CLEANUP = path.join(ROOT, "skills", "cleanup", "scripts", "cleanup.mjs");
 const CLEANUP_PAGE = path.join(ROOT, "skills", "cleanup", "SKILL.md");
 // The ladder the contract names: 0 everything went, 10 something was refused and untouched, 1 a removal
 // was attempted and failed, 2 bad arguments or no state directory.
-const REFUSED = EXIT.BUSY, FAILED = EXIT.TURN_NOT_COMPLETED, USAGE = EXIT.USAGE;
+const REFUSED = EXIT.BUSY, FAILED = EXIT.MODEL, USAGE = EXIT.USAGE;
 // A pid that is legal, in range, and not in use. The lock suite uses the same one.
 const DEAD_PID = 2147483646;
 const DEAD_IDENTITY = "lstart:Thu Jan  1 00:00:00 1970";
@@ -458,7 +458,7 @@ test("5 · a run with an agent that has not reported is kept; a finished one is 
     m.eq(row.proposed, false, "a run must never be suggested: only the user's own number deletes one");
     m.has(row.name, path.basename(w.project), "the run's name does not name its project");
     const d = await pick(w, s.file, [row.n]);
-    m.eq(d.code, EXIT.OK, `deleting the run by its number exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+    m.eq(d.code, EXIT.SUCCESS, `deleting the run by its number exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
     m.ok(!fs.existsSync(run), "the run directory survived its own deletion");
     // The proof is the same shape the user consented on: the fresh listing, without what went. What the
     // script says about the deletion itself may name the run; the listing under it may not.
@@ -503,7 +503,7 @@ test("6 · standalone reports are selectable evidence, never suggestions; answer
     m.eq(s.j.notCovered?.state?.answers?.covered, true, "the answers coverage hand-off");
     if (reportRow) {
       const d = await pick(w, s.file, [reportRow.n]);
-      m.eq(d.code, EXIT.OK, `deleting the report by its number exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+      m.eq(d.code, EXIT.SUCCESS, `deleting the report by its number exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
       m.ok(!fs.existsSync(reportDir), "the selected standalone report run directory survived");
       m.has(d.out, `I deleted ${reportRow.name}.`, "the deletion outcome for the standalone report");
       m.ok(fs.existsSync(answer), "deleting a standalone report also removed a saved answer");
@@ -812,7 +812,7 @@ test("14 · the tests' saved conversations are offered by number and never sugge
     if (row) {
       m.eq(row.count, 1, "the members of the permission check's row");
       const d = await pick(w, s.file, [row.n]);
-      m.eq(d.code, EXIT.OK, `deleting a saved conversation by its number exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+      m.eq(d.code, EXIT.SUCCESS, `deleting a saved conversation by its number exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
       m.ok(!fs.existsSync(probe), "the conversation the user asked for by number survived");
       m.ok(fs.existsSync(gone) && fs.existsSync(present) && fs.existsSync(mine),
         "a number took a conversation nobody named with it");
@@ -867,7 +867,7 @@ test("15 · one name, one row: the member that keeps it may be the last or the m
       if (rows.every(Boolean)) {
         for (const row of rows) m.eq(row.status, "removable", "the row once every member is free");
         const d = await pick(w, s2.file, rows.map((row) => row.n));
-        m.eq(d.code, EXIT.OK, `picking both collapsed rows exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+        m.eq(d.code, EXIT.SUCCESS, `picking both collapsed rows exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
         for (const dir of [first, last, ...three])
           m.ok(!fs.existsSync(dir), `picking the row left ${path.basename(dir)} behind`);
       }
@@ -1046,7 +1046,7 @@ test("18 · a symlink on the way in keeps the item; one inside a removed item is
       m.ok(row, `no row names the scratch holding links: ${shown(s.j)}`);
       if (row) {
         const d = await pick(w, s.file, [row.n]);
-        m.eq(d.code, EXIT.OK, `removing an item holding links exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+        m.eq(d.code, EXIT.SUCCESS, `removing an item holding links exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
         m.ok(!fs.existsSync(dir), "the item survived");
         m.ok(fs.existsSync(path.join(keptDir, "rollout.jsonl")), "a linked directory inside was followed and emptied");
         m.ok(fs.existsSync(keptFile), "a linked file inside was followed and deleted");
@@ -1127,7 +1127,7 @@ test("20 · the listing is three lines a person reads, and --json carries the sa
     const j = await list(w);
     const bad = need(w, j); if (bad) return bad;
     const human = await runCleanup(w, ["--list"]);
-    m.eq(human.code, EXIT.OK, `--list exited ${human.code}: ${human.err.trim().slice(0, 200)}`);
+    m.eq(human.code, EXIT.SUCCESS, `--list exited ${human.code}: ${human.err.trim().slice(0, 200)}`);
     m.eq(human.out, j.j.text, "the human listing and the text field of --list --json are not the same bytes");
     const lines = String(j.j.text ?? "").split("\n");
     // Every row is three lines: its number and name, then its size and what may be done with it, then
@@ -1181,7 +1181,7 @@ test("21 · the roots it must have, and the arguments it refuses",
     // No ENTRUST_STATE_DIR: the state is <tmp>/entrust-state, and a listing that finds none makes none.
     const byDefault = path.join(w.tmp, "entrust-state");
     const before = await runCleanup(w, ["--list"], { env: { ENTRUST_STATE_DIR: undefined } });
-    m.eq(before.code, EXIT.OK, `--list with no state directory yet exited ${before.code}: ${before.err.trim().slice(0, 200)}`);
+    m.eq(before.code, EXIT.SUCCESS, `--list with no state directory yet exited ${before.code}: ${before.err.trim().slice(0, 200)}`);
     m.ok(!fs.existsSync(byDefault), "the listing made the default state directory");
     fs.mkdirSync(path.join(byDefault, "orchestrate", w.slug, "run-1", "A"), { recursive: true });
     fs.writeFileSync(path.join(byDefault, "orchestrate", w.slug, "run-1", "A", "report.json"),
@@ -1206,7 +1206,7 @@ test("21 · the roots it must have, and the arguments it refuses",
       else process.env.TMPDIR = savedTmp;
     }
     const noTmp = await runCleanup(w, ["--list", "--json"], { unsetEnv: ["TMPDIR"] });
-    m.eq(noTmp.code, EXIT.OK, `--list --json with TMPDIR unset exited ${noTmp.code}: ${noTmp.err.trim().slice(0, 200)}`);
+    m.eq(noTmp.code, EXIT.SUCCESS, `--list --json with TMPDIR unset exited ${noTmp.code}: ${noTmp.err.trim().slice(0, 200)}`);
     const noTmpJson = parse(noTmp.out);
     m.ok(noTmpJson, `--list --json with TMPDIR unset did not print JSON: ${noTmp.out.trim().slice(0, 200)}`);
     if (noTmpJson) {
@@ -1224,7 +1224,7 @@ test("21 · the roots it must have, and the arguments it refuses",
       m.has(noTmpJson.text, "agent scratch elsewhere may not have been seen", "the fallback warning's limit");
     }
     const emptyTmp = await runCleanup(w, ["--list", "--json"], { env: { TMPDIR: "" } });
-    m.eq(emptyTmp.code, EXIT.OK, `--list --json with empty TMPDIR exited ${emptyTmp.code}: ${emptyTmp.err.trim().slice(0, 200)}`);
+    m.eq(emptyTmp.code, EXIT.SUCCESS, `--list --json with empty TMPDIR exited ${emptyTmp.code}: ${emptyTmp.err.trim().slice(0, 200)}`);
     const emptyTmpJson = parse(emptyTmp.out);
     m.ok(emptyTmpJson, `--list --json with empty TMPDIR did not print JSON: ${emptyTmp.out.trim().slice(0, 200)}`);
     if (emptyTmpJson) {
@@ -1250,7 +1250,7 @@ test("21 · the roots it must have, and the arguments it refuses",
       m.eq(r.code, USAGE, `${what} exited ${r.code}: ${(r.err || r.out).trim().slice(0, 160)}`);
     }
     const help = await runCleanup(w, ["--help"]);
-    m.eq(help.code, EXIT.OK, `--help exited ${help.code}`);
+    m.eq(help.code, EXIT.SUCCESS, `--help exited ${help.code}`);
     for (const flag of ["--list", "--delete", "--from", "--json"]) m.has(help.out, flag, "--help");
     return m.done();
   });
@@ -1313,7 +1313,7 @@ test("23 · it never runs git, never removes a root, and never touches the drive
     const asked = [...new Set([...(s.j.proposed ?? []), ...(s.j.selectable ?? [])])].sort((a, b) => a - b);
     m.ok(asked.length >= 3, `the fixture offers ${asked.length} rows, so the deletion measures little`);
     const d = await pick(w, s.file, asked, { env });
-    m.ok(d.code === EXIT.OK || d.code === REFUSED,
+    m.ok(d.code === EXIT.SUCCESS || d.code === REFUSED,
       `taking everything offered exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
     m.ok(!fs.existsSync(marker), `git was run: ${fs.existsSync(marker) ? fs.readFileSync(marker, "utf8").trim() : ""}`);
     for (const root of [w.state, w.tmp, w.config, w.projects, w.data, w.project])
@@ -1351,7 +1351,7 @@ test("24 · the snapshot's paths are compared, and a forged one never reaches a 
       fs.writeFileSync(file, JSON.stringify(forged));
       const d = await pick(w, file, [row.n]);
       const what = path.relative(w.root, target);
-      m.ok(d.code !== EXIT.OK, `a snapshot naming ${what} in place of the row's own paths exited 0`);
+      m.ok(d.code !== EXIT.SUCCESS, `a snapshot naming ${what} in place of the row's own paths exited 0`);
       m.ok(fs.existsSync(target), `a forged snapshot removed ${what}`);
       m.ok(fs.existsSync(dir), `a forged snapshot naming ${what} removed the row's real item`);
     }
@@ -1376,7 +1376,7 @@ test("25 · a symlink that appears after the listing refuses the removal, wherev
         fs.renameSync(slugDir, moved);
         fs.symlinkSync(moved, slugDir);
         const d = await pick(w, s.file, [row.n]);
-        m.ok(d.code !== EXIT.OK, "a run reached through a link one component above it was removed (exit 0)");
+        m.ok(d.code !== EXIT.SUCCESS, "a run reached through a link one component above it was removed (exit 0)");
         m.ok(fs.existsSync(path.join(moved, "run-1", "A", "report.json")),
           "the removal followed a link one component above the item and deleted outside the state directory");
       }
@@ -1394,7 +1394,7 @@ test("25 · a symlink that appears after the listing refuses the removal, wherev
         fs.renameSync(w.projects, moved);
         fs.symlinkSync(moved, w.projects);
         const d = await pick(w, s.file, [row.n]);
-        m.ok(d.code !== EXIT.OK, "a conversation reached through a linked kind root was removed (exit 0)");
+        m.ok(d.code !== EXIT.SUCCESS, "a conversation reached through a linked kind root was removed (exit 0)");
         m.ok(fs.existsSync(path.join(moved, path.basename(session))),
           "the removal followed a linked <config>/projects out of the configuration directory");
       }
@@ -1414,7 +1414,7 @@ test("25 · a symlink that appears after the listing refuses the removal, wherev
         fs.rmSync(dir, { recursive: true, force: true });
         fs.symlinkSync(payload, dir);
         const d = await pick(w, s.file, [row.n]);
-        m.ok(d.code !== EXIT.OK, "an item swapped for a link was removed through it (exit 0)");
+        m.ok(d.code !== EXIT.SUCCESS, "an item swapped for a link was removed through it (exit 0)");
         m.ok(fs.existsSync(path.join(payload, "keep")), "the removal followed the link the item had become");
       }
     }
@@ -1646,7 +1646,7 @@ test("32 · the parent that was checked is renamed and another takes its place",
     const decoy = plantRun(w, w.slug, "run-1", { A: report(w.project) });
     const decoyIno = fs.statSync(decoy).ino;
     const d = await pick(w, s.file, [row.n]);
-    m.ok(d.code !== EXIT.OK, `the call reported success after the pinned parent was swapped: exit ${d.code}`);
+    m.ok(d.code !== EXIT.SUCCESS, `the call reported success after the pinned parent was swapped: exit ${d.code}`);
     m.ok(fs.existsSync(decoy) && fs.statSync(decoy).ino === decoyIno,
       "the run that took the pinned parent's place was removed in its stead");
     m.ok(fs.existsSync(path.join(moved, "run-1", "A", "report.json")),
@@ -2009,7 +2009,7 @@ test("42 · a write lock is a link and the record it names: released links and s
     m.ok(!(s.j.rows ?? []).some((r) => /unrecognised/.test(r.name)), `a lock entry reads as unrecognised: ${shown(s.j)}`);
     if (!rel || !a || !o) return m.done();
     const d = await pick(w, s.file, [rel.n, a.n, o.n]);
-    m.eq(d.code, EXIT.OK, `removing the released links, the abandoned pair and the stray record exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+    m.eq(d.code, EXIT.SUCCESS, `removing the released links, the abandoned pair and the stray record exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
     for (const r of released) m.ok(!there(r.link), `a released link survived: ${path.basename(r.link)}`);
     m.ok(!there(abandoned.link) && !there(abandoned.owner), "the abandoned link or its record survived");
     m.ok(!there(stray.owner), "the stray record survived");
@@ -2237,7 +2237,7 @@ test("47 · a run and a standalone report go with their temporary folders; a run
     m.eq(lrow.status, "kept", "a run still going, with its temporary folder");
     m.has(row.reason, "Its temporary folder goes with it.", "the finished run's reason");
     const d = await pick(w, s.file, [row.n, rrow.n]);
-    m.eq(d.code, EXIT.OK, `deleting the run and the report exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+    m.eq(d.code, EXIT.SUCCESS, `deleting the run and the report exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
     for (const p of [run, runTmp, alone, aloneTmp]) m.ok(!fs.existsSync(p), `${path.relative(w.root, p)} survived its run's deletion`);
     for (const p of [live, liveTmp]) m.ok(fs.existsSync(p), `${path.relative(w.root, p)} of the run still going was removed`);
     return m.done();
@@ -2259,7 +2259,7 @@ test("48 · a temporary folder whose run is gone, or whose run wrote no report a
     }
     if (rows.every(Boolean)) {
       const d = await pick(w, s.file, rows.map((r) => r.n));
-      m.eq(d.code, EXIT.OK, `deleting the orphaned folders exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+      m.eq(d.code, EXIT.SUCCESS, `deleting the orphaned folders exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
       for (const p of [gone, stopped]) m.ok(!fs.existsSync(p), `${path.relative(w.root, p)} survived its deletion`);
     }
     const v = makeWorld("temp-running");
@@ -2288,7 +2288,7 @@ test("49 · what an earlier driver kept under <state>/tmp is suggested once no r
     if (row) {
       m.eq(row.proposed, true, "suggested");
       const d = await pick(w, s.file, [row.n]);
-      m.eq(d.code, EXIT.OK, `deleting it exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
+      m.eq(d.code, EXIT.SUCCESS, `deleting it exited ${d.code}: ${(d.err || d.out).trim().slice(0, 240)}`);
       m.ok(!fs.existsSync(old), "<state>/tmp survived its deletion");
       m.ok(fs.existsSync(w.state), "the state directory went with it");
     }
@@ -2350,7 +2350,7 @@ test("51 · grouped artifacts are selected individually; legacy scratch remains 
     const first = rowAt(s.j, dirs[0]);
     if (first) {
       const d = await pick(w, s.file, [first.n]);
-      m.eq(d.code, EXIT.OK, "individual deletion");
+      m.eq(d.code, EXIT.SUCCESS, "individual deletion");
       m.ok(!fs.existsSync(dirs[0]), "selected artifact survived");
       for (const p of [...dirs.slice(1), snap, legacy]) m.ok(fs.existsSync(p), `unselected item went: ${p}`);
       m.ok(fs.existsSync(path.dirname(dirs[0])), "unselected category directory went");
@@ -2406,7 +2406,7 @@ test("54 · the cleanup recipe creates separate private grouped snapshots and ea
         ...process.env, HOME: w.home, CLAUDE_CONFIG_DIR: w.config, TMPDIR: w.tmp,
         ENTRUST_STATE_DIR: w.state, ENTRUST_CLEANUP_PS: w.ps,
       } });
-      m.eq(r.status, EXIT.OK, `recipe ${i}: ${r.stderr}`);
+      m.eq(r.status, EXIT.SUCCESS, `recipe ${i}: ${r.stderr}`);
       const p = /^snapshot: (.+)$/m.exec(r.stdout)?.[1];
       if (!p) return `no snapshot path: ${r.stdout.slice(-200)}`;
       paths.push(p);
@@ -2447,7 +2447,7 @@ test("56 · project/run parents stay unnumbered, new leaves are independent, and
     const row = rowAt(s.j, a);
     m.ok(row?.selectable, "finished check not selectable");
     if (row) {
-      const d = await pick(w, s.file, [row.n]); m.eq(d.code, EXIT.OK, "new leaf deletion");
+      const d = await pick(w, s.file, [row.n]); m.eq(d.code, EXIT.SUCCESS, "new leaf deletion");
       m.ok(!fs.existsSync(a), "selected new leaf survived");
       for (const p of [b, unknown, snap, path.dirname(a)]) m.ok(fs.existsSync(p), `unselected item deleted: ${p}`);
     }
@@ -2515,7 +2515,7 @@ test("59 · reserved project names coexist with legacy scratch without exposing 
       m.ok(row?.selectable, `${project}: finished leaf not selectable`);
       m.ok(rowAt(s.j, legacy), `${project}: legacy neighbor was hidden`);
       if (row) {
-        const d = await pick(w, s.file, [row.n]); m.eq(d.code, EXIT.OK, `${project}: leaf deletion`);
+        const d = await pick(w, s.file, [row.n]); m.eq(d.code, EXIT.SUCCESS, `${project}: leaf deletion`);
         m.ok(!fs.existsSync(fresh) && fs.existsSync(runDir) && fs.existsSync(legacy), `${project}: deletion crossed the leaf`);
       }
     }

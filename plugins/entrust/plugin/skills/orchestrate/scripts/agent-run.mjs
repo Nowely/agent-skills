@@ -470,11 +470,13 @@ function launch(dir, report, { onExit, onRefuse, mailbox = false }) {
 
 const oneLine = (s) => String(s).replace(/\s*\n\s*/g, " / ");
 
-// What a plan row may name, from the adapters' declarations: a model one of them lists, or one an adapter's
-// pattern admits for its own rows. A row with no adapter column takes the adapter that lists its model, and
-// a native adapter's agents are the host's own.
-const listedBy = (model) => PLANNED.find((a) => a.plan.models?.some((m) => m.toLowerCase() === model.toLowerCase())) ?? null;
-const LISTED = new Set(PLANNED.flatMap((a) => (a.plan.models ?? []).map((m) => m.toLowerCase())));
+// What a plan row may name, from its own adapter's declaration: a model it lists, or one its pattern admits;
+// a native row, a model a native adapter lists. A row with no adapter column takes the adapter that lists its
+// model, and a native adapter's agents are the host's own.
+const lists = (a, model) => a.plan.models?.some((m) => m.toLowerCase() === model.toLowerCase());
+const listedBy = (model) => PLANNED.find((a) => lists(a, model)) ?? null;
+const admits = (adapter, model) => PLANNED.some((a) => (adapter === "native" ? a.plan.native : a.id === adapter)
+  && (a.plan.model ? new RegExp(a.plan.model).test(model) : lists(a, model)));
 const PLAN_HEADER = "id | model | role | writes | tokens";
 const ADAPTER_PLAN_HEADER = "id | adapter | model | role | writes | tokens";
 const planError = (why) => { process.stdout.write(`ERROR=${why}\n`); process.exit(2); };
@@ -507,7 +509,7 @@ const planRows = (body) => {
     if (adapter === null) planError(`invalid model for ${id}: ${model}`);
     if (!ROW_ADAPTERS.has(adapter)) planError(`invalid adapter for ${id}: ${adapter}`);
     const spec = PLANNED.find((a) => a.id === adapter)?.plan;
-    if (spec?.model ? !new RegExp(spec.model).test(model) : !LISTED.has(model.toLowerCase()))
+    if (!admits(adapter, model))
       planError(`invalid model for ${id}: ${model}${spec?.modelRule ? `; ${spec.modelRule}` : ""}`);
     if (!role) planError(`missing role for ${id}`);
     if (!/^(nothing|worktree|live tree|write \/\S.*)$/.test(writes)) planError(`invalid writes for ${id}: ${writes}`);

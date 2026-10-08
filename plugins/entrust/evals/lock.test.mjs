@@ -159,7 +159,7 @@ test("a run releases only the lock it owns",
     const peer = plantPeer(p, d, { pid: process.pid });
     const { code, err } = await pending;
     const verdict = peerVerdict(p, peer);
-    if (code !== EXIT.OK) return "the original run exited " + code + ": " + err.trim().slice(0, 120);
+    if (code !== EXIT.SUCCESS) return "the original run exited " + code + ": " + err.trim().slice(0, 120);
     return verdict;
   });
 
@@ -183,7 +183,7 @@ test("a lock naming this run's own pid, written by something else, is not releas
     const peer = plantPeer(p, d, { pid: mine.pid, identity: "lstart:Thu Jan  1 00:00:00 1970" });
     const { code, err } = await pending;
     const verdict = peerVerdict(p, peer);
-    if (code !== EXIT.OK) return "the original run exited " + code + ": " + err.trim().slice(0, 120);
+    if (code !== EXIT.SUCCESS) return "the original run exited " + code + ": " + err.trim().slice(0, 120);
     return verdict === true ? true : verdict + " — the pid matched and the identity did not";
   });
 
@@ -205,7 +205,7 @@ test("the lock this run created is released even when its body carries no identi
     const { code, err } = await pending;
     const left = fs.existsSync(owner);
     fs.rmSync(owner, { force: true });
-    if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 120);
+    if (code !== EXIT.SUCCESS) return "the run exited " + code + ": " + err.trim().slice(0, 120);
     return left ? "the lock this run created, its identity removed, outlived the run" : true;
   });
 
@@ -223,7 +223,7 @@ test("a replacement lock that borrows this run's pid and carries no identity out
     const peer = plantPeer(p, d, { pid: readJson(p).pid });
     const { code, err } = await pending;
     const verdict = peerVerdict(p, peer);
-    if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 120);
+    if (code !== EXIT.SUCCESS) return "the run exited " + code + ": " + err.trim().slice(0, 120);
     return verdict;
   });
 
@@ -240,7 +240,7 @@ test("a peer that replaces the lock inside the UPDATE's window keeps it",
     const peer = plantPeer(p, d, { pid: process.pid });
     const { code, err } = await pending;
     const verdict = peerVerdict(p, peer);
-    if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 160);
+    if (code !== EXIT.SUCCESS) return "the run exited " + code + ": " + err.trim().slice(0, 160);
     return verdict;
   });
 
@@ -261,7 +261,7 @@ test("a peer that replaces the lock inside the RELEASE's window keeps it",
     const peer = plantPeer(p, d, { pid: process.pid });
     const { code, err } = await pending;
     const verdict = peerVerdict(p, peer);
-    if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 160);
+    if (code !== EXIT.SUCCESS) return "the run exited " + code + ": " + err.trim().slice(0, 160);
     return verdict;
   });
 
@@ -292,7 +292,7 @@ async function peerAfterLastCheck(phase, fn) {
   fs.rmSync(windowAck(p), { force: true });
   const verdict = peerVerdict(p, peer);
   if (unacknowledged) return `the pause in ${fn} timed out before the peer was in place, so nothing was measured`;
-  if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 160);
+  if (code !== EXIT.SUCCESS) return "the run exited " + code + ": " + err.trim().slice(0, 160);
   return verdict === true ? true : `${fn} removed or changed the peer's replacement lock: ${verdict}`;
 }
 
@@ -324,7 +324,7 @@ async function fileOverOwner(phase, fn) {
   const verdict = peerVerdict(owner, peer);
   try { fs.unlinkSync(p); } catch {}
   if (unacknowledged) return `the pause in ${fn} timed out before the file was in place, so nothing was measured`;
-  if (code !== EXIT.OK) return "the run exited " + code + ": " + err.trim().slice(0, 160);
+  if (code !== EXIT.SUCCESS) return "the run exited " + code + ": " + err.trim().slice(0, 160);
   if (verdict !== true) return `${fn} removed or changed the file put at its owner path: ${verdict}`;
   return err.includes(`the lock's owner file ${owner} is no longer the file this run created`)
     || `the run did not say that its owner file had been replaced: ${err.trim().slice(-200)}`;
@@ -374,7 +374,7 @@ test("a stale lock is reclaimed",
     // either — a reaped real pid would be more lifelike and less reliable.
     fs.writeFileSync(lockFor(d), JSON.stringify({ pid: 2147483646, cwd: fs.realpathSync(d), started: "old" }));
     const { code } = await run(d);
-    return code === EXIT.OK ? true : `expected the stale lock to be reclaimed (0), got ${code}`;
+    return code === EXIT.SUCCESS ? true : `expected the stale lock to be reclaimed (0), got ${code}`;
   });
 
 test("an unparsable lock is reclaimed",
@@ -384,7 +384,7 @@ test("an unparsable lock is reclaimed",
     fs.mkdirSync(LOCK_DIR, { recursive: true, mode: 0o700 });
     fs.writeFileSync(lockFor(d), "");
     const { code } = await run(d);
-    return code === EXIT.OK ? true : `expected an empty lock to be reclaimed (0), got ${code}`;
+    return code === EXIT.SUCCESS ? true : `expected an empty lock to be reclaimed (0), got ${code}`;
   });
 
 test("a lock held by another user's live process is not stolen",
@@ -461,7 +461,7 @@ test("the lock is a link to a private owner file, and a release removes both",
     if (!/^[0-9a-f]{64}\.lock\.[0-9a-f]{32}\.owner$/.test(target) || !target.startsWith(`${path.basename(p)}.`))
       return `the link names ${JSON.stringify(target)}, not an owner file beside it`;
     if (mode !== 0o600) return `the owner file is mode ${mode.toString(8)}, not 600`;
-    if (h.code !== EXIT.OK) return `the holder exited ${h.code}: ${h.err.trim().slice(0, 120)}`;
+    if (h.code !== EXIT.SUCCESS) return `the holder exited ${h.code}: ${h.err.trim().slice(0, 120)}`;
     return left.length === 0 || `the release left ${left.join(", ")} behind`;
   });
 
@@ -480,11 +480,11 @@ test("a release that finds the reclaim marker held leaves the link naming nothin
     fs.rmSync(`${p}.reclaim`, { force: true });
     const next = await run(d);
     const left = fs.readdirSync(LOCK_DIR).filter((f) => f.startsWith(path.basename(p)));
-    if (first.code !== EXIT.OK) return `the run exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
+    if (first.code !== EXIT.SUCCESS) return `the run exited ${first.code}: ${first.err.trim().slice(0, 160)}`;
     if (!first.err.includes(`${p}.reclaim is held by another process`)) return `the run did not say why it left the link: ${first.err.trim().slice(-200)}`;
     if (target === null) return "the release removed the link without holding the marker";
     if (ownerLeft) return "the release left its own owner file behind";
-    if (next.code !== EXIT.OK) return `the next run did not reclaim the link: exit ${next.code} (${next.err.trim().slice(0, 160)})`;
+    if (next.code !== EXIT.SUCCESS) return `the next run did not reclaim the link: exit ${next.code} (${next.err.trim().slice(0, 160)})`;
     return left.length === 0 || `the next run's release left ${left.join(", ")} behind`;
   });
 
@@ -540,7 +540,7 @@ test("a lock in the previous shape, a regular file, holds the directory while it
     try { after = fs.lstatSync(p); } catch {}
     if (busy.code !== EXIT.BUSY) return `a live lock in the previous shape was not honoured: exit ${busy.code} (${busy.err.trim().slice(0, 160)})`;
     if (!kept) return "the refused run changed the live lock in the previous shape";
-    if (free.code !== EXIT.OK) return `a dead lock in the previous shape was not reclaimed: exit ${free.code} (${free.err.trim().slice(0, 160)})`;
+    if (free.code !== EXIT.SUCCESS) return `a dead lock in the previous shape was not reclaimed: exit ${free.code} (${free.err.trim().slice(0, 160)})`;
     return after?.isFile() ? "the dead lock in the previous shape is still at the lock path" : true;
   });
 
@@ -574,7 +574,7 @@ test("a driver from before the link refuses it with exit 2 and leaves it where i
     const dangling = await run(d, { driver: previous });
     try { fs.unlinkSync(p); } catch {}
     const refusal = (r) => r.code === EXIT.USAGE && r.err.includes(`${p} is a symbolic link, not a lock file; remove it and retry`);
-    if (h.code !== EXIT.OK) return `the holder exited ${h.code}: ${h.err.trim().slice(0, 120)}`;
+    if (h.code !== EXIT.SUCCESS) return `the holder exited ${h.code}: ${h.err.trim().slice(0, 120)}`;
     if (!refusal(live)) return `the previous driver met a live link with exit ${live.code}: ${live.err.trim().slice(0, 200)}`;
     if (!kept) return "the previous driver changed the live link or its owner file";
     if (released) return "the release left something at the lock path for the previous driver to refuse";
@@ -593,7 +593,7 @@ test("two concurrent runs: exactly one wins",
     }
     const contender = run(d);
     const [h, c] = await Promise.all([holder, contender]);
-    if (h.code !== EXIT.OK) return `the holder exited ${h.code}, expected ${EXIT.OK}: ${h.err.trim().slice(0, 120)}`;
+    if (h.code !== EXIT.SUCCESS) return `the holder exited ${h.code}, expected ${EXIT.SUCCESS}: ${h.err.trim().slice(0, 120)}`;
     if (c.code !== EXIT.BUSY) return `the contender exited ${c.code}, expected ${EXIT.BUSY}: ${c.err.trim().slice(0, 120)}`;
     if (fs.existsSync(lockFor(d))) return "a lock was left behind after both runs finished";
     return true;
@@ -621,9 +621,9 @@ test("twelve concurrent runs against a STALE lock hold it one at a time",
       // 0 = held it alone; 10 = correctly refused. 9 means a second run was inside the critical section.
       const overlapped = codes.filter((c) => c === EXIT.VERIFY_FAILED).length;
       if (overlapped) return `round ${round}: ${overlapped} run(s) entered the critical section while it was occupied, codes=${JSON.stringify(codes)}`;
-      const odd = codes.filter((c) => c !== EXIT.OK && c !== EXIT.BUSY);
+      const odd = codes.filter((c) => c !== EXIT.SUCCESS && c !== EXIT.BUSY);
       if (odd.length) return `round ${round}: unexpected exit codes ${JSON.stringify(codes)}`;
-      if (!codes.includes(EXIT.OK)) return `round ${round}: nobody acquired the stale directory, codes=${JSON.stringify(codes)}`;
+      if (!codes.includes(EXIT.SUCCESS)) return `round ${round}: nobody acquired the stale directory, codes=${JSON.stringify(codes)}`;
     }
     return true;
   });
@@ -640,7 +640,7 @@ test("a reclaim marker whose owner is dead does not wedge a free directory",
     // Deliberately FRESH: a clock-based rule would refuse here, which is the bug.
     const { code } = await run(d);
     fs.rmSync(`${p}.reclaim`, { force: true });
-    return code === EXIT.OK ? true : `a free directory was refused because of a dead owner's marker, got ${code}`;
+    return code === EXIT.SUCCESS ? true : `a free directory was refused because of a dead owner's marker, got ${code}`;
   });
 
 test("while a LIVE process holds the reclaim marker, nothing is touched — however old the marker looks",
@@ -707,7 +707,7 @@ test("two runs taking over one abandoned reclaim marker at once: one holds it, t
     const [ra, rb] = await settle();
     tidy();
     if (both) return "both runs held the reclaim marker at once";
-    if (ra.code !== EXIT.OK) return `the run that took the marker over exited ${ra.code}: ${ra.err.trim().slice(0, 160)}`;
+    if (ra.code !== EXIT.SUCCESS) return `the run that took the marker over exited ${ra.code}: ${ra.err.trim().slice(0, 160)}`;
     if (rb.code !== EXIT.BUSY) return `the other run exited ${rb.code}, expected 10: ${rb.err.trim().slice(0, 160)}`;
     return rb.err.includes(`the lock at ${p}`) || `the refusal does not name the lock: ${rb.err.trim().slice(-200)}`;
   });
@@ -755,7 +755,7 @@ test("three runs taking over one abandoned reclaim marker: one acts under it, th
     const [ra, rb, rc] = tags.map((tag) => runs[tag].result);
     if (firstActed) return "the run whose marker had been removed acted under it beside the run holding the one that stands";
     if (!thirdActed) return "the run holding the marker that stands never acted under it";
-    if (rc.code !== EXIT.OK) return `the run holding the marker exited ${rc.code}: ${rc.err.trim().slice(0, 160)}`;
+    if (rc.code !== EXIT.SUCCESS) return `the run holding the marker exited ${rc.code}: ${rc.err.trim().slice(0, 160)}`;
     for (const [tag, r] of [["first", ra], ["second", rb]])
       if (r.code !== EXIT.BUSY || !r.err.includes(p)) return `the ${tag} run exited ${r.code}, expected 10 naming the lock: ${r.err.trim().slice(-160)}`;
     return true;
@@ -782,7 +782,7 @@ test("a marker replaced by a peer's just before this run drops it is left in pla
     let after = null;
     try { after = fs.readFileSync(rp, "utf8"); } catch {}
     for (const f of [rp, `${mark}.go`]) fs.rmSync(f, { force: true });
-    if (code !== EXIT.OK) return `the run exited ${code}: ${err.trim().slice(0, 160)}`;
+    if (code !== EXIT.SUCCESS) return `the run exited ${code}: ${err.trim().slice(0, 160)}`;
     return after === peer || (after === null ? "the drop removed the peer's marker" : `the marker now reads ${JSON.stringify(after)}`);
   });
 
@@ -847,7 +847,7 @@ test("the write sandbox is exactly what the flags asked for, echoed back",
     const d = freshDir("wr-echo");
     const extra = freshDir("wr-extra");
     const { code, out } = await run(d, { args: ["--writable", extra, "--network"] });
-    if (code !== EXIT.OK) return `a legitimate --writable/--network run was refused: ${code}`;
+    if (code !== EXIT.SUCCESS) return `a legitimate --writable/--network run was refused: ${code}`;
     let r = null; try { r = JSON.parse(out); } catch {}
     if (!r) return "no JSON report";
     if (r.sandbox?.networkAccess !== true) return `--network did not reach the sandbox: ${JSON.stringify(r.sandbox)}`;
@@ -871,7 +871,7 @@ test("--writable naming the cwd itself is not a failure",
   async () => {
     const d = freshDir("wr-self");
     const { code, err } = await run(d, { args: ["--writable", d] });
-    return code === EXIT.OK ? true : `--cwd X --writable X exited ${code}: ${err.trim().slice(0, 130)}`;
+    return code === EXIT.SUCCESS ? true : `--cwd X --writable X exited ${code}: ${err.trim().slice(0, 130)}`;
   });
 
 test("a writable root named twice is not a failure",
@@ -880,7 +880,7 @@ test("a writable root named twice is not a failure",
     const d = freshDir("wr-dupe");
     const extra = freshDir("wr-dupe-root");
     const { code, err } = await run(d, { args: ["--writable", extra, "--writable", `${extra}/`] });
-    return code === EXIT.OK ? true : `a duplicated --writable exited ${code}: ${err.trim().slice(0, 130)}`;
+    return code === EXIT.SUCCESS ? true : `a duplicated --writable exited ${code}: ${err.trim().slice(0, 130)}`;
   });
 
 test("a hermetic HOME under the workspace does not make the workspace unusable",
@@ -891,7 +891,7 @@ test("a hermetic HOME under the workspace does not make the workspace unusable",
     fs.mkdirSync(home);
     const { code, err } = await run(w, { env: { HOME: home } });
     if (code === EXIT.USAGE) return `a workspace containing a hermetic HOME was refused: ${err.trim().slice(0, 130)}`;
-    return code === EXIT.OK ? true : `expected 0, got ${code}`;
+    return code === EXIT.SUCCESS ? true : `expected 0, got ${code}`;
   });
 
 test("a relative $HOME cannot promote an arbitrary directory to a home anchor",
@@ -899,7 +899,7 @@ test("a relative $HOME cannot promote an arbitrary directory to a home anchor",
   async () => {
     const w = freshDir("relhome");
     const { code } = await run(w, { env: { HOME: path.basename(w) } });
-    return code === EXIT.OK ? true : `a relative HOME refused a legitimate cwd: ${code}`;
+    return code === EXIT.SUCCESS ? true : `a relative HOME refused a legitimate cwd: ${code}`;
   });
 
 test("a write sandbox that grants more than was asked for is refused",
@@ -926,7 +926,7 @@ test("the home directory is refused under every spelling of it",
       try { fs.statSync(s); } catch { exists = false; }
       if (!exists) continue;
       const { code } = await run(s);
-      if (code === EXIT.OK) return `--cwd ${s} was granted write access; it is the home directory or an ancestor of it`;
+      if (code === EXIT.SUCCESS) return `--cwd ${s} was granted write access; it is the home directory or an ancestor of it`;
       if (code !== EXIT.USAGE) return `--cwd ${s} expected 2, got ${code}`;
     }
     return true;
@@ -1014,7 +1014,7 @@ test("a write run waiting on a decision holds its lock until it is answered or s
     holder.child.kill("SIGTERM");
     const { code, out } = await holder.done;
     let r = null; try { r = JSON.parse(out); } catch {}
-    if (code !== EXIT.TURN_NOT_COMPLETED) problems.push(`the holder exited ${code}, not 1`);
+    if (code !== EXIT.MODEL) problems.push(`the holder exited ${code}, not 1`);
     if (r?.escalations?.[0]?.why !== "signal SIGTERM") problems.push(`the open request was not settled by the signal: ${JSON.stringify(r?.escalations)}`);
     if (fs.existsSync(lockFor(d))) problems.push("the lock outlived the run");
     return problems.length === 0 || problems.join("; ");
@@ -1025,12 +1025,12 @@ test("a failed config probe keeps the last known good inherited config",
   async () => {
     const cfg = path.join(STATE_DIR, "home", "config.toml");
     const healthy = await run(freshDir("lkg-healthy"), {});
-    if (healthy.code !== EXIT.OK) return `the healthy run exited ${healthy.code}`;
+    if (healthy.code !== EXIT.SUCCESS) return `the healthy run exited ${healthy.code}`;
     let before = "";
     try { before = fs.readFileSync(cfg, "utf8"); } catch { return `no inherited config was written at ${cfg}`; }
     if (!/model/.test(before)) return `the healthy config carries no model: ${JSON.stringify(before)}`;
     const failing = await run(freshDir("lkg-failing"), { env: { FAKE_CONFIG_FAIL: "1" } });
-    if (failing.code !== EXIT.OK) return `the probe-failing run exited ${failing.code}`;
+    if (failing.code !== EXIT.SUCCESS) return `the probe-failing run exited ${failing.code}`;
     if (!/keeping the previously inherited config/.test(failing.err))
       return `the LKG path did not announce itself: ${failing.err.trim().slice(0, 200)}`;
     let after = "";
@@ -1042,7 +1042,7 @@ test("every run is recorded in the job registry, and --resume last finds the new
   "the registry records each run and --resume last resolves the newest record, allowing a coordinator to recover a lost threadId",
   async () => {
     const first = await run(freshDir("jobs-first"), {});
-    if (first.code !== EXIT.OK) return `the first run exited ${first.code}`;
+    if (first.code !== EXIT.SUCCESS) return `the first run exited ${first.code}`;
     const jobs = path.join(STATE_DIR, "jobs");
     let names = [];
     try { names = fs.readdirSync(jobs).filter((n) => n.endsWith(".json")); } catch { return "no jobs directory was created"; }
@@ -1060,9 +1060,9 @@ test("every run is recorded in the job registry, and --resume last finds the new
     // refuse rather than reach across.)
     const owner = freshDir("jobs-owner");
     const ownerRun = await run(owner, {});
-    if (ownerRun.code !== EXIT.OK) return `the owning run exited ${ownerRun.code}`;
+    if (ownerRun.code !== EXIT.SUCCESS) return `the owning run exited ${ownerRun.code}`;
     const second = await run(owner, { args: ["--resume", "last"] });
-    if (second.code !== EXIT.OK) return `--resume last exited ${second.code}: ${second.err.trim().slice(0, 160)}`;
+    if (second.code !== EXIT.SUCCESS) return `--resume last exited ${second.code}: ${second.err.trim().slice(0, 160)}`;
     if (!/--resume last -> thr_root/.test(second.err))
       return `the resolution was not announced: ${second.err.trim().slice(0, 200)}`;
     let r = null; try { r = JSON.parse(second.out); } catch { return "no JSON report from the resumed run"; }
@@ -1095,7 +1095,7 @@ test("`--resume last` names the run started most recently, not the one most rece
     const { code, err } = await run(dir, { args: ["--resume", "last"] });
     if (!/--resume last -> thr_b_finished/.test(err))
       return `\`last\` did not name the most recently STARTED run: ${err.trim().slice(0, 240)}`;
-    if (code !== EXIT.OK) return `resuming the newest finished run exited ${code}: ${err.trim().slice(0, 200)}`;
+    if (code !== EXIT.SUCCESS) return `resuming the newest finished run exited ${code}: ${err.trim().slice(0, 200)}`;
     // And the newest by start being the one still running is still exit 10, not a silent fall back to
     // an older thread: a caller asking for "last" here must be told to wait for it, never handed another
     // conversation. In a directory of its own, because the resumed run above recorded itself in this one.
@@ -1120,7 +1120,7 @@ test("the answer log is pruned by age",
     const old = (Date.now() - 30 * 86400000) / 1000;
     fs.utimesSync(planted, old, old);
     const { code } = await run(freshDir("prune"), {});
-    if (code !== EXIT.OK) { fs.rmSync(planted, { force: true }); return `the run exited ${code}`; }
+    if (code !== EXIT.SUCCESS) { fs.rmSync(planted, { force: true }); return `the run exited ${code}`; }
     const survived = fs.existsSync(planted);
     fs.rmSync(planted, { force: true });
     return survived ? "a 30-day-old answer survived the prune" : true;
@@ -1340,11 +1340,11 @@ test("the lock is released only after the process group is dead",
       return { ms: Date.now() - t0, code, lockLeft: fs.existsSync(lockFor(d)), p };
     };
     const control = await timeRun(shimDir, "control");
-    if (control.code !== EXIT.OK) return `the control run exited ${control.code}`;
+    if (control.code !== EXIT.SUCCESS) return `the control run exited ${control.code}`;
     const withSurvivor = await timeRun(survivorShim, "survivor");
     const orphans = survivorsAlive();
     reapSurvivors();
-    if (withSurvivor.code !== EXIT.OK) return `the survivor run exited ${withSurvivor.code}`;
+    if (withSurvivor.code !== EXIT.SUCCESS) return `the survivor run exited ${withSurvivor.code}`;
     if (orphans.length) return `the run left ${orphans.length} descendant(s) behind`;
     if (withSurvivor.lockLeft || control.lockLeft) return "a completed run left its lock behind";
     // The wait is 2 s. 1 s is far above scheduling noise and far below the real bound.
@@ -1398,7 +1398,7 @@ test("a lock whose pid was recycled by an unrelated live process is not honoured
                                                  cwd: fs.realpathSync(d), started: "old" }));
     const { code, err } = await run(d);
     fs.rmSync(lockFor(d), { force: true });
-    return code === EXIT.OK
+    return code === EXIT.SUCCESS
       ? true
       : `a recycled pid still wedged the directory: exit ${code} (${err.trim().split("\n").pop()?.slice(0, 120)})`;
   });
@@ -1442,7 +1442,7 @@ test("a reclaimed stale lock leaves no marker or temp file behind",
     const base = path.basename(p);
     const residue = fs.readdirSync(LOCK_DIR).filter((f) => f.startsWith(base) && f !== base);
     if (residue.length) return `the reclaim left ${residue.join(", ")} behind`;
-    return code === EXIT.OK ? true : `expected the stale lock to be reclaimed, got ${code}`;
+    return code === EXIT.SUCCESS ? true : `expected the stale lock to be reclaimed, got ${code}`;
   });
 
 test("concurrent first runs against a fresh state directory do not race on the shared home's links",
@@ -1468,7 +1468,7 @@ test("concurrent first runs against a fresh state directory do not race on the s
       // The WHOLE last line: a 110-character slice of these refusals stops inside the path, so a failure
       // here could not say which of the two link refusals fired, and the finding could not be chased.
       for (const { code, err } of await Promise.all(agents))
-        if (code !== EXIT.OK) bad.push(`exit ${code}: ${err.trim().split("\n").pop()}`);
+        if (code !== EXIT.SUCCESS) bad.push(`exit ${code}: ${err.trim().split("\n").pop()}`);
     }
     return bad.length
       ? `${bad.length} of ${rounds * width} concurrent first runs failed — ${[...new Set(bad)].slice(0, 3).join(" | ")}`
@@ -1607,7 +1607,7 @@ test("a lock is reclaimed only when the driver AND its app-server group are both
       }
       plant();
       const free = await run(d);
-      if (free.code !== EXIT.OK)
+      if (free.code !== EXIT.SUCCESS)
         return `a lock whose driver and group are both gone was not reclaimed (exit ${free.code}): ${free.err.trim().slice(0, 200)}`;
     } finally {
       try { process.kill(-group.pid, "SIGKILL"); } catch {}
