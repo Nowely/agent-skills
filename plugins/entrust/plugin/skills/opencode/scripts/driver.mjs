@@ -18,6 +18,7 @@ import { V2Client } from "./v2-client.mjs";
 import { connection, recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
 import { startLocalServer } from "./local-server.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
+import { git, makeWorktree, rightsScope, scopeWithin, worktreeFacts } from "../../orchestrate/scripts/drivers.mjs";
 import {
   EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionFits, canonical, within,
   commandEvidence, expectation,
@@ -183,43 +184,6 @@ function addTokens(acc, t) {
 
 // ---------------------------------------------------------------------------------------------
 // Rights and the worktree
-
-const resolveCwd = (p) => canonical(p ?? process.cwd());
-
-function rightsScope(rights) {
-  if (rights.kind === "read") return { kind: "read", readDir: resolveCwd(rights.path ?? null), roots: [] };
-  if (rights.kind === "write") {
-    const p = resolveCwd(rights.path);
-    return { kind: "write", readDir: p, roots: [p] };
-  }
-  return { kind: "worktree", repo: resolveCwd(rights.path), roots: [] };
-}
-
-// A resume may not widen the writes scope recorded for the session it rejoins.
-function scopeWithin(scope, prior) {
-  if (!prior) return true;
-  if (scope.kind === "read") return true;
-  const priorRoots = prior.roots ?? [];
-  if (!scope.roots?.length) return false;
-  return scope.roots.every((r) => priorRoots.some((p) => within(r, p)));
-}
-
-function git(args, cwd) {
-  const r = spawnSync("git", args, { cwd, encoding: "utf8", timeout: 60000, maxBuffer: 8 * 1024 * 1024 });
-  return { status: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "", error: r.error };
-}
-
-function makeWorktree(ctx, repo, stateDir) {
-  const base = path.join(stateDir, "worktrees");
-  const wt = path.join(base, ctx.invocationId);
-  if (fs.existsSync(wt)) return { error: `worktree path ${wt} already exists` };
-  const head = git(["-C", repo, "rev-parse", "HEAD"]);
-  if (head.status !== 0) return { error: `RIGHTS worktree: ${repo} is not a git repository (${firstLine(head.stderr, 200)})` };
-  fs.mkdirSync(base, { recursive: true, mode: 0o700 });
-  const add = git(["-C", repo, "worktree", "add", "--detach", wt, "HEAD"]);
-  if (add.status !== 0) return { error: `RIGHTS worktree: git worktree add failed (${firstLine(add.stderr, 200)})` };
-  return { worktreePath: wt, base: head.stdout.trim(), repo };
-}
 
 // Legacy session permission rules. Precedence is last-match-wins, so the generic edit/write ask is
 // placed before the scoped allows; a scoped allow therefore wins over the generic ask, and a
@@ -825,20 +789,6 @@ async function resolveResume(ctx) {
 // ---------------------------------------------------------------------------------------------
 // Final report
 
-function worktreeFacts(ctx) {
-  if (!ctx.worktreePath) return {};
-  const diff = git(["-C", ctx.worktreePath, "diff"]);
-  const status = git(["-C", ctx.worktreePath, "status", "--porcelain"]);
-  return {
-    worktreePath: ctx.worktreePath,
-    worktreeRepo: ctx.worktreeRepo,
-    worktreeBase: ctx.worktreeBase ?? null,
-    base: ctx.worktreeBase ?? null,
-    diff: diff.status === 0 ? diff.stdout : null,
-    untracked: status.status === 0 ? status.stdout.split("\n").filter(Boolean) : null,
-  };
-}
-
 function buildReport(ctx, base) {
   return {
     adapter: "opencode",
@@ -977,7 +927,7 @@ async function execute(opts, parsed) {
   if (scope.kind === "worktree" && parsed.resume !== undefined) {
     ctx.worktreeRepo = scope.repo; ctx.cwd = scope.repo; ctx.roots = [];
   } else if (scope.kind === "worktree") {
-    const wt = makeWorktree(ctx, scope.repo, ctx.stateDir);
+    const wt = makeWorktree(scope.repo, ctx.stateDir, ctx.invocationId);
     if (wt.error) return fail(ctx, wt.error, EXIT.USAGE);
     ctx.worktreePath = wt.worktreePath; ctx.worktreeBase = wt.base; ctx.worktreeRepo = wt.repo;
     ctx.cwd = wt.worktreePath; ctx.roots = [wt.worktreePath];
