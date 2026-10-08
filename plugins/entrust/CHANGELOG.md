@@ -48,6 +48,13 @@ forensics remain in the repository references and release notes.
   against the default one. It now carries `model_provider` and that provider's `[model_providers.<name>]` table
   (its scalars, string lists and one-level string maps). Checked on the fake app server; the shape the real
   `config/read` gives a provider table is unmeasured (X11).
+- **Pages and comments that no longer held.** The codex page told the coordinator to declare gates on the command
+  line, and `parity.md` offered `--host-home` for MCP tools, though the one call passes the driver nothing but its
+  prompt, report and mailbox; both now say what a coordinator can do. `main-proxy.md` named `agent-orders.mjs`
+  under whichever skill the reader came from; it names orchestrate's. The swarm page says an OpenCode worker in a
+  batch cannot run a shell command. The Codex driver's comments on the lock's anchor, the worktree ledger's reason,
+  the approval deadline and `LIMITS` are corrected, its standing rules no longer tell the agent its coordinator is
+  Claude Code, and `ISSUES.md` E113 and E115 cite the code where it now is (X15, X17, X7).
 
 ## 0.27.0 — 2026-10-08
 

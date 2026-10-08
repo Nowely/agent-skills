@@ -232,27 +232,23 @@ model, scored by which dissents the judge or the owner upheld; and, for the swar
 Luna to dissent rather than to match adds catches. If the result holds, give Luna a critic role in the tier table and
 the effort rule that fits it.
 
-## E113. The driver's check of the temporary base leaves a window before the run's folder is made, and never checks the base's mode
+## E113. Each level of the temporary directory chain is checked once, after it is made, and never for its mode
 
-**Evidence, level 2, from reading.** `driver.mjs:1376-1381` (`tmpBaseProblem`) refuses a base that is a symbolic
-link, not a directory, or another uid's, and nothing else: it reads no mode bit. `driver.mjs:1393-1404`
-(`runTmpDir`'s `refuseBase`, called at `:1400` and `:1402`) calls `fs.lstatSync(base)` before the base is made
-(`:1401`) and again right after, but nothing re-checks it after `fs.mkdirSync(path.dirname(dir), …)` (`:1403`) or
-before the leaf itself is made, `fs.mkdirSync(dir, { mode: 0o700 })` (`:1404`): a base or an intermediate directory
-swapped for a link between the second `lstat` and that last `mkdirSync` is followed, not caught. Separately, a
-group- or world-writable base of this user's own passes `tmpBaseProblem` unchallenged, since only `isSymbolicLink`,
-`isDirectory` and `uid` are read from the `lstat` result.
+**Evidence, level 2, from reading.** `plugins/entrust/plugin/skills/orchestrate/scripts/temp-dir.mjs:19-31`
+(`privateDirectory`) makes a level if it is missing, then `lstat`s it and refuses a symbolic link, a non-directory or
+another uid's directory, and nothing else: it reads no mode bit. `directoryChain` (`:33-40`) calls it level by level,
+so a level swapped for a link after its own check and before the next level is made under it is followed, not caught.
+A group- or world-writable level of this user's own passes unchallenged. The Codex driver's run directory and the
+state directory are both made through it (`codex/scripts/driver.mjs` `runTmpDir`, `temp-dir.mjs` `stateDirectory`).
 
-**Check.** Read `tmpBaseProblem` (`:1376-1381`): no `st.mode` term. Read `runTmpDir` (`:1382-1414`): the last write
-before the leaf directory is created (`:1404`) is the intermediate `mkdirSync` at `:1403`, with no `lstat` between
-them.
+**Check.** Read `privateDirectory` (`:19-31`): no `st.mode` term, and no re-check after the next level's `mkdirSync`.
 
-**Issue text.** The check-then-act shape `refuseBase`/`mkdirSync` repeats twice, but the window between the second
-check and the final act — the leaf's own creation — is not covered, so a base or intermediate path swapped for a
-link in that gap decides where the run's files go, the same class of race E44 closed for the lock. The base's mode
-is never read, so a group- or world-writable directory of this user's is accepted as freely as a private one. Close
-the window (make the run folder relative to an opened directory handle, or verify the leaf's own realpath right
-after creation) and refuse a group- or world-writable base, or record why neither is needed on a per-user TMPDIR.
+**Issue text.** Each level of the temporary directory chain is checked once, after it is made, so a level swapped for
+a link before the next level is made under it decides where the run's files go, the same class of race E44 closed
+for the lock. A level's mode is never read, so a group- or world-writable directory of this user's is accepted as
+freely as a private one. Close the window (make each level relative to an opened directory handle, or verify the
+leaf's own realpath right after creation) and refuse a group- or world-writable level, or record why neither is
+needed on a per-user TMPDIR.
 
 ## E114. Two cases of the lock suite fail inside Codex's sandbox and pass outside it on the same tree
 
@@ -280,20 +276,20 @@ then either make the two cases pass there or have the suite say that they cannot
 ## E115. The codex page and the launcher's `--help` say a decline stops a run, and the driver only answers the request
 
 **Evidence, level 2 (code reading; no live decline was run to see whether the turn ends).**
-`plugins/entrust/plugin/skills/codex/SKILL.md:236-238`, in the stop bullet: "that pid is what reaches it, or, after a
-waiting result, `--decide '<ID>' --decline` and the same `--run`"; `agent-run.mjs:169-170` (`--help`, under `--run`): "After a waiting result no call holds the driver, so stop it
+`plugins/entrust/plugin/skills/codex/SKILL.md:240-242`, in the stop bullet: "that pid is what reaches it, or, after a
+waiting result, `--decide '<ID>' --decline` and the same `--run`"; `orchestrate/scripts/agent-run.mjs:214-215` (`--help`, under `--run`): "After a waiting result no call holds the driver, so stop it
 with --decide --decline and the same --run, or kill -TERM the pid on its pid line in DIR/err.txt". A coordinator's
-decision reaches the server through `closeApproval` (`driver.mjs:3181-3200`), which settles the entry, records it in
-the mailbox and sends the server `{ decision: "decline" }` for that one request (`:3197`); nothing there cuts the
-turn. The driver cuts a turn only through `cutTurn`, called at `:3008` (idle silence, which does not fire while a
-request is open), `:3490` (the command budget), `:4633` (the wall clock) and `:4935` (a signal). Exit 6 is decided
+decision reaches the server through `closeApproval` (`driver.mjs:3116-3135`), which settles the entry, records it in
+the mailbox and sends the server `{ decision: "decline" }` for that one request (`:3132`); nothing there cuts the
+turn. The driver cuts a turn only through `cutTurn`, called at `:2943` (idle silence, which does not fire while a
+request is open), `:3428` (the command budget), `:4571` (the wall clock) and `:4873` (a signal). Exit 6 is decided
 after the turn ends (`driver.mjs --help`, "Decided after the turn"), so the declined command does not run and the
 turn goes on for as long as the model continues it. `codex/references/approvals.md:33-35` already describes a decline
 that way: decline, then send the same message again, and "`--run` picks the run back up".
 
 **Check.** Launch an agent whose task needs one command outside its sandbox and more work after it, decline the
 request with `--decide '<ID>' --decline`, run the same `--run` again, and read the report: `turnStatus: completed`
-with exit 6 and commands after the declined one show the decline did not stop the turn; `driver.mjs:3181-3200` and
+with exit 6 and commands after the declined one show the decline did not stop the turn; `driver.mjs:3116-3135` and
 the four `cutTurn` calls show why.
 
 **Issue text.** The codex page's stop instruction and the launcher's `--help` both offer "decline the waiting request

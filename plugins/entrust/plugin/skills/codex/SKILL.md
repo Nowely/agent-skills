@@ -118,8 +118,8 @@ Under a registered plan, a prompt with no `RIGHTS:` or `MODEL:` runs on its row'
 others, or a `WRITABLE:` root outside the row's writes, is refused at `--new`.
 
 `VERIFY` is refused in a prompt file without `--allow-prompt-verify`, which the one call does not pass: an agent
-that could write its own gate would grade itself. Declare gates on the command line
-([result-gates.md](references/result-gates.md)).
+that could write its own gate would grade itself. The one call passes the driver no other flag either, so check the
+result yourself after you have read it ([result-gates.md](references/result-gates.md)).
 
 ## Prompt shape
 

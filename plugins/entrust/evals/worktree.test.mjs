@@ -681,7 +681,7 @@ test("a ledger entry that cannot be parsed is quarantined, and the tree it names
   });
 
 test("a ledger that cannot be written stops the run before `git worktree add`",
-  "the ledger entry is what names a tree after a crash; writing it best-effort and adding anyway creates a checkout nothing points at, and 22 of 64 such orphans held uncommitted work",
+  "the ledger entry is what names a tree after a crash; writing it best-effort and adding anyway creates a checkout nothing points at, which may hold the agent's only copy of its work",
   async () => {
     const repo = freshRepo("wt-ledger-unwritable");
     if (!repo) return "git setup failed";

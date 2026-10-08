@@ -334,9 +334,9 @@ the directory; a lock that keeps changing hands names the link. Deleting the
 link by hand while its holder lives lets a second run into the directory and leaves the holder's owner
 file named by no link. `/entrust:cleanup` removes a released
 link, a lock whose holder is gone together with its owner file, and an owner file no link names once its
-run is gone. `$TMPDIR` was rejected as a home
-for it: it is a mutable environment variable, so two runs on one cwd under different values would take two
-different locks and both proceed, and it is the one place a `--level read` turn can write.
+run is gone. The lock lives in the state directory, `ENTRUST_STATE_DIR` or `<tmp>/entrust-state`: two runs on
+one cwd exclude each other only when they resolve the same one, so writers on one tree share a state directory.
+The launcher keeps the one `--new` resolved for the run it launches.
 
 Reclaiming a stale lock is serialised by its own marker, and liveness is re-checked under it. Without
 that, a run that judged the *stale* lock dead could arrive late and delete the *fresh* lock that had

@@ -29,7 +29,7 @@ and one qualification.
 | fan-out of many agents | concurrent driver invocations | memory-bound rather than throttled; see [Fan-out and reporting](#fan-out-and-reporting) |
 | stopping a running agent | `SIGTERM` to the announced pid, or stopping its task | the turn is interrupted and the report it earned is still written; see `--help` |
 | continuing an agent's context | `--resume <threadId\|last>` | rights are declared again per call; see `--help` |
-| a subagent's MCP tools | `--host-home` | the caller's whole host configuration comes with them; see `--help-all` |
+| a subagent's MCP tools | none | a Codex agent runs in an isolated Codex home, without your MCP servers, plugins or skills; `--host-home` brings them, on the driver's own command line only, which the one call does not reach |
 | web search | `--web-search <mode>` | the provider's own tool is off unless requested; the shell reaches the network either way; see `--help-all` |
 | a local image or audio file | `--attach <file>` | repeatable and command-line only; see `--help` |
 | an image the user pasted | `scripts/attach-pasted.mjs` | decodes transcript images before delegation; see `--help` |

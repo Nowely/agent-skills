@@ -56,9 +56,7 @@ const EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh", "m
 // The server's accepted web-search modes, learned from its rejection message.
 // Search stays disabled by default because it makes repository work depend on today's index.
 const WEB_SEARCH = new Set(["cached", "indexed", "live"]);
-// Every tuning number this driver runs on, in one table, each with the reason it is that number. They
-// were scattered over the file beside whichever line first needed one, so "what does this bound, and
-// why that value" was a question only a full read could answer.
+// The tuning numbers this driver runs on, each with the reason it is that number.
 const LIMITS = {
   // --brief is about the coordinator's context, not the agent's thoroughness: the full answer is always
   // written to disk, so capping what comes back inline costs nothing but a second read when it matters.
@@ -147,7 +145,7 @@ const LIMITS = {
   // server waits without bound (P1, 180 s held); the idle guard is paused while a request is open; so
   // this is the ONLY clock on a wait. Not a flag: nobody could say who would set it or why the default
   // cannot decide. Thirty minutes is the owner's figure: three times the coordinator's longest blind
-  // spot (one 600 s TaskOutput block, then the decision), and short enough that an agent whose
+  // spot (one ten-minute foreground call, then the decision), and short enough that an agent whose
   // coordinator is gone still delivers its report within the hour instead of never.
   // ENTRUST_APPROVAL_TIMEOUT_S overrides it for the suites, which cannot wait half an hour for an expiry.
   APPROVAL_TIMEOUT_S: 1800,
@@ -1060,13 +1058,10 @@ function checkRoot(dir) {
 
 // The anchor for everything this driver owns, and the reason mutual exclusion holds: a write-capable run
 // owns its cwd for the duration, and two runs that resolve the state root differently take two locks and
-// both proceed.
-//
-// So the anchor is the PASSWD entry, not $HOME and not the protected directory itself. Inside the
-// directory, an agent's `git add -A` stages the lock. Under $TMPDIR, that is a mutable variable AND the one
-// place --level read may write. Through os.homedir(), which prefers $HOME, two HOME values are two homes,
-// and HOME="" makes the path RELATIVE to the invocation directory. os.userInfo() reads passwd and ignores
-// the environment.
+// both proceed. The state root is ENTRUST_STATE_DIR, else <tmp>/entrust-state, so writers on one tree exclude
+// each other only when they resolve the same one; the launcher records the one --new resolved, so the relay
+// that calls --run cannot move it. Never inside the protected directory: an agent's `git add -A` would stage
+// the lock.
 //
 // ---------------------------------------------------------------- the report file
 //
@@ -1937,7 +1932,7 @@ const ledgerDir = () => path.join(stateDir(), "worktrees");
 // Write the ledger BEFORE git worktree add so an interrupted checkout is already named, then record its
 // base commit. Returns the entry's path, or null when it could not be written — createWorktree REFUSES
 // on that rather than proceeding: a run refused costs the run, while an add that proceeds unnamed costs
-// a tree nothing points at, and 22 of 64 such trees held uncommitted work (references/incidents.md).
+// a tree nothing points at, which may hold the agent's only copy of its work.
 function writeLedger(name, fields) {
   try {
     const dir = ledgerDir();
@@ -4494,7 +4489,7 @@ function developerInstructions() {
   // only by the branch below that has a budget to report.
   const budgetLeftS = Math.max(1, Math.round((startedAtMs + opts.timeout * 1000 - Date.now()) / 1000));
   return [
-    "You are being driven by a Claude Code coordinator, unattended. Nobody will answer a question.",
+    "You are being driven by a coordinating agent, unattended. Nobody will answer a question.",
     // Advisory: the model has no clock unless it runs `date`. It costs one sentence and it is the only
     // thing that makes the wall clock something the turn can plan against rather than be surprised by.
     // Without a wall clock the sentence has to say so: told "you have about N seconds" when nothing is
