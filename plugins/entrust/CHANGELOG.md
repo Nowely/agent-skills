@@ -3,7 +3,7 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.26.0 — 2026-10-08
 
 ### Removed
 
@@ -40,6 +40,41 @@ forensics remain in the repository references and release notes.
 - **A scout gathers what the planner needs (E133).** The area scout, which wrote nothing and returned ranked findings, is now the scout: it collects the information available for the task (the files, documents, configurations and sources the task names or implies, earlier results when the task builds on them) into a folder the coordinator names, and returns its path, an index ranked for the planner's question and what it could not reach. The page dry run, the recognition reader and the retrospective analyst, which only this repository's research and feedback runs used, moved to `research/roles.md`; orchestrate offers 24 roles.
 - **The proxy is orchestrate's, and one agent relays every external run (E125).** The main proxy mode (an external model as coordinator, the host executing its agent orders), the operational proxy that accompanies one external session, their schema `main-proxy.schema.json` and the order reader `agent-orders.mjs` moved from the OpenCode adapter to orchestrate; the adapter is the coordinator's transport, and the reader accepts a Codex report's `threadId` as the session. The JSON-schema subset both use is `orchestrate/scripts/json-schema.mjs`. **Breaking:** the relays `entrust:codex-agent` and `entrust:opencode-agent` are one agent, `entrust:proxy`; a Workflow script or saved prompt naming either old type must name `entrust:proxy`. The relay's steps stay in its message as well as its file, as measured.
 - The page suites (advisor, orchestrate, agent-contract, experiment and swarm) no longer pin the pages sentence by sentence. They keep what a coordinator or a tool reads off a page: frontmatter, page budgets, the skill a page loads, command lines, the field table against the driver, placeholders, schema lines and links. The two advisor checks that could not fail went with the advisor's sentence pins (E118).
+
+### Compatibility
+
+- **Breaking:** the `/entrust:experiment` skill is gone; its method and protocols stay in the repository's research.
+- **Breaking:** the relays `entrust:codex-agent` and `entrust:opencode-agent` are one agent, `entrust:proxy`. A Workflow
+  script or saved prompt naming an old type must name `entrust:proxy`.
+- **Breaking:** state is in `<tmp>/entrust-state`, or `ENTRUST_STATE_DIR`, an absolute path. Reports, saved answers, the
+  worktree ledger and write locks that 0.25.x kept in `~/.claude/plugins/data/entrust-nowely/` are not read: finish or
+  clean up a 0.25.x run before updating, and a `RESUME:` of one does not find it. `/entrust:cleanup` lists the old
+  directory and removes it only when picked.
+- Moved paths: the five-field schema is `skills/orchestrate/schemas/five-fields.schema.json` (was under `codex/`), the
+  main-proxy schema and `agent-orders.mjs` are orchestrate's (were OpenCode's), the cleanup script is
+  `skills/cleanup/scripts/cleanup.mjs`, and `orchestrate/adapters.json` is replaced by each adapter's
+  `skills/<id>/adapter.json`. The launcher is `skills/orchestrate/scripts/agent-run.mjs`; the codex and opencode
+  `scripts/agent-run.mjs` still take every mode. `swarm.mjs` needs `--adapter <id>`. prepare-feedback's `parts`, `add`,
+  `coverage`, `tokens` and `export` commands are gone.
+
+### Validation
+
+- PR #66 passed all four CI jobs on Node 24: the skill pages, the entrust suites on Ubuntu and on macOS, and terse.
+- Locally, in a Linux container running as root on Node 22: every entrust suite but protocol, lock and cli is green;
+  their 10 failing cases (process-group sweeps and permission refusals) fail the same way on the tree before this
+  release and pass in CI. `scripts/skills.test.mjs` passes 8 of 8 and terse's pages 12 of 12.
+- Not run: the live fidelity gate, the live orchestrate gate and the cross-plugin terse brief, which this release's
+  skill pages, agent file and launcher call for; the preparing machine has no Codex CLI. The launcher split is
+  covered by the fake app server and the fake OpenCode server only.
+
+### Known issues
+
+- Open ledger entries remain E67, E90, E96, E100, E102–E104, E110, E111, E113–E115 and E117; see [`ISSUES.md`](ISSUES.md).
+
+### Release environment
+
+- Release preparation used Node.js `v22.22.0` and Claude Code `2.1.294`, with no Codex CLI. The CLI protocol pin,
+  `0.159.3`, is unchanged.
 
 ## 0.25.1 — 2026-10-06
 
