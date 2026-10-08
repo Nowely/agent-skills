@@ -28,6 +28,9 @@ forensics remain in the repository references and release notes.
 - **What an external driver shares is orchestrate's.** The exit-code table, the request-id shape, the RIGHTS grammar,
   its check against a registered plan's writes and the scope it grants, and the worktree a `worktree` agent runs in moved, unchanged, from the OpenCode adapter to
   `orchestrate/scripts/drivers.mjs`, which the OpenCode driver imports, so a second driver does not copy them.
+- **The Codex driver's exit codes are the shared table (E137, in part).** It defined the same numbers under names of
+  its own (`OK`, `TURN_NOT_COMPLETED`, `ESCALATED`, `INTERACTION`, `VERIFY_UNMEASURABLE`); it now imports
+  `EXIT` from `orchestrate/scripts/drivers.mjs`. No code changed its number.
 
 ### Fixed
 

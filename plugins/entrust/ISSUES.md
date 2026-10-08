@@ -329,16 +329,15 @@ coordinator who reads both meets two phrasings of one rule. The swarm page canno
 batch the plan gives no swarm runs as ordinary agents. Decide which page owns these rules and have the other
 link them, or hold one wording and pin it on both pages as `evals/fragments.mjs` pins the run directory.
 
-## E137. The Codex driver keeps its own exit codes, RIGHTS grammar and worktree code beside the shared ones
+## E137. The Codex driver keeps its own RIGHTS grammar and worktree code beside the shared ones
 
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs` holds the exit-code table,
-the RIGHTS grammar and the worktree code the OpenCode driver uses. `codex/scripts/driver.mjs:40` defines its own
-`EXIT`, the same numbers under other names (`OK`, `TURN_NOT_COMPLETED`, `ESCALATED`, `INTERACTION`,
-`VERIFY_UNMEASURABLE`); `:790` parses RIGHTS itself; `:2102` adds its worktree itself.
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs` holds the RIGHTS grammar and
+the worktree code the OpenCode and Claude drivers use. `codex/scripts/driver.mjs:790` parses RIGHTS itself; `:2102`
+adds its worktree itself. Its exit codes are the shared table since the change that names this entry.
 
-**Check.** `grep -n "const EXIT\|RIGHTS must be\|worktree\", \"add\"" plugins/entrust/plugin/skills/codex/scripts/driver.mjs`.
+**Check.** `grep -n "RIGHTS must be\|worktree\", \"add\"" plugins/entrust/plugin/skills/codex/scripts/driver.mjs`.
 
-**Issue text.** Three drivers launch external agents, and the facts they share (what each exit code means, what a
-RIGHTS line grants, how a worktree is made) are defined once for two of them and again inside the Codex driver. A
-change to one copy leaves the other behind. The Codex driver should import them from `orchestrate/scripts/drivers.mjs`,
-keeping its own ledger and harvest, which only it has.
+**Issue text.** Three drivers launch external agents, and the facts they share (what a RIGHTS line grants, how a
+worktree is made) are defined once for two of them and again inside the Codex driver. A change to one copy leaves
+the other behind. The Codex driver should import them from `orchestrate/scripts/drivers.mjs`, keeping its own
+ledger and harvest, which only it has.

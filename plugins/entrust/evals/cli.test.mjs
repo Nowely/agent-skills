@@ -70,7 +70,7 @@ const sandboxArgvHas = (log, needle) => {
 };
 
 const CASES = [
-  { scenario: "happy",            expect: EXIT.OK,                  why: "a real command succeeded and a final answer arrived" },
+  { scenario: "happy",            expect: EXIT.SUCCESS,                  why: "a real command succeeded and a final answer arrived" },
   { scenario: "happy",            expect: EXIT.USAGE, args: ["--model", "missing-model"],
     env: { FAKE_RPC_LOG: unknownModelLog },
     why: "model/list rejects a model name absent from the server catalogue before thread/start",
@@ -79,16 +79,16 @@ const CASES = [
       return (/model\/list/.test(log) && !/thread\/start/.test(log) && /not in model\/list/.test(e) && ms < 7000)
         || `unknown-model refusal was late or missing: ${JSON.stringify({ ms, log, err: e.slice(0, 180) })}`;
     } },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--model", "sol"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--model", "sol"],
     env: { FAKE_MODEL_FAMILIES: "1", FAKE_MODEL_ECHO: "1" },
     why: "a short name is the newest listed model of that name, so a new generation is taken up without an edit to the plugin; a hidden newer model is not a release",
     assert: (r) => r.model === "explicit:gpt-6-sol" || `sol did not resolve to gpt-6-sol: ${JSON.stringify(r.model)}`,
     assertStderr: (e) => /--model sol is gpt-6-sol/.test(e) || `the resolution is not on stderr: ${e.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--model", "Luna"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--model", "Luna"],
     env: { FAKE_MODEL_FAMILIES: "1", FAKE_MODEL_ECHO: "1" },
     why: "versions compare as numbers and the name in any case: 6.10 is newer than 6.9, which a string comparison or the list's order would get wrong",
     assert: (r) => r.model === "explicit:gpt-6.10-luna" || `Luna did not resolve to gpt-6.10-luna: ${JSON.stringify(r.model)}` },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--model", "gpt-5.6-sol"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--model", "gpt-5.6-sol"],
     env: { FAKE_MODEL_FAMILIES: "1", FAKE_MODEL_ECHO: "1" },
     why: "a full slug pins that version even when a newer model of the same name is listed",
     assert: (r) => r.model === "explicit:gpt-5.6-sol" || `the pinned slug was replaced: ${JSON.stringify(r.model)}` },
@@ -97,15 +97,15 @@ const CASES = [
     why: "a short name no listed model carries is refused before the turn, with the catalogue in the message",
     assertStderr: (e) => /--model "nova" is not in model\/list; available models: gpt-6-astra/.test(e)
       || `the unknown short name was not refused with the list: ${e.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "the setup rate-limit snapshot reaches every completed report, so fan-outs can see approaching exhaustion",
     assert: (r) => r.rateLimits?.primary?.usedPercent === 25
       || `rateLimits missing from the report: ${JSON.stringify(r.rateLimits)}` },
-  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_RATELIMITS_ERROR: "1" },
+  { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_RATELIMITS_ERROR: "1" },
     why: "a server that rejects account/rateLimits/read costs the report its snapshot, not the whole run",
     assert: (r) => r.rateLimits === null
       || `a rejected snapshot did not leave rateLimits null: ${JSON.stringify(r.rateLimits)}` },
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "the server echoes the caller's prompt as a userMessage at the start of a turn; that echo must not count as activity or disarm the no-work retry guard",
     assert: (r) => (r.otherItemCounts === null || r.otherItemCounts.userMessage === undefined)
       || `the caller's own prompt was reported as activity: ${JSON.stringify(r.otherItemCounts)}` },
@@ -117,25 +117,25 @@ const CASES = [
     assertStderr: (e) => /--attach.*does not exist/.test(e) || `the missing file was not named: ${e.slice(0, 140)}` },
   { scenario: "happy",           expect: EXIT.VERIFY_FAILED,      args: ["--verify", "false"],
     why: "the caller's own check decides: a clean turn still fails when the work is not there" },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--verify", "yes abcdefghij | head -c 100000000; exit 0"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--verify", "yes abcdefghij | head -c 100000000; exit 0"],
     why: "a verifier that exits 0 has passed even when its output exceeds the verifier tail cap; streaming a bounded tail must preserve its exit status",
     assert: (r) => (r.verify?.ok === true && r.verify?.measured === true
       && String(r.verify?.stdout ?? "").length <= 2000)
       || `a passing loud verifier was not measured: ${JSON.stringify({ ...r.verify, stdout: String(r.verify?.stdout ?? "").length })}` },
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "with no --effort the driver must send no override so the caller's config decides; a forced default can silently downgrade the requested effort",
     assert: (r) => r.effort === null && r.reasoningEffort === null
       || `an effort was imposed: requested=${JSON.stringify(r.effort)} selected=${JSON.stringify(r.reasoningEffort)}` },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--effort", "max"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--effort", "max"],
     why: "max is on the model's advertised ladder and must not be rejected by a stale hardcoded list",
     assert: (r) => r.reasoningEffort === "max" || `--effort max did not reach the server: ${JSON.stringify(r.reasoningEffort)}` },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--resume", "thr_root"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--resume", "thr_root"],
     why: "a resumed report must name the continued thread so the coordinator can distinguish it from a fresh run and detect a wrong resume target",
     assert: (r) => r.resumedFrom === "thr_root" || `the report did not name the thread it continued: ${JSON.stringify(r.resumedFrom)}` },
-  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_MODEL_ECHO: "1" },
+  { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_MODEL_ECHO: "1" },
     why: "with no --model the driver sends null and the server chooses; FAKE_MODEL_ECHO reports the request so a hardcoded model cannot look inherited. The echo is opt-in because fidelity.test.mjs compares this field with the live server",
     assert: (r) => r.model === "inherited" || `a model was imposed rather than inherited: ${JSON.stringify(r.model)}` },
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     env: { PATH: "/usr/bin:/bin", ENTRUST_CODEX: path.join(shimDir, "codex") },
     why: "with codex absent from PATH the driver honours ENTRUST_CODEX — a non-login shell must not need a PATH export ritual" },
   { scenario: "happy",            expect: EXIT.USAGE,
@@ -143,7 +143,7 @@ const CASES = [
     why: "a relative ENTRUST_CODEX would resolve against the invocation cwd; only an absolute executable is accepted",
     assertStderr: (e) => /ENTRUST_CODEX must be an absolute path/.test(e) || `the override was not validated: ${e.slice(0, 140)}` },
   // --- the state directory: ENTRUST_STATE_DIR, else <tmp>/entrust-state ---
-  { scenario: "happy",            expect: EXIT.OK, unsetEnv: ["ENTRUST_STATE_DIR"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, unsetEnv: ["ENTRUST_STATE_DIR"],
     env: { TMPDIR: defaultTmp, CLAUDE_PLUGIN_DATA: pluginData, HOME: decoyHome },
     why: "with no ENTRUST_STATE_DIR the state is <tmp>/entrust-state, beside the scratch tree: nothing goes under a home directory, and Claude Code's plugin data directory, which an earlier version used, is not read",
     assert: () => {
@@ -159,28 +159,28 @@ const CASES = [
     why: "a relative state directory resolves against whatever cwd the caller happened to have: a relative one used to be accepted, and the answer log and the turn diff then dropped their artefact in silence",
     assertStderr: (e) => /ENTRUST_STATE_DIR must be an absolute path/.test(e)
       || `the relative value was not refused by name: ${e.slice(0, 160)}` },
-  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_CONFIG_FAIL: "1" },
+  { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_CONFIG_FAIL: "1" },
     why: "a failed config probe must say so out loud — the silent path changed which model answers and made identical runs nondeterministic",
     assertStderr: (e) => /could not read the caller's Codex config/.test(e)
       || `the downgrade was silent: ${e.slice(0, 160)}` },
-  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURABLE, args: ["--verify", "definitely_not_a_command_xyz"],
+  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURED, args: ["--verify", "definitely_not_a_command_xyz"],
     why: "127 means the shell never ran the command — a typo or a tool missing from the DRIVER's PATH — which says nothing about the work and must not read as 'the work is not there'",
     assert: (r) => r.verify?.measured === false
       || `a broken verifier was reported as a measured failure: ${JSON.stringify(r.verify)}` },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--verify", "sleep 0.2 & exit 0"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--verify", "sleep 0.2 & exit 0"],
     why: "the command exited 0 while a background process still held the pipe; the observed exit status is proof of a pass and must not be thrown away as unmeasurable",
     assert: (r) => r.verify?.ok === true && r.verify?.measured === true
       || `a passing exit status was discarded: ${JSON.stringify(r.verify)}` },
-  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURABLE, args: ["--verify", "kill -TERM $$"],
+  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURED, args: ["--verify", "kill -TERM $$"],
     why: "a verifier killed by a signal reports exitCode null — that is 'could not run', which must fail closed rather than read as success",
     assert: (r) => r.verify?.ok === false && r.verify?.signal === "SIGTERM"
       || `expected a recorded signal, got ${JSON.stringify(r.verify)}` },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--expect-command", "echo", "--verify", "true"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--expect-command", "echo", "--verify", "true"],
     why: "both checks agreeing is the ordinary success, and both verdicts appear in the report",
     assert: (r) => r.expectationOk === true && r.verify?.ok === true || `report lost a verdict: ${JSON.stringify({ e: r.expectationOk, v: r.verify })}` },
   // Detach the background child's stdio so it cannot hold the verifier's pipe open. The group sweep must
   // be the mechanism that ends the child.
-  { scenario: "happy",            expect: EXIT.OK, args: ["--verify", `sh -c 'trap "" TERM; echo $$ > "$TMPDIR/${survivorPidName}"; exec sleep 30' >/dev/null 2>&1 </dev/null & sleep 0.3; exit 0`],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--verify", `sh -c 'trap "" TERM; echo $$ > "$TMPDIR/${survivorPidName}"; exec sleep 30' >/dev/null 2>&1 </dev/null & sleep 0.3; exit 0`],
     why: "the verifier runs in its own process group, which must be swept afterwards so background descendants cannot outlive the run",
     assert: (r) => {
       if (r.verify?.ok !== true) return `the verifier itself did not pass: ${JSON.stringify(r.verify)}`;
@@ -192,10 +192,10 @@ const CASES = [
     } },
 
   // --- report shape: defaults, receipt, exit-5 hint ---
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "the JSON report is the ONLY report: no flag selects it, and none selects anything else",
     assert: (r) => r.ok === true || `expected a JSON report, got ${JSON.stringify(r).slice(0, 60)}` },
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "the report locates the rollout receipt itself; a scripted thread id matches nothing real, so the honest answer is receiptOk false with a null path",
     assert: (r) => (r.receiptOk === false && r.receiptPath === null)
       || `receipt fields wrong for a fixture run: ${JSON.stringify({ ok: r.receiptOk, path: r.receiptPath })}` },
@@ -206,17 +206,17 @@ const CASES = [
     why: "schema admission requires an explicit object contract; an empty or oneOf-only schema must not certify arbitrary values as valid output",
     assertStderr: (t) => /must declare "type": "object"/.test(t) || `admission let a type-less schema through: ${t.slice(0, 140)}` },
   // --- --prompt-file: a wrapper writes values, it does not build a command line out of them ---
-  { scenario: "happy",            expect: EXIT.OK, agent: "RIGHTS: read <CWD>\nEXPECT: echo\nBRIEF: yes\n",
+  { scenario: "happy",            expect: EXIT.SUCCESS, agent: "RIGHTS: read <CWD>\nEXPECT: echo\nBRIEF: yes\n",
     why: "the ordinary prompt file maps to the same flags the CLI takes, so a caller never has to quote anything",
     assert: (r) => (r.level === "read" && r.expectationOk === true && r.answerTruncated === false)
       || `prompt file did not map cleanly: ${JSON.stringify({ l: r.level, e: r.expectationOk })}` },
-  { scenario: "happy",            expect: EXIT.NO_COMMANDS,
+  { scenario: "happy",            expect: EXIT.COMMANDS,
     agent: "RIGHTS: read <CWD>\nEXPECT: x' --level write --cwd / --writable / --no-network '\n",
     why: "THE reason this flag exists: a hostile header value must stay one value. Interpolated into a shell command line the same characters would have granted write level and the filesystem root, and taken away the egress the agent runs with. The NEGATIVE is what makes the egress half of this case bite: an escaped --network would leave a sandbox indistinguishable from the default one",
     assert: (r) => (r.level === "read" && r.network === true && r.sandbox?.type === "workspaceWrite"
         && (r.sandbox?.writableRoots ?? []).length <= 1 && String(r.expectCommand).includes("--writable"))
       || `a prompt-file value escaped into flags: ${JSON.stringify({ l: r.level, n: r.network, roots: r.sandbox?.writableRoots })}` },
-  { scenario: "happy",            expect: EXIT.OK, agent: "RIGHTS: read <CWDSP>\nEXPECT: echo\n",
+  { scenario: "happy",            expect: EXIT.SUCCESS, agent: "RIGHTS: read <CWDSP>\nEXPECT: echo\n",
     why: "the RIGHTS value is literal to end of line; collapsing consecutive spaces would silently change where rights are granted",
     assert: (r) => String(r.cwd).endsWith("two  spaces") || `the spaced path was rewritten: ${JSON.stringify(r.cwd)}` },
   { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: read <CWD>\nBOGUS: x\n",
@@ -249,7 +249,7 @@ const CASES = [
     why: "<tmp>/entrust holds every run's $TMPDIR, which that run's sandbox writes: with the caller's TMPDIR inside the state directory another run's lies there too, this run's own roots do not cover it, so the whole of <tmp>/entrust is refused",
     assertStderr: (t) => /lies inside .*\/entrust, which this driver keeps for itself or hands to agents as a writable root/.test(t)
       || `a mailbox under another run's private $TMPDIR was accepted: ${t.slice(0, 240)}` },
-  { scenario: "happy",            expect: EXIT.OK, env: { ENTRUST_STATE_DIR: armedState }, args: ["--approval-dir", armedBox],
+  { scenario: "happy",            expect: EXIT.SUCCESS, env: { ENTRUST_STATE_DIR: armedState }, args: ["--approval-dir", armedBox],
     why: "an agent with a mailbox and nothing to ask runs as any other, and its report names the mailbox and no entries",
     assert: (r) => (r.approvalDir === realOf(armedBox) && r.escalations.length === 0 && r.approvalsAccepted === 0 && r.approvalsStale === 0 && r.approvalsLate === 0)
       || `the armed run's report is wrong: ${JSON.stringify({ dir: r.approvalDir, esc: r.escalations, acc: r.approvalsAccepted })}` },
@@ -264,54 +264,54 @@ const CASES = [
   { scenario: "happy",            expect: EXIT.USAGE, args: ["--writable", "/tmp"],
     why: "--writable grants a second root to WRITE in, and read level has none; the flag egress used to be paired with is now a default, and this half of the rule is untouched by that",
     assertStderr: (t) => /--writable belongs to --level write/.test(t) || `the level guard did not fire: ${t.slice(0, 140)}` },
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "an agent that names no network gets one, as a Claude subagent does: a grant the coordinator has to know to ask for is a rule to be told, and the whole claim of this level is that there is none",
     assert: (r) => (r.network === true && r.sandbox?.networkAccess === true)
       || `a read agent that named nothing got no egress: ${JSON.stringify({ n: r.network, sb: r.sandbox })}` },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--no-network"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--no-network"],
     why: "the negative is the whole of the opt-out, so it has to reach the permission profile the read level runs under and not only the report field",
     assert: (r) => (r.network === false && r.sandbox?.networkAccess === false)
       || `--no-network did not reach the read sandbox: ${JSON.stringify({ n: r.network, sb: r.sandbox })}` },
-  { scenario: "happy",            expect: EXIT.OK, agent: "RIGHTS: read <CWD>\nNETWORK: yes\n",
+  { scenario: "happy",            expect: EXIT.SUCCESS, agent: "RIGHTS: read <CWD>\nNETWORK: yes\n",
     why: "egress is not a level any more, so a read agent may declare it out loud; what it gets is the sandbox it would have got by saying nothing",
     assert: (r) => (r.level === "read" && r.network === true && r.sandbox?.networkAccess === true)
       || `an explicit positive did not reach a read agent: ${JSON.stringify({ l: r.level, n: r.network, sb: r.sandbox })}` },
-  { scenario: "happy",            expect: EXIT.OK, agent: "RIGHTS: read <CWD>\nNETWORK: no\n", args: ["--network"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, agent: "RIGHTS: read <CWD>\nNETWORK: no\n", args: ["--network"],
     why: "an explicit flag still outranks the file's field, and with a two-sided grant that promise is testable in both directions rather than only in the one the default already occupies",
     assert: (r) => (r.network === true && r.sandbox?.networkAccess === true)
       || `the header's negative outranked the command line: ${JSON.stringify({ n: r.network, sb: r.sandbox })}` },
   // The write level asks for egress through a different key — a sandbox setting rather than the read
   // profile's `network` table — so every one of the three shapes above is a separate question there.
-  { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--level", "write"],
     why: "the level decides what may be WRITTEN, not what may be reached; a fresh tree that has to install its own dependencies would otherwise need a flag whose absence looks like a working agent until the install fails",
     assert: (r) => (r.level === "write" && r.network === true && r.sandbox?.networkAccess === true)
       || `a write agent that named nothing got no egress: ${JSON.stringify({ l: r.level, n: r.network, sb: r.sandbox })}` },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write", "--no-network"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--level", "write", "--no-network"],
     why: "the negative has to reach sandbox_workspace_write.network_access, at the level where that key is the only thing standing between the turn and the internet",
     assert: (r) => (r.level === "write" && r.network === false && r.sandbox?.networkAccess === false)
       || `--no-network did not reach the write sandbox: ${JSON.stringify({ l: r.level, n: r.network, sb: r.sandbox })}` },
-  { scenario: "happy",            expect: EXIT.OK, agent: "RIGHTS: write <CWD>\nNETWORK: no\n",
+  { scenario: "happy",            expect: EXIT.SUCCESS, agent: "RIGHTS: write <CWD>\nNETWORK: no\n",
     why: "the prompt file is how a coordinator declares an agent, and the level is part of that declaration: a negative honoured at read level and dropped at write would leave the one level whose turn can also WRITE reaching the network it was told to stay off",
     assert: (r) => (r.level === "write" && r.network === false && r.sandbox?.networkAccess === false)
       || `the header's negative did not reach the write sandbox: ${JSON.stringify({ l: r.level, n: r.network, sb: r.sandbox })}` },
 
   // --- token accounting and verifier execution errors ---
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "the report must carry the ROOT thread's token accounting; a later subagent usage event with a larger total exposes a missing thread filter",
     assert: (r) => r.tokenUsage?.total?.totalTokens === 135
       || `tokenUsage missing, wrong, or taken from another thread: ${JSON.stringify(r.tokenUsage)}` },
-  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURABLE, args: ["--verify", notExec],
+  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURED, args: ["--verify", notExec],
     why: "exit 126 means the verifier was found but is not executable: fix the verifier, not the work",
     assert: (r) => (r.verify?.measured === false && r.verify?.exitCode === 126)
       || `a non-executable verifier was not classified as unmeasurable: ${JSON.stringify(r.verify)}` },
 
   // --- receipt location and identity ---
-  { scenario: "happy",            expect: EXIT.OK, env: { ENTRUST_SESSIONS_DIR: sessionsDir },
+  { scenario: "happy",            expect: EXIT.SUCCESS, env: { ENTRUST_SESSIONS_DIR: sessionsDir },
     why: "the receipt must be located and read: matching session_meta makes receiptOk true and surfaces originator and provider",
     assert: (r) => (r.receiptOk === true && typeof r.receiptPath === "string"
       && r.receiptOriginator === "Claude Code" && r.receiptModelProvider === "openai")
       || `a genuine rollout was not recognised: ${JSON.stringify({ ok: r.receiptOk, path: r.receiptPath, o: r.receiptOriginator, p: r.receiptModelProvider })}` },
-  { scenario: "happy",            expect: EXIT.OK, env: { ENTRUST_SESSIONS_DIR: mismatchSessions },
+  { scenario: "happy",            expect: EXIT.SUCCESS, env: { ENTRUST_SESSIONS_DIR: mismatchSessions },
     why: "a filename match is not a receipt: a rollout named for this thread whose session_meta names another one is found but NOT verified, because matching a name is as strong as `touch rollout-<id>.jsonl`",
     assert: (r) => (r.receiptOk === false && typeof r.receiptPath === "string" && /session id/.test(r.receiptWhy ?? ""))
       || `a mismatched rollout was accepted or misreported: ${JSON.stringify({ ok: r.receiptOk, path: r.receiptPath, why: r.receiptWhy })}` },
@@ -331,23 +331,23 @@ const CASES = [
   { scenario: "happy", agent: "EXPECT: foo\nRIGHTS: read <CWD>\n", expect: EXIT.USAGE,
     why: "RIGHTS must come FIRST. A file whose first field is anything else left the rights slot open, and an injected `RIGHTS: write ...` line then defined them",
     assertStderr: (e) => /first field must be RIGHTS/.test(e) || `a prompt file without a leading RIGHTS was accepted: ${e.slice(0, 160)}` },
-  { scenario: "happy", noPrompt: true, agent: "# a header that declares nothing\n\nTASK: do it\n", expect: EXIT.OK,
+  { scenario: "happy", noPrompt: true, agent: "# a header that declares nothing\n\nTASK: do it\n", expect: EXIT.SUCCESS,
     why: "a prompt file with no RIGHTS at all is a coordinator's prompt copied verbatim, which is what the direct route hands over; the default it falls back to is the narrowest rights there are, and it is REPORTED as undeclared so nobody reads it as a grant somebody made",
     assert: (r) => (r.level === "read" && !(r.promptFileFields ?? []).includes("RIGHTS"))
       || `a header-less file did not default to a read agent: ${JSON.stringify({ level: r.level, fields: r.promptFileFields })}` },
   { scenario: "happy", agent: "RIGHTS: read <CWD>\nVERIFY: touch <CWD>/agent-verify-must-not-run\n", expect: EXIT.USAGE,
     why: "VERIFY runs an unsandboxed shell with the caller's rights, so a newline-injected header must not enable it; prompt-file use requires --allow-prompt-verify on the command line",
     assertStderr: (e) => /allow-prompt-verify/.test(e) || `a prompt file supplied a verifier unasked: ${e.slice(0, 200)}` },
-  { scenario: "happy", agent: "RIGHTS: read <CWD>\nEXPECT: echo\nVERIFY: true\n", expect: EXIT.OK, args: ["--allow-prompt-verify"],
+  { scenario: "happy", agent: "RIGHTS: read <CWD>\nEXPECT: echo\nVERIFY: true\n", expect: EXIT.SUCCESS, args: ["--allow-prompt-verify"],
     why: "the escape hatch works and is explicit: with --allow-prompt-verify on the command line the same file runs its verifier",
     assert: (r) => (r.verify?.ok === true && r.promptFileFields?.includes("VERIFY"))
       || `the permitted agent verifier did not run: ${JSON.stringify({ v: r.verify, f: r.promptFileFields })}` },
-  { scenario: "happy", agent: "RIGHTS: read <CWD>\nEXPECT: echo\n", expect: EXIT.OK,
+  { scenario: "happy", agent: "RIGHTS: read <CWD>\nEXPECT: echo\n", expect: EXIT.SUCCESS,
     why: "the report names what the FILE declared, so a wrapped agent is not indistinguishable from a hand-typed one",
     assert: (r) => (Array.isArray(r.promptFileFields) && r.promptFileFields.join(",") === "RIGHTS,EXPECT")
       || `promptFileFields wrong: ${JSON.stringify(r.promptFileFields)}` },
 
-  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURABLE, args: ["--verify", "true"],
+  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURED, args: ["--verify", "true"],
     env: { ENTRUST_VERIFY_FLOOR_MS: "600000" },
     why: "a declared verifier with no remaining budget is unrun and must fail closed rather than fall through to weaker gates",
     assert: (r) => (r.verifySkipped === "budget-exhausted" && r.verify === null)
@@ -356,7 +356,7 @@ const CASES = [
   // --- the agent's $TMPDIR is always the run's own, whatever the caller exported ---
   // With no TMPDIR exported the base is Node's os.tmpdir(), which reads TMP next: set here, so the case
   // writes nothing into the machine's own /tmp.
-  { scenario: "happy",            expect: EXIT.OK, unsetEnv: ["TMPDIR"], env: { TMP: osTmp },
+  { scenario: "happy",            expect: EXIT.SUCCESS, unsetEnv: ["TMPDIR"], env: { TMP: osTmp },
     why: "a directory of the run's own permits scratch writes without granting all of the temporary directory: made fresh at 0700 under <tmp>/entrust/<project>/<run>/agents/<agent> when there is no report to name it after, every level it made 0700 too, and still there after the run",
     assert: (r) => {
       const roots = r.sandbox?.writableRoots ?? [];
@@ -368,7 +368,7 @@ const CASES = [
         if ((fs.statSync(d).mode & 0o777) !== 0o700) return `${d} is not 0700: ${(fs.statSync(d).mode & 0o777).toString(8)}`;
       return true;
     } },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"], env: { FAKE_RPC_LOG: writeCfgLog },
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--level", "write"], env: { FAKE_RPC_LOG: writeCfgLog },
     why: "the write sandbox's two temp exclusions are sent as -c keys and reported in no field of the driver's own: without them an agent granted one --cwd also writes all of /tmp and its own $TMPDIR is a grant nobody declared",
     assert: () => {
       const keys = cfgKeys(writeCfgLog);
@@ -376,7 +376,7 @@ const CASES = [
       const missing = TMP_KEYS.filter((k) => !keys.includes(k));
       return missing.length === 0 || `the write level did not send ${missing.join(", ")}: ${JSON.stringify(keys)}`;
     } },
-  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_RPC_LOG: readCfgLog },
+  { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_RPC_LOG: readCfgLog },
     why: "and the read level must not send them: the :read-only profile ignores both keys, so sending them would be a declaration nothing reads while the level's real grant is its filesystem entry",
     assert: () => {
       const keys = cfgKeys(readCfgLog);
@@ -384,7 +384,7 @@ const CASES = [
       const sent = TMP_KEYS.filter((k) => keys.includes(k));
       return sent.length === 0 || `the read level sent write-level sandbox keys: ${JSON.stringify(sent)}`;
     } },
-  { scenario: "happy",            expect: EXIT.OK, env: { TMPDIR: explicitTmp },
+  { scenario: "happy",            expect: EXIT.SUCCESS, env: { TMPDIR: explicitTmp },
     why: "a caller's TMPDIR is never the agent's whole grant: every agent a coordinator starts inherits the same one, and two that named one file there overwrote each other with no error (E92), so the grant is the run's own directory inside it and the report names it",
     assert: (r) => {
       const roots = r.sandbox?.writableRoots ?? [];
@@ -392,7 +392,7 @@ const CASES = [
       return (roots.length === 1 && roots[0] === fs.realpathSync(r.tmpDir))
         || `the grant is not the run's own directory (the caller's is ${fs.realpathSync(explicitTmp)}): ${JSON.stringify(roots)}`;
     } },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--level", "write"], env: { TMPDIR: explicitTmp },
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--level", "write"], env: { TMPDIR: explicitTmp },
     why: "the same at write level, where $TMPDIR is an implicit grant writableRoots never shows: the caller's is no extra root, the run's own is named, and both temp exclusions read back as sent",
     assert: (r) => {
       const roots = r.sandbox?.writableRoots ?? [];
@@ -403,18 +403,18 @@ const CASES = [
     } },
 
   // --- what the report says about the run's own footing ---
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "the initialize response carries the server version in userAgent; the report must preserve it so protocol drift is diagnosable",
     assert: (r) => (r.codexVersion === "0.159.3" && r.codexVersionPinned === "0.159.3")
       || `codexVersion was not read out of the userAgent: ${JSON.stringify({ v: r.codexVersion, pinned: r.codexVersionPinned })}` },
-  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_CODEX_VERSION: "9.9.9" },
+  { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_CODEX_VERSION: "9.9.9" },
     why: "a codex that is not the one the protocol facts were measured against is the first thing to know when behaviour contradicts the docs; it must be said on stderr and in the report, not inferred from a later failure",
     assert: (r) => r.codexVersion === "9.9.9" || `drift was not reported: ${JSON.stringify(r.codexVersion)}` },
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "the report must distinguish config inherited from a fresh probe, a last-known-good snapshot and account defaults",
     assert: (r) => (r.configInherited?.source === "probe" && r.configInherited.keys.includes("model"))
       || `a healthy probe was not reported as one: ${JSON.stringify(r.configInherited)}` },
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     env: { FAKE_CONFIG_FAIL: "1" },
     why: "the same field must distinguish the unhealthy case: a probe that failed with no last-known-good to keep means the turn ran on the account defaults",
     assert: (r) => (r.configInherited?.source === "none" && r.configInherited.keys.length === 0)
@@ -424,27 +424,27 @@ const CASES = [
     why: "the pid on the FIRST stderr line is what every page tells a coordinator to signal and what the live gate reads; a schema warning written from inside the argument parser put a line in front of it that a reader taking the first line would signal nothing at all",
     assertStderr: (e) => (/^entrust: pid=\d+ identity=/.test(e.split("\n")[0] ?? "") && /does not check \(oneOf\)/.test(e))
       || `the pid line is not first, or the warning was lost: ${JSON.stringify(e.split("\n").slice(0, 3))}` },
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     env: { FAKE_CONFIG_NULL: "1" },
     why: "the probe channel has no message handler, so a bare `null` line reached the response resolver and threw there — an uncaught TypeError with no report at all, before the turn had started",
     assert: (r) => (r.configInherited?.source === "probe" && r.configInherited.keys.includes("model"))
       || `a non-object frame cost the probe its answer: ${JSON.stringify(r.configInherited)}` },
 
   // --- --expect-command is matched against the command, not the shell that ran it ---
-  { scenario: "happy",            expect: EXIT.OK, args: ["--expect-command", "^echo"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--expect-command", "^echo"],
     why: "the live server reports a shell wrapper, so --expect-command must also match the parsed command for anchored patterns to work",
     assert: (r) => (r.expectationOk === true && r.commandsMatchingExpectation === 1)
       || `an anchored pattern did not match the parsed command: ${JSON.stringify({ ok: r.expectationOk, n: r.commandsMatchingExpectation })}` },
 
   // --- the prompt file is written by a program, so it must take the shapes a program writes ---
-  { scenario: "happy", agent: "RIGHTS: read <CWD>\nEXPECT: echo\nNETWORK: no\nALLOW_NO_COMMANDS: false\nBRIEF: 0\n", expect: EXIT.OK,
+  { scenario: "happy", agent: "RIGHTS: read <CWD>\nEXPECT: echo\nNETWORK: no\nALLOW_NO_COMMANDS: false\nBRIEF: 0\n", expect: EXIT.SUCCESS,
     why: "NETWORK/ALLOW_NO_COMMANDS/BRIEF must accept explicit false values in a header template: for the two whose default is off that is a flag not added, and for NETWORK, whose default is on, it is egress actually denied — reading it as omission is the one shape that grants what the template said to withhold",
     assert: (r) => (r.network === false && r.sandbox?.networkAccess === false
         && r.promptFileFields?.join(",") === "RIGHTS,EXPECT,NETWORK,ALLOW_NO_COMMANDS,BRIEF")
       || `a negated boolean was mishandled: ${JSON.stringify({ net: r.network, sb: r.sandbox?.networkAccess, fields: r.promptFileFields })}` },
 
   // --- --verify: the budget that killed it, and the sandbox that is opt-in ---
-  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURABLE, args: ["--timeout", "3", "--verify", "sleep 20"],
+  { scenario: "happy",            expect: EXIT.VERIFY_UNMEASURED, args: ["--timeout", "3", "--verify", "sleep 20"],
     why: "a verifier killed at its budget must report that the clock caused the cut, rather than leave a null exit code and signal unexplained",
     assert: (r) => (r.verify?.timedOut === true && r.verify?.budgetMs > 0 && r.verify?.measured === false)
       || `the budget that ended the verifier was not reported: ${JSON.stringify(r.verify)}` },
@@ -460,18 +460,18 @@ const CASES = [
     why: "`codex sandbox` passes the command's exit code through — measured live, exit 7 came back as 7 — so a sandboxed verifier's verdict is the verifier's, not the sandbox's",
     assert: (r) => (r.verify?.exitCode === 3 && r.verify?.sandboxed === true && r.verify?.measured === true)
       || `the sandboxed verifier's exit code was not passed through: ${JSON.stringify(r.verify)}` },
-  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_SANDBOX: "1", FAKE_RPC_LOG: sandboxNetLog },
+  { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_SANDBOX: "1", FAKE_RPC_LOG: sandboxNetLog },
     args: ["--verify", "true", "--verify-sandboxed"],
     why: "the sandboxed verifier runs under the profile the READ level runs under, so it has to be handed the agent's egress and not a fixed setting: a verifier that reaches what the turn could not is measuring the work under rights the turn never held",
     assert: () => sandboxArgvHas(sandboxNetLog, "permissions.entrust_read.network={enabled=true}") },
-  { scenario: "happy",            expect: EXIT.OK, env: { FAKE_SANDBOX: "1", FAKE_RPC_LOG: sandboxNoNetLog },
+  { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_SANDBOX: "1", FAKE_RPC_LOG: sandboxNoNetLog },
     args: ["--no-network", "--verify", "true", "--verify-sandboxed"],
     why: "and the denial has to travel with it, which is the direction a fixed `{enabled=true}` would pass: the caller who took egress away from the agent did not hand it to the check that judges the agent",
     assert: () => sandboxArgvHas(sandboxNoNetLog, "permissions.entrust_read.network={enabled=false}") },
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "and it must not fire where the reserve does not fit: on a 20 s agent a wrap-up steer would land in the first tick, which is an interruption rather than a warning — the rung is armed only when it leaves the model real time to write",
     assertStderr: (e) => !/wrap-up:/.test(e) || `a short agent was steered anyway: ${e.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.OK,
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "durationMs on commandExecution items distinguishes time spent running commands from time spent in the model",
     assert: (r) => {
       const t = r.timing;
@@ -480,11 +480,11 @@ const CASES = [
       if (t.commandMs !== 1) return `commandMs did not come from the item's own durationMs: ${JSON.stringify(t)}`;
       return t.modelMs === t.wallMs - t.setupMs - t.commandMs || `modelMs is not the remainder: ${JSON.stringify(t)}`;
     } },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--effort", "high"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--effort", "high"],
     why: "the measured failure shape: a high-effort turn spends minutes thinking before it writes anything, and under a short clock the cut lands before an answer exists. The warning is on stderr at the threadId announcement, while the caller can still stop the run",
     assertStderr: (e) => /effort high with --timeout 20s is the measured failure shape/.test(e)
       || `no warning for high effort under a short clock: ${e.slice(0, 300)}` },
-  { scenario: "happy",            expect: EXIT.OK, args: ["--effort", "low"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, args: ["--effort", "low"],
     why: "and it must stay quiet otherwise: a warning printed on every run is a warning nobody reads",
     assertStderr: (e) => !/measured failure shape/.test(e) || `the effort warning fired for low effort: ${e.slice(0, 200)}` },
 
@@ -515,13 +515,13 @@ const CASES = [
     why: "and the refusal is not waived by passing the flag too: a prompt file that names a bound is a caller who believes the file decides it, and running the flag's value silently would leave that belief in place",
     assertStderr: (e) => /TIMEOUT is command-line-only/.test(e)
       || `an explicit --timeout beside the field made the field acceptable: ${e.slice(0, 200)}` },
-  { scenario: "happy",            expect: EXIT.OK, noTimeout: true, args: ["--effort", "high"],
+  { scenario: "happy",            expect: EXIT.SUCCESS, noTimeout: true, args: ["--effort", "high"],
     why: "the 'high effort with a short clock' warning is about a clock that was SET; on the default it would fire on every run and warn about a budget nobody declared",
     assertStderr: (e) => !/measured failure shape/.test(e)
       || `the effort warning fired with no wall clock: ${e.slice(0, 200)}` },
 
   // --- the read level's cwd: a grant only where it grants something ---
-  { scenario: "happy",            expect: EXIT.OK, agent: "RIGHTS: read\nEXPECT: echo\n",
+  { scenario: "happy",            expect: EXIT.SUCCESS, agent: "RIGHTS: read\nEXPECT: echo\n",
     why: "RIGHTS: read without a directory means the current tree and grants no additional write rights",
     assert: (r) => (r.cwd === (fs.realpathSync(process.cwd())) && (r.promptFileFields ?? []).join(",") === "RIGHTS,EXPECT")
       || `a bare RIGHTS: read did not default to the current directory: ${JSON.stringify({ cwd: r.cwd, fields: r.promptFileFields })}` },
@@ -595,7 +595,7 @@ flow("--report-file publishes the whole report at 0600, byte for byte what stdou
         ...(prompt === undefined ? {} : { noPrompt: true }),
         env: { ENTRUST_STATE_DIR: state },
         ...(prompt === undefined ? {} : { agent: `RIGHTS: read <CWD>\n${prompt}\n` }) });
-      if (code !== EXIT.OK) { problems.push(`${scenario} exited ${code}: ${err.trim().slice(-160)}`); continue; }
+      if (code !== EXIT.SUCCESS) { problems.push(`${scenario} exited ${code}: ${err.trim().slice(-160)}`); continue; }
       if (!fs.existsSync(p)) { problems.push(`${scenario}: no report at ${p}`); continue; }
       const mode = fs.statSync(p).mode & 0o777;
       if (mode !== 0o600) problems.push(`${scenario}: the report is mode ${mode.toString(8)}, not 600`);
@@ -619,7 +619,7 @@ flow("--report-file makes the directories its path needs, at 0700, however many 
       const p = path.join(state, ...parts);
       const { code, out, err } = await run({ scenario: "happy", args: ["--report-file", p],
         env: { ENTRUST_STATE_DIR: state } });
-      if (code !== EXIT.OK) { problems.push(`${label}: exit ${code}: ${err.trim().slice(-160)}`); continue; }
+      if (code !== EXIT.SUCCESS) { problems.push(`${label}: exit ${code}: ${err.trim().slice(-160)}`); continue; }
       if (!fs.existsSync(p)) { problems.push(`${label}: no report at ${p}`); continue; }
       if (fs.readFileSync(p, "utf8") !== out) problems.push(`${label}: the file is not the bytes stdout carried`);
       // Every directory the run made, not the last one alone: an intermediate left at 0755 is a run
@@ -677,9 +677,9 @@ flow("a report that could not reach stdout is complete in --report-file, under t
     if (!fs.existsSync(p)) return "a closed stdout took the report file with it";
     const r = readJson(p);
     if (!r) return "the published report does not parse";
-    if (r.exitCode !== EXIT.OK || r.turnStatus !== "completed")
+    if (r.exitCode !== EXIT.SUCCESS || r.turnStatus !== "completed")
       return `the report's own verdict changed with the pipe: ${JSON.stringify({ exitCode: r.exitCode, turnStatus: r.turnStatus })}`;
-    if (code !== EXIT.OK) return `the run exited ${code}; a delivered report keeps the turn's own code, not the pipe's 4`;
+    if (code !== EXIT.SUCCESS) return `the run exited ${code}; a delivered report keeps the turn's own code, not the pipe's 4`;
     if (!String(r.answer).length) return "the report reached the file without the answer";
     return true;
   });
@@ -700,7 +700,7 @@ flow("two agents naming one --report-file: the first to publish keeps the file, 
       env: { ENTRUST_STATE_DIR: fastState } });
     const late = await slow;
     const problems = [];
-    if (fast.code !== EXIT.OK) problems.push(`the first publisher exited ${fast.code}: ${fast.err.trim().slice(-160)}`);
+    if (fast.code !== EXIT.SUCCESS) problems.push(`the first publisher exited ${fast.code}: ${fast.err.trim().slice(-160)}`);
     if (late.code !== EXIT.TRANSPORT) problems.push(`the second publisher exited ${late.code}, not 4: ${late.err.trim().slice(-160)}`);
     if (!late.err.includes(`the report could not be published at ${p}`))
       problems.push(`the loser does not name the path it lost: ${late.err.trim().slice(-200)}`);
@@ -776,10 +776,10 @@ flow("a resumed agent writes a report file of its own",
     const state = flowState();
     const first = reportPath(state, "first.json"), second = reportPath(state, "second.json");
     const a = await run({ scenario: "happy", args: ["--report-file", first], env: { ENTRUST_STATE_DIR: state } });
-    if (a.code !== EXIT.OK) return `the first turn exited ${a.code}: ${a.err.trim().slice(-160)}`;
+    if (a.code !== EXIT.SUCCESS) return `the first turn exited ${a.code}: ${a.err.trim().slice(-160)}`;
     const b = await run({ scenario: "happy", args: ["--resume", "thr_root", "--report-file", second],
       env: { ENTRUST_STATE_DIR: state } });
-    if (b.code !== EXIT.OK) return `the resumed turn exited ${b.code}: ${b.err.trim().slice(-160)}`;
+    if (b.code !== EXIT.SUCCESS) return `the resumed turn exited ${b.code}: ${b.err.trim().slice(-160)}`;
     const r1 = readJson(first), r2 = readJson(second);
     if (!r1 || !r2) return "one of the two turns published nothing";
     if (r1.resumedFrom !== null) return `the first turn reported a resume: ${JSON.stringify(r1.resumedFrom)}`;
@@ -797,12 +797,12 @@ flow("a resumed turn writes an answer file of its own, and the first turn's stil
   async () => {
     const state = flowState();
     const a = await run({ scenario: "happy", env: { ENTRUST_STATE_DIR: state } });
-    if (a.code !== EXIT.OK) return `the first turn exited ${a.code}: ${a.err.trim().slice(-160)}`;
+    if (a.code !== EXIT.SUCCESS) return `the first turn exited ${a.code}: ${a.err.trim().slice(-160)}`;
     // A different scenario for the resumed turn, so the two answers differ: with one text in both, a file
     // the resume overwrote reads exactly like one it never touched.
     const b = await run({ scenario: "null-phase", args: ["--resume", "thr_root"],
       env: { ENTRUST_STATE_DIR: state } });
-    if (b.code !== EXIT.OK) return `the resumed turn exited ${b.code}: ${b.err.trim().slice(-160)}`;
+    if (b.code !== EXIT.SUCCESS) return `the resumed turn exited ${b.code}: ${b.err.trim().slice(-160)}`;
     let r1 = null, r2 = null;
     try { r1 = JSON.parse(a.out); r2 = JSON.parse(b.out); } catch { return "one of the two turns printed no report"; }
     if (r1.threadId !== r2.threadId) return `the two turns did not share a thread: ${r1.threadId} / ${r2.threadId}`;
@@ -827,7 +827,7 @@ flow("a prompt file supplies the rights line a coordinator's prompt does not hav
     const bare = await run({ scenario: "happy", noPrompt: true,
       agent: "Count the exit codes in the driver and say how many.\n",
       env: { ENTRUST_STATE_DIR: flowState() } });
-    if (bare.code !== EXIT.OK) return `a header-less prompt exited ${bare.code}: ${bare.err.trim().slice(-200)}`;
+    if (bare.code !== EXIT.SUCCESS) return `a header-less prompt exited ${bare.code}: ${bare.err.trim().slice(-200)}`;
     const r1 = parse(bare.out);
     if (!r1) return `the run printed no report: ${bare.out.slice(0, 160)}`;
     if (r1.level !== "read" || r1.cwd !== here)
@@ -837,7 +837,7 @@ flow("a prompt file supplies the rights line a coordinator's prompt does not hav
     // A header that declares something else and still no rights: the fields apply, the default stands.
     const noAgent = await run({ scenario: "happy", noPrompt: true,
       agent: "EFFORT: high\n\nDo the work and report.\n", env: { ENTRUST_STATE_DIR: flowState() } });
-    if (noAgent.code !== EXIT.OK) return `a RIGHTS-less header exited ${noAgent.code}: ${noAgent.err.trim().slice(-200)}`;
+    if (noAgent.code !== EXIT.SUCCESS) return `a RIGHTS-less header exited ${noAgent.code}: ${noAgent.err.trim().slice(-200)}`;
     const r2 = parse(noAgent.out);
     if (!r2) return "the second run printed no report";
     if (r2.level !== "read" || r2.cwd !== here)
@@ -856,11 +856,11 @@ flow("the run's $TMPDIR outlives its run, a later run leaves it alone, and the s
   async () => {
     const state = flowState(), tmp = tempDir("entrust-kept-tmp-");
     const first = await run({ scenario: "tmp-write", env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
-    if (first.code !== EXIT.OK) return `the first run exited ${first.code}: ${first.err.trim().slice(-200)}`;
+    if (first.code !== EXIT.SUCCESS) return `the first run exited ${first.code}: ${first.err.trim().slice(-200)}`;
     const dir = JSON.parse(first.out).tmpDir;
     if (!dir || !fs.existsSync(path.join(dir, "agent-note.txt"))) return `the run's $TMPDIR or the agent's file in it is gone at exit: ${JSON.stringify(dir)}`;
     const second = await run({ scenario: "happy", env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
-    if (second.code !== EXIT.OK) return `the second run exited ${second.code}: ${second.err.trim().slice(-200)}`;
+    if (second.code !== EXIT.SUCCESS) return `the second run exited ${second.code}: ${second.err.trim().slice(-200)}`;
     if (JSON.parse(second.out).tmpDir === dir) return `two runs were handed one $TMPDIR: ${dir}`;
     if (!fs.existsSync(path.join(dir, "agent-note.txt"))) return `a later run removed an earlier run's $TMPDIR: ${dir}`;
     return !fs.existsSync(path.join(state, "tmp")) || `the driver still made ${path.join(state, "tmp")}`;
@@ -874,23 +874,23 @@ flow("agents share a project/run parent, reports in different state directories 
     const report = (state) => path.join(state, rel, "report.json");
     const state = flowState();
     const a = await run({ scenario: "happy", args: ["--report-file", report(state)], env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
-    if (a.code !== EXIT.OK) return `first agent: ${a.code}, ${a.err}`;
+    if (a.code !== EXIT.SUCCESS) return `first agent: ${a.code}, ${a.err}`;
     const want = JSON.parse(a.out).tmpDir;
     if (!isAgentTmp(tmp, want)) problems.push(`not project/run/agents: ${want}`);
     for (let d = want; d !== fs.realpathSync(tmp); d = path.dirname(d))
       if ((fs.statSync(d).mode & 0o777) !== 0o700) problems.push(`${d} is not 0700`);
     const sibling = path.join(state, "orchestrate", "slug-x", "run-1", "a2", "report.json");
     const s = await run({ scenario: "happy", args: ["--report-file", sibling], env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
-    if (s.code !== EXIT.OK || path.dirname(JSON.parse(s.out).tmpDir) !== path.dirname(want)) problems.push(`sibling did not share its run: ${s.code}, ${s.err}`);
+    if (s.code !== EXIT.SUCCESS || path.dirname(JSON.parse(s.out).tmpDir) !== path.dirname(want)) problems.push(`sibling did not share its run: ${s.code}, ${s.err}`);
     const other = flowState();
     const b = await run({ scenario: "happy", args: ["--report-file", report(other)], env: { ENTRUST_STATE_DIR: other, TMPDIR: tmp } });
-    if (b.code !== EXIT.OK || path.dirname(JSON.parse(b.out).tmpDir) === path.dirname(want)) problems.push("distinct state roots shared a run");
+    if (b.code !== EXIT.SUCCESS || path.dirname(JSON.parse(b.out).tmpDir) === path.dirname(want)) problems.push("distinct state roots shared a run");
     fs.unlinkSync(report(state));
     const duplicate = await run({ scenario: "happy", args: ["--report-file", report(state)], env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
-    if (duplicate.code !== EXIT.OK || JSON.parse(duplicate.out).tmpDir === want || !fs.existsSync(want)) problems.push(`agent leaf was reused or discarded: ${duplicate.code}, ${duplicate.err}`);
+    if (duplicate.code !== EXIT.SUCCESS || JSON.parse(duplicate.out).tmpDir === want || !fs.existsSync(want)) problems.push(`agent leaf was reused or discarded: ${duplicate.code}, ${duplicate.err}`);
     const outside = path.join(tempDir("entrust-outside-report-"), "report.json");
     const c = await run({ scenario: "happy", args: ["--report-file", outside], env: { ENTRUST_STATE_DIR: flowState(), TMPDIR: tmp } });
-    if (c.code !== EXIT.OK || !isAgentTmp(tmp, JSON.parse(c.out).tmpDir)) problems.push(`outside report: ${c.code}, ${c.err}`);
+    if (c.code !== EXIT.SUCCESS || !isAgentTmp(tmp, JSON.parse(c.out).tmpDir)) problems.push(`outside report: ${c.code}, ${c.err}`);
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -900,7 +900,7 @@ flow("the verifier's child check stays under the agent's exclusive TMPDIR withou
     const runner = path.join(ROOT, "skills", "orchestrate", "scripts", "capture-check.mjs");
     const command = `node '${runner}' -- 'echo scoped' > "$TMPDIR/receipt.txt"`;
     const r = await run({ scenario: "happy", args: ["--verify", command] });
-    if (r.code !== EXIT.OK) return `exit ${r.code}: ${r.err}`;
+    if (r.code !== EXIT.SUCCESS) return `exit ${r.code}: ${r.err}`;
     const dir = JSON.parse(r.out).tmpDir;
     const receipt = fs.readFileSync(path.join(dir, "receipt.txt"), "utf8");
     const log = /^LOG=(.+)$/m.exec(receipt)?.[1];
@@ -927,7 +927,7 @@ flow("approval mailboxes may use evaluator storage, but ancestor and cross-run a
     const control = path.join(suite, "reports", "control", "approvals"); fs.mkdirSync(control, { recursive: true });
     const ok = await run({ scenario: "happy", args: ["--approval-dir", control],
       env: { ENTRUST_STATE_DIR: suite, TMPDIR: suite, ENTRUST_TEMP_CONTEXT: JSON.stringify(c) } });
-    if (ok.code !== EXIT.OK) return `evaluator control refused: ${ok.code}, ${ok.err}`;
+    if (ok.code !== EXIT.SUCCESS) return `evaluator control refused: ${ok.code}, ${ok.err}`;
     const parent = path.join(c.scope, "agents", "parent"); mark(parent, "agents");
     const childSuite = path.join(parent, "evals", "child"); mark(childSuite, "evals");
     const nestedState = path.join(childSuite, "state"); fs.mkdirSync(nestedState);
@@ -990,7 +990,7 @@ flow("a caller TMPDIR above the state directory or inside it is never granted: t
       const tmp = shape === "above" ? base : path.join(state, "inner");
       const r = await run({ scenario: "env-tmpprefix", args: level === "write" ? ["--level", "write"] : [],
         unsetEnv: ["TMPPREFIX"], env: { ENTRUST_STATE_DIR: state, TMPDIR: tmp } });
-      const rep = r.code === EXIT.OK ? JSON.parse(r.out) : null;
+      const rep = r.code === EXIT.SUCCESS ? JSON.parse(r.out) : null;
       const leaf = rep?.tmpDir;
       const label = `TMPDIR ${shape} the state directory, ${level} level`;
       if (!leaf || !isAgentTmp(tmp, leaf)) { problems.push(`${label}: exit ${r.code}, tmpDir ${JSON.stringify(leaf)}; ${r.err.trim().slice(-160)}`); continue; }
@@ -1017,7 +1017,7 @@ flow("one driver per mailbox, ever: a second exits 2 naming the owner's pid, whe
     const problems = [];
     if (second.code !== EXIT.USAGE || !second.err.includes(`belongs to entrust pid ${owner.pid}, which is still running`))
       problems.push(`a second driver on a live mailbox: exit ${second.code}, ${second.err.trim().slice(-200)}`);
-    if (a.code !== EXIT.OK) problems.push(`the owner exited ${a.code}`);
+    if (a.code !== EXIT.SUCCESS) problems.push(`the owner exited ${a.code}`);
     const held = readJson(path.join(box, "owner.json"));
     if (held?.threadId !== "thr_root") problems.push("the owner file does not name the thread once it exists");
     const third = await run({ scenario: "happy", args: ["--approval-dir", box], env: { ENTRUST_STATE_DIR: state } });
@@ -1135,7 +1135,7 @@ const refusal = (r, re) => r.code !== EXIT.USAGE ? `exit ${r.code}, expected 2: 
   : r.out !== "" ? `a refusal printed ${r.out.length} bytes on stdout`
     : !/^entrust: refused: [^\n]+\n$/.test(r.err) ? `stderr is not one refusal line: ${JSON.stringify(r.err.slice(0, 300))}`
       : re.test(r.err) || `the refusal does not give the run's reason: ${r.err.slice(0, 300)}`;
-const passed = (r) => (r.code === EXIT.OK && r.out === "" && r.err === "")
+const passed = (r) => (r.code === EXIT.SUCCESS && r.out === "" && r.err === "")
   || `expected a silent 0, got exit ${r.code}, stdout ${JSON.stringify(r.out.slice(0, 120))}, stderr ${JSON.stringify(r.err.slice(0, 200))}`;
 const GOOD_HEADER = "RIGHTS: read <DIR>\nEFFORT: high\nNETWORK: no\nBRIEF: yes\nTASK: count the exit codes\n";
 

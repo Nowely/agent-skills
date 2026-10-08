@@ -193,7 +193,7 @@ test("S3 three units at concurrency two: each agent at <run>/<id>/report.json wi
       if (a.report !== path.join(runDir, a.id, "report.json")) problems.push(`${a.id}'s report is not at <run>/<id>/report.json`);
       if (!fs.existsSync(a.report)) problems.push(`no report for ${a.id}`);
       if (a.path !== "own") problems.push(`${a.id} PATH=${a.path}`);
-      if (a.exitCode !== EXIT.OK) problems.push(`${a.id} exitCode ${a.exitCode}, driver ${a.driverExit}`);
+      if (a.exitCode !== EXIT.SUCCESS) problems.push(`${a.id} exitCode ${a.exitCode}, driver ${a.driverExit}`);
       if (typeof a.first !== "string" || !a.first) problems.push(`${a.id} has no first line`);
       if (!a.startedAt || !a.finishedAt) problems.push(`${a.id} has no timestamps`);
     }

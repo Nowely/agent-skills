@@ -122,8 +122,8 @@ test("a launch runs the driver on DIR/prompt.txt and REPORT, leaves out.json, er
     const { dir, state, report } = fresh();
     const { code, err } = await launch(dir, report, state).done;
     const problems = [];
-    if (code !== EXIT.OK) problems.push(`the launch exited ${code}, not ${EXIT.OK}: ${err.slice(0, 200)}`);
-    if ((read(path.join(dir, "exit")) ?? "").trim() !== String(EXIT.OK)) problems.push(`DIR/exit holds ${JSON.stringify(read(path.join(dir, "exit")))}`);
+    if (code !== EXIT.SUCCESS) problems.push(`the launch exited ${code}, not ${EXIT.SUCCESS}: ${err.slice(0, 200)}`);
+    if ((read(path.join(dir, "exit")) ?? "").trim() !== String(EXIT.SUCCESS)) problems.push(`DIR/exit holds ${JSON.stringify(read(path.join(dir, "exit")))}`);
     const out = read(path.join(dir, "out.json"));
     let r = null; try { r = JSON.parse(out ?? ""); } catch {}
     if (!r) problems.push("DIR/out.json is not the JSON report");
