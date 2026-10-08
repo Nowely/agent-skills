@@ -383,6 +383,14 @@ async function settleOpenRequest(ctx, q) {
   if (ctx.abortRequested) return false;
   if (d.decision === "decline")
     return rejectTrackedRequest(ctx, q, { decision: "declined", by: "coordinator", why: d.why ?? null }, "declined");
+  // The record before the answer: an accept the mailbox does not hold is one no coordinator can see was given.
+  // One that cannot be written is not answered, and the deadline settles the request.
+  const settled = {
+    decision: acceptedDecision(d.decision), by: "coordinator", why: d.why ?? null,
+    settledAt: new Date(now()).toISOString(), outcome: "pending",
+  };
+  if (d.decision === "answer") settled.answer = d.answer ?? null;
+  try { settleRequestFile(ctx, q, settled); } catch { q.settled = null; return false; }
   if (q.type === "opencode.permission") {
     outcome = await respond(ctx, q.type, q.payload.id, "permission", { reply: d.decision === "accept" ? "once" : "reject" }, q.payload.sessionID);
   } else if (d.decision === "answer") {
@@ -390,12 +398,8 @@ async function settleOpenRequest(ctx, q) {
   } else {
     outcome = await respond(ctx, q.type, q.payload.id, "decline", {}, q.payload.sessionID);
   }
-  const settled = {
-    decision: acceptedDecision(d.decision), by: "coordinator", why: d.why ?? null,
-    settledAt: new Date(now()).toISOString(), outcome: outcome.outcome,
-  };
-  if (d.decision === "answer") settled.answer = d.answer ?? null;
-  settleRequestFile(ctx, q, settled);
+  settled.outcome = outcome.outcome;
+  try { settleRequestFile(ctx, q, settled); } catch {}
   if (settled.decision === "declined") ctx.declined += 1;
   if (outcome.outcome === "unknown") ctx.unresolved = true;
   return true;

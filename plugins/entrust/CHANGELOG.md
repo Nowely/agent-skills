@@ -30,6 +30,11 @@ forensics remain in the repository references and release notes.
 - **A Codex `WRITABLE:` root is bound by the plan.** Under a registered plan only the `RIGHTS:` line was checked
   against the row's writes, so `RIGHTS: write A` with `WRITABLE: B` passed and the run wrote B. A `WRITABLE:` root
   must now lie inside the row's write root (X2).
+- **No accept is answered before the mailbox holds it.** Claude's approval server answered allow even when the
+  request's record could not be rewritten, and OpenCode answered the server first and recorded afterwards, so a
+  command could run with the user's rights while the mailbox, and the launcher's `approvals=` count, showed no
+  accept. Both now record the settlement first: Claude answers deny when it cannot, OpenCode leaves the request
+  unanswered for its deadline. The Codex driver already worked this way (X3).
 
 ## 0.27.0 — 2026-10-08
 

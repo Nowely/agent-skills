@@ -6,7 +6,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import readline from "node:readline";
+import { spawn, spawnSync } from "node:child_process";
 import { EVALS, ROOT, registry, runCases, skip, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
 import { childEnv, mailboxRules, parsePrompt } from "../plugin/skills/claude/scripts/driver.mjs";
 import { requestOf } from "../plugin/skills/claude/scripts/approvals.mjs";
@@ -180,6 +181,28 @@ test("a worktree's report is read through the git directory its repository recor
   assert.equal(t.code, 0, t.err);
   assert.equal(fs.existsSync(`${fake}.ran`), false, "the agent's fsmonitor ran under the driver's git");
   assert.deepEqual(t.json.untracked, ["?? planted.txt"]);
+});
+
+test("an accept the mailbox cannot record is answered deny, never allow", async () => {
+  const box = tempDir("entrust-claude-box-");
+  const server = spawn(process.execPath, [path.join(ROOT, "skills/claude/scripts/approvals.mjs")], {
+    env: { ...process.env, ENTRUST_APPROVAL_DIR: box, ENTRUST_RUN_PID: "4242", ENTRUST_RUN_STARTED_MS: "1", ENTRUST_RUN_CWD: box, ENTRUST_RUN_ROOTS: "[]" },
+    stdio: ["pipe", "pipe", "inherit"] });
+  const replies = [];
+  readline.createInterface({ input: server.stdout }).on("line", (l) => replies.push(JSON.parse(l)));
+  const call = (id, method, params) => server.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
+  call(1, "initialize", { protocolVersion: "2025-06-18" });
+  call(2, "tools/call", { name: "decide", arguments: { tool_name: "Bash", input: { command: "touch /x/y" } } });
+  const until = async (ok) => { for (let i = 0; i < 100 && !ok(); i++) await new Promise((r) => setTimeout(r, 50)); };
+  await until(() => fs.readdirSync(box).some((n) => n.endsWith(".request.json")));
+  const name = fs.readdirSync(box).find((n) => n.endsWith(".request.json"));
+  const q = JSON.parse(fs.readFileSync(path.join(box, name), "utf8"));
+  fs.rmSync(path.join(box, name)); fs.mkdirSync(path.join(box, name));
+  fs.writeFileSync(path.join(box, `${q.id}.decision.json`), JSON.stringify({ id: q.id, run: q.run, decision: "accept" }));
+  await until(() => replies.some((m) => m.id === 2));
+  server.kill();
+  const answer = JSON.parse(replies.find((m) => m.id === 2).result.content[0].text);
+  assert.equal(answer.behavior, "deny");
 });
 
 test("an error result exits 1, no structured answer 13, a dead claude 4, a missing one 4", async () => {

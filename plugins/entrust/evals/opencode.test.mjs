@@ -314,6 +314,12 @@ async function driverRun(server, { headers = "", approval = null, resume = null,
           if (file && files.length >= pendingCount) {
             if (cancel && cancelWhenPending) { p.child.kill("SIGTERM"); acted = true; break; }
             const q = JSON.parse(fs.readFileSync(path.join(box, file)));
+            if (approval === "unrecordable") {
+              // The request's record cannot be rewritten, and an accept fitting it is published beside it.
+              fs.rmSync(path.join(box, file)); fs.mkdirSync(path.join(box, file));
+              fs.writeFileSync(path.join(box, `${q.id}.decision.json`), JSON.stringify({ id: q.id, run: q.run, requestHash: q.requestHash, remote: q.remote, decision: "accept" }));
+              acted = true; continue;
+            }
             const r = await invoke([ENTRY, "--dir", dir, "--report-file", report, "--decide", q.id, approval === "answer" ? "--answer" : approval === "decline" ? "--decline" : "--accept"],
               approval === "answer" ? '{"answers":[["Read"]]}' : approval === "decline" ? "" : q.presented + "\n");
             assert.equal(r.code, 0, r.out + r.err); acted = true;
@@ -372,6 +378,13 @@ test("native permission reaches mailbox, receives once, and foreign request rema
     const r = await driverRun(s, { approval: "accept" }); assert.equal(r.code, 0, r.err);
     assert.deepEqual(s.mutations.map((m) => m.body), [{ reply: "once" }]);
     assert.equal(s.replies.some((q) => q.id === "per_foreign"), true);
+  } finally { await s.close(); }
+});
+test("an accept the mailbox cannot record is never answered once", async () => {
+  const s = await fakeOpenCode("permission");
+  try {
+    await driverRun(s, { approval: "unrecordable" });
+    assert.equal(s.mutations.some((m) => m.body?.reply === "once"), false, JSON.stringify(s.mutations));
   } finally { await s.close(); }
 });
 test("native question receives a structured answer through its separate route", async () => {
