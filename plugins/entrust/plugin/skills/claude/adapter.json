@@ -1,5 +1,12 @@
 {
   "schemaVersion": 1,
+  "status": { "script": "scripts/status.mjs", "args": ["--json"] },
+  "launcher": "scripts/agent-run.mjs",
+  "launch": "scripts/launch.mjs",
   "plan": { "models": ["opus", "sonnet", "haiku", "fable"], "native": true },
+  "swarm": {
+    "briefModel": "^MODEL:\\s*(?:opus|sonnet|haiku|fable|claude-\\S+)\\s*$",
+    "briefModelRule": "a MODEL: line naming a Claude model"
+  },
   "modelSlug": "\\bclaude-(?:opus|sonnet|haiku|fable|\\d)"
 }

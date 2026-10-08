@@ -3,6 +3,42 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Added
+
+- **External Claude agents.** The `claude` adapter runs a Claude agent as the launcher runs Codex and OpenCode agents:
+  one `claude -p` per launch, from any host, through `claude/scripts/agent-run.mjs`, a proxy and the mailbox. A
+  plan row whose adapter column is `claude` is an external run; a five-column row naming a Claude model stays native.
+  The prompt takes `RIGHTS`, `MODEL`, `EFFORT`, `OUTPUT_SCHEMA`, `RESUME` and `SAFE_MODE: yes`, which runs Claude
+  Code's `--safe-mode`: no CLAUDE.md, memory, skills, plugins, hooks or MCP servers, so no approvals. Claude Code
+  validates the answer against the schema (`--json-schema`); a continuation forks the earlier session
+  (`--resume --fork-session --session-id`); a stop is SIGINT, which ends the turn with a result. Each permission
+  prompt reaches the mailbox through a stdio MCP server, `claude/scripts/approvals.mjs`, the mailbox's only
+  writer: a plain Bash command comes back as a command request, any other call as `claude.permission` with the
+  whole call to restate. The plan pins the model and the writes; a `write` directory may not overlap the state
+  directory, and Edit deny rules keep every file tool, redirect and `tee` out of the mailboxes. A refusal at launch
+  is a published report, its reason on `ERROR=`. The driver is 426 lines, measured against Claude Code
+  2.1.294 (research/2026-10-08-claude-adapter); `evals/claude.test.mjs` runs it on a fake `claude`, and
+  `ENTRUST_LIVE_CLAUDE=1` runs one approval through the real one on Haiku. The advisor in a Codex host reaches
+  Claude through it.
+
+### Changed
+
+- **What an external driver shares is orchestrate's.** The exit-code table, the request-id shape, the RIGHTS grammar,
+  its check against a registered plan's writes and the scope it grants, and the worktree a `worktree` agent runs in moved, unchanged, from the OpenCode adapter to
+  `orchestrate/scripts/drivers.mjs`, which the OpenCode driver imports, so a second driver does not copy them.
+
+### Fixed
+
+- **A worktree report carries committed work (E136).** `worktreeFacts` diffed the worktree against its index, so an
+  OpenCode or Claude agent that staged or committed its work reported an empty `diff`. It now diffs against the
+  recorded base commit, as the Codex driver does.
+- **A missing run directory is refused, not reported as a missing `claude`.** A `RIGHTS: read` or `write` directory
+  that does not exist, or a `RESUME` whose run's directory is gone, passed `--check-prompt-file` and then failed the
+  spawn with ENOENT, which the Claude driver reported as "claude is not on PATH", exit 4. `--check-prompt-file` now
+  refuses it.
+
 ## 0.26.0 — 2026-10-08
 
 ### Removed

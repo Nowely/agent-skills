@@ -9,50 +9,13 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { digest, splitModel, modelKey } from "./config.mjs";
 import { SCHEMA_KEYWORDS, checkSchemaSubset, validateValue, validateOutput } from "../../orchestrate/scripts/json-schema.mjs";
+import { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, parseRights, planWritesToRights, resolveRights, within } from "../../orchestrate/scripts/drivers.mjs";
+
+export { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, parseRights, planWritesToRights, within };
 
 // The shared five-field answer schema lives with the other adapters; it is never duplicated here.
 // From scripts/ the path is skills/codex/schemas, i.e. two levels up, not one.
 export const FIVE_FIELDS_SCHEMA = fileURLToPath(new URL("../../orchestrate/schemas/five-fields.schema.json", import.meta.url));
-
-// Resolve a path through its longest existing prefix and then realpath, so a symlinked directory
-// compares as the place a file will actually land. Mirrors the launcher's own resolveLoose.
-export function canonical(p, base = process.cwd()) {
-  const abs = path.isAbsolute(String(p)) ? String(p) : path.resolve(base, String(p));
-  const rest = [];
-  for (let cur = path.resolve(abs); ;) {
-    try { return path.join(fs.realpathSync(cur), ...rest); } catch {}
-    const parent = path.dirname(cur);
-    if (parent === cur) return path.resolve(abs);
-    rest.unshift(path.basename(cur));
-    cur = parent;
-  }
-}
-
-export function within(child, parent) {
-  const rel = path.relative(parent, child);
-  return rel === "" || (rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
-}
-
-// Baseline exit codes. The numbering is a contract; 11 is left unused, as in the shared launcher.
-export const EXIT = Object.freeze({
-  SUCCESS: 0,
-  MODEL: 1,
-  USAGE: 2,
-  TIMEOUT: 3,
-  TRANSPORT: 4,
-  COMMANDS: 5,
-  APPROVAL: 6,
-  NEEDS_INPUT: 7,
-  NO_ANSWER: 8,
-  VERIFY_FAILED: 9,
-  BUSY: 10,
-  VERIFY_UNMEASURED: 12,
-  SCHEMA: 13,
-});
-
-// A request id is a sequence number and eight hex digits, and it is also a file name.
-export const REQUEST_ID = /^\d+-[0-9a-f]{8}$/;
-export const REQUEST_ID_SOURCE = "^\\d+-[0-9a-f]{8}$";
 
 // Header keys the driver understands. RIGHTS must be first if present; every other uppercase
 // header is refused, and NETWORK/WEB_SEARCH are understood only to refuse them for the capability
@@ -69,27 +32,6 @@ export function requestId(seq, rand = crypto.randomBytes) {
 }
 
 export function isRequestId(value) { return typeof value === "string" && REQUEST_ID.test(value); }
-
-// RIGHTS: `read [cwd]`, `write <cwd>` or `worktree <repo>`. The path is kept as written; the
-// driver resolves it against its own cwd.
-export function parseRights(value) {
-  if (typeof value !== "string") return { error: "RIGHTS needs read, write <dir> or worktree <repo>" };
-  let m;
-  if ((m = /^read(?:[ \t]+(\S.*))?$/.exec(value))) return { kind: "read", path: m[1] ?? null };
-  if ((m = /^write[ \t]+(\S.*)$/.exec(value))) return { kind: "write", path: m[1] };
-  if ((m = /^worktree[ \t]+(\S.*)$/.exec(value))) return { kind: "worktree", path: m[1] };
-  return { error: `RIGHTS must be read, write <dir> or worktree <repo>, not ${JSON.stringify(value)}` };
-}
-
-// The writes column of a registered plan row, mapped to the same shapes.
-export function planWritesToRights(writes, cwd) {
-  if (writes === "nothing") return { kind: "read", path: null };
-  if (writes === "live tree") return { kind: "write", path: cwd };
-  if (writes === "worktree") return { kind: "worktree", path: cwd };
-  const m = /^write[ \t]+(\S.*)$/.exec(writes ?? "");
-  if (m) return { kind: "write", path: m[1] };
-  return { error: `plan writes ${JSON.stringify(writes ?? null)} cannot be mapped to a rights scope` };
-}
 
 // The prompt is a run of `KEY: value` header lines, then `TASK:` which begins the body. Blank
 // lines before TASK are tolerated; anything else before TASK, an unknown uppercase header, a
@@ -147,35 +89,9 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   if (headers.RESUME === undefined && out.agent && out.apiFamily !== "v2")
     return { error: "AGENT requires API_FAMILY v2" };
 
-  // RIGHTS, or the plan's writes when a registered plan pins it. A registered plan pins the
-  // resolved write PATH, not just the kind: a same-kind RIGHTS that resolves outside the approved
-  // root (or a different worktree) is a widening attempt and is refused offline.
-  const planWrites = env.ENTRUST_PLAN_WRITES;
-  if (headers.RIGHTS !== undefined) {
-    const rights = parseRights(headers.RIGHTS);
-    if (rights.error) return { error: rights.error };
-    out.rights = rights;
-    if (planWrites) {
-      const planned = planWritesToRights(planWrites, cwd);
-      if (planned.error) return { error: planned.error };
-      if (planned.kind !== rights.kind)
-        return { error: `RIGHTS ${rights.kind} does not match the approved plan's ${planned.kind} writes scope` };
-      if (planned.kind === "write") {
-        const rp = canonical(rights.path ?? cwd, cwd), pp = canonical(planned.path, cwd);
-        if (!within(rp, pp)) return { error: `RIGHTS write ${rp} widens past the approved plan write ${pp}` };
-      }
-      if (planned.kind === "worktree") {
-        const rp = canonical(rights.path, cwd), pp = canonical(planned.path, cwd);
-        if (rp !== pp) return { error: `RIGHTS worktree ${rp} is not the approved plan worktree ${pp}` };
-      }
-    }
-  } else if (planWrites) {
-    const rights = planWritesToRights(planWrites, cwd);
-    if (rights.error) return { error: rights.error };
-    out.rights = rights;
-  } else {
-    return { error: "RIGHTS is required: read, write <dir> or worktree <repo>" };
-  }
+  const rights = resolveRights(headers.RIGHTS, env.ENTRUST_PLAN_WRITES, cwd);
+  if (rights.error) return { error: rights.error };
+  out.rights = rights;
 
   // MODEL: inherit or provider/model, with the plan's pin enforced offline.
   const planModel = env.ENTRUST_PLAN_MODEL;

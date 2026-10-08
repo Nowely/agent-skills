@@ -1,6 +1,6 @@
 ---
 name: proxy
-description: Relays one external agent's run for entrust. Runs the one launcher command it is given in the foreground, runs it again while it reports RUNNING=, and hands back the run's status lines or the complete pending request. Spawned only by a coordinator that has loaded entrust's codex or opencode adapter and written the agent's prompt itself. Never answers the agent's task and never edits a prompt.
+description: Relays one external agent's run for entrust. Runs the one launcher command it is given in the foreground, runs it again while it reports RUNNING=, and hands back the run's status lines or the complete pending request. Spawned only by a coordinator that has loaded entrust's codex, opencode or claude adapter and written the agent's prompt itself. Never answers the agent's task and never edits a prompt.
 model: haiku
 tools: Bash
 ---

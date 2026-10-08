@@ -87,6 +87,10 @@ const DECLARED = adapters();
 const HOOKS = new Map();
 for (const a of DECLARED.filter((x) => x.launch)) HOOKS.set(a.id, await import(pathToFileURL(a.launch).href));
 const PLANNED = DECLARED.filter((a) => a.plan);
+// The adapters a plan row may name: native, the host's own agents, or a planned adapter with a launcher. A
+// native adapter with a launcher, such as claude, is both: its five-column rows are native, and a row whose
+// adapter column names it is an external run.
+const ROW_ADAPTERS = new Set(["native", ...PLANNED.filter((a) => HOOKS.has(a.id)).map((a) => a.id)]);
 // The entry point this process was started through, run again for the keeper, and the adapter it stands
 // for where a directory records none: main() sets both.
 let ENTRY = SELF, FALLBACK = null;
@@ -141,7 +145,7 @@ const USAGE = `agent-run — make, run or read one external agent for its proxy.
   --adapter ID selects the adapter at --new (${[...HOOKS.keys()].join(", ") || "none installed"}) and the backend
   it records is pinned in agent/backend.json; each adapter's own agent-run.mjs passes it.
   Extended plan rows: id | adapter | model | role | writes | tokens; adapter is native or an installed
-  adapter (${PLANNED.filter((a) => !a.plan.native).map((a) => a.id).join(", ") || "none"}), and the model one its adapter.json
+  adapter (${[...ROW_ADAPTERS].filter((id) => id !== "native").join(", ") || "none"}), and the model one its adapter.json
   declares. Existing five-column plans still work: the model names its adapter.
   Typed requests an adapter adds print REQUEST_BODY<<TOKEN / REQUEST_BODY>>TOKEN. --accept restates that
   JSON on stdin and grants once. Questions use --decide ID --answer with {answers: string[][]} on
@@ -471,7 +475,6 @@ const oneLine = (s) => String(s).replace(/\s*\n\s*/g, " / ");
 // a native adapter's agents are the host's own.
 const listedBy = (model) => PLANNED.find((a) => a.plan.models?.some((m) => m.toLowerCase() === model.toLowerCase())) ?? null;
 const LISTED = new Set(PLANNED.flatMap((a) => (a.plan.models ?? []).map((m) => m.toLowerCase())));
-const ROW_ADAPTERS = new Set(["native", ...PLANNED.filter((a) => !a.plan.native).map((a) => a.id)]);
 const PLAN_HEADER = "id | model | role | writes | tokens";
 const ADAPTER_PLAN_HEADER = "id | adapter | model | role | writes | tokens";
 const planError = (why) => { process.stdout.write(`ERROR=${why}\n`); process.exit(2); };

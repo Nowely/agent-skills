@@ -1,9 +1,10 @@
 ---
 name: claude
 description: >-
-  Claude Code host adapter for entrust: Claude's model tiers, Agent-tool delegation, background and
-  headless agents, Workflow and the foreman's launch. Use in Claude Code when entrust's orchestrate,
-  swarm, advisor or prepare-feedback plans Claude subagents.
+  Claude adapter for entrust. In Claude Code it holds Claude's model tiers, Agent-tool delegation, background
+  and headless agents, Workflow and the foreman's launch; from any host it runs external Claude agents through
+  `claude -p`, with rights, approvals, continuation and a report. Use when entrust's orchestrate, swarm, advisor
+  or prepare-feedback plans Claude agents, natively in Claude Code or as a plan row whose adapter is `claude`.
 metadata:
   version: "0.26.0"
 license: MIT
@@ -14,7 +15,8 @@ license: MIT
 The rules for delegating to Claude subagents from a Claude Code session. Orchestrate owns the plan,
 roles, verification and the return; this page owns how Claude Code runs them. Models for each tier:
 [models.md](references/models.md). The measurements behind these rules:
-[incidents.md](references/incidents.md).
+[incidents.md](references/incidents.md). A Claude agent the host cannot run natively, or one that must run
+outside this session, is an external run: [external.md](references/external.md).
 
 ## Agent calls
 
@@ -25,7 +27,8 @@ roles, verification and the return; this page owns how Claude Code runs them. Mo
   Agent calls with a strong or cheap model. Only you, or a foreman you launched, launch top-tier agents.
 - A subagent's final text is its return value, not a message to a human: say so in the brief.
 - A Claude agent starts with the user's and the project's CLAUDE.md and the memory index in its context,
-  whatever its brief says, so a blind or independent Claude role still sees them.
+  whatever its brief says, so a blind or independent Claude role still sees them; an external run with
+  `SAFE_MODE: yes` does not ([external.md](references/external.md)).
 - Claude agents launched together share the session's `$TMPDIR`. A file an agent must leave goes in a
   directory of its own that it makes with `mktemp -d`, with the path in its return.
 - Continue an agent with SendMessage; give independent verification a fresh agent.
