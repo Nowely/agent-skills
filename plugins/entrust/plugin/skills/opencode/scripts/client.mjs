@@ -41,9 +41,7 @@ export class Client {
     const doc = await this.call("GET", "/doc");
     const paths = doc?.paths ?? {};
     return { url: this.config.url, version: health.version, paths, schemas: doc?.components?.schemas ?? {},
-      legacy: Boolean(paths["/session/{sessionID}/prompt_async"]?.post),
-      v2: Boolean(paths["/api/session/{sessionID}/prompt"]?.post),
-      strictSteer: false };
+      legacy: Boolean(paths["/session/{sessionID}/prompt_async"]?.post) };
   }
   async model(ref) {
     const catalogue = await (this.catalogue ??= this.call("GET", "/provider"));

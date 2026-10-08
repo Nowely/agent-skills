@@ -46,12 +46,3 @@ descendants are retained across read failures. If Stop crosses admission, the dr
 again after that admission without resending the prompt. It also rechecks Stop before publishing
 a completed result. An unknown outcome prevents resuming that session.
 These observations do not establish a server-side generation fence.
-
-V2 callbacks are enumerated through each owned session's native route. Descendants may have another
-location; root-location request lists cannot establish that their callbacks are cleared. Discovery
-pages session metadata and filters exact parent IDs locally. Messages and durable history are also
-paged to their empty terminal page (message pages 200, history pages 100); exceeding 10,000 items or an invalid cursor/sequence fails the
-observation. Attribution follows promoted `session.next.prompted` inputs and subsequent
-`session.next.step.started` events, never admission order or guessed timestamps. Native `wait` is
-unused. Replies and interrupts require the installed 204 response; a different success status leaves
-the mutation unknown and is not resent.

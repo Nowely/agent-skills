@@ -29,8 +29,6 @@ If a requested family cannot be resolved from recent references, report the gap 
 model silently.
 The saved backend and plan model follow the detached keeper; mutable defaults cannot reroute it.
 Amend the approved plan before adding a worker or changing its model or write scope.
-Each prepared V2 prompt adds `API_FAMILY: v2` and `AGENT: <verified native profile>`; the resulting
-session/report binds both. Continuations inherit them, and a changed API family or profile is refused.
 
 Every invocation has `<run>/<id>/report.json`; a continuation has `<run>/<id>-2/report.json`, then
 `-3`, and waits until its predecessor ended. One session can have several invocations, each with a

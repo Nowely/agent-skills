@@ -1,3 +1,6 @@
+// The OpenCode adapter's V2 client, retired from plugin/skills/opencode/scripts/v2-client.mjs on 2026-10-08
+// (decision 4 of research/2026-10-08-driver-audit). A record: its imports name the paths it had there.
+
 import { Client, ApiError } from "./client.mjs";
 import { sleep } from "./config.mjs";
 

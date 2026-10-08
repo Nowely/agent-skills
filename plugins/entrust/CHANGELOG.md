@@ -110,6 +110,10 @@ forensics remain in the repository references and release notes.
   still asks for one bare JSON object; `--timeout`, `--idle-timeout` and `--max-commands` stay as driver flags.
   Check an end state yourself after reading the report (codex `result-gates.md`). The suites' agent writes its
   tree through the fake server's `FAKE_AGENT_SH` instead.
+- **OpenCode's V2 path.** The adapter speaks OpenCode's V1 API only: `API_FAMILY` and `AGENT` are no longer
+  fields, `status.mjs` takes no `--api-family` or `--agent`, and a report or session an earlier release recorded as
+  V2 is refused on continuation. V2's client, its fake server, its cases and the pilot that measured it are in
+  `research/2026-10-02-opencode-v2-pilot/` (decision 4 of the driver audit).
 
 ## 0.27.0 — 2026-10-08
 

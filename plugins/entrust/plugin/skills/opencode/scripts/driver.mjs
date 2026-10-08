@@ -12,7 +12,6 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { Client } from "./client.mjs";
-import { V2Client } from "./v2-client.mjs";
 import { connection, recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
 import { startLocalServer } from "./local-server.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
@@ -89,23 +88,8 @@ function refuse(reason) {
   return EXIT.USAGE;
 }
 
-// Keep execution families separate, including their callback acknowledgement contracts.
-function resolveRoutes(family = "v1") {
-  if (family === "v2") return {
-    create: "/api/session",
-    permissionList: "/api/permission/request",
-    permissionReply: "/api/session/{sessionID}/permission/{requestID}/reply",
-    questionList: "/api/question/request",
-    questionReply: "/api/session/{sessionID}/question/{requestID}/reply",
-    questionReject: "/api/session/{sessionID}/question/{requestID}/reject",
-    children: "/api/session?parentID={sessionID}",
-    abort: "/api/session/{sessionID}/interrupt",
-    prompt: "/api/session/{sessionID}/prompt",
-    messages: "/api/session/{sessionID}/message",
-    status: "/api/session/active",
-    sessionGet: "/api/session/{sessionID}",
-  };
-  return {
+// The V1 routes this driver uses, and the callback acknowledgement each answers with.
+const ROUTES = Object.freeze({
     create: "/session",
     permissionList: "/permission",
     permissionReply: "/permission/{requestID}/reply",
@@ -118,19 +102,15 @@ function resolveRoutes(family = "v1") {
     messages: "/session/{sessionID}/message",
     status: "/session/status",
     sessionGet: "/session/{sessionID}",
-  };
-}
+});
 
 function routeError(ctx) {
   const r = ctx.routes;
   const required = [[r.create, "post"], [r.prompt, "post"], [r.messages, "get"], [r.sessionGet, "get"],
     [r.status, "get"], [r.abort, "post"], [r.children.split("?")[0], "get"], [r.permissionList, "get"],
     [r.permissionReply, "post"], [r.questionList, "get"], [r.questionReply, "post"], [r.questionReject, "post"]];
-  if (ctx.apiFamily === "v2") required.push(["/api/model", "get"], ["/api/agent", "get"],
-    ["/api/session/{sessionID}/history", "get"], ["/api/session/{sessionID}/model", "post"],
-    ["/api/session/{sessionID}/permission", "get"], ["/api/session/{sessionID}/question", "get"]);
   return required.some(([route, method]) => !ctx.server.paths[route]?.[method])
-    ? `server does not advertise the required ${ctx.apiFamily.toUpperCase()} interaction routes; no API fallback selected` : null;
+    ? "server does not advertise the required V1 interaction routes" : null;
 }
 
 async function listOrEmpty(client, route) {
@@ -289,7 +269,7 @@ async function respond(ctx, type, requestID, kind, body, sessionID = ctx.session
   const url = fillRoute(route, { sessionID, requestID });
   try {
     const result = await ctx.client.call("POST", url, body);
-    return { outcome: (ctx.apiFamily === "v2" ? result === null : result === true) ? "applied" : "unknown" };
+    return { outcome: result === true ? "applied" : "unknown" };
   } catch (e) {
     return { outcome: e.status == null || e.status >= 500 ? "unknown" : "failed", error: e.message, status: e.status ?? null };
   }
@@ -570,8 +550,6 @@ function promptText(task, schema, brief) {
 }
 
 async function postPrompt(ctx, messageID, text) {
-  if (ctx.apiFamily === "v2") return ctx.client.call("POST", fillRoute(ctx.routes.prompt, { sessionID: ctx.sessionID }),
-    { id: messageID, prompt: { text }, delivery: "queue" });
   const body = { messageID, model: { providerID: ctx.ref.providerID, modelID: ctx.ref.modelID }, parts: [{ type: "text", text }] };
   if (ctx.variant) body.variant = ctx.variant;
   return ctx.client.call("POST", fillRoute(ctx.routes.prompt, { sessionID: ctx.sessionID }), body);
@@ -611,8 +589,7 @@ async function admitOnce(ctx, messageID, text) {
       try {
         await updateOwned(ctx);
         await refresh(ctx);
-        if (ctx.apiFamily === "v2" ? await ctx.client.admitted(ctx.sessionID, messageID, text)
-          : ctx.messages.some((m) => m.info?.id === messageID || m.info?.parentID === messageID))
+        if (ctx.messages.some((m) => m.info?.id === messageID || m.info?.parentID === messageID))
           { atomicJson(ctx.runtimePath, { invocationId: ctx.invocationId, sessionID: ctx.sessionID, inputId: messageID, model: modelKey(ctx.ref), admission: "admitted", at: new Date(now()).toISOString() }); return { admitted: true }; }
       } catch {}
     }
@@ -628,7 +605,7 @@ async function abortSessions(ctx) {
   for (const sid of targets) {
     try {
       const accepted = await ctx.client.call("POST", fillRoute(ctx.routes.abort, { sessionID: sid }), undefined);
-      results.push({ sessionID: sid, ok: ctx.apiFamily === "v2" ? accepted === null : accepted === true, accepted });
+      results.push({ sessionID: sid, ok: accepted === true, accepted });
     } catch (e) { results.push({ sessionID: sid, ok: false, error: e.message, status: e.status ?? null }); }
   }
   return results;
@@ -717,29 +694,19 @@ function writeSessionRecord(ctx, extra = {}) {
   atomicJson(sessionRecordPath(ctx, ctx.sessionID), {
     adapter: "opencode", sessionID: ctx.sessionID, serverMode: ctx.serverMode, serverUrl: ctx.server.url, cwd: ctx.cwd,
     model: ctx.ref ? modelKey(ctx.ref) : null, rights: ctx.scope, invocationId: ctx.invocationId,
-    variant: ctx.variant ?? null, apiFamily: ctx.apiFamily, agent: ctx.agent ?? null, profileHash: ctx.profileHash ?? null,
+    variant: ctx.variant ?? null,
     worktreePath: ctx.worktreePath ?? null, worktreeRepo: ctx.worktreeRepo ?? null,
     worktreeBase: ctx.worktreeBase ?? null,
     cancellation: null, at: new Date(now()).toISOString(), ...extra,
   });
 }
 
-function clientFor(ctx, cwd) {
-  const client = new (ctx.apiFamily === "v2" ? V2Client : Client)({ config: ctx.config, cwd });
-  if (ctx.apiFamily === "v2") client.ownedSessions = () => ctx.invocationSessions ?? new Set(ctx.sessionID ? [ctx.sessionID] : []);
-  return client;
-}
+const clientFor = (ctx, cwd) => new Client({ config: ctx.config, cwd });
 
 function applyPrior(ctx, prior) {
-  const family = prior.apiFamily ?? "v1";
-  if (!["v1", "v2"].includes(family) || (ctx.parsed.apiFamily && ctx.parsed.apiFamily !== family))
-    return "the resume would change the recorded API family";
-  ctx.apiFamily = family;
-  ctx.agent = ctx.parsed.agent ?? prior.agent ?? null;
-  if (ctx.parsed.agent && ctx.parsed.agent !== prior.agent) return "the resume would change the recorded native agent";
-  ctx.priorProfileHash = prior.profileHash ?? null;
+  // An earlier release could run a session through the V2 API, which this driver no longer speaks.
+  if ((prior.apiFamily ?? "v1") !== "v1") return "the record is a V2 session, which this adapter no longer runs";
   ctx.client = clientFor(ctx, ctx.cwd);
-  ctx.routes = resolveRoutes(family);
   const priorMode = prior.serverMode ?? "remote";
   if (priorMode !== ctx.serverMode) return "the record belongs to another server mode";
   if (priorMode !== "local" && (prior.serverUrl ?? prior.server?.url)) {
@@ -797,7 +764,6 @@ async function resolveResume(ctx) {
   try { session = await ctx.client.call("GET", fillRoute(ctx.routes.sessionGet, { sessionID })); }
   catch (e) { return { error: `RESUME session ${sessionID} is not reachable: ${e.message}` }; }
   if (!session?.id) return { error: `RESUME session ${sessionID} does not exist` };
-  if (ctx.apiFamily === "v2") ctx.resumedSession = session;
   let status;
   try { status = await ctx.client.call("GET", ctx.routes.status); }
   catch (e) { return { error: `RESUME session ${sessionID}: status is unknown (${e.message}); the session is not safely resumable` }; }
@@ -813,10 +779,6 @@ async function resolveResume(ctx) {
 function buildReport(ctx, base) {
   return {
     adapter: "opencode",
-    apiFamily: ctx.apiFamily ?? "v1",
-    agent: ctx.agent ?? null,
-    profileHash: ctx.profileHash ?? null,
-    strictSteer: false,
     ok: base.exitCode === EXIT.SUCCESS,
     exitCode: base.exitCode,
     error: base.error ?? null,
@@ -892,7 +854,6 @@ async function cleanup(ctx, abortExecution) {
 async function execute(opts, parsed) {
   const ctx = {
     opts, parsed,
-    apiFamily: parsed.apiFamily ?? "v1", agent: parsed.agent ?? null,
     invocationId: id("inv"),
     startedAtMs: now(),
     timeoutMs: opts.timeout * 1000,
@@ -936,7 +897,7 @@ async function execute(opts, parsed) {
     } else ctx.serverMode = "remote";
     ctx.client = clientFor(ctx, null); ctx.server = await ctx.client.probe();
   } catch (e) { return fail(ctx, `the OpenCode server could not be started or reached: ${e.message}`, EXIT.TRANSPORT); }
-  ctx.routes = resolveRoutes(ctx.apiFamily);
+  ctx.routes = ROUTES;
   if (parsed.resume === undefined) {
     const missing = routeError(ctx);
     if (missing) return fail(ctx, missing, EXIT.USAGE);
@@ -985,50 +946,15 @@ async function execute(opts, parsed) {
   if (model.error) return fail(ctx, model.error, EXIT.USAGE);
   ctx.ref = model.ref; ctx.variant = model.variant; ctx.modelInfo = model.info;
 
-  if (ctx.apiFamily === "v2") {
-    if (!ctx.agent) return fail(ctx, "V2 requires AGENT naming a verified native ask profile", EXIT.USAGE);
-    let profile;
-    try { profile = await ctx.client.profile(ctx.agent); }
-    catch (e) { return fail(ctx, e.message, EXIT.USAGE); }
-    if (profile.id !== ctx.agent) return fail(ctx, "the native agent identity does not match AGENT", EXIT.USAGE);
-    ctx.profileHash = digest({ id: profile.id, mode: profile.mode, permissions: profile.permissions });
-    if (ctx.priorProfileHash && ctx.profileHash !== ctx.priorProfileHash)
-      return fail(ctx, "the resumed native agent profile changed", EXIT.USAGE);
-    if (ctx.resume && ctx.resumedSession.agent !== ctx.agent)
-      return fail(ctx, "the native session belongs to another agent profile", EXIT.USAGE);
-    if (ctx.resume) {
-      const wanted = { providerID: ctx.ref.providerID, id: ctx.ref.modelID, ...(ctx.variant ? { variant: ctx.variant } : {}) };
-      const retained = ctx.resumedSession.model;
-      if (retained?.id !== wanted.id || retained?.providerID !== wanted.providerID
-        || (retained?.variant ?? null) !== (wanted.variant ?? null)) {
-        try { await ctx.client.call("POST", `/api/session/${encodeURIComponent(ctx.sessionID)}/model`, { model: wanted }); }
-        catch (e) {
-          if (e.status != null) return fail(ctx, `native model switch rejected: ${e.message}`, EXIT.MODEL);
-        }
-        const observed = await ctx.client.call("GET", fillRoute(ctx.routes.sessionGet, { sessionID: ctx.sessionID }));
-        if (observed.model?.id !== wanted.id || observed.model?.providerID !== wanted.providerID
-          || (observed.model?.variant ?? null) !== (wanted.variant ?? null))
-          return fail(ctx, "native model switch outcome is unknown; no input sent", EXIT.TRANSPORT);
-      }
-    }
-  }
-
   // Create the session (a resume reuses the existing one).
   if (!ctx.resume) {
     let session;
     try {
-      session = await ctx.client.call("POST", ctx.routes.create, ctx.apiFamily === "v2"
-        ? { agent: ctx.agent, location: { directory: ctx.cwd },
-          model: { providerID: ctx.ref.providerID, id: ctx.ref.modelID, ...(ctx.variant ? { variant: ctx.variant } : {}) } }
-        : { title: `entrust ${ctx.invocationId}`, permission: sessionPermissions(ctx.scope) });
+      session = await ctx.client.call("POST", ctx.routes.create,
+        { title: `entrust ${ctx.invocationId}`, permission: sessionPermissions(ctx.scope) });
     } catch (e) { return fail(ctx, `could not create an OpenCode session: ${e.message}`, EXIT.MODEL); }
     if (!session?.id) return fail(ctx, "the server returned no session id", EXIT.MODEL);
     ctx.sessionID = session.id;
-    if (ctx.apiFamily === "v2" && (session.agent !== ctx.agent || session.directory !== ctx.cwd))
-      return fail(ctx, "native session did not retain the verified agent and directory", EXIT.USAGE);
-    if (ctx.apiFamily === "v2" && (session.model?.providerID !== ctx.ref.providerID || session.model?.id !== ctx.ref.modelID
-      || (session.model?.variant ?? null) !== ctx.variant))
-      return fail(ctx, "native session did not retain the selected model and variant; no input sent", EXIT.MODEL);
   }
   writeSessionRecord(ctx);
 
@@ -1114,8 +1040,7 @@ async function conclude(ctx, firstReply, parsed) {
     const info = reply?.info ?? {};
     const actual = info.providerID && info.modelID ? `${info.providerID}/${info.modelID}` : null;
     const matches = info.providerID != null && info.providerID === ctx.ref.providerID
-      && info.modelID === ctx.ref.modelID && (ctx.apiFamily !== "v2"
-        || ((info.variant ?? null) === ctx.variant && info.agent === ctx.agent && info.attribution != null));
+      && info.modelID === ctx.ref.modelID;
     return { info, actual, matches, completed: Boolean(info.time?.completed) };
   };
 
@@ -1334,4 +1259,4 @@ function main() {
 const isMain = (() => { try { return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url)); } catch { return false; } })();
 if (isMain) main();
 
-export { execute, resolveRoutes, sessionPermissions, outOfScope, rightsScope, scopeWithin, promptText, buildReport, invocationMessages };
+export { execute, sessionPermissions, outOfScope, rightsScope, scopeWithin, promptText, buildReport, invocationMessages };

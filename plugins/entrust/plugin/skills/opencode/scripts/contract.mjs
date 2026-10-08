@@ -22,7 +22,7 @@ export const FIVE_FIELDS_SCHEMA = fileURLToPath(new URL("../../orchestrate/schem
 // they need and this adapter does not have.
 export const HEADER_KEYS = new Set([
   "RIGHTS", "MODEL", "VARIANT", "EFFORT", "RESUME", "OUTPUT_SCHEMA",
-  "EXPECT", "ALLOW_NO_COMMANDS", "BRIEF", "NETWORK", "WEB_SEARCH", "API_FAMILY", "AGENT",
+  "EXPECT", "ALLOW_NO_COMMANDS", "BRIEF", "NETWORK", "WEB_SEARCH",
 ]);
 export const CAPABILITY_HEADERS = new Set(["NETWORK", "WEB_SEARCH"]);
 
@@ -75,20 +75,6 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   if (headers.RIGHTS && order[0] !== "RIGHTS") return { error: "RIGHTS must be the first header when present" };
 
   const out = { headers, order, task, taskSet: true };
-  if (headers.API_FAMILY !== undefined) {
-    if (!["v1", "v2"].includes(headers.API_FAMILY)) return { error: "API_FAMILY must be v1 or v2" };
-    out.apiFamily = headers.API_FAMILY;
-  }
-  if (headers.AGENT !== undefined) {
-    if (!/^[A-Za-z0-9_-]+$/.test(headers.AGENT)) return { error: "AGENT must be a native profile name" };
-    if (out.apiFamily === "v1") return { error: "AGENT requires API_FAMILY v2" };
-    out.agent = headers.AGENT;
-  }
-  if (headers.RESUME === undefined && out.apiFamily === "v2" && !out.agent)
-    return { error: "API_FAMILY v2 requires AGENT naming a verified native ask profile" };
-  if (headers.RESUME === undefined && out.agent && out.apiFamily !== "v2")
-    return { error: "AGENT requires API_FAMILY v2" };
-
   // A continuation of a report keeps that run's rights, which the driver reads from it; any other run declares them.
   const kept = headers.RESUME !== undefined && path.isAbsolute(headers.RESUME) && headers.RIGHTS === undefined && !env.ENTRUST_PLAN_WRITES;
   const rights = kept ? null : resolveRights(headers.RIGHTS, env.ENTRUST_PLAN_WRITES, cwd);
