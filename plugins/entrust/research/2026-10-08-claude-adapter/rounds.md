@@ -21,3 +21,11 @@ at option parsing and called no model.
 
 Two pre-existing defects it found go to `ISSUES.md`, not into this change: the plan registry checks a row's model
 against every adapter's list (`x | codex | opus` registers), and OpenCode's worktree diff is a bare `git diff`.
+
+## The implementation
+
+Built from [04-design-v2.md](04-design-v2.md) in `6c8cf7c`, with one departure: a stopped run's `turnStatus` is
+`aborted`, the OpenCode driver's word for it, not `interrupted`. `evals/claude.test.mjs` passes 17 cases on the fake
+`claude`. Its opt-in live case passed on 2026-10-08 against Claude Code 2.1.294 on Haiku, level 3: `RIGHTS: read`,
+a `touch` offered through the approval server, handed back by `--run`, accepted with `--decide`, and the run ended
+`EXIT=0`, `approvals=1/0/0/0`, `model=Haiku`, the file made.
