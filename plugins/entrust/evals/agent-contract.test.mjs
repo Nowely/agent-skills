@@ -5,12 +5,11 @@
 //
 // The shipped agent, agents/proxy.md, is a mechanical wrapper: the coordinator writes the prompt and
 // hands the wrapper the one command, which runs the driver through scripts/agent-run.mjs in one foreground
-// Bash call, so the ONE call
-// and the field table are both SKILL.md's and the agent file carries only the relay's standing rules. This suite compares
-// what a coordinator copies or a tool reads off that page, the orchestrate page that re-cuts it and
-// references/approvals.md, which holds the accept call, with the driver and the launcher they describe: the
-// field table, the command lines, the placeholders, the wrapper's frontmatter and the flags --help offers.
-// What the pages say in prose is not pinned sentence by sentence.
+// Bash call. The call, its block and the accept are the shared call page's, orchestrate/references/external.md,
+// for every adapter; the Codex field table is codex/SKILL.md's. This suite compares what a coordinator copies
+// or a tool reads off those pages with the driver and the launcher they describe: the field table, the command
+// lines, the placeholders, the block against the agent file, the wrapper's frontmatter and the flags --help
+// offers. What the pages say in prose is not pinned sentence by sentence.
 
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -19,6 +18,8 @@ import { DRIVER, FIELDS, LAUNCHER_CORE, ROOT, PROMPT_FIELDS, registry, runCases,
 import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../plugin/skills/orchestrate/scripts/agent-run.mjs";
 
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
+const EXTERNAL = path.join(ROOT, "skills", "orchestrate", "references", "external.md");
+const PROXY_AGENT = path.join(ROOT, "agents", "proxy.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "codex", "references", "orchestration.md");
 // The orchestrate references a coordinator opens at a moment of the run; approvals.md holds its approval rule.
 const ORCHESTRATE_REFS = [ORCHESTRATE];
@@ -27,21 +28,29 @@ const APPROVALS_MD = path.join(ROOT, "skills", "codex", "references", "approvals
 const skill = fs.readFileSync(SKILL, "utf8");
 const orchestrate = fs.readFileSync(ORCHESTRATE, "utf8");
 const approvals = fs.readFileSync(APPROVALS_MD, "utf8");
+const external = fs.readFileSync(EXTERNAL, "utf8");
+const externalFlat = external.replace(/\s+/g, " ");
 const driver = fs.readFileSync(DRIVER, "utf8");
 // What the driver ADVERTISES, for the cases that ask whether a flag the page hands over still exists: a
 // `case "--x":` in the source can outlive every route a caller has to it, and the help is the route.
 const help = spawnSync(process.execPath, [DRIVER, "--help"], { encoding: "utf8" }).stdout ?? "";
 const helpFlat = help.replace(/\s+/g, " ");
 
-// The page in the pieces the cases read: the whole text collapsed for the name checks, the field table,
-// and the indented command lines a coordinator copies into a Bash call.
+// The pages in the pieces the cases read: the Codex page collapsed for the name checks and its field table,
+// and the indented command lines a coordinator copies into a Bash call off the shared call page.
 const table = skill.split(/^## /m).find((s) => s.startsWith("Header fields")) ?? "";
 const flat = skill.replace(/\s+/g, " ");
 // A leading VAR="..." assignment is part of the line a coordinator copies: the state directory rides in
 // on one, so a pattern that only matched `node "` would read the recipe as absent.
-const commands = [...skill.matchAll(/^ {4}((?:[A-Z_]+="[^"\n]*" )*node "[^\n]+)$/gm)].map((m) => m[1]).filter((c) => !c.includes("<<'PROMPT'"));
+const commands = [...external.matchAll(/^ {4}((?:[A-Z_]+="[^"\n]*" )*node "[^\n]+)$/gm)].map((m) => m[1]).filter((c) => !c.includes("<<'PROMPT'"));
 // The prompt call is a heredoc block, indented like the commands and ended by its own terminator line.
-const promptCalls = [...skill.matchAll(/^ {4}((?:[A-Z_]+="[^"\n]*" )*node "[^\n]*--new[^\n]*<<'PROMPT'\n(?:.*\n)*? {4}PROMPT)$/gm)].map((m) => m[1].replace(/^ {4}/gm, ""));
+const promptCalls = [...external.matchAll(/^ {4}((?:[A-Z_]+="[^"\n]*" )*node "[^\n]*--new[^\n]*<<'PROMPT'\n(?:.*\n)*? {4}PROMPT)$/gm)].map((m) => m[1].replace(/^ {4}/gm, ""));
+// The four numbered steps of the block the coordinator pastes into the proxy's message, and of the agent
+// file's body: each step collapsed to one line, the block's command line left out.
+const blockSteps = (external.split(/^The block, copied whole:$/m)[1] ?? "").split(/^(?=\S)/m)[0]
+  .split("\n").filter((l) => /^ {4}\d\. /.test(l)).map((l) => l.trim());
+const agentSteps = (fs.existsSync(PROXY_AGENT) ? fs.readFileSync(PROXY_AGENT, "utf8") : "")
+  .split(/^(?=\d\. )/m).slice(1).map((st) => st.split(/\n\n/)[0].replace(/\s+/g, " ").trim());
 
 const { cases: CASES, test } = registry();
 
@@ -119,21 +128,19 @@ test("the ONE call is agent-run.mjs --run with --report-file in one foreground c
       const r = spawnSync("bash", ["-n"], { input: src, encoding: "utf8" });
       if (r.status !== 0) problems.push(`bash -n rejected ${JSON.stringify(src.slice(0, 60))}: ${String(r.stderr).trim()}`);
     }
-    const calls = commands.filter((c) => c.includes("agent-run.mjs") && !c.includes("--decide"));
-    if (calls.length !== 1) problems.push(`expected exactly one indented agent-run.mjs run line on the page, found ${calls.length}`);
+    const calls = commands.filter((c) => c.includes("agent-run.mjs") && !c.includes("--decide") && !c.includes("--watch"));
+    if (calls.length !== 1) problems.push(`expected exactly one indented agent-run.mjs run line without --watch on the page, found ${calls.length}`);
     const call = calls[0] ?? "";
     for (const part of ["--run", '--report-file "<REPORT>"'])
       if (!call.includes(part)) problems.push(`the run does not carry ${part}: ${JSON.stringify(call)}`);
     if (call.includes("--dir")) problems.push("the run names --dir, which the launcher derives from the report path");
     for (const step of ["Write no text before it", "If its result ends with RUNNING=", "run the very same command again at once",
                         "Any other result, an empty one included, goes to step 3", "Call SubagentHandback with exactly the lines that result printed", "After the hand-back result", '"<DESCRIPTION>: report delivered"'])
-      if (!flat.includes(step)) problems.push(`the wrapper's message on the page lacks the step ${JSON.stringify(step)}`);
+      if (!externalFlat.includes(step)) problems.push(`the wrapper's message on the page lacks the step ${JSON.stringify(step)}`);
     if (call.includes("driver.mjs")) problems.push("the run names the driver directly again");
     if (/(^|[^&])&\s*$/.test(call)) problems.push("the run ends in an `&` of its own, which hides the run from the task");
-    if (!/in the foreground, with timeout 600000/.test(flat))
+    if (!/in the foreground, with timeout 600000/.test(externalFlat))
       problems.push("the page does not say the call runs in the foreground with the ten-minute timeout");
-    if (!/one foreground call and no `&` of your own/.test(flat))
-      problems.push("the page does not say the launcher is one foreground call with no `&` of its own");
     // The launcher's own spawn: exactly the two driver flags, prompt.txt as an argument only, the
     // environment untouched. agent-run.test.mjs runs it; this reads the promise off the source.
     const launcher = fs.readFileSync(LAUNCHER_CORE, "utf8");
@@ -152,42 +159,61 @@ test("the prompt goes in through --new on stdin, into a directory beside the rep
   () => {
     const problems = [];
     if (promptCalls.length !== 1) problems.push(`expected exactly one --new heredoc call on the page, found ${promptCalls.length}`);
-    if (!/--new --report-file "<REPORT>" <<'PROMPT'/.test(skill)) problems.push("the --new call is gone or its heredoc is not quoted");
-    if (/mktemp/.test(skill)) problems.push("the page still sends the coordinator to mktemp");
-    if (!flat.includes("the launcher waits ten seconds for a prompt a `--new` has not written yet") || PROMPT_WAIT_MS !== 10000)
+    if (!/--new --report-file "<REPORT>" <<'PROMPT'/.test(external)) problems.push("the --new call is gone or its heredoc is not quoted");
+    for (const [label, text] of [["external.md", external], ["codex/SKILL.md", skill]]) {
+      if (/mktemp/.test(text)) problems.push(`${label} still sends the coordinator to mktemp`);
+      if (/\$TMPDIR\/(prompt|agent|task|report|stderr)/.test(text)) problems.push(`${label} writes a scratch path as $TMPDIR/..., which the Write and Read tools cannot expand`);
+    }
+    if (!externalFlat.includes("`--run` waits ten seconds for a prompt `--new` has not written yet") || PROMPT_WAIT_MS !== 10000)
       problems.push(`the page's ten-second wait and PROMPT_WAIT_MS=${PROMPT_WAIT_MS} disagree`);
-    if (/\$TMPDIR\/(prompt|agent|task|report|stderr)/.test(skill)) problems.push("a scratch path is written as $TMPDIR/..., which the Write and Read tools cannot expand");
     if (!helpFlat.includes("an ABSOLUTE path that does not exist yet"))
       problems.push("--help no longer promises that --report-file is absolute and unclaimed");
     return problems.length === 0 || problems.join("; ");
   });
 
-test("every driver path on both pages is the exact ${...} placeholder, and no page forwards a state directory",
-  "Claude Code substitutes that exact form inline in a skill body and exports nothing to the Bash tool, so a ${VAR:-default} is never substituted, expands to the default, and makes every plugin-installed agent fail to find the driver at all; the state directory is the driver's own default, so the recipe carries none",
+test("one launcher path on the shared page, its <orchestrate> resolved by the Codex page's own placeholder, and no page forwards a state directory",
+  "Claude Code substitutes ${CLAUDE_SKILL_DIR} inline in a skill body and exports nothing to the Bash tool, so a ${VAR:-default} is never substituted, expands to the default, and makes every plugin-installed agent fail to find its script; a reference page is read as a plain file and substitutes nothing, so the shared page names the launcher by a placeholder the adapter page resolves, and a second launcher command on an adapter page would be a second recipe to drift; the state directory is the driver's own default, so the recipe carries none",
   () => {
     const REL = "skills/codex/scripts/driver.mjs";
     if (path.relative(ROOT, DRIVER).split(path.sep).join("/") !== REL) return `the shipped layout moved: ${path.relative(ROOT, DRIVER)}`;
     const problems = [];
-    for (const [label, text] of [["SKILL.md", skill], ["references/approvals.md", approvals]]) {
-      for (const v of ["CLAUDE_SKILL_DIR"])
-        if (new RegExp(`${v}\\s*:-`).test(text))
-          problems.push(`${label} writes \${${v}:-...}, which Claude Code does not substitute: the agent would run on the default, not on what the install resolved`);
+    const launchers = [...external.matchAll(/"([^"\n]*agent-run\.mjs)"/g)].map((m) => m[1]);
+    if (launchers.length < 3) problems.push(`external.md names the launcher ${launchers.length} times, not at --new, --run and --decide`);
+    for (const p of launchers)
+      if (p !== "<orchestrate>/scripts/agent-run.mjs") problems.push(`external.md names the launcher as ${JSON.stringify(p)}, not "<orchestrate>/scripts/agent-run.mjs"`);
+    if (/driver\.mjs/.test(external)) problems.push("external.md names a driver, which only the launcher runs");
+    if (!flat.includes("`<orchestrate>` is `${CLAUDE_SKILL_DIR}/../orchestrate`"))
+      problems.push("codex/SKILL.md no longer resolves <orchestrate> through its own placeholder");
+    for (const f of ["scripts/agent-run.mjs", "schemas/five-fields.schema.json"])
+      if (!fs.existsSync(path.join(ROOT, "skills", "codex", "..", "orchestrate", f)))
+        problems.push(`${f} is not where \${CLAUDE_SKILL_DIR}/../orchestrate would resolve it`);
+    for (const [label, text] of [["SKILL.md", skill], ["references/approvals.md", approvals], ["orchestrate/references/external.md", external]]) {
+      if (/CLAUDE_SKILL_DIR\s*:-/.test(text))
+        problems.push(`${label} writes \${CLAUDE_SKILL_DIR:-...}, which Claude Code does not substitute: the agent would run on the default, not on what the install resolved`);
       for (const p of [...text.matchAll(/"([^"\n]*driver\.mjs)"/g)].map((m) => m[1]))
         if (p !== `\${CLAUDE_SKILL_DIR}/scripts/driver.mjs`)
           problems.push(`${label} names the driver as ${JSON.stringify(p)}, not "\${CLAUDE_SKILL_DIR}/scripts/driver.mjs"`);
-      for (const p of [...text.matchAll(/"([^"\n]*agent-run\.mjs)"/g)].map((m) => m[1]))
-        if (p !== `\${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs`)
-          problems.push(`${label} names the launcher as ${JSON.stringify(p)}, not "\${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs"`);
+      if (text !== external && /^ {4}node [^\n]*agent-run\.mjs/m.test(text))
+        problems.push(`${label} carries a launcher command of its own; the shared call page is the one recipe`);
       // The state directory is the driver's own default in the temporary directory; a page that still
       // forwarded Claude Code's plugin data directory would tie every run to one host.
       if (/CLAUDE_PLUGIN_DATA/.test(text)) problems.push(`${label} still names CLAUDE_PLUGIN_DATA`);
     }
-    if (!/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --new/m.test(skill))
-      problems.push("the One call recipe does not start with the launcher alone");
-    // The placeholder resolves to the skill directory, so the path below it is the shipped layout's.
-    for (const f of ["driver.mjs", "agent-run.mjs"])
-      if (!fs.existsSync(path.join(ROOT, "skills", "codex", "scripts", f)))
-        problems.push(`scripts/${f} is not where \${CLAUDE_SKILL_DIR} would resolve it`);
+    if (!fs.existsSync(path.join(ROOT, "skills", "codex", "scripts", "driver.mjs")))
+      problems.push("scripts/driver.mjs is not where ${CLAUDE_SKILL_DIR} would resolve it");
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("the block the coordinator pastes and the proxy agent's own steps are the same four steps",
+  "the four steps in the message are what Haiku keeps (measured 2026-09-17: three of three against one of three from the agent file alone), and the agent file carries them too; two copies that drift tell the relay two different things, so they are compared word for word, the block's step 1 naming its command as `this command` where the file says `the command`",
+  () => {
+    if (blockSteps.length !== 4) return `the shared page's block has ${blockSteps.length} numbered steps, not 4`;
+    if (agentSteps.length !== 4) return `agents/proxy.md has ${agentSteps.length} numbered steps, not 4`;
+    const problems = [];
+    blockSteps.forEach((step, i) => {
+      const want = i === 0 ? step.replace("Run this command", "Run the command") : step;
+      if (agentSteps[i] !== want) problems.push(`step ${i + 1} differs: the block says ${JSON.stringify(want)}, agents/proxy.md ${JSON.stringify(agentSteps[i])}`);
+    });
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -254,7 +280,7 @@ test("the shipped wrapper is the agent the page names: Bash alone and a pinned m
     if (!/^name: proxy$/m.test(head)) problems.push("the agent is not named proxy");
     if (!/^tools: Bash$/m.test(head)) problems.push("the agent's tools are not exactly Bash");
     if (!/^model: (sonnet|haiku|opus)$/m.test(head)) problems.push("the agent pins no model");
-    if (!flat.includes("`subagent_type: entrust:proxy`")) problems.push("the page no longer sends agents to entrust:proxy");
+    if (!externalFlat.includes("`subagent_type`: `entrust:proxy`")) problems.push("the shared call page no longer sends agents to entrust:proxy");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -265,25 +291,25 @@ test("--help names the thirty-minute approval constant, and no page names a fiel
     if (!/for 30 minutes, after which it is declined as expired/.test(helpFlat))
       problems.push("--help no longer names the 30-minute constant");
     const refs = ORCHESTRATE_REFS.map((f) => [`orchestrate/references/${path.basename(f)}`, fs.readFileSync(f, "utf8").replace(/\s+/g, " ")]);
-    for (const [label, text] of [["SKILL.md", flat], ["orchestrate/SKILL.md", orchestrate.replace(/\s+/g, " ")], ...refs])
+    for (const [label, text] of [["SKILL.md", flat], ["orchestrate/references/external.md", externalFlat], ["codex/references/orchestration.md", orchestrate.replace(/\s+/g, " ")], ...refs])
       for (const gone of ["sandboxWidened", "REPEAT_OF", "ACCESS=", "NETWORK=", "repeatOf", "a widening for named paths", "Prefer a widening", "state or cache", "permission features", "`policy`"])
         if (text.includes(gone)) problems.push(`${label} still names ${JSON.stringify(gone)}`);
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the accept the page shows restates the command in a quoted heredoc on a delimiter the coordinator makes up",
+test("the accept the shared call page shows restates the request in a quoted heredoc on a delimiter the coordinator makes up",
   "a fixed delimiter lets a line of the agent's command end the heredoc and run the rest in the coordinator's shell before the launcher compares anything (both verifications of 2026-09-28 made it happen), so the block the coordinator copies ends on a delimiter it made up and checked, never the relayed token",
   () => {
     const problems = [];
-    const at = approvals.search(/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'$/m);
-    if (at < 0) return "approvals.md shows no accept call ending in <<'<DELIMITER>'";
-    const block = approvals.slice(at).split("\n").slice(0, 3);
-    if (!/^ {4}<the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, exactly as printed>$/.test(block[1] ?? "") || block[2] !== "    <DELIMITER>")
+    const at = external.search(/^ {4}node "<orchestrate>\/scripts\/agent-run\.mjs" --decide '<ID>' --accept --report-file "<REPORT>" <<'<DELIMITER>'$/m);
+    if (at < 0) return "external.md shows no accept call ending in <<'<DELIMITER>'";
+    const block = external.slice(at).split("\n").slice(0, 3);
+    if (!/^ {4}<the lines between the markers, exactly as printed>$/.test(block[1] ?? "") || block[2] !== "    <DELIMITER>")
       problems.push(`the accept block: ${JSON.stringify(block)}`);
-    for (const text of [skill, approvals])
+    for (const text of [skill, approvals, external])
       for (const l of text.split("\n").filter((x) => /--decide /.test(x) && !/--decide '(<ID>|ID)'/.test(x))) problems.push(`an unquoted ID: ${l.trim()}`);
-    if (/<<'?(COMMAND|EOF|CMD)'?\s*$/m.test(approvals.split("\n").filter((l) => l.includes("--decide")).join("\n")))
-      problems.push("an accept in approvals.md ends its heredoc on a fixed word");
+    if (/<<'?(COMMAND|EOF|CMD)'?\s*$/m.test(external.split("\n").filter((l) => l.includes("--decide")).join("\n")))
+      problems.push("an accept in external.md ends its heredoc on a fixed word");
     return problems.length === 0 || problems.join("; ");
   });
 

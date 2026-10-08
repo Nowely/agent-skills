@@ -37,6 +37,14 @@ forensics remain in the repository references and release notes.
   its exit code), `rights` (`{kind, roots}`) and `requestedModel`, which the OpenCode and Claude reports already
   had, so a coordinator reads the same fields whichever adapter ran. Its own fields stay; `usage` keeps each CLI's
   shape and is not part of the core.
+- **One page for calling an external agent.** `orchestrate/references/external.md` holds the steps every adapter
+  shares, written for a coordinator of any host: the prompt's core lines, `--new`, the run in Claude Code (the
+  Agent call and its block) or in Codex and OpenCode (a native proxy on the host's smallest model), the status
+  lines, the report's core, the exit codes, deciding a request, continuing, stopping, the budget, and what still
+  differs by adapter. The Codex, OpenCode and Claude pages keep their models, extra fields and their part of the
+  report, and link it; a Claude or OpenCode call no longer needs the Codex page. Every page names one launcher,
+  orchestrate's `agent-run.mjs`; the adapters' own entry scripts still work. `agents/proxy.md` carries the block's
+  four steps word for word, and a test compares the two (X16). Each host's models page names its proxy model.
 
 ### Fixed
 

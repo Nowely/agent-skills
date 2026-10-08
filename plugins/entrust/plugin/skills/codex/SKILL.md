@@ -117,144 +117,77 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 Under a registered plan, a prompt with no `RIGHTS:` or `MODEL:` runs on its row's writes and model, and one naming
 others, or a `WRITABLE:` root outside the row's writes, is refused at `--new`.
 
-`VERIFY` is refused in a prompt file without `--allow-prompt-verify`, which the one call does not pass: an agent
-that could write its own gate would grade itself. The one call passes the driver no other flag either, so check the
+`VERIFY` is refused in a prompt file without `--allow-prompt-verify`, which the launcher does not pass: an agent
+that could write its own gate would grade itself. The launcher passes the driver no other flag either, so check the
 result yourself after you have read it ([result-gates.md](references/result-gates.md)).
 
 ## Prompt shape
 
-Write a concrete, checkable body:
+The body is the shared page's `TASK:`, `CHECK:` and `RETURN:`, with one more line where it helps:
 
-    TASK:   what to do
-    CHECK:  the ground truth, preferably something the agent cannot guess
-    RETURN: exactly what to hand back
     ENVIRONMENT: staged inputs and their paths; known daemon or socket limits and runnable alternatives; flags that avoid an unwritable cache
 
-For a write agent, or where repository tools need a daemon, fill `ENVIRONMENT:` with observed facts and staged paths, including the diff and trunk files when supplied. It is a body line after `TASK:`, not a header field. Give one deliverable per agent. Split a return that asks for unrelated artifacts or decisions.
+For a write agent, or where repository tools need a daemon, fill `ENVIRONMENT:` with observed facts and staged
+paths, including the diff and trunk files when supplied. It is a body line after `TASK:`, not a header field.
 A task that reads files names the read: one command per file, and `max_output_tokens` at the tool's output
 cap, 10,000 today (`codex debug models` lists it under `truncation_policy`); a model left to choose sets its own,
 often 1,000, and reads fragments
-([A read cut to fragments](references/incidents.md#a-read-cut-to-fragments)). Write `TASK:` in the user's
-language: the agent answers in the language it is asked in. Whatever `RETURN:` asks for, its first line is one
-sentence a reader can take on its own: the name you gave the agent ("you are Codex Terra T1"), its status and
-what it did; give the name, since the model does not know its short name
-([language and name](references/incidents.md#language-and-name-in-a-return)). That line is what the coordinator
-retells, not itself a message to the user; the rest is the return's own shape. Phrase defensive work as
-robustness under unusual states; attack wording can trip a safety classifier
-([Safety classifier](references/incidents.md#safety-classifier)).
+([A read cut to fragments](references/incidents.md#a-read-cut-to-fragments)). The agent answers in the language
+it is asked in. Whatever `RETURN:` asks for, its first line is one sentence a reader can take on its own: the name
+you gave the agent ("you are Codex Terra T1"), its status and what it did; give the name, since the model does not
+know its short name ([language and name](references/incidents.md#language-and-name-in-a-return)). That line is
+what the coordinator retells, not itself a message to the user. Phrase defensive work as robustness under unusual
+states; attack wording can trip a safety classifier ([Safety classifier](references/incidents.md#safety-classifier)).
 
 The standing rules are already on the thread — unattended, its effective writable roots and that `/tmp` is not
 one, its egress and its web search each named whichever way they went, a one-line record for a step that cannot
 run, never claim a test passed without the count — so do not repeat them.
 
-## One call
+## The call
 
-One Agent call per agent: a native subagent, the **wrapper**, that launches the driver, waits for it and
-returns when the run has ended. It gives a Codex agent what a Claude agent has — a card, Stop on it, one
-completion notification, a message to continue it — where a Bash task has none
-([the agent map](references/incidents.md#the-agent-map)).
+Make, run, read, continue and stop every Codex agent as the [shared call page](../orchestrate/references/external.md)
+says; read it whole before the first `--new`. On it, `<orchestrate>` is `${CLAUDE_SKILL_DIR}/../orchestrate`, the
+orchestrate skill installed beside this one. What Codex adds to it:
 
-Write the prompt with one Bash call, the launcher's `--new`, the heredoc quoted so nothing in it expands:
+- Without a plan, `--new` takes `--adapter codex`.
+- The Agent call's description is `Codex <short name> <id>: <task in a few words>`, the name on the `MODEL:` line
+  capitalised: `Codex Sol R1: review the diff`. The proxy gives a Codex agent what a Claude agent has, a card, Stop
+  on it, one completion notification and a message to continue it, where a Bash task has none
+  ([the agent map](references/incidents.md#the-agent-map)). The block's wording is measured
+  ([the wrapper's message](references/incidents.md#the-wrappers-message),
+  [a relay on a small model](references/incidents.md#a-relay-on-a-small-model)); copy it unchanged.
+- A request is a command the sandbox would not run. An accept runs it as you, with no sandbox
+  ([approvals.md](references/approvals.md)). A file change outside the writable roots is declined at once, never
+  offered, and the run exits 6.
 
-    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --new --report-file "<REPORT>" <<'PROMPT'
-    MODEL: terra
-    TASK: …
-    CHECK: …
-    RETURN: …
-    PROMPT
+## The result's Codex part
 
-Write a prompt you were handed VERBATIM: not a quote, not a `$`, not a header line it has, and add nothing. A
-refusal prints its reason on an `ERROR=` line and no
-`PROMPT=`: spawn no wrapper on that result, and take a mode the device refuses back to the user as a question,
-never to another mode. Never create a directory, change a level or re-run with different flags to make a
-refused agent succeed ([A relay on a small model](references/incidents.md#a-relay-on-a-small-model)).
-
-On `PROMPT=`, spawn the wrapper with the Agent tool: `subagent_type: entrust:proxy`,
-`run_in_background: false` for the one agent you wait for and `true` for agents that run side by side or
-while you work ([foreground and background](references/incidents.md#foreground-background-and-the-ceiling)),
-and a `description` of `Codex <short name> <id>: <task in a few words>`, the name on the `MODEL:` line, so the
-card names the agent, its vendor and its task. Pass it no `model`: the wrapper,
-[agents/proxy.md](../../agents/proxy.md), pins its own, and the agent's model is the `MODEL:` line
-in its prompt file. Under a background call, the hand-back message and the task notification that follows it
-are one completion: read the first, and give the second the shortest reply the harness accepts; a foreground
-call has no notification.
-
-The wrapper's message is the block below with its two placeholders filled in and nothing added or removed
-([the wrapper's message](references/incidents.md#the-wrappers-message)). The command is the launcher, one
-foreground call and no `&` of your own; its `--help` says what the run does, what it refuses and what its nine
-status lines mean.
-
-The Agent call, its message this block:
-
-    1. Run this command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>". Write no text before it.
-
-    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --report-file "<REPORT>"
-
-    2. If its result ends with RUNNING=, or is the harness's notice that it moved the command to the background, run the very same command again at once, and again each time either comes back. Each run is safe: the command waits for the run it already started. Do not open, tail or wait on the output file that notice names, and write nothing in between. Any other result, an empty one included, goes to step 3 as it is.
-
-    3. Call SubagentHandback with exactly the lines that result printed, nothing added, nothing removed.
-
-    4. After the hand-back result, and whenever the harness asks you for a visible response, write exactly one line, "<DESCRIPTION>: report delivered", and nothing else.
-
-Both calls may go in one turn: the launcher waits ten seconds for a prompt a `--new` has not written yet, and a
-wrapper started beside a refused `--new` spends that report path. `<DESCRIPTION>` is the Agent call's own
-description. `<REPORT>` is an absolute path of this agent's own under the driver's state directory,
-`<state>/reports/<run>/report.json` with `<run>` unique, or the path the orchestrate page names; a relaunch
-takes a fresh one. The launcher makes every directory it needs. `<DIR>` is the agent's directory, `agent/`
-beside `<REPORT>`.
-
-The wrapper's completion notification is the agent's completion: read its lines first, and the file after a
-`PATH=own` when they leave a question. To continue an agent, write a second prompt file with `RESUME: <its REPORT= path>`
-under a fresh report path (under a plan `<run>/<agent>-<n>/report.json`, `--help`) and send the wrapper one
-more command of the same shape; a session with no message tool spawns a second wrapper on the same file.
-
-`--run`'s one call may hand back a **waiting result** instead of the nine status lines: a request is pending,
-and it hands back what `--pending` prints, ending in `REQUESTS=`, `WAITING=` and `REPORT=`. Read it whole and
-decide under the plan's own rule; a request nobody answers is declined as expired after thirty minutes and the
-turn goes on. The `--decide` call that answers it, what an accept runs as, and what to read after such a run:
-[approvals.md](references/approvals.md).
-
-## Reading the result
-
-- `<REPORT>` is the report, the same JSON the run also wrote to `<DIR>/out.json` once a turn ran. Read
-  the file: it is written whole or not at all, and a missing one means unknown, never success.
-- `exitCode: 0` means the completed turn passed its declared evidence gates. `answer` is the agent's text;
-  with an `OUTPUT_SCHEMA:` line, `answerJson` is that answer already parsed, and `answerPath` holds the
-  complete answer where a size cap clipped either. `receiptOk: false` on a run that claims success is a red flag
+- The report is also `<DIR>/out.json` once a turn ran; where publication failed, that file is the report the turn
+  wrote.
+- `receiptOk: false` on a run that claims success is a red flag
   ([receipts](references/environment-and-internals.md#receipt-validation-and-reporting)).
-- `turnStatus: null` means no turn ran, and `error` says why
-  ([Observability](references/environment-and-internals.md#observability)). With any other, the exit judges the
-  evidence, not whether an answer exists: read the turn's commands, answer and receipt before relaunching, or a
-  paid turn is thrown away; `driver.mjs --help` lists every code. A cut, exit 3, keeps the answer or partial and a
-  `RESUME:` hint; exit 6 is an approval declined or expired
-  ([After the run](references/approvals.md#after-the-run)).
-- `PATH=taken` means the file at `<REPORT>` is an earlier run's, whatever the numbers beside it say, and
-  `FILE=missing` a run that ended without a report: `<DIR>/err.txt` has the reason and `<DIR>/out.json` the
-  report a turn wrote where publication failed. For either, a `RECEIPT=` that counts `approvals=` is read before
-  any relaunch ([After the run](references/approvals.md#after-the-run)).
-- `RUNNING=` in place of `REPORT=` is a run still going whose wrapper handed back early: send the wrapper the
-  same message again, or wait on `<DIR>/exit`; nothing was lost.
-- `worktreePreserved` not null: the tree is the artifact, not a harvest
+- `turnStatus: null`: no turn ran, and `error` says why
+  ([Observability](references/environment-and-internals.md#observability)). With any other, read the turn's
+  commands, answer and receipt before relaunching, or a paid turn is thrown away;
+  `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help` lists every exit code.
+- A worktree agent's work comes back as `worktreeDiffPath` and, for untracked files not ignored,
+  `worktreeUntrackedPath`. `worktreePreserved` not null: the tree is the artifact, not a harvest
   ([Worktree ledger and destination](references/environment-and-internals.md#worktree-ledger-and-destination)).
-- To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or `kill -TERM` the pid on the
-  driver's pid line in `<DIR>/err.txt`, `entrust: pid=<n> identity=… reportPath=…`; after a waiting result or a
-  `RUNNING=` hand-back no call holds the driver, so that pid is what reaches it, or, after a waiting result,
-  `--decide '<ID>' --decline` and the same `--run`
+- After a waiting result or a `RUNNING=` hand-back no call holds the driver: Stop on the card reaches nothing, the
+  pid in `<DIR>/err.txt` does
   ([Bounding or stopping an agent](references/environment-and-internals.md#bounding-or-stopping-an-agent)).
 
 ## What the user reads
 
-What reaches the user is prose the coordinator writes, in the user's own language, naming an agent by its model
-and id and saying what it did. Keep `Codex` on a Codex agent; the agent by name is the subject and what it does or did is the verb ("Codex Sol R1 reads the diff"); the name is `Codex Sol R1`, never the slug the report carries.
-A header field name, a status block, an internal table's row name and an absolute path are machinery; keep them
-in prompts or reports ([the wrapper's message](references/incidents.md#the-wrappers-message)). The coordinator must
-say what an agent may write, and where, in ordinary words, so the user knows what they are approving.
+As the shared page's [What the user reads](../orchestrate/references/external.md#what-the-user-reads) says, with
+`Codex` kept on a Codex agent: the agent by name is the subject and what it does or did is the verb
+("Codex Sol R1 reads the diff").
 
 ## References
 
-- `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`: the flags and the exit codes, `--help-all` the rest; `agent-run.mjs --help` beside it: the wrapper's one command, its refusals, the nine status lines, the waiting result and `--decide`.
+- `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`: the flags and the exit codes, `--help-all` the rest; the launcher's `--help`: its refusals, the nine status lines, the waiting result and `--decide`.
 - [models.md](references/models.md): the model and effort for each tier.
-- [approvals.md](references/approvals.md): the coordinator's approval steps.
+- [approvals.md](references/approvals.md): what an accepted command runs as, and what to read after.
 - [environment-and-internals.md](references/environment-and-internals.md): environment, prompt files, stopping an agent, receipts, worktrees, locks, the commit grant, config drift.
 - [result-gates.md](references/result-gates.md): evidence gates and the verifier.
 - [parity.md](references/parity.md): parity with native subagents, browser tests, pasted images.

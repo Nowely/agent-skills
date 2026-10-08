@@ -12,6 +12,19 @@ const page = fs.readFileSync(path.join(dir, "SKILL.md"), "utf8");
 const core = ["SKILL.md", ...fs.readdirSync(path.join(dir, "references"))
   .filter((n) => n !== "incidents.md").map((n) => `references/${n}`)];
 const hostBindings = /\$\{CLAUDE_[A-Z_]+\}|~\/\.claude\b|\b(?:Workflow|SendMessage)\b|\bAgent (?:call|tool)\b|codex\/(?:scripts|schemas)\//;
+// A page may name a host's own tools in a section headed for that host ("### In Claude Code"), and only there:
+// the rest of the page stays host-neutral.
+const hostSection = /^(#{2,4}) In (?:Claude Code|Codex|OpenCode)\b/;
+const outsideHostSections = (text) => {
+  let skip = 0;
+  return text.split(/^(?=#{1,6} )/m).filter((part) => {
+    const level = /^(#{1,6}) /.exec(part)?.[1].length ?? 0;
+    if (skip && level && level <= skip) skip = 0;
+    const m = hostSection.exec(part);
+    if (m) { skip = m[1].length; return false; }
+    return !skip;
+  }).join("");
+};
 const run = (file, args, cwd, opts = {}) => spawnSync(process.execPath, [file, ...args],
   { cwd, encoding: "utf8", timeout: 60000, ...opts });
 const nativeCopy = () => {
@@ -28,7 +41,7 @@ test("both hosts keep orchestration explicit-only",
 test("operational core has no host tool bindings or external-driver paths",
   "a native plan must not depend on a Claude tool name, skill interpolation or external Codex launch",
   () => {
-    const bad = core.filter((name) => hostBindings.test(fs.readFileSync(path.join(dir, name), "utf8")));
+    const bad = core.filter((name) => hostBindings.test(outsideHostSections(fs.readFileSync(path.join(dir, name), "utf8"))));
     return bad.length === 0 || `host binding in ${bad.join(", ")}`;
   });
 
@@ -36,7 +49,9 @@ test("the boundary check rejects a host-specific command in a native reference",
   "a boundary invariant that admits a Claude path would pass the original incompatibility",
   () => hostBindings.test('node "${CLAUDE_SKILL_DIR}/scripts/run.mjs"')
     && hostBindings.test("Continue through SendMessage")
-    && hostBindings.test("codex/scripts/driver.mjs"));
+    && hostBindings.test("codex/scripts/driver.mjs")
+    && hostBindings.test(outsideHostSections("## Run\n\n### In Claude Code\n\nOne Agent call.\n\n## Read\n\nThen the Agent tool.\n"))
+    && !hostBindings.test(outsideHostSections("## Run\n\n### In Claude Code\n\nOne Agent call.\n\n### In Codex\n\nA subagent.\n\n## Read\n")));
 
 test("the coordinator is a linked role, with no additional skill entrypoint",
   "packaging a role as another skill changes discovery and invocation",

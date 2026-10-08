@@ -19,7 +19,8 @@ W1 | opencode | <provider/model from recent status> | implementer | worktree | u
 R1 | opencode | <second provider/model from recent status> | verifier | nothing | unknown
 ```
 
-Register with `node <skill-dir>/scripts/agent-run.mjs --plan --run-dir <run>`. Every OpenCode row
+Register with `node "<orchestrate>/scripts/agent-run.mjs" --plan --run-dir <run>`, `<orchestrate>` the
+orchestrate skill installed beside this one. Every OpenCode row
 uses a concrete model ID, never `inherit` or a display name. Its prompt carries the same `MODEL:` or none,
 which runs on the row's; `inherit` or another model is refused.
 Model selection and launch-time validation follow [Select and launch](../SKILL.md#select-and-launch).
