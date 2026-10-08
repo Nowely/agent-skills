@@ -34,7 +34,8 @@ pins the model and the writes: a prompt that names neither runs on the row's, on
 Everything else a run tries asks: a command outside the read-only set, a write outside its directory. The
 agent has no web tools and no Agent tool. It runs with the user's own configuration: their allow rules run
 without asking, their hooks and MCP servers are there, and the report's `context` says which. A `write`
-directory may not overlap `<state>`, and no file tool, redirect or `tee` may reach a mailbox; any other Bash
+directory may not be your home or above it, nor lie inside or above `<state>` or `~/.claude`, and no file tool,
+redirect or `tee` may reach a mailbox; any other Bash
 write there (`cp`, `mv`, a script) still asks, unless the user's own allow rules cover it.
 
 ## The launch

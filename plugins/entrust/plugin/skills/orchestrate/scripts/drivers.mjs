@@ -1,7 +1,8 @@
 // What every external agent's driver shares beside the launcher's contract: the exit codes, the request id,
-// the RIGHTS grammar and the scope it grants, the plan's model pin, and the worktree a `worktree` agent runs
-// in. The Codex, OpenCode and Claude drivers import it; nothing here runs on import.
+// the RIGHTS grammar and the scope it grants, the plan's model pin, the write-root check, and the worktree a
+// `worktree` agent runs in. The Codex, OpenCode and Claude drivers import it; nothing here runs on import.
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -119,6 +120,37 @@ export function scopeWithin(scope, prior) {
   const priorRoots = prior.roots ?? [];
   if (!scope.roots?.length) return false;
   return scope.roots.every((r) => priorRoots.some((p) => within(r, p)));
+}
+
+// Why a directory may not be a write root, or null. Not the home directory or an ancestor of it (the passwd
+// entry, and an absolute $HOME exactly), and not equal to, inside or above the state directory, where the
+// mailboxes are, or a directory the adapter protects. Compared by dev:ino, not by spelling: a case variant, a
+// link or an alias of the same directory is the same directory. `protectedDirs` is [{ dir, label, holds }].
+export function writeRootProblem(dir, { stateDir, protectedDirs = [], home = passwdHome() }) {
+  const statOf = (p) => { try { return fs.statSync(p); } catch { return null; } };
+  const target = statOf(dir);
+  if (!target) return `cannot stat ${dir}`;
+  const same = (st) => Boolean(st) && st.dev === target.dev && st.ino === target.ino;
+  const upward = (p) => { const out = [p]; while (path.dirname(out.at(-1)) !== out.at(-1)) out.push(path.dirname(out.at(-1))); return out; };
+  const refuse = (why) => `refusing to grant write access to ${dir}: it is ${why}`;
+  const h = canonical(home);
+  for (const cur of upward(h)) if (same(statOf(cur))) return refuse(cur === h ? "your home directory" : `an ancestor of your home directory (${cur})`);
+  const envHome = process.env.HOME;
+  if (envHome && path.isAbsolute(envHome) && same(statOf(canonical(envHome)))) return refuse(`the directory $HOME points at (${envHome})`);
+  for (const p of [{ dir: stateDir, label: "this driver's state directory", holds: "the run's approvals" }, ...protectedDirs]) {
+    if (!p.dir) continue;
+    const protSt = statOf(p.dir);
+    if (protSt && upward(canonical(dir)).some((cur) => { const st = statOf(cur); return st && st.dev === protSt.dev && st.ino === protSt.ino; }))
+      return refuse(`inside ${p.label}, which holds ${p.holds}`);
+    const real = canonical(p.dir);
+    for (const cur of upward(path.dirname(real))) if (same(statOf(cur))) return refuse(`an ancestor of ${p.label} (${real}), which holds ${p.holds}`);
+  }
+  return null;
+}
+
+// The passwd home, which $HOME cannot move; $HOME's own value for a uid with no passwd entry.
+export function passwdHome() {
+  try { return os.userInfo().homedir; } catch { return os.homedir(); }
 }
 
 export function git(args, cwd) {

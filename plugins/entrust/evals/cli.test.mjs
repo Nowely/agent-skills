@@ -1208,6 +1208,15 @@ flow("a policy dictionary without the search key narrows no WEB_SEARCH: mode",
       { env: { ENTRUST_POLICY_SEAM: policy } }));
   });
 
+flow("--check-prompt-file refuses a write root over the state directory, with the run's own reason",
+  "the launcher checks before an agent exists, and a root the run would refuse after its pid line passed the check: a refusal only the run gives arrives after the relay was spent",
+  () => {
+    const root = flowState(), state = path.join(root, "state");
+    fs.mkdirSync(state);
+    return refusal(checkRun(`RIGHTS: write ${root}\nTASK: x\n`, { env: { ENTRUST_STATE_DIR: state } }),
+      /refusing to grant write access to .*: it is an ancestor of this driver's state directory/);
+  });
+
 flow("--check-prompt-file refuses an unknown upper-case field",
   "a typo in a header is a different agent, and the check is what stops it before one is spawned",
   () => {

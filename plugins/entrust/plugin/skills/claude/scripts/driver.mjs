@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
-import { EXIT, canonical, makeWorktree, resolveModel, resolveRights, rightsScope, scopeWithin, within, worktreeFacts } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, canonical, makeWorktree, passwdHome, resolveModel, resolveRights, rightsScope, scopeWithin, within, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { TOOL } from "./approvals.mjs";
 
@@ -25,6 +25,7 @@ const FIVE_FIELDS = path.join(HERE, "../../orchestrate/schemas/five-fields.schem
 const MODELS = JSON.parse(fs.readFileSync(path.join(HERE, "../adapter.json"), "utf8")).plan.models;
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
 const HEADERS = new Set(["RIGHTS", "MODEL", "EFFORT", "OUTPUT_SCHEMA", "RESUME", "SAFE_MODE"]);
+const PROTECTED = [{ dir: path.join(passwdHome(), ".claude"), label: "~/.claude", holds: "the settings, hooks and plugins every Claude Code session loads" }];
 const READ_TOOLS = ["Read", "Grep", "Glob", "Bash"];
 const WRITE_TOOLS = [...READ_TOOLS, "Edit", "Write"];
 const DEFAULT_TIMEOUT_S = 1800;
@@ -138,8 +139,9 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   return { task, rights, model, effort, schemaPath, schemaText: JSON.stringify(schema), safeMode: headers.SAFE_MODE === "yes", resume };
 }
 
-// A run's working directory and the roots it may write without a prompt. A write root may not overlap the
-// state directory: the mailboxes are there, and acceptEdits writes inside the working directory unasked.
+// A run's working directory and the roots it may write without a prompt. A write root passes the shared check:
+// not the home or above it, not over the state directory, where the mailboxes are, nor over ~/.claude, whose
+// settings, hooks and plugins every later session loads; acceptEdits writes inside the working directory unasked.
 // The run's directory must exist: claude is spawned in it, and a missing cwd fails the spawn with the ENOENT
 // a missing claude gives.
 export function scopeOf(parsed, stateDir) {
@@ -150,10 +152,10 @@ export function scopeOf(parsed, stateDir) {
   }
   const s = rightsScope(parsed.rights);
   if (s.kind === "write") {
-    const root = s.roots[0], state = canonical(stateDir);
-    if (within(state, root) || within(root, state))
-      return { error: `RIGHTS write ${root} overlaps the state directory ${state}, where the run's approvals are` };
+    const root = s.roots[0];
     if (!isDir(root)) return { error: `RIGHTS write ${root} is not an existing directory` };
+    const why = writeRootProblem(root, { stateDir, protectedDirs: PROTECTED });
+    if (why) return { error: why };
     return { kind: "write", cwd: s.readDir, roots: s.roots };
   }
   if (s.kind === "worktree") return { kind: "worktree", repo: s.repo, roots: [] };

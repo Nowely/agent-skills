@@ -60,7 +60,7 @@ test("--check-prompt-file passes silently and refuses with one entrust: refused 
     [`RIGHTS: read ${s.work}\nEFFORT: huge\nTASK: look\n`, /EFFORT must be/],
     [`RIGHTS: read ${s.work}\nSAFE_MODE: no\nTASK: look\n`, /SAFE_MODE takes only yes/],
     [`RIGHTS: read ${s.work}\nRESUME: relative/report.json\nTASK: look\n`, /RESUME must be the absolute path/],
-    [`RIGHTS: write ${s.state}\nTASK: look\n`, /overlaps the state directory/],
+    [`RIGHTS: write ${s.state}\nTASK: look\n`, /refusing to grant write access to .*: it is inside this driver's state directory/],
     [`RIGHTS: read ${s.work}/missing\nTASK: look\n`, /is not an existing directory/],
     [`RIGHTS: write ${s.work}/missing\nTASK: look\n`, /is not an existing directory/],
     [`RIGHTS: read ${s.work}\nTASK:\n`, /TASK body is empty/],

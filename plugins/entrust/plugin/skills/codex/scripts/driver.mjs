@@ -36,7 +36,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createAgentTemp, agentTempAncestor, stateDirectory, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
-import { EXIT, parseRights, resolveModel, resolveRights } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, parseRights, resolveModel, resolveRights, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import { shortName } from "./launch.mjs";
 
 const LEVELS = new Set(["read", "write"]);
@@ -1038,69 +1038,14 @@ function resolveDir(p, what) {
   return real;
 }
 
-// A writable root must not grant the home directory or its ancestors.
-// Compare by dev:ino identity: macOS realpath preserves letter case, so string equality cannot
-// protect against alternate spellings, symlinks or aliases of the same directory.
+// A writable root must not grant the home directory or its ancestors, ~/.codex (a writable ~/.codex/sessions
+// makes the receipt forgeable) or the state directory (the locks, the mailboxes, the isolated home): the shared
+// check, by dev:ino.
 function checkRoot(dir) {
-  let target;
-  try { target = fs.statSync(dir); }
-  catch (e) { fail(EXIT.USAGE, `cannot stat ${dir}: ${e.message}`); }
-  const same = (st) => st.dev === target.dev && st.ino === target.ino;
-  // Refuse every ancestor of the passwd home as well as the home itself: granting an ancestor grants it too.
-  // The passwd entry is independent of $HOME; unresolved paths still require a spelling comparison.
-  const canon = (a) => canonPath(a) ?? path.resolve(a);
-  const hit = (p, why) => {
-    let st = null;
-    try { st = fs.statSync(p); } catch {}
-    if (st && same(st)) fail(EXIT.USAGE, `refusing to grant write access to ${dir}: it is ${why}`);
-  };
-  // The passwd home and everything ABOVE it: granting an ancestor grants the home too.
-  for (let cur = canon(passwdHome("the home-directory guard")); ; ) {
-    hit(cur, cur === canon(passwdHome("the home-directory guard")) ? "your home directory" : `an ancestor of your home directory (${cur})`);
-    const parent = path.dirname(cur);
-    if (parent === cur) break;
-    cur = parent;
-  }
-  // An absolute $HOME adds an exact-match refusal only; walking its ancestors would reject hermetic
-  // workspaces containing their own home, and a relative value would anchor on an arbitrary cwd.
-  const envHome = process.env.HOME;
-  if (envHome && path.isAbsolute(envHome)) hit(canon(envHome), `the directory $HOME points at (${envHome})`);
-  // The receipt story and the driver's own state must never become writable roots: a writable
-  // ~/.codex/sessions makes the "unforgeable" receipt forgeable, and the state directory holds the
-  // locks, the answer log and the isolated home.
-  // Compared by IDENTITY, like every other guard here — a string-prefix compare is bypassed by a
-  // case-variant spelling on a case-insensitive volume — and by walking the TARGET's ancestors against
-  // the protected inode, which is the "inside" semantics a single stat cannot give.
-  // The state directory is listed by its RESOLVED path, so the guarantee follows wherever the caller
-  // pointed it rather than following a name.
-  const home = canon(passwdHome("the home-directory guard"));
-  const protectedRoots = [
-    [path.join(home, ".codex"), "~/.codex"],
-    [stateDir(), "this driver's state directory"],
-  ];
-  for (const [prot, label] of protectedRoots) {
-    let protSt = null;
-    try { protSt = fs.statSync(prot); } catch {}
-    for (let cur = dir; protSt; ) {
-      let st = null;
-      try { st = fs.statSync(cur); } catch {}
-      if (st && st.dev === protSt.dev && st.ino === protSt.ino)
-        fail(EXIT.USAGE, `refusing to grant write access to ${dir}: it is inside ${label}, which holds the rollout receipts and this driver's own state`);
-      const parent = path.dirname(cur);
-      if (parent === cur) break;
-      cur = parent;
-    }
-    // The other direction: a root that CONTAINS the protected one grants it as surely as the root itself
-    // (~/.claude holds the plugin's data directory). Walked from the protected path's own ancestors, which
-    // exist even before a first run creates the state directory under them.
-    const real = canonLoose(prot) ?? path.resolve(prot);
-    for (let cur = path.dirname(real); ; ) {
-      hit(cur, `an ancestor of ${label} (${real}), which holds the rollout receipts and this driver's own state`);
-      const parent = path.dirname(cur);
-      if (parent === cur) break;
-      cur = parent;
-    }
-  }
+  const home = passwdHome("the home-directory guard");
+  const why = writeRootProblem(dir, { home, stateDir: stateDir(), protectedDirs: [
+    { dir: path.join(canonPath(home) ?? home, ".codex"), label: "~/.codex", holds: "the rollout receipts" }] });
+  if (why) fail(EXIT.USAGE, why);
   return dir;
 }
 
@@ -2532,7 +2477,7 @@ function readOpts(argv = process.argv.slice(2), { resolveState = true } = {}) {
 // the run refuses with. The launcher's --new runs it before an agent is spawned, with neither state
 // variable set. A pass is silent and 0; a refusal is 2 and one line, `entrust: refused: <reason>`. The
 // model catalogue behind MODEL: and EFFORT:, and the directories RIGHTS: and WRITABLE: name, stay the
-// run's to refuse.
+// run's to refuse; the write roots RIGHTS: and WRITABLE: grant are refused here too, by the run's own check.
 function checkPromptFile(argv) {
   checkOnly = true;
   if (argv.length !== 2 || argv[0] !== "--check-prompt-file" || !argv[1] || argv[1].startsWith("--"))
@@ -2541,6 +2486,9 @@ function checkPromptFile(argv) {
   // The launcher gives the run no stdin, so a file with no body is the run's own "empty prompt".
   if (o.prompt === undefined) fail(EXIT.USAGE, "empty prompt");
   refuseWebSearchMode(o.webSearch, o.network);
+  if (o.worktree) checkRoot(resolveDir(o.worktree, "--worktree"));
+  else if (o.level !== "read") checkRoot(resolveDir(o.cwd, "--cwd"));
+  for (const d of o.writable) checkRoot(resolveDir(d, "--writable"));
 }
 
 async function setup() {

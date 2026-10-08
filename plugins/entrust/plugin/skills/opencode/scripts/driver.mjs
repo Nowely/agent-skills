@@ -18,7 +18,7 @@ import { V2Client } from "./v2-client.mjs";
 import { connection, recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
 import { startLocalServer } from "./local-server.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
-import { git, makeWorktree, rightsScope, scopeWithin, worktreeFacts } from "../../orchestrate/scripts/drivers.mjs";
+import { git, makeWorktree, passwdHome, rightsScope, scopeWithin, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import {
   EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionFits, canonical, within,
   commandEvidence, expectation,
@@ -209,7 +209,33 @@ function sessionPermissions(scope) {
     rules.push({ permission: "edit", pattern: `${p}/**`, action: "allow" });
     rules.push({ permission: "write", pattern: `${p}/**`, action: "allow" });
   }
+  // After the allows, so they win: what git and OpenCode load from a tree is never the agent's to write. A
+  // rewritten .git file points every later git in the tree, the driver's diff included, at a repository the
+  // agent made; hooks and config run with the caller's rights. A wildcard matches any character, `/` too.
+  for (const root of scope.roots) {
+    const p = root.replace(/\/+$/, "");
+    for (const pattern of [`${p}/.git`, `${p}/.git/*`, `${p}/*/.git`, `${p}/*/.git/*`, `${p}/.opencode/*`, `${p}/opencode.json*`])
+      for (const permission of ["edit", "write"]) rules.push({ permission, pattern, action: "deny" });
+  }
   return rules;
+}
+
+// A write root must exist and pass the shared check: not the home or above it, not over the state directory,
+// where the mailboxes are (an agent allowed to edit there could approve its own requests), nor over OpenCode's
+// own configuration and data.
+const XDG = (name, fallback) => process.env[name] && path.isAbsolute(process.env[name]) ? process.env[name] : path.join(passwdHome(), fallback);
+const PROTECTED = [
+  { dir: path.join(XDG("XDG_CONFIG_HOME", ".config"), "opencode"), label: "OpenCode's configuration", holds: "its plugins, agents and providers" },
+  { dir: path.join(XDG("XDG_DATA_HOME", ".local/share"), "opencode"), label: "OpenCode's data directory", holds: "its credentials and sessions" },
+];
+function writeRootError(parsed) {
+  if (parsed.rights?.kind !== "write") return null;
+  const root = rightsScope(parsed.rights).roots[0];
+  try { if (!fs.statSync(root).isDirectory()) return `RIGHTS write ${root} is not an existing directory`; }
+  catch { return `RIGHTS write ${root} is not an existing directory`; }
+  let stateDir;
+  try { stateDir = stateDirectory(); } catch (e) { return e.message; }
+  return writeRootProblem(root, { stateDir, protectedDirs: PROTECTED });
 }
 
 // A permission request is out of the approved writes scope when it would edit and either the run
@@ -1290,6 +1316,8 @@ function main() {
     if (text === null) process.exit(refuse(`cannot read ${o.check}`));
     const parsed = parsePrompt(text, process.env, process.cwd());
     if (parsed.error) process.exit(refuse(parsed.error));
+    const root = writeRootError(parsed);
+    if (root) process.exit(refuse(root));
     process.exit(0);
   }
 
@@ -1300,6 +1328,8 @@ function main() {
   if (text === null) process.exit(refuse(`cannot read ${o.prompt}`));
   const parsed = parsePrompt(text, process.env, process.cwd());
   if (parsed.error) process.exit(refuse(parsed.error));
+  const root = writeRootError(parsed);
+  if (root) process.exit(refuse(root));
 
   execute(o, parsed).then((code) => process.exit(code)).catch((e) => {
     process.stderr.write(`entrust: refused: ${e.message}\n`);

@@ -3,6 +3,20 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Fixed
+
+- **A write root is checked the same way in all three drivers, before any agent exists.** An OpenCode `write` root
+  could contain the state directory, and its allowed edits then reached the run's own mailbox, so the agent could
+  write its own accept; Codex refused such a root only at run time, after the pid line. One check in
+  `orchestrate/scripts/drivers.mjs`, `writeRootProblem`, now runs in every driver's `--check-prompt-file` and
+  again at launch: no home directory or ancestor of it, nothing equal to, inside or above the state directory, and
+  each adapter's own directories (`~/.codex`; `~/.claude`; OpenCode's configuration and data), compared by
+  dev:ino. An OpenCode write session also denies edits to `.git`, `.opencode/` and `opencode.json` inside its
+  roots, after the allows, so a rewritten gitlink cannot point the driver's own git at a repository the agent made
+  (research/2026-10-08-driver-audit, X1).
+
 ## 0.27.0 — 2026-10-08
 
 ### Added
