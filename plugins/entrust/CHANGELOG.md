@@ -56,6 +56,12 @@ forensics remain in the repository references and release notes.
   the approval deadline and `LIMITS` are corrected, its standing rules no longer tell the agent its coordinator is
   Claude Code, and `ISSUES.md` E113 and E115 cite the code where it now is (X15, X17, X7).
 
+### Removed
+
+- **The V2 pilot's run log left the plugin.** `opencode/references/v2-pilot.md` shipped a private model endpoint
+  and machine paths with every install. It is now `research/2026-10-02-opencode-v2-pilot/01-pilot-record.md`, with
+  the endpoint and the evidence paths removed; the earlier text remains in the repository's history (X18).
+
 ## 0.27.0 — 2026-10-08
 
 ### Added

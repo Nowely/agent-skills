@@ -25,7 +25,6 @@ Live probes established:
   boundary delivery through steer admission. Seven inputs took 29.295 seconds; `wait` remained 503.
   Those direct HTTP probes prove the native contract. A later real-launcher gate passed V2 question,
   permission-controlled printf, wrapper Stop and same-session continuation with valid schema receipts.
-  See the [pilot results, failed probes and restoration checks](v2-pilot.md).
   V2's current docs call its session routes experimental. No V1 removal date was established.
 - Legacy native `format: json_schema` made history return 400 `Expected OutputFormatJsonSchema`.
   The adapter therefore uses a JSON instruction, independent local validation and at most one

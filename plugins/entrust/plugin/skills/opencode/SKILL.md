@@ -115,4 +115,4 @@ a missing report or uncertain cancellation is unknown, never success.
 
 Read [parity.md](references/parity.md) before relying on active clarification, schema delivery,
 attachments, tool selection or billing. API presence alone is not evidence of working execution.
-See [v2-pilot.md](references/v2-pilot.md) for the recorded native API and adapter acceptance results.
+The V2 pilot's record (native API probes and adapter acceptance) is in the repository's research, not in the plugin.
