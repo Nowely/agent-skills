@@ -7,8 +7,8 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
-- **What an external driver shares is orchestrate's.** The exit-code table, the request-id shape, the RIGHTS grammar
-  and the scope it grants, and the worktree a `worktree` agent runs in moved, unchanged, from the OpenCode adapter to
+- **What an external driver shares is orchestrate's.** The exit-code table, the request-id shape, the RIGHTS grammar,
+  its check against a registered plan's writes and the scope it grants, and the worktree a `worktree` agent runs in moved, unchanged, from the OpenCode adapter to
   `orchestrate/scripts/drivers.mjs`, which the OpenCode driver imports, so a second driver does not copy them.
 
 ## 0.26.0 — 2026-10-08

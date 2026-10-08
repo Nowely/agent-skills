@@ -68,6 +68,31 @@ export function planWritesToRights(writes, cwd) {
   return { error: `plan writes ${JSON.stringify(writes ?? null)} cannot be mapped to a rights scope` };
 }
 
+// The RIGHTS a prompt grants, or the plan's writes when a registered plan pins them and the prompt names none.
+// A pinned plan holds the resolved write path, not only the kind: a same-kind RIGHTS that resolves outside the
+// approved root, or a different worktree, is a widening and is refused.
+export function resolveRights(value, planWrites, cwd = process.cwd()) {
+  if (value === undefined) {
+    if (planWrites) return planWritesToRights(planWrites, cwd);
+    return { error: "RIGHTS is required: read, write <dir> or worktree <repo>" };
+  }
+  const rights = parseRights(value);
+  if (rights.error || !planWrites) return rights;
+  const planned = planWritesToRights(planWrites, cwd);
+  if (planned.error) return planned;
+  if (planned.kind !== rights.kind)
+    return { error: `RIGHTS ${rights.kind} does not match the approved plan's ${planned.kind} writes scope` };
+  if (planned.kind === "write") {
+    const rp = canonical(rights.path ?? cwd, cwd), pp = canonical(planned.path, cwd);
+    if (!within(rp, pp)) return { error: `RIGHTS write ${rp} widens past the approved plan write ${pp}` };
+  }
+  if (planned.kind === "worktree") {
+    const rp = canonical(rights.path, cwd), pp = canonical(planned.path, cwd);
+    if (rp !== pp) return { error: `RIGHTS worktree ${rp} is not the approved plan worktree ${pp}` };
+  }
+  return rights;
+}
+
 const resolveCwd = (p) => canonical(p ?? process.cwd());
 
 export function rightsScope(rights) {

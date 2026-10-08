@@ -9,7 +9,7 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { digest, splitModel, modelKey } from "./config.mjs";
 import { SCHEMA_KEYWORDS, checkSchemaSubset, validateValue, validateOutput } from "../../orchestrate/scripts/json-schema.mjs";
-import { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, parseRights, planWritesToRights, within } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, parseRights, planWritesToRights, resolveRights, within } from "../../orchestrate/scripts/drivers.mjs";
 
 export { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, parseRights, planWritesToRights, within };
 
@@ -89,35 +89,9 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   if (headers.RESUME === undefined && out.agent && out.apiFamily !== "v2")
     return { error: "AGENT requires API_FAMILY v2" };
 
-  // RIGHTS, or the plan's writes when a registered plan pins it. A registered plan pins the
-  // resolved write PATH, not just the kind: a same-kind RIGHTS that resolves outside the approved
-  // root (or a different worktree) is a widening attempt and is refused offline.
-  const planWrites = env.ENTRUST_PLAN_WRITES;
-  if (headers.RIGHTS !== undefined) {
-    const rights = parseRights(headers.RIGHTS);
-    if (rights.error) return { error: rights.error };
-    out.rights = rights;
-    if (planWrites) {
-      const planned = planWritesToRights(planWrites, cwd);
-      if (planned.error) return { error: planned.error };
-      if (planned.kind !== rights.kind)
-        return { error: `RIGHTS ${rights.kind} does not match the approved plan's ${planned.kind} writes scope` };
-      if (planned.kind === "write") {
-        const rp = canonical(rights.path ?? cwd, cwd), pp = canonical(planned.path, cwd);
-        if (!within(rp, pp)) return { error: `RIGHTS write ${rp} widens past the approved plan write ${pp}` };
-      }
-      if (planned.kind === "worktree") {
-        const rp = canonical(rights.path, cwd), pp = canonical(planned.path, cwd);
-        if (rp !== pp) return { error: `RIGHTS worktree ${rp} is not the approved plan worktree ${pp}` };
-      }
-    }
-  } else if (planWrites) {
-    const rights = planWritesToRights(planWrites, cwd);
-    if (rights.error) return { error: rights.error };
-    out.rights = rights;
-  } else {
-    return { error: "RIGHTS is required: read, write <dir> or worktree <repo>" };
-  }
+  const rights = resolveRights(headers.RIGHTS, env.ENTRUST_PLAN_WRITES, cwd);
+  if (rights.error) return { error: rights.error };
+  out.rights = rights;
 
   // MODEL: inherit or provider/model, with the plan's pin enforced offline.
   const planModel = env.ENTRUST_PLAN_MODEL;
