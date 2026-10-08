@@ -87,6 +87,9 @@ async function ask(toolName, input) {
 }
 
 async function main() {
+  // What a real agent does first: it reads before it acts. A turn with no observation is "recall".
+  if (!["error", "noschema", "die", "slow", "recall"].includes(mode)) toolCall("toolu_0", "Read", { file_path: process.cwd() });
+  if (mode === "recall") return finish();
   if (mode === "ok") { toolCall("toolu_1", "Bash", { command: "ls" }); return finish(); }
   if (mode === "write") { toolCall("toolu_1", "Write", { file_path: `${process.cwd()}/out.txt`, content: "x" }); return finish(); }
   if (mode === "commit") {

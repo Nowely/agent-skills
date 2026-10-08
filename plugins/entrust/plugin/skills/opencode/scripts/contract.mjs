@@ -241,12 +241,14 @@ export function commandEvidence(tools) {
 }
 
 // EXPECT is checked against the output of an actually successful command only. Without
-// ALLOW_NO_COMMANDS, a run that produced no successful command is missing its evidence.
-export function expectation({ expect, successful, allowNoCommands }) {
+// ALLOW_NO_COMMANDS, a run that observed nothing is missing its evidence: an observation is a successful
+// command or a completed read tool, the rule every adapter keeps.
+export const READ_TOOLS = new Set(["read", "list", "glob", "grep"]);
+export function expectation({ expect, successful, observations = successful.length, allowNoCommands }) {
   if (expect) {
     const hit = successful.find((c) => expect.test(String(c.output ?? "")));
     return hit ? { ok: true } : { ok: false, why: "no successful command's output matched EXPECT" };
   }
-  if (!allowNoCommands && successful.length === 0) return { ok: false, why: "no successful command was recorded and ALLOW_NO_COMMANDS is not yes" };
+  if (!allowNoCommands && observations === 0) return { ok: false, why: "the agent observed nothing: no command succeeded and no file was read, and ALLOW_NO_COMMANDS is not yes" };
   return { ok: true };
 }

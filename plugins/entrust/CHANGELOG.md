@@ -21,6 +21,11 @@ forensics remain in the repository references and release notes.
   `--check-prompt-file`, and the continuation keeps the run's directory, rights and `WRITABLE:` roots, so a
   `RIGHTS:` line names the same or is left out. A bare thread id is still taken; `RESUME: last` is refused, since
   under a plan the last run in a directory may be another worker's.
+- **One evidence rule: a turn that observed nothing is exit 5, in every adapter, unless `ALLOW_NO_COMMANDS: yes`.**
+  An observation is a command that succeeded or a file read. OpenCode counted only shell commands, so its own
+  page's template failed a valid answer from an agent that only read files, and Claude had no such gate; OpenCode
+  now counts its read, list, glob and grep tools, and Claude counts Bash, Read, Grep and Glob and takes the field
+  (X7, the exit-5 half).
 
 ### Fixed
 

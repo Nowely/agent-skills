@@ -208,6 +208,15 @@ test("an accept the mailbox cannot record is answered deny, never allow", async 
   assert.equal(answer.behavior, "deny");
 });
 
+test("a turn that observed nothing exits 5, as in every adapter, unless ALLOW_NO_COMMANDS says so", async () => {
+  const s = setup();
+  const bare = await drive(s, `RIGHTS: read ${s.work}\nTASK: recall\n`, { mode: "recall" });
+  assert.equal(bare.code, 5, bare.err); assert.match(bare.json.error, /observed nothing/);
+  const allowed = await drive(s, `RIGHTS: read ${s.work}\nALLOW_NO_COMMANDS: yes\nTASK: recall\n`, { mode: "recall" });
+  assert.equal(allowed.code, 0, allowed.err);
+  assert.equal((await drive(s, `RIGHTS: read ${s.work}\nTASK: look\n`)).code, 0);
+});
+
 test("an error result exits 1, no structured answer 13, a dead claude 4, a missing one 4", async () => {
   const s = setup();
   const text = `RIGHTS: read ${s.work}\nTASK: look\n`;

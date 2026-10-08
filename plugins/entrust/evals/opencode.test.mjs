@@ -8,7 +8,7 @@ import { ROOT, registry, runCases, spawnNode, summarize, tempDir } from "./lib/h
 import { recentModels, splitModel, connection, digest } from "../plugin/skills/opencode/scripts/config.mjs";
 import { Client } from "../plugin/skills/opencode/scripts/client.mjs";
 import { V2Client, validateProfile, normalizeMessages } from "../plugin/skills/opencode/scripts/v2-client.mjs";
-import { parsePrompt, FIVE_FIELDS_SCHEMA, checkSchemaSubset, validateOutput, decisionFits, extractJson } from "../plugin/skills/opencode/scripts/contract.mjs";
+import { parsePrompt, FIVE_FIELDS_SCHEMA, checkSchemaSubset, validateOutput, decisionFits, extractJson, expectation } from "../plugin/skills/opencode/scripts/contract.mjs";
 import { outOfScope, sessionPermissions } from "../plugin/skills/opencode/scripts/driver.mjs";
 import { readAgentOrders } from "../plugin/skills/orchestrate/scripts/agent-orders.mjs";
 import { fakeOpenCode, fakeOpenCodeV2 } from "./fake-opencode.mjs";
@@ -291,11 +291,11 @@ function fakeCli(url, dir) {
     FAKE_OPENCODE_URL: url, FAKE_OPENCODE_START_FILE: startFile, FAKE_OPENCODE_STOP_FILE: stopFile }, startFile };
 }
 // `beside` is an earlier report: this run writes report-2.json into its directory, under the same state.
-async function driverRun(server, { headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", localServer = false, localUrl = server.url, beside = null } = {}) {
+async function driverRun(server, { allowNoCommands = true, headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", localServer = false, localUrl = server.url, beside = null } = {}) {
   const state = beside ? path.dirname(path.dirname(beside)) : tempDir("entrust-opencode-driver-");
   const dir = beside ? path.dirname(beside) : path.join(state, "invocation"); if (!beside) fs.mkdirSync(dir);
   const input = path.join(dir, "prompt.txt"), report = path.join(dir, beside ? "report-2.json" : "report.json"), box = path.join(dir, "approvals");
-  fs.writeFileSync(input, prompt(`ALLOW_NO_COMMANDS: yes\n${resume ? `RESUME: ${resume}\n` : ""}${headers}`, rights));
+  fs.writeFileSync(input, prompt(`${allowNoCommands ? "ALLOW_NO_COMMANDS: yes\n" : ""}${resume ? `RESUME: ${resume}\n` : ""}${headers}`, rights));
   const env = { ENTRUST_STATE_DIR: state, ENTRUST_OPENCODE_URL: localServer ? undefined : server.url, ENTRUST_OPENCODE_CONNECTION: undefined,
     ...recent({ recent: [{ providerID: "router", modelID: savedModel }], variant: { "router/deepseek/flash": "high" } }) };
   const cli = localServer ? fakeCli(localUrl, state) : null;
@@ -412,6 +412,18 @@ test("no RIGHTS line is a read agent in the current directory, and yes-or-no fie
   assert.equal(parsePrompt(prompt("ALLOW_NO_COMMANDS: true\n"), {}).allowNoCommands, true);
   assert.equal(parsePrompt(prompt("ALLOW_NO_COMMANDS: 0\n"), {}).allowNoCommands, undefined);
   assert.match(parsePrompt(prompt("BRIEF: sure\n"), {}).error, /BRIEF takes yes, true or 1/);
+});
+test("a turn that read a file has observed something, as in every adapter; one that read nothing fails without ALLOW_NO_COMMANDS", () => {
+  assert.equal(expectation({ successful: [], observations: 1 }).ok, true);
+  assert.match(expectation({ successful: [], observations: 0 }).why, /observed nothing/);
+  assert.equal(expectation({ successful: [], observations: 0, allowNoCommands: true }).ok, true);
+});
+test("the page's own template passes on a turn that only read, and fails exit 5 on one that observed nothing", async () => {
+  for (const [mode, code] of [["read-only", 0], ["normal", 5]]) {
+    const s = await fakeOpenCode(mode);
+    try { const r = await driverRun(s, { allowNoCommands: false }); assert.equal(r.code, code, `${mode}: ${r.err}`); }
+    finally { await s.close(); }
+  }
 });
 test("RESUME last is refused: under a plan the newest report beside this one is another worker's", () => {
   assert.match(parsePrompt(prompt("RESUME: last\n"), {}).error, /RESUME last is not accepted/);

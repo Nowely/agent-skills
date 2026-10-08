@@ -33,6 +33,8 @@ export async function fakeOpenCode(mode = "normal") {
       s.messages.push({ info: { ...info, id: `msg_partial_${state.prompts}`, time: { created: Date.now() + 1 } },
         parts: [{ type: "text", text: "Latest partial details" }] });
     }
+    if (mode === "read-only")
+      s.messages.at(-1).parts.unshift({ type: "tool", tool: "read", callID: "call_read", state: { status: "completed", input: { filePath: "/x" }, output: "contents" } });
     if (mode === "old-history" && state.prompts === 1)
       s.messages.at(-1).parts.push({ type: "tool", tool: "bash", callID: "call_old", state: { status: "completed", input: { command: "old command" }, output: "OLD_OUTPUT", metadata: { exit: 0 } } });
     s.busy = false;

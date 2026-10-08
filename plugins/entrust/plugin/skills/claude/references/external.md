@@ -23,6 +23,7 @@ pins the model and the writes: a prompt that names neither runs on the row's, on
 | `OUTPUT_SCHEMA:` | an absolute path | absent: the [five-field schema](../../orchestrate/schemas/five-fields.schema.json); Claude Code validates the answer against it |
 | `RESUME:` | the absolute path of an earlier claude report | continues that run's session, in its directory, with its rights; a `RIGHTS:` line names the same or is left out |
 | `SAFE_MODE: yes` | | no CLAUDE.md, memory, skills, plugins, hooks or MCP servers, and so no approvals |
+| `ALLOW_NO_COMMANDS: yes` | | the agent may answer from what it knows; without it, a turn that ran no command and read no file is exit 5 |
 | `TASK:` | the task, then every line after it | name absolute paths: Claude Code's prompt names a scratchpad, and "the current directory" alone can land there |
 
 | `RIGHTS` | Working directory | Without asking | Tools |

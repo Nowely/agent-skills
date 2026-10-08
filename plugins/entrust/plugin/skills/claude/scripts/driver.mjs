@@ -24,7 +24,7 @@ const SERVER_NAME = "entrust-approvals";
 const FIVE_FIELDS = path.join(HERE, "../../orchestrate/schemas/five-fields.schema.json");
 const MODELS = JSON.parse(fs.readFileSync(path.join(HERE, "../adapter.json"), "utf8")).plan.models;
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
-const HEADERS = new Set(["RIGHTS", "MODEL", "EFFORT", "OUTPUT_SCHEMA", "RESUME", "SAFE_MODE"]);
+const HEADERS = new Set(["RIGHTS", "MODEL", "EFFORT", "OUTPUT_SCHEMA", "RESUME", "SAFE_MODE", "ALLOW_NO_COMMANDS"]);
 const PROTECTED = [{ dir: path.join(passwdHome(), ".claude"), label: "~/.claude", holds: "the settings, hooks and plugins every Claude Code session loads" }];
 const READ_TOOLS = ["Read", "Grep", "Glob", "Bash"];
 const WRITE_TOOLS = [...READ_TOOLS, "Edit", "Write"];
@@ -118,6 +118,8 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
 
   const safeMode = headers.SAFE_MODE === undefined ? false : flagValue(headers.SAFE_MODE);
   if (safeMode === null) return refusal("SAFE_MODE takes yes, true or 1, or no, false or 0");
+  const allowNoCommands = headers.ALLOW_NO_COMMANDS === undefined ? false : flagValue(headers.ALLOW_NO_COMMANDS);
+  if (allowNoCommands === null) return refusal("ALLOW_NO_COMMANDS takes yes, true or 1, or no, false or 0");
 
   let resume = null;
   if (headers.RESUME !== undefined) {
@@ -139,7 +141,7 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
     resume = { report: at, prior };
   }
 
-  return { task, rights, model, effort, schemaPath, schemaText: JSON.stringify(schema), safeMode, resume };
+  return { task, rights, model, effort, schemaPath, schemaText: JSON.stringify(schema), safeMode, allowNoCommands, resume };
 }
 
 // The rights a report's run had, as a RIGHTS line would name them; and whether a declared one names the same.
@@ -244,7 +246,12 @@ function escalations(box) {
 }
 
 // The facts of a finished run, from its stream.
-export function verdict({ result, stopped, spawnError, exitCode, signal, box, denials, hasMailbox }) {
+// An observation is a command that ran or a file read: a turn with none answered from nothing, which every
+// adapter fails with exit 5 unless the prompt says ALLOW_NO_COMMANDS.
+const OBSERVING = new Set(["Bash", "Read", "Grep", "Glob"]);
+export const observations = (tools) => [...tools.values()].filter((t) => OBSERVING.has(t.tool) && t.isError === false).length;
+
+export function verdict({ result, stopped, spawnError, exitCode, signal, box, denials, hasMailbox, observed = 1, allowNoCommands = false }) {
   const asked = escalations(box);
   if (spawnError) return { exitCode: EXIT.TRANSPORT, error: `claude could not be started: ${spawnError}`, turnStatus: "failed" };
   if (stopped) return { exitCode: EXIT.TIMEOUT, error: stopped, turnStatus: "aborted", partial: true };
@@ -255,6 +262,8 @@ export function verdict({ result, stopped, spawnError, exitCode, signal, box, de
   if (!hasMailbox && denials.length) return { exitCode: EXIT.NEEDS_INPUT, error: "a call needed approval and the run had no mailbox", turnStatus: "completed" };
   if (asked.some((q) => q.decision === "declined" || q.decision === "expired"))
     return { exitCode: EXIT.APPROVAL, error: "an approval was declined or expired", turnStatus: "completed" };
+  if (!allowNoCommands && observed === 0)
+    return { exitCode: EXIT.COMMANDS, error: "the agent observed nothing: it ran no command and read no file, and ALLOW_NO_COMMANDS is not yes", turnStatus: "completed" };
   return { exitCode: EXIT.SUCCESS, error: null, turnStatus: "completed" };
 }
 
@@ -344,7 +353,8 @@ async function run(o, text) {
     clearTimeout(timer);
     fs.closeSync(transcript);
     const denials = ctx.result?.permission_denials ?? [];
-    return publish(verdict({ result: ctx.result, stopped: ctx.stopped, spawnError, exitCode, signal, box, denials, hasMailbox: Boolean(mcpConfig) }));
+    return publish(verdict({ result: ctx.result, stopped: ctx.stopped, spawnError, exitCode, signal, box, denials, hasMailbox: Boolean(mcpConfig),
+      observed: observations(ctx.tools), allowNoCommands: parsed.allowNoCommands }));
   } catch (e) {
     return publish({ exitCode: EXIT.TRANSPORT, error: `the driver failed: ${e.message}`, turnStatus: "failed" });
   }

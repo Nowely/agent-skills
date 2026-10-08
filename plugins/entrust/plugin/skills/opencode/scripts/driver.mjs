@@ -21,7 +21,7 @@ import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { git, makeWorktree, passwdHome, rightsScope, scopeWithin, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import {
   EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionFits, canonical, within,
-  commandEvidence, expectation,
+  commandEvidence, expectation, READ_TOOLS,
 } from "./contract.mjs";
 
 const POLL_MS = 900;
@@ -1195,7 +1195,8 @@ async function conclude(ctx, firstReply, parsed) {
     else { verify = { command, exitCode: r.status, signal: r.signal ?? null, output: (r.stdout ?? "") + (r.stderr ?? "") }; verifyFailed = r.status !== 0; }
   }
 
-  const expect = expectation({ expect: parsed.expect, successful, allowNoCommands: parsed.allowNoCommands });
+  const reads = tools.filter((t) => READ_TOOLS.has(t.tool) && t.status === "completed").length;
+  const expect = expectation({ expect: parsed.expect, successful, observations: successful.length + reads, allowNoCommands: parsed.allowNoCommands });
   const declined = ctx.declined > 0 || ctx.expired > 0;
 
   let exitCode = EXIT.SUCCESS, error = null;
