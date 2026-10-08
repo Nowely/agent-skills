@@ -345,25 +345,3 @@ OpenCode inside it, so an adapter cannot be added, removed or replaced without e
 transport-neutral core (plan registry, report paths, the pending/decide mailbox, the keeper) owned by orchestrate,
 and per-adapter hooks (driver path, backend environment, request types, plan-model validation) declared beside each
 adapter's `adapter.json`.
-
-## E132. The README restates the skill pages in 3,656 words
-
-**Evidence, level 1.** `plugins/entrust/plugin/README.md` is 377 lines. Its Goal (`:34-48`), the temporary layout
-(`:112-139`), the state directory (`:161-185`), Rights (`:234-247`) and Trust and verification (`:256-276`) restate
-`skills/codex/SKILL.md`, `skills/cleanup/SKILL.md` and the codex references, and a table (`:348-364`) is needed to say
-where each story's real home is.
-
-**Issue text.** The README is the human install page, yet it restates the codex adapter's rights and gates, the
-cleanup inventory, the storage layout and the adapter's goal. A reader who wants to install the plugin and learn what
-each skill does reads 3,656 words. Keep install, prerequisites and a line per skill, and link the pages for the rest.
-
-## E134. The OpenCode adapter's description says when, not what, and quotes one user's phrases
-
-**Evidence, level 1.** `plugins/entrust/plugin/skills/opencode/SKILL.md:3-9` opens "OpenCode: use immediately when the
-user says “Задействуй модели OpenCode,”…" and quotes three Russian requests; it never says what the skill does, as the
-codex description does (`skills/codex/SKILL.md:4` "Claude-to-Codex adapter: launch external Codex agents…").
-Anthropic's skill authoring guide: "Always write in third person" and "include both what the Skill does and when to
-use it". `plugins/entrust/evals/opencode-routing/` pins routing on these phrases.
-
-**Issue text.** The opencode description is a list of trigger quotes in one user's language with no statement of what
-the adapter does. Write it as what plus when, keeping the trigger words, and rerun `evals/opencode-routing/`.

@@ -1,12 +1,11 @@
 ---
 name: opencode
 description: >-
-  OpenCode: use immediately when the user says “Задействуй модели OpenCode,” asks for an OpenCode worker,
-  continuation, permission or question callback, selects the main session as a proxy (“Прокси на GLM”),
-  or asks to call or pool a model family outside native Codex and Claude (for example, “Позови DeepSeek,
-  GLM” or “Use deepseek, glm in pool”), even without a task; ask for missing task details after choosing
-  OpenCode. For requests limited to Codex and Claude,
-  use native agents.
+  Runs OpenCode workers and an OpenCode model as the main coordinator: launches, continues and stops
+  workers, answers their permission and question callbacks, and picks a recent model. Use when the user asks
+  for OpenCode or for a model outside native Codex and Claude, to call or pool (“Позови DeepSeek, GLM”, “Use
+  deepseek, glm in pool”, “Задействуй модели OpenCode”) or to make it the coordinator (“Прокси на GLM”), even
+  before the task is stated; for Codex and Claude alone, use native agents.
 metadata:
   version: "0.25.1"
 license: MIT
