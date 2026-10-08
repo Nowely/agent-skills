@@ -11,6 +11,10 @@ forensics remain in the repository references and release notes.
   choosing that adapter's `agent-run.mjs`, and a wrong entry script was refused. Now any entry script, or
   orchestrate's own launcher, makes a planned agent with its row's adapter; `--adapter` is needed only without a
   plan, and one that disagrees with the row is refused.
+- **A prompt with no `RIGHTS:` is a read agent in the current directory, in every adapter.** OpenCode and Claude
+  refused it outside a plan while Codex read; all three now read, the narrowest grant, unless a plan row pins the
+  writes. Yes-or-no fields (`ALLOW_NO_COMMANDS`, `BRIEF`, `SAFE_MODE`) take yes, true or 1 and no, false or 0 in
+  every adapter, as Codex's always did.
 
 ### Fixed
 

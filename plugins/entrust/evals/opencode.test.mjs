@@ -407,6 +407,12 @@ test("RESUME of a run still going exits 10, and of one that died before it publi
     const dead = await driverRun(s, { resume: claim }); assert.equal(dead.code, 2); assert.match(dead.err, /ended without a report/);
   } finally { await s.close(); }
 });
+test("no RIGHTS line is a read agent in the current directory, and yes-or-no fields read yes, true, 1 or no, false, 0", () => {
+  assert.deepEqual(parsePrompt(prompt("", null), {}).rights, { kind: "read", path: null });
+  assert.equal(parsePrompt(prompt("ALLOW_NO_COMMANDS: true\n"), {}).allowNoCommands, true);
+  assert.equal(parsePrompt(prompt("ALLOW_NO_COMMANDS: 0\n"), {}).allowNoCommands, undefined);
+  assert.match(parsePrompt(prompt("BRIEF: sure\n"), {}).error, /BRIEF takes yes, true or 1/);
+});
 test("RESUME last is refused: under a plan the newest report beside this one is another worker's", () => {
   assert.match(parsePrompt(prompt("RESUME: last\n"), {}).error, /RESUME last is not accepted/);
 });

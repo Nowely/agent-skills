@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
-import { EXIT, canonical, makeWorktree, passwdHome, resolveModel, resolveRights, rightsScope, within, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, canonical, flagValue, makeWorktree, passwdHome, resolveModel, resolveRights, rightsScope, within, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { TOOL } from "./approvals.mjs";
 
@@ -116,7 +116,8 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   const schema = readJson(schemaPath);
   if (!schema || typeof schema !== "object" || Array.isArray(schema)) return refusal(`OUTPUT_SCHEMA ${schemaPath} is not a JSON object`);
 
-  if (headers.SAFE_MODE !== undefined && headers.SAFE_MODE !== "yes") return refusal("SAFE_MODE takes only yes");
+  const safeMode = headers.SAFE_MODE === undefined ? false : flagValue(headers.SAFE_MODE);
+  if (safeMode === null) return refusal("SAFE_MODE takes yes, true or 1, or no, false or 0");
 
   let resume = null;
   if (headers.RESUME !== undefined) {
@@ -138,7 +139,7 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
     resume = { report: at, prior };
   }
 
-  return { task, rights, model, effort, schemaPath, schemaText: JSON.stringify(schema), safeMode: headers.SAFE_MODE === "yes", resume };
+  return { task, rights, model, effort, schemaPath, schemaText: JSON.stringify(schema), safeMode, resume };
 }
 
 // The rights a report's run had, as a RIGHTS line would name them; and whether a declared one names the same.

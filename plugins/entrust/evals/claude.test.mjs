@@ -54,12 +54,15 @@ test("--check-prompt-file passes silently and refuses with one entrust: refused 
   const s = setup();
   const ok = check(s, `RIGHTS: read ${s.work}\nMODEL: haiku\nEFFORT: low\nTASK: look\n`);
   assert.equal(ok.status, 0); assert.equal(ok.stdout + ok.stderr, "");
+  // No RIGHTS line is a read agent in the current directory, as in every adapter; booleans read alike.
+  assert.deepEqual(parsePrompt("TASK: look\n", {}, s.work).rights, { kind: "read", path: null });
+  for (const v of ["true", "1", "no"]) assert.equal(check(s, `RIGHTS: read ${s.work}\nSAFE_MODE: ${v}\nTASK: look\n`).status, 0, v);
   for (const [text, why] of [
     [`MODEL: haiku\nRIGHTS: read ${s.work}\nTASK: look\n`, /RIGHTS must be the first header/],
     [`RIGHTS: read ${s.work}\nNETWORK: on\nTASK: look\n`, /unsupported header NETWORK/],
     [`RIGHTS: read ${s.work}\nMODEL: gpt-5\nTASK: look\n`, /MODEL must be/],
     [`RIGHTS: read ${s.work}\nEFFORT: huge\nTASK: look\n`, /EFFORT must be/],
-    [`RIGHTS: read ${s.work}\nSAFE_MODE: no\nTASK: look\n`, /SAFE_MODE takes only yes/],
+    [`RIGHTS: read ${s.work}\nSAFE_MODE: maybe\nTASK: look\n`, /SAFE_MODE takes yes, true or 1, or no, false or 0/],
     [`RIGHTS: read ${s.work}\nRESUME: relative/report.json\nTASK: look\n`, /RESUME must be the absolute path/],
     [`RIGHTS: write ${s.state}\nTASK: look\n`, /refusing to grant write access to .*: it is inside this driver's state directory/],
     [`RIGHTS: read ${s.work}/missing\nTASK: look\n`, /is not an existing directory/],

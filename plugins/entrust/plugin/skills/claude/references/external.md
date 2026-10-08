@@ -17,7 +17,7 @@ pins the model and the writes: a prompt that names neither runs on the row's, on
 
 | Field | Values | Effect |
 | --- | --- | --- |
-| `RIGHTS:` (first) | `read [dir]`, `write <dir>`, `worktree <repo>` | the table below; absent: the plan row's writes |
+| `RIGHTS:` (first) | `read [dir]`, `write <dir>`, `worktree <repo>` | the table below; absent: the plan row's writes, else `read` in the current directory |
 | `MODEL:` | `opus`, `sonnet`, `haiku`, `fable`, or a full `claude-…` id | absent: the plan row's, else the user's default |
 | `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max` | absent: the user's default |
 | `OUTPUT_SCHEMA:` | an absolute path | absent: the [five-field schema](../../orchestrate/schemas/five-fields.schema.json); Claude Code validates the answer against it |

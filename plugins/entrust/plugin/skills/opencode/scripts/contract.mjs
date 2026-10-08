@@ -9,7 +9,7 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { digest, splitModel } from "./config.mjs";
 import { SCHEMA_KEYWORDS, checkSchemaSubset, validateValue, validateOutput } from "../../orchestrate/scripts/json-schema.mjs";
-import { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, parseRights, planWritesToRights, resolveModel, resolveRights, within } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, flagValue, parseRights, planWritesToRights, resolveModel, resolveRights, within } from "../../orchestrate/scripts/drivers.mjs";
 
 export { EXIT, REQUEST_ID, REQUEST_ID_SOURCE, canonical, parseRights, planWritesToRights, within };
 
@@ -154,9 +154,10 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
     out.expectSource = headers.EXPECT;
   }
   for (const key of ["ALLOW_NO_COMMANDS", "BRIEF"]) {
-    if (headers[key] !== undefined && headers[key].toLowerCase() !== "yes")
-      return { error: `${key} takes only yes` };
-    if (headers[key] !== undefined) out[key === "ALLOW_NO_COMMANDS" ? "allowNoCommands" : "brief"] = true;
+    if (headers[key] === undefined) continue;
+    const on = flagValue(headers[key]);
+    if (on === null) return { error: `${key} takes yes, true or 1, or no, false or 0` };
+    if (on) out[key === "ALLOW_NO_COMMANDS" ? "allowNoCommands" : "brief"] = true;
   }
   return out;
 }
