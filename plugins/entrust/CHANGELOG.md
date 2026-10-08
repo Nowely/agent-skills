@@ -132,6 +132,13 @@ forensics remain in the repository references and release notes.
   worktree's `worktreeDiffStat` and `worktreeFleet` (the diff itself is at `worktreeDiffPath`). The OpenCode and
   Claude reports drop the constant `costSource`, and OpenCode its constant `schemaOverflow` and
   `approvalsAutoAccepted`, and both the `invocationId` echo. Fields a driver reads back on a continuation stay.
+- **The Codex driver's web-search policy reader and three approval counters.** The reader ran `plutil` over a
+  managed macOS profile to refuse a `WEB_SEARCH:` mode the profile would narrow, a freshness difference it twice
+  led coordinators to answer with a mode nobody asked for; where such a profile exists the driver now says so on
+  stderr, and `ENTRUST_POLICY_SEAM` is gone. `approvalsStale`, `approvalsLate` and `approvalsDuplicate` counted
+  what the mailbox already records: a stale decision file is left in place and its request file says so, which
+  the launcher's `RECEIPT=` counts, and a request id sent twice is still one request, answered once and said on
+  stderr.
 
 ## 0.27.0 — 2026-10-08
 

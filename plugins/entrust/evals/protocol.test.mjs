@@ -649,8 +649,8 @@ const CASES = [
     why: "one request id is one request: a copy the server sends again must not become a second entry or draw a second response to an id the server matches once",
     assert: (r) => {
       const log = answers(duplicateLog).filter((l) => l.startsWith("answer:9430:"));
-      return (r.escalations?.length === 1 && r.approvalsDuplicate === 1 && log.length === 1)
-        || `the duplicate was not one request: ${JSON.stringify({ entries: r.escalations?.length, dup: r.approvalsDuplicate, answers: log })}`;
+      return (r.escalations?.length === 1 && log.length === 1)
+        || `the duplicate was not one request: ${JSON.stringify({ entries: r.escalations?.length, answers: log })}`;
     } },
   { scenario: "filechange-at",    expect: EXIT.SUCCESS,
     env: { FAKE_FILECHANGE_PATH: "<TMPDIR>/rename-from.md", FAKE_FILECHANGE_MOVE: "<TMPDIR>/rename-to.md" },
@@ -952,7 +952,6 @@ flow("a decision for another run or another turn is stale: counted once each, le
     const { code, out } = await a.done;
     const r = parsed(out) ?? {};
     if (code !== EXIT.SUCCESS || entry0(r).decision !== "accepted") problems.push(`the valid decision did not settle it: exit ${code}, ${JSON.stringify(entry0(r))}`);
-    if (r.approvalsStale !== 2) problems.push(`approvalsStale is ${r.approvalsStale}, not 2`);
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -976,7 +975,6 @@ flow("a request open when the root turn ends is settled then, a decision for it 
     if (e1?.decision !== "expired" || e1?.why !== "turn ended" || settled.why !== "turn ended") problems.push(`the first request: ${JSON.stringify(e1)}`);
     if (e2?.decision !== "accepted" || q2.run.turnId !== "turn_root_retry" || q1.run.turnId !== "turn_root")
       problems.push(`the second request: ${JSON.stringify({ e2, turns: [q1.run.turnId, q2.run.turnId] })}`);
-    if (r.approvalsLate !== 1) problems.push(`approvalsLate is ${r.approvalsLate}, not 1`);
     if (answers(a.log).filter((l) => l.startsWith("answer:9408:")).length !== 1) problems.push(`the first request was answered other than once: ${JSON.stringify(answers(a.log))}`);
     return problems.length === 0 || problems.join("; ");
   });
@@ -1211,7 +1209,7 @@ flow("a request delivered twice under one id is offered once and answered once",
     decide(a.box, q, "accept");
     const { code, out, err } = await a.done;
     const r = parsed(out) ?? {};
-    if (code !== EXIT.SUCCESS || r.escalations?.length !== 1 || r.approvalsDuplicate !== 1) problems.push(`exit ${code}, ${JSON.stringify({ entries: r.escalations?.length, dup: r.approvalsDuplicate })}`);
+    if (code !== EXIT.SUCCESS || r.escalations?.length !== 1) problems.push(`exit ${code}, ${JSON.stringify({ entries: r.escalations?.length })}`);
     const said = answers(a.log).filter((l) => l.startsWith("answer:9430:"));
     if (JSON.stringify(said) !== JSON.stringify(["answer:9430:accept"])) problems.push(`the server got ${JSON.stringify(said)}`);
     if (!/approval request id 9430 .* arrived again/.test(err)) problems.push("the duplicate was not said on stderr");
@@ -1228,9 +1226,8 @@ flow("a stale decision on disk when the deadline fires is stale, not late, and t
     const { code, out } = await a.done;
     const r = parsed(out) ?? {};
     const settledAs = readJson(path.join(a.box, `${q.id}.request.json`))?.settled;
-    return (code === EXIT.APPROVAL && entry0(r).decision === "expired" && r.approvalsStale === 1 && r.approvalsLate === 0
-        && settledAs?.decisionFile === "stale")
-      || `exit ${code}, ${JSON.stringify({ e: entry0(r), stale: r.approvalsStale, late: r.approvalsLate, settled: settledAs })}`;
+    return (code === EXIT.APPROVAL && entry0(r).decision === "expired" && settledAs?.decisionFile === "stale")
+      || `exit ${code}, ${JSON.stringify({ e: entry0(r), settled: settledAs })}`;
   });
 
 flow("an accepted request blocks the transient retry",

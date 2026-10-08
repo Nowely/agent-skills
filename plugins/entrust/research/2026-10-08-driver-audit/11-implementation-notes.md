@@ -31,3 +31,18 @@ Each departure from [09-proposal-v2.md](09-proposal-v2.md) made while implementi
   `<orchestrate>` through its own `${CLAUDE_SKILL_DIR}`, since a reference page read as a file substitutes nothing.
   The orchestrate boundary test now admits a host's tool names inside a section headed for that host, and only
   there.
+
+## Step 3
+
+- **The Codex worktree reconciliation stays.** 09 dropped it with the policy reader and the counters (medium
+  confidence), on the claim that `/entrust:cleanup` already lists the driver's trees. It lists them and removes
+  none: its own text tells the user that "the driver reconciles and removes these itself on its next worktree run".
+  Without the reconciler a SIGKILLed driver's clean tree would stay until removed by hand, and E139 asks for the
+  other adapters' trees to become visible, not for the Codex ones to lose their cleanup. So it is kept, and the
+  gain of that row is about 60 lines smaller.
+- **`expectCommand`, `codexHome`, `approvalsAutoDeclined`, `childUsage` and `tools` stay in the reports.** The
+  injection case shows through `expectCommand` that a hostile `EXPECT:` value stayed one value, and it names the
+  pattern behind an exit 5; `codexHome` is how a reader finds the isolated home; OpenCode's auto-decline count
+  routes its exit, `childUsage` is described on its parity page, and `tools` is the only record of the reads its
+  evidence rule counts.
+

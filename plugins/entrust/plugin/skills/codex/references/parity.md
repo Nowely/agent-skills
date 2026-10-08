@@ -78,8 +78,8 @@ Supplying a model or effort triggers `model/list` validation before the thread s
 reads `account/rateLimits/read` once: an exhausted primary window is refused, while an unavailable
 snapshot is reported on stderr and does not block the agent.
 
-Web search is disabled unless a mode is requested. A managed device may allow only some modes; the
-driver refuses a forbidden mode with exit 2 instead of accepting a silent substitution.
+Web search is disabled unless a mode is requested. A managed device may allow only some modes and narrow a
+requested one, which no response field reports; where such a policy exists the driver says so on stderr.
 
 ### Effort
 

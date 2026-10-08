@@ -310,7 +310,7 @@ descendant swept, the lock released, the report written, under a temporary home)
 case per rung, each rung a pure function of its context), and Linux — unmeasured until CI, now a matrix
 leg on every push.
 
-The managed-profile (`managedWebSearchModes`) path is now read through `ENTRUST_POLICY_SEAM` in one cli case, on
-macOS alone, where `plutil` exists; a real MDM plist on a clean machine is still unmeasured. The protocol and
+The driver no longer reads a managed profile's web-search modes: where one exists it says so on stderr, and a
+real MDM plist on a clean machine is still unmeasured. The protocol and
 lock suites' own assertions were used as mutation detectors but never questioned. Strike items from this
 list by attacking them, not by shipping features near them.

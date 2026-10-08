@@ -205,7 +205,7 @@ const CASES = [
       || `a mailbox under another run's private $TMPDIR was accepted: ${t.slice(0, 240)}` },
   { scenario: "happy",            expect: EXIT.SUCCESS, env: { ENTRUST_STATE_DIR: armedState }, args: ["--approval-dir", armedBox],
     why: "an agent with a mailbox and nothing to ask runs as any other, and its report names the mailbox and no entries",
-    assert: (r) => (r.approvalDir === realOf(armedBox) && r.escalations.length === 0 && r.approvalsAccepted === 0 && r.approvalsStale === 0 && r.approvalsLate === 0)
+    assert: (r) => (r.approvalDir === realOf(armedBox) && r.escalations.length === 0 && r.approvalsAccepted === 0)
       || `the armed run's report is wrong: ${JSON.stringify({ dir: r.approvalDir, esc: r.escalations, acc: r.approvalsAccepted })}` },
   { scenario: "happy",            expect: EXIT.USAGE, env: { ENTRUST_STATE_DIR: armedState }, args: ["--approval-dir", armedBox, "--approval-timeout", "30"],
     why: "the deadline is a constant in the driver, not a flag: nobody could say who would set it or why the default could not decide, so the old flag is an unknown argument like any other",
@@ -1080,55 +1080,6 @@ flow("--check-prompt-file needs no state directory",
   "the launcher's --new checks the prompt before any state exists, and a check that asked for a state directory would refuse every agent before it was spawned",
   () => passed(checkRun(GOOD_HEADER.replace("<DIR>", shimDir),
     { unset: ["ENTRUST_STATE_DIR"] })));
-
-flow("--check-prompt-file refuses a WEB_SEARCH: mode the managed policy does not allow, with the run's own reason and the network left out of it",
-  "the refusal used to arrive at --run, after an agent was spawned, and the coordinator swapped in the mode it named — twice, on a user's 'the network is allowed', which needed no line at all. Said before the spawn, and saying that the network is not what was refused, it goes back to the user as a question",
-  async () => {
-    const tool = spawnSync("plutil", ["-help"], { encoding: "utf8" });
-    if (tool.error?.code === "ENOENT") return skip("no plutil here, and the policy reader asks plutil");
-    // A plist in the managed profile's own shape: the requirements TOML, base64, under one key.
-    const policy = path.join(flowState(), "policy.plist");
-    const toml = Buffer.from('allowed_web_search_modes = ["cached"]\n').toString("base64");
-    fs.writeFileSync(policy, `<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>`
-      + `<key>requirements_toml_base64</key><string>${toml}</string></dict></plist>\n`);
-    const agent = `RIGHTS: read ${shimDir}\nWEB_SEARCH: live\nTASK: find the release notes\n`;
-    const r = checkRun(agent, { env: { ENTRUST_POLICY_SEAM: policy }, unset: ["ENTRUST_STATE_DIR"] });
-    const verdict = refusal(r, /^entrust: refused: --web-search live is not permitted by this device's managed policy, which allows cached; the server would silently apply one of those and no response field would say so; another mode is the user's choice to make, not the coordinator's, and the network is unaffected: the agent's own commands reach it with no WEB_SEARCH: line\n$/);
-    if (verdict !== true) return verdict;
-    // The same file under --run gives the same reason, so the launcher's ERROR= line is the run's.
-    const reason = r.err.slice("entrust: refused: ".length);
-    const ran = await run({ scenario: "happy", noPrompt: true, agent, env: { ENTRUST_POLICY_SEAM: policy } });
-    return (ran.code === EXIT.USAGE && ran.err.includes(`entrust: ${reason}`))
-      || `--run did not refuse with the check's reason: exit ${ran.code} ${ran.err.trim().slice(-300)}`;
-  });
-
-flow("a policy file that is no plist dictionary refuses every WEB_SEARCH: mode as unreadable, and a prompt without the line still passes",
-  "plutil answers \"Could not extract value\" both for a policy without the search key and for a file holding one bare word, which it parses as a one-string plist and -lint calls OK; read as the missing key, a corrupt policy opened every mode on the device (E46). `cached` is asked because a managed policy on the machine running this suite may allow it and nothing else",
-  () => {
-    const tool = spawnSync("plutil", ["-help"], { encoding: "utf8" });
-    if (tool.error?.code === "ENOENT") return skip("no plutil here, and the policy reader asks plutil");
-    const policy = path.join(flowState(), "policy.plist");
-    fs.writeFileSync(policy, "garbage\n");
-    const env = { ENTRUST_POLICY_SEAM: policy };
-    const escaped = policy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const verdict = refusal(checkRun(`RIGHTS: read ${shimDir}\nWEB_SEARCH: cached\nTASK: find the release notes\n`, { env }),
-      new RegExp(`^entrust: refused: this device has a managed Codex policy at ${escaped} that could not be read, so whether --web-search cached is permitted cannot be established; `));
-    if (verdict !== true) return verdict;
-    const plain = passed(checkRun(`RIGHTS: read ${shimDir}\nTASK: find the release notes\n`, { env }));
-    return plain === true || `without a WEB_SEARCH: line: ${plain}`;
-  });
-
-flow("a policy dictionary without the search key narrows no WEB_SEARCH: mode",
-  "the other half of the rule above: a managed profile that constrains other things says nothing about search, and refusing there would take every mode from a device whose policy never mentions one",
-  () => {
-    const tool = spawnSync("plutil", ["-help"], { encoding: "utf8" });
-    if (tool.error?.code === "ENOENT") return skip("no plutil here, and the policy reader asks plutil");
-    const policy = path.join(flowState(), "policy.plist");
-    fs.writeFileSync(policy, `<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>`
-      + `<key>other_setting</key><string>x</string></dict></plist>\n`);
-    return passed(checkRun(`RIGHTS: read ${shimDir}\nWEB_SEARCH: cached\nTASK: find the release notes\n`,
-      { env: { ENTRUST_POLICY_SEAM: policy } }));
-  });
 
 flow("--check-prompt-file refuses a write root over the state directory, with the run's own reason",
   "the launcher checks before an agent exists, and a root the run would refuse after its pid line passed the check: a refusal only the run gives arrives after the relay was spent",

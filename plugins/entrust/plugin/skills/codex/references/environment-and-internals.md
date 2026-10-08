@@ -62,10 +62,10 @@ own wording whole — the command, else the reason, else the message, or the joi
 clipped, and may still be empty where it sent none; a sandbox-denied command need
 not raise a request, so an empty array does not prove that no command was denied. An entry does not diagnose
 rights that were too narrow. Exit 6 means a request was declined or expired unanswered, never one accepted;
-a cut run can carry entries and still exit 3. Beside the array, `approvalsAccepted`,
-`approvalsAutoAccepted`, `approvalsStale` and `approvalsLate` count what their names say,
-`approvalsDuplicate` counts a request id the server sent twice — the driver answers it once and the report
-counts the repeat, not a second request.
+a cut run can carry entries and still exit 3. Beside the array, `approvalsAccepted` and
+`approvalsAutoAccepted` count what their names say. A request id the server sends twice is one request,
+answered once and said on stderr; a decision file that is not this run's is left in place, and the request
+file's `settled.decisionFile` says so, which the launcher's `RECEIPT=` counts as `stale=`.
 
 Under an output schema, `schemaOverflow` is null unless the answer broke a size cap, and then
 `{completeAnswerPath, clipped}`: the file holding the whole answer and each field cut, with its path, cap and

@@ -1276,9 +1276,8 @@ test("a decision naming another run, on disk before the deadline settles its req
     const settled = readJson(path.join(box, `${q.id}.request.json`))?.settled;
     const rep = readJson(report);
     return (shapeOf(res.lines) === "ended" && valueOf(res.lines, "RECEIPT").endsWith(" approvals=0/0/1/0 stale=1") && settled?.decisionFile === "stale"
-        && Date.parse(settled.settledAt) > Date.parse(readJson(path.join(box, `${q.id}.decision.json`)).decidedAt)
-        && rep?.approvalsStale === 1 && rep?.approvalsLate === 0)
-      || `${JSON.stringify({ lines: res.lines.slice(0, 2), receipt: valueOf(res.lines, "RECEIPT"), settled, stale: rep?.approvalsStale, late: rep?.approvalsLate })}`;
+        && Date.parse(settled.settledAt) > Date.parse(readJson(path.join(box, `${q.id}.decision.json`)).decidedAt))
+      || `${JSON.stringify({ lines: res.lines.slice(0, 2), receipt: valueOf(res.lines, "RECEIPT"), settled })}`;
   });
 
 test("--pending shows the waiting request whole, --decide publishes it at 0600 with the run's identity and refuses a second, and after the run --decide refuses",
@@ -1593,19 +1592,15 @@ test("--new with a prompt the driver refuses prints the driver's reason on ERROR
   "the refusal used to arrive at --run, after the agent was spawned, and coordinators swapped in the mode it named (2026-09-17 and 2026-09-25); said at --new it goes back to the user before an agent exists, and a refused prompt left in place would be started by a --run issued in the same turn",
   async () => {
     const problems = [];
-    // A policy allowing `cached` alone, read like the device's; a mode must pass both, so the seam
-    // narrows the policy on any machine. WEB_SEARCH: live is then refused everywhere.
-    const policy = path.join(tempDir("agent-run-policy."), "policy.plist");
-    fs.writeFileSync(policy, `<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict><key>requirements_toml_base64</key>`
-      + `<string>${Buffer.from('allowed_web_search_modes = ["cached"]\n').toString("base64")}</string></dict></plist>\n`);
-    const seam = { ENTRUST_POLICY_SEAM: policy };
-    const refused = `RIGHTS: read ${shimDir}\nWEB_SEARCH: live\nTASK: find the release notes\n`;
+    // A web-search mode the driver does not know, which it refuses offline on any machine.
+    const seam = {};
+    const refused = `RIGHTS: read ${shimDir}\nWEB_SEARCH: everywhere\nTASK: find the release notes\n`;
     // The driver's own verdict on the same text, which the ERROR= line has to carry unchanged.
     const copy = path.join(tempDir("agent-run-check."), "prompt.txt");
     fs.writeFileSync(copy, refused);
     const own = spawnSync(process.execPath, [path.join(SCRIPTS, "driver.mjs"), "--check-prompt-file", copy], { env: { ...process.env, ...seam }, encoding: "utf8" });
     const reason = /^entrust: refused: (.+)\n$/.exec(String(own.stderr))?.[1];
-    if (own.status !== 2 || !reason) return `the driver's own check did not refuse WEB_SEARCH: live: exit ${own.status}, ${String(own.stderr).slice(0, 200)}`;
+    if (own.status !== 2 || !reason) return `the driver's own check did not refuse WEB_SEARCH: everywhere: exit ${own.status}, ${String(own.stderr).slice(0, 200)}`;
     // Refused, corrected on the same report path, run.
     const report = path.join(runUnderState("refused."), "run", "report.json");
     const dir = agentDirOf(report);

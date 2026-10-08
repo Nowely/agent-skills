@@ -551,11 +551,8 @@ const HELP = [
   exitCode, durationMs} from the item's own completion, or null when none
   came), cwd, reason and fileChanges ({path, kind, move} each, or null where no
   item named them); beside it
-  approvalsAccepted (by the caller), approvalsAutoAccepted (by the driver),
-  approvalsStale (decision files not this run's or not their request's),
-  approvalsLate (valid ones the driver did not take, the request's turn or the
-  run being over), approvalsDuplicate (a request id that arrived again, answered
-  once) and approvalDir, the mailbox. A command the sandbox denied
+  approvalsAccepted (by the caller), approvalsAutoAccepted (by the driver) and
+  approvalDir, the mailbox. A command the sandbox denied
   need not raise a request; exit 6 sits below timeout, so a cut run carries
   entries and exits 3. interactions, the requests that needed a human and no
   sandbox change could answer. sandbox is the server's echo at thread/start.
@@ -604,9 +601,6 @@ ${stateSubdirHelp()}
   ENTRUST_CODEX                 absolute path to the codex executable; without
                                 it the driver searches PATH, then
                                 ${CODEX_FALLBACK_DIRS.join(", ")}
-  ENTRUST_POLICY_SEAM           a test seam: a plist read like the device's
-                                managed Codex policy, beside it; a --web-search
-                                mode must pass both, so it narrows and never widens
   ENTRUST_LOCK_SEAM_MS          a test seam: how long to pause between the
                                 lock's ownership check and the act it guards,
                                 touching <lock>.seam while it pauses. The
@@ -1239,52 +1233,13 @@ async function inheritedConfig() {
   }
 }
 
-// thread/start echoes approvalPolicy but not the effective web-search mode; measured live,
-// allowed_web_search_modes = ["cached"] clamps a requested "live" mode to "cached".
-// Read the policy before the turn and refuse a narrowed mode; an absent file or key imposes no constraint.
+// thread/start echoes approvalPolicy but not the effective web-search mode, and a device's managed Codex
+// policy can narrow a requested mode (measured live: allowed_web_search_modes = ["cached"] turned "live" into
+// "cached"). That is freshness, not safety, so the driver says so where such a policy exists and reads no further.
 const MANAGED_PREFS = "/Library/Managed Preferences/com.openai.codex.plist";
-// Return permitted modes, null when no policy narrows them, or throw when a present policy cannot be read.
-// An unreadable or malformed policy must fail closed.
-function managedWebSearchModes(file = MANAGED_PREFS) {
-  if (!fs.existsSync(file)) return null;
-  const opts = { encoding: "utf8", timeout: LIMITS.SPAWN_TIMEOUT_MS, killSignal: "SIGKILL" };
-  const r = spawnSync("plutil", ["-extract", "requirements_toml_base64", "raw", "-o", "-", file], opts);
-  if (r.status !== 0) {
-    if (!/does not exist|Could not extract/i.test(String(r.stderr ?? ""))) return undefined;
-    // No such key is a real answer: the profile constrains other things and says nothing about search.
-    // plutil gives the same message for a file that is no dictionary at all, and a bare word parses as a
-    // one-string plist in the old text format, which -lint calls OK; so the root has to be a dictionary.
-    const x = spawnSync("plutil", ["-convert", "xml1", "-o", "-", file], opts);
-    return x.status === 0 && /<plist\b[^>]*>\s*<dict\s*\/?>/.test(String(x.stdout ?? "")) ? null : undefined;
-  }
-  if (!r.stdout) return undefined;
-  // Buffer.from salvages malformed base64, so re-encode to detect corruption and fail closed
-  // instead of treating binary noise as an unconstrained policy.
-  const raw = r.stdout.trim();
-  const buf = Buffer.from(raw, "base64");
-  if (buf.toString("base64").replace(/=+$/, "") !== raw.replace(/=+$/, "")) return undefined;
-  const toml = buf.toString("utf8");
-  const m = toml.match(/^\s*allowed_web_search_modes\s*=\s*\[([^\]]*)\]/m);
-  if (!m) return null;
-  const modes = [...m[1].matchAll(/["']([^"']+)["']/g)].map((x) => x[1]);
-  return modes.length ? modes : undefined;   // an empty list permits nothing, which is not "unrestricted"
-}
-// The one refusal of a web-search mode, for the run and for --check-prompt-file alike. ENTRUST_POLICY_SEAM
-// names a second plist read the same way, and a mode must pass both, so the seam can narrow the modes and
-// never widen them. The last clauses are there because coordinators read a user's "the network is allowed"
-// as this field and, refused, swapped in a mode nobody asked for (2026-09-17 and 2026-09-25).
-function refuseWebSearchMode(mode, network) {
-  if (!mode) return;
-  const unaffected = network
-    ? "the network is unaffected: the agent's own commands reach it with no WEB_SEARCH: line"
-    : "the network is unaffected: NETWORK: no denies it either way, and WEB_SEARCH: does not grant it";
-  for (const file of [MANAGED_PREFS, process.env.ENTRUST_POLICY_SEAM].filter(Boolean)) {
-    const allowed = managedWebSearchModes(file);
-    if (allowed === undefined)
-      fail(EXIT.USAGE, `this device has a managed Codex policy at ${file} that could not be read, so whether --web-search ${mode} is permitted cannot be established; the server would substitute a mode silently and no response field would say which; ${unaffected}`);
-    if (allowed && !allowed.includes(mode))
-      fail(EXIT.USAGE, `--web-search ${mode} is not permitted by this device's managed policy, which allows ${allowed.join("|")}; the server would silently apply one of those and no response field would say so; another mode is the user's choice to make, not the coordinator's, and ${unaffected}`);
-  }
+function noteManagedPolicy(mode) {
+  if (mode && fs.existsSync(MANAGED_PREFS))
+    process.stderr.write(`entrust: this device has a managed Codex policy at ${MANAGED_PREFS}; it may narrow --web-search ${mode} to another mode, and no response field would say which\n`);
 }
 
 // Every agent gets a fresh exclusive leaf under its shared project/run context. It outlives the turn:
@@ -2459,7 +2414,6 @@ function checkPromptFile(argv) {
   const o = readOpts(["--prompt-file", argv[1]], { resolveState: false });
   // The launcher gives the run no stdin, so a file with no body is the run's own "empty prompt".
   if (o.prompt === undefined) fail(EXIT.USAGE, "empty prompt");
-  refuseWebSearchMode(o.webSearch, o.network);
   if (o.worktree) checkRoot(resolveDir(o.worktree, "--worktree"));
   else if (o.level !== "read") checkRoot(resolveDir(o.cwd, "--cwd"));
   for (const d of o.writable) checkRoot(resolveDir(d, "--writable"));
@@ -2524,7 +2478,7 @@ async function setup() {
   roots = [...new Set(opts.writable.map((d) => checkRoot(resolveDir(d, "--writable"))))]
     .filter((r) => r !== cwd);
   if (opts.approvalDir !== undefined) approvalDir = claimMailbox(opts.approvalDir);
-  refuseWebSearchMode(opts.webSearch, opts.network);
+  noteManagedPolicy(opts.webSearch);
 
   const config = [
     ["web_search", opts.webSearch ?? "disabled"],
@@ -2913,10 +2867,7 @@ function replayEarly() {
 // file BEFORE the answer is sent, so a status read after a crash never shows less than the server was told.
 let approvalDir = null;
 const openApprovals = new Map();      // id -> {rpcId, entry, record, timer}
-const consumedDecisions = new Set();  // ids whose decision file this run acted on
-const staleSeen = new Set();          // the text of each decision file refused as stale, so each counts once
-const offeredRecords = new Map();     // id -> the request record, for every request this run offered
-let approvalSeq = 0, approvalPoll = null, approvalsStale = 0, approvalsLate = 0, approvalsDuplicate = 0;
+let approvalSeq = 0, approvalPoll = null;
 // The paths a file change names arrive only on its item/started: the request itself carries none (P1,
 // three observations). Keyed by thread and item, dropped at that item's completion.
 const fileChangeStarts = new Map();
@@ -3035,7 +2986,6 @@ function offerApproval(msg, entry) {
   const timer = deadlineMs ? setTimeout(() => expireApproval(id), deadlineMs) : null;
   timer?.unref?.();
   openApprovals.set(id, { rpcId: msg.id, entry, record, timer });
-  offeredRecords.set(id, record);
   if (writePending() !== null) return;
   if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
   if (!approvalPoll) {
@@ -3076,8 +3026,8 @@ function closeApproval(id, answer, decision, by, why, decisionFile) {
 }
 
 // What the decision file for request `record` holds. A decision counts only for a request of THIS run:
-// its id, this driver's pid and start, and the request's own turn. Anything else is stale: counted once
-// by its content, and left where it is.
+// its id, this driver's pid and start, and the request's own turn. Anything else is stale, and left where
+// it is; the request file records what the driver found when it settled.
 function readDecision(record) {
   let raw;
   try { raw = fs.readFileSync(path.join(approvalDir, `${record.id}.decision.json`), "utf8"); } catch { return { state: "none" }; }
@@ -3085,9 +3035,7 @@ function readDecision(record) {
   try { d = JSON.parse(raw); } catch {}
   const fits = d?.id === record.id && d?.run?.pid === process.pid && d?.run?.startedAtMs === startedAtMs
     && (d?.run?.turnId ?? null) === record.run.turnId && (d?.decision === "accept" || d?.decision === "decline");
-  if (fits) return { state: "valid", d };
-  if (!staleSeen.has(raw)) { staleSeen.add(raw); approvalsStale++; }
-  return { state: "stale" };
+  return fits ? { state: "valid", d } : { state: "stale" };
 }
 
 function takeDecision(id) {
@@ -3100,7 +3048,6 @@ function takeDecision(id) {
     typeof d.why === "string" ? d.why : null, "taken");
   // Taken is what the server was told: an accept whose settlement could not be written went out as a
   // decline, and its decision file is then one nobody acted on.
-  if (o.entry.by === "coordinator") consumedDecisions.add(id);
   return "taken";
 }
 
@@ -3120,16 +3067,6 @@ function settleOpenApprovals(why, which = () => true) {
     if (!which(o)) continue;
     const { state } = readDecision(o.record);
     closeApproval(id, "decline", "expired", "driver", why, state === "valid" ? "late" : state);
-  }
-}
-
-// Every decision file for a request of this run that the driver did not take: a valid one is late, one
-// that is not this run's or not this request's is stale, whenever it came.
-function countLateDecisions() {
-  if (approvalDir === null) return;
-  for (const record of offeredRecords.values()) {
-    if (consumedDecisions.has(record.id) || openApprovals.has(record.id)) continue;
-    if (readDecision(record).state === "valid") approvalsLate++;
   }
 }
 
@@ -3249,9 +3186,8 @@ function handleServerRequest(msg) {
   const refusal = REFUSALS[msg.method];
   if (refusal) {
     // One request id is one request, however often it arrives: a second copy would be a second mailbox
-    // entry and a second response to an id the server matches once. Counted, said, and not answered again.
+    // entry and a second response to an id the server matches once. Said, and not answered again.
     if (entryByRpc.has(msg.id)) {
-      approvalsDuplicate++;
       process.stderr.write(`entrust: approval request id ${JSON.stringify(msg.id)} (${msg.method}) arrived again; it is one request and is answered once\n`);
       return;
     }
@@ -4026,9 +3962,8 @@ function finish(reason, codeOverride = null) {
   settled = true;
   if (reason) turnStatus = reason;
   // The catch-all for every path that ends the run without the turn's own completion — an abort with a
-  // thread, a server that died, a second signal — then the one look for decisions that came too late.
+  // thread, a server that died, a second signal.
   settleOpenApprovals("run ended");
-  countLateDecisions();
   const ev = classifyEvidence();
   // abort() is a no-op once settled, so a failure here must not leave the run hanging without a report.
   try { writeReport(ev, codeOverride); }
@@ -4140,7 +4075,7 @@ function writeReport(ev, codeOverride) {
     escalations,
     approvalsAccepted: escalations.filter((e) => e.decision === "accepted" && e.by === "coordinator").length,
     approvalsAutoAccepted: escalations.filter((e) => e.decision === "accepted" && e.by === "driver").length,
-    approvalsStale, approvalsLate, approvalsDuplicate, approvalDir,
+    approvalDir,
     interactions, expectCommand: opts.expect ?? null,
     // Transient provider failures the driver absorbed with a bounded backoff; empty on the vast
     // majority of runs, and the honest record of the delay when it happened.
