@@ -328,3 +328,48 @@ A change to one is a drift from the other unless both are edited by hand, and a
 coordinator who reads both meets two phrasings of one rule. The swarm page cannot simply own the rule, since a bulk
 batch the plan gives no swarm runs as ordinary agents. Decide which page owns these rules and have the other
 link them, or hold one wording and pin it on both pages as `evals/fragments.mjs` pins the run directory.
+
+## E135. A plan row's model is checked against every adapter's list, so a Codex row can name a Claude model
+
+**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/scripts/agent-run.mjs:473` builds `LISTED` from every
+planned adapter's `plan.models`, and `:507` accepts a row whose adapter declares no `plan.model` pattern when its model
+is in `LISTED`, whichever adapter listed it. Run on 2026-10-08: `printf 'x | codex | opus | reviewer | nothing |
+unknown\n' | node agent-run.mjs --plan --run-dir <fresh dir>` printed `PLAN=` and `AGENT=x opus nothing`, exit 0.
+The same row with adapter `opencode` is refused, because OpenCode declares a pattern. Found by the critic of
+`research/2026-10-08-claude-adapter` (03-critique-c1.md, finding 8).
+
+**Check.** The command above, on a fresh run directory.
+
+**Issue text.** The plan registry accepts a row whose model belongs to a different adapter than its adapter column
+names: `x | codex | opus` registers, and the Codex driver is then launched for a row the user approved as a Claude
+model. A row's model should be checked against its own adapter's declaration only.
+
+## E136. A worktree report from the OpenCode driver diffs only the unstaged changes
+
+**Evidence, level 2.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs`, `worktreeFacts`, moved
+unchanged from the OpenCode driver, reports `git -C <worktree> diff`: the working tree against the index. Changes
+the agent staged or committed in its worktree are not in `diff`, and `untracked` lists only new files. The Codex
+driver diffs against the commit the tree started at, and says why: "an agent that committed moves HEAD, and `git
+diff HEAD` then reports nothing while the work sits in commits that a detached worktree's removal makes unreachable"
+(`codex/scripts/driver.mjs:2110-2113`). Found by the critic of `research/2026-10-08-claude-adapter` (finding 10).
+
+**Check.** Run an OpenCode worktree agent whose task commits a change in its tree, and read the report's `diff`: it
+is empty while `git -C <worktreePath> log` shows the commit.
+
+**Issue text.** An OpenCode agent's worktree report shows only unstaged edits; staged or committed work is missing from
+`diff`, so a coordinator reading the report sees less than the agent did. The diff should be taken against the
+recorded `worktreeBase`, as the Codex driver takes it.
+
+## E137. The Codex driver keeps its own exit codes, RIGHTS grammar and worktree code beside the shared ones
+
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs` holds the exit-code table,
+the RIGHTS grammar and the worktree code the OpenCode driver uses. `codex/scripts/driver.mjs:40` defines its own
+`EXIT`, the same numbers under other names (`OK`, `TURN_NOT_COMPLETED`, `ESCALATED`, `INTERACTION`,
+`VERIFY_UNMEASURABLE`); `:790` parses RIGHTS itself; `:2102` adds its worktree itself.
+
+**Check.** `grep -n "const EXIT\|RIGHTS must be\|worktree\", \"add\"" plugins/entrust/plugin/skills/codex/scripts/driver.mjs`.
+
+**Issue text.** Three drivers launch external agents, and the facts they share (what each exit code means, what a
+RIGHTS line grants, how a worktree is made) are defined once for two of them and again inside the Codex driver. A
+change to one copy leaves the other behind. The Codex driver should import them from `orchestrate/scripts/drivers.mjs`,
+keeping its own ledger and harvest, which only it has.
