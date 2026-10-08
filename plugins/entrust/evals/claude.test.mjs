@@ -61,6 +61,8 @@ test("--check-prompt-file passes silently and refuses with one entrust: refused 
     [`RIGHTS: read ${s.work}\nSAFE_MODE: no\nTASK: look\n`, /SAFE_MODE takes only yes/],
     [`RIGHTS: read ${s.work}\nRESUME: relative/report.json\nTASK: look\n`, /RESUME must be the absolute path/],
     [`RIGHTS: write ${s.state}\nTASK: look\n`, /overlaps the state directory/],
+    [`RIGHTS: read ${s.work}/missing\nTASK: look\n`, /is not an existing directory/],
+    [`RIGHTS: write ${s.work}/missing\nTASK: look\n`, /is not an existing directory/],
     [`RIGHTS: read ${s.work}\nTASK:\n`, /TASK body is empty/],
   ]) {
     const r = check(s, text);
@@ -132,8 +134,10 @@ test("write and worktree runs: acceptEdits, edit tools, the right working direct
   const git = (...a) => spawnSync("git", ["-C", repo, "-c", "user.name=t", "-c", "user.email=t@example.invalid", ...a], { encoding: "utf8" });
   if (git("init").status !== 0) return skip("no git");
   git("commit", "--allow-empty", "-m", "base");
-  const t = await drive(s, `RIGHTS: worktree ${repo}\nTASK: change\n`);
+  const t = await drive(s, `RIGHTS: worktree ${repo}\nTASK: change\n`, { mode: "commit" });
   assert.equal(t.code, 0, t.err);
+  // The agent committed its work, so a diff against the index would be empty; the report's is against the base.
+  assert.match(t.json.diff, /committed\.txt/);
   const cwd = lastCall(s.log).cwd;
   assert.ok(cwd.startsWith(path.join(fs.realpathSync(s.state), "worktrees")), cwd);
   assert.equal(t.json.worktreePath, cwd); assert.equal(t.json.worktreeRepo, fs.realpathSync(repo)); assert.match(t.json.base, /^[0-9a-f]{40}$/);
@@ -181,6 +185,10 @@ test("a continuation forks the earlier session into a new id, in the earlier run
   assert.equal(call.cwd, first.json.cwd); assert.equal(next.json.resumedFrom, first.report);
   assert.match(check(s, `RIGHTS: read ${s.work}\nRESUME: ${first.report}\nTASK: go on\n`).stderr, /had RIGHTS write/);
   assert.match(check(s, `RIGHTS: write ${elsewhere}\nRESUME: ${first.report}\nTASK: go on\n`).stderr, /widens past/);
+  const gone = tempDir("entrust-claude-gone-");
+  const earlier = await drive(s, `RIGHTS: read ${gone}\nTASK: start\n`);
+  fs.rmSync(gone, { recursive: true });
+  assert.match(check(s, `RIGHTS: read\nRESUME: ${earlier.report}\nTASK: go on\n`).stderr, /no longer exists/);
 });
 
 test("SAFE_MODE runs with --safe-mode and no mailbox, even when one is given", async () => {

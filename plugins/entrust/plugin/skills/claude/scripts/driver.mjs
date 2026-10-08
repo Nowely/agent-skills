@@ -62,6 +62,7 @@ const USAGE = `driver — run one external Claude agent (claude -p) for the shar
 
 const refusal = (reason) => ({ error: reason });
 const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch { return null; } };
+const isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
 
 // The prompt: `KEY: value` header lines, then TASK:, whose value and every line after it are the task.
 export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
@@ -137,9 +138,12 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
 
 // A run's working directory and the roots it may write without a prompt. A write root may not overlap the
 // state directory: the mailboxes are there, and acceptEdits writes inside the working directory unasked.
+// The run's directory must exist: claude is spawned in it, and a missing cwd fails the spawn with the ENOENT
+// a missing claude gives.
 export function scopeOf(parsed, stateDir) {
   if (parsed.resume) {
     const { prior } = parsed.resume;
+    if (!isDir(prior.cwd)) return { error: `RESUME: the run's directory ${prior.cwd} no longer exists` };
     return { kind: prior.rights.kind, cwd: prior.cwd, roots: prior.rights.roots ?? [], worktree: prior.worktreePath ? prior : null };
   }
   const s = rightsScope(parsed.rights);
@@ -147,9 +151,11 @@ export function scopeOf(parsed, stateDir) {
     const root = s.roots[0], state = canonical(stateDir);
     if (within(state, root) || within(root, state))
       return { error: `RIGHTS write ${root} overlaps the state directory ${state}, where the run's approvals are` };
+    if (!isDir(root)) return { error: `RIGHTS write ${root} is not an existing directory` };
     return { kind: "write", cwd: s.readDir, roots: s.roots };
   }
   if (s.kind === "worktree") return { kind: "worktree", repo: s.repo, roots: [] };
+  if (!isDir(s.readDir)) return { error: `RIGHTS read ${s.readDir} is not an existing directory` };
   return { kind: "read", cwd: s.readDir, roots: [] };
 }
 

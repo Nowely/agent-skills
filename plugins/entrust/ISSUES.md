@@ -344,22 +344,6 @@ The same row with adapter `opencode` is refused, because OpenCode declares a pat
 names: `x | codex | opus` registers, and the Codex driver is then launched for a row the user approved as a Claude
 model. A row's model should be checked against its own adapter's declaration only.
 
-## E136. A worktree report from the OpenCode driver diffs only the unstaged changes
-
-**Evidence, level 2.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs`, `worktreeFacts`, moved
-unchanged from the OpenCode driver, reports `git -C <worktree> diff`: the working tree against the index. Changes
-the agent staged or committed in its worktree are not in `diff`, and `untracked` lists only new files. The Codex
-driver diffs against the commit the tree started at, and says why: "an agent that committed moves HEAD, and `git
-diff HEAD` then reports nothing while the work sits in commits that a detached worktree's removal makes unreachable"
-(`codex/scripts/driver.mjs:2110-2113`). Found by the critic of `research/2026-10-08-claude-adapter` (finding 10).
-
-**Check.** Run an OpenCode worktree agent whose task commits a change in its tree, and read the report's `diff`: it
-is empty while `git -C <worktreePath> log` shows the commit.
-
-**Issue text.** An OpenCode agent's worktree report shows only unstaged edits; staged or committed work is missing from
-`diff`, so a coordinator reading the report sees less than the agent did. The diff should be taken against the
-recorded `worktreeBase`, as the Codex driver takes it.
-
 ## E137. The Codex driver keeps its own exit codes, RIGHTS grammar and worktree code beside the shared ones
 
 **Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs` holds the exit-code table,

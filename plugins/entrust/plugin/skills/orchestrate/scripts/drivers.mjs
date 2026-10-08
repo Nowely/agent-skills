@@ -132,9 +132,11 @@ export function makeWorktree(repo, stateDir, name) {
 }
 
 // What a worktree run's report says about its tree; `run` holds worktreePath, worktreeRepo and worktreeBase.
+// The diff is taken against the commit the tree started at, not the index: an agent that staged or committed
+// its work would otherwise report none of it.
 export function worktreeFacts(ctx) {
   if (!ctx.worktreePath) return {};
-  const diff = git(["-C", ctx.worktreePath, "diff"]);
+  const diff = git(["-C", ctx.worktreePath, "diff", ...(ctx.worktreeBase ? [ctx.worktreeBase] : [])]);
   const status = git(["-C", ctx.worktreePath, "status", "--porcelain"]);
   return {
     worktreePath: ctx.worktreePath,
