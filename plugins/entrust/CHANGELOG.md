@@ -38,6 +38,10 @@ forensics remain in the repository references and release notes.
   that does not exist, or a `RESUME` whose run's directory is gone, passed `--check-prompt-file` and then failed the
   spawn with ENOENT, which the Claude driver reported as "claude is not on PATH", exit 4. `--check-prompt-file` now
   refuses it.
+- **A plan row's model is its own adapter's (E135).** The registry checked a row's model against every adapter's
+  list, so `x | codex | opus` registered and the Codex driver would have run a row approved as a Claude model. A
+  row's model is now checked against its adapter's declaration alone, and a `native` row's against a native
+  adapter's.
 
 ## 0.26.0 — 2026-10-08
 

@@ -329,21 +329,6 @@ coordinator who reads both meets two phrasings of one rule. The swarm page canno
 batch the plan gives no swarm runs as ordinary agents. Decide which page owns these rules and have the other
 link them, or hold one wording and pin it on both pages as `evals/fragments.mjs` pins the run directory.
 
-## E135. A plan row's model is checked against every adapter's list, so a Codex row can name a Claude model
-
-**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/scripts/agent-run.mjs:473` builds `LISTED` from every
-planned adapter's `plan.models`, and `:507` accepts a row whose adapter declares no `plan.model` pattern when its model
-is in `LISTED`, whichever adapter listed it. Run on 2026-10-08: `printf 'x | codex | opus | reviewer | nothing |
-unknown\n' | node agent-run.mjs --plan --run-dir <fresh dir>` printed `PLAN=` and `AGENT=x opus nothing`, exit 0.
-The same row with adapter `opencode` is refused, because OpenCode declares a pattern. Found by the critic of
-`research/2026-10-08-claude-adapter` (03-critique-c1.md, finding 8).
-
-**Check.** The command above, on a fresh run directory.
-
-**Issue text.** The plan registry accepts a row whose model belongs to a different adapter than its adapter column
-names: `x | codex | opus` registers, and the Codex driver is then launched for a row the user approved as a Claude
-model. A row's model should be checked against its own adapter's declaration only.
-
 ## E137. The Codex driver keeps its own exit codes, RIGHTS grammar and worktree code beside the shared ones
 
 **Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs` holds the exit-code table,

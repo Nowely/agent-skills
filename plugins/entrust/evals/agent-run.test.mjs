@@ -760,6 +760,11 @@ test("D6 --plan registers rows, --new refuses an unlisted id, and an explicit am
       return `amended agent: exit ${admitted.code}, ${JSON.stringify(admitted.out)}`;
     const bad = await plan("C | alien | writer | worktree | 100\n", true);
     if (bad.code !== 2 || !bad.out.startsWith("ERROR=invalid model")) return `bad model: exit ${bad.code}, ${JSON.stringify(bad.out)}`;
+    for (const row of ["C | codex | opus | writer | worktree | 100", "C | native | sol | writer | worktree | 100"]) {
+      const foreign = await plan(`${row}\n`, true);
+      if (foreign.code !== 2 || foreign.out !== "ERROR=invalid model for C: " + row.split(" | ")[2] + "\n")
+        return `another adapter's model: ${row}: exit ${foreign.code}, ${JSON.stringify(foreign.out)}`;
+    }
     const duplicate = await plan("A | sol | writer | worktree | 100\n", true);
     if (duplicate.code !== 2 || !duplicate.out.startsWith("ERROR=duplicate agent id")) return `duplicate: exit ${duplicate.code}, ${JSON.stringify(duplicate.out)}`;
     const scope = await plan("C | sol | writer | everywhere | 100\n", true);
