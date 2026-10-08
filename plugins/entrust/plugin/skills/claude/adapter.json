@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "plan": { "models": ["opus", "sonnet", "haiku", "fable"], "native": true },
+  "modelSlug": "\\bclaude-(?:opus|sonnet|haiku|fable|\\d)"
+}

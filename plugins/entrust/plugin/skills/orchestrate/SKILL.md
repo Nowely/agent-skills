@@ -5,17 +5,20 @@ description: >-
   verify independently and synthesise their evidence while keeping the main context small.
 disable-model-invocation: true
 metadata:
-  version: "0.25.1"
+  version: "0.26.0"
 license: MIT
 ---
 
 You own the work-list, the plan, the user conversation and the synthesis. Agents own bounded
-deliverables. Use the host's native delegation capabilities. A native Codex subagent needs no
-external launcher and does not activate the [codex adapter](../codex/SKILL.md); load that adapter
-only when the plan calls for an external Codex run. For an external OpenCode worker, load the
-[opencode adapter](../opencode/SKILL.md): it owns the shared server connection, model selection,
-session continuation and native callbacks. Do not load adapter skill text for capability discovery;
-use the capability snapshot below, then load only the selected worker's adapter instructions.
+deliverables. Use the host's native delegation capabilities; in Claude Code, load the
+[claude adapter](../claude/SKILL.md) (`entrust:claude`) before composing, since it owns how Claude Code
+runs agents. An external worker needs its adapter: [codex](../codex/SKILL.md) for an external Codex run
+(a native Codex subagent needs none), [opencode](../opencode/SKILL.md) for an OpenCode worker, which owns
+the server connection, model selection, session continuation and callbacks. A proxy carries each
+external worker's run ([proxy.md](references/proxy.md)); when the user makes an external model the
+coordinator, this conversation becomes its proxy ([main-proxy.md](references/main-proxy.md)). Do not load
+adapter skill text for capability discovery; use the capability snapshot below, then load only the
+selected worker's adapter.
 
 ## Your own hands
 
@@ -44,14 +47,13 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
    choices, delegation features and read-only usage windows directly from the active runtime. Do not
    serialize them into a status-script input or infer them from another CLI; missing facts stay
    `unknown`. Then run the read-only adapter collector:
-   `node <skill-dir>/scripts/adapter-status.mjs`. Pass `--skip codex` when Codex is the active native
-   host, so its external adapter status is not queried a second time. The collector returns registered
+   `node <skill-dir>/scripts/adapter-status.mjs`. Pass `--skip <id>` for an adapter whose provider is
+   the active host, so its status is not queried a second time. The collector returns registered
    adapter reports without host JSON, loading adapter skill pages, normalizing a plan or launching a
    worker. Use only recent model references with an adapter-sourced recent state; absent or unsupported
-   sources remain `unknown`/`unsupported`, never a substitute from the first catalog entries. A recent
-   reference is not proof it is currently runnable; the chosen adapter validates the exact model and
-   variant before execution. If an explicit model family has no recent candidate, report that gap; do
-   not silently expand to a full catalog or substitute.
+   sources remain `unknown`/`unsupported`. A recent reference is not proof it is currently runnable; the
+   chosen adapter validates the exact model and variant before execution. If an explicit model family
+   has no recent candidate, report that gap.
 
    Keep native host facts, adapter status and the plan's allowed-route policy separate. Preserve each
    usage window's account/route/model scope, source and observation time; do not sum overlapping
@@ -59,20 +61,18 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
    workers/proxies using that account, but do not give per-model call counts. Missing telemetry is
    `unknown`; age an observation against the current time and treat stale data as stale, never
    unlimited. At the configured near-limit threshold (default 99% used), hold large work when its
-   estimate is unknown; use Luna only when task fit and quota savings are evidenced. Do not downgrade
-   silently.
+   estimate is unknown; use the bulk tier only when its task fit and quota savings are evidenced.
 2. Assign tasks by ownership and shared interfaces, using [roles.md](references/roles.md). For a
    nontrivial split, include the split critic and its exact model in the proposed plan. Launch it only
    after the allocation is covered by the approved policy or the user approves the plan. Apply its
    findings before worker briefs; if they change scope or model allocation, get approval for the change.
    With several workers, consider the coordinator role in [foreman.md](references/foreman.md) when the
    runtime supports nested delegation and enough slots remain for its workers.
-3. Show the work plan, roles with their model, write rights and checks. Show effort only when it
-   departs from the profile default or needs a decision. Recommend a profile from
-   [Capacity and models](#capacity-and-models), and show an alternative only when it changes quality
-   or speed materially. Wait for approval unless the user already authorised that concrete scope and
-   allocation. A model or route outside the approved policy needs approval before launch. Scope or
-   rights changes need a new decision; commits and publication need their own authority.
+3. Show the card [plan.md](references/plan.md#the-card) defines, with a profile from
+   [Capacity and models](#capacity-and-models). Wait for approval unless the user already authorised
+   that concrete scope and allocation. A model or route outside the approved policy needs approval
+   before launch. Scope or rights changes need a new decision; commits and publication need their own
+   authority.
 4. Launch within the approved ownership and the runtime's limits. Read [approvals.md](references/approvals.md)
    when an agent needs a decision, and [results.md](references/results.md) when work fails, a worktree
    needs landing or writers collide. Continue a worker to correct its own work; give verification
@@ -89,7 +89,9 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
 ## Capacity and models
 
 Choose the smallest team that meets the work and verification needs. Tiers describe work demands, not
-fixed model ability or a quality ranking.
+fixed model ability or a quality ranking. Each adapter names its models for them:
+[Claude Code](../claude/references/models.md), [Codex](../codex/references/models.md), and OpenCode's
+recent models ([opencode](../opencode/SKILL.md)). On another host, take the models from its runtime.
 
 | Tier | Work |
 | --- | --- |
@@ -98,33 +100,36 @@ fixed model ability or a quality ranking.
 | cheap | bounded work where mistakes are easy to detect and repair |
 | bulk | independent units after the candidate model meets the acceptance rule |
 
+Default bounds, capped further by the host's capacity and the user's agreed limits:
+
+| Bound | Default |
+| --- | --- |
+| simple task | 1 worker, with the completeness critic beside it, not counted |
+| comparison or design | 2 to 4 agents |
+| complex | 5 or more, launched in batches |
+| alive at once | 6, every route counted |
+| top tier | 1 alive at a time per model family; a standing advisor is not counted |
+
 Choose models and effort by required quality, uncertainty, consequences, context and latency. Use cost
-as a selection input when it can change the choice; omit cost estimates from the approval plan. For
-Codex, use xhigh by default when supported, and preserve a stronger configured max or ultra setting.
-On another host, use its highest supported effort unless the user selects the speed profile.
+as a selection input when it can change the choice; omit cost estimates from the approval plan. Use the
+host's highest supported effort, or a stronger configured setting, unless the user selects the speed
+profile.
 
 Recommend one of these profiles:
 
 | Profile | Allocation |
 |---|---|
-| balanced (default) | Keep the user's model as coordinator; use Luna for scouting, Astra for consequential planning or architecture, and an independent verifier for material findings. For a new Luna/task pairing, compare Luna with Sol on the same representative material before expanding. |
-| speed | For bounded, recoverable work with a proven model/task pairing, use Luna with a supported medium effort, one scout per independent unit, and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Preserve the needed review when consequences warrant it. |
-| quality | Keep the user's model as coordinator. Use Astra for consequential planning or architecture; add independent Luna and Sol reviewers on the same material when distinct perspectives can change the decision, and use a separate strong judge for consequential disagreement. |
+| balanced (default) | Keep the user's model as coordinator; the bulk tier for scouting, the top tier for consequential planning or architecture, and an independent verifier for material findings. |
+| speed | For bounded, recoverable work with a proven model/task pairing: the bulk tier at a medium effort, one scout per independent unit, and a targeted check. If the pairing is unproven, keep its pilot and state that this limits the speed gain. Keep the review the consequences warrant. |
+| quality | Keep the user's model as coordinator. The top tier for consequential planning or architecture; independent bulk- and strong-tier reviewers on the same material when distinct perspectives can change the decision, and a separate strong judge for consequential disagreement. |
 
-For a new model/task pairing, define the pass criteria before a representative pilot. Compare coverage,
-incorrect findings and usefulness against a stronger reference; use elapsed time and reliable usage data
-to guide the profile. Reuse a successful result only for comparable work. Model diversity is useful when
-it can change a decision; a fresh same-model context does not prove a different model perspective.
+A new model/task pairing gets a pilot ([model fit](references/plan.md#model-fit-and-estimates)); reuse
+a successful result only for comparable work. Model diversity is useful when it can change a decision;
+a fresh same-model context does not prove a different model perspective.
 
-The user's model remains coordinator unless the user requests otherwise. In the card, name the
-coordinator role without restating its model or calling it unknown. Astra is a planning or review role,
-not a replacement coordinator. Put each worker role and one model display name together. Do not append
-an equivalent canonical model ID when it adds no distinction; include a provider ID only when it
-disambiguates.
-Show effort only when it departs from the selected profile's default or needs a separate decision. Name
-whether the allocation is covered by the approved standing policy. Include a route only when it differs
-from the host's native route, and context details only when they affect the assignment. An unavailable
-model or unsupported effort is a proposal to resolve, not permission to substitute. Inherit settings
+The user's model remains coordinator unless the user requests otherwise. An unavailable model or
+unsupported effort is a proposal to resolve, not permission to substitute: show the available
+alternatives and wait for approval unless the approved policy names that fallback. Inherit settings
 only when the runtime resolves them and the approved policy covers that exact allocation; otherwise
 mark them unknown and obtain a decision before launch.
 
@@ -137,8 +142,8 @@ unanimous tally: agreement may be evidence of one broken prompt or prerequisite.
 
 Before dispatch, refresh passive adapter status and the relevant usage observations. The adapter's
 launch path validates the exact chosen model/variant/profile before creating a worker or submitting
-its task. That check is not a planning catalog: if it fails, stop and amend the plan; never substitute
-silently. Availability, authorization and budget remain separate coordinator decisions.
+its task. That check is not a planning catalog: if it fails, stop and amend the plan. Availability,
+authorization and budget remain separate coordinator decisions.
 
 Fix and cross-review at most two rounds, then use a stronger available reviewer or return the
 remaining blocker to the user. Two rounds repeating the same blocker require a revised plan.

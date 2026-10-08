@@ -15,7 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { lintDraft } from "../../plugin/skills/orchestrate/scripts/lint-draft.mjs";
 // The launcher's own matcher, not a copy: a continuation it admits reads the same here.
-import { planRowOf } from "../../plugin/skills/codex/scripts/agent-run.mjs";
+import { planRowOf } from "../../plugin/skills/orchestrate/scripts/agent-run.mjs";
 
 // --------------------------------------------------------------- the stream
 
@@ -98,7 +98,7 @@ export const bashCommand = (u) => (u.name === "Bash" ? String(u.input.command ??
 export const isCodexCall = (u) => {
   if (!AGENT_TOOLS.has(u.name)) return false;
   const c = codexCommand(u);
-  return /^(entrust:)?codex-agent$/.test(String(u.input?.subagent_type ?? ""))
+  return /^(entrust:)?(proxy|codex-agent)$/.test(String(u.input?.subagent_type ?? ""))
     || (/agent-run\.mjs/.test(c) && /--run\b/.test(c) && /--report-file/.test(c))
     || (/driver\.mjs/.test(c) && /--prompt-file/.test(c));
 };

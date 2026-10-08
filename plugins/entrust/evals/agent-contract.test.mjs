@@ -3,7 +3,7 @@
 //
 //   node evals/agent-contract.test.mjs
 //
-// The shipped agent, agents/codex-agent.md, is a mechanical wrapper: the coordinator writes the prompt and
+// The shipped agent, agents/proxy.md, is a mechanical wrapper: the coordinator writes the prompt and
 // hands the wrapper the one command, which runs the driver through scripts/agent-run.mjs in one foreground
 // Bash call, so the ONE call
 // and the field table are both SKILL.md's and the agent file carries only the relay's standing rules. This suite compares
@@ -15,8 +15,8 @@
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { DRIVER, FIELDS, ROOT, PROMPT_FIELDS, SCRIPTS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
-import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../plugin/skills/codex/scripts/agent-run.mjs";
+import { DRIVER, FIELDS, LAUNCHER_CORE, ROOT, PROMPT_FIELDS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
+import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../plugin/skills/orchestrate/scripts/agent-run.mjs";
 
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "codex", "references", "orchestration.md");
@@ -136,7 +136,7 @@ test("the ONE call is agent-run.mjs --run with --report-file in one foreground c
       problems.push("the page does not say the launcher is one foreground call with no `&` of its own");
     // The launcher's own spawn: exactly the two driver flags, prompt.txt as an argument only, the
     // environment untouched. agent-run.test.mjs runs it; this reads the promise off the source.
-    const launcher = fs.readFileSync(path.join(SCRIPTS, "agent-run.mjs"), "utf8");
+    const launcher = fs.readFileSync(LAUNCHER_CORE, "utf8");
     if (!/\[DRIVER, "--prompt-file", promptPath, "--report-file", report, \.\.\.approvalArgs\]/.test(launcher))
       problems.push("the launcher does not spawn the driver with exactly --prompt-file, --report-file and the approval arguments");
     if (/(readFileSync|openSync|createReadStream|readFile)\([^)]*prompt/i.test(launcher)) problems.push("the launcher reads prompt.txt");
@@ -162,14 +162,14 @@ test("the prompt goes in through --new on stdin, into a directory beside the rep
     return problems.length === 0 || problems.join("; ");
   });
 
-test("every driver path and every state directory on both pages is the exact ${...} placeholder",
-  "Claude Code substitutes that exact form inline in a skill body and exports nothing to the Bash tool, so a ${VAR:-default} is never substituted, expands to the default, and makes every plugin-installed agent fail to find the driver at all — and the same form is what carries the state directory the driver now has no default for: an agent that lost it exits 2 before its turn",
+test("every driver path on both pages is the exact ${...} placeholder, and no page forwards a state directory",
+  "Claude Code substitutes that exact form inline in a skill body and exports nothing to the Bash tool, so a ${VAR:-default} is never substituted, expands to the default, and makes every plugin-installed agent fail to find the driver at all; the state directory is the driver's own default, so the recipe carries none",
   () => {
     const REL = "skills/codex/scripts/driver.mjs";
     if (path.relative(ROOT, DRIVER).split(path.sep).join("/") !== REL) return `the shipped layout moved: ${path.relative(ROOT, DRIVER)}`;
     const problems = [];
     for (const [label, text] of [["SKILL.md", skill], ["references/approvals.md", approvals]]) {
-      for (const v of ["CLAUDE_SKILL_DIR", "CLAUDE_PLUGIN_DATA"])
+      for (const v of ["CLAUDE_SKILL_DIR"])
         if (new RegExp(`${v}\\s*:-`).test(text))
           problems.push(`${label} writes \${${v}:-...}, which Claude Code does not substitute: the agent would run on the default, not on what the install resolved`);
       for (const p of [...text.matchAll(/"([^"\n]*driver\.mjs)"/g)].map((m) => m[1]))
@@ -178,21 +178,12 @@ test("every driver path and every state directory on both pages is the exact ${.
       for (const p of [...text.matchAll(/"([^"\n]*agent-run\.mjs)"/g)].map((m) => m[1]))
         if (p !== `\${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs`)
           problems.push(`${label} names the launcher as ${JSON.stringify(p)}, not "\${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs"`);
-      // Every mention of the variable, in a recipe or in prose, is the exact placeholder: the substituted
-      // form is what a plugin install replaces, and anything else reaches the shell as a literal. The one
-      // exception is the recipe's assignment name, which forwards the placeholder under its own name.
-      for (const m of text.matchAll(/CLAUDE_PLUGIN_DATA/g)) {
-        const at = m.index;
-        if (text.startsWith('="${CLAUDE_PLUGIN_DATA}"', at + m[0].length)) continue;
-        if (text.slice(at - 2, at) !== "${" || text[at + m[0].length] !== "}")
-          problems.push(`${label} names CLAUDE_PLUGIN_DATA outside the exact \${CLAUDE_PLUGIN_DATA} form: ${JSON.stringify(text.slice(Math.max(0, at - 30), at + 40))}`);
-      }
+      // The state directory is the driver's own default in the temporary directory; a page that still
+      // forwarded Claude Code's plugin data directory would tie every run to one host.
+      if (/CLAUDE_PLUGIN_DATA/.test(text)) problems.push(`${label} still names CLAUDE_PLUGIN_DATA`);
     }
-    // The one call every agent is launched by forwards the data directory under its own name: the driver reads
-    // ENTRUST_STATE_DIR first, so an exported one still wins, and without one a plugin install gets the
-    // resolved path.
-    if (!/CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs"/.test(skill))
-      problems.push("the One call recipe no longer forwards CLAUDE_PLUGIN_DATA=\"${CLAUDE_PLUGIN_DATA}\" ahead of the launcher");
+    if (!/^ {4}node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/agent-run\.mjs" --new/m.test(skill))
+      problems.push("the One call recipe does not start with the launcher alone");
     // The placeholder resolves to the skill directory, so the path below it is the shipped layout's.
     for (const f of ["driver.mjs", "agent-run.mjs"])
       if (!fs.existsSync(path.join(ROOT, "skills", "codex", "scripts", f)))
@@ -253,17 +244,17 @@ test("BRIEF is decided by the header, not forced by the caller",
   });
 
 test("the shipped wrapper is the agent the page names: Bash alone and a pinned model",
-  "the page sends every agent to entrust:codex-agent, so the file has to exist under agents/ with that name; Bash alone is what halves its context (measured 2026-09-12: 8.2k against 15.4k tokens for general-purpose), and a wrapper allowed Read or Write is a relay that can rewrite a prompt, which is the measured failure the retired relay had",
+  "the page sends every agent to entrust:proxy, so the file has to exist under agents/ with that name; Bash alone is what halves its context (measured 2026-09-12: 8.2k against 15.4k tokens for general-purpose), and a wrapper allowed Read or Write is a relay that can rewrite a prompt, which is the measured failure the retired relay had",
   () => {
     const problems = [];
-    const agentPath = path.join(ROOT, "agents", "codex-agent.md");
-    if (!fs.existsSync(agentPath)) return "agents/codex-agent.md is not shipped";
+    const agentPath = path.join(ROOT, "agents", "proxy.md");
+    if (!fs.existsSync(agentPath)) return "agents/proxy.md is not shipped";
     const head = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(agentPath, "utf8"))?.[1];
-    if (head === undefined) return "agents/codex-agent.md has no frontmatter";
-    if (!/^name: codex-agent$/m.test(head)) problems.push("the agent is not named codex-agent");
+    if (head === undefined) return "agents/proxy.md has no frontmatter";
+    if (!/^name: proxy$/m.test(head)) problems.push("the agent is not named proxy");
     if (!/^tools: Bash$/m.test(head)) problems.push("the agent's tools are not exactly Bash");
     if (!/^model: (sonnet|haiku|opus)$/m.test(head)) problems.push("the agent pins no model");
-    if (!flat.includes("`subagent_type: entrust:codex-agent`")) problems.push("the page no longer sends agents to entrust:codex-agent");
+    if (!flat.includes("`subagent_type: entrust:proxy`")) problems.push("the page no longer sends agents to entrust:proxy");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -301,7 +292,7 @@ test("the launcher sorts a report by the driver's own words, so the two move tog
   () => {
     const problems = [];
     for (const needle of [ACCEPTED, ...TAKEN]) if (!driver.includes(needle)) problems.push(`the driver no longer prints ${JSON.stringify(needle)}`);
-    if (!/PATH=\$\{where\}/.test(fs.readFileSync(path.join(SCRIPTS, "agent-run.mjs"), "utf8"))) problems.push("the launcher's status read no longer prints a PATH line");
+    if (!/PATH=\$\{where\}/.test(fs.readFileSync(LAUNCHER_CORE, "utf8"))) problems.push("the launcher's status read no longer prints a PATH line");
     return problems.length === 0 || problems.join("; ");
   });
 

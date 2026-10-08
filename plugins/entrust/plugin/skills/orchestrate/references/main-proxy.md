@@ -1,7 +1,8 @@
 # The main conversation as proxy
 
-An affirmative request such as “Прокси на GLM” selects the external model as the coordinator.
-It owns the plan, delegation, worker selection, interpretation and final answer. The current host
+An affirmative request to make an external model the coordinator (“Прокси на <model>”) selects it,
+through the adapter that serves that model ([opencode](../../opencode/SKILL.md) is the one that does
+today). It owns the plan, delegation, worker selection, interpretation and final answer. The current host
 conversation executes concrete agent orders and owns their transport and lifecycle. This mode
 continues until the user leaves it or selects another coordinator; finishing one task keeps the mode.
 An informational, quoted or negated mention does not activate it. An ordinary external-worker request
@@ -9,9 +10,9 @@ uses the per-worker proxy instead.
 
 ## Activate
 
-Use the current conversation as the proxy. Luna with medium effort is the recommended Codex host.
-Selecting this role does not switch the host model. Use a supported switch facility when available;
-otherwise state the actual setting and let the user select Luna in the interface. Continue on the
+Use the current conversation as the proxy; the host's bulk tier at medium effort is the recommended
+host model. Selecting this role does not switch the host model. Use a supported switch facility when
+available; otherwise state the actual setting and let the user select that model. Continue on the
 available host without reporting a switch that did not happen.
 
 Resolve the selected external family through the adapter's discovery procedure. Keep its exact model
@@ -67,8 +68,8 @@ waiting, refusal and transport statuses need no reply artifact.
 ## Every invocation
 
 Prepare a fresh report through the existing launcher. Keep the coordinator's adapter scope read-only
-and repeat RIGHTS: read, ALLOW_NO_COMMANDS: yes and OUTPUT_SCHEMA pointing to this skill's main-proxy
-schema on every prompt. RESUME points to the last completed report; it retains the session, not those
+and repeat RIGHTS: read, ALLOW_NO_COMMANDS: yes and OUTPUT_SCHEMA pointing to
+[main-proxy.schema.json](../schemas/main-proxy.schema.json) on every prompt. RESUME points to the last completed report; it retains the session, not those
 invocation controls. The first TASK carries the full user task, relevant context, applicable user and
 repository instructions, agreed decisions, available worker capabilities and the full Agent orders
 section above. For file work, include the workers' actual checkout and permitted source paths; their
@@ -84,7 +85,7 @@ session or guessing a worker identity.
 
 ## Execute the loop
 
-1. Run the prepared --run --watch command and follow the operational proxy's attached-call procedure.
+1. Run the prepared --run --watch command and follow the [operational proxy](proxy.md)'s attached-call procedure.
    Repeat separate polls while it runs. Empty output is still running; a RUNNING checkpoint repeats
    that command. End this stage only when the adapter is terminal.
 2. Read the complete report. Require receiptOk and outputSchemaOk before executing orders. The driver
@@ -92,7 +93,7 @@ session or guessing a worker identity.
    success; execute no order from an invalid, partial or unattributed reply.
 3. For the first reply, pin external_session only after verifying the attributed terminal report from
    this mode's prepared launch. An existing missing binding is unknown, not a bootstrap opportunity.
-   Run agent-orders.mjs with the complete report and mode record before any action. The mode record's
+   Run `node <skill-dir>/scripts/agent-orders.mjs <report> <mode record>` before any action. The mode record's
    agents object maps logical agent_ids to objects with an observed, nonempty native_agent; model,
    scope and external session/report metadata may stay in that object. external_session names this
    coordinator. Redirect the reader's validated stdout to a fresh file for this report and use it only

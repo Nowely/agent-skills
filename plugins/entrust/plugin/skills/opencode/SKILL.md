@@ -1,14 +1,13 @@
 ---
 name: opencode
 description: >-
-  OpenCode: use immediately when the user says “Задействуй модели OpenCode,” asks for an OpenCode worker,
-  continuation, permission or question callback, selects the main session as a proxy (“Прокси на GLM”),
-  or asks to call or pool a model family outside native Codex and Claude (for example, “Позови DeepSeek,
-  GLM” or “Use deepseek, glm in pool”), even without a task; ask for missing task details after choosing
-  OpenCode. For requests limited to Codex and Claude,
-  use native agents.
+  Runs OpenCode workers and an OpenCode model as the main coordinator: launches, continues and stops
+  workers, answers their permission and question callbacks, and picks a recent model. Use when the user asks
+  for OpenCode or for a model outside native Codex and Claude, to call or pool (“Позови DeepSeek, GLM”, “Use
+  deepseek, glm in pool”, “Задействуй модели OpenCode”) or to make it the coordinator (“Прокси на GLM”), even
+  before the task is stated; for Codex and Claude alone, use native agents.
 metadata:
-  version: "0.25.1"
+  version: "0.26.0"
 license: MIT
 ---
 
@@ -20,12 +19,10 @@ path. Set `ENTRUST_OPENCODE_URL` or `ENTRUST_OPENCODE_CONNECTION` only when atta
 
 ## Route named models
 
-An affirmative “Прокси на GLM” selects the main conversation as a proxy, with GLM owning its substantive
-decisions. Read [main-proxy.md](references/main-proxy.md) and use that loop instead of creating a
-per-worker proxy; its return uses [main-proxy.schema.json](schemas/main-proxy.schema.json). An ordinary
-request such as “Позови DeepSeek: проверь diff” delegates one worker and follows the launch steps below.
-The proxy reads complete order batches with `node <skill-dir>/scripts/agent-orders.mjs <report> <mode>`;
-that helper validates orders and saved binding shape, while the host verifies ownership and executes them.
+An affirmative “Прокси на <model>” makes that external model the coordinator and the main conversation
+its proxy: follow orchestrate's [main proxy mode](../orchestrate/references/main-proxy.md), with this
+adapter as the coordinator's transport. An ordinary request such as “Позови <model>: проверь diff”
+delegates one worker and follows the launch steps below.
 
 When the user asks to call, use or include a named model outside Codex and Claude in an agent pool, route
 that worker through OpenCode even when the user does not say “OpenCode” or has not stated the task yet.
@@ -54,8 +51,8 @@ rule. A model mentioned only for information or discussion does not request a wo
    `MODEL: provider/model` overrides selection; preserve slashes inside the model ID.
    `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant.
 3. For orchestration, read [orchestration.md](references/orchestration.md). Resolve and pin the model
-   before registering the approved plan. Use the shared [five-field schema](../codex/schemas/five-fields.schema.json).
-4. Choose an absolute report path under `ENTRUST_STATE_DIR` (or `CLAUDE_PLUGIN_DATA`), outside the
+   before registering the approved plan. Use the shared [five-field schema](../orchestrate/schemas/five-fields.schema.json).
+4. Choose an absolute report path under the state directory (`ENTRUST_STATE_DIR`, else `<tmp>/entrust-state`), outside the
    worker's checkout. Prepare the prompt verbatim:
 
    ```sh
@@ -74,18 +71,18 @@ rule. A model mentioned only for information or discussion does not request a wo
    A continuation inherits its recorded family and agent when those headers are absent.
 
 5. Use one native proxy for each external session and reuse its thread for continuations. On Codex,
-   explicitly select an available Luna with `medium` effort and a fresh context. Report unavailable
-   settings before launching rather than silently inheriting another model. Name its task with the
-   worker ID, external model and proxy role. Give it the agreed `TASK`, existing `RIGHTS`, applicable
-   user instructions, prepared command and report path; no separate permissions configuration is needed.
-   Use [proxy.md](references/proxy.md) for its operating instructions.
+   select the bulk tier ([models](../codex/references/models.md)) with `medium` effort and a fresh context.
+   Report unavailable settings before launching rather than silently inheriting another model. Name its
+   task with the worker ID, external model and proxy role. Give it the agreed `TASK`, existing `RIGHTS`,
+   applicable user instructions, prepared command and report path; no separate permissions configuration
+   is needed. It follows orchestrate's [operational proxy](../orchestrate/references/proxy.md).
 
    The Codex proxy runs `node <skill-dir>/scripts/agent-run.mjs --run --watch --report-file <report>`.
    Callbacks are intermediate events; the proxy applies existing authority or messages the coordinator
    and keeps waiting. Read [interactions.md](references/interactions.md) for the complete decision
    procedure. A `RUNNING=` checkpoint repeats the same command without starting another turn.
    Its final return contains the worker's full answer or its complete artifact, with status separate.
-   Claude hosts may retain [opencode-agent](../../agents/opencode-agent.md) and the ordinary `--run`
+   Claude hosts may retain the [proxy](../../agents/proxy.md) agent and the ordinary `--run`
    hand-back until their streaming and intermediate-message facilities are verified.
 
 ## Scope and results

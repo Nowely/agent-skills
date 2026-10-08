@@ -5,10 +5,10 @@
 //   node evals/prepare-feedback.test.mjs
 //
 // The page cases pin only what the page and the script share: the frontmatter, the script's command line, the
-// nine commands, the two directory forms, the link to focuses.md and the page's budget; none of its prose. The
+// four commands, the private folder's form and the page's budget; none of its prose. The
 // script cases run it in a synthetic world under one harness temp directory: transcripts under
 // CLAUDE_CONFIG_DIR, Codex rollouts under CODEX_HOME, reports beside them, and ENTRUST_STATE_DIR pointing at a
-// scratch state with CLAUDE_PLUGIN_DATA unset, so nothing reaches the machine's own data or transcripts. Every
+// scratch state, so nothing reaches the machine's own data or transcripts. Every
 // record is built here in the shapes Claude Code and Codex write; no line of a real transcript is in it.
 
 import crypto from "node:crypto";
@@ -21,7 +21,7 @@ const { cases: CASES, test } = registry();
 
 const PAGE = "skills/prepare-feedback/SKILL.md";
 const SCRIPT = path.join(ROOT, "skills", "prepare-feedback", "scripts", "prepare-feedback.mjs");
-const COMMANDS = ["corpus", "parts", "add", "coverage", "quotes", "tokens", "process", "timeline", "export"];
+const COMMANDS = ["corpus", "quotes", "process", "timeline"];
 let text = "";
 try { text = fs.readFileSync(path.join(ROOT, PAGE), "utf8"); } catch {}
 const front = /^---\n([\s\S]*?)\n---\n/.exec(text)?.[1] ?? "";
@@ -51,28 +51,21 @@ test("the page stays inside its budget: a body of 20,000 bytes at most and two h
     return problems.length === 0 || problems.join("; ");
   });
 
-test("the page calls the script in one indented line that forwards the data directory",
-  "Claude Code substitutes ${CLAUDE_PLUGIN_DATA} only in a skill's body, and the script refuses to run without a state directory",
-  () => /^ {4}CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/prepare-feedback\.mjs" <command>/m.test(text)
-    || "no line reads `    CLAUDE_PLUGIN_DATA=\"${CLAUDE_PLUGIN_DATA}\" node \"${CLAUDE_SKILL_DIR}/scripts/prepare-feedback.mjs\" <command> …`");
+test("the page calls the script in one indented line",
+  "the coordinator copies the line as it stands; the script resolves its state directory itself",
+  () => /^ {7}node "<skill-dir>\/scripts\/prepare-feedback\.mjs" <command>/m.test(text)
+    || "no line reads `       node \"<skill-dir>/scripts/prepare-feedback.mjs\" <command> …`");
 
-test("the page names each of the script's nine commands",
+test("the page names each of the script's four commands",
   "a command the page never names is one the coordinator never runs, and the step it serves is done by hand",
   () => {
     const missing = COMMANDS.filter((c) => !new RegExp("`" + c + "[` ]").test(text));
     return missing.length === 0 || `not named in backticks: ${missing.join(", ")}`;
   });
 
-test("the page names the private folder and the orchestrate run directory in their agreed forms",
-  "the script writes the first and cleanup walks the second; evals/fragments.mjs keeps the run-directory literal identical on every page that names it",
-  () => {
-    const missing = ["`<state>/prepare-feedback/<date>-<slug>/`", "`<state>/orchestrate/<project-slug>/<run>/`"].filter((s) => !text.includes(s.slice(1, -1)));
-    return missing.length === 0 || `the page does not carry ${missing.join(" or ")}`;
-  });
-
-test("the page links references/focuses.md",
-  "the focuses' units, labels and layouts live there, read when a focus is chosen, not on every load",
-  () => text.includes("](references/focuses.md") || "no link to references/focuses.md");
+test("the page names the private folder in its agreed form",
+  "the script writes it and the report's readers are pointed at it",
+  () => text.includes("<state>/prepare-feedback/<date>-<slug>/") || "the page does not carry <state>/prepare-feedback/<date>-<slug>/");
 
 // ------------------------------------------------------------------ the synthetic world
 
@@ -86,7 +79,7 @@ const draft = (name, content) => { const p = path.join(scratch, name); fs.writeF
 const write = (file, lines) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${lines.join("\n")}\n`); };
 const run = (argv, env = {}) => spawnNode([SCRIPT, ...argv], {
   env: { ENTRUST_STATE_DIR: state, CLAUDE_CONFIG_DIR: config, CODEX_HOME: codexHome, ...env },
-  unsetEnv: ["CLAUDE_PLUGIN_DATA"], cwd: world, killAfterMs: 30000 }).done;
+  cwd: world, killAfterMs: 30000 }).done;
 const value = (out, key) => new RegExp(`^${key}=(.*)$`, "m").exec(out)?.[1];
 const today = new Date().toISOString().slice(0, 10);
 const walk = (dir, base = dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) => {
@@ -400,7 +393,7 @@ test("S1 --help exits 0 and names every command, the environment and the refusal
     const r = await run(["--help"]);
     const problems = [];
     if (r.code !== 0) problems.push(`exit ${r.code}`);
-    for (const w of [...COMMANDS, "ENTRUST_STATE_DIR", "CLAUDE_PLUGIN_DATA", "CLAUDE_CONFIG_DIR", "CODEX_HOME", "10 refused", "turns.jsonl"])
+    for (const w of [...COMMANDS, "ENTRUST_STATE_DIR", "entrust-state", "CLAUDE_CONFIG_DIR", "CODEX_HOME", "10 refused", "turns.jsonl"])
       if (!r.out.includes(w)) problems.push(`--help does not mention ${w}`);
     const bogus = await run(["bogus", "--help"]);
     if (bogus.code !== 2) problems.push(`bogus --help exit ${bogus.code}`);
@@ -414,16 +407,21 @@ test("S2 the script parses under this engine (node --check)",
     return r.code === 0 || `exit ${r.code}: ${r.err.slice(0, 200)}`;
   });
 
-test("S3 without a state directory nothing runs: exit 2 and nothing written",
-  "the private folder's home is the data directory the page forwards; a script that invented a default would write where cleanup and the owner do not look",
+test("S3 without ENTRUST_STATE_DIR the private folder is under <tmp>/entrust-state, and a relative one runs nothing",
+  "the private folder lives where the driver's state does, in the temporary directory, so cleanup and the owner find both in one place; a relative value would resolve against whatever cwd the caller had",
   async () => {
-    const r = await run(["corpus", "--slug", "nostate"], { ENTRUST_STATE_DIR: undefined });
-    if (r.code !== 2) return `exit ${r.code}: ${r.err.slice(0, 160)}`;
-    return fs.readdirSync(state).length === 0 || "something was written under the scratch state";
+    const tmp = fs.realpathSync(fs.mkdtempSync(path.join(world, "tmp-")));
+    const r = await run(["corpus", "--slug", "nostate"], { ENTRUST_STATE_DIR: undefined, TMPDIR: tmp });
+    if (r.code !== 0) return `exit ${r.code}: ${r.err.slice(0, 160)}`;
+    const at = value(r.out, "RUN");
+    if (!at || !at.startsWith(path.join(tmp, "entrust-state", "prepare-feedback") + path.sep)) return `RUN= is not under <tmp>/entrust-state: ${at}`;
+    const rel = await run(["corpus", "--slug", "relative"], { ENTRUST_STATE_DIR: "state" });
+    if (rel.code !== 2) return `a relative ENTRUST_STATE_DIR: exit ${rel.code}`;
+    return !fs.readdirSync(state).some((n) => n.includes("relative")) || "a relative value wrote under the scratch state";
   });
 
 test("C1 corpus makes <state>/prepare-feedback/<date>-<slug>/ at mode 0700 and prints the plan's numbers, the PROJECT= lines first and RUN= last",
-  "the plan shows where the corpus came from, how many sessions and launches it holds and how many parts it will cut into; the page sends the command through the runner, whose tail keeps the last fifteen lines, and every later command needs RUN=",
+  "the plan shows where the corpus came from and how many sessions and launches it holds; the page sends the command through the runner, whose tail keeps the last fifteen lines, and every later command needs RUN=",
   async () => {
     const r = await corpus("default");
     if (r.code !== 0) return `exit ${r.code}: ${r.err.slice(0, 200)}`;
@@ -438,9 +436,9 @@ test("C1 corpus makes <state>/prepare-feedback/<date>-<slug>/ at mode 0700 and p
     }));
     const lines = r.out.trim().split("\n");
     const keys = lines.map((l) => l.split("=")[0]);
-    const tail = ["PLUGINS", "HUMAN_SESSIONS", "PROJECTS", "SESSIONS", "RANGE", "OLDEST", "SELF_RUNS", "SUBAGENTS", "CODEX_RUNS", "CHARS", "PARTS_EST", "RUN"];
+    const tail = ["PLUGINS", "HUMAN_SESSIONS", "PROJECTS", "SESSIONS", "RANGE", "OLDEST", "SELF_RUNS", "SUBAGENTS", "CODEX_RUNS", "CHARS", "RUN"];
     if (JSON.stringify(keys) !== JSON.stringify(["PROJECT", "PROJECT", "PROJECT", ...tail])) problems.push(`lines in the order ${keys.join(",")}`);
-    if (!/^CHARS=\d+ MESSAGES=\d+$/m.test(r.out) || !/^PARTS_EST=\d+$/m.test(r.out)) problems.push("no CHARS=/MESSAGES= or PARTS_EST= line");
+    if (!/^CHARS=\d+ MESSAGES=\d+$/m.test(r.out)) problems.push("no CHARS=/MESSAGES= line");
     for (const p of ["/work/alpha sessions=1", "/work/beta sessions=1", "/work/alpha/.claude/worktrees/x sessions=1"])
       if (!lines.includes(`PROJECT=${p}`)) problems.push(`no PROJECT=${p}`);
     return problems.length === 0 || problems.join("; ");
@@ -640,113 +638,6 @@ test("C9 turns.jsonl carries t, line, role and text, each line the line of its s
     return problems.length === 0 || problems.join("; ");
   });
 
-test("P1 parts cuts within its bounds, overlaps the parts, splits only an oversized turn, and lists every page with its sha256",
-  "an extraction agent reads one part a page per command, so coverage can find each page whole; a page over the bound is one no single output shows",
-  async () => {
-    if (!runs.default) return "C1 made no run";
-    const r = await run(["parts", "--run", runs.default]);
-    if (r.code !== 0) return `exit ${r.code}: ${r.err.slice(0, 200)}`;
-    const problems = [];
-    const listing = JSON.parse(fs.readFileSync(path.join(runs.default, "corpus", "parts.json"), "utf8"));
-    const parts = listing.parts;
-    if (!/^PARTS=\d+ PAGES=\d+ LARGEST=\d+$/.test(r.out.trim())) problems.push(`printed ${r.out.trim()}`);
-    if (value(r.out, "PARTS") !== `${parts.length} PAGES=${parts.reduce((n, p) => n + p.pages.length, 0)} LARGEST=${Math.max(...parts.map((p) => p.chars))}`) problems.push("the printed counts disagree with parts.json");
-    if (parts.length < 2) problems.push(`${parts.length} parts; the fixture needs two`);
-    for (const p of parts) {
-      const whole = fs.readFileSync(path.join(runs.default, p.file), "utf8");
-      if (p.chars > 60000 || whole.length !== p.chars) problems.push(`${p.id}: ${p.chars} characters`);
-      const pages = p.pages.map((g) => fs.readFileSync(path.join(runs.default, g.file), "utf8"));
-      if (pages.join("") !== whole) problems.push(`${p.id}: its pages do not make the part`);
-      p.pages.forEach((g, k) => {
-        if (pages[k].length > 18000 || pages[k].length !== g.chars) problems.push(`${g.id}: ${pages[k].length} characters`);
-        if (crypto.createHash("sha256").update(pages[k]).digest("hex") !== g.sha256) problems.push(`${g.id}: sha256 differs`);
-      });
-    }
-    if (parts.length >= 2 && parts[1].from !== parts[0].to) problems.push(`P002 opens at ${parts[1].from}, P001 ends at ${parts[0].to}: no overlap`);
-    const continued = parts.flatMap((p) => p.pages).filter((g) => !fs.readFileSync(path.join(runs.default, g.file), "utf8").startsWith("[T"));
-    if (continued.length !== 1) problems.push(`${continued.length} pages open inside a turn; the one 25,000-character turn should make one`);
-    const again = await run(["parts", "--run", runs.default]);
-    if (again.code !== 10) problems.push(`a second cut exit ${again.code}`);
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("P2 PARTS_EST in the corpus line is the number parts then cuts",
-  "the plan prices the extraction from PARTS_EST before any part exists; an estimate that is not the cut prices a different batch",
-  async () => {
-    if (!runs.default) return "C1 made no run";
-    const listing = path.join(runs.default, "corpus", "parts.json");
-    if (!fs.existsSync(listing)) return "P1 made no parts";
-    const r = await corpus("estimate");
-    if (r.code !== 0) return `exit ${r.code}`;
-    const n = JSON.parse(fs.readFileSync(listing, "utf8")).parts.length;
-    return value(r.out, "PARTS_EST") === String(n) || `PARTS_EST=${value(r.out, "PARTS_EST")}, parts cut ${n}`;
-  });
-
-test("A1 add places a file under the four named directories or as rounds.md, never overwrites, and refuses any other name with exit 2",
-  "the coordinator is refused every write under the data directory, so the script is the only pen there; a pen that writes corpus/ or a sibling path would let a step rewrite the evidence",
-  async () => {
-    if (!runs.default) return "C1 made no run";
-    const problems = [];
-    for (const [name, content] of [["drafts/01-report.md", "# Report\n"], ["rounds.md", "| round |\n"], ["anonymized/notes.md", "anon\n"], ["ledger/notes.md", "private\n"]]) {
-      const r = await run(["add", "--run", runs.default, "--name", name, "--from", draft(name.replace(/\//g, "_"), content)]);
-      if (r.code !== 0) problems.push(`${name}: exit ${r.code}: ${r.err.slice(0, 120)}`);
-      else if (value(r.out, "ADDED") !== path.join(runs.default, name) || fs.readFileSync(path.join(runs.default, name), "utf8") !== content) problems.push(`${name}: not placed as given`);
-    }
-    const again = await run(["add", "--run", runs.default, "--name", "drafts/01-report.md", "--from", draft("other.md", "other\n")]);
-    if (again.code !== 10) problems.push(`a second 01-report.md exit ${again.code}`);
-    if (fs.readFileSync(path.join(runs.default, "drafts", "01-report.md"), "utf8") !== "# Report\n") problems.push("drafts/01-report.md was rewritten");
-    for (const name of ["corpus/index.json", "../escape.md", "drafts/report.md", "notes.md", "measures/../../escape.md"]) {
-      const r = await run(["add", "--run", runs.default, "--name", name, "--from", draft("x.md", "x\n")]);
-      if (r.code !== 2) problems.push(`${name}: exit ${r.code}`);
-    }
-    if (fs.existsSync(path.join(path.dirname(runs.default), "escape.md")) || fs.existsSync(path.join(runs.default, "notes.md"))) problems.push("a refused name was written");
-    const outside = await run(["add", "--run", world, "--name", "rounds.md", "--from", draft("y.md", "y\n")]);
-    if (outside.code !== 2 || fs.existsSync(path.join(world, "rounds.md"))) problems.push(`a --run outside the runs root: exit ${outside.code}`);
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("V1 coverage counts a page read only when the agent's model was shown it whole, raw or JSON-escaped, tells whole from partial from unread per agent, and prints the summary last",
-  "a bulk agent that skipped pages returns a confident extraction of the pages it read; the rollout is the only record of what it saw, and what the command printed is not what Codex showed the model when it cut the output",
-  async () => {
-    if (!runs.default) return "C1 made no run";
-    const listingFile = path.join(runs.default, "corpus", "parts.json");
-    if (!fs.existsSync(listingFile)) return "P1 made no parts";
-    const parts = JSON.parse(fs.readFileSync(listingFile, "utf8")).parts;
-    const page = (g) => fs.readFileSync(path.join(runs.default, g.file), "utf8");
-    const p1 = parts[0].pages, p2 = parts[1].pages;
-    const cmd = (out) => ({ type: "event_msg", payload: { type: "item_completed", item: { type: "CommandExecution", command: "cat page", aggregated_output: out, exit_code: 0 } } });
-    const fn = (out) => ({ type: "response_item", payload: { type: "function_call_output", call_id: "c", output: JSON.stringify({ output: out, metadata: { exit_code: 0 } }) } });
-    const items = (out) => ({ type: "response_item", payload: { type: "custom_tool_call_output", call_id: "c", output: [{ type: "input_text", text: "Script completed\nOutput:\n" }, { type: "input_text", text: out }] } });
-    const cut = (s) => `${s.slice(0, 2000)}\n…[output truncated]…\n${s.slice(-500)}`;
-    rollout(TH.a, [items(page(p1[0])), ...p1.slice(1).map((g) => fn(page(g)))]);
-    rollout(TH.b, p1.map((g) => items(page(g))));
-    rollout(TH.c, [cmd(page(p1[0])), items(cut(page(p1[0])))]);
-    const rep = (name, th) => { const f = path.join(world, "cov", name, "report.json"); write(f, [JSON.stringify({ threadId: th })]); return f; };
-    const map = draft("map.tsv", [
-      `a\t${rep("a", TH.a)}\tP001`,
-      `b\t${rep("b", TH.b)}\tP001,P002`,
-      `c\t${rep("c", TH.c)}\tP001`,
-      `d\t${path.join(world, "cov", "d", "report.json")}\tP001`,
-    ].join("\n"));
-    const r = await run(["coverage", "--run", runs.default, "--map", map]);
-    if (r.code !== 0) return `exit ${r.code}: ${r.err.slice(0, 200)}`;
-    const problems = [];
-    const ids = (pages) => pages.map((g) => g.id).join(",");
-    const want = [`AGENT=b unread=${ids(p2)}`, `AGENT=c unread=${ids(p1)}`, `AGENT=d unread=${ids(p1)} reason=no-report`, "AGENTS=4 WHOLE=1 PARTIAL=1 UNREAD=2"];
-    if (r.out.trim() !== want.join("\n")) problems.push(`printed ${JSON.stringify(r.out.trim())}`);
-    const saved = path.join(runs.default, "measures", "coverage-map.json");
-    const cov = fs.existsSync(saved) ? JSON.parse(fs.readFileSync(saved, "utf8")) : { agents: [] };
-    if (cov.agents.map((a) => a.status).join() !== "whole,partial,unread,unread") problems.push(`coverage-map.json says ${cov.agents.map((a) => a.status).join()}`);
-    const a = cov.agents[0];
-    if (cov.map !== "map.tsv" || a?.report !== "a/report.json" || a?.threadId !== undefined || a?.rollouts !== undefined)
-      problems.push(`coverage-map.json names ${JSON.stringify([cov.map, a?.report, a?.threadId, a?.rollouts])}`);
-    const again = await run(["coverage", "--run", runs.default, "--map", map]);
-    if (again.code !== 10) problems.push(`a second coverage-map exit ${again.code}`);
-    const bad = await run(["coverage", "--run", runs.default, "--map", draft("bad.tsv", `a\t${rep("a", TH.a)}\tP999\n`)]);
-    if (bad.code !== 2) problems.push(`an unknown part exit ${bad.code}`);
-    return problems.length === 0 || problems.join("; ");
-  });
-
 test("Q1 quotes finds an exact quote, a near one with the closest text and its address, and a missing one, passing other fields through",
   "a merged episode whose quote is not in the corpus is a claim with no evidence; a near one is a paraphrase the draft must not print as a quotation",
   async () => {
@@ -773,31 +664,6 @@ test("Q1 quotes finds an exact quote, a near one with the closest text and its a
     if (bad.code !== 2) problems.push(`an episode without a quote exit ${bad.code}`);
     const again = await run(["quotes", "--run", runs.default, "--episodes", episodes]);
     if (again.code !== 10) problems.push(`a second quotes-episodes-1 exit ${again.code}`);
-    return problems.length === 0 || problems.join("; ");
-  });
-
-test("K1 tokens takes the median and maximum of a batch from its reports or from a Claude batch's tsv, and with --median lists the agents above three times it before the summary",
-  "the plan's stop line is three times the pilot's median per agent; Claude readers have no report, so their batch arrives as the Agent tool's totals in a tsv",
-  async () => {
-    if (!runs.default) return "C1 made no run";
-    const batch = path.join(world, "batch-1");
-    for (const [a, t] of [["001", 100], ["002", 300], ["003", 1000], ["004", null]])
-      write(path.join(batch, a, "report.json"), [JSON.stringify(t === null ? { ok: false } : { tokenUsage: { total: { totalTokens: t } } })]);
-    const problems = [];
-    let r = await run(["tokens", "--run", runs.default, "--reports", batch, "--median", "200"]);
-    if (r.code !== 0) problems.push(`--reports exit ${r.code}: ${r.err.slice(0, 120)}`);
-    else if (r.out.trim() !== "AGENT=003 tokens=1000\nOVER=1\nAGENTS=3 MEDIAN=300 MAX=1000") problems.push(`--reports printed ${JSON.stringify(r.out.trim())}`);
-    if (!fs.existsSync(path.join(runs.default, "measures", "tokens-batch-1.json"))) problems.push("no measures/tokens-batch-1.json");
-    const tsv = draft("readers.tsv", "r1\t10\nr2\t20\nr3\t30\nr4\t40\n");
-    r = await run(["tokens", "--run", runs.default, "--from", tsv, "--median", "10"]);
-    if (r.code !== 0) problems.push(`--from exit ${r.code}: ${r.err.slice(0, 120)}`);
-    else if (r.out.trim() !== "AGENT=r4 tokens=40\nOVER=1\nAGENTS=4 MEDIAN=25 MAX=40") problems.push(`--from printed ${JSON.stringify(r.out.trim())}`);
-    r = await run(["tokens", "--run", runs.default, "--from", draft("readers-2.tsv", "r1\t7\n")]);
-    if (r.code !== 0 || r.out.trim() !== "AGENTS=1 MEDIAN=7 MAX=7") problems.push(`without --median: exit ${r.code}, ${JSON.stringify(r.out.trim())}`);
-    r = await run(["tokens", "--run", runs.default, "--reports", batch]);
-    if (r.code !== 10) problems.push(`a second tokens-batch-1 exit ${r.code}`);
-    r = await run(["tokens", "--run", runs.default, "--reports", batch, "--from", tsv]);
-    if (r.code !== 2) problems.push(`both sources exit ${r.code}`);
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -844,7 +710,7 @@ test("M1 corpus records each task's process counts: API calls, wall time split i
   });
 
 test("R1 process writes measures/process.json with a row per task, a row per agent and the totals, prints its summary with USER= and FILE= last, carries no text, path, thread id or name from the user's environment, and refuses a second run and a run with no corpus",
-  "a reader's brief names process.json and export publishes it without review, so it holds counts, addresses and built-in or folded names only, never a command's hash, which a guess confirms: an MCP tool is mcp and an agent type of the user's own is custom; its lines go through the runner, whose tail keeps the end; a subagent's repeated command is on its row and in the totals, since the first live process run showed a subagent's repeat as none",
+  "a reader's brief names process.json and a report may cite it, so it holds counts, addresses and built-in or folded names only, never a command's hash, which a guess confirms: an MCP tool is mcp and an agent type of the user's own is custom; its lines go through the runner, whose tail keeps the end; a subagent's repeated command is on its row and in the totals, since the first live process run showed a subagent's repeat as none",
   async () => {
     if (!runs.default) return "C1 made no run";
     const r = await run(["process", "--run", runs.default]);
@@ -945,7 +811,7 @@ test("TL2 an owner message queued while the model worked is a user turn and the 
     return problems.length === 0 || problems.join("; ");
   });
 
-test("TL3 timeline refuses a second run and a run with no corpus with exit 10, and export leaves the timeline behind",
+test("TL3 timeline refuses a second run and a run with no corpus with exit 10",
   "the timeline holds transcript text and stays in the private folder; nothing in a run is rewritten",
   async () => {
     if (!tl.run || !runs.default) return "TL1 or C1 made no run";
@@ -1005,41 +871,6 @@ test("TL6 sed reads a page when it prints it, with or without -n, and not when i
     const got = reads.filter(([line]) => line === lineIn4("00:10") || line === lineIn4("00:12"));
     const want = [[lineIn4("00:10"), "terse", "references/genres/ticket.md", false]];
     return JSON.stringify(got) === JSON.stringify(want) || `reads ${JSON.stringify(got)}`;
-  });
-
-test("X1 export copies drafts, rounds.md, measures/ and anonymized/ unchanged to a new relative directory, none of it naming a machine path, a thread id or transcript text, and refuses an existing one, one under the state directory and an absolute path",
-  "the research folder is committed as it is exported, and a tracked file carries no path of the machine it was made on; the ledger and the corpus stay private, a second export over the first would rewrite a published record, and a destination under the state directory is the script writing where it promised only runs",
-  async () => {
-    if (!runs.default) return "C1 made no run";
-    const to = "research/2026-09-29-feedback";
-    const r = await run(["export", "--run", runs.default, "--to", to]);
-    if (r.code !== 0) return `exit ${r.code}: ${r.err.slice(0, 200)}`;
-    const problems = [];
-    const dest = path.join(world, to);
-    const measures = walk(path.join(runs.default, "measures")).map((f) => `measures/${f}`);
-    const want = ["01-report.md", "anonymized/notes.md", ...measures, "rounds.md"].sort();
-    const got = walk(dest);
-    if (JSON.stringify(got) !== JSON.stringify(want)) problems.push(`exported ${JSON.stringify(got)}`);
-    if (r.out.trim() !== `EXPORTED=${to} FILES=${want.length}`) problems.push(`printed ${r.out.trim()}`);
-    for (const f of got) {
-      const src = f.startsWith("measures/") || f.startsWith("anonymized/") || f === "rounds.md" ? f : `drafts/${f}`;
-      if (!fs.readFileSync(path.join(dest, f)).equals(fs.readFileSync(path.join(runs.default, src)))) problems.push(`${f} differs from the run's`);
-      const content = fs.readFileSync(path.join(dest, f), "utf8");
-      const leak = [world, fs.realpathSync(world), os.homedir()].find((p) => content.includes(p));
-      if (leak) problems.push(`${f} names a machine path`);
-      if (Object.values(TH).some((x) => content.includes(x))) problems.push(`${f} names a Codex thread id`);
-      if (TEXTS.some((x) => content.includes(x))) problems.push(`${f} carries transcript text`);
-      if (PRIVATE.some((x) => content.includes(x))) problems.push(`${f} names an MCP server or a custom agent type`);
-    }
-    for (const kind of ["coverage-", "tokens-", "process.json"])
-      if (!got.some((f) => f.startsWith(`measures/${kind}`))) problems.push(`the check read no measures/${kind} file`);
-    const again = await run(["export", "--run", runs.default, "--to", to]);
-    if (again.code !== 10) problems.push(`a second export exit ${again.code}`);
-    const under = await run(["export", "--run", runs.default, "--to", "state/leak"]);
-    if (under.code !== 10 || fs.existsSync(path.join(state, "leak"))) problems.push(`a destination under the state directory: exit ${under.code}`);
-    const absolute = await run(["export", "--run", runs.default, "--to", path.join(world, "elsewhere")]);
-    if (absolute.code !== 2 || fs.existsSync(path.join(world, "elsewhere"))) problems.push(`an absolute destination: exit ${absolute.code}`);
-    return problems.length === 0 || problems.join("; ");
   });
 
 process.exit(summarize(await runCases(CASES), CASES.length));

@@ -13,7 +13,7 @@
 //   agent/ beside it, which is what the cleanup expects of a run. --concurrency: 1 to 50, default 10.
 // --summary: where summary.json goes, default <temp>/entrust/<project>/<run>/swarm/swarm-<random>/summary.json;
 //   never under <run>, where only the launcher and the driver write.
-// Environment: what the launcher needs, forwarded unchanged (CLAUDE_PLUGIN_DATA or ENTRUST_STATE_DIR).
+// Environment: what the launcher needs, forwarded unchanged (ENTRUST_STATE_DIR when set).
 // A signal (SIGTERM, SIGINT, SIGHUP) stops further launches, goes to every running launcher, and the
 // summary is written for what ran; the exit is then 1.
 // Exit: 0 the summary was written and every agent was launched (per-agent outcomes are inside it);
@@ -22,29 +22,28 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { createTempContext, createTempDir } from "../../orchestrate/scripts/temp-dir.mjs";
+import { adapters } from "../../orchestrate/scripts/adapters.mjs";
 
 const EXIT = { OK: 0, FAILED: 1, USAGE: 2 };
 const MAX = 50;
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const LAUNCHER = path.resolve(HERE, "..", "..", "codex", "scripts", "agent-run.mjs");
+const ROUTES = adapters().filter((a) => a.launcher);
 
-const usage = () => `swarm.mjs — launch a swarm of bulk agents through the sibling launcher and write one summary
+const usage = () => `swarm.mjs — launch a swarm of bulk agents through an adapter's launcher and write one summary
 
-  --units <file> --brief <template> --run <dir> [--concurrency <n>] [--summary <file>]
+  --adapter <id> --units <file> --brief <template> --run <dir> [--concurrency <n>] [--summary <file>]
       one agent per line of <file>, ${MAX} at most; the template's {{UNIT}} takes the unit, {{UNIT_ID}} its number
-  --agents <n> --brief <template> --run <dir> [--concurrency <n>] [--summary <file>]
+  --adapter <id> --agents <n> --brief <template> --run <dir> [--concurrency <n>] [--summary <file>]
       n agents on one identical brief (a queue arm), ${MAX} at most; the template has no {{UNIT}}
 
 Agent <id> is <run>/<id>/report.json with the launcher's agent/ beside it, made by the launcher from the brief;
-at most --concurrency (1 to ${MAX}, default 10) run at once. When every agent has finished the script writes
+at most --concurrency (1 to ${MAX}; default the adapter's own, else 1) run at once. When every agent has finished the script writes
 summary.json (default: <temp>/entrust/<project>/<run>/swarm/swarm-<random>/summary.json, never under <run>): per
 agent its id, unit, report path, the launcher's DRIVER_EXIT, PATH, EXIT and FIRST lines, and when it ran.
-Environment is forwarded unchanged to the launcher (CLAUDE_PLUGIN_DATA or ENTRUST_STATE_DIR). A signal stops
+Environment is forwarded unchanged to the launcher (ENTRUST_STATE_DIR when set). A signal stops
 further launches and reaches every running agent; the summary is still written.
---adapter codex|opencode selects the external backend (default codex). OpenCode defaults to concurrency 2,
-needs its existing server connection, and requires a pinned provider/model in the brief before fan-out.
+--adapter names an installed adapter with a launcher (${ROUTES.map((a) => a.id).join(", ") || "none installed"}); its
+adapter.json gives its default concurrency and any MODEL: line its briefs must carry.
 Exit: 0 summary written, every agent launched; 1 cut by a signal, or the summary could not be written; 2 usage.
 `;
 
@@ -66,19 +65,21 @@ function args(argv) {
 
 const opt = args(process.argv.slice(2));
 if (opt.help || process.argv.length === 2) { process.stdout.write(usage()); process.exit(opt.help ? EXIT.OK : EXIT.USAGE); }
-if (!fs.existsSync(LAUNCHER)) fail(EXIT.USAGE, `the sibling launcher is missing: ${LAUNCHER}`);
-const adapter = opt.adapter ?? "codex";
-if (!["codex", "opencode"].includes(adapter)) fail(EXIT.USAGE, "--adapter must be codex or opencode");
+const adapter = opt.adapter;
+const route = ROUTES.find((a) => a.id === adapter);
+if (!route) fail(EXIT.USAGE, `--adapter must name an installed adapter with a launcher: ${ROUTES.map((a) => a.id).join(", ") || "none installed"}`);
+const LAUNCHER = route.launcher;
+if (!fs.existsSync(LAUNCHER)) fail(EXIT.USAGE, `the adapter's launcher is missing: ${LAUNCHER}`);
 if ((opt.units ? 1 : 0) + (opt.agents ? 1 : 0) !== 1) fail(EXIT.USAGE, "exactly one of --units <file> or --agents <n> is required");
 if (!opt.brief) fail(EXIT.USAGE, "--brief <template> is required");
 if (!opt.run || !path.isAbsolute(opt.run)) fail(EXIT.USAGE, "--run <dir> is required and absolute");
-const concurrency = opt.concurrency === undefined ? (adapter === "opencode" ? 2 : 10) : Number(opt.concurrency);
+const concurrency = opt.concurrency === undefined ? (route.swarm.concurrency ?? 1) : Number(opt.concurrency);
 if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > MAX) fail(EXIT.USAGE, `--concurrency must be 1 to ${MAX}`);
 let template;
 try { template = fs.readFileSync(opt.brief, "utf8"); } catch (e) { fail(EXIT.USAGE, `--brief cannot be read: ${opt.brief}: ${e.message}`); }
 if (template.trim() === "") fail(EXIT.USAGE, "--brief is empty");
-if (adapter === "opencode" && !/^MODEL:\s*[^\s/]+\/[^\s]+\s*$/m.test(template))
-  fail(EXIT.USAGE, "an OpenCode swarm needs a pinned MODEL: provider/model before fan-out");
+if (route.swarm.briefModel && !new RegExp(route.swarm.briefModel, "m").test(template))
+  fail(EXIT.USAGE, `a ${adapter} swarm needs ${route.swarm.briefModelRule ?? `a MODEL: line matching ${route.swarm.briefModel}`} before fan-out`);
 
 let units;
 if (opt.units) {

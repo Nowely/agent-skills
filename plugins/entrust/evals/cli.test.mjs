@@ -37,10 +37,12 @@ const realOf = (p) => fs.realpathSync(p);
 // The directory os.tmpdir() falls back to when a case unsets TMPDIR, so no case writes the machine's /tmp.
 const osTmp = tempDir("entrust-os-tmp-");
 
-// The two roots the state-directory cases below measure: one stands in for the plugin's own data
-// directory, the other for a home the run must leave untouched. Both live under the shim so the suite's
-// own cleanup reaches them.
+// The roots the state-directory cases below measure: Claude Code's plugin data directory, which an earlier
+// version used and nothing reads now, a home the run must leave untouched, and a TMPDIR whose entrust-state
+// is the default. All live under the shim so the suite's own cleanup reaches them.
 const pluginData = path.join(shimDir, "plugin-data");
+const defaultTmp = path.join(shimDir, "default-tmp");
+fs.mkdirSync(defaultTmp, { recursive: true });
 const decoyHome = path.join(shimDir, "decoy-home");
 fs.mkdirSync(decoyHome, { recursive: true });
 
@@ -140,38 +142,23 @@ const CASES = [
     env: { ENTRUST_CODEX: "codex" },
     why: "a relative ENTRUST_CODEX would resolve against the invocation cwd; only an absolute executable is accepted",
     assertStderr: (e) => /ENTRUST_CODEX must be an absolute path/.test(e) || `the override was not validated: ${e.slice(0, 140)}` },
-  // --- the state directory: named by the environment, and by nothing else ---
-  { scenario: "happy",            expect: EXIT.USAGE, unsetEnv: ["ENTRUST_STATE_DIR", "CLAUDE_PLUGIN_DATA"],
-    why: "there is no built-in state directory: a default under the home directory would hold answers, an isolated home and a worktree ledger that no plugin uninstall reaches and that nobody named, so a run with neither variable set is refused before the turn and told which two to set",
-    assertStderr: (e) => (/ENTRUST_STATE_DIR/.test(e) && /CLAUDE_PLUGIN_DATA/.test(e))
-      || `the refusal named neither variable or only one: ${e.slice(0, 200)}` },
+  // --- the state directory: ENTRUST_STATE_DIR, else <tmp>/entrust-state ---
   { scenario: "happy",            expect: EXIT.OK, unsetEnv: ["ENTRUST_STATE_DIR"],
-    env: { CLAUDE_PLUGIN_DATA: pluginData, HOME: decoyHome },
-    why: "CLAUDE_PLUGIN_DATA is what the skill recipes pass, so a run carrying only it puts the whole of its state there and nothing under a home directory — the property the removed default used to break",
+    env: { TMPDIR: defaultTmp, CLAUDE_PLUGIN_DATA: pluginData, HOME: decoyHome },
+    why: "with no ENTRUST_STATE_DIR the state is <tmp>/entrust-state, beside the scratch tree: nothing goes under a home directory, and Claude Code's plugin data directory, which an earlier version used, is not read",
     assert: () => {
-      const made = fs.existsSync(pluginData) ? fs.readdirSync(pluginData) : [];
+      const state = path.join(defaultTmp, "entrust-state");
+      const made = fs.existsSync(state) ? fs.readdirSync(state) : [];
       if (!made.some((n) => ["locks", "answers", "home", "jobs"].includes(n)))
-        return `the run left no state under CLAUDE_PLUGIN_DATA: ${JSON.stringify(made)}`;
+        return `the run left no state under <tmp>/entrust-state: ${JSON.stringify(made)}`;
+      if (fs.existsSync(pluginData)) return `the run wrote under CLAUDE_PLUGIN_DATA: ${fs.readdirSync(pluginData).join(", ")}`;
       const under = fs.readdirSync(decoyHome);
       return under.length === 0 || `the run wrote under $HOME: ${under.join(", ")}`;
     } },
-  { scenario: "happy",            expect: EXIT.USAGE, unsetEnv: ["ENTRUST_STATE_DIR"],
-    env: { CLAUDE_PLUGIN_DATA: "plugin-data" },
-    why: "a relative state directory resolves against whatever cwd the caller happened to have; both variables take the same absolute-only rule, and the refusal names the one that supplied the value",
-    assertStderr: (e) => /CLAUDE_PLUGIN_DATA must be an absolute path/.test(e)
-      || `the relative value was not refused by name: ${e.slice(0, 160)}` },
   { scenario: "happy",            expect: EXIT.USAGE, env: { ENTRUST_STATE_DIR: "state" },
-    why: "the same rule for the variable a harness sets, which is read first: a relative one used to be accepted, and the answer log and the turn diff then dropped their artefact in silence",
+    why: "a relative state directory resolves against whatever cwd the caller happened to have: a relative one used to be accepted, and the answer log and the turn diff then dropped their artefact in silence",
     assertStderr: (e) => /ENTRUST_STATE_DIR must be an absolute path/.test(e)
       || `the relative value was not refused by name: ${e.slice(0, 160)}` },
-  { scenario: "happy",            expect: EXIT.OK, env: { CLAUDE_PLUGIN_DATA: "" },
-    why: "the recipe forwards CLAUDE_PLUGIN_DATA under its own name, and on a clone-and-symlink install nothing substitutes the placeholder, so the shell hands the driver an empty value beside the ENTRUST_STATE_DIR the user exported; empty reads as unset, never as a path",
-    assert: (r, ms, stateRoot) => fs.existsSync(path.join(stateRoot, "answers"))
-      || "the run left no answers/ under ENTRUST_STATE_DIR beside an empty CLAUDE_PLUGIN_DATA" },
-  { scenario: "happy",            expect: EXIT.USAGE, unsetEnv: ["ENTRUST_STATE_DIR"], env: { CLAUDE_PLUGIN_DATA: "" },
-    why: "the same empty value with nothing exported is the clone route before the user set anything: the refusal names both variables instead of taking \"\" for a directory",
-    assertStderr: (e) => (/ENTRUST_STATE_DIR/.test(e) && /CLAUDE_PLUGIN_DATA/.test(e))
-      || `the refusal named neither variable or only one: ${e.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.OK, env: { FAKE_CONFIG_FAIL: "1" },
     why: "a failed config probe must say so out loud — the silent path changed which model answers and made identical runs nondeterministic",
     assertStderr: (e) => /could not read the caller's Codex config/.test(e)
@@ -1168,9 +1155,9 @@ flow("--check-prompt-file passes a sound header silently, and spawns no codex an
   });
 
 flow("--check-prompt-file needs no state directory",
-  "the launcher's --new runs with neither ENTRUST_STATE_DIR nor CLAUDE_PLUGIN_DATA set, and a check that asked for one would refuse every agent before it was spawned",
+  "the launcher's --new checks the prompt before any state exists, and a check that asked for a state directory would refuse every agent before it was spawned",
   () => passed(checkRun(GOOD_HEADER.replace("<DIR>", shimDir),
-    { unset: ["ENTRUST_STATE_DIR", "CLAUDE_PLUGIN_DATA"] })));
+    { unset: ["ENTRUST_STATE_DIR"] })));
 
 flow("--check-prompt-file refuses a WEB_SEARCH: mode the managed policy does not allow, with the run's own reason and the network left out of it",
   "the refusal used to arrive at --run, after an agent was spawned, and the coordinator swapped in the mode it named — twice, on a user's 'the network is allowed', which needed no line at all. Said before the spawn, and saying that the network is not what was refused, it goes back to the user as a question",
@@ -1183,7 +1170,7 @@ flow("--check-prompt-file refuses a WEB_SEARCH: mode the managed policy does not
     fs.writeFileSync(policy, `<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>`
       + `<key>requirements_toml_base64</key><string>${toml}</string></dict></plist>\n`);
     const agent = `RIGHTS: read ${shimDir}\nWEB_SEARCH: live\nTASK: find the release notes\n`;
-    const r = checkRun(agent, { env: { ENTRUST_POLICY_SEAM: policy }, unset: ["ENTRUST_STATE_DIR", "CLAUDE_PLUGIN_DATA"] });
+    const r = checkRun(agent, { env: { ENTRUST_POLICY_SEAM: policy }, unset: ["ENTRUST_STATE_DIR"] });
     const verdict = refusal(r, /^entrust: refused: --web-search live is not permitted by this device's managed policy, which allows cached; the server would silently apply one of those and no response field would say so; another mode is the user's choice to make, not the coordinator's, and the network is unaffected: the agent's own commands reach it with no WEB_SEARCH: line\n$/);
     if (verdict !== true) return verdict;
     // The same file under --run gives the same reason, so the launcher's ERROR= line is the run's.

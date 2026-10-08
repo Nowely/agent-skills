@@ -83,6 +83,20 @@ function inheritedContext(root) {
   return c;
 }
 
+// Where entrust keeps what outlives one command (reports, mailboxes, locks, the worktree ledger, the isolated
+// Codex home): ENTRUST_STATE_DIR when it is set, else <tmp>/entrust-state. A sibling of the scratch tree,
+// never inside it: every agent's writable grant lies under <tmp>/entrust, and no grant may cover a mailbox.
+// Made like every level here, the user's own and no link, so a directory someone else planted is refused.
+export const STATE_DIR_NAME = "entrust-state";
+export function stateDirectory(root = os.tmpdir()) {
+  const named = process.env.ENTRUST_STATE_DIR;
+  if (named) {
+    if (!path.isAbsolute(named)) throw new Error(`ENTRUST_STATE_DIR must be an absolute path, got ${JSON.stringify(named)}`);
+    return named;
+  }
+  return directoryChain(temporaryRoot(root), [STATE_DIR_NAME]);
+}
+
 export function createTempContext({ root = os.tmpdir(), cwd = process.cwd(), runPath = null, inherit = true } = {}) {
   root = temporaryRoot(root);
   const prior = inherit ? inheritedContext(root) : null;

@@ -13,8 +13,7 @@
 //   node evals/cleanup.test.mjs
 //
 // Nothing here can reach the caller's own data. Every invocation points HOME, CLAUDE_CONFIG_DIR, TMPDIR
-// and ENTRUST_STATE_DIR into a scratch world under one harness temp directory, unsets
-// CLAUDE_PLUGIN_DATA so no fallback can reach ~/.claude/plugins/data, and takes its process listing from
+// and ENTRUST_STATE_DIR into a scratch world under one harness temp directory, and takes its process listing from
 // the ENTRUST_CLEANUP_PS seam rather than the machine's process table. need() then asserts, on EVERY
 // listing, that each root the script resolved and each path it printed lies inside that world — so a
 // script that reached the real ~/.claude/projects, $TMPDIR/codex-agent.* or ~/.codex fails the case that
@@ -34,10 +33,10 @@ import { EXIT, PINNED_CODEX, ROOT, SCRIPTS, registry, runCases, skip, spawnNode,
 // A NAMESPACE import, not named bindings: the liveness helpers are the driver's, and a named import of
 // one it stops exporting would fail at load and report nothing at all rather than failing case by case.
 import * as driver from "../plugin/skills/codex/scripts/driver.mjs";
-import { SESSION_MARKS } from "../plugin/skills/codex/scripts/cleanup.mjs";
+import { SESSION_MARKS } from "../plugin/skills/cleanup/scripts/cleanup.mjs";
 import { TEMP_OWNER, TEMP_CONTEXT } from "../plugin/skills/orchestrate/scripts/temp-dir.mjs";
 
-const CLEANUP = path.join(SCRIPTS, "cleanup.mjs");
+const CLEANUP = path.join(ROOT, "skills", "cleanup", "scripts", "cleanup.mjs");
 const CLEANUP_PAGE = path.join(ROOT, "skills", "cleanup", "SKILL.md");
 // The ladder the contract names: 0 everything went, 10 something was refused and untouched, 1 a removal
 // was attempted and failed, 2 bad arguments or no state directory.
@@ -47,15 +46,15 @@ const DEAD_PID = 2147483646;
 const DEAD_IDENTITY = "lstart:Thu Jan  1 00:00:00 1970";
 const processIdentity = typeof driver.processIdentity === "function" ? driver.processIdentity : () => null;
 
-// Both recipe commands must use the same quoted script expression. Resolve it the way Node resolves
-// its entry argument: lexically first, then through whatever sibling link the install supplied.
+// Both recipe commands must use the same quoted script expression, resolved the way Node resolves its
+// entry argument: lexically.
 function cleanupRecipePath(skillDir) {
   const page = fs.readFileSync(CLEANUP_PAGE, "utf8");
-  const expressions = [...page.matchAll(/\bnode "(\$\{CLAUDE_SKILL_DIR\}\/[^\"]*cleanup\.mjs)"/g)]
+  const expressions = [...page.matchAll(/\bnode "(<skill-dir>\/[^\"]*cleanup\.mjs)"/g)]
     .map((m) => m[1]);
   if (expressions.length !== 2 || expressions[0] !== expressions[1])
     throw new Error(`the cleanup page does not carry one script expression twice: ${JSON.stringify(expressions)}`);
-  return path.resolve(expressions[0].replace("${CLAUDE_SKILL_DIR}", skillDir));
+  return path.resolve(expressions[0].replace("<skill-dir>", skillDir));
 }
 
 // One tree for every world. Canonicalised once, so a fixture path and the path the script prints are
@@ -106,7 +105,7 @@ function runCleanup(w, args, { cwd, env = {}, unsetEnv = [], killAfterMs = 120_0
   const base = { HOME: w.home, CLAUDE_CONFIG_DIR: w.config, TMPDIR: w.tmp,
                  ENTRUST_STATE_DIR: w.state, ENTRUST_CLEANUP_PS: w.ps };
   // A variable the case names itself is the case's to set or to unset; the rest are pointed at the world.
-  const unset = ["CLAUDE_PLUGIN_DATA", ...unsetEnv].filter((k) => !(k in env));
+  const unset = [...unsetEnv].filter((k) => !(k in env));
   return spawnNode([script, ...args], { cwd: cwd ?? w.project, env: { ...base, ...env },
                                        unsetEnv: unset, killAfterMs }).done;
 }
@@ -363,17 +362,17 @@ test("1 · the cleanup recipe resolves through clone-style sibling skill links",
     return m.done();
   });
 
-test("2 · the cleanup recipe fails without its sibling codex skill",
-  "a clone layout that links cleanup alone has no agent entry at the lexical sibling path, so the recipe depends on the codex skill sitting beside cleanup, not on where a cleanup link points",
+test("2 · the cleanup recipe finds its script inside the cleanup skill, even when that skill is linked alone",
+  "the script belongs to the skill that runs it; a recipe that reached into a sibling skill's directory broke in a layout that links cleanup alone",
   async () => {
-    const w = makeWorld("recipe-without-sibling");
+    const w = makeWorld("recipe-linked-alone");
     const skills = path.join(w.root, "linked-skills");
     fs.mkdirSync(skills, { recursive: true });
     const cleanupLink = path.join(skills, "cleanup");
     fs.symlinkSync(path.join(ROOT, "skills", "cleanup"), cleanupLink);
     const resolved = cleanupRecipePath(cleanupLink);
-    return fs.existsSync(resolved)
-      ? `the recipe unexpectedly found cleanup.mjs without the sibling codex link: ${resolved}` : true;
+    return resolved.startsWith(cleanupLink + path.sep) && fs.existsSync(resolved)
+      || `the recipe does not find cleanup.mjs under the cleanup skill: ${resolved}`;
   });
 
 test("3 · an agent's line parses whole: running it is kept, gone it is suggested",
@@ -1179,21 +1178,22 @@ test("21 · the roots it must have, and the arguments it refuses",
   async () => {
     const w = makeWorld("roots-and-args");
     const m = misses();
-    const noState = await runCleanup(w, ["--list"], { env: { ENTRUST_STATE_DIR: undefined } });
-    m.eq(noState.code, USAGE, `--list with no state directory exited ${noState.code}`);
-    m.eq(noState.out, "", "stdout was not empty");
-    m.has(noState.err, "ENTRUST_STATE_DIR", "the refusal names the variable it looked at first");
-    m.has(noState.err, "CLAUDE_PLUGIN_DATA", "the refusal names the variable it falls back to");
-    // The fallback: with only CLAUDE_PLUGIN_DATA set, that directory IS the state directory.
-    const alt = path.join(w.root, "plugin-data");
-    fs.mkdirSync(path.join(alt, "orchestrate", w.slug, "run-1", "A"), { recursive: true });
-    fs.writeFileSync(path.join(alt, "orchestrate", w.slug, "run-1", "A", "report.json"),
+    // No ENTRUST_STATE_DIR: the state is <tmp>/entrust-state, and a listing that finds none makes none.
+    const byDefault = path.join(w.tmp, "entrust-state");
+    const before = await runCleanup(w, ["--list"], { env: { ENTRUST_STATE_DIR: undefined } });
+    m.eq(before.code, EXIT.OK, `--list with no state directory yet exited ${before.code}: ${before.err.trim().slice(0, 200)}`);
+    m.ok(!fs.existsSync(byDefault), "the listing made the default state directory");
+    fs.mkdirSync(path.join(byDefault, "orchestrate", w.slug, "run-1", "A"), { recursive: true });
+    fs.writeFileSync(path.join(byDefault, "orchestrate", w.slug, "run-1", "A", "report.json"),
       JSON.stringify(report(w.project), null, 2) + "\n");
-    const viaPluginData = await list(w, { env: { ENTRUST_STATE_DIR: undefined, CLAUDE_PLUGIN_DATA: alt } });
-    const bad = need(w, viaPluginData);
-    if (bad) m.ok(false, `with only CLAUDE_PLUGIN_DATA set: ${bad}`);
-    else m.ok(rowAt(viaPluginData.j, path.join(alt, "orchestrate", w.slug, "run-1")),
-      `the run under CLAUDE_PLUGIN_DATA is not listed: ${shown(viaPluginData.j)}`);
+    const viaDefault = await list(w, { env: { ENTRUST_STATE_DIR: undefined } });
+    const bad = need(w, viaDefault);
+    if (bad) m.ok(false, `with no ENTRUST_STATE_DIR: ${bad}`);
+    else m.ok(rowAt(viaDefault.j, path.join(byDefault, "orchestrate", w.slug, "run-1")),
+      `the run under <tmp>/entrust-state is not listed: ${shown(viaDefault.j)}`);
+    const relative = await runCleanup(w, ["--list"], { env: { ENTRUST_STATE_DIR: "state" } });
+    m.eq(relative.code, USAGE, `--list with a relative ENTRUST_STATE_DIR exited ${relative.code}`);
+    m.has(relative.err, "ENTRUST_STATE_DIR", "the refusal names the variable");
     const fallbackReport = plantStandaloneReport(w, "fallback-run", { published: false });
     const fallbackAnswer = path.join(w.state, "answers", "fallback.json");
     fs.mkdirSync(path.dirname(fallbackAnswer), { recursive: true });
@@ -2089,7 +2089,7 @@ export default { ...real,
 `);
   let text = fs.readFileSync(CLEANUP, "utf8");
   for (const [from, to] of [[`import fs from "node:fs";`, `import fs from ${JSON.stringify(pathToFileURL(shim).href)};`],
-                            [`from "./driver.mjs"`, `from ${JSON.stringify(pathToFileURL(path.join(SCRIPTS, "driver.mjs")).href)}`],
+                            [`from "../../codex/scripts/driver.mjs"`, `from ${JSON.stringify(pathToFileURL(path.join(SCRIPTS, "driver.mjs")).href)}`],
                             [`from "../../orchestrate/scripts/temp-dir.mjs"`, `from ${JSON.stringify(pathToFileURL(path.join(ROOT, "skills/orchestrate/scripts/temp-dir.mjs")).href)}`]]) {
     if (text.split(from).length !== 2) throw new Error(`cleanup.mjs does not carry ${from} exactly once, so it cannot be instrumented`);
     text = text.replace(from, to);
@@ -2402,9 +2402,9 @@ test("54 · the cleanup recipe creates separate private grouped snapshots and ea
     if (!recipe) return "no snapshot recipe";
     const paths = [];
     for (let i = 0; i < 2; i++) {
-      const r = spawnSync("bash", ["-c", recipe], { cwd: w.project, encoding: "utf8", env: {
+      const r = spawnSync("bash", ["-c", recipe.replaceAll("<skill-dir>", path.dirname(CLEANUP_PAGE))], { cwd: w.project, encoding: "utf8", env: {
         ...process.env, HOME: w.home, CLAUDE_CONFIG_DIR: w.config, TMPDIR: w.tmp,
-        CLAUDE_PLUGIN_DATA: w.state, CLAUDE_SKILL_DIR: path.dirname(CLEANUP_PAGE), ENTRUST_STATE_DIR: w.state, ENTRUST_CLEANUP_PS: w.ps,
+        ENTRUST_STATE_DIR: w.state, ENTRUST_CLEANUP_PS: w.ps,
       } });
       m.eq(r.status, EXIT.OK, `recipe ${i}: ${r.stderr}`);
       const p = /^snapshot: (.+)$/m.exec(r.stdout)?.[1];

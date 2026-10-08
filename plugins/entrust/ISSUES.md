@@ -174,42 +174,43 @@ fixes weighed on 2026-09-29 were rejected by the owner as not good enough: an al
 the page dead until someone reads the README, and an explicit first step in place of the substitution adds a visible Bash call
 to every load and a step the model can skip.
 
-## E104. A role's effort over the default is stated twice, in codex's parity and orchestration references, and the two differ on refutation
+## E104. A role's effort over the default is stated twice, in codex's parity reference and its model table, and the two differ on refutation
 
-**Evidence, level 1.** The default is `plugins/entrust/plugin/skills/orchestrate/SKILL.md:102-104`, `xhigh` for a
-Codex agent where supported; a role's effort overrides it locally. That override is stated twice.
-`plugins/entrust/plugin/skills/codex/references/parity.md:85-92`, the effort table: `low` fact lookup, `medium`
-ordinary review, `high`/`xhigh` refutation, competing designs and a second implementation, `max`/`ultra` the hardest
-problems. `plugins/entrust/plugin/skills/codex/references/orchestration.md:90`, in its own words: `high` for the bulk
-row's extraction, classification and verification, `low` for mechanical work only, `medium` for review, refutation and
-judgement in the strong and cheap rows; its line 68 points there. A refuter gets `high` or `xhigh` by the first and
-`medium` by the second. When the entry was recorded the second statement was `orchestrate/references/plan.md:35`.
-Found by Fable F1; re-checked 2026-10-07.
+**Evidence, level 1.** The default is orchestrate's "the host's highest supported effort, or a stronger configured
+setting" (`plugins/entrust/plugin/skills/orchestrate/SKILL.md`, Capacity and models); a role's effort overrides it
+locally, and that override is stated twice. `plugins/entrust/plugin/skills/codex/references/parity.md:85-92`, the
+effort table: `low` fact lookup, `medium` ordinary review, `high`/`xhigh` refutation, competing designs and a second
+implementation, `max`/`ultra` the hardest problems. `plugins/entrust/plugin/skills/codex/references/models.md`, the
+tier table's `EFFORT:` column: `high` for the bulk row's extraction, classification and verification, `medium` for
+review, refutation and judgement, `low` for mechanical work only. A refuter gets `high` or `xhigh` by the first and
+`medium` by the second. Earlier homes of the second statement: `codex/references/orchestration.md:90` until
+2026-10-07, `orchestrate/references/plan.md:35` before that. Found by Fable F1; re-checked 2026-10-07.
 
 **Check.** `sed -n '85,92p' plugins/entrust/plugin/skills/codex/references/parity.md` and
-`sed -n '90p' plugins/entrust/plugin/skills/codex/references/orchestration.md` print the two statements.
+`grep -n 'refutation' plugins/entrust/plugin/skills/codex/references/models.md` print the two statements.
 
-**Issue text.** Two pages each carry the rule for which effort a role gets over the `xhigh` default, in their own
-words, and they already differ: a refuter gets `high` or `xhigh` by the parity table and `medium` by the orchestration
-reference. A later change to one is a drift from the other unless both are edited by hand. Decide which effort a
-refuter gets, then have the orchestration reference link the table rather than restate it, or move the table to a
-file both pages point at.
+**Issue text.** Two pages each carry the rule for which effort a role gets over the default, in their own words, and
+they already differ: a refuter gets `high` or `xhigh` by the parity table and `medium` by the model table. A later
+change to one is a drift from the other unless both are edited by hand. Decide which effort a refuter gets, then keep
+the rule in the model table and have the parity reference link it.
 
 ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
 
 **Evidence, level 1 for the pages, level 3 for the run's outcomes, level 2 for the generalisation.**
-`plugins/entrust/plugin/skills/orchestrate/SKILL.md:50` puts Luna in the bulk row, "Fast, cheap and not clever — work
-that is wide rather than deep", and `orchestrate/references/plan.md:35` gives `high` to the bulk row only for
-"extraction, classification and verification", `medium` to review and judgement in the rows above. On the ledger
-run of 2026-09-29/30, with no other Codex model available, Luna ran at `high` as the critic of each recommendation
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:98-101` gives judgement to the top tier and the bulk tier
+"independent units after the candidate model meets the acceptance rule"; `codex/references/models.md:9-14` names
+Luna for the bulk tier at `high` "for extraction, classification and verification", Sol at `medium` "for review,
+refutation and judgement", and Luna "the first choice for scouting and independent units"; the quality profile
+(`orchestrate/SKILL.md:124`) admits bulk-tier reviewers beside a strong judge. On the ledger run of 2026-09-29/30,
+with no other Codex model available, Luna ran at `high` as the critic of each recommendation
 (`plugins/entrust/research/2026-09-29-ledger-options/rounds.md`, `02-options.md`): it said E92's isolation belongs
 with the unit that knows the agent's directory (it named the launcher) — the judge kept the driver's private
 directory, which shipped a regression, and the owner's rework names each run's folder after the agent's report
 directory, in the driver; its E89 "delete the classifier" and its E52 and E75 objections were upheld by the judge; it
 corrected a Fable analyst's reading of "one place" for text; its refinement of the retro was the owner's pick. As a
 wide diff reviewer it was weak: nothing found in a 1,763-line code diff, 3 minor findings in the page diff, at 576k
-and 821k tokens. The swarm runs Luna for verdict units (`plugins/entrust/plugin/skills/swarm/SKILL.md`). Raised by the
-owner, 2026-09-30.
+and 821k tokens. The swarm runs the bulk or cheap row's model for verdict units
+(`plugins/entrust/plugin/skills/swarm/SKILL.md:22`). Raised by the owner, 2026-09-30.
 
 A second run, level 3 for its outcome: on 2026-09-30, at the owner's request, Luna at `high` ran in parallel as the
 dissenting critic of one recommendation, how the skill-page test (`scripts/skills.test.mjs`) and this ledger should
@@ -221,9 +222,10 @@ on 2026-09-30, and the commands.md sentence the entrust changelog kept; the thir
 known violations to ledger headings, which was removed later, when the owner chose to have the test fail on every
 violation.
 
-**Check.** `grep -n 'not clever' plugins/entrust/plugin/skills/orchestrate/SKILL.md`; the verdict table in `rounds.md`.
+**Check.** `grep -n 'bulk' plugins/entrust/plugin/skills/orchestrate/SKILL.md plugins/entrust/plugin/skills/codex/references/models.md`;
+the verdict table in `rounds.md`.
 
-**Issue text.** The orchestrate page keeps Luna, the bulk model, out of judgement, and one run suggests that at
+**Issue text.** The pages keep Luna, the bulk model, out of judgement, and one run suggests that at
 `high` effort it is a strong dissenting critic of a single recommendation while it stays weak on a wide review.
 Measure it: the same set of recommendations criticised by Luna at `high`, by Luna at `medium` and by a strong-row
 model, scored by which dissents the judge or the owner upheld; and, for the swarm, whether a verdict unit that asks
@@ -303,29 +305,26 @@ to stop a runaway agent keeps it running. Stopping should be named as what the d
 
 ## E117. The bulk row's unit, derived count and pilot are written twice, on orchestrate's plan reference and on the swarm page
 
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/plan.md:31` ("A bulk row") states the unit
-("one part of the material for extraction, with a fixed answer schema, or one claim, one address, a verbatim quote,
-and a verdict from a closed set that describes the subject and never the brief"), the count ("a count derived from the
-units with the plan saying why that many") and the pilot ("a stronger model marks a few units, the bulk model runs the
-same units, and recall, false positives and tokens against that marking decide the brief's fixes and its effort").
-`plugins/entrust/plugin/skills/swarm/SKILL.md:17` states all three again in its own words: "A unit is one claim, one
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/plan.md:45-47` ("A bulk row") states
+the unit ("Define independent units and a fixed return shape. A verdict describes the subject, not a broken input
+path") and the count ("Announce the unit count and how it was derived"), and `:29-31` the pilot ("define the
+acceptance rule and pilot representative work. Compare the same inputs with a stronger reference").
+`plugins/entrust/plugin/skills/swarm/SKILL.md:22` states all three again in its own words: "A unit is one claim, one
 address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief, or one part
 of the material for extraction, with a fixed answer schema the brief states", "Announce the count, derived from the
 units with the plan saying why that many, before the launch", and "Pilot first: a stronger model marks the pilot's
 units, the swarm's model runs the same units, and recall, false positives and tokens against that marking decide the
-brief's fixes and its effort". No suite pins either copy, since the page suites stopped pinning prose, and
-nothing compares them. Both copies were on main before 2026-09-30, the first on
-`orchestrate/SKILL.md:67-69` at `4a3f0d7`; that day's cut of the page moved it into the reference word for word and
-kept both copies, because the swarm page describes a swarm and a bulk batch may also run as ordinary Codex agents,
-which it cannot own. Found by Fable F1.
+brief's fixes and its effort". No suite pins either copy, and nothing compares them. Both copies were on main before
+2026-09-30, the first on `orchestrate/SKILL.md:67-69` at `4a3f0d7`; that day's cut of the page moved it into the
+reference word for word and kept both copies, because the swarm page describes a swarm and a bulk batch may also run
+as ordinary agents, which it cannot own; the reference has since been cut to the shorter wording above. Found by Fable F1.
 
-**Check.** `grep -n 'closed set that describes the subject' plugins/entrust/plugin/skills/orchestrate/references/plan.md plugins/entrust/plugin/skills/swarm/SKILL.md`
-prints one line in each file.
+**Check.** `grep -n 'describes the subject\|unit count\|derived from the units\|pilot' plugins/entrust/plugin/skills/orchestrate/references/plan.md plugins/entrust/plugin/skills/swarm/SKILL.md`
+prints the lines in each file.
 
 **Issue text.** The rules for a bulk fan-out's unit, its derived count and its pilot are written twice: once in
 orchestrate's plan reference, for every bulk batch, and once on the swarm page, for a swarm, in different words.
 A change to one is a drift from the other unless both are edited by hand, and a
 coordinator who reads both meets two phrasings of one rule. The swarm page cannot simply own the rule, since a bulk
-batch the plan gives no swarm runs as ordinary Codex agents. Decide which page owns these rules and have the other
-link them, or generate the second copy from the first as the codex page's composition rules are generated into
-orchestrate's references.
+batch the plan gives no swarm runs as ordinary agents. Decide which page owns these rules and have the other
+link them, or hold one wording and pin it on both pages as `evals/fragments.mjs` pins the run directory.

@@ -54,35 +54,33 @@ test("the page stays inside its budget: 60 lines, one heading level, no fence",
     return problems.length === 0 || problems.join("; ");
   });
 
-test("A0 the page loads codex through the Skill tool, and no sentence asks it to load orchestrate",
+test("A0 the page loads codex, and no sentence asks it to load orchestrate",
   "orchestrate is `disable-model-invocation`, so the Skill tool refuses to load it and a page that asks for that load does not start (E39)",
   () => {
     const problems = [];
-    const asks = /\bload\b[^.;]*\borchestrate\b/i.exec(flat) ?? /Skill tool[^)]*entrust:orchestrate/.exec(flat);
+    const asks = /\bload\b[^.;]*\borchestrate\b/i.exec(flat) ?? /`entrust:orchestrate`/.exec(flat);
     if (asks) problems.push(`a sentence asks to load orchestrate: ${asks[0].slice(0, 120)}`);
-    const loads = [...flat.matchAll(/Skill tool, `entrust:([a-z-]+)`/g)].map((m) => m[1]);
-    if (loads.join() !== "codex") problems.push(`the Skill-tool loads the page asks for: ${loads.join(", ") || "none"}`);
+    const loads = [...flat.matchAll(/\(`entrust:([a-z-]+)`\)/g)].map((m) => m[1]);
+    if (loads.join() !== "codex") problems.push(`the skill loads the page asks for: ${loads.join(", ") || "none"}`);
     return problems.length === 0 || problems.join("; ");
   });
 
-test("U1 every brief the page shows carries a bulk or cheap model, and no strong or top model is named",
-  "a top-row model in a swarm is the pool cap multiplied by fifty",
+test("U1 every brief takes its model from the bulk or cheap row of the adapter's table, and the page names no model",
+  "a top-tier model in a swarm is the pool cap multiplied by fifty; a model named on the shared page is the adapter's table copied out of its owner",
   () => {
-    const models = [...flat.matchAll(/`MODEL: ([^`]+)`/g)].map((m) => m[1]);
-    if (!models.length) return "the page shows no `MODEL:` line for a brief";
-    const bad = models.filter((m) => !/^(luna|terra)$/i.test(m));
-    if (bad.length) return `the page admits a swarm model outside the bulk and cheap rows: ${bad.join(", ")}`;
-    if (/\b(astra|sol)\b/i.test(flat) || /\b(Opus|Fable)\b/.test(flat)) return "the page names a strong or top model";
-    return true;
+    if (!/bulk or cheap row of the adapter's model table/.test(flat)) return "the page does not send the brief's model to the bulk or cheap row";
+    const named = /`MODEL: [a-z]/.exec(flat) ?? /\b(?:astra|sol|terra|luna|fable|opus|sonnet|haiku)\b/i.exec(flat);
+    return !named || `the page names a model: ${named[0]}`;
   });
 
-test("U2 the five fields' schema on the page parses, is strict, and names the five fields in order",
-  "a Codex agent's `OUTPUT_SCHEMA:` must be a strict JSON Schema file; the schema was orchestrate's, and the page now carries it because it loads codex alone",
+test("U2 the brief's OUTPUT_SCHEMA is the shipped five-field file, and that file parses, is strict and names the five fields in order",
+  "a Codex agent's `OUTPUT_SCHEMA:` must be a strict JSON Schema file; a copy pasted onto the page drifts from the file the driver enforces",
   () => {
-    const m = /^ {4}(\{"type":"object".*)$/m.exec(text);
-    if (!m) return "no indented schema line on the page";
+    const named = /`<skill-dir>\/\.\.\/(orchestrate\/schemas\/five-fields\.schema\.json)`/.exec(text)?.[1];
+    if (!named) return "the page names no shipped five-field schema for the brief's OUTPUT_SCHEMA";
+    if (/^ {4}\{"type":"object"/m.test(text)) return "the page still pastes a schema line of its own";
     let s;
-    try { s = JSON.parse(m[1]); } catch (e) { return `the schema does not parse: ${e.message}`; }
+    try { s = JSON.parse(fs.readFileSync(path.join(ROOT, "skills", named), "utf8")); } catch (e) { return `the schema does not parse: ${e.message}`; }
     const five = ["status", "result", "evidence", "artifacts", "open"];
     const problems = [];
     if (s.additionalProperties !== false) problems.push("additionalProperties is not false");
@@ -92,23 +90,19 @@ test("U2 the five fields' schema on the page parses, is strict, and names the fi
     return problems.length === 0 || problems.join("; ");
   });
 
-test("U3 the page's schema line is the five-field file the codex skill ships, byte for byte once minified, caps included",
-  "#15 P11a: returns overran their bound, so the shipped schema caps each field and the driver enforces the caps (D16); a swarm brief copies this line into its OUTPUT_SCHEMA: file, and an uncapped copy here is a swarm whose returns nothing bounds",
+test("U3 the shipped five-field schema caps every free-text field",
+  "#15 P11a: returns overran their bound, so the shipped schema caps each field and the driver enforces the caps (D16); a swarm whose schema caps nothing is a swarm whose returns nothing bounds",
   () => {
-    const file = path.join(ROOT, "skills", "codex", "schemas", "five-fields.schema.json");
+    const file = path.join(ROOT, "skills", "orchestrate", "schemas", "five-fields.schema.json");
     if (!fs.existsSync(file)) return `the shipped schema ${file} does not exist`;
-    const shipped = JSON.stringify(JSON.parse(fs.readFileSync(file, "utf8")));
-    const line = /^ {4}(\{"type":"object".*)$/m.exec(text)?.[1];
-    if (line !== shipped) return `the page's schema line differs from ${path.basename(file)}: ${line} against ${shipped}`;
-    // The negative half: the file and the line drifting back to uncapped together would still be equal.
-    const props = JSON.parse(line).properties ?? {};
+    const props = JSON.parse(fs.readFileSync(file, "utf8")).properties ?? {};
     const uncapped = ["result", "evidence", "artifacts", "open"].filter((f) => !("maxLength" in (props[f] ?? {}) || "maxItems" in (props[f] ?? {})));
-    return uncapped.length === 0 || `the schema line caps no size on: ${uncapped.join(", ")}`;
+    return uncapped.length === 0 || `the schema caps no size on: ${uncapped.join(", ")}`;
   });
 
 test("L1 the page hands over the launch line the script takes",
   "the line is copied into a Bash call as it stands; the run layout behind it is orchestrate's, carried here because the page loads codex alone",
-  () => shows(/^ {4}CLAUDE_PLUGIN_DATA="\$\{CLAUDE_PLUGIN_DATA\}" node "\$\{CLAUDE_SKILL_DIR\}\/scripts\/swarm\.mjs" --units <file> --brief <template> --run <run directory> --concurrency <n>$/m));
+  () => shows(/^ {4}node "<skill-dir>\/scripts\/swarm\.mjs" --adapter <codex\|opencode> --units <file> --brief <template> --run <run directory> --concurrency <n>$/m));
 
 test("every relative link resolves, inside this repository, to a file and to a heading that exists",
   "the page delegates its whole mechanism to the codex page by link; a moved file turns the mode into a 404 only a reader notices",
@@ -138,7 +132,7 @@ const state = path.join(world, "state"); fs.mkdirSync(state);
 const env = { PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: "happy", ENTRUST_STATE_DIR: state, TMPDIR: path.join(world, "tmp") };
 fs.mkdirSync(env.TMPDIR);
 const draft = (name, body) => { const p = path.join(world, name); fs.writeFileSync(p, body); return p; };
-const start = (argv) => spawnNode([SCRIPT, ...argv], { env, unsetEnv: ["CLAUDE_PLUGIN_DATA"], killAfterMs: 240000 });
+const start = (argv) => spawnNode([SCRIPT, ...(argv.includes("--adapter") ? [] : ["--adapter", "codex"]), ...argv], { env, killAfterMs: 240000 });
 const run = (argv) => start(argv).done;
 const template = draft("brief.txt", `RIGHTS: read ${shimDir}\nTASK: unit {{UNIT_ID}}: {{UNIT}}\nRETURN: the verdict\n`);
 const unitsFile = draft("units.txt", "first claim\n\nsecond claim $' with a dollar quote\nthird claim\n");

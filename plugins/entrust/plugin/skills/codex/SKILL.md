@@ -6,7 +6,7 @@ description: >-
   independent review, competing implementation or multi-provider panel. Native Codex subagents
   use the host's own delegation facilities instead.
 metadata:
-  version: "0.25.1"
+  version: "0.26.0"
 license: MIT
 allowed-tools: Bash(node *codex/scripts/status.mjs*)
 ---
@@ -15,7 +15,8 @@ allowed-tools: Bash(node *codex/scripts/status.mjs*)
 
 Under `orchestrate`, first read [orchestration.md](references/orchestration.md) whole before
 `--plan` or `--new`: it owns registration, schema, state and external lifecycle.
-Its `<codex-skill-dir>` is `${CLAUDE_SKILL_DIR}` and `<state>` is `${CLAUDE_PLUGIN_DATA}`.
+Its `<codex-skill-dir>` is `${CLAUDE_SKILL_DIR}` and `<state>` is the driver's state directory, `<tmp>/entrust-state`
+(`ENTRUST_STATE_DIR` when set).
 
 The Codex this machine can run, asked of its server as this page loaded:
 
@@ -45,7 +46,7 @@ Apply all six rules:
    - `signed-out`, `missing`, or `MODEL=none`: zero Codex agents; the plan's first line says Codex is not
      signed in, not installed, or lists no model, and that the panel is all-Claude and shares one model bias.
    - `unchecked`: compose by the other rules, and the plan says Codex was not checked. A launch is no check:
-     a signed-out server lists Astra and Sol too (measured 2026-09-29).
+     a signed-out server lists models too.
    - The command itself in place of those lines was not run: run it with the Bash tool before composing.
 
    The status lines stay with you: the plan names Codex's state only where it changed the composition.
@@ -106,7 +107,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | `WRITABLE:` | `<dir>`, repeatable | a write agent needs one more root than the directory it was given |
 | `RESUME:` | `<threadId>`, `last` | this agent continues an earlier thread instead of opening one |
 | `EXPECT:` | `<regex>` | the answer is evidence only if a command matching it ran and succeeded; none is exit 5. Do not point it at a check whose failure IS the finding |
-| `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>`; the five-field schema for orchestrated agents ships at `${CLAUDE_SKILL_DIR}/schemas/five-fields.schema.json` | the answer must parse as one JSON object |
+| `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>`; the five-field schema for orchestrated agents ships at `${CLAUDE_SKILL_DIR}/../orchestrate/schemas/five-fields.schema.json` | the answer must parse as one JSON object |
 | `MODEL:` | `astra`, `sol`, `terra`, `luna`, the newest listed model of that name, or a full slug | this agent needs a model other than the configured default; in prose the name is capitalised |
 | `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`, and `ultra` where the model lists it; no line inherits `~/.codex/config.toml` | the task is worth more or less thinking than the configured default; `low` for a one-line task |
 | `WEB_SEARCH:` | `cached`, `indexed`, `live`: the provider's search tool, not the network | the user asked for the provider's web search; "the network is allowed" is not that ask |
@@ -152,7 +153,7 @@ completion notification, a message to continue it — where a Bash task has none
 
 Write the prompt with one Bash call, the launcher's `--new`, the heredoc quoted so nothing in it expands:
 
-    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --new --report-file "<REPORT>" <<'PROMPT'
+    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --new --report-file "<REPORT>" <<'PROMPT'
     MODEL: terra
     TASK: …
     CHECK: …
@@ -165,12 +166,12 @@ refusal prints its reason on an `ERROR=` line and no
 never to another mode. Never create a directory, change a level or re-run with different flags to make a
 refused agent succeed ([A relay on a small model](references/incidents.md#a-relay-on-a-small-model)).
 
-On `PROMPT=`, spawn the wrapper with the Agent tool: `subagent_type: entrust:codex-agent`,
+On `PROMPT=`, spawn the wrapper with the Agent tool: `subagent_type: entrust:proxy`,
 `run_in_background: false` for the one agent you wait for and `true` for agents that run side by side or
 while you work ([foreground and background](references/incidents.md#foreground-background-and-the-ceiling)),
 and a `description` of `Codex <short name> <id>: <task in a few words>`, the name on the `MODEL:` line, so the
 card names the agent, its vendor and its task. Pass it no `model`: the wrapper,
-[agents/codex-agent.md](../../agents/codex-agent.md), pins its own, and the agent's model is the `MODEL:` line
+[agents/proxy.md](../../agents/proxy.md), pins its own, and the agent's model is the `MODEL:` line
 in its prompt file. Under a background call, the hand-back message and the task notification that follows it
 are one completion: read the first, and give the second the shortest reply the harness accepts; a foreground
 call has no notification.
@@ -184,7 +185,7 @@ The Agent call, its message this block:
 
     1. Run this command with the Bash tool, in the foreground, with timeout 600000, and description "<DESCRIPTION>". Write no text before it.
 
-    CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --report-file "<REPORT>"
+    node "${CLAUDE_SKILL_DIR}/scripts/agent-run.mjs" --run --report-file "<REPORT>"
 
     2. If its result ends with RUNNING=, or is the harness's notice that it moved the command to the background, run the very same command again at once, and again each time either comes back. Each run is safe: the command waits for the run it already started. Do not open, tail or wait on the output file that notice names, and write nothing in between. Any other result, an empty one included, goes to step 3 as it is.
 
@@ -196,8 +197,8 @@ Both calls may go in one turn: the launcher waits ten seconds for a prompt a `--
 wrapper started beside a refused `--new` spends that report path. `<DESCRIPTION>` is the Agent call's own
 description. `<REPORT>` is an absolute path of this agent's own under the driver's state directory,
 `<state>/reports/<run>/report.json` with `<run>` unique, or the path the orchestrate page names; a relaunch
-takes a fresh one. The launcher makes every directory it needs, so it may name a root your own Write and
-`mkdir` are refused. `<DIR>` is the agent's directory, `agent/` beside `<REPORT>`.
+takes a fresh one. The launcher makes every directory it needs. `<DIR>` is the agent's directory, `agent/`
+beside `<REPORT>`.
 
 The wrapper's completion notification is the agent's completion: read its lines first, and the file after a
 `PATH=own` when they leave a question. To continue an agent, write a second prompt file with `RESUME: <threadId>`
@@ -249,6 +250,7 @@ say what an agent may write, and where, in ordinary words, so the user knows wha
 ## References
 
 - `node "${CLAUDE_SKILL_DIR}/scripts/driver.mjs" --help`: the flags and the exit codes, `--help-all` the rest; `agent-run.mjs --help` beside it: the wrapper's one command, its refusals, the nine status lines, the waiting result and `--decide`.
+- [models.md](references/models.md): the model and effort for each tier.
 - [approvals.md](references/approvals.md): the coordinator's approval steps.
 - [environment-and-internals.md](references/environment-and-internals.md): environment, prompt files, stopping an agent, receipts, worktrees, locks, the commit grant, config drift.
 - [result-gates.md](references/result-gates.md): evidence gates and the verifier.

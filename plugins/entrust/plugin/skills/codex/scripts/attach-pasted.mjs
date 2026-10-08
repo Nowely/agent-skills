@@ -26,6 +26,7 @@ import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
+import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DRIVER = path.join(HERE, "driver.mjs");
@@ -289,13 +290,8 @@ async function main() {
   // $TMPDIR, which is the read level's ONE writable root and therefore reachable by the very agent
   // being shown the images. Resolved as the driver resolves it, and refused on the same terms: the
   // staged images have to land where the driver's own guard already protects them.
-  const stateVar = process.env.ENTRUST_STATE_DIR ? "ENTRUST_STATE_DIR"
-    : process.env.CLAUDE_PLUGIN_DATA ? "CLAUDE_PLUGIN_DATA" : null;
-  if (stateVar === null)
-    die("no state directory: set ENTRUST_STATE_DIR, or pass CLAUDE_PLUGIN_DATA, the plugin's "
-      + "data directory ${CLAUDE_PLUGIN_DATA}, which the skill recipes carry");
-  const stateRoot = process.env[stateVar];
-  if (!path.isAbsolute(stateRoot)) die(`${stateVar} must be an absolute path, got ${JSON.stringify(stateRoot)}`);
+  let stateRoot;
+  try { stateRoot = stateDirectory(); } catch (e) { die(`no usable state directory: ${e.message}`); }
   const pastedRoot = path.join(stateRoot, "pasted");
   fs.mkdirSync(pastedRoot, { recursive: true, mode: 0o700 });
   fs.chmodSync(pastedRoot, 0o700);

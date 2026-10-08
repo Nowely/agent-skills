@@ -32,8 +32,8 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { EXIT, VERSION, canonPath, dropReclaimMarker, holderAlive, holdsReclaimMarker, reclaimable,
-         takeReclaimMarker } from "./driver.mjs";
-import { TEMP_KINDS, TEMP_OWNER, TEMP_CONTEXT, PATH_KEY } from "../../orchestrate/scripts/temp-dir.mjs";
+         takeReclaimMarker } from "../../codex/scripts/driver.mjs";
+import { TEMP_KINDS, TEMP_OWNER, TEMP_CONTEXT, PATH_KEY, STATE_DIR_NAME } from "../../orchestrate/scripts/temp-dir.mjs";
 
 // A removal that was attempted and failed. The other three codes are the driver's own.
 const EXIT_FAILED = 1;
@@ -113,8 +113,8 @@ report, or an earlier driver's owner.json under <state>/tmp; a temporary folder 
 the state directory goes only with that run. That is the whole of what it can see — a process
 with none of those behind it is invisible to it.
 
-Environment: ENTRUST_STATE_DIR, else CLAUDE_PLUGIN_DATA (absolute; no default of its own);
-non-empty TMPDIR, else Node's os.tmpdir(); CLAUDE_CONFIG_DIR or ~/.claude. \`ps\` decides whether a
+Environment: ENTRUST_STATE_DIR (absolute), else <tmp>/entrust-state; <tmp> is a non-empty TMPDIR,
+else Node's os.tmpdir(); CLAUDE_CONFIG_DIR or ~/.claude. \`ps\` decides whether a
 test suite is running, with a ${SPAWN_TIMEOUT_MS / 1000}s bound; without it every test row is kept.
 
 Exit codes: 0 everything asked for was removed; ${EXIT_FAILED} a removal was attempted and failed;
@@ -241,14 +241,6 @@ function walk(root) {
 // ---------------------------------------------------------------- roots
 
 function resolveRoots() {
-  const named = process.env.ENTRUST_STATE_DIR ? "ENTRUST_STATE_DIR"
-    : process.env.CLAUDE_PLUGIN_DATA ? "CLAUDE_PLUGIN_DATA" : null;
-  if (named === null)
-    die("this session has no plugin data directory configured, so there is nothing to inspect. "
-      + "Set ENTRUST_STATE_DIR, or pass CLAUDE_PLUGIN_DATA. Nothing was deleted.");
-  const state = process.env[named];
-  if (!path.isAbsolute(state))
-    die(`${named} must be an absolute path, and it is ${JSON.stringify(state)}. Nothing was deleted.`);
   const tmpFallback = process.env.TMPDIR === undefined ? "unset"
     : process.env.TMPDIR === "" ? "empty" : null;
   const tmpFromEnv = tmpFallback === null;
@@ -256,6 +248,10 @@ function resolveRoots() {
   if (!path.isAbsolute(tmp))
     die(`TMPDIR must be an absolute path when set, and it is ${JSON.stringify(tmp)}. `
       + "Nothing was deleted.");
+  // The driver's rule, read without making the directory: a listing writes nothing.
+  const state = process.env.ENTRUST_STATE_DIR || path.join(tmp, STATE_DIR_NAME);
+  if (!path.isAbsolute(state))
+    die(`ENTRUST_STATE_DIR must be an absolute path, and it is ${JSON.stringify(state)}. Nothing was deleted.`);
   let home = null;
   try { home = os.homedir(); } catch { home = null; }
   const config = process.env.CLAUDE_CONFIG_DIR || (home ? path.join(home, ".claude") : null);
@@ -1729,7 +1725,7 @@ function readSnapshot(roots, p) {
       + "Run the listing again.");
   for (const k of ["state", "tmp", "project"])
     if (snap.roots[k] !== roots[k])
-      die("that listing was written for a different project or plugin data directory; nothing was "
+      die("that listing was written for a different project or state directory; nothing was "
         + "deleted. Run the listing again.");
   const byN = new Map();
   for (const row of snap.rows) if (isObj(row) && Number.isInteger(row.n)) byN.set(row.n, row);

@@ -36,7 +36,7 @@ new report. Each concurrent worker has a different session. Local workers start 
 servers; workers explicitly attached to one remote endpoint share that server. A server is not a
 concurrency slot.
 
-Return [five fields](../../codex/schemas/five-fields.schema.json) through `OUTPUT_SCHEMA:`. The
+Return [five fields](../../orchestrate/schemas/five-fields.schema.json) through `OUTPUT_SCHEMA:`. The
 driver validates them locally and allows one corrective turn. Give a fresh verifier the requirements
 and raw artifacts. Attribute model, tool failures, callback decisions and unknown outcomes separately.
 The advisor does not judge work it advised on.

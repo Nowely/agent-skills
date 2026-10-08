@@ -63,8 +63,21 @@ the GitHub release.
   and the driver's `VERSION`. `node evals/package.test.mjs` from `plugins/entrust` fails naming the one missed.
 - **Tag check**: `node evals/package.test.mjs` from `plugins/entrust` compares the version against an
   `entrust@` tag on `HEAD` and announces itself as skipped before one exists.
-- **After a Codex CLI upgrade**, or when `codex --version` differs from the driver's `PINNED_CODEX`: follow
-  plugin/README.md › After a codex upgrade first, then run the live fidelity gate,
+- **After a Codex CLI upgrade**, or when `codex --version` differs from the driver's `PINNED_CODEX`, regenerate
+  and diff the protocol schema:
+
+  ```bash
+  codex app-server generate-json-schema --out <tmp-new>/
+  git archive 1674a5f plugins/entrust/schema-0.159.3 | tar -x --strip-components=2 -C <tmp-old>/
+  diff -r <tmp-old>/schema-<old-version>/ <tmp-new>/
+  ```
+
+  Read the diff for anything structural. Commit `<tmp-new>/` as `plugins/entrust/schema-<new-version>/` in a commit
+  of its own: that commit holds the full tree the next upgrade diffs against, so point the archive command above at
+  it then. `ENTRUST_SCHEMA_DIR=schema-<new-version> node plugins/entrust/evals/conformance.test.mjs` validates it
+  while the old one is still pinned; once that is green, move `PINNED_CODEX`, prune the new directory to the files
+  the conformance suite loads in a second commit, and delete the old one. Then run `evals/run-all.mjs`, re-check
+  `plugin/skills/codex/references/parity.md`, and run the live fidelity gate,
   `ENTRUST_LIVE_TURN=1 node evals/fidelity.test.mjs --require-live`. It spends one real turn; inspect every
   fixture/live difference, keep the fixture emitting what the live server emits, and record its lines in the notes.
 - **Live orchestrate gate**, `ENTRUST_LIVE_ORCHESTRATE=1 node evals/orchestrate-live.test.mjs`, when the release

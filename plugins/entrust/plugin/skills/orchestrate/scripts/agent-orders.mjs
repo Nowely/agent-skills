@@ -1,16 +1,18 @@
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { validateOutput } from "./contract.mjs";
+import { validateOutput } from "./json-schema.mjs";
 
 const schema = JSON.parse(fs.readFileSync(new URL("../schemas/main-proxy.schema.json", import.meta.url), "utf8"));
 
 export function readAgentOrders(report, mode) {
   if (!report.ok || !report.receiptOk || !report.outputSchemaOk || report.partial)
     throw new Error("agent orders require a successful, attributed, complete coordinator reply");
+  // An adapter's report names its external session as sessionID (OpenCode) or threadId (Codex).
+  const session = report.sessionID ?? report.threadId;
   if (typeof mode?.external_session !== "string" || !mode.external_session
-    || typeof report.sessionID !== "string" || !report.sessionID)
+    || typeof session !== "string" || !session)
     throw new Error("agent orders require the saved coordinator session binding");
-  if (mode.external_session !== report.sessionID)
+  if (mode.external_session !== session)
     throw new Error("the coordinator report belongs to another external session");
   const agents = mode.agents;
   if (!agents || typeof agents !== "object" || Array.isArray(agents))

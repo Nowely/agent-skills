@@ -17,8 +17,8 @@ import { ROOT, registry, runCases, summarize, tempDir } from "./lib/harness.mjs"
 import * as G from "./lib/gate-checks.mjs";
 
 const { cases: CASES, test } = registry();
-const SCHEMA = JSON.parse(fs.readFileSync(path.join(ROOT, "skills", "codex", "schemas", "five-fields.schema.json"), "utf8"));
-const SCHEMA_PATH = path.join(ROOT, "skills", "codex", "schemas", "five-fields.schema.json");
+const SCHEMA = JSON.parse(fs.readFileSync(path.join(ROOT, "skills", "orchestrate", "schemas", "five-fields.schema.json"), "utf8"));
+const SCHEMA_PATH = path.join(ROOT, "skills", "orchestrate", "schemas", "five-fields.schema.json");
 const LAUNCHER = "/plugin/skills/codex/scripts/agent-run.mjs";
 const TMP = tempDir("gate-checks-test-");
 
@@ -53,7 +53,7 @@ function session() {
     },
     newAgent(report, body) { return api.bash(`node "${LAUNCHER}" --new --report-file "${report}" <<'PROMPT'\n${body}\nPROMPT`, `PROMPT=${path.dirname(report)}/agent/prompt.txt`); },
     codex(description, report, lines = "DRIVER_EXIT=0\nPATH=own\nEXIT=0") {
-      const id = api.use("Agent", { description, subagent_type: "entrust:codex-agent", run_in_background: false,
+      const id = api.use("Agent", { description, subagent_type: "entrust:proxy", run_in_background: false,
         prompt: `1. Run this command.\n\nCLAUDE_PLUGIN_DATA="/d" node "${LAUNCHER}" --run --report-file "${report}"` });
       api.result(id, framed(`${lines}\nREPORT=${report}`));
       return api;

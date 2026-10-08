@@ -16,7 +16,7 @@ import { DRIVER, EVALS, PINNED_CODEX, codexShim, spawnNode, tempDir } from "./li
 // The schemas sit beside the installed plugin, with the suites: the driver reads none of them at run time.
 const HOME = path.dirname(EVALS);
 
-// The upgrade recipe in README.md generates a SECOND schema-<version>/ beside the old one, and
+// The upgrade recipe in RELEASING.md generates a SECOND schema-<version>/ beside the old one, and
 // readdirSync order is not sorted — so "the first one that matches" could validate the fixture against
 // the version being replaced and say nothing. Pick the newest by version and name it in the output.
 // ENTRUST_SCHEMA_DIR overrides that choice with a directory name, which is how the upgrade

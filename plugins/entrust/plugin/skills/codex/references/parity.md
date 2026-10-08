@@ -124,7 +124,7 @@ Measured median memory was about 181 MB per isolated agent (four processes) and 
 SIGTERM rather than degrading gracefully. Count every in-flight delegation, drain waves, and give each
 concurrent writer its own cwd; read agents take no lock and may share one.
 
-From the main conversation an agent is the `codex-agent` wrapper, an Agent call — foreground for the one
+From the main conversation an agent is the `proxy` wrapper, an Agent call — foreground for the one
 agent the coordinator waits for, background for those that run side by side — whose own foreground Bash call
 runs the driver through the launcher; the wrapper has one card on the agent map, no call cap, and a background
 one notifies on completion (measured 2026-09-12 and 2026-09-17).

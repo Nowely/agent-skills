@@ -1,64 +1,47 @@
 #!/usr/bin/env node
-// prepare-feedback.mjs — the private folder of one /entrust:prepare-feedback run, kept under the plugin's data
-// directory beside the orchestrate runs and written by this script alone: a coordinator is refused every write
-// under that directory, while a subprocess handed the path as an argument writes it unopposed.
+// prepare-feedback.mjs — the private folder of one /entrust:prepare-feedback run, under the state directory.
 //
 //   node prepare-feedback.mjs corpus   --slug <slug> [--plugin entrust|terse] [--version <v>|<v>..<v>|unknown]…
 //                                      [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--project <cwd>]…
 //                                      [--session <session-id>]… [--all-sessions]
-//   node prepare-feedback.mjs parts    --run <run>
-//   node prepare-feedback.mjs add      --run <run> --name <relative name> --from <file>
-//   node prepare-feedback.mjs coverage --run <run> --map <tsv>
-//   node prepare-feedback.mjs quotes   --run <run> --episodes <jsonl>
-//   node prepare-feedback.mjs tokens   --run <run> --reports <dir> | --from <tsv> [--median <n>]
-//   node prepare-feedback.mjs process  --run <run>
 //   node prepare-feedback.mjs timeline --run <run>
-//   node prepare-feedback.mjs export   --run <run> --to <relative dir>
+//   node prepare-feedback.mjs process  --run <run>
+//   node prepare-feedback.mjs quotes   --run <run> --episodes <jsonl>
 //
-// A run is <state>/prepare-feedback/<date>-<slug>/ with corpus/index.json, corpus/turns.jsonl, corpus/parts/,
-// corpus/pages/, corpus/parts.json, corpus/timeline.jsonl, ledger/, measures/, drafts/, anonymized/ and rounds.md. The transcripts stay
-// where Claude Code keeps them: the index maps each task to its files (T3, its forks T3.f1, its subagents T3.s2,
-// its Codex runs T3.c1), and turns.jsonl holds the text of their turns, each addressed by a task and a line of its
-// JSONL (T3:282). The index also holds each task's process counts, which process sums without any text.
-// Events are read from parsed records, never from raw lines, so a quoted marker is not an event. Nothing in a
-// run is overwritten: a scope narrowed after the plan is a new --slug. export copies what a report publishes to
-// a new directory named relative to the working directory, never under the state directory, and nothing it
-// copies was written with a machine path in it. Summary lines print last, RUN= the very last, so a runner's
-// tail keeps them.
+// A run is <state>/prepare-feedback/<date>-<slug>/ with corpus/index.json, corpus/turns.jsonl,
+// corpus/timeline.jsonl, measures/ and ledger/. The transcripts stay where Claude Code keeps them: the index maps
+// each task to its files (T3, its forks T3.f1, its subagents T3.s2, its Codex runs T3.c1), and turns.jsonl holds
+// the text of their turns, each addressed by a task and a line of its JSONL (T3:282). The index also holds each
+// task's process counts, which process sums without any text. Events are read from parsed records, never from
+// raw lines, so a quoted marker is not an event. Nothing in a run is overwritten: a scope narrowed after the plan
+// is a new --slug. Summary lines print last, RUN= the very last, so a runner's tail keeps them.
 //
-// Environment: ENTRUST_STATE_DIR, else CLAUDE_PLUGIN_DATA (absolute; no default of its own); transcripts under
+// Environment: ENTRUST_STATE_DIR (absolute), else <tmp>/entrust-state; transcripts under
 // $CLAUDE_CONFIG_DIR/projects, else ~/.claude/projects; Codex rollouts under $CODEX_HOME/sessions, else
 // ~/.codex/sessions. The runs root <state>/prepare-feedback must be a real directory, never a symbolic link.
-// Exit: 0 done; 2 usage, or no state directory, or a path that is not what the command needs; 10 refused — a
-// run, a cut or a file that already exists, a step before the one it needs, a destination that exists or lies
-// under the state directory; 1 a write failed.
+// Exit: 0 done; 2 usage, or no usable state directory, or a path that is not what the command needs; 10
+// refused — a run or a file that already exists, or a step before the one it needs; 1 a write failed.
 
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 
 const EXIT = { OK: 0, FAILED: 1, USAGE: 2, REFUSED: 10 };
 const PLUGINS = ["entrust", "terse"];
 const SELF = "prepare-feedback";
-const PART_CHARS = 60000, PAGE_CHARS = 18000, OVERLAP_TURNS = 3, OVERLAP_CHARS = 6000;
 const NEAR = 0.6, NEAR_WORDS = 300, NEAR_CANDIDATES = 20;
 const GAP_MS = 600000, CARRY_MS = 5000, TOP = 10, REPEAT_ADDRESSES = 10;
 // Claude Code's own agent types; any other, but the reported plugins' own, is written to process.json as custom.
 const BUILT_IN_AGENTS = new Set(["general-purpose", "claude", "claude-code-guide", "Explore", "Plan", "statusline-setup"]);
 const NAME = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const SEMVER = /^\d+\.\d+\.\d+$/;
-const ADDABLE = /^(?:(?:ledger|measures|anonymized)(?:\/[A-Za-z0-9_][A-Za-z0-9._-]*)+|drafts\/\d{2,}-report\.md|rounds\.md)$/;
 const OPTIONS = {
   corpus: { one: ["slug", "plugin", "since", "until"], many: ["version", "project", "session"], flags: ["all-sessions"] },
-  parts: { one: ["run"] },
-  add: { one: ["run", "name", "from"] },
-  coverage: { one: ["run", "map"] },
   quotes: { one: ["run", "episodes"] },
-  tokens: { one: ["run", "reports", "from", "median"] },
   process: { one: ["run"] },
   timeline: { one: ["run"] },
-  export: { one: ["run", "to"] },
 };
 const COMMANDS = Object.keys(OPTIONS);
 
@@ -85,29 +68,16 @@ const THREAD = new RegExp(`\\bthreadId["']?\\s*[:=]\\s*["']?(${UUID})`, "g");
 const RECEIPT = /\breceiptPath["']?\s*[:=]\s*["']?([^"'\s,]+\.jsonl)/g;
 const ROLLOUT = new RegExp(`^rollout-.*-(${UUID})\\.jsonl$`);
 
-const usage = () => `prepare-feedback.mjs — the private folder of one /entrust:prepare-feedback run, under the plugin's data directory
+const usage = () => `prepare-feedback.mjs — the private folder of one /entrust:prepare-feedback run, under the state directory
 
   corpus   --slug <slug> [--plugin entrust|terse] [--version <v>|<v>..<v>|unknown]... [--since YYYY-MM-DD]
            [--until YYYY-MM-DD] [--project <cwd>]... [--session <session-id>]... [--all-sessions]
                   make <state>/prepare-feedback/<date>-<slug>/ with corpus/index.json and corpus/turns.jsonl;
                   prints PROJECT= lines, then the counts, then RUN=
-  parts    --run <run>
-                  cut corpus/turns.jsonl into corpus/parts/P###.md of about 60,000 characters, each overlapping the
-                  one before by up to three turns, and corpus/pages/P###-NN.md of at most 18,000; corpus/parts.json
-                  lists each part's pages and their sha256
-  add      --run <run> --name <relative name> --from <file>
-                  place a file as rounds.md, drafts/NN-report.md, or under ledger/, measures/ or anonymized/
-  coverage --run <run> --map <tsv>
-                  lines agent-id<TAB>report.json<TAB>P###[,P###]; a page was read when its whole text is inside one
-                  output the agent's model was shown (a *_output item of the rollout the report's threadId names),
-                  raw or JSON-escaped; writes measures/coverage-<name>.json
   quotes   --run <run> --episodes <jsonl>
                   lines {"quote": ..., "id": ...}, other fields passed through; exact (the same words, whitespace
                   aside), near (at least 60 percent of the quote's words in order, with the closest text) or missing,
                   each with its turn as t:line; writes ledger/quotes-<name>.json
-  tokens   --run <run> --reports <dir> | --from <tsv> [--median <n>]
-                  <dir>/*/report.json (tokenUsage.total.totalTokens) or lines agent<TAB>tokens; the batch's median
-                  and maximum, and with --median the agents above three times <n>; writes measures/tokens-<name>.json
   process  --run <run>
                   sum the process counts corpus recorded into measures/process.json: a row per task, a row per
                   agent (T3.s2, or run:T3.c1 for a Codex run) and the totals, counts and addresses only;
@@ -125,12 +95,9 @@ const usage = () => `prepare-feedback.mjs — the private folder of one /entrust
                   true), draft (a Write or Edit: path, tool), reply (the model's visible text), agent (a
                   subagent: id, type, model, prompt, answer, and reads[], the plugin pages it read itself), fork
                   (task, fork, title, at where it left the original); prints OWNER=, COMMAND=, SKILL=, READ=,
-                  DRAFT=, REPLY=, AGENT=, FORK=, then FILE=. It holds transcript text, so it stays under corpus/,
-                  which export never copies. A tool result Claude Code moved to <session>/tool-results/ is not
-                  opened: a skill's status comes from the error flag the transcript keeps, a subagent's answer from
+                  DRAFT=, REPLY=, AGENT=, FORK=, then FILE=. It holds transcript text and stays under corpus/. A
+                  tool result Claude Code moved to <session>/tool-results/ is not opened: a skill's status comes from the error flag the transcript keeps, a subagent's answer from
                   its own transcript.
-  export   --run <run> --to <relative dir>
-                  copy drafts/*.md, rounds.md, measures/ and anonymized/ unchanged into <dir>, which must not exist
 
 Scope: corpus takes the sessions that loaded entrust or terse (--plugin: that one), or with --all-sessions every
 session with a human message, and never one that loaded this skill's page, the current one included; --version
@@ -148,7 +115,7 @@ worked included, or a subagent's brief),
 assistant (its text blocks) and tool_error (a failed tool's result), from every task (T3), fork (T3.f1) and
 subagent (T3.s2); thinking, tool calls and successful tool results stay in the transcript. A subagent is a
 transcript directly under <session>/subagents/; workflow agents below it are not read. <name> is the input's
-basename without its extension. coverage and tokens print their per-agent lines before their summary line.
+basename without its extension.
 Process counts, per task (its transcript and forks, a fork's copies once) and per subagent in index.json (a
 subagent's also its usage summed from its transcript beside the Agent tool's tokens, which count one call):
 apiCalls (distinct API responses), wallMs (first to last record), and each pause between records in one of three:
@@ -164,10 +131,10 @@ process.json holds counts, addresses, basenames, Claude Code's own tool and agen
 reported plugins' agent types, model names and two folded names: mcp for every MCP tool, custom for every other
 agent type; the full names stay in index.json.
 
-Environment: ENTRUST_STATE_DIR, else CLAUDE_PLUGIN_DATA (absolute); CLAUDE_CONFIG_DIR, else ~/.claude, for the
+Environment: ENTRUST_STATE_DIR (absolute), else <tmp>/entrust-state; CLAUDE_CONFIG_DIR, else ~/.claude, for the
 transcripts; CODEX_HOME, else ~/.codex, for the rollouts. Nothing is overwritten, ever.
-Exit: 0 done; 2 usage, no state directory, or a wrong kind of path; 10 refused (exists, out of order,
-destination taken or under the state directory); 1 a write failed.
+Exit: 0 done; 2 usage, no usable state directory, or a wrong kind of path; 10 refused (a run or file that
+exists, or a command before the one it needs); 1 a write failed.
 `;
 
 function fail(code, msg) { process.stderr.write(`prepare-feedback: ${msg}\n`); process.exit(code); }
@@ -201,13 +168,11 @@ function parse(cmd, argv) {
 }
 
 function stateDir() {
-  const named = process.env.ENTRUST_STATE_DIR ? "ENTRUST_STATE_DIR" : process.env.CLAUDE_PLUGIN_DATA ? "CLAUDE_PLUGIN_DATA" : null;
-  if (!named) fail(EXIT.USAGE, "no state directory: set ENTRUST_STATE_DIR, or pass CLAUDE_PLUGIN_DATA");
-  const s = process.env[named];
-  if (!path.isAbsolute(s)) fail(EXIT.USAGE, `${named} is not absolute: ${s}`);
+  let s;
+  try { s = stateDirectory(); } catch (e) { fail(EXIT.USAGE, `no usable state directory: ${e.message}`); }
   let st;
-  try { st = fs.statSync(s); } catch { fail(EXIT.USAGE, `${named} does not exist: ${s}`); }
-  if (!st.isDirectory()) fail(EXIT.USAGE, `${named} is not a directory: ${s}`);
+  try { st = fs.statSync(s); } catch { fail(EXIT.USAGE, `ENTRUST_STATE_DIR does not exist: ${s}`); }
+  if (!st.isDirectory()) fail(EXIT.USAGE, `ENTRUST_STATE_DIR is not a directory: ${s}`);
   return fs.realpathSync(s);
 }
 
@@ -694,51 +659,6 @@ function gather(files, id, rollouts) {
   return { entry, turns };
 }
 
-const header = (x) => `[${addr(x)} ${x.role}]\n`;
-const blockOf = (x) => `${header(x)}${x.text}\n\n`;
-const blockSize = (x) => header(x).length + x.text.length + 2;
-
-// Parts of at most PART_CHARS, one turn longer than that alone excepted; each part after the first opens with
-// up to OVERLAP_TURNS turns of the one before, when they fit in OVERLAP_CHARS and leave room for the next turn.
-function cut(sizes) {
-  const parts = [];
-  let cur = [], size = 0, fresh = 0;
-  for (let i = 0; i < sizes.length; i++) {
-    const n = sizes[i];
-    if (fresh && size + n > PART_CHARS) {
-      parts.push(cur);
-      let carry = [], c = 0;
-      for (let j = cur.length - 1; j >= 0 && carry.length < OVERLAP_TURNS && c + sizes[cur[j]] <= OVERLAP_CHARS; j--) { carry.unshift(cur[j]); c += sizes[cur[j]]; }
-      while (carry.length && c + n > PART_CHARS) c -= sizes[carry.shift()];
-      cur = carry; size = c; fresh = 0;
-    }
-    cur.push(i); size += n; fresh++;
-  }
-  if (fresh) parts.push(cur);
-  return parts;
-}
-
-function splitAt(s, max) {
-  const nl = s.lastIndexOf("\n", max - 1);
-  let k = nl >= max / 2 ? nl + 1 : max;
-  const c = s.charCodeAt(k - 1);
-  if (c >= 0xd800 && c <= 0xdbff) k--;
-  return k;
-}
-
-// Pages of at most PAGE_CHARS, cut between turns, and inside a turn only when the turn alone is longer.
-function paginate(blocks) {
-  const pages = [];
-  let cur = "";
-  for (let b of blocks) {
-    if (cur && cur.length + b.length > PAGE_CHARS) { pages.push(cur); cur = ""; }
-    while (b.length > PAGE_CHARS) { const k = splitAt(b, PAGE_CHARS); pages.push(b.slice(0, k)); b = b.slice(k); }
-    cur += b;
-  }
-  if (cur) pages.push(cur);
-  return pages;
-}
-
 // Every --version value as one test of a load's version: X.Y.Z, X.Y.Z..X.Y.Z, or unknown for a load whose
 // path carries none (a checkout); a load matches when any of them does.
 function versionTest(values) {
@@ -860,7 +780,6 @@ function corpus(opt, state) {
     `SUBAGENTS=${sessions.reduce((n, e) => n + e.subagents.length, 0)}`,
     `CODEX_RUNS=${runs.length} reports=${runs.filter((x) => x.reportFound).length} rollouts=${runs.filter((x) => x.rollout).length}`,
     `CHARS=${chars} MESSAGES=${turns.length}`,
-    `PARTS_EST=${cut(turns.map(blockSize)).length}`,
     `RUN=${dir}`,
   ]);
 }
@@ -872,113 +791,6 @@ function readTurns(dir) {
   return raw.split("\n").filter(Boolean).map((l, i) => {
     try { return JSON.parse(l); } catch { fail(EXIT.USAGE, `corpus/turns.jsonl line ${i + 1} does not parse`); }
   });
-}
-
-function parts(opt, state) {
-  const dir = runDir(opt, state);
-  const corpusDir = path.join(dir, "corpus");
-  const listing = path.join(corpusDir, "parts.json");
-  for (const p of [listing, path.join(corpusDir, "parts"), path.join(corpusDir, "pages")])
-    if (fs.existsSync(p)) fail(EXIT.REFUSED, `the corpus is already cut, and a cut is never redone: ${p}`);
-  const turns = readTurns(dir);
-  const plan = cut(turns.map(blockSize));
-  for (const d of ["parts", "pages"]) {
-    try { fs.mkdirSync(path.join(corpusDir, d), { mode: 0o700 }); }
-    catch (e) { fail(e.code === "EEXIST" ? EXIT.REFUSED : EXIT.FAILED, `cannot make ${path.join(corpusDir, d)}: ${e.message}`); }
-  }
-  const listed = [];
-  let pages = 0, largest = 0;
-  plan.forEach((idx, k) => {
-    const id = `P${String(k + 1).padStart(3, "0")}`;
-    const blocks = idx.map((i) => blockOf(turns[i]));
-    const text = blocks.join("");
-    place(path.join(corpusDir, "parts", `${id}.md`), text);
-    const own = paginate(blocks).map((body, n) => {
-      const pid = `${id}-${String(n + 1).padStart(2, "0")}`;
-      place(path.join(corpusDir, "pages", `${pid}.md`), body);
-      return { id: pid, file: `corpus/pages/${pid}.md`, chars: body.length, sha256: sha256(body) };
-    });
-    pages += own.length; largest = Math.max(largest, text.length);
-    listed.push({ id, file: `corpus/parts/${id}.md`, chars: text.length, turns: idx.length, from: addr(turns[idx[0]]), to: addr(turns[idx.at(-1)]), pages: own });
-  });
-  place(listing, `${JSON.stringify({ partChars: PART_CHARS, pageChars: PAGE_CHARS, overlapTurns: OVERLAP_TURNS, parts: listed }, null, 2)}\n`);
-  say([`PARTS=${listed.length} PAGES=${pages} LARGEST=${largest}`]);
-}
-
-function add(opt, state) {
-  const dir = runDir(opt, state);
-  if (!opt.name || !ADDABLE.test(opt.name)) fail(EXIT.USAGE, "--name must be rounds.md, drafts/NN-report.md, or a path under ledger/, measures/ or anonymized/");
-  const body = readSource(opt.from, "--from <file>");
-  const dst = path.join(dir, ...opt.name.split("/"));
-  makeDir(path.dirname(dst));
-  place(dst, body);
-  say([`ADDED=${dst}`]);
-}
-
-// Every string of what the agent's model was shown of a command in one rollout: the *_output item of a tool
-// call. The command's own record (exec_command_end, a CommandExecution item) holds what it printed, which
-// Codex may cut before the model sees it, so it proves nothing about a read.
-function outputs(file, into) {
-  const collect = (v) => {
-    if (typeof v === "string") into.push(v);
-    else if (v && typeof v === "object") for (const x of Object.values(v)) collect(x);
-  };
-  for (const [, r] of records(file)) {
-    const p = r.payload;
-    if (p && typeof p === "object" && typeof p.type === "string" && p.type.endsWith("_output")) collect(p.output);
-  }
-  return into;
-}
-
-function coverage(opt, state) {
-  const dir = runDir(opt, state);
-  const listing = path.join(dir, "corpus", "parts.json");
-  if (!fs.existsSync(listing)) fail(EXIT.REFUSED, "the corpus is not cut yet: run parts first");
-  const cutList = readJson(listing);
-  if (!cutList || !Array.isArray(cutList.parts)) fail(EXIT.USAGE, `corpus/parts.json does not parse: ${listing}`);
-  const byPart = new Map(cutList.parts.map((p) => [p.id, p]));
-  const rows = [];
-  readSource(opt.map, "--map <tsv>").toString("utf8").split("\n").forEach((l, i) => {
-    if (!l.trim()) return;
-    const f = l.replace(/\r$/, "").split("\t");
-    if (f.length !== 3 || f.some((x) => !x.trim())) fail(EXIT.USAGE, `--map line ${i + 1} is not agent-id<TAB>report.json<TAB>P###[,P###]`);
-    const ids = f[2].split(",").map((s) => s.trim()).filter(Boolean);
-    const unknown = ids.filter((p) => !byPart.has(p));
-    if (unknown.length) fail(EXIT.USAGE, `--map line ${i + 1} names parts this run does not have: ${unknown.join(", ")}`);
-    rows.push({ agent: f[0].trim(), report: path.resolve(f[1].trim()), parts: ids });
-  });
-  if (!rows.length) fail(EXIT.USAGE, "--map names no agent");
-  const dst = path.join(dir, "measures", `coverage-${path.parse(opt.map).name}.json`);
-  if (fs.existsSync(dst)) fail(EXIT.REFUSED, `already there, not rewritten: ${dst}`);
-  const rollouts = rolloutIndex(path.join(process.env.CODEX_HOME || path.join(os.homedir(), ".codex"), "sessions"));
-  const pageText = (p) => { try { return fs.readFileSync(path.join(dir, ...p.file.split("/")), "utf8"); } catch { return null; } };
-  // What measures/ records names files by their last segments, never by a machine path: export publishes it.
-  const agents = rows.map((row) => {
-    const a = { agent: row.agent, report: `${path.basename(path.dirname(row.report))}/${path.basename(row.report)}`,
-      parts: row.parts, read: [], unread: [], status: "unread", reason: null };
-    const rep = readJson(row.report);
-    let files = [];
-    if (!rep) a.reason = "no report";
-    else if (typeof rep.threadId !== "string") a.reason = "no threadId";
-    else { files = rollouts().get(rep.threadId) ?? []; if (!files.length) a.reason = "no rollout"; }
-    const seen = [];
-    for (const f of files) outputs(f, seen);
-    for (const p of row.parts.flatMap((id) => byPart.get(id).pages)) {
-      const text = pageText(p)?.trimEnd();
-      const escaped = text === undefined ? null : JSON.stringify(text).slice(1, -1);
-      const whole = !!text && seen.some((o) => o.includes(text) || o.includes(escaped));
-      (whole ? a.read : a.unread).push(p.id);
-    }
-    a.status = !a.unread.length ? "whole" : a.read.length ? "partial" : "unread";
-    return a;
-  });
-  makeDir(path.dirname(dst));
-  place(dst, `${JSON.stringify({ map: path.basename(opt.map), agents }, null, 2)}\n`);
-  const n = (s) => agents.filter((a) => a.status === s).length;
-  say([
-    ...agents.filter((a) => a.unread.length).map((a) => `AGENT=${a.agent} unread=${a.unread.join(",")}${a.reason ? ` reason=${a.reason.replace(/ /g, "-")}` : ""}`),
-    `AGENTS=${agents.length} WHOLE=${n("whole")} PARTIAL=${n("partial")} UNREAD=${n("unread")}`,
-  ]);
 }
 
 function tokenize(s) {
@@ -1083,61 +895,8 @@ function quotes(opt, state) {
   say([`QUOTES=${results.length} EXACT=${counts.exact} NEAR=${counts.near} MISSING=${counts.missing}`]);
 }
 
-function tokens(opt, state) {
-  const dir = runDir(opt, state);
-  if (!opt.reports === !opt.from) fail(EXIT.USAGE, "one of --reports <dir> or --from <tsv> is required, and only one");
-  let median = null;
-  if (opt.median !== undefined) {
-    if (!/^\d+$/.test(opt.median) || Number(opt.median) === 0) fail(EXIT.USAGE, `--median is a positive whole number of tokens: ${opt.median}`);
-    median = Number(opt.median);
-  }
-  let agents, name, source;
-  if (opt.reports) {
-    const d = path.resolve(opt.reports);
-    let st;
-    try { st = fs.statSync(d); } catch { fail(EXIT.USAGE, `--reports does not exist: ${opt.reports}`); }
-    if (!st.isDirectory()) fail(EXIT.USAGE, `--reports is not a directory: ${opt.reports}`);
-    agents = fs.readdirSync(d, { withFileTypes: true })
-      .filter((e) => e.isDirectory() && isFile(path.join(d, e.name, "report.json"))).map((e) => e.name).sort()
-      .map((agent) => {
-        const t = readJson(path.join(d, agent, "report.json"))?.tokenUsage?.total?.totalTokens;
-        return { agent, tokens: typeof t === "number" ? t : null };
-      });
-    if (!agents.length) fail(EXIT.USAGE, `no */report.json under ${d}`);
-    name = path.basename(d); source = { reports: name };
-  } else {
-    agents = [];
-    readSource(opt.from, "--from <tsv>").toString("utf8").split("\n").forEach((l, i) => {
-      if (!l.trim()) return;
-      const f = l.replace(/\r$/, "").split("\t");
-      if (f.length !== 2 || !f[0].trim() || !/^\d+$/.test(f[1].trim())) fail(EXIT.USAGE, `--from line ${i + 1} is not agent<TAB>tokens`);
-      agents.push({ agent: f[0].trim(), tokens: Number(f[1].trim()) });
-    });
-    if (!agents.length) fail(EXIT.USAGE, "--from names no agent");
-    name = path.parse(opt.from).name; source = { from: path.basename(opt.from) };
-  }
-  const dst = path.join(dir, "measures", `tokens-${name}.json`);
-  if (fs.existsSync(dst)) fail(EXIT.REFUSED, `already there, not rewritten: ${dst}`);
-  const counted = agents.filter((a) => a.tokens !== null);
-  const sorted = counted.map((a) => a.tokens).sort((a, b) => a - b);
-  const mid = sorted.length >> 1;
-  const med = !sorted.length ? 0 : sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
-  const max = sorted.length ? sorted.at(-1) : 0;
-  const line = median === null ? null : 3 * median;
-  const over = line === null ? [] : counted.filter((a) => a.tokens > line).sort((a, b) => b.tokens - a.tokens || cmpStr(a.agent, b.agent));
-  const missing = agents.filter((a) => a.tokens === null).map((a) => a.agent);
-  if (missing.length) process.stderr.write(`prepare-feedback: no token count in the report of ${missing.join(", ")}\n`);
-  makeDir(path.dirname(dst));
-  place(dst, `${JSON.stringify({ ...source, agents, median: med, max, stopLine: line === null ? null : { median, line, over } }, null, 2)}\n`);
-  say([
-    ...over.map((a) => `AGENT=${a.agent} tokens=${a.tokens}`),
-    ...(line === null ? [] : [`OVER=${over.length}`]),
-    `AGENTS=${counted.length} MEDIAN=${med} MAX=${max}`,
-  ]);
-}
-
 // Where a run's time and tokens went, from the counts corpus recorded: no transcript text, no path and no
-// thread id, since export publishes measures/. Every token count is summed over API calls: the coordinator's
+// thread id, since a report may cite measures/. Every token count is summed over API calls: the coordinator's
 // from its tasks' usage, a subagent's from its own transcript's usage (the Agent tool's totalTokens counts only
 // its last call's context), a Codex run's from its report.
 function processRun(opt, state) {
@@ -1361,7 +1120,7 @@ function timelineOf(file, label, sub, copied) {
 
 // One timeline of the corpus: per task, its transcript's and forks' events, each subagent as one event with its
 // type, model, prompt, answer and the plugin pages it read itself, and each fork where it left its original.
-// It holds transcript text, so it lives under corpus/, which export never copies.
+// It holds transcript text, so it lives under corpus/.
 function timeline(opt, state) {
   const dir = runDir(opt, state);
   const indexFile = path.join(dir, "corpus", "index.json");
@@ -1424,49 +1183,10 @@ function timeline(opt, state) {
   ]);
 }
 
-function exportRun(opt, state) {
-  const dir = runDir(opt, state);
-  if (!opt.to) fail(EXIT.USAGE, "--to <relative dir> is required");
-  if (path.isAbsolute(opt.to)) fail(EXIT.USAGE, `--to is relative to the working directory, not absolute: ${opt.to}`);
-  const to = path.resolve(opt.to);
-  let parent;
-  try { parent = fs.realpathSync(path.dirname(to)); if (!fs.statSync(parent).isDirectory()) throw new Error(); }
-  catch { fail(EXIT.USAGE, `--to must name a new directory inside an existing one: ${opt.to}`); }
-  const dest = path.join(parent, path.basename(to));
-  if (inside(dest, state)) fail(EXIT.REFUSED, `--to lies under the state directory, where this script writes only runs: ${dest}`);
-  let taken = true;
-  try { fs.lstatSync(dest); } catch { taken = false; }
-  if (taken) fail(EXIT.REFUSED, `the destination already exists: ${opt.to}`);
-  const files = [];
-  try {
-    for (const n of fs.readdirSync(path.join(dir, "drafts")).sort())
-      if (n.endsWith(".md") && isFile(path.join(dir, "drafts", n))) files.push([path.join(dir, "drafts", n), n]);
-  } catch {}
-  if (isFile(path.join(dir, "rounds.md"))) files.push([path.join(dir, "rounds.md"), "rounds.md"]);
-  const walk = (abs, rel) => {
-    let entries;
-    try { entries = fs.readdirSync(abs, { withFileTypes: true }); } catch { return; }
-    for (const e of entries.sort((a, b) => cmpStr(a.name, b.name))) {
-      if (e.isDirectory()) walk(path.join(abs, e.name), `${rel}/${e.name}`);
-      else if (e.isFile()) files.push([path.join(abs, e.name), `${rel}/${e.name}`]);
-    }
-  };
-  walk(path.join(dir, "measures"), "measures");
-  walk(path.join(dir, "anonymized"), "anonymized");
-  if (!files.length) fail(EXIT.REFUSED, "nothing to export yet: no drafts/*.md, rounds.md, measures/ or anonymized/");
-  try { fs.mkdirSync(dest); } catch (e) { fail(e.code === "EEXIST" ? EXIT.REFUSED : EXIT.FAILED, `cannot make ${dest}: ${e.message}`); }
-  for (const [src, rel] of files) {
-    const d = path.join(dest, ...rel.split("/"));
-    try { fs.mkdirSync(path.dirname(d), { recursive: true }); fs.writeFileSync(d, fs.readFileSync(src), { flag: "wx" }); }
-    catch (e) { fail(e.code === "EEXIST" ? EXIT.REFUSED : EXIT.FAILED, `copy failed: ${d}: ${e.message}`); }
-  }
-  say([`EXPORTED=${opt.to} FILES=${files.length}`]);
-}
-
 const argv = process.argv.slice(2);
 const cmd = argv[0] !== undefined && !argv[0].startsWith("--") ? argv[0] : undefined;
 if (cmd !== undefined && !COMMANDS.includes(cmd)) fail(EXIT.USAGE, `unknown command: ${cmd}; one of ${COMMANDS.join(", ")}`);
 if (argv.includes("--help") || !cmd) { process.stdout.write(usage()); process.exit(argv.includes("--help") ? EXIT.OK : EXIT.USAGE); }
 const opt = parse(cmd, argv.slice(1));
 const state = stateDir();
-({ corpus, parts, add, coverage, quotes, tokens, process: processRun, timeline, export: exportRun })[cmd](opt, state);
+({ corpus, quotes, process: processRun, timeline })[cmd](opt, state);
