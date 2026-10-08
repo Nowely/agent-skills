@@ -15,6 +15,12 @@ forensics remain in the repository references and release notes.
   refused it outside a plan while Codex read; all three now read, the narrowest grant, unless a plan row pins the
   writes. Yes-or-no fields (`ALLOW_NO_COMMANDS`, `BRIEF`, `SAFE_MODE`) take yes, true or 1 and no, false or 0 in
   every adapter, as Codex's always did.
+- **A Codex agent continues from its report path, as the others do.** `RESUME:` in a Codex prompt took a thread id
+  or `last`, which the status lines do not print, and the offline check passed a report path that failed only at
+  run time (X8). It now takes the earlier run's `REPORT=` path: the driver reads the thread from the report at
+  `--check-prompt-file`, and the continuation keeps the run's directory, rights and `WRITABLE:` roots, so a
+  `RIGHTS:` line names the same or is left out. A bare thread id is still taken; `RESUME: last` is refused, since
+  under a plan the last run in a directory may be another worker's.
 
 ### Fixed
 

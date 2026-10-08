@@ -493,7 +493,7 @@ const CASES = [
     } },
   { scenario: "cut-partial",      expect: EXIT.TIMEOUT, args: ["--timeout", "1"],
     why: "exit 3 is a budget the CALLER set, so the report has to say what the caller can do about it; the thread is still there and resuming it is the recovery, with the caveat that a turn still closing refuses with exit 10",
-    assert: (r) => (/--resume thr_root/.test(String(r.hint)) && /RESUME: thr_root/.test(String(r.hint))
+    assert: (r) => (/--resume thr_root/.test(String(r.hint)) && /RESUME: (\/\S+|<this report's path>)/.test(String(r.hint))
         && /exit 10/.test(String(r.hint)) && /--effort/.test(String(r.hint)) && /split/.test(String(r.hint)))
       || `the exit-3 hint does not name the way out: ${JSON.stringify(r.hint)}` },
   { scenario: "no-thread",        expect: EXIT.TIMEOUT, args: ["--timeout", "0.5"],

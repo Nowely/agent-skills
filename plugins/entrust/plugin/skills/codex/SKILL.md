@@ -105,7 +105,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | `RIGHTS:` | `read [<dir>]`, `worktree <repo>`, `write <dir>` | first, or not at all: no header is a read agent in the current directory |
 | `NETWORK:` | `no` | this agent's own commands must not reach the network; `WEB_SEARCH:` is untouched either way |
 | `WRITABLE:` | `<dir>`, repeatable | a write agent needs one more root than the directory it was given |
-| `RESUME:` | `<threadId>`, `last` | this agent continues an earlier thread instead of opening one |
+| `RESUME:` | the earlier run's report path, as `REPORT=` printed it | this agent continues that run's thread, in its directory, with its rights: `RIGHTS:` names the same or is left out, and `WRITABLE:` is left out |
 | `EXPECT:` | `<regex>` | the answer is evidence only if a command matching it ran and succeeded; none is exit 5. Do not point it at a check whose failure IS the finding |
 | `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>`; the five-field schema for orchestrated agents ships at `${CLAUDE_SKILL_DIR}/../orchestrate/schemas/five-fields.schema.json` | the answer must parse as one JSON object |
 | `MODEL:` | `astra`, `sol`, `terra`, `luna`, the newest listed model of that name, or a full slug | this agent needs a model other than the configured default; in prose the name is capitalised |
@@ -204,7 +204,7 @@ takes a fresh one. The launcher makes every directory it needs. `<DIR>` is the a
 beside `<REPORT>`.
 
 The wrapper's completion notification is the agent's completion: read its lines first, and the file after a
-`PATH=own` when they leave a question. To continue an agent, write a second prompt file with `RESUME: <threadId>`
+`PATH=own` when they leave a question. To continue an agent, write a second prompt file with `RESUME: <its REPORT= path>`
 under a fresh report path (under a plan `<run>/<agent>-<n>/report.json`, `--help`) and send the wrapper one
 more command of the same shape; a session with no message tool spawns a second wrapper on the same file.
 

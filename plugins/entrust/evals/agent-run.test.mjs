@@ -805,6 +805,35 @@ test("under a plan, --new takes the adapter from the row, whichever entry script
       || `the row's adapter: exit ${made.code}, ${JSON.stringify(made.out)}, backend ${backend}`;
   });
 
+test("a Codex agent continues from its REPORT= path, keeping its directory and rights, and a path that is no finished Codex report is refused at --new",
+  "every adapter continues from the report path the status lines print, and Codex's check passed a path it would only refuse after spawning",
+  async () => {
+    const runDir = runUnderState("cxresume.");
+    const make = async (name, body) => {
+      const report = path.join(runDir, name, "report.json");
+      const made = await newAgent(report, body);
+      return { report, made };
+    };
+    const first = await make("first", `RIGHTS: read ${shimDir}\nTASK: irrelevant, the server is scripted\n`);
+    if (first.made.code !== 0) return `first --new: ${first.made.out}`;
+    const ran = await spawnNode([LAUNCHER, "--run", "--report-file", first.report], { env: env(newState), killAfterMs: 60000 }).done;
+    const r1 = JSON.parse(read(first.report) ?? "null");
+    if (ran.code !== 0 || !r1?.threadId) return `first run: exit ${ran.code}, ${ran.out.slice(0, 200)}`;
+    for (const [body, why] of [
+      [`RESUME: ${path.join(runDir, "nowhere", "report.json")}\nTASK: go on\n`, "is not a Codex report"],
+      [`RIGHTS: read ${runDir}\nRESUME: ${first.report}\nTASK: go on\n`, "a continuation keeps its rights"],
+      ["RESUME: last\nTASK: go on\n", "RESUME last is not accepted"]]) {
+      const r = await make(`refused-${why.length}`, body);
+      if (r.made.code !== 2 || !r.made.out.includes(why)) return `${why}: exit ${r.made.code}, ${JSON.stringify(r.made.out)}`;
+    }
+    const next = await make("next", `RESUME: ${first.report}\nTASK: go on\n`);
+    if (next.made.code !== 0) return `continuation --new: ${next.made.out}`;
+    const ran2 = await spawnNode([LAUNCHER, "--run", "--report-file", next.report], { env: env(newState), killAfterMs: 60000 }).done;
+    const r2 = JSON.parse(read(next.report) ?? "null");
+    return ran2.code === 0 && r2?.resumedFrom === r1.threadId && r2?.cwd === r1.cwd && r2?.level === "read"
+      || `the continuation: exit ${ran2.code}, resumedFrom ${r2?.resumedFrom}, cwd ${r2?.cwd} (was ${r1.cwd}), level ${r2?.level}`;
+  });
+
 test("D6 a Codex row binds its prompt's model and writes: an absent one is the row's, another is refused (E138)",
   "a plan bound a Codex agent's id alone, so a prompt could name another model and wider rights than the row the user approved; OpenCode and Claude prompts were already held to their rows",
   async () => {
