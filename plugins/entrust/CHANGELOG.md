@@ -43,6 +43,11 @@ forensics remain in the repository references and release notes.
   another worker's, and is now refused (X6). A resume of a run still going exits 10, as in Claude, and one whose
   run died before publishing says so (X14). The report is claimed before any refusal, so a run that cannot make
   its mailbox no longer writes over an earlier report at its path (X12).
+- **An isolated Codex agent answers on the caller's provider.** The isolated home carried the model, effort,
+  personality and service tier but not `model_provider`, so a caller whose config selects a provider of its own ran
+  against the default one. It now carries `model_provider` and that provider's `[model_providers.<name>]` table
+  (its scalars, string lists and one-level string maps). Checked on the fake app server; the shape the real
+  `config/read` gives a provider table is unmeasured (X11).
 
 ## 0.27.0 — 2026-10-08
 

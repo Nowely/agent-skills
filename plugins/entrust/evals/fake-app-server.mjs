@@ -473,6 +473,10 @@ function onLine(line) {
       model_reasoning_effort: unquote(CFG["model_reasoning_effort"]) || "medium",
       personality: unquote(CFG["personality"]) || "pragmatic",
       service_tier: unquote(CFG["service_tier"]) || "auto",
+      // A provider of the caller's own, which an isolated home must carry with its table.
+      ...(process.env.FAKE_CONFIG_PROVIDER ? { model_provider: "corp", model_providers: { corp: {
+        name: "Corp", base_url: "https://llm.example.invalid/v1", env_key: "CORP_KEY", wire_api: "responses",
+        request_max_retries: 4, query_params: { "api-version": "2025-01-01" }, nested: { deep: { no: "x" } } } } } : {}),
     }, origins: {} }));
     // The same bare `null` on the PROBE channel, where nothing listens for messages and the reader
     // reached for `.id` on it. Raw, for the reason "null-frame" is raw.

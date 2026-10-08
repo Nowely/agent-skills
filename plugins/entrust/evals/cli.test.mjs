@@ -415,6 +415,16 @@ const CASES = [
     assert: (r) => (r.configInherited?.source === "probe" && r.configInherited.keys.includes("model"))
       || `a healthy probe was not reported as one: ${JSON.stringify(r.configInherited)}` },
   { scenario: "happy",            expect: EXIT.SUCCESS,
+    env: { FAKE_CONFIG_PROVIDER: "1" },
+    why: "isolating the environment must not isolate the account: a caller whose config selects a provider of its own would otherwise run on the default provider",
+    assert: (r) => {
+      const toml = fs.readFileSync(path.join(r.codexHome, "config.toml"), "utf8");
+      return (toml.includes('model_provider = "corp"') && toml.includes('[model_providers."corp"]')
+        && toml.includes('"base_url" = "https://llm.example.invalid/v1"') && toml.includes('"query_params" = { "api-version" = "2025-01-01" }')
+        && toml.includes('"request_max_retries" = 4') && !toml.includes("nested") && r.configInherited.keys.includes("model_providers"))
+        || `the provider was not carried: ${toml}`;
+    } },
+  { scenario: "happy",            expect: EXIT.SUCCESS,
     env: { FAKE_CONFIG_FAIL: "1" },
     why: "the same field must distinguish the unhealthy case: a probe that failed with no last-known-good to keep means the turn ran on the account defaults",
     assert: (r) => (r.configInherited?.source === "none" && r.configInherited.keys.length === 0)

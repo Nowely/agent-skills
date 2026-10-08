@@ -1209,7 +1209,21 @@ function resolveCodexBin() {
   fail(EXIT.TRANSPORT, `codex not found on PATH or in ${fallbacks.join(", ")}; install it, or set ENTRUST_CODEX to its absolute path`);
 }
 
-const INHERITED = ["model", "model_reasoning_effort", "personality", "service_tier"];
+const INHERITED = ["model", "model_reasoning_effort", "personality", "service_tier", "model_provider"];
+
+// The selected provider's table, so that a provider of the caller's own is the one an isolated agent answers on:
+// its scalars, string lists and one-level string maps (headers, query parameters); anything deeper is not carried.
+function providerTable(cfg) {
+  const name = cfg.model_provider, table = cfg.model_providers?.[name];
+  if (typeof name !== "string" || !table || typeof table !== "object" || Array.isArray(table)) return "";
+  const value = (v) => typeof v === "string" ? tomlString(v)
+    : (typeof v === "number" && Number.isFinite(v)) || typeof v === "boolean" ? String(v)
+      : Array.isArray(v) && v.every((x) => typeof x === "string") ? `[${v.map(tomlString).join(", ")}]`
+        : v && typeof v === "object" && Object.values(v).every((x) => typeof x === "string")
+          ? `{ ${Object.entries(v).map(([k, x]) => `${tomlString(k)} = ${tomlString(x)}`).join(", ")} }` : null;
+  const lines = Object.entries(table).map(([k, v]) => [k, value(v)]).filter(([, v]) => v !== null);
+  return `\n[model_providers.${tomlString(name)}]\n${lines.map(([k, v]) => `${tomlString(k)} = ${v}\n`).join("")}`;
+}
 
 // Resolve { entries, failed } so a failed config request cannot be mistaken for an empty config.
 async function inheritedConfig() {
@@ -1254,7 +1268,7 @@ async function inheritedConfig() {
     const wrong = INHERITED.filter((k) => cfg[k] !== undefined && cfg[k] !== null && typeof cfg[k] !== "string");
     if (wrong.length)
       process.stderr.write(`entrust: the caller's Codex config reports ${wrong.join(", ")} as something other than text; those are not carried across\n`);
-    return { entries: INHERITED.filter((k) => typeof cfg[k] === "string").map((k) => [k, tomlString(cfg[k])]), failed: false };
+    return { entries: INHERITED.filter((k) => typeof cfg[k] === "string").map((k) => [k, tomlString(cfg[k])]), table: providerTable(cfg), failed: false };
   } catch (e) {
     // Warn when asking for config fails, but stay quiet for an empty config or a shutdown cancellation.
     // A cancellation is still a failed config request, so it must not replace the last-known-good config
@@ -1451,12 +1465,12 @@ async function isolatedHome() {
     configInherited = { source: "last-known-good", keys: keysInConfig(cfg) };
     return home;
   }
-  configInherited = { source: probe.failed ? "none" : "probe", keys: probe.entries.map(([k]) => k) };
+  configInherited = { source: probe.failed ? "none" : "probe", keys: [...probe.entries.map(([k]) => k), ...(probe.table ? ["model_providers"] : [])] };
   // Use a random temp name because different PID namespaces can share a pid on one mounted home.
   // "wx" refuses an existing name instead of following a symlink onto another file.
   const tmp = `${cfg}.${crypto.randomBytes(8).toString("hex")}.tmp`;
   try {
-    const body = probe.entries.map(([k, v]) => `${k} = ${v}\n`).join("");
+    const body = probe.entries.map(([k, v]) => `${k} = ${v}\n`).join("") + (probe.table ?? "");
     fs.writeFileSync(tmp, body, { mode: 0o600, flag: "wx" });
     fs.renameSync(tmp, cfg);    // atomic, so a concurrent agent never reads a half-written file
   } catch (e) {
