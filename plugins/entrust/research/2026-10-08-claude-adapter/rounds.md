@@ -3,6 +3,7 @@
 | Round | Document | Critic | Findings | Regressions from the previous round |
 | --- | --- | --- | --- | --- |
 | 1 | [02-design-v1.md](02-design-v1.md) | Opus, [03-critique-c1.md](03-critique-c1.md) | 2 blocking, 8 major, 4 minor | none (first round) |
+| 2 | the implementation, `b89ab98..f2ea528` | Opus, [05-review-r1.md](05-review-r1.md) | 2 major, 5 minor | none of round 1's fixes undone |
 
 ## Round 1
 
@@ -29,3 +30,26 @@ Built from [04-design-v2.md](04-design-v2.md) in `6c8cf7c`, with one departure: 
 `claude`. Its opt-in live case passed on 2026-10-08 against Claude Code 2.1.294 on Haiku, level 3: `RIGHTS: read`,
 a `touch` offered through the approval server, handed back by `--run`, accepted with `--decide`, and the run ended
 `EXIT=0`, `approvals=1/0/0/0`, `model=Haiku`, the file made.
+
+## Round 2
+
+Two fixes came first from another session's review (#69, merged into this branch as `f2ea528`): a missing run
+directory refused at `--check-prompt-file`, and a worktree's `diff` taken against its base (E136). Then the
+review, each finding settled:
+
+| # | Outcome |
+| --- | --- |
+| 1 | fixed: the driver claims the report before any other check, so every later refusal is a published report and `--run` prints its reason on `ERROR=`; a case removes the directory between `--new` and `--run` |
+| 2 | fixed: the deny rules name this run's mailbox and each top-level entry of the state directory but `worktrees`; a case pins them |
+| 3 | fixed, the docs confirming it (level 1): no `Write(...)` rules; the `Edit(//…)` ones cover the Write tool, redirects and `tee` |
+| 4 | fixed on the page (reads inside the directory, the busy refusal at `--new` and at launch, the diff against the base); the claim stub now carries the driver's pid, and a stub whose driver is gone is refused as a run that ended without a report rather than busy forever; the signal handlers are set at the claim |
+| 5 | probed, P9 below; the fake's other gaps (deny rules, tools, mode) are left to the live case, which ran again after these fixes |
+| 6 | the server is `entrust-approvals`, as designed, P9 showing a hyphenated name works; the `AGENT=` line was left as it is, the round-1 critic having called that change optional |
+| 7 | the `scopeWithin` copy is gone; the approval server's own check of a decision's identity stays, as the OpenCode driver keeps its own: the writer checks independently of the reader |
+
+| # | What was run | What happened |
+| --- | --- | --- |
+| P9 | a server named `entrust-approvals` holding a `touch` for 120 s, SIGINT to `claude` while it waits | the call reached the hyphenated server; `claude` exited 0 in 0.75 s with `result` `error_during_execution`, `terminal_reason: aborted_streaming`, one denial; the server got no `notifications/cancelled` |
+
+After the fixes `evals/claude.test.mjs` passes 19 cases and its live case passed again on Haiku, with the renamed
+server and the narrowed rules.
