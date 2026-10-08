@@ -47,7 +47,8 @@ emit({ type: "system", subtype: "init", cwd: process.cwd(), model, permissionMod
 
 // The approval server, as Claude Code starts it from --mcp-config, and one permission prompt through it.
 function server() {
-  const config = JSON.parse(fs.readFileSync(flag("--mcp-config"), "utf8")).mcpServers.entrust;
+  // The server the --permission-prompt-tool names, mcp__<server>__<tool>, as Claude Code resolves it.
+  const config = JSON.parse(fs.readFileSync(flag("--mcp-config"), "utf8")).mcpServers[flag("--permission-prompt-tool").split("__")[1]];
   const child = spawn(config.command, config.args, { env: { ...process.env, ...config.env }, stdio: ["pipe", "pipe", "inherit"] });
   const waiting = new Map();
   readline.createInterface({ input: child.stdout }).on("line", (l) => { const m = JSON.parse(l); waiting.get(m.id)?.(m); });

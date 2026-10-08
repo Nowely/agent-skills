@@ -14,12 +14,13 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
-import { EXIT, canonical, makeWorktree, resolveRights, rightsScope, within, worktreeFacts } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, canonical, makeWorktree, resolveRights, rightsScope, scopeWithin, within, worktreeFacts } from "../../orchestrate/scripts/drivers.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { TOOL } from "./approvals.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = path.join(HERE, "approvals.mjs");
+const SERVER_NAME = "entrust-approvals";
 const FIVE_FIELDS = path.join(HERE, "../../orchestrate/schemas/five-fields.schema.json");
 const MODELS = JSON.parse(fs.readFileSync(path.join(HERE, "../adapter.json"), "utf8")).plan.models;
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
@@ -63,6 +64,7 @@ const USAGE = `driver — run one external Claude agent (claude -p) for the shar
 const refusal = (reason) => ({ error: reason });
 const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch { return null; } };
 const isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
+const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === "EPERM"; } };
 
 // The prompt: `KEY: value` header lines, then TASK:, whose value and every line after it are the task.
 export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
@@ -120,14 +122,15 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
     if (!path.isAbsolute(at)) return refusal("RESUME must be the absolute path of an earlier claude report");
     const prior = readJson(at);
     if (!prior || prior.adapter !== "claude") return refusal(`RESUME ${at} is not a claude report`);
-    if (typeof prior.exitCode !== "number") return { error: `RESUME ${at} names a run that has not finished`, busy: true };
+    // A report without an exit code is a claim: its driver is still running, or died before it published.
+    if (typeof prior.exitCode !== "number")
+      return Number.isInteger(prior.pid) && alive(prior.pid) ? { error: `RESUME ${at} names a run that has not finished`, busy: true }
+        : refusal(`RESUME ${at} names a run that ended without a report; there is nothing to continue`);
     if (typeof prior.sessionID !== "string" || !prior.cwd) return refusal(`RESUME ${at} records no session to continue`);
     const was = prior.rights?.kind;
     if (was !== rights.kind) return refusal(`RESUME: the run had RIGHTS ${was}; a continuation keeps it`);
-    if (rights.kind === "write") {
-      const root = canonical(rights.path, cwd);
-      if (!(prior.rights.roots ?? []).some((r) => within(root, r))) return refusal(`RESUME: RIGHTS write ${root} widens past the run's ${prior.rights.roots}`);
-    }
+    if (rights.kind === "write" && !scopeWithin({ kind: "write", roots: [canonical(rights.path, cwd)] }, prior.rights))
+      return refusal(`RESUME: RIGHTS write ${canonical(rights.path, cwd)} widens past the run's ${prior.rights.roots}`);
     if (rights.kind === "worktree" && canonical(rights.path, cwd) !== prior.worktreeRepo)
       return refusal(`RESUME: RIGHTS worktree ${canonical(rights.path, cwd)} is not the run's repository ${prior.worktreeRepo}`);
     resume = { report: at, prior };
@@ -159,21 +162,31 @@ export function scopeOf(parsed, stateDir) {
   return { kind: "read", cwd: s.readDir, roots: [] };
 }
 
+// The deny rules that keep every file tool, redirect and tee out of the mailboxes: this run's own, and any
+// under the state directory but in the worktrees, where an agent's own tree may hold an approvals/ of its own.
+// A deny rule outranks every allow rule, the user's included; Claude Code checks file paths against Edit rules
+// only. A rule matches the path as the agent writes it, so a directory reached through a link gets both spellings.
+export function mailboxRules(stateDir, box) {
+  const spell = (p) => [...new Set([path.resolve(p), canonical(p)])];
+  let entries = [];
+  try { entries = fs.readdirSync(stateDir).filter((n) => n !== "worktrees"); } catch {}
+  return [...(box ? spell(box).map((b) => `Edit(/${b}/**)`) : []),
+    ...spell(stateDir).flatMap((d) => entries.map((n) => `Edit(/${d}/${n}/**/approvals/**)`))];
+}
+
 // The flags of one run.
-export function claudeArgs(parsed, { kind, stateDir, sessionId, mcpConfig }) {
-  // A deny rule outranks every allow rule, the user's included: no Edit or Write lands in a mailbox. A rule
-  // matches the path as the agent writes it, so a state directory reached through a link gets both spellings.
-  const states = [...new Set([path.resolve(stateDir), canonical(stateDir)])];
+export function claudeArgs(parsed, { kind, stateDir, box, sessionId, mcpConfig }) {
+  const deny = mailboxRules(stateDir, box);
   const args = ["-p", "--output-format", "stream-json", "--verbose", "--json-schema", parsed.schemaText,
     "--permission-mode", kind === "read" ? "manual" : "acceptEdits",
     "--tools", (kind === "read" ? READ_TOOLS : WRITE_TOOLS).join(","),
-    "--disallowedTools", ...states.flatMap((d) => [`Edit(/${d}/**/approvals/**)`, `Write(/${d}/**/approvals/**)`])];
+    ...(deny.length ? ["--disallowedTools", ...deny] : [])];
   if (parsed.model) args.push("--model", parsed.model);
   if (parsed.effort) args.push("--effort", parsed.effort);
   if (parsed.resume) args.push("--resume", parsed.resume.prior.sessionID, "--fork-session");
   args.push("--session-id", sessionId);
   if (parsed.safeMode) args.push("--safe-mode");
-  if (mcpConfig) args.push("--mcp-config", mcpConfig, "--permission-prompt-tool", `mcp__entrust__${TOOL}`);
+  if (mcpConfig) args.push("--mcp-config", mcpConfig, "--permission-prompt-tool", `mcp__${SERVER_NAME}__${TOOL}`);
   else args.push("--permission-prompts", "none");
   return args;
 }
@@ -231,85 +244,96 @@ export function verdict({ result, stopped, spawnError, exitCode, signal, box, de
   return { exitCode: EXIT.SUCCESS, error: null, turnStatus: "completed" };
 }
 
-async function run(o, parsed) {
-  const stateDir = stateDirectory();
+// Claims the report first, so that every refusal after the claim is a published report whose reason the
+// launcher's status read prints on ERROR=; only a claim that fails is reported on stderr alone.
+async function run(o, text) {
   const startedAtMs = Date.now();
   const invocationId = `inv_${crypto.randomBytes(6).toString("hex")}`;
   const report = o.report;
   const base = report.replace(/\.json$/, "");
-  const box = o.approvalDir ? path.resolve(o.approvalDir) : null;
-  if (box && !within(canonical(box), canonical(stateDir))) return refuse(`--approval-dir ${box} is outside the state directory ${stateDir}`);
-  const scope = scopeOf(parsed, stateDir);
-  if (scope.error) return refuse(scope.error);
-
-  // Claim the report path, refusing any overwrite: a refusal publishes nothing.
-  try { const fd = fs.openSync(report, "wx", 0o600); fs.writeSync(fd, `${JSON.stringify({ adapter: "claude", ok: false, status: "starting" })}\n`); fs.closeSync(fd); }
+  try { const fd = fs.openSync(report, "wx", 0o600); fs.writeSync(fd, `${JSON.stringify({ adapter: "claude", ok: false, status: "starting", pid: process.pid })}\n`); fs.closeSync(fd); }
   catch (e) { return refuse(e.code === "EEXIST" ? `${report} already exists, or is a symbolic link` : `could not be published at ${report}`); }
   // The pid line the launcher owns this run by and forwards a Stop to.
   process.stderr.write(`entrust: pid=${process.pid} identity=${invocationId} reportPath=${report}\n`);
 
-  const ctx = { report, base, box, startedAtMs, invocationId, parsed, scope, sessionId: crypto.randomUUID(),
-    transcriptPath: `${base}.transcript.jsonl`, answerPath: null, init: null, result: null, tools: new Map(),
-    stopped: null, sentInt: false };
+  const ctx = { report, base, box: null, startedAtMs, invocationId, parsed: null, scope: null, sessionId: crypto.randomUUID(),
+    transcriptPath: null, answerPath: null, init: null, result: null, tools: new Map(), stopped: null, sentInt: false, child: null };
   const publish = (facts) => {
     const r = buildReport(ctx, facts);
     atomicWrite(report, `${JSON.stringify(r, null, 2)}\n`);
     process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
     return r.exitCode;
   };
-
-  if (scope.kind === "worktree" && !scope.worktree) {
-    const wt = makeWorktree(scope.repo, stateDir, invocationId);
-    if (wt.error) return publish({ exitCode: EXIT.USAGE, error: wt.error, turnStatus: "failed" });
-    Object.assign(scope, { cwd: wt.worktreePath, roots: [wt.worktreePath], worktree: { worktreePath: wt.worktreePath, worktreeRepo: wt.repo, worktreeBase: wt.base } });
-  }
-
-  let mcpConfig = null;
-  if (box && !parsed.safeMode) {
-    mcpConfig = `${base}.mcp.json`;
-    atomicWrite(mcpConfig, JSON.stringify({ mcpServers: { entrust: { type: "stdio", command: process.execPath, args: [SERVER], timeout: SERVER_TIMEOUT_MS,
-      env: { ENTRUST_APPROVAL_DIR: box, ENTRUST_RUN_PID: String(process.pid), ENTRUST_RUN_STARTED_MS: String(startedAtMs),
-        ENTRUST_RUN_CWD: scope.cwd, ENTRUST_RUN_ROOTS: JSON.stringify(scope.roots) } } } }));
-  }
-
-  const args = claudeArgs(parsed, { kind: scope.kind, stateDir, sessionId: ctx.sessionId, mcpConfig });
-  const transcript = fs.openSync(ctx.transcriptPath, "wx", 0o600);
-  let child;
-  try { child = spawn("claude", args, { cwd: scope.cwd, env: childEnv(process.env), stdio: ["pipe", "pipe", "inherit"] }); }
-  catch (e) { return publish(verdict({ spawnError: e.message })); }
-
+  const refused = (error, exitCode = EXIT.USAGE) => publish({ exitCode, error, turnStatus: "failed" });
+  // A stop before claude starts ends the run there; one after it is SIGINT, which ends the turn with a result.
   const stop = (why) => {
-    if (ctx.stopped || child.exitCode !== null) return;
+    const child = ctx.child;
+    if (ctx.stopped || (child && child.exitCode !== null)) return;
     ctx.stopped = why;
+    if (!child) return;
     ctx.sentInt = true;
     child.kill("SIGINT");
     setTimeout(() => { if (child.exitCode === null) child.kill("SIGTERM"); }, STOP_GRACE_MS).unref();
     setTimeout(() => { if (child.exitCode === null) child.kill("SIGKILL"); }, STOP_GRACE_MS + KILL_GRACE_MS).unref();
   };
-  const timer = setTimeout(() => stop(`timed out after ${o.timeout} s`), o.timeout * 1000);
   for (const s of ["SIGTERM", "SIGINT", "SIGHUP"]) process.on(s, () => stop(`stopped by ${s}`));
 
-  const lines = readline.createInterface({ input: child.stdout });
-  lines.on("line", (line) => {
-    fs.writeSync(transcript, `${line}\n`);
-    let e;
-    try { e = JSON.parse(line); } catch { return; }
-    observe(ctx, e);
-  });
-  child.stdin.on("error", () => {});
-  child.stdin.end(parsed.task);
+  try {
+    const parsed = parsePrompt(text);
+    if (parsed.error) return refused(parsed.error, parsed.busy ? EXIT.BUSY : EXIT.USAGE);
+    ctx.parsed = parsed;
+    const stateDir = stateDirectory();
+    const box = o.approvalDir ? path.resolve(o.approvalDir) : null;
+    if (box && !within(canonical(box), canonical(stateDir))) return refused(`--approval-dir ${box} is outside the state directory ${stateDir}`);
+    ctx.box = box;
+    const scope = scopeOf(parsed, stateDir);
+    if (scope.error) return refused(scope.error);
+    ctx.scope = scope;
+    if (scope.kind === "worktree" && !scope.worktree) {
+      const wt = makeWorktree(scope.repo, stateDir, invocationId);
+      if (wt.error) return refused(wt.error);
+      Object.assign(scope, { cwd: wt.worktreePath, roots: [wt.worktreePath], worktree: { worktreePath: wt.worktreePath, worktreeRepo: wt.repo, worktreeBase: wt.base } });
+    }
+    if (ctx.stopped) return publish(verdict({ stopped: ctx.stopped }));
 
-  const [exitCode, signal, spawnError] = await new Promise((resolve) => {
-    let closed = false, exited = null;
-    const done = () => { if (closed && exited) resolve(exited); };
-    child.on("error", (e) => { closed = true; exited = [null, null, e.code === "ENOENT" ? "claude is not on PATH" : e.message]; done(); });
-    child.on("exit", (code, sig) => { exited = [code, sig, null]; done(); });
-    lines.on("close", () => { closed = true; done(); });
-  });
-  clearTimeout(timer);
-  fs.closeSync(transcript);
-  const denials = ctx.result?.permission_denials ?? [];
-  return publish(verdict({ result: ctx.result, stopped: ctx.stopped, spawnError, exitCode, signal, box, denials, hasMailbox: Boolean(mcpConfig) }));
+    let mcpConfig = null;
+    if (box && !parsed.safeMode) {
+      mcpConfig = `${base}.mcp.json`;
+      atomicWrite(mcpConfig, JSON.stringify({ mcpServers: { [SERVER_NAME]: { type: "stdio", command: process.execPath, args: [SERVER], timeout: SERVER_TIMEOUT_MS,
+        env: { ENTRUST_APPROVAL_DIR: box, ENTRUST_RUN_PID: String(process.pid), ENTRUST_RUN_STARTED_MS: String(startedAtMs),
+          ENTRUST_RUN_CWD: scope.cwd, ENTRUST_RUN_ROOTS: JSON.stringify(scope.roots) } } } }));
+    }
+
+    const args = claudeArgs(parsed, { kind: scope.kind, stateDir, box, sessionId: ctx.sessionId, mcpConfig });
+    ctx.transcriptPath = `${base}.transcript.jsonl`;
+    const transcript = fs.openSync(ctx.transcriptPath, "wx", 0o600);
+    const child = ctx.child = spawn("claude", args, { cwd: scope.cwd, env: childEnv(process.env), stdio: ["pipe", "pipe", "inherit"] });
+    const timer = setTimeout(() => stop(`timed out after ${o.timeout} s`), o.timeout * 1000);
+
+    const lines = readline.createInterface({ input: child.stdout });
+    lines.on("line", (line) => {
+      fs.writeSync(transcript, `${line}\n`);
+      let e;
+      try { e = JSON.parse(line); } catch { return; }
+      observe(ctx, e);
+    });
+    child.stdin.on("error", () => {});
+    child.stdin.end(parsed.task);
+
+    const [exitCode, signal, spawnError] = await new Promise((resolve) => {
+      let closed = false, exited = null;
+      const done = () => { if (closed && exited) resolve(exited); };
+      child.on("error", (e) => { closed = true; exited = [null, null, e.code === "ENOENT" ? "claude is not on PATH" : e.message]; done(); });
+      child.on("exit", (code, sig) => { exited = [code, sig, null]; done(); });
+      lines.on("close", () => { closed = true; done(); });
+    });
+    clearTimeout(timer);
+    fs.closeSync(transcript);
+    const denials = ctx.result?.permission_denials ?? [];
+    return publish(verdict({ result: ctx.result, stopped: ctx.stopped, spawnError, exitCode, signal, box, denials, hasMailbox: Boolean(mcpConfig) }));
+  } catch (e) {
+    return publish({ exitCode: EXIT.TRANSPORT, error: `the driver failed: ${e.message}`, turnStatus: "failed" });
+  }
 }
 
 // One stream event: the session's init, a tool call and its result, the run's result. A subagent's events
@@ -342,7 +366,7 @@ function buildReport(ctx, facts) {
     answer, answerJson, answerPath: ctx.answerPath,
     threadId: ctx.sessionId, sessionID: ctx.sessionId, turnId: null, invocationId: ctx.invocationId,
     model: init?.model ?? Object.keys(result?.modelUsage ?? {})[0] ?? null,
-    requestedModel: parsed.model, effort: parsed.effort,
+    requestedModel: parsed?.model ?? null, effort: parsed?.effort ?? null,
     claudeVersion: init?.claude_code_version ?? null,
     turnStatus: facts.turnStatus ?? null,
     receiptOk: result?.subtype === "success" && !result.is_error && answerJson !== null && !ctx.stopped,
@@ -357,19 +381,19 @@ function buildReport(ctx, facts) {
     outputSchemaOk: answerJson !== null,
     partial: Boolean(facts.partial),
     cancellation: ctx.stopped ? { reason: ctx.stopped, signal: ctx.sentInt ? "SIGINT" : null } : null,
-    cwd: scope.cwd ?? null,
-    rights: { kind: scope.kind, roots: scope.roots ?? [] },
-    resume: Boolean(parsed.resume), resumedFrom: parsed.resume?.report ?? null,
+    cwd: scope?.cwd ?? null,
+    rights: scope ? { kind: scope.kind, roots: scope.roots ?? [] } : null,
+    resume: Boolean(parsed?.resume), resumedFrom: parsed?.resume?.report ?? null,
     context: init ? { permissionMode: init.permissionMode ?? null, plugins: (init.plugins ?? []).map((p) => p.name),
       mcpServers: (init.mcp_servers ?? []).map((s) => ({ name: s.name, status: s.status })), memory: Boolean(init.memory_paths),
-      safeMode: parsed.safeMode } : null,
+      safeMode: parsed?.safeMode ?? null } : null,
     transcriptPath: ctx.transcriptPath,
     startedAt: new Date(ctx.startedAtMs).toISOString(),
     endedAt: new Date().toISOString(),
     turnError: facts.turnError ?? null,
     schemaOverflow: false,
     approvalsAutoAccepted: 0,
-    ...(scope.worktree ? worktreeFacts(scope.worktree) : {}),
+    ...(scope?.worktree ? worktreeFacts(scope.worktree) : {}),
   };
 }
 
@@ -386,16 +410,16 @@ async function main() {
   if (!file) { process.stderr.write(`driver: --prompt-file or --check-prompt-file is required\n${USAGE}`); process.exit(EXIT.USAGE); }
   let text;
   try { text = fs.readFileSync(file, "utf8"); } catch (e) { process.exit(refuse(`the prompt ${file} cannot be read: ${e.code ?? e.message}`)); }
-  const parsed = parsePrompt(text);
-  if (parsed.error) process.exit(parsed.busy && !o.check ? (refuse(parsed.error), EXIT.BUSY) : refuse(parsed.error));
   if (o.check) {
+    const parsed = parsePrompt(text);
+    if (parsed.error) process.exit(refuse(parsed.error));
     let state;
     try { state = stateDirectory(); } catch (e) { process.exit(refuse(e.message)); }
     const scope = scopeOf(parsed, state);
     process.exit(scope.error ? refuse(scope.error) : 0);
   }
   if (!o.report || !path.isAbsolute(o.report)) process.exit(refuse("--report-file must be an absolute path"));
-  process.exit(await run(o, parsed));
+  process.exit(await run(o, text));
 }
 
 const isEntry = (() => { try { return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url)); } catch { return false; } })();

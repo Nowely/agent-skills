@@ -17,7 +17,8 @@ forensics remain in the repository references and release notes.
   prompt reaches the mailbox through a stdio MCP server, `claude/scripts/approvals.mjs`, the mailbox's only
   writer: a plain Bash command comes back as a command request, any other call as `claude.permission` with the
   whole call to restate. The plan pins the model and the writes; a `write` directory may not overlap the state
-  directory, and no Edit or Write may reach a mailbox. The driver is 395 lines, measured against Claude Code
+  directory, and Edit deny rules keep every file tool, redirect and `tee` out of the mailboxes. A refusal at launch
+  is a published report, its reason on `ERROR=`. The driver is 426 lines, measured against Claude Code
   2.1.294 (research/2026-10-08-claude-adapter); `evals/claude.test.mjs` runs it on a fake `claude`, and
   `ENTRUST_LIVE_CLAUDE=1` runs one approval through the real one on Haiku. The advisor in a Codex host reaches
   Claude through it.

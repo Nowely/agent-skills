@@ -27,15 +27,15 @@ pins the model and the writes; the prompt must name the same.
 
 | `RIGHTS` | Working directory | Without asking | Tools |
 | --- | --- | --- | --- |
-| `read` | `dir`, else the caller's | reads, and the read-only commands | Read, Grep, Glob, Bash |
+| `read` | `dir`, else the caller's | reads inside it, and the read-only commands | Read, Grep, Glob, Bash |
 | `write` | `dir` | edits inside `dir` too | and Edit, Write |
 | `worktree` | a fresh detached worktree of `repo` under `<state>/worktrees/` | edits inside it | and Edit, Write |
 
 Everything else a run tries asks: a command outside the read-only set, a write outside its directory. The
 agent has no web tools and no Agent tool. It runs with the user's own configuration: their allow rules run
 without asking, their hooks and MCP servers are there, and the report's `context` says which. A `write`
-directory may not overlap `<state>`, and no Edit or Write may reach a mailbox; a Bash write there still
-asks, unless the user's own allow rules cover it.
+directory may not overlap `<state>`, and no file tool, redirect or `tee` may reach a mailbox; any other Bash
+write there (`cp`, `mv`, a script) still asks, unless the user's own allow rules cover it.
 
 ## The launch
 
@@ -65,10 +65,12 @@ launched without a mailbox (a swarm) and a `SAFE_MODE` run deny whatever would a
 
 Continue with `RESUME: <its report>` under a fresh report path, `<run>/<id>-<n>/report.json` for a planned agent.
 The continuation forks the session into one of its own, so two continuations of one report never share it, and
-it keeps the earlier run's directory and rights; a run still going is refused, exit 10.
+it keeps the earlier run's directory and rights; a run still going is refused, as `ERROR=` at `--new` and with
+exit 10 at launch.
 
 The report: `answerJson` the validated answer and `answerPath` its file; `sessionID`, `model`, `cost` (the
 CLI's estimate), `usage`; `commands`, `fileChanges`, `permissionDenials`, `escalations`; `transcriptPath`, the
-whole stream; a worktree's `worktreePath`, `base` and `diff`, the unstaged edits only. A stop or the time-out
+whole stream; a worktree's `worktreePath`, `base`, and `diff` against `base`, committed work included, with new
+files in `untracked`. A refusal at launch is a report too, its reason on `ERROR=`. A stop or the time-out
 ends the turn, `turnStatus: aborted` and exit 3. `node <skill-dir>/scripts/driver.mjs --help` lists the
 exit codes.

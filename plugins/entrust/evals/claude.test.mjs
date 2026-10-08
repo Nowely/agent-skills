@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { EVALS, ROOT, registry, runCases, skip, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
-import { childEnv, parsePrompt } from "../plugin/skills/claude/scripts/driver.mjs";
+import { childEnv, mailboxRules, parsePrompt } from "../plugin/skills/claude/scripts/driver.mjs";
 import { requestOf } from "../plugin/skills/claude/scripts/approvals.mjs";
 import { shortName, typedRequest } from "../plugin/skills/claude/scripts/launch.mjs";
 
@@ -80,14 +80,28 @@ test("a registered plan's model and writes are enforced offline", () => {
   assert.match(check(s, `RIGHTS: write ${s.work}\nMODEL: opus\nTASK: look\n`, pinned).stderr, /does not match the approved plan's read/);
 });
 
-test("RESUME of a run that has not finished is refused, and exit 10 at launch", async () => {
+test("RESUME of a run whose driver still runs is refused, exit 10 at launch; one whose driver died is refused as over", async () => {
   const s = setup();
-  const stub = path.join(s.state, "old", "report.json"); fs.mkdirSync(path.dirname(stub));
-  fs.writeFileSync(stub, JSON.stringify({ adapter: "claude", ok: false, status: "starting" }));
-  const text = `RIGHTS: read ${s.work}\nRESUME: ${stub}\nTASK: go on\n`;
-  assert.match(check(s, text).stderr, /has not finished/);
-  const r = await drive(s, text);
-  assert.equal(r.code, 10); assert.equal(r.json, null);
+  const stub = (pid) => {
+    const p = path.join(s.state, `old-${pid}`, "report.json"); fs.mkdirSync(path.dirname(p));
+    fs.writeFileSync(p, JSON.stringify({ adapter: "claude", ok: false, status: "starting", pid }));
+    return `RIGHTS: read ${s.work}\nRESUME: ${p}\nTASK: go on\n`;
+  };
+  const live = stub(process.pid);
+  assert.match(check(s, live).stderr, /has not finished/);
+  const r = await drive(s, live);
+  assert.equal(r.code, 10); assert.equal(r.json.exitCode, 10); assert.match(r.json.error, /has not finished/);
+  const dead = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
+  assert.match(check(s, stub(Number(dead.stdout))).stderr, /ended without a report/);
+});
+
+test("a refusal at launch is a published report, so --run prints its reason on ERROR=", async () => {
+  const s = setup();
+  const gone = tempDir("entrust-claude-vanishing-");
+  const h = await launched(s, `RIGHTS: read ${gone}\nTASK: look\n`, "ok");
+  fs.rmSync(gone, { recursive: true });
+  const end = await go(h);
+  assert.match(end.out, /^EXIT=2$/m); assert.match(end.out, /^ERROR=RIGHTS read .* is not an existing directory$/m);
 });
 
 // ------------------------------------------------------------------------------------------- the run
@@ -102,7 +116,8 @@ test("a read run: manual mode, read tools, the mailbox denied rules, no approval
   assert.equal(flagOf(argv, "--permission-mode"), "manual"); assert.equal(flagOf(argv, "--tools"), "Read,Grep,Glob,Bash");
   assert.equal(flagOf(argv, "--model"), "haiku"); assert.equal(flagOf(argv, "--effort"), "low");
   assert.equal(flagOf(argv, "--permission-prompts"), "none"); assert.equal(argv.includes("--mcp-config"), false);
-  assert.ok(argv.includes(`Edit(/${fs.realpathSync(s.state)}/**/approvals/**)`) && argv.includes(`Write(/${fs.realpathSync(s.state)}/**/approvals/**)`));
+  assert.ok(argv.includes(`Edit(/${fs.realpathSync(s.state)}/${path.basename(path.dirname(r.report))}/**/approvals/**)`), argv.join(" "));
+  assert.equal(argv.some((a) => /^Write\(/.test(a)), false);
   JSON.parse(flagOf(argv, "--json-schema"));
   const j = r.json;
   assert.equal(j.adapter, "claude"); assert.equal(j.exitCode, 0); assert.equal(j.ok, true);
@@ -113,6 +128,16 @@ test("a read run: manual mode, read tools, the mailbox denied rules, no approval
   assert.equal(JSON.parse(fs.readFileSync(j.answerPath, "utf8")).status, "done");
   assert.ok(fs.readFileSync(j.transcriptPath, "utf8").includes('"type":"result"'));
   for (const k of ["error", "turnError", "schemaOverflow", "approvalsAutoAccepted"]) assert.ok(k in j, k);
+});
+
+test("the mailbox rules cover this run's mailbox and every one under the state directory but the worktrees", () => {
+  const state = tempDir("entrust-claude-rules-"), real = fs.realpathSync(state);
+  for (const d of ["worktrees/inv_1/src/approvals", "orchestrate/p/run/a/agent/approvals"]) fs.mkdirSync(path.join(state, d), { recursive: true });
+  const box = path.join(state, "orchestrate/p/run/a/agent/approvals");
+  const rules = mailboxRules(state, box);
+  assert.ok(rules.includes(`Edit(/${box}/**)`)); assert.ok(rules.includes(`Edit(/${real}/orchestrate/**/approvals/**)`));
+  assert.equal(rules.some((r) => r.includes("worktrees") || r === `Edit(/${real}/**/approvals/**)`), false, rules.join(" "));
+  assert.equal(rules.every((r) => r.startsWith("Edit(//")), true);
 });
 
 test("the session variables of a parent Claude Code session are not handed on, the rest are", async () => {
