@@ -6,7 +6,7 @@ description: >-
   proposals to improve the skill.
 disable-model-invocation: true
 metadata:
-  version: "0.25.1"
+  version: "0.26.0"
 license: MIT
 ---
 

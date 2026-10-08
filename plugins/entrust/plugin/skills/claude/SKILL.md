@@ -5,7 +5,7 @@ description: >-
   headless agents, Workflow and the foreman's launch. Use in Claude Code when entrust's orchestrate,
   swarm, advisor or prepare-feedback plans Claude subagents.
 metadata:
-  version: "0.25.1"
+  version: "0.26.0"
 license: MIT
 ---
 
