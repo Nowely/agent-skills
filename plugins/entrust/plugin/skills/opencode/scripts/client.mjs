@@ -1,10 +1,10 @@
-import { connection, sleep } from "./config.mjs";
+import { sleep } from "./config.mjs";
 
 export class ApiError extends Error {
   constructor(message, status = null) { super(message); this.status = status; }
 }
 export class Client {
-  constructor({ config = connection(), cwd = null, timeoutMs = 20000 } = {}) {
+  constructor({ config, cwd = null, timeoutMs = 20000 }) {
     this.config = config; this.cwd = cwd; this.timeoutMs = timeoutMs;
   }
   headers() {
@@ -40,10 +40,8 @@ export class Client {
     if (health?.healthy !== true || typeof health.version !== "string") throw new ApiError("endpoint is not a healthy OpenCode server");
     const doc = await this.call("GET", "/doc");
     const paths = doc?.paths ?? {};
-    return { url: this.config.url, version: health.version, paths, schemas: doc?.components?.schemas ?? {},
-      legacy: Boolean(paths["/session/{sessionID}/prompt_async"]?.post),
-      v2: Boolean(paths["/api/session/{sessionID}/prompt"]?.post),
-      strictSteer: false };
+    return { url: this.config.url, version: health.version, paths,
+      legacy: Boolean(paths["/session/{sessionID}/prompt_async"]?.post) };
   }
   async model(ref) {
     const catalogue = await (this.catalogue ??= this.call("GET", "/provider"));
@@ -51,7 +49,7 @@ export class Client {
     const m = p?.models?.[ref.modelID];
     if (!m || !Array.isArray(catalogue.connected) || !catalogue.connected.includes(ref.providerID))
       throw new ApiError(`model ${ref.providerID}/${ref.modelID} is unavailable; no substitute selected`);
-    return { ...ref, name: m.name ?? ref.modelID, variants: Object.keys(m.variants ?? {}), capabilities: m.capabilities ?? {} };
+    return { ...ref, variants: Object.keys(m.variants ?? {}) };
   }
   async events(onEvent, signal, { route = "/event", mapEvent = (e) => e } = {}) {
     while (!signal.aborted) {

@@ -11,11 +11,10 @@ metadata:
 license: MIT
 ---
 
-Resolve `<skill-dir>` to this installed directory. By default, the adapter starts a private loopback
-server with the installed `opencode` CLI for each worker and stops it when that worker finishes. It
-uses the user's existing OpenCode configuration and credentials; no server URL or connection file is
-needed. Every worker gets its own session. Continuing a worker reuses that session under a fresh report
-path. Set `ENTRUST_OPENCODE_URL` or `ENTRUST_OPENCODE_CONNECTION` only when attaching to a remote server.
+Resolve `<skill-dir>` to this installed directory. The adapter starts a private loopback server with the
+installed `opencode` CLI for each worker and stops it when that worker finishes. It uses the user's
+existing OpenCode configuration and credentials; there is no server to configure. Every worker gets its
+own session. Continuing a worker reuses that session under a fresh report path.
 
 ## Route named models
 
@@ -34,15 +33,8 @@ rule. A model mentioned only for information or discussion does not request a wo
 ## Select and launch
 
 1. Run `node <skill-dir>/scripts/status.mjs`. Status is passive: it reads at most two saved recent
-   model references and checks only an already-configured remote endpoint; it never starts a server or
-   requests a model catalogue. A default local setup reports `local_unprobed` and retains its saved
-   recent references; whether a local server is already running remains unknown. Model availability remains unknown until the launch path
-   validates the exact selection. To attach to a remote server, set
-   `ENTRUST_OPENCODE_URL` (and `OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD` if needed), or
-   point `ENTRUST_OPENCODE_CONNECTION` at a private JSON file containing `url`, `username`, and
-   `password`. Keep credentials out of prompts and reports. For native V2 use
-   `--api-family v2 --directory <cwd> --agent <profile>` to check that location and the named profile;
-   V2 requires that profile in the user's OpenCode configuration.
+   model references and reports `local_unprobed`; it never starts a server or requests a model
+   catalogue. Model availability remains unknown until the launch path validates the exact selection.
 2. Choose `MODEL: inherit` only when the user did not name a model family: it selects the first recent
    model. When the user names a family such as DeepSeek or GLM, use a matching recent reference if
    present; never use `inherit` or a different recent model for that request. If no matching recent
@@ -56,11 +48,7 @@ rule. A model mentioned only for information or discussion does not request a wo
    [shared call page](../orchestrate/references/external.md) says; without a plan, `--new` takes
    `--adapter opencode`. The prompt carries `MODEL: <resolved provider/model>`.
 
-   New invocations default to the V1 compatibility path and start a private loopback server on the
-   first run call. Select native V2 explicitly with
-   `API_FAMILY: v2` and `AGENT: <verified native profile>` after `RIGHTS:`. V2 must expose the exact
-   model through a supported native SDK; there is no transport or API-family fallback.
-   A continuation inherits its recorded family and agent when those headers are absent.
+   Each invocation starts a private loopback server on its first run call.
 
 5. The proxy, one per external session, reused for its continuations, is the shared page's: in Claude
    Code the `entrust:proxy` agent; in Codex a native subagent on Luna at `medium` effort with a fresh
@@ -80,22 +68,14 @@ Read the report even when the exit is nonzero:
 partial answers, native command outcomes and callback decisions remain useful evidence.
 `receiptOk` establishes attribution, while independent gates establish the result.
 The report's `model` is observed attribution; `requestedModel` preserves the selection even after Stop.
-V2 also records the native profile's permission hash and refuses a changed profile on continuation.
-
-For V2, use a dedicated primary/all agent whose first native rule is
-`{"action":"*","resource":"*","effect":"deny"}`. Subsequent rules may ask for the shipped
-`read`, `glob`, `grep`, `bash`, `edit`, `write`, `apply_patch`, `todowrite` and `question` actions at
-resource `*`; only `question` may be allowed. The adapter verifies the returned effective rules.
-The pinned session-create handler ignores its advertised `permissions` field: rules must belong
-to the native agent. Scope declarations do not configure a sandbox. Custom/MCP tools and native
-task delegation are outside this V2 profile; the host launches independent workers for fan-out.
+Scope declarations do not configure a sandbox.
 
 Stop the attached watcher or signal the adapter driver identified by that invocation's pid line.
-The driver aborts its own sessions and records cancellation; the singleton stays running. In ordinary
+The driver aborts its own sessions, records cancellation and stops its server. In ordinary
 `--run` mode, a waiting hand-back leaves no wrapper call in flight: rerun it to regain Stop. The
 coordinator cleans up an interrupted proxy whose watcher did not stop. Verify the external outcome;
 a missing report or uncertain cancellation is unknown, never success.
 
 Read [parity.md](references/parity.md) before relying on active clarification, schema delivery,
 attachments, tool selection or billing. API presence alone is not evidence of working execution.
-The V2 pilot's record (native API probes and adapter acceptance) is in the repository's research, not in the plugin.
+The adapter speaks OpenCode's V1 API only; the V2 pilot and the retired V2 path are in the repository's research.

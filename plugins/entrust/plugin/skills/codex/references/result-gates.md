@@ -1,4 +1,4 @@
-# How the result gates can be fooled, and what `--verify` measures
+# How the result gates can be fooled, and how to check the end state
 
 <!-- Extracted from SKILL.md: depth a caller does not need while deciding what to run.
      Read it when the pointer in SKILL.md sends you here. -->
@@ -34,12 +34,13 @@ is in the report: `commandsFailed`, `commandsDeclined`, `commandsBlocked`, `comm
 `fileChangesFailed`, `commandsPipedToPager`. `commandsDeclined` counts commands an approval refusal
 stopped before they ran, `commandsFailed` commands that ran and failed, and `escalations` the refused
 approval requests themselves, so the first and the third can differ.
-Read them before acting on the answer, and where an end state can be measured
-declare `--verify`, which asserts something rather than merely declining to assert its opposite.
+Read them before acting on the answer, and where an end state can be measured, check it yourself
+([below](#checking-the-end-state)): a check asserts something rather than merely declining to assert its
+opposite.
 
-`--expect-command` still decides exit 5 and `--verify` decides 9 or 12. Exit code 11 is retired, not
-free: it named a failed-command verdict, and a caller that recorded that meaning should not meet it
-again under another one.
+`--expect-command` still decides exit 5. Exit codes 9, 11 and 12 are retired, not free: they named a
+failed-command verdict and the two outcomes of a verifier the driver no longer runs, and a caller that
+recorded those meanings should not meet them again under another one.
 
 ### Unknown command verdicts
 
@@ -47,40 +48,11 @@ A command that reached the client without an exit code and was neither failed no
 unknown outcome. It is `commandsBlocked` in the report and no exit code of its own: only a declared gate
 turns it into a verdict.
 
-## What `--verify` can and cannot measure
+## Checking the end state
 
-The verifier runs under `/bin/sh` in its own process group, with the coordinator's own rights, env and
-network whatever the agent's egress was. It gets the cap `--help` states for `--verify` unless a
-`--timeout` you set leaves less (`verify.budgetMs`); at the deadline the group is killed with `SIGKILL` and
-`verify.timedOut` says so. Output streams while a bounded tail is retained, so a verifier that prints
-hundreds of megabytes and exits 0 passes. `--verify-sandboxed` runs it through `codex sandbox` under the
-read profile: the tree is readable, `$TMPDIR` is writable, a tree-writing verifier fails, and it reaches
-the network exactly as the agent did — an agent that was denied egress cannot have its work vouched for by
-a verifier that fetches. `verify.sandboxed` records the mode.
-
-`verify.measured` splits "your verifier broke" from "the work is not there", because those call for
-opposite responses — one means fix the check, the other means redo the work. It is decided by the observed
-exit status, not by whether anything went wrong around it:
-
-The rows are read in order; the first that matches decides.
-
-| observed | meaning | exit |
-| --- | --- | --- |
-| `127` / `126` | **not measured.** The shell never ran the command — a typo, or a tool missing from the *driver's* `PATH`, which a launchd or hook context routinely lacks | **12** |
-| no status at all | **not measured.** Killed at the deadline or the spawn itself failed | **12** |
-| any other status, zero or not | **measured.** The check ran and gave its verdict | `0` passes, else **9** |
-
-A fourth state is not in the table because it produces no exit status to observe: with less than the admission
-floor (`ENTRUST_VERIFY_FLOOR_MS`, default under `--help-all`) of a `--timeout` you set left when the
-turn ends, the check is not run at all. That is
-`verifySkipped: "budget-exhausted"` with `verify: null`, and it is **also exit 12** — a check that was
-declared and not measured is the same instruction to the caller however it came about. It used to fall
-through to the weaker gates and reach exit 0, which is the one shape `--verify` exists to prevent.
-
-The other `verifySkipped` values are not exit 12, because the ladder has already spoken: a budget cut is
-exit 3, and a turn that did not complete is exit 2 when the server rejected the request as invalid and
-exit 1 otherwise. Running a check against a half-written tree would only add a misleading verdict.
-
-A verifier that exits `0` while a background process still holds its stdout is a **pass**: the deadline
-fires on the pipe, but the exit status was observed and is proof. Keep verifiers cheap and quiet anyway —
-`test -f`, `grep -q`, a targeted test project.
+The driver runs no check of its own after the turn: a check that ships in a write agent's tree runs code
+the agent wrote, with your rights and outside the host's own checks, and the one call could not pass one
+anyway. Check the work yourself after reading the report, the way you run any command on it: keep the
+check cheap and quiet (`test -f`, `grep -q`, a targeted test project), prefer one that executes nothing
+the agent just wrote (`npm test` runs the agent's own `package.json` script), and judge it by its exit
+status, not by its output alone.

@@ -29,14 +29,11 @@ If a requested family cannot be resolved from recent references, report the gap 
 model silently.
 The saved backend and plan model follow the detached keeper; mutable defaults cannot reroute it.
 Amend the approved plan before adding a worker or changing its model or write scope.
-Each prepared V2 prompt adds `API_FAMILY: v2` and `AGENT: <verified native profile>`; the resulting
-session/report binds both. Continuations inherit them, and a changed API family or profile is refused.
 
 Every invocation has `<run>/<id>/report.json`; a continuation has `<run>/<id>-2/report.json`, then
 `-3`, and waits until its predecessor ended. One session can have several invocations, each with a
-new report. Each concurrent worker has a different session. Local workers start private loopback
-servers; workers explicitly attached to one remote endpoint share that server. A server is not a
-concurrency slot.
+new report. Each concurrent worker has a different session and starts its own private loopback
+server. A server is not a concurrency slot.
 
 Return [five fields](../../orchestrate/schemas/five-fields.schema.json) through `OUTPUT_SCHEMA:`. The
 driver validates them locally and allows one corrective turn. Give a fresh verifier the requirements

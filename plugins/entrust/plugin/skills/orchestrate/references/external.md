@@ -233,6 +233,9 @@ Silence and the wall clock stand still while a request waits for you. A cut is e
   the `diff` inline and the `untracked` files.
 - `EXPECT:`, a pattern a successful command's output must match, exists for Codex and OpenCode.
 - Egress: a Codex agent reaches the network unless `NETWORK: no`; OpenCode asks; a Claude agent has no web tools.
+- The user's MCP servers: a Codex agent runs in an isolated Codex home and has none of them, and no prompt line
+  opens them; a Claude agent has the user's, unless `SAFE_MODE: yes`; an OpenCode agent has its user's OpenCode
+  configuration and asks before any tool but its file reads.
 - Write lock: a Codex write agent refuses a directory another Codex writer holds (exit 10); under a plan, give each
   writer its own directory or worktree.
 

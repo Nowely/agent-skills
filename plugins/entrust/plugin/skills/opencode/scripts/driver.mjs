@@ -1,21 +1,18 @@
 #!/usr/bin/env node
-// Run one invocation against a private local OpenCode server or an explicitly selected remote server.
+// Run one invocation against a private local OpenCode server the driver starts and stops.
 //
 //   node driver.mjs --check-prompt-file FILE
 //   node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS]
-//                   [--timeout seconds] [--idle-timeout seconds] [--max-commands N]
-//                   [--verify COMMAND] [--help]
+//                   [--timeout seconds] [--idle-timeout seconds] [--max-commands N] [--help]
 //
-// API selection is explicit and inherited on resume. Native wait is not used; history and active
-// state establish completion. Neither execution family provides verified generation-bound steer.
+// Native wait is not used; history and active state establish completion. There is no steer: a coordinator
+// continues an agent with RESUME after its turn.
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client } from "./client.mjs";
-import { V2Client } from "./v2-client.mjs";
-import { connection, recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
+import { recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
 import { startLocalServer } from "./local-server.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { git, makeWorktree, passwdHome, rightsScope, scopeWithin, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
@@ -30,7 +27,6 @@ const DEFAULT_IDLE_S = 600;
 // The volume bound every adapter has, as Codex's 1,000 commands.
 const DEFAULT_MAX_COMMANDS = 1000;
 const APPROVAL_DEADLINE_MS = 30 * 60 * 1000;
-const VERIFY_TIMEOUT_MS = 300000;
 const CLAIM_POLLS = 6;
 const SIGNALS = ["SIGTERM", "SIGINT", "SIGHUP"];
 
@@ -41,12 +37,11 @@ const USAGE = `driver — run one OpenCode invocation for the shared entrust lau
       "entrust: refused: <reason>" on stderr, exactly. No server is contacted.
   node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS]
                   [--timeout seconds] [--idle-timeout seconds] [--max-commands N]
-                  [--verify COMMAND]
-      Start a private local server or attach to the pinned remote server, run one selected invocation and publish
+      Start a private local server, run one selected invocation and publish
       the report JSON to stdout and exclusively to the report path. No overwrite.
       --timeout is the wall clock (default ${DEFAULT_TIMEOUT_S}s), --idle-timeout the no-progress
       clock (default ${DEFAULT_IDLE_S}s), --max-commands a cap on executed bash commands
-      (default 0, unlimited), --verify an independent command run after the turn.
+      (default ${DEFAULT_MAX_COMMANDS}, 0 unlimited).
   node driver.mjs --help
 `;
 
@@ -56,19 +51,12 @@ const USAGE = `driver — run one OpenCode invocation for the shared entrust lau
 const read = (p) => { try { return fs.readFileSync(p, "utf8"); } catch { return null; } };
 const now = () => Date.now();
 const isRegularFile = (p) => { try { return fs.statSync(p).isFile(); } catch { return false; } };
-const firstLine = (s, n = 300) => String(s ?? "").split("\n")[0].slice(0, n);
 
-function fillRoute(tpl, params) {
-  return tpl.replace(/\{([^}]+)\}/g, (_, k) => {
-    if (params[k] !== undefined) return encodeURIComponent(params[k]);
-    if (/session/i.test(k)) return encodeURIComponent(params.sessionID);
-    return encodeURIComponent(params.requestID);
-  });
-}
+const fillRoute = (tpl, params) => tpl.replace(/\{([^}]+)\}/g, (_, k) => encodeURIComponent(params[k]));
 
 function parseArgs(argv) {
   const o = {
-    check: null, prompt: null, report: null, approvalDir: null, verify: null,
+    check: null, prompt: null, report: null, approvalDir: null,
     timeout: DEFAULT_TIMEOUT_S, idle: DEFAULT_IDLE_S, maxCommands: DEFAULT_MAX_COMMANDS, help: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -78,7 +66,6 @@ function parseArgs(argv) {
     else if (a === "--prompt-file") o.prompt = argv[++i];
     else if (a === "--report-file") o.report = argv[++i];
     else if (a === "--approval-dir") o.approvalDir = argv[++i];
-    else if (a === "--verify") o.verify = argv[++i];
     else if (a === "--timeout") o.timeout = Number(argv[++i]);
     else if (a === "--idle-timeout") o.idle = Number(argv[++i]);
     else if (a === "--max-commands") o.maxCommands = Number(argv[++i]);
@@ -94,23 +81,8 @@ function refuse(reason) {
   return EXIT.USAGE;
 }
 
-// Keep execution families separate, including their callback acknowledgement contracts.
-function resolveRoutes(family = "v1") {
-  if (family === "v2") return {
-    create: "/api/session",
-    permissionList: "/api/permission/request",
-    permissionReply: "/api/session/{sessionID}/permission/{requestID}/reply",
-    questionList: "/api/question/request",
-    questionReply: "/api/session/{sessionID}/question/{requestID}/reply",
-    questionReject: "/api/session/{sessionID}/question/{requestID}/reject",
-    children: "/api/session?parentID={sessionID}",
-    abort: "/api/session/{sessionID}/interrupt",
-    prompt: "/api/session/{sessionID}/prompt",
-    messages: "/api/session/{sessionID}/message",
-    status: "/api/session/active",
-    sessionGet: "/api/session/{sessionID}",
-  };
-  return {
+// The V1 routes this driver uses, and the callback acknowledgement each answers with.
+const ROUTES = Object.freeze({
     create: "/session",
     permissionList: "/permission",
     permissionReply: "/permission/{requestID}/reply",
@@ -123,25 +95,20 @@ function resolveRoutes(family = "v1") {
     messages: "/session/{sessionID}/message",
     status: "/session/status",
     sessionGet: "/session/{sessionID}",
-  };
-}
+});
 
 function routeError(ctx) {
   const r = ctx.routes;
   const required = [[r.create, "post"], [r.prompt, "post"], [r.messages, "get"], [r.sessionGet, "get"],
     [r.status, "get"], [r.abort, "post"], [r.children.split("?")[0], "get"], [r.permissionList, "get"],
     [r.permissionReply, "post"], [r.questionList, "get"], [r.questionReply, "post"], [r.questionReject, "post"]];
-  if (ctx.apiFamily === "v2") required.push(["/api/model", "get"], ["/api/agent", "get"],
-    ["/api/session/{sessionID}/history", "get"], ["/api/session/{sessionID}/model", "post"],
-    ["/api/session/{sessionID}/permission", "get"], ["/api/session/{sessionID}/question", "get"]);
   return required.some(([route, method]) => !ctx.server.paths[route]?.[method])
-    ? `server does not advertise the required ${ctx.apiFamily.toUpperCase()} interaction routes; no API fallback selected` : null;
+    ? "server does not advertise the required V1 interaction routes" : null;
 }
 
 async function listOrEmpty(client, route) {
   const r = await client.call("GET", route);
   if (Array.isArray(r)) return r;
-  if (Array.isArray(r?.data)) return r.data;
   throw new Error(`${route}: expected a native request or message array`);
 }
 
@@ -294,7 +261,7 @@ async function respond(ctx, type, requestID, kind, body, sessionID = ctx.session
   const url = fillRoute(route, { sessionID, requestID });
   try {
     const result = await ctx.client.call("POST", url, body);
-    return { outcome: (ctx.apiFamily === "v2" ? result === null : result === true) ? "applied" : "unknown" };
+    return { outcome: result === true ? "applied" : "unknown" };
   } catch (e) {
     return { outcome: e.status == null || e.status >= 500 ? "unknown" : "failed", error: e.message, status: e.status ?? null };
   }
@@ -575,8 +542,6 @@ function promptText(task, schema, brief) {
 }
 
 async function postPrompt(ctx, messageID, text) {
-  if (ctx.apiFamily === "v2") return ctx.client.call("POST", fillRoute(ctx.routes.prompt, { sessionID: ctx.sessionID }),
-    { id: messageID, prompt: { text }, delivery: "queue" });
   const body = { messageID, model: { providerID: ctx.ref.providerID, modelID: ctx.ref.modelID }, parts: [{ type: "text", text }] };
   if (ctx.variant) body.variant = ctx.variant;
   return ctx.client.call("POST", fillRoute(ctx.routes.prompt, { sessionID: ctx.sessionID }), body);
@@ -601,14 +566,11 @@ async function postAndReconcile(ctx, messageID, text) {
 }
 
 async function admitOnce(ctx, messageID, text) {
-  atomicJson(ctx.runtimePath, { invocationId: ctx.invocationId, sessionID: ctx.sessionID, inputId: messageID, model: modelKey(ctx.ref), admission: "pending", at: new Date(now()).toISOString() });
   try {
     await postPrompt(ctx, messageID, text);
-    atomicJson(ctx.runtimePath, { invocationId: ctx.invocationId, sessionID: ctx.sessionID, inputId: messageID, model: modelKey(ctx.ref), admission: "admitted", at: new Date(now()).toISOString() });
     return { admitted: true };
   } catch (e) {
     if (e.status != null && e.status < 500) {
-      atomicJson(ctx.runtimePath, { invocationId: ctx.invocationId, sessionID: ctx.sessionID, inputId: messageID, model: modelKey(ctx.ref), admission: "rejected", error: e.message, at: new Date(now()).toISOString() });
       return { admitted: false, rejected: true, error: e.message, status: e.status };
     }
     for (let i = 0; i < CLAIM_POLLS; i++) {
@@ -616,12 +578,10 @@ async function admitOnce(ctx, messageID, text) {
       try {
         await updateOwned(ctx);
         await refresh(ctx);
-        if (ctx.apiFamily === "v2" ? await ctx.client.admitted(ctx.sessionID, messageID, text)
-          : ctx.messages.some((m) => m.info?.id === messageID || m.info?.parentID === messageID))
-          { atomicJson(ctx.runtimePath, { invocationId: ctx.invocationId, sessionID: ctx.sessionID, inputId: messageID, model: modelKey(ctx.ref), admission: "admitted", at: new Date(now()).toISOString() }); return { admitted: true }; }
+        if (ctx.messages.some((m) => m.info?.id === messageID || m.info?.parentID === messageID))
+          return { admitted: true };
       } catch {}
     }
-    atomicJson(ctx.runtimePath, { invocationId: ctx.invocationId, sessionID: ctx.sessionID, inputId: messageID, model: modelKey(ctx.ref), admission: "unknown", at: new Date(now()).toISOString() });
     return { admitted: false, unknown: true };
   }
 }
@@ -633,7 +593,7 @@ async function abortSessions(ctx) {
   for (const sid of targets) {
     try {
       const accepted = await ctx.client.call("POST", fillRoute(ctx.routes.abort, { sessionID: sid }), undefined);
-      results.push({ sessionID: sid, ok: ctx.apiFamily === "v2" ? accepted === null : accepted === true, accepted });
+      results.push({ sessionID: sid, ok: accepted === true, accepted });
     } catch (e) { results.push({ sessionID: sid, ok: false, error: e.message, status: e.status ?? null }); }
   }
   return results;
@@ -720,37 +680,23 @@ const sessionRecordPath = (ctx, sid) => path.join(ctx.stateDir, "opencode-sessio
 
 function writeSessionRecord(ctx, extra = {}) {
   atomicJson(sessionRecordPath(ctx, ctx.sessionID), {
-    adapter: "opencode", sessionID: ctx.sessionID, serverMode: ctx.serverMode, serverUrl: ctx.server.url, cwd: ctx.cwd,
+    adapter: "opencode", sessionID: ctx.sessionID, serverMode: "local", cwd: ctx.cwd,
     model: ctx.ref ? modelKey(ctx.ref) : null, rights: ctx.scope, invocationId: ctx.invocationId,
-    variant: ctx.variant ?? null, apiFamily: ctx.apiFamily, agent: ctx.agent ?? null, profileHash: ctx.profileHash ?? null,
+    variant: ctx.variant ?? null,
     worktreePath: ctx.worktreePath ?? null, worktreeRepo: ctx.worktreeRepo ?? null,
     worktreeBase: ctx.worktreeBase ?? null,
     cancellation: null, at: new Date(now()).toISOString(), ...extra,
   });
 }
 
-function clientFor(ctx, cwd) {
-  const client = new (ctx.apiFamily === "v2" ? V2Client : Client)({ config: ctx.config, cwd });
-  if (ctx.apiFamily === "v2") client.ownedSessions = () => ctx.invocationSessions ?? new Set(ctx.sessionID ? [ctx.sessionID] : []);
-  return client;
-}
+const clientFor = (ctx, cwd) => new Client({ config: ctx.config, cwd });
 
 function applyPrior(ctx, prior) {
-  const family = prior.apiFamily ?? "v1";
-  if (!["v1", "v2"].includes(family) || (ctx.parsed.apiFamily && ctx.parsed.apiFamily !== family))
-    return "the resume would change the recorded API family";
-  ctx.apiFamily = family;
-  ctx.agent = ctx.parsed.agent ?? prior.agent ?? null;
-  if (ctx.parsed.agent && ctx.parsed.agent !== prior.agent) return "the resume would change the recorded native agent";
-  ctx.priorProfileHash = prior.profileHash ?? null;
+  // An earlier release could run a session through the V2 API, which this driver no longer speaks.
+  if ((prior.apiFamily ?? "v1") !== "v1") return "the record is a V2 session, which this adapter no longer runs";
   ctx.client = clientFor(ctx, ctx.cwd);
-  ctx.routes = resolveRoutes(family);
-  const priorMode = prior.serverMode ?? "remote";
-  if (priorMode !== ctx.serverMode) return "the record belongs to another server mode";
-  if (priorMode !== "local" && (prior.serverUrl ?? prior.server?.url)) {
-    const url = prior.serverUrl ?? prior.server.url;
-    if (url !== ctx.server.url) return "the record belongs to another server";
-  }
+  // An earlier release could attach to a remote server; a session there is not in the local server's store.
+  if ((prior.serverMode ?? "remote") !== "local") return "the record belongs to a remote server, which this adapter no longer attaches to";
   if (ctx.scope?.kind === "worktree") {
     const root = prior.worktreePath;
     if (prior.rights?.kind !== "worktree" || prior.worktreeRepo !== ctx.worktreeRepo || !root
@@ -802,7 +748,6 @@ async function resolveResume(ctx) {
   try { session = await ctx.client.call("GET", fillRoute(ctx.routes.sessionGet, { sessionID })); }
   catch (e) { return { error: `RESUME session ${sessionID} is not reachable: ${e.message}` }; }
   if (!session?.id) return { error: `RESUME session ${sessionID} does not exist` };
-  if (ctx.apiFamily === "v2") ctx.resumedSession = session;
   let status;
   try { status = await ctx.client.call("GET", ctx.routes.status); }
   catch (e) { return { error: `RESUME session ${sessionID}: status is unknown (${e.message}); the session is not safely resumable` }; }
@@ -818,10 +763,6 @@ async function resolveResume(ctx) {
 function buildReport(ctx, base) {
   return {
     adapter: "opencode",
-    apiFamily: ctx.apiFamily ?? "v1",
-    agent: ctx.agent ?? null,
-    profileHash: ctx.profileHash ?? null,
-    strictSteer: false,
     ok: base.exitCode === EXIT.SUCCESS,
     exitCode: base.exitCode,
     error: base.error ?? null,
@@ -832,7 +773,6 @@ function buildReport(ctx, base) {
     sessionID: ctx.sessionID ?? null,
     turnId: ctx.rootInputID ?? null,
     turnIds: [...(ctx.invocationInputs ?? [])],
-    invocationId: ctx.invocationId,
     server: { url: ctx.server?.url ?? null, version: ctx.server?.version ?? null },
     model: base.model ?? null,
     requestedModel: ctx.ref ? modelKey(ctx.ref) : null,
@@ -844,7 +784,6 @@ function buildReport(ctx, base) {
     fileChanges: base.fileChanges ?? [],
     usage: base.usage ?? null,
     cost: base.cost ?? null,
-    costSource: "opencode_estimate",
     childUsage: base.childUsage ?? null,
     transcriptPath: ctx.transcriptPath ?? null,
     escalations: ctx.escalations ?? [],
@@ -853,18 +792,14 @@ function buildReport(ctx, base) {
     partial: Boolean(base.partial),
     cancellation: base.cancellation ?? ctx.cancellation ?? null,
     cwd: ctx.cwd ?? null,
-    serverMode: ctx.serverMode ?? "remote",
+    serverMode: "local",
     rights: ctx.scope ? { kind: ctx.scope.kind, roots: ctx.scope.roots ?? [] } : null,
     resume: Boolean(ctx.resume),
     admission: base.admission ?? ctx.admission ?? null,
-    runtimePath: ctx.runtimePath ?? null,
-    verify: base.verify ?? null,
+    correction: base.correction ?? null,
     startedAt: new Date(ctx.startedAtMs).toISOString(),
     endedAt: new Date(now()).toISOString(),
-    // Fields the shared launcher reads directly.
     turnError: base.turnError ?? null,
-    schemaOverflow: base.schemaOverflow ?? false,
-    approvalsAutoAccepted: base.approvalsAutoAccepted ?? 0,
     approvalsAutoDeclined: ctx.autoDeclined ?? 0,
     ...worktreeFacts(ctx),
   };
@@ -898,7 +833,6 @@ async function cleanup(ctx, abortExecution) {
 async function execute(opts, parsed) {
   const ctx = {
     opts, parsed,
-    apiFamily: parsed.apiFamily ?? "v1", agent: parsed.agent ?? null,
     invocationId: id("inv"),
     startedAtMs: now(),
     timeoutMs: opts.timeout * 1000,
@@ -930,23 +864,16 @@ async function execute(opts, parsed) {
   }
 
   try {
-  ctx.runtimePath = sidecar(ctx, "runtime.json");
   ctx.transcriptPath = sidecar(ctx, "transcript.json");
 
-  try { ctx.config = connection(); } catch (e) { return fail(ctx, e.message, EXIT.USAGE); }
   try {
-    if (ctx.config.local) {
-      ctx.serverMode = "local";
-      ctx.localServer = await startLocalServer({ cwd: process.cwd() });
-      ctx.config = ctx.localServer.config;
-    } else ctx.serverMode = "remote";
+    ctx.localServer = await startLocalServer({ cwd: process.cwd() });
+    ctx.config = ctx.localServer.config;
     ctx.client = clientFor(ctx, null); ctx.server = await ctx.client.probe();
-  } catch (e) { return fail(ctx, `the OpenCode server could not be started or reached: ${e.message}`, EXIT.TRANSPORT); }
-  ctx.routes = resolveRoutes(ctx.apiFamily);
-  if (parsed.resume === undefined) {
-    const missing = routeError(ctx);
-    if (missing) return fail(ctx, missing, EXIT.USAGE);
-  }
+  } catch (e) { return fail(ctx, `the OpenCode server could not be started: ${e.message}`, EXIT.TRANSPORT); }
+  ctx.routes = ROUTES;
+  const missing = routeError(ctx);
+  if (missing) return fail(ctx, missing, EXIT.USAGE);
 
   // A continuation with no RIGHTS line keeps the rights its report recorded.
   if (!parsed.rights) {
@@ -976,8 +903,6 @@ async function execute(opts, parsed) {
   const resumed = await resolveResume(ctx);
   if (resumed.busy) return fail(ctx, `session ${resumed.sessionID} is busy; a live invocation is not relaunched`, EXIT.BUSY);
   if (resumed.error) return fail(ctx, resumed.error, EXIT.USAGE);
-  const missing = routeError(ctx);
-  if (missing) return fail(ctx, missing, EXIT.USAGE);
   // The session keeps the permission rules it was created with, so a continuation keeps its rights: a resume
   // that names others would report them while the server enforces the old ones.
   if (ctx.resume && ctx.priorRights) {
@@ -989,52 +914,17 @@ async function execute(opts, parsed) {
   // Model: pinned by the plan, inherited by a resume, else the first recent model. No fallback.
   const model = await resolveModel(ctx);
   if (model.error) return fail(ctx, model.error, EXIT.USAGE);
-  ctx.ref = model.ref; ctx.variant = model.variant; ctx.modelInfo = model.info;
-
-  if (ctx.apiFamily === "v2") {
-    if (!ctx.agent) return fail(ctx, "V2 requires AGENT naming a verified native ask profile", EXIT.USAGE);
-    let profile;
-    try { profile = await ctx.client.profile(ctx.agent); }
-    catch (e) { return fail(ctx, e.message, EXIT.USAGE); }
-    if (profile.id !== ctx.agent) return fail(ctx, "the native agent identity does not match AGENT", EXIT.USAGE);
-    ctx.profileHash = digest({ id: profile.id, mode: profile.mode, permissions: profile.permissions });
-    if (ctx.priorProfileHash && ctx.profileHash !== ctx.priorProfileHash)
-      return fail(ctx, "the resumed native agent profile changed", EXIT.USAGE);
-    if (ctx.resume && ctx.resumedSession.agent !== ctx.agent)
-      return fail(ctx, "the native session belongs to another agent profile", EXIT.USAGE);
-    if (ctx.resume) {
-      const wanted = { providerID: ctx.ref.providerID, id: ctx.ref.modelID, ...(ctx.variant ? { variant: ctx.variant } : {}) };
-      const retained = ctx.resumedSession.model;
-      if (retained?.id !== wanted.id || retained?.providerID !== wanted.providerID
-        || (retained?.variant ?? null) !== (wanted.variant ?? null)) {
-        try { await ctx.client.call("POST", `/api/session/${encodeURIComponent(ctx.sessionID)}/model`, { model: wanted }); }
-        catch (e) {
-          if (e.status != null) return fail(ctx, `native model switch rejected: ${e.message}`, EXIT.MODEL);
-        }
-        const observed = await ctx.client.call("GET", fillRoute(ctx.routes.sessionGet, { sessionID: ctx.sessionID }));
-        if (observed.model?.id !== wanted.id || observed.model?.providerID !== wanted.providerID
-          || (observed.model?.variant ?? null) !== (wanted.variant ?? null))
-          return fail(ctx, "native model switch outcome is unknown; no input sent", EXIT.TRANSPORT);
-      }
-    }
-  }
+  ctx.ref = model.ref; ctx.variant = model.variant;
 
   // Create the session (a resume reuses the existing one).
   if (!ctx.resume) {
     let session;
     try {
-      session = await ctx.client.call("POST", ctx.routes.create, ctx.apiFamily === "v2"
-        ? { agent: ctx.agent, location: { directory: ctx.cwd },
-          model: { providerID: ctx.ref.providerID, id: ctx.ref.modelID, ...(ctx.variant ? { variant: ctx.variant } : {}) } }
-        : { title: `entrust ${ctx.invocationId}`, permission: sessionPermissions(ctx.scope) });
+      session = await ctx.client.call("POST", ctx.routes.create,
+        { title: `entrust ${ctx.invocationId}`, permission: sessionPermissions(ctx.scope) });
     } catch (e) { return fail(ctx, `could not create an OpenCode session: ${e.message}`, EXIT.MODEL); }
     if (!session?.id) return fail(ctx, "the server returned no session id", EXIT.MODEL);
     ctx.sessionID = session.id;
-    if (ctx.apiFamily === "v2" && (session.agent !== ctx.agent || session.directory !== ctx.cwd))
-      return fail(ctx, "native session did not retain the verified agent and directory", EXIT.USAGE);
-    if (ctx.apiFamily === "v2" && (session.model?.providerID !== ctx.ref.providerID || session.model?.id !== ctx.ref.modelID
-      || (session.model?.variant ?? null) !== ctx.variant))
-      return fail(ctx, "native session did not retain the selected model and variant; no input sent", EXIT.MODEL);
   }
   writeSessionRecord(ctx);
 
@@ -1049,14 +939,13 @@ async function execute(opts, parsed) {
   ctx.eventsAbort = new AbortController();
   ctx.client.events((ev) => {
     const sid = ev?.properties?.sessionID ?? ev?.sessionID ?? null;
-    if (sid && ctx.invocationSessions?.has(sid)) { ctx.lastProgressMs = now(); ctx.lastEvent = ev?.type ?? null; }
+    if (sid && ctx.invocationSessions?.has(sid)) ctx.lastProgressMs = now();
   }, ctx.eventsAbort.signal).catch(() => {});
 
   const stop = (reason) => {
     if (ctx.abortRequested) return ctx.stopping ?? Promise.resolve();
     ctx.abortRequested = true;
     ctx.stopDuringAdmission = Boolean(ctx.admissionInFlight);
-    ctx.abortReason = reason;
     ctx.cancellation = { reason, signal: ctx.signal ?? null, abort: [], observed: "unknown" };
     ctx.stopping = stopOwned(ctx);
     return ctx.stopping;
@@ -1120,8 +1009,7 @@ async function conclude(ctx, firstReply, parsed) {
     const info = reply?.info ?? {};
     const actual = info.providerID && info.modelID ? `${info.providerID}/${info.modelID}` : null;
     const matches = info.providerID != null && info.providerID === ctx.ref.providerID
-      && info.modelID === ctx.ref.modelID && (ctx.apiFamily !== "v2"
-        || ((info.variant ?? null) === ctx.variant && info.agent === ctx.agent && info.attribution != null));
+      && info.modelID === ctx.ref.modelID;
     return { info, actual, matches, completed: Boolean(info.time?.completed) };
   };
 
@@ -1194,17 +1082,6 @@ async function conclude(ctx, firstReply, parsed) {
 
   const answerPath = saveAnswer(ctx, rawText);
 
-  // Independent VERIFY, outside the worker context.
-  let verify = null, verifyUnmeasured = false, verifyFailed = false;
-  if (typeof ctx.opts.verify === "string" && ctx.opts.verify.length) {
-    const command = ctx.opts.verify;
-    const r = spawnSync(process.env.SHELL || "/bin/sh", ["-c", command], {
-      cwd: ctx.cwd, encoding: "utf8", timeout: VERIFY_TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024,
-    });
-    if (r.error) { verifyUnmeasured = true; verify = { command, exitCode: null, error: r.error.message }; }
-    else { verify = { command, exitCode: r.status, signal: r.signal ?? null, output: (r.stdout ?? "") + (r.stderr ?? "") }; verifyFailed = r.status !== 0; }
-  }
-
   const reads = tools.filter((t) => READ_TOOLS.has(t.tool) && t.status === "completed").length;
   const expect = expectation({ expect: parsed.expect, successful, observations: successful.length + reads, allowNoCommands: parsed.allowNoCommands });
   const declined = ctx.declined > 0 || ctx.expired > 0;
@@ -1226,8 +1103,6 @@ async function conclude(ctx, firstReply, parsed) {
     error = "the reply has no completion timestamp; the receipt is incomplete";
   }
   else if (!parsedJson || !check.ok) { exitCode = EXIT.SCHEMA; error = `the answer did not satisfy OUTPUT_SCHEMA (${check.errors.slice(0, 5).join("; ")})`; }
-  else if (verifyFailed) { exitCode = EXIT.VERIFY_FAILED; error = `VERIFY exited ${verify.exitCode}`; }
-  else if (verifyUnmeasured) { exitCode = EXIT.VERIFY_UNMEASURED; error = "VERIFY could not be measured"; }
   else if (ctx.needsInput) { exitCode = EXIT.NEEDS_INPUT; error = "an approval was needed and no approval directory was configured"; }
   else if (declined) { exitCode = EXIT.APPROVAL; error = "an approval was declined or expired"; }
   else if (!expect.ok) { exitCode = EXIT.COMMANDS; error = expect.why; }
@@ -1242,7 +1117,7 @@ async function conclude(ctx, firstReply, parsed) {
     usage: usage.usage, cost: usage.cost,
     childUsage,
     outputSchemaOk: check.ok, schemaErrors: check.ok ? [] : check.errors,
-    partial: false, verify, turnError: info.error ?? null,
+    partial: false, turnError: info.error ?? null,
     admission: ctx.admission,
     cancellation: ctx.cancellation ?? null,
     correction,
@@ -1353,4 +1228,4 @@ function main() {
 const isMain = (() => { try { return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url)); } catch { return false; } })();
 if (isMain) main();
 
-export { execute, resolveRoutes, sessionPermissions, outOfScope, rightsScope, scopeWithin, promptText, buildReport, invocationMessages };
+export { execute, sessionPermissions, outOfScope, rightsScope, scopeWithin, promptText, buildReport, invocationMessages };

@@ -1,53 +1,19 @@
 // What the shared launcher, orchestrate/scripts/agent-run.mjs, takes from the OpenCode adapter: its driver,
-// the server an invocation is pinned to, the environment the driver gets for it, and the typed requests
-// (a permission, a question) the driver adds to the mailbox beside the launcher's command requests.
+// the backend an invocation records, and the typed requests (a permission, a question) the driver adds to the
+// mailbox beside the launcher's command requests.
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const driver = path.join(path.dirname(fileURLToPath(import.meta.url)), "driver.mjs");
 
-// --new: the backend an invocation records in agent/backend.json, and never changes. The plan row, when
-// there is one, pins the model and the writes; the connection file's credentials are never copied.
-export function prepare({ adapter, row, saved, env, refuse, readJson }) {
-  const planModel = row?.model ?? null, planWrites = row?.writes ?? null;
-  const connectionFile = env.ENTRUST_OPENCODE_CONNECTION ?? null;
-  if (connectionFile && !path.isAbsolute(connectionFile)) refuse("ENTRUST_OPENCODE_CONNECTION must be absolute");
-  let savedConnection = null;
-  try { savedConnection = connectionFile ? readJson(connectionFile) : null; }
-  catch { refuse("ENTRUST_OPENCODE_CONNECTION could not be read as JSON"); }
-  if (connectionFile && !savedConnection) refuse("ENTRUST_OPENCODE_CONNECTION could not be read as JSON");
-  const raw = env.ENTRUST_OPENCODE_URL || savedConnection?.url;
-  let record;
-  if (raw) {
-    let serverUrl;
-    try {
-      const u = new URL(raw);
-      if (!["http:", "https:"].includes(u.protocol) || u.username || u.password || u.search || u.hash) throw new Error();
-      serverUrl = u.href.replace(/\/$/, "");
-      if (savedConnection?.url && new URL(savedConnection.url).href.replace(/\/$/, "") !== serverUrl) throw new Error();
-    } catch { refuse("OpenCode remote server URL must be http(s), without credentials, query or fragment; connection and URL must agree"); }
-    record = { adapter, planModel, planWrites, serverUrl, connectionFile };
-  } else {
-    if (connectionFile) refuse("ENTRUST_OPENCODE_CONNECTION does not contain a server URL");
-    record = { adapter, planModel, planWrites, localServer: true };
-  }
+// --new: the backend an invocation records in agent/backend.json, and never changes: always a private local
+// server, which the driver starts. The plan row, when there is one, pins the model and the writes.
+export function prepare({ adapter, row, saved, refuse }) {
+  const record = { adapter, planModel: row?.model ?? null, planWrites: row?.writes ?? null, localServer: true };
   if (saved && JSON.stringify(saved) !== JSON.stringify(record))
-    refuse("OpenCode backend, endpoint and approved plan are immutable for this invocation; use a fresh report path");
+    refuse("OpenCode backend and approved plan are immutable for this invocation; use a fresh report path");
   return record;
-}
-
-// The driver's environment for a recorded backend: its server, or the private local one.
-export function env(saved, base) {
-  const out = { ...base,
-    ...(saved?.serverUrl ? { ENTRUST_OPENCODE_URL: saved.serverUrl } : {}),
-    ...(saved?.connectionFile ? { ENTRUST_OPENCODE_CONNECTION: saved.connectionFile } : {}) };
-  if (saved?.localServer) {
-    out.ENTRUST_OPENCODE_LOCAL = "1";
-    delete out.ENTRUST_OPENCODE_URL;
-    delete out.ENTRUST_OPENCODE_CONNECTION;
-  }
-  return out;
 }
 
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");

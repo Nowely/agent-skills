@@ -140,156 +140,103 @@ export const RETURN_MS = Number(process.env.AGENT_RUN_RETURN_MS) || 570000;
 const SIGNALS = ["SIGTERM", "SIGINT", "SIGHUP"];
 export const agentDirOf = (report) => path.join(path.dirname(report), "agent");
 
-const USAGE = `agent-run — make, run or read one external agent for its proxy.
+const USAGE = `agent-run — make, run or read one external agent for its proxy. The steps a coordinator takes are
+orchestrate/references/external.md; this is each mode's contract.
 
-  At --new the adapter (${[...HOOKS.keys()].join(", ") || "none installed"}) is the plan row's when a plan holds
-  the report, else --adapter ID, else the adapter whose own agent-run.mjs runs; agent/backend.json pins it.
-  Extended plan rows: id | adapter | model | role | writes | tokens; adapter is native or an installed
-  adapter (${[...ROW_ADAPTERS].filter((id) => id !== "native").join(", ") || "none"}), and the model one its adapter.json
-  declares. Existing five-column plans still work: the model names its adapter.
-  Typed requests an adapter adds print REQUEST_BODY<<TOKEN / REQUEST_BODY>>TOKEN. --accept restates that
-  JSON on stdin and grants once. Questions use --decide ID --answer with {answers: string[][]} on
-  stdin, or --decline. --answer is never a command or permission approval.
-
-  node agent-run.mjs --plan --run-dir RUN < rows
-      Register rows id | model | role | writes | tokens in RUN/plan.txt at 0600; RUN is 0700.
-      Models: ${PLANNED.map((a) => a.plan.models?.join(", ") ?? `${a.id}: ${a.plan.modelRule ?? a.plan.model}`).join("; ") || "none declared"}.
-      Writes: nothing, worktree, live tree, or write <absolute dir>. Ids start with a letter and then
-      use letters, digits, _ or -; each is unique ignoring case and cannot end in -<digits>.
-      Tokens are a nonnegative integer or unknown; the role is any non-empty text. --plan --amend
-      appends new rows explicitly; show the amendment and wait for approval before launching
-      them. Prints PLAN=, or AMENDED= for an amendment, and an AGENT= line per row it adds. A
-      plan records declared scope; it does not certify actual cost or live caps.
-  node agent-run.mjs --new --report-file REPORT  < prompt
-      Makes the agent's directory, agent/ beside REPORT (or --dir DIR), at 0700, puts the prompt read on
-      stdin through driver.mjs --check-prompt-file, and only on a pass makes it DIR/prompt.txt at 0600,
-      makes its mailbox, DIR/approvals/, at 0700, and prints PROMPT=<path> and APPROVALS=<path>. A
-      refusal prints ERROR=<the driver's reason> and no PROMPT= line, exits 2 and leaves no prompt.txt:
-      a --run finds nothing to start, and the same command with the prompt corrected is the retry. A
-      check that neither passes nor refuses is a fault in the driver, and ERROR= says so, exit 2 the same
-      way. Needs REPORT and DIR both inside the driver's state directory (ENTRUST_STATE_DIR, else
-      <tmp>/entrust-state), where no agent's sandbox can write a decision. Refuses (exit 2)
-      a REPORT that is not absolute, no state directory, a REPORT or a DIR outside it, an empty prompt,
-      and a directory that already holds a prompt: a relaunch gets a fresh report path. A directory that
-      holds a launch's exit, err.txt or out.json and no prompt (a --run came after a refused --new) is
-      refused the same way, with ERROR= naming the file: the path is spent.
-      When RUN/plan.txt exists, REPORT must be RUN/<id>/report.json for a listed agent.
-      RUN/<id>-<n>/report.json, n from 2 with no leading zero, continues listed <id>
-      (a RESUME:, relaunch, or advisor's next question) once the previous link's
-      agent/exit exists. planRowOf matches the listed row and its continuation.
-      A second agent needs a row of its own.
-  node agent-run.mjs --run --report-file REPORT
-      With --watch, newly pending requests are emitted once as EVENT=waiting frames between
-      EVENT<<TOKEN and EVENT>>TOKEN. The call keeps waiting, including while a decision is pending;
-      --decide may run separately. Signals still reach this run's driver. Terminal status and the
-      RUNNING= checkpoint retain their existing meaning. --watch requires --run alone.
-      One foreground call, idempotent; DIR is agent/ beside REPORT unless --dir names it, and a prompt
-      not there yet is waited for up to ${PROMPT_WAIT_MS / 1000} s (a --new issued in the same turn).
-      A fresh DIR: starts the launch-only mode below as a keeper in a session of its own, outside this
-      call's process tree, so the run outlives the call; the keeper hands the driver the mailbox,
-      --approval-dir DIR/approvals (made there if an older --new left none). Every call, the first, a
-      rerun and a call continuing after a decision alike, then waits for DIR's run: for the driver's pid
-      line (up to ${PROMPT_WAIT_MS / 1000} s, or the lines say ERROR=the driver did not start), then for
-      the exit marker or a request waiting on a decision. It prints one of four results:
-        waiting — the run waits on your decision: for each request waiting, the lines --pending prints
-          for it (first line REQUEST=), then REQUESTS=<n>, WAITING=<id>[,<id>] and REPORT=<REPORT>.
-          The run goes on. Decide each with --decide, then run the same --run again: it waits for the
-          next result. A request whose decision is published and not yet taken is not handed back.
-        ended — the run is over: the nine status lines --status prints, first line DRIVER_EXIT=.
-        refused — the directory, the launch or the driver's own checks refused the run before a turn
-          (a mailbox outside the state directory among them): the nine lines, DRIVER_EXIT=2 or unknown,
-          the reason on ERROR=.
-        running — the call has waited ${RETURN_MS / 1000} s: the nine lines with DRIVER_EXIT=running and
-          RUNNING=pid <pid>, <n> s so far; run the same command again in place of REPORT=. This is the
-          early return, before the tool's ten-minute ceiling; the run goes on, and the same command
-          again waits for it.
-      The last line of the first three is REPORT=. A DIR that already ran for this REPORT: prints. A
-      DIR whose run is for another report path, being born, running or ended, is refused on this call's
-      own lines, the reason on ERROR=, and nothing is written to DIR: the driver's pid line decides, by
-      the whole path it names, and a run whose line is not there yet is waited for. Always exits 0 once
-      the lines are printed, a missing DIR included; the driver's own status is the DRIVER_EXIT line. A
-      signal it receives (SIGTERM, SIGINT, SIGHUP) goes to the driver, the pid on its pid line in
-      DIR/err.txt, which cuts the turn and publishes; one that arrives before that line is delivered
-      when it appears and names this REPORT, and is dropped when it names another; one after the early
-      return's deadline is not forwarded. After a waiting result no call holds the driver, so stop it
-      with --decide --decline and the same --run, or kill -TERM the pid on its pid line in DIR/err.txt.
-  node agent-run.mjs --report-file REPORT [--dir DIR]
-      Launch only: the same run without the wait's printing, exiting with the driver's status. Run by a
-      caller itself, it hands the driver no mailbox: every approval request is declined at once, since
-      no caller is waiting to answer. The keeper --run starts is this mode marked --keeper by the orphan
-      step, and hands the driver DIR/approvals. It claims DIR by creating DIR/err.txt before it writes
-      anything there. Under its own claim it refuses, exit 2 with the reason in DIR/err.txt and a
-      DIR/exit of 2: a prompt.txt that is not a regular file, a REPORT that is not absolute (with
-      --dir), and, for the keeper, a mailbox that cannot be made. Without a claim it refuses on stderr
-      alone, exit 2, nothing written: a DIR that is not one; a DIR whose exit marker already exists,
-      whose files are an earlier run's; and a DIR whose err.txt is already there, which is another
-      launch's claim, with the reason this launch would have recorded, if it had one.
-  node agent-run.mjs --orphan --dir DIR --report-file REPORT
-      --run's own step: starts the launch-only mode, marked --keeper, in a session of its own and exits
-      at once, so the keeper's parent is gone before anything looks for it. --keeper is set by this step
-      alone: the launch-only default has to stay without a mailbox for the callers nobody answers, and
-      without the mark the keeper's driver would decline every request of a --run agent at once.
-  node agent-run.mjs --status --report-file REPORT [--dir DIR]
-      Prints nine lines: ${STATUS_LINES.join(", ")}. PATH is own where the
-      driver's pid line names REPORT, the whole path, taken where the driver refused a path already
-      there or could not publish, none otherwise or where the launch was refused. EXIT is the exitCode
-      in the file at REPORT, whichever run wrote it (PATH says), where DRIVER_EXIT is this launch's
-      driver's own; unknown where no report parses there. ANSWER is the whole
-      answer on one line when it is at most ${ANSWER_MAX} characters, else a pointer to the report; ERROR is the report's
-      error, else its turnError, else the launcher's own refusal; RECEIPT is turnStatus, receiptOk and
-      the model by its short name, then, read from DIR/approvals with or without a report,
-      approvals=A/D/E/O (accepted, declined, expired, still open or orphaned) when any request was
-      offered, auto=N when the driver accepted file changes its rights covered, late=N for valid
-      decisions nobody took (its request was settled first, or the run ended with it open) and stale=N
-      for decision files that are not their request's, whenever they came. Always exits 0; a missing
-      report reads as unknown, never success.
-  node agent-run.mjs --pending --report-file REPORT [--dir DIR]
-      Prints each request waiting on a decision — one DIR/approvals/pending lists — as REQUEST=<id>,
-      THREAD=root or the subagent's path, METHOD=, CAUSE= (asked: the agent asked before running the
-      command, and nothing on our side changes it), CWD=, REASON= (the agent's own), ROOTS= (the
-      roots the agent may write, "; " between them), DEADLINE= (an ISO time, or none), then the command:
-      whole, newlines kept, on the lines between COMMAND<<TOKEN and COMMAND>>TOKEN, TOKEN drawn fresh for
-      each print and never in the command. Every value outside that block is one line: a backslash, a
-      line break and every other control character in it written as \\\\, \\n, \\r, \\t or \\uXXXX, and a
-      ; inside a ROOTS item as \\;. Then LATE=<id> and STALE=<id> as counted above and, once DIR/exit
-      exists, ORPHANED=<id> for each request the run left unanswered, then REQUESTS=<n>, the number still
-      waiting. Always exits 0.
-  node agent-run.mjs --decide ID --accept|--decline [--why TEXT] --report-file REPORT [--dir DIR]
-      --accept reads on stdin the command it approves, restated: the lines between COMMAND<<TOKEN and
-      COMMAND>>TOKEN as the waiting result or --pending printed them for ID, in a quoted heredoc whose
-      delimiter you build at that moment from ACCEPT_, the printed token and hex of your own and check
-      is no line of the command, never a fixed word and never the printed token alone, since a line of
-      the command equal to the delimiter would end the heredoc and run the rest in your shell, and a
-      printed token may have passed through a relay; quote the ID for the same reason:
+  node agent-run.mjs --plan [--amend] --run-dir RUN < rows
+      Registers rows "id | adapter | model | role | writes | tokens" in RUN/plan.txt at 0600 (RUN 0700).
+      The adapter is native or an installed one (${[...ROW_ADAPTERS].filter((id) => id !== "native").join(", ") || "none"}), and the model one its
+      adapter.json declares (${PLANNED.map((a) => a.plan.models?.join(", ") ?? `${a.id}: ${a.plan.modelRule ?? a.plan.model}`).join("; ") || "none declared"});
+      five-column rows still work, the model naming its adapter. Writes: nothing, worktree, live tree,
+      or write <absolute dir>. An id starts with a letter, then letters, digits, _ or -, is unique ignoring
+      case and does not end in -<digits>; the role is any non-empty text; tokens a nonnegative integer or
+      unknown. --amend appends rows: show the amendment and wait for approval before launching them.
+      Prints PLAN= (or AMENDED=) and an AGENT= line per row added.
+  node agent-run.mjs --new [--adapter ID] --report-file REPORT < prompt
+      Checks the prompt with the adapter's driver --check-prompt-file and, on a pass, makes agent/
+      beside REPORT at 0700 with prompt.txt (0600) and the mailbox approvals/, and prints PROMPT=<path>
+      and APPROVALS=<path>. A refusal prints ERROR=<the driver's reason>, exits 2 and leaves no prompt:
+      correct it and run the same command. The adapter (${[...HOOKS.keys()].join(", ") || "none installed"}) is the plan row's,
+      else --adapter, else the entry script's own; agent/backend.json pins it. REPORT must be absolute,
+      fresh, and inside the state directory (ENTRUST_STATE_DIR, else <tmp>/entrust-state); under a plan
+      it is RUN/<id>/report.json for a listed row, or RUN/<id>-<n>/report.json (n from 2) to continue
+      it once the previous link's agent/exit exists.
+  node agent-run.mjs --run [--watch] --report-file REPORT
+      One foreground call, safe to repeat. The first call starts the run in a keeper outside this call's
+      process tree, waiting up to ${PROMPT_WAIT_MS / 1000} s for a prompt --new has not written yet; every call then waits
+      for the run and prints one result:
+        ended — the run is over: the nine status lines, first DRIVER_EXIT=, last REPORT=.
+        refused — the launch or the driver refused the run before a turn: the nine lines, DRIVER_EXIT=2
+          or unknown, the reason on ERROR=.
+        waiting — the run waits on your decision: each request as --pending prints it (first line
+          REQUEST=), then REQUESTS=<n>, WAITING=<id>[,<id>] and REPORT=. Decide each with --decide, then
+          run the same --run again.
+        running — ${RETURN_MS / 1000} s passed: the nine lines with DRIVER_EXIT=running and RUNNING=pid <pid>, <n> s so
+          far in place of REPORT=; run the same command again. Nothing is lost.
+      With --watch the call stays attached: each new request is an EVENT=waiting frame between
+      EVENT<<TOKEN and EVENT>>TOKEN, and --decide runs beside it. A signal this call receives goes to
+      the driver, which cuts the turn and publishes its report. After a waiting or running result no
+      call holds the driver: stop it with kill -TERM on the pid line in agent/err.txt. Exits 0.
+  node agent-run.mjs --status --report-file REPORT
+      The nine lines: ${STATUS_LINES.join(", ")}. PATH is own when this run's driver
+      wrote REPORT, taken when the file there is another run's, none when the launch was refused. ANSWER
+      is the answer on one line up to ${ANSWER_MAX} characters, else a pointer to the report; ERROR the report's
+      error, else its turnError, else the launcher's refusal. RECEIPT is turnStatus, receiptOk and the
+      model, then, from the mailbox: approvals=A/D/E/O (accepted, declined, expired, still open or
+      orphaned), auto=N (file changes the driver accepted), late=N (valid decisions nobody took) and
+      stale=N (decision files that are not their request's). A missing report is unknown. Exits 0.
+  node agent-run.mjs --pending --report-file REPORT
+      Each request waiting: REQUEST=<id>, THREAD=, METHOD=, CAUSE=, CWD=, REASON=, ROOTS=, DEADLINE=,
+      then the command whole between COMMAND<<TOKEN and COMMAND>>TOKEN (an adapter's typed request, its
+      JSON between REQUEST_BODY<<TOKEN and REQUEST_BODY>>TOKEN), TOKEN fresh each print. Every other
+      value is one line, control characters escaped. Then LATE=<id>, STALE=<id>, ORPHANED=<id> once the
+      run is over, and REQUESTS=<n>. Exits 0.
+  node agent-run.mjs --decide ID --accept|--decline|--answer [--why TEXT] --report-file REPORT
+      --accept restates on stdin what was printed between the markers, in a quoted heredoc on a delimiter
+      you make from ACCEPT_, the printed token and hex of your own, checked to be no line of the command;
+      quote the ID:
         node agent-run.mjs --decide 'ID' --accept --report-file REPORT <<'ACCEPT_<token><hex of yours>'
-        <the command, as printed>
+        <the lines between the markers, as printed>
         ACCEPT_<token><hex of yours>
-      It is compared with the request's command byte for byte, one trailing newline tolerated and nothing
-      else normalised; an empty stdin or any difference is refused, REFUSED=ID with the two lengths and
-      the first byte where they differ, and nothing is published. --decline reads no stdin.
-      Publishes the decision for request ID as DIR/approvals/ID.decision.json at 0600, by link(2) over a
-      temp file, carrying the run identity copied from the request. Refuses (exit 2, REFUSED=ID and the
-      reason) an ID with no request, a run that is over, a request already settled, a request pending
-      does not list, an accept whose restatement is empty or differs, a request already decided, naming
-      that decision, and one with a stale decision in the way. Then reads the request again:
-      DECIDED=ID accept|decline and exit 0 while it was still open, or LATE=ID and exit 3 when the
-      driver settled it first — nothing ran on your word.
-  node agent-run.mjs --help
-
-  A REPORT that is not absolute, in each form:
-      without --dir it names no DIR, and every mode refuses it on stderr alone, exit 2, before anything
-      is read or written: --run and --status print no lines. With --dir, --new refuses it the same way;
-      launch-only refuses it as above, under its claim or on stderr alone; --run on a fresh DIR prints
-      the lines of its keeper's recorded refusal, and on a DIR whose run is another's refuses it as
-      another report path; --status prints DIR's lines for it.
+      It must match byte for byte, one trailing newline tolerated, or nothing is published and REFUSED=ID
+      says where it differs. --decline reads no stdin. --answer answers a question with {answers:
+      string[][]} on stdin, one list per question; it never approves a command or a permission. Prints
+      DECIDED=ID accept|decline and exits 0, or LATE=ID and exit 3 when the driver settled the request
+      first, or REFUSED=ID and the reason, exit 2.
+  node agent-run.mjs --help | --help-all
+      This text; --help-all adds the launch-only mode, the keeper and the edge cases.
 `;
-
+const USAGE_ALL = `
+More, for the launcher's own steps and its edge cases:
+  node agent-run.mjs --report-file REPORT [--dir DIR]
+      Launch only: the run without --run's waiting, exiting with the driver's status. Run by a caller
+      itself it hands the driver no mailbox, so every request is declined at once. It claims DIR by
+      creating DIR/err.txt first; under that claim it refuses, exit 2 with the reason in err.txt and an
+      exit marker of 2, a prompt.txt that is no regular file, a relative REPORT, and for the keeper a
+      mailbox it cannot make. Without a claim it refuses on stderr alone: a DIR that is not one, one
+      whose exit marker exists, and one whose err.txt is another launch's claim.
+  node agent-run.mjs --orphan --dir DIR --report-file REPORT
+      --run's own step: starts the launch-only mode, marked --keeper, in a session of its own, so it
+      outlives the call; --keeper alone hands the driver DIR/approvals.
+  --dir DIR names the agent's directory in any mode instead of agent/ beside REPORT.
+  A --run on a DIR whose run is for another report path is refused on its own lines and writes
+  nothing; the driver's pid line decides, by the whole path it names. A signal that reaches --run
+  before that line is delivered when it appears and names this REPORT, and dropped when it names
+  another; one after the early return's deadline is not forwarded.
+  A REPORT that is not absolute: without --dir every mode refuses it on stderr, exit 2, before reading
+  or writing anything. With --dir, --new refuses it the same way, the launch-only mode as above,
+  --run on a fresh DIR prints its keeper's recorded refusal, and --status prints DIR's lines.
+  A directory that holds a launch's exit, err.txt or out.json and no prompt (a --run came after a
+  refused --new) is refused at --new with ERROR= naming the file: the path is spent. A check that
+  neither passes nor refuses is a fault in the driver, and ERROR= says so.
+`;
 function parse(argv) {
   const o = { run: false, status: false, isNew: false, isPlan: false, amend: false, runDir: null, orphan: false, keeper: false,
               dir: null, report: null, help: false, pending: false, decide: null, decision: null, why: null, adapter: null, watch: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--help" || a === "-h") o.help = true;
+    else if (a === "--help-all") o.help = o.helpAll = true;
     else if (a === "--run") o.run = true;
     else if (a === "--watch") o.watch = true;
     else if (a === "--new") o.isNew = true;
@@ -925,7 +872,7 @@ export function main(argv, { fallback = null } = {}) {
   if (process.argv[1]) ENTRY = path.resolve(process.argv[1]);
   const o = parse(argv);
   if (o.error) { process.stderr.write(`agent-run: ${o.error}\n${USAGE}`); process.exit(2); }
-  if (o.help) { process.stdout.write(USAGE); process.exit(0); }
+  if (o.help) { process.stdout.write(o.helpAll ? USAGE + USAGE_ALL : USAGE); process.exit(0); }
   if (o.isPlan) { if (o.report || o.dir || o.run || o.status || o.isNew || o.orphan) planError("--plan cannot be combined with agent modes"); registerPlan(o.runDir, o.amend); process.exit(0); }
   if (o.amend || o.runDir) { process.stderr.write("agent-run: --amend and --run-dir require --plan\n"); process.exit(2); }
   if (!o.report) { process.stderr.write(`agent-run: --report-file is required\n${USAGE}`); process.exit(2); }

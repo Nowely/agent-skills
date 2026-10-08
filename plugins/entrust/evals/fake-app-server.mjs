@@ -67,13 +67,11 @@ export const SCENARIOS = {
   "workspace-elsewhere": {}, "policy-clamped": {},
   "reviewer-auto": {},
   // Each needs a flag before its interesting messages are emitted at all.
-  // The three rungs of the wall clock, each needing a budget the fixture cannot guess from the scenario
-  // name alone — so the inventory carries it, as it already does for the stalled cases.
-  //   wrap-up      the steer at T-reserve is the ONLY recovery (E1), so the reserve must fit: 65 s puts
-  //                it 5 s in, which is the shortest budget the 60 s reserve floor allows.
+  // The wall clock's cut, each needing a budget the fixture cannot guess from the scenario name alone —
+  // so the inventory carries it, as it already does for the stalled cases.
   //   cut-flush    a server that DOES flush the in-flight answer when the turn is interrupted.
   //   cut-partial  the measured server, which does not: the deltas are the only copy.
-  "wrap-up": { timeout: 65 }, "cut-flush": { timeout: 1 }, "cut-partial": { timeout: 1 },
+  "cut-flush": { timeout: 1 }, "cut-partial": { timeout: 1 },
   // The answer arrives and the turn never ends: the window a SIGKILL empties.
   "answer-then-stall": { timeout: 1 },
   // One command, then silence: only the idle guard tells this from a turn that is working.
@@ -123,26 +121,6 @@ if (!Object.hasOwn(SCENARIOS, SCENARIO)) {
 // Importable as well as runnable: the suites read SCENARIOS and sampleItems() out of this module, and
 // an import must not attach a reader to the importer's stdin.
 const isMain = canon(process.argv[1] ?? "") === canon(fileURLToPath(import.meta.url));
-
-// `codex sandbox` is a different entry point of the same binary, and --verify-sandboxed shells out to
-// it. Without FAKE_SANDBOX the stand-in refuses it exactly as an installation that does not carry the
-// subcommand does, which is the case the driver turns into a usage error. With it, the command after
-// `--` is executed and its exit code passed through — measured live, that is what the real one does —
-// so the argv the driver builds and the passthrough are both observable.
-if (isMain && process.argv[2] === "sandbox") {
-  if (!process.env.FAKE_SANDBOX) {
-    process.stderr.write("error: unrecognized subcommand 'sandbox'\n");
-    process.exit(2);
-  }
-  if (process.argv.includes("--help")) process.exit(0);
-  const at = process.argv.indexOf("--");
-  if (process.env.FAKE_RPC_LOG) {
-    try { fs.appendFileSync(process.env.FAKE_RPC_LOG, `sandbox:${process.argv.slice(3, at).join(" ")}\n`); } catch {}
-  }
-  const argv = process.argv.slice(at + 1);
-  const r = spawnSync(argv[0], argv.slice(1), { stdio: "inherit" });
-  process.exit(r.status ?? 1);
-}
 
 // The -c config this server was spawned with, one `cfg:<key>` line each — the only way a suite can see
 // a grant that rides the spawn args rather than any file.
@@ -378,11 +356,7 @@ function onLine(line) {
   // Every request method, appended as it arrives: the only way a suite can assert that the driver SENT
   // something whose effect is otherwise invisible (turn/interrupt on a run being torn down).
   if (process.env.FAKE_RPC_LOG && m.method) {
-    // The steer TEXT rides along: for a channel whose failure mode is losing one correction, which ones
-    // arrived and in what order is the whole question.
-    const detail = m.method === "turn/steer"
-      ? `:${String(m.params?.input?.[0]?.text ?? "").replace(/\s+/g, " ").slice(0, 200)}`
-      : m.method === "initialize" ? `:experimentalApi=${m.params?.capabilities?.experimentalApi}`
+    const detail = m.method === "initialize" ? `:experimentalApi=${m.params?.capabilities?.experimentalApi}`
       : ["thread/start", "turn/start"].includes(m.method)
         ? `:schema=${JSON.stringify(m.params?.outputSchema ?? null)}${m.method === "turn/start" ? `:input=${String(m.params?.input?.[0]?.text ?? "").replace(/\s+/g, " ").slice(0, 700)}` : ""}` : "";
     try { fs.appendFileSync(process.env.FAKE_RPC_LOG, `${m.method}${detail}\n`); } catch {}
@@ -445,17 +419,6 @@ function onLine(line) {
     }
     return;
   }
-  if (m.method === "turn/steer") {
-    // TurnSteerResponse REQUIRES turnId — a bare {} is a reply the driver cannot rely on, and only a
-    // scenario that steers puts this response in front of the conformance suite at all.
-    w(reply(m.id, { turnId: m.params?.expectedTurnId ?? TURN }));
-    // The wrap-up rung: the steer TEXT is the only thing under test, so it comes straight back as the
-    // answer — and answering ends the turn, which is what the rung is asking the model to do.
-    if (SCENARIO === "wrap-up")
-      w(cmd(TURN, THREAD), msg(TURN, THREAD, String(m.params?.input?.[0]?.text ?? "")), done(TURN, THREAD));
-    return;
-  }
-
   // The config probe sends no -c values, so these replies use fixture fallbacks rather than CFG.
   // They model the caller's resolved config, which the driver asks the real server to read.
   if (m.method === "config/read") {
@@ -636,6 +599,11 @@ function onLine(line) {
 
   if (m.method === "turn/start") {
     turnStarts++;
+    // The agent's own work in its tree: FAKE_AGENT_SH runs in the thread's cwd, with the environment the
+    // driver gave this server, before the turn is answered, as a command the model ran would. The suites
+    // that need a file written, a lock probed or a process left behind say so here.
+    if (process.env.FAKE_AGENT_SH)
+      spawnSync("/bin/sh", ["-c", process.env.FAKE_AGENT_SH], { cwd: requestedThread?.cwd ?? process.cwd(), stdio: "ignore" });
     // The corrective turn under --output-schema is a SECOND turn/start on the same thread; it must get
     // its own turn id, or the driver's replay-and-attribute logic is never exercised across turns.
     const thisTurn = turnStarts === 1 ? TURN : TURN2;
@@ -768,8 +736,6 @@ function onLine(line) {
       case "stalled-turn":
       // The turn stalls until the driver cuts it; the interrupt handler above decides what the cut finds.
       case "cut-flush":
-      // Nothing until the wrap-up steer arrives; the steer handler above answers it.
-      case "wrap-up":
         w(R);
         break;
 

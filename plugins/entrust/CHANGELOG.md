@@ -37,6 +37,21 @@ forensics remain in the repository references and release notes.
   its exit code), `rights` (`{kind, roots}`) and `requestedModel`, which the OpenCode and Claude reports already
   had, so a coordinator reads the same fields whichever adapter ran. Its own fields stay; `usage` keeps each CLI's
   shape and is not part of the core.
+- **The Codex driver's `--help` is one page of 80 lines, and `--help-all` is gone.** The two tiers ran to 170 and 370
+  lines for a command line the launcher types, and restated `environment-and-internals.md`. The help now gives the
+  usage forms, the fields and the command-line-only flags (rendered from the field table), each flag in a line or
+  two, the exit ladder (rendered from the rungs), the state layout and the environment. The prompt-file grammar,
+  the output-schema caps, the wall-clock grace and the suites' seams, which only the old help carried, are on
+  that page.
+- **The Codex driver's comments state each reason once.** The narrative, the history and the restatements went
+  (about 280 comment lines, from 1,461): a fact the file told up to seven times is told where it applies and
+  pointed at elsewhere, measurements are summarised beside the code they justify, and the details a page already
+  explains are a link to it. The driver is about 4,000 lines, from 4,600 before the help and the comments.
+- **The launcher's `--help` is the coordinator's part, 65 lines from 142.** Each mode in a paragraph, pointing at
+  the shared call page for the steps; the launch-only mode, the keeper and the edge cases are under `--help-all`.
+- **The shared call page says which of the user's MCP servers an agent has**: a Codex agent none, since it runs
+  in an isolated Codex home, a Claude agent the user's unless `SAFE_MODE: yes`, an OpenCode agent its user's
+  OpenCode configuration (decision 6 of the driver audit).
 - **One page for calling an external agent.** `orchestrate/references/external.md` holds the steps every adapter
   shares, written for a coordinator of any host: the prompt's core lines, `--new`, the run in Claude Code (the
   Agent call and its block) or in Codex and OpenCode (a native proxy on the host's smallest model), the status
@@ -48,6 +63,9 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- **An OpenCode report says whether a corrective turn ran.** The driver computed the outcome of the one corrective
+  turn it spends on an answer that failed `OUTPUT_SCHEMA`, then dropped it; the report now carries it as
+  `correction`.
 - **A write root is checked the same way in all three drivers, before any agent exists.** An OpenCode `write` root
   could contain the state directory, and its allowed edits then reached the run's own mailbox, so the agent could
   write its own accept; Codex refused such a root only at run time, after the pid line. One check in
@@ -102,6 +120,40 @@ forensics remain in the repository references and release notes.
 - **The V2 pilot's run log left the plugin.** `opencode/references/v2-pilot.md` shipped a private model endpoint
   and machine paths with every install. It is now `research/2026-10-02-opencode-v2-pilot/01-pilot-record.md`, with
   the endpoint and the evidence paths removed; the earlier text remains in the repository's history (X18).
+- **The driver features no call reaches.** The Codex driver's `--verify` (with `--verify-sandboxed`,
+  `--allow-prompt-verify` and the `VERIFY` field), its exit codes 9 and 12, the wrap-up steer that asked an agent
+  for its answer before a declared wall clock ran out, and `--answer-json` are gone, as is the OpenCode driver's
+  `--verify`. The one call passes the driver no flag, so none of them could run, and a verifier in a write agent's
+  tree runs the agent's own code with the caller's rights (decision 3 of the driver audit). `--output-schema`
+  still asks for one bare JSON object; `--timeout`, `--idle-timeout` and `--max-commands` stay as driver flags.
+  Check an end state yourself after reading the report (codex `result-gates.md`). The suites' agent writes its
+  tree through the fake server's `FAKE_AGENT_SH` instead.
+- **OpenCode's V2 path.** The adapter speaks OpenCode's V1 API only: `API_FAMILY` and `AGENT` are no longer
+  fields, `status.mjs` takes no `--api-family` or `--agent`, and a report or session an earlier release recorded as
+  V2 is refused on continuation. V2's client, its fake server, its cases and the pilot that measured it are in
+  `research/2026-10-02-opencode-v2-pilot/` (decision 4 of the driver audit).
+- **Attaching OpenCode workers to a remote server.** The driver always starts a private loopback server with the
+  user's `opencode` CLI and stops it when the worker ends, which is how the adapter is used.
+  `ENTRUST_OPENCODE_URL` and `ENTRUST_OPENCODE_CONNECTION` are no longer read, `status.mjs` probes nothing and
+  takes only `--format`, and a report made on a remote server is refused on continuation (decision 5).
+- **OpenCode's dead state.** The `report.runtime.json` sidecar, written five times during admission and read by
+  nothing, is gone with the report's `runtimePath`, as are values set and never read (in the driver, the contract
+  and the client), re-exports no importer takes, a second route check on every new run, and a route-filling
+  fallback no route reaches. The steer disclaimers are one sentence: there is no steer, continue with `RESUME:`.
+  `interactions.md` and `parity.md` keep what a decision needs and point at the shared call page for the commands.
+- **Report fields nothing read.** The Codex report drops `expectationOk` and `commentaryOnly` (each derived from a
+  field beside it), `answerPhase`, `answerPartialPath`, the rollout's `receiptOriginator`, `receiptModelProvider`
+  and `receiptCwd` (`receiptOk` is the verdict on them), `unparsedLines`, the echo `schemaSizeCaps`, and the
+  worktree's `worktreeDiffStat` and `worktreeFleet` (the diff itself is at `worktreeDiffPath`). The OpenCode and
+  Claude reports drop the constant `costSource`, and OpenCode its constant `schemaOverflow` and
+  `approvalsAutoAccepted`, and both the `invocationId` echo. Fields a driver reads back on a continuation stay.
+- **The Codex driver's web-search policy reader and three approval counters.** The reader ran `plutil` over a
+  managed macOS profile to refuse a `WEB_SEARCH:` mode the profile would narrow, a freshness difference it twice
+  led coordinators to answer with a mode nobody asked for; where such a profile exists the driver now says so on
+  stderr, and `ENTRUST_POLICY_SEAM` is gone. `approvalsStale`, `approvalsLate` and `approvalsDuplicate` counted
+  what the mailbox already records: a stale decision file is left in place and its request file says so, which
+  the launcher's `RECEIPT=` counts, and a request id sent twice is still one request, answered once and said on
+  stderr.
 
 ## 0.27.0 — 2026-10-08
 

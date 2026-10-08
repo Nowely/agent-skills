@@ -91,17 +91,22 @@ const preload = (file) => ({ NODE_OPTIONS: `--require "${file}"` });
 
 const { cases: CASES, test } = registry();
 
-test("--help names the plan, new and run modes and exits 0",
-  "the page sends a reader here for what the launcher does; a script with no help is a promise nobody can check",
+test("--help names every mode a coordinator uses and exits 0, and --help-all adds the launcher's own steps",
+  "the page sends a reader here for what the launcher does; a script with no help is a promise nobody can check, and the keeper and the edge cases are no coordinator's to act on",
   async () => {
     const { code, out } = await spawnNode([LAUNCHER, "--help"], { killAfterMs: 10000 }).done;
     if (code !== 0) return `--help exited ${code}`;
-    for (const s of ["--plan --run-dir RUN", "--plan --amend", "--new --report-file REPORT", "--run --report-file REPORT", "--status",
-                     "RUNNING=", "--check-prompt-file", "planRowOf", "the role is any non-empty text", "unknown", "<absolute dir>", ...STATUS_LINES,
+    for (const s of ["--plan [--amend] --run-dir RUN", "--new [--adapter ID] --report-file REPORT", "--run [--watch] --report-file REPORT", "--status",
+                     "RUNNING=", "--check-prompt-file", "the role is any non-empty text", "unknown", "<absolute dir>", ...STATUS_LINES,
                      "APPROVALS=", "WAITING=<id>[,<id>]", "waiting —", "ended —", "refused —", "--pending --report-file REPORT",
-                     "--decide ID --accept|--decline [--why TEXT]", "COMMAND<<", "COMMAND>>", "REQUESTS=", "ORPHANED=",
-                     "DECIDED=", "LATE=", "STALE=", "REFUSED=", "approvals=A/D/E/O", "auto=N", "late=N", "stale=N"])
+                     "--decide ID --accept|--decline|--answer [--why TEXT]", "COMMAND<<", "COMMAND>>", "REQUEST_BODY<<", "REQUESTS=", "ORPHANED=",
+                     "DECIDED=", "LATE=", "STALE=", "REFUSED=", "approvals=A/D/E/O", "auto=N", "late=N", "stale=N", "external.md"])
       if (!out.includes(s)) return `--help does not mention ${s}`;
+    for (const s of ["--orphan", "--keeper"]) if (out.includes(s)) return `--help names ${s}, a step of the launcher's own`;
+    const all = await spawnNode([LAUNCHER, "--help-all"], { killAfterMs: 10000 }).done;
+    if (all.code !== 0 || !all.out.startsWith(out)) return `--help-all exited ${all.code}, or does not begin with --help`;
+    for (const s of ["--orphan --dir DIR --report-file REPORT", "--keeper", "Launch only", "A REPORT that is not absolute"])
+      if (!all.out.includes(s)) return `--help-all does not mention ${s}`;
     return true;
   });
 
@@ -1276,9 +1281,8 @@ test("a decision naming another run, on disk before the deadline settles its req
     const settled = readJson(path.join(box, `${q.id}.request.json`))?.settled;
     const rep = readJson(report);
     return (shapeOf(res.lines) === "ended" && valueOf(res.lines, "RECEIPT").endsWith(" approvals=0/0/1/0 stale=1") && settled?.decisionFile === "stale"
-        && Date.parse(settled.settledAt) > Date.parse(readJson(path.join(box, `${q.id}.decision.json`)).decidedAt)
-        && rep?.approvalsStale === 1 && rep?.approvalsLate === 0)
-      || `${JSON.stringify({ lines: res.lines.slice(0, 2), receipt: valueOf(res.lines, "RECEIPT"), settled, stale: rep?.approvalsStale, late: rep?.approvalsLate })}`;
+        && Date.parse(settled.settledAt) > Date.parse(readJson(path.join(box, `${q.id}.decision.json`)).decidedAt))
+      || `${JSON.stringify({ lines: res.lines.slice(0, 2), receipt: valueOf(res.lines, "RECEIPT"), settled })}`;
   });
 
 test("--pending shows the waiting request whole, --decide publishes it at 0600 with the run's identity and refuses a second, and after the run --decide refuses",
@@ -1593,19 +1597,15 @@ test("--new with a prompt the driver refuses prints the driver's reason on ERROR
   "the refusal used to arrive at --run, after the agent was spawned, and coordinators swapped in the mode it named (2026-09-17 and 2026-09-25); said at --new it goes back to the user before an agent exists, and a refused prompt left in place would be started by a --run issued in the same turn",
   async () => {
     const problems = [];
-    // A policy allowing `cached` alone, read like the device's; a mode must pass both, so the seam
-    // narrows the policy on any machine. WEB_SEARCH: live is then refused everywhere.
-    const policy = path.join(tempDir("agent-run-policy."), "policy.plist");
-    fs.writeFileSync(policy, `<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict><key>requirements_toml_base64</key>`
-      + `<string>${Buffer.from('allowed_web_search_modes = ["cached"]\n').toString("base64")}</string></dict></plist>\n`);
-    const seam = { ENTRUST_POLICY_SEAM: policy };
-    const refused = `RIGHTS: read ${shimDir}\nWEB_SEARCH: live\nTASK: find the release notes\n`;
+    // A web-search mode the driver does not know, which it refuses offline on any machine.
+    const seam = {};
+    const refused = `RIGHTS: read ${shimDir}\nWEB_SEARCH: everywhere\nTASK: find the release notes\n`;
     // The driver's own verdict on the same text, which the ERROR= line has to carry unchanged.
     const copy = path.join(tempDir("agent-run-check."), "prompt.txt");
     fs.writeFileSync(copy, refused);
     const own = spawnSync(process.execPath, [path.join(SCRIPTS, "driver.mjs"), "--check-prompt-file", copy], { env: { ...process.env, ...seam }, encoding: "utf8" });
     const reason = /^entrust: refused: (.+)\n$/.exec(String(own.stderr))?.[1];
-    if (own.status !== 2 || !reason) return `the driver's own check did not refuse WEB_SEARCH: live: exit ${own.status}, ${String(own.stderr).slice(0, 200)}`;
+    if (own.status !== 2 || !reason) return `the driver's own check did not refuse WEB_SEARCH: everywhere: exit ${own.status}, ${String(own.stderr).slice(0, 200)}`;
     // Refused, corrected on the same report path, run.
     const report = path.join(runUnderState("refused."), "run", "report.json");
     const dir = agentDirOf(report);

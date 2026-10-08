@@ -34,24 +34,6 @@ export function recentModels({ limit = 2, env = process.env } = {}) {
   }
   return result;
 }
-export function connection(env = process.env) {
-  if (env.ENTRUST_OPENCODE_LOCAL === "1") return { local: true };
-  const file = env.ENTRUST_OPENCODE_CONNECTION;
-  let saved = {};
-  if (file) saved = JSON.parse(fs.readFileSync(file, "utf8"));
-  const raw = env.ENTRUST_OPENCODE_URL || saved.url;
-  if (env.ENTRUST_OPENCODE_URL && saved.url && new URL(env.ENTRUST_OPENCODE_URL).href.replace(/\/$/, "") !== new URL(saved.url).href.replace(/\/$/, ""))
-    throw new Error("connection file points at another server than the invocation's pinned URL");
-  if (!raw) {
-    if (file) throw new Error("ENTRUST_OPENCODE_CONNECTION does not contain a server URL");
-    return { local: true };
-  }
-  const u = new URL(raw);
-  if (!["http:", "https:"].includes(u.protocol) || u.username || u.password || u.search || u.hash)
-    throw new Error("server URL must be http(s), without credentials, query or fragment");
-  return { url: u.href.replace(/\/$/, ""), username: env.OPENCODE_SERVER_USERNAME || saved.username || "opencode",
-    password: env.OPENCODE_SERVER_PASSWORD || saved.password || null };
-}
 export const digest = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export const id = (prefix) => `${prefix}_${Date.now().toString(16).padStart(12, "0")}${crypto.randomBytes(10).toString("hex")}`;
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

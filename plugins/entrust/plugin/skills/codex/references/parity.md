@@ -17,7 +17,7 @@ re-check them on your own machine before sizing a fan-out against them.
 
 ## Capability table
 
-The driver's `--help` and `--help-all` are canonical for flags and formats; each cell here gives only the routing choice
+The driver's `--help` is canonical for flags, with the formats in [environment-and-internals.md](environment-and-internals.md); each cell here gives only the routing choice
 and one qualification.
 
 | Native capability | Codex equivalent | Parity |
@@ -30,7 +30,7 @@ and one qualification.
 | stopping a running agent | `SIGTERM` to the announced pid, or stopping its task | the turn is interrupted and the report it earned is still written; see `--help` |
 | continuing an agent's context | `--resume <threadId\|last>` | rights are declared again per call; see `--help` |
 | a subagent's MCP tools | none | a Codex agent runs in an isolated Codex home, without your MCP servers, plugins or skills; `--host-home` brings them, on the driver's own command line only, which the one call does not reach |
-| web search | `--web-search <mode>` | the provider's own tool is off unless requested; the shell reaches the network either way; see `--help-all` |
+| web search | `--web-search <mode>` | the provider's own tool is off unless requested; the shell reaches the network either way; see `--help` |
 | a local image or audio file | `--attach <file>` | repeatable and command-line only; see `--help` |
 | an image the user pasted | `scripts/attach-pasted.mjs` | decodes transcript images before delegation; see `--help` |
 | a schema-validated return | `--output-schema <file>` | spends one corrective turn before exit 13; see `--help` |
@@ -52,15 +52,14 @@ A read agent matches native reading, grep, git, node, lint, and node-environment
 `--worktree` starts a new thread's tree at repository HEAD, not the live tree, and a resumed one at its
 recorded base: commit relevant WIP first, since a stash does not reach either, or use
 `--level write --cwd <repo>` after settling that blast radius with the user. Dependencies and ignored
-files are absent; a verifier that needs them fails (exit 9) or measures nothing (exit 12) unless they are
-installed in the agent's tree.
+files are absent; a check that needs them fails unless they are installed in the agent's tree.
 Browser tests need the serial Chromium override in
 [Browser-mode sandbox](#browser-mode-sandbox) and no file parallelism. Egress is not what makes an install
 work: the caches live under `$HOME`, which no level grants, so `npm install --cache "$PWD/.npm-cache"`
 keeps its cache in the tree, while `pnpm install --frozen-lockfile` works against a warm store.
 
 An agent cannot commit under the grant a `RIGHTS:` line makes, so `worktreeCommitsRef` carries commits only
-where the caller's own `--verify` made them; a completed agent retains them even when the tree is
+where a `WRITABLE: <repo>/.git` grant let it; a completed agent retains them even when the tree is
 otherwise clean. `WRITABLE: <repo>/.git` re-grants the common dir a commit needs and is a widening to
 settle first ([Git-directory grant](environment-and-internals.md#git-directory-grant)).
 
@@ -79,8 +78,8 @@ Supplying a model or effort triggers `model/list` validation before the thread s
 reads `account/rateLimits/read` once: an exhausted primary window is refused, while an unavailable
 snapshot is reported on stderr and does not block the agent.
 
-Web search is disabled unless a mode is requested. A managed device may allow only some modes; the
-driver refuses a forbidden mode with exit 2 instead of accepting a silent substitution.
+Web search is disabled unless a mode is requested. A managed device may allow only some modes and narrow a
+requested one, which no response field reports; where such a policy exists the driver says so on stderr.
 
 ### Effort
 
@@ -95,7 +94,7 @@ driver refuses a forbidden mode with exit 2 instead of accepting a silent substi
 
 `--attach` emits protocol `localImage` or `localAudio` items before the prompt and validates every file
 before starting a turn. It is unavailable in prompt files because an injected field could upload an
-unapproved file. Formats and limits are canonical in `--help` and `--help-all`; ordering details are in
+unapproved file. Flags are canonical in `--help`, formats and limits in [environment-and-internals.md](environment-and-internals.md); ordering details are in
 [environment-and-internals.md](environment-and-internals.md).
 
 Claude Code retains pasted images only inside its transcript. `attach-pasted.mjs` decodes them before it
@@ -110,7 +109,7 @@ retained at `turnDiffPath`.
 
 `--output-schema` constrains generation and then validates independently. Every object in the schema
 must set `additionalProperties: false` and list all properties in `required`; express optionality with a
-nullable type. `--answer-json` is the lighter syntax-only requirement.
+nullable type.
 
 `--brief` both asks the model for a short answer and caps the inline copy. The full text the model
 actually generated is normally at `answerPath`, but text it never generated cannot be recovered; a null

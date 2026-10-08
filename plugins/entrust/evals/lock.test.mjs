@@ -602,9 +602,9 @@ test("two concurrent runs: exactly one wins",
 test("twelve concurrent runs against a STALE lock hold it one at a time",
   "a late peer reclaiming a stale lock must not delete the fresh lock that replaced it; the critical section must admit only one holder",
   async () => {
-    // Probe mutual exclusion with atomic mkdir in --verify while the lock is held: sequential successes
-    // are legitimate, but overlapping holders produce a VERIFY_FAILED.
-    const CRIT = "mkdir .crit 2>/dev/null || exit 9; sleep 0.35; rmdir .crit";
+    // Probe mutual exclusion with an atomic mkdir in the agent's turn, while the lock is held: sequential
+    // successes are legitimate, but an overlapping holder leaves a marker naming itself.
+    const CRIT = "if mkdir .crit 2>/dev/null; then sleep 0.35; rmdir .crit; else touch .overlap-$$; fi";
     // Repeat a broad fan-out because reclaim races are probabilistic and narrow rounds can miss them.
     // Three rounds, not ten: each costs two seconds, and the windows themselves are pinned one by one
     // by the lock-window and reclaim-marker cases, so this is the backstop, not the only check.
@@ -615,11 +615,11 @@ test("twelve concurrent runs against a STALE lock hold it one at a time",
       // every later run on the reclaim path.
       fs.writeFileSync(lockFor(d), JSON.stringify({ pid: 2147483646, cwd: fs.realpathSync(d), started: "old" }));
       const codes = (await Promise.all(Array.from({ length: 12 }, () =>
-        run(d, { scenario: "slow-turn", timeout: 60, args: ["--verify", CRIT] })))).map((r) => r.code);
+        run(d, { scenario: "slow-turn", timeout: 60, env: { FAKE_AGENT_SH: CRIT } })))).map((r) => r.code);
       fs.rmSync(lockFor(d), { force: true });
       fs.rmSync(path.join(d, ".crit"), { recursive: true, force: true });
-      // 0 = held it alone; 10 = correctly refused. 9 means a second run was inside the critical section.
-      const overlapped = codes.filter((c) => c === EXIT.VERIFY_FAILED).length;
+      // 0 = held it alone; 10 = correctly refused. A marker means a second run was inside the critical section.
+      const overlapped = fs.readdirSync(d).filter((n) => n.startsWith(".overlap-")).length;
       if (overlapped) return `round ${round}: ${overlapped} run(s) entered the critical section while it was occupied, codes=${JSON.stringify(codes)}`;
       const odd = codes.filter((c) => c !== EXIT.SUCCESS && c !== EXIT.BUSY);
       if (odd.length) return `round ${round}: unexpected exit codes ${JSON.stringify(codes)}`;
@@ -1223,8 +1223,8 @@ test("--host-home sweeps the group and releases the lock exactly as an isolated 
     return true;
   });
 
-// SIGINT has the same handler (driver.mjs registers all three in one loop) and is sent by the two
-// cases below that cancel a config probe and a verifier, so it needs no four-second run of its own here.
+// SIGINT has the same handler (driver.mjs registers all three in one loop) and is sent by the case
+// below that cancels a config probe, so it needs no four-second run of its own here.
 for (const sig of ["SIGTERM", "SIGHUP"]) {
   test(`${sig} reports the turn to its --report-file, sweeps the group and releases the lock`,
     sig === "SIGHUP"
@@ -1495,56 +1495,6 @@ test("a cancelled config probe does not empty the shared home's config",
     await new Promise((res) => p.on("close", res));
     const after = fs.existsSync(cfg) ? fs.readFileSync(cfg, "utf8") : "(removed)";
     return after === seeded ? true : `the cancelled probe rewrote the shared config: ${JSON.stringify(after.slice(0, 90))}`;
-  });
-
-test("a signal during --verify kills the verifier's process group and still reports",
-  "signals must interrupt an active verifier and terminate its process group rather than wait for the verifier's full budget",
-  async () => {
-    const d = freshDir("verify-signal");
-    const pidFile = path.join(d, "verify.pid");
-    const t0 = Date.now();
-    const { p, done } = spawnRun(d, { scenario: "happy", shim: shimDir,
-      // The backgrounded sleep is the point: killing only the verifier's shell leaves it behind, and
-      // only a GROUP kill reaches it.
-      args: ["--verify", `sleep 30 & echo $! > ${pidFile}; wait`] });
-    if (!await waitFor(() => { try { return fs.readFileSync(pidFile, "utf8").trim().length > 0; } catch { return false; } }, 20000))
-      { p.kill("SIGKILL"); return "the verifier never started"; }
-    p.kill("SIGINT");
-    const { code, out } = await done;
-    const ms = Date.now() - t0;
-    const vpid = Number(fs.readFileSync(pidFile, "utf8").trim());
-    let alive = true;
-    try { process.kill(vpid, 0); } catch { alive = false; }
-    if (alive) { try { process.kill(vpid, "SIGKILL"); } catch {} return "the verifier's backgrounded child outlived the run"; }
-    if (ms > 20000) return `the signal was deferred for ${ms}ms — the verifier ran to completion`;
-    let report = null;
-    try { report = JSON.parse(out); } catch {}
-    if (!report) return `the interrupted verifier left no report at all (exit ${code})`;
-    return report.verify?.measured === false
-      ? true
-      : `a killed verifier was reported as measured: ${JSON.stringify(report.verify)}`;
-  });
-
-test("--verify-sandboxed runs the verifier through `codex sandbox` under the read profile",
-  "an opt-in sandbox that silently ran the verifier with the caller's own rights would be worse than none: the invocation has to carry the profile, every one of its -c definitions and the cwd, and hand the verifier's own exit code back. Which SETTING the egress definition carries is measured in cli.test.mjs, at both of them; what is checked here is that none of the three is missing",
-  async () => {
-    const d = freshDir("verify-sandbox");
-    const rpcLog = path.join(d, "sandbox.log");
-    const { code, out } = await run(d, { args: ["--verify", "exit 5", "--verify-sandboxed"],
-      env: { FAKE_SANDBOX: "1", FAKE_RPC_LOG: rpcLog } });
-    const log = fs.existsSync(rpcLog) ? fs.readFileSync(rpcLog, "utf8") : "";
-    const line = log.split("\n").find((l) => l.startsWith("sandbox:")) ?? "";
-    if (!line) return "the verifier did not go through `codex sandbox`";
-    for (const needle of ["-P entrust_read", `-C ${fs.realpathSync(d)}`,
-                          'permissions.entrust_read.extends=":read-only"',
-                          'permissions.entrust_read.filesystem={":tmpdir"="write"}',
-                          "permissions.entrust_read.network={enabled=true}"])
-      if (!line.includes(needle)) return `the sandbox invocation lacks ${needle}: ${line}`;
-    let report = null;
-    try { report = JSON.parse(out); } catch {}
-    if (report?.verify?.exitCode !== 5 || report?.verify?.sandboxed !== true)
-      return `the sandboxed verifier's exit code was not passed through: ${JSON.stringify(report?.verify)}`;
-    return code === EXIT.VERIFY_FAILED ? true : `expected exit 9 for a failing verifier, got ${code}`;
   });
 
 test("the answer reaches the answer log before the turn ends, so a SIGKILL cannot take it with it",
