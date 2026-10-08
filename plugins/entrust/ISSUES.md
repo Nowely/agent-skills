@@ -341,3 +341,21 @@ adds its worktree itself. Its exit codes are the shared table since the change t
 worktree is made) are defined once for two of them and again inside the Codex driver. A change to one copy leaves
 the other behind. The Codex driver should import them from `orchestrate/scripts/drivers.mjs`, keeping its own
 ledger and harvest, which only it has.
+
+## E138. A Codex row's approved model and writes do not bind its prompt
+
+**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/scripts/launch.mjs` exports no `prepare`, so
+`orchestrate/scripts/agent-run.mjs:620` leaves `planModel` and `planWrites` null for a Codex launch and `:655` hands
+the driver's `--check-prompt-file` neither `ENTRUST_PLAN_MODEL` nor `ENTRUST_PLAN_WRITES`; the Codex driver reads
+neither. The OpenCode and Claude drivers refuse a prompt that departs from its row through `resolveRights` and the
+model pin. Run on 2026-10-08: a plan `A | sol | reviewer | nothing | unknown`, then `--new` for `A` with
+`RIGHTS: write <dir>` and `MODEL: luna` printed `PROMPT=`, exit 0; the same departure on a `claude` row printed
+`ERROR=RIGHTS write does not match the approved plan's read writes scope`.
+
+**Check.** The two launches above, through `codex/scripts/agent-run.mjs`, on a fresh run directory under the state
+directory.
+
+**Issue text.** A registered plan binds a Codex agent's id and nothing else: its prompt may name another model and
+wider rights than the row the user approved, and the launcher starts it. The OpenCode and Claude adapters refuse
+that departure at `--new`. The Codex adapter should record the row's model and writes and its driver refuse a
+prompt that departs from them.
