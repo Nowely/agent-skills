@@ -736,7 +736,7 @@ flow("a server that dies mid-turn publishes the collected report, not a pre-turn
     if (code !== EXIT.TRANSPORT) return `a mid-turn crash exited ${code}, not 4`;
     const r = readJson(p);
     if (!r) return `no parseable report at ${p}`;
-    if ("error" in r) return `the collected report was replaced by a pre-turn refusal: ${JSON.stringify(r.error)}`;
+    if (r.turnStatus === null) return `the collected report was replaced by a pre-turn refusal: ${JSON.stringify(r.error)}`;
     if (r.turnStatus !== "failed") return `turnStatus is ${JSON.stringify(r.turnStatus)}, not "failed"`;
     if (r.commandsSucceeded !== 1) return `the command the turn ran is gone: commandsSucceeded ${JSON.stringify(r.commandsSucceeded)}`;
     return String(r.answer).includes("partial answer before the crash")

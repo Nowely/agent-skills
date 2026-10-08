@@ -54,12 +54,15 @@ test("--check-prompt-file passes silently and refuses with one entrust: refused 
   const s = setup();
   const ok = check(s, `RIGHTS: read ${s.work}\nMODEL: haiku\nEFFORT: low\nTASK: look\n`);
   assert.equal(ok.status, 0); assert.equal(ok.stdout + ok.stderr, "");
+  // No RIGHTS line is a read agent in the current directory, as in every adapter; booleans read alike.
+  assert.deepEqual(parsePrompt("TASK: look\n", {}, s.work).rights, { kind: "read", path: null });
+  for (const v of ["true", "1", "no"]) assert.equal(check(s, `RIGHTS: read ${s.work}\nSAFE_MODE: ${v}\nTASK: look\n`).status, 0, v);
   for (const [text, why] of [
     [`MODEL: haiku\nRIGHTS: read ${s.work}\nTASK: look\n`, /RIGHTS must be the first header/],
     [`RIGHTS: read ${s.work}\nNETWORK: on\nTASK: look\n`, /unsupported header NETWORK/],
     [`RIGHTS: read ${s.work}\nMODEL: gpt-5\nTASK: look\n`, /MODEL must be/],
     [`RIGHTS: read ${s.work}\nEFFORT: huge\nTASK: look\n`, /EFFORT must be/],
-    [`RIGHTS: read ${s.work}\nSAFE_MODE: no\nTASK: look\n`, /SAFE_MODE takes only yes/],
+    [`RIGHTS: read ${s.work}\nSAFE_MODE: maybe\nTASK: look\n`, /SAFE_MODE takes yes, true or 1, or no, false or 0/],
     [`RIGHTS: read ${s.work}\nRESUME: relative/report.json\nTASK: look\n`, /RESUME must be the absolute path/],
     [`RIGHTS: write ${s.state}\nTASK: look\n`, /refusing to grant write access to .*: it is inside this driver's state directory/],
     [`RIGHTS: read ${s.work}/missing\nTASK: look\n`, /is not an existing directory/],
@@ -203,6 +206,35 @@ test("an accept the mailbox cannot record is answered deny, never allow", async 
   server.kill();
   const answer = JSON.parse(replies.find((m) => m.id === 2).result.content[0].text);
   assert.equal(answer.behavior, "deny");
+});
+
+test("the budget: a volume bound of tool calls cuts the turn with exit 3, and the wall clock stands still while a request waits", async () => {
+  const s = setup();
+  const many = await drive(s, `RIGHTS: read ${s.work}\nTASK: loop\n`, { mode: "many", more: { FAKE_CLAUDE_TOOLS: "6" }, args: ["--max-tool-calls", "3"] });
+  assert.equal(many.code, 3, many.err); assert.match(many.json.error, /volume bound: more than 3 tool calls/);
+  // A request offered at once and accepted after 2.5 s, under a 1 s wall clock: the wait is the coordinator's.
+  const box = path.join(s.state, `box-${Date.now()}`); fs.mkdirSync(box);
+  const run = drive(s, `RIGHTS: read ${s.work}\nTASK: make\n`, { mode: "ask", approvals: box, args: ["--timeout", "1"] });
+  let q = null;
+  for (let i = 0; i < 100 && !q; i++) {
+    await new Promise((r) => setTimeout(r, 50));
+    const name = fs.readdirSync(box).find((n) => n.endsWith(".request.json"));
+    if (name) q = JSON.parse(fs.readFileSync(path.join(box, name), "utf8"));
+  }
+  assert.ok(q, "no request was offered");
+  await new Promise((r) => setTimeout(r, 2500));
+  fs.writeFileSync(path.join(box, `${q.id}.decision.json`), JSON.stringify({ id: q.id, run: q.run, decision: "accept" }));
+  const done = await run;
+  assert.equal(done.code, 0, done.err);
+});
+
+test("a turn that observed nothing exits 5, as in every adapter, unless ALLOW_NO_COMMANDS says so", async () => {
+  const s = setup();
+  const bare = await drive(s, `RIGHTS: read ${s.work}\nTASK: recall\n`, { mode: "recall" });
+  assert.equal(bare.code, 5, bare.err); assert.match(bare.json.error, /observed nothing/);
+  const allowed = await drive(s, `RIGHTS: read ${s.work}\nALLOW_NO_COMMANDS: yes\nTASK: recall\n`, { mode: "recall" });
+  assert.equal(allowed.code, 0, allowed.err);
+  assert.equal((await drive(s, `RIGHTS: read ${s.work}\nTASK: look\n`)).code, 0);
 });
 
 test("an error result exits 1, no structured answer 13, a dead claude 4, a missing one 4", async () => {

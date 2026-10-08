@@ -16,7 +16,8 @@ agents. An external worker needs its adapter: [codex](../codex/SKILL.md) for an 
 native Codex subagent needs none), [opencode](../opencode/SKILL.md) for an OpenCode worker, which owns
 the server connection, model selection, session continuation and callbacks, and
 [claude](../claude/references/external.md) for an external Claude run, on a host without Claude subagents
-or outside this session. A proxy carries each external worker's run ([proxy.md](references/proxy.md));
+or outside this session. Every external worker is made, run, read and continued the same way, as
+[external.md](references/external.md) says. A proxy carries each external worker's run ([proxy.md](references/proxy.md));
 when the user makes an external model the coordinator, this conversation becomes its proxy
 ([main-proxy.md](references/main-proxy.md)). Do not load adapter skill text for capability discovery; use
 the capability snapshot below, then load only the selected worker's adapter.

@@ -142,8 +142,8 @@ export const agentDirOf = (report) => path.join(path.dirname(report), "agent");
 
 const USAGE = `agent-run — make, run or read one external agent for its proxy.
 
-  --adapter ID selects the adapter at --new (${[...HOOKS.keys()].join(", ") || "none installed"}) and the backend
-  it records is pinned in agent/backend.json; each adapter's own agent-run.mjs passes it.
+  At --new the adapter (${[...HOOKS.keys()].join(", ") || "none installed"}) is the plan row's when a plan holds
+  the report, else --adapter ID, else the adapter whose own agent-run.mjs runs; agent/backend.json pins it.
   Extended plan rows: id | adapter | model | role | writes | tokens; adapter is native or an installed
   adapter (${[...ROW_ADAPTERS].filter((id) => id !== "native").join(", ") || "none"}), and the model one its adapter.json
   declares. Existing five-column plans still work: the model names its adapter.
@@ -591,8 +591,10 @@ export function statusLines(dir, report) {
 // --new: the agent's directory beside the report, the prompt from stdin. The prompt travels coordinator →
 // stdin → file, never through the wrapper's model and never through this script's own reading of it as
 // text: it is copied byte for byte.
-function newAgent(report, dirOverride, adapter) {
+// The adapter is the plan row's when a plan holds the report; `--adapter`, or the entry script's own, otherwise.
+function newAgent(report, dirOverride, requested) {
   const refuse = (why) => { process.stderr.write(`${REFUSED}: ${why}\n`); process.exit(2); };
+  let adapter = requested;
   if (!report || !path.isAbsolute(report)) refuse(`--report-file ${JSON.stringify(report ?? "")} is not an absolute path`);
   if (dirOverride !== null && dirOverride !== undefined && !path.isAbsolute(dirOverride)) refuse(`--dir ${JSON.stringify(dirOverride)} is not an absolute path`);
   const runDir = path.dirname(path.dirname(report));
@@ -609,11 +611,14 @@ function newAgent(report, dirOverride, adapter) {
     if (!matched) planError(`${id} is not in the approved plan at ${plan}; amend it with --plan --amend and show the amendment`);
     if (matched.row.adapter === "native")
       planError(`${id} is a native agent in the plan at ${plan}; an external agent needs a row of its own: amend it with --plan --amend and show the amendment`);
-    if (matched.row.adapter !== adapter) planError(`${id} belongs to adapter ${matched.row.adapter}, not ${adapter}`);
+    if (adapter && matched.row.adapter !== adapter) planError(`${id} belongs to adapter ${matched.row.adapter}, not ${adapter}`);
     row = matched.row;
+    adapter = row.adapter;
     if (!matched.ended)
       planError(`${id} continues ${matched.previous}, which has not ended; wait for it, or amend the plan and show the amendment`);
   }
+  adapter ??= FALLBACK;
+  if (!adapter) refuse("--new needs an adapter: a plan row that names it, --adapter, or the adapter's own agent-run.mjs");
   const dir = dirOverride ?? agentDirOf(report);
   let backend;
   try { backend = backendOf(dir, adapter); } catch (e) { refuse(e.message); }
@@ -924,11 +929,7 @@ export function main(argv, { fallback = null } = {}) {
   if (o.isPlan) { if (o.report || o.dir || o.run || o.status || o.isNew || o.orphan) planError("--plan cannot be combined with agent modes"); registerPlan(o.runDir, o.amend); process.exit(0); }
   if (o.amend || o.runDir) { process.stderr.write("agent-run: --amend and --run-dir require --plan\n"); process.exit(2); }
   if (!o.report) { process.stderr.write(`agent-run: --report-file is required\n${USAGE}`); process.exit(2); }
-  if (o.isNew) {
-    const adapter = o.adapter ?? FALLBACK;
-    if (adapter === null) { process.stderr.write(`${REFUSED}: --new needs an adapter: run the adapter's own agent-run.mjs, or pass --adapter\n`); process.exit(2); }
-    newAgent(o.report, o.dir, adapter);
-  }
+  if (o.isNew) newAgent(o.report, o.dir, o.adapter);
   const dir = o.dir ?? (path.isAbsolute(o.report) ? agentDirOf(o.report) : null);
   if (dir === null) { process.stderr.write(`${REFUSED}: --report-file ${JSON.stringify(o.report)} is not an absolute path\n`); process.exit(2); }
   if (o.adapter) { try { backendOf(dir, o.adapter); } catch (e) { process.stderr.write(`${REFUSED}: ${e.message}\n`); process.exit(2); } }

@@ -52,17 +52,9 @@ rule. A model mentioned only for information or discussion does not request a wo
    `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant.
 3. For orchestration, read [orchestration.md](references/orchestration.md). Resolve and pin the model
    before registering the approved plan. Use the shared [five-field schema](../orchestrate/schemas/five-fields.schema.json).
-4. Choose an absolute report path under the state directory (`ENTRUST_STATE_DIR`, else `<tmp>/entrust-state`), outside the
-   worker's checkout. Prepare the prompt verbatim:
-
-   ```sh
-   node <skill-dir>/scripts/agent-run.mjs --new --report-file <report> <<'PROMPT'
-   RIGHTS: read <cwd>
-   MODEL: <resolved provider/model>
-   OUTPUT_SCHEMA: <absolute five-field schema path>
-   TASK: <one deliverable, input paths, checks and expected return>
-   PROMPT
-   ```
+4. Make, run, read, continue and stop the worker as orchestrate's
+   [shared call page](../orchestrate/references/external.md) says; without a plan, `--new` takes
+   `--adapter opencode`. The prompt carries `MODEL: <resolved provider/model>`.
 
    New invocations default to the V1 compatibility path and start a private loopback server on the
    first run call. Select native V2 explicitly with
@@ -70,20 +62,12 @@ rule. A model mentioned only for information or discussion does not request a wo
    model through a supported native SDK; there is no transport or API-family fallback.
    A continuation inherits its recorded family and agent when those headers are absent.
 
-5. Use one native proxy for each external session and reuse its thread for continuations. On Codex,
-   select the bulk tier ([models](../codex/references/models.md)) with `medium` effort and a fresh context.
-   Report unavailable settings before launching rather than silently inheriting another model. Name its
-   task with the worker ID, external model and proxy role. Give it the agreed `TASK`, existing `RIGHTS`,
-   applicable user instructions, prepared command and report path; no separate permissions configuration
-   is needed. It follows orchestrate's [operational proxy](../orchestrate/references/proxy.md).
-
-   The Codex proxy runs `node <skill-dir>/scripts/agent-run.mjs --run --watch --report-file <report>`.
-   Callbacks are intermediate events; the proxy applies existing authority or messages the coordinator
-   and keeps waiting. Read [interactions.md](references/interactions.md) for the complete decision
-   procedure. A `RUNNING=` checkpoint repeats the same command without starting another turn.
-   Its final return contains the worker's full answer or its complete artifact, with status separate.
-   Claude hosts may retain the [proxy](../../agents/proxy.md) agent and the ordinary `--run`
-   hand-back until their streaming and intermediate-message facilities are verified.
+5. The proxy, one per external session, reused for its continuations, is the shared page's: in Claude
+   Code the `entrust:proxy` agent; in Codex a native subagent on Luna at `medium` effort with a fresh
+   context ([models](../codex/references/models.md)). Report unavailable settings before launching rather
+   than silently inheriting another model. Name its task with the worker ID, external model and proxy
+   role. An OpenCode worker asks through permissions and questions: read
+   [interactions.md](references/interactions.md) for the decision procedure.
 
 ## Scope and results
 
@@ -92,8 +76,7 @@ carry the complete native request; grant one action within the approved scope or
 Each concurrent writer gets a distinct worktree. Rights changes need their own authority.
 Read-only agents may share a directory when its tooling permits it.
 
-Continue with `RESUME: <previous report path>` under a fresh report path. The continuation keeps the earlier
-run's directory and rights: leave `RIGHTS:` out, or name the same. A run still going is refused with exit 10. Read the report even when the exit is nonzero:
+Read the report even when the exit is nonzero:
 partial answers, native command outcomes and callback decisions remain useful evidence.
 `receiptOk` establishes attribution, while independent gates establish the result.
 The report's `model` is observed attribution; `requestedModel` preserves the selection even after Stop.

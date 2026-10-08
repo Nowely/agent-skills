@@ -87,6 +87,9 @@ async function ask(toolName, input) {
 }
 
 async function main() {
+  // What a real agent does first: it reads before it acts. A turn with no observation is "recall".
+  if (!["error", "noschema", "die", "slow", "recall"].includes(mode)) toolCall("toolu_0", "Read", { file_path: process.cwd() });
+  if (mode === "recall") return finish();
   if (mode === "ok") { toolCall("toolu_1", "Bash", { command: "ls" }); return finish(); }
   if (mode === "write") { toolCall("toolu_1", "Write", { file_path: `${process.cwd()}/out.txt`, content: "x" }); return finish(); }
   if (mode === "commit") {
@@ -109,7 +112,8 @@ async function main() {
   if (mode === "error") return finish({ isError: true, subtype: "error_max_turns", structured: null, text: "" });
   if (mode === "noschema") return finish({ structured: null });
   if (mode === "die") process.exit(1);
-  if (mode === "slow") {
+  if (mode === "many") for (let i = 0; i < Number(process.env.FAKE_CLAUDE_TOOLS ?? 5); i++) toolCall(`toolu_m${i}`, "Bash", { command: `echo ${i}` });
+  if (mode === "slow" || mode === "many") {
     process.on("SIGINT", () => { finish({ isError: true, subtype: "error_during_execution", structured: null, terminal: "aborted_tools", text: "" }); process.exit(0); });
     process.on("SIGTERM", () => process.exit(143));
     return new Promise(() => setInterval(() => {}, 1000));

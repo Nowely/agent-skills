@@ -69,14 +69,15 @@ export function planWritesToRights(writes, cwd) {
   return { error: `plan writes ${JSON.stringify(writes ?? null)} cannot be mapped to a rights scope` };
 }
 
-// The RIGHTS a prompt grants, or the plan's writes when a registered plan pins them and the prompt names none.
+// A yes-or-no field: yes, true or 1; no, false or 0; anything else is null, a refusal.
+export const flagValue = (v) => /^(yes|true|1)$/i.test(v ?? "") ? true : /^(no|false|0)$/i.test(v ?? "") ? false : null;
+
+// The RIGHTS a prompt grants: the plan's writes when a registered plan pins them and the prompt names none, and
+// read in the current directory, the narrowest grant, when neither does.
 // A pinned plan holds the resolved write path, not only the kind: a same-kind RIGHTS that resolves outside the
 // approved root, or a different worktree, is a widening and is refused.
 export function resolveRights(value, planWrites, cwd = process.cwd()) {
-  if (value === undefined) {
-    if (planWrites) return planWritesToRights(planWrites, cwd);
-    return { error: "RIGHTS is required: read, write <dir> or worktree <repo>" };
-  }
+  if (value === undefined) return planWrites ? planWritesToRights(planWrites, cwd) : { kind: "read", path: null };
   const rights = parseRights(value);
   if (rights.error || !planWrites) return rights;
   const planned = planWritesToRights(planWrites, cwd);

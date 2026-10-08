@@ -787,6 +787,65 @@ test("the driver runs in the directory --new checked the prompt in, whichever di
       || `the run: exit ${run.code}, cwd ${r?.cwd}, checked in ${fs.realpathSync(checkedIn)}, called from ${runFrom}`;
   });
 
+test("under a plan, --new takes the adapter from the row, whichever entry script runs it; an --adapter that disagrees is refused",
+  "a coordinator under a plan should not have to name the adapter a second time, and a wrong entry script must not run another adapter's driver on that row",
+  async () => {
+    const runDir = runUnderState("rowadapter.");
+    const h = spawnNode([LAUNCHER, "--plan", "--run-dir", runDir], { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 10000 });
+    h.child.stdin.end("C | claude | haiku | reviewer | nothing | unknown\n");
+    if ((await h.done).code !== 0) return "plan registration failed";
+    const report = path.join(runDir, "C", "report.json");
+    const wrong = spawnNode([LAUNCHER, "--new", "--adapter", "codex", "--report-file", report], { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 20000, env: { ENTRUST_STATE_DIR: newState } });
+    wrong.child.stdin.end(`RIGHTS: read ${shimDir}\nTASK: x\n`);
+    const w = await wrong.done;
+    if (w.code !== 2 || !w.out.includes("C belongs to adapter claude, not codex")) return `--adapter codex: exit ${w.code}, ${JSON.stringify(w.out)}`;
+    const made = await newAgent(report, `RIGHTS: read ${shimDir}\nTASK: x\n`);
+    const backend = read(path.join(agentDirOf(report), "backend.json"));
+    return made.code === 0 && JSON.parse(backend ?? "{}").adapter === "claude"
+      || `the row's adapter: exit ${made.code}, ${JSON.stringify(made.out)}, backend ${backend}`;
+  });
+
+test("a Codex agent continues from its REPORT= path, keeping its directory and rights, and a path that is no finished Codex report is refused at --new",
+  "every adapter continues from the report path the status lines print, and Codex's check passed a path it would only refuse after spawning",
+  async () => {
+    const runDir = runUnderState("cxresume.");
+    const make = async (name, body) => {
+      const report = path.join(runDir, name, "report.json");
+      const made = await newAgent(report, body);
+      return { report, made };
+    };
+    const first = await make("first", `RIGHTS: read ${shimDir}\nTASK: irrelevant, the server is scripted\n`);
+    if (first.made.code !== 0) return `first --new: ${first.made.out}`;
+    const ran = await spawnNode([LAUNCHER, "--run", "--report-file", first.report], { env: env(newState), killAfterMs: 60000 }).done;
+    const r1 = JSON.parse(read(first.report) ?? "null");
+    if (ran.code !== 0 || !r1?.threadId) return `first run: exit ${ran.code}, ${ran.out.slice(0, 200)}`;
+    for (const [body, why] of [
+      [`RESUME: ${path.join(runDir, "nowhere", "report.json")}\nTASK: go on\n`, "is not a Codex report"],
+      [`RIGHTS: read ${runDir}\nRESUME: ${first.report}\nTASK: go on\n`, "a continuation keeps its rights"],
+      ["RESUME: last\nTASK: go on\n", "RESUME last is not accepted"]]) {
+      const r = await make(`refused-${why.length}`, body);
+      if (r.made.code !== 2 || !r.made.out.includes(why)) return `${why}: exit ${r.made.code}, ${JSON.stringify(r.made.out)}`;
+    }
+    const next = await make("next", `RESUME: ${first.report}\nTASK: go on\n`);
+    if (next.made.code !== 0) return `continuation --new: ${next.made.out}`;
+    const ran2 = await spawnNode([LAUNCHER, "--run", "--report-file", next.report], { env: env(newState), killAfterMs: 60000 }).done;
+    const r2 = JSON.parse(read(next.report) ?? "null");
+    return ran2.code === 0 && r2?.resumedFrom === r1.threadId && r2?.cwd === r1.cwd && r2?.level === "read"
+      || `the continuation: exit ${ran2.code}, resumedFrom ${r2?.resumedFrom}, cwd ${r2?.cwd} (was ${r1.cwd}), level ${r2?.level}`;
+  });
+
+test("a Codex report carries the fields every adapter's does: adapter, error, rights and requestedModel",
+  "a coordinator reads one report core whichever adapter ran the agent",
+  async () => {
+    const report = path.join(runUnderState("core."), "run", "report.json");
+    const made = await newAgent(report, `RIGHTS: read ${shimDir}\nTASK: irrelevant, the server is scripted\n`);
+    if (made.code !== 0) return `--new: ${made.out}`;
+    await spawnNode([LAUNCHER, "--run", "--report-file", report], { env: env(newState), killAfterMs: 60000 }).done;
+    const r = JSON.parse(read(report) ?? "null");
+    return r?.adapter === "codex" && r.error === null && JSON.stringify(r.rights) === JSON.stringify({ kind: "read", roots: [] })
+      && "requestedModel" in r || `the core fields: ${JSON.stringify({ adapter: r?.adapter, error: r?.error, rights: r?.rights, requestedModel: r?.requestedModel })}`;
+  });
+
 test("D6 a Codex row binds its prompt's model and writes: an absent one is the row's, another is refused (E138)",
   "a plan bound a Codex agent's id alone, so a prompt could name another model and wider rights than the row the user approved; OpenCode and Claude prompts were already held to their rows",
   async () => {

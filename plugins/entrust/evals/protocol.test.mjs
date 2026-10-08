@@ -407,7 +407,7 @@ const CASES = [
     assertStderr: (e) => /with no newline/.test(e)
       || `an unterminated line was buffered without a bound: ${e.slice(0, 200)}`,
     assert: (r) => (r.turnStatus === "failed" && r.commandsSucceeded === 1 && r.answer === "the answer"
-      && !("error" in r) && r.turnError?.codexErrorInfo === "aborted")
+      && r.turnError?.codexErrorInfo === "aborted")
       || `the abort discarded the turn's evidence: ${JSON.stringify({ turnStatus: r.turnStatus, cmds: r.commandsSucceeded, answer: r.answer, err: r.turnError })}` },
 
   { scenario: "no-trailing-newline", expect: EXIT.SUCCESS,
@@ -493,7 +493,7 @@ const CASES = [
     } },
   { scenario: "cut-partial",      expect: EXIT.TIMEOUT, args: ["--timeout", "1"],
     why: "exit 3 is a budget the CALLER set, so the report has to say what the caller can do about it; the thread is still there and resuming it is the recovery, with the caveat that a turn still closing refuses with exit 10",
-    assert: (r) => (/--resume thr_root/.test(String(r.hint)) && /RESUME: thr_root/.test(String(r.hint))
+    assert: (r) => (/--resume thr_root/.test(String(r.hint)) && /RESUME: (\/\S+|<this report's path>)/.test(String(r.hint))
         && /exit 10/.test(String(r.hint)) && /--effort/.test(String(r.hint)) && /split/.test(String(r.hint)))
       || `the exit-3 hint does not name the way out: ${JSON.stringify(r.hint)}` },
   { scenario: "no-thread",        expect: EXIT.TIMEOUT, args: ["--timeout", "0.5"],

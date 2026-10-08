@@ -757,7 +757,7 @@ function argvFromPromptFile(file, allowPromptVerify) {
   if (Buffer.byteLength(raw) > LIMITS.MAX_PROMPT_BYTES)
     fail(EXIT.USAGE, `--prompt-file exceeds ${LIMITS.MAX_PROMPT_BYTES} bytes, the prompt cap: the file carries the body as well as the header`);
   const out = [], seen = new Set(), declared = [];
-  let rightsValue, modelValue;
+  let rightsValue, modelValue, resumeValue;
   const writableValues = [];
   const lines = raw.split("\n");
   let bodyAt = 0;
@@ -788,6 +788,7 @@ function argvFromPromptFile(file, allowPromptVerify) {
     }
     if (field === "MODEL") modelValue = value;
     if (field === "WRITABLE") writableValues.push(value);
+    if (field === "RESUME") { resumeValue = value; continue; }
     if (BOOLS[field]) {
       // A negative header value omits the flag, just as omitting the line does — except where the field
       // is granted by default, where omitting it is what GRANTS the thing the line refused: there the
@@ -815,9 +816,29 @@ function argvFromPromptFile(file, allowPromptVerify) {
   // Under a registered plan (the launcher's ENTRUST_PLAN_WRITES and ENTRUST_PLAN_MODEL) an absent RIGHTS or
   // MODEL is the row's, and one that departs from the row is refused.
   const planWrites = process.env.ENTRUST_PLAN_WRITES || undefined;
-  const rights = rightsValue === undefined && !planWrites ? { kind: "read", path: null }
+  // RESUME names the earlier run's report, the form every adapter takes: the thread is the report's, and the
+  // continuation keeps its rights, so a RIGHTS line names the same or none and its WRITABLE roots come back
+  // with it. A bare thread id is still taken; `last` is not, since under a plan it may be another worker's.
+  let kept = null;
+  if (resumeValue === "last") fail(EXIT.USAGE, "--prompt-file: RESUME last is not accepted: name the earlier run's report path");
+  if (resumeValue !== undefined && path.isAbsolute(resumeValue)) {
+    const prior = readJson(resumeValue);
+    if (!prior || typeof prior.threadId !== "string" || !prior.driverVersion)
+      fail(EXIT.USAGE, `--prompt-file: RESUME ${resumeValue} is not a Codex report with a thread to continue`);
+    if (typeof prior.exitCode !== "number") fail(EXIT.USAGE, `--prompt-file: RESUME ${resumeValue} names a run that has not finished`);
+    kept = prior.worktreeRepo ? { kind: "worktree", path: prior.worktreeRepo }
+      : { kind: prior.level === "write" ? "write" : "read", path: prior.cwd };
+    if (writableValues.length) fail(EXIT.USAGE, "--prompt-file: a continuation keeps its rights, its WRITABLE roots included; leave WRITABLE out");
+    for (const w of prior.writableRootsRequested ?? []) out.push("--writable", w);
+    out.push("--resume", prior.threadId);
+  } else if (resumeValue !== undefined) out.push("--resume", resumeValue);
+  const asked = rightsValue === undefined && !planWrites ? kept ?? { kind: "read", path: null }
     : resolveRights(rightsValue, planWrites, process.cwd());
-  if (rights.error) fail(EXIT.USAGE, `--prompt-file: ${rights.error}`);
+  if (asked.error) fail(EXIT.USAGE, `--prompt-file: ${asked.error}`);
+  const at = (r) => canonical(r.path ?? process.cwd());
+  if (kept && (asked.kind !== kept.kind || at(asked) !== at(kept)))
+    fail(EXIT.USAGE, `--prompt-file: a continuation keeps its rights, ${kept.kind} ${kept.path}; name the same or leave RIGHTS out`);
+  const rights = kept ?? asked;
   // A WRITABLE: root is a write grant too, so a plan's writes bind it: it lies inside the row's write root.
   if (planWrites) {
     const planned = planWritesToRights(planWrites, process.cwd());
@@ -864,7 +885,7 @@ function parseArgs(argv) {
       case "--cwd": o.cwd = need(++i, a); break;
       case "--worktree": o.worktree = need(++i, a); break;
       case "--effort": o.effort = need(++i, a); break;
-      case "--model": o.model = need(++i, a); break;
+      case "--model": o.model = o.requestedModel = need(++i, a); break;
       case "--timeout": o.timeout = Number(need(++i, a)); break;
       case "--idle-timeout": o.idleTimeout = Number(need(++i, a)); break;
       case "--max-commands": o.maxCommands = Number(need(++i, a)); break;
@@ -1135,7 +1156,7 @@ function publishReport(text) {
 function preTurnReport(code, msg) {
   if (reportFilePath === null || reportFileWritten) return;
   const wt = worktreeLastResort();
-  publishReport(`${JSON.stringify({ ok: false, exitCode: code, threadId: rootThreadId,
+  publishReport(`${JSON.stringify({ adapter: "codex", ok: false, exitCode: code, threadId: rootThreadId,
     turnStatus: null, answer: "", error: msg, reportPath: reportFilePath, ...(wt ?? {}) }, null, 2)}\n`);
 }
 
@@ -4277,8 +4298,16 @@ function writeReport(ev, verifySkipped, codeOverride) {
   if (tmpDir && tmpHasAgentFiles())
     process.stderr.write(`entrust: the agent left files in its private $TMPDIR ${tmpDir}; it outlives the run, and the driver never removes it\n`);
 
+  // The fields every adapter's report shares: the adapter, the verdict's reason, the rights the run held and
+  // the model the prompt asked for, beside the one it ran on.
+  const rung = LADDER.find((r) => r.code === code);
   const report = {
-    ok: code === EXIT.SUCCESS, exitCode: code, level: opts.level, sandbox: effectiveSandbox, cwd,
+    adapter: "codex",
+    ok: code === EXIT.SUCCESS, exitCode: code,
+    error: code === EXIT.SUCCESS ? null : (turnError?.message ?? rung?.help.replace(/\s+/g, " ") ?? `exit ${code}`),
+    rights: { kind: worktreeInfo ? "worktree" : opts.level, roots: opts.level === "read" ? [] : [cwd, ...roots] },
+    requestedModel: opts.requestedModel ?? null,
+    level: opts.level, sandbox: effectiveSandbox, cwd,
     // Report requested roots separately from sandbox.writableRoots, which is the grant the server applied;
     // assertWriteSandbox refuses any difference. `network` is the effective grant, not a flag someone
     // passed: it is on unless the agent denied it, and sandbox.networkAccess is asserted to agree.
@@ -4370,7 +4399,7 @@ function writeReport(ev, verifySkipped, codeOverride) {
     // fit, so it names neither the effort nor the split — the thing to look at is what the agent was
     // waiting on.
     ...(code === EXIT.TIMEOUT && rootThreadId
-      ? { hint: `the turn was cut at its budget; continue it with --resume ${rootThreadId} (RESUME: ${rootThreadId} in a prompt file), which may be refused with exit 10 while the turn is still closing — ` + (
+      ? { hint: `the turn was cut at its budget; continue it with RESUME: ${opts.reportFile ?? "<this report's path>"} in a prompt file (--resume ${rootThreadId} on the command line), which may be refused with exit 10 while the turn is still closing — ` + (
           pendingCut?.kind === "idle"
             ? "or re-run with a longer --idle-timeout after checking what the last command was waiting on"
             : pendingCut?.kind === "commands"
