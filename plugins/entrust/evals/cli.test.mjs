@@ -527,7 +527,7 @@ const CASES = [
       || `a bare RIGHTS: read did not default to the current directory: ${JSON.stringify({ cwd: r.cwd, fields: r.promptFileFields })}` },
   { scenario: "happy",            expect: EXIT.USAGE, agent: "RIGHTS: write\n",
     why: "and NOT at write level: there the cwd is the writable root itself, and a defaulted grant is one nobody made — the driver would hand the turn whatever directory the caller happened to be standing in",
-    assertStderr: (e) => /RIGHTS write needs a directory/.test(e)
+    assertStderr: (e) => /RIGHTS must be read, write <dir> or worktree <repo>, not "write"/.test(e)
       || `a bare RIGHTS: write defaulted its writable root: ${e.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.USAGE, noCwd: true, args: ["--level", "write"],
     why: "the command line applies the same cwd rule: read can use the current directory, while write requires an explicit grant",

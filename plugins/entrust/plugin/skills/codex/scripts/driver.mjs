@@ -36,7 +36,8 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createAgentTemp, agentTempAncestor, stateDirectory, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
-import { EXIT } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, parseRights, resolveModel, resolveRights } from "../../orchestrate/scripts/drivers.mjs";
+import { shortName } from "./launch.mjs";
 
 const LEVELS = new Set(["read", "write"]);
 const READ_PROFILE = "entrust_read";
@@ -758,6 +759,7 @@ function argvFromPromptFile(file, allowPromptVerify) {
   if (Buffer.byteLength(raw) > LIMITS.MAX_PROMPT_BYTES)
     fail(EXIT.USAGE, `--prompt-file exceeds ${LIMITS.MAX_PROMPT_BYTES} bytes, the prompt cap: the file carries the body as well as the header`);
   const out = [], seen = new Set(), declared = [];
+  let rightsValue, modelValue;
   const lines = raw.split("\n");
   let bodyAt = 0;
   for (; bodyAt < lines.length; bodyAt++) {
@@ -777,19 +779,15 @@ function argvFromPromptFile(file, allowPromptVerify) {
       fail(EXIT.USAGE, "--prompt-file: VERIFY runs an unsandboxed shell with your own rights, so it is refused from a prompt file unless --allow-prompt-verify is given on the command line; pass --verify there instead");
     seen.add(field);
     declared.push(field);
-    // RIGHTS is the rights declaration and the only field that expands to more than one flag.
+    // RIGHTS is the rights declaration and the only field that expands to more than one flag, once the
+    // header is read and the plan's writes are known.
     if (field === "RIGHTS") {
-      // Split at the FIRST whitespace run only to preserve interior whitespace in the declared path:
-      // rewriting it could grant write access to a different directory.
-      const sp = value.search(/\s/);
-      const kind = sp < 0 ? value : value.slice(0, sp);
-      const arg = sp < 0 ? "" : value.slice(sp).trim();
-      if (kind === "read") { out.push("--level", "read", ...(arg ? ["--cwd", arg] : [])); }
-      else if (kind === "worktree") { if (!arg) fail(EXIT.USAGE, "--prompt-file: RIGHTS worktree needs a repository path"); out.push("--worktree", arg); }
-      else if (kind === "write") { if (!arg) fail(EXIT.USAGE, "--prompt-file: RIGHTS write needs a directory"); out.push("--level", "write", "--cwd", arg); }
-      else fail(EXIT.USAGE, `--prompt-file: RIGHTS must be read | worktree <repo> | write <dir>, got ${JSON.stringify(value)}`);
+      const rights = parseRights(value);
+      if (rights.error) fail(EXIT.USAGE, `--prompt-file: ${rights.error}`);
+      rightsValue = value;
       continue;
     }
+    if (field === "MODEL") modelValue = value;
     if (BOOLS[field]) {
       // A negative header value omits the flag, just as omitting the line does — except where the field
       // is granted by default, where omitting it is what GRANTS the thing the line refused: there the
@@ -814,7 +812,18 @@ function argvFromPromptFile(file, allowPromptVerify) {
   // there is — read, in the current directory, with no writable root beyond $TMPDIR; egress it carries
   // because every agent does, header or none. The header is only the LEADING run of fields, so a later
   // RIGHTS: line is body. A file that DOES declare rights still declares them first, refused above.
-  if (!seen.has("RIGHTS")) out.push("--level", "read");
+  // Under a registered plan (the launcher's ENTRUST_PLAN_WRITES and ENTRUST_PLAN_MODEL) an absent RIGHTS or
+  // MODEL is the row's, and one that departs from the row is refused.
+  const planWrites = process.env.ENTRUST_PLAN_WRITES || undefined;
+  const rights = rightsValue === undefined && !planWrites ? { kind: "read", path: null }
+    : resolveRights(rightsValue, planWrites, process.cwd());
+  if (rights.error) fail(EXIT.USAGE, `--prompt-file: ${rights.error}`);
+  out.unshift(...(rights.kind === "worktree" ? ["--worktree", rights.path]
+    : ["--level", rights.kind, ...(rights.path ? ["--cwd", rights.path] : [])]));
+  const model = resolveModel(modelValue, process.env.ENTRUST_PLAN_MODEL || undefined,
+    (value, planned) => shortName(value).toLowerCase() === planned.toLowerCase());
+  if (model.error) fail(EXIT.USAGE, `--prompt-file: ${model.error}`);
+  if (modelValue === undefined && model.model) out.push("--model", model.model);
   // In the report, so a coordinator reading a wrapped agent can see what the FILE declared rather than
   // inferring it from the flags the run ended up with.
   promptFileFields = declared;

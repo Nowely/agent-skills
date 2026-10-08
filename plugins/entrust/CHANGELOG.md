@@ -35,6 +35,9 @@ forensics remain in the repository references and release notes.
   drivers refused a prompt that named no model; it now takes the row's, as an absent `RIGHTS:` takes the row's
   writes. A prompt naming another model, or OpenCode's `inherit`, is still refused. The rule is one function,
   `resolveModel` in `orchestrate/scripts/drivers.mjs`.
+- **The Codex driver reads RIGHTS with the shared grammar (E137, in part).** It parses a `RIGHTS:` line with
+  `parseRights` and checks it against the plan with `resolveRights`; a bare `RIGHTS: write` or `worktree` is
+  refused in the shared words.
 
 ### Fixed
 
@@ -49,6 +52,11 @@ forensics remain in the repository references and release notes.
   list, so `x | codex | opus` registered and the Codex driver would have run a row approved as a Claude model. A
   row's model is now checked against its adapter's declaration alone, and a `native` row's against a native
   adapter's.
+- **A Codex row's model and writes bind its prompt (E138).** A registered plan bound a Codex agent's id alone: its
+  prompt could name another model and wider rights than its row, and `--new` admitted it. The Codex adapter now
+  records the row's model and writes, as OpenCode and Claude do, and its driver refuses a prompt that departs
+  from them; a prompt naming neither runs on the row's. A Codex model named by its slug, `gpt-…-sol`, matches a
+  `sol` row.
 
 ## 0.26.0 — 2026-10-08
 
