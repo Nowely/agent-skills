@@ -5,6 +5,23 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Added
+
+- **External Claude agents.** The `claude` adapter runs a Claude agent as the launcher runs Codex and OpenCode agents:
+  one `claude -p` per launch, from any host, through `claude/scripts/agent-run.mjs`, a proxy and the mailbox. A
+  plan row whose adapter column is `claude` is an external run; a five-column row naming a Claude model stays native.
+  The prompt takes `RIGHTS`, `MODEL`, `EFFORT`, `OUTPUT_SCHEMA`, `RESUME` and `SAFE_MODE: yes`, which runs Claude
+  Code's `--safe-mode`: no CLAUDE.md, memory, skills, plugins, hooks or MCP servers, so no approvals. Claude Code
+  validates the answer against the schema (`--json-schema`); a continuation forks the earlier session
+  (`--resume --fork-session --session-id`); a stop is SIGINT, which ends the turn with a result. Each permission
+  prompt reaches the mailbox through a stdio MCP server, `claude/scripts/approvals.mjs`, the mailbox's only
+  writer: a plain Bash command comes back as a command request, any other call as `claude.permission` with the
+  whole call to restate. The plan pins the model and the writes; a `write` directory may not overlap the state
+  directory, and no Edit or Write may reach a mailbox. The driver is 395 lines, measured against Claude Code
+  2.1.294 (research/2026-10-08-claude-adapter); `evals/claude.test.mjs` runs it on a fake `claude`, and
+  `ENTRUST_LIVE_CLAUDE=1` runs one approval through the real one on Haiku. The advisor in a Codex host reaches
+  Claude through it.
+
 ### Changed
 
 - **What an external driver shares is orchestrate's.** The exit-code table, the request-id shape, the RIGHTS grammar,

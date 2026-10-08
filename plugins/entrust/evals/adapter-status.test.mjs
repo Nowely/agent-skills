@@ -43,7 +43,10 @@ add("the CLI applies --skip codex without host JSON or a Codex probe", async () 
   const r = await done;
   assert.equal(r.code, 0, r.out + r.err);
   const result = JSON.parse(r.out);
-  assert.deepEqual(result.adapters.map(({ id, result }) => [id, result.status]), [["codex", "skipped"], ["opencode", "local_unprobed"]]);
+  // The claude probe reads whatever `claude` this machine has, so only its shape is pinned here.
+  const [claude, ...rest] = result.adapters;
+  assert.equal(claude.id, "claude"); assert.ok(["ready", "signed-out", "outdated", "missing", "unchecked"].includes(claude.result.status), claude.result.status);
+  assert.deepEqual(rest.map(({ id, result }) => [id, result.status]), [["codex", "skipped"], ["opencode", "local_unprobed"]]);
   assert.equal(child.killed, false);
 });
 
@@ -72,7 +75,7 @@ add("the status collector has no host-context input or adapter skill loading", (
   const source = fs.readFileSync(path.join(ROOT, "skills/orchestrate/scripts/adapter-status.mjs"), "utf8");
   assert.equal(source.includes("host-context"), false);
   assert.equal(source.includes("SKILL.md"), false);
-  assert.deepEqual(adapterRegistry().map((entry) => entry.id), ["codex", "opencode"]);
+  assert.deepEqual(adapterRegistry().map((entry) => entry.id), ["claude", "codex", "opencode"]);
 });
 
 process.exit(summarize(await runCases(cases), cases.length));

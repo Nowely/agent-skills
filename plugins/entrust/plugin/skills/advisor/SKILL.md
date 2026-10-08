@@ -9,7 +9,7 @@ metadata:
 license: MIT
 ---
 
-1. Resolve a top-tier advisor through a route the host exposes, preferring the other model family when a route to it exists: in Claude Code, the [codex adapter](../codex/SKILL.md) after its status check; in Codex, a native subagent; elsewhere, a native route or an adapter that can confirm the model. The route's model table names the top tier. If the chosen model is unavailable, offer supported alternatives and wait for approval. Show only the selected route and model, plus a constraint that changes the plan.
+1. Resolve a top-tier advisor through a route the host exposes, preferring the other model family when a route to it exists: in Claude Code, the [codex adapter](../codex/SKILL.md) after its status check; in Codex, the [claude adapter](../claude/references/external.md) after its status check; elsewhere, a native route or an adapter that can confirm the model. The route's model table names the top tier. If the chosen model is unavailable, offer supported alternatives and wait for approval. Show only the selected route and model, plus a constraint that changes the plan.
 2. Treat an explicit consultation request, including this invocation, as authorization to launch and complete the advice. Honor a user-selected model. Show the advice scope, route and exact model, then proceed without another approval. Existing authorization covers all material questions within that scope. Get approval again only if the task scope, route or model changes.
 
 Keep research and implementation in separate plans. Return findings, a recommendation and unresolved checks before proposing implementation. A consultation grants no implementation authority; use existing authority or obtain it before edits.

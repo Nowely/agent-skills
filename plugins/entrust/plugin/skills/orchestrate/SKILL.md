@@ -10,15 +10,16 @@ license: MIT
 ---
 
 You own the work-list, the plan, the user conversation and the synthesis. Agents own bounded
-deliverables. Use the host's native delegation capabilities; in Claude Code, load the
-[claude adapter](../claude/SKILL.md) (`entrust:claude`) before composing, since it owns how Claude Code
-runs agents. An external worker needs its adapter: [codex](../codex/SKILL.md) for an external Codex run
-(a native Codex subagent needs none), [opencode](../opencode/SKILL.md) for an OpenCode worker, which owns
-the server connection, model selection, session continuation and callbacks. A proxy carries each
-external worker's run ([proxy.md](references/proxy.md)); when the user makes an external model the
-coordinator, this conversation becomes its proxy ([main-proxy.md](references/main-proxy.md)). Do not load
-adapter skill text for capability discovery; use the capability snapshot below, then load only the
-selected worker's adapter.
+deliverables. Use the host's native delegation capabilities; in Claude Code, load the [claude
+adapter](../claude/SKILL.md) (`entrust:claude`) before composing, since it owns how Claude Code runs
+agents. An external worker needs its adapter: [codex](../codex/SKILL.md) for an external Codex run (a
+native Codex subagent needs none), [opencode](../opencode/SKILL.md) for an OpenCode worker, which owns
+the server connection, model selection, session continuation and callbacks, and
+[claude](../claude/references/external.md) for an external Claude run, on a host without Claude subagents
+or outside this session. A proxy carries each external worker's run ([proxy.md](references/proxy.md));
+when the user makes an external model the coordinator, this conversation becomes its proxy
+([main-proxy.md](references/main-proxy.md)). Do not load adapter skill text for capability discovery; use
+the capability snapshot below, then load only the selected worker's adapter.
 
 ## Your own hands
 

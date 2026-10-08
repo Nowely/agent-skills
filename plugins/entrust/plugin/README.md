@@ -34,7 +34,7 @@ Then invoke `$entrust:orchestrate`; it uses Codex's own subagents.
 | [advisor](skills/advisor/SKILL.md) | you: `/entrust:advisor` | a standing top-tier advisor, of the other model family where a route exists, for one run; an experiment |
 | [swarm](skills/swarm/SKILL.md) | you: `/entrust:swarm`, or an approved plan | up to fifty bulk agents over a file of units, reduced to one summary; an experiment |
 | [prepare-feedback](skills/prepare-feedback/SKILL.md) | you: `/entrust:prepare-feedback` | reads your sessions where entrust or terse loaded and returns findings and proposals for the skill |
-| [claude](skills/claude/SKILL.md) | orchestrate, in Claude Code | Claude's model tiers, Agent calls, waiting on agents, Workflow |
+| [claude](skills/claude/SKILL.md) | orchestrate | in Claude Code, Claude's model tiers, Agent calls, waiting on agents, Workflow; from any host, external Claude agents through `claude -p` |
 | [codex](skills/codex/SKILL.md) | the assistant, in Claude Code | external Codex agents; why not the official plugin: [why-not-the-plugin.md](skills/codex/references/why-not-the-plugin.md) |
 | [opencode](skills/opencode/SKILL.md) | the assistant | OpenCode workers and an OpenCode model as coordinator |
 
@@ -47,6 +47,7 @@ Every external run goes through one relay agent, `entrust:proxy`.
   (`CODEX_HOME=~/.codex codex login status`), at the build the driver pins; each report names it as
   `codexVersionPinned`. Your `~/.codex/config.toml` sets the model and effort a call does not.
 - For OpenCode workers: the `opencode` CLI with its own configuration and credentials.
+- For external Claude agents: the `claude` CLI at 2.1.259 or later, signed in.
 - macOS or Linux.
 
 ## Where things live

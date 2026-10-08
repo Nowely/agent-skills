@@ -292,6 +292,8 @@ test("the launcher sorts a report by the driver's own words, so the two move tog
   () => {
     const problems = [];
     for (const needle of [ACCEPTED, ...TAKEN]) if (!driver.includes(needle)) problems.push(`the driver no longer prints ${JSON.stringify(needle)}`);
+    const claude = fs.readFileSync(path.join(ROOT, "skills", "claude", "scripts", "driver.mjs"), "utf8");
+    for (const needle of [ACCEPTED, ...TAKEN]) if (!claude.includes(needle)) problems.push(`the Claude driver no longer prints ${JSON.stringify(needle)}`);
     if (!/PATH=\$\{where\}/.test(fs.readFileSync(LAUNCHER_CORE, "utf8"))) problems.push("the launcher's status read no longer prints a PATH line");
     return problems.length === 0 || problems.join("; ");
   });

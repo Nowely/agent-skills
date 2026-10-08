@@ -14,7 +14,8 @@ Resolve a permission once when its exact action and effects are clearly covered 
 existing authority. Restate the whole immutable request through the launcher's `--decide --accept`
 procedure, with `--why` naming that authority. Technical request identities and bodies stay exact.
 The adapter's request procedure covers request binding, questions, grouped rejection and unknowns:
-[OpenCode](../../opencode/references/interactions.md), [Codex](../../codex/references/approvals.md).
+[OpenCode](../../opencode/references/interactions.md), [Codex](../../codex/references/approvals.md),
+[Claude](../../claude/references/external.md#approvals).
 Answer a model question only from an already agreed fact or choice. Send ambiguity to the coordinator;
 the coordinator reaches the user only for a decision or authority that is missing.
 
