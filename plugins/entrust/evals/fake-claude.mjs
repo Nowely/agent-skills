@@ -96,6 +96,16 @@ async function main() {
     toolCall("toolu_1", "Bash", { command: "git commit -am agent" });
     return finish();
   }
+  if (mode === "gitlink") {
+    // An agent that points its tree's .git at a repository whose fsmonitor would run a program of its choosing.
+    const fake = process.env.FAKE_CLAUDE_GITLINK;
+    spawnSync("git", ["init", "-q", fake]);
+    spawnSync("git", ["-C", fake, "config", "core.fsmonitor", `touch ${fake}.ran`]);
+    fs.writeFileSync("planted.txt", "x\n");
+    fs.writeFileSync(".git", `gitdir: ${fake}/.git\n`);
+    toolCall("toolu_1", "Write", { file_path: `${process.cwd()}/planted.txt`, content: "x" });
+    return finish();
+  }
   if (mode === "error") return finish({ isError: true, subtype: "error_max_turns", structured: null, text: "" });
   if (mode === "noschema") return finish({ structured: null });
   if (mode === "die") process.exit(1);

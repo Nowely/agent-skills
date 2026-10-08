@@ -16,6 +16,12 @@ forensics remain in the repository references and release notes.
   dev:ino. An OpenCode write session also denies edits to `.git`, `.opencode/` and `opencode.json` inside its
   roots, after the allows, so a rewritten gitlink cannot point the driver's own git at a repository the agent made
   (research/2026-10-08-driver-audit, X1).
+- **The git a driver runs in an agent's worktree cannot be turned against the caller.** The shared `git()` that
+  OpenCode and Claude worktree reports use ran plain `git diff` and `git status` in the tree, so an agent that
+  rewrote its tree's `.git` file to point at a repository of its own had its fsmonitor run under the driver, with
+  the caller's rights (run on the fake `claude`). Every shared git now carries the Codex driver's overrides (no
+  fsmonitor, no hooks, no external diff or textconv), and a worktree is read through the git directory its
+  repository records, never through the tree's own `.git` (X10).
 
 ## 0.27.0 — 2026-10-08
 

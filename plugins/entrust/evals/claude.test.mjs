@@ -169,6 +169,19 @@ test("write and worktree runs: acceptEdits, edit tools, the right working direct
   assert.equal(t.json.worktreePath, cwd); assert.equal(t.json.worktreeRepo, fs.realpathSync(repo)); assert.match(t.json.base, /^[0-9a-f]{40}$/);
 });
 
+test("a worktree's report is read through the git directory its repository records, not the tree's own .git", async () => {
+  const s = setup();
+  const repo = tempDir("entrust-claude-repo-");
+  const git = (...a) => spawnSync("git", ["-C", repo, "-c", "user.name=t", "-c", "user.email=t@example.invalid", ...a], { encoding: "utf8" });
+  if (git("init").status !== 0) return skip("no git");
+  git("commit", "--allow-empty", "-m", "base");
+  const fake = path.join(tempDir("entrust-claude-gitlink-"), "fake");
+  const t = await drive(s, `RIGHTS: worktree ${repo}\nTASK: change\n`, { mode: "gitlink", more: { FAKE_CLAUDE_GITLINK: fake } });
+  assert.equal(t.code, 0, t.err);
+  assert.equal(fs.existsSync(`${fake}.ran`), false, "the agent's fsmonitor ran under the driver's git");
+  assert.deepEqual(t.json.untracked, ["?? planted.txt"]);
+});
+
 test("an error result exits 1, no structured answer 13, a dead claude 4, a missing one 4", async () => {
   const s = setup();
   const text = `RIGHTS: read ${s.work}\nTASK: look\n`;
