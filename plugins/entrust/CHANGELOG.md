@@ -126,6 +126,12 @@ forensics remain in the repository references and release notes.
   and the client), re-exports no importer takes, a second route check on every new run, and a route-filling
   fallback no route reaches. The steer disclaimers are one sentence: there is no steer, continue with `RESUME:`.
   `interactions.md` and `parity.md` keep what a decision needs and point at the shared call page for the commands.
+- **Report fields nothing read.** The Codex report drops `expectationOk` and `commentaryOnly` (each derived from a
+  field beside it), `answerPhase`, `answerPartialPath`, the rollout's `receiptOriginator`, `receiptModelProvider`
+  and `receiptCwd` (`receiptOk` is the verdict on them), `unparsedLines`, the echo `schemaSizeCaps`, and the
+  worktree's `worktreeDiffStat` and `worktreeFleet` (the diff itself is at `worktreeDiffPath`). The OpenCode and
+  Claude reports drop the constant `costSource`, and OpenCode its constant `schemaOverflow` and
+  `approvalsAutoAccepted`, and both the `invocationId` echo. Fields a driver reads back on a continuation stay.
 
 ## 0.27.0 — 2026-10-08
 

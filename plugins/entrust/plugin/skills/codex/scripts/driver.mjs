@@ -521,7 +521,7 @@ const HELP = [
     text: `  the JSON report is the only report — on stdout, and at --report-file where one
   was named: beyond the flags above it carries receiptPath/receiptOk, tokenUsage,
   timing, cut — null, or the budget that ended the turn — answerPath,
-  answerPartialPath, the command and file counts the exit ladder reads and the
+  the command and file counts the exit ladder reads and the
   ones it does not, and escalations: one entry per approval request, with its
   decision, who made it, why, and what the item then reported. --help-all lists
   the rest
@@ -531,9 +531,9 @@ const HELP = [
   exit 1, and before it they exit 4
   -h, --help         this text
   --help-all         this text, plus the rarely needed flags and the internals`,
-    more: `  the rest of the report: receiptOriginator, receiptModelProvider and receiptCwd,
-  read out of the rollout's own session_meta record (the file is OPENED, not
-  merely matched by name); codexVersion, what the server reported, beside the
+    more: `  the rest of the report: receiptOk, read out of the rollout's own
+  session_meta record (the file is OPENED, not merely matched by name);
+  codexVersion, what the server reported, beside the
   version this plugin was measured against; configInherited, whether model and
   effort came from a fresh probe of your config, a stale last-known-good, or
   nothing; commandsPipedToPager, commands whose output the agent cut with
@@ -555,7 +555,7 @@ const HELP = [
   approvalsStale (decision files not this run's or not their request's),
   approvalsLate (valid ones the driver did not take, the request's turn or the
   run being over), approvalsDuplicate (a request id that arrived again, answered
-  once) and approvalDir. A command the sandbox denied
+  once) and approvalDir, the mailbox. A command the sandbox denied
   need not raise a request; exit 6 sits below timeout, so a cut run carries
   entries and exits 3. interactions, the requests that needed a human and no
   sandbox change could answer. sandbox is the server's echo at thread/start.
@@ -569,7 +569,7 @@ const HELP = [
   answerPartial is what the model had written
   when the turn was cut, reassembled from the answer stream because the server
   discards the in-flight message — UNFINISHED text the model never delivered,
-  never promoted to answer, written beside it as answerPartialPath;
+  never promoted to answer;
   commentaryPath is where a turn that produced no answer at all had its messages
   written; rateLimits is the setup-time account snapshot; and turnDiffPath is the
   last streamed turn diff at <state>/answers/<threadId>.diff.
@@ -2129,8 +2129,8 @@ function disposeWorktree(turnDone) {
   const { repo, dir, ledger, baseSha, name, restored } = worktreeInfo;
   const res = { worktreePath: dir, worktreeRepo: repo, worktreeBase: baseSha, worktreeRestored: restored,
                 worktreeRemoved: false, worktreePreserved: null, worktreeHarvested: false,
-                worktreeDiffStat: null, worktreeDiffPath: null, worktreeUntrackedPath: null,
-                worktreeIgnoredDropped: null, worktreeCommitsRef: null, worktreeFleet: null };
+                worktreeDiffPath: null, worktreeUntrackedPath: null,
+                worktreeIgnoredDropped: null, worktreeCommitsRef: null };
   const st = git(dir, ["status", "--porcelain"]);
   const clean = st.status === 0 && st.stdout.trim() === "";
   // Harvest when the tree is dirty OR HEAD moved: a spotless agent that committed still has commits to preserve.
@@ -2169,8 +2169,6 @@ function disposeWorktree(turnDone) {
       }
       return { status: 1, stdout: "", stderr: "every diff form failed" };
     };
-    const ds = diffVs(["--stat"]);
-    if (ds.status === 0 && ds.stdout.trim()) res.worktreeDiffStat = ds.stdout.trim().slice(0, 2000);
     // Return null on success, or a reason to preserve the tree when the harvest cannot be trusted.
     const harvest = () => {
       fs.mkdirSync(answersDir(), { recursive: true, mode: 0o700 });
@@ -2232,9 +2230,6 @@ function disposeWorktree(turnDone) {
   // spaces and shell syntax in a path must not change what the command removes.
   const shq = (s) => `'${String(s).replaceAll("'", `'\\''`)}'`;
   if (!res.worktreeRemoved) res.worktreeRemoveCommand = `git -C ${shq(repo)} worktree remove --force ${shq(dir)}`;
-  const fleet = git(repo, ["worktree", "list", "--porcelain"]);
-  if (fleet.status === 0)
-    res.worktreeFleet = fleet.stdout.split("\n").filter((l) => l.startsWith("worktree ") && l.includes("/.claude/worktrees/")).length;
   // Keep the ledger entry for every preserved tree so reconciliation can still find it.
   if (ledger && res.worktreeRemoved) { try { fs.rmSync(ledger, { force: true }); } catch {} }
   else if (ledger) writeLedger(name, { path: dir, repo, baseSha, pid: process.pid,
@@ -2582,9 +2577,6 @@ let conn = null;
 let probeConn = null;
 let stderrBuf = "";
 let stderrDropped = 0;
-// A line the client cannot parse is a protocol fact, not noise. Failing the run on one is wrong — codex
-// may print a banner one day — but discarding it silently means a malformed stream looks like a quiet one.
-let unparsedLines = 0;
 
 // detached:true gives every child this driver spawns a process group of its own, and the negative pid
 // reaches every member of that group — killing only the app-server pid left orphaned test servers behind.
@@ -4072,7 +4064,7 @@ function writeReport(ev, codeOverride) {
   const code = codeOverride ?? decideExitCode(ev);
   const { ran, blocked, probeNegatives, failedCmds, declinedCmds, failedPatches, expected, pipedToPager, final,
           fullAnswer, schemaErrs, answerPath, answer, sizeOverflow, bounded, commentaryOnly, commentaryPath,
-          answerPartial, answerPartialPath } = ev;
+          answerPartial } = ev;
   // Where the wall clock went. commandMs is the server's own per-command measurement, so modelMs is the
   // remainder after setup and the work the model ordered — the part a budget must size. A remainder, not a
   // measurement: anything the server spent outside a command lands in it.
@@ -4120,7 +4112,7 @@ function writeReport(ev, codeOverride) {
         schemaErrors: schemaErrs.length ? schemaErrs.slice(0, 12) : null,
         // What the driver's shallow validator could NOT re-verify; server enforcement of these
         // keywords is unknown. Null means the whole schema was within the checked subset.
-        schemaKeywordsUnchecked: opts.schemaUnchecked, schemaSizeCaps: opts.schemaSizeCaps,
+        schemaKeywordsUnchecked: opts.schemaUnchecked,
         schemaOverflow: sizeOverflow ? { completeAnswerPath: answerPath, clipped: bounded?.clipped ?? [] } : null,
         answerAttemptPaths: sizeAttemptPath ? [sizeAttemptPath] : [] } : {}),
     commandsSucceeded: ran.length, commandsMatchingExpectation: expected.length,
@@ -4149,7 +4141,7 @@ function writeReport(ev, codeOverride) {
     approvalsAccepted: escalations.filter((e) => e.decision === "accepted" && e.by === "coordinator").length,
     approvalsAutoAccepted: escalations.filter((e) => e.decision === "accepted" && e.by === "driver").length,
     approvalsStale, approvalsLate, approvalsDuplicate, approvalDir,
-    interactions, unparsedLines, expectCommand: opts.expect ?? null,
+    interactions, expectCommand: opts.expect ?? null,
     // Transient provider failures the driver absorbed with a bounded backoff; empty on the vast
     // majority of runs, and the honest record of the delay when it happened.
     transientRetries,
@@ -4164,15 +4156,9 @@ function writeReport(ev, codeOverride) {
     // from a hand-typed one in the report, and the fields the file declared are exactly what a
     // coordinator needs to see when a script wrote them.
     ...(promptFileFields ? { promptFileFields } : {}),
-    // null only when no --expect-command was given, so a caller can tell "not asked" from "asked and missed".
-    expectationOk: opts.expectRe ? expected.length > 0 : null,
     // receiptOk reports whether a matching session_meta was verified within RECEIPT_LOOKBACK_DAYS date directories.
     // A missing receipt can reflect an older thread or nonstandard layout; receiptWhy explains the result.
     receiptPath, receiptOk: receipt?.verified === true, receiptWhy: receipt?.why ?? (receiptPath ? null : `no rollout naming this thread in the last ${LIMITS.RECEIPT_LOOKBACK_DAYS} days`),
-    // Straight out of the verified record. A wrapper that forwarded the work has no thread whose
-    // session_meta says this, and a coordinator auditing an agent reads these rather than a path.
-    receiptOriginator: receipt?.originator ?? null, receiptModelProvider: receipt?.modelProvider ?? null,
-    receiptCwd: receipt?.cwd ?? null,
     ...(worktree ?? {}),
     // A completed turn that ran nothing exits 5; when no expectation was declared, the two legitimate
     // shapes of that run are a recall-only follow-up, which has a flag, and a delegation, whose work was
@@ -4199,12 +4185,11 @@ function writeReport(ev, codeOverride) {
       ? { kind: pendingCut.kind, limit: pendingCut.limit, observed: pendingCut.observed,
           completedInGrace: pendingCut.completedInGrace } : null,
     timing,
-    answerPhase: final?.phase ?? null, commentaryOnly,
     // The messages of a turn that answered nothing, on disk; null when there was an answer.
     commentaryPath,
     // What the model had written when the turn was cut, reassembled from the streamed deltas because the
     // server discards the in-flight message. Never an answer — say so by keeping it in its own field.
-    answerPartial, answerPartialPath,
+    answerPartial,
     // Persist the full answer so the coordinator can open it when the inline cap is insufficient.
     answer, answerPath, answerTruncated: answer !== fullAnswer,
     // Include answerJson only when requested, distinguishing a parse failure from a flag that was not given.
@@ -4442,7 +4427,6 @@ function spawnServer() {
     onMessage: (msg, bytes) => {
       try { handleMessage(msg, bytes); } catch (e) { abort(EXIT.TRANSPORT, `protocol handling failed: ${e.message}`); }
     },
-    onUnparsed: () => { unparsedLines++; },
     onOverflow: (n) => abort(EXIT.TRANSPORT, `the server sent more than ${n} bytes with no newline; refusing to buffer more`),
   });
   requestFn = conn.request;

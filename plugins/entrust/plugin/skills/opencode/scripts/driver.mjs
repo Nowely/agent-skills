@@ -773,7 +773,6 @@ function buildReport(ctx, base) {
     sessionID: ctx.sessionID ?? null,
     turnId: ctx.rootInputID ?? null,
     turnIds: [...(ctx.invocationInputs ?? [])],
-    invocationId: ctx.invocationId,
     server: { url: ctx.server?.url ?? null, version: ctx.server?.version ?? null },
     model: base.model ?? null,
     requestedModel: ctx.ref ? modelKey(ctx.ref) : null,
@@ -785,7 +784,6 @@ function buildReport(ctx, base) {
     fileChanges: base.fileChanges ?? [],
     usage: base.usage ?? null,
     cost: base.cost ?? null,
-    costSource: "opencode_estimate",
     childUsage: base.childUsage ?? null,
     transcriptPath: ctx.transcriptPath ?? null,
     escalations: ctx.escalations ?? [],
@@ -801,10 +799,7 @@ function buildReport(ctx, base) {
     correction: base.correction ?? null,
     startedAt: new Date(ctx.startedAtMs).toISOString(),
     endedAt: new Date(now()).toISOString(),
-    // Fields the shared launcher reads directly.
     turnError: base.turnError ?? null,
-    schemaOverflow: base.schemaOverflow ?? false,
-    approvalsAutoAccepted: base.approvalsAutoAccepted ?? 0,
     approvalsAutoDeclined: ctx.autoDeclined ?? 0,
     ...worktreeFacts(ctx),
   };

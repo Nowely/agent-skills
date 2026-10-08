@@ -82,7 +82,7 @@ test("--worktree harvests a completed turn's work and removes the tree",
   async () => {
     const repo = freshRepo("wt-dirty");
     if (!repo) return "git setup failed";
-    // The verifier runs inside the worktree after the turn — the cheapest honest way to dirty the tree.
+    // The scripted agent works inside the worktree during the turn — the cheapest honest way to dirty the tree.
     // Both an untracked file AND a STAGED tracked change: dirtiness is decided by `status --porcelain`,
     // which sees staged work, so the harvest must see it too.
     const { code, out } = await run(null, { args: ["--worktree", repo],
@@ -95,8 +95,9 @@ test("--worktree harvests a completed turn's work and removes the tree",
       if (r.worktreeRemoved !== true) return `a harvested tree was not removed: ${JSON.stringify(r.worktreePreserved)}`;
       if (fs.existsSync(r.worktreePath)) return "the tree still exists after removal";
       if (worktreesUnder(repo).length) return `worktree directories left behind: ${JSON.stringify(worktreesUnder(repo))}`;
-      if (!r.worktreeDiffStat || !/seed/.test(r.worktreeDiffStat))
-        return `the diff stat does not show the staged change: ${JSON.stringify(r.worktreeDiffStat)}`;
+      const harvested = r.worktreeDiffPath && fs.existsSync(r.worktreeDiffPath) ? fs.readFileSync(r.worktreeDiffPath, "utf8") : "";
+      if (!/^\+staged-line$/m.test(harvested))
+        return `the harvested diff does not hold the staged change: ${JSON.stringify(harvested.slice(0, 200))}`;
       let diff = "";
       try { diff = fs.readFileSync(r.worktreeDiffPath, "utf8"); } catch {}
       if (!/\+staged-line/.test(diff))
@@ -576,8 +577,9 @@ test("no git the driver spawns runs the repository's hooks, fsmonitor or externa
       }
       // The hardening must not cost the harvest: an external diff driver left in place would have
       // produced an empty patch and this is what says it did not.
-      if (!r?.worktreeHarvested || !/seed/.test(r.worktreeDiffStat ?? ""))
-        return `the harvest lost the work: ${JSON.stringify({ harvested: r?.worktreeHarvested, stat: r?.worktreeDiffStat })}`;
+      const patch = r?.worktreeDiffPath && fs.existsSync(r.worktreeDiffPath) ? fs.readFileSync(r.worktreeDiffPath, "utf8") : "";
+      if (!r?.worktreeHarvested || !/^\+agent-work$/m.test(patch))
+        return `the harvest lost the work: ${JSON.stringify({ harvested: r?.worktreeHarvested, patch: patch.slice(0, 160) })}`;
     } finally {
       if (r?.worktreePath && fs.existsSync(r.worktreePath))
         spawnSync("git", ["-C", repo, "worktree", "remove", "--force", r.worktreePath]);
@@ -764,10 +766,11 @@ test("--worktree REPO --resume ID rebuilds that thread's tree and continues in i
         return `the rebuilt tree does not start where the thread's tree started: ${r2.worktreeBase} vs ${r1.worktreeBase}`;
       if (r2.worktreeRestored?.diff !== r1.worktreeDiffPath || r2.worktreeRestored?.untracked !== r1.worktreeUntrackedPath)
         return `the harvest was not restored into the tree: ${JSON.stringify(r2.worktreeRestored)}`;
-      // The rebuilt tree's OWN harvest is the proof the work was really there: this agent's verifier
-      // changed nothing, so anything in the diff came from the restore.
-      if (!/seed/.test(r2.worktreeDiffStat ?? ""))
-        return `the restored tracked work is not in the rebuilt tree: ${JSON.stringify(r2.worktreeDiffStat)}`;
+      // The rebuilt tree's OWN harvest is the proof the work was really there: this agent changed
+      // nothing, so anything in the diff came from the restore.
+      const rebuilt = r2.worktreeDiffPath && fs.existsSync(r2.worktreeDiffPath) ? fs.readFileSync(r2.worktreeDiffPath, "utf8") : "";
+      if (!/^\+agent-line$/m.test(rebuilt))
+        return `the restored tracked work is not in the rebuilt tree: ${JSON.stringify(rebuilt.slice(0, 200))}`;
       const listing = spawnSync("tar", ["-tzf", r2.worktreeUntrackedPath ?? "/nonexistent"], { encoding: "utf8" });
       if (listing.status !== 0 || !/scratch\.txt/.test(listing.stdout))
         return `the restored untracked file is not in the rebuilt tree: ${String(listing.stdout || listing.stderr).trim().slice(0, 160)}`;
