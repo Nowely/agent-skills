@@ -28,6 +28,16 @@ forensics remain in the repository references and release notes.
   its check against a registered plan's writes and the scope it grants, and the worktree a `worktree` agent runs in moved, unchanged, from the OpenCode adapter to
   `orchestrate/scripts/drivers.mjs`, which the OpenCode driver imports, so a second driver does not copy them.
 
+### Fixed
+
+- **A worktree report carries committed work (E136).** `worktreeFacts` diffed the worktree against its index, so an
+  OpenCode or Claude agent that staged or committed its work reported an empty `diff`. It now diffs against the
+  recorded base commit, as the Codex driver does.
+- **A missing run directory is refused, not reported as a missing `claude`.** A `RIGHTS: read` or `write` directory
+  that does not exist, or a `RESUME` whose run's directory is gone, passed `--check-prompt-file` and then failed the
+  spawn with ENOENT, which the Claude driver reported as "claude is not on PATH", exit 4. `--check-prompt-file` now
+  refuses it.
+
 ## 0.26.0 — 2026-10-08
 
 ### Removed

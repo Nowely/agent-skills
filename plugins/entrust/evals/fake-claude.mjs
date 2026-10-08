@@ -4,7 +4,7 @@
 // approval server named by --mcp-config through initialize, tools/list and tools/call as the real CLI does.
 // FAKE_CLAUDE_MODE picks the scenario; FAKE_CLAUDE_LOG receives one JSON line per run: its argv, cwd, task and
 // the session variables it was handed.
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import readline from "node:readline";
 
@@ -88,6 +88,13 @@ async function ask(toolName, input) {
 async function main() {
   if (mode === "ok") { toolCall("toolu_1", "Bash", { command: "ls" }); return finish(); }
   if (mode === "write") { toolCall("toolu_1", "Write", { file_path: `${process.cwd()}/out.txt`, content: "x" }); return finish(); }
+  if (mode === "commit") {
+    fs.writeFileSync("committed.txt", "x\n");
+    for (const a of [["add", "committed.txt"], ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-qm", "agent"]])
+      if (spawnSync("git", a).status !== 0) throw new Error(`git ${a.join(" ")} failed`);
+    toolCall("toolu_1", "Bash", { command: "git commit -am agent" });
+    return finish();
+  }
   if (mode === "error") return finish({ isError: true, subtype: "error_max_turns", structured: null, text: "" });
   if (mode === "noschema") return finish({ structured: null });
   if (mode === "die") process.exit(1);
