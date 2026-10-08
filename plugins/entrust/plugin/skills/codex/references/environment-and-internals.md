@@ -101,9 +101,9 @@ driver's own subtrees there —
 run's `$TMPDIR` is; `reports/<run>` and an orchestrate run directory are both fine, being neither. The
 driver also refuses any writable root that is, or is an ancestor of, the state directory or `~/.codex` —
 the inverse of the ancestor walk [Only those are protected](#what-is-protected-and-what-is-not) already
-runs — so no sandbox the driver grants can reach in and write a decision itself. `D/owner.json` claims the
-mailbox by `link(2)`; a second driver over the same `D` exits 2 whether that owner is alive or has ended,
-so `D` serves one driver, ever, and each launch gets a `D` of its own. A request the
+runs — so no sandbox the driver grants can reach in and write a decision itself. The launcher's `--new`
+makes `D` in one agent's directory, and the launcher starts one driver per directory, so each launch
+makes its own mailbox and no second driver writes into it. A request the
 mailbox itself cannot write — its file, or its entry in `pending` — is settled at once as expired,
 `why: "mailbox write failed: <error>"`, and an accept reaches the server only after that settlement record
 landed; a request's own `settled` object then carries `decisionFile`, what the decision file held as it

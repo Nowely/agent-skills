@@ -154,6 +154,11 @@ forensics remain in the repository references and release notes.
   what the mailbox already records: a stale decision file is left in place and its request file says so, which
   the launcher's `RECEIPT=` counts, and a request id sent twice is still one request, answered once and said on
   stderr.
+- **The Codex mailbox's owner claim.** A Codex driver wrote `owner.json` into its mailbox, refused a mailbox that
+  had ever had one, and checked it before every write, so that two drivers could not rewrite one `pending`. The
+  launcher already starts one driver per agent directory, by its exclusive `err.txt`, and makes each mailbox
+  there, so no supported caller could hand two drivers one mailbox. The claim, its checks and its case are gone;
+  the driver still refuses a mailbox outside its state directory or inside a root the agent may write.
 
 ## 0.27.0 — 2026-10-08
 

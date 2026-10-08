@@ -925,32 +925,6 @@ flow("a caller TMPDIR above the state directory or inside it is never granted: t
     return problems.length === 0 || problems.join("; ");
   });
 
-flow("one driver per mailbox, ever: a second exits 2 naming the owner's pid, whether the owner is still running or has ended",
-  "pending is rewritten whole by whoever owns the mailbox, so two drivers on one would erase each other's requests; the launcher makes a mailbox per launch, so an owner file already there is never a mailbox to take over, and a takeover checked by name could meet a second taker between its check and its removal (E68)",
-  async () => {
-    const state = flowState();
-    const box = path.join(state, "run", "agent", "approvals");
-    fs.mkdirSync(box, { recursive: true, mode: 0o700 });
-    const first = run({ scenario: "slow-turn", args: ["--approval-dir", box], env: { ENTRUST_STATE_DIR: state } });
-    const owner = await until(() => readJson(path.join(box, "owner.json")));
-    if (!owner) return "the first driver never claimed the mailbox";
-    const second = await run({ scenario: "happy", args: ["--approval-dir", box], env: { ENTRUST_STATE_DIR: state } });
-    const a = await first;
-    const problems = [];
-    if (second.code !== EXIT.USAGE || !second.err.includes(`belongs to entrust pid ${owner.pid}, which is still running`))
-      problems.push(`a second driver on a live mailbox: exit ${second.code}, ${second.err.trim().slice(-200)}`);
-    if (a.code !== EXIT.SUCCESS) problems.push(`the owner exited ${a.code}`);
-    const held = readJson(path.join(box, "owner.json"));
-    if (held?.threadId !== "thr_root") problems.push("the owner file does not name the thread once it exists");
-    const third = await run({ scenario: "happy", args: ["--approval-dir", box], env: { ENTRUST_STATE_DIR: state } });
-    if (third.code !== EXIT.USAGE || !third.err.includes(`belongs to entrust pid ${owner.pid}, which has ended`))
-      problems.push(`a driver on an ended owner's mailbox: exit ${third.code}, ${third.err.trim().slice(-200)}`);
-    if (JSON.stringify(readJson(path.join(box, "owner.json"))) !== JSON.stringify(held)) problems.push("a refused driver changed the owner file");
-    const leftovers = fs.readdirSync(box).filter((n) => n !== "owner.json");
-    if (leftovers.length) problems.push(`the refused drivers left ${JSON.stringify(leftovers)} in the mailbox`);
-    return problems.length === 0 || problems.join("; ");
-  });
-
 let failed = await runTable(CASES);
 
 // --- the help surface: what a coordinator is shown, and what the parser will actually take ---
@@ -971,7 +945,7 @@ flow("--help says the mailbox is the launcher's, that a request waits thirty min
       if (!core.includes(s)) problems.push(`--help lacks ${JSON.stringify(s)}`);
     for (const s of ["--approval-timeout", "ENTRUST_APPROVAL_TIMEOUT_S", "ENTRUST_APPROVAL_POLL_MS", "ENTRUST_LOCK_SEAM_MS", "tool's own store"])
       if (core.includes(s)) problems.push(`--help still says ${JSON.stringify(s)}`);
-    for (const s of ["`D/owner.json` claims the mailbox", "`decisionFile`", "approvalsAutoAccepted", "`outcome` (the matching item's own completion",
+    for (const s of ["each launch makes its own mailbox and no second driver writes into it", "`decisionFile`", "approvalsAutoAccepted", "`outcome` (the matching item's own completion",
                      "`ENTRUST_APPROVAL_POLL_MS`", "`ENTRUST_APPROVAL_TIMEOUT_S`", "(default 1800)"])
       if (!page.includes(s)) problems.push(`environment-and-internals.md lacks ${JSON.stringify(s)}`);
     if (page.includes("--approval-timeout")) problems.push("environment-and-internals.md still names --approval-timeout");

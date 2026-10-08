@@ -1964,7 +1964,7 @@ async function setup() {
   // runtimeWorkspaceRoots reports; normalise the request the same way before asserting the response.
   roots = [...new Set(opts.writable.map((d) => checkRoot(resolveDir(d, "--writable"))))]
     .filter((r) => r !== cwd);
-  if (opts.approvalDir !== undefined) approvalDir = claimMailbox(opts.approvalDir);
+  if (opts.approvalDir !== undefined) approvalDir = checkMailbox(opts.approvalDir);
   noteManagedPolicy(opts.webSearch);
 
   const config = [
@@ -2404,7 +2404,6 @@ let syncingPending = false;
 function writePending() {
   let failure = null;
   try {
-    if (!ownsMailbox()) throw new Error("the mailbox's owner.json no longer names this run");
     if (openApprovals.size) writeMailbox("pending", [...openApprovals.keys()].map((id) => `${id}\n`).join(""));
     else fs.rmSync(path.join(approvalDir, "pending"), { force: true });
   } catch (e) { failure = e; }
@@ -2428,7 +2427,6 @@ function offerApproval(msg, entry) {
     level: opts.level, sandbox: effectiveSandbox, roots: agentRoots(),
     askedAt: entry.askedAt, deadlineAt: deadlineMs ? new Date(Date.parse(entry.askedAt) + deadlineMs).toISOString() : null };
   try {
-    if (!ownsMailbox()) throw new Error("the mailbox's owner.json no longer names this run");
     writeMailbox(`${id}.request.json`, record);
   } catch (e) {
     // A request nobody can see would wait for a decision that cannot come.
@@ -2464,7 +2462,6 @@ function closeApproval(id, answer, decision, by, why, decisionFile) {
   clearTimeout(o.timer);
   settleEntry(o.entry, decision, by, why);
   try {
-    if (!ownsMailbox()) throw new Error("the mailbox's owner.json no longer names this run");
     writeMailbox(`${id}.request.json`, { ...o.record,
       settled: { decision, by, why, settledAt: o.entry.settledAt, waitMs: o.entry.waitMs, decisionFile } });
   } catch (e) {
@@ -2524,8 +2521,8 @@ function settleOpenApprovals(why, which = () => true) {
 }
 
 // The mailbox must be a place no granted sandbox can write: strictly inside the state directory, outside
-// <tmp>/entrust and every root of this run, by inode. One driver per mailbox, since `pending` is rewritten whole.
-function claimMailbox(d) {
+// <tmp>/entrust and every root of this run, by inode. Each launch makes its own, so no other driver writes it.
+function checkMailbox(d) {
   const real = resolveDir(d, "--approval-dir");
   const within = (p, anc) => {
     let a;
@@ -2553,36 +2550,8 @@ function claimMailbox(d) {
     fail(EXIT.USAGE, `--approval-dir ${real} lies inside another agent's temporary grant ${ancestor}: it could publish this run's decision`);
   for (const r of agentRoots())
     if (within(real, r)) fail(EXIT.USAGE, `--approval-dir ${real} lies inside ${r}, which this agent may write: it could publish its own decision`);
-  mailboxOwnerPath = path.join(real, "owner.json");
-  claimOwner(real);
   return real;
 }
-// Rewritten once the thread exists, so the owner names the thread a request file will name.
-let mailboxOwnerPath = null;
-const mailboxOwner = () => JSON.stringify({ pid: process.pid, identity: selfIdentity(), startedAtMs, threadId: rootThreadId });
-// Whether owner.json still names this run, by the pid and start the claim wrote. Nothing is written into a
-// mailbox this run does not hold: `pending` is rewritten whole, and a second writer would erase the first's.
-const ownsMailbox = () => {
-  const held = readJson(mailboxOwnerPath);
-  return held?.pid === process.pid && held?.startedAtMs === startedAtMs;
-};
-// One driver per mailbox, ever: the claim is a link(2), which refuses an entry already there, so a mailbox
-// that has had an owner is refused whether that driver is alive or gone. The launcher makes a mailbox per
-// launch, so no run needs another's.
-function claimOwner(real) {
-  const owner = mailboxOwnerPath;
-  const tmp = `${owner}.${crypto.randomBytes(8).toString("hex")}.tmp`;
-  try {
-    fs.writeFileSync(tmp, mailboxOwner(), { mode: 0o600, flag: "wx" });
-    try { fs.linkSync(tmp, owner); }
-    catch (e) {
-      if (e.code !== "EEXIST") fail(EXIT.USAGE, `--approval-dir ${real} cannot be claimed: ${e.message}`);
-      const held = readJson(owner);
-      fail(EXIT.USAGE, `--approval-dir ${real} belongs to entrust pid ${held?.pid ?? "unknown"}, ${holderAlive(held) ? "which is still running" : "which has ended"}; a mailbox serves one driver, so give each run a mailbox of its own`);
-    }
-  } finally { fs.rmSync(tmp, { force: true }); }
-}
-
 // The entry every approval request gets, whatever becomes of it. `detail` is the command whole, else the
 // reason, else the message; for a file change whose paths an item named, those paths.
 function approvalEntry(msg, owner, foreign) {
@@ -3897,7 +3866,6 @@ async function main() {
   // the key to tailing its live rollout under ~/.codex/sessions — a coordinator watching a long agent
   // should not have to wait for the end to learn which run it is.
   process.stderr.write(`entrust: threadId=${rootThreadId} (live rollout: ~/.codex/sessions/YYYY/MM/DD/rollout-*-${rootThreadId}.jsonl)\n`);
-  if (approvalDir !== null && ownsMailbox()) { try { writeMailbox("owner.json", mailboxOwner()); } catch {} }
   // The measured failure shape: a high-effort turn spends minutes thinking before it writes anything, so
   // a short clock cuts it before the answer exists — and an interrupt hands back no answer at all.
   // Silent without a wall clock: the failure shape IS a short clock, and warning about one that was
