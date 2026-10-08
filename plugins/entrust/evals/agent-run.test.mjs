@@ -787,6 +787,24 @@ test("the driver runs in the directory --new checked the prompt in, whichever di
       || `the run: exit ${run.code}, cwd ${r?.cwd}, checked in ${fs.realpathSync(checkedIn)}, called from ${runFrom}`;
   });
 
+test("under a plan, --new takes the adapter from the row, whichever entry script runs it; an --adapter that disagrees is refused",
+  "a coordinator under a plan should not have to name the adapter a second time, and a wrong entry script must not run another adapter's driver on that row",
+  async () => {
+    const runDir = runUnderState("rowadapter.");
+    const h = spawnNode([LAUNCHER, "--plan", "--run-dir", runDir], { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 10000 });
+    h.child.stdin.end("C | claude | haiku | reviewer | nothing | unknown\n");
+    if ((await h.done).code !== 0) return "plan registration failed";
+    const report = path.join(runDir, "C", "report.json");
+    const wrong = spawnNode([LAUNCHER, "--new", "--adapter", "codex", "--report-file", report], { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 20000, env: { ENTRUST_STATE_DIR: newState } });
+    wrong.child.stdin.end(`RIGHTS: read ${shimDir}\nTASK: x\n`);
+    const w = await wrong.done;
+    if (w.code !== 2 || !w.out.includes("C belongs to adapter claude, not codex")) return `--adapter codex: exit ${w.code}, ${JSON.stringify(w.out)}`;
+    const made = await newAgent(report, `RIGHTS: read ${shimDir}\nTASK: x\n`);
+    const backend = read(path.join(agentDirOf(report), "backend.json"));
+    return made.code === 0 && JSON.parse(backend ?? "{}").adapter === "claude"
+      || `the row's adapter: exit ${made.code}, ${JSON.stringify(made.out)}, backend ${backend}`;
+  });
+
 test("D6 a Codex row binds its prompt's model and writes: an absent one is the row's, another is refused (E138)",
   "a plan bound a Codex agent's id alone, so a prompt could name another model and wider rights than the row the user approved; OpenCode and Claude prompts were already held to their rows",
   async () => {

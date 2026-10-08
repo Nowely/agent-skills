@@ -5,6 +5,13 @@ forensics remain in the repository references and release notes.
 
 ## Unreleased
 
+### Changed
+
+- **Under a plan, `--new` takes the adapter from the row.** A coordinator named the adapter twice, in the row and by
+  choosing that adapter's `agent-run.mjs`, and a wrong entry script was refused. Now any entry script, or
+  orchestrate's own launcher, makes a planned agent with its row's adapter; `--adapter` is needed only without a
+  plan, and one that disagrees with the row is refused.
+
 ### Fixed
 
 - **A write root is checked the same way in all three drivers, before any agent exists.** An OpenCode `write` root
