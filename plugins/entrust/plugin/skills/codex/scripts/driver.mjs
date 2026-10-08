@@ -885,7 +885,7 @@ function parseArgs(argv) {
       case "--cwd": o.cwd = need(++i, a); break;
       case "--worktree": o.worktree = need(++i, a); break;
       case "--effort": o.effort = need(++i, a); break;
-      case "--model": o.model = need(++i, a); break;
+      case "--model": o.model = o.requestedModel = need(++i, a); break;
       case "--timeout": o.timeout = Number(need(++i, a)); break;
       case "--idle-timeout": o.idleTimeout = Number(need(++i, a)); break;
       case "--max-commands": o.maxCommands = Number(need(++i, a)); break;
@@ -1156,7 +1156,7 @@ function publishReport(text) {
 function preTurnReport(code, msg) {
   if (reportFilePath === null || reportFileWritten) return;
   const wt = worktreeLastResort();
-  publishReport(`${JSON.stringify({ ok: false, exitCode: code, threadId: rootThreadId,
+  publishReport(`${JSON.stringify({ adapter: "codex", ok: false, exitCode: code, threadId: rootThreadId,
     turnStatus: null, answer: "", error: msg, reportPath: reportFilePath, ...(wt ?? {}) }, null, 2)}\n`);
 }
 
@@ -4298,8 +4298,16 @@ function writeReport(ev, verifySkipped, codeOverride) {
   if (tmpDir && tmpHasAgentFiles())
     process.stderr.write(`entrust: the agent left files in its private $TMPDIR ${tmpDir}; it outlives the run, and the driver never removes it\n`);
 
+  // The fields every adapter's report shares: the adapter, the verdict's reason, the rights the run held and
+  // the model the prompt asked for, beside the one it ran on.
+  const rung = LADDER.find((r) => r.code === code);
   const report = {
-    ok: code === EXIT.SUCCESS, exitCode: code, level: opts.level, sandbox: effectiveSandbox, cwd,
+    adapter: "codex",
+    ok: code === EXIT.SUCCESS, exitCode: code,
+    error: code === EXIT.SUCCESS ? null : (turnError?.message ?? rung?.help.replace(/\s+/g, " ") ?? `exit ${code}`),
+    rights: { kind: worktreeInfo ? "worktree" : opts.level, roots: opts.level === "read" ? [] : [cwd, ...roots] },
+    requestedModel: opts.requestedModel ?? null,
+    level: opts.level, sandbox: effectiveSandbox, cwd,
     // Report requested roots separately from sandbox.writableRoots, which is the grant the server applied;
     // assertWriteSandbox refuses any difference. `network` is the effective grant, not a flag someone
     // passed: it is on unless the agent denied it, and sandbox.networkAccess is asserted to agree.

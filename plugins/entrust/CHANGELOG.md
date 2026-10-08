@@ -33,6 +33,10 @@ forensics remain in the repository references and release notes.
   3, and both wall clocks pause while a request is open. OpenCode counts a session its server reports busy as
   progress, so a long quiet command is no longer cut as idle (X13). The numbers are unchanged until a live run
   measures better ones.
+- **One report core.** A Codex report now carries `adapter`, `error` (the turn's own error, else the reason for
+  its exit code), `rights` (`{kind, roots}`) and `requestedModel`, which the OpenCode and Claude reports already
+  had, so a coordinator reads the same fields whichever adapter ran. Its own fields stay; `usage` keeps each CLI's
+  shape and is not part of the core.
 
 ### Fixed
 

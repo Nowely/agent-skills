@@ -407,7 +407,7 @@ const CASES = [
     assertStderr: (e) => /with no newline/.test(e)
       || `an unterminated line was buffered without a bound: ${e.slice(0, 200)}`,
     assert: (r) => (r.turnStatus === "failed" && r.commandsSucceeded === 1 && r.answer === "the answer"
-      && !("error" in r) && r.turnError?.codexErrorInfo === "aborted")
+      && r.turnError?.codexErrorInfo === "aborted")
       || `the abort discarded the turn's evidence: ${JSON.stringify({ turnStatus: r.turnStatus, cmds: r.commandsSucceeded, answer: r.answer, err: r.turnError })}` },
 
   { scenario: "no-trailing-newline", expect: EXIT.SUCCESS,

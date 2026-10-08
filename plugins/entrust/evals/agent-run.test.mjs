@@ -834,6 +834,18 @@ test("a Codex agent continues from its REPORT= path, keeping its directory and r
       || `the continuation: exit ${ran2.code}, resumedFrom ${r2?.resumedFrom}, cwd ${r2?.cwd} (was ${r1.cwd}), level ${r2?.level}`;
   });
 
+test("a Codex report carries the fields every adapter's does: adapter, error, rights and requestedModel",
+  "a coordinator reads one report core whichever adapter ran the agent",
+  async () => {
+    const report = path.join(runUnderState("core."), "run", "report.json");
+    const made = await newAgent(report, `RIGHTS: read ${shimDir}\nTASK: irrelevant, the server is scripted\n`);
+    if (made.code !== 0) return `--new: ${made.out}`;
+    await spawnNode([LAUNCHER, "--run", "--report-file", report], { env: env(newState), killAfterMs: 60000 }).done;
+    const r = JSON.parse(read(report) ?? "null");
+    return r?.adapter === "codex" && r.error === null && JSON.stringify(r.rights) === JSON.stringify({ kind: "read", roots: [] })
+      && "requestedModel" in r || `the core fields: ${JSON.stringify({ adapter: r?.adapter, error: r?.error, rights: r?.rights, requestedModel: r?.requestedModel })}`;
+  });
+
 test("D6 a Codex row binds its prompt's model and writes: an absent one is the row's, another is refused (E138)",
   "a plan bound a Codex agent's id alone, so a prompt could name another model and wider rights than the row the user approved; OpenCode and Claude prompts were already held to their rows",
   async () => {

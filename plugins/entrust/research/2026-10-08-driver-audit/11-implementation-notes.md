@@ -12,3 +12,10 @@ Each departure from [09-proposal-v2.md](09-proposal-v2.md) made while implementi
 - **No `RIGHTS:` line reads in the current directory everywhere,** in place of 09's "left out only under a plan".
   Codex already read; OpenCode and Claude refused. Reading is the narrowest grant, the directory is the one
   `--new` checked (X4), and a coordinator that writes nothing needs no line. Unified in `resolveRights`.
+- **`usage` is not in the report core.** 09 had Codex add `usage` beside `tokenUsage`. The three CLIs report
+  usage in three shapes (Codex's per-thread totals, Claude's raw `input_tokens`, OpenCode's `{input, output}`), so
+  one name over three shapes would invite a coordinator to compare what does not compare. The core is the 14
+  shared fields plus `adapter`, `error`, `rights` and `requestedModel`.
+- **The budget keeps Claude's wall clock.** 09 named three parts for every adapter; Claude's stream is silent while a
+  long command runs, so an idle bound would cut a long build. Claude gets the volume bound (1,000 tool calls) and a
+  wall clock that stands still during approval waits; an idle bound waits for a live measurement.
