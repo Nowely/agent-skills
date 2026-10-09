@@ -94,6 +94,10 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- **A relay with no `SubagentHandback` tool writes the status lines as its final message.** A subagent of `claude
+  -p` (2.1.295) has no such tool, and the relay, told to call it, wrapped the lines in prose about the missing
+  tool, in all seven runs of the step-5 measurement. Step 3 of `agents/proxy.md` and of the shared page's block
+  now says what to do without it; three runs with that sentence handed back the lines alone.
 - **An OpenCode report says whether a corrective turn ran.** The driver computed the outcome of the one corrective
   turn it spends on an answer that failed `OUTPUT_SCHEMA`, then dropped it; the report now carries it as
   `correction`.
