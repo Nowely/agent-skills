@@ -56,7 +56,6 @@ export function openMailbox(dir) {
   };
   return {
     dir,
-    isOpen: (q) => open.has(q.id),
     // Writes the request and lists it in `pending`. Throws when either cannot be written: a request nobody can
     // see would wait for a decision that cannot come, so the caller settles it at once and declines it.
     offer(q) {
