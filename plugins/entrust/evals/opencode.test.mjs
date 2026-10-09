@@ -389,6 +389,22 @@ test("an edit outside the roots is offered with its whole request and runs once 
     assert.equal(q.settled.by, "driver"); assert.match(q.settled.why, /inside the state directory/);
   } finally { await g.close(); }
 });
+test("a refused permission is rejected with a message, so the turn goes on and answers; a Stop's reject carries none", async () => {
+  const s = await fakeOpenCode("permission");
+  try {
+    const r = await driverRun(s);
+    const reject = s.mutations.find((m) => m.body?.reply === "reject");
+    assert.ok(reject, JSON.stringify(s.mutations));
+    assert.match(reject.body.message ?? "", /^no approval directory: unattended run\. Do not try to get around it: record it/, r.err);
+  } finally { await s.close(); }
+  const c = await fakeOpenCode("permission");
+  try {
+    await driverRun(c, { cancel: true, cancelWhenPending: true, approval: "hold" });
+    const stopped = c.mutations.filter((m) => m.body?.reply === "reject");
+    assert.ok(stopped.length >= 1, JSON.stringify(c.mutations));
+    assert.equal(stopped.some((m) => "message" in m.body), false, JSON.stringify(stopped));
+  } finally { await c.close(); }
+});
 test("an accept the mailbox cannot record is never answered once", async () => {
   const s = await fakeOpenCode("permission");
   try {

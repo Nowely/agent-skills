@@ -73,3 +73,27 @@ The owner's measure is that a task completes, and an agent that fails silently i
 
 G and E2 are worth running again on the branch that carries the rules: G to see whether the Codex agent now asks
 for its fetch, E2 to see whether the OpenCode agent now stops at the refused edit.
+
+## Second round, on the branch with the rules (same day)
+
+The owner checked out the branch at `9cbc3078` on macOS arm64 (Node 24.11.0, a non-root account): `run-all.mjs`
+exit 0, 23 of 24 suites green and one not run, so the lock and process-group cases that fail as root in the
+container pass there. Both probes again:
+
+- **G.** The curl failed (exit 6), and the agent then ran it again with escalated permissions: one command request
+  reached the mailbox (cause `asked`), the probe declined it, and the run exited 6. A Codex agent without the network
+  now asks for the fetch its task needs.
+- **H.** Again no request for either write, `approvalsAutoAccepted: 0`.
+- **E1, F.** As in the first round.
+- **E2.** Exit 13, "the reply contained no JSON object; the corrected reply contained no JSON object", nothing
+  written; the agent asked for a `skill` call and a shell command, both declined at once (no mailbox). In the
+  first round the same probe exited 7 with an answer.
+
+E2's cause is OpenCode's, read in its source at v1.18.34: a permission rejected with no message is a
+`RejectedError`, which sets `blocked` in `session/processor.ts` and ends the turn before the model answers (unless
+`experimental.continue_loop_on_deny` is set); one rejected with a message is a `CorrectedError`, whose message the
+tool returns as feedback while the turn goes on. The driver rejected with no message, so every refused permission
+ended an OpenCode agent's turn, contrary to the rules it had just been given. It now rejects with the reason and
+the rules' sentence ("Do not try to get around it: record it and what it blocked, finish what you can, and say
+what remains."); a Stop still rejects without one, since there the turn is meant to end. A question's reject takes
+no message, and a sibling the server rejects together with the first gets none either. E2 is worth one more run.

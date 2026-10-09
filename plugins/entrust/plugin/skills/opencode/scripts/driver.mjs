@@ -300,7 +300,12 @@ async function rejectTrackedRequest(ctx, q, settlement, counter) {
     ctx.requests.delete(q.id); ctx.unresolved = true;
     return true;
   }
-  const outcome = await respond(ctx, q.type, q.payload.id, permission ? "reject" : "decline", permission ? { reply: "reject" } : {}, q.payload.sessionID);
+  // A reject with a message is OpenCode's CorrectedError: the tool fails with that feedback and the turn goes on,
+  // so the agent can record the refusal and finish, as its standing rules say. One without a message is
+  // RejectedError, which ends the turn with no answer (1.18.34, `session/processor.ts`); only Stop sends that. A
+  // question's reject takes no message, and a sibling the server rejects with this one gets none either.
+  const told = `${settlement.why ?? "declined"}. Do not try to get around it: record it and what it blocked, finish what you can, and say what remains.`;
+  const outcome = await respond(ctx, q.type, q.payload.id, permission ? "reject" : "decline", permission ? { reply: "reject", message: told } : {}, q.payload.sessionID);
   for (const member of group) {
     const own = member === q;
     settleRequestFile(ctx, member, { ...(own ? settlement : {

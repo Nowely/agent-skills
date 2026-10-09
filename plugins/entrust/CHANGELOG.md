@@ -107,6 +107,12 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- **A refused permission no longer ends an OpenCode agent's turn.** OpenCode ends the turn when a permission is
+  rejected with no message, and reports a rejection with one to the model as feedback while the turn goes on
+  (v1.18.34, `session/processor.ts`). The driver rejected with no message, so an agent whose request was declined,
+  or refused for want of a mailbox, stopped before it answered: on the owner's machine a read agent asked to write
+  exited 13 with no answer. The driver now rejects with the reason and what to do with it; a Stop still ends the
+  turn.
 - **A relay with no `SubagentHandback` tool writes the status lines as its final message.** A subagent of `claude
   -p` (2.1.295) has no such tool, and the relay, told to call it, wrapped the lines in prose about the missing
   tool, in all seven runs of the step-5 measurement. Step 3 of `agents/proxy.md` and of the shared page's block
