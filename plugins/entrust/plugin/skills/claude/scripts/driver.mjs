@@ -29,19 +29,22 @@ const HEADERS = new Set(["RIGHTS", "MODEL", "EFFORT", "OUTPUT_SCHEMA", "RESUME",
 const PROTECTED = [{ dir: path.join(passwdHome(), ".claude"), label: "~/.claude", holds: "the settings, hooks and plugins every Claude Code session loads" }];
 const READ_TOOLS = ["Read", "Grep", "Glob", "Bash"];
 const WRITE_TOOLS = [...READ_TOOLS, "Edit", "Write"];
-// What init must not report, by the rights asked for: a mode that edits or runs unasked beyond them, and a
-// built-in tool that writes files, reaches the web or delegates, beyond the ones granted. A list of what
-// widens, not an exact match: how init echoes `manual`, and which tools it always lists, is unmeasured.
-const WIDER = {
-  read: { modes: ["acceptEdits", "auto", "bypassPermissions"], tools: ["Edit", "Write", "MultiEdit", "NotebookEdit", "WebFetch", "WebSearch", "Agent", "Task"] },
-  write: { modes: ["auto", "bypassPermissions"], tools: ["MultiEdit", "NotebookEdit", "WebFetch", "WebSearch", "Agent", "Task"] },
-};
-// The sandbox the agent runs under is the one init reports: one wider than asked for stops the run.
+// What init must report for the rights asked for, measured on 2.1.295 (research/2026-10-09-step5-measurements):
+// `--permission-mode manual` comes back as `default`, and the tools are exactly the ones `--tools` names, beside
+// StructuredOutput, which `--json-schema` adds; MCP tools are the user's servers' and are named in `context`.
+const MODES = { read: ["default", "manual"], write: ["acceptEdits"] };
+// The sandbox the agent runs under is the one init reports: another mode, or another set of built-in tools,
+// wider or narrower, stops the run rather than run it under rights nobody reasoned about.
 export function initProblem(init, kind) {
-  const wider = WIDER[kind === "read" ? "read" : "write"];
-  if (wider.modes.includes(init.permissionMode)) return `Claude Code reports permission mode ${init.permissionMode}, wider than this run's ${kind} rights`;
-  const extra = (init.tools ?? []).filter((t) => wider.tools.includes(t));
-  return extra.length ? `Claude Code reports the tools ${extra.join(", ")}, beyond this run's ${kind} rights` : null;
+  const level = kind === "read" ? "read" : "write";
+  if (!MODES[level].includes(init.permissionMode))
+    return `Claude Code reports permission mode ${init.permissionMode ?? "none"}, not this run's ${MODES[level][0]}`;
+  const want = level === "read" ? READ_TOOLS : WRITE_TOOLS;
+  const got = (init.tools ?? []).filter((t) => !t.startsWith("mcp__") && t !== "StructuredOutput");
+  const extra = got.filter((t) => !want.includes(t)), missing = want.filter((t) => !got.includes(t));
+  if (extra.length || missing.length)
+    return `Claude Code reports the tools ${got.join(", ") || "none"}, not this run's ${want.join(", ")}`;
+  return null;
 }
 const DEFAULT_TIMEOUT_S = 1800;
 // The volume bound every adapter has: Codex cuts at 1,000 commands, this driver at 1,000 tool calls.

@@ -79,8 +79,9 @@ forensics remain in the repository references and release notes.
   sandbox its server reports with the one asked for; that check is one table for both levels now. OpenCode now
   reads back the permission rules a session holds, at creation and on a resume, and runs none whose rules differ
   from the ones its rights need, wider or narrower, since those rules are all of OpenCode's enforcement; a server
-  that reports no rules is said on stderr. Claude stops a run whose `init` reports a permission mode or a built-in
-  tool wider than its rights (an edit, web or delegation tool a read agent was not given, or `bypassPermissions`).
+  that reports no rules is said on stderr. Claude stops a run whose `init` reports another permission mode or
+  another set of built-in tools than its rights give, measured live on 2.1.295 (`manual` comes back as `default`,
+  and `--json-schema` adds `StructuredOutput`).
 - **Two rows of a plan never write one tree, in every adapter.** `--plan` refuses rows whose `write` directories
   overlap, compared by inode so a link or another spelling is the same directory, and two `live tree` rows; `--new`
   refuses a `live tree` agent whose directory overlaps another row's. Only Codex writers kept off each other, by
