@@ -55,3 +55,38 @@ Each departure from [09-proposal-v2.md](09-proposal-v2.md) made while implementi
   scripts 1,798, from about 2,200; the Codex `--help` 80 lines, from 170 (370 under `--help-all`); the
   launcher's `--help` 65, from 142, with 23 more under its `--help-all`.
 
+
+## Step 4
+
+- **One mailbox module, and it saves rules, not lines.** 09 counted about −150 lines for it; the module is 91
+  lines and the code of the step as a whole came out about even (+346, −326, the Codex driver 3,871 from 4,015),
+  because each adapter keeps how its CLI is answered and OpenCode its session-wide rejection. What it gives is
+  one rule for the decision a request takes, one record-then-answer and one deadline, which the launcher's
+  `--decide` shares, and two OpenCode defects it closed on the way: a stale decision file held a request past
+  its deadline, and an OpenCode driver took a mailbox anywhere, with no check that it lay in the state directory.
+  An OpenCode accept that cannot be recorded is now declined at once, as in the other two, not left to expire.
+- **Claude's approval server declines guarded edits too.** 09 had all three decline at once an edit aimed inside
+  the state directory or a protected directory. Codex already declined every file change outside its rights and
+  OpenCode now does it in `editScope`; Claude had only deny rules for the mailboxes, so its approval server got
+  the same check, against `<state>` and `~/.claude`, from two variables the driver writes into the MCP config.
+- **The Claude effect check is a list of what widens, not an exact match.** How `init` echoes `--permission-mode
+  manual`, and which tools it always lists, is unmeasured, so an exact comparison could stop every live run. The
+  driver stops a run whose `init` reports `acceptEdits` (in a read run), `auto` or `bypassPermissions`, or a
+  built-in tool that writes files, reaches the web or delegates beyond the ones granted. The exact match waits
+  for one short live run that records a real `init` (step 5).
+- **OpenCode's read-back notes a silent server and refuses only a differing one.** Whether V1 reports a session's
+  rules is unmeasured (the V2 pilot's create dropped them), so a session reported with no rules runs with a
+  stderr note; one reported with other rules, at creation or on a resume, is refused with exit 4 before any
+  input. Step 5's "V1 refuses an edit in a read session" is the measurement that settles both.
+- **The plan's overlap rule covers `live tree` too.** Two `live tree` rows are refused at `--plan`, since both
+  mean the directory `--new` runs in, and `--new` refuses a live tree over another row's tree or over a directory
+  another live-tree agent of the plan was made in. Writers in sequence on one tree are one row and its
+  continuations.
+- **`NETWORK` and `WEB_SEARCH` are not pinned by the plan row.** A pin restricts only where a row can say "off",
+  and with egress on by default (decision 1) that needs a new column, a change to the plan's format nobody has
+  asked for. The shared page states each adapter's default and that a plan row sets neither; the Codex page
+  keeps its rule that a `NETWORK: no` or a `WEB_SEARCH:` line is settled with the user. A column is the next
+  step if a user wants rows that may not reach the network.
+- **The operational proxy links one section.** "What each adapter adds", under Decide a request on the shared
+  page, holds what an accept runs and what is never offered for each adapter; the Codex approvals page, the
+  OpenCode interactions page and the Claude page point at it and keep their own mechanics.
