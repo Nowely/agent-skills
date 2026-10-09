@@ -191,7 +191,7 @@ test("every run is told its rights, how to ask for more and not to work around a
   const read = await drive(s, `RIGHTS: read ${s.work}\nTASK: look around\n`);
   const told = flagOf(lastCall(s.log).argv, "--append-system-prompt") ?? "";
   assert.equal(read.code, 0, read.err);
-  assert.match(told, /you have no edit tools, and any other command needs approval/);
+  assert.match(told, /with Read, Grep and Glob, which need no approval; a shell command may need one, and you have no edit tools/);
   assert.match(told, /Nothing beyond your rights can be granted in this run/);
   assert.match(told, /do not try to get around it with another tool or command/);
   const box = path.join(s.state, "boxed", "approvals"); fs.mkdirSync(box, { recursive: true });

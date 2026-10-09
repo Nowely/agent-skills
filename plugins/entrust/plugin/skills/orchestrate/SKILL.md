@@ -35,7 +35,9 @@ the full log and ledger go under the runtime's temporary directory, and the real
 reported even when a pipeline fails. Put the ledger under an approved temporary root; set
 `TMPDIR` to that root when the default temp directory is outside the approved scope. Resolve
 `<skill-dir>` from this skill's installed location;
-give workers the resolved absolute script path and ask them to cite its exit status and counts.
+give a native worker or a Codex agent the resolved absolute script path and ask it to cite its exit status
+and counts. An OpenCode or Claude read agent asks you for such a command: brief it to check with its file tools,
+as [external.md](references/external.md#1-write-the-prompt) says.
 
 Start one temporary context with `node "<skill-dir>/scripts/temp-dir.mjs" run`; it returns JSON.
 Pass that JSON as `ENTRUST_TEMP_CONTEXT` on check and worker commands so they share the initiating

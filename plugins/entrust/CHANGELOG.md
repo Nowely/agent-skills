@@ -17,6 +17,14 @@ forensics remain in the repository references and release notes.
   block in a fresh small agent for each `--run` (the first, the one after a decision, a continuation's first),
   names it after the external agent on every host, and the coordinator decides every request; the operational
   proxy page is the main proxy mode's alone.
+- **A read agent checks with its file tools, and its inputs sit inside its directory.** Orchestrate told the
+  coordinator to give every worker `capture-check.mjs`, a shell command, while an OpenCode read agent asks for
+  every shell command and a Claude one for any command outside Claude Code's read-only set; on 2026-10-09 read
+  agents briefed that way asked 11 times (Claude, Sonnet) and 43 times (OpenCode, GLM) in one read-only task,
+  each question a stop for the coordinator. The script now goes to native workers and Codex agents; the shared
+  call page tells the coordinator to brief an OpenCode or Claude read agent in reads and searches, and to put an
+  OpenCode read agent's inputs inside its directory, since for one file outside it the agent asked for the whole
+  directory. Both drivers now tell a read agent that its read, grep and glob tools need no approval.
 
 ## 0.28.0 — 2026-10-09
 

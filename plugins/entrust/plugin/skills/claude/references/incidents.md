@@ -40,3 +40,5 @@ list or through ToolSearch, and stopped. The same brief run as a top-level `clau
 loop or `awk` asked for 11 commands, all read-only; the one that only chained `cd`, `sed -n`, `grep`, `wc`
 and `echo` asked for none. The same day in Codex, three OpenCode GLM read agents briefed to check with
 the shell asked 43 times, 37 of them for bash, though their standing rules said every shell command needs approval.
+One of them, given single files outside its directory to read, asked six times for the whole directory and was
+refused.
