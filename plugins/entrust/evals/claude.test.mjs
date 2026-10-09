@@ -186,6 +186,16 @@ test("a worktree's report is read through the git directory its repository recor
   assert.deepEqual(t.json.untracked, ["?? planted.txt"]);
 });
 
+test("an init reporting a wider mode or tool than the rights asked for stops the run, exit 4", async () => {
+  const s = setup();
+  const mode = await drive(s, `RIGHTS: read ${s.work}\nTASK: judge\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ permissionMode: "bypassPermissions" }) } });
+  assert.equal(mode.code, 4, mode.err); assert.match(mode.json.error, /permission mode bypassPermissions, wider than this run's read rights/);
+  const tool = await drive(s, `RIGHTS: write ${s.work}\nTASK: make\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ tools: ["Read", "Edit", "WebFetch", "mcp__user__thing"] }) } });
+  assert.equal(tool.code, 4, tool.err); assert.match(tool.json.error, /the tools WebFetch, beyond this run's write rights/);
+  const echoed = await drive(s, `RIGHTS: read ${s.work}\nTASK: judge\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ permissionMode: "default", tools: ["Read", "Bash", "mcp__entrust-approvals__decide"] }) } });
+  assert.equal(echoed.code, 0, echoed.err);
+});
+
 test("an accept the mailbox cannot record is answered deny, never allow", async () => {
   const box = tempDir("entrust-claude-box-");
   const server = spawn(process.execPath, [path.join(ROOT, "skills/claude/scripts/approvals.mjs")], {

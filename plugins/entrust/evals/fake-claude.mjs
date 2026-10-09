@@ -43,7 +43,9 @@ const toolCall = (id, name, input, isError = false) => {
 emit({ type: "system", subtype: "init", cwd: process.cwd(), model, permissionMode: flag("--permission-mode"),
   tools: (flag("--tools") ?? "").split(","), plugins: argv.includes("--safe-mode") ? [] : [{ name: "user-plugin", path: "/x" }],
   mcp_servers: flag("--mcp-config") ? [{ name: "entrust", status: "connected" }] : [], claude_code_version: "2.1.294",
-  ...(argv.includes("--safe-mode") ? {} : { memory_paths: { auto: "/m" } }) });
+  ...(argv.includes("--safe-mode") ? {} : { memory_paths: { auto: "/m" } }),
+  // A CLI that did not apply what it was asked for, as a case sets it: fields that replace init's own.
+  ...JSON.parse(process.env.FAKE_CLAUDE_INIT ?? "{}") });
 
 // The approval server, as Claude Code starts it from --mcp-config, and one permission prompt through it.
 function server() {
