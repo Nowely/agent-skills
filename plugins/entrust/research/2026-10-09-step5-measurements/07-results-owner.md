@@ -50,6 +50,12 @@ command, not a question, so egress off by default would leave an agent nothing t
 
 A write agent created a file in its `$TMPDIR` (`<user-temp>/entrust/…/agents/…`) and one in its directory with
 its edit tool: both written, no request reached the driver, `approvalsAutoAccepted: 0`. The server asked about
-neither, so the accept the driver kept for the `/private/var` spelling (0.21.0) no longer fires now that the
-run's `$TMPDIR` is built on a resolved root (0.26). Per finding 7 of the Codex audit, the accept is deleted: a
-file change the server asks about is declined at once, cause `outside`.
+neither: the `/private/var` spelling the accept was made for (0.21.0) no longer reaches the edit tool, since the
+run's `$TMPDIR` is built on a resolved root (0.26).
+
+Finding 7 of the Codex audit proposed deleting the accept on a zero count, and it was deleted, then restored on
+the owner's word: the accept answers only a request whose every path is proven inside the writable roots by
+inode, so it grants nothing the sandbox does not, while a request the edit tool raises for another spelling (a
+project reached through a link, a path the task spells differently, a later Codex) would otherwise decline a
+write the agent was entitled to and fail its task. One run showing the original cause gone is not evidence that
+no other cause exists, and the owner's measure is that a task completes.

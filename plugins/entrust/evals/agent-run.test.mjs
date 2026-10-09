@@ -100,7 +100,7 @@ test("--help names every mode a coordinator uses and exits 0, and --help-all add
                      "RUNNING=", "--check-prompt-file", "the role is any non-empty text", "unknown", "<absolute dir>", ...STATUS_LINES,
                      "APPROVALS=", "WAITING=<id>[,<id>]", "waiting —", "ended —", "refused —", "--pending --report-file REPORT",
                      "--decide ID --accept|--decline|--answer [--why TEXT]", "COMMAND<<", "COMMAND>>", "REQUEST_BODY<<", "REQUESTS=", "ORPHANED=",
-                     "DECIDED=", "LATE=", "STALE=", "REFUSED=", "approvals=A/D/E/O", "late=N", "stale=N", "external.md"])
+                     "DECIDED=", "LATE=", "STALE=", "REFUSED=", "approvals=A/D/E/O", "auto=N", "late=N", "stale=N", "external.md"])
       if (!out.includes(s)) return `--help does not mention ${s}`;
     for (const s of ["--orphan", "--keeper"]) if (out.includes(s)) return `--help names ${s}, a step of the launcher's own`;
     const all = await spawnNode([LAUNCHER, "--help-all"], { killAfterMs: 10000 }).done;
@@ -1408,7 +1408,7 @@ test("--pending escapes every field to one line and fences the command with a fr
     return problems.length === 0 || problems.join("; ");
   });
 
-test("RECEIPT= reads the mailbox with or without a report — approvals=A/D/E/O, late= for a valid decision nobody took, stale= for one that is not its request's — the lines stay nine, and after the run --pending names the orphans",
+test("RECEIPT= reads the mailbox with or without a report — approvals=A/D/E/O, auto= from the report, late= for a valid decision nobody took, stale= for one that is not its request's — the lines stay nine, and after the run --pending names the orphans",
   "after a lost report the status lines are all a coordinator has, and they must still say that a command ran with the user's rights before anything is relaunched; a decision that is not this run's is stale whenever it came, and calling it late would tell the caller its own answer was slow",
   async () => {
     const { dir, report, put, request, pend, decision } = handMailbox();
@@ -1428,15 +1428,20 @@ test("RECEIPT= reads the mailbox with or without a report — approvals=A/D/E/O,
     const problems = [];
     let s = await status(dir, report);
     if (s.lines.length !== STATUS_LINES.length || valueOf(s.lines, "RECEIPT") !== "approvals=1/1/2/1 late=1 stale=1") problems.push(`no report: ${JSON.stringify(s.lines)}`);
-    fs.writeFileSync(report, JSON.stringify({ ok: true, exitCode: 6, turnStatus: "completed", receiptOk: true, model: "gpt-6-sol", answer: "x" }));
+    fs.writeFileSync(report, JSON.stringify({ ok: true, exitCode: 6, turnStatus: "completed", receiptOk: true, model: "gpt-6-sol", answer: "x", approvalsAutoAccepted: 2 }));
     s = await status(dir, report);
-    if (valueOf(s.lines, "RECEIPT") !== "turnStatus=completed receiptOk=true model=Sol approvals=1/1/2/1 late=1 stale=1") problems.push(`with a report: ${valueOf(s.lines, "RECEIPT")}`);
+    if (valueOf(s.lines, "RECEIPT") !== "turnStatus=completed receiptOk=true model=Sol approvals=1/1/2/1 auto=2 late=1 stale=1") problems.push(`with a report: ${valueOf(s.lines, "RECEIPT")}`);
     let p = await launcherLines(["--pending", "--dir", dir, "--report-file", report]);
     if (valueOf(p.lines, "REQUEST") !== "3-cccccccc" || !p.lines.includes("LATE=2-bbbbbbbb") || !p.lines.includes("STALE=5-eeeeeeee")
         || valueOf(p.lines, "REQUESTS") !== "1") problems.push(`--pending during the run: ${JSON.stringify(p.lines)}`);
     fs.writeFileSync(path.join(dir, "exit"), "1\n");
     p = await launcherLines(["--pending", "--dir", dir, "--report-file", report]);
     if (p.out !== "ORPHANED=3-cccccccc\nLATE=2-bbbbbbbb\nSTALE=5-eeeeeeee\nREQUESTS=0\n") problems.push(`--pending after the run: ${JSON.stringify(p.out)}`);
+    const auto = fresh();
+    fs.mkdirSync(path.dirname(auto.report), { recursive: true });
+    fs.writeFileSync(auto.report, JSON.stringify({ ok: true, exitCode: 0, turnStatus: "completed", receiptOk: true, model: "gpt-6-sol", answer: "x", approvalsAutoAccepted: 1 }));
+    s = await status(auto.dir, auto.report);
+    if (valueOf(s.lines, "RECEIPT") !== "turnStatus=completed receiptOk=true model=Sol auto=1") problems.push(`an auto-accepted write with no mailbox: ${valueOf(s.lines, "RECEIPT")}`);
     return problems.length === 0 || problems.join("; ");
   });
 

@@ -132,7 +132,7 @@ test("a read run: manual mode, read tools, the mailbox denied rules, no approval
   assert.equal(j.cost, 0.0042); assert.deepEqual(j.rights, { kind: "read", roots: [] });
   assert.equal(JSON.parse(fs.readFileSync(j.answerPath, "utf8")).status, "done");
   assert.ok(fs.readFileSync(j.transcriptPath, "utf8").includes('"type":"result"'));
-  for (const k of ["error", "turnError", "schemaOverflow"]) assert.ok(k in j, k);
+  for (const k of ["error", "turnError", "schemaOverflow", "approvalsAutoAccepted"]) assert.ok(k in j, k);
 });
 
 test("the mailbox rules cover this run's mailbox and every one under the state directory but the worktrees", () => {

@@ -186,8 +186,8 @@ orchestrate/references/external.md; this is each mode's contract.
       is the answer on one line up to ${ANSWER_MAX} characters, else a pointer to the report; ERROR the report's
       error, else its turnError, else the launcher's refusal. RECEIPT is turnStatus, receiptOk and the
       model, then, from the mailbox: approvals=A/D/E/O (accepted, declined, expired, still open or
-      orphaned), late=N (valid decisions nobody took) and stale=N (decision files that are not their
-      request's). A missing report is unknown. Exits 0.
+      orphaned), auto=N (file changes the driver accepted), late=N (valid decisions nobody took) and
+      stale=N (decision files that are not their request's). A missing report is unknown. Exits 0.
   node agent-run.mjs --pending --report-file REPORT
       Each request waiting: REQUEST=<id>, THREAD=, METHOD=, CAUSE=, CWD=, REASON=, ROOTS=, DEADLINE=,
       then the command whole between COMMAND<<TOKEN and COMMAND>>TOKEN (an adapter's typed request, its
@@ -530,6 +530,7 @@ export function statusLines(dir, report) {
   const count = (d) => box.requests.filter((q) => q.settled?.decision === d).length;
   const approvals = [
     ...(box.requests.length ? [`approvals=${count("accepted")}/${count("declined")}/${count("expired")}/${box.requests.filter((q) => !q.settled).length}`] : []),
+    ...(r && r.approvalsAutoAccepted > 0 ? [`auto=${r.approvalsAutoAccepted}`] : []),
     ...(box.late.length ? [`late=${box.late.length}`] : []),
     ...(box.stale.length ? [`stale=${box.stale.length}`] : []),
   ].join(" ");

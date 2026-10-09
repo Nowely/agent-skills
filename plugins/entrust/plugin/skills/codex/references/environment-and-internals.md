@@ -55,17 +55,19 @@ then `last: 14273 / total: 27857`, so `last` is only the turn's tail.
 
 The report's `escalations` array has one entry per approval request, whichever thread asked — not only the
 ones the driver declined: `id`, `method`, `kind`, `detail`, `thread`, `subagent`, `agentPath`, `cause`
-(`outside`: a file change the server asks about, or a permissions request, which the driver declined itself, its `why` naming `WRITABLE:` for a file change and "rights are set at launch" for a permissions
+(`rights`: a file change the writable roots cover, which the driver accepted itself and never shows anyone;
+`outside`: a file change not shown to lie inside them, or a permissions request, which the driver declined
+itself, its `why` naming `WRITABLE:` for a file change and "rights are set at launch" for a permissions
 request; `asked`: Codex asked before running the command, and nothing on our side changes it), `offered`, `decision`
-(`accepted`, `declined` or `expired`), `by` (`driver` for an expiry or a request never offered,
+(`accepted`, `declined` or `expired`), `by` (`driver` for an auto-yes, an expiry or a request never offered,
 `coordinator` otherwise), `why`, `askedAt`, `settledAt`, `waitMs`, `resolved`, `outcome` (the matching
 item's own completion, or null where none came), `cwd`, `reason` and `fileChanges`. `detail` is the server's
 own wording whole — the command, else the reason, else the message, or the joined file-change list — never
 clipped, and may still be empty where it sent none; a sandbox-denied command need
 not raise a request, so an empty array does not prove that no command was denied. An entry does not diagnose
 rights that were too narrow. Exit 6 means a request was declined or expired unanswered, never one accepted;
-a cut run can carry entries and still exit 3. Beside the array, `approvalsAccepted` counts the requests the
-coordinator accepted. A request id the server sends twice is one request,
+a cut run can carry entries and still exit 3. Beside the array, `approvalsAccepted` and
+`approvalsAutoAccepted` count what their names say. A request id the server sends twice is one request,
 answered once and said on stderr; a decision file that is not this run's is left in place, and the request
 file's `settled.decisionFile` says so, which the launcher's `RECEIPT=` counts as `stale=`.
 
@@ -78,11 +80,14 @@ report has no `error`. With `turnStatus: null` no turn ran and the reason is in 
 stderr, `DIR/err.txt` under `--run`; a `threadId` beside it means the thread had started and its rollout is the
 only record.
 
-A file change the server asks about is declined at once, `cause: "outside"`, and never offered: the server
-asks only for a write its sandbox does not let through, since writes in the cwd and in `$TMPDIR` are applied
-unasked (measured on macOS with 0.159.3). From 0.21.0 to 0.27.0 the driver accepted such a request itself when every
-path lay inside the writable roots, for a `/private/var` spelling the edit tool once asked about; the run's
-`$TMPDIR` is built on a resolved root since 0.26, and the measured count of those accepts is now zero.
+An auto-yes carries `why: "rights cover it (checked as the answer was sent)"`: every component of the
+resolved path between the writable root and the file must be an existing plain directory, never a symlink,
+and the file itself regular or not there yet, with nothing under a `.git`, `.codex` or `.agents` directory
+in any spelling — matched by inode and by a case-folded name, so `.Git` and `.GIT` are caught too — and the
+whole check runs again, fresh, at the moment the driver sends the answer, not only when the request first
+arrived. A writer that swaps one of those plain directories for a symlink between the driver's check and
+the server's own write is followed by the server, not the driver; whether the server re-resolves that swap
+before it writes is unmeasured.
 
 ## Approval mailbox
 
@@ -103,7 +108,8 @@ the deadline are the same in every adapter, one module, `orchestrate/scripts/mai
 mailbox itself cannot write — its file, or its entry in `pending` — is settled at once as expired,
 `why: "mailbox write failed: <error>"`, and an accept reaches the server only after that settlement record
 landed: one whose settlement cannot be written goes out as a decline. A request's own `settled` object then carries `decisionFile`, what the decision file held as it
-settled: `taken`, `none`, `stale` or `late`. A subagent thread's request is offered only while that thread's own turn is still open: once it closes, a further request from it
+settled: `taken`, `none`, `stale` or `late`. A subagent thread's request is offered, and its file change
+auto-accepted, only while that thread's own turn is still open: once it closes, a further request from it
 is declined at once, `why: "turn ended"` for one whose turn had been open and closed, `"not the current
 turn"` for one from a turn never open at all. A request nobody answers waits on the single clock the driver
 keeps for it, the mailbox's `DEADLINE_MS`, thirty minutes in every adapter (a constant, not a flag: nobody

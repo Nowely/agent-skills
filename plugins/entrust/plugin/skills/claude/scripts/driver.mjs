@@ -452,6 +452,7 @@ function buildReport(ctx, facts) {
     endedAt: new Date().toISOString(),
     turnError: facts.turnError ?? null,
     schemaOverflow: false,
+    approvalsAutoAccepted: 0,
     ...(scope?.worktree ? worktreeFacts(scope.worktree) : {}),
   };
 }

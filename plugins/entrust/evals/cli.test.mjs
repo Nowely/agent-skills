@@ -939,29 +939,29 @@ flow("--help says the mailbox is the launcher's, that a request waits thirty min
     const core = helpRun("--help").stdout.replace(/\s+/g, " "), page = internalsFlat();
     const problems = [];
     for (const s of ["--approval-dir D", "set by the launcher and never by a person", "for 30 minutes, after which it is declined as expired",
-                     "a file change the server asks about is outside the writable roots, and is declined at once",
+                     "a file change inside the writable roots is accepted by the driver",
                      "an approval request was declined or expired unanswered", "refuses ~/.codex, <state> and every directory above either",
                      "--writable DIR grant one more root (write level only, repeatable)"])
       if (!core.includes(s)) problems.push(`--help lacks ${JSON.stringify(s)}`);
     for (const s of ["--approval-timeout", "ENTRUST_APPROVAL_TIMEOUT_S", "ENTRUST_APPROVAL_POLL_MS", "ENTRUST_LOCK_SEAM_MS", "tool's own store"])
       if (core.includes(s)) problems.push(`--help still says ${JSON.stringify(s)}`);
-    for (const s of ["each launch makes its own mailbox and no second driver writes into it", "`decisionFile`", "`cause: \"outside\"`, and never offered", "`outcome` (the matching item's own completion",
+    for (const s of ["each launch makes its own mailbox and no second driver writes into it", "`decisionFile`", "approvalsAutoAccepted", "`outcome` (the matching item's own completion",
                      "`ENTRUST_APPROVAL_POLL_MS`", "`ENTRUST_APPROVAL_TIMEOUT_S`", "(default 1800)"])
       if (!page.includes(s)) problems.push(`environment-and-internals.md lacks ${JSON.stringify(s)}`);
     if (page.includes("--approval-timeout")) problems.push("environment-and-internals.md still names --approval-timeout");
     return problems.length === 0 || problems.join("; ");
   });
 
-flow("--help says an accepted command runs with no sandbox and a file change the server asks about is declined at once; neither it nor the internals page names a permission feature or a widening field",
+flow("--help says an accepted command runs with no sandbox and a file change not shown inside the roots is declined at once; neither it nor the internals page names a permission feature or a widening field",
   "the widening is gone: a help that still names its feature rows or its report fields sends a coordinator after fields no report carries, and one that still offers a file change outside the roots promises a question the driver never asks",
   () => {
     const core = helpRun("--help").stdout.replace(/\s+/g, " "), page = internalsFlat();
     const problems = [];
-    for (const s of ["An accepted command runs with no sandbox, as you", "outside the writable roots, and is declined at once"])
+    for (const s of ["An accepted command runs with no sandbox, as you", "and one not shown inside them is declined at once"])
       if (!core.includes(s)) problems.push(`--help lacks ${JSON.stringify(s)}`);
     for (const s of ["\"rights are set at launch\" for a permissions request", "its `why` naming `WRITABLE:`"])
       if (!page.includes(s)) problems.push(`environment-and-internals.md lacks ${JSON.stringify(s)}`);
-    for (const s of ["features.", "experimentalApi", "serverWarnings", "featuresRequested", "sandboxWidened", "repeatOf", "approvalsAutoAccepted", "rights cover it"])
+    for (const s of ["features.", "experimentalApi", "serverWarnings", "featuresRequested", "sandboxWidened", "repeatOf"])
       for (const [label, text] of [["--help", core], ["environment-and-internals.md", page]])
         if (text.includes(s)) problems.push(`${label} still names ${JSON.stringify(s)}`);
     return problems.length === 0 || problems.join("; ");
