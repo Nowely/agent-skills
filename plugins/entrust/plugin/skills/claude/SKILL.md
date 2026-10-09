@@ -6,7 +6,7 @@ description: >-
   `claude -p`, with rights, approvals, continuation and a report. Use when entrust's orchestrate, swarm, advisor
   or prepare-feedback plans Claude agents, natively in Claude Code or as a plan row whose adapter is `claude`.
 metadata:
-  version: "0.27.0"
+  version: "0.28.0"
 license: MIT
 ---
 

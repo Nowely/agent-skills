@@ -33,7 +33,7 @@ const READ_PROFILE = "entrust_read";
 // The codex-cli release the protocol facts were measured against, matching schema-<version>/.
 const PINNED_CODEX = "0.159.3";
 // This plugin's version; evals/package.test.mjs keeps it in step with the manifest.
-const VERSION = "0.27.0";
+const VERSION = "0.28.0";
 let codexVersion = null;   // what the server reported this run, parsed out of InitializeResponse.userAgent
 // The union of the model catalogue's reasoning levels and the server's accepted efforts; preflightModel()
 // checks a requested one against the selected model before the turn.

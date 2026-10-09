@@ -1,6 +1,6 @@
 {
   "name": "entrust",
-  "version": "0.27.0",
+  "version": "0.28.0",
   "description": "Orchestrate subagents in Claude Code or Codex: agree a plan, delegate scoped tasks, verify independently and synthesise attributable results. Adapters run external Codex agents with per-call rights, evidence gates and receipts, external Claude agents through `claude -p`, and OpenCode workers or an OpenCode coordinator; helpers clean up, advise, run swarms and turn your sessions into feedback on a skill.",
   "author": {
     "name": "Nowely"
