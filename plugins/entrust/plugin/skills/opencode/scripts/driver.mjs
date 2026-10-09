@@ -9,15 +9,15 @@
 // continues an agent with RESUME after its turn.
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { Client } from "./client.mjs";
 import { recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
 import { startLocalServer } from "./local-server.mjs";
+import { deadlineMs, mailboxProblem, openMailbox } from "../../orchestrate/scripts/mailbox.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
-import { git, makeWorktree, passwdHome, rightsScope, scopeWithin, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { git, guardedTarget, makeWorktree, passwdHome, rightsScope, scopeWithin, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import {
-  EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionFits, canonical, within,
+  EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionsOf, canonical, within,
   commandEvidence, expectation, READ_TOOLS,
 } from "./contract.mjs";
 
@@ -26,7 +26,6 @@ const DEFAULT_TIMEOUT_S = 1800;
 const DEFAULT_IDLE_S = 600;
 // The volume bound every adapter has, as Codex's 1,000 commands.
 const DEFAULT_MAX_COMMANDS = 1000;
-const APPROVAL_DEADLINE_MS = 30 * 60 * 1000;
 const CLAIM_POLLS = 6;
 const SIGNALS = ["SIGTERM", "SIGINT", "SIGHUP"];
 
@@ -217,36 +216,51 @@ function writeRootError(parsed) {
   return writeRootProblem(root, { stateDir, protectedDirs: PROTECTED });
 }
 
-// A permission request is out of the approved writes scope when it would edit and either the run
-// is read-only or the edit target resolves outside every declared root.
-function outOfScope(scope, payload, cwd = process.cwd()) {
+// The rules the server reports a session holds, against the ones this run's rights need. Those rules are all
+// the enforcement OpenCode has, and a server can drop them silently (the V2 pilot's create did), so a session
+// holding others, wider or narrower, is not run, a resumed one too. One the server reports no rules for is
+// said on stderr: their effect is then unverified.
+function rulesProblem(session, scope) {
+  if (!Array.isArray(session?.permission)) {
+    process.stderr.write(`entrust: the server reported no permission rules for session ${session?.id}; their effect is unverified\n`);
+    return null;
+  }
+  return JSON.stringify(session.permission) === JSON.stringify(sessionPermissions(scope)) ? null
+    : `session ${session.id} holds permission rules other than the ones this run's ${scope.kind} rights need; refusing to run under rules nobody asked for`;
+}
+
+// What the driver decides about an edit request before any coordinator sees it. Inside the roots the session
+// rules allow edits unasked. One outside them is offered (`outside`), the whole request the body the
+// coordinator restates, unless it cannot be placed or aims inside the state directory or a directory OpenCode
+// loads from (`decline`, the reason). A read run's rules deny edits, so none is asked.
+function editScope(scope, payload, cwd, guard) {
   const kind = String(payload?.permission ?? payload?.action ?? payload?.tool ?? "").toLowerCase();
-  if (!/edit|write|patch|create|delete|move|rename/.test(kind)) return null;
+  if (!/edit|write|patch|create|delete|move|rename/.test(kind)) return {};
   const explicit = payload?.metadata?.filePath ?? payload?.metadata?.path;
   const targets = explicit ? [explicit] : payload?.resources ?? payload?.patterns ?? [];
-  if (!scope.roots.length) return "the run has no declared writes scope";
-  if (!Array.isArray(targets) || !targets.length) return "the write request has no verifiable target";
+  if (!scope.roots.length) return { decline: "the run has no declared writes scope" };
+  if (!Array.isArray(targets) || !targets.length) return { decline: "the write request has no verifiable target" };
+  let outside = false;
   for (const target of targets) {
-    if (typeof target !== "string" || /[*?\[\]]/.test(target)) return "the write request has no exact target";
+    if (typeof target !== "string" || /[*?\[\]]/.test(target)) return { decline: "the write request has no exact target" };
     const abs = canonical(target, cwd);
-    if (!scope.roots.some((root) => within(abs, canonical(root, cwd)))) return `${abs} is outside the approved writes scope`;
+    if (scope.roots.some((root) => within(abs, canonical(root, cwd)))) continue;
+    const guarded = guardedTarget(abs, guard);
+    if (guarded) return { decline: guarded };
+    outside = true;
   }
-  return null;
+  return { outside };
 }
 
 // ---------------------------------------------------------------------------------------------
 // Approval mailbox
 
-function writePending(box, ids) {
-  if (!box) return;
-  const tmp = path.join(box, `.pending.${crypto.randomBytes(4).toString("hex")}`);
-  fs.writeFileSync(tmp, ids.map((i) => `${i}\n`).join(""), { mode: 0o600 });
-  fs.renameSync(tmp, path.join(box, "pending"));
-}
-
+// Settles q, its record first (orchestrate/scripts/mailbox.mjs). Returns whether the record holds it; with no
+// mailbox there is nothing to record.
 function settleRequestFile(ctx, q, settlement) {
+  if (ctx.box) return ctx.box.settle(q, settlement);
   q.settled = settlement;
-  if (ctx.approvalDir) atomicJson(path.join(ctx.approvalDir, `${q.id}.request.json`), q);
+  return true;
 }
 
 async function currentServerRequest(ctx, type, requestID) {
@@ -301,11 +315,11 @@ async function rejectTrackedRequest(ctx, q, settlement, counter) {
   return true;
 }
 
-async function offerRequest(ctx, type, payload, method, reason, autoReason) {
+async function offerRequest(ctx, type, payload, method, reason, autoReason, cause) {
   ctx.seq += 1;
   const q = envelope({
-    type, payload, seq: ctx.seq, method, reason,
-    cwd: ctx.cwd, roots: ctx.roots, deadlineAt: new Date(now() + APPROVAL_DEADLINE_MS).toISOString(),
+    type, payload, seq: ctx.seq, method, reason, cause,
+    cwd: ctx.cwd, roots: ctx.roots, deadlineAt: new Date(now() + deadlineMs()).toISOString(),
     run: {
       pid: process.pid, startedAtMs: ctx.startedAtMs,
       threadId: ctx.sessionID, turnId: ctx.rootInputID, invocationId: ctx.invocationId,
@@ -314,12 +328,13 @@ async function offerRequest(ctx, type, payload, method, reason, autoReason) {
   });
   q.invocationId = ctx.invocationId;
   ctx.requests.set(q.id, q);
-  if (ctx.approvalDir) {
-    atomicJson(path.join(ctx.approvalDir, `${q.id}.request.json`), q);
-    writePending(ctx.approvalDir, [...ctx.requests.keys()].filter((k) => !ctx.requests.get(k).settled));
-  }
   ctx.escalations.push({ id: q.id, type, requestID: payload.id, method, reason, presented: q.presented });
   q.autoReason = autoReason;
+  // A request the driver declines itself is recorded when it settles and never listed as waiting. One the
+  // mailbox cannot hold would wait for a decision that cannot come: it expires at once.
+  if (ctx.box && !autoReason) {
+    try { ctx.box.offer(q); } catch (e) { q.mailboxFailure = `mailbox write failed: ${e.code ?? e.message}`; }
+  }
   return q;
 }
 
@@ -327,15 +342,13 @@ const acceptedDecision = (d) => (d === "decline" ? "declined" : "accepted");
 
 async function settleOpenRequest(ctx, q) {
   if (ctx.abortRequested) return false;
-  const decisionPath = ctx.approvalDir ? path.join(ctx.approvalDir, `${q.id}.decision.json`) : null;
-  const d = decisionPath ? readJson(decisionPath) : null;
-  if (!d) {
+  const { state, d } = ctx.box.decision(q, decisionsOf(q));
+  if (state !== "valid") {
     if (now() > Date.parse(q.deadlineAt)) {
       return rejectTrackedRequest(ctx, q, { decision: "expired", by: "driver", why: "deadline passed unanswered" }, "expired");
     }
     return false;
   }
-  if (!decisionFits(d, q)) return false;
   // Compare the current server content with the immutable envelope before acting. An absent
   // request is not evidence of acceptance.
   const present = await currentServerRequest(ctx, q.type, q.payload.id);
@@ -362,14 +375,17 @@ async function settleOpenRequest(ctx, q) {
   if (ctx.abortRequested) return false;
   if (d.decision === "decline")
     return rejectTrackedRequest(ctx, q, { decision: "declined", by: "coordinator", why: d.why ?? null }, "declined");
-  // The record before the answer: an accept the mailbox does not hold is one no coordinator can see was given.
-  // One that cannot be written is not answered, and the deadline settles the request.
+  // The record before the answer: an accept the mailbox does not hold is one no coordinator can see was given,
+  // so it is declined instead.
   const settled = {
     decision: acceptedDecision(d.decision), by: "coordinator", why: d.why ?? null,
     settledAt: new Date(now()).toISOString(), outcome: "pending",
   };
   if (d.decision === "answer") settled.answer = d.answer ?? null;
-  try { settleRequestFile(ctx, q, settled); } catch { q.settled = null; return false; }
+  if (!settleRequestFile(ctx, q, settled)) {
+    q.settled = null; // still open, so the rejection finds it among the session's own requests
+    return rejectTrackedRequest(ctx, q, { decision: "expired", by: "driver", why: "mailbox write failed: the decision could not be recorded" }, "expired");
+  }
   if (q.type === "opencode.permission") {
     outcome = await respond(ctx, q.type, q.payload.id, "permission", { reply: d.decision === "accept" ? "once" : "reject" }, q.payload.sessionID);
   } else if (d.decision === "answer") {
@@ -378,7 +394,7 @@ async function settleOpenRequest(ctx, q) {
     outcome = await respond(ctx, q.type, q.payload.id, "decline", {}, q.payload.sessionID);
   }
   settled.outcome = outcome.outcome;
-  try { settleRequestFile(ctx, q, settled); } catch {}
+  ctx.box.rewrite(q);
   if (settled.decision === "declined") ctx.declined += 1;
   if (outcome.outcome === "unknown") ctx.unresolved = true;
   return true;
@@ -427,23 +443,24 @@ async function processRequests(ctx) {
     if (ctx.abortRequested) return;
     if (typeof payload?.id !== "string") continue;
     ctx.seen.add(`${type === "opencode.permission" ? "p" : "q"}:${payload.id}`);
-    const scopeDenial = type === "opencode.permission" ? outOfScope(ctx.scope, payload, ctx.cwd) : null;
+    const edit = type === "opencode.permission" ? editScope(ctx.scope, payload, ctx.cwd, { stateDir: ctx.stateDir, protectedDirs: PROTECTED }) : {};
     const method = type === "opencode.permission" ? (payload.permission ?? payload.tool ?? "permission") : "question";
     const reason = type === "opencode.permission" ? (payload.metadata?.description ?? payload.reason ?? null)
       : (payload.questions?.[0]?.question ?? null);
-    const autoReason = scopeDenial ? `refused by the driver: ${scopeDenial}`
-      : !ctx.approvalDir ? "no approval directory: unattended run" : null;
-    await offerRequest(ctx, type, payload, method, reason, autoReason);
+    const autoReason = edit.decline ? `refused by the driver: ${edit.decline}`
+      : !ctx.box ? "no approval directory: unattended run" : null;
+    await offerRequest(ctx, type, payload, method, reason, autoReason, edit.outside ? "outside" : "asked");
   }
   for (const [rid, q] of [...ctx.requests]) {
     if (ctx.abortRequested) return;
     if (q.settled) { ctx.requests.delete(rid); continue; }
     if (q.autoReason) {
-      if (!ctx.approvalDir) ctx.needsInput = true;
+      if (!ctx.box) ctx.needsInput = true;
       await rejectTrackedRequest(ctx, q, { decision: "declined", by: "driver", why: q.autoReason }, "autoDeclined");
+    } else if (q.mailboxFailure) {
+      await rejectTrackedRequest(ctx, q, { decision: "expired", by: "driver", why: q.mailboxFailure }, "expired");
     } else if (await settleOpenRequest(ctx, q)) ctx.requests.delete(rid);
   }
-  if (ctx.approvalDir) writePending(ctx.approvalDir, [...ctx.requests.keys()]);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -630,7 +647,6 @@ async function cancelPendingRequests(ctx) {
     receipts.push({ type: q.type, sessionID: payload.sessionID, requestIDs: [payload.id], ...outcome });
     settle(q, outcome);
   }
-  if (ctx.approvalDir) writePending(ctx.approvalDir, [...ctx.requests.keys()]);
   return receipts;
 }
 
@@ -754,6 +770,7 @@ async function resolveResume(ctx) {
   if (isBusy(status, sessionID)) return { busy: true, sessionID };
   ctx.resume = true;
   ctx.sessionID = sessionID;
+  ctx.resumedSession = session;
   return { ok: true };
 }
 
@@ -859,8 +876,11 @@ async function execute(opts, parsed) {
   process.stderr.write(`entrust: pid=${process.pid} identity=${ctx.invocationId} reportPath=${ctx.report}\n`);
 
   if (ctx.approvalDir) {
+    const misplaced = mailboxProblem(ctx.approvalDir, ctx.stateDir);
+    if (misplaced) return fail(ctx, misplaced, EXIT.USAGE);
     try { fs.mkdirSync(ctx.approvalDir, { recursive: true, mode: 0o700 }); }
     catch (e) { return fail(ctx, `approval directory ${ctx.approvalDir} cannot be made: ${e.message}`, EXIT.USAGE); }
+    ctx.box = openMailbox(ctx.approvalDir);
   }
 
   try {
@@ -910,6 +930,8 @@ async function execute(opts, parsed) {
     if (ctx.priorRights.kind !== ctx.scope.kind || roots(ctx.priorRights) !== roots(ctx.scope))
       return fail(ctx, `a continuation keeps its rights (${ctx.priorRights.kind}${ctx.priorRights.roots?.length ? ` ${ctx.priorRights.roots.join(" ")}` : ""}); name the same or leave RIGHTS out`, EXIT.USAGE);
   }
+  const resumedRules = ctx.resume ? rulesProblem(ctx.resumedSession, ctx.scope) : null;
+  if (resumedRules) return fail(ctx, resumedRules, EXIT.TRANSPORT);
 
   // Model: pinned by the plan, inherited by a resume, else the first recent model. No fallback.
   const model = await resolveModel(ctx);
@@ -925,6 +947,8 @@ async function execute(opts, parsed) {
     } catch (e) { return fail(ctx, `could not create an OpenCode session: ${e.message}`, EXIT.MODEL); }
     if (!session?.id) return fail(ctx, "the server returned no session id", EXIT.MODEL);
     ctx.sessionID = session.id;
+    const rules = rulesProblem(session, ctx.scope);
+    if (rules) return fail(ctx, rules, EXIT.TRANSPORT);
   }
   writeSessionRecord(ctx);
 
@@ -1228,4 +1252,4 @@ function main() {
 const isMain = (() => { try { return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url)); } catch { return false; } })();
 if (isMain) main();
 
-export { execute, sessionPermissions, outOfScope, rightsScope, scopeWithin, promptText, buildReport, invocationMessages };
+export { execute, sessionPermissions, editScope, rightsScope, scopeWithin, promptText, buildReport, invocationMessages };

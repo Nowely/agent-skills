@@ -24,7 +24,8 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createAgentTemp, agentTempAncestor, stateDirectory, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
-import { EXIT, canonical, parseRights, planWritesToRights, resolveModel, resolveRights, within, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, canonical, insideByInode, parseRights, planWritesToRights, resolveModel, resolveRights, within, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { DEADLINE_MS, deadlineMs, mailboxProblem, openMailbox, requestId } from "../../orchestrate/scripts/mailbox.mjs";
 import { shortName } from "./launch.mjs";
 
 const LEVELS = new Set(["read", "write"]);
@@ -97,9 +98,6 @@ const LIMITS = {
   QUIESCE_KILL_SYNC_MS: 200,
   // How often an open request's decision file is looked for; ENTRUST_APPROVAL_POLL_MS is the suites' seam.
   APPROVAL_POLL_MS: 250,
-  // The only clock on an approval wait (the server waits without bound, the idle guard pauses): the owner's
-  // thirty minutes, three times the coordinator's longest blind spot. ENTRUST_APPROVAL_TIMEOUT_S is the seam.
-  APPROVAL_TIMEOUT_S: 1800,
 };
 // Not a limit: where to look for codex when PATH does not have it.
 const CODEX_FALLBACK_DIRS = ["/opt/homebrew/bin", "/usr/local/bin", "~/.local/bin"];
@@ -268,7 +266,7 @@ Turn
   --report-file ABS  publish the report there as well as on stdout: an ABSOLUTE path that does not
                      exist yet, written whole or not at all, so a missing file means unknown
   --approval-dir D   the agent's mailbox, set by the launcher and never by a person. A request waits
-                     for D/<id>.decision.json, or for ${LIMITS.APPROVAL_TIMEOUT_S / 60} minutes, after which it is declined as
+                     for D/<id>.decision.json, or for ${DEADLINE_MS / 60000} minutes, after which it is declined as
                      expired and the turn goes on; without D every request is declined at once. An
                      accepted command runs with no sandbox, as you; a file change inside the writable
                      roots is accepted by the driver, and one not shown inside them is declined at once
@@ -460,10 +458,9 @@ function parseArgs(argv) {
   // 0 is the documented "off", so the floor is 0 rather than a positive number.
   if (!Number.isFinite(o.idleTimeout) || o.idleTimeout < 0)
     fail(EXIT.USAGE, "--idle-timeout must be a number of seconds, 0 to disable");
-  // The deadline on a waiting approval request is the constant; the seam replaces it for the suites and
-  // is read here, once, so every request of a run waits under one clock.
-  const seam = Number(process.env.ENTRUST_APPROVAL_TIMEOUT_S);
-  o.approvalTimeoutS = seam > 0 ? seam : LIMITS.APPROVAL_TIMEOUT_S;
+  // The only clock on an approval wait (the server waits without bound, the idle guard pauses), read once so
+  // every request of a run waits under one clock.
+  o.approvalDeadlineMs = deadlineMs();
   if (o.approvalDir !== undefined && !path.isAbsolute(o.approvalDir))
     fail(EXIT.USAGE, `--approval-dir must be an absolute path, got ${JSON.stringify(o.approvalDir)}`);
   // MAX_PROMPT_BYTES caps --prompt, stdin and the prompt file before the server sees them.
@@ -1761,87 +1758,32 @@ function canonLoose(p) {
 }
 // Assert the effect the server reports at both levels; the expected grants differ, but neither level
 // may silently accept a different cwd, network setting or writable-root set.
+// What the server REPORTS is the only evidence the rights asked for took effect, so the sandbox thread/start
+// returns is compared, key by key, with what this level asked for, and any difference, wider or narrower,
+// stops the run rather than run it under a sandbox nobody reasoned about. Both levels are a workspaceWrite
+// sandbox with egress as asked and /tmp excluded, and both workspaces hold the cwd: elsewhere, everything the
+// turn writes lands where the caller did not choose. At write level the cwd is not in writableRoots
+// (workspaceWrite implies it, measured on the live binary), so those hold the --writable roots alone, and
+// $TMPDIR stays writable, which heredocs and test runners need. At read level the profile asked for must be
+// the one applied; its `network` table carries egress, which a typo would drop while the id still reads back
+// right, and the one writable root is the fresh $TMPDIR this run made (never the cwd).
 function assertSandbox(thread) {
-  return opts.level === "read" ? assertReadSandbox(thread) : assertWriteSandbox(thread);
-}
-
-// The one refusal, naming the level whose grant was not applied: what the server REPORTS is the only
-// evidence the rights asked for took effect, so a difference stops the run rather than narrowing it.
-const refuseSandbox = (level, why) => fail(EXIT.TRANSPORT,
-  `the ${level} sandbox is not what was asked for (${why}); refusing to continue rather than run under an unknown sandbox`);
-// The cwd is the primary grant and the one the caller reasoned about, so it is checked at BOTH levels:
-// it decides where a write agent writes and which repository a read agent reads. The writable-root sets
-// differ between the levels, which is why only these two checks are shared.
-function assertWorkspaceRoot(thread, refuse) {
-  const workspace = (thread.runtimeWorkspaceRoots ?? []).map(canonPath);
-  if (!workspace.includes(canonPath(cwd)))
-    refuse(`the workspace roots are ${JSON.stringify(thread.runtimeWorkspaceRoots ?? [])}, which do not include --cwd ${cwd}`);
-}
-// Egress is the other grant both levels carry, and each level asks for it through a different key — a
-// `network` table inside the read profile, a sandbox setting at write level — so the response is the
-// only place they can be checked the same way. A difference either way is a sandbox nobody asked for:
-// granted where the caller refused it, or withheld from a task written around having it.
-function assertEgress(sb, refuse) {
-  if (Boolean(sb.networkAccess) !== opts.network)
-    refuse(`networkAccess is ${Boolean(sb.networkAccess)}, and this agent was started with egress ${opts.network ? "granted" : "denied"}`);
-}
-
-// At write level the server reports the grant differently, measured against the live binary: the cwd is
-// NOT in writableRoots — it is implied by workspaceWrite and appears in runtimeWorkspaceRoots — so
-// writableRoots holds exactly the EXTRA roots from --writable and is empty without them. The
-// permission profile is null here, because sending `sandbox` at all suppresses it.
-function assertWriteSandbox(thread) {
-  const refuse = (why) => refuseSandbox("write", why);
-  const sb = thread.sandbox ?? null;
-  if (sb?.type !== "workspaceWrite") refuse(`sandbox type is ${JSON.stringify(sb?.type ?? null)}`);
-  assertEgress(sb, refuse);
-  // The two implicit temp grants, which setup() sends as -c keys and which writableRoots never shows.
-  // A NARROWER sandbox is refused as loudly as a wider one, exactly as the egress check above refuses
-  // both directions: an agent whose $TMPDIR is unwritable cannot run a heredoc or a test runner, and
-  // would report those failures as findings about the task.
-  if (sb.excludeSlashTmp !== true)
-    refuse("excludeSlashTmp is false: /tmp is writable, and this agent was granted --cwd, --writable and $TMPDIR only");
-  if (sb.excludeTmpdirEnvVar !== false)
-    refuse("excludeTmpdirEnvVar is true: $TMPDIR is not writable, and heredocs and test runners need it");
-  const want = [...roots].map(canonPath).sort();
-  const got = (sb.writableRoots ?? []).map(canonPath).sort();
-  if (want.length !== got.length || want.some((r, i) => r !== got[i]))
-    refuse(`writable roots are ${JSON.stringify(sb.writableRoots ?? [])}, expected ${JSON.stringify(roots)}`);
-  // If the server put a different directory there, everything the turn writes lands somewhere the
-  // caller did not choose.
-  assertWorkspaceRoot(thread, refuse);
-}
-
-function assertReadSandbox(thread) {
-  const refuse = (why) => refuseSandbox("read", why);
-  const applied = thread.activePermissionProfile?.id ?? null;
-  if (applied !== READ_PROFILE) refuse(`server reports profile ${JSON.stringify(applied)}`);
-  const sb = thread.sandbox ?? null;
-  if (sb?.type !== "workspaceWrite") refuse(`sandbox type is ${JSON.stringify(sb?.type ?? null)}, so the $TMPDIR grant did not apply`);
-  // The read level's egress is the profile's own `network` table, and a typo in that key drops it while
-  // the id still reads back correctly — the same silent failure the $TMPDIR grant has. The server says
-  // which way it went right here, in the object this guard already holds.
-  assertEgress(sb, refuse);
-  // /tmp is the one grant the explicit root list cannot reveal: with $TMPDIR outside /tmp, a response
-  // whose writableRoots hold exactly $TMPDIR still carries all of /tmp when this flag is false.
-  // excludeTmpdirEnvVar is deliberately NOT asserted here: false names the same directory the explicit
-  // root already names, and true is what the profile reports with TMPDIR unset — which the refusal
-  // below catches first, and by its own cause.
-  if (sb.excludeSlashTmp !== true)
-    refuse("excludeSlashTmp is false, so /tmp is writable beside the $TMPDIR this level grants");
-  // Check that setup() supplied TMPDIR before resolving it: path.resolve("") would substitute the cwd
-  // and misidentify the expected writable root.
+  const sb = thread.sandbox ?? {}, read = opts.level === "read";
+  const set = (list) => JSON.stringify((list ?? []).map(canonPath).sort());
   const tmp = process.env.TMPDIR;
-  if (!tmp) refuse("TMPDIR is unset, so the server grants no temp directory at all");
-  const want = canonPath(tmp);
-  if (!want) refuse(`TMPDIR is set to ${JSON.stringify(tmp)}, which does not resolve to a real directory`);
-  const got = (sb.writableRoots ?? []).map(canonPath);
-  // Expect exactly TMPDIR. It is a directory this run made fresh after --cwd was resolved, so it is
-  // never the cwd the server would subtract from writableRoots.
-  assertWorkspaceRoot(thread, refuse);
-  const ok = got.length === 1 && got[0] === want;
-  if (!ok)
-    refuse(`writable roots are ${JSON.stringify(sb.writableRoots ?? [])}, expected exactly [${JSON.stringify(want)}]`);
+  if (read && !tmp) fail(EXIT.TRANSPORT, "the read sandbox is not what was asked for (TMPDIR is unset, so the server grants no temp directory at all)");
+  const rows = [
+    ["sandbox type", sb.type ?? null, "workspaceWrite"],
+    ["networkAccess", Boolean(sb.networkAccess), opts.network],
+    ["excludeSlashTmp", sb.excludeSlashTmp, true],
+    ["workspace roots holding --cwd", (thread.runtimeWorkspaceRoots ?? []).map(canonPath).includes(canonPath(cwd)), true],
+    ["writable roots", set(sb.writableRoots), set(read ? [tmp] : [...roots])],
+    ...(read ? [["permission profile", thread.activePermissionProfile?.id ?? null, READ_PROFILE]]
+      : [["excludeTmpdirEnvVar", sb.excludeTmpdirEnvVar, false]]),
+  ];
+  const bad = rows.find(([, got, want]) => got !== want);
+  if (bad) fail(EXIT.TRANSPORT, `the ${opts.level} sandbox is not what was asked for (${bad[0]}: ${typeof bad[1] === "string" ? bad[1] : JSON.stringify(bad[1])}, `
+    + `expected ${typeof bad[2] === "string" ? bad[2] : JSON.stringify(bad[2])}); refusing to continue rather than run under an unknown sandbox`);
 }
 
 // Assigned by setup(), which runs inside main()'s try — a Bail thrown at module top level would be an
@@ -1964,7 +1906,7 @@ async function setup() {
   // runtimeWorkspaceRoots reports; normalise the request the same way before asserting the response.
   roots = [...new Set(opts.writable.map((d) => checkRoot(resolveDir(d, "--writable"))))]
     .filter((r) => r !== cwd);
-  if (opts.approvalDir !== undefined) approvalDir = claimMailbox(opts.approvalDir);
+  if (opts.approvalDir !== undefined) box = openMailbox(approvalDir = checkMailbox(opts.approvalDir));
   noteManagedPolicy(opts.webSearch);
 
   const config = [
@@ -1983,7 +1925,7 @@ async function setup() {
     // Omitted entirely when the caller did not name one, so ~/.codex/config.toml decides.
     ...(opts.effort ? [["model_reasoning_effort", opts.effort]] : []),
     // Send write-level sandbox settings unconditionally, unlike the optional --effort above:
-    // the sandbox must depend only on the declared flags, which assertWriteSandbox checks against the response.
+    // the sandbox must depend only on the declared flags, which assertSandbox checks against the response.
     ...(opts.level === "write" ? [
       ["sandbox_workspace_write.network_access", String(opts.network)],
       ["sandbox_workspace_write.writable_roots", `[${roots.map((r) => JSON.stringify(r)).join(",")}]`],
@@ -1993,7 +1935,7 @@ async function setup() {
       // write all of /tmp, which no caller named. /tmp is excluded; $TMPDIR is kept, because heredocs,
       // mkdtemp and every test runner need a temp root and $TMPDIR is the run's own directory above.
       // Sent unconditionally, like the two keys above, and
-      // assertWriteSandbox refuses a response that differs either way.
+      // assertSandbox refuses a response that differs either way.
       ["sandbox_workspace_write.exclude_slash_tmp", "true"],
       ["sandbox_workspace_write.exclude_tmpdir_env_var", "false"]
     ] : [])
@@ -2320,12 +2262,11 @@ function replayEarly() {
 
 // ---------------------------------------------------------------- approvals
 //
-// The mailbox the caller armed with --approval-dir, and the requests offered through it. An offer writes
-// <id>.request.json and lists <id> in `pending`; nothing blocks here, and the turn waits until
-// <id>.decision.json appears, a deadline the caller set runs out, or the request's turn or the run ends.
-// Each of those settles the request and answers the server, and the settlement is written to the request
-// file BEFORE the answer is sent, so a status read after a crash never shows less than the server was told.
-let approvalDir = null;
+// The mailbox the launcher armed with --approval-dir (orchestrate/scripts/mailbox.mjs), and the requests
+// offered through it. Nothing blocks here: the turn waits until <id>.decision.json appears, the deadline runs
+// out, or the request's turn or the run ends. Each of those settles the request and answers the server, the
+// settlement recorded first, so a status read after a crash never shows less than the server was told.
+let approvalDir = null, box = null;
 const openApprovals = new Map();      // id -> {rpcId, entry, record, timer}
 let approvalSeq = 0, approvalPoll = null;
 // The paths a file change names arrive only on its item/started: the request itself carries none (P1,
@@ -2396,54 +2337,29 @@ function settleEntry(entry, decision, by, why) {
   entry.waitMs = Date.parse(entry.settledAt) - Date.parse(entry.askedAt);
 }
 
-const writeMailbox = (name, value) =>
-  renameOver(path.join(approvalDir, name), typeof value === "string" ? value : `${JSON.stringify(value, null, 2)}\n`);
-// `pending` is the caller's wake-up, one open id per line, absent when none is open. Returns the failure or
-// null; a marker that cannot be written settles every open request at once, declined, the failure in why.
-let syncingPending = false;
-function writePending() {
-  let failure = null;
-  try {
-    if (!ownsMailbox()) throw new Error("the mailbox's owner.json no longer names this run");
-    if (openApprovals.size) writeMailbox("pending", [...openApprovals.keys()].map((id) => `${id}\n`).join(""));
-    else fs.rmSync(path.join(approvalDir, "pending"), { force: true });
-  } catch (e) { failure = e; }
-  if (failure === null || syncingPending) return failure;
-  const why = `mailbox write failed: ${failure.code ?? failure.message}`;
-  process.stderr.write(`entrust: ${why} in ${approvalDir}; ${openApprovals.size} open request(s) declined, since no caller can be told of them\n`);
-  syncingPending = true;
-  try { for (const id of [...openApprovals.keys()]) closeApproval(id, "decline", "expired", "driver", why, "none"); }
-  finally { syncingPending = false; }
-  return failure;
-}
-
 function offerApproval(msg, entry) {
   const p = msg.params ?? {};
-  const id = `${++approvalSeq}-${crypto.randomBytes(4).toString("hex")}`;
-  const deadlineMs = opts.approvalTimeoutS * 1000;
+  const id = requestId(++approvalSeq);
+  const waitMs = opts.approvalDeadlineMs;
   const record = { ...p, id, method: msg.method, rpcId: msg.id,
     run: { pid: process.pid, identity: selfIdentity(), startedAtMs, threadId: entry.thread, turnId: p.turnId ?? null },
     kind: entry.kind, subagent: entry.subagent, agentPath: entry.agentPath, cause: entry.cause,
     fileChanges: entry.fileChanges,
     level: opts.level, sandbox: effectiveSandbox, roots: agentRoots(),
-    askedAt: entry.askedAt, deadlineAt: deadlineMs ? new Date(Date.parse(entry.askedAt) + deadlineMs).toISOString() : null };
-  try {
-    if (!ownsMailbox()) throw new Error("the mailbox's owner.json no longer names this run");
-    writeMailbox(`${id}.request.json`, record);
-  } catch (e) {
-    // A request nobody can see would wait for a decision that cannot come.
+    askedAt: entry.askedAt, deadlineAt: new Date(Date.parse(entry.askedAt) + waitMs).toISOString() };
+  try { box.offer(record); } catch (e) {
     const why = `mailbox write failed: ${e.code ?? e.message}`;
     process.stderr.write(`entrust: ${why} in ${approvalDir}; request declined, since no caller can be told of it\n`);
     settleEntry(entry, "expired", "driver", why);
+    box.settle(record, { decision: "expired", by: "driver", why, settledAt: entry.settledAt, waitMs: entry.waitMs, decisionFile: "none" });
     conn.send({ jsonrpc: "2.0", id: msg.id, result: { decision: "decline" } });
     return;
   }
   entry.id = id;
   entry.offered = true;
-  const timer = deadlineMs ? setTimeout(() => expireApproval(id), deadlineMs) : null;
-  timer?.unref?.();
+  const timer = setTimeout(() => expireApproval(id), waitMs);
+  timer.unref?.();
   openApprovals.set(id, { rpcId: msg.id, entry, record, timer });
-  if (writePending() !== null) return;
   if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
   if (!approvalPoll) {
     approvalPoll = setInterval(() => { for (const open of [...openApprovals.keys()]) takeDecision(open); },
@@ -2451,50 +2367,30 @@ function offerApproval(msg, entry) {
     approvalPoll.unref?.();
   }
   process.stderr.write(`entrust: approval request ${id} (${msg.method}${entry.subagent ? ` from ${entry.agentPath ?? entry.thread}` : ""}) `
-    + `waits for a decision in ${approvalDir}${record.deadlineAt ? ` until ${record.deadlineAt}` : ", with no deadline"}\n`);
+    + `waits for a decision in ${approvalDir} until ${record.deadlineAt}\n`);
 }
 
-// Settles one open request: the request file, then the answer, then the marker. `decisionFile` records what
-// the decision file held: taken, none, stale or late. An accept goes out only once its settlement is on
-// disk, or it is a command run as the user with no record; when it cannot be written, a decline goes out.
+// Settles one open request: the record, then the answer. `decisionFile` records what the decision file held:
+// taken, none, stale or late. An accept whose settlement the record does not hold goes out as a decline.
 function closeApproval(id, answer, decision, by, why, decisionFile) {
   const o = openApprovals.get(id);
   if (!o) return;
   openApprovals.delete(id);
   clearTimeout(o.timer);
   settleEntry(o.entry, decision, by, why);
-  try {
-    if (!ownsMailbox()) throw new Error("the mailbox's owner.json no longer names this run");
-    writeMailbox(`${id}.request.json`, { ...o.record,
-      settled: { decision, by, why, settledAt: o.entry.settledAt, waitMs: o.entry.waitMs, decisionFile } });
-  } catch (e) {
-    const failed = `mailbox write failed: ${e.code ?? e.message}`;
-    process.stderr.write(`entrust: the settlement of approval request ${id} could not be written (${failed})`
+  if (!box.settle(o.record, { decision, by, why, settledAt: o.entry.settledAt, waitMs: o.entry.waitMs, decisionFile })) {
+    process.stderr.write(`entrust: the settlement of approval request ${id} could not be written to ${approvalDir}`
       + `${answer === "accept" ? "; declined instead of accepted, since nothing would record that it ran" : ""}\n`);
-    if (answer === "accept") { answer = "decline"; settleEntry(o.entry, "expired", "driver", failed); }
+    if (answer === "accept") { answer = "decline"; settleEntry(o.entry, "expired", "driver", "mailbox write failed: the settlement could not be recorded"); }
   }
   conn.send({ jsonrpc: "2.0", id: o.rpcId, result: { decision: answer } });
-  writePending();
   if (openApprovals.size === 0) { clearInterval(approvalPoll); approvalPoll = null; touchIdle(); }
-}
-
-// What the decision file for request `record` holds. A decision counts only for a request of THIS run:
-// its id, this driver's pid and start, and the request's own turn. Anything else is stale, and left where
-// it is; the request file records what the driver found when it settled.
-function readDecision(record) {
-  let raw;
-  try { raw = fs.readFileSync(path.join(approvalDir, `${record.id}.decision.json`), "utf8"); } catch { return { state: "none" }; }
-  let d = null;
-  try { d = JSON.parse(raw); } catch {}
-  const fits = d?.id === record.id && d?.run?.pid === process.pid && d?.run?.startedAtMs === startedAtMs
-    && (d?.run?.turnId ?? null) === record.run.turnId && (d?.decision === "accept" || d?.decision === "decline");
-  return fits ? { state: "valid", d } : { state: "stale" };
 }
 
 function takeDecision(id) {
   const o = openApprovals.get(id);
   if (!o) return "none";
-  const { state, d } = readDecision(o.record);
+  const { state, d } = box.decision(o.record);
   if (state !== "valid") return state;
   const accept = d.decision === "accept";
   closeApproval(id, accept ? "accept" : "decline", accept ? "accepted" : "declined", "coordinator",
@@ -2518,69 +2414,30 @@ function expireApproval(id) {
 function settleOpenApprovals(why, which = () => true) {
   for (const [id, o] of [...openApprovals]) {
     if (!which(o)) continue;
-    const { state } = readDecision(o.record);
+    const { state } = box.decision(o.record);
     closeApproval(id, "decline", "expired", "driver", why, state === "valid" ? "late" : state);
   }
 }
 
 // The mailbox must be a place no granted sandbox can write: strictly inside the state directory, outside
-// <tmp>/entrust and every root of this run, by inode. One driver per mailbox, since `pending` is rewritten whole.
-function claimMailbox(d) {
+// <tmp>/entrust and every root of this run, by inode. Each launch makes its own, so no other driver writes it.
+function checkMailbox(d) {
   const real = resolveDir(d, "--approval-dir");
-  const within = (p, anc) => {
-    let a;
-    try { a = fs.statSync(anc); } catch { return false; }
-    for (let cur = p; ; ) {
-      let st = null;
-      try { st = fs.statSync(cur); } catch {}
-      if (st && st.dev === a.dev && st.ino === a.ino) return true;
-      const parent = path.dirname(cur);
-      if (parent === cur) return false;
-      cur = parent;
-    }
-  };
-  if (!within(path.dirname(real), stateDir()))
-    fail(EXIT.USAGE, `--approval-dir ${real} is not inside this driver's state directory ${stateDir()}: anywhere else a sandbox this driver grants could write a decision into it`);
+  const misplaced = mailboxProblem(real, stateDir());
+  if (misplaced) fail(EXIT.USAGE, misplaced);
   // None of the driver's own subdirectories may hold a mailbox, and neither may another run's $TMPDIR,
   // which that run's sandbox writes and this run's roots do not cover: a run directory,
   // <state>/reports/<run> or the orchestrate page's, is the only place for one.
   for (const own of [...STATE_SUBDIRS.map(([sub]) => path.join(stateDir(), sub.replace(/\/$/, ""))), ...runTmpBases]) {
-    if (within(real, own))
+    if (insideByInode(real, own))
       fail(EXIT.USAGE, `--approval-dir ${real} lies inside ${own}, which this driver keeps for itself or hands to agents as a writable root: a run there could publish another's decision`);
   }
   const ancestor = agentTempAncestor(real, runTmpNamespace);
   if (ancestor !== null)
     fail(EXIT.USAGE, `--approval-dir ${real} lies inside another agent's temporary grant ${ancestor}: it could publish this run's decision`);
   for (const r of agentRoots())
-    if (within(real, r)) fail(EXIT.USAGE, `--approval-dir ${real} lies inside ${r}, which this agent may write: it could publish its own decision`);
-  mailboxOwnerPath = path.join(real, "owner.json");
-  claimOwner(real);
+    if (insideByInode(real, r)) fail(EXIT.USAGE, `--approval-dir ${real} lies inside ${r}, which this agent may write: it could publish its own decision`);
   return real;
-}
-// Rewritten once the thread exists, so the owner names the thread a request file will name.
-let mailboxOwnerPath = null;
-const mailboxOwner = () => JSON.stringify({ pid: process.pid, identity: selfIdentity(), startedAtMs, threadId: rootThreadId });
-// Whether owner.json still names this run, by the pid and start the claim wrote. Nothing is written into a
-// mailbox this run does not hold: `pending` is rewritten whole, and a second writer would erase the first's.
-const ownsMailbox = () => {
-  const held = readJson(mailboxOwnerPath);
-  return held?.pid === process.pid && held?.startedAtMs === startedAtMs;
-};
-// One driver per mailbox, ever: the claim is a link(2), which refuses an entry already there, so a mailbox
-// that has had an owner is refused whether that driver is alive or gone. The launcher makes a mailbox per
-// launch, so no run needs another's.
-function claimOwner(real) {
-  const owner = mailboxOwnerPath;
-  const tmp = `${owner}.${crypto.randomBytes(8).toString("hex")}.tmp`;
-  try {
-    fs.writeFileSync(tmp, mailboxOwner(), { mode: 0o600, flag: "wx" });
-    try { fs.linkSync(tmp, owner); }
-    catch (e) {
-      if (e.code !== "EEXIST") fail(EXIT.USAGE, `--approval-dir ${real} cannot be claimed: ${e.message}`);
-      const held = readJson(owner);
-      fail(EXIT.USAGE, `--approval-dir ${real} belongs to entrust pid ${held?.pid ?? "unknown"}, ${holderAlive(held) ? "which is still running" : "which has ended"}; a mailbox serves one driver, so give each run a mailbox of its own`);
-    }
-  } finally { fs.rmSync(tmp, { force: true }); }
 }
 
 // The entry every approval request gets, whatever becomes of it. `detail` is the command whole, else the
@@ -3441,7 +3298,7 @@ function writeReport(ev, codeOverride) {
     requestedModel: opts.requestedModel ?? null,
     level: opts.level, sandbox: effectiveSandbox, cwd,
     // Report requested roots separately from sandbox.writableRoots, which is the grant the server applied;
-    // assertWriteSandbox refuses any difference. `network` is the effective grant, not a flag someone
+    // assertSandbox refuses any difference. `network` is the effective grant, not a flag someone
     // passed: it is on unless the agent denied it, and sandbox.networkAccess is asserted to agree.
     writableRootsRequested: roots, network: opts.network,
     // The run's own $TMPDIR, made at either level for every run, so a path the answer names can still be
@@ -3897,7 +3754,6 @@ async function main() {
   // the key to tailing its live rollout under ~/.codex/sessions — a coordinator watching a long agent
   // should not have to wait for the end to learn which run it is.
   process.stderr.write(`entrust: threadId=${rootThreadId} (live rollout: ~/.codex/sessions/YYYY/MM/DD/rollout-*-${rootThreadId}.jsonl)\n`);
-  if (approvalDir !== null && ownsMailbox()) { try { writeMailbox("owner.json", mailboxOwner()); } catch {} }
   // The measured failure shape: a high-effort turn spends minutes thinking before it writes anything, so
   // a short clock cuts it before the answer exists — and an interrupt hands back no answer at all.
   // Silent without a wall clock: the failure shape IS a short clock, and warning about one that was

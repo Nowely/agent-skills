@@ -1,4 +1,4 @@
-// What every external agent's driver shares beside the launcher's contract: the exit codes, the request id,
+// What every external agent's driver shares beside the launcher's contract and the mailbox: the exit codes,
 // the RIGHTS grammar and the scope it grants, the plan's model pin, the write-root check, and the worktree a
 // `worktree` agent runs in. The Codex, OpenCode and Claude drivers import it; nothing here runs on import.
 import fs from "node:fs";
@@ -41,10 +41,6 @@ export const EXIT = Object.freeze({
   BUSY: 10,
   SCHEMA: 13,
 });
-
-// A request id is a sequence number and eight hex digits, and it is also a file name.
-export const REQUEST_ID = /^\d+-[0-9a-f]{8}$/;
-export const REQUEST_ID_SOURCE = "^\\d+-[0-9a-f]{8}$";
 
 // RIGHTS: `read [cwd]`, `write <cwd>` or `worktree <repo>`. The path is kept as written; the
 // driver resolves it against its own cwd.
@@ -144,6 +140,29 @@ export function writeRootProblem(dir, { stateDir, protectedDirs = [], home = pas
     const real = canonical(p.dir);
     for (const cur of upward(path.dirname(real))) if (same(statOf(cur))) return refuse(`an ancestor of ${p.label} (${real}), which holds ${p.holds}`);
   }
+  return null;
+}
+
+// Whether `p` is `dir` or lies below it, compared by dev:ino along p's path, so a case variant, a link or an
+// alias of `dir` is `dir`.
+export function insideByInode(p, dir) {
+  const statOf = (q) => { try { return fs.statSync(q); } catch { return null; } };
+  const anc = statOf(dir);
+  if (!anc) return false;
+  for (let cur = p; ; cur = path.dirname(cur)) {
+    const st = statOf(cur);
+    if (st && st.dev === anc.dev && st.ino === anc.ino) return true;
+    if (path.dirname(cur) === cur) return false;
+  }
+}
+
+// Why an edit outside the run's roots is declined at once rather than offered, or null: its target is, or lies
+// inside, the state directory, where the mailboxes are, or a directory the adapter protects (writeRootProblem's
+// `protectedDirs`). By dev:ino along the target's path, so no spelling of one reaches the coordinator as a question.
+export function guardedTarget(target, { stateDir, protectedDirs = [] }) {
+  const real = canonical(target);
+  for (const p of [{ dir: stateDir, label: "the state directory", holds: "the run's approvals" }, ...protectedDirs])
+    if (p.dir && insideByInode(real, p.dir)) return `${target} lies inside ${p.label}, which holds ${p.holds}`;
   return null;
 }
 

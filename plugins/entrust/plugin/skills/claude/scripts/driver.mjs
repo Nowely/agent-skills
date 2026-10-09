@@ -14,7 +14,8 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
-import { EXIT, canonical, flagValue, makeWorktree, passwdHome, resolveModel, resolveRights, rightsScope, within, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, canonical, flagValue, makeWorktree, passwdHome, resolveModel, resolveRights, rightsScope, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { mailboxProblem } from "../../orchestrate/scripts/mailbox.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { TOOL } from "./approvals.mjs";
 
@@ -28,6 +29,20 @@ const HEADERS = new Set(["RIGHTS", "MODEL", "EFFORT", "OUTPUT_SCHEMA", "RESUME",
 const PROTECTED = [{ dir: path.join(passwdHome(), ".claude"), label: "~/.claude", holds: "the settings, hooks and plugins every Claude Code session loads" }];
 const READ_TOOLS = ["Read", "Grep", "Glob", "Bash"];
 const WRITE_TOOLS = [...READ_TOOLS, "Edit", "Write"];
+// What init must not report, by the rights asked for: a mode that edits or runs unasked beyond them, and a
+// built-in tool that writes files, reaches the web or delegates, beyond the ones granted. A list of what
+// widens, not an exact match: how init echoes `manual`, and which tools it always lists, is unmeasured.
+const WIDER = {
+  read: { modes: ["acceptEdits", "auto", "bypassPermissions"], tools: ["Edit", "Write", "MultiEdit", "NotebookEdit", "WebFetch", "WebSearch", "Agent", "Task"] },
+  write: { modes: ["auto", "bypassPermissions"], tools: ["MultiEdit", "NotebookEdit", "WebFetch", "WebSearch", "Agent", "Task"] },
+};
+// The sandbox the agent runs under is the one init reports: one wider than asked for stops the run.
+export function initProblem(init, kind) {
+  const wider = WIDER[kind === "read" ? "read" : "write"];
+  if (wider.modes.includes(init.permissionMode)) return `Claude Code reports permission mode ${init.permissionMode}, wider than this run's ${kind} rights`;
+  const extra = (init.tools ?? []).filter((t) => wider.tools.includes(t));
+  return extra.length ? `Claude Code reports the tools ${extra.join(", ")}, beyond this run's ${kind} rights` : null;
+}
 const DEFAULT_TIMEOUT_S = 1800;
 // The volume bound every adapter has: Codex cuts at 1,000 commands, this driver at 1,000 tool calls.
 const DEFAULT_MAX_TOOL_CALLS = 1000;
@@ -255,9 +270,10 @@ function escalations(box) {
 const OBSERVING = new Set(["Bash", "Read", "Grep", "Glob"]);
 export const observations = (tools) => [...tools.values()].filter((t) => OBSERVING.has(t.tool) && t.isError === false).length;
 
-export function verdict({ result, stopped, spawnError, exitCode, signal, box, denials, hasMailbox, observed = 1, allowNoCommands = false }) {
+export function verdict({ result, stopped, wider, spawnError, exitCode, signal, box, denials, hasMailbox, observed = 1, allowNoCommands = false }) {
   const asked = escalations(box);
   if (spawnError) return { exitCode: EXIT.TRANSPORT, error: `claude could not be started: ${spawnError}`, turnStatus: "failed" };
+  if (wider) return { exitCode: EXIT.TRANSPORT, error: `${wider}; the run was stopped rather than run under rights nobody asked for`, turnStatus: "aborted", partial: true };
   if (stopped) return { exitCode: EXIT.TIMEOUT, error: stopped, turnStatus: "aborted", partial: true };
   if (!result) return { exitCode: EXIT.TRANSPORT, error: `claude ended without a result (${signal ? `signal ${signal}` : `exit ${exitCode}`})`, turnStatus: "failed" };
   if (result.is_error) return { exitCode: EXIT.MODEL, error: typeof result.result === "string" && result.result ? result.result : `the run ended ${result.subtype}`, turnStatus: "failed",
@@ -284,7 +300,7 @@ async function run(o, text) {
   process.stderr.write(`entrust: pid=${process.pid} identity=${invocationId} reportPath=${report}\n`);
 
   const ctx = { report, base, box: null, startedAtMs, invocationId, parsed: null, scope: null, sessionId: crypto.randomUUID(),
-    transcriptPath: null, answerPath: null, init: null, result: null, tools: new Map(), stopped: null, sentInt: false, child: null };
+    transcriptPath: null, answerPath: null, init: null, wider: null, result: null, tools: new Map(), stopped: null, sentInt: false, child: null };
   const publish = (facts) => {
     const r = buildReport(ctx, facts);
     atomicWrite(report, `${JSON.stringify(r, null, 2)}\n`);
@@ -311,7 +327,8 @@ async function run(o, text) {
     ctx.parsed = parsed;
     const stateDir = stateDirectory();
     const box = o.approvalDir ? path.resolve(o.approvalDir) : null;
-    if (box && !within(canonical(box), canonical(stateDir))) return refused(`--approval-dir ${box} is outside the state directory ${stateDir}`);
+    const misplaced = box && mailboxProblem(box, stateDir);
+    if (misplaced) return refused(misplaced);
     ctx.box = box;
     const scope = scopeOf(parsed, stateDir);
     if (scope.error) return refused(scope.error);
@@ -328,7 +345,8 @@ async function run(o, text) {
       mcpConfig = `${base}.mcp.json`;
       atomicWrite(mcpConfig, JSON.stringify({ mcpServers: { [SERVER_NAME]: { type: "stdio", command: process.execPath, args: [SERVER], timeout: SERVER_TIMEOUT_MS,
         env: { ENTRUST_APPROVAL_DIR: box, ENTRUST_RUN_PID: String(process.pid), ENTRUST_RUN_STARTED_MS: String(startedAtMs),
-          ENTRUST_RUN_CWD: scope.cwd, ENTRUST_RUN_ROOTS: JSON.stringify(scope.roots) } } } }));
+          ENTRUST_RUN_CWD: scope.cwd, ENTRUST_RUN_ROOTS: JSON.stringify(scope.roots),
+          ENTRUST_RUN_STATE_DIR: stateDir, ENTRUST_RUN_PROTECTED: JSON.stringify(PROTECTED) } } } }));
     }
 
     const args = claudeArgs(parsed, { kind: scope.kind, stateDir, box, sessionId: ctx.sessionId, mcpConfig });
@@ -352,6 +370,7 @@ async function run(o, text) {
       let e;
       try { e = JSON.parse(line); } catch { return; }
       observe(ctx, e);
+      if (e === ctx.init && !ctx.wider && (ctx.wider = initProblem(e, scope.kind))) stop(ctx.wider);
       if (ctx.tools.size > o.maxToolCalls) stop(`cut at its volume bound: more than ${o.maxToolCalls} tool calls`);
     });
     child.stdin.on("error", () => {});
@@ -367,7 +386,7 @@ async function run(o, text) {
     clearInterval(timer);
     fs.closeSync(transcript);
     const denials = ctx.result?.permission_denials ?? [];
-    return publish(verdict({ result: ctx.result, stopped: ctx.stopped, spawnError, exitCode, signal, box, denials, hasMailbox: Boolean(mcpConfig),
+    return publish(verdict({ result: ctx.result, stopped: ctx.stopped, wider: ctx.wider, spawnError, exitCode, signal, box, denials, hasMailbox: Boolean(mcpConfig),
       observed: observations(ctx.tools), allowNoCommands: parsed.allowNoCommands }));
   } catch (e) {
     return publish({ exitCode: EXIT.TRANSPORT, error: `the driver failed: ${e.message}`, turnStatus: "failed" });

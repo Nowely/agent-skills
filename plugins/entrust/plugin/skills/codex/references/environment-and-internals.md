@@ -101,17 +101,18 @@ driver's own subtrees there —
 run's `$TMPDIR` is; `reports/<run>` and an orchestrate run directory are both fine, being neither. The
 driver also refuses any writable root that is, or is an ancestor of, the state directory or `~/.codex` —
 the inverse of the ancestor walk [Only those are protected](#what-is-protected-and-what-is-not) already
-runs — so no sandbox the driver grants can reach in and write a decision itself. `D/owner.json` claims the
-mailbox by `link(2)`; a second driver over the same `D` exits 2 whether that owner is alive or has ended,
-so `D` serves one driver, ever, and each launch gets a `D` of its own. A request the
+runs — so no sandbox the driver grants can reach in and write a decision itself. The launcher's `--new`
+makes `D` in one agent's directory, and the launcher starts one driver per directory, so each launch
+makes its own mailbox and no second driver writes into it. The mailbox's files and the rules below up to
+the deadline are the same in every adapter, one module, `orchestrate/scripts/mailbox.mjs`. A request the
 mailbox itself cannot write — its file, or its entry in `pending` — is settled at once as expired,
 `why: "mailbox write failed: <error>"`, and an accept reaches the server only after that settlement record
-landed; a request's own `settled` object then carries `decisionFile`, what the decision file held as it
+landed: one whose settlement cannot be written goes out as a decline. A request's own `settled` object then carries `decisionFile`, what the decision file held as it
 settled: `taken`, `none`, `stale` or `late`. A subagent thread's request is offered, and its file change
 auto-accepted, only while that thread's own turn is still open: once it closes, a further request from it
 is declined at once, `why: "turn ended"` for one whose turn had been open and closed, `"not the current
 turn"` for one from a turn never open at all. A request nobody answers waits on the single clock the driver
-keeps for it, `LIMITS.APPROVAL_TIMEOUT_S`, a constant at 1800 seconds (thirty minutes, not a flag: nobody
+keeps for it, the mailbox's `DEADLINE_MS`, thirty minutes in every adapter (a constant, not a flag: nobody
 could say who would set it or why the default could not decide) — a safety net for a run nobody attends, not
 a policy choice, and the idle guard is paused for as long as any request stays open so the two clocks never
 compete. `--run` can hand a pending request straight back instead of waiting on it: see the codex page's

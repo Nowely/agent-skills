@@ -35,19 +35,18 @@ pins the model and the writes: a prompt that names neither runs on the row's, on
 Everything else a run tries asks: a command outside the read-only set, a write outside its directory. The
 agent has no web tools and no Agent tool. It runs with the user's own configuration: their allow rules run
 without asking, their hooks and MCP servers are there, and the report's `context` says which. A `write`
-directory may not be your home or above it, nor lie inside or above `<state>` or `~/.claude`, and no file tool,
-redirect or `tee` may reach a mailbox; any other Bash
-write there (`cp`, `mv`, a script) still asks, unless the user's own allow rules cover it.
+directory may not be your home or above it, nor lie inside or above `<state>` or `~/.claude`. An Edit or Write
+outside the run's directory aimed inside `<state>` or `~/.claude` is declined at once, never offered, and no
+redirect or `tee` may reach a mailbox; any other Bash write there (`cp`, `mv`, a script) still asks, unless the
+user's own allow rules cover it.
 
 ## The call
 
 Make, run, read, continue and stop it as the [shared call page](../../orchestrate/references/external.md) says;
 without a plan, `--new` takes `--adapter claude`. What Claude adds:
 
-- A Bash call that is only a command and its description comes back as a command request. Every other call, a
-  Bash call with a timeout or in the background included, comes back as `TYPE=claude.permission` with the whole
-  call between `REQUEST_BODY<<TOKEN` and `REQUEST_BODY>>TOKEN`; an accept restates that whole body. What runs is
-  the call as it was offered.
+- A request is a command or a whole tool call ([What each adapter adds](../../orchestrate/references/external.md#what-each-adapter-adds)):
+  a Bash call with a timeout or in the background is a tool call too, and an accept restates its whole body.
 - A run launched without a mailbox (a swarm) and a `SAFE_MODE` run deny whatever would ask, and exit 7 when they
   did.
 

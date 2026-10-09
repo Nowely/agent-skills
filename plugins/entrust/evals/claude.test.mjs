@@ -186,6 +186,16 @@ test("a worktree's report is read through the git directory its repository recor
   assert.deepEqual(t.json.untracked, ["?? planted.txt"]);
 });
 
+test("an init reporting a wider mode or tool than the rights asked for stops the run, exit 4", async () => {
+  const s = setup();
+  const mode = await drive(s, `RIGHTS: read ${s.work}\nTASK: judge\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ permissionMode: "bypassPermissions" }) } });
+  assert.equal(mode.code, 4, mode.err); assert.match(mode.json.error, /permission mode bypassPermissions, wider than this run's read rights/);
+  const tool = await drive(s, `RIGHTS: write ${s.work}\nTASK: make\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ tools: ["Read", "Edit", "WebFetch", "mcp__user__thing"] }) } });
+  assert.equal(tool.code, 4, tool.err); assert.match(tool.json.error, /the tools WebFetch, beyond this run's write rights/);
+  const echoed = await drive(s, `RIGHTS: read ${s.work}\nTASK: judge\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ permissionMode: "default", tools: ["Read", "Bash", "mcp__entrust-approvals__decide"] }) } });
+  assert.equal(echoed.code, 0, echoed.err);
+});
+
 test("an accept the mailbox cannot record is answered deny, never allow", async () => {
   const box = tempDir("entrust-claude-box-");
   const server = spawn(process.execPath, [path.join(ROOT, "skills/claude/scripts/approvals.mjs")], {
@@ -206,6 +216,36 @@ test("an accept the mailbox cannot record is answered deny, never allow", async 
   server.kill();
   const answer = JSON.parse(replies.find((m) => m.id === 2).result.content[0].text);
   assert.equal(answer.behavior, "deny");
+});
+
+test("an edit outside the roots is offered whole; one into the state directory or ~/.claude is declined unasked", async () => {
+  const state = tempDir("entrust-claude-guard-"), work = tempDir("entrust-claude-work-"), elsewhere = tempDir("entrust-claude-elsewhere-");
+  const prot = tempDir("entrust-claude-protected-"), box = path.join(state, "run", "agent", "approvals");
+  fs.mkdirSync(box, { recursive: true });
+  const server = spawn(process.execPath, [path.join(ROOT, "skills/claude/scripts/approvals.mjs")], {
+    env: { ...process.env, ENTRUST_APPROVAL_DIR: box, ENTRUST_RUN_PID: "4242", ENTRUST_RUN_STARTED_MS: "1", ENTRUST_RUN_CWD: work,
+      ENTRUST_RUN_ROOTS: JSON.stringify([work]), ENTRUST_RUN_STATE_DIR: state,
+      ENTRUST_RUN_PROTECTED: JSON.stringify([{ dir: prot, label: "~/.claude", holds: "the settings" }]) },
+    stdio: ["pipe", "pipe", "inherit"] });
+  const replies = [];
+  readline.createInterface({ input: server.stdout }).on("line", (l) => replies.push(JSON.parse(l)));
+  const call = (id, method, params) => server.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
+  const until = async (ok) => { for (let i = 0; i < 100 && !ok(); i++) await new Promise((r) => setTimeout(r, 50)); };
+  call(1, "initialize", { protocolVersion: "2025-06-18" });
+  call(2, "tools/call", { name: "decide", arguments: { tool_name: "Write", input: { file_path: path.join(box, "1-00000000.decision.json"), content: "{}" } } });
+  call(3, "tools/call", { name: "decide", arguments: { tool_name: "Edit", input: { file_path: path.join(prot, "settings.json"), old_string: "a", new_string: "b" } } });
+  call(4, "tools/call", { name: "decide", arguments: { tool_name: "Write", input: { file_path: path.join(elsewhere, "notes.txt"), content: "x" } } });
+  await until(() => replies.some((m) => m.id === 3) && fs.existsSync(path.join(box, "pending")));
+  server.kill();
+  for (const id of [2, 3]) {
+    const answer = JSON.parse(replies.find((m) => m.id === id).result.content[0].text);
+    assert.equal(answer.behavior, "deny"); assert.match(answer.message, id === 2 ? /inside the state directory/ : /inside ~\/\.claude/);
+  }
+  assert.equal(replies.some((m) => m.id === 4), false, "the edit elsewhere was answered without a decision");
+  const records = fs.readdirSync(box).filter((n) => n.endsWith(".request.json")).map((n) => JSON.parse(fs.readFileSync(path.join(box, n), "utf8")));
+  const offered = records.find((q) => q.payload.input.file_path === path.join(elsewhere, "notes.txt"));
+  assert.deepEqual(fs.readFileSync(path.join(box, "pending"), "utf8").trim().split("\n"), [offered.id]);
+  assert.equal(records.filter((q) => q.settled?.by === "driver" && q.settled.decision === "declined").length, 2);
 });
 
 test("the budget: a volume bound of tool calls cuts the turn with exit 3, and the wall clock stands still while a request waits", async () => {
@@ -348,7 +388,7 @@ test("the mailbox round trip: --run hands the Bash request back, an accept runs 
   const q = JSON.parse(fs.readFileSync(path.join(h.dir, "approvals", `${id}.request.json`), "utf8"));
   assert.equal(q.settled.decision, "accepted"); assert.equal(q.settled.by, "coordinator");
   assert.equal(JSON.parse(fs.readFileSync(h.report, "utf8")).escalations[0].decision, "accepted");
-  assert.equal(fs.readFileSync(path.join(h.dir, "approvals", "pending"), "utf8"), "");
+  assert.equal(fs.existsSync(path.join(h.dir, "approvals", "pending")), false, "pending outlived the last open request");
 });
 
 test("a decline denies the call and exits 6", async () => {

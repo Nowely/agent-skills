@@ -60,6 +60,36 @@ forensics remain in the repository references and release notes.
   report, and link it; a Claude or OpenCode call no longer needs the Codex page. Every page names one launcher,
   orchestrate's `agent-run.mjs`; the adapters' own entry scripts still work. `agents/proxy.md` carries the block's
   four steps word for word, and a test compares the two (X16). Each host's models page names its proxy model.
+- **One approval mailbox for the three drivers.** The files a driver writes into `<DIR>/approvals`, the rule a
+  decision must fit, the record kept before any answer and the thirty-minute deadline are one module,
+  `orchestrate/scripts/mailbox.mjs`, which the launcher's `--decide` shares too; each adapter keeps only how its CLI
+  is answered. Three differences went with it: an OpenCode driver now refuses a mailbox outside its state directory,
+  as the other two did; a decision file that fits no request of the run no longer keeps an OpenCode request open
+  past its deadline; and an OpenCode accept or answer that cannot be recorded is declined at once, as in Codex and
+  Claude, instead of waiting out the deadline. `pending` is absent, not empty, when no request is open, in every
+  adapter.
+- **An OpenCode edit outside the worker's roots is offered, not declined; a guarded one is declined in every
+  adapter.** OpenCode declined every edit outside the roots, though its request carries the whole edit a coordinator
+  can restate; it is now offered with `CAUSE=outside`, as a Claude edit outside its directory already was. Codex
+  still declines a file change outside its rights, since its request carries no body. An edit aimed inside the
+  state directory, where the mailboxes are, or the CLI's own configuration (OpenCode's configuration and data,
+  `~/.claude`) is declined at once and never offered; Claude's approval server now checks that too, where before
+  only the mailboxes were denied.
+- **Each driver checks the rights its CLI reports, and stops a run under others (exit 4).** Codex already compared the
+  sandbox its server reports with the one asked for; that check is one table for both levels now. OpenCode now
+  reads back the permission rules a session holds, at creation and on a resume, and runs none whose rules differ
+  from the ones its rights need, wider or narrower, since those rules are all of OpenCode's enforcement; a server
+  that reports no rules is said on stderr. Claude stops a run whose `init` reports a permission mode or a built-in
+  tool wider than its rights (an edit, web or delegation tool a read agent was not given, or `bypassPermissions`).
+- **Two rows of a plan never write one tree, in every adapter.** `--plan` refuses rows whose `write` directories
+  overlap, compared by inode so a link or another spelling is the same directory, and two `live tree` rows; `--new`
+  refuses a `live tree` agent whose directory overlaps another row's. Only Codex writers kept off each other, by
+  their lock, and only when they shared a state directory; OpenCode and Claude writers did not at all (X5). Writers
+  in sequence on one tree are one row and its continuations. The Codex lock stays for runs with no plan.
+- **What each adapter adds to a request is one section of the shared call page.** The operational proxy, the
+  Codex or OpenCode subagent that relays a run, linked three adapter pages for it; it now links "What each
+  adapter adds" under Decide a request, which says what an accept runs and what is never offered for Codex,
+  OpenCode and Claude. The adapter pages keep only their mechanics.
 
 ### Fixed
 
@@ -154,6 +184,11 @@ forensics remain in the repository references and release notes.
   what the mailbox already records: a stale decision file is left in place and its request file says so, which
   the launcher's `RECEIPT=` counts, and a request id sent twice is still one request, answered once and said on
   stderr.
+- **The Codex mailbox's owner claim.** A Codex driver wrote `owner.json` into its mailbox, refused a mailbox that
+  had ever had one, and checked it before every write, so that two drivers could not rewrite one `pending`. The
+  launcher already starts one driver per agent directory, by its exclusive `err.txt`, and makes each mailbox
+  there, so no supported caller could hand two drivers one mailbox. The claim, its checks and its case are gone;
+  the driver still refuses a mailbox outside its state directory or inside a root the agent may write.
 
 ## 0.27.0 — 2026-10-08
 

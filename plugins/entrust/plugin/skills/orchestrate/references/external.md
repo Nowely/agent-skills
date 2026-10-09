@@ -151,7 +151,7 @@ request and its outcome). The adapter's page lists the rest.
 | 1 | the model's turn failed | read `turnError` |
 | 2 | refused before a turn, or the CLI refused the request | read `error`; fix the prompt |
 | 3 | cut by the budget (step 8); the answer or partial is kept | continue once with `RESUME:` if work remains |
-| 4 | the CLI or its server failed | with a `turnStatus`, the report is complete: read it; without one, report it |
+| 4 | the CLI or its server failed, or reported rights other than the ones asked for | with a `turnStatus`, the report is complete: read it; without one, report it |
 | 5 | the agent observed nothing, or no command matched `EXPECT:` | do not retry the same prompt |
 | 6 | a request was declined or expired | read `escalations` |
 | 7 | the agent needed an answer it could not get (a question, or a request with no mailbox) | read `error` |
@@ -195,6 +195,24 @@ Decline with `--decide '<ID>' --decline --why "<reason>" --report-file "<REPORT>
 question. Then run the same `--run` again: in Claude Code, send the proxy the same block again. A request nobody
 answers is declined after thirty minutes. A decline answers that one request; the run goes on.
 
+### What each adapter adds
+
+- Codex: a request is a command its sandbox would not run. An accept runs it as you with no sandbox: a
+  version-control query runs the repository's configured hooks, monitors and pagers, and a script runs the bytes
+  at its path when it runs, not the bytes you read. A file change outside the agent's writable roots is never
+  offered: it is declined at once and the run exits 6.
+- OpenCode: a request is a permission or a question, its native JSON whole as the body. An accept replies
+  `once`, never `always`. A decline, an expiry or an automatic denial rejects every permission pending in that
+  session, and their records say so. A question takes `--answer`, never `--accept`. An edit outside the worker's
+  roots comes with `CAUSE=outside`: accepting it writes there once, beyond the rights the prompt granted. The
+  driver reads the native request again before it answers, and an outcome it cannot establish stays unknown:
+  investigate before repeating the action.
+- Claude: a Bash call that is only a command and its description is a command request; every other call, an
+  edit outside the agent's directory included, comes as `TYPE=claude.permission` with the whole call as the body.
+  What runs is the call as it was offered.
+- Every adapter: an edit aimed inside `<state>` or the CLI's own configuration is declined at once, never
+  offered. An accept is permission, not proof the action ran: read the observed result in the report.
+
 ## 6. Continue an agent
 
 Write a new prompt with `RESUME: <its REPORT= path>` and run `--new` under a fresh report path: under a plan
@@ -226,18 +244,26 @@ Silence and the wall clock stand still while a request waits for you. A cut is e
 - What a read agent does without asking: Codex runs any command inside its sandbox, network included; OpenCode
   reads and searches files, and asks for every shell command; Claude runs its read-only commands and whatever
   the user's own settings allow.
-- The requests: Codex asks for commands; a Codex file change outside its rights is declined, never offered.
-  OpenCode asks for permissions and questions; Claude for commands and other tool calls.
+- The requests: Codex asks for commands; a Codex file change outside its rights is declined, never offered,
+  since its request carries no body to restate. OpenCode asks for permissions and questions, Claude for commands
+  and other tool calls, an edit outside the agent's roots included, with the whole edit as the body. In every
+  adapter an edit aimed inside `<state>` or a directory the adapter protects (the CLI's own configuration, which
+  each adapter's page names) is declined at once, never offered.
 - The worktree: Codex makes it under `<repo>/.claude/worktrees/` and reports the diff as a file,
   `worktreeDiffPath`; OpenCode and Claude make it under `<state>/worktrees/` and report `worktreePath`, `base`,
   the `diff` inline and the `untracked` files.
 - `EXPECT:`, a pattern a successful command's output must match, exists for Codex and OpenCode.
-- Egress: a Codex agent reaches the network unless `NETWORK: no`; OpenCode asks; a Claude agent has no web tools.
+- Egress is on by default: a Codex agent's commands reach the network unless
+  `NETWORK: no`, and it searches the web through its provider only with a `WEB_SEARCH:` line; an OpenCode agent
+  asks before every command and fetch; a Claude agent has no web tools, and a command of its that reaches the
+  network asks unless the user's allow rules cover it. A plan row sets neither: settle a `NETWORK: no` or a
+  `WEB_SEARCH:` line with the user, and never drop one the user settled.
 - The user's MCP servers: a Codex agent runs in an isolated Codex home and has none of them, and no prompt line
   opens them; a Claude agent has the user's, unless `SAFE_MODE: yes`; an OpenCode agent has its user's OpenCode
   configuration and asks before any tool but its file reads.
-- Write lock: a Codex write agent refuses a directory another Codex writer holds (exit 10); under a plan, give each
-  writer its own directory or worktree.
+- Writers on one tree: under a plan, `--plan` refuses two rows whose trees overlap and `--new` a live tree over
+  another row's, in every adapter, so give each writer its own directory or a worktree. Without a plan, only a
+  Codex write agent refuses a directory another Codex writer holds (exit 10).
 
 ## What the user reads
 
