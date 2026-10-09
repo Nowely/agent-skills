@@ -97,3 +97,17 @@ ended an OpenCode agent's turn, contrary to the rules it had just been given. It
 the rules' sentence ("Do not try to get around it: record it and what it blocked, finish what you can, and say
 what remains."); a Stop still rejects without one, since there the turn is meant to end. A question's reject takes
 no message, and a sibling the server rejects together with the first gets none either. E2 is worth one more run.
+
+## Third round, at `f5d288dc` (same day)
+
+The owner ran the OpenCode probe again on the head that rejects with a message:
+
+- **E2.** Exit 0, nothing written, no request at all: the agent, told that its edit tools are refused, that every
+  shell command needs approval and that nothing more can be granted in a run with no mailbox, tried nothing beyond
+  its rights and answered with a valid object. Across the three rounds the same model tried a shell write (round
+  one), a `skill` call and a shell write that ended its turn (round two), and nothing (round three): the rules make
+  the third the likelier, and a refusal, if it comes, now reaches the agent as feedback rather than ending the turn.
+- **E1, F.** As in the first round.
+
+The probe does not print the answer, so whether its `status` read `blocked` is not shown here; the exit code is the
+run's, and the status lines' `FIRST=` carries the answer's own status to the coordinator.
