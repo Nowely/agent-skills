@@ -100,9 +100,8 @@ forensics remain in the repository references and release notes.
   Codex or OpenCode subagent that relays a run, linked three adapter pages for it; it now links "What each
   adapter adds" under Decide a request, which says what an accept runs and what is never offered for Codex,
   OpenCode and Claude. The adapter pages keep only their mechanics.
-- **The pages say what the owner's machine measured.** Under `NETWORK: no` a Codex fetch fails inside the sandbox
-  and raises no request, so nothing reaches the coordinator to approve (the Codex field table and the shared
-  page). OpenCode keeps a session's rules as sent, and its bash rules let a redirect through under an allowed
+- **The pages say what the owner's machine measured.** Under `NETWORK: no` a Codex fetch fails inside the sandbox,
+  and the agent asks for one the task needs (the Codex field table and the shared page). OpenCode keeps a session's rules as sent, and its bash rules let a redirect through under an allowed
   prefix (`git diff > file` under `git diff*`), which is why the adapter allows no shell command unasked
   (`opencode/references/parity.md`).
 

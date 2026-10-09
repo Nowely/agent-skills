@@ -261,7 +261,7 @@ Silence and the wall clock stand still while a request waits for you. A cut is e
   the `diff` inline and the `untracked` files.
 - `EXPECT:`, a pattern a successful command's output must match, exists for Codex and OpenCode.
 - Egress is on by default: a Codex agent's commands reach the network unless
-  `NETWORK: no`, under which a fetch fails and raises no request, and it searches the web through its provider
+  `NETWORK: no`, under which a fetch fails and the agent asks you for one the task needs, and it searches the web through its provider
   only with a `WEB_SEARCH:` line; an OpenCode agent
   asks before every command and fetch; a Claude agent has no web tools, and a command of its that reaches the
   network asks unless the user's allow rules cover it. A plan row sets neither: settle a `NETWORK: no` or a
