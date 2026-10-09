@@ -186,13 +186,16 @@ test("a worktree's report is read through the git directory its repository recor
   assert.deepEqual(t.json.untracked, ["?? planted.txt"]);
 });
 
-test("an init reporting a wider mode or tool than the rights asked for stops the run, exit 4", async () => {
+test("an init reporting another mode or another set of tools than the rights asked for stops the run, exit 4", async () => {
   const s = setup();
   const mode = await drive(s, `RIGHTS: read ${s.work}\nTASK: judge\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ permissionMode: "bypassPermissions" }) } });
-  assert.equal(mode.code, 4, mode.err); assert.match(mode.json.error, /permission mode bypassPermissions, wider than this run's read rights/);
-  const tool = await drive(s, `RIGHTS: write ${s.work}\nTASK: make\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ tools: ["Read", "Edit", "WebFetch", "mcp__user__thing"] }) } });
-  assert.equal(tool.code, 4, tool.err); assert.match(tool.json.error, /the tools WebFetch, beyond this run's write rights/);
-  const echoed = await drive(s, `RIGHTS: read ${s.work}\nTASK: judge\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ permissionMode: "default", tools: ["Read", "Bash", "mcp__entrust-approvals__decide"] }) } });
+  assert.equal(mode.code, 4, mode.err); assert.match(mode.json.error, /permission mode bypassPermissions, not this run's default/);
+  const wider = await drive(s, `RIGHTS: write ${s.work}\nTASK: make\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ tools: ["Bash", "Edit", "Glob", "Grep", "Read", "Write", "WebFetch"] }) } });
+  assert.equal(wider.code, 4, wider.err); assert.match(wider.json.error, /reports the tools .*WebFetch, not this run's/);
+  const narrower = await drive(s, `RIGHTS: write ${s.work}\nTASK: make\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ tools: ["Bash", "Glob", "Grep", "Read"] }) } });
+  assert.equal(narrower.code, 4, narrower.err);
+  // As 2.1.295 reports a read run: manual comes back as default, StructuredOutput and the user's MCP tools beside the granted ones.
+  const echoed = await drive(s, `RIGHTS: read ${s.work}\nTASK: judge\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ permissionMode: "default", tools: ["Bash", "Glob", "Grep", "Read", "StructuredOutput", "mcp__user__thing"] }) } });
   assert.equal(echoed.code, 0, echoed.err);
 });
 

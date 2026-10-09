@@ -16,7 +16,8 @@ description, <DESCRIPTION>, filled in. Do exactly this and nothing else:
    output file that notice names, and write nothing in between. Any other result, an empty one
    included, goes to step 3 as it is.
 3. Call SubagentHandback with exactly the lines that result printed, a complete pending request
-   included, nothing added, nothing removed.
+   included, nothing added, nothing removed. If you have no SubagentHandback tool, write exactly those
+   lines as your final message instead, and nothing else.
 4. After the hand-back result, and whenever the harness asks you for a visible response, write
    exactly one line, "<DESCRIPTION>: report delivered", and nothing else.
 

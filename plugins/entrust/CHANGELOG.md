@@ -79,8 +79,9 @@ forensics remain in the repository references and release notes.
   sandbox its server reports with the one asked for; that check is one table for both levels now. OpenCode now
   reads back the permission rules a session holds, at creation and on a resume, and runs none whose rules differ
   from the ones its rights need, wider or narrower, since those rules are all of OpenCode's enforcement; a server
-  that reports no rules is said on stderr. Claude stops a run whose `init` reports a permission mode or a built-in
-  tool wider than its rights (an edit, web or delegation tool a read agent was not given, or `bypassPermissions`).
+  that reports no rules is said on stderr. Claude stops a run whose `init` reports another permission mode or
+  another set of built-in tools than its rights give, measured live on 2.1.295 (`manual` comes back as `default`,
+  and `--json-schema` adds `StructuredOutput`).
 - **Two rows of a plan never write one tree, in every adapter.** `--plan` refuses rows whose `write` directories
   overlap, compared by inode so a link or another spelling is the same directory, and two `live tree` rows; `--new`
   refuses a `live tree` agent whose directory overlaps another row's. Only Codex writers kept off each other, by
@@ -93,6 +94,10 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- **A relay with no `SubagentHandback` tool writes the status lines as its final message.** A subagent of `claude
+  -p` (2.1.295) has no such tool, and the relay, told to call it, wrapped the lines in prose about the missing
+  tool, in all seven runs of the step-5 measurement. Step 3 of `agents/proxy.md` and of the shared page's block
+  now says what to do without it; three runs with that sentence handed back the lines alone.
 - **An OpenCode report says whether a corrective turn ran.** The driver computed the outcome of the one corrective
   turn it spends on an answer that failed `OUTPUT_SCHEMA`, then dropped it; the report now carries it as
   `correction`.
