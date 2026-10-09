@@ -235,7 +235,11 @@ Silence and the wall clock stand still while a request waits for you. A cut is e
   `worktreeDiffPath`; OpenCode and Claude make it under `<state>/worktrees/` and report `worktreePath`, `base`,
   the `diff` inline and the `untracked` files.
 - `EXPECT:`, a pattern a successful command's output must match, exists for Codex and OpenCode.
-- Egress: a Codex agent reaches the network unless `NETWORK: no`; OpenCode asks; a Claude agent has no web tools.
+- Egress is on by default: a Codex agent's commands reach the network unless
+  `NETWORK: no`, and it searches the web through its provider only with a `WEB_SEARCH:` line; an OpenCode agent
+  asks before every command and fetch; a Claude agent has no web tools, and a command of its that reaches the
+  network asks unless the user's allow rules cover it. A plan row sets neither: settle a `NETWORK: no` or a
+  `WEB_SEARCH:` line with the user, and never drop one the user settled.
 - The user's MCP servers: a Codex agent runs in an isolated Codex home and has none of them, and no prompt line
   opens them; a Claude agent has the user's, unless `SAFE_MODE: yes`; an OpenCode agent has its user's OpenCode
   configuration and asks before any tool but its file reads.
