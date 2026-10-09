@@ -103,7 +103,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | Field | Value (booleans: `yes`, `true` or `1`; no line means off, and for `NETWORK:` means on) | A coordinator sets it when |
 | --- | --- | --- |
 | `RIGHTS:` | `read [<dir>]`, `worktree <repo>`, `write <dir>` | first, or not at all: no header is a read agent in the current directory |
-| `NETWORK:` | `no` | this agent's own commands must not reach the network; `WEB_SEARCH:` is untouched either way |
+| `NETWORK:` | `no` | this agent's own commands must not reach the network: a fetch then fails inside the sandbox and asks nobody; `WEB_SEARCH:` is untouched either way |
 | `WRITABLE:` | `<dir>`, repeatable | a write agent needs one more root than the directory it was given |
 | `RESUME:` | the earlier run's report path, as `REPORT=` printed it | this agent continues that run's thread, in its directory, with its rights: `RIGHTS:` names the same or is left out, and `WRITABLE:` is left out |
 | `EXPECT:` | `<regex>` | the answer is evidence only if a command matching it ran and succeeded; none is exit 5. Do not point it at a check whose failure IS the finding |
