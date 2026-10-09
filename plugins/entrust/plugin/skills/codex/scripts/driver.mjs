@@ -268,8 +268,8 @@ Turn
   --approval-dir D   the agent's mailbox, set by the launcher and never by a person. A request waits
                      for D/<id>.decision.json, or for ${DEADLINE_MS / 60000} minutes, after which it is declined as
                      expired and the turn goes on; without D every request is declined at once. An
-                     accepted command runs with no sandbox, as you; a file change inside the writable
-                     roots is accepted by the driver, and one not shown inside them is declined at once
+                     accepted command runs with no sandbox, as you; a file change the server asks
+                     about is outside the writable roots, and is declined at once
 
 Bounds
   --timeout S        none by default; a declared wall clock cuts the turn at T minus a grace (exit 3)
@@ -2285,49 +2285,10 @@ const itemKey = (thread, item) => `${thread}\u0000${item}`;
 const agentRoots = () => [...new Set([process.env.TMPDIR ? canonPath(process.env.TMPDIR) : null,
   ...(opts.level === "write" ? [cwd] : []), ...roots].filter(Boolean))];
 
-// Whether every path a file change names lies inside one of those roots, by inode as checkRoot compares,
-// and cannot be pointed elsewhere before the server writes it. The edit tool asks by spelling —
-// /private/var/… asks where /var/… does not (P1 Q5) — so the root is found by identity, walking the path
-// as written up to the first component that IS a root. Below it every component must be a directory that
-// exists and is not a link, and the target a regular file or not there yet: a link there, or a directory
-// still to be made, is one the agent could aim outside between this check and the write. A relative path,
-// a `.` or `..`, and anything under a .git, .codex or .agents, which the workspace sandbox keeps
-// read-only, are refused too — those by inode where they exist, so .GIT on a case-insensitive volume is
-// the same directory, and by name in any case where they do not. Returns what it saw, for the check
-// repeated at the send, or null: nothing is shown covered, and the request is declined instead.
-const GUARDED_NAMES = [".git", ".codex", ".agents"];
-const RIGHTS_WHY = "rights cover it (checked as the answer was sent)";
 // The two the driver declines itself and never offers: a yes to either would grant rights mid-run that no
 // settled line of the prompt granted.
-const OUTSIDE_WHY = "not shown to lie inside the writable roots; a WRITABLE: line grants a root";
+const OUTSIDE_WHY = "the server asks only for a write its sandbox does not cover; a WRITABLE: line grants a root";
 const PERMISSIONS_WHY = "rights are set at launch";
-function coveredByRights(changes) {
-  const roots = agentRoots().map((r) => { try { return [r, fs.statSync(r)]; } catch { return null; } }).filter(Boolean);
-  const guarded = roots.flatMap(([r]) => GUARDED_NAMES.map((n) => { try { return fs.statSync(path.join(r, n)); } catch { return null; } }))
-    .filter(Boolean);
-  const same = (a, b) => a.dev === b.dev && a.ino === b.ino;
-  const paths = changes.flatMap((c) => [c.path, c.move].filter((p) => p != null)).map(String);
-  if (!paths.length || !roots.length) return null;
-  const seen = [];
-  for (const p of paths) {
-    if (!path.isAbsolute(p) || p.split("/").some((c) => c === "." || c === "..")) return null;
-    let root = null;
-    for (let cur = p; root === null; ) {
-      let l = null;
-      try { l = fs.lstatSync(cur); } catch {}
-      const at = l && !l.isSymbolicLink() ? roots.find(([, st]) => same(st, l)) : null;
-      if (at) { root = at[0]; break; }
-      if (cur === p ? l !== null && !l.isFile() : l === null || !l.isDirectory()) return null;
-      if ((l && guarded.some((g) => same(g, l))) || GUARDED_NAMES.includes(path.basename(cur).toLowerCase())) return null;
-      seen.push(`${cur}\u0000${l ? `${l.dev}:${l.ino}` : "-"}`);
-      const parent = path.dirname(cur);
-      if (parent === cur) return null;
-      cur = parent;
-    }
-    seen.push(`${p}\u0000${root}`);
-  }
-  return seen.join("\n");
-}
 
 function settleEntry(entry, decision, by, why) {
   entry.decision = decision;
@@ -2525,23 +2486,12 @@ function handleServerRequest(msg) {
       : owner !== rootThreadId && !childTurnsOpen.has(childTurn) ? (childTurnsDone.has(childTurn) ? "turn ended" : "not the current turn")
       : settled || pendingCut ? "turn closing"
       : null;
-    const covered = why === null && isFileChange && entry.fileChanges !== null ? coveredByRights(entry.fileChanges) : null;
-    // A permissions request asks for rights beyond those set at launch, which only a WRITABLE: line grants.
-    // A command request is one cause whatever came before it: an attempt the sandbox stopped can leave no
-    // trace in the stream (P1), so telling a sandbox refusal from Codex's own rule would be a guess.
-    entry.cause = covered !== null ? "rights"
-      : isPermissions ? "outside"
-      : isCommand || msg.method === "execCommandApproval" ? "asked"
-      : "outside";
-    // The rights already cover it: the sandbox would have let a shell write the same bytes to the same
-    // inode, and the edit tool asked only because it compares spellings. Answered here, armed or not, and
-    // looked at once more as the answer goes out; what the server does with the paths after that is its own.
-    if (covered !== null && coveredByRights(entry.fileChanges) === covered) {
-      settleEntry(entry, "accepted", "driver", RIGHTS_WHY);
-      send({ decision: "accept" });
-      return;
-    }
-    if (covered !== null) entry.cause = "outside";
+    // A permissions request asks for rights beyond those set at launch, which only a WRITABLE: line grants. A
+    // file change is asked about only when the sandbox would not let it through (measured on macOS with 0.159.3:
+    // writes in the cwd and in $TMPDIR were applied unasked), so it is outside the rights too. A command request
+    // is one cause whatever came before it: an attempt the sandbox stopped can leave no trace in the stream
+    // (P1), so telling a sandbox refusal from Codex's own rule would be a guess.
+    entry.cause = isCommand || msg.method === "execCommandApproval" ? "asked" : "outside";
     if (why === null && isFileChange) why = OUTSIDE_WHY;
     if (why === null && approvalDir === null) why = "no channel";
     if (why === null) { offerApproval(msg, entry); return; }
@@ -3348,7 +3298,6 @@ function writeReport(ev, codeOverride) {
     // request was settled, and the mailbox itself, null when none was armed.
     escalations,
     approvalsAccepted: escalations.filter((e) => e.decision === "accepted" && e.by === "coordinator").length,
-    approvalsAutoAccepted: escalations.filter((e) => e.decision === "accepted" && e.by === "driver").length,
     approvalDir,
     interactions, expectCommand: opts.expect ?? null,
     // Transient provider failures the driver absorbed with a bounded backoff; empty on the vast

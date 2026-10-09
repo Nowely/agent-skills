@@ -127,4 +127,4 @@ A Codex agent can ask before it runs a command. Approving it runs the command as
 
 ## The synthesis
 
-When the run had approvals, the synthesis says why in one sentence per cause and what avoids it next time: `rights`, the driver answered and nothing changes; `asked`, Codex asked before running the command, and nothing on our side changes it; `outside`, the plan needs a `WRITABLE:` line or a different agent for that file, or, for a permissions request, the rights the plan sets at launch.
+When the run had approvals, the synthesis says why in one sentence per cause and what avoids it next time: `asked`, Codex asked before running the command, and nothing on our side changes it; `outside`, the plan needs a `WRITABLE:` line or a different agent for that file, or, for a permissions request, the rights the plan sets at launch.

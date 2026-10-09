@@ -152,6 +152,13 @@ forensics remain in the repository references and release notes.
 
 ### Removed
 
+- **The Codex driver's file-change auto-accept.** Since 0.21.0 the driver answered yes itself to a file change
+  whose every path lay inside the agent's writable roots, because the edit tool asked about a `/private/var`
+  spelling of `$TMPDIR`. The run's `$TMPDIR` has been built on a resolved root since 0.26, and on macOS with Codex
+  0.159.3 a write agent's edits in its directory and its `$TMPDIR` reached no request at all (step 5 of the driver
+  audit). A file change the server asks about is now declined at once, cause `outside`, as before 0.21.0; the
+  report's `approvalsAutoAccepted`, its cause `rights` and the launcher's `auto=` token are gone, and the driver
+  grants nothing itself.
 - **The V2 pilot's run log left the plugin.** `opencode/references/v2-pilot.md` shipped a private model endpoint
   and machine paths with every install. It is now `research/2026-10-02-opencode-v2-pilot/01-pilot-record.md`, with
   the endpoint and the evidence paths removed; the earlier text remains in the repository's history (X18).

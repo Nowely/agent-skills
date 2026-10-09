@@ -633,13 +633,13 @@ const CASES = [
   { scenario: "approval-then-transient", expect: EXIT.APPROVAL,
     why: "the control for the retry guard: a request declined at once did nothing, so the transient failure after it is retried as before, and the declined entry still reads 6",
     assert: (r) => r.transientRetries?.length === 1 || `the declined request suppressed the retry: ${JSON.stringify(r.transientRetries)}` },
-  { scenario: "filechange-child", expect: EXIT.SUCCESS,
-    why: "a subagent the root announced writing inside $TMPDIR is covered by the same rights, and the driver answers it the same way; it stays the child's, never root evidence",
+  { scenario: "filechange-child", expect: EXIT.APPROVAL,
+    why: "a subagent the root announced asking for a file change is declined at once as the root's would be: the server asks only for a write its sandbox does not cover, and the entry stays the child's",
     assert: (r) => {
       const e = entry0(r);
-      return (e.decision === "accepted" && e.by === "driver" && e.subagent === true && e.agentPath === "/root/writer"
-          && e.cause === "rights" && r.approvalsAutoAccepted === 1 && (r.filesTouched ?? []).length === 0)
-        || `the child's covered write was not accepted by the driver: ${JSON.stringify({ e, touched: r.filesTouched })}`;
+      return (e.decision === "declined" && e.by === "driver" && e.subagent === true && e.agentPath === "/root/writer"
+          && e.cause === "outside" && !("approvalsAutoAccepted" in r) && (r.filesTouched ?? []).length === 0)
+        || `the child's file change was not declined at once: ${JSON.stringify({ e, touched: r.filesTouched })}`;
     } },
   { scenario: "filechange-no-started", expect: EXIT.APPROVAL,
     why: "a file change whose item/started never came names no path, and the driver does not guess one: not shown inside the roots, so never answered yes",
@@ -652,19 +652,14 @@ const CASES = [
       return (r.escalations?.length === 1 && log.length === 1)
         || `the duplicate was not one request: ${JSON.stringify({ entries: r.escalations?.length, answers: log })}`;
     } },
-  { scenario: "filechange-at",    expect: EXIT.SUCCESS,
-    env: { FAKE_FILECHANGE_PATH: "<TMPDIR>/rename-from.md", FAKE_FILECHANGE_MOVE: "<TMPDIR>/rename-to.md" },
-    why: "a rename names two paths and both are judged; inside $TMPDIR at both ends it is a write the rights cover",
-    assert: (r) => (entry0(r).decision === "accepted" && entry0(r).by === "driver" && entry0(r).fileChanges?.[0]?.move?.endsWith("rename-to.md"))
-      || `a covered rename was not accepted by the driver: ${JSON.stringify(entry0(r))}` },
   { scenario: "filechange-at",    expect: EXIT.APPROVAL,
     env: { FAKE_FILECHANGE_PATH: "<TMPDIR>/rename-out.md", FAKE_FILECHANGE_MOVE: `/etc/entrust-rename-${process.pid}.md` },
-    why: "a rename from inside the roots to outside them moves a file where the rights do not reach: the destination is judged as well as the source",
+    why: "a rename the server asks about is declined with both of its paths in the entry, so the coordinator reads where it would have moved the file",
     assert: (r) => (entry0(r).cause === "outside" && entry0(r).decision === "declined" && / -> \/etc\/entrust-rename-/.test(entry0(r).detail))
       || `a rename out of the roots was treated as covered: ${JSON.stringify(entry0(r))}` },
   { scenario: "filechange-child-late", expect: EXIT.APPROVAL,
     why: "a subagent's request that arrives after its own turn completed answers to nobody, whatever its paths: a request is answered only inside the turn that asked, a child's as the root's",
-    assert: (r) => (entry0(r).why === "turn ended" && entry0(r).decision === "declined" && entry0(r).subagent === true && r.approvalsAutoAccepted === 0)
+    assert: (r) => (entry0(r).why === "turn ended" && entry0(r).decision === "declined" && entry0(r).subagent === true)
       || `a request for a finished child turn was answered: ${JSON.stringify(entry0(r))}` },
   { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_RPC_LOG: initializeLog },
     why: "initialize asks for no experimental API: the driver reads no experimental field, and the report carries none of the fields the permission features once needed",
@@ -672,11 +667,11 @@ const CASES = [
         && ["experimentalApi", "featuresRequested", "serverWarnings", "sandboxWidened"].every((k) => !(k in r))
         && !logLines(initializeLog).some((l) => /^cfg:features\./.test(l)))
       || `initialize or the report still carries the widening: ${JSON.stringify({ sent: logLines(initializeLog).filter((l) => /^(initialize|cfg:features)/.test(l)), keys: Object.keys(r).filter((k) => /experimental|feature|Warning|Widened/.test(k)) })}` },
-  { scenario: "filechange-at",    expect: EXIT.SUCCESS, args: ["--level", "write"],
+  { scenario: "filechange-at",    expect: EXIT.APPROVAL, args: ["--level", "write"],
     env: { FAKE_FILECHANGE_PATH: path.join(shimDir, "notes.md") },
-    why: "at write level the cwd is a root the rights cover, so a write there is answered by the driver like one in $TMPDIR",
-    assert: (r) => (entry0(r).decision === "accepted" && entry0(r).cause === "rights")
-      || `a write in the write-level cwd was not accepted by the driver: ${JSON.stringify(entry0(r))}` },
+    why: "at write level too, a file change the server asks about is declined at once: the driver grants nothing itself",
+    assert: (r) => (entry0(r).decision === "declined" && entry0(r).by === "driver" && entry0(r).cause === "outside")
+      || `a file change at write level was not declined at once: ${JSON.stringify(entry0(r))}` },
 ];
 
 assertKnownScenarios(CASES);
@@ -873,7 +868,7 @@ flow("an accepted request runs, and the entry says who accepted it, that the ser
       problems.push(`the decision is not the caller's: ${JSON.stringify(e)}`);
     if (e.resolved !== true) problems.push("the server's receipt was not recorded");
     if (JSON.stringify(e.outcome) !== JSON.stringify({ status: "completed", exitCode: 0, durationMs: 1 })) problems.push(`the outcome is ${JSON.stringify(e.outcome)}`);
-    if (r.approvalsAccepted !== 1 || r.approvalsAutoAccepted !== 0 || r.approvalDir !== fs.realpathSync(a.box))
+    if (r.approvalsAccepted !== 1 || "approvalsAutoAccepted" in r || r.approvalDir !== fs.realpathSync(a.box))
       problems.push(`the counts are wrong: ${JSON.stringify({ acc: r.approvalsAccepted, auto: r.approvalsAutoAccepted, dir: r.approvalDir })}`);
     const settledAs = readJson(path.join(a.box, `${q.id}.request.json`))?.settled;
     if (settledAs?.by !== "coordinator" || settledAs.decisionFile !== "taken") problems.push(`the request file was not settled as the caller's: ${JSON.stringify(settledAs)}`);
@@ -1022,33 +1017,16 @@ flow("a writeStdin request is not offered even with a mailbox",
       || `exit ${code}, entry ${JSON.stringify(e)}, ${requestsIn(a.box).length} request file(s)`;
   });
 
-flow("a file change inside $TMPDIR is accepted by the driver, spelled either way, and never reaches the mailbox",
-  "the edit tool asks by spelling — /private/var/… asks and /var/… does not (P1 Q5) — while the sandbox would let a shell write the same bytes; the driver compares resolved paths, answers yes, and wakes nobody",
-  async () => {
-    const problems = [];
-    for (const spelling of ["private", "given"]) {
-      const a = armed("filechange-in-tmpdir", { env: { FAKE_FILECHANGE_SPELLING: spelling } });
-      const { code, out } = await a.done;
-      const r = parsed(out) ?? {};
-      const e = entry0(r);
-      if (code !== EXIT.SUCCESS) problems.push(`${spelling}: exit ${code}`);
-      if (e.decision !== "accepted" || e.by !== "driver" || e.why !== "rights cover it (checked as the answer was sent)" || e.cause !== "rights" || r.approvalsAutoAccepted !== 1)
-        problems.push(`${spelling}: ${JSON.stringify(e)}`);
-      if (!e.fileChanges?.[0]?.path?.endsWith(".md")) problems.push(`${spelling}: the paths were not recorded: ${JSON.stringify(e.fileChanges)}`);
-      if (requestsIn(a.box).length || fs.existsSync(path.join(a.box, "pending"))) problems.push(`${spelling}: the mailbox was written`);
-      if (!answers(a.log).includes("answer:9420:accept")) problems.push(`${spelling}: accept never reached the server`);
-    }
-    return problems.length === 0 || problems.join("; ");
-  });
+const OUTSIDE_WHY = "the server asks only for a write its sandbox does not cover; a WRITABLE: line grants a root";
 
-const OUTSIDE_WHY = "not shown to lie inside the writable roots; a WRITABLE: line grants a root";
-
-flow("with a mailbox armed, a file change outside the roots, one with no item/started and one through a link out of $TMPDIR are declined at once, never offered, their why naming WRITABLE:, and the run exits 6",
-  "a yes would grant a path mid-run that no settled WRITABLE: line granted, so the driver answers it and nobody is asked; a path the driver never saw is not guessed, and a link the agent planted in its own temp root does not carry a write past it",
+flow("with a mailbox armed, every file change the server asks about is declined at once, never offered, its why naming WRITABLE:, and the run exits 6: inside $TMPDIR spelled either way, outside the roots, with no item/started and through a link",
+  "the server asks only for a write its sandbox does not cover (measured on macOS with 0.159.3), so a yes would grant a path mid-run that no settled WRITABLE: line granted; the driver answers it and nobody is asked, and the entry keeps the paths the item named",
   async () => {
     const problems = [];
     // The fixture plants the link in the run's own $TMPDIR, as the agent would, pointing at the shim.
-    for (const [scenario, want, env] of [["filechange-outside", (fc) => fc?.[0]?.path?.startsWith("/etc/entrust-fixture-"), {}],
+    for (const [scenario, want, env] of [["filechange-in-tmpdir", (fc) => fc?.[0]?.path?.endsWith(".md"), { FAKE_FILECHANGE_SPELLING: "private" }],
+                                         ["filechange-in-tmpdir", (fc) => fc?.[0]?.path?.endsWith(".md"), { FAKE_FILECHANGE_SPELLING: "given" }],
+                                         ["filechange-outside", (fc) => fc?.[0]?.path?.startsWith("/etc/entrust-fixture-"), {}],
                                          ["filechange-no-started", (fc) => fc === null, {}],
                                          ["filechange-symlink", (fc, r) => Boolean(r.tmpDir) && fc?.[0]?.path === path.join(r.tmpDir, "entrust-link", "x.md"), { FAKE_LINK_TO: shimDir }]]) {
       const a = armed(scenario, { env });
@@ -1103,61 +1081,6 @@ flow("a subagent's own turn ending settles the requests it left open",
     const e = entry0(parsed(out) ?? {});
     return (code === EXIT.APPROVAL && e.offered === true && e.decision === "expired" && e.why === "turn ended" && e.thread === "thr_sub")
       || `exit ${code}, entry ${JSON.stringify(e)}`;
-  });
-
-flow("a file change under .git, .codex or .agents inside a root is not the driver's to accept, at either level",
-  "the workspace sandbox keeps those read-only inside a writable root, so a shell could not have written there: the one argument for answering yes does not hold, and the caller is asked instead",
-  async () => {
-    const problems = [];
-    for (const [level, root] of [["read", "<TMPDIR>"], ["write", shimDir]])
-      for (const sub of [".git", ".codex", ".agents"]) {
-        const { code, out } = await run({ scenario: "filechange-at", args: level === "write" ? ["--level", "write"] : [],
-          env: { FAKE_FILECHANGE_PATH: path.join(root, sub, "config") } });
-        const r = parsed(out) ?? {};
-        const e = entry0(r);
-        const target = path.join(root === "<TMPDIR>" ? String(r.tmpDir) : root, sub, "config");
-        if (code !== EXIT.APPROVAL || e.decision !== "declined" || e.cause !== "outside" || e.fileChanges?.[0]?.path !== target)
-          problems.push(`${level} ${sub}: exit ${code}, ${JSON.stringify(e)}`);
-      }
-    return problems.length === 0 || problems.join("; ");
-  });
-
-flow("a guarded directory is guarded under every spelling: .GIT where .git exists, and .CODEX where nothing does",
-  "on a case-insensitive volume .GIT is .git, and the sandbox keeps it read-only whatever it is called; a string comparison let the other spelling through, so the check is by inode where the directory exists and by folded name where it does not",
-  async () => {
-    // A --writable root the case can shape before the run, as the run's own $TMPDIR is made only as it starts.
-    const root = tempDir("entrust-root-");
-    fs.mkdirSync(path.join(root, ".git"));
-    const problems = [];
-    for (const target of [path.join(root, ".GIT", "config"), path.join(root, ".CODEX", "config"), path.join(root, "sub", ".Agents", "x")]) {
-      const { code, out } = await run({ scenario: "filechange-at", args: ["--level", "write", "--writable", root], env: { FAKE_FILECHANGE_PATH: target } });
-      const e = entry0(parsed(out) ?? {});
-      if (code !== EXIT.APPROVAL || e.decision !== "declined" || e.cause !== "outside") problems.push(`${target}: exit ${code}, ${JSON.stringify(e)}`);
-    }
-    return problems.length === 0 || problems.join("; ");
-  });
-
-flow("below the root only existing plain directories and a regular or absent file are answered yes: a link, even one that stays inside, and a directory still to be made are declined",
-  "the path is checked now and written later, by a server that follows links: a link the agent owns, or a directory it has yet to make, is one it can aim outside in between, so neither is the driver's to accept whatever it resolves to now",
-  async () => {
-    // A --writable root the case can shape before the run, as the run's own $TMPDIR is made only as it starts.
-    const root = tempDir("entrust-root-");
-    const args = ["--level", "write", "--writable", root];
-    const real = path.join(root, "real"), link = path.join(root, "link");
-    const file = path.join(real, "real.md"), fileLink = path.join(root, "file-link.md");
-    fs.mkdirSync(real);
-    fs.writeFileSync(file, "x");
-    fs.symlinkSync(real, link);
-    fs.symlinkSync(file, fileLink);
-    const problems = [];
-    const control = await run({ scenario: "filechange-at", args, env: { FAKE_FILECHANGE_PATH: path.join(real, "new.md") } });
-    if (entry0(parsed(control.out) ?? {}).decision !== "accepted") problems.push(`the control, a new file in a plain directory, was not accepted: ${JSON.stringify(entry0(parsed(control.out) ?? {}))}`);
-    for (const target of [path.join(link, "x.md"), path.join(root, "not-made", "x.md"), fileLink]) {
-      const { code, out } = await run({ scenario: "filechange-at", args, env: { FAKE_FILECHANGE_PATH: target } });
-      const e = entry0(parsed(out) ?? {});
-      if (code !== EXIT.APPROVAL || e.decision !== "declined" || e.cause !== "outside") problems.push(`${target}: exit ${code}, ${JSON.stringify(e)}`);
-    }
-    return problems.length === 0 || problems.join("; ");
   });
 
 flow("a pending marker that cannot be written settles the request at once as expired, declined, and the turn goes on",
