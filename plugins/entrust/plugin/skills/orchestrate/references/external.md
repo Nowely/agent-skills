@@ -80,7 +80,13 @@ The agent's directory, `<DIR>`, is `agent/` beside `<REPORT>`.
 ## 3. Run it
 
 The run needs a proxy: a small agent of the host that runs one command, `--run`, waits for it, and hands back
-what it printed. The proxy never writes the prompt and never reads the result; that is your work.
+what it printed. The proxy never writes the prompt, never decides a request and never reads the result; that is
+your work. Start a fresh proxy for each `--run`: the first, the one after you decide a request (step 5), and the
+first of a continuation (step 6). A proxy sent a second command after its hand-back has answered from its earlier
+turn instead of running it ([measured](../../claude/references/incidents.md#a-resent-block)).
+
+Its name, on every host, is `<Vendor> <Model> <id>: <the task in a few words>`: the external agent's vendor,
+model and id, never the proxy's own model, for example `Codex Sol R1: review the diff`.
 
 ### In Claude Code
 
@@ -88,7 +94,7 @@ Make one call of the Agent tool, the tool that starts a Claude Code subagent:
 
 - `subagent_type`: `entrust:proxy`. Give it no `model`: the proxy pins its own small model, and the agent's
   model is the `MODEL:` line of its prompt.
-- `description`: `<Vendor> <Model> <id>: <the task in a few words>`, for example `Codex Sol R1: review the diff`.
+- `description`: the name above.
 - `run_in_background`: `false` for the one agent you wait for; `true` for agents that run side by side or while
   you work.
 - `prompt`: the block below, with `<DESCRIPTION>` replaced by the description above and `<orchestrate>` and
@@ -112,15 +118,11 @@ agent's result. A background call also sends a task notification after it; give 
 
 ### In Codex or OpenCode
 
-Start one native subagent per external agent: an agent the host itself starts and lets you message. Put it on
-the host's smallest model, the proxy row of the host's models page ([Codex](../../codex/references/models.md));
-on another host, its smallest model. Give it [proxy.md](proxy.md), the agreed task and rights, the user's
-instructions that apply, and the command:
-
-    node "<orchestrate>/scripts/agent-run.mjs" --run --watch --report-file "<REPORT>"
-
-It decides a request the task already covers and sends you the rest. Continue the same subagent for the
-agent's continuations.
+Start one native subagent, an agent the host itself starts, with a fresh context, on the host's smallest model at
+the effort of the proxy row of its models page ([Codex](../../codex/references/models.md)); on another host, its
+smallest model. Name it as above and give it the block above, copied whole with the same three replacements, as
+its whole brief: no task, no rights and no other page, since it decides nothing. Wait for it; its final message
+is the agent's result.
 
 ## 4. Read the result
 
@@ -129,7 +131,7 @@ agent's continuations.
 | It ends with | It means | Do |
 | --- | --- | --- |
 | nine status lines, the last `REPORT=` | the run is over | read the lines, then the report |
-| `RUNNING=` | the run is going on; the call returned before its tool's ten-minute limit | run the same `--run` again (in Claude Code, send the proxy the same block again) |
+| `RUNNING=` | the run is going on; the call returned before its tool's ten-minute limit | start a fresh proxy with the same block |
 | `REQUESTS=`, `WAITING=` and `REPORT=`, after one or more `REQUEST=` blocks | the agent waits on your decision | step 5 |
 
 The nine lines:
@@ -199,8 +201,8 @@ on that refusal, run `--pending` and copy from what it prints. When your own hos
 
 Decline with `--decide '<ID>' --decline --why "<reason>" --report-file "<REPORT>"`. Answer a question with
 `--decide '<ID>' --answer --report-file "<REPORT>"` and `{"answers":[["<choice>"]]}` on stdin, one list per
-question. Then run the same `--run` again: in Claude Code, send the proxy the same block again. A request nobody
-answers is declined after thirty minutes. A decline answers that one request; the run goes on.
+question. Then start a fresh proxy with the same block (step 3); in [main proxy mode](main-proxy.md) the attached
+call goes on instead ([proxy.md](proxy.md)). A request nobody answers is declined after thirty minutes. A decline answers that one request; the run goes on.
 
 ### What each adapter adds
 
@@ -225,7 +227,7 @@ answers is declined after thirty minutes. A decline answers that one request; th
 Write a new prompt with `RESUME: <its REPORT= path>` and run `--new` under a fresh report path: under a plan
 `<run>/<id>-2/report.json`, then `-3`, and so on; without a plan, a new name. The continuation runs in the
 earlier run's directory with its rights: leave `RIGHTS:` out or name the same rights. Then run it as in step 3,
-sending the same proxy the new block where the host lets you message it.
+with a fresh proxy.
 
 ## 7. Stop an agent
 

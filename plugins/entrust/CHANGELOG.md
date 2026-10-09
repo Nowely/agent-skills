@@ -3,6 +3,21 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- **A proxy relays one run and decides nothing, on every host, and a fresh one runs each call of the launcher.**
+  Three pages gave the proxy three contracts: the shared call page's relay that never reads the result, the
+  operational proxy that decides covered requests and reads the report, and the shipped agent that hands every
+  request back. In Codex the proxy was the deciding one, kept one attached call and polled; on 2026-10-09 three
+  Luna proxies started a second watcher on one driver, accepted a clipped request and left `--why` empty on 26
+  accepts, and a read-only check took close to three hours. In Claude Code two Haiku proxies of three, sent the
+  same block after a decision, answered from their earlier turn and ran nothing. Now every host runs the same
+  block in a fresh small agent for each `--run` (the first, the one after a decision, a continuation's first),
+  names it after the external agent on every host, and the coordinator decides every request; the operational
+  proxy page is the main proxy mode's alone.
+
 ## 0.28.0 — 2026-10-09
 
 ### Changed

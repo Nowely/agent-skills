@@ -1,7 +1,10 @@
 # The operational proxy
 
-Own one external session's transport and lifecycle. Reuse this native thread when the coordinator
-continues the session under a fresh report. The external model owns the task's content.
+This page is the main conversation's in [main proxy mode](main-proxy.md), where it keeps one attached call to
+the external coordinator's session. A worker's proxy is the shared call page's [relay](external.md#3-run-it): it
+decides nothing and reads nothing, and this page does not apply to it.
+
+Own the external session's transport and lifecycle. The external model owns the task's content.
 
 ## Context and authority
 
@@ -31,7 +34,8 @@ the coordinator reaches the user only for a decision or authority that is missin
    and use host waits of at most five seconds so coordinator messages can be received. Return to
    the agent after each poll; do not hide a polling loop inside a long tool call. Handle coordinator
    messages before the next poll. On the coordinator's decision,
-   publish it through the existing typed procedure. Record the reason, decision and observed outcome.
+   publish it through the existing typed procedure; the watcher stays attached, so start no second
+   `--run`. Record the reason, decision and observed outcome.
 4. A checkpoint ending in `RUNNING=` repeats the identical watch command. Do not resend a prompt or
    repeat a mutation whose outcome is unknown. Existing decisions are exclusive and request-bound.
 5. On Stop, interrupt the attached command or signal only the driver bound to this report. Wait for

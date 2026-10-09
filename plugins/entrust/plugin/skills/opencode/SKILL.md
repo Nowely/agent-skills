@@ -50,12 +50,12 @@ rule. A model mentioned only for information or discussion does not request a wo
 
    Each invocation starts a private loopback server on its first run call.
 
-5. The proxy, one per external session, reused for its continuations, is the shared page's: in Claude
-   Code the `entrust:proxy` agent; in Codex a native subagent on Luna at `medium` effort with a fresh
-   context ([models](../codex/references/models.md)). Report unavailable settings before launching rather
-   than silently inheriting another model. Name its task with the worker ID, external model and proxy
-   role. An OpenCode worker asks through permissions and questions: read
-   [interactions.md](references/interactions.md) for the decision procedure.
+5. The proxy is the shared page's, a fresh one for each `--run`: in Claude Code the `entrust:proxy` agent;
+   in Codex a native subagent on Luna at `medium` effort with a fresh context
+   ([models](../codex/references/models.md)). Report unavailable settings before launching rather than
+   silently inheriting another model. It is named as the shared page says. An OpenCode worker asks through
+   permissions and questions, which you decide: read [interactions.md](references/interactions.md) for the
+   decision procedure.
 
 ## Scope and results
 
@@ -70,10 +70,10 @@ partial answers, native command outcomes and callback decisions remain useful ev
 The report's `model` is observed attribution; `requestedModel` preserves the selection even after Stop.
 Scope declarations do not configure a sandbox.
 
-Stop the attached watcher or signal the adapter driver identified by that invocation's pid line.
-The driver aborts its own sessions, records cancellation and stops its server. In ordinary
-`--run` mode, a waiting hand-back leaves no wrapper call in flight: rerun it to regain Stop. The
-coordinator cleans up an interrupted proxy whose watcher did not stop. Verify the external outcome;
+Stop the proxy, or signal the adapter driver identified by that invocation's pid line.
+The driver aborts its own sessions, records cancellation and stops its server. A waiting hand-back
+leaves no proxy in flight: start one to regain Stop. An interrupted proxy leaves its driver running:
+signal that driver. Verify the external outcome;
 a missing report or uncertain cancellation is unknown, never success.
 
 Read [parity.md](references/parity.md) before relying on active clarification, schema delivery,

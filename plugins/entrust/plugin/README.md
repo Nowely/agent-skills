@@ -38,7 +38,8 @@ Then invoke `$entrust:orchestrate`; it uses Codex's own subagents.
 | [codex](skills/codex/SKILL.md) | the assistant, in Claude Code | external Codex agents; why not the official plugin: [why-not-the-plugin.md](skills/codex/references/why-not-the-plugin.md) |
 | [opencode](skills/opencode/SKILL.md) | the assistant | OpenCode workers and an OpenCode model as coordinator |
 
-Every external run goes through one relay agent, `entrust:proxy`.
+Every external run goes through a relay agent that decides nothing: `entrust:proxy` in Claude Code, a native
+subagent on the host's smallest model elsewhere, a fresh one for each run of the launcher.
 
 ## Prerequisites
 

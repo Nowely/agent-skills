@@ -152,7 +152,7 @@ orchestrate skill installed beside this one. What Codex adds to it:
 - Without a plan, `--new` takes `--adapter codex`.
 - The Agent call's description is `Codex <short name> <id>: <task in a few words>`, the name on the `MODEL:` line
   capitalised: `Codex Sol R1: review the diff`. The proxy gives a Codex agent what a Claude agent has, a card, Stop
-  on it, one completion notification and a message to continue it, where a Bash task has none
+  on it and one completion notification, where a Bash task has none
   ([the agent map](references/incidents.md#the-agent-map)). The block's wording is measured
   ([the wrapper's message](references/incidents.md#the-wrappers-message),
   [a relay on a small model](references/incidents.md#a-relay-on-a-small-model)); copy it unchanged.
