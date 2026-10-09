@@ -330,7 +330,8 @@ async function run(o, text) {
       mcpConfig = `${base}.mcp.json`;
       atomicWrite(mcpConfig, JSON.stringify({ mcpServers: { [SERVER_NAME]: { type: "stdio", command: process.execPath, args: [SERVER], timeout: SERVER_TIMEOUT_MS,
         env: { ENTRUST_APPROVAL_DIR: box, ENTRUST_RUN_PID: String(process.pid), ENTRUST_RUN_STARTED_MS: String(startedAtMs),
-          ENTRUST_RUN_CWD: scope.cwd, ENTRUST_RUN_ROOTS: JSON.stringify(scope.roots) } } } }));
+          ENTRUST_RUN_CWD: scope.cwd, ENTRUST_RUN_ROOTS: JSON.stringify(scope.roots),
+          ENTRUST_RUN_STATE_DIR: stateDir, ENTRUST_RUN_PROTECTED: JSON.stringify(PROTECTED) } } } }));
     }
 
     const args = claudeArgs(parsed, { kind: scope.kind, stateDir, box, sessionId: ctx.sessionId, mcpConfig });

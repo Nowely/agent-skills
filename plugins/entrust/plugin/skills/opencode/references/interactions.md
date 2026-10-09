@@ -8,6 +8,9 @@ adds:
 
 - A permission accept restates that JSON byte for byte and replies `once`; it never saves an `always`
   rule. Grant only the displayed action within the approved task and scope.
+- An edit outside the worker's roots is offered with `CAUSE=outside`, its target in the JSON: accepting it
+  writes there once, outside the rights the prompt granted. One aimed inside `<state>`, OpenCode's
+  configuration or data directory, or with no exact target, is declined at once and never offered.
 - A question's answer is `{"answers":[["answer"]]}`, one array for each displayed question; its choices
   and multiplicity are validated, and an answer grants no command or permission.
 - Publication is exclusive: stale identities, changed request contents, wrong decision types and late

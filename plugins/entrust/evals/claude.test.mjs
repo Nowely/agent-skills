@@ -208,6 +208,36 @@ test("an accept the mailbox cannot record is answered deny, never allow", async 
   assert.equal(answer.behavior, "deny");
 });
 
+test("an edit outside the roots is offered whole; one into the state directory or ~/.claude is declined unasked", async () => {
+  const state = tempDir("entrust-claude-guard-"), work = tempDir("entrust-claude-work-"), elsewhere = tempDir("entrust-claude-elsewhere-");
+  const prot = tempDir("entrust-claude-protected-"), box = path.join(state, "run", "agent", "approvals");
+  fs.mkdirSync(box, { recursive: true });
+  const server = spawn(process.execPath, [path.join(ROOT, "skills/claude/scripts/approvals.mjs")], {
+    env: { ...process.env, ENTRUST_APPROVAL_DIR: box, ENTRUST_RUN_PID: "4242", ENTRUST_RUN_STARTED_MS: "1", ENTRUST_RUN_CWD: work,
+      ENTRUST_RUN_ROOTS: JSON.stringify([work]), ENTRUST_RUN_STATE_DIR: state,
+      ENTRUST_RUN_PROTECTED: JSON.stringify([{ dir: prot, label: "~/.claude", holds: "the settings" }]) },
+    stdio: ["pipe", "pipe", "inherit"] });
+  const replies = [];
+  readline.createInterface({ input: server.stdout }).on("line", (l) => replies.push(JSON.parse(l)));
+  const call = (id, method, params) => server.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
+  const until = async (ok) => { for (let i = 0; i < 100 && !ok(); i++) await new Promise((r) => setTimeout(r, 50)); };
+  call(1, "initialize", { protocolVersion: "2025-06-18" });
+  call(2, "tools/call", { name: "decide", arguments: { tool_name: "Write", input: { file_path: path.join(box, "1-00000000.decision.json"), content: "{}" } } });
+  call(3, "tools/call", { name: "decide", arguments: { tool_name: "Edit", input: { file_path: path.join(prot, "settings.json"), old_string: "a", new_string: "b" } } });
+  call(4, "tools/call", { name: "decide", arguments: { tool_name: "Write", input: { file_path: path.join(elsewhere, "notes.txt"), content: "x" } } });
+  await until(() => replies.some((m) => m.id === 3) && fs.existsSync(path.join(box, "pending")));
+  server.kill();
+  for (const id of [2, 3]) {
+    const answer = JSON.parse(replies.find((m) => m.id === id).result.content[0].text);
+    assert.equal(answer.behavior, "deny"); assert.match(answer.message, id === 2 ? /inside the state directory/ : /inside ~\/\.claude/);
+  }
+  assert.equal(replies.some((m) => m.id === 4), false, "the edit elsewhere was answered without a decision");
+  const records = fs.readdirSync(box).filter((n) => n.endsWith(".request.json")).map((n) => JSON.parse(fs.readFileSync(path.join(box, n), "utf8")));
+  const offered = records.find((q) => q.payload.input.file_path === path.join(elsewhere, "notes.txt"));
+  assert.deepEqual(fs.readFileSync(path.join(box, "pending"), "utf8").trim().split("\n"), [offered.id]);
+  assert.equal(records.filter((q) => q.settled?.by === "driver" && q.settled.decision === "declined").length, 2);
+});
+
 test("the budget: a volume bound of tool calls cuts the turn with exit 3, and the wall clock stands still while a request waits", async () => {
   const s = setup();
   const many = await drive(s, `RIGHTS: read ${s.work}\nTASK: loop\n`, { mode: "many", more: { FAKE_CLAUDE_TOOLS: "6" }, args: ["--max-tool-calls", "3"] });

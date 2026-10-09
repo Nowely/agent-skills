@@ -15,7 +15,7 @@ import { recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, read
 import { startLocalServer } from "./local-server.mjs";
 import { deadlineMs, mailboxProblem, openMailbox } from "../../orchestrate/scripts/mailbox.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
-import { git, makeWorktree, passwdHome, rightsScope, scopeWithin, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { git, guardedTarget, makeWorktree, passwdHome, rightsScope, scopeWithin, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import {
   EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionsOf, canonical, within,
   commandEvidence, expectation, READ_TOOLS,
@@ -216,21 +216,27 @@ function writeRootError(parsed) {
   return writeRootProblem(root, { stateDir, protectedDirs: PROTECTED });
 }
 
-// A permission request is out of the approved writes scope when it would edit and either the run
-// is read-only or the edit target resolves outside every declared root.
-function outOfScope(scope, payload, cwd = process.cwd()) {
+// What the driver decides about an edit request before any coordinator sees it. Inside the roots the session
+// rules allow edits unasked. One outside them is offered (`outside`), the whole request the body the
+// coordinator restates, unless it cannot be placed or aims inside the state directory or a directory OpenCode
+// loads from (`decline`, the reason). A read run's rules deny edits, so none is asked.
+function editScope(scope, payload, cwd, guard) {
   const kind = String(payload?.permission ?? payload?.action ?? payload?.tool ?? "").toLowerCase();
-  if (!/edit|write|patch|create|delete|move|rename/.test(kind)) return null;
+  if (!/edit|write|patch|create|delete|move|rename/.test(kind)) return {};
   const explicit = payload?.metadata?.filePath ?? payload?.metadata?.path;
   const targets = explicit ? [explicit] : payload?.resources ?? payload?.patterns ?? [];
-  if (!scope.roots.length) return "the run has no declared writes scope";
-  if (!Array.isArray(targets) || !targets.length) return "the write request has no verifiable target";
+  if (!scope.roots.length) return { decline: "the run has no declared writes scope" };
+  if (!Array.isArray(targets) || !targets.length) return { decline: "the write request has no verifiable target" };
+  let outside = false;
   for (const target of targets) {
-    if (typeof target !== "string" || /[*?\[\]]/.test(target)) return "the write request has no exact target";
+    if (typeof target !== "string" || /[*?\[\]]/.test(target)) return { decline: "the write request has no exact target" };
     const abs = canonical(target, cwd);
-    if (!scope.roots.some((root) => within(abs, canonical(root, cwd)))) return `${abs} is outside the approved writes scope`;
+    if (scope.roots.some((root) => within(abs, canonical(root, cwd)))) continue;
+    const guarded = guardedTarget(abs, guard);
+    if (guarded) return { decline: guarded };
+    outside = true;
   }
-  return null;
+  return { outside };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -296,10 +302,10 @@ async function rejectTrackedRequest(ctx, q, settlement, counter) {
   return true;
 }
 
-async function offerRequest(ctx, type, payload, method, reason, autoReason) {
+async function offerRequest(ctx, type, payload, method, reason, autoReason, cause) {
   ctx.seq += 1;
   const q = envelope({
-    type, payload, seq: ctx.seq, method, reason,
+    type, payload, seq: ctx.seq, method, reason, cause,
     cwd: ctx.cwd, roots: ctx.roots, deadlineAt: new Date(now() + deadlineMs()).toISOString(),
     run: {
       pid: process.pid, startedAtMs: ctx.startedAtMs,
@@ -424,13 +430,13 @@ async function processRequests(ctx) {
     if (ctx.abortRequested) return;
     if (typeof payload?.id !== "string") continue;
     ctx.seen.add(`${type === "opencode.permission" ? "p" : "q"}:${payload.id}`);
-    const scopeDenial = type === "opencode.permission" ? outOfScope(ctx.scope, payload, ctx.cwd) : null;
+    const edit = type === "opencode.permission" ? editScope(ctx.scope, payload, ctx.cwd, { stateDir: ctx.stateDir, protectedDirs: PROTECTED }) : {};
     const method = type === "opencode.permission" ? (payload.permission ?? payload.tool ?? "permission") : "question";
     const reason = type === "opencode.permission" ? (payload.metadata?.description ?? payload.reason ?? null)
       : (payload.questions?.[0]?.question ?? null);
-    const autoReason = scopeDenial ? `refused by the driver: ${scopeDenial}`
+    const autoReason = edit.decline ? `refused by the driver: ${edit.decline}`
       : !ctx.box ? "no approval directory: unattended run" : null;
-    await offerRequest(ctx, type, payload, method, reason, autoReason);
+    await offerRequest(ctx, type, payload, method, reason, autoReason, edit.outside ? "outside" : "asked");
   }
   for (const [rid, q] of [...ctx.requests]) {
     if (ctx.abortRequested) return;
@@ -1228,4 +1234,4 @@ function main() {
 const isMain = (() => { try { return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url)); } catch { return false; } })();
 if (isMain) main();
 
-export { execute, sessionPermissions, outOfScope, rightsScope, scopeWithin, promptText, buildReport, invocationMessages };
+export { execute, sessionPermissions, editScope, rightsScope, scopeWithin, promptText, buildReport, invocationMessages };

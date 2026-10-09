@@ -68,6 +68,13 @@ forensics remain in the repository references and release notes.
   past its deadline; and an OpenCode accept or answer that cannot be recorded is declined at once, as in Codex and
   Claude, instead of waiting out the deadline. `pending` is absent, not empty, when no request is open, in every
   adapter.
+- **An OpenCode edit outside the worker's roots is offered, not declined; a guarded one is declined in every
+  adapter.** OpenCode declined every edit outside the roots, though its request carries the whole edit a coordinator
+  can restate; it is now offered with `CAUSE=outside`, as a Claude edit outside its directory already was. Codex
+  still declines a file change outside its rights, since its request carries no body. An edit aimed inside the
+  state directory, where the mailboxes are, or the CLI's own configuration (OpenCode's configuration and data,
+  `~/.claude`) is declined at once and never offered; Claude's approval server now checks that too, where before
+  only the mailboxes were denied.
 
 ### Fixed
 

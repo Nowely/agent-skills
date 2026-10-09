@@ -226,8 +226,11 @@ Silence and the wall clock stand still while a request waits for you. A cut is e
 - What a read agent does without asking: Codex runs any command inside its sandbox, network included; OpenCode
   reads and searches files, and asks for every shell command; Claude runs its read-only commands and whatever
   the user's own settings allow.
-- The requests: Codex asks for commands; a Codex file change outside its rights is declined, never offered.
-  OpenCode asks for permissions and questions; Claude for commands and other tool calls.
+- The requests: Codex asks for commands; a Codex file change outside its rights is declined, never offered,
+  since its request carries no body to restate. OpenCode asks for permissions and questions, Claude for commands
+  and other tool calls, an edit outside the agent's roots included, with the whole edit as the body. In every
+  adapter an edit aimed inside `<state>` or a directory the adapter protects (the CLI's own configuration, which
+  each adapter's page names) is declined at once, never offered.
 - The worktree: Codex makes it under `<repo>/.claude/worktrees/` and reports the diff as a file,
   `worktreeDiffPath`; OpenCode and Claude make it under `<state>/worktrees/` and report `worktreePath`, `base`,
   the `diff` inline and the `untracked` files.

@@ -6,7 +6,8 @@
 //
 // Its run comes from its environment, which the driver writes into the MCP config: ENTRUST_APPROVAL_DIR,
 // ENTRUST_RUN_PID (the driver's pid, the identity the launcher compares), ENTRUST_RUN_STARTED_MS,
-// ENTRUST_RUN_CWD and ENTRUST_RUN_ROOTS (JSON).
+// ENTRUST_RUN_CWD, ENTRUST_RUN_ROOTS (JSON), ENTRUST_RUN_STATE_DIR and ENTRUST_RUN_PROTECTED (JSON, the
+// driver's protected directories).
 //
 // A Bash call whose input is only a command and its description is a command request, the launcher's own
 // kind; every other call is a typed `claude.permission` whose body is the whole call. An accept answers with
@@ -15,6 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
+import { canonical, guardedTarget, within } from "../../orchestrate/scripts/drivers.mjs";
 import { deadlineMs, openMailbox, requestId } from "../../orchestrate/scripts/mailbox.mjs";
 import { sha256 } from "./launch.mjs";
 
@@ -24,8 +26,10 @@ const COMMAND_KEYS = new Set(["command", "description"]);
 
 const run = { pid: Number(process.env.ENTRUST_RUN_PID), startedAtMs: Number(process.env.ENTRUST_RUN_STARTED_MS), turnId: null };
 const cwd = process.env.ENTRUST_RUN_CWD ?? null;
-let roots = [];
+let roots = [], protectedDirs = [];
 try { roots = JSON.parse(process.env.ENTRUST_RUN_ROOTS ?? "[]"); } catch {}
+try { protectedDirs = JSON.parse(process.env.ENTRUST_RUN_PROTECTED ?? "[]"); } catch {}
+const guard = { stateDir: process.env.ENTRUST_RUN_STATE_DIR || null, protectedDirs };
 
 let box = null;
 const open = new Map(); // MCP request id -> { q, input, timer }
@@ -44,6 +48,15 @@ export function requestOf({ tool_name, input }, id, now = Date.now()) {
     payload, presented: JSON.stringify(payload, null, 2), requestHash: sha256(JSON.stringify(payload)) };
 }
 
+// An edit outside the run's roots aimed inside the state directory, where the mailboxes are, or a directory the
+// driver protects is declined at once, never offered. Every other call is offered whole.
+function declinedAtOnce({ tool_name, input }) {
+  if ((tool_name !== "Edit" && tool_name !== "Write") || typeof input?.file_path !== "string") return null;
+  const target = canonical(input.file_path, cwd ?? undefined);
+  if (roots.some((r) => within(target, canonical(r)))) return null;
+  return guardedTarget(target, guard);
+}
+
 // Settles the request the MCP call `rpcId` waits on. Returns whether its record now holds the settlement, or
 // null for a call no longer open.
 function settle(rpcId, decision, by, why) {
@@ -56,6 +69,11 @@ function settle(rpcId, decision, by, why) {
 
 function offer(rpcId, args) {
   const q = requestOf(args, requestId(++seq));
+  const guarded = declinedAtOnce(args);
+  if (guarded) {
+    box.settle(q, { decision: "declined", by: "driver", why: guarded, settledAt: new Date().toISOString() });
+    return answer(rpcId, { behavior: "deny", message: `entrust declined this call: ${guarded}` });
+  }
   try { box.offer(q); } catch (e) {
     box.settle(q, { decision: "expired", by: "driver", why: `mailbox write failed: ${e.code ?? e.message}`, settledAt: new Date().toISOString() });
     return answer(rpcId, { behavior: "deny", message: `entrust could not offer this call for approval: ${e.code ?? e.message}` });

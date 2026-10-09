@@ -125,7 +125,10 @@ export async function fakeOpenCode(mode = "normal") {
     }
     state.prompts++; s.input = body.messageID; s.busy = true;
     s.messages.push({ info: { id: body.messageID, role: "user", sessionID: s.id, time: { created: Date.now() } }, parts: body.parts });
-    if (["permission", "question", "cancel-question", "cancel-foreign-same", "cancel-request-read", "cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) {
+    if (mode === "edit-outside") {
+      // An edit the session rules ask about: `state.editTarget`, which the case sets, outside the run's roots.
+      replies.push({ id: `per_edit_${state.prompts}`, sessionID: s.id, permission: "edit", patterns: [state.editTarget], metadata: { filePath: state.editTarget } });
+    } else if (["permission", "question", "cancel-question", "cancel-foreign-same", "cancel-request-read", "cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) {
       if (["permission", "cancel-foreign-same", "cancel-request-read", "cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) replies.push({ id: `per_native_${state.prompts}`, sessionID: s.id, permission: "bash", patterns: ["node *"], metadata: { command: "node check.mjs" } });
       else questions.push({ id: `que_native_${state.prompts}`, sessionID: s.id, questions: [{ header: "Mode", question: "Choose", options: [{ label: "Read" }], custom: false }] });
       if (["cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) replies.push({ id: "per_second_owned", sessionID: s.id, permission: "bash", patterns: ["node *"], metadata: { command: "node second.mjs" } });

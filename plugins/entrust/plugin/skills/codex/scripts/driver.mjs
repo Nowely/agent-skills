@@ -24,8 +24,8 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createAgentTemp, agentTempAncestor, stateDirectory, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
-import { EXIT, canonical, parseRights, planWritesToRights, resolveModel, resolveRights, within, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
-import { DEADLINE_MS, deadlineMs, insideByInode, mailboxProblem, openMailbox, requestId } from "../../orchestrate/scripts/mailbox.mjs";
+import { EXIT, canonical, insideByInode, parseRights, planWritesToRights, resolveModel, resolveRights, within, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { DEADLINE_MS, deadlineMs, mailboxProblem, openMailbox, requestId } from "../../orchestrate/scripts/mailbox.mjs";
 import { shortName } from "./launch.mjs";
 
 const LEVELS = new Set(["read", "write"]);

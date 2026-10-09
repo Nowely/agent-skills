@@ -9,7 +9,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { canonical } from "./drivers.mjs";
+import { canonical, insideByInode } from "./drivers.mjs";
 
 // How long a request waits for a decision before it is declined as expired: three times the coordinator's
 // longest blind spot. ENTRUST_APPROVAL_TIMEOUT_S, in seconds, is the suites' seam.
@@ -23,19 +23,6 @@ export function deadlineMs(env = process.env) {
 // nothing else in the mailbox may match it.
 export const REQUEST_ID = /^\d+-[0-9a-f]{8}$/;
 export const requestId = (seq, rand = crypto.randomBytes) => `${seq}-${rand(4).toString("hex")}`;
-
-// Whether `p` is `dir` or lies below it, compared by dev:ino along p's path, so a case variant, a link or an
-// alias of `dir` is `dir`.
-export function insideByInode(p, dir) {
-  const statOf = (q) => { try { return fs.statSync(q); } catch { return null; } };
-  const anc = statOf(dir);
-  if (!anc) return false;
-  for (let cur = p; ; cur = path.dirname(cur)) {
-    const st = statOf(cur);
-    if (st && st.dev === anc.dev && st.ino === anc.ino) return true;
-    if (path.dirname(cur) === cur) return false;
-  }
-}
 
 // Why `box` may not be a mailbox, or null. It must lie strictly inside the state directory, since no write
 // root may be, hold or lie inside that directory (drivers.mjs writeRootProblem): no agent can then write a
