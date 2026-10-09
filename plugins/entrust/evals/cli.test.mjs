@@ -195,10 +195,10 @@ const CASES = [
     assertStderr: (t) => /--approval-dir does not exist/.test(t) || `a missing mailbox was accepted: ${t.slice(0, 160)}` },
   { scenario: "happy",            expect: EXIT.USAGE, args: ["--approval-dir", shimDir],
     why: "a mailbox outside the state directory is a place some sandbox may be able to write, and then an agent can publish its own decision",
-    assertStderr: (t) => /is not inside this driver's state directory/.test(t) || `a mailbox outside the state directory was accepted: ${t.slice(0, 200)}` },
+    assertStderr: (t) => /is not inside the state directory/.test(t) || `a mailbox outside the state directory was accepted: ${t.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.USAGE, env: { ENTRUST_STATE_DIR: guardState }, args: ["--approval-dir", guardState],
     why: "inside means inside: the state directory itself holds the locks and the answer log, and a mailbox is a directory of its own below it",
-    assertStderr: (t) => /is not inside this driver's state directory/.test(t) || `the state directory itself was accepted as a mailbox: ${t.slice(0, 200)}` },
+    assertStderr: (t) => /is not inside the state directory/.test(t) || `the state directory itself was accepted as a mailbox: ${t.slice(0, 200)}` },
   { scenario: "happy",            expect: EXIT.USAGE, env: { ENTRUST_STATE_DIR: armedState, TMPDIR: armedState }, args: ["--approval-dir", mailUnderRunTmp],
     why: "<tmp>/entrust holds every run's $TMPDIR, which that run's sandbox writes: with the caller's TMPDIR inside the state directory another run's lies there too, this run's own roots do not cover it, so the whole of <tmp>/entrust is refused",
     assertStderr: (t) => /lies inside .*\/entrust, which this driver keeps for itself or hands to agents as a writable root/.test(t)

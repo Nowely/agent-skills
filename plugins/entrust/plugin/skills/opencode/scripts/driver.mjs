@@ -9,15 +9,15 @@
 // continues an agent with RESUME after its turn.
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { Client } from "./client.mjs";
 import { recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
 import { startLocalServer } from "./local-server.mjs";
+import { deadlineMs, mailboxProblem, openMailbox } from "../../orchestrate/scripts/mailbox.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { git, makeWorktree, passwdHome, rightsScope, scopeWithin, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import {
-  EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionFits, canonical, within,
+  EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionsOf, canonical, within,
   commandEvidence, expectation, READ_TOOLS,
 } from "./contract.mjs";
 
@@ -26,7 +26,6 @@ const DEFAULT_TIMEOUT_S = 1800;
 const DEFAULT_IDLE_S = 600;
 // The volume bound every adapter has, as Codex's 1,000 commands.
 const DEFAULT_MAX_COMMANDS = 1000;
-const APPROVAL_DEADLINE_MS = 30 * 60 * 1000;
 const CLAIM_POLLS = 6;
 const SIGNALS = ["SIGTERM", "SIGINT", "SIGHUP"];
 
@@ -237,16 +236,12 @@ function outOfScope(scope, payload, cwd = process.cwd()) {
 // ---------------------------------------------------------------------------------------------
 // Approval mailbox
 
-function writePending(box, ids) {
-  if (!box) return;
-  const tmp = path.join(box, `.pending.${crypto.randomBytes(4).toString("hex")}`);
-  fs.writeFileSync(tmp, ids.map((i) => `${i}\n`).join(""), { mode: 0o600 });
-  fs.renameSync(tmp, path.join(box, "pending"));
-}
-
+// Settles q, its record first (orchestrate/scripts/mailbox.mjs). Returns whether the record holds it; with no
+// mailbox there is nothing to record.
 function settleRequestFile(ctx, q, settlement) {
+  if (ctx.box) return ctx.box.settle(q, settlement);
   q.settled = settlement;
-  if (ctx.approvalDir) atomicJson(path.join(ctx.approvalDir, `${q.id}.request.json`), q);
+  return true;
 }
 
 async function currentServerRequest(ctx, type, requestID) {
@@ -305,7 +300,7 @@ async function offerRequest(ctx, type, payload, method, reason, autoReason) {
   ctx.seq += 1;
   const q = envelope({
     type, payload, seq: ctx.seq, method, reason,
-    cwd: ctx.cwd, roots: ctx.roots, deadlineAt: new Date(now() + APPROVAL_DEADLINE_MS).toISOString(),
+    cwd: ctx.cwd, roots: ctx.roots, deadlineAt: new Date(now() + deadlineMs()).toISOString(),
     run: {
       pid: process.pid, startedAtMs: ctx.startedAtMs,
       threadId: ctx.sessionID, turnId: ctx.rootInputID, invocationId: ctx.invocationId,
@@ -314,12 +309,13 @@ async function offerRequest(ctx, type, payload, method, reason, autoReason) {
   });
   q.invocationId = ctx.invocationId;
   ctx.requests.set(q.id, q);
-  if (ctx.approvalDir) {
-    atomicJson(path.join(ctx.approvalDir, `${q.id}.request.json`), q);
-    writePending(ctx.approvalDir, [...ctx.requests.keys()].filter((k) => !ctx.requests.get(k).settled));
-  }
   ctx.escalations.push({ id: q.id, type, requestID: payload.id, method, reason, presented: q.presented });
   q.autoReason = autoReason;
+  // A request the driver declines itself is recorded when it settles and never listed as waiting. One the
+  // mailbox cannot hold would wait for a decision that cannot come: it expires at once.
+  if (ctx.box && !autoReason) {
+    try { ctx.box.offer(q); } catch (e) { q.mailboxFailure = `mailbox write failed: ${e.code ?? e.message}`; }
+  }
   return q;
 }
 
@@ -327,15 +323,13 @@ const acceptedDecision = (d) => (d === "decline" ? "declined" : "accepted");
 
 async function settleOpenRequest(ctx, q) {
   if (ctx.abortRequested) return false;
-  const decisionPath = ctx.approvalDir ? path.join(ctx.approvalDir, `${q.id}.decision.json`) : null;
-  const d = decisionPath ? readJson(decisionPath) : null;
-  if (!d) {
+  const { state, d } = ctx.box.decision(q, decisionsOf(q));
+  if (state !== "valid") {
     if (now() > Date.parse(q.deadlineAt)) {
       return rejectTrackedRequest(ctx, q, { decision: "expired", by: "driver", why: "deadline passed unanswered" }, "expired");
     }
     return false;
   }
-  if (!decisionFits(d, q)) return false;
   // Compare the current server content with the immutable envelope before acting. An absent
   // request is not evidence of acceptance.
   const present = await currentServerRequest(ctx, q.type, q.payload.id);
@@ -362,14 +356,17 @@ async function settleOpenRequest(ctx, q) {
   if (ctx.abortRequested) return false;
   if (d.decision === "decline")
     return rejectTrackedRequest(ctx, q, { decision: "declined", by: "coordinator", why: d.why ?? null }, "declined");
-  // The record before the answer: an accept the mailbox does not hold is one no coordinator can see was given.
-  // One that cannot be written is not answered, and the deadline settles the request.
+  // The record before the answer: an accept the mailbox does not hold is one no coordinator can see was given,
+  // so it is declined instead.
   const settled = {
     decision: acceptedDecision(d.decision), by: "coordinator", why: d.why ?? null,
     settledAt: new Date(now()).toISOString(), outcome: "pending",
   };
   if (d.decision === "answer") settled.answer = d.answer ?? null;
-  try { settleRequestFile(ctx, q, settled); } catch { q.settled = null; return false; }
+  if (!settleRequestFile(ctx, q, settled)) {
+    q.settled = null; // still open, so the rejection finds it among the session's own requests
+    return rejectTrackedRequest(ctx, q, { decision: "expired", by: "driver", why: "mailbox write failed: the decision could not be recorded" }, "expired");
+  }
   if (q.type === "opencode.permission") {
     outcome = await respond(ctx, q.type, q.payload.id, "permission", { reply: d.decision === "accept" ? "once" : "reject" }, q.payload.sessionID);
   } else if (d.decision === "answer") {
@@ -378,7 +375,7 @@ async function settleOpenRequest(ctx, q) {
     outcome = await respond(ctx, q.type, q.payload.id, "decline", {}, q.payload.sessionID);
   }
   settled.outcome = outcome.outcome;
-  try { settleRequestFile(ctx, q, settled); } catch {}
+  ctx.box.rewrite(q);
   if (settled.decision === "declined") ctx.declined += 1;
   if (outcome.outcome === "unknown") ctx.unresolved = true;
   return true;
@@ -432,18 +429,19 @@ async function processRequests(ctx) {
     const reason = type === "opencode.permission" ? (payload.metadata?.description ?? payload.reason ?? null)
       : (payload.questions?.[0]?.question ?? null);
     const autoReason = scopeDenial ? `refused by the driver: ${scopeDenial}`
-      : !ctx.approvalDir ? "no approval directory: unattended run" : null;
+      : !ctx.box ? "no approval directory: unattended run" : null;
     await offerRequest(ctx, type, payload, method, reason, autoReason);
   }
   for (const [rid, q] of [...ctx.requests]) {
     if (ctx.abortRequested) return;
     if (q.settled) { ctx.requests.delete(rid); continue; }
     if (q.autoReason) {
-      if (!ctx.approvalDir) ctx.needsInput = true;
+      if (!ctx.box) ctx.needsInput = true;
       await rejectTrackedRequest(ctx, q, { decision: "declined", by: "driver", why: q.autoReason }, "autoDeclined");
+    } else if (q.mailboxFailure) {
+      await rejectTrackedRequest(ctx, q, { decision: "expired", by: "driver", why: q.mailboxFailure }, "expired");
     } else if (await settleOpenRequest(ctx, q)) ctx.requests.delete(rid);
   }
-  if (ctx.approvalDir) writePending(ctx.approvalDir, [...ctx.requests.keys()]);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -630,7 +628,6 @@ async function cancelPendingRequests(ctx) {
     receipts.push({ type: q.type, sessionID: payload.sessionID, requestIDs: [payload.id], ...outcome });
     settle(q, outcome);
   }
-  if (ctx.approvalDir) writePending(ctx.approvalDir, [...ctx.requests.keys()]);
   return receipts;
 }
 
@@ -859,8 +856,11 @@ async function execute(opts, parsed) {
   process.stderr.write(`entrust: pid=${process.pid} identity=${ctx.invocationId} reportPath=${ctx.report}\n`);
 
   if (ctx.approvalDir) {
+    const misplaced = mailboxProblem(ctx.approvalDir, ctx.stateDir);
+    if (misplaced) return fail(ctx, misplaced, EXIT.USAGE);
     try { fs.mkdirSync(ctx.approvalDir, { recursive: true, mode: 0o700 }); }
     catch (e) { return fail(ctx, `approval directory ${ctx.approvalDir} cannot be made: ${e.message}`, EXIT.USAGE); }
+    ctx.box = openMailbox(ctx.approvalDir);
   }
 
   try {

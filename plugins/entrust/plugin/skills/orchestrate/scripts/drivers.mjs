@@ -1,4 +1,4 @@
-// What every external agent's driver shares beside the launcher's contract: the exit codes, the request id,
+// What every external agent's driver shares beside the launcher's contract and the mailbox: the exit codes,
 // the RIGHTS grammar and the scope it grants, the plan's model pin, the write-root check, and the worktree a
 // `worktree` agent runs in. The Codex, OpenCode and Claude drivers import it; nothing here runs on import.
 import fs from "node:fs";
@@ -41,10 +41,6 @@ export const EXIT = Object.freeze({
   BUSY: 10,
   SCHEMA: 13,
 });
-
-// A request id is a sequence number and eight hex digits, and it is also a file name.
-export const REQUEST_ID = /^\d+-[0-9a-f]{8}$/;
-export const REQUEST_ID_SOURCE = "^\\d+-[0-9a-f]{8}$";
 
 // RIGHTS: `read [cwd]`, `write <cwd>` or `worktree <repo>`. The path is kept as written; the
 // driver resolves it against its own cwd.

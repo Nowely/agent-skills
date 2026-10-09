@@ -1182,10 +1182,11 @@ flow("an accept whose settlement cannot be written goes out as a decline, and th
     const a = armed("approval-wait", { env: { ENTRUST_APPROVAL_POLL_MS: "1500" } });
     const q = await offered(a.box);
     if (!q) return "no request was offered";
+    // The request's record cannot be rewritten (a directory in its place, which no user can rename over),
+    // and an accept fitting it is published beside it.
+    fs.rmSync(path.join(a.box, `${q.id}.request.json`)); fs.mkdirSync(path.join(a.box, `${q.id}.request.json`));
     decide(a.box, q, "accept");
-    fs.chmodSync(a.box, 0o500);
-    let res;
-    try { res = await a.done; } finally { fs.chmodSync(a.box, 0o700); }
+    const res = await a.done;
     const r = parsed(res.out) ?? {};
     const e = entry0(r);
     const said = answers(a.log).filter((l) => l.startsWith("answer:9401:"));

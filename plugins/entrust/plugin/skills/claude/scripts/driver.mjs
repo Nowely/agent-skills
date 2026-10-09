@@ -14,7 +14,8 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
-import { EXIT, canonical, flagValue, makeWorktree, passwdHome, resolveModel, resolveRights, rightsScope, within, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, canonical, flagValue, makeWorktree, passwdHome, resolveModel, resolveRights, rightsScope, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { mailboxProblem } from "../../orchestrate/scripts/mailbox.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { TOOL } from "./approvals.mjs";
 
@@ -311,7 +312,8 @@ async function run(o, text) {
     ctx.parsed = parsed;
     const stateDir = stateDirectory();
     const box = o.approvalDir ? path.resolve(o.approvalDir) : null;
-    if (box && !within(canonical(box), canonical(stateDir))) return refused(`--approval-dir ${box} is outside the state directory ${stateDir}`);
+    const misplaced = box && mailboxProblem(box, stateDir);
+    if (misplaced) return refused(misplaced);
     ctx.box = box;
     const scope = scopeOf(parsed, stateDir);
     if (scope.error) return refused(scope.error);

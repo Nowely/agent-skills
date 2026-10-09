@@ -79,6 +79,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { adapters } from "./adapters.mjs";
+import { REQUEST_ID, decisionFits as fits } from "./mailbox.mjs";
 import { stateDirectory } from "./temp-dir.mjs";
 
 const SELF = fileURLToPath(import.meta.url);
@@ -301,16 +302,11 @@ const within = (child, parent) => {
   return rel === "" || (rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
 };
 
-// The shape of a request id the driver makes: a sequence number and eight hex digits. Anything else in the
-// mailbox is not a request of any run, and an id is also a file name, so nothing else may name one.
-const REQUEST_ID = /^\d+-[0-9a-f]{8}$/;
-// Whether a decision file is the one for this request of this run: the identity --decide copies out of the
-// request, and the one the driver checks before it takes a decision.
+// Whether a decision file is the one for this request of this run, by the rule the driver applies before it
+// takes a decision, and the adapter's own check of a typed request.
 const decisionFits = (d, q) => {
-  if (!(d?.id === q.id && d?.run?.pid === q.run?.pid && d?.run?.startedAtMs === q.run?.startedAtMs
-    && (d?.run?.turnId ?? null) === (q.run?.turnId ?? null))) return false;
   const typed = typedOf(q);
-  return typed ? typed.fits(d) && typed.decisions.includes(d?.decision) : d?.decision === "accept" || d?.decision === "decline";
+  return fits(d, q, typed?.decisions) && (!typed || typed.fits(d));
 };
 
 // The ids the driver's `pending` file in the mailbox `box` lists.

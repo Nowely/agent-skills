@@ -7,7 +7,8 @@ import { spawnSync } from "node:child_process";
 import { ROOT, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
 import { recentModels, splitModel, digest } from "../plugin/skills/opencode/scripts/config.mjs";
 import { Client } from "../plugin/skills/opencode/scripts/client.mjs";
-import { parsePrompt, FIVE_FIELDS_SCHEMA, checkSchemaSubset, validateOutput, decisionFits, extractJson, expectation } from "../plugin/skills/opencode/scripts/contract.mjs";
+import { parsePrompt, FIVE_FIELDS_SCHEMA, checkSchemaSubset, validateOutput, decisionsOf, extractJson, expectation } from "../plugin/skills/opencode/scripts/contract.mjs";
+import { decisionFits } from "../plugin/skills/orchestrate/scripts/mailbox.mjs";
 import { outOfScope, sessionPermissions } from "../plugin/skills/opencode/scripts/driver.mjs";
 import { readAgentOrders } from "../plugin/skills/orchestrate/scripts/agent-orders.mjs";
 import { fakeOpenCode } from "./fake-opencode.mjs";
@@ -237,8 +238,8 @@ test("driver refuses a decision belonging to the wrong callback type", () => {
     const m = mailbox(type);
     const d = { id: m.q.id, run: m.q.run, remote: m.q.remote, requestHash: m.q.requestHash,
       decision: type.endsWith("question") ? "accept" : "answer" };
-    assert.equal(decisionFits(d, m.q), false);
-    d.decision = "decline"; assert.equal(decisionFits(d, m.q), true);
+    assert.equal(decisionFits(d, m.q, decisionsOf(m.q)), false);
+    d.decision = "decline"; assert.equal(decisionFits(d, m.q, decisionsOf(m.q)), true);
   }
 });
 test("HTTP mutation is never retried after a response is lost", async () => {
@@ -270,14 +271,14 @@ function fakeCli(url, dir) {
     FAKE_OPENCODE_URL: url, FAKE_OPENCODE_START_FILE: startFile, FAKE_OPENCODE_STOP_FILE: stopFile }, startFile };
 }
 // `beside` is an earlier report: this run writes report-2.json into its directory, under the same state.
-async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4, approvalDelayMs = 0, headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", localUrl = server.url, beside = null } = {}) {
+async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4, approvalDelayMs = 0, headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", localUrl = server.url, beside = null, more = {} } = {}) {
   const state = beside ? path.dirname(path.dirname(beside)) : tempDir("entrust-opencode-driver-");
   const dir = beside ? path.dirname(beside) : path.join(state, "invocation"); if (!beside) fs.mkdirSync(dir);
   const input = path.join(dir, "prompt.txt"), report = path.join(dir, beside ? "report-2.json" : "report.json"), box = path.join(dir, "approvals");
   fs.writeFileSync(input, prompt(`${allowNoCommands ? "ALLOW_NO_COMMANDS: yes\n" : ""}${resume ? `RESUME: ${resume}\n` : ""}${headers}`, rights));
   // The driver starts its own server; the fake CLI on PATH announces the fake one.
   const cli = fakeCli(localUrl, state);
-  const env = { ENTRUST_STATE_DIR: state, ...cli.env,
+  const env = { ENTRUST_STATE_DIR: state, ...cli.env, ...more,
     ...recent({ recent: [{ providerID: "router", modelID: savedModel }], variant: { "router/deepseek/flash": "high" } }) };
   const p = spawnNode([DRIVER, "--prompt-file", input, "--report-file", report, "--timeout", String(timeout), "--idle-timeout", String(idle),
     ...(approval ? ["--approval-dir", box] : [])], { env, killAfterMs: 20000 });
@@ -294,6 +295,11 @@ async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4
             if (cancel && cancelWhenPending) { p.child.kill("SIGTERM"); acted = true; break; }
             const q = JSON.parse(fs.readFileSync(path.join(box, file)));
             if (approvalDelayMs) await new Promise((resolve) => setTimeout(resolve, approvalDelayMs));
+            if (approval === "stale") {
+              // A decision naming another run: it fits no request of this one.
+              fs.writeFileSync(path.join(box, `${q.id}.decision.json`), JSON.stringify({ id: q.id, run: { ...q.run, pid: 1 }, requestHash: q.requestHash, remote: q.remote, decision: "accept" }));
+              acted = true; continue;
+            }
             if (approval === "unrecordable") {
               // The request's record cannot be rewritten, and an accept fitting it is published beside it.
               fs.rmSync(path.join(box, file)); fs.mkdirSync(path.join(box, file));
@@ -365,6 +371,18 @@ test("an accept the mailbox cannot record is never answered once", async () => {
   try {
     await driverRun(s, { approval: "unrecordable" });
     assert.equal(s.mutations.some((m) => m.body?.reply === "once"), false, JSON.stringify(s.mutations));
+    assert.equal(s.mutations.some((m) => m.body?.reply === "reject"), true, JSON.stringify(s.mutations));
+  } finally { await s.close(); }
+});
+test("a stale decision file does not hold a request past its deadline", async () => {
+  const s = await fakeOpenCode("permission");
+  try {
+    const r = await driverRun(s, { approval: "stale", more: { ENTRUST_APPROVAL_TIMEOUT_S: "1" } });
+    const name = fs.readdirSync(r.box).find((n) => n.endsWith(".request.json"));
+    const q = JSON.parse(fs.readFileSync(path.join(r.box, name), "utf8"));
+    assert.equal(q.settled?.decision, "expired", r.err); assert.equal(q.settled.by, "driver");
+    assert.equal(s.mutations.some((m) => m.body?.reply === "once"), false, JSON.stringify(s.mutations));
+    assert.equal(fs.existsSync(path.join(r.box, "pending")), false);
   } finally { await s.close(); }
 });
 test("a continuation keeps its rights: a write session resumed as read is refused, and one naming none stays write", async () => {
@@ -415,6 +433,16 @@ test("a run that cannot make its mailbox never writes over an earlier report at 
     "--approval-dir", path.join(dir, "notadir", "approvals")], { env: { ...process.env, ENTRUST_STATE_DIR: dir }, encoding: "utf8" });
   assert.equal(r.status, 2, r.stderr);
   assert.equal(fs.readFileSync(report, "utf8"), '{"answer":"EARLIER"}\n');
+});
+test("a mailbox outside the state directory is refused before anything runs", () => {
+  const state = tempDir("entrust-opencode-state-"), elsewhere = tempDir("entrust-opencode-elsewhere-");
+  const report = path.join(state, "report.json"), input = path.join(state, "prompt.txt");
+  fs.writeFileSync(input, prompt(`MODEL: ${model}\n`));
+  const r = spawnSync(process.execPath, [path.join(ROOT, "skills/opencode/scripts/driver.mjs"), "--prompt-file", input, "--report-file", report,
+    "--approval-dir", path.join(elsewhere, "approvals")], { env: { ...process.env, ENTRUST_STATE_DIR: state }, encoding: "utf8" });
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(JSON.parse(fs.readFileSync(report, "utf8")).error, /is not inside the state directory/);
+  assert.equal(fs.existsSync(path.join(elsewhere, "approvals")), false);
 });
 test("the budget: the wall clock stands still while a request waits, and a session the server reports busy is not idle", async () => {
   const waited = await fakeOpenCode("permission");

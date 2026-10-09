@@ -25,6 +25,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createAgentTemp, agentTempAncestor, stateDirectory, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
 import { EXIT, canonical, parseRights, planWritesToRights, resolveModel, resolveRights, within, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { DEADLINE_MS, deadlineMs, insideByInode, mailboxProblem, openMailbox, requestId } from "../../orchestrate/scripts/mailbox.mjs";
 import { shortName } from "./launch.mjs";
 
 const LEVELS = new Set(["read", "write"]);
@@ -97,9 +98,6 @@ const LIMITS = {
   QUIESCE_KILL_SYNC_MS: 200,
   // How often an open request's decision file is looked for; ENTRUST_APPROVAL_POLL_MS is the suites' seam.
   APPROVAL_POLL_MS: 250,
-  // The only clock on an approval wait (the server waits without bound, the idle guard pauses): the owner's
-  // thirty minutes, three times the coordinator's longest blind spot. ENTRUST_APPROVAL_TIMEOUT_S is the seam.
-  APPROVAL_TIMEOUT_S: 1800,
 };
 // Not a limit: where to look for codex when PATH does not have it.
 const CODEX_FALLBACK_DIRS = ["/opt/homebrew/bin", "/usr/local/bin", "~/.local/bin"];
@@ -268,7 +266,7 @@ Turn
   --report-file ABS  publish the report there as well as on stdout: an ABSOLUTE path that does not
                      exist yet, written whole or not at all, so a missing file means unknown
   --approval-dir D   the agent's mailbox, set by the launcher and never by a person. A request waits
-                     for D/<id>.decision.json, or for ${LIMITS.APPROVAL_TIMEOUT_S / 60} minutes, after which it is declined as
+                     for D/<id>.decision.json, or for ${DEADLINE_MS / 60000} minutes, after which it is declined as
                      expired and the turn goes on; without D every request is declined at once. An
                      accepted command runs with no sandbox, as you; a file change inside the writable
                      roots is accepted by the driver, and one not shown inside them is declined at once
@@ -460,10 +458,9 @@ function parseArgs(argv) {
   // 0 is the documented "off", so the floor is 0 rather than a positive number.
   if (!Number.isFinite(o.idleTimeout) || o.idleTimeout < 0)
     fail(EXIT.USAGE, "--idle-timeout must be a number of seconds, 0 to disable");
-  // The deadline on a waiting approval request is the constant; the seam replaces it for the suites and
-  // is read here, once, so every request of a run waits under one clock.
-  const seam = Number(process.env.ENTRUST_APPROVAL_TIMEOUT_S);
-  o.approvalTimeoutS = seam > 0 ? seam : LIMITS.APPROVAL_TIMEOUT_S;
+  // The only clock on an approval wait (the server waits without bound, the idle guard pauses), read once so
+  // every request of a run waits under one clock.
+  o.approvalDeadlineMs = deadlineMs();
   if (o.approvalDir !== undefined && !path.isAbsolute(o.approvalDir))
     fail(EXIT.USAGE, `--approval-dir must be an absolute path, got ${JSON.stringify(o.approvalDir)}`);
   // MAX_PROMPT_BYTES caps --prompt, stdin and the prompt file before the server sees them.
@@ -1964,7 +1961,7 @@ async function setup() {
   // runtimeWorkspaceRoots reports; normalise the request the same way before asserting the response.
   roots = [...new Set(opts.writable.map((d) => checkRoot(resolveDir(d, "--writable"))))]
     .filter((r) => r !== cwd);
-  if (opts.approvalDir !== undefined) approvalDir = checkMailbox(opts.approvalDir);
+  if (opts.approvalDir !== undefined) box = openMailbox(approvalDir = checkMailbox(opts.approvalDir));
   noteManagedPolicy(opts.webSearch);
 
   const config = [
@@ -2320,12 +2317,11 @@ function replayEarly() {
 
 // ---------------------------------------------------------------- approvals
 //
-// The mailbox the caller armed with --approval-dir, and the requests offered through it. An offer writes
-// <id>.request.json and lists <id> in `pending`; nothing blocks here, and the turn waits until
-// <id>.decision.json appears, a deadline the caller set runs out, or the request's turn or the run ends.
-// Each of those settles the request and answers the server, and the settlement is written to the request
-// file BEFORE the answer is sent, so a status read after a crash never shows less than the server was told.
-let approvalDir = null;
+// The mailbox the launcher armed with --approval-dir (orchestrate/scripts/mailbox.mjs), and the requests
+// offered through it. Nothing blocks here: the turn waits until <id>.decision.json appears, the deadline runs
+// out, or the request's turn or the run ends. Each of those settles the request and answers the server, the
+// settlement recorded first, so a status read after a crash never shows less than the server was told.
+let approvalDir = null, box = null;
 const openApprovals = new Map();      // id -> {rpcId, entry, record, timer}
 let approvalSeq = 0, approvalPoll = null;
 // The paths a file change names arrive only on its item/started: the request itself carries none (P1,
@@ -2396,52 +2392,29 @@ function settleEntry(entry, decision, by, why) {
   entry.waitMs = Date.parse(entry.settledAt) - Date.parse(entry.askedAt);
 }
 
-const writeMailbox = (name, value) =>
-  renameOver(path.join(approvalDir, name), typeof value === "string" ? value : `${JSON.stringify(value, null, 2)}\n`);
-// `pending` is the caller's wake-up, one open id per line, absent when none is open. Returns the failure or
-// null; a marker that cannot be written settles every open request at once, declined, the failure in why.
-let syncingPending = false;
-function writePending() {
-  let failure = null;
-  try {
-    if (openApprovals.size) writeMailbox("pending", [...openApprovals.keys()].map((id) => `${id}\n`).join(""));
-    else fs.rmSync(path.join(approvalDir, "pending"), { force: true });
-  } catch (e) { failure = e; }
-  if (failure === null || syncingPending) return failure;
-  const why = `mailbox write failed: ${failure.code ?? failure.message}`;
-  process.stderr.write(`entrust: ${why} in ${approvalDir}; ${openApprovals.size} open request(s) declined, since no caller can be told of them\n`);
-  syncingPending = true;
-  try { for (const id of [...openApprovals.keys()]) closeApproval(id, "decline", "expired", "driver", why, "none"); }
-  finally { syncingPending = false; }
-  return failure;
-}
-
 function offerApproval(msg, entry) {
   const p = msg.params ?? {};
-  const id = `${++approvalSeq}-${crypto.randomBytes(4).toString("hex")}`;
-  const deadlineMs = opts.approvalTimeoutS * 1000;
+  const id = requestId(++approvalSeq);
+  const waitMs = opts.approvalDeadlineMs;
   const record = { ...p, id, method: msg.method, rpcId: msg.id,
     run: { pid: process.pid, identity: selfIdentity(), startedAtMs, threadId: entry.thread, turnId: p.turnId ?? null },
     kind: entry.kind, subagent: entry.subagent, agentPath: entry.agentPath, cause: entry.cause,
     fileChanges: entry.fileChanges,
     level: opts.level, sandbox: effectiveSandbox, roots: agentRoots(),
-    askedAt: entry.askedAt, deadlineAt: deadlineMs ? new Date(Date.parse(entry.askedAt) + deadlineMs).toISOString() : null };
-  try {
-    writeMailbox(`${id}.request.json`, record);
-  } catch (e) {
-    // A request nobody can see would wait for a decision that cannot come.
+    askedAt: entry.askedAt, deadlineAt: new Date(Date.parse(entry.askedAt) + waitMs).toISOString() };
+  try { box.offer(record); } catch (e) {
     const why = `mailbox write failed: ${e.code ?? e.message}`;
     process.stderr.write(`entrust: ${why} in ${approvalDir}; request declined, since no caller can be told of it\n`);
     settleEntry(entry, "expired", "driver", why);
+    box.settle(record, { decision: "expired", by: "driver", why, settledAt: entry.settledAt, waitMs: entry.waitMs, decisionFile: "none" });
     conn.send({ jsonrpc: "2.0", id: msg.id, result: { decision: "decline" } });
     return;
   }
   entry.id = id;
   entry.offered = true;
-  const timer = deadlineMs ? setTimeout(() => expireApproval(id), deadlineMs) : null;
-  timer?.unref?.();
+  const timer = setTimeout(() => expireApproval(id), waitMs);
+  timer.unref?.();
   openApprovals.set(id, { rpcId: msg.id, entry, record, timer });
-  if (writePending() !== null) return;
   if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
   if (!approvalPoll) {
     approvalPoll = setInterval(() => { for (const open of [...openApprovals.keys()]) takeDecision(open); },
@@ -2449,49 +2422,30 @@ function offerApproval(msg, entry) {
     approvalPoll.unref?.();
   }
   process.stderr.write(`entrust: approval request ${id} (${msg.method}${entry.subagent ? ` from ${entry.agentPath ?? entry.thread}` : ""}) `
-    + `waits for a decision in ${approvalDir}${record.deadlineAt ? ` until ${record.deadlineAt}` : ", with no deadline"}\n`);
+    + `waits for a decision in ${approvalDir} until ${record.deadlineAt}\n`);
 }
 
-// Settles one open request: the request file, then the answer, then the marker. `decisionFile` records what
-// the decision file held: taken, none, stale or late. An accept goes out only once its settlement is on
-// disk, or it is a command run as the user with no record; when it cannot be written, a decline goes out.
+// Settles one open request: the record, then the answer. `decisionFile` records what the decision file held:
+// taken, none, stale or late. An accept whose settlement the record does not hold goes out as a decline.
 function closeApproval(id, answer, decision, by, why, decisionFile) {
   const o = openApprovals.get(id);
   if (!o) return;
   openApprovals.delete(id);
   clearTimeout(o.timer);
   settleEntry(o.entry, decision, by, why);
-  try {
-    writeMailbox(`${id}.request.json`, { ...o.record,
-      settled: { decision, by, why, settledAt: o.entry.settledAt, waitMs: o.entry.waitMs, decisionFile } });
-  } catch (e) {
-    const failed = `mailbox write failed: ${e.code ?? e.message}`;
-    process.stderr.write(`entrust: the settlement of approval request ${id} could not be written (${failed})`
+  if (!box.settle(o.record, { decision, by, why, settledAt: o.entry.settledAt, waitMs: o.entry.waitMs, decisionFile })) {
+    process.stderr.write(`entrust: the settlement of approval request ${id} could not be written to ${approvalDir}`
       + `${answer === "accept" ? "; declined instead of accepted, since nothing would record that it ran" : ""}\n`);
-    if (answer === "accept") { answer = "decline"; settleEntry(o.entry, "expired", "driver", failed); }
+    if (answer === "accept") { answer = "decline"; settleEntry(o.entry, "expired", "driver", "mailbox write failed: the settlement could not be recorded"); }
   }
   conn.send({ jsonrpc: "2.0", id: o.rpcId, result: { decision: answer } });
-  writePending();
   if (openApprovals.size === 0) { clearInterval(approvalPoll); approvalPoll = null; touchIdle(); }
-}
-
-// What the decision file for request `record` holds. A decision counts only for a request of THIS run:
-// its id, this driver's pid and start, and the request's own turn. Anything else is stale, and left where
-// it is; the request file records what the driver found when it settled.
-function readDecision(record) {
-  let raw;
-  try { raw = fs.readFileSync(path.join(approvalDir, `${record.id}.decision.json`), "utf8"); } catch { return { state: "none" }; }
-  let d = null;
-  try { d = JSON.parse(raw); } catch {}
-  const fits = d?.id === record.id && d?.run?.pid === process.pid && d?.run?.startedAtMs === startedAtMs
-    && (d?.run?.turnId ?? null) === record.run.turnId && (d?.decision === "accept" || d?.decision === "decline");
-  return fits ? { state: "valid", d } : { state: "stale" };
 }
 
 function takeDecision(id) {
   const o = openApprovals.get(id);
   if (!o) return "none";
-  const { state, d } = readDecision(o.record);
+  const { state, d } = box.decision(o.record);
   if (state !== "valid") return state;
   const accept = d.decision === "accept";
   closeApproval(id, accept ? "accept" : "decline", accept ? "accepted" : "declined", "coordinator",
@@ -2515,7 +2469,7 @@ function expireApproval(id) {
 function settleOpenApprovals(why, which = () => true) {
   for (const [id, o] of [...openApprovals]) {
     if (!which(o)) continue;
-    const { state } = readDecision(o.record);
+    const { state } = box.decision(o.record);
     closeApproval(id, "decline", "expired", "driver", why, state === "valid" ? "late" : state);
   }
 }
@@ -2524,34 +2478,23 @@ function settleOpenApprovals(why, which = () => true) {
 // <tmp>/entrust and every root of this run, by inode. Each launch makes its own, so no other driver writes it.
 function checkMailbox(d) {
   const real = resolveDir(d, "--approval-dir");
-  const within = (p, anc) => {
-    let a;
-    try { a = fs.statSync(anc); } catch { return false; }
-    for (let cur = p; ; ) {
-      let st = null;
-      try { st = fs.statSync(cur); } catch {}
-      if (st && st.dev === a.dev && st.ino === a.ino) return true;
-      const parent = path.dirname(cur);
-      if (parent === cur) return false;
-      cur = parent;
-    }
-  };
-  if (!within(path.dirname(real), stateDir()))
-    fail(EXIT.USAGE, `--approval-dir ${real} is not inside this driver's state directory ${stateDir()}: anywhere else a sandbox this driver grants could write a decision into it`);
+  const misplaced = mailboxProblem(real, stateDir());
+  if (misplaced) fail(EXIT.USAGE, misplaced);
   // None of the driver's own subdirectories may hold a mailbox, and neither may another run's $TMPDIR,
   // which that run's sandbox writes and this run's roots do not cover: a run directory,
   // <state>/reports/<run> or the orchestrate page's, is the only place for one.
   for (const own of [...STATE_SUBDIRS.map(([sub]) => path.join(stateDir(), sub.replace(/\/$/, ""))), ...runTmpBases]) {
-    if (within(real, own))
+    if (insideByInode(real, own))
       fail(EXIT.USAGE, `--approval-dir ${real} lies inside ${own}, which this driver keeps for itself or hands to agents as a writable root: a run there could publish another's decision`);
   }
   const ancestor = agentTempAncestor(real, runTmpNamespace);
   if (ancestor !== null)
     fail(EXIT.USAGE, `--approval-dir ${real} lies inside another agent's temporary grant ${ancestor}: it could publish this run's decision`);
   for (const r of agentRoots())
-    if (within(real, r)) fail(EXIT.USAGE, `--approval-dir ${real} lies inside ${r}, which this agent may write: it could publish its own decision`);
+    if (insideByInode(real, r)) fail(EXIT.USAGE, `--approval-dir ${real} lies inside ${r}, which this agent may write: it could publish its own decision`);
   return real;
 }
+
 // The entry every approval request gets, whatever becomes of it. `detail` is the command whole, else the
 // reason, else the message; for a file change whose paths an item named, those paths.
 function approvalEntry(msg, owner, foreign) {

@@ -348,7 +348,7 @@ test("the mailbox round trip: --run hands the Bash request back, an accept runs 
   const q = JSON.parse(fs.readFileSync(path.join(h.dir, "approvals", `${id}.request.json`), "utf8"));
   assert.equal(q.settled.decision, "accepted"); assert.equal(q.settled.by, "coordinator");
   assert.equal(JSON.parse(fs.readFileSync(h.report, "utf8")).escalations[0].decision, "accepted");
-  assert.equal(fs.readFileSync(path.join(h.dir, "approvals", "pending"), "utf8"), "");
+  assert.equal(fs.existsSync(path.join(h.dir, "approvals", "pending")), false, "pending outlived the last open request");
 });
 
 test("a decline denies the call and exits 6", async () => {

@@ -5,11 +5,11 @@
 // here on import, so an independent test can import this module alone.
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { digest, splitModel } from "./config.mjs";
 import { checkSchemaSubset, validateOutput } from "../../orchestrate/scripts/json-schema.mjs";
 import { EXIT, canonical, flagValue, resolveModel, resolveRights, within } from "../../orchestrate/scripts/drivers.mjs";
+import { requestId } from "../../orchestrate/scripts/mailbox.mjs";
 
 export { EXIT, canonical, within };
 
@@ -25,11 +25,6 @@ export const HEADER_KEYS = new Set([
   "EXPECT", "ALLOW_NO_COMMANDS", "BRIEF", "NETWORK", "WEB_SEARCH",
 ]);
 export const CAPABILITY_HEADERS = new Set(["NETWORK", "WEB_SEARCH"]);
-
-export function requestId(seq, rand = crypto.randomBytes) {
-  if (!Number.isInteger(seq) || seq < 0) throw new Error("request sequence must be a non-negative integer");
-  return `${seq}-${rand(4).toString("hex")}`;
-}
 
 // The prompt is a run of `KEY: value` header lines, then `TASK:` which begins the body. Blank
 // lines before TASK are tolerated; anything else before TASK, an unknown uppercase header, a
@@ -197,14 +192,8 @@ export function envelope({ type, payload, seq, run, method, cause = "asked", cwd
   };
 }
 
-// Whether a decision file is this request's, mirroring the launcher's own check. A driver never
-// acts on a decision that does not match the immutable envelope it published.
-export function decisionFits(d, q) {
-  return Boolean(d) && d.id === q.id && d.run?.pid === q.run?.pid && d.run?.startedAtMs === q.run?.startedAtMs
-    && (d.run?.turnId ?? null) === (q.run?.turnId ?? null)
-    && d.requestHash === q.requestHash && JSON.stringify(d.remote) === JSON.stringify(q.remote)
-    && (q.type === "opencode.question" ? ["answer", "decline"].includes(d.decision) : ["accept", "decline"].includes(d.decision));
-}
+// The decisions a request takes: a question is answered or declined, a permission accepted or declined.
+export const decisionsOf = (q) => (q.type === "opencode.question" ? ["answer", "decline"] : ["accept", "decline"]);
 
 // A successful command is a bash tool part whose state completed with an observed exit of 0.
 // A completed tool with no exit is not success.

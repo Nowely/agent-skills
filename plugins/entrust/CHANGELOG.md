@@ -60,6 +60,14 @@ forensics remain in the repository references and release notes.
   report, and link it; a Claude or OpenCode call no longer needs the Codex page. Every page names one launcher,
   orchestrate's `agent-run.mjs`; the adapters' own entry scripts still work. `agents/proxy.md` carries the block's
   four steps word for word, and a test compares the two (X16). Each host's models page names its proxy model.
+- **One approval mailbox for the three drivers.** The files a driver writes into `<DIR>/approvals`, the rule a
+  decision must fit, the record kept before any answer and the thirty-minute deadline are one module,
+  `orchestrate/scripts/mailbox.mjs`, which the launcher's `--decide` shares too; each adapter keeps only how its CLI
+  is answered. Three differences went with it: an OpenCode driver now refuses a mailbox outside its state directory,
+  as the other two did; a decision file that fits no request of the run no longer keeps an OpenCode request open
+  past its deadline; and an OpenCode accept or answer that cannot be recorded is declined at once, as in Codex and
+  Claude, instead of waiting out the deadline. `pending` is absent, not empty, when no request is open, in every
+  adapter.
 
 ### Fixed
 
