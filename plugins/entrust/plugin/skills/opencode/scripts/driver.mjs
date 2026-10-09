@@ -15,7 +15,7 @@ import { recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, read
 import { startLocalServer } from "./local-server.mjs";
 import { deadlineMs, mailboxProblem, openMailbox } from "../../orchestrate/scripts/mailbox.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
-import { git, guardedTarget, makeWorktree, passwdHome, rightsScope, scopeWithin, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { git, guardedTarget, makeWorktree, passwdHome, rightsScope, scopeWithin, standingRules, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import {
   EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionsOf, canonical, within,
   commandEvidence, expectation, READ_TOOLS,
@@ -300,7 +300,12 @@ async function rejectTrackedRequest(ctx, q, settlement, counter) {
     ctx.requests.delete(q.id); ctx.unresolved = true;
     return true;
   }
-  const outcome = await respond(ctx, q.type, q.payload.id, permission ? "reject" : "decline", permission ? { reply: "reject" } : {}, q.payload.sessionID);
+  // A reject with a message is OpenCode's CorrectedError: the tool fails with that feedback and the turn goes on,
+  // so the agent can record the refusal and finish, as its standing rules say. One without a message is
+  // RejectedError, which ends the turn with no answer (1.18.34, `session/processor.ts`); only Stop sends that. A
+  // question's reject takes no message, and a sibling the server rejects with this one gets none either.
+  const told = `${settlement.why ?? "declined"}. Do not try to get around it: record it and what it blocked, finish what you can, and say what remains.`;
+  const outcome = await respond(ctx, q.type, q.payload.id, permission ? "reject" : "decline", permission ? { reply: "reject", message: told } : {}, q.payload.sessionID);
   for (const member of group) {
     const own = member === q;
     settleRequestFile(ctx, member, { ...(own ? settlement : {
@@ -546,7 +551,21 @@ async function awaitTurn(ctx, inputID) {
   }
 }
 
-function promptText(task, schema, brief) {
+// The shared standing rules (orchestrate/scripts/drivers.mjs) in OpenCode's terms: a session's rules allow
+// reads and the edits inside the roots, and every other call, a shell command or a fetch among them, asks.
+function runRules(ctx) {
+  const roots = ctx.roots ?? [];
+  return standingRules({
+    rights: ctx.scope?.kind === "read" || !roots.length
+      ? "You may read and search files; your edit and write tools are refused, and every shell command needs approval."
+      : `Edits inside ${roots.join(", ")} need no approval; every shell command, and an edit anywhere else, needs one.`,
+    network: "A fetch needs approval too.",
+    mailbox: Boolean(ctx.box),
+    ask: "the call itself waits for that decision.",
+  });
+}
+
+function promptText(task, schema, brief, rules = null) {
   const instruction = [
     "",
     "---",
@@ -555,7 +574,7 @@ function promptText(task, schema, brief) {
     "Put the whole answer in the schema's fields; do not wrap the object in prose or a code fence.",
     ...(brief ? ["Keep the text fields brief."] : []),
   ].join("\n");
-  return `${task}${instruction}`;
+  return `${rules ? `${rules}\n\n` : ""}${task}${instruction}`;
 }
 
 async function postPrompt(ctx, messageID, text) {
@@ -980,7 +999,7 @@ async function execute(opts, parsed) {
 
   ctx.rootInputID = id("msg");
   ctx.invocationInputs.add(ctx.rootInputID);
-  const inputText = promptText(parsed.task, parsed.outputSchema, parsed.brief);
+  const inputText = promptText(parsed.task, parsed.outputSchema, parsed.brief, runRules(ctx));
   const admitted = await postAndReconcile(ctx, ctx.rootInputID, inputText);
   if (ctx.abortRequested) return cutExit(ctx, "the run was cancelled during admission");
   if (!admitted.admitted) {

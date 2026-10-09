@@ -3,8 +3,9 @@
 //
 //   E1  the permission rules a session reports, against the ones the driver sent: no model call. If they come back
 //       other than sent, every OpenCode run since #74 exits 4, and the driver's comparison has to change.
-//   E2  an edit asked of a read session, through the driver: one short model turn. Does V1's rule set stop it, and
-//       does the run pass the driver's own rule read-back?
+//   E2  an edit asked of a read session, through the driver: one short model turn. Does V1's rule set stop it, does
+//       the run pass the driver's own rule read-back, and, with the standing rules the driver now gives, does the
+//       agent stop at the refusal instead of trying a shell write?
 //   F   bash allow patterns for a read-only set (`git diff*`, `rg *`): one short model turn. Which commands run
 //       unasked, a redirect and a chained command included? Every permission request is rejected at once.
 //

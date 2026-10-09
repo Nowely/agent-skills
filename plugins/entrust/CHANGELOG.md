@@ -7,6 +7,15 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- **Every external agent is told its rights, how to ask for more, and what to do with a refusal.** Only Codex agents
+  had standing rules, and none of them said how to ask: an OpenCode or Claude agent was given its task alone, and
+  a Codex agent under `NETWORK: no` whose fetch failed asked nobody, since Codex raises a request for a network
+  failure only when the agent asks for escalated permissions (measured on the owner's machine). The three drivers
+  now give one set of rules (`drivers.mjs` `standingRules`): what the rights let the agent do, that anything else
+  is asked of the coordinator and how (a Codex agent reruns the refused command with escalated permissions; an
+  OpenCode or Claude call waits for the decision), and that a refused or declined action is recorded with what
+  it blocked, never worked around. A run with no mailbox is told that nothing more can be granted. A live Claude
+  read agent asked to write a file made one request, was declined, and answered `blocked` naming what it needed.
 - **Under a plan, `--new` takes the adapter from the row.** A coordinator named the adapter twice, in the row and by
   choosing that adapter's `agent-run.mjs`, and a wrong entry script was refused. Now any entry script, or
   orchestrate's own launcher, makes a planned agent with its row's adapter; `--adapter` is needed only without a
@@ -91,9 +100,19 @@ forensics remain in the repository references and release notes.
   Codex or OpenCode subagent that relays a run, linked three adapter pages for it; it now links "What each
   adapter adds" under Decide a request, which says what an accept runs and what is never offered for Codex,
   OpenCode and Claude. The adapter pages keep only their mechanics.
+- **The pages say what the owner's machine measured.** Under `NETWORK: no` a Codex fetch fails inside the sandbox,
+  and the agent asks for one the task needs (the Codex field table and the shared page). OpenCode keeps a session's rules as sent, and its bash rules let a redirect through under an allowed
+  prefix (`git diff > file` under `git diff*`), which is why the adapter allows no shell command unasked
+  (`opencode/references/parity.md`).
 
 ### Fixed
 
+- **A refused permission no longer ends an OpenCode agent's turn.** OpenCode ends the turn when a permission is
+  rejected with no message, and reports a rejection with one to the model as feedback while the turn goes on
+  (v1.18.34, `session/processor.ts`). The driver rejected with no message, so an agent whose request was declined,
+  or refused for want of a mailbox, stopped before it answered: on the owner's machine a read agent asked to write
+  exited 13 with no answer. The driver now rejects with the reason and what to do with it; a Stop still ends the
+  turn.
 - **A relay with no `SubagentHandback` tool writes the status lines as its final message.** A subagent of `claude
   -p` (2.1.295) has no such tool, and the relay, told to call it, wrapped the lines in prose about the missing
   tool, in all seven runs of the step-5 measurement. Step 3 of `agents/proxy.md` and of the shared page's block

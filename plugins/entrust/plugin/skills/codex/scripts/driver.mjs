@@ -24,7 +24,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createAgentTemp, agentTempAncestor, stateDirectory, TEMP_OWNER } from "../../orchestrate/scripts/temp-dir.mjs";
-import { EXIT, canonical, insideByInode, parseRights, planWritesToRights, resolveModel, resolveRights, within, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, canonical, insideByInode, parseRights, planWritesToRights, resolveModel, resolveRights, standingRules, within, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import { DEADLINE_MS, deadlineMs, mailboxProblem, openMailbox, requestId } from "../../orchestrate/scripts/mailbox.mjs";
 import { shortName } from "./launch.mjs";
 
@@ -3497,8 +3497,19 @@ function developerInstructions() {
   // of the same clock, and a number the model plans against must not include time already spent. Read
   // only by the branch below that has a budget to report.
   const budgetLeftS = Math.max(1, Math.round((startedAtMs + opts.timeout * 1000 - Date.now()) / 1000));
+  const writable = [canonPath(process.env.TMPDIR), ...(opts.level === "write" ? [cwd, ...roots] : [])].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
   return [
-    "You are being driven by a coordinating agent, unattended. Nobody will answer a question.",
+    // The shared rules: rights, egress, how to ask and what to do with a refusal. A command the sandbox refuses
+    // is asked for by running it again with escalated permissions, which reaches the mailbox as a request; a
+    // network failure is not one the server recognises as a sandbox refusal, so the agent is told to ask.
+    standingRules({
+      rights: `Your writable roots are: ${writable.join(", ")}; /tmp is not one. Put generated files under a granted root and name their paths.`,
+      network: opts.network
+        ? "You have network access: use it for what is not in this checkout, keep to the hosts this task names, and cite what you fetched."
+        : "You have no network access: a command that needs it fails, for instance with \"Could not resolve host\"; cite files you actually read.",
+      mailbox: approvalDir !== null,
+      ask: "run the refused command again requesting escalated permissions, with a one-line justification naming what it needs and why.",
+    }),
     // Advisory: the model has no clock unless it runs `date`. It costs one sentence and it is the only
     // thing that makes the wall clock something the turn can plan against rather than be surprised by.
     // Without a wall clock the sentence has to say so: told "you have about N seconds" when nothing is
@@ -3516,10 +3527,6 @@ function developerInstructions() {
     opts.webSearch
       ? "Prefer the local shell and filesystem; use web search only for what is not in this checkout, and cite the source."
       : "Do not use web search.",
-    opts.network
-      ? "You have network access: use it for what is not in this checkout, keep to the hosts this task names, and cite what you fetched."
-      : "You have no network access; cite files you actually read.",
-    `Your writable roots are: ${[canonPath(process.env.TMPDIR), ...(opts.level === "write" ? [cwd, ...roots] : [])].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ")}; /tmp is not one. Put generated files under a granted root and name their paths.`,
     "If a task says a daemon, socket, or mounted checkout is unavailable, use its staged inputs and named alternative commands; record an unavailable command's exact diagnostic instead of guessing.",
     "If a command cannot run, record it in one line — the command, whether it started, its exit status if there was one, and the exact diagnostic — then continue. Write \"unknown\" for what you could not observe rather than inferring it.",
     "Never report a test as passing unless you ran it and saw the count in this turn.",

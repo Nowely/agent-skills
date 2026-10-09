@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
-import { EXIT, canonical, flagValue, makeWorktree, passwdHome, resolveModel, resolveRights, rightsScope, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
+import { EXIT, canonical, flagValue, makeWorktree, passwdHome, resolveModel, resolveRights, rightsScope, standingRules, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import { mailboxProblem } from "../../orchestrate/scripts/mailbox.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { TOOL } from "./approvals.mjs";
@@ -212,12 +212,26 @@ export function mailboxRules(stateDir, box) {
 }
 
 // The flags of one run.
-export function claudeArgs(parsed, { kind, stateDir, box, sessionId, mcpConfig }) {
+// The shared standing rules (orchestrate/scripts/drivers.mjs) in Claude Code's terms: a read run has no edit
+// tools and runs the read-only commands unasked; a write run edits its directory unasked; every other call asks.
+export function runRules({ kind, cwd, mailbox }) {
+  return standingRules({
+    rights: kind === "read"
+      ? `You may read files and run read-only commands in ${cwd}; you have no edit tools, and any other command needs approval.`
+      : `Edits inside ${cwd} need no approval; an edit anywhere else, and a command outside the read-only set, needs one.`,
+    network: "You have no web tools; a command that reaches the network needs approval.",
+    mailbox,
+    ask: "the call itself waits for that decision.",
+  });
+}
+
+export function claudeArgs(parsed, { kind, stateDir, box, sessionId, mcpConfig, cwd = process.cwd() }) {
   const deny = mailboxRules(stateDir, box);
   const args = ["-p", "--output-format", "stream-json", "--verbose", "--json-schema", parsed.schemaText,
     "--permission-mode", kind === "read" ? "manual" : "acceptEdits",
     "--tools", (kind === "read" ? READ_TOOLS : WRITE_TOOLS).join(","),
-    ...(deny.length ? ["--disallowedTools", ...deny] : [])];
+    ...(deny.length ? ["--disallowedTools", ...deny] : []),
+    "--append-system-prompt", runRules({ kind, cwd, mailbox: Boolean(mcpConfig) })];
   if (parsed.model) args.push("--model", parsed.model);
   if (parsed.effort) args.push("--effort", parsed.effort);
   if (parsed.resume) args.push("--resume", parsed.resume.prior.sessionID, "--fork-session");
@@ -352,7 +366,7 @@ async function run(o, text) {
           ENTRUST_RUN_STATE_DIR: stateDir, ENTRUST_RUN_PROTECTED: JSON.stringify(PROTECTED) } } } }));
     }
 
-    const args = claudeArgs(parsed, { kind: scope.kind, stateDir, box, sessionId: ctx.sessionId, mcpConfig });
+    const args = claudeArgs(parsed, { kind: scope.kind, stateDir, box, sessionId: ctx.sessionId, mcpConfig, cwd: scope.cwd });
     ctx.transcriptPath = `${base}.transcript.jsonl`;
     const transcript = fs.openSync(ctx.transcriptPath, "wx", 0o600);
     const child = ctx.child = spawn("claude", args, { cwd: scope.cwd, env: childEnv(process.env), stdio: ["pipe", "pipe", "inherit"] });

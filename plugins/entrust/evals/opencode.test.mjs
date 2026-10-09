@@ -389,6 +389,22 @@ test("an edit outside the roots is offered with its whole request and runs once 
     assert.equal(q.settled.by, "driver"); assert.match(q.settled.why, /inside the state directory/);
   } finally { await g.close(); }
 });
+test("a refused permission is rejected with a message, so the turn goes on and answers; a Stop's reject carries none", async () => {
+  const s = await fakeOpenCode("permission");
+  try {
+    const r = await driverRun(s);
+    const reject = s.mutations.find((m) => m.body?.reply === "reject");
+    assert.ok(reject, JSON.stringify(s.mutations));
+    assert.match(reject.body.message ?? "", /^no approval directory: unattended run\. Do not try to get around it: record it/, r.err);
+  } finally { await s.close(); }
+  const c = await fakeOpenCode("permission");
+  try {
+    await driverRun(c, { cancel: true, cancelWhenPending: true, approval: "hold" });
+    const stopped = c.mutations.filter((m) => m.body?.reply === "reject");
+    assert.ok(stopped.length >= 1, JSON.stringify(c.mutations));
+    assert.equal(stopped.some((m) => "message" in m.body), false, JSON.stringify(stopped));
+  } finally { await c.close(); }
+});
 test("an accept the mailbox cannot record is never answered once", async () => {
   const s = await fakeOpenCode("permission");
   try {
@@ -406,6 +422,21 @@ test("a stale decision file does not hold a request past its deadline", async ()
     assert.equal(q.settled?.decision, "expired", r.err); assert.equal(q.settled.by, "driver");
     assert.equal(s.mutations.some((m) => m.body?.reply === "once"), false, JSON.stringify(s.mutations));
     assert.equal(fs.existsSync(path.join(r.box, "pending")), false);
+  } finally { await s.close(); }
+});
+test("every prompt starts with the run's rules: its rights, that the rest needs approval, and not to work around a refusal", async () => {
+  const s = await fakeOpenCode("normal");
+  try {
+    const bare = await driverRun(s, { rights: `read ${cwd}` }); assert.equal(bare.code, 0, bare.err);
+    const first = s.calls.filter((c) => c.path.endsWith("prompt_async")).at(-1).body.parts[0].text;
+    assert.match(first, /^You run for a coordinating agent, unattended/);
+    assert.match(first, /your edit and write tools are refused, and every shell command needs approval/);
+    assert.match(first, /Nothing beyond your rights can be granted in this run/);
+    assert.match(first, /do not try to get around it with another tool or command/);
+    const boxed = await driverRun(s, { rights: `write ${cwd}`, approval: "hold" }); assert.equal(boxed.code, 0, boxed.err);
+    const second = s.calls.filter((c) => c.path.endsWith("prompt_async")).at(-1).body.parts[0].text;
+    assert.match(second, /every shell command, and an edit anywhere else, needs one/);
+    assert.match(second, /asked of the coordinator, who approves or declines it: the call itself waits for that decision/);
   } finally { await s.close(); }
 });
 test("a session whose reported rules differ from the ones sent is never prompted, exit 4; one reporting none runs and says so", async () => {

@@ -166,6 +166,22 @@ export function guardedTarget(target, { stateDir, protectedDirs = [] }) {
   return null;
 }
 
+// The standing rules every external agent is given beside its task, so a wall is one it knows about: what its
+// rights let it do (`rights`, and `network`, each CLI's own sentence), that what they do not cover is asked of the
+// coordinator (`ask` says how, in that CLI) or, with no mailbox, refused, and that a refusal is recorded, not
+// worked around. One string; Codex puts it on the thread, OpenCode before the task, Claude in its system prompt.
+export function standingRules({ rights, network, mailbox, ask }) {
+  return [
+    "You run for a coordinating agent, unattended: nobody will answer a question.",
+    rights,
+    network,
+    mailbox
+      ? `An action your rights do not cover is asked of the coordinator, who approves or declines it: ${ask} Ask only for what the task needs, one action at a time, and say why.`
+      : "Nothing beyond your rights can be granted in this run: an action they do not cover is refused.",
+    "If an action is refused or declined, do not try to get around it with another tool or command: record the action, the refusal and what it blocked, finish what you can, and say what remains.",
+  ].filter(Boolean).join(" ");
+}
+
 // The passwd home, which $HOME cannot move; $HOME's own value for a uid with no passwd entry.
 export function passwdHome() {
   try { return os.userInfo().homedir; } catch { return os.homedir(); }

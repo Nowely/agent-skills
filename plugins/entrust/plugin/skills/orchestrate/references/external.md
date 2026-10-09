@@ -41,6 +41,13 @@ A yes-or-no line takes `yes`, `true` or `1`, or `no`, `false` or `0`. After the 
 Write one deliverable per agent. Write the task in the user's language. Choose the smallest `RIGHTS` that lets
 the agent finish and check the work, and agree any write right with the user before launching.
 
+The driver gives every agent standing rules beside the task, so the prompt need not repeat them: what its rights
+let it do, that anything else is asked of you (a Codex agent asks by running the refused command again with
+escalated permissions, network included; an OpenCode or Claude agent's call itself waits for your decision),
+and that a refused or declined action is recorded with what it blocked, never worked around. An agent run with
+no mailbox is told that nothing beyond its rights can be granted. A blocked agent answers `status: blocked`
+and says what it needs: decide its request (step 5), or continue it with wider rights (step 6).
+
 ## 2. Make the agent: `--new`
 
 Choose the report path, `<REPORT>`:
@@ -254,7 +261,8 @@ Silence and the wall clock stand still while a request waits for you. A cut is e
   the `diff` inline and the `untracked` files.
 - `EXPECT:`, a pattern a successful command's output must match, exists for Codex and OpenCode.
 - Egress is on by default: a Codex agent's commands reach the network unless
-  `NETWORK: no`, and it searches the web through its provider only with a `WEB_SEARCH:` line; an OpenCode agent
+  `NETWORK: no`, under which a fetch fails and the agent asks you for one the task needs, and it searches the web through its provider
+  only with a `WEB_SEARCH:` line; an OpenCode agent
   asks before every command and fetch; a Claude agent has no web tools, and a command of its that reaches the
   network asks unless the user's allow rules cover it. A plan row sets neither: settle a `NETWORK: no` or a
   `WEB_SEARCH:` line with the user, and never drop one the user settled.
