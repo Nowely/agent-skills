@@ -25,6 +25,13 @@ forensics remain in the repository references and release notes.
   call page tells the coordinator to brief an OpenCode or Claude read agent in reads and searches, and to put an
   OpenCode read agent's inputs inside its directory, since for one file outside it the agent asked for the whole
   directory. Both drivers now tell a read agent that its read, grep and glob tools need no approval.
+- **Four rules a coordinator had to guess are on the pages.** Read against one task on two hosts, the pages left
+  these to what a Claude coordinator already knew or a Codex one did not: whether a subagent can launch agents
+  (the Claude adapter said it can; a cloud session's subagent had no Agent tool), whether a pre-approved team lifts
+  the usage stop (a Codex coordinator read it so and ran past three times the pilot), which text the completeness
+  critic must have read (in both hosts a shorter message went out than the one it read), and whose `TMPDIR` an
+  external agent's checks write to (orchestrate promised each agent its own; only the Codex driver makes one).
+  Each now says what holds.
 
 ## 0.28.0 — 2026-10-09
 

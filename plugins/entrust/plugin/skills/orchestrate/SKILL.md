@@ -43,7 +43,8 @@ Start one temporary context with `node "<skill-dir>/scripts/temp-dir.mjs" run`; 
 Pass that JSON as `ENTRUST_TEMP_CONTEXT` on check and worker commands so they share the initiating
 project and run even when their working directory changes. Without that context, separate commands
 create separate runs. External drivers and swarms establish and forward the context themselves.
-An external agent scopes child checks to its own `TMPDIR`, so they cannot write into another agent's files.
+A Codex agent's checks write under a `TMPDIR` its driver makes for that run alone; an OpenCode or Claude agent
+inherits yours, so give it its own temporary directory when its checks write.
 
 ## The plan
 

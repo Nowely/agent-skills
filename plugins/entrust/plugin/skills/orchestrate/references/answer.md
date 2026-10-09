@@ -19,3 +19,6 @@ One fresh strong-row reader, named in the plan, reads the user's request, the fi
 5. Count the reads of one answer or publication across its drafts, voided ones included. After the third, or after two that repeat the same gap, take the critic's copy, name its remaining gaps as open in the answer (or in a publication's own open items), lint it and send it without another read. These reads are not the fix rounds under Verification.
 
 The answer carries the critic's verdict. A `not done` verdict means you fix the answer or name the gap in it.
+The answer the user receives is the copy the critic read: a shorter message sent instead, such as a summary with
+a link to the copy, quotes it and restates nothing, or it is a new draft for steps 1 to 4. In two runs on
+2026-10-09 the critic read a draft and a different, shorter text went out unread.

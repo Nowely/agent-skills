@@ -30,7 +30,8 @@ For a role/model pairing without comparable evidence, define the acceptance rule
 work. Compare the same inputs with a stronger reference; check omissions, incorrect results and usefulness.
 Expand when the rule passes. Estimate batches from comparable runs, including a rerun margin. When
 observable usage exceeds three times the pilot's median per agent, pause that batch and review its
-remaining scope with the user.
+remaining scope with the user. An approval given before the pause, a pre-approved team included, does not lift
+it unless it names this limit.
 
 ## Environment and worktrees
 
