@@ -753,7 +753,8 @@ function decideRequest(dir, id, decision, why) {
       const body = said.at(-1) === 0x0a ? said.subarray(0, -1) : said;
       let at = 0;
       while (at < body.length && at < want.length && body[at] === want[at]) at++;
-      refuse(`the restated command differs from the request's: ${body.length} bytes against ${want.length}, the first difference at byte ${at + 1}; copy the lines between COMMAND<<TOKEN and COMMAND>>TOKEN as printed, or print --pending and copy from that; nothing was published`);
+      const frame = typed ? "REQUEST_BODY" : "COMMAND";
+      refuse(`the restated ${typed ? "request body" : "command"} differs from the request's: ${body.length} bytes against ${want.length}, the first difference at byte ${at + 1}; copy the lines between ${frame}<<TOKEN and ${frame}>>TOKEN as printed, or print --pending and copy from that; nothing was published`);
     }
   }
   const target = path.join(box, `${id}.decision.json`);

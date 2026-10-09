@@ -216,7 +216,10 @@ test("permission handback contains the full immutable native request", async () 
 });
 test("once approval requires exact body and is published only once", async () => {
   const m = mailbox(); const a = [...m.args, "--decide", m.id, "--accept"];
-  assert.equal((await invoke(a, m.q.payload.metadata.command)).code, 2);
+  const commandOnly = await invoke(a, m.q.payload.metadata.command);
+  assert.equal(commandOnly.code, 2);
+  // The refusal names the frame this request was printed in, which for a typed request is never COMMAND.
+  assert.match(commandOnly.out + commandOnly.err, /restated request body differs[^]*between REQUEST_BODY<<TOKEN and REQUEST_BODY>>TOKEN/);
   assert.equal((await invoke(a, m.q.presented + "\n")).code, 0);
   assert.equal((await invoke(a, m.q.presented)).code, 2);
   const decision = JSON.parse(fs.readFileSync(path.join(m.box, `${m.id}.decision.json`)));

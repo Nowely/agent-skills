@@ -32,6 +32,10 @@ forensics remain in the repository references and release notes.
   critic must have read (in both hosts a shorter message went out than the one it read), and whose `TMPDIR` an
   external agent's checks write to (orchestrate promised each agent its own; only the Codex driver makes one).
   Each now says what holds.
+- **A refused accept of an OpenCode or Claude request names the frame it was printed in.** `--decide --accept`
+  compared a typed request's body but told the caller to copy the lines between `COMMAND<<` and `COMMAND>>`,
+  which such a request does not print; on 2026-10-09 a proxy that restated an OpenCode permission's command
+  alone was sent looking for them twice. It now names `REQUEST_BODY<<` and `REQUEST_BODY>>` for a typed request.
 
 ## 0.28.0 — 2026-10-09
 
