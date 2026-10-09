@@ -58,7 +58,11 @@ export async function fakeOpenCode(mode = "normal") {
     ] });
     if (p === "/event") { res.writeHead(200, { "Content-Type": "text/event-stream" }); res.write('data: {"type":"server.connected"}\n\n'); return; }
     if (p === "/session" && req.method === "POST") {
-      const s = { id: `ses_owned_${++seq}`, directory: u.searchParams.get("directory"), permission: body.permission, messages: [], busy: false, children: [], time: { created: Date.now() } };
+      // `rules-dropped` keeps none of the rules it was sent and `rules-widened` allows every edit, as a server
+      // that did not apply them would report; `rules-silent` reports none at all.
+      const permission = mode === "rules-dropped" ? [] : mode === "rules-widened" ? [...body.permission, { permission: "edit", pattern: "*", action: "allow" }]
+        : mode === "rules-silent" ? undefined : body.permission;
+      const s = { id: `ses_owned_${++seq}`, directory: u.searchParams.get("directory"), permission, messages: [], busy: false, children: [], time: { created: Date.now() } };
       sessions.set(s.id, s); return json({ id: s.id, directory: s.directory, permission: s.permission, time: s.time });
     }
     if (p === "/session/status") {

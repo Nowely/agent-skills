@@ -408,6 +408,32 @@ test("a stale decision file does not hold a request past its deadline", async ()
     assert.equal(fs.existsSync(path.join(r.box, "pending")), false);
   } finally { await s.close(); }
 });
+test("a session whose reported rules differ from the ones sent is never prompted, exit 4; one reporting none runs and says so", async () => {
+  for (const mode of ["rules-dropped", "rules-widened"]) {
+    const s = await fakeOpenCode(mode);
+    try {
+      const r = await driverRun(s, { rights: `write ${cwd}` });
+      assert.equal(r.code, 4, `${mode}: ${r.err}`); assert.match(r.report.error, /holds permission rules other than the ones this run's write rights need/);
+      assert.equal(s.prompts, 0, mode);
+    } finally { await s.close(); }
+  }
+  const silent = await fakeOpenCode("rules-silent");
+  try {
+    const r = await driverRun(silent);
+    assert.equal(r.code, 0, r.err); assert.match(r.err, /reported no permission rules for session .*; their effect is unverified/);
+  } finally { await silent.close(); }
+});
+test("a resumed session whose rules changed since is refused before any input", async () => {
+  const s = await fakeOpenCode("normal");
+  try {
+    const first = await driverRun(s, { rights: `write ${cwd}` }); assert.equal(first.code, 0, first.err);
+    s.sessions.get(first.report.threadId).permission.push({ permission: "bash", pattern: "*", action: "allow" });
+    const prompts = s.prompts;
+    const again = await driverRun(s, { resume: first.path, beside: first.path, rights: `write ${cwd}` });
+    assert.equal(again.code, 4, again.err); assert.match(again.report.error, /holds permission rules other than/);
+    assert.equal(s.prompts, prompts);
+  } finally { await s.close(); }
+});
 test("a continuation keeps its rights: a write session resumed as read is refused, and one naming none stays write", async () => {
   const s = await fakeOpenCode("normal");
   try {

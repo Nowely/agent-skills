@@ -151,7 +151,7 @@ request and its outcome). The adapter's page lists the rest.
 | 1 | the model's turn failed | read `turnError` |
 | 2 | refused before a turn, or the CLI refused the request | read `error`; fix the prompt |
 | 3 | cut by the budget (step 8); the answer or partial is kept | continue once with `RESUME:` if work remains |
-| 4 | the CLI or its server failed | with a `turnStatus`, the report is complete: read it; without one, report it |
+| 4 | the CLI or its server failed, or reported rights other than the ones asked for | with a `turnStatus`, the report is complete: read it; without one, report it |
 | 5 | the agent observed nothing, or no command matched `EXPECT:` | do not retry the same prompt |
 | 6 | a request was declined or expired | read `escalations` |
 | 7 | the agent needed an answer it could not get (a question, or a request with no mailbox) | read `error` |

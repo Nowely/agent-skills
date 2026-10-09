@@ -75,6 +75,12 @@ forensics remain in the repository references and release notes.
   state directory, where the mailboxes are, or the CLI's own configuration (OpenCode's configuration and data,
   `~/.claude`) is declined at once and never offered; Claude's approval server now checks that too, where before
   only the mailboxes were denied.
+- **Each driver checks the rights its CLI reports, and stops a run under others (exit 4).** Codex already compared the
+  sandbox its server reports with the one asked for; that check is one table for both levels now. OpenCode now
+  reads back the permission rules a session holds, at creation and on a resume, and runs none whose rules differ
+  from the ones its rights need, wider or narrower, since those rules are all of OpenCode's enforcement; a server
+  that reports no rules is said on stderr. Claude stops a run whose `init` reports a permission mode or a built-in
+  tool wider than its rights (an edit, web or delegation tool a read agent was not given, or `bypassPermissions`).
 
 ### Fixed
 

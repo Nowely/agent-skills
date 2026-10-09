@@ -216,6 +216,19 @@ function writeRootError(parsed) {
   return writeRootProblem(root, { stateDir, protectedDirs: PROTECTED });
 }
 
+// The rules the server reports a session holds, against the ones this run's rights need. Those rules are all
+// the enforcement OpenCode has, and a server can drop them silently (the V2 pilot's create did), so a session
+// holding others, wider or narrower, is not run, a resumed one too. One the server reports no rules for is
+// said on stderr: their effect is then unverified.
+function rulesProblem(session, scope) {
+  if (!Array.isArray(session?.permission)) {
+    process.stderr.write(`entrust: the server reported no permission rules for session ${session?.id}; their effect is unverified\n`);
+    return null;
+  }
+  return JSON.stringify(session.permission) === JSON.stringify(sessionPermissions(scope)) ? null
+    : `session ${session.id} holds permission rules other than the ones this run's ${scope.kind} rights need; refusing to run under rules nobody asked for`;
+}
+
 // What the driver decides about an edit request before any coordinator sees it. Inside the roots the session
 // rules allow edits unasked. One outside them is offered (`outside`), the whole request the body the
 // coordinator restates, unless it cannot be placed or aims inside the state directory or a directory OpenCode
@@ -757,6 +770,7 @@ async function resolveResume(ctx) {
   if (isBusy(status, sessionID)) return { busy: true, sessionID };
   ctx.resume = true;
   ctx.sessionID = sessionID;
+  ctx.resumedSession = session;
   return { ok: true };
 }
 
@@ -916,6 +930,8 @@ async function execute(opts, parsed) {
     if (ctx.priorRights.kind !== ctx.scope.kind || roots(ctx.priorRights) !== roots(ctx.scope))
       return fail(ctx, `a continuation keeps its rights (${ctx.priorRights.kind}${ctx.priorRights.roots?.length ? ` ${ctx.priorRights.roots.join(" ")}` : ""}); name the same or leave RIGHTS out`, EXIT.USAGE);
   }
+  const resumedRules = ctx.resume ? rulesProblem(ctx.resumedSession, ctx.scope) : null;
+  if (resumedRules) return fail(ctx, resumedRules, EXIT.TRANSPORT);
 
   // Model: pinned by the plan, inherited by a resume, else the first recent model. No fallback.
   const model = await resolveModel(ctx);
@@ -931,6 +947,8 @@ async function execute(opts, parsed) {
     } catch (e) { return fail(ctx, `could not create an OpenCode session: ${e.message}`, EXIT.MODEL); }
     if (!session?.id) return fail(ctx, "the server returned no session id", EXIT.MODEL);
     ctx.sessionID = session.id;
+    const rules = rulesProblem(session, ctx.scope);
+    if (rules) return fail(ctx, rules, EXIT.TRANSPORT);
   }
   writeSessionRecord(ctx);
 
