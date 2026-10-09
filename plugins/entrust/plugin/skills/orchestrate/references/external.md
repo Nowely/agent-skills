@@ -239,8 +239,9 @@ Silence and the wall clock stand still while a request waits for you. A cut is e
 - The user's MCP servers: a Codex agent runs in an isolated Codex home and has none of them, and no prompt line
   opens them; a Claude agent has the user's, unless `SAFE_MODE: yes`; an OpenCode agent has its user's OpenCode
   configuration and asks before any tool but its file reads.
-- Write lock: a Codex write agent refuses a directory another Codex writer holds (exit 10); under a plan, give each
-  writer its own directory or worktree.
+- Writers on one tree: under a plan, `--plan` refuses two rows whose trees overlap and `--new` a live tree over
+  another row's, in every adapter, so give each writer its own directory or a worktree. Without a plan, only a
+  Codex write agent refuses a directory another Codex writer holds (exit 10).
 
 ## What the user reads
 

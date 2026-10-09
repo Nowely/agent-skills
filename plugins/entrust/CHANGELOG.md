@@ -81,6 +81,11 @@ forensics remain in the repository references and release notes.
   from the ones its rights need, wider or narrower, since those rules are all of OpenCode's enforcement; a server
   that reports no rules is said on stderr. Claude stops a run whose `init` reports a permission mode or a built-in
   tool wider than its rights (an edit, web or delegation tool a read agent was not given, or `bypassPermissions`).
+- **Two rows of a plan never write one tree, in every adapter.** `--plan` refuses rows whose `write` directories
+  overlap, compared by inode so a link or another spelling is the same directory, and two `live tree` rows; `--new`
+  refuses a `live tree` agent whose directory overlaps another row's. Only Codex writers kept off each other, by
+  their lock, and only when they shared a state directory; OpenCode and Claude writers did not at all (X5). Writers
+  in sequence on one tree are one row and its continuations. The Codex lock stays for runs with no plan.
 
 ### Fixed
 

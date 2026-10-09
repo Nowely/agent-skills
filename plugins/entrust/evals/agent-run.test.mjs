@@ -776,6 +776,47 @@ test("D6 --plan registers rows, --new refuses an unlisted id, and an explicit am
     return scope.code === 2 && scope.out.startsWith("ERROR=invalid writes") || `bad scope: exit ${scope.code}, ${JSON.stringify(scope.out)}`;
   });
 
+test("two rows of a plan never write one tree: --plan refuses overlapping write rows and two live trees, --new a live tree inside another row's",
+  "writers on one tree undo each other's edits, and nothing in either report shows it (X5); the plan is where the coordinator says who writes what, and every adapter launches through it",
+  async () => {
+    const runDir = runUnderState("overlap.");
+    const tree = tempDir("agent-run-tree."), inner = path.join(tree, "src");
+    fs.mkdirSync(inner);
+    const plan = (rows, amend = false) => {
+      const h = spawnNode([LAUNCHER, "--plan", ...(amend ? ["--amend"] : []), "--run-dir", runDir], { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 10000 });
+      h.child.stdin.end(rows);
+      return h.done;
+    };
+    const problems = [];
+    const nested = await plan(`A | sol | writer | write ${tree} | 1\nB | sol | writer | write ${inner} | 1\n`);
+    if (nested.code !== 2 || !nested.out.startsWith(`ERROR=A and B write overlapping trees, ${tree} and ${inner}`)) problems.push(`nested: exit ${nested.code}, ${nested.out}`);
+    // A link to the tree is the same tree.
+    const link = path.join(tempDir("agent-run-link."), "alias");
+    fs.symlinkSync(tree, link);
+    const aliased = await plan(`A | sol | writer | write ${tree} | 1\nB | sol | writer | write ${link} | 1\n`);
+    if (aliased.code !== 2 || !aliased.out.includes("write overlapping trees")) problems.push(`aliased: exit ${aliased.code}, ${aliased.out}`);
+    const twoLive = await plan("A | sol | writer | live tree | 1\nB | sol | fixer | live tree | 1\n");
+    if (twoLive.code !== 2 || !twoLive.out.startsWith("ERROR=A and B both write the tree --new runs in")) problems.push(`two live trees: exit ${twoLive.code}, ${twoLive.out}`);
+    if (fs.existsSync(path.join(runDir, "plan.txt"))) problems.push("a refused plan was registered");
+    const ok = await plan(`A | sol | writer | write ${inner} | 1\nB | sol | writer | live tree | 1\nC | sol | reviewer | nothing | 1\nD | sol | writer | worktree | 1\n`);
+    if (ok.code !== 0) problems.push(`disjoint rows: exit ${ok.code}, ${ok.out}`);
+    const amended = await plan(`E | sol | writer | write ${tree} | 1\n`, true);
+    if (amended.code !== 2 || !amended.out.includes("A and E write overlapping trees")) problems.push(`an amendment over a registered row: exit ${amended.code}, ${amended.out}`);
+    // B's live tree is the directory its --new runs in: the tree holding A's is refused, a disjoint one admitted.
+    const made = (cwd) => {
+      const h = spawnNode([LAUNCHER, "--new", "--report-file", path.join(runDir, "B", "report.json")],
+        { stdio: ["pipe", "pipe", "pipe"], killAfterMs: 20000, env: { ENTRUST_STATE_DIR: newState }, cwd });
+      h.child.stdin.end("TASK: irrelevant, the server is scripted\n");
+      return h.done;
+    };
+    const over = await made(tree);
+    if (over.code !== 2 || !over.out.startsWith(`ERROR=B would write ${fs.realpathSync(tree)}, which overlaps ${inner}, the tree A writes`)) problems.push(`a live tree over A's: exit ${over.code}, ${over.out}`);
+    if (fs.existsSync(path.join(runDir, "B", "agent", "prompt.txt"))) problems.push("a refused --new wrote a prompt");
+    const apart = await made(tempDir("agent-run-apart."));
+    if (apart.code !== 0) problems.push(`a disjoint live tree: exit ${apart.code}, ${apart.out}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
 test("the driver runs in the directory --new checked the prompt in, whichever directory calls --run",
   "a relay's shell need not stand where its coordinator's does, and a bare RIGHTS: read, a live tree or a nothing row resolves against the working directory",
   async () => {

@@ -79,6 +79,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { adapters } from "./adapters.mjs";
+import { insideByInode } from "./drivers.mjs";
 import { REQUEST_ID, decisionFits as fits } from "./mailbox.mjs";
 import { stateDirectory } from "./temp-dir.mjs";
 
@@ -149,9 +150,10 @@ orchestrate/references/external.md; this is each mode's contract.
       The adapter is native or an installed one (${[...ROW_ADAPTERS].filter((id) => id !== "native").join(", ") || "none"}), and the model one its
       adapter.json declares (${PLANNED.map((a) => a.plan.models?.join(", ") ?? `${a.id}: ${a.plan.modelRule ?? a.plan.model}`).join("; ") || "none declared"});
       five-column rows still work, the model naming its adapter. Writes: nothing, worktree, live tree,
-      or write <absolute dir>. An id starts with a letter, then letters, digits, _ or -, is unique ignoring
-      case and does not end in -<digits>; the role is any non-empty text; tokens a nonnegative integer or
-      unknown. --amend appends rows: show the amendment and wait for approval before launching them.
+      or write <absolute dir>; no two rows write one tree (dirs that overlap by inode, two live trees, and
+      at --new a live tree over another row's are refused). An id starts with a letter, then letters,
+      digits, _ or -, is unique ignoring case and does not end in -<digits>;
+      the role is any non-empty text; tokens a nonnegative integer or unknown. --amend appends rows: show the amendment and wait for approval before launching them.
       Prints PLAN= (or AMENDED=) and an AGENT= line per row added.
   node agent-run.mjs --new [--adapter ID] --report-file REPORT < prompt
       Checks the prompt with the adapter's driver --check-prompt-file and, on a pass, makes agent/
@@ -466,6 +468,25 @@ const planRows = (body) => {
   return rows;
 };
 
+// Two rows of one plan never write one tree: writers there would undo each other's edits, and nothing in a
+// report would show it (X5). A row's tree is the path a `write` row names, the directory --new runs in for a
+// `live tree` row, and none for `nothing` or a `worktree`, which gets one of its own. Compared by dev:ino where
+// the paths exist, else by their resolved spelling. Writers in sequence on one tree are one row and its
+// continuations.
+const treeOf = (writes, cwd = null) => (writes === "live tree" ? cwd : /^write[ \t]+(\S.*)$/.exec(writes)?.[1] ?? null);
+const holds = (outer, inner) => insideByInode(resolveLoose(inner), outer) || within(resolveLoose(inner), resolveLoose(outer));
+const overlap = (a, b) => holds(a, b) || holds(b, a);
+function overlappingRows(rows) {
+  const live = rows.filter((r) => r.writes === "live tree");
+  if (live.length > 1) return `${live[0].id} and ${live[1].id} both write the tree --new runs in; give one a worktree or a directory of its own`;
+  for (const [i, a] of rows.entries())
+    for (const b of rows.slice(i + 1)) {
+      const ta = treeOf(a.writes), tb = treeOf(b.writes);
+      if (ta && tb && overlap(ta, tb)) return `${a.id} and ${b.id} write overlapping trees, ${ta} and ${tb}; give one a worktree or a directory of its own`;
+    }
+  return null;
+}
+
 function registerPlan(runDir, amend) {
   if (!runDir || !path.isAbsolute(runDir)) planError("--run-dir must be absolute");
   const file = path.join(runDir, "plan.txt");
@@ -478,6 +499,8 @@ function registerPlan(runDir, amend) {
   try { body = fs.readFileSync(0, "utf8"); } catch (e) { planError(`could not read plan: ${e.message}`); }
   const rows = planRows(body);
   if (rows.some((r) => prior.some((p) => p.id.toLowerCase() === r.id.toLowerCase()))) planError("duplicate agent id in amendment");
+  const overlapping = overlappingRows([...prior, ...rows]);
+  if (overlapping) planError(overlapping);
   fs.mkdirSync(runDir, { recursive: true, mode: 0o700 });
   const serialized = rows.map((r) => (r.extended ? [r.id, r.adapter, r.model, r.role, r.writes, r.tokens] : [r.id, r.model, r.role, r.writes, r.tokens]).join(" | ")).join("\n");
   if (amend) fs.appendFileSync(file, `# amended ${new Date().toISOString()}\n${serialized}\n`);
@@ -557,6 +580,15 @@ function newAgent(report, dirOverride, requested) {
     if (adapter && matched.row.adapter !== adapter) planError(`${id} belongs to adapter ${matched.row.adapter}, not ${adapter}`);
     row = matched.row;
     adapter = row.adapter;
+    // A live tree is known only now: the directory this --new runs in, against every other row's tree and the
+    // directory each other live-tree agent was made in.
+    const tree = treeOf(row.writes, process.cwd());
+    for (const other of rows.filter((r) => r !== row)) {
+      const made = other.writes === "live tree" ? fs.readdirSync(planDir).filter((n) => planRowOf(n, [other], null))
+        .map((n) => readJsonFile(path.join(planDir, n, "agent", "launch.json"))?.cwd).filter(Boolean) : [];
+      const theirs = [treeOf(other.writes), ...made].filter(Boolean).find((t) => tree && overlap(tree, t));
+      if (theirs) planError(`${id} would write ${tree}, which overlaps ${theirs}, the tree ${other.id} writes; give one a worktree or a directory of its own`);
+    }
     if (!matched.ended)
       planError(`${id} continues ${matched.previous}, which has not ended; wait for it, or amend the plan and show the amendment`);
   }
