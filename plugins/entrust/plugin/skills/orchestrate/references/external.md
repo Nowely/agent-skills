@@ -130,7 +130,8 @@ Start one native subagent, an agent the host itself starts, with a fresh context
 the effort of the proxy row of its models page ([Codex](../../codex/references/models.md)); on another host, its
 smallest model. Name it as above and give it the block above, copied whole with the same three replacements, as
 its whole brief: no task, no rights and no other page, since it decides nothing. Wait for it; its final message
-is the agent's result.
+is the agent's result, and `--status` (the nine lines) or `--pending` (a waiting request) on the same report prints
+that result again when the message is not it.
 
 ## 4. Read the result
 
@@ -210,7 +211,8 @@ on that refusal, run `--pending` and copy from what it prints. When your own hos
 Decline with `--decide '<ID>' --decline --why "<reason>" --report-file "<REPORT>"`. Answer a question with
 `--decide '<ID>' --answer --report-file "<REPORT>"` and `{"answers":[["<choice>"]]}` on stdin, one list per
 question. Then start a fresh proxy with the same block (step 3); in [main proxy mode](main-proxy.md) the attached
-call goes on instead ([proxy.md](proxy.md)). A request nobody answers is declined after thirty minutes. A decline answers that one request; the run goes on.
+call goes on instead ([proxy.md](proxy.md)). A request nobody answers is declined after thirty minutes. A decline
+answers that one request; the run goes on.
 
 ### What each adapter adds
 
