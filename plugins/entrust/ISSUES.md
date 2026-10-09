@@ -4,14 +4,17 @@ Recorded per the repository rule: evidence at file:line, an evidence level (1: t
 independent reader of the code would say the same; 3: the behaviour was made to happen), and wording that
 can become an issue unchanged. An entry leaves when its fix lands and the changelog names it. Ids are
 shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
-pinned to a commit is that commit's address, with today's beside it.
+pinned to a commit is that commit's address, with today's beside it. A path that starts with a skill's name
+(`orchestrate/…`, `codex/…`) is under `plugins/entrust/plugin/skills/`, one that starts with `evals/` or
+`research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
+before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) carries its skill.
 
 ## E67. A command run after an approval, outside the sandbox, is not established to end when its agent is stopped
 
 **Evidence, level 3 for the sandboxed case (measured), level 1 for the escaped case (unmeasured).**
 
 - 2026-09-29, measured once: `/bin/zsh -c 'sleep 913 && echo done-913'` run inside the sandbox, in its own process
-  group; `SIGTERM` to the driver's pid; neither the shell nor `sleep` alive 10 s later. `driver.mjs:2676-2681`
+  group; `SIGTERM` to the driver's pid; neither the shell nor `sleep` alive 10 s later. `codex/scripts/driver.mjs:2676-2681`
   records it in the comment above `killGroupOf`/`killGroup`, and
   `plugins/entrust/plugin/skills/codex/references/environment-and-internals.md:251-252` says so: "A command the
   agent was running inside the sandbox ends with it (measured once, 2026-09-29)".
@@ -131,9 +134,9 @@ whatever its description says, is not on it, is not stopped from it and is not c
 `plugins/entrust/plugin/skills/swarm/SKILL.md:25` says the opposite of the same kind of task: "the swarm's agents are
 not on the agent map, the task is, and Stop on it … reaches every running agent". The swarm already runs Codex agents
 with no wrapper: `swarm.mjs:135-140` calls the launcher's `--new`, its plain mode, which waits for the run
-with no early return, and `--status`; the launcher passes SIGTERM, SIGINT and SIGHUP to the driver (`agent-run.mjs:395`, and
+with no early return, and `--status`; the launcher passes SIGTERM, SIGINT and SIGHUP to the driver (`codex/scripts/agent-run.mjs:395`, and
 `:720` until its early return). The ten-minute ceiling and the `RUNNING=` rerun come from the wrapper's own foreground Bash call
-(`agent-run.mjs:18-31`); a background task has no ceiling, and on 2026-09-29 one ran for 105 minutes. The wrapper
+(`codex/scripts/agent-run.mjs:18-31`); a background task has no ceiling, and on 2026-09-29 one ran for 105 minutes. The wrapper
 cannot move its call to the background, because a subagent ends with its turn: one that did returned at once and was
 counted as reported (`plugins/entrust/plugin/skills/codex/references/incidents.md:21`, "The unverified wrapper"). On 2026-09-29 the VS Code extension listed a
 running background Bash task under its description in its background task list. Whether that list is the agent map,
