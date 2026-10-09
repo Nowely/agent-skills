@@ -41,6 +41,13 @@ A yes-or-no line takes `yes`, `true` or `1`, or `no`, `false` or `0`. After the 
 Write one deliverable per agent. Write the task in the user's language. Choose the smallest `RIGHTS` that lets
 the agent finish and check the work, and agree any write right with the user before launching.
 
+The driver gives every agent standing rules beside the task, so the prompt need not repeat them: what its rights
+let it do, that anything else is asked of you (a Codex agent asks by running the refused command again with
+escalated permissions, network included; an OpenCode or Claude agent's call itself waits for your decision),
+and that a refused or declined action is recorded with what it blocked, never worked around. An agent run with
+no mailbox is told that nothing beyond its rights can be granted. A blocked agent answers `status: blocked`
+and says what it needs: decide its request (step 5), or continue it with wider rights (step 6).
+
 ## 2. Make the agent: `--new`
 
 Choose the report path, `<REPORT>`:

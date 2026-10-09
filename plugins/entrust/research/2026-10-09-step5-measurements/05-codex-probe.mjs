@@ -3,8 +3,9 @@
 // Codex driver. Two short runs, each with a mailbox in a fresh state directory; every request that reaches the
 // mailbox is declined at once, so nothing the agent asks for runs outside its sandbox.
 //
-//   G  a read agent with NETWORK: no runs one curl. Does the refused fetch come back as an approval request
-//      (decision 1's premise: whether egress could default off without a request on every fetch)?
+//   G  a read agent with NETWORK: no runs one curl. Does the refused fetch come back as an approval request? On
+//      main after #75 it did not (the agent was never told how to ask); with the standing rules the driver gives
+//      since, the agent should rerun it with escalated permissions, which reaches the mailbox as a request.
 //   H  a write agent creates one file in its $TMPDIR and one in its directory with its edit tool. Does the driver
 //      still auto-accept a file change inside the roots (`approvalsAutoAccepted`, the launcher's `auto=`), or does
 //      the server no longer ask (finding 7 of the Codex audit)? On macOS, the platform the auto-accept was made for.

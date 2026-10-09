@@ -186,6 +186,22 @@ test("a worktree's report is read through the git directory its repository recor
   assert.deepEqual(t.json.untracked, ["?? planted.txt"]);
 });
 
+test("every run is told its rights, how to ask for more and not to work around a refusal; a run with no mailbox is told nothing more can be granted", async () => {
+  const s = setup();
+  const read = await drive(s, `RIGHTS: read ${s.work}\nTASK: look around\n`);
+  const told = flagOf(lastCall(s.log).argv, "--append-system-prompt") ?? "";
+  assert.equal(read.code, 0, read.err);
+  assert.match(told, /you have no edit tools, and any other command needs approval/);
+  assert.match(told, /Nothing beyond your rights can be granted in this run/);
+  assert.match(told, /do not try to get around it with another tool or command/);
+  const box = path.join(s.state, "boxed", "approvals"); fs.mkdirSync(box, { recursive: true });
+  const write = await drive(s, `RIGHTS: write ${s.work}\nTASK: make\n`, { approvals: box });
+  const asked = flagOf(lastCall(s.log).argv, "--append-system-prompt") ?? "";
+  assert.equal(write.code, 0, write.err);
+  assert.match(asked, new RegExp(`Edits inside ${fs.realpathSync(s.work).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} need no approval`));
+  assert.match(asked, /asked of the coordinator, who approves or declines it: the call itself waits for that decision/);
+});
+
 test("an init reporting another mode or another set of tools than the rights asked for stops the run, exit 4", async () => {
   const s = setup();
   const mode = await drive(s, `RIGHTS: read ${s.work}\nTASK: judge\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ permissionMode: "bypassPermissions" }) } });

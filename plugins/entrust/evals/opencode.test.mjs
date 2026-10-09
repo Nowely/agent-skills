@@ -408,6 +408,21 @@ test("a stale decision file does not hold a request past its deadline", async ()
     assert.equal(fs.existsSync(path.join(r.box, "pending")), false);
   } finally { await s.close(); }
 });
+test("every prompt starts with the run's rules: its rights, that the rest needs approval, and not to work around a refusal", async () => {
+  const s = await fakeOpenCode("normal");
+  try {
+    const bare = await driverRun(s, { rights: `read ${cwd}` }); assert.equal(bare.code, 0, bare.err);
+    const first = s.calls.filter((c) => c.path.endsWith("prompt_async")).at(-1).body.parts[0].text;
+    assert.match(first, /^You run for a coordinating agent, unattended/);
+    assert.match(first, /your edit and write tools are refused, and every shell command needs approval/);
+    assert.match(first, /Nothing beyond your rights can be granted in this run/);
+    assert.match(first, /do not try to get around it with another tool or command/);
+    const boxed = await driverRun(s, { rights: `write ${cwd}`, approval: "hold" }); assert.equal(boxed.code, 0, boxed.err);
+    const second = s.calls.filter((c) => c.path.endsWith("prompt_async")).at(-1).body.parts[0].text;
+    assert.match(second, /every shell command, and an edit anywhere else, needs one/);
+    assert.match(second, /asked of the coordinator, who approves or declines it: the call itself waits for that decision/);
+  } finally { await s.close(); }
+});
 test("a session whose reported rules differ from the ones sent is never prompted, exit 4; one reporting none runs and says so", async () => {
   for (const mode of ["rules-dropped", "rules-widened"]) {
     const s = await fakeOpenCode(mode);

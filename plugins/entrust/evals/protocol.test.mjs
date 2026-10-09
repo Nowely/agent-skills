@@ -1160,6 +1160,21 @@ flow("below the root only existing plain directories and a regular or absent fil
     return problems.length === 0 || problems.join("; ");
   });
 
+flow("the thread's rules tell the agent how to ask for what its rights do not cover, network included, and not to work around a refusal; with no mailbox, that nothing more can be granted",
+  "an agent that hits a wall it was not told about fails its task silently or spends the turn working around it; one that knows how to ask lets the coordinator decide, and Codex raises a request for a network failure only if the agent asks for escalated permissions (measured: a curl under NETWORK: no failed and asked nobody)",
+  async () => {
+    const problems = [];
+    const a = armed("echo-instructions", { args: ["--no-network"] });
+    const boxed = String(parsed((await a.done).out)?.answer ?? "");
+    for (const s of ["requesting escalated permissions, with a one-line justification", "a command that needs it fails, for instance with \"Could not resolve host\"",
+                     "do not try to get around it with another tool or command"])
+      if (!boxed.includes(s)) problems.push(`with a mailbox, the rules lack ${JSON.stringify(s)}`);
+    const bare = String(parsed((await run({ scenario: "echo-instructions" })).out)?.answer ?? "");
+    if (!bare.includes("Nothing beyond your rights can be granted in this run")) problems.push(`with no mailbox: ${bare.slice(0, 300)}`);
+    if (bare.includes("escalated permissions")) problems.push("with no mailbox, the agent was told to ask for escalation nobody can grant");
+    return problems.length === 0 || problems.join("; ");
+  });
+
 flow("a pending marker that cannot be written settles the request at once as expired, declined, and the turn goes on",
   "a request nobody is woken for, with the idle guard paused, is a wait only the thirty-minute deadline ends; the failure is the answer, said in why and on stderr",
   async () => {

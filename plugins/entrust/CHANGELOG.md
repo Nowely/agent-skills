@@ -7,6 +7,15 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- **Every external agent is told its rights, how to ask for more, and what to do with a refusal.** Only Codex agents
+  had standing rules, and none of them said how to ask: an OpenCode or Claude agent was given its task alone, and
+  a Codex agent under `NETWORK: no` whose fetch failed asked nobody, since Codex raises a request for a network
+  failure only when the agent asks for escalated permissions (measured on the owner's machine). The three drivers
+  now give one set of rules (`drivers.mjs` `standingRules`): what the rights let the agent do, that anything else
+  is asked of the coordinator and how (a Codex agent reruns the refused command with escalated permissions; an
+  OpenCode or Claude call waits for the decision), and that a refused or declined action is recorded with what
+  it blocked, never worked around. A run with no mailbox is told that nothing more can be granted. A live Claude
+  read agent asked to write a file made one request, was declined, and answered `blocked` naming what it needed.
 - **Under a plan, `--new` takes the adapter from the row.** A coordinator named the adapter twice, in the row and by
   choosing that adapter's `agent-run.mjs`, and a wrong entry script was refused. Now any entry script, or
   orchestrate's own launcher, makes a planned agent with its row's adapter; `--adapter` is needed only without a

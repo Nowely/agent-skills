@@ -59,3 +59,17 @@ inode, so it grants nothing the sandbox does not, while a request the edit tool 
 project reached through a link, a path the task spells differently, a later Codex) would otherwise decline a
 write the agent was entitled to and fail its task. One run showing the original cause gone is not evidence that
 no other cause exists, and the owner's measure is that a task completes.
+
+## After the owner's review (same day)
+
+The owner's measure is that a task completes, and an agent that fails silently is no use. Two changes followed:
+
+- The auto-accept stays (section H).
+- Every driver now gives its agent standing rules: what its rights let it do, how to ask the coordinator for
+  anything else (a Codex agent by rerunning the refused command with escalated permissions; an OpenCode or Claude
+  call waits for the decision), and to record a refusal with what it blocked instead of working around it. A
+  live Claude read agent (Haiku) asked to write a file made one Bash request; declined, it answered `blocked`,
+  named the command and what it needed, and tried nothing else.
+
+G and E2 are worth running again on the branch that carries the rules: G to see whether the Codex agent now asks
+for its fetch, E2 to see whether the OpenCode agent now stops at the refused edit.
