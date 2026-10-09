@@ -107,6 +107,10 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- **No page offers a decline as a way to stop a run (E115).** The codex page and the launcher's `--help` said to stop
+  an agent by declining its waiting request and running `--run` again, though a decline answers that one request
+  and the turn goes on. The shared call page, which replaced both, says so: a decline answers one request, and Stop
+  is the proxy's Stop or a SIGTERM to the driver's pid.
 - **A refused permission no longer ends an OpenCode agent's turn.** OpenCode ends the turn when a permission is
   rejected with no message, and reports a rejection with one to the model as feedback while the turn goes on
   (v1.18.34, `session/processor.ts`). The driver rejected with no message, so an agent whose request was declined,

@@ -273,32 +273,6 @@ with exit 10. Whether the cause is timing, a limit the sandbox puts on signals o
 not known, so a suite run from a Codex agent cannot yet tell these two failures from real ones. Find the cause,
 then either make the two cases pass there or have the suite say that they cannot run under that sandbox.
 
-## E115. The codex page and the launcher's `--help` say a decline stops a run, and the driver only answers the request
-
-**Evidence, level 2 (code reading; no live decline was run to see whether the turn ends).**
-`plugins/entrust/plugin/skills/codex/SKILL.md:240-242`, in the stop bullet: "that pid is what reaches it, or, after a
-waiting result, `--decide '<ID>' --decline` and the same `--run`"; `orchestrate/scripts/agent-run.mjs:214-215` (`--help`, under `--run`): "After a waiting result no call holds the driver, so stop it
-with --decide --decline and the same --run, or kill -TERM the pid on its pid line in DIR/err.txt". A coordinator's
-decision reaches the server through `closeApproval` (`driver.mjs:3116-3135`), which settles the entry, records it in
-the mailbox and sends the server `{ decision: "decline" }` for that one request (`:3132`); nothing there cuts the
-turn. The driver cuts a turn only through `cutTurn`, called at `:2943` (idle silence, which does not fire while a
-request is open), `:3428` (the command budget), `:4571` (the wall clock) and `:4873` (a signal). Exit 6 is decided
-after the turn ends (`driver.mjs --help`, "Decided after the turn"), so the declined command does not run and the
-turn goes on for as long as the model continues it. `codex/references/approvals.md:33-35` already describes a decline
-that way: decline, then send the same message again, and "`--run` picks the run back up".
-
-**Check.** Launch an agent whose task needs one command outside its sandbox and more work after it, decline the
-request with `--decide '<ID>' --decline`, run the same `--run` again, and read the report: `turnStatus: completed`
-with exit 6 and commands after the declined one show the decline did not stop the turn; `driver.mjs:3116-3135` and
-the four `cutTurn` calls show why.
-
-**Issue text.** The codex page's stop instruction and the launcher's `--help` both offer "decline the waiting request
-and run `--run` again" as a way to stop an agent. In the driver a decline answers that one request and nothing more:
-the command is not run, and the turn goes on until the model ends it or a bound cuts it, with exit 6 decided at the
-end. A coordinator who follows the instruction
-to stop a runaway agent keeps it running. Stopping should be named as what the driver does stop on, its pid with
-`kill -TERM` or Stop on the wrapper, and a decline described as an answer to one request.
-
 ## E117. The bulk row's unit, derived count and pilot are written twice, on orchestrate's plan reference and on the swarm page
 
 **Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/plan.md:45-47` ("A bulk row") states
