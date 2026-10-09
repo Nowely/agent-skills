@@ -45,10 +45,8 @@ user's own allow rules cover it.
 Make, run, read, continue and stop it as the [shared call page](../../orchestrate/references/external.md) says;
 without a plan, `--new` takes `--adapter claude`. What Claude adds:
 
-- A Bash call that is only a command and its description comes back as a command request. Every other call, a
-  Bash call with a timeout or in the background included, comes back as `TYPE=claude.permission` with the whole
-  call between `REQUEST_BODY<<TOKEN` and `REQUEST_BODY>>TOKEN`; an accept restates that whole body. What runs is
-  the call as it was offered.
+- A request is a command or a whole tool call ([What each adapter adds](../../orchestrate/references/external.md#what-each-adapter-adds)):
+  a Bash call with a timeout or in the background is a tool call too, and an accept restates its whole body.
 - A run launched without a mailbox (a swarm) and a `SAFE_MODE` run deny whatever would ask, and exit 7 when they
   did.
 

@@ -3,18 +3,13 @@
 An OpenCode request is a permission or a question. The waiting result prints its type, server, session,
 invocation, deadline and complete JSON between `REQUEST_BODY<<TOKEN` and `REQUEST_BODY>>TOKEN`; these
 identifiers bind the decision to the request. Read it whole and decide it with the commands of the shared
-call page's [Decide a request](../../orchestrate/references/external.md#5-decide-a-request). What OpenCode
-adds:
-
-- A permission accept restates that JSON byte for byte and replies `once`; it never saves an `always`
-  rule. Grant only the displayed action within the approved task and scope.
-- An edit outside the worker's roots is offered with `CAUSE=outside`, its target in the JSON: accepting it
-  writes there once, outside the rights the prompt granted. One aimed inside `<state>`, OpenCode's
-  configuration or data directory, or with no exact target, is declined at once and never offered.
-- A question's answer is `{"answers":[["answer"]]}`, one array for each displayed question; its choices
-  and multiplicity are validated, and an answer grants no command or permission.
-- Publication is exclusive: stale identities, changed request contents, wrong decision types and late
-  answers are refused, and the driver checks the native request again before sending.
+call page's [Decide a request](../../orchestrate/references/external.md#5-decide-a-request); what an accept
+and an answer do is its [What each adapter adds](../../orchestrate/references/external.md#what-each-adapter-adds).
+This page holds the mechanics behind them. Grant only the displayed action within the approved task and scope.
+A question's choices and multiplicity are validated, and an answer grants no command or permission. An edit
+with no exact target, or one aimed inside OpenCode's configuration or data directory, is declined at once.
+Publication is exclusive: stale identities, changed request contents, wrong decision types and late answers
+are refused.
 
 Native permission rejection affects every pending permission in its session, including ordinary
 decline, automatic denial and expiry. The driver serializes decisions and requires an exact owned

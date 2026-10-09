@@ -5,14 +5,9 @@ waits for your decision instead of being declined at once. Read the request, acc
 shared call page's [Decide a request](../../orchestrate/references/external.md#5-decide-a-request) says. The
 mechanism — the mailbox, the request and decision files, the thirty-minute clock — is
 [Approval mailbox](environment-and-internals.md#approval-mailbox); the report's `escalations` fields are
-[Observability](environment-and-internals.md#observability). This page is what is particular to Codex.
-
-## What an accept runs
-
-An accepted command runs as the user, with no sandbox, as your own Bash does, so two hazards ride with every
-accept: a version-control query runs the repository's configured hooks, monitors and pagers, and a script runs
-the bytes at its path when it runs, not the bytes you read. A file change outside the agent's writable roots is
-never offered: it is declined at once and the run exits 6.
+[Observability](environment-and-internals.md#observability). What an accept runs, and what is never offered, is
+the shared page's [What each adapter adds](../../orchestrate/references/external.md#what-each-adapter-adds); this
+page is what to read after a run.
 
 ## After the run
 

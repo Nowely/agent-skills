@@ -195,6 +195,24 @@ Decline with `--decide '<ID>' --decline --why "<reason>" --report-file "<REPORT>
 question. Then run the same `--run` again: in Claude Code, send the proxy the same block again. A request nobody
 answers is declined after thirty minutes. A decline answers that one request; the run goes on.
 
+### What each adapter adds
+
+- Codex: a request is a command its sandbox would not run. An accept runs it as you with no sandbox: a
+  version-control query runs the repository's configured hooks, monitors and pagers, and a script runs the bytes
+  at its path when it runs, not the bytes you read. A file change outside the agent's writable roots is never
+  offered: it is declined at once and the run exits 6.
+- OpenCode: a request is a permission or a question, its native JSON whole as the body. An accept replies
+  `once`, never `always`. A decline, an expiry or an automatic denial rejects every permission pending in that
+  session, and their records say so. A question takes `--answer`, never `--accept`. An edit outside the worker's
+  roots comes with `CAUSE=outside`: accepting it writes there once, beyond the rights the prompt granted. The
+  driver reads the native request again before it answers, and an outcome it cannot establish stays unknown:
+  investigate before repeating the action.
+- Claude: a Bash call that is only a command and its description is a command request; every other call, an
+  edit outside the agent's directory included, comes as `TYPE=claude.permission` with the whole call as the body.
+  What runs is the call as it was offered.
+- Every adapter: an edit aimed inside `<state>` or the CLI's own configuration is declined at once, never
+  offered. An accept is permission, not proof the action ran: read the observed result in the report.
+
 ## 6. Continue an agent
 
 Write a new prompt with `RESUME: <its REPORT= path>` and run `--new` under a fresh report path: under a plan

@@ -86,6 +86,10 @@ forensics remain in the repository references and release notes.
   refuses a `live tree` agent whose directory overlaps another row's. Only Codex writers kept off each other, by
   their lock, and only when they shared a state directory; OpenCode and Claude writers did not at all (X5). Writers
   in sequence on one tree are one row and its continuations. The Codex lock stays for runs with no plan.
+- **What each adapter adds to a request is one section of the shared call page.** The operational proxy, the
+  Codex or OpenCode subagent that relays a run, linked three adapter pages for it; it now links "What each
+  adapter adds" under Decide a request, which says what an accept runs and what is never offered for Codex,
+  OpenCode and Claude. The adapter pages keep only their mechanics.
 
 ### Fixed
 
