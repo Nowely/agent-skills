@@ -1758,87 +1758,32 @@ function canonLoose(p) {
 }
 // Assert the effect the server reports at both levels; the expected grants differ, but neither level
 // may silently accept a different cwd, network setting or writable-root set.
+// What the server REPORTS is the only evidence the rights asked for took effect, so the sandbox thread/start
+// returns is compared, key by key, with what this level asked for, and any difference, wider or narrower,
+// stops the run rather than run it under a sandbox nobody reasoned about. Both levels are a workspaceWrite
+// sandbox with egress as asked and /tmp excluded, and both workspaces hold the cwd: elsewhere, everything the
+// turn writes lands where the caller did not choose. At write level the cwd is not in writableRoots
+// (workspaceWrite implies it, measured on the live binary), so those hold the --writable roots alone, and
+// $TMPDIR stays writable, which heredocs and test runners need. At read level the profile asked for must be
+// the one applied; its `network` table carries egress, which a typo would drop while the id still reads back
+// right, and the one writable root is the fresh $TMPDIR this run made (never the cwd).
 function assertSandbox(thread) {
-  return opts.level === "read" ? assertReadSandbox(thread) : assertWriteSandbox(thread);
-}
-
-// The one refusal, naming the level whose grant was not applied: what the server REPORTS is the only
-// evidence the rights asked for took effect, so a difference stops the run rather than narrowing it.
-const refuseSandbox = (level, why) => fail(EXIT.TRANSPORT,
-  `the ${level} sandbox is not what was asked for (${why}); refusing to continue rather than run under an unknown sandbox`);
-// The cwd is the primary grant and the one the caller reasoned about, so it is checked at BOTH levels:
-// it decides where a write agent writes and which repository a read agent reads. The writable-root sets
-// differ between the levels, which is why only these two checks are shared.
-function assertWorkspaceRoot(thread, refuse) {
-  const workspace = (thread.runtimeWorkspaceRoots ?? []).map(canonPath);
-  if (!workspace.includes(canonPath(cwd)))
-    refuse(`the workspace roots are ${JSON.stringify(thread.runtimeWorkspaceRoots ?? [])}, which do not include --cwd ${cwd}`);
-}
-// Egress is the other grant both levels carry, and each level asks for it through a different key — a
-// `network` table inside the read profile, a sandbox setting at write level — so the response is the
-// only place they can be checked the same way. A difference either way is a sandbox nobody asked for:
-// granted where the caller refused it, or withheld from a task written around having it.
-function assertEgress(sb, refuse) {
-  if (Boolean(sb.networkAccess) !== opts.network)
-    refuse(`networkAccess is ${Boolean(sb.networkAccess)}, and this agent was started with egress ${opts.network ? "granted" : "denied"}`);
-}
-
-// At write level the server reports the grant differently, measured against the live binary: the cwd is
-// NOT in writableRoots — it is implied by workspaceWrite and appears in runtimeWorkspaceRoots — so
-// writableRoots holds exactly the EXTRA roots from --writable and is empty without them. The
-// permission profile is null here, because sending `sandbox` at all suppresses it.
-function assertWriteSandbox(thread) {
-  const refuse = (why) => refuseSandbox("write", why);
-  const sb = thread.sandbox ?? null;
-  if (sb?.type !== "workspaceWrite") refuse(`sandbox type is ${JSON.stringify(sb?.type ?? null)}`);
-  assertEgress(sb, refuse);
-  // The two implicit temp grants, which setup() sends as -c keys and which writableRoots never shows.
-  // A NARROWER sandbox is refused as loudly as a wider one, exactly as the egress check above refuses
-  // both directions: an agent whose $TMPDIR is unwritable cannot run a heredoc or a test runner, and
-  // would report those failures as findings about the task.
-  if (sb.excludeSlashTmp !== true)
-    refuse("excludeSlashTmp is false: /tmp is writable, and this agent was granted --cwd, --writable and $TMPDIR only");
-  if (sb.excludeTmpdirEnvVar !== false)
-    refuse("excludeTmpdirEnvVar is true: $TMPDIR is not writable, and heredocs and test runners need it");
-  const want = [...roots].map(canonPath).sort();
-  const got = (sb.writableRoots ?? []).map(canonPath).sort();
-  if (want.length !== got.length || want.some((r, i) => r !== got[i]))
-    refuse(`writable roots are ${JSON.stringify(sb.writableRoots ?? [])}, expected ${JSON.stringify(roots)}`);
-  // If the server put a different directory there, everything the turn writes lands somewhere the
-  // caller did not choose.
-  assertWorkspaceRoot(thread, refuse);
-}
-
-function assertReadSandbox(thread) {
-  const refuse = (why) => refuseSandbox("read", why);
-  const applied = thread.activePermissionProfile?.id ?? null;
-  if (applied !== READ_PROFILE) refuse(`server reports profile ${JSON.stringify(applied)}`);
-  const sb = thread.sandbox ?? null;
-  if (sb?.type !== "workspaceWrite") refuse(`sandbox type is ${JSON.stringify(sb?.type ?? null)}, so the $TMPDIR grant did not apply`);
-  // The read level's egress is the profile's own `network` table, and a typo in that key drops it while
-  // the id still reads back correctly — the same silent failure the $TMPDIR grant has. The server says
-  // which way it went right here, in the object this guard already holds.
-  assertEgress(sb, refuse);
-  // /tmp is the one grant the explicit root list cannot reveal: with $TMPDIR outside /tmp, a response
-  // whose writableRoots hold exactly $TMPDIR still carries all of /tmp when this flag is false.
-  // excludeTmpdirEnvVar is deliberately NOT asserted here: false names the same directory the explicit
-  // root already names, and true is what the profile reports with TMPDIR unset — which the refusal
-  // below catches first, and by its own cause.
-  if (sb.excludeSlashTmp !== true)
-    refuse("excludeSlashTmp is false, so /tmp is writable beside the $TMPDIR this level grants");
-  // Check that setup() supplied TMPDIR before resolving it: path.resolve("") would substitute the cwd
-  // and misidentify the expected writable root.
+  const sb = thread.sandbox ?? {}, read = opts.level === "read";
+  const set = (list) => JSON.stringify((list ?? []).map(canonPath).sort());
   const tmp = process.env.TMPDIR;
-  if (!tmp) refuse("TMPDIR is unset, so the server grants no temp directory at all");
-  const want = canonPath(tmp);
-  if (!want) refuse(`TMPDIR is set to ${JSON.stringify(tmp)}, which does not resolve to a real directory`);
-  const got = (sb.writableRoots ?? []).map(canonPath);
-  // Expect exactly TMPDIR. It is a directory this run made fresh after --cwd was resolved, so it is
-  // never the cwd the server would subtract from writableRoots.
-  assertWorkspaceRoot(thread, refuse);
-  const ok = got.length === 1 && got[0] === want;
-  if (!ok)
-    refuse(`writable roots are ${JSON.stringify(sb.writableRoots ?? [])}, expected exactly [${JSON.stringify(want)}]`);
+  if (read && !tmp) fail(EXIT.TRANSPORT, "the read sandbox is not what was asked for (TMPDIR is unset, so the server grants no temp directory at all)");
+  const rows = [
+    ["sandbox type", sb.type ?? null, "workspaceWrite"],
+    ["networkAccess", Boolean(sb.networkAccess), opts.network],
+    ["excludeSlashTmp", sb.excludeSlashTmp, true],
+    ["workspace roots holding --cwd", (thread.runtimeWorkspaceRoots ?? []).map(canonPath).includes(canonPath(cwd)), true],
+    ["writable roots", set(sb.writableRoots), set(read ? [tmp] : [...roots])],
+    ...(read ? [["permission profile", thread.activePermissionProfile?.id ?? null, READ_PROFILE]]
+      : [["excludeTmpdirEnvVar", sb.excludeTmpdirEnvVar, false]]),
+  ];
+  const bad = rows.find(([, got, want]) => got !== want);
+  if (bad) fail(EXIT.TRANSPORT, `the ${opts.level} sandbox is not what was asked for (${bad[0]}: ${typeof bad[1] === "string" ? bad[1] : JSON.stringify(bad[1])}, `
+    + `expected ${typeof bad[2] === "string" ? bad[2] : JSON.stringify(bad[2])}); refusing to continue rather than run under an unknown sandbox`);
 }
 
 // Assigned by setup(), which runs inside main()'s try — a Bail thrown at module top level would be an
@@ -1980,7 +1925,7 @@ async function setup() {
     // Omitted entirely when the caller did not name one, so ~/.codex/config.toml decides.
     ...(opts.effort ? [["model_reasoning_effort", opts.effort]] : []),
     // Send write-level sandbox settings unconditionally, unlike the optional --effort above:
-    // the sandbox must depend only on the declared flags, which assertWriteSandbox checks against the response.
+    // the sandbox must depend only on the declared flags, which assertSandbox checks against the response.
     ...(opts.level === "write" ? [
       ["sandbox_workspace_write.network_access", String(opts.network)],
       ["sandbox_workspace_write.writable_roots", `[${roots.map((r) => JSON.stringify(r)).join(",")}]`],
@@ -1990,7 +1935,7 @@ async function setup() {
       // write all of /tmp, which no caller named. /tmp is excluded; $TMPDIR is kept, because heredocs,
       // mkdtemp and every test runner need a temp root and $TMPDIR is the run's own directory above.
       // Sent unconditionally, like the two keys above, and
-      // assertWriteSandbox refuses a response that differs either way.
+      // assertSandbox refuses a response that differs either way.
       ["sandbox_workspace_write.exclude_slash_tmp", "true"],
       ["sandbox_workspace_write.exclude_tmpdir_env_var", "false"]
     ] : [])
@@ -3353,7 +3298,7 @@ function writeReport(ev, codeOverride) {
     requestedModel: opts.requestedModel ?? null,
     level: opts.level, sandbox: effectiveSandbox, cwd,
     // Report requested roots separately from sandbox.writableRoots, which is the grant the server applied;
-    // assertWriteSandbox refuses any difference. `network` is the effective grant, not a flag someone
+    // assertSandbox refuses any difference. `network` is the effective grant, not a flag someone
     // passed: it is on unless the agent denied it, and sandbox.networkAccess is asserted to agree.
     writableRootsRequested: roots, network: opts.network,
     // The run's own $TMPDIR, made at either level for every run, so a path the answer names can still be
