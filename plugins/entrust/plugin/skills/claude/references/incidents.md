@@ -42,3 +42,12 @@ and `echo` asked for none. The same day in Codex, three OpenCode GLM read agents
 the shell asked 43 times, 37 of them for bash, though their standing rules said every shell command needs approval.
 One of them, given single files outside its directory to read, asked six times for the whole directory and was
 refused.
+
+## A proxy in the sandbox
+
+2026-10-10, Codex: a fresh Luna proxy, given the shared page's block alone, ran `--run` for one OpenCode GLM 5.3
+read agent. The driver's OpenCode server exited 0.47 s after it started, before it announced its address; the
+report held exit 4, no session, no model and no usage, and the driver did not yet keep the server's exit code or
+words. On 2026-10-09 in the same host, proxies briefed with the task and the operational proxy page ran their
+commands with escalated permissions, and every OpenCode server started. Whether the 2026-10-10 proxy asked for
+escalation was not read from its session.

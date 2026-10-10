@@ -133,6 +133,16 @@ its whole brief: no task, no rights and no other page, since it decides nothing.
 is the agent's result, and `--status` (the nine lines) or `--pending` (a waiting request) on the same report prints
 that result again when the message is not it.
 
+In Codex the command runs outside the sandbox: the driver starts the agent's CLI, which writes its own state under
+your home directory and reaches the model's provider, and the sandbox allows neither by default. A proxy given the
+block alone handed back an OpenCode server that had exited before its run began, where proxies that asked for
+escalated permissions started theirs ([measured](../../claude/references/incidents.md#a-proxy-in-the-sandbox)). So
+in Codex replace the block's step 1 with this line, `<DESCRIPTION>` replaced as before:
+
+    1. Run this command with your shell tool, in the foreground, with the longest timeout it allows, outside the sandbox: ask for escalated permissions with the justification "<DESCRIPTION>: an external agent the user approved". Write no text before it.
+
+An escalation the host declines comes back as the proxy's result, like any other: take it to the user.
+
 ## 4. Read the result
 
 `--run` ends with one of these:

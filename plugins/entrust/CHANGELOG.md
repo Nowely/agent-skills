@@ -36,6 +36,12 @@ forensics remain in the repository references and release notes.
   compared a typed request's body but told the caller to copy the lines between `COMMAND<<` and `COMMAND>>`,
   which such a request does not print; on 2026-10-09 a proxy that restated an OpenCode permission's command
   alone was sent looking for them twice. It now names `REQUEST_BODY<<` and `REQUEST_BODY>>` for a typed request.
+- **In Codex, a proxy runs the launcher outside the sandbox.** The proxy's block was written for Claude Code's Bash
+  tool and said nothing of a sandbox; the driver starts the agent's CLI, which writes its state under the home
+  directory and reaches its provider, and Codex's sandbox allows neither by default. On 2026-10-10 a Codex proxy
+  given the block alone handed back an OpenCode server that had exited before its run began, where the day before
+  proxies that asked for escalated permissions had started theirs. The shared call page now gives a Codex proxy a
+  step 1 that asks for them, with a justification naming the agent.
 - **An OpenCode server that ends before it serves says why.** The driver read the server's output only for its
   address and reported "exited before announcing its local URL" alone; on 2026-10-10 a Codex rerun of the
   orchestrate task stopped there half a second after the server started, and its report held no exit code and
