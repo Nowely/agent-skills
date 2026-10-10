@@ -40,9 +40,10 @@ and counts. An OpenCode or Claude read agent asks you for such a command: brief 
 as [external.md](references/external.md#1-write-the-prompt) says.
 
 Start one temporary context with `node "<skill-dir>/scripts/temp-dir.mjs" run`; it returns JSON.
-Pass that JSON as `ENTRUST_TEMP_CONTEXT` on check and worker commands so they share the initiating
-project and run even when their working directory changes. Without that context, separate commands
-create separate runs. External drivers and swarms establish and forward the context themselves.
+Pass that JSON as `ENTRUST_TEMP_CONTEXT` on your check commands and a native worker's so they share the
+initiating project and run even when their working directory changes. Without that context, separate commands
+create separate runs. External drivers and swarms establish and forward the context themselves, so the
+launcher's calls take none of it.
 A Codex agent's checks write under a `TMPDIR` its driver makes for that run alone; an OpenCode or Claude agent
 inherits yours, so give it its own temporary directory when its checks write.
 

@@ -59,6 +59,12 @@ forensics remain in the repository references and release notes.
   line, while their agent went on working, and the coordinator read the report and the driver's processes itself.
   A Codex proxy's step 2 now reads the command's session again with `write_stdin` until an exit code comes, and
   its step 4 is left out, since its final message is its hand-back.
+- **The proxy's command goes as written, with no variables before it.** Orchestrate told the coordinator to pass
+  its temporary context on "worker commands", and on 2026-10-10 a Codex coordinator put `TMPDIR`,
+  `ENTRUST_STATE_DIR` and `ENTRUST_TEMP_CONTEXT`, over 400 characters, before every proxy's `--run`; one brief
+  mistyped the launcher's path and its proxy was stopped. `--run` starts the driver in the working directory and
+  with the state directory `--new` recorded, which a new case in the launcher's suite checks from another directory
+  and another `TMPDIR`, and the pages now say the launcher's calls take none of it.
 - **An OpenCode server that ends before it serves says why.** The driver read the server's output only for its
   address and reported "exited before announcing its local URL" alone; on 2026-10-10 a Codex rerun of the
   orchestrate task stopped there half a second after the server started, and its report held no exit code and

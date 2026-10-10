@@ -93,7 +93,9 @@ The run needs a proxy: a small agent of the host that runs one command, `--run`,
 what it printed. The proxy never writes the prompt, never decides a request and never reads the result; that is
 your work. Start a fresh proxy for each `--run`: the first, the one after you decide a request (step 5), and the
 first of a continuation (step 6). A proxy sent a second command after its hand-back has answered from its earlier
-turn instead of running it ([measured](../../claude/references/incidents.md#a-resent-block)).
+turn instead of running it ([measured](../../claude/references/incidents.md#a-resent-block)). The command needs
+nothing of your environment: `--run` starts the driver in the working directory and with the state directory
+`--new` recorded, so put no variables before it.
 
 Its name, on every host, is `<Vendor> <Model> <id>: <the task in a few words>`: the external agent's vendor,
 model and id, never the proxy's own model, for example `Codex Sol R1: review the diff`.
