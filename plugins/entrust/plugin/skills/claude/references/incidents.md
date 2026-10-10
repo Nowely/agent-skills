@@ -41,7 +41,9 @@ loop or `awk` asked for 11 commands, all read-only; the one that only chained `c
 and `echo` asked for none. The same day in Codex, three OpenCode GLM read agents briefed to check with
 the shell asked 43 times, 37 of them for bash, though their standing rules said every shell command needs approval.
 One of them, given single files outside its directory to read, asked six times for the whole directory and was
-refused.
+refused. 2026-10-10, the same task in Codex after the pages briefed read agents in reads and searches: one OpenCode
+GLM 5.3 session over six runs made 111 tool calls, all `read`, `grep` and `glob`, and asked once, to read its git
+worktree's `HEAD` file in the main repository's `.git`.
 
 ## A proxy in the sandbox
 

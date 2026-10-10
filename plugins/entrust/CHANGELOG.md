@@ -24,7 +24,9 @@ forensics remain in the repository references and release notes.
   each question a stop for the coordinator. The script now goes to native workers and Codex agents; the shared
   call page tells the coordinator to brief an OpenCode or Claude read agent in reads and searches, and to put an
   OpenCode read agent's inputs inside its directory, since for one file outside it the agent asked for the whole
-  directory. Both drivers now tell a read agent that its read, grep and glob tools need no approval.
+  directory. Both drivers now tell a read agent that its read, grep and glob tools need no approval, and the
+  coordinator runs a check that needs a command before the launch and puts the result, the commit included, in
+  the task. On 2026-10-10 the same task asked once, from 111 calls of read, grep and glob and none of the shell.
 - **Four rules a coordinator had to guess are on the pages.** Read against one task on two hosts, the pages left
   these to what a Claude coordinator already knew or a Codex one did not: whether a subagent can launch agents
   (the Claude adapter said it can; a cloud session's subagent had no Agent tool), whether a pre-approved team lifts

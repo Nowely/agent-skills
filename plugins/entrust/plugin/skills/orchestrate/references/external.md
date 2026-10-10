@@ -46,8 +46,10 @@ read-only set, and each question stops the agent until you decide it: read agent
 asked 11 and 43 times in one read-only task each ([measured](../../claude/references/incidents.md#read-agents-and-the-shell)).
 So write such an agent's `TASK:` and `CHECK:` as reads and searches its file tools make unasked, and name no
 script or command for it to run; a check that needs a command is yours, or a Codex agent's, which runs commands
-inside its sandbox. Put an OpenCode read agent's inputs inside the directory its `RIGHTS:` names: for one file
-outside it, the agent asks for the whole directory.
+inside its sandbox. Run such a check before the launch and put its result in the task, the commit the agent
+reads included: an OpenCode read agent in a git worktree asked to read that worktree's `HEAD` file in the main
+repository's `.git`, outside its directory, and its run exited 6 on the decline. Put an OpenCode read agent's
+inputs inside the directory its `RIGHTS:` names: for one file outside it, the agent asks for the whole directory.
 
 The driver gives every agent standing rules beside the task, so the prompt need not repeat them: what its rights
 let it do, that anything else is asked of you (a Codex agent asks by running the refused command again with
