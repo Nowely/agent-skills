@@ -255,6 +255,8 @@ test("an edit outside the roots is offered whole; one into the state directory o
   call(3, "tools/call", { name: "decide", arguments: { tool_name: "Edit", input: { file_path: path.join(prot, "settings.json"), old_string: "a", new_string: "b" } } });
   call(4, "tools/call", { name: "decide", arguments: { tool_name: "Write", input: { file_path: path.join(elsewhere, "notes.txt"), content: "x" } } });
   await until(() => replies.some((m) => m.id === 3) && fs.existsSync(path.join(box, "pending")));
+  // Read `pending` before the server stops: its shutdown settles the request still open and removes the file.
+  const pending = fs.existsSync(path.join(box, "pending")) ? fs.readFileSync(path.join(box, "pending"), "utf8") : "";
   server.kill();
   for (const id of [2, 3]) {
     const answer = JSON.parse(replies.find((m) => m.id === id).result.content[0].text);
@@ -263,7 +265,7 @@ test("an edit outside the roots is offered whole; one into the state directory o
   assert.equal(replies.some((m) => m.id === 4), false, "the edit elsewhere was answered without a decision");
   const records = fs.readdirSync(box).filter((n) => n.endsWith(".request.json")).map((n) => JSON.parse(fs.readFileSync(path.join(box, n), "utf8")));
   const offered = records.find((q) => q.payload.input.file_path === path.join(elsewhere, "notes.txt"));
-  assert.deepEqual(fs.readFileSync(path.join(box, "pending"), "utf8").trim().split("\n"), [offered.id]);
+  assert.deepEqual(pending.trim().split("\n"), [offered.id]);
   assert.equal(records.filter((q) => q.settled?.by === "driver" && q.settled.decision === "declined").length, 2);
 });
 
