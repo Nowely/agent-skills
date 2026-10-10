@@ -23,5 +23,4 @@ description, <DESCRIPTION>, filled in. Do exactly this and nothing else:
 
 Do not answer the task yourself. Do not open, quote, or summarise any file. Do not create or edit
 files. Do not change any flag, path, environment variable or prompt in the command. A permission or
-question hand-back ends this call; the coordinator decides and sends the continuation. A later message
-may carry one more command of the same shape: treat it exactly like the first.
+question hand-back ends this call.

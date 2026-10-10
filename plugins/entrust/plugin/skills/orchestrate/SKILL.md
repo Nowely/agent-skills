@@ -17,9 +17,9 @@ native Codex subagent needs none), [opencode](../opencode/SKILL.md) for an OpenC
 the server connection, model selection, session continuation and callbacks, and
 [claude](../claude/references/external.md) for an external Claude run, on a host without Claude subagents
 or outside this session. Every external worker is made, run, read and continued the same way, as
-[external.md](references/external.md) says. A proxy carries each external worker's run ([proxy.md](references/proxy.md));
+[external.md](references/external.md) says. A proxy relays each `--run` of an external worker ([external.md](references/external.md#3-run-it));
 when the user makes an external model the coordinator, this conversation becomes its proxy
-([main-proxy.md](references/main-proxy.md)). Do not load adapter skill text for capability discovery; use
+([main-proxy.md](references/main-proxy.md)) and keeps one attached call to it ([proxy.md](references/proxy.md)). Do not load adapter skill text for capability discovery; use
 the capability snapshot below, then load only the selected worker's adapter.
 
 ## Your own hands
@@ -35,13 +35,17 @@ the full log and ledger go under the runtime's temporary directory, and the real
 reported even when a pipeline fails. Put the ledger under an approved temporary root; set
 `TMPDIR` to that root when the default temp directory is outside the approved scope. Resolve
 `<skill-dir>` from this skill's installed location;
-give workers the resolved absolute script path and ask them to cite its exit status and counts.
+give a native worker or a Codex agent the resolved absolute script path and ask it to cite its exit status
+and counts. An OpenCode or Claude read agent asks you for such a command: brief it to check with its file tools,
+as [external.md](references/external.md#1-write-the-prompt) says.
 
 Start one temporary context with `node "<skill-dir>/scripts/temp-dir.mjs" run`; it returns JSON.
-Pass that JSON as `ENTRUST_TEMP_CONTEXT` on check and worker commands so they share the initiating
-project and run even when their working directory changes. Without that context, separate commands
-create separate runs. External drivers and swarms establish and forward the context themselves.
-An external agent scopes child checks to its own `TMPDIR`, so they cannot write into another agent's files.
+Pass that JSON as `ENTRUST_TEMP_CONTEXT` on your check commands and a native worker's so they share the
+initiating project and run even when their working directory changes. Without that context, separate commands
+create separate runs. External drivers and swarms establish and forward the context themselves, so the
+launcher's calls take none of it.
+A Codex agent's checks write under a `TMPDIR` its driver makes for that run alone; an OpenCode or Claude agent
+inherits yours, so give it its own temporary directory when its checks write.
 
 ## The plan
 
@@ -74,7 +78,9 @@ An external agent scopes child checks to its own `TMPDIR`, so they cannot write 
    [Capacity and models](#capacity-and-models). Wait for approval unless the user already authorised
    that concrete scope and allocation. A model or route outside the approved policy needs approval
    before launch. Scope or rights changes need a new decision; commits and publication need their own
-   authority.
+   authority. In Codex, a reviewer of escalated commands (auto-review) passes a `--new` that sends the project's
+   files to an outside provider only on the user's own chat words naming it, not on a brief they pasted
+   ([measured](../claude/references/incidents.md#an-approval-in-a-pasted-brief)): ask for them in the chat.
 4. Launch within the approved ownership and the runtime's limits. Read [approvals.md](references/approvals.md)
    when an agent needs a decision, and [results.md](references/results.md) when work fails, a worktree
    needs landing or writers collide. Continue a worker to correct its own work; give verification
@@ -162,8 +168,8 @@ Ask task and review agents for these fields, in text or structured output suppor
     artifacts: paths to the full outputs under the agent's permitted roots
     open:      missing coverage, questions and risks
 
-A proxy forwards the worker's complete return, with transport status separate; an artifact replaces
-clipped display, not the worker's answer with a summary.
+A proxy hands back the launcher's lines unchanged; read an external worker's complete answer in its report,
+where `answerPath` replaces a clipped display, never the worker's answer with a summary.
 
 A large result goes into an artifact with a summary retaining every material finding. An artifact
 path must be writable for that agent; returning text requires no new filesystem grant. A verifier

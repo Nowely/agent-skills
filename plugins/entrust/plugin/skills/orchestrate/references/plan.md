@@ -26,11 +26,17 @@ Show worker concurrency only when it affects parallel work; count nested workers
 
 ## Model fit and estimates
 
-For a role/model pairing without comparable evidence, define the acceptance rule and pilot representative
-work. Compare the same inputs with a stronger reference; check omissions, incorrect results and usefulness.
-Expand when the rule passes. Estimate batches from comparable runs, including a rerun margin. When
-observable usage exceeds three times the pilot's median per agent, pause that batch and review its
-remaining scope with the user.
+For a role/model pairing without comparable evidence, define the acceptance rule and pilot representative work.
+Compare the same inputs with a stronger reference; check omissions, incorrect results and usefulness. Expand
+when the rule passes: give the remaining independent units to agents that run side by side within the alive
+bound, each external one with its own proxy, unless usage rather than time is the limit. A continuation of the
+pilot carries them one batch after another ([measured](../../claude/references/incidents.md#batches-in-turn)).
+Estimate batches from comparable runs, including a rerun margin. When an agent's tokens per unit exceed three
+times the pilot's median per unit, pause that batch and review its remaining scope with the user: an agent
+given twelve units may spend up to 36 times a one-unit pilot. Count tokens, not a priced cost: the total an
+external agent's report records (`tokenUsage` for Codex, `usage` for OpenCode and Claude), or the host's figure
+for a native one. An approval given before the pause, a pre-approved team included, does not lift it unless it
+names this limit.
 
 ## Environment and worktrees
 

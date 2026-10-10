@@ -23,8 +23,11 @@ outside this session, is an external run: [external.md](references/external.md).
 - Tag every Agent call with an explicit `model` from the tier table; untagged, a subagent inherits the
   session's model. Give it a description of the form "<Model> <id>: <task in a few words>", the id the
   card gave it.
-- Subagents may spawn subagents, but a top-tier agent never spawns another top-tier one: it tags its own
-  Agent calls with a strong or cheap model. Only you, or a foreman you launched, launch top-tier agents.
+- A subagent spawns subagents only where the session gives it the Agent tool, and a cloud session's subagent
+  had none ([measured](references/incidents.md#a-subagent-without-the-agent-tool)): tell a subagent that must
+  launch agents, such as a foreman, to say so and stop when it has no Agent tool, and keep its role yourself.
+  A top-tier agent never spawns another top-tier one: it tags its own Agent calls with a strong or cheap model.
+  Only you, or a foreman you launched, launch top-tier agents.
 - A subagent's final text is its return value, not a message to a human: say so in the brief.
 - A Claude agent starts with the user's and the project's CLAUDE.md and the memory index in its context,
   whatever its brief says, so a blind or independent Claude role still sees them; an external run with

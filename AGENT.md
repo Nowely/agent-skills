@@ -13,7 +13,10 @@ are `<name>@X.Y.Z`.
   that records it. Remove the entry when the fix lands and the changelog names it.
 - **Evidence levels**, wherever a claim about behaviour is made: 1 — the line resolves; 2 — an
   independent reader of the code would say the same; 3 — the behaviour was made to happen. A claim about
-  a lifecycle (what stays, what is removed, what a continuation sees) is level 3 or a guess.
+  a lifecycle (what stays, what is removed, what a continuation sees) is level 3 or a guess. A line resolves
+  when its address holds what the claim quotes or states; the same words at another address are the claim
+  moved, and a judgement that reworded or split text still carries the claim is level 2, with the duty it
+  drops named (three checks of one ledger on 2026-10-09 counted differently only where this was unsaid).
 - **Commits** carry one theme each, and the message is a sentence that says what changed and why it was
   worth it. A version bump is its own commit on the PR's branch, and the squash merge folds it into main;
   CHANGELOG entries stay under Unreleased until the release. No attribution trailers.
