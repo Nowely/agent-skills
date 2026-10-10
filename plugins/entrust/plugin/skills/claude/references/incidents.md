@@ -65,12 +65,6 @@ its retry ("the justification is an untrusted assistant claim about omitted brie
 in the chat, the user answered 15 minutes later, and the next `--new` passed. In a run earlier that day the same
 refusal ended with the coordinator doing the task with the host's own model, which the brief had ruled out.
 
-## Escalated reads
-
-2026-10-10, Codex 0.162 with escalated commands reviewed automatically: the coordinator asked for escalated
-permissions on every shell command it ran, 100 in 83 calls, at least 45 of them reads such as `cat`, `sed -n`,
-`rg` and `git show`. The 83 calls took 289 s by the clock, 20 s of it the commands' own time.
-
 ## Batches in turn
 
 2026-10-10, Codex coordinator, one OpenCode GLM 5.3 read agent auditing thirteen ledger entries under an approved

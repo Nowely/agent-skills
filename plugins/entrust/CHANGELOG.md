@@ -70,10 +70,6 @@ forensics remain in the repository references and release notes.
   brief the user pasted said they had: on 2026-10-10 it refused the launch twice, and the run waited 15 minutes for
   the user's chat answer; earlier that day the same refusal ended with the coordinator doing the task with the
   host's own model. Orchestrate now tells a Codex coordinator to get that approval in the chat, naming the provider.
-- **In Codex, the coordinator's reads stay in the sandbox.** Only the proxy's command was said to leave it, and on
-  2026-10-10 a Codex coordinator escalated every one of its 100 shell commands, at least 45 of them reads; their 83
-  calls took 289 s, 20 s of it the commands' own. Orchestrate now keeps escalation for the launcher's calls and a
-  command the sandbox stopped.
 - **After a passing pilot, the rest runs side by side.** The plan said only to expand when the pilot's rule passes,
   and on 2026-10-10 a Codex coordinator continued its one GLM agent over the twelve remaining ledger entries in
   three batches of four, one after another (6.1, 5.0 and 2.9 minutes), under a bound of six alive. The plan now

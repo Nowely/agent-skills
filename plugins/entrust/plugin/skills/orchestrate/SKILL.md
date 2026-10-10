@@ -47,11 +47,6 @@ launcher's calls take none of it.
 A Codex agent's checks write under a `TMPDIR` its driver makes for that run alone; an OpenCode or Claude agent
 inherits yours, so give it its own temporary directory when its checks write.
 
-In Codex, run your reads and checks in the sandbox, and ask for escalated permissions only for the launcher's
-calls and a command the sandbox stopped: a coordinator that escalated all 100 of its commands, at least 45 of
-them reads, spent 289 s on them, 20 s of it the commands' own
-([measured](../claude/references/incidents.md#escalated-reads)).
-
 ## The plan
 
 1. Read [plan.md](references/plan.md) before composing. Take host identity, native model/effort
