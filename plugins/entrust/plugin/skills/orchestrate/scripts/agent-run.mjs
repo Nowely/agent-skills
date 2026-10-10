@@ -130,6 +130,14 @@ export const TAKEN = ["already exists, or is a symbolic link", "could not be pub
 // run's, whatever an earlier run left in the directory.
 export const REFUSED = "entrust agent-run: refused";
 export const FIRST_MAX = 300, ANSWER_MAX = 600, ERROR_MAX = 300;
+// Codex marks a command it runs under its macOS sandbox with CODEX_SANDBOX=seatbelt, and an approved
+// command runs with no sandbox and no mark. Under it the agent's CLI can neither write its state under
+// the home directory nor reach its provider, and on 2026-10-10 an OpenCode server started there exited
+// before its run began, so a launch from it is refused before it starts anything.
+export function sandboxRefusal(env = process.env) {
+  return env.CODEX_SANDBOX ? `this call runs inside Codex's sandbox (CODEX_SANDBOX=${env.CODEX_SANDBOX}), where the agent's CLI can `
+    + "neither write its state nor reach its provider; run the same command again with escalated permissions; nothing was started" : null;
+}
 // The status read prints these names, in this order, whatever it found.
 export const STATUS_LINES = ["DRIVER_EXIT", "PATH", "EXIT", "FIRST", "ANSWER", "ERROR", "RECEIPT", "FILE", "REPORT"];
 const POLL_MS = 500;
@@ -232,6 +240,9 @@ More, for the launcher's own steps and its edge cases:
   A directory that holds a launch's exit, err.txt or out.json and no prompt (a --run came after a
   refused --new) is refused at --new with ERROR= naming the file: the path is spent. A check that
   neither passes nor refuses is a fault in the driver, and ERROR= says so.
+  Inside Codex's sandbox (CODEX_SANDBOX set) a --run on a fresh DIR prints its refusal on its own
+  lines and the launch-only mode refuses on stderr, both writing nothing: run them with escalated
+  permissions.
 `;
 function parse(argv) {
   const o = { run: false, status: false, isNew: false, isPlan: false, amend: false, runDir: null, orphan: false, keeper: false,
@@ -363,6 +374,8 @@ function launch(dir, report, { onExit, onRefuse, mailbox = false }) {
   // err.txt or a marker written there would be read by the run that holds the directory.
   const refuse = (why) => { process.stderr.write(`${REFUSED}: ${why}\n`); onRefuse(); };
   if (!dir || !isDirectory(dir)) return refuse(`--dir ${JSON.stringify(dir ?? "")} is not a directory`);
+  const boxed = sandboxRefusal();
+  if (boxed) return refuse(boxed);
   let backend;
   try { backend = backendOf(dir); } catch (e) { return refuse(e.message); }
   // A marker already there makes DIR an earlier run's: its files are that run's record, and a line added
@@ -848,7 +861,12 @@ function run(dir, report, watch = false) {
     // A fresh directory: the keeper, through the orphaning step, which marks it --keeper so that it hands
     // the driver the mailbox. A directory whose err.txt exists has a launch already, and a second keeper
     // would only lose the claim on it.
-    if (!fs.existsSync(path.join(dir, "err.txt"))) spawnDetached(["--orphan", "--dir", dir, "--report-file", report]);
+    if (!fs.existsSync(path.join(dir, "err.txt"))) {
+      // Refused on this call's own lines, with DIR untouched, so the same command run outside starts it.
+      const boxed = sandboxRefusal();
+      if (boxed) return refused(`${REFUSED}: ${boxed}`);
+      spawnDetached(["--orphan", "--dir", dir, "--report-file", report]);
+    }
     // Then the same wait for the first call, a rerun and a call continuing after a decision: the driver's
     // pid line, then its marker or a request waiting on a decision. A driver that died without a marker
     // ends the wait too, and the lines then say DRIVER_EXIT=unknown.

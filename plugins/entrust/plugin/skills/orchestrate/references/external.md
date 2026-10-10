@@ -141,7 +141,9 @@ in Codex replace the block's step 1 with this line, `<DESCRIPTION>` replaced as 
 
     1. Run this command with your shell tool, in the foreground, with the longest timeout it allows, outside the sandbox: ask for escalated permissions with the justification "<DESCRIPTION>: an external agent the user approved". Write no text before it.
 
-An escalation the host declines comes back as the proxy's result, like any other: take it to the user.
+A proxy that runs it inside the sandbox anyway gets the launcher's refusal on `ERROR=` and starts nothing, where
+Codex marks the sandbox (`CODEX_SANDBOX`, its macOS one): start a fresh proxy with the same block. An escalation
+the host declines comes back as the proxy's result, like any other: take it to the user.
 
 ## 4. Read the result
 

@@ -319,6 +319,25 @@ test("--run on a fresh directory launches, waits and prints the nine lines, exit
     return problems.length === 0 || problems.join("; ");
   });
 
+test("--run inside Codex's sandbox prints its refusal on its own nine lines and starts nothing, and the same command outside starts the run",
+  "a proxy that ran --run inside Codex's sandbox handed back an OpenCode server that had exited before its run began, with no word of why; the launcher now says so before anything starts, and leaves the directory fresh for the escalated call",
+  async () => {
+    const { dir, state, report } = fresh();
+    const inside = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: { ...env(state), CODEX_SANDBOX: "seatbelt" }, killAfterMs: 60000 }).done;
+    const problems = [];
+    const lines = inside.out.split("\n").filter(Boolean);
+    if (inside.code !== 0) problems.push(`inside: exited ${inside.code}`);
+    if (lines.length !== STATUS_LINES.length) problems.push(`inside: ${lines.length} lines`);
+    if (!/^ERROR=.*inside Codex's sandbox \(CODEX_SANDBOX=seatbelt\).*escalated permissions/.test(lines[STATUS_LINES.indexOf("ERROR")] ?? "")) problems.push(`inside: ERROR line ${JSON.stringify(lines[STATUS_LINES.indexOf("ERROR")])}`);
+    for (const f of ["err.txt", "out.json", "exit"]) if (fs.existsSync(path.join(dir, f))) problems.push(`inside: ${f} was written`);
+    const plain = await spawnNode([LAUNCHER, "--dir", dir, "--report-file", report], { env: { ...env(state), CODEX_SANDBOX: "seatbelt" }, killAfterMs: 60000 }).done;
+    if (plain.code !== 2 || !plain.err.includes("inside Codex's sandbox")) problems.push(`launch-only inside: exited ${plain.code}, ${plain.err.slice(0, 120)}`);
+    if (fs.existsSync(path.join(dir, "err.txt"))) problems.push("launch-only inside: err.txt was written");
+    const outside = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 60000 }).done;
+    for (const want of ["DRIVER_EXIT=0", "PATH=own", "EXIT=0"]) if (!outside.out.split("\n").includes(want)) problems.push(`outside: missing ${want}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
 test("--run on a directory that already ran prints without launching, and on one whose driver is still running waits for it",
   "the harness moves a foreground call into the background at its ten-minute ceiling and the wrapper runs the same command again; a second launch would be a second paid turn and a PATH=taken, so the call has to be idempotent",
   async () => {

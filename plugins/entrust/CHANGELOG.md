@@ -46,7 +46,10 @@ forensics remain in the repository references and release notes.
   directory and reaches its provider, and Codex's sandbox allows neither by default. On 2026-10-10 a Codex proxy
   given the block alone handed back an OpenCode server that had exited before its run began, where the day before
   proxies that asked for escalated permissions had started theirs. The shared call page now gives a Codex proxy a
-  step 1 that asks for them, with a justification naming the agent.
+  step 1 that asks for them, with a justification naming the agent, and the launcher refuses a `--run` or a launch
+  made under Codex's macOS sandbox, which marks its commands `CODEX_SANDBOX=seatbelt`, before it starts anything:
+  its `ERROR=` says to run the same command again with escalated permissions, and the agent's directory stays
+  fresh for that call. The suites' own launches drop the mark.
 - **An OpenCode server that ends before it serves says why.** The driver read the server's output only for its
   address and reported "exited before announcing its local URL" alone; on 2026-10-10 a Codex rerun of the
   orchestrate task stopped there half a second after the server started, and its report held no exit code and
