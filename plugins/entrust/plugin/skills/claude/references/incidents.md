@@ -55,3 +55,14 @@ commands with escalated permissions, and every OpenCode server started. Whether 
 escalation was not read from its session. Later that day ten Codex proxies whose step 1 asked for escalated
 permissions all ran escalated, and every server started. Under Codex's macOS sandbox, `codex sandbox -- node …` on
 Codex 0.162 printed `CODEX_SANDBOX=seatbelt`, which the launcher now refuses on.
+
+## A proxy that handed back a running command
+
+2026-10-10, Codex 0.162: eleven fresh Luna proxies relayed six runs of one OpenCode GLM 5.3 agent with the block
+whose step 1 asked for escalated permissions. The ten that ran the command each asked their shell tool to wait
+30 s, and while the run went on the tool came back after those 30 s with a session id, no exit code and no
+output. Of the first five, one got the agent's request inside the first 30 s; the other four handed back nothing
+(three) or step 4's "report delivered" line (one) while the driver kept running, and the coordinator read the
+report and the driver's processes itself before starting the next proxy. It then said it would start proxies
+that wait for the command to end (the briefs are encrypted in the session), and the next five handed back the
+nine lines, four of them after reading the session with `write_stdin` one to eleven times.

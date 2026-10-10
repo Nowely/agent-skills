@@ -53,6 +53,12 @@ forensics remain in the repository references and release notes.
   made under Codex's macOS sandbox, which marks its commands `CODEX_SANDBOX=seatbelt`, before it starts anything:
   its `ERROR=` says to run the same command again with escalated permissions, and the agent's directory stays
   fresh for that call. The suites' own launches drop the mark.
+- **In Codex, a proxy waits for the run to end before it hands back.** Codex's shell tool comes back while a long
+  command runs, with a session id and no exit code, and the block's step 2 sent such an empty result on as it was.
+  On 2026-10-10 four of the first five Codex proxies that ran handed back nothing, or step 4's "report delivered"
+  line, while their agent went on working, and the coordinator read the report and the driver's processes itself.
+  A Codex proxy's step 2 now reads the command's session again with `write_stdin` until an exit code comes, and
+  its step 4 is left out, since its final message is its hand-back.
 - **An OpenCode server that ends before it serves says why.** The driver read the server's output only for its
   address and reported "exited before announcing its local URL" alone; on 2026-10-10 a Codex rerun of the
   orchestrate task stopped there half a second after the server started, and its report held no exit code and

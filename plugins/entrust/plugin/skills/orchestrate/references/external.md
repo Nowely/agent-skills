@@ -138,10 +138,17 @@ that result again when the message is not it.
 In Codex the command runs outside the sandbox: the driver starts the agent's CLI, which writes its own state under
 your home directory and reaches the model's provider, and the sandbox allows neither by default. A proxy given the
 block alone handed back an OpenCode server that had exited before its run began, where proxies that asked for
-escalated permissions started theirs ([measured](../../claude/references/incidents.md#a-proxy-in-the-sandbox)). So
-in Codex replace the block's step 1 with this line, `<DESCRIPTION>` replaced as before:
+escalated permissions started theirs ([measured](../../claude/references/incidents.md#a-proxy-in-the-sandbox)).
+Codex's shell tool also comes back while a long command still runs, with a session id and no exit code, and the
+block's step 2 passes that empty result on: four of the first five proxies that ran in one Codex run handed back
+nothing, or step 4's line, while their agent went on working
+([measured](../../claude/references/incidents.md#a-proxy-that-handed-back-a-running-command)). So in Codex replace
+the block's steps 1 and 2 with these two and leave out step 4, since the proxy's final message is its hand-back,
+`<DESCRIPTION>` replaced as before:
 
-    1. Run this command with your shell tool, in the foreground, with the longest timeout it allows, outside the sandbox: ask for escalated permissions with the justification "<DESCRIPTION>: an external agent the user approved". Write no text before it.
+    1. Run this command with your shell tool, with the longest wait it allows, outside the sandbox: ask for escalated permissions with the justification "<DESCRIPTION>: an external agent the user approved". Write no text before it.
+
+    2. While the tool's result carries a session id and no exit code, the command is still running: read that session again with no input (write_stdin), with the longest wait it allows, each time it comes back so, and write nothing in between. The command's result is everything it printed across those reads. If that result ends with RUNNING=, run the very same command again and read it the same way; each run is safe. Any other result, an empty one with an exit code included, goes to step 3 as it is.
 
 A proxy that runs it inside the sandbox anyway gets the launcher's refusal on `ERROR=` and starts nothing, where
 Codex marks the sandbox (`CODEX_SANDBOX`, its macOS one): start a fresh proxy with the same block. An escalation
