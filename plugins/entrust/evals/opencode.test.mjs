@@ -12,6 +12,7 @@ import { decisionFits } from "../plugin/skills/orchestrate/scripts/mailbox.mjs";
 import { editScope, sessionPermissions } from "../plugin/skills/opencode/scripts/driver.mjs";
 import { readAgentOrders } from "../plugin/skills/orchestrate/scripts/agent-orders.mjs";
 import { fakeOpenCode } from "./fake-opencode.mjs";
+import { startLocalServer } from "../plugin/skills/opencode/scripts/local-server.mjs";
 
 const { cases, test: register } = registry();
 const test = (name, fn) => register(name, name, async () => { await fn(); return true; });
@@ -216,7 +217,10 @@ test("permission handback contains the full immutable native request", async () 
 });
 test("once approval requires exact body and is published only once", async () => {
   const m = mailbox(); const a = [...m.args, "--decide", m.id, "--accept"];
-  assert.equal((await invoke(a, m.q.payload.metadata.command)).code, 2);
+  const commandOnly = await invoke(a, m.q.payload.metadata.command);
+  assert.equal(commandOnly.code, 2);
+  // The refusal names the frame this request was printed in, which for a typed request is never COMMAND.
+  assert.match(commandOnly.out + commandOnly.err, /restated request body differs[^]*between REQUEST_BODY<<TOKEN and REQUEST_BODY>>TOKEN/);
   assert.equal((await invoke(a, m.q.presented + "\n")).code, 0);
   assert.equal((await invoke(a, m.q.presented)).code, 2);
   const decision = JSON.parse(fs.readFileSync(path.join(m.box, `${m.id}.decision.json`)));
@@ -328,6 +332,12 @@ async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4
     return { ...result, report: fs.existsSync(report) ? JSON.parse(fs.readFileSync(report)) : null, path: report, box, stopFile: cli.stopFile };
   } finally { if (p.child.exitCode === null) p.child.kill("SIGKILL"); }
 }
+test("a server that exits before it serves is reported with its exit code and what it printed", async () => {
+  const bin = path.join(tempDir("entrust-opencode-dying-"), "bin"); fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, "opencode"), `#!/usr/bin/env node\nconsole.error("Error: EPERM: operation not permitted, open '/home/x/.local/share/opencode/log'");\nprocess.exit(3);\n`, { mode: 0o755 });
+  await assert.rejects(startLocalServer({ env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}` } }),
+    /exited with code 3 before announcing its local URL; it printed: Error: EPERM: operation not permitted/);
+});
 test("a default run starts and stops its private loopback server", async () => {
   const s = await fakeOpenCode();
   try {

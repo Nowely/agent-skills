@@ -5,8 +5,8 @@ work; select exact models under [Capacity and models](../SKILL.md#capacity-and-m
 review agents return the page's five fields. Read
 agents may return text or write permitted temporary artifacts. Roles divide ownership and judgement;
 the parent orchestrator owns the work-list, changes of authority, synthesis and landing of results.
-An operational proxy may apply existing authority from its brief; it forwards the worker's complete
-return and keeps transport status separate ([proxy.md](proxy.md)). In the [main proxy mode](main-proxy.md),
+A proxy relays one `--run` of an external worker and hands back what it printed; it decides no request
+and reads no result ([external.md](external.md#3-run-it)), so the coordinator owns both. In the [main proxy mode](main-proxy.md),
 an external coordinator owns those orchestration decisions and gives concrete agent orders; the current
 host launches the workers and owns their transport and lifecycle.
 
@@ -18,7 +18,7 @@ host launches the workers and owns their transport and lifecycle.
 | advisor, per call | counsel on a plan, a stuck case or a verdict; one question, one answer | nothing | counsel with its reasons | on the coordinator's explicit call, by the agreed composition | top |
 | advisor, standing | one thread kept for a run, asked one question at each decision point; never implements, never judges its own advice | nothing | a recommendation with its reasons, one alternative, what would change its mind | the user requests consultations or the approved orchestration composition includes one; before the run's first decision; the workers' plan names it | top |
 | foreman | runs the agreed plan for the coordinator: briefs and launches the workers, has their work verified, handles their failures; no channel to the user and no right to change the plan | nothing: its workers write under their own rights | one report: a line per worker, the verifiers' evidence verbatim, every artifact path, every deviation, concern and finding outside the task | several workers, when the agreed plan and runtime support a delegated coordinator; [foreman.md](foreman.md) | strong |
-| proxy | accompanies one external session: launch, callbacks, existing-authority decisions, continuation and cancellation; preserves the task and full answer | its approved transport state; no task edits | full worker answer or complete artifact, transport status separately | an external worker needs a native lifecycle owner; reuse for that session | cheap |
+| proxy | runs one `--run` of an external worker and hands back what it printed; decides no request, reads no result and edits no prompt | nothing | the launcher's lines, unchanged | each `--run` of an external worker, a fresh one each time: the first, after each decision, and a continuation's first | the proxy row of the host's models page |
 | implementer | one task by file ownership, in the live tree or a worktree | its owned files, or its worktree, harvested as a diff | the diff, with the counts of what ran; commits only with existing authority and runtime permission | after "go", one per task | strong |
 | competing implementer | one of the alternatives the plan approved, in a worktree of its own | its worktree | the diff | two designs viable and cheap to build; landed by the page's harvest procedure | strong |
 | cross-reviewer | an independent agent reviews a writer's diff, with the diff's path, against the requirement, the owning unit and its consumers, all named in the brief; a valid change in the wrong unit is a finding | nothing | findings, as the page's [return section](../SKILL.md#the-agents-return) defines a finding | after a writer returns, two rounds at most | strong |

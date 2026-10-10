@@ -319,6 +319,25 @@ test("--run on a fresh directory launches, waits and prints the nine lines, exit
     return problems.length === 0 || problems.join("; ");
   });
 
+test("--run inside Codex's sandbox prints its refusal on its own nine lines and starts nothing, and the same command outside starts the run",
+  "a proxy that ran --run inside Codex's sandbox handed back an OpenCode server that had exited before its run began, with no word of why; the launcher now says so before anything starts, and leaves the directory fresh for the escalated call",
+  async () => {
+    const { dir, state, report } = fresh();
+    const inside = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: { ...env(state), CODEX_SANDBOX: "seatbelt" }, killAfterMs: 60000 }).done;
+    const problems = [];
+    const lines = inside.out.split("\n").filter(Boolean);
+    if (inside.code !== 0) problems.push(`inside: exited ${inside.code}`);
+    if (lines.length !== STATUS_LINES.length) problems.push(`inside: ${lines.length} lines`);
+    if (!/^ERROR=.*inside Codex's sandbox \(CODEX_SANDBOX=seatbelt\).*escalated permissions/.test(lines[STATUS_LINES.indexOf("ERROR")] ?? "")) problems.push(`inside: ERROR line ${JSON.stringify(lines[STATUS_LINES.indexOf("ERROR")])}`);
+    for (const f of ["err.txt", "out.json", "exit"]) if (fs.existsSync(path.join(dir, f))) problems.push(`inside: ${f} was written`);
+    const plain = await spawnNode([LAUNCHER, "--dir", dir, "--report-file", report], { env: { ...env(state), CODEX_SANDBOX: "seatbelt" }, killAfterMs: 60000 }).done;
+    if (plain.code !== 2 || !plain.err.includes("inside Codex's sandbox")) problems.push(`launch-only inside: exited ${plain.code}, ${plain.err.slice(0, 120)}`);
+    if (fs.existsSync(path.join(dir, "err.txt"))) problems.push("launch-only inside: err.txt was written");
+    const outside = await spawnNode([LAUNCHER, "--run", "--dir", dir, "--report-file", report], { env: env(state), killAfterMs: 60000 }).done;
+    for (const want of ["DRIVER_EXIT=0", "PATH=own", "EXIT=0"]) if (!outside.out.split("\n").includes(want)) problems.push(`outside: missing ${want}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
 test("--run on a directory that already ran prints without launching, and on one whose driver is still running waits for it",
   "the harness moves a foreground call into the background at its ten-minute ceiling and the wrapper runs the same command again; a second launch would be a second paid turn and a PATH=taken, so the call has to be idempotent",
   async () => {
@@ -1062,6 +1081,24 @@ function handMailbox() {
 const shapeOf = (lines) => (lines[0] ?? "").startsWith("REQUEST=") ? "waiting" : (lines[0] ?? "").startsWith("DRIVER_EXIT=") ? "ended" : "other";
 const runOnce = (report, state, scenario, extraEnv = {}) =>
   launcherLines(["--run", "--report-file", report], { env: { ...env(state, scenario), ...extraEnv }, killAfterMs: 60000 });
+
+test("--run needs none of the caller's environment: from another directory and another TMPDIR it runs the driver with the state directory --new recorded",
+  "on 2026-10-10 a Codex coordinator put TMPDIR, ENTRUST_STATE_DIR and ENTRUST_TEMP_CONTEXT, over 400 characters, before every proxy's --run, and one brief mistyped the launcher's path; the shared block's command is meant to run as written",
+  async () => {
+    const state = tempDir("agent-run-bare.");
+    const report = path.join(state, "run", "report.json");
+    const made = await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
+    if (made.code !== 0) return `--new failed: ${made.out}${made.err}`;
+    const elsewhere = tempDir("agent-run-bare-elsewhere.");
+    const r = await launcherLines(["--run", "--report-file", report], {
+      env: { PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: "happy", TMPDIR: elsewhere },
+      unsetEnv: ["ENTRUST_STATE_DIR", "ENTRUST_TEMP_CONTEXT"], cwd: elsewhere, killAfterMs: 60000 });
+    const problems = [];
+    for (const want of ["DRIVER_EXIT=0", "PATH=own", "EXIT=0", "FILE=exists"])
+      if (!r.lines.includes(want)) problems.push(`missing ${want}: ${JSON.stringify(r.lines.slice(0, 6))}`);
+    if (fs.existsSync(path.join(elsewhere, "entrust-state"))) problems.push("the driver made a state directory under the caller's TMPDIR instead of using the recorded one");
+    return problems.length === 0 || problems.join("; ");
+  });
 
 test("--new makes the mailbox for every agent and says where; it takes <tmp>/entrust-state with no variable set, and refuses a report or a directory outside the state directory",
   "every agent has a mailbox, and a mailbox is only safe inside the state directory, which no agent's sandbox can write; no flag arms it, so --new resolves the state directory as the driver does and checks both paths against it — the launcher's refusal is the early one in the caller's own call, the driver's inode check is the wall",

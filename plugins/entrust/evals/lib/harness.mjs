@@ -63,7 +63,10 @@ export function codexShim(dir, target = FAKE) {
 // deleted outright — either by giving it that value or by naming it in unsetEnv.
 export function spawnNode(args, { env = {}, unsetEnv = [], cwd, stdio = ["ignore", "pipe", "pipe"],
                                   killAfterMs = 0, encoding = "utf8" } = {}) {
-  const e = { ...process.env, ...env };
+  // A suite run inside Codex's sandbox launches fakes, not a CLI: the launcher's refusal of a sandboxed call
+  // is a case of its own, which sets the mark itself.
+  const e = { ...process.env, CODEX_SANDBOX: undefined, ...env };
+  if (e.CODEX_SANDBOX === undefined) delete e.CODEX_SANDBOX;
   for (const [k, v] of Object.entries(env)) if (v === undefined) delete e[k];
   for (const k of unsetEnv) delete e[k];
   const child = spawn(process.execPath, args, { env: e, ...(cwd ? { cwd } : {}), stdio });

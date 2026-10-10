@@ -149,6 +149,23 @@ test("the ONE call is agent-run.mjs --run with --report-file in one foreground c
     return problems.length === 0 || problems.join("; ");
   });
 
+test("in Codex the proxy runs the command outside the sandbox, reads a still-running command's session until it ends, and writes no delivered line",
+  "Codex's shell tool comes back while a long command runs, with a session id and no exit code, and the shared step 2 passes that empty result on: on 2026-10-10 four of the first five Codex proxies that ran handed back nothing or step 4's line while their agent went on, and step 4 is what one of them made its final message",
+  () => {
+    const codex = externalFlat.slice(externalFlat.indexOf("### In Codex or OpenCode"), externalFlat.indexOf("## 4. Read the result"));
+    if (!codex) return "the Codex section of step 3 is gone";
+    const problems = [];
+    for (const step of ["replace the block's steps 1 and 2 with these two and leave out step 4",
+                        "1. Run this command with your shell tool, with the longest wait it allows, outside the sandbox: ask for escalated permissions",
+                        "2. While the tool's result carries a session id and no exit code, the command is still running: read that session again with no input (write_stdin)",
+                        "The command's result is everything it printed across those reads", "If that result ends with RUNNING=, run the very same command again",
+                        "Any other result, an empty one with an exit code included, goes to step 3 as it is"])
+      if (!codex.includes(step)) problems.push(`the Codex steps lack ${JSON.stringify(step)}`);
+    if (/^ {4}[^\n]*agent-run\.mjs/m.test(external.slice(external.indexOf("### In Codex or OpenCode"), external.indexOf("## 4. Read the result"))))
+      problems.push("the Codex section carries a second copy of the command, which the shared block owns");
+    return problems.length === 0 || problems.join("; ");
+  });
+
 test("the prompt goes in through --new on stdin, into a directory beside the report, and no path on the page is a $TMPDIR one",
   "a coordinator cannot expand $TMPDIR and cannot Write under the data directory, so the launcher, a subprocess handed the report path, is what makes the agent's directory; a quoted heredoc is what keeps the prompt from passing through the shell's expansion; and --report-file refuses a relative path outright",
   () => {

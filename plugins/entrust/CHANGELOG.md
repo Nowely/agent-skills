@@ -3,6 +3,117 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.29.0 — 2026-10-10
+
+### Changed
+
+- **A proxy relays one run and decides nothing, on every host, and a fresh one runs each call of the launcher.**
+  Three pages gave the proxy three contracts: the shared call page's relay that never reads the result, the
+  operational proxy that decides covered requests and reads the report, and the shipped agent that hands every
+  request back. In Codex the proxy was the deciding one, kept one attached call and polled; on 2026-10-09 three
+  Luna proxies started a second watcher on one driver, accepted a clipped request and left `--why` empty on 26
+  accepts, and a read-only check took close to three hours. In Claude Code two Haiku proxies of three, sent the
+  same block after a decision, answered from their earlier turn and ran nothing. Now every host runs the same
+  block in a fresh small agent for each `--run` (the first, the one after a decision, a continuation's first),
+  names it after the external agent on every host, and the coordinator decides every request; the operational
+  proxy page is the main proxy mode's alone.
+- **A read agent checks with its file tools, and its inputs sit inside its directory.** Orchestrate told the
+  coordinator to give every worker `capture-check.mjs`, a shell command, while an OpenCode read agent asks for
+  every shell command and a Claude one for any command outside Claude Code's read-only set; on 2026-10-09 read
+  agents briefed that way asked 11 times (Claude, Sonnet) and 43 times (OpenCode, GLM) in one read-only task,
+  each question a stop for the coordinator. The script now goes to native workers and Codex agents; the shared
+  call page tells the coordinator to brief an OpenCode or Claude read agent in reads and searches, and to put an
+  OpenCode read agent's inputs inside its directory, since for one file outside it the agent asked for the whole
+  directory. Both drivers now tell a read agent that its read, grep and glob tools need no approval, and the
+  coordinator runs a check that needs a command before the launch and puts the result, the commit included, in
+  the task. On 2026-10-10 the same task asked once, from 111 calls of read, grep and glob and none of the shell.
+- **Four rules a coordinator had to guess are on the pages.** Read against one task on two hosts, the pages left
+  these to what a Claude coordinator already knew or a Codex one did not: whether a subagent can launch agents
+  (the Claude adapter said it can; a cloud session's subagent had no Agent tool), whether a pre-approved team lifts
+  the usage stop (a Codex coordinator read it so and ran past three times the pilot), which text the completeness
+  critic must have read (in both hosts a shorter message went out than the one it read), and whose `TMPDIR` an
+  external agent's checks write to (orchestrate promised each agent its own; only the Codex driver makes one).
+  Each now says what holds.
+- **A refused accept of an OpenCode or Claude request names the frame it was printed in.** `--decide --accept`
+  compared a typed request's body but told the caller to copy the lines between `COMMAND<<` and `COMMAND>>`,
+  which such a request does not print; on 2026-10-09 a proxy that restated an OpenCode permission's command
+  alone was sent looking for them twice. It now names `REQUEST_BODY<<` and `REQUEST_BODY>>` for a typed request.
+- **The usage stop compares usage per unit.** It compared an agent's total with the pilot's median per agent, so an
+  agent carrying more units than a pilot agent crossed it by size alone: on 2026-10-10 a Codex coordinator's pilot
+  agent read one ledger entry for 376,319 tokens, was continued for the other twelve for 2,470,884, six and a half
+  times the pilot and about half of it per entry, and the audit of that run reported the stop as missed.
+  The line is now three times the pilot's median per unit, counted in tokens from the agent's report, since a
+  second audit could not tell whether "usage" meant tokens or the catalog cost an OpenCode report also carries.
+- **In Codex, a proxy runs the launcher outside the sandbox.** The proxy's block was written for Claude Code's Bash
+  tool and said nothing of a sandbox; the driver starts the agent's CLI, which writes its state under the home
+  directory and reaches its provider, and Codex's sandbox allows neither by default. On 2026-10-10 a Codex proxy
+  given the block alone handed back an OpenCode server that had exited before its run began, where the day before
+  proxies that asked for escalated permissions had started theirs. The shared call page now gives a Codex proxy a
+  step 1 that asks for them, with a justification naming the agent, and the launcher refuses a `--run` or a launch
+  made under Codex's macOS sandbox, which marks its commands `CODEX_SANDBOX=seatbelt`, before it starts anything:
+  its `ERROR=` says to run the same command again with escalated permissions, and the agent's directory stays
+  fresh for that call. The suites' own launches drop the mark.
+- **In Codex, a proxy waits for the run to end before it hands back.** Codex's shell tool comes back while a long
+  command runs, with a session id and no exit code, and the block's step 2 sent such an empty result on as it was.
+  On 2026-10-10 four of the first five Codex proxies that ran handed back nothing, or step 4's "report delivered"
+  line, while their agent went on working, and the coordinator read the report and the driver's processes itself.
+  A Codex proxy's step 2 now reads the command's session again with `write_stdin` until an exit code comes, and
+  its step 4 is left out, since its final message is its hand-back.
+- **The proxy's command goes as written, with no variables before it.** Orchestrate told the coordinator to pass
+  its temporary context on "worker commands", and on 2026-10-10 a Codex coordinator put `TMPDIR`,
+  `ENTRUST_STATE_DIR` and `ENTRUST_TEMP_CONTEXT`, over 400 characters, before every proxy's `--run`; one brief
+  mistyped the launcher's path and its proxy was stopped. `--run` starts the driver in the working directory and
+  with the state directory `--new` recorded, which a new case in the launcher's suite checks from another directory
+  and another `TMPDIR`, and the pages now say the launcher's calls take none of it.
+- **An approved plan is the permission to send an agent's provider its files, and in Codex the coordinator's
+  launcher calls run in the sandbox.** Codex's automatic reviewer of escalated commands read a `--new` that sends
+  the project's files to OpenRouter as a transfer the user had not approved, though the brief the user pasted said
+  they had: on 2026-10-10 it refused the launch twice, and the run waited 15 minutes for the user's chat answer;
+  earlier that day the same refusal ended with the coordinator doing the task with the host's own model. Telling
+  the coordinator to get that approval in the chat first then held a later run 21 minutes on a pasted brief that
+  carried it, while that run's `--plan`, `--new` and `--decide` worked without escalation and never reached the
+  reviewer. Orchestrate now says that an approved plan, or a request naming the adapter or the model, is that
+  permission and no other is asked, runs those three calls unescalated, and turns to the user only when the
+  reviewer refuses an escalated one.
+- **After a passing pilot, the rest runs side by side.** The plan said only to expand when the pilot's rule passes,
+  and on 2026-10-10 a Codex coordinator continued its one GLM agent over the twelve remaining ledger entries in
+  three batches of four, one after another (6.1, 5.0 and 2.9 minutes), under a bound of six alive. The plan now
+  gives the remaining independent units to agents that run side by side within the bound, unless usage rather
+  than time is the limit.
+- **An OpenCode server that ends before it serves says why.** The driver read the server's output only for its
+  address and reported "exited before announcing its local URL" alone; on 2026-10-10 a Codex rerun of the
+  orchestrate task stopped there half a second after the server started, and its report held no exit code and
+  none of the server's words. The error now carries the exit code or signal and the last lines the server printed.
+
+### Validation
+
+- Locally, in a Linux container running as root on Node 22, the suites this release touches pass: agent-run 62,
+  agent-contract 15, opencode 84, claude 26 with its live case skipped, orchestrate 11, lint-draft 13,
+  capture-check 17, status 10, fragments, conformance, and package with its tag check skipped;
+  `scripts/skills.test.mjs` passes 8 of 8 and terse's pages 12 of 12. The protocol, lock and cli suites fail in
+  that container as they do on the tree before this release, and pass in CI. CI's four jobs run on the release PR,
+  and a red run stops the release.
+- On the owner's machine, a Codex coordinator ran one read-only task on this branch three times: OpenCode GLM 5.3
+  agents through OpenRouter checking the 13 entries of `ISSUES.md`, each run relayed by a Luna proxy. At 35cfa6b
+  four of eleven proxies handed back before their run ended. At b13a374 four proxies handed back with no failure
+  and the first agent ran 5 minutes after the start rather than 22, but the verdicts counted an address that merely
+  existed. At d36a2c0 the verdicts matched, entry for entry, a reference made independently on the same commit;
+  four proxies, one permission request, and one escalated command of the coordinator's against 94 in the run
+  before, once the owner's instructions put the sandbox first.
+- Not run: the live orchestrate gate, the live fidelity gate and the cross-plugin terse brief; the preparing
+  machine has no Codex CLI.
+
+### Known issues
+
+- Open ledger entries remain E67, E90, E96, E100, E102–E104, E110, E111, E113, E114, E117 and E139; see
+  [`ISSUES.md`](ISSUES.md). The d36a2c0 audit found that ten of them cite text that has since moved, which the
+  ledger has not caught up with.
+
+### Release environment
+
+- Release preparation used Node.js `v22.22.0` and Claude Code `2.1.296`, with no Codex CLI. The owner's runs used
+  Codex `0.162.0-alpha.17.2` and OpenCode `1.18.35`. The CLI protocol pin, `0.159.3`, is unchanged.
+
 ## 0.28.0 — 2026-10-09
 
 ### Changed

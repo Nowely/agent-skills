@@ -557,7 +557,7 @@ function runRules(ctx) {
   const roots = ctx.roots ?? [];
   return standingRules({
     rights: ctx.scope?.kind === "read" || !roots.length
-      ? "You may read and search files; your edit and write tools are refused, and every shell command needs approval."
+      ? "Read and search files with your read, glob and grep tools, which need no approval; your edit and write tools are refused, and every shell command needs approval."
       : `Edits inside ${roots.join(", ")} need no approval; every shell command, and an edit anywhere else, needs one.`,
     network: "A fetch needs approval too.",
     mailbox: Boolean(ctx.box),
