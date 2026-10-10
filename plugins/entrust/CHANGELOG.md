@@ -74,6 +74,11 @@ forensics remain in the repository references and release notes.
   2026-10-10 a Codex coordinator escalated every one of its 100 shell commands, at least 45 of them reads; their 83
   calls took 289 s, 20 s of it the commands' own. Orchestrate now keeps escalation for the launcher's calls and a
   command the sandbox stopped.
+- **After a passing pilot, the rest runs side by side.** The plan said only to expand when the pilot's rule passes,
+  and on 2026-10-10 a Codex coordinator continued its one GLM agent over the twelve remaining ledger entries in
+  three batches of four, one after another (6.1, 5.0 and 2.9 minutes), under a bound of six alive. The plan now
+  gives the remaining independent units to agents that run side by side within the bound, unless usage rather
+  than time is the limit.
 - **An OpenCode server that ends before it serves says why.** The driver read the server's output only for its
   address and reported "exited before announcing its local URL" alone; on 2026-10-10 a Codex rerun of the
   orchestrate task stopped there half a second after the server started, and its report held no exit code and

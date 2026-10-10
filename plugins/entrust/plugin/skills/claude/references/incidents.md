@@ -71,6 +71,13 @@ refusal ended with the coordinator doing the task with the host's own model, whi
 permissions on every shell command it ran, 100 in 83 calls, at least 45 of them reads such as `cat`, `sed -n`,
 `rg` and `git show`. The 83 calls took 289 s by the clock, 20 s of it the commands' own time.
 
+## Batches in turn
+
+2026-10-10, Codex coordinator, one OpenCode GLM 5.3 read agent auditing thirteen ledger entries under an approved
+bound of six alive: after its one-entry pilot passed, the coordinator continued the same agent over the other twelve
+in three batches of four, one after another, which ran 6.1, 5.0 and 2.9 minutes, with 1.6 to 2.7 minutes of its
+own checks between runs.
+
 ## A proxy that handed back a running command
 
 2026-10-10, Codex 0.162: eleven fresh Luna proxies relayed six runs of one OpenCode GLM 5.3 agent with the block
