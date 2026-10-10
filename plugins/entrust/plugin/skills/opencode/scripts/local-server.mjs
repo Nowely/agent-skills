@@ -16,11 +16,10 @@ function authorization(config) {
   return `Basic ${Buffer.from(`${config.username}:${config.password}`).toString("base64")}`;
 }
 
-async function waitHealthy(config, child, timeoutMs) {
+async function waitHealthy(config, child, timeoutMs, gone) {
   const end = Date.now() + timeoutMs;
   while (Date.now() < end) {
-    if (child.exitCode !== null || child.signalCode !== null)
-      throw new Error("OpenCode server exited before it became healthy");
+    if (child.exitCode !== null || child.signalCode !== null) throw await gone("before it became healthy");
     try {
       const response = await fetch(`${config.url}/global/health`, {
         headers: { Authorization: authorization(config) }, signal: AbortSignal.timeout(750), redirect: "error",
@@ -73,6 +72,14 @@ export async function startLocalServer({ cwd = process.cwd(), env = process.env,
     }
     if (line.length > 4096) line = line.slice(-2048);
   };
+  // A server that ends before it serves is reported with its exit and the last lines it printed, its own reason.
+  const drained = new Promise((resolve) => child.once("close", resolve));
+  const gone = async (when) => {
+    await Promise.race([drained, sleep(500)]);
+    const how = child.signalCode !== null ? `was killed by ${child.signalCode}` : `exited with code ${child.exitCode}`;
+    const tail = line.trim().split(/\r?\n/).slice(-5).join(" | ").slice(-600);
+    return new Error(`OpenCode server ${how} ${when}; ${tail ? `it printed: ${tail}` : "it printed nothing"}`);
+  };
   child.stdout.on("data", collect);
   child.stderr.on("data", collect);
 
@@ -81,11 +88,11 @@ export async function startLocalServer({ cwd = process.cwd(), env = process.env,
     while (!config.url && Date.now() < end) {
       if (startError) throw startError;
       if (child.exitCode !== null || child.signalCode !== null)
-        throw new Error("OpenCode server exited before announcing its local URL");
+        throw await gone("before announcing its local URL");
       await Promise.race([sleep(50), exited]);
     }
     if (!config.url) throw new Error("OpenCode server did not announce its local URL before the startup timeout");
-    await waitHealthy(config, child, Math.max(1000, end - Date.now()));
+    await waitHealthy(config, child, Math.max(1000, end - Date.now()), gone);
     return { config, close };
   } catch (error) {
     await close();

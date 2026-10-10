@@ -36,6 +36,10 @@ forensics remain in the repository references and release notes.
   compared a typed request's body but told the caller to copy the lines between `COMMAND<<` and `COMMAND>>`,
   which such a request does not print; on 2026-10-09 a proxy that restated an OpenCode permission's command
   alone was sent looking for them twice. It now names `REQUEST_BODY<<` and `REQUEST_BODY>>` for a typed request.
+- **An OpenCode server that ends before it serves says why.** The driver read the server's output only for its
+  address and reported "exited before announcing its local URL" alone; on 2026-10-10 a Codex rerun of the
+  orchestrate task stopped there half a second after the server started, and its report held no exit code and
+  none of the server's words. The error now carries the exit code or signal and the last lines the server printed.
 
 ## 0.28.0 — 2026-10-09
 
