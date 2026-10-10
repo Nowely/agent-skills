@@ -1,9 +1,10 @@
 # Defects found in passing: entrust
 
-Recorded per the repository rule: evidence at file:line, an evidence level (1: the line resolves; 2: an
-independent reader of the code would say the same; 3: the behaviour was made to happen), and wording that
-can become an issue unchanged. An entry leaves when its fix lands and the changelog names it. Ids are
-shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
+Recorded per the repository rule: evidence at file:line, an evidence level (1: the line resolves, which is its
+address holding what the claim quotes or states, not the line merely existing, and the same words at another
+address are the claim moved; 2: an independent reader of the code would say the same; 3: the behaviour was made to
+happen), and wording that can become an issue unchanged. An entry leaves when its fix lands and the changelog
+names it. Ids are shared with terse's ledger, `plugins/terse/ISSUES.md`, so one id names one entry in both. A path
 pinned to a commit is that commit's address, with today's beside it. A path that starts with a skill's name
 (`orchestrate/…`, `codex/…`) is under `plugins/entrust/plugin/skills/`, one that starts with `evals/` or
 `research/` under `plugins/entrust/`, and any other under the repository root; `:N` continues the file named
