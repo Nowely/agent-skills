@@ -85,6 +85,35 @@ forensics remain in the repository references and release notes.
   orchestrate task stopped there half a second after the server started, and its report held no exit code and
   none of the server's words. The error now carries the exit code or signal and the last lines the server printed.
 
+### Validation
+
+- Locally, in a Linux container running as root on Node 22, the suites this release touches pass: agent-run 62,
+  agent-contract 15, opencode 84, claude 26 with its live case skipped, orchestrate 11, lint-draft 13,
+  capture-check 17, status 10, fragments, conformance, and package with its tag check skipped;
+  `scripts/skills.test.mjs` passes 8 of 8 and terse's pages 12 of 12. The protocol, lock and cli suites fail in
+  that container as they do on the tree before this release, and pass in CI. CI's four jobs run on the release PR,
+  and a red run stops the release.
+- On the owner's machine, a Codex coordinator ran one read-only task on this branch three times: OpenCode GLM 5.3
+  agents through OpenRouter checking the 13 entries of `ISSUES.md`, each run relayed by a Luna proxy. At 35cfa6b
+  four of eleven proxies handed back before their run ended. At b13a374 four proxies handed back with no failure
+  and the first agent ran 5 minutes after the start rather than 22, but the verdicts counted an address that merely
+  existed. At d36a2c0 the verdicts matched, entry for entry, a reference made independently on the same commit;
+  four proxies, one permission request, and one escalated command of the coordinator's against 94 in the run
+  before, once the owner's instructions put the sandbox first.
+- Not run: the live orchestrate gate, the live fidelity gate and the cross-plugin terse brief; the preparing
+  machine has no Codex CLI.
+
+### Known issues
+
+- Open ledger entries remain E67, E90, E96, E100, E102–E104, E110, E111, E113, E114, E117 and E139; see
+  [`ISSUES.md`](ISSUES.md). The d36a2c0 audit found that ten of them cite text that has since moved, which the
+  ledger has not caught up with.
+
+### Release environment
+
+- Release preparation used Node.js `v22.22.0` and Claude Code `2.1.296`, with no Codex CLI. The owner's runs used
+  Codex `0.162.0-alpha.17.2` and OpenCode `1.18.35`. The CLI protocol pin, `0.159.3`, is unchanged.
+
 ## 0.28.0 — 2026-10-09
 
 ### Changed
