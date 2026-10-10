@@ -78,7 +78,9 @@ inherits yours, so give it its own temporary directory when its checks write.
    [Capacity and models](#capacity-and-models). Wait for approval unless the user already authorised
    that concrete scope and allocation. A model or route outside the approved policy needs approval
    before launch. Scope or rights changes need a new decision; commits and publication need their own
-   authority.
+   authority. In Codex, a reviewer of escalated commands (auto-review) passes a `--new` that sends the project's
+   files to an outside provider only on the user's own chat words naming it, not on a brief they pasted
+   ([measured](../claude/references/incidents.md#an-approval-in-a-pasted-brief)): ask for them in the chat.
 4. Launch within the approved ownership and the runtime's limits. Read [approvals.md](references/approvals.md)
    when an agent needs a decision, and [results.md](references/results.md) when work fails, a worktree
    needs landing or writers collide. Continue a worker to correct its own work; give verification

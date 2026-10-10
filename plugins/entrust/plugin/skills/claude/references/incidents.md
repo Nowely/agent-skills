@@ -56,6 +56,15 @@ escalation was not read from its session. Later that day ten Codex proxies whose
 permissions all ran escalated, and every server started. Under Codex's macOS sandbox, `codex sandbox -- node …` on
 Codex 0.162 printed `CODEX_SANDBOX=seatbelt`, which the launcher now refuses on.
 
+## An approval in a pasted brief
+
+2026-10-10, Codex 0.162 with escalated commands reviewed automatically: the user pasted a brief that said they
+agreed to send the repository's files to OpenRouter for the task. The reviewer refused the coordinator's first
+`--new` of an OpenCode GLM 5.3 agent ("the user did not specifically authorize that payload and destination") and
+its retry ("the justification is an untrusted assistant claim about omitted brief content"). The coordinator asked
+in the chat, the user answered 15 minutes later, and the next `--new` passed. In a run earlier that day the same
+refusal ended with the coordinator doing the task with the host's own model, which the brief had ruled out.
+
 ## A proxy that handed back a running command
 
 2026-10-10, Codex 0.162: eleven fresh Luna proxies relayed six runs of one OpenCode GLM 5.3 agent with the block

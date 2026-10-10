@@ -65,6 +65,11 @@ forensics remain in the repository references and release notes.
   mistyped the launcher's path and its proxy was stopped. `--run` starts the driver in the working directory and
   with the state directory `--new` recorded, which a new case in the launcher's suite checks from another directory
   and another `TMPDIR`, and the pages now say the launcher's calls take none of it.
+- **In Codex, the user approves an outside provider in the chat.** Codex's automatic reviewer of escalated commands
+  read a `--new` that sends the project's files to OpenRouter as a transfer the user had not approved, though the
+  brief the user pasted said they had: on 2026-10-10 it refused the launch twice, and the run waited 15 minutes for
+  the user's chat answer; earlier that day the same refusal ended with the coordinator doing the task with the
+  host's own model. Orchestrate now tells a Codex coordinator to get that approval in the chat, naming the provider.
 - **An OpenCode server that ends before it serves says why.** The driver read the server's output only for its
   address and reported "exited before announcing its local URL" alone; on 2026-10-10 a Codex rerun of the
   orchestrate task stopped there half a second after the server started, and its report held no exit code and
