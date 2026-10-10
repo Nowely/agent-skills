@@ -70,6 +70,10 @@ forensics remain in the repository references and release notes.
   brief the user pasted said they had: on 2026-10-10 it refused the launch twice, and the run waited 15 minutes for
   the user's chat answer; earlier that day the same refusal ended with the coordinator doing the task with the
   host's own model. Orchestrate now tells a Codex coordinator to get that approval in the chat, naming the provider.
+- **In Codex, the coordinator's reads stay in the sandbox.** Only the proxy's command was said to leave it, and on
+  2026-10-10 a Codex coordinator escalated every one of its 100 shell commands, at least 45 of them reads; their 83
+  calls took 289 s, 20 s of it the commands' own. Orchestrate now keeps escalation for the launcher's calls and a
+  command the sandbox stopped.
 - **An OpenCode server that ends before it serves says why.** The driver read the server's output only for its
   address and reported "exited before announcing its local URL" alone; on 2026-10-10 a Codex rerun of the
   orchestrate task stopped there half a second after the server started, and its report held no exit code and
