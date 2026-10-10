@@ -29,9 +29,11 @@ Show worker concurrency only when it affects parallel work; count nested workers
 For a role/model pairing without comparable evidence, define the acceptance rule and pilot representative
 work. Compare the same inputs with a stronger reference; check omissions, incorrect results and usefulness.
 Expand when the rule passes. Estimate batches from comparable runs, including a rerun margin. When
-an agent's observable usage per unit exceeds three times the pilot's median per unit, pause that batch and
-review its remaining scope with the user: an agent given twelve units may spend up to 36 times a one-unit pilot.
-An approval given before the pause, a pre-approved team included, does not lift it unless it names this limit.
+an agent's tokens per unit exceed three times the pilot's median per unit, pause that batch and review its
+remaining scope with the user: an agent given twelve units may spend up to 36 times a one-unit pilot. Count
+tokens, not a priced cost: the total an external agent's report records (`tokenUsage` for Codex, `usage` for
+OpenCode and Claude), or the host's figure for a native one. An approval given before the pause, a pre-approved
+team included, does not lift it unless it names this limit.
 
 ## Environment and worktrees
 
