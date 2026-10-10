@@ -15,15 +15,15 @@ before it. A file name that several skills hold (`driver.mjs`, `agent-run.mjs`) 
 **Evidence, level 3 for the sandboxed case (measured), level 1 for the escaped case (unmeasured).**
 
 - 2026-09-29, measured once: `/bin/zsh -c 'sleep 913 && echo done-913'` run inside the sandbox, in its own process
-  group; `SIGTERM` to the driver's pid; neither the shell nor `sleep` alive 10 s later. `codex/scripts/driver.mjs:2676-2681`
+  group; `SIGTERM` to the driver's pid; neither the shell nor `sleep` alive 10 s later. `codex/scripts/driver.mjs:1964-1966`
   records it in the comment above `killGroupOf`/`killGroup`, and
-  `plugins/entrust/plugin/skills/codex/references/environment-and-internals.md:251-252` says so: "A command the
+  `plugins/entrust/plugin/skills/codex/references/environment-and-internals.md:266-267` says so: "A command the
   agent was running inside the sandbox ends with it (measured once, 2026-09-29)".
-- The same sentence continues, `:252-253`: "a command run after an approval, outside the sandbox, has not been
+- The same sentence continues, `:267-268`: "a command run after an approval, outside the sandbox, has not been
   measured", and the reference keeps the manual step for it: before a second writer enters a directory where a
   command was approved, run `pgrep -fl '<the approved command>'` yourself and wait for it
-  (`codex/references/environment-and-internals.md:253-254`);
-  `orchestrate/references/results.md:16` carries the same check in its Result table's `exitCode: 10` row.
+  (`codex/references/environment-and-internals.md:268-269`);
+  `codex/references/orchestration.md:105` carries the same check in its Result table's `exitCode: 10` row.
 - An accepted command runs as the user, with no sandbox (the codex page's Rights section); whether the driver's
   `SIGTERM` to its own pid reaches a process running outside any sandbox that would otherwise bound it is what
   remains unmeasured.
@@ -43,16 +43,17 @@ directory stays for this reason, and should stay until that case is measured too
 **Evidence, level 2.** `plugins/entrust/evals/lib/gate-checks.mjs` has no `parseSplit` or `ownsPath` function, and no
 test names "the corrected split is read: an interface it omits, one its owner's brief omits, and a file a brief
 takes from its owner are each red" (`grep -rn` over `evals/*.mjs` finds none). `splitAdmissionProblems`
-(`gate-checks.mjs:391-417`) only checks that the split critic named a file, that each worker brief names that
-file's path, that the file opens, and counts the shared file's writers from `writesSeen` (`:327-339`), which reads
-only Write/Edit/NotebookEdit/MultiEdit calls and a Codex report's `filesTouched`; its own comment (`:326`) says "A
-write made through a shell command is not visible here." The orchestrate page still asks the coordinator to check
-each brief against the file's owners (`orchestrate/SKILL.md:84`: "before a worker launches you check the files
-and interfaces its brief touches against the file's owners"), with no test behind that instruction now. Found by
-Fable H1.
+(`gate-checks.mjs:395-421`) only checks that the split critic named a file, that each worker brief names that
+file's path, that the file opens, and counts the shared file's writers from `writesSeen` (`:331-344`), which reads
+only Write/Edit/NotebookEdit/MultiEdit calls and a Codex report's `filesTouched`; its own comment (`:330`) says "A
+write made through a shell command is not visible here." The orchestrate page asked the coordinator to check each
+brief against the file's owners until `cc7efbb` ("before a worker launches you check the files and interfaces its
+brief touches against the file's owners"); today it says "Launch within the approved ownership and the runtime's
+limits" (`orchestrate/SKILL.md:88`), which no longer names the check of each brief's files and interfaces, and no
+test stands behind either. Found by Fable H1.
 
 **Check.** `grep -n 'parseSplit\|ownsPath' plugins/entrust/evals/lib/gate-checks.mjs` finds nothing; reading
-`splitAdmissionProblems` (`:391-417`) shows no check of a brief's claimed files or interfaces against the split
+`splitAdmissionProblems` (`:395-421`) shows no check of a brief's claimed files or interfaces against the split
 file's contents, only that the brief names the split file's path. A worker whose write ran through `sed -i` leaves
 `filesTouched` and every Write/Edit call empty, so `writesSeen` returns no writer for it and
 `splitAdmissionProblems` reports "0 agents wrote lib/shared.mjs" on a correct run.
@@ -68,23 +69,23 @@ each brief against it, and count a shell write that names the shared file among 
 
 **Evidence, level 1 for the lines, level 3 for the refused registration.**
 
-- `plugins/entrust/plugin/README.md:51` introduces it with "Two more are experiments with a page of their own."
-- `swarm/scripts/swarm.mjs:30` `const MAX = 50;` and `:84` refuses a longer unit file: "a swarm is 50 at most".
+- `plugins/entrust/plugin/README.md:35` ends the swarm's row with "an experiment".
+- `swarm/scripts/swarm.mjs:29` `const MAX = 50;` and `:90` refuses a longer unit file: "a swarm is ${MAX} at most".
   A batch wider than fifty units takes several swarms.
-- `swarm.mjs:113-117` and `:150`: the summary holds per agent its number, unit, report path, the launcher's status
-  lines and times, and no tokens, which the plan's re-estimate and per-agent stop line
-  (`orchestrate/references/plan.md:19`) read; each report has to be opened for them.
-- A swarm's agent ids are `001` to `050` (`swarm.mjs:114`), and the plan registration takes only ids that start with
-  a letter (`codex/scripts/agent-run.mjs:442`). 2026-09-29: the row `001 | luna | bulk verifier | nothing | unknown`
+- `swarm.mjs:112-116` and `:149-150`: the summary holds per agent its number, unit, report path, the launcher's
+  status lines and times, and no tokens, which the plan's stop line reads, an agent's tokens per unit against the
+  pilot's median per unit (`orchestrate/references/plan.md:33-37`); each report has to be opened for them.
+- A swarm's agent ids are `001` to `050` (`swarm.mjs:113`), and the plan registration takes only ids that start with
+  a letter (`orchestrate/scripts/agent-run.mjs:468`). 2026-09-29: the row `001 | luna | bulk verifier | nothing | unknown`
   through `--plan` printed `ERROR=invalid agent id: 001`, exit 2, and `--new` for `<run>/001/report.json` in a run
   with a registered plan printed `ERROR=001 is not in the approved plan …`, exit 2.
 
-**Check.** `grep -n 'experiments' plugins/entrust/plugin/README.md`, `grep -n 'MAX' .../swarm/scripts/swarm.mjs`, and
+**Check.** `grep -n 'experiment' plugins/entrust/plugin/README.md`, `grep -n 'MAX' .../swarm/scripts/swarm.mjs`, and
 the two launcher calls above against a scratch run directory.
 
 **Issue text.** An orchestrate plan may propose a swarm for a bulk batch, and the swarm still carries such a batch
 with limits the plan has to work around: the README calls it an experiment, a swarm holds fifty units, its summary
-carries no tokens for the plan's re-estimate and stop line, and its agents cannot be registered in the orchestrate
+carries no tokens for the plan's stop line, and its agents cannot be registered in the orchestrate
 run's plan, so each swarm needs a run directory of its own. Decide which of these stay limits the plan states, and
 lift the rest.
 
@@ -93,8 +94,8 @@ lift the rest.
 **Evidence, level 3.** On 2026-09-29 Opus R2 of the prepare-feedback run compared, for 233 subagents in one machine's
 transcripts, the Agent tool's `totalTokens` with the usage summed over the subagent's own transcript: 203 were within
 1% of the last API call (78 exactly), none equalled the sum, and the median of sum over figure was 2.8. The research
-cost tables that `orchestrate/references/plan.md:19` sends a plan to as comparables ("name the comparable runs behind
-each estimate") quote that figure, for instance `research/2026-09-27-field-audit-triage/README.md:157` ("Claude 1.5M by
+cost tables that `orchestrate/references/plan.md:33` sends a plan to as comparables ("Estimate batches from comparable
+runs") quote that figure, for instance `research/2026-09-27-field-audit-triage/README.md:157` ("Claude 1.5M by
 the harness's per-subagent count"), whose own line 160 already guessed it was not the cache-inclusive total.
 
 **Issue text.** A Claude agent's cost in a plan or a research table is the size of its last call, not the tokens it
@@ -104,11 +105,11 @@ come from the subagent's transcript, as `prepare-feedback.mjs process` sums it.
 
 ## E100. A coordinator session inside a worktree has the launcher's heredoc calls refused when their text names git
 
-**Evidence, level 3 for plan rows, level 2 for prompts.** `plugins/entrust/plugin/skills/orchestrate/SKILL.md:37` has the
-coordinator register the plan with the launcher's `--plan --run-dir <run>`, which reads its rows on stdin, and a write
-agent's row names its absolute directory (`write <absolute dir>`). `plugins/entrust/plugin/skills/codex/SKILL.md:155-160`
-writes every Codex agent's prompt with `--new` from a quoted heredoc, and `codex/references/approvals.md:27-29` does the
-same for `--decide --accept`.
+**Evidence, level 3 for plan rows, level 2 for prompts.** `plugins/entrust/plugin/skills/codex/references/orchestration.md:27-28`
+has the coordinator register every agent with the launcher's `--plan --run-dir <run>`, which reads its rows on stdin
+(`orchestrate/scripts/agent-run.mjs:8`), and a write agent's row names its absolute directory (`write <absolute dir>`,
+`:161`). `plugins/entrust/plugin/skills/orchestrate/references/external.md:69-76` writes every external agent's prompt
+with `--new` from a quoted heredoc, and `:227-229` does the same for `--decide --accept`.
 On 2026-09-29 a coordinator session entered its worktree with EnterWorktree, in a repository whose path contains a
 directory named `Git`, and ran `--plan --amend` with the row `W2 | opus | implementer | write <worktree path> | unknown`
 in a quoted heredoc. Claude Code refused it before it ran: "This session is isolated in the worktree <path>, but this
@@ -125,37 +126,41 @@ agent's directory, and agent prompts that mention the repository. The refusal co
 way around it, so the mode stops at registration unless the coordinator happens to write `live tree` instead. The pages
 should give a form measured to pass in a worktree session.
 
-## E102. A Codex agent can run as one background Bash task, as the swarm runs fifty, but the codex page offers only the Haiku wrapper, for a reason the swarm page contradicts
+## E102. A Codex agent can run as one background Bash task, as the swarm runs fifty, but the codex page offers only the Haiku proxy, for a reason the claude page contradicts
 
-**Evidence, level 1 for the pages and scripts, level 3 for the task list.** `plugins/entrust/plugin/skills/codex/SKILL.md:148-151`
-makes the wrapper the one route: "One Agent call per agent … It gives a Codex agent what a Claude agent has — a card,
-Stop on it, one completion notification, a message to continue it — where a Bash task has none", linking
-`codex/references/incidents.md:273-276`: "Measured 2026-09-12 against the VS Code extension 2.1.269 … a Bash task,
-whatever its description says, is not on it, is not stopped from it and is not continued by a message".
-`plugins/entrust/plugin/skills/swarm/SKILL.md:25` says the opposite of the same kind of task: "the swarm's agents are
-not on the agent map, the task is, and Stop on it … reaches every running agent". The swarm already runs Codex agents
-with no wrapper: `swarm.mjs:135-140` calls the launcher's `--new`, its plain mode, which waits for the run
-with no early return, and `--status`; the launcher passes SIGTERM, SIGINT and SIGHUP to the driver (`codex/scripts/agent-run.mjs:395`, and
-`:720` until its early return). The ten-minute ceiling and the `RUNNING=` rerun come from the wrapper's own foreground Bash call
-(`codex/scripts/agent-run.mjs:18-31`); a background task has no ceiling, and on 2026-09-29 one ran for 105 minutes. The wrapper
-cannot move its call to the background, because a subagent ends with its turn: one that did returned at once and was
-counted as reported (`plugins/entrust/plugin/skills/codex/references/incidents.md:21`, "The unverified wrapper"). On 2026-09-29 the VS Code extension listed a
-running background Bash task under its description in its background task list. Whether that list is the agent map,
-and whether its Stop reaches the driver, is not measured.
+**Evidence, level 1 for the pages and scripts, level 3 for the task list.** `plugins/entrust/plugin/skills/codex/SKILL.md:148`
+sends every Codex agent through the shared call page, one Agent call per agent (`codex/references/orchestration.md:80`),
+and `:154-156` gives the reason: "The proxy gives a Codex agent what a Claude agent has, a card, Stop on it and one
+completion notification, where a Bash task has none", linking `codex/references/incidents.md:281-283`: "Measured
+2026-09-12 against the VS Code extension 2.1.269 … a Bash task, whatever its description says, is not on it, is not
+stopped from it and is not continued by a message". `plugins/entrust/plugin/skills/claude/SKILL.md:49-50` says the
+opposite of the same kind of task: a long-running script, such as a swarm, "runs as one background Bash task described
+by what it runs: the task is on the agent map, and Stop on it reaches everything it started". The swarm already runs
+Codex agents with no proxy: `swarm.mjs:134-139` calls the launcher's `--new`, its plain mode, which waits for the run
+with no early return, and `--status`; the launcher passes SIGTERM, SIGINT and SIGHUP to the driver
+(`orchestrate/scripts/agent-run.mjs:417`, and `:828-829` until its early return). The ten-minute ceiling and the
+`RUNNING=` rerun come from the proxy's own foreground Bash call (`orchestrate/scripts/agent-run.mjs:18-31`); a background
+task has no ceiling, and on 2026-09-29 one ran for 105 minutes. The proxy cannot move its call to the background,
+because a subagent ends with its turn: one that did returned at once and was counted as reported
+(`codex/references/incidents.md:65-71`, "The unverified wrapper"). On 2026-09-29 the VS Code extension listed a running
+background Bash task under its description in its background task list. Whether that list is the agent map, and
+whether its Stop reaches the driver, is not measured.
 
 **Issue text.** A Codex agent needs its Haiku subagent only for a card on the agent map. The coordinator can run the
-launcher itself as one background Bash task, as the swarm does for up to fifty agents, with no wrapper tokens, no relay
+launcher itself as one background Bash task, as the swarm does for up to fifty agents, with no proxy tokens, no relay
 that can paraphrase the status lines, and no ten-minute ceiling or `RUNNING=` reruns. The codex page names only the
-wrapper, and its reason contradicts the swarm page and may be out of date. The page should name the background task
+proxy, and its reason contradicts the claude page and may be out of date. The page should name the background task
 as a supported route, say what it shows and how it is stopped, and support it, after measuring the current extension's
 task list and its Stop on such a task.
 
 ## E103. In `dontAsk` mode the codex page, and the advisor page that loads it first, do not load, because the Codex status line it runs needs an allow rule the page cannot give
 
-**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:26` runs `scripts/status.mjs` through Claude Code's
-`` !`…` `` substitution as the page loads, and its frontmatter (`:16`) pre-approves it with
-`allowed-tools: Bash(node *codex/scripts/status.mjs*)`; `plugins/entrust/plugin/skills/advisor/SKILL.md:13` loads the codex
-page first, and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:36` loads it once a plan has a Codex agent. On 2026-09-29,
+**Evidence, level 3.** `plugins/entrust/plugin/skills/codex/SKILL.md:23` runs `scripts/status.mjs` through Claude Code's
+`` !`…` `` substitution as the page loads, and its frontmatter (`:11`) pre-approves it with
+`allowed-tools: Bash(node *codex/scripts/status.mjs*)`; `plugins/entrust/plugin/skills/advisor/SKILL.md:12` resolves its
+advisor in Claude Code through "the codex adapter after its status check", that page (level 2: it no longer says to load
+the page first), and `plugins/entrust/plugin/skills/orchestrate/SKILL.md:15` names the page as an external Codex run's
+adapter, loaded once that worker is selected (`:23`). On 2026-09-29,
 Claude Code 2.1.280, a `claude plugin eval` case that loaded `entrust:codex` ran in `permissionMode: dontAsk`, and the Skill
 call's result was "Shell command permission check failed for pattern … Permission to use Bash has been denied because
 Claude Code is running in don't ask mode": the model never received the page. The same case with the operator's
@@ -201,11 +206,11 @@ the rule in the model table and have the parity reference link it.
 ## E111. The pages keep Luna out of judgement, and on one run Luna at high effort was the strongest dissenting critic (research)
 
 **Evidence, level 1 for the pages, level 3 for the run's outcomes, level 2 for the generalisation.**
-`plugins/entrust/plugin/skills/orchestrate/SKILL.md:98-101` gives judgement to the top tier and the bulk tier
-"independent units after the candidate model meets the acceptance rule"; `codex/references/models.md:9-14` names
-Luna for the bulk tier at `high` "for extraction, classification and verification", Sol at `medium` "for review,
-refutation and judgement", and Luna "the first choice for scouting and independent units"; the quality profile
-(`orchestrate/SKILL.md:124`) admits bulk-tier reviewers beside a strong judge. On the ledger run of 2026-09-29/30,
+`plugins/entrust/plugin/skills/orchestrate/SKILL.md:110-113` gives judgement to the top tier and the bulk tier
+"independent units after the candidate model meets the acceptance rule"; `codex/references/models.md:11-17` names Luna
+for the bulk tier at `high` "for extraction, classification and verification", Sol at `medium` "for review, refutation
+and judgement", and Luna "the first choice for scouting and independent units"; the quality profile
+(`orchestrate/SKILL.md:136`) admits bulk-tier reviewers beside a strong judge. On the ledger run of 2026-09-29/30,
 with no other Codex model available, Luna ran at `high` as the critic of each recommendation
 (`plugins/entrust/research/2026-09-29-ledger-options/rounds.md`, `02-options.md`): it said E92's isolation belongs
 with the unit that knows the agent's directory (it named the launcher) — the judge kept the driver's private
@@ -214,7 +219,7 @@ directory, in the driver; its E89 "delete the classifier" and its E52 and E75 ob
 corrected a Fable analyst's reading of "one place" for text; its refinement of the retro was the owner's pick. As a
 wide diff reviewer it was weak: nothing found in a 1,763-line code diff, 3 minor findings in the page diff, at 576k
 and 821k tokens. The swarm runs the bulk or cheap row's model for verdict units
-(`plugins/entrust/plugin/skills/swarm/SKILL.md:22`). Raised by the owner, 2026-09-30.
+(`plugins/entrust/plugin/skills/swarm/SKILL.md:24`). Raised by the owner, 2026-09-30.
 
 A second run, level 3 for its outcome: on 2026-09-30, at the owner's request, Luna at `high` ran in parallel as the
 dissenting critic of one recommendation, how the skill-page test (`scripts/skills.test.mjs`) and this ledger should
@@ -256,16 +261,16 @@ needed on a per-user TMPDIR.
 
 ## E114. Two cases of the lock suite fail inside Codex's sandbox and pass outside it on the same tree
 
-**Evidence, level 3 for the failure inside the sandbox; not reproduced outside it.** On 2026-09-30 a Codex agent
-ran `node plugins/entrust/evals/lock.test.mjs` twice inside its sandbox, on main at `aaa0bcf` with a branch on top
-that changes none of the files the suite reads, and both runs ended "2/74 failed" with the same two cases. The case
-at `lock.test.mjs:1268`, "SIGTERM to the driver and then to its server, inside the grace, reports the turn as
-interrupted and not as a crash", failed with "the driver had no child to signal", the message `:1279` returns when
-it finds no child process of the driver. The case at `:1386`, "a lock whose pid was recycled by an unrelated live
-process is not honoured", failed with "a recycled pid still wedged the directory: exit 10" (`:1399`). Six minutes
-later the same suite on the same tree, run outside the sandbox, passed 74 of 74. The check runner's logs of the
-three runs hold the whole output. What the logs do not show is why: whether it is timing, a restriction the sandbox
-puts on signals or process ids, or something else is unknown.
+**Evidence, level 3 for the failure inside the sandbox; not reproduced outside it.** On 2026-09-30 a Codex agent ran
+`node plugins/entrust/evals/lock.test.mjs` twice inside its sandbox, on main at `aaa0bcf` with a branch on top that
+changes none of the files the suite reads, and both runs ended "2/74 failed" with the same two cases. The case at
+`lock.test.mjs:1268` on that tree (today `:1272`), "SIGTERM to the driver and then to its server, inside the grace,
+reports the turn as interrupted and not as a crash", failed with "the driver had no child to signal", the message
+`:1279` (today `:1283`) returns when it finds no child process of the driver. The case at `:1386` (today `:1390`), "a
+lock whose pid was recycled by an unrelated live process is not honoured", failed with "a recycled pid still wedged
+the directory: exit 10" (`:1399`, today `:1403`). Six minutes later the same suite on the same tree, run outside the
+sandbox, passed 74 of 74. The check runner's logs of the three runs hold the whole output. What the logs do not show
+is why: whether it is timing, a restriction the sandbox puts on signals or process ids, or something else is unknown.
 
 **Check.** Run `node plugins/entrust/evals/lock.test.mjs` inside a Codex agent's sandbox and outside it on the same
 tree, and compare the two cases above.
@@ -279,11 +284,11 @@ then either make the two cases pass there or have the suite say that they cannot
 
 ## E117. The bulk row's unit, derived count and pilot are written twice, on orchestrate's plan reference and on the swarm page
 
-**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/plan.md:45-47` ("A bulk row") states
+**Evidence, level 1.** `plugins/entrust/plugin/skills/orchestrate/references/plan.md:49-53` ("A bulk row") states
 the unit ("Define independent units and a fixed return shape. A verdict describes the subject, not a broken input
-path") and the count ("Announce the unit count and how it was derived"), and `:29-31` the pilot ("define the
+path") and the count ("Announce the unit count and how it was derived"), and `:28-29` the pilot ("define the
 acceptance rule and pilot representative work. Compare the same inputs with a stronger reference").
-`plugins/entrust/plugin/skills/swarm/SKILL.md:22` states all three again in its own words: "A unit is one claim, one
+`plugins/entrust/plugin/skills/swarm/SKILL.md:24` states all three again in its own words: "A unit is one claim, one
 address, a verbatim quote, and a verdict from a closed set that describes the subject and never the brief, or one part
 of the material for extraction, with a fixed answer schema the brief states", "Announce the count, derived from the
 units with the plan saying why that many, before the launch", and "Pilot first: a stronger model marks the pilot's
@@ -305,7 +310,7 @@ link them, or hold one wording and pin it on both pages as `evals/fragments.mjs`
 
 ## E139. An OpenCode or Claude worktree is in no ledger, and cleanup does not list it
 
-**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs:130` `makeWorktree` adds the
+**Evidence, level 3.** `plugins/entrust/plugin/skills/orchestrate/scripts/drivers.mjs:202` `makeWorktree` adds the
 tree at `<state>/worktrees/<name>` and records it nowhere else. `cleanup/scripts/cleanup.mjs:793` lists the `.json`
 entries of that directory, the Codex driver's ledger, and `:804` the trees under `<project>/.claude/worktrees`. Run
 on 2026-10-08: a tree made by `makeWorktree` and a Codex ledger entry beside it in a fresh state directory;
