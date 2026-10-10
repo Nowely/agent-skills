@@ -64,6 +64,11 @@ agreed to send the repository's files to OpenRouter for the task. The reviewer r
 its retry ("the justification is an untrusted assistant claim about omitted brief content"). The coordinator asked
 in the chat, the user answered 15 minutes later, and the next `--new` passed. In a run earlier that day the same
 refusal ended with the coordinator doing the task with the host's own model, which the brief had ruled out.
+Later that day, with the owner's instructions changed to run commands in the sandbox first, a coordinator ran
+`--plan`, `--new` and `--decide` unescalated, each of them worked, and the reviewer saw none of them; it reviewed
+one of the coordinator's commands, `git fetch`, against 94 in the run before. That coordinator still stopped before
+its first `--new` to ask for the approval in the chat, as the page then said for any launch to an outside provider,
+though the brief the user pasted carried it, and the run waited 21 minutes for the answer.
 
 ## Batches in turn
 

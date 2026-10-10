@@ -65,11 +65,14 @@ forensics remain in the repository references and release notes.
   mistyped the launcher's path and its proxy was stopped. `--run` starts the driver in the working directory and
   with the state directory `--new` recorded, which a new case in the launcher's suite checks from another directory
   and another `TMPDIR`, and the pages now say the launcher's calls take none of it.
-- **In Codex, the user approves an outside provider in the chat.** Codex's automatic reviewer of escalated commands
-  read a `--new` that sends the project's files to OpenRouter as a transfer the user had not approved, though the
-  brief the user pasted said they had: on 2026-10-10 it refused the launch twice, and the run waited 15 minutes for
-  the user's chat answer; earlier that day the same refusal ended with the coordinator doing the task with the
-  host's own model. Orchestrate now tells a Codex coordinator to get that approval in the chat, naming the provider.
+- **In Codex, the coordinator's launcher calls run in the sandbox.** Codex's automatic reviewer of escalated
+  commands read a `--new` that sends the project's files to OpenRouter as a transfer the user had not approved,
+  though the brief the user pasted said they had: on 2026-10-10 it refused the launch twice, and the run waited 15
+  minutes for the user's chat answer; earlier that day the same refusal ended with the coordinator doing the task
+  with the host's own model. Telling the coordinator to get that approval in the chat first then held a later run
+  21 minutes on a pasted brief that carried it, while that run's `--plan`, `--new` and `--decide` worked without
+  escalation and never reached the reviewer. Orchestrate now runs those three unescalated and asks in the chat only
+  when the reviewer refuses an escalated one.
 - **After a passing pilot, the rest runs side by side.** The plan said only to expand when the pilot's rule passes,
   and on 2026-10-10 a Codex coordinator continued its one GLM agent over the twelve remaining ledger entries in
   three batches of four, one after another (6.1, 5.0 and 2.9 minutes), under a bound of six alive. The plan now
