@@ -212,14 +212,14 @@ for the bulk tier at `high` "for extraction, classification and verification", S
 and judgement", and Luna "the first choice for scouting and independent units"; the quality profile
 (`orchestrate/SKILL.md:136`) admits bulk-tier reviewers beside a strong judge. On the ledger run of 2026-09-29/30,
 with no other Codex model available, Luna ran at `high` as the critic of each recommendation
-(`plugins/entrust/research/2026-09-29-ledger-options/rounds.md`, `02-options.md`): it said E92's isolation belongs
-with the unit that knows the agent's directory (it named the launcher) — the judge kept the driver's private
-directory, which shipped a regression, and the owner's rework names each run's folder after the agent's report
-directory, in the driver; its E89 "delete the classifier" and its E52 and E75 objections were upheld by the judge; it
-corrected a Fable analyst's reading of "one place" for text; its refinement of the retro was the owner's pick. As a
-wide diff reviewer it was weak: nothing found in a 1,763-line code diff, 3 minor findings in the page diff, at 576k
-and 821k tokens. The swarm runs the bulk or cheap row's model for verdict units
-(`plugins/entrust/plugin/skills/swarm/SKILL.md:24`). Raised by the owner, 2026-09-30.
+(`plugins/entrust/research/2026-09-29-ledger-options/rounds.md`, `02-options.md`; neither records the effort): it said
+E92's isolation belongs with the unit that knows the agent's directory (it named the launcher) — the judge kept the
+driver's private directory, which shipped a regression, and the owner's rework names each run's folder after the
+agent's report directory, in the driver; its E89 "delete the classifier" and its E52 objection were upheld by the
+judge, and its E75 objection was not (`02-options.md:19-20`); it corrected a Fable analyst's reading of "one place"
+for text; its refinement of the retro was the owner's pick. As a wide diff reviewer it was weak: nothing found in a
+1,763-line code diff, 3 minor findings in the page diff, at 576k and 821k tokens. The swarm runs the bulk or cheap
+row's model for verdict units (`plugins/entrust/plugin/skills/swarm/SKILL.md:24`). Raised by the owner, 2026-09-30.
 
 A second run, level 3 for its outcome: on 2026-09-30, at the owner's request, Luna at `high` ran in parallel as the
 dissenting critic of one recommendation, how the skill-page test (`scripts/skills.test.mjs`) and this ledger should
