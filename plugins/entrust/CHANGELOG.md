@@ -36,6 +36,11 @@ forensics remain in the repository references and release notes.
   compared a typed request's body but told the caller to copy the lines between `COMMAND<<` and `COMMAND>>`,
   which such a request does not print; on 2026-10-09 a proxy that restated an OpenCode permission's command
   alone was sent looking for them twice. It now names `REQUEST_BODY<<` and `REQUEST_BODY>>` for a typed request.
+- **The usage stop compares usage per unit.** It compared an agent's total with the pilot's median per agent, so an
+  agent carrying more units than a pilot agent crossed it by size alone: on 2026-10-10 a Codex coordinator's pilot
+  agent read one ledger entry for 376,319 tokens, was continued for the other twelve for 2,470,884, six and a half
+  times the pilot and about half of it per entry, and the audit of that run reported the stop as missed.
+  The line is now three times the pilot's median per unit.
 - **In Codex, a proxy runs the launcher outside the sandbox.** The proxy's block was written for Claude Code's Bash
   tool and said nothing of a sandbox; the driver starts the agent's CLI, which writes its state under the home
   directory and reaches its provider, and Codex's sandbox allows neither by default. On 2026-10-10 a Codex proxy
