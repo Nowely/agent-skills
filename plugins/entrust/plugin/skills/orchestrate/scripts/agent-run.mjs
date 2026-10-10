@@ -130,8 +130,8 @@ export const TAKEN = ["already exists, or is a symbolic link", "could not be pub
 // run's, whatever an earlier run left in the directory.
 export const REFUSED = "entrust agent-run: refused";
 export const FIRST_MAX = 300, ANSWER_MAX = 600, ERROR_MAX = 300;
-// Codex marks a command it runs under its macOS sandbox with CODEX_SANDBOX=seatbelt, and an approved
-// command runs with no sandbox and no mark. Under it the agent's CLI can neither write its state under
+// Codex marks a command it runs under its macOS sandbox with CODEX_SANDBOX=seatbelt (measured on Codex 0.162,
+// 2026-10-10), and an approved command runs with no sandbox and no mark. Under it the agent's CLI can neither write its state under
 // the home directory nor reach its provider, and on 2026-10-10 an OpenCode server started there exited
 // before its run began, so a launch from it is refused before it starts anything.
 export function sandboxRefusal(env = process.env) {

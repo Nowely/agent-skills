@@ -52,4 +52,6 @@ read agent. The driver's OpenCode server exited 0.47 s after it started, before 
 report held exit 4, no session, no model and no usage, and the driver did not yet keep the server's exit code or
 words. On 2026-10-09 in the same host, proxies briefed with the task and the operational proxy page ran their
 commands with escalated permissions, and every OpenCode server started. Whether the 2026-10-10 proxy asked for
-escalation was not read from its session.
+escalation was not read from its session. Later that day ten Codex proxies whose step 1 asked for escalated
+permissions all ran escalated, and every server started. Under Codex's macOS sandbox, `codex sandbox -- node …` on
+Codex 0.162 printed `CODEX_SANDBOX=seatbelt`, which the launcher now refuses on.
