@@ -36,8 +36,10 @@ reported even when a pipeline fails. Put the ledger under an approved temporary 
 `TMPDIR` to that root when the default temp directory is outside the approved scope. Resolve
 `<skill-dir>` from this skill's installed location;
 give a native worker or a Codex agent the resolved absolute script path and ask it to cite its exit status
-and counts. An OpenCode or Claude read agent asks you for such a command: brief it to check with its file tools,
-as [external.md](references/external.md#1-write-the-prompt) says.
+and counts. OpenCode reads any path it can access, regardless of `RIGHTS`; Bash runs without prompts and is not
+confined to it, so give it the exact command and keep its effects within the task. A Claude read agent asks for
+commands outside Claude Code's read-only set;
+brief it to check with its file tools, as [external.md](references/external.md#1-write-the-prompt) says.
 
 Start one temporary context with `node "<skill-dir>/scripts/temp-dir.mjs" run`; it returns JSON.
 Pass that JSON as `ENTRUST_TEMP_CONTEXT` on your check commands and a native worker's so they share the

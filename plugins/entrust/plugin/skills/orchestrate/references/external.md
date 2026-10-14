@@ -25,7 +25,7 @@ A prompt is a few header lines, then `TASK:` and the task. Header lines come fir
 
 | Line | Value | When it is left out |
 | --- | --- | --- |
-| `RIGHTS:` (first, when present) | `read [<dir>]`: read only; `write <dir>`: may change files under `<dir>`; `worktree <repo>`: may change files in a fresh copy of the git repository `<repo>` | the plan row's writes; without a plan, `read` in the directory you run `--new` in |
+| `RIGHTS:` (first, when present) | `read [<dir>]`: no file-tool writes; optional path selects the working directory, not a read boundary; `write <dir>`: may change files under `<dir>`; `worktree <repo>`: may change files in a fresh copy of `<repo>` | the plan row's writes; without a plan, `read` in the directory you run `--new` in |
 | `MODEL:` | a model name from the adapter's models page | the plan row's model; without a plan, the CLI's default |
 | `EFFORT:` | an effort name from the adapter's page | the CLI's default |
 | `OUTPUT_SCHEMA:` | the absolute path of a JSON Schema; for an orchestrated agent always `<orchestrate>/schemas/five-fields.schema.json` | the adapter's default |
@@ -41,15 +41,17 @@ A yes-or-no line takes `yes`, `true` or `1`, or `no`, `false` or `0`. After the 
 Write one deliverable per agent. Write the task in the user's language. Choose the smallest `RIGHTS` that lets
 the agent finish and check the work, and agree any write right with the user before launching.
 
-An OpenCode read agent asks you for every shell command, and a Claude one for any command outside Claude Code's
-read-only set, and each question stops the agent until you decide it: read agents briefed to check with the shell
-asked 11 and 43 times in one read-only task each ([measured](../../claude/references/incidents.md#read-agents-and-the-shell)).
-So write such an agent's `TASK:` and `CHECK:` as reads and searches its file tools make unasked, and name no
-script or command for it to run; a check that needs a command is yours, or a Codex agent's, which runs commands
-inside its sandbox. Run such a check before the launch and put its result in the task, the commit the agent
-reads included: an OpenCode read agent in a git worktree asked to read that worktree's `HEAD` file in the main
-repository's `.git`, outside its directory, and its run exited 6 on the decline. Put an OpenCode read agent's
-inputs inside the directory its `RIGHTS:` names: for one file outside it, the agent asks for the whole directory.
+An OpenCode read agent's Bash is allowed without prompts and is not confined to `RIGHTS`; its read, list, glob and
+grep tools may also read outside the working directory without an external-directory prompt. A Claude read agent
+asks for commands outside Claude Code's read-only set. Read agents briefed to check with the shell asked 11 and 43
+times in one read-only task each under the former policy ([measured](../../claude/references/incidents.md#read-agents-and-the-shell)).
+Keep OpenCode shell use within the task: read rights do not sandbox Bash. A mailbox-less agent still declines
+other permission requests or questions. Entrust `RIGHTS` paths set the working directory or writable roots, not
+read boundaries; host permissions may still deny a path.
+For an OpenCode review of a worktree diff, capture the exact diff before launch and include it in the brief or
+in a review input file inside the working tree. Do not ask the agent to run `git diff` merely to get the patch:
+a worktree's shared `.git` metadata may live outside the checkout. Entrust permits necessary external reads, but
+the embedded patch avoids reading unrelated Git metadata and history.
 
 The driver gives every agent standing rules beside the task, so the prompt need not repeat them: what its rights
 let it do, that anything else is asked of you (a Codex agent asks by running the refused command again with
@@ -91,14 +93,32 @@ The agent's directory, `<DIR>`, is `agent/` beside `<REPORT>`.
 
 The run needs a proxy: a small agent of the host that runs one command, `--run`, waits for it, and hands back
 what it printed. The proxy never writes the prompt, never decides a request and never reads the result; that is
-your work. Start a fresh proxy for each `--run`: the first, the one after you decide a request (step 5), and the
-first of a continuation (step 6). A proxy sent a second command after its hand-back has answered from its earlier
-turn instead of running it ([measured](../../claude/references/incidents.md#a-resent-block)). The command needs
-nothing of your environment: `--run` starts the driver in the working directory and with the state directory
-`--new` recorded, so put no variables before it.
+your work. A native proxy task can serve more than one relay turn when the host's follow-up mechanism delivers a
+new instruction. If its shell call returns a session id without an exit code, keep reading that same call; do not
+start another proxy. After hand-back, reuse the native task for a clearly specified next command when the host
+supports a follow-up turn, and verify that turn's command or receipt. Use a fresh task when the host cannot provide
+or verify that turn. Replaying the identical block after hand-back is a narrower risk: in headless Claude Code
+2.1.295, two of three proxies returned their earlier hand-back after the same block was resent
+([measured](../../claude/references/incidents.md#a-resent-block)). That does not establish the same failure for
+other hosts or changed follow-ups; on that exact path in that host, use a fresh context until reuse is checked.
+After a request decision, running the same command with the same `<REPORT>` resumes that external invocation.
+`RESUME:` with the next report path starts a new invocation in the prior external session; `--new` without
+`RESUME:` starts a new worker. A relay task change does not mean stopping or replacing the external worker. The
+command needs nothing of your environment: `--run` starts the driver in the working directory and with the state
+directory `--new` recorded, so put no variables before it.
 
-Its name, on every host, is `<Vendor> <Model> <id>: <the task in a few words>`: the external agent's vendor,
-model and id, never the proxy's own model, for example `Codex Sol R1: review the diff`.
+Name the external worker by its model family, stable id and role, for example `GLM W1 · Critic` or
+`GLM Flash W2 · Critic`. Omit the model version. Add a task qualifier after the role only when it helps distinguish
+the work, for example `GLM W1 · Critic · Naming`; omit it otherwise. Include a provider in parentheses after the
+model family only when it distinguishes routes to the same model; keep it out of the role and task qualifier. Keep
+the worker id stable across invocations; suffixes such as `-2` belong in report paths, not in the displayed id or
+slug. Where a host accepts free text, use the name as written. Codex `task_name` accepts only lowercase letters,
+digits and underscores, so encode the same order as a slug such as `glm_w1_critic`, `glm_flash_w2_critic` or
+`glm_w1_critic_naming`; the host controls how it renders that slug, so do not promise exact capitalization or
+punctuation. Use the same model family, worker id and role for its relay card. If the host displays both cards
+separately and their visible labels would otherwise be identical, add a short task-specific qualifier after the
+role to the relay card only. Do not use an invocation number or transport term in that qualifier; `OpenCode`,
+`proxy`, `relay` and `continue` must not be used as the role or qualifier.
 
 ### In Claude Code
 
@@ -130,12 +150,15 @@ agent's result. A background call also sends a task notification after it; give 
 
 ### In Codex or OpenCode
 
-Start one native subagent, an agent the host itself starts, with a fresh context, on the host's smallest model at
-the effort of the proxy row of its models page ([Codex](../../codex/references/models.md)); on another host, its
-smallest model. Name it as above and give it the block above, copied whole with the same three replacements, as
-its whole brief: no task, no rights and no other page, since it decides nothing. Wait for it; its final message
-is the agent's result, and `--status` (the nine lines) or `--pending` (a waiting request) on the same report prints
-that result again when the message is not it.
+Start one native subagent, an agent the host itself starts, on the host's smallest model at the effort of the
+proxy row of its models page ([Codex](../../codex/references/models.md)); on another host, its smallest model.
+Give it the logical name above and the block above, copied whole with the same three replacements, as its whole
+brief: no task, no rights and no other page, since it decides nothing. In Codex, pass the semantic slug as
+`task_name`; the UI's rendered title is host-controlled. If the host offers a follow-up turn, reuse that native
+task for a clearly specified next command and report path; verify that the new turn actually ran. A repeated
+identical block may need a fresh context on hosts with a measured stale-hand-back issue (see step 3). Wait for the
+current turn; its final message is the agent's result, and `--status` (the nine lines) or `--pending` (a waiting
+request) on the same report prints that result again when the message is not it.
 
 In Codex the command runs outside the sandbox: the driver starts the agent's CLI, which writes its own state under
 your home directory and reaches the model's provider, and the sandbox allows neither by default. A proxy given the
@@ -153,8 +176,9 @@ the block's steps 1 and 2 with these two and leave out step 4, since the proxy's
     2. While the tool's result carries a session id and no exit code, the command is still running: read that session again with no input (write_stdin), with the longest wait it allows, each time it comes back so, and write nothing in between. The command's result is everything it printed across those reads. If that result ends with RUNNING=, run the very same command again and read it the same way; each run is safe. Any other result, an empty one with an exit code included, goes to step 3 as it is.
 
 A proxy that runs it inside the sandbox anyway gets the launcher's refusal on `ERROR=` and starts nothing, where
-Codex marks the sandbox (`CODEX_SANDBOX`, its macOS one): start a fresh proxy with the same block. An escalation
-the host declines comes back as the proxy's result, like any other: take it to the user.
+Codex marks the sandbox (`CODEX_SANDBOX`, its macOS one): retry through a distinct follow-up turn on the same
+native task when supported, and verify that the escalated command ran; otherwise use a fresh proxy context. An
+escalation the host declines comes back as the proxy's result, like any other: take it to the user.
 
 ## 4. Read the result
 
@@ -163,7 +187,7 @@ the host declines comes back as the proxy's result, like any other: take it to t
 | It ends with | It means | Do |
 | --- | --- | --- |
 | nine status lines, the last `REPORT=` | the run is over | read the lines, then the report |
-| `RUNNING=` | the run is going on; the call returned before its tool's ten-minute limit | start a fresh proxy with the same block |
+| `RUNNING=` | the run is going on; the call returned before its tool's ten-minute limit | continue the native proxy task if the host supports a distinct follow-up turn; otherwise use a fresh context, with the same command and report path |
 | `REQUESTS=`, `WAITING=` and `REPORT=`, after one or more `REQUEST=` blocks | the agent waits on your decision | step 5 |
 
 The nine lines:
@@ -233,8 +257,9 @@ on that refusal, run `--pending` and copy from what it prints. When your own hos
 
 Decline with `--decide '<ID>' --decline --why "<reason>" --report-file "<REPORT>"`. Answer a question with
 `--decide '<ID>' --answer --report-file "<REPORT>"` and `{"answers":[["<choice>"]]}` on stdin, one list per
-question. Then start a fresh proxy with the same block (step 3); in [main proxy mode](main-proxy.md) the attached
-call goes on instead ([proxy.md](proxy.md)). A request nobody answers is declined after thirty minutes. A decline
+question. Then continue the proxy task with a distinct turn when the host supports it, following step 3's same
+command and report path; otherwise use a fresh context. In [main proxy mode](main-proxy.md) the attached call
+goes on instead ([proxy.md](proxy.md)). A request nobody answers is declined after thirty minutes. A decline
 answers that one request; the run goes on.
 
 ### What each adapter adds
@@ -260,7 +285,8 @@ answers that one request; the run goes on.
 Write a new prompt with `RESUME: <its REPORT= path>` and run `--new` under a fresh report path: under a plan
 `<run>/<id>-2/report.json`, then `-3`, and so on; without a plan, a new name. The continuation runs in the
 earlier run's directory with its rights: leave `RIGHTS:` out or name the same rights. Then run it as in step 3,
-with a fresh proxy.
+using a distinct follow-up turn on the existing native task when supported, otherwise a fresh context. This is a
+new external invocation in the same session, not a new worker.
 
 ## 7. Stop an agent
 
@@ -284,8 +310,8 @@ Silence and the wall clock stand still while a request waits for you. A cut is e
 
 - The models and efforts, and the extra header lines: the adapter's page.
 - What a read agent does without asking: Codex runs any command inside its sandbox, network included; OpenCode
-  reads and searches files, and asks for every shell command; Claude runs its read-only commands and whatever
-  the user's own settings allow.
+  reads and searches any needed path through file tools and allows Bash without prompts (`RIGHTS` does not bound
+  reads or Bash); Claude runs its read-only commands and whatever the user's own settings allow.
 - The requests: Codex asks for commands; a Codex file change outside its rights is declined, never offered,
   since its request carries no body to restate. OpenCode asks for permissions and questions, Claude for commands
   and other tool calls, an edit outside the agent's roots included, with the whole edit as the body. In every
@@ -297,20 +323,22 @@ Silence and the wall clock stand still while a request waits for you. A cut is e
 - `EXPECT:`, a pattern a successful command's output must match, exists for Codex and OpenCode.
 - Egress is on by default: a Codex agent's commands reach the network unless
   `NETWORK: no`, under which a fetch fails and the agent asks you for one the task needs, and it searches the web through its provider
-  only with a `WEB_SEARCH:` line; an OpenCode agent
-  asks before every command and fetch; a Claude agent has no web tools, and a command of its that reaches the
-  network asks unless the user's allow rules cover it. A plan row sets neither: settle a `NETWORK: no` or a
-  `WEB_SEARCH:` line with the user, and never drop one the user settled.
+  only with a `WEB_SEARCH:` line; OpenCode Bash runs without prompts, including network commands, while its native
+  fetch tool asks; a Claude agent has no web tools, and a shell command that reaches the network asks unless the
+  user's allow rules cover it. A plan row sets neither: settle a `NETWORK: no` or a `WEB_SEARCH:` line with the
+  user, and never drop one the user settled.
 - The user's MCP servers: a Codex agent runs in an isolated Codex home and has none of them, and no prompt line
   opens them; a Claude agent has the user's, unless `SAFE_MODE: yes`; an OpenCode agent has its user's OpenCode
-  configuration and asks before any tool but its file reads.
+  configuration, with Entrust allowing read/list/glob/grep and Bash while other tool permissions, including MCP,
+  remain under the catch-all ask. Bash is not confined to `RIGHTS`.
 - Writers on one tree: under a plan, `--plan` refuses two rows whose trees overlap and `--new` a live tree over
   another row's, in every adapter, so give each writer its own directory or a worktree. Without a plan, only a
   Codex write agent refuses a directory another Codex writer holds (exit 10).
 
 ## What the user reads
 
-Tell the user, in their own language, which agent did what, by vendor, model and id ("Codex Sol R1 reviewed the
-diff"): the model's name capitalised, never the model slug the report carries. Keep header lines, status lines,
-report fields and absolute paths out of it, and say what an agent may write, and where, in plain words, so the
-user knows what they approve.
+Tell the user, in their own language, which external worker did what, by model family, stable id and role ("GLM W1
+Critic reviewed the diff"); include its provider in parentheses after the model family only when it distinguishes
+routes to the same model. Capitalise the display name, never use the model slug from the report. Keep header lines,
+status lines, report fields and absolute paths out of it, and say what an agent may write, and where, in plain
+words, so the user knows what they approve.

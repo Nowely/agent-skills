@@ -28,13 +28,13 @@ pins the model and the writes: a prompt that names neither runs on the row's, on
 
 | `RIGHTS` | Working directory | Without asking | Tools |
 | --- | --- | --- | --- |
-| `read` | `dir`, else the caller's | reads inside it, and the read-only commands | Read, Grep, Glob, Bash |
-| `write` | `dir` | edits inside `dir` too | and Edit, Write |
+| `read` | `dir`, else the caller's | no file-tool writes; `dir` selects the working directory, not a read boundary; host access rules still apply | Read, Grep, Glob, Bash |
+| `write` | `dir` | edits inside `dir` too; reads are not bounded by `dir`, subject to host access rules | and Edit, Write |
 | `worktree` | a fresh detached worktree of `repo` under `<state>/worktrees/` | edits inside it | and Edit, Write |
 
-Everything else a run tries asks: a command outside the read-only set, which is the commands Claude Code itself
-runs unasked (a command holding a variable assignment, a loop or `awk` asked in one measured run), and a write
-outside its directory. The
+Every non-read action outside its rights asks: a command outside the read-only set, which is the commands Claude
+Code itself runs unasked (a command holding a variable assignment, a loop or `awk` asked in one measured run),
+and a write outside its directory. The
 agent has no web tools and no Agent tool. It runs with the user's own configuration: their allow rules run
 without asking, their hooks and MCP servers are there, and the report's `context` says which. A `write`
 directory may not be your home or above it, nor lie inside or above `<state>` or `~/.claude`. An Edit or Write

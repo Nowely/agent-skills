@@ -153,9 +153,8 @@ function addTokens(acc, t) {
 // ---------------------------------------------------------------------------------------------
 // Rights and the worktree
 
-// Legacy session permission rules. Precedence is last-match-wins, so the generic edit/write ask is
-// placed before the scoped allows; a scoped allow therefore wins over the generic ask, and a
-// read-only run denies edits outright.
+// Legacy session permission rules. External paths do not gate reads. Bash is allowed without prompts;
+// edit/write tools stay scoped separately, but those tool rules do not constrain shell effects.
 function sessionPermissions(scope) {
   const rules = [
     { permission: "*", pattern: "*", action: "ask" },
@@ -163,7 +162,8 @@ function sessionPermissions(scope) {
     { permission: "list", pattern: "*", action: "allow" },
     { permission: "glob", pattern: "*", action: "allow" },
     { permission: "grep", pattern: "*", action: "allow" },
-    { permission: "bash", pattern: "*", action: "ask" },
+    { permission: "external_directory", pattern: "*", action: "allow" },
+    { permission: "bash", pattern: "*", action: "allow" },
   ];
   if (scope.kind === "read") {
     rules.push({ permission: "edit", pattern: "*", action: "deny" });
@@ -551,15 +551,15 @@ async function awaitTurn(ctx, inputID) {
   }
 }
 
-// The shared standing rules (orchestrate/scripts/drivers.mjs) in OpenCode's terms: a session's rules allow
-// reads and the edits inside the roots, and every other call, a shell command or a fetch among them, asks.
+// The shared standing rules (orchestrate/scripts/drivers.mjs) in OpenCode's terms. Bash is allowed without
+// approval and is not constrained by the edit/write tool rules or their roots.
 function runRules(ctx) {
   const roots = ctx.roots ?? [];
   return standingRules({
     rights: ctx.scope?.kind === "read" || !roots.length
-      ? "Read and search files with your read, glob and grep tools, which need no approval; your edit and write tools are refused, and every shell command needs approval."
-      : `Edits inside ${roots.join(", ")} need no approval; every shell command, and an edit anywhere else, needs one.`,
-    network: "A fetch needs approval too.",
+      ? "Read and search any paths the task needs that OpenCode can access; RIGHTS does not limit reads. Your edit and write tools are refused. Bash is allowed without approval and bypasses these file and network limits; it can write any file the process can access and access the network. Keep its use within the task and do not use it to write files or access beyond the task."
+      : `Read and search any paths the task needs that OpenCode can access; RIGHTS does not limit reads. Edits inside ${roots.join(", ")} need no approval; edits elsewhere need approval. Bash is allowed without approval and bypasses these root, protected path and network limits; it can write anywhere the process can, including .git and OpenCode configuration paths, and access the network. Keep its use within the task, write only inside the approved roots, and never write protected paths.`,
+    network: "The native fetch tool needs approval; Bash network commands are not checked.",
     mailbox: Boolean(ctx.box),
     ask: "the call itself waits for that decision.",
   });

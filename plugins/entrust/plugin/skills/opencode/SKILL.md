@@ -50,17 +50,21 @@ rule. A model mentioned only for information or discussion does not request a wo
 
    Each invocation starts a private loopback server on its first run call.
 
-5. The proxy is the shared page's, a fresh one for each `--run`: in Claude Code the `entrust:proxy` agent;
-   in Codex a native subagent on Luna at `medium` effort with a fresh context
-   ([models](../codex/references/models.md)). Report unavailable settings before launching rather than
-   silently inheriting another model. It is named as the shared page says. An OpenCode worker asks through
-   permissions and questions, which you decide: read [interactions.md](references/interactions.md) for the
-   decision procedure.
+5. The proxy follows the shared page's host-specific continuation rule: in Claude Code use the `entrust:proxy`
+   agent; in Codex use a native subagent on Luna at `medium` effort ([models](../codex/references/models.md)).
+   Reuse an existing native task through an explicit follow-up when the host supports it, and verify that the new
+   turn ran the requested command. Use a fresh context for a measured stale-hand-back case. Report unavailable
+   settings before launching rather than silently inheriting another model. Name it as the shared page says. An
+   OpenCode worker asks through permissions and questions, which you decide: read
+   [interactions.md](references/interactions.md) for the decision procedure.
 
 ## Scope and results
 
-`RIGHTS: read <cwd>`, `write <cwd>` and `worktree <repo>` declare the worker's scope. Escalations
-carry the complete native request; grant one action within the approved scope or ask its owner.
+`RIGHTS: read <cwd>` selects the working directory and grants no file-tool writes; it does not limit which paths
+the worker may read. `write <cwd>` scopes file-tool changes; reads remain unrestricted. `worktree <repo>` gives
+write access to a fresh copy. Entrust allows OpenCode external-directory reads without a path prompt, while
+edit/write rules still govern file-tool changes. Bash remains unbounded by those file rules.
+Other permission requests carry the complete native request; grant one action within the approved scope or ask its owner.
 Each concurrent writer gets a distinct worktree. Rights changes need their own authority.
 Read-only agents may share a directory when its tooling permits it.
 

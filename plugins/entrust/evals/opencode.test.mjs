@@ -80,6 +80,24 @@ test("a write session's rules deny .git and OpenCode's own files after the allow
     assert.equal(last(pattern), "deny", pattern);
   assert.ok(rules.findIndex((r) => r.pattern === `${cwd}/.git`) > rules.findIndex((r) => r.pattern === `${cwd}/**`));
 });
+test("Bash is allowed without prompts for read and write sessions", () => {
+  for (const scope of [{ kind: "read" }, { kind: "write", roots: [cwd] }]) {
+    const rules = sessionPermissions(scope);
+    const catchAll = rules.findLastIndex((r) => r.permission === "*" && r.pattern === "*");
+    const bash = rules.findLastIndex((r) => r.permission === "bash" && r.pattern === "*");
+    assert.ok(catchAll >= 0, `${scope.kind}: catch-all ask is present`);
+    assert.equal(rules[catchAll].action, "ask", scope.kind);
+    assert.ok(bash > catchAll, `${scope.kind}: Bash override follows catch-all`);
+    assert.equal(rules[bash].action, "allow", scope.kind);
+    const external = rules.findLastIndex((r) => r.permission === "external_directory" && r.pattern === "*");
+    assert.ok(external > catchAll, `${scope.kind}: external-directory override follows catch-all`);
+    assert.equal(rules[external].action, "allow", scope.kind);
+    if (scope.kind === "read") {
+      for (const permission of ["edit", "write"])
+        assert.equal(rules.findLast((r) => r.permission === permission && r.pattern === "*")?.action, "deny", permission);
+    }
+  }
+});
 test("approved write root rejects another root even when rights kind matches", () => {
   const outside = tempDir("entrust-opencode-outside-");
   const error = parsePrompt(prompt("", `write ${outside}`), { ENTRUST_PLAN_WRITES: `write ${cwd}` }).error;
@@ -434,18 +452,23 @@ test("a stale decision file does not hold a request past its deadline", async ()
     assert.equal(fs.existsSync(path.join(r.box, "pending")), false);
   } finally { await s.close(); }
 });
-test("every prompt starts with the run's rules: its rights, that the rest needs approval, and not to work around a refusal", async () => {
+test("every prompt states the run's rights, Bash's unprompted scope, and not to work around a refusal", async () => {
   const s = await fakeOpenCode("normal");
   try {
     const bare = await driverRun(s, { rights: `read ${cwd}` }); assert.equal(bare.code, 0, bare.err);
     const first = s.calls.filter((c) => c.path.endsWith("prompt_async")).at(-1).body.parts[0].text;
     assert.match(first, /^You run for a coordinating agent, unattended/);
-    assert.match(first, /your edit and write tools are refused, and every shell command needs approval/);
+    assert.match(first, /RIGHTS does not limit reads\. Your edit and write tools are refused/);
+    assert.match(first, /Bash is allowed without approval and bypasses these file and network limits/);
+    assert.match(first, /it can write any file the process can access and access the network/);
+    assert.match(first, /The native fetch tool needs approval; Bash network commands are not checked/);
     assert.match(first, /Nothing beyond your rights can be granted in this run/);
     assert.match(first, /do not try to get around it with another tool or command/);
     const boxed = await driverRun(s, { rights: `write ${cwd}`, approval: "hold" }); assert.equal(boxed.code, 0, boxed.err);
     const second = s.calls.filter((c) => c.path.endsWith("prompt_async")).at(-1).body.parts[0].text;
-    assert.match(second, /every shell command, and an edit anywhere else, needs one/);
+    assert.match(second, /RIGHTS does not limit reads\. Edits inside .* need no approval; edits elsewhere need approval/);
+    assert.match(second, /Bash is allowed without approval and bypasses these root, protected path and network limits/);
+    assert.match(second, /including \.git and OpenCode configuration paths/);
     assert.match(second, /asked of the coordinator, who approves or declines it: the call itself waits for that decision/);
   } finally { await s.close(); }
 });

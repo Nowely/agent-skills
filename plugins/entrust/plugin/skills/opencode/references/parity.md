@@ -17,10 +17,12 @@ Live probes established:
 - Legacy async input can be consumed at the next model boundary. It does not offer an atomic
   `expectedTurnId` equivalent or immediate preemption.
 - On 1.18.35 a session keeps its permission rules exactly as sent, and reports them so on create and on read,
-  which the driver checks. Its bash rules match a command's prefix and split it at `;`: under an allow for
-  `git diff*`, `git diff > f1.txt` ran unasked and wrote the file, while `git diff; touch f3.txt` asked for
-  each part. So the adapter allows no shell command unasked, and a read run with no mailbox that needs one
-  exits 7.
+  which the driver checks. External-directory reads and Bash are allowed without prompts to match the user's
+  no-prompt requirement. This
+  bypasses edit/write, protected-path and network tool rules: Bash can write any path the process can, including
+  `.git` and OpenCode configuration, or access the network. Entrust does not provide a general shell sandbox.
+  Existing sessions retain their old rules; the driver refuses a continuation whose reported rules differ from
+  the current ones (exit 4). Start a new OpenCode session to use the updated read and Bash rules.
 - Legacy abort can leave a native question pending. After the driver's Stop, the live question-Stop
   probe observed an idle session, a rejected question tool and no own pending requests: snapshots, not a
   generation fence. [interactions.md](interactions.md) has the Stop procedure.

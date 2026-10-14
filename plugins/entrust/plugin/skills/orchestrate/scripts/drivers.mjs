@@ -42,8 +42,8 @@ export const EXIT = Object.freeze({
   SCHEMA: 13,
 });
 
-// RIGHTS: `read [cwd]`, `write <cwd>` or `worktree <repo>`. The path is kept as written; the
-// driver resolves it against its own cwd.
+// RIGHTS: `read [cwd]`, `write <cwd>` or `worktree <repo>`. A read path selects the working
+// directory, not a read boundary; only write/worktree rights scope file-tool changes.
 export function parseRights(value) {
   if (typeof value !== "string") return { error: "RIGHTS needs read, write <dir> or worktree <repo>" };
   let m;
@@ -67,7 +67,7 @@ export function planWritesToRights(writes, cwd) {
 export const flagValue = (v) => /^(yes|true|1)$/i.test(v ?? "") ? true : /^(no|false|0)$/i.test(v ?? "") ? false : null;
 
 // The RIGHTS a prompt grants: the plan's writes when a registered plan pins them and the prompt names none, and
-// read in the current directory, the narrowest grant, when neither does.
+// read in the current directory, which grants no file-tool writes, when neither does. Read paths are not roots.
 // A pinned plan holds the resolved write path, not only the kind: a same-kind RIGHTS that resolves outside the
 // approved root, or a different worktree, is a widening and is refused.
 export function resolveRights(value, planWrites, cwd = process.cwd()) {
