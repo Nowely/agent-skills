@@ -5,7 +5,7 @@
 export const SCHEMA_KEYWORDS = new Set([
   "type", "properties", "required", "additionalProperties", "enum", "items",
   "maxLength", "minLength", "maxItems", "minItems", "minimum", "maximum", "pattern",
-  "oneOf", "description", "title", "default", "$schema",
+  "oneOf", "anyOf", "allOf", "description", "title", "default", "$schema",
 ]);
 const ANNOTATION_KEYWORDS = new Set(["description", "title", "default", "$schema"]);
 const TYPES = new Set(["string", "number", "integer", "boolean", "array", "object", "null"]);
@@ -15,9 +15,9 @@ export function checkSchemaSubset(schema, where = "$") {
   const walk = (s, at) => {
     if (typeof s !== "object" || s === null || Array.isArray(s)) { errors.push(`${at}: a schema must be an object`); return; }
     for (const k of Object.keys(s)) if (!SCHEMA_KEYWORDS.has(k)) errors.push(`${at}: unsupported keyword ${k}`);
-    if (s.oneOf !== undefined) {
-      if (!Array.isArray(s.oneOf) || s.oneOf.length === 0) errors.push(`${at}.oneOf: must be a non-empty array of schemas`);
-      else s.oneOf.forEach((branch, i) => walk(branch, `${at}.oneOf[${i}]`));
+    for (const keyword of ["oneOf", "anyOf", "allOf"]) if (s[keyword] !== undefined) {
+      if (!Array.isArray(s[keyword]) || s[keyword].length === 0) errors.push(`${at}.${keyword}: must be a non-empty array of schemas`);
+      else s[keyword].forEach((branch, i) => walk(branch, `${at}.${keyword}[${i}]`));
     }
     if (s.type !== undefined) {
       const types = Array.isArray(s.type) ? s.type : [s.type];
@@ -64,9 +64,11 @@ const typeMatches = (type, value) => {
 
 export function validateValue(schema, value, where = "$", errors = []) {
   if (typeof schema !== "object" || schema === null) return errors;
-  if (schema.oneOf !== undefined) {
-    const matches = schema.oneOf.filter((branch) => validateValue(branch, value, where, []).length === 0).length;
-    if (matches !== 1) errors.push(`${where}: oneOf requires exactly one matching branch, found ${matches}`);
+  for (const keyword of ["oneOf", "anyOf", "allOf"]) if (schema[keyword] !== undefined) {
+    const matches = schema[keyword].filter((branch) => validateValue(branch, value, where, []).length === 0).length;
+    if (keyword === "oneOf" && matches !== 1) errors.push(`${where}: oneOf requires exactly one matching branch, found ${matches}`);
+    if (keyword === "anyOf" && matches === 0) errors.push(`${where}: anyOf requires a matching branch`);
+    if (keyword === "allOf" && matches !== schema[keyword].length) errors.push(`${where}: allOf requires every branch to match`);
   }
   const types = schema.type === undefined ? [] : Array.isArray(schema.type) ? schema.type : [schema.type];
   if (types.length && !types.some((t) => typeMatches(t, value))) {

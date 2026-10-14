@@ -5,9 +5,10 @@ description: >-
   workers, answers their permission and question callbacks, and picks a recent model. Use when the user asks
   for OpenCode or for a model outside native Codex and Claude, to call or pool (“Позови DeepSeek, GLM”, “Use
   deepseek, glm in pool”, “Задействуй модели OpenCode”) or to make it the coordinator (“Прокси на GLM”), even
-  before the task is stated; for Codex and Claude alone, use native agents.
+  before the task is stated. Claude-family coordinators use the claude adapter; ordinary native
+  Codex/Claude delegation uses native agents.
 metadata:
-  version: "0.29.0"
+  version: "0.30.0"
 license: MIT
 ---
 
@@ -18,9 +19,10 @@ own session. Continuing a worker reuses that session under a fresh report path.
 
 ## Route named models
 
-An affirmative “Прокси на <model>” makes that external model the coordinator and the main conversation
+An affirmative “Прокси на <model>” for an OpenCode-served model makes it the coordinator and the main conversation
 its proxy: follow orchestrate's [main proxy mode](../orchestrate/references/main-proxy.md), with this
-adapter as the coordinator's transport. An ordinary request such as “Позови <model>: проверь diff”
+adapter as the coordinator's transport. Claude/Opus/Sonnet/Fable coordinator choices load
+[claude](../claude/SKILL.md) instead. An ordinary request such as “Позови <model>: проверь diff”
 delegates one worker and follows the launch steps below.
 
 When the user asks to call, use or include a named model outside Codex and Claude in an agent pool, route
@@ -50,7 +52,7 @@ rule. A model mentioned only for information or discussion does not request a wo
 
    Each invocation starts a private loopback server on its first run call.
 
-5. The proxy follows the shared page's host-specific continuation rule: in Claude Code use the `entrust:proxy`
+5. The proxy follows the shared page's host-specific continuation rule: in Claude Code use the `entrust:relay`
    agent; in Codex use a native subagent on Luna at `medium` effort ([models](../codex/references/models.md)).
    Reuse an existing native task through an explicit follow-up when the host supports it, and verify that the new
    turn ran the requested command. Use a fresh context for a measured stale-hand-back case. Report unavailable

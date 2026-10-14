@@ -3,7 +3,7 @@
 //
 //   node evals/agent-contract.test.mjs
 //
-// The shipped agent, agents/proxy.md, is a mechanical wrapper: the coordinator writes the prompt and
+// The shipped agent, agents/relay.md, is a mechanical wrapper: the coordinator writes the prompt and
 // hands the wrapper the one command, which runs the driver through scripts/agent-run.mjs in one foreground
 // Bash call. The call, its block and the accept are the shared call page's, orchestrate/references/external.md,
 // for every adapter; the Codex field table is codex/SKILL.md's. This suite compares what a coordinator copies
@@ -19,7 +19,7 @@ import { ACCEPTED, PROMPT_WAIT_MS, TAKEN } from "../plugin/skills/orchestrate/sc
 
 const SKILL = path.join(ROOT, "skills", "codex", "SKILL.md");
 const EXTERNAL = path.join(ROOT, "skills", "orchestrate", "references", "external.md");
-const PROXY_AGENT = path.join(ROOT, "agents", "proxy.md");
+const RELAY_AGENT = path.join(ROOT, "agents", "relay.md");
 const ORCHESTRATE = path.join(ROOT, "skills", "codex", "references", "orchestration.md");
 // The orchestrate references a coordinator opens at a moment of the run; approvals.md holds its approval rule.
 const ORCHESTRATE_REFS = [ORCHESTRATE];
@@ -49,7 +49,7 @@ const promptCalls = [...external.matchAll(/^ {4}((?:[A-Z_]+="[^"\n]*" )*node "[^
 // file's body: each step collapsed to one line, the block's command line left out.
 const blockSteps = (external.split(/^The block, copied whole:$/m)[1] ?? "").split(/^(?=\S)/m)[0]
   .split("\n").filter((l) => /^ {4}\d\. /.test(l)).map((l) => l.trim());
-const agentSteps = (fs.existsSync(PROXY_AGENT) ? fs.readFileSync(PROXY_AGENT, "utf8") : "")
+const agentSteps = (fs.existsSync(RELAY_AGENT) ? fs.readFileSync(RELAY_AGENT, "utf8") : "")
   .split(/^(?=\d\. )/m).slice(1).map((st) => st.split(/\n\n/)[0].replace(/\s+/g, " ").trim());
 
 const { cases: CASES, test } = registry();
@@ -220,11 +220,11 @@ test("the block the coordinator pastes and the proxy agent's own steps are the s
   "the four steps in the message are what Haiku keeps (measured 2026-09-17: three of three against one of three from the agent file alone), and the agent file carries them too; two copies that drift tell the relay two different things, so they are compared word for word, the block's step 1 naming its command as `this command` where the file says `the command`",
   () => {
     if (blockSteps.length !== 4) return `the shared page's block has ${blockSteps.length} numbered steps, not 4`;
-    if (agentSteps.length !== 4) return `agents/proxy.md has ${agentSteps.length} numbered steps, not 4`;
+    if (agentSteps.length !== 4) return `agents/relay.md has ${agentSteps.length} numbered steps, not 4`;
     const problems = [];
     blockSteps.forEach((step, i) => {
       const want = i === 0 ? step.replace("Run this command", "Run the command") : step;
-      if (agentSteps[i] !== want) problems.push(`step ${i + 1} differs: the block says ${JSON.stringify(want)}, agents/proxy.md ${JSON.stringify(agentSteps[i])}`);
+      if (agentSteps[i] !== want) problems.push(`step ${i + 1} differs: the block says ${JSON.stringify(want)}, agents/relay.md ${JSON.stringify(agentSteps[i])}`);
     });
     return problems.length === 0 || problems.join("; ");
   });
@@ -280,17 +280,17 @@ test("BRIEF is decided by the header, not forced by the caller",
   });
 
 test("the shipped wrapper is the agent the page names: Bash alone and a pinned model",
-  "the page sends every agent to entrust:proxy, so the file has to exist under agents/ with that name; Bash alone is what halves its context (measured 2026-09-12: 8.2k against 15.4k tokens for general-purpose), and a wrapper allowed Read or Write is a relay that can rewrite a prompt, which is the measured failure the retired relay had",
+  "the page sends every agent to entrust:relay, so the file has to exist under agents/ with that name; Bash alone is what halves its context (measured 2026-09-12: 8.2k against 15.4k tokens for general-purpose), and a wrapper allowed Read or Write is a relay that can rewrite a prompt, which is the measured failure the retired relay had",
   () => {
     const problems = [];
-    const agentPath = path.join(ROOT, "agents", "proxy.md");
-    if (!fs.existsSync(agentPath)) return "agents/proxy.md is not shipped";
+    const agentPath = path.join(ROOT, "agents", "relay.md");
+    if (!fs.existsSync(agentPath)) return "agents/relay.md is not shipped";
     const head = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(agentPath, "utf8"))?.[1];
-    if (head === undefined) return "agents/proxy.md has no frontmatter";
-    if (!/^name: proxy$/m.test(head)) problems.push("the agent is not named proxy");
+    if (head === undefined) return "agents/relay.md has no frontmatter";
+    if (!/^name: relay$/m.test(head)) problems.push("the agent is not named relay");
     if (!/^tools: Bash$/m.test(head)) problems.push("the agent's tools are not exactly Bash");
     if (!/^model: (sonnet|haiku|opus)$/m.test(head)) problems.push("the agent pins no model");
-    if (!externalFlat.includes("`subagent_type`: `entrust:proxy`")) problems.push("the shared call page no longer sends agents to entrust:proxy");
+    if (!externalFlat.includes("`subagent_type`: `entrust:relay`")) problems.push("the shared call page no longer sends agents to entrust:relay");
     return problems.length === 0 || problems.join("; ");
   });
 

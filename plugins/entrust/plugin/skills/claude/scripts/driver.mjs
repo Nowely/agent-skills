@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { EXIT, canonical, flagValue, makeWorktree, passwdHome, resolveModel, resolveRights, rightsScope, standingRules, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
 import { mailboxProblem } from "../../orchestrate/scripts/mailbox.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
+import { checkSchemaSubset, validateOutput } from "../../orchestrate/scripts/json-schema.mjs";
 import { TOOL } from "./approvals.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -137,6 +138,19 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   const schema = readJson(schemaPath);
   if (!schema || typeof schema !== "object" || Array.isArray(schema)) return refusal(`OUTPUT_SCHEMA ${schemaPath} is not a JSON object`);
 
+  const subset = checkSchemaSubset(schema);
+  if (!subset.ok) return refusal(`OUTPUT_SCHEMA: ${subset.errors.join("; ")}`);
+  const submitted = { ...schema }, schemaTransform = [];
+  if (schema.type === "object") for (const keyword of ["oneOf", "anyOf", "allOf"]) {
+    if (Object.hasOwn(submitted, keyword)) { delete submitted[keyword]; schemaTransform.push(`dropped root ${keyword}`); }
+  }
+  if (submitted.type !== "object" || ["oneOf", "anyOf", "allOf"].some((k) => Object.hasOwn(submitted, k)))
+    return refusal("OUTPUT_SCHEMA submission must be a root object without root combinators");
+  const sha256 = (text) => crypto.createHash("sha256").update(text).digest("hex");
+  const schemaText = JSON.stringify(submitted);
+  const outputSchemaSha256 = sha256(fs.readFileSync(schemaPath));
+  const submittedSchemaSha256 = sha256(schemaText);
+
   const safeMode = headers.SAFE_MODE === undefined ? false : flagValue(headers.SAFE_MODE);
   if (safeMode === null) return refusal("SAFE_MODE takes yes, true or 1, or no, false or 0");
   const allowNoCommands = headers.ALLOW_NO_COMMANDS === undefined ? false : flagValue(headers.ALLOW_NO_COMMANDS);
@@ -162,7 +176,7 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
     resume = { report: at, prior };
   }
 
-  return { task, rights, model, effort, schemaPath, schemaText: JSON.stringify(schema), safeMode, allowNoCommands, resume };
+  return { task, rights, model, effort, schemaPath, schema, schemaText, outputSchemaSha256, submittedSchemaSha256, schemaTransform, safeMode, allowNoCommands, resume };
 }
 
 // The rights a report's run had, as a RIGHTS line would name them; and whether a declared one names the same.
@@ -369,6 +383,7 @@ async function run(o, text) {
     const args = claudeArgs(parsed, { kind: scope.kind, stateDir, box, sessionId: ctx.sessionId, mcpConfig, cwd: scope.cwd });
     ctx.transcriptPath = `${base}.transcript.jsonl`;
     const transcript = fs.openSync(ctx.transcriptPath, "wx", 0o600);
+    ctx.spawnedAt = new Date().toISOString();
     const child = ctx.child = spawn("claude", args, { cwd: scope.cwd, env: childEnv(process.env), stdio: ["pipe", "pipe", "inherit"] });
     // The wall clock counts the agent's own time: it stands still while a request waits in the mailbox, since
     // that wait is the coordinator's, and an approval given late must not find the run already cut.
@@ -413,8 +428,9 @@ async function run(o, text) {
 // One stream event: the session's init, a tool call and its result, the run's result. A subagent's events
 // carry a parent_tool_use_id and are not this run's own.
 export function observe(ctx, e) {
+  ctx.firstEventAt ??= new Date().toISOString();
   if (e.type === "system" && e.subtype === "init") ctx.init = e;
-  else if (e.type === "result") ctx.result = e;
+  else if (e.type === "result") { ctx.result = e; ctx.resultAt = new Date().toISOString(); }
   else if ((e.type === "assistant" || e.type === "user") && !e.parent_tool_use_id && Array.isArray(e.message?.content)) {
     for (const b of e.message.content) {
       if (b.type === "tool_use") ctx.tools.set(b.id, { tool: b.name, input: b.input ?? {}, isError: null });
@@ -426,7 +442,12 @@ export function observe(ctx, e) {
 function buildReport(ctx, facts) {
   const { init, result, parsed, scope } = ctx;
   const tools = [...ctx.tools.values()];
-  const answerJson = result?.structured_output ?? null;
+  const rawAnswerJson = result?.structured_output ?? null;
+  const checked = parsed?.schema && rawAnswerJson !== null ? validateOutput(parsed.schema, rawAnswerJson)
+    : { ok: false, errors: ["no structured answer to validate"] };
+  if (rawAnswerJson !== null && !checked.ok && !result.is_error && !facts.partial)
+    facts = { ...facts, exitCode: EXIT.SCHEMA, error: checked.errors.join("; ") };
+  const answerJson = checked.ok ? rawAnswerJson : null;
   const answer = typeof result?.result === "string" ? result.result : null;
   if (answer !== null || answerJson !== null) {
     ctx.answerPath = `${ctx.base}.answer.txt`;
@@ -449,14 +470,18 @@ function buildReport(ctx, facts) {
     fileChanges: tools.filter((t) => ["Edit", "Write", "NotebookEdit"].includes(t.tool)).map((t) => ({ tool: t.tool, path: t.input.file_path ?? t.input.notebook_path ?? null, isError: t.isError })),
     usage: result?.usage ?? null, modelUsage: result?.modelUsage ?? null,
     cost: result?.total_cost_usd ?? null,
-    durationMs: result?.duration_ms ?? null, numTurns: result?.num_turns ?? null,
+    spawnedAt: ctx.spawnedAt ?? null, firstEventAt: ctx.firstEventAt ?? null, resultAt: ctx.resultAt ?? null,
+    durationMs: result?.duration_ms ?? null, durationApiMs: result?.duration_api_ms ?? null, numTurns: result?.num_turns ?? null,
     permissionDenials: result?.permission_denials ?? [],
     escalations: escalations(ctx.box),
-    outputSchemaOk: answerJson !== null,
+    outputSchemaOk: checked.ok, schemaErrors: checked.errors,
+    outputSchemaPath: parsed?.schemaPath ?? null, outputSchemaSha256: parsed?.outputSchemaSha256 ?? null,
+    submittedSchemaSha256: parsed?.submittedSchemaSha256 ?? null, schemaTransform: parsed?.schemaTransform ?? [],
     partial: Boolean(facts.partial),
     cancellation: ctx.stopped ? { reason: ctx.stopped, signal: ctx.sentInt ? "SIGINT" : null } : null,
     cwd: scope?.cwd ?? null,
     rights: scope ? { kind: scope.kind, roots: scope.roots ?? [] } : null,
+    resumedFromSession: parsed?.resume?.prior?.sessionID ?? null,
     resume: Boolean(parsed?.resume), resumedFrom: parsed?.resume?.report ?? null,
     context: init ? { permissionMode: init.permissionMode ?? null, plugins: (init.plugins ?? []).map((p) => p.name),
       mcpServers: (init.mcp_servers ?? []).map((s) => ({ name: s.name, status: s.status })), memory: Boolean(init.memory_paths),

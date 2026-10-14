@@ -11,7 +11,7 @@ tier: it is the host's smallest model, which relays an external agent's run, as 
 | strong | Sol | `sol` | `medium` for review, refutation and judgement |
 | cheap | Terra | `terra` | `medium`; `low` for mechanical work only |
 | bulk | Luna | `luna` | `high` for extraction, classification and verification |
-| proxy | Luna | — | `medium`; the native subagent that relays one external agent's run when Codex is the host |
+| relay | Luna | — | `medium`; the native subagent that relays one external agent's run when Codex is the host |
 
 Luna is fast and low-cost, not limited to shallow reasoning: it is the first choice for scouting and
 independent units once its model/task pilot passes, with Sol as the same-material pilot reference. Astra

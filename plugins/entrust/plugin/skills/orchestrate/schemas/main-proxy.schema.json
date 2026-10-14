@@ -146,6 +146,74 @@
               "agent_ids"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "invoke"
+                ]
+              },
+              "capability": {
+                "type": "string",
+                "minLength": 1
+              },
+              "arguments": {
+                "type": "object"
+              },
+              "purpose": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "action",
+              "capability",
+              "arguments",
+              "purpose"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "invoke"
+                ]
+              },
+              "capability": {
+                "type": "string",
+                "minLength": 1
+              },
+              "purpose": {
+                "type": "string",
+                "minLength": 1
+              },
+              "input": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "action",
+              "capability",
+              "input",
+              "purpose"
+            ],
+            "additionalProperties": false
           }
         ]
       }

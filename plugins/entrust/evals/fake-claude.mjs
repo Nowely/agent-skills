@@ -27,6 +27,11 @@ if (process.env.FAKE_CLAUDE_LOG) {
   fs.appendFileSync(process.env.FAKE_CLAUDE_LOG, `${JSON.stringify({ argv, cwd: process.cwd(), task, vars })}\n`);
 }
 
+const schema = JSON.parse(flag("--json-schema") ?? "{}");
+if (["oneOf", "anyOf", "allOf"].some((k) => Object.hasOwn(schema, k))) {
+  process.stderr.write("400: input_schema does not support oneOf, allOf, or anyOf at the top level\n");
+  process.exit(1);
+}
 const emit = (e) => process.stdout.write(`${JSON.stringify({ session_id: sessionId, ...e })}\n`);
 const five = (result) => ({ status: "done", result, evidence: ["observed"], artifacts: [], open: [] });
 const finish = ({ structured = five("checked"), isError = false, subtype = "success", denials = [], terminal = "completed", text } = {}) => {
@@ -91,6 +96,7 @@ async function ask(toolName, input) {
 async function main() {
   // What a real agent does first: it reads before it acts. A turn with no observation is "recall".
   if (!["error", "noschema", "die", "slow", "recall"].includes(mode)) toolCall("toolu_0", "Read", { file_path: process.cwd() });
+  if (mode === "structured") return finish({ structured: JSON.parse(process.env.FAKE_CLAUDE_OUTPUT) });
   if (mode === "recall") return finish();
   if (mode === "ok") { toolCall("toolu_1", "Bash", { command: "ls" }); return finish(); }
   if (mode === "write") { toolCall("toolu_1", "Write", { file_path: `${process.cwd()}/out.txt`, content: "x" }); return finish(); }

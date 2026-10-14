@@ -3,15 +3,32 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.30.0 — 2026-10-15
 
 ### Changed
 
+- **Main proxy state mutations are serialized and batches publish once.** Status reconciles lost stdout;
+  catalogue generation and string-input invoke support raw native tools. Collect requires a terminal status,
+  and explicit worker defaults must still be runtime-advertised.
+- **Claude can coordinate main proxy sessions.** A runtime capability catalogue governs invoke and explicit
+  worker model/effort selection; main-proxy.mjs preserves messages, complete outcomes and report lineage.
+  Claude submits a root-combinator-free schema copy and validates the original contract locally, with schema
+  hashes and invocation timestamps in its report.
 - **Entrust OpenCode sessions read outside the working directory without path prompts.** `RIGHTS` scopes writes,
   not reads. Bash also runs without prompts and is not limited by the session's file or network tool scopes.
 - **External worker names and relays have clearer contracts.** Names use model family, stable id and role, and a
   supported native follow-up reuses its relay task. OpenCode diff reviews receive their patch inside the brief,
   so the worker does not need the worktree's shared Git metadata.
+
+### Breaking
+
+- The per-worker agent type is now `entrust:relay`; rename `entrust:proxy` in saved Workflow scripts and prompts.
+- Main proxy delegate orders require a catalogue-listed worker model and effort, supplied explicitly or by an
+  explicit mode default; neither is inherited.
+- Custom Claude `OUTPUT_SCHEMA` files must use the local validator's supported subset and an explicit root
+  object type. An unsupported schema fails preflight (exit 2) before launch.
+- Claude reports set `outputSchemaOk` only after validation against the original schema. A complete, otherwise
+  successful structured answer that fails the original schema exits 13.
 
 ## 0.29.0 — 2026-10-10
 
