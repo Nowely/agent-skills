@@ -4,7 +4,7 @@ description: >-
   Run external Claude agents or make Claude/Opus/Sonnet/Fable the main coordinator (“Прокси на Opus”),
   even before a task is stated. Also use for native Claude delegation and entrust plans selecting Claude.
 metadata:
-  version: "0.29.0"
+  version: "0.30.0"
 license: MIT
 ---
 

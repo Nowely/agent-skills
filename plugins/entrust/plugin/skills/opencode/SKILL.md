@@ -8,7 +8,7 @@ description: >-
   before the task is stated. Claude-family coordinators use the claude adapter; ordinary native
   Codex/Claude delegation uses native agents.
 metadata:
-  version: "0.29.0"
+  version: "0.30.0"
 license: MIT
 ---
 
