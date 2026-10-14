@@ -54,7 +54,8 @@ without a plan, `--new` takes `--adapter claude`. What Claude adds:
 
 Root oneOf/anyOf/allOf are removed only from the submission copy required by Claude Code's tool schema;
 the original schema stays unchanged and is checked locally. Unsupported validator keywords fail preflight.
-A failed answer is exit 13 with schemaErrors and outputSchemaOk: false; answerJson is null.
+A complete, otherwise successful structured answer that fails the original schema exits 13, with
+schemaErrors and outputSchemaOk: false; answerJson is null.
 
 ## Continuing and reading
 

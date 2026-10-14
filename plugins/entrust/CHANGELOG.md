@@ -25,7 +25,10 @@ forensics remain in the repository references and release notes.
 - The per-worker agent type is now `entrust:relay`; rename `entrust:proxy` in saved Workflow scripts and prompts.
 - Main proxy delegate orders require a catalogue-listed worker model and effort, supplied explicitly or by an
   explicit mode default; neither is inherited.
-- Claude reports set `outputSchemaOk` only after validation against the original schema. A failed answer exits 13.
+- Custom Claude `OUTPUT_SCHEMA` files must use the local validator's supported subset and an explicit root
+  object type. An unsupported schema fails preflight (exit 2) before launch.
+- Claude reports set `outputSchemaOk` only after validation against the original schema. A complete, otherwise
+  successful structured answer that fails the original schema exits 13.
 
 ## 0.29.0 — 2026-10-10
 
