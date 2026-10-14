@@ -217,7 +217,7 @@ export function mailboxRules(stateDir, box) {
 export function runRules({ kind, cwd, mailbox }) {
   return standingRules({
     rights: kind === "read"
-      ? `Read and search files in ${cwd} with Read, Grep and Glob, which need no approval; a shell command may need one, and you have no edit tools.`
+      ? `Read and search any path available to Claude Code with Read, Grep and Glob, which need no approval; RIGHTS selects the working directory, not a read boundary. A shell command may need approval, and you have no edit tools.`
       : `Edits inside ${cwd} need no approval; an edit anywhere else, and a command outside the read-only set, needs one.`,
     network: "You have no web tools; a command that reaches the network needs approval.",
     mailbox,

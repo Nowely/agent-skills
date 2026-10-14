@@ -3,6 +3,16 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- **Entrust OpenCode sessions read outside the working directory without path prompts.** `RIGHTS` scopes writes,
+  not reads. Bash also runs without prompts and is not limited by the session's file or network tool scopes.
+- **External worker names and relays have clearer contracts.** Names use model family, stable id and role, and a
+  supported native follow-up reuses its relay task. OpenCode diff reviews receive their patch inside the brief,
+  so the worker does not need the worktree's shared Git metadata.
+
 ## 0.29.0 — 2026-10-10
 
 ### Changed

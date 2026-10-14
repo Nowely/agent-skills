@@ -25,7 +25,7 @@ A prompt is a few header lines, then `TASK:` and the task. Header lines come fir
 
 | Line | Value | When it is left out |
 | --- | --- | --- |
-| `RIGHTS:` (first, when present) | `read [<dir>]`: read only; `write <dir>`: may change files under `<dir>`; `worktree <repo>`: may change files in a fresh copy of the git repository `<repo>` | the plan row's writes; without a plan, `read` in the directory you run `--new` in |
+| `RIGHTS:` (first, when present) | `read [<dir>]`: no file-tool writes; optional path selects the working directory, not a read boundary; `write <dir>`: may change files under `<dir>`; `worktree <repo>`: may change files in a fresh copy of `<repo>` | the plan row's writes; without a plan, `read` in the directory you run `--new` in |
 | `MODEL:` | a model name from the adapter's models page | the plan row's model; without a plan, the CLI's default |
 | `EFFORT:` | an effort name from the adapter's page | the CLI's default |
 | `OUTPUT_SCHEMA:` | the absolute path of a JSON Schema; for an orchestrated agent always `<orchestrate>/schemas/five-fields.schema.json` | the adapter's default |
@@ -41,15 +41,17 @@ A yes-or-no line takes `yes`, `true` or `1`, or `no`, `false` or `0`. After the 
 Write one deliverable per agent. Write the task in the user's language. Choose the smallest `RIGHTS` that lets
 the agent finish and check the work, and agree any write right with the user before launching.
 
-An OpenCode read agent asks you for every shell command, and a Claude one for any command outside Claude Code's
-read-only set, and each question stops the agent until you decide it: read agents briefed to check with the shell
-asked 11 and 43 times in one read-only task each ([measured](../../claude/references/incidents.md#read-agents-and-the-shell)).
-So write such an agent's `TASK:` and `CHECK:` as reads and searches its file tools make unasked, and name no
-script or command for it to run; a check that needs a command is yours, or a Codex agent's, which runs commands
-inside its sandbox. Run such a check before the launch and put its result in the task, the commit the agent
-reads included: an OpenCode read agent in a git worktree asked to read that worktree's `HEAD` file in the main
-repository's `.git`, outside its directory, and its run exited 6 on the decline. Put an OpenCode read agent's
-inputs inside the directory its `RIGHTS:` names: for one file outside it, the agent asks for the whole directory.
+An OpenCode read agent's Bash is allowed without prompts and is not confined to `RIGHTS`; its read, list, glob and
+grep tools may also read outside the working directory without an external-directory prompt. A Claude read agent
+asks for commands outside Claude Code's read-only set. Read agents briefed to check with the shell asked 11 and 43
+times in one read-only task each under the former policy ([measured](../../claude/references/incidents.md#read-agents-and-the-shell)).
+Keep OpenCode shell use within the task: read rights do not sandbox Bash. A mailbox-less agent still declines
+other permission requests or questions. Entrust `RIGHTS` paths set the working directory or writable roots, not
+read boundaries; host permissions may still deny a path.
+For an OpenCode review of a worktree diff, capture the exact diff before launch and include it in the brief or
+in a review input file inside the working tree. Do not ask the agent to run `git diff` merely to get the patch:
+a worktree's shared `.git` metadata may live outside the checkout. Entrust permits necessary external reads, but
+the embedded patch avoids reading unrelated Git metadata and history.
 
 The driver gives every agent standing rules beside the task, so the prompt need not repeat them: what its rights
 let it do, that anything else is asked of you (a Codex agent asks by running the refused command again with
@@ -308,8 +310,8 @@ Silence and the wall clock stand still while a request waits for you. A cut is e
 
 - The models and efforts, and the extra header lines: the adapter's page.
 - What a read agent does without asking: Codex runs any command inside its sandbox, network included; OpenCode
-  reads and searches files, and asks for every shell command; Claude runs its read-only commands and whatever
-  the user's own settings allow.
+  reads and searches any needed path through file tools and allows Bash without prompts (`RIGHTS` does not bound
+  reads or Bash); Claude runs its read-only commands and whatever the user's own settings allow.
 - The requests: Codex asks for commands; a Codex file change outside its rights is declined, never offered,
   since its request carries no body to restate. OpenCode asks for permissions and questions, Claude for commands
   and other tool calls, an edit outside the agent's roots included, with the whole edit as the body. In every
@@ -321,13 +323,14 @@ Silence and the wall clock stand still while a request waits for you. A cut is e
 - `EXPECT:`, a pattern a successful command's output must match, exists for Codex and OpenCode.
 - Egress is on by default: a Codex agent's commands reach the network unless
   `NETWORK: no`, under which a fetch fails and the agent asks you for one the task needs, and it searches the web through its provider
-  only with a `WEB_SEARCH:` line; an OpenCode agent
-  asks before every command and fetch; a Claude agent has no web tools, and a command of its that reaches the
-  network asks unless the user's allow rules cover it. A plan row sets neither: settle a `NETWORK: no` or a
-  `WEB_SEARCH:` line with the user, and never drop one the user settled.
+  only with a `WEB_SEARCH:` line; OpenCode Bash runs without prompts, including network commands, while its native
+  fetch tool asks; a Claude agent has no web tools, and a shell command that reaches the network asks unless the
+  user's allow rules cover it. A plan row sets neither: settle a `NETWORK: no` or a `WEB_SEARCH:` line with the
+  user, and never drop one the user settled.
 - The user's MCP servers: a Codex agent runs in an isolated Codex home and has none of them, and no prompt line
   opens them; a Claude agent has the user's, unless `SAFE_MODE: yes`; an OpenCode agent has its user's OpenCode
-  configuration and asks before any tool but its file reads.
+  configuration, with Entrust allowing read/list/glob/grep and Bash while other tool permissions, including MCP,
+  remain under the catch-all ask. Bash is not confined to `RIGHTS`.
 - Writers on one tree: under a plan, `--plan` refuses two rows whose trees overlap and `--new` a live tree over
   another row's, in every adapter, so give each writer its own directory or a worktree. Without a plan, only a
   Codex write agent refuses a directory another Codex writer holds (exit 10).

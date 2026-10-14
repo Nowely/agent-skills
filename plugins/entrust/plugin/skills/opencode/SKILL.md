@@ -60,8 +60,11 @@ rule. A model mentioned only for information or discussion does not request a wo
 
 ## Scope and results
 
-`RIGHTS: read <cwd>`, `write <cwd>` and `worktree <repo>` declare the worker's scope. Escalations
-carry the complete native request; grant one action within the approved scope or ask its owner.
+`RIGHTS: read <cwd>` selects the working directory and grants no file-tool writes; it does not limit which paths
+the worker may read. `write <cwd>` scopes file-tool changes; reads remain unrestricted. `worktree <repo>` gives
+write access to a fresh copy. Entrust allows OpenCode external-directory reads without a path prompt, while
+edit/write rules still govern file-tool changes. Bash remains unbounded by those file rules.
+Other permission requests carry the complete native request; grant one action within the approved scope or ask its owner.
 Each concurrent writer gets a distinct worktree. Rights changes need their own authority.
 Read-only agents may share a directory when its tooling permits it.
 
