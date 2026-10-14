@@ -1,8 +1,9 @@
 # OpenCode workers in a plan
 
 Keep the orchestration workflow in [orchestrate](../../orchestrate/SKILL.md). Load this adapter only
-for an external OpenCode worker. Each `--run` uses a fresh proxy from the adapter's launch step;
-the external model does the task. Count each active proxy against host capacity and each external
+for an external OpenCode worker. The host proxy relays each `--run`; use its explicit follow-up mechanism
+when it can continue the native task, and use a fresh context only as the shared procedure requires.
+The external model does the task. Count each active proxy against host capacity and each external
 session against router limits. Use the smallest approved pool.
 
 Record the proxies' model alongside the external worker's model, session and report.

@@ -6,6 +6,9 @@ identifiers bind the decision to the request. Read it whole and decide it with t
 call page's [Decide a request](../../orchestrate/references/external.md#5-decide-a-request); what an accept
 and an answer do is its [What each adapter adds](../../orchestrate/references/external.md#what-each-adapter-adds).
 This page holds the mechanics behind them. Grant only the displayed action within the approved task and scope.
+A bounded `ls` of inputs named by the task is a read: accept it when every listed path stays inside the approved
+read scope. Check any glob or parent-directory traversal against that scope; a listing does not authorize other
+commands.
 A question's choices and multiplicity are validated, and an answer grants no command or permission. An edit
 with no exact target, or one aimed inside OpenCode's configuration or data directory, is declined at once.
 Publication is exclusive: stale identities, changed request contents, wrong decision types and late answers
