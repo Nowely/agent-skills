@@ -28,7 +28,7 @@ A prompt is a few header lines, then `TASK:` and the task. Header lines come fir
 | `RIGHTS:` (first, when present) | `read [<dir>]`: no file-tool writes; optional path selects the working directory, not a read boundary; `write <dir>`: may change files under `<dir>`; `worktree <repo>`: may change files in a fresh copy of `<repo>` | the plan row's writes; without a plan, `read` in the directory you run `--new` in |
 | `MODEL:` | a model name from the adapter's models page | the plan row's model; without a plan, the CLI's default |
 | `EFFORT:` | an effort name from the adapter's page | the CLI's default |
-| `OUTPUT_SCHEMA:` | the absolute path of a JSON Schema; for an orchestrated agent always `<orchestrate>/schemas/five-fields.schema.json` | the adapter's default |
+| `OUTPUT_SCHEMA:` | the absolute path of a JSON Schema; workers use `<orchestrate>/schemas/five-fields.schema.json`; the main-proxy coordinator uses `<orchestrate>/schemas/main-proxy.schema.json` | the adapter's default |
 | `RESUME:` | the `REPORT=` path of an earlier run of this agent | a new agent |
 | `ALLOW_NO_COMMANDS:` | `yes` | a turn that ran no command and read no file fails with exit 5 |
 
@@ -124,7 +124,7 @@ role to the relay card only. Do not use an invocation number or transport term i
 
 Make one call of the Agent tool, the tool that starts a Claude Code subagent:
 
-- `subagent_type`: `entrust:proxy`. Give it no `model`: the proxy pins its own small model, and the agent's
+- `subagent_type`: `entrust:relay`. Give it no `model`: it pins its own small model, and the agent's
   model is the `MODEL:` line of its prompt.
 - `description`: the name above.
 - `run_in_background`: `false` for the one agent you wait for; `true` for agents that run side by side or while
@@ -151,7 +151,7 @@ agent's result. A background call also sends a task notification after it; give 
 ### In Codex or OpenCode
 
 Start one native subagent, an agent the host itself starts, on the host's smallest model at the effort of the
-proxy row of its models page ([Codex](../../codex/references/models.md)); on another host, its smallest model.
+relay row of its models page ([Codex](../../codex/references/models.md)); on another host, its smallest model.
 Give it the logical name above and the block above, copied whole with the same three replacements, as its whole
 brief: no task, no rights and no other page, since it decides nothing. In Codex, pass the semantic slug as
 `task_name`; the UI's rendered title is host-controlled. If the host offers a follow-up turn, reuse that native
@@ -286,7 +286,7 @@ Write a new prompt with `RESUME: <its REPORT= path>` and run `--new` under a fre
 `<run>/<id>-2/report.json`, then `-3`, and so on; without a plan, a new name. The continuation runs in the
 earlier run's directory with its rights: leave `RIGHTS:` out or name the same rights. Then run it as in step 3,
 using a distinct follow-up turn on the existing native task when supported, otherwise a fresh context. This is a
-new external invocation in the same session, not a new worker.
+new external invocation continuing that worker; Claude forks the parent session and records its report link.
 
 ## 7. Stop an agent
 

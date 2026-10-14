@@ -1,10 +1,8 @@
 ---
 name: claude
 description: >-
-  Claude adapter for entrust. In Claude Code it holds Claude's model tiers, Agent-tool delegation, background
-  and headless agents, Workflow and the foreman's launch; from any host it runs external Claude agents through
-  `claude -p`, with rights, approvals, continuation and a report. Use when entrust's orchestrate, swarm, advisor
-  or prepare-feedback plans Claude agents, natively in Claude Code or as a plan row whose adapter is `claude`.
+  Run external Claude agents or make Claude/Opus/Sonnet/Fable the main coordinator (“Прокси на Opus”),
+  even before a task is stated. Also use for native Claude delegation and entrust plans selecting Claude.
 metadata:
   version: "0.29.0"
 license: MIT
@@ -17,6 +15,8 @@ roles, verification and the return; this page owns how Claude Code runs them. Mo
 [models.md](references/models.md). The measurements behind these rules:
 [incidents.md](references/incidents.md). A Claude agent the host cannot run natively, or one that must run
 outside this session, is an external run: [external.md](references/external.md).
+
+For an affirmative coordinator choice, follow [main proxy mode](../orchestrate/references/main-proxy.md).
 
 ## Agent calls
 

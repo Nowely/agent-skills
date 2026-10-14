@@ -150,35 +150,36 @@ test("schema bounds and prototype-named fields cannot bypass validation", () => 
   assert.equal(validateOutput({ type: "object", properties: {}, additionalProperties: false }, JSON.parse('{"toString":"x"}')).ok, false);
 });
 test("agent order reader rejects the whole batch before unknown, repeated or partial actions", () => {
+  const read = (report, mode) => readAgentOrders(report, mode, { workerModels: [{ model: "Sol", efforts: ["high"] }], capabilities: [] });
   const delegate = { id: "d", action: "delegate", agent_id: "a", task: 'Read \"quotes\", \\, $ and Unicode: мир', scope: "read-only", model: null, effort: null };
   const report = (requests) => ({ ok: true, receiptOk: true, outputSchemaOk: true, partial: false, sessionID: "coordinator", answerJson: { plan: "", requests, final_answer: "" } });
-  const mode = (agents = {}) => ({ external_session: "coordinator", agents });
+  const mode = (agents = {}) => ({ external_session: "coordinator", agents, defaultWorker: { model: "Sol", effort: "high" } });
   const collect = { id: "c", action: "collect", agent_ids: ["a"] };
   const binding = { native_agent: "/root/worker-a", model: "Sol", effort: "high" };
   const batch = report([delegate, collect]);
-  assert.strictEqual(readAgentOrders(batch, mode()).requests[0], delegate);
-  assert.equal(readAgentOrders(batch, mode()).requests[0].task, delegate.task);
+  assert.strictEqual(read(batch, mode()).requests[0], delegate);
+  assert.equal(read(batch, mode()).requests[0].task, delegate.task);
   for (const request of [{ ...delegate, task: " \n\t" }, { ...delegate, scope: " \t" }])
-    assert.throws(() => readAgentOrders(report([request]), mode()), /nonblank text/);
-  assert.throws(() => readAgentOrders(report([{ id: "n", action: "continue", agent_id: "a", task: " \n" }]), mode({ a: binding })), /nonblank text/);
-  assert.throws(() => readAgentOrders({ ...batch, answerJson: { plan: "", requests: [], final_answer: " \n" } }, mode()), /nonblank text/);
+    assert.throws(() => read(report([request]), mode()), /nonblank text/);
+  assert.throws(() => read(report([{ id: "n", action: "continue", agent_id: "a", task: " \n" }]), mode({ a: binding })), /nonblank text/);
+  assert.throws(() => read({ ...batch, answerJson: { plan: "", requests: [], final_answer: " \n" } }, mode()), /nonblank text/);
   for (const request of [collect, { id: "s", action: "stop", agent_ids: ["a"] }, { id: "n", action: "continue", agent_id: "a", task: "Next" }]) {
-    assert.strictEqual(readAgentOrders(report([request]), mode({ a: binding })).requests[0], request);
+    assert.strictEqual(read(report([request]), mode({ a: binding })).requests[0], request);
     const lostRequest = request.agent_ids ? { ...request, agent_ids: ["lost"] } : { ...request, agent_id: "lost" };
     for (const lost of [null, {}, "", "   ", [], { native_agent: "" }, { native_agent: "  " }, Object.create(binding)])
-      assert.throws(() => readAgentOrders(report([delegate, lostRequest]), mode({ lost })), /missing native agent binding/);
+      assert.throws(() => read(report([delegate, lostRequest]), mode({ lost })), /missing native agent binding/);
   }
-  assert.throws(() => readAgentOrders(report([collect]), mode()), /unknown agent/);
-  assert.throws(() => readAgentOrders(report([delegate, { ...collect, id: "d" }]), mode()), /duplicate request/);
-  assert.throws(() => readAgentOrders(report([delegate]), mode({ a: {} })), /already exists/);
-  assert.throws(() => readAgentOrders(report([{ ...collect, agent_ids: ["a", "a"] }]), mode({ a: {} })), /repeated agent/);
-  assert.throws(() => readAgentOrders({ ...batch, partial: true }, mode()), /complete coordinator reply/);
-  assert.throws(() => readAgentOrders({ ...batch, receiptOk: false }, mode()), /attributed/);
-  assert.throws(() => readAgentOrders({ ...batch, ok: false }, mode()), /successful/);
-  assert.throws(() => readAgentOrders(batch, {}), /session binding/);
-  assert.throws(() => readAgentOrders({ ...batch, sessionID: null }, mode()), /session binding/);
-  assert.throws(() => readAgentOrders(batch, { ...mode(), external_session: "foreign" }), /another external session/);
-  assert.throws(() => readAgentOrders(batch, { ...mode(), agents: null }), /agent bindings object/);
+  assert.throws(() => read(report([collect]), mode()), /unknown agent/);
+  assert.throws(() => read(report([delegate, { ...collect, id: "d" }]), mode()), /duplicate request/);
+  assert.throws(() => read(report([delegate]), mode({ a: {} })), /already exists/);
+  assert.throws(() => read(report([{ ...collect, agent_ids: ["a", "a"] }]), mode({ a: {} })), /repeated agent/);
+  assert.throws(() => read({ ...batch, partial: true }, mode()), /complete coordinator reply/);
+  assert.throws(() => read({ ...batch, receiptOk: false }, mode()), /attributed/);
+  assert.throws(() => read({ ...batch, ok: false }, mode()), /successful/);
+  assert.throws(() => read(batch, {}), /session binding/);
+  assert.throws(() => read({ ...batch, sessionID: null }, mode()), /session binding/);
+  assert.throws(() => read(batch, { ...mode(), external_session: "foreign" }), /another external session/);
+  assert.throws(() => read(batch, { ...mode(), agents: null }), /agent bindings object/);
 });
 test("wrapped JSON preserves escaped quotes, braces and nested objects", () => {
   for (const value of [{ result: 'a"b' }, { result: 'a"{b' }, { result: 'a\\\"{' }, { result: { nested: "}" } }])

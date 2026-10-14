@@ -87,3 +87,11 @@ output. Of the first five, one got the agent's request inside the first 30 s; th
 report and the driver's processes itself before starting the next proxy. It then said it would start proxies
 that wait for the command to end (the briefs are encrypted in the session), and the next five handed back the
 nine lines, four of them after reading the session with `write_stdin` one to eleven times.
+
+## Main proxy root oneOf rejected (2026-10-14)
+
+Measured with Claude CLI 2.1.299: submitting the shipped main-proxy schema as --json-schema failed with
+HTTP 400: `input_schema does not support oneOf, allOf, or anyOf at the top level`. The canonical root oneOf
+enforces requests versus final_answer. The driver now removes only root combinators from the submission
+copy and validates structured_output against the original schema locally; nested combinators stay. Offline
+regressions reproduce the 400 and reject mixed or empty envelopes. A live post-fix call remains a separate check.

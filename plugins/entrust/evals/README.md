@@ -12,7 +12,7 @@ node evals/run-all.mjs        # every suite, one per core at a time, longest fir
 node evals/cli.test.mjs       # one suite, when it is the thing being worked on
 ```
 
-`run-all.mjs` lists the twenty-four suites longest first: protocol, opencode, agent-run, lock, worktree, conformance, cli, claude, cleanup, swarm, prepare-feedback, capture-check, fidelity, package, agent-contract, orchestrate, attach-pasted, status, adapter-status, advisor, fragments, lint-draft, gate-checks, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
+`run-all.mjs` lists the twenty-five suites longest first: protocol, opencode, agent-run, lock, worktree, conformance, cli, claude, main-proxy, cleanup, swarm, prepare-feedback, capture-check, fidelity, package, agent-contract, orchestrate, attach-pasted, status, adapter-status, advisor, fragments, lint-draft, gate-checks, orchestrate-live. It refuses to start when that list disagrees with the directory, so a suite nobody
 listed cannot go unrun. It runs as many suites at once as the machine has cores: they mostly wait on the
 driver's real timers, so a full run takes about as long as its longest suite rather than ten minutes. Each
 suite's output is printed whole when it ends. A red suite does not stop the run, so one run names every
@@ -141,7 +141,7 @@ every transcript as part of the available-skills listing in the system prompt, a
 repository's own prose, so a skill that never fired still matches.
 
 The OpenCode cases use the current `claude plugin eval` format. The repository keeps working eval data
-beside the installed plugin, so stage a temporary plugin copy and run the seven cases with Skill as the
+beside the installed plugin, so stage a temporary plugin copy and run the routing cases with Skill as the
 only permitted tool; the one-turn cap records routing before worker launch, without spending provider
 tokens:
 
@@ -314,3 +314,11 @@ The driver no longer reads a managed profile's web-search modes: where one exist
 real MDM plist on a clean machine is still unmeasured. The protocol and
 lock suites' own assertions were used as mutation detectors but never questioned. Strike items from this
 list by attacking them, not by shipping features near them.
+
+`main-proxy.test.mjs` runs a full offline Claude coordinator round through init, prepare, the attached launcher,
+finish, native binding, collect/invoke outcomes and RESUME to final_answer. It also checks catalogue refusals,
+explicit model/effort selection, missing reply delivery and unknown-outcome continuation guards.
+The Claude proxy routing case requires claude and forbids opencode; its live trigger run is opt-in.
+
+Main proxy regressions also cover concurrent finish/record, persisted-before-stdout reconciliation, stale locks,
+raw string-input fidelity, terminal collect, and help/catalogue generation from whole runtime metadata files.

@@ -7,6 +7,17 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- The per-worker agent `entrust:proxy` is now `entrust:relay`.
+
+- **Main proxy state mutations are serialized and batches publish once.** Status reconciles lost stdout;
+  catalogue generation and string-input invoke support raw native tools. Collect requires a terminal status,
+  and explicit worker defaults must still be runtime-advertised.
+
+- **Claude can coordinate main proxy sessions.** A runtime capability catalogue governs invoke and explicit
+  worker model/effort selection; main-proxy.mjs preserves messages, complete outcomes and report lineage.
+  Claude submits a root-combinator-free schema copy and validates the original contract locally, with schema
+  hashes and invocation timestamps in its report.
+
 - **Entrust OpenCode sessions read outside the working directory without path prompts.** `RIGHTS` scopes writes,
   not reads. Bash also runs without prompts and is not limited by the session's file or network tool scopes.
 - **External worker names and relays have clearer contracts.** Names use model family, stable id and role, and a

@@ -109,6 +109,57 @@ test("a refusal at launch is a published report, so --run prints its reason on E
   assert.match(end.out, /^EXIT=2$/m); assert.match(end.out, /^ERROR=RIGHTS read .* is not an existing directory$/m);
 });
 
+test("shipped main-proxy schema transforms only submission and validates every original envelope, including RESUME", async () => {
+  const s = setup(), schemaPath = path.join(ROOT, "skills/orchestrate/schemas/main-proxy.schema.json");
+  const original = fs.readFileSync(schemaPath, "utf8");
+  const headers = `RIGHTS: read ${s.work}\nOUTPUT_SCHEMA: ${schemaPath}\nALLOW_NO_COMMANDS: yes\n`;
+  assert.equal(check(s, `${headers}TASK: coordinate\n`).status, 0);
+  const delegate = { id: "d", action: "delegate", agent_id: "a", task: "review", scope: "read", model: "gpt-6.1-sol", effort: "high" };
+  const invoke = { id: "i", action: "invoke", capability: "read", arguments: { path: "x" }, purpose: "inspect" };
+  const rawInvoke = { id: "raw", action: "invoke", capability: "patch", input: "*** Begin Patch\r\n+Привет \"$\\\"\n*** End Patch", purpose: "approved patch" };
+  const final = { plan: "", requests: [], final_answer: "Done" };
+  let prior = null;
+  for (const envelope of [final, { plan: "", requests: [delegate, invoke, rawInvoke], final_answer: "" },
+    { plan: "", requests: [invoke], final_answer: "mixed" }, { plan: "", requests: [], final_answer: "" }]) {
+    const valid = envelope === final || envelope.requests[0] === delegate;
+    const r = await drive(s, `${headers}${prior ? `RESUME: ${prior.report}\n` : ""}TASK: coordinate\n`,
+      { mode: "structured", more: { FAKE_CLAUDE_OUTPUT: JSON.stringify(envelope) } });
+    assert.equal(r.code, valid ? 0 : 13, r.err); assert.equal(r.json.outputSchemaOk, valid);
+    assert.deepEqual(r.json.schemaTransform, ["dropped root oneOf"]);
+    assert.equal(r.json.outputSchemaPath, schemaPath); assert.match(r.json.outputSchemaSha256, /^[a-f0-9]{64}$/);
+    assert.notEqual(r.json.outputSchemaSha256, r.json.submittedSchemaSha256);
+    if (valid) assert.deepEqual(r.json.answerJson, envelope);
+    else { assert.equal(r.json.answerJson, null); assert.ok(r.json.schemaErrors.length); }
+    const submitted = JSON.parse(flagOf(lastCall(s.log).argv, "--json-schema"));
+    assert.equal(submitted.oneOf, undefined); assert.ok(submitted.properties.requests.items.oneOf);
+    assert.ok(Date.parse(r.json.spawnedAt) <= Date.parse(r.json.firstEventAt));
+    assert.ok(Date.parse(r.json.firstEventAt) <= Date.parse(r.json.resultAt));
+    if (prior) assert.equal(r.json.resumedFromSession, prior.json.sessionID);
+    if (valid) prior = r;
+  }
+  assert.equal(fs.readFileSync(schemaPath, "utf8"), original);
+});
+
+test("unsupported schemas and non-object submission fail preflight without spawning Claude", () => {
+  const s = setup(), schema = path.join(s.state, "unsupported.json");
+  for (const value of [{ type: "object", not: {} }, { type: "array", items: { type: "string" } }]) {
+    fs.writeFileSync(schema, JSON.stringify(value));
+    assert.equal(check(s, `RIGHTS: read ${s.work}\nOUTPUT_SCHEMA: ${schema}\nTASK: test\n`).status, 2);
+    assert.equal(fs.existsSync(s.log), false);
+  }
+});
+
+test("root anyOf/allOf retain original validation and nested constraints", () => {
+  const s = setup(), schema = path.join(s.state, "combinators.json");
+  for (const keyword of ["anyOf", "allOf"]) {
+    fs.writeFileSync(schema, JSON.stringify({ type: "object", [keyword]: [{ required: ["value"] }],
+      properties: { value: { type: "string", oneOf: [{ enum: ["a"] }, { enum: ["b"] }] } } }));
+    const parsed = parsePrompt(`OUTPUT_SCHEMA: ${schema}\nTASK: test\n`, {}, s.work);
+    assert.equal(parsed.error, undefined); assert.deepEqual(parsed.schemaTransform, [`dropped root ${keyword}`]);
+    assert.ok(JSON.parse(parsed.schemaText).properties.value.oneOf);
+  }
+});
+
 // ------------------------------------------------------------------------------------------- the run
 
 test("a read run: manual mode, read tools, the mailbox denied rules, no approvals, the report's fields", async () => {

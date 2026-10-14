@@ -20,7 +20,7 @@ pins the model and the writes: a prompt that names neither runs on the row's, on
 | `RIGHTS:` (first) | `read [dir]`, `write <dir>`, `worktree <repo>` | the table below; absent: the plan row's writes, else `read` in the current directory |
 | `MODEL:` | `opus`, `sonnet`, `haiku`, `fable`, or a full `claude-…` id | absent: the plan row's, else the user's default |
 | `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max` | absent: the user's default |
-| `OUTPUT_SCHEMA:` | an absolute path | absent: the [five-field schema](../../orchestrate/schemas/five-fields.schema.json); Claude Code validates the answer against it |
+| `OUTPUT_SCHEMA:` | an absolute path | absent: the [five-field schema](../../orchestrate/schemas/five-fields.schema.json); the driver validates the answer against the original schema |
 | `RESUME:` | the absolute path of an earlier claude report | continues that run's session, in its directory, with its rights; a `RIGHTS:` line names the same or is left out |
 | `SAFE_MODE: yes` | | no CLAUDE.md, memory, skills, plugins, hooks or MCP servers, and so no approvals |
 | `ALLOW_NO_COMMANDS: yes` | | the agent may answer from what it knows; without it, a turn that ran no command and read no file is exit 5 |
@@ -52,6 +52,10 @@ without a plan, `--new` takes `--adapter claude`. What Claude adds:
 - A run launched without a mailbox (a swarm) and a `SAFE_MODE` run deny whatever would ask, and exit 7 when they
   did.
 
+Root oneOf/anyOf/allOf are removed only from the submission copy required by Claude Code's tool schema;
+the original schema stays unchanged and is checked locally. Unsupported validator keywords fail preflight.
+A failed answer is exit 13 with schemaErrors and outputSchemaOk: false; answerJson is null.
+
 ## Continuing and reading
 
 A continuation forks the session into one of its own, so two continuations of one report never share it; a run
@@ -62,3 +66,7 @@ CLI's estimate), `usage`; `commands`, `fileChanges`, `permissionDenials`, `escal
 whole stream; a worktree's `worktreePath`, `base`, and `diff` against `base`, committed work included, with new
 files in `untracked`. A refusal at launch is a report too, its reason on `ERROR=`. A stop or the time-out
 ends the turn, `turnStatus: aborted` and exit 3.
+
+The report also carries outputSchemaPath, outputSchemaSha256, submittedSchemaSha256, schemaTransform,
+spawnedAt, firstEventAt, resultAt and resumedFromSession. durationMs is the CLI's duration_ms;
+durationApiMs is duration_api_ms, which may accumulate across resumes rather than measure only this invocation.

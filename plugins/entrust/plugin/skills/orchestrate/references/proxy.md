@@ -29,11 +29,11 @@ the coordinator reaches the user only for a decision or authority that is missin
 2. Read a complete `EVENT=waiting` frame between `EVENT<<TOKEN` and `EVENT>>TOKEN` before deciding.
    The watcher remains attached while a decision waits. If tool output was clipped, read the whole
    immutable request from this report's approval mailbox; never approve from an excerpt.
-3. Apply an already authorized decision, or send the complete request through native agent messaging
-   to the coordinator. This is an intermediate message, not your final answer. Keep the watcher alive
-   and use host waits of at most five seconds so coordinator messages can be received. Return to
-   the agent after each poll; do not hide a polling loop inside a long tool call. Handle coordinator
-   messages before the next poll. On the coordinator's decision,
+3. Apply an already authorized decision, or present the platform approval prompt to the user. Forward a
+   missing task decision verbatim in the next coordinator invocation. Keep the watcher alive
+   and use host waits of at most five seconds so user input and platform decisions can be received. Return to
+   the agent after each poll; do not hide a polling loop inside a long tool call. Handle available
+   decisions before the next poll. On an authorized decision,
    publish it through the existing typed procedure; the watcher stays attached, so start no second
    `--run`. Record the reason, decision and observed outcome.
 4. A checkpoint ending in `RUNNING=` repeats the identical watch command. Do not resend a prompt or
@@ -46,8 +46,8 @@ the coordinator reaches the user only for a decision or authority that is missin
 
 ## The return
 
-Forward the task and the worker's complete answer without independently rewriting, retelling or
-shortening them. Explain progress and transport errors separately from the worker's words. Read
+Forward every user message verbatim through main-proxy.mjs. User-facing task content is only the
+validated final_answer, without rewriting, retelling or shortening. Explain transport status separately. Read
 `answerPath` for the complete answer when the status lines or report's preview were clipped.
 If the answer does not fit the host return, give its complete artifact path and mark the display
 limit; a summary does not replace the answer. Preserve partial or unknown status when a complete
