@@ -9,4 +9,4 @@ Orchestrate's tiers describe the work; this table names the Claude model for eac
 | strong | Opus | `opus` |
 | cheap | Sonnet | `sonnet` |
 | bulk | Haiku | `haiku` |
-| proxy | Haiku | none: `entrust:proxy`, which relays one external agent's run, pins its own |
+| relay | Haiku | none: `entrust:relay`, which relays one external agent's run, pins its own |
