@@ -3,6 +3,15 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Fixed
+
+- **Main proxy delivers terminal worker replies without collect.** Delegate and continue outcomes publish the
+  bound reply's full content and SHA-256 beside the native result. Spawn bindings accept one terminal update;
+  missing or unreadable replies report delivery_error, and terminal outcomes remain immutable. Unbound launch
+  refusals and errors remain recordable without inventing reply delivery; completion requires a binding.
+
 ## 0.30.0 — 2026-10-15
 
 ### Changed
