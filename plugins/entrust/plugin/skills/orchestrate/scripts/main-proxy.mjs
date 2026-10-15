@@ -28,6 +28,18 @@ const output = (text) => {
     catch (e) { if (e.code !== "EAGAIN") throw e; Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5); }
   }
 };
+const terminal = (outcome) => ["completed", "failed", "cancelled"].includes(outcome?.status);
+const reply = (agent_id, replyPath) => {
+  try { const bytes = fs.readFileSync(replyPath); return { agent_id, replyPath, content: bytes.toString("utf8"), sha256: hash(bytes) }; }
+  catch (e) { return { agent_id, replyPath: replyPath ?? null, delivery_error: e.message }; }
+};
+function recordOutcome(record, outcome, mode) {
+  Object.assign(record, { state: "recorded", outcome: outcome.value, outcomeJson: outcome.text });
+  if (record.request.action === "collect")
+    record.replies = record.request.agent_ids.map((id) => reply(id, mode.agents[id]?.replyPath));
+  else if (["delegate", "continue"].includes(record.request.action) && record.replyPath && terminal(outcome.value))
+    record.replies = [reply(record.request.agent_id, record.replyPath)];
+}
 const MUTATING = new Set(["init", "prepare", "finish", "bind", "record"]);
 const USAGE = `main-proxy — saved coordinator mode and complete host outcomes.
 
@@ -43,6 +55,9 @@ const USAGE = `main-proxy — saved coordinator mode and complete host outcomes.
 
 finish publishes once. After a lost stdout, reconcile saved orders and request states via status.
 Orders are beside the report; status returns ordersPath. Bind native identity: agent_id, native_agent, id or task_name (e.g. {"agent_id":"worker-1"}).
+Delegate/continue terminal bind or record reads the bound replyPath into replies with content and sha256 (or delivery_error).
+Spawn bindings stay recorded and accept one later terminal record; terminal outcomes are immutable.
+Unbound worker outcomes record once without replies; completed requires a binding.
 Collect outcome JSON needs root status completed|failed|cancelled (e.g. {"status":"completed"}); replies use each agent's bound replyPath.
 `;
 
@@ -233,19 +248,18 @@ export function main(argv = process.argv.slice(2)) {
       if (order.request.action === "continue" && identity !== mode.agents[id].native_agent) throw new Error("continuation must keep the bound native identity");
       put(mode.agents, id, { ...mode.agents[id], native_agent: identity, nativeResult: native.value, nativeJson: native.text, model, effort,
         replyPath: path.resolve(required(o, "reply-path")), scope: expected.scope ?? null });
-      Object.assign(order, { state: "recorded", outcome: native.value, outcomeJson: native.text }); save(modePath, mode);
+      order.replyPath = mode.agents[id].replyPath;
+      recordOutcome(order, native, mode); save(modePath, mode);
     } else if (command === "record") {
       const id = required(o, "request-id"), record = Object.hasOwn(mode.requests, id) ? mode.requests[id] : null;
-      if (!record || record.state !== "dispatched_outcome_unknown") throw new Error(`no pending request: ${id}`);
+      const worker = record && ["delegate", "continue"].includes(record.request.action);
+      const awaitingTerminal = worker && record.replyPath && record.state === "recorded" && !Object.hasOwn(record, "replies");
+      if (!record || (record.state !== "dispatched_outcome_unknown" && !awaitingTerminal)) throw new Error(`no pending request: ${id}`);
       const outcome = input(required(o, "outcome-json"));
-      if (record.request.action === "collect" && !["completed", "failed", "cancelled"].includes(outcome.value?.status))
-        throw new Error(`collect outcome is not terminal: ${id}`);
-      Object.assign(record, { state: "recorded", outcome: outcome.value, outcomeJson: outcome.text });
-      if (record.request.action === "collect") record.replies = record.request.agent_ids.map((agent_id) => {
-        const replyPath = mode.agents[agent_id]?.replyPath;
-        try { const bytes = fs.readFileSync(replyPath); return { agent_id, replyPath, content: bytes.toString("utf8"), sha256: hash(bytes) }; }
-        catch (e) { return { agent_id, replyPath: replyPath ?? null, delivery_error: e.message }; }
-      });
+      if ((record.request.action === "collect" || awaitingTerminal) && !terminal(outcome.value))
+        throw new Error(`outcome is not terminal: ${id}`);
+      if (worker && !record.replyPath && outcome.value?.status === "completed") throw new Error(`completed worker outcome requires a binding: ${id}`);
+      recordOutcome(record, outcome, mode);
       save(modePath, mode);
     } else if (command === "results") {
       const results = [...Object.entries(mode.requests).map(([id, r]) => ({ id, ...r })), ...(mode.rejectedRequests ?? [])];

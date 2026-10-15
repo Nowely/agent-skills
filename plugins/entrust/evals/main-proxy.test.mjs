@@ -65,6 +65,115 @@ test("offline round preserves user message, native JSON, whole collect/invoke ou
   assert.ok(calls[0].task.endsWith(`USER_MESSAGE (verbatim text encoded as a JSON string):\n${JSON.stringify(user)}`)); assert.ok(calls[0].task.includes("## Agent orders"));
   assert.ok(calls[1].task.includes(results)); assert.ok(calls[0].task.includes('"runtimeAvailable":true'));
 });
+test("terminal delegates deliver complete replies without collect into the next prompt", async () => {
+  const s = setup(), second = { ...delegate, id: "e", agent_id: "second" };
+  await round(s, "start", envelope([delegate, second, invoke]));
+  const expected = new Map();
+  for (const worker of [delegate, second]) {
+    const reply = path.join(s.dir, `${worker.agent_id}.md`);
+    const content = `Привет 🌍 "${worker.agent_id}"\r\n` + 'строка "quotes" \\ $\n'.repeat(6000) + "TAIL >64 KiB\r\nКонец 🐈\n";
+    const bytes = Buffer.from(content); assert.ok(bytes.length > 65536);
+    fs.writeFileSync(reply, bytes); expected.set(worker.id, { bytes, reply });
+    const native = ` { "agent_id": "native-${worker.agent_id}", "status": "running" }\n`;
+    s.ok("bind", ["--agent-id", worker.agent_id, "--native-json", "-", "--model", worker.model, "--effort", worker.effort, "--reply-path", reply], native);
+    const outcome = ` { "status": "completed", "final": "[Reply](${reply})" }\n`;
+    const recorded = s.run("record", ["--request-id", worker.id, "--outcome-json", "-"], outcome);
+    assert.equal(recorded.status, 0, `terminal delegate record must finalize after spawn binding: ${recorded.stderr}`);
+    assert.equal(s.mode().requests[worker.id].outcomeJson, outcome);
+    assert.equal(s.mode().agents[worker.agent_id].nativeJson, native);
+  }
+  const tool = ' { "content": "полный invoke\\r\\n\\"quotes\\"" }\n';
+  s.ok("record", ["--request-id", "i", "--outcome-json", "-"], tool);
+  const results = s.ok("results"), value = JSON.parse(results);
+  assert.deepEqual(value.AGENT_RESULTS.map((r) => r.id), ["d", "e"]);
+  assert.equal(value.REQUEST_RESULTS[0].outcomeJson, tool);
+  for (const result of value.AGENT_RESULTS) {
+    const { bytes, reply } = expected.get(result.id), delivered = result.replies[0];
+    assert.equal(delivered.agent_id, result.request.agent_id); assert.equal(delivered.replyPath, reply);
+    assert.deepEqual(Buffer.from(delivered.content), bytes);
+    assert.equal(delivered.sha256, crypto.createHash("sha256").update(bytes).digest("hex"));
+    fs.writeFileSync(reply, "changed after publication");
+    assert.match(s.run("record", ["--request-id", result.id, "--outcome-json", "-"], '{"status":"completed"}').stderr, /no pending request/);
+  }
+  assert.equal(s.ok("results"), results);
+  const resultPath = path.join(s.dir, "results.json"); fs.writeFileSync(resultPath, results);
+  await round(s, "", envelope([], "done"), resultPath);
+  const prompt = fs.readFileSync(path.join(s.state, "round-2", "prompt.txt"), "utf8");
+  const forwarded = JSON.parse(prompt.split("RESULTS:\n")[1].split("\nUSER_MESSAGE")[0]);
+  for (const result of forwarded.AGENT_RESULTS) {
+    const bytes = expected.get(result.id).bytes;
+    assert.deepEqual(Buffer.from(result.replies[0].content), bytes);
+    assert.equal(result.replies[0].sha256, crypto.createHash("sha256").update(bytes).digest("hex"));
+  }
+  assert.equal(forwarded.REQUEST_RESULTS[0].outcomeJson, tool);
+});
+
+test("spawn records do not read replies; terminal bind and continue publish once with delivery errors", async () => {
+  const s = setup(), missing = path.join(s.dir, "missing.md");
+  await round(s, "start", envelope([delegate]));
+  const readLog = path.join(s.dir, "reply-reads.txt"), preload = path.join(s.dir, "reply-reads.cjs");
+  fs.writeFileSync(preload, `const fs = require('node:fs'), read = fs.readFileSync;
+fs.readFileSync = function(p, ...args) { if (String(p) === ${JSON.stringify(missing)}) fs.appendFileSync(${JSON.stringify(readLog)}, 'read\\n'); return read.call(this, p, ...args); };`);
+  s.env.NODE_OPTIONS = `--require=${preload}`;
+  s.ok("bind", ["--agent-id", "worker", "--native-json", "-", "--model", delegate.model, "--effort", delegate.effort, "--reply-path", missing], '{"agent_id":"native","status":"running"}');
+  assert.equal(Object.hasOwn(s.mode().requests.d, "replies"), false);
+  assert.equal(fs.existsSync(readLog), false, "non-terminal bind must not read the reply file");
+  assert.match(s.run("record", ["--request-id", "d", "--outcome-json", "-"], '{"status":"running"}').stderr, /not terminal/);
+  assert.equal(fs.existsSync(readLog), false, "non-terminal record must not read the reply file");
+  const follow = { id: "next", action: "continue", agent_id: "worker", task: "Follow up" };
+  await round(s, "follow up", envelope([follow]));
+  const nextReply = path.join(s.dir, "next.md"); fs.writeFileSync(nextReply, "complete continuation\r\n🐈");
+  s.ok("bind", ["--agent-id", "worker", "--native-json", "-", "--model", delegate.model, "--effort", delegate.effort, "--reply-path", nextReply], '{"agent_id":"native","status":"spawned"}');
+  assert.equal(Object.hasOwn(s.mode().requests.next, "replies"), false);
+  s.ok("record", ["--request-id", "d", "--outcome-json", "-"], '{"status":"failed","final":"missing reply"}');
+  assert.equal(fs.readFileSync(readLog, "utf8"), "read\n");
+  const failed = s.mode().requests.d;
+  assert.equal(failed.replies[0].replyPath, missing); assert.match(failed.replies[0].delivery_error, /ENOENT/);
+  s.ok("record", ["--request-id", "next", "--outcome-json", "-"], '{"status":"cancelled"}');
+  assert.equal(s.mode().requests.next.replies[0].content, "complete continuation\r\n🐈");
+  assert.match(s.run("record", ["--request-id", "next", "--outcome-json", "-"], '{"status":"completed"}').stderr, /no pending request/);
+  const terminal = setup(); readyFinish(terminal, [delegate]); terminal.ok("finish");
+  const reply = path.join(terminal.dir, "reply.md"); fs.writeFileSync(reply, "terminal bind reply");
+  terminal.ok("bind", ["--agent-id", "worker", "--native-json", "-", "--model", delegate.model, "--effort", delegate.effort, "--reply-path", reply], '{ "agent_id":"native", "status":"completed" }\n');
+  assert.equal(terminal.mode().requests.d.replies[0].content, "terminal bind reply");
+});
+
+test("unbound worker refusals preserve raw outcomes and permit the next prepare", async () => {
+  const s = setup(), workers = [delegate, { ...delegate, id: "unsupported", agent_id: "unsupported" }, { ...delegate, id: "error", agent_id: "error" }];
+  await round(s, "start", envelope(workers));
+  const outcomes = [' { "status": "refused", "reason": "host denied spawn Привет" }\n',
+    ' { "status": "unsupported", "reason": "route unavailable" }\n', ' { "error": { "message": "spawn failed before identity" } }\n'];
+  for (let i = 0; i < workers.length; i++) {
+    const id = workers[i].id, result = s.run("record", ["--request-id", id, "--outcome-json", "-"], outcomes[i]);
+    assert.equal(result.status, 0, `unbound spawn outcome must be recorded: ${result.stderr}`);
+    const saved = s.mode().requests[id];
+    assert.equal(saved.state, "recorded"); assert.equal(saved.outcomeJson, outcomes[i]);
+    assert.deepEqual(saved.outcome, JSON.parse(outcomes[i]));
+    assert.equal(Object.hasOwn(saved, "replies"), false, "unbound outcome must not invent reply delivery");
+    assert.match(s.run("record", ["--request-id", id, "--outcome-json", "-"], '{"status":"failed"}').stderr, /no pending request/);
+  }
+  const results = s.ok("results"), value = JSON.parse(results);
+  assert.deepEqual(value.AGENT_RESULTS.map((r) => r.outcomeJson), outcomes);
+  const resultPath = path.join(s.dir, "refusals.json"); fs.writeFileSync(resultPath, results);
+  await round(s, "", envelope([], "refusals received"), resultPath);
+});
+
+test("unbound completed is refused and a refused continuation does not read its prior binding", async () => {
+  const s = setup(); await round(s, "start", envelope([delegate]));
+  assert.match(s.run("record", ["--request-id", "d", "--outcome-json", "-"], '{"status":"completed"}').stderr, /completed worker outcome requires a binding/);
+  assert.equal(s.mode().requests.d.state, "dispatched_outcome_unknown");
+  s.ok("record", ["--request-id", "d", "--outcome-json", "-"], '{"status":"refused"}');
+  const mode = s.mode(); mode.agents.worker = { native_agent: "old-native", replyPath: path.join(s.dir, "old-missing.md"), model: delegate.model, effort: delegate.effort };
+  fs.writeFileSync(path.join(s.state, "mode.json"), JSON.stringify(mode));
+  const follow = { id: "next", action: "continue", agent_id: "worker", task: "Follow up" };
+  await round(s, "follow up", envelope([follow]));
+  const raw = ' { "status": "refused", "reason": "host denied continuation" }\n';
+  s.ok("record", ["--request-id", "next", "--outcome-json", "-"], raw);
+  const saved = s.mode().requests.next; assert.equal(saved.outcomeJson, raw); assert.equal(Object.hasOwn(saved, "replies"), false);
+  assert.match(s.run("record", ["--request-id", "next", "--outcome-json", "-"], '{"status":"failed"}').stderr, /no pending request/);
+  await round(s, "", envelope([], "continuation refused"));
+});
+
 test("catalogue refuses unknown capabilities, invalid arguments, inherited models and unlisted efforts", () => {
   const mode = { external_session: "session", agents: {} }, cat = catalogue();
   assert.equal(readAgentOrders(report(envelope([delegate, invoke])), mode, cat).requests.length, 2);

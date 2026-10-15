@@ -72,10 +72,11 @@ For each substantive native-worker turn in this mode, assign a fresh permitted s
 complete reply. Add that delivery instruction to the brief separately from the coordinator's task.
 The worker authors one canonical reply artifact; its native final links that file instead of creating
 a second version. Continuations keep previous reply files. External workers use their adapter's full
-answer artifact. Read the reply file and serialize its complete contents into AGENT_RESULTS by code,
-along with identifiers from the saved request and mode data. An absent or unreadable
+answer artifact. A terminal delegate/continue bind or record reads the bound reply file and serializes
+its complete UTF-8-decoded text into AGENT_RESULTS, along with identifiers from the saved request and mode data.
+This delivery needs no collect order. An absent or unreadable
 artifact is a delivery error; completeness rests on an observed terminal worker status
-(completed|failed|cancelled). sha256 proves the bytes received, not their completeness; keep it explicit rather than reconstructing the answer. Ordinary
+(completed|failed|cancelled). sha256 hashes the raw file bytes, not the decoded text, and does not prove completeness; keep it explicit rather than reconstructing the answer. Ordinary
 waiting, refusal and transport statuses need no reply artifact.
 
 ## Every invocation
@@ -112,11 +113,19 @@ The host executes orders through its native facilities; the helper owns identifi
    --native-json <file|-> --model <exact-model> --effort <effort> --reply-path <canonical-reply-file>` preserves
    the observed native result verbatim and records a delegate/continue outcome. Native JSON identity must be under
    `agent_id`, `native_agent`, `id` or `task_name`, for example `{"agent_id":"worker-1"}`. Its model and effort must
-   match the validated order. Add the canonical reply delivery instruction separately from the coordinator task.
+   match the validated order. The request retains its own replyPath across later worker bindings. A non-terminal
+   binding records the spawn outcome without reading the artifact; it permits the next prepare and one later
+   terminal record for that request. A terminal binding publishes the reply immediately. Add the canonical reply
+   delivery instruction separately from the coordinator task.
 6. `record --state <state> --request-id <id> --outcome-json <file|->` preserves the complete native/tool result.
-   For collect, the outcome needs a root `status` of completed|failed|cancelled, e.g. `{"status":"completed"}`;
-   otherwise record refuses. It reads each requested agent's bound `replyPath` and reports its `agent_id`, `replyPath`,
-   full `content` and `sha256` under `replies`; missing/unreadable artifacts produce delivery_error. Preserve
+   After a spawn binding, record the delegate/continue's observed terminal root `status`
+   (completed|failed|cancelled), e.g. `{"status":"completed"}`. The helper reads that request's bound replyPath
+   and publishes `agent_id`, `replyPath`, full `content` and `sha256` under `replies`, beside the verbatim native
+   outcome and outcomeJson. Terminal outcomes are immutable; missing/unreadable artifacts produce delivery_error.
+   An unbound delegate/continue may record its raw refusal, unsupported result or error once without replies or
+   delivery_error; it then permits the next prepare and accepts no later terminal update. An unbound completed
+   outcome is refused because no worker identity or artifact is bound. Collect requires the same terminal status
+   and reads each requested agent's current bound replyPath. Preserve
    unknown/refused/unsupported outcomes; never replay an uncertain mutation.
    An interrupt acknowledgement alone does not prove stopped work.
 7. `results --state <state>` prints AGENT_RESULTS/REQUEST_RESULTS with every original id and full outcome.
