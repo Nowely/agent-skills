@@ -3,6 +3,57 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Added
+
+- **`entrust:proxy`, an explicit-only skill that switches the session to a Claude coordinator after one final
+  confirmation.** The confirmation names the model and the provider of the route, read from the CLI's route and
+  settings rather than guessed from the model, and delegates every right and capability of the session and the
+  sending of its working context to that provider. Nothing is launched and no context is sent before the user's
+  answer; Cancel leaves the running mode as it was. The consent is saved with its source, session, time, model and
+  provider, holds across resumes, restarts and tasks, and is the justification `begin` prints for a platform check.
+  The helper binds the answer to the pending activation and the host session; it cannot tell who wrote it, and the
+  skill makes the host the judge of an explicit affirmative.
+
+### Changed
+
+- **The main proxy's coordinator acts only through the host.** Claude runs it with no tool, MCP server or
+  installed or custom customization of its own (`--tools ""`, `--safe-mode`, `--strict-mcp-config`); platform built-in
+  plugins and admin policy that safe mode keeps are accepted only by the provenance init reports (`path: builtin`,
+  `source: <name>@builtin`), not by name; an init that names anything else, a
+  call of its own, no init at all or another model than the confirmed one fails the round without dispatch and keeps
+  the coordinator. A round is admitted at prepare and again in the driver right before the coordinator starts, so
+  an end, a switch, another host session or another route sends nothing from a round not yet admitted (admission under the state lock is the round's durable start; one already admitted finishes, keeps its report and publishes no orders of an ended mode). Orders publish unbegun; `begin` claims one
+  right before the host executes it, and an end revokes those not begun. A switch saves the new consent first, ends
+  only this host session's replaced mode, and finishes on a repeated confirm after a crash. Images in native results
+  reach the coordinator as image blocks. A catalogue keeps every runtime capability and its native schema: arguments
+  are checked only against a schema whose every keyword the reader enforces, and enum compares JSON values without
+  regard to member order. A failed round closes, so the next prepare continues the same coordinator, and a large
+  catalogue is sent once and then as changes.
+
+### Breaking
+
+- `main-proxy.mjs init` is replaced by `propose` and `confirm`; a request outside the proxy skill no longer activates
+  a coordinator, and the claude and opencode pages answer one with the proxy command. OpenCode and Codex coordinators
+  are not offered: no profile of theirs acts only through the host yet. A mode saved by `init` keeps its read-run
+  coordinator and is never given a consent.
+- A confirmed mode's orders start as `published` and need `begin` before `bind` or `record`.
+- The `entrust:proxy` skill is not the agent type of that name that 0.30.0 renamed to `entrust:relay`.
+
+- **An external Claude run has no wall clock unless its caller declares one, as a Codex agent since `184bc339`.**
+  The 30-minute default cut healthy runs that were still working. `--timeout` now defaults to 0 (none) and takes 0;
+  `--idle-timeout` (default 900 s, 0 disables) cuts a run whose stream writes no event of the run for that long.
+  The run is started with `--include-partial-messages`, so a message being written, a subagent's event or a running
+  tool's progress heartbeat counts as life, while only whole events count as calls or evidence; a line that is no
+  such event does not. Both clocks
+  stand still while a request waits for its decision, and silence starts again in full once the last one is
+  answered; work keeps its time. The volume bound, stops and RESUME of a cut run are unchanged; the report adds
+  `limits`, `cancellation.kind` (signal, wall, idle, volume or rights) and `longestSilenceMs`. Claude Code writes that
+  heartbeat every 30 s for a tool in the main conversation and none for a tool inside a subagent, and how long a
+  healthy run stays quiet is not measured yet, so 900 s is Codex's default rather than a proven one;
+  `longestSilenceMs` is how each run measures it.
+
 ## 0.30.1 — 2026-10-15
 
 ### Fixed

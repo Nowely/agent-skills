@@ -315,9 +315,11 @@ real MDM plist on a clean machine is still unmeasured. The protocol and
 lock suites' own assertions were used as mutation detectors but never questioned. Strike items from this
 list by attacking them, not by shipping features near them.
 
-`main-proxy.test.mjs` runs a full offline Claude coordinator round through init, prepare, the attached launcher,
-finish, native binding, collect/invoke outcomes and RESUME to final_answer. It also checks catalogue refusals,
-explicit model/effort selection, missing reply delivery and unknown-outcome continuation guards.
+`main-proxy.test.mjs` runs full offline Claude coordinator rounds from propose and the user's confirmation through
+prepare, the attached launcher, finish, begin, native binding, collect/invoke outcomes and RESUME to final_answer.
+It checks that nothing launches before the confirmation or after an end, a switch or a session or route drift; that
+cancel and a crashed switch keep the right modes; that images travel as image blocks; and catalogue refusals,
+explicit model/effort selection, missing reply delivery, unknown-outcome guards and legacy modes.
 The Claude proxy routing case requires claude and forbids opencode; its live trigger run is opt-in.
 
 Main proxy regressions also cover concurrent finish/record, persisted-before-stdout reconciliation, stale locks,

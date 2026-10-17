@@ -24,6 +24,8 @@ pins the model and the writes: a prompt that names neither runs on the row's, on
 | `RESUME:` | the absolute path of an earlier claude report | continues that run's session, in its directory, with its rights; a `RIGHTS:` line names the same or is left out |
 | `SAFE_MODE: yes` | | no CLAUDE.md, memory, skills, plugins, hooks or MCP servers, and so no approvals |
 | `ALLOW_NO_COMMANDS: yes` | | the agent may answer from what it knows; without it, a turn that ran no command and read no file is exit 5 |
+| `PROFILE: coordinator` | | the main proxy's coordinator: no tool, MCP server or customization of its own, SAFE_MODE and ALLOW_NO_COMMANDS implied, `RIGHTS` read naming its directory; a round of a proxy mode is admitted again under that mode's consent right before it starts |
+| `ATTACHMENTS:` | an absolute path | a JSON array of base64 PNG, JPEG, GIF or WebP image blocks, sent before the task in one stream-json user message |
 | `TASK:` | the task, then every line after it | name absolute paths: Claude Code's prompt names a scratchpad, and "the current directory" alone can land there |
 
 | `RIGHTS` | Working directory | Without asking | Tools |
@@ -69,5 +71,6 @@ files in `untracked`. A refusal at launch is a report too, its reason on `ERROR=
 ends the turn, `turnStatus: aborted` and exit 3.
 
 The report also carries outputSchemaPath, outputSchemaSha256, submittedSchemaSha256, schemaTransform,
-spawnedAt, firstEventAt, resultAt and resumedFromSession. durationMs is the CLI's duration_ms;
+spawnedAt, firstEventAt, resultAt and resumedFromSession, the `limits` the run had (`--timeout`, none by default;
+`--idle-timeout`, 900 s of a silent stream; `--max-tool-calls`) and, after a cut or a stop, `cancellation.kind`. durationMs is the CLI's duration_ms;
 durationApiMs is duration_api_ms, which may accumulate across resumes rather than measure only this invocation.
