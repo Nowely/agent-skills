@@ -45,6 +45,16 @@ forensics remain in the repository references and release notes.
 - A confirmed mode's orders start as `published` and need `begin` before `bind` or `record`.
 - The `entrust:proxy` skill is not the agent type of that name that 0.30.0 renamed to `entrust:relay`.
 
+- **An external OpenCode run has no wall clock unless its caller declares one, as Codex and Claude.** The 30-minute default
+  cut healthy runs that were still working (`--timeout 0` was also read as an instant limit). `--timeout` now defaults to 0
+  (none), `--idle-timeout` keeps its 600 s (0 disables) and a session the server reports busy, or an event of this run's
+  own sessions, is still progress. Both clocks stand still while a request waits for its decision, from when the driver observes
+  it open until it observes the decision, the deadline or its own refusal (a group rejection decides its siblings only
+  when this run owns every member), so the native call that follows is work, and silence restarts in full from there. A
+  definite native response to the reply, a 4xx included, counts as progress (liveness, not proof the answer was applied);
+  a 5xx or transport failure does not. The three numbers take whole values only (no fraction, sign, exponent or blank),
+  and a published terminal or cut report carries `limits`. The volume bound, stops, partial results and
+  RESUME are unchanged.
 - **An external Claude run has no wall clock unless its caller declares one, as a Codex agent since `184bc339`.**
   The 30-minute default cut healthy runs that were still working. `--timeout` now defaults to 0 (none) and takes 0;
   `--idle-timeout` (default 900 s, 0 disables) cuts a run whose stream writes no event of the run for that long.

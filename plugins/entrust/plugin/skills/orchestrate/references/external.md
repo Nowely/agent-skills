@@ -302,11 +302,11 @@ Every agent is bounded three ways; none is set in the prompt.
 | --- | --- | --- | --- |
 | silence | 15 minutes | 10 minutes; a session its server reports busy is not silent | 15 minutes without a recognized event of its stream |
 | volume | 1,000 commands | 1,000 commands | 1,000 tool calls |
-| wall clock | none | 30 minutes | none |
+| wall clock | none unless `--timeout` declares one | none unless `--timeout` declares one | none unless `--timeout` declares one |
 
-Silence stands still while a request waits for you; on Codex and Claude it starts again in full once the last
-request is answered. A wall clock stands still through the wait on OpenCode and Claude, which count only the run's
-own work; a declared Codex wall clock keeps running and declines the request still open when it cuts. A cut is
+Silence stands still while a request waits for you; on every adapter it starts again in full once the last
+request is decided (OpenCode: from the decision the driver observes; a definite native response to it counts as progress). A declared wall clock stands still through the wait on OpenCode and Claude, which count only the run's
+own work (OpenCode ends the wait at the decision, so the native call that follows is work); a declared Codex wall clock keeps running and declines the request still open when it cuts. A cut is
 exit 3. While a tool runs in a Claude run's main conversation, Claude Code writes a progress heartbeat every 30
 seconds; a tool inside a subagent writes none, and how long a healthy run stays quiet is not measured.
 

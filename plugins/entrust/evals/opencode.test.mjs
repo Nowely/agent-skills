@@ -9,7 +9,7 @@ import { recentModels, splitModel, digest } from "../plugin/skills/opencode/scri
 import { Client } from "../plugin/skills/opencode/scripts/client.mjs";
 import { parsePrompt, FIVE_FIELDS_SCHEMA, checkSchemaSubset, validateOutput, decisionsOf, extractJson, expectation } from "../plugin/skills/opencode/scripts/contract.mjs";
 import { decisionFits } from "../plugin/skills/orchestrate/scripts/mailbox.mjs";
-import { editScope, sessionPermissions } from "../plugin/skills/opencode/scripts/driver.mjs";
+import { editScope, noteWait, rejectTrackedRequest, sessionPermissions } from "../plugin/skills/opencode/scripts/driver.mjs";
 import { readAgentOrders } from "../plugin/skills/orchestrate/scripts/agent-orders.mjs";
 import { fakeOpenCode } from "./fake-opencode.mjs";
 import { startLocalServer } from "../plugin/skills/opencode/scripts/local-server.mjs";
@@ -306,7 +306,7 @@ async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4
   const cli = fakeCli(localUrl, state);
   const env = { ENTRUST_STATE_DIR: state, ...cli.env, ...more,
     ...recent({ recent: [{ providerID: "router", modelID: savedModel }], variant: { "router/deepseek/flash": "high" } }) };
-  const p = spawnNode([DRIVER, "--prompt-file", input, "--report-file", report, "--timeout", String(timeout), "--idle-timeout", String(idle),
+  const p = spawnNode([DRIVER, "--prompt-file", input, "--report-file", report, ...(timeout === null ? [] : ["--timeout", String(timeout)]), ...(idle === null ? [] : ["--idle-timeout", String(idle)]),
     ...(approval ? ["--approval-dir", box] : [])], { env, killAfterMs: 20000 });
   const promptsBefore = server.prompts;
   try {
@@ -569,6 +569,129 @@ test("the budget: the wall clock stands still while a request waits, and a sessi
   const busy = await fakeOpenCode("intermediate");
   try { const r = await driverRun(busy, { idle: 2 }); assert.equal(r.code, 0, r.err); }
   finally { await busy.close(); }
+});
+test("no wall clock unless declared: busy work outlives a declared one's span, 0 and the default run on, and a declared one aborts only this run's session", async () => {
+  const s = await fakeOpenCode("slow"); s.slowMs = 3500;
+  try {
+    for (const timeout of [null, 0]) {
+      const r = await driverRun(s, { timeout }); assert.equal(r.code, 0, `timeout ${timeout}: ${r.err}`);
+      assert.ok(r.ms >= 3000, `the run lasted ${r.ms} ms, not the 3.5 s the work took`); assert.equal(r.report.partial, false);
+    }
+    assert.deepEqual(s.aborts, [], "nothing was aborted");
+    const cut = await driverRun(s, { timeout: 2 });
+    assert.equal(cut.code, 3, cut.err); assert.match(cut.report.error, /wall timeout/); assert.equal(cut.report.partial, true); assert.equal(cut.report.receiptOk, false);
+    assert.deepEqual(cut.report.limits, { timeoutS: 2, idleTimeoutS: 4, maxCommands: 1000 });
+    assert.equal(s.aborts.length, 1); assert.ok(s.aborts[0].startsWith("ses_owned_"), "only this run's own session is aborted"); assert.ok(!s.aborts.includes("ses_foreign"));
+  } finally { await s.close(); }
+});
+test("silence is cut when the server reports nothing busy, --idle-timeout 0 disables it, and the default stays 600 s", async () => {
+  const s = await fakeOpenCode("silent");
+  try {
+    const idle = await driverRun(s, { timeout: null, idle: 2 });
+    assert.equal(idle.code, 3, idle.err); assert.match(idle.report.error, /idle timeout/); assert.equal(idle.report.partial, true);
+    assert.ok(idle.ms < 8000, `cut after ${idle.ms} ms`);
+    // With silence off, only the declared wall clock can end the same run, and it does so later than the idle bound would have.
+    const off = await driverRun(s, { timeout: 4, idle: 0 });
+    assert.equal(off.code, 3, off.err); assert.match(off.report.error, /wall timeout/); assert.deepEqual(off.report.limits, { timeoutS: 4, idleTimeoutS: 0, maxCommands: 1000 });
+    assert.ok(off.ms >= 3500, `the idle-off run lasted ${off.ms} ms`);
+    const dflt = await driverRun(s, { timeout: 2, idle: null });
+    assert.match(dflt.report.error, /wall timeout/); assert.equal(dflt.report.limits.idleTimeoutS, 600);
+  } finally { await s.close(); }
+});
+test("a request waiting longer than the idle bound is not silence: the wait ends at the settlement, silence starts in full from it, and the wall clock counts only the work", async () => {
+  // 3 s of waiting against a 2 s idle bound, a slow native lookup while it waits and a slow native acknowledgement after
+  // the decision, then 1.2 s of quiet work. Silence counted from the last poll before the answer would cut at once.
+  for (const [mode, approval] of [["permission-slow", "accept"], ["permission-slow", "decline"], ["question-slow", "answer"]]) {
+    const s = await fakeOpenCode(mode); s.slowMs = 1200; s.listDelayMs = 1500; s.replyDelayMs = 600;
+    try {
+      const r = await driverRun(s, { approval, timeout: null, idle: 2, approvalDelayMs: 3000 });
+      // A decline ends the run with the approval exit by design; what matters is that no clock cut it.
+      assert.equal(r.code, approval === "decline" ? 6 : 0, `${mode}/${approval}: ${r.err}`); assert.doesNotMatch(r.report.error ?? "", /timeout/); assert.equal(s.mutations.length, 1);
+      assert.ok(r.ms >= 4000, `the run lasted ${r.ms} ms`);
+      assert.deepEqual(r.report.limits, { timeoutS: 0, idleTimeoutS: 2, maxCommands: 1000 });
+    } finally { await s.close(); }
+  }
+  // A declared 4 s wall clock and a coordinator who answers after 6 s: the wait alone is longer than the budget, the work
+  // around it is short, so only a clock that stands still through the wait lets this run finish. The native answer was applied.
+  const w = await fakeOpenCode("permission-slow"); w.slowMs = 300; w.replyDelayMs = 200;
+  try {
+    const wall = await driverRun(w, { approval: "accept", timeout: 4, idle: 0, approvalDelayMs: 6000 });
+    assert.equal(wall.code, 0, `a declared 4 s wall clock stands still through a 6 s wait: ${wall.err}`); assert.equal(wall.report.partial, false);
+    assert.equal(w.mutations.length, 1); assert.equal(w.mutations[0].body.reply, "once");
+    assert.ok(wall.ms > 5500, `elapsed ${wall.ms} ms is strictly more than the 4 s budget by the wait`);
+  } finally { await w.close(); }
+  // And work after the answer is still bounded: the same wait, then a hang longer than the declared budget. The answer is applied
+  // before the cut, and the cut comes after the budget's worth of work, not at the end of the wait.
+  const h = await fakeOpenCode("permission-slow"); h.slowMs = 8000;
+  try {
+    const cut = await driverRun(h, { approval: "accept", timeout: 3, idle: 0, approvalDelayMs: 3000 });
+    assert.equal(cut.code, 3, cut.err); assert.match(cut.report.error, /wall timeout/); assert.equal(h.mutations.length, 1); assert.equal(h.mutations[0].body.reply, "once");
+    assert.ok(cut.ms >= 5000, `cut after ${cut.ms} ms: the 3 s wait is excluded and the work after it counts`);
+  } finally { await h.close(); }
+});
+test("the native reply to a known decision is work for every outcome: accept and decline cut a declared wall clock alike", async () => {
+  // 1 s of waiting, then 3 s of native acknowledgement against a 2 s wall clock: the 1 s is excluded, the 3 s counts.
+  for (const approval of ["accept", "decline"]) {
+    const s = await fakeOpenCode("permission-slow"); s.slowMs = 100; s.replyDelayMs = 3000;
+    try {
+      const r = await driverRun(s, { approval, timeout: 2, idle: 0, approvalDelayMs: 1000 });
+      assert.equal(r.code, 3, `${approval}: ${r.err}`); assert.match(r.report.error, /wall timeout/, approval);
+    } finally { await s.close(); }
+  }
+});
+test("a rejected group decides its siblings only when this run owns every member; a refused group leaves them waiting", async () => {
+  const mk = (id) => { const payload = { id, sessionID: "ses_a", permission: "bash" }; return { id, type: "opencode.permission", payload, requestHash: digest(payload), settled: null, decidedAt: null }; };
+  const run = async (extraNative) => {
+    const [q1, q2] = [mk("per_1"), mk("per_2")], posts = [];
+    const native = [q1.payload, q2.payload, ...extraNative];
+    const ctx = { requests: new Map([[q1.id, q1], [q2.id, q2]]), waitedMs: 0, waitingSince: null, lastProgressMs: 1, invocationSessions: new Set(["ses_a"]), box: null,
+      routes: { permissionList: "/permission", questionList: "/question", permissionReply: "/permission/{requestID}/reply" }, declined: 0, expired: 0, autoDeclined: 0,
+      client: { call: async (method, route, body) => { if (method === "GET") return native; posts.push({ route, body }); return true; } } };
+    noteWait(ctx);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await rejectTrackedRequest(ctx, q1, { decision: "declined", by: "coordinator", why: null }, "declined");
+    return { ctx, q1, q2, posts };
+  };
+  const owned = await run([]);
+  assert.equal(owned.posts.length, 1); assert.ok(owned.q1.settled && owned.q2.settled, "both members of a wholly owned group are settled");
+  assert.equal(owned.ctx.waitingSince, null); assert.ok(owned.ctx.waitedMs >= 45);
+  const mixed = await run([{ id: "per_unknown", sessionID: "ses_a", permission: "bash" }]);
+  assert.equal(mixed.posts.length, 0, "nothing is sent for a group with a member this run does not own");
+  assert.ok(mixed.q1.settled && !mixed.q2.settled && mixed.q2.decidedAt == null, "the untouched sibling is still undecided");
+  assert.notEqual(mixed.ctx.waitingSince, null, "and still waiting for the coordinator, so no clock runs through its wait");
+});
+test("waiting is accounted at the open and settle transitions: the last of several requests ends it, whatever the outcome", async () => {
+  const q = (id, settled = null) => ({ id, settled });
+  const ctx = { requests: new Map(), waitedMs: 0, waitingSince: null, lastProgressMs: 1 };
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const [a, b, c] = [q("a"), q("b"), q("c")];
+  ctx.requests.set("a", a); noteWait(ctx); const since = ctx.waitingSince; assert.notEqual(since, null);
+  await sleep(80); ctx.requests.set("b", b); noteWait(ctx); assert.equal(ctx.waitingSince, since, "a second request does not restart the span");
+  await sleep(80); a.settled = { decision: "accepted" }; noteWait(ctx);
+  assert.equal(ctx.waitingSince, since, "one of two settled: still waiting"); assert.equal(ctx.lastProgressMs, 1, "silence is not restarted yet");
+  await sleep(80); b.settled = { decision: "expired", outcome: "unknown" }; noteWait(ctx);
+  assert.equal(ctx.waitingSince, null); assert.ok(ctx.waitedMs >= 230, `waited ${ctx.waitedMs} ms`); assert.ok(Date.now() - ctx.lastProgressMs < 50, "silence restarted at the last settlement");
+  const waited = ctx.waitedMs; ctx.requests.set("c", c); noteWait(ctx); await sleep(60); c.decidedAt = Date.now(); noteWait(ctx);
+  assert.ok(ctx.waitedMs >= waited + 55, "a later wait adds to the total, and ends when the decision is known"); assert.equal(ctx.waitingSince, null);
+  const afterDecision = ctx.waitedMs; await sleep(60); c.settled = { decision: "declined" }; noteWait(ctx);
+  assert.equal(ctx.waitedMs, afterDecision, "the native reply that follows a known decision is not waiting");
+  const auto = { id: "d", settled: null, decidedAt: Date.now() }; ctx.requests.set("d", auto); noteWait(ctx);
+  assert.equal(ctx.waitingSince, null, "a request the driver refuses itself never waits for anyone");
+});
+test("a wall-clock cut keeps the session for RESUME, and the numbers --timeout, --idle-timeout and --max-commands take are whole", async () => {
+  const s = await fakeOpenCode("slow"); s.slowMs = 3500;
+  try {
+    const first = await driverRun(s, { timeout: 1 });
+    assert.equal(first.code, 3, first.err); assert.equal(first.report.cancellation.observed, "idle");
+    const again = await driverRun(s, { resume: first.path, timeout: null });
+    assert.equal(again.code, 0, again.err); assert.equal(again.report.partial, false); assert.equal(again.report.sessionID, first.report.sessionID);
+  } finally { await s.close(); }
+  const dir = tempDir("entrust-opencode-numbers-"), file = path.join(dir, "prompt.txt"); fs.writeFileSync(file, prompt("", `read ${cwd}`));
+  for (const [flag, value] of [["--timeout", "1.5"], ["--timeout", "-1"], ["--timeout", ""], ["--timeout", "1e3"], ["--timeout", "9".repeat(400)], ["--timeout", "abc"],
+    ["--idle-timeout", "0.5"], ["--idle-timeout", " 5"], ["--max-commands", "2.5"], ["--max-commands", "-3"]]) {
+    const r = spawnSync(process.execPath, [DRIVER, "--prompt-file", file, "--report-file", path.join(dir, "r.json"), flag, value], { encoding: "utf8", env: { ...process.env, ENTRUST_STATE_DIR: dir } });
+    assert.equal(r.status, 2, `${flag} ${JSON.stringify(value)}: ${r.stderr}`); assert.match(r.stderr, new RegExp(`${flag} must be a non-negative whole number`));
+  }
 });
 test("native question receives a structured answer through its separate route", async () => {
   const s = await fakeOpenCode("question");
