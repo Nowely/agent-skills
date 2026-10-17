@@ -2,7 +2,7 @@
 // Runs one external Claude agent, `claude -p`, for the shared entrust launcher, and publishes its report.
 //
 //   node driver.mjs --check-prompt-file FILE
-//   node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS] [--timeout seconds]
+//   node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS] [--timeout S] [--idle-timeout S] [--max-tool-calls N]
 //   node driver.mjs --help
 //
 // It uses Claude Code's documented print mode only: stream-json out and the task on stdin, --json-schema for
@@ -18,6 +18,7 @@ import { EXIT, canonical, flagValue, makeWorktree, passwdHome, resolveModel, res
 import { mailboxProblem } from "../../orchestrate/scripts/mailbox.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { checkSchemaSubset, validateOutput } from "../../orchestrate/scripts/json-schema.mjs";
+import { admitRound } from "../../orchestrate/scripts/main-proxy.mjs";
 import { TOOL } from "./approvals.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -26,20 +27,44 @@ const SERVER_NAME = "entrust-approvals";
 const FIVE_FIELDS = path.join(HERE, "../../orchestrate/schemas/five-fields.schema.json");
 const MODELS = JSON.parse(fs.readFileSync(path.join(HERE, "../adapter.json"), "utf8")).plan.models;
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
-const HEADERS = new Set(["RIGHTS", "MODEL", "EFFORT", "OUTPUT_SCHEMA", "RESUME", "SAFE_MODE", "ALLOW_NO_COMMANDS"]);
+const HEADERS = new Set(["RIGHTS", "MODEL", "EFFORT", "OUTPUT_SCHEMA", "RESUME", "SAFE_MODE", "ALLOW_NO_COMMANDS", "PROFILE", "ATTACHMENTS"]);
+// The image blocks a prompt may attach, in the shape the CLI takes on stream-json input (measured on 2.1.299, Opus,
+// tool-less safe mode: a PNG block was seen as the image it is).
+const IMAGE_MEDIA = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 const PROTECTED = [{ dir: path.join(passwdHome(), ".claude"), label: "~/.claude", holds: "the settings, hooks and plugins every Claude Code session loads" }];
 const READ_TOOLS = ["Read", "Grep", "Glob", "Bash"];
 const WRITE_TOOLS = [...READ_TOOLS, "Edit", "Write"];
 // What init must report for the rights asked for, measured on 2.1.295 (research/2026-10-09-step5-measurements):
 // `--permission-mode manual` comes back as `default`, and the tools are exactly the ones `--tools` names, beside
 // StructuredOutput, which `--json-schema` adds; MCP tools are the user's servers' and are named in `context`.
+// A coordinator, measured on 2.1.299 (2026-10-16, Opus, `--tools "" --safe-mode --strict-mcp-config`), reports
+// StructuredOutput alone and no MCP server: it acts only through the orders its host executes.
 const MODES = { read: ["default", "manual"], write: ["acceptEdits"] };
 // The sandbox the agent runs under is the one init reports: another mode, or another set of built-in tools,
-// wider or narrower, stops the run rather than run it under rights nobody reasoned about.
-export function initProblem(init, kind) {
+// wider or narrower, stops the run rather than run it under rights nobody reasoned about. A coordinator's whole
+// list counts, MCP tools included, since any tool of its own would act outside the host.
+// The one owner of what counts as a platform built-in plugin: the provenance object Claude Code 2.1.299 reports in init
+// under --safe-mode, which disables installed and custom plugins but keeps built-ins and admin policy
+// (observed: {name, path: "builtin", source: "<name>@builtin"}). A bare string, a missing field, another path or a
+// source that does not name this plugin as a built-in is not proven built-in, whatever its name.
+export const builtinPlugin = (p) => Boolean(p) && typeof p === "object" && !Array.isArray(p) && typeof p.name === "string" && p.name !== ""
+  && p.path === "builtin" && p.source === `${p.name}@builtin`;
+const pluginName = (p) => (p && typeof p === "object" && typeof p.name === "string" ? p.name : String(p));
+export function initProblem(init, kind, profile = "worker") {
   const level = kind === "read" ? "read" : "write";
   if (!MODES[level].includes(init.permissionMode))
     return `Claude Code reports permission mode ${init.permissionMode ?? "none"}, not this run's ${MODES[level][0]}`;
+  if (profile === "coordinator") {
+    const tools = init.tools ?? [], servers = (init.mcp_servers ?? []).map((s) => s.name ?? String(s));
+    const plugins = (Array.isArray(init.plugins) ? init.plugins : init.plugins === undefined ? [] : [init.plugins]).filter((p) => !builtinPlugin(p)).map(pluginName);
+    if (tools.length !== 1 || tools[0] !== "StructuredOutput")
+      return `Claude Code reports the tools ${tools.join(", ") || "none"}, not this coordinator's StructuredOutput alone`;
+    if (servers.length) return `Claude Code reports the MCP servers ${servers.join(", ")}, not this coordinator's none`;
+    // Safe mode loads no CLAUDE.md or memory (research/2026-10-08-claude-adapter, P1) and no installed plugin.
+    if (plugins.length) return `Claude Code reports the plugins ${plugins.join(", ")}, not built-in platform plugins (installed, custom or unproven ones are refused; platform built-ins and admin policy stay)`;
+    if (init.memory_paths && Object.keys(init.memory_paths).length) return "Claude Code reports memory paths, which this coordinator's safe mode loads none of";
+    return null;
+  }
   const want = level === "read" ? READ_TOOLS : WRITE_TOOLS;
   const got = (init.tools ?? []).filter((t) => !t.startsWith("mcp__") && t !== "StructuredOutput");
   const extra = got.filter((t) => !want.includes(t)), missing = want.filter((t) => !got.includes(t));
@@ -47,7 +72,26 @@ export function initProblem(init, kind) {
     return `Claude Code reports the tools ${got.join(", ") || "none"}, not this run's ${want.join(", ")}`;
   return null;
 }
-const DEFAULT_TIMEOUT_S = 1800;
+// A call a coordinator makes itself, in its own thread or a subagent's: init named no tool for it, and the run stops
+// before its answer reaches the host. StructuredOutput is the answer's own transport.
+export function coordinatorCall(e) {
+  if (e.type !== "assistant" || !Array.isArray(e.message?.content)) return null;
+  const own = e.message.content.find((b) => b.type === "tool_use" && b.name !== "StructuredOutput");
+  return own ? `the coordinator called ${own.name} itself, and its profile has no tool for that` : null;
+}
+// What bounds a run whose caller sized nothing, as a Codex agent's since 184bc339: silence and volume, and no wall
+// clock unless the caller declares one. Silence is the stream's: an event of the run, a subagent's, a partial
+// message's or a running tool's progress heartbeat included, is a sign of life. Claude Code writes that heartbeat every
+// 30 s while a tool runs in the main conversation and none for a tool inside a subagent, so a subagent's long tool
+// call is quiet, and no measurement yet bounds the quiet spans of a healthy run: this default is Codex's, not a
+// proven one.
+const DEFAULT_IDLE_TIMEOUT_S = 900;
+// The envelopes a stream-json run writes: those 2.1.299 wrote with --include-partial-messages (system, stream_event,
+// assistant, user, rate_limit_event, result) and the Agent SDK reference's tool_progress, tool_use_summary and
+// auth_status (https://code.claude.com/docs/en/agent-sdk/typescript.md). Each is a sign of life; only whole
+// assistant, user and result events are evidence. Another line, JSON or not, is neither.
+const ENVELOPES = new Set(["system", "stream_event", "assistant", "user", "rate_limit_event", "result", "tool_progress", "tool_use_summary", "auth_status"]);
+export const envelope = (e) => Boolean(e) && typeof e === "object" && !Array.isArray(e) && ENVELOPES.has(e.type);
 // The volume bound every adapter has: Codex cuts at 1,000 commands, this driver at 1,000 tool calls.
 const DEFAULT_MAX_TOOL_CALLS = 1000;
 const STOP_GRACE_MS = 10000, KILL_GRACE_MS = 5000;
@@ -64,11 +108,15 @@ const USAGE = `driver — run one external Claude agent (claude -p) for the shar
   node driver.mjs --check-prompt-file FILE
       Parse and check the prompt offline. Exit 0 and nothing printed on a pass; exit 2 with
       "entrust: refused: <reason>" on stderr otherwise. No model is called.
-  node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS] [--timeout seconds]
+  node driver.mjs --prompt-file FILE --report-file ABS [--approval-dir ABS] [--timeout S] [--idle-timeout S] [--max-tool-calls N]
       Run the prompt's TASK in one claude -p turn and publish the report JSON to stdout and,
       exclusively, to the report path. With --approval-dir every permission prompt is offered there;
-      without it whatever would prompt is denied. --timeout is the wall clock (default ${DEFAULT_TIMEOUT_S} s),
-      paused while a request waits; --max-tool-calls the volume bound (default ${DEFAULT_MAX_TOOL_CALLS}).
+      without it whatever would prompt is denied. No wall clock unless --timeout declares one: S
+      seconds of work, 0 for none (the default). --idle-timeout cuts a run whose stream writes no
+      event for S seconds (default ${DEFAULT_IDLE_TIMEOUT_S}, 0 disables). Both stand still while a request waits,
+      and silence starts again from nothing once the last one is answered; work keeps its time.
+      --max-tool-calls is the volume bound (default ${DEFAULT_MAX_TOOL_CALLS}). A cut or a stop ends the turn
+      with exit 3 and a partial report whose cancellation.kind says which, and RESUME continues it.
 
   The prompt: header lines, then TASK: and the task.
     RIGHTS: read [dir] | write <dir> | worktree <repo>   first; the plan's writes when a plan pins them
@@ -78,6 +126,11 @@ const USAGE = `driver — run one external Claude agent (claude -p) for the shar
     RESUME: <absolute path of an earlier claude report>   continues its session, in its directory
     SAFE_MODE: yes                                        no CLAUDE.md, memory, skills, plugins, hooks
                                                           or MCP servers; and so no approvals
+    PROFILE: coordinator                                  no tools of its own and SAFE_MODE: the run acts
+                                                          only through the structured answer its host
+                                                          executes; RIGHTS read names its directory
+    ATTACHMENTS: <absolute path>                          a JSON array of base64 image blocks sent with the
+                                                          task as one stream-json user message
   Exit codes: 0 done; 1 the run ended in error; 2 usage or refused; 3 timed out or stopped;
   4 claude missing or ended without a result; 6 an approval was declined or expired; 7 a call
   needed approval and the run had no mailbox; 10 the resumed run is still running; 13 no
@@ -151,10 +204,21 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   const outputSchemaSha256 = sha256(fs.readFileSync(schemaPath));
   const submittedSchemaSha256 = sha256(schemaText);
 
-  const safeMode = headers.SAFE_MODE === undefined ? false : flagValue(headers.SAFE_MODE);
-  if (safeMode === null) return refusal("SAFE_MODE takes yes, true or 1, or no, false or 0");
-  const allowNoCommands = headers.ALLOW_NO_COMMANDS === undefined ? false : flagValue(headers.ALLOW_NO_COMMANDS);
-  if (allowNoCommands === null) return refusal("ALLOW_NO_COMMANDS takes yes, true or 1, or no, false or 0");
+  const safeFlag = headers.SAFE_MODE === undefined ? false : flagValue(headers.SAFE_MODE);
+  if (safeFlag === null) return refusal("SAFE_MODE takes yes, true or 1, or no, false or 0");
+  const allowFlag = headers.ALLOW_NO_COMMANDS === undefined ? false : flagValue(headers.ALLOW_NO_COMMANDS);
+  if (allowFlag === null) return refusal("ALLOW_NO_COMMANDS takes yes, true or 1, or no, false or 0");
+  if (headers.PROFILE !== undefined && headers.PROFILE !== "coordinator")
+    return refusal(`PROFILE must be coordinator, not ${JSON.stringify(headers.PROFILE)}`);
+  let profile = headers.PROFILE ?? null;
+  let attachments = null;
+  if (headers.ATTACHMENTS !== undefined) {
+    if (!path.isAbsolute(headers.ATTACHMENTS)) return refusal("ATTACHMENTS must be an absolute path");
+    attachments = readJson(headers.ATTACHMENTS);
+    const bad = !Array.isArray(attachments) || !attachments.length || attachments.some((b) => b?.type !== "image" || b.source?.type !== "base64"
+      || !IMAGE_MEDIA.has(b.source.media_type) || typeof b.source.data !== "string" || !/^[A-Za-z0-9+/]+=*$/.test(b.source.data));
+    if (bad) return refusal(`ATTACHMENTS ${headers.ATTACHMENTS} is not a JSON array of base64 ${[...IMAGE_MEDIA].join(", ")} image blocks`);
+  }
 
   let resume = null;
   if (headers.RESUME !== undefined) {
@@ -173,10 +237,22 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
     if (rights && !sameRights(rights, kept, cwd))
       return refusal(`RESUME: a continuation keeps its rights, ${kept.kind} ${kept.path}; name the same or leave RIGHTS out`);
     rights = kept;
+    // And its profile: a report from before profiles, or a worker's, never continues as a coordinator.
+    const keptProfile = prior.profile ?? "worker";
+    if (profile && profile !== keptProfile)
+      return refusal(`RESUME: a continuation keeps its profile, ${keptProfile}; name the same or leave PROFILE out`);
+    profile = keptProfile;
     resume = { report: at, prior };
   }
+  profile ??= "worker";
+  // A coordinator has no tools to write or observe with, and no customizations that would act beside its host.
+  if (profile === "coordinator" && rights.kind !== "read")
+    return refusal(`PROFILE coordinator acts only through its host: RIGHTS read names its working directory, not ${rights.kind}`);
+  if (profile === "coordinator" && headers.SAFE_MODE !== undefined && !safeFlag)
+    return refusal("PROFILE coordinator always runs in safe mode: leave SAFE_MODE out or set it to yes");
+  const safeMode = profile === "coordinator" || safeFlag, allowNoCommands = profile === "coordinator" || allowFlag;
 
-  return { task, rights, model, effort, schemaPath, schema, schemaText, outputSchemaSha256, submittedSchemaSha256, schemaTransform, safeMode, allowNoCommands, resume };
+  return { task, rights, model, effort, schemaPath, schema, schemaText, outputSchemaSha256, submittedSchemaSha256, schemaTransform, safeMode, allowNoCommands, profile, attachments, resume };
 }
 
 // The rights a report's run had, as a RIGHTS line would name them; and whether a declared one names the same.
@@ -239,13 +315,17 @@ export function runRules({ kind, cwd, mailbox }) {
   });
 }
 
+// A coordinator gets no tools, no MCP server and no worker rules: its task carries its orders, and its host acts.
 export function claudeArgs(parsed, { kind, stateDir, box, sessionId, mcpConfig, cwd = process.cwd() }) {
-  const deny = mailboxRules(stateDir, box);
-  const args = ["-p", "--output-format", "stream-json", "--verbose", "--json-schema", parsed.schemaText,
+  const coordinator = parsed.profile === "coordinator";
+  const deny = coordinator ? [] : mailboxRules(stateDir, box);
+  // Partial messages are the stream's sign of life while a message is being written; only whole events are evidence.
+  const args = ["-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--json-schema", parsed.schemaText,
     "--permission-mode", kind === "read" ? "manual" : "acceptEdits",
-    "--tools", (kind === "read" ? READ_TOOLS : WRITE_TOOLS).join(","),
+    "--tools", coordinator ? "" : (kind === "read" ? READ_TOOLS : WRITE_TOOLS).join(","),
     ...(deny.length ? ["--disallowedTools", ...deny] : []),
-    "--append-system-prompt", runRules({ kind, cwd, mailbox: Boolean(mcpConfig) })];
+    ...(coordinator ? ["--strict-mcp-config"] : ["--append-system-prompt", runRules({ kind, cwd, mailbox: Boolean(mcpConfig) })])];
+  if (parsed.attachments) args.push("--input-format", "stream-json");
   if (parsed.model) args.push("--model", parsed.model);
   if (parsed.effort) args.push("--effort", parsed.effort);
   if (parsed.resume) args.push("--resume", parsed.resume.prior.sessionID, "--fork-session");
@@ -262,8 +342,9 @@ export function childEnv(env) {
   return out;
 }
 
+const whole = (v) => (/^\d+$/.test(v ?? "") && Number.isSafeInteger(Number(v)) ? Number(v) : null);
 function parseArgs(argv) {
-  const o = { check: null, prompt: null, report: null, approvalDir: null, timeout: DEFAULT_TIMEOUT_S, maxToolCalls: DEFAULT_MAX_TOOL_CALLS, help: false };
+  const o = { check: null, prompt: null, report: null, approvalDir: null, timeout: 0, idleTimeout: DEFAULT_IDLE_TIMEOUT_S, maxToolCalls: DEFAULT_MAX_TOOL_CALLS, help: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], v = argv[i + 1];
     if (a === "--help") o.help = true;
@@ -271,8 +352,10 @@ function parseArgs(argv) {
     else if (a === "--prompt-file" && v) { o.prompt = v; i++; }
     else if (a === "--report-file" && v) { o.report = v; i++; }
     else if (a === "--approval-dir" && v) { o.approvalDir = v; i++; }
-    else if (a === "--timeout" && /^\d+$/.test(v ?? "") && Number(v) > 0) { o.timeout = Number(v); i++; }
-    else if (a === "--max-tool-calls" && /^\d+$/.test(v ?? "") && Number(v) > 0) { o.maxToolCalls = Number(v); i++; }
+    // 0 is the documented "none" of both clocks; a count too large to be exact is no count.
+    else if (a === "--timeout" && whole(v) !== null) { o.timeout = whole(v); i++; }
+    else if (a === "--idle-timeout" && whole(v) !== null) { o.idleTimeout = whole(v); i++; }
+    else if (a === "--max-tool-calls" && whole(v) > 0) { o.maxToolCalls = whole(v); i++; }
     else return { error: `unknown or incomplete argument ${a}` };
   }
   return o;
@@ -301,7 +384,7 @@ function escalations(box) {
 const OBSERVING = new Set(["Bash", "Read", "Grep", "Glob"]);
 export const observations = (tools) => [...tools.values()].filter((t) => OBSERVING.has(t.tool) && t.isError === false).length;
 
-export function verdict({ result, stopped, wider, spawnError, exitCode, signal, box, denials, hasMailbox, observed = 1, allowNoCommands = false }) {
+export function verdict({ result, stopped, wider, spawnError, exitCode, signal, box, denials, hasMailbox, observed = 1, allowNoCommands = false, unconfirmed = null }) {
   const asked = escalations(box);
   if (spawnError) return { exitCode: EXIT.TRANSPORT, error: `claude could not be started: ${spawnError}`, turnStatus: "failed" };
   if (wider) return { exitCode: EXIT.TRANSPORT, error: `${wider}; the run was stopped rather than run under rights nobody asked for`, turnStatus: "aborted", partial: true };
@@ -309,6 +392,7 @@ export function verdict({ result, stopped, wider, spawnError, exitCode, signal, 
   if (!result) return { exitCode: EXIT.TRANSPORT, error: `claude ended without a result (${signal ? `signal ${signal}` : `exit ${exitCode}`})`, turnStatus: "failed" };
   if (result.is_error) return { exitCode: EXIT.MODEL, error: typeof result.result === "string" && result.result ? result.result : `the run ended ${result.subtype}`, turnStatus: "failed",
     turnError: { subtype: result.subtype ?? null, terminalReason: result.terminal_reason ?? null, apiErrorStatus: result.api_error_status ?? null } };
+  if (unconfirmed) return { exitCode: EXIT.TRANSPORT, error: unconfirmed, turnStatus: "completed" };
   if (result.structured_output == null) return { exitCode: EXIT.SCHEMA, error: "the run returned no structured answer", turnStatus: "completed" };
   if (!hasMailbox && denials.length) return { exitCode: EXIT.NEEDS_INPUT, error: "a call needed approval and the run had no mailbox", turnStatus: "completed" };
   if (asked.some((q) => q.decision === "declined" || q.decision === "expired"))
@@ -331,7 +415,9 @@ async function run(o, text) {
   process.stderr.write(`entrust: pid=${process.pid} identity=${invocationId} reportPath=${report}\n`);
 
   const ctx = { report, base, box: null, startedAtMs, invocationId, parsed: null, scope: null, sessionId: crypto.randomUUID(),
-    transcriptPath: null, answerPath: null, init: null, wider: null, result: null, tools: new Map(), stopped: null, sentInt: false, child: null };
+    transcriptPath: null, answerPath: null, init: null, wider: null, unconfirmed: null, result: null, tools: new Map(), models: new Set(),
+    stopped: null, cutKind: null, sentInt: false, child: null, longestSilenceMs: 0,
+    limits: { timeoutS: o.timeout, idleTimeoutS: o.idleTimeout, maxToolCalls: o.maxToolCalls } };
   const publish = (facts) => {
     const r = buildReport(ctx, facts);
     atomicWrite(report, `${JSON.stringify(r, null, 2)}\n`);
@@ -340,17 +426,18 @@ async function run(o, text) {
   };
   const refused = (error, exitCode = EXIT.USAGE) => publish({ exitCode, error, turnStatus: "failed" });
   // A stop before claude starts ends the run there; one after it is SIGINT, which ends the turn with a result.
-  const stop = (why) => {
+  // `kind` names what stopped it: signal, wall, idle, volume or rights.
+  const stop = (why, kind) => {
     const child = ctx.child;
     if (ctx.stopped || (child && child.exitCode !== null)) return;
-    ctx.stopped = why;
+    ctx.stopped = why; ctx.cutKind = kind;
     if (!child) return;
     ctx.sentInt = true;
     child.kill("SIGINT");
     setTimeout(() => { if (child.exitCode === null) child.kill("SIGTERM"); }, STOP_GRACE_MS).unref();
     setTimeout(() => { if (child.exitCode === null) child.kill("SIGKILL"); }, STOP_GRACE_MS + KILL_GRACE_MS).unref();
   };
-  for (const s of ["SIGTERM", "SIGINT", "SIGHUP"]) process.on(s, () => stop(`stopped by ${s}`));
+  for (const s of ["SIGTERM", "SIGINT", "SIGHUP"]) process.on(s, () => stop(`stopped by ${s}`, "signal"));
 
   try {
     const parsed = parsePrompt(text);
@@ -370,6 +457,10 @@ async function run(o, text) {
       Object.assign(scope, { cwd: wt.worktreePath, roots: [wt.worktreePath], worktree: { worktreePath: wt.worktreePath, worktreeRepo: wt.repo, worktreeBase: wt.base } });
     }
     if (ctx.stopped) return publish(verdict({ stopped: ctx.stopped }));
+    // A coordinator round of a proxy mode starts only under that mode's consent as it stands now, and the admission
+    // saves the round's durable claim under the mode's lock: an end before it refuses the round, one after it finds the
+    // round in flight, and no new round starts from another host session, a replaced mode or another route.
+    if (parsed.profile === "coordinator") { const why = admitRound(report); if (why) return refused(why); }
 
     let mcpConfig = null;
     if (box && !parsed.safeMode) {
@@ -385,15 +476,21 @@ async function run(o, text) {
     const transcript = fs.openSync(ctx.transcriptPath, "wx", 0o600);
     ctx.spawnedAt = new Date().toISOString();
     const child = ctx.child = spawn("claude", args, { cwd: scope.cwd, env: childEnv(process.env), stdio: ["pipe", "pipe", "inherit"] });
-    // The wall clock counts the agent's own time: it stands still while a request waits in the mailbox, since
-    // that wait is the coordinator's, and an approval given late must not find the run already cut.
-    let worked = 0, tick = Date.now();
+    // Both clocks count the run's own time: they stand still while a request waits in the mailbox, since that wait
+    // is the coordinator's, and an approval given late must not find the run already cut. Once the last request is
+    // settled, silence starts again from nothing, as Codex's does, while work keeps the time it had. The wall clock
+    // runs only when declared; silence is reset by every event of the run.
+    let worked = 0, quiet = 0, tick = Date.now(), waited = false;
     const waiting = () => { try { return box && fs.readFileSync(path.join(box, "pending"), "utf8").trim() !== ""; } catch { return false; } };
     const timer = setInterval(() => {
-      const t = Date.now();
-      if (!waiting()) worked += t - tick;
+      const t = Date.now(), elapsed = t - tick;
       tick = t;
-      if (worked > o.timeout * 1000) stop(`timed out after ${o.timeout} s of work`);
+      if (waiting()) { waited = true; return; }
+      if (waited) { waited = false; quiet = 0; return; }
+      worked += elapsed; quiet += elapsed;
+      ctx.longestSilenceMs = Math.max(ctx.longestSilenceMs, quiet);
+      if (o.timeout && worked > o.timeout * 1000) stop(`timed out after ${o.timeout} s of work`, "wall");
+      else if (o.idleTimeout && quiet > o.idleTimeout * 1000) stop(`stalled: claude wrote no event of the run for ${o.idleTimeout} s`, "idle");
     }, 250);
 
     const lines = readline.createInterface({ input: child.stdout });
@@ -401,12 +498,17 @@ async function run(o, text) {
       fs.writeSync(transcript, `${line}\n`);
       let e;
       try { e = JSON.parse(line); } catch { return; }
+      if (!envelope(e)) return;
+      quiet = 0;
       observe(ctx, e);
-      if (e === ctx.init && !ctx.wider && (ctx.wider = initProblem(e, scope.kind))) stop(ctx.wider);
-      if (ctx.tools.size > o.maxToolCalls) stop(`cut at its volume bound: more than ${o.maxToolCalls} tool calls`);
+      if (e === ctx.init && !ctx.wider && (ctx.wider = initProblem(e, scope.kind, parsed.profile))) stop(ctx.wider, "rights");
+      if (parsed.profile === "coordinator" && !ctx.wider && (ctx.wider = coordinatorCall(e))) stop(ctx.wider, "rights");
+      if (ctx.tools.size > o.maxToolCalls) stop(`cut at its volume bound: more than ${o.maxToolCalls} tool calls`, "volume");
     });
     child.stdin.on("error", () => {});
-    child.stdin.end(parsed.task);
+    child.stdin.end(parsed.attachments
+      ? `${JSON.stringify({ type: "user", message: { role: "user", content: [...parsed.attachments, { type: "text", text: parsed.task }] } })}\n`
+      : parsed.task);
 
     const [exitCode, signal, spawnError] = await new Promise((resolve) => {
       let closed = false, exited = null;
@@ -417,21 +519,24 @@ async function run(o, text) {
     });
     clearInterval(timer);
     fs.closeSync(transcript);
+    // A coordinator is admitted on what its init reports; a stream that held none confirmed nothing.
+    if (parsed.profile === "coordinator" && !ctx.init) ctx.unconfirmed = "Claude Code reported no init, so this coordinator's profile was never confirmed";
     const denials = ctx.result?.permission_denials ?? [];
     return publish(verdict({ result: ctx.result, stopped: ctx.stopped, wider: ctx.wider, spawnError, exitCode, signal, box, denials, hasMailbox: Boolean(mcpConfig),
-      observed: observations(ctx.tools), allowNoCommands: parsed.allowNoCommands }));
+      observed: observations(ctx.tools), allowNoCommands: parsed.allowNoCommands, unconfirmed: ctx.unconfirmed }));
   } catch (e) {
     return publish({ exitCode: EXIT.TRANSPORT, error: `the driver failed: ${e.message}`, turnStatus: "failed" });
   }
 }
 
-// One stream event: the session's init, a tool call and its result, the run's result. A subagent's events
-// carry a parent_tool_use_id and are not this run's own.
+// One stream event: the session's init, a tool call and its result, the model that answered, the run's result.
+// A subagent's events carry a parent_tool_use_id and are not this run's own; a <synthetic> message no model wrote.
 export function observe(ctx, e) {
   ctx.firstEventAt ??= new Date().toISOString();
   if (e.type === "system" && e.subtype === "init") ctx.init = e;
   else if (e.type === "result") { ctx.result = e; ctx.resultAt = new Date().toISOString(); }
   else if ((e.type === "assistant" || e.type === "user") && !e.parent_tool_use_id && Array.isArray(e.message?.content)) {
+    if (e.type === "assistant" && typeof e.message.model === "string" && e.message.model !== "<synthetic>") ctx.models?.add(e.message.model);
     for (const b of e.message.content) {
       if (b.type === "tool_use") ctx.tools.set(b.id, { tool: b.name, input: b.input ?? {}, isError: null });
       if (b.type === "tool_result" && ctx.tools.has(b.tool_use_id)) ctx.tools.get(b.tool_use_id).isError = Boolean(b.is_error);
@@ -462,9 +567,10 @@ function buildReport(ctx, facts) {
     threadId: ctx.sessionId, sessionID: ctx.sessionId, turnId: null,
     model: init?.model ?? Object.keys(result?.modelUsage ?? {})[0] ?? null,
     requestedModel: parsed?.model ?? null, effort: parsed?.effort ?? null,
+    assistantModels: [...ctx.models], profile: parsed?.profile ?? null,
     claudeVersion: init?.claude_code_version ?? null,
     turnStatus: facts.turnStatus ?? null,
-    receiptOk: result?.subtype === "success" && !result.is_error && answerJson !== null && !ctx.stopped,
+    receiptOk: result?.subtype === "success" && !result.is_error && answerJson !== null && !ctx.stopped && !ctx.wider && !ctx.unconfirmed,
     commands: tools.filter((t) => t.tool === "Bash").map((t) => ({ command: t.input.command ?? null, isError: t.isError })),
     tools: tools.map((t) => ({ tool: t.tool, isError: t.isError })),
     fileChanges: tools.filter((t) => ["Edit", "Write", "NotebookEdit"].includes(t.tool)).map((t) => ({ tool: t.tool, path: t.input.file_path ?? t.input.notebook_path ?? null, isError: t.isError })),
@@ -478,12 +584,16 @@ function buildReport(ctx, facts) {
     outputSchemaPath: parsed?.schemaPath ?? null, outputSchemaSha256: parsed?.outputSchemaSha256 ?? null,
     submittedSchemaSha256: parsed?.submittedSchemaSha256 ?? null, schemaTransform: parsed?.schemaTransform ?? [],
     partial: Boolean(facts.partial),
-    cancellation: ctx.stopped ? { reason: ctx.stopped, signal: ctx.sentInt ? "SIGINT" : null } : null,
+    cancellation: ctx.stopped ? { reason: ctx.stopped, kind: ctx.cutKind, signal: ctx.sentInt ? "SIGINT" : null } : null,
+    // The longest span the stream wrote nothing, at the clocks' 250 ms grain and outside approval waits: what a
+    // real run measures about the silence a healthy one has.
+    limits: ctx.limits, longestSilenceMs: ctx.longestSilenceMs,
     cwd: scope?.cwd ?? null,
     rights: scope ? { kind: scope.kind, roots: scope.roots ?? [] } : null,
     resumedFromSession: parsed?.resume?.prior?.sessionID ?? null,
     resume: Boolean(parsed?.resume), resumedFrom: parsed?.resume?.report ?? null,
-    context: init ? { permissionMode: init.permissionMode ?? null, plugins: (init.plugins ?? []).map((p) => p.name),
+    context: init ? { permissionMode: init.permissionMode ?? null, tools: init.tools ?? [], plugins: (init.plugins ?? []).map(pluginName),
+      installedPlugins: (init.plugins ?? []).filter((p) => !builtinPlugin(p)).map(pluginName),
       mcpServers: (init.mcp_servers ?? []).map((s) => ({ name: s.name, status: s.status })), memory: Boolean(init.memory_paths),
       safeMode: parsed?.safeMode ?? null } : null,
     transcriptPath: ctx.transcriptPath,
