@@ -5,6 +5,7 @@
 // FAKE_CLAUDE_MODE picks the scenario; FAKE_CLAUDE_LOG receives one JSON line per run: its argv, cwd, task and
 // the session variables it was handed.
 import { spawn, spawnSync } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import readline from "node:readline";
 
@@ -15,16 +16,23 @@ const mode = process.env.FAKE_CLAUDE_MODE ?? "ok";
 if (argv[0] === "--version") { process.stdout.write(`${process.env.FAKE_CLAUDE_VERSION ?? "2.1.294"} (Claude Code)\n`); process.exit(0); }
 if (argv[0] === "auth" && argv[1] === "status") {
   const loggedIn = process.env.FAKE_CLAUDE_SIGNED_IN !== "0";
-  process.stdout.write(`${JSON.stringify({ loggedIn, authMethod: loggedIn ? "oauth_token" : "none" })}\n`);
+  process.stdout.write(`${JSON.stringify({ loggedIn, authMethod: loggedIn ? "claude.ai" : "none",
+    ...(loggedIn ? { apiProvider: process.env.FAKE_CLAUDE_API_PROVIDER ?? "firstParty" } : {}) })}\n`);
   process.exit(loggedIn ? 0 : 1);
 }
 
-const task = fs.readFileSync(0, "utf8");
+// The task: stdin's text, or with --input-format stream-json the one user message's text blocks, its image blocks
+// logged by media type and the SHA-256 of their decoded bytes.
+const stdin = fs.readFileSync(0, "utf8");
+const streamed = flag("--input-format") === "stream-json" ? JSON.parse(stdin.trim().split("\n")[0]).message.content : null;
+const task = streamed ? streamed.filter((b) => b.type === "text").map((b) => b.text).join("") : stdin;
+const images = (streamed ?? []).filter((b) => b.type === "image")
+  .map((b) => ({ media_type: b.source.media_type, sha256: crypto.createHash("sha256").update(Buffer.from(b.source.data, "base64")).digest("hex") }));
 const sessionId = flag("--session-id");
 const model = { opus: "claude-opus-5-5", sonnet: "claude-sonnet-5-5", haiku: "claude-haiku-5-5", fable: "claude-fable-5-1" }[flag("--model")] ?? flag("--model") ?? "claude-sonnet-5-5";
 if (process.env.FAKE_CLAUDE_LOG) {
   const vars = Object.fromEntries(["CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CLAUDE_EFFORT", "ANTHROPIC_API_KEY"].map((k) => [k, process.env[k] ?? null]));
-  fs.appendFileSync(process.env.FAKE_CLAUDE_LOG, `${JSON.stringify({ argv, cwd: process.cwd(), task, vars })}\n`);
+  fs.appendFileSync(process.env.FAKE_CLAUDE_LOG, `${JSON.stringify({ argv, cwd: process.cwd(), task, images, firstBlock: streamed?.[0]?.type ?? null, vars })}\n`);
 }
 
 const schema = JSON.parse(flag("--json-schema") ?? "{}");
@@ -34,19 +42,28 @@ if (["oneOf", "anyOf", "allOf"].some((k) => Object.hasOwn(schema, k))) {
 }
 const emit = (e) => process.stdout.write(`${JSON.stringify({ session_id: sessionId, ...e })}\n`);
 const five = (result) => ({ status: "done", result, evidence: ["observed"], artifacts: [], open: [] });
+// The model each of the session's own assistant messages names, as the real stream does; a case may make it another.
+const answering = process.env.FAKE_CLAUDE_ASSISTANT_MODEL ?? model;
+// What --tools leaves: "" is none, as with the real CLI; --json-schema adds StructuredOutput beside them.
+const granted = [...(flag("--tools") ? flag("--tools").split(",") : []), ...(flag("--json-schema") ? ["StructuredOutput"] : [])];
 const finish = ({ structured = five("checked"), isError = false, subtype = "success", denials = [], terminal = "completed", text } = {}) => {
+  if (structured && !isError) {
+    emit({ type: "assistant", parent_tool_use_id: null, message: { model: answering, content: [{ type: "tool_use", id: "toolu_so", name: "StructuredOutput", input: structured }] } });
+    emit({ type: "user", parent_tool_use_id: null, message: { content: [{ type: "tool_result", tool_use_id: "toolu_so", content: "Structured output provided successfully" }] } });
+  }
   emit({ type: "result", subtype, is_error: isError, result: text ?? (structured ? JSON.stringify(structured) : "plain text"),
     ...(structured && !isError ? { structured_output: structured } : {}), total_cost_usd: 0.0042, num_turns: 2, duration_ms: 1200,
     usage: { input_tokens: 10, output_tokens: 5 }, modelUsage: { [model]: { inputTokens: 10, outputTokens: 5 } },
     permission_denials: denials, terminal_reason: terminal });
 };
 const toolCall = (id, name, input, isError = false) => {
-  emit({ type: "assistant", parent_tool_use_id: null, message: { content: [{ type: "tool_use", id, name, input }] } });
+  emit({ type: "assistant", parent_tool_use_id: null, message: { model: answering, content: [{ type: "tool_use", id, name, input }] } });
   emit({ type: "user", parent_tool_use_id: null, message: { content: [{ type: "tool_result", tool_use_id: id, is_error: isError, content: isError ? "denied" : "ok" }] } });
 };
 
-emit({ type: "system", subtype: "init", cwd: process.cwd(), model, permissionMode: flag("--permission-mode"),
-  tools: (flag("--tools") ?? "").split(","), plugins: argv.includes("--safe-mode") ? [] : [{ name: "user-plugin", path: "/x" }],
+// A stream with no init at all, a transport fault no real CLI has been seen to make, when a case asks for one.
+if (process.env.FAKE_CLAUDE_NO_INIT !== "1") emit({ type: "system", subtype: "init", cwd: process.cwd(), model, permissionMode: flag("--permission-mode"),
+  tools: granted, plugins: argv.includes("--safe-mode") ? [] : [{ name: "user-plugin", path: "/x" }],
   mcp_servers: flag("--mcp-config") ? [{ name: "entrust", status: "connected" }] : [], claude_code_version: "2.1.294",
   ...(argv.includes("--safe-mode") ? {} : { memory_paths: { auto: "/m" } }),
   // A CLI that did not apply what it was asked for, as a case sets it: fields that replace init's own.
@@ -94,8 +111,9 @@ async function ask(toolName, input) {
 }
 
 async function main() {
-  // What a real agent does first: it reads before it acts. A turn with no observation is "recall".
-  if (!["error", "noschema", "die", "slow", "recall"].includes(mode)) toolCall("toolu_0", "Read", { file_path: process.cwd() });
+  // What a real agent does first: it reads before it acts, when it has a tool to read with. A turn with no
+  // observation is "recall".
+  if (!["error", "noschema", "die", "slow", "recall"].includes(mode) && granted.includes("Read")) toolCall("toolu_0", "Read", { file_path: process.cwd() });
   if (mode === "structured") return finish({ structured: JSON.parse(process.env.FAKE_CLAUDE_OUTPUT) });
   if (mode === "recall") return finish();
   if (mode === "ok") { toolCall("toolu_1", "Bash", { command: "ls" }); return finish(); }
@@ -117,6 +135,47 @@ async function main() {
     toolCall("toolu_1", "Write", { file_path: `${process.cwd()}/planted.txt`, content: "x" });
     return finish();
   }
+  if (mode === "active") {
+    // Work that keeps talking for FAKE_CLAUDE_ACTIVE_MS: a line every FAKE_CLAUDE_TICK_MS, every other one a
+    // subagent's, then its answer; a SIGINT ends the turn with a result, as the real CLI's does.
+    process.on("SIGINT", () => { finish({ isError: true, subtype: "error_during_execution", structured: null, terminal: "aborted_tools", text: "" }); process.exit(0); });
+    const until = Date.now() + Number(process.env.FAKE_CLAUDE_ACTIVE_MS ?? 2500);
+    for (let i = 0; Date.now() < until; i++) {
+      emit({ type: "assistant", parent_tool_use_id: i % 2 ? "toolu_subagent" : null, message: { model: answering, content: [{ type: "text", text: `working ${i}` }] } });
+      await new Promise((r) => setTimeout(r, Number(process.env.FAKE_CLAUDE_TICK_MS ?? 100)));
+    }
+    return finish(process.env.FAKE_CLAUDE_OUTPUT ? { structured: JSON.parse(process.env.FAKE_CLAUDE_OUTPUT) } : {});
+  }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, Number(ms ?? 0)));
+  if (mode === "streaming" || mode === "noise") {
+    // A message written for FAKE_CLAUDE_ACTIVE_MS: with --include-partial-messages, a stream_event every tick, one of
+    // them a Bash tool_use the message never completes; without the flag nothing until the message is whole, as the
+    // real CLI does. "noise" writes lines that are no event of the run instead. FAKE_CLAUDE_STREAM_ONLY ends the
+    // process after the partial events, with no whole message and no result.
+    process.on("SIGINT", () => { finish({ isError: true, subtype: "error_during_execution", structured: null, terminal: "aborted_tools", text: "" }); process.exit(0); });
+    const partial = argv.includes("--include-partial-messages"), until = Date.now() + Number(process.env.FAKE_CLAUDE_ACTIVE_MS ?? 2500);
+    if (partial && mode === "streaming") emit({ type: "stream_event", parent_tool_use_id: null, event: { type: "content_block_start", index: 0, content_block: { type: "tool_use", id: "toolu_partial", name: "Bash", input: {} } } });
+    for (let i = 0; Date.now() < until; i++) {
+      if (mode === "noise") process.stdout.write(i % 2 ? "not-json-noise\n" : `${JSON.stringify({ type: "not-an-event", session_id: sessionId })}\n`);
+      else if (partial) emit({ type: "stream_event", parent_tool_use_id: null, event: { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: `{"part":${i}` } } });
+      await sleep(process.env.FAKE_CLAUDE_TICK_MS ?? 100);
+    }
+    if (process.env.FAKE_CLAUDE_STREAM_ONLY === "1") process.exit(0);
+    return finish(process.env.FAKE_CLAUDE_OUTPUT ? { structured: JSON.parse(process.env.FAKE_CLAUDE_OUTPUT) } : {});
+  }
+  if (mode === "progress") {
+    // A Bash call that runs for FAKE_CLAUDE_ACTIVE_MS and says nothing but the reference's SDKToolProgressMessage
+    // every tick, as Claude Code's heartbeat for a main-conversation tool does, then its result and the answer.
+    const id = "toolu_long", input = { command: "npm run build", description: "build" }, started = Date.now();
+    emit({ type: "assistant", parent_tool_use_id: null, message: { model: answering, content: [{ type: "tool_use", id, name: "Bash", input }] } });
+    while (Date.now() - started < Number(process.env.FAKE_CLAUDE_ACTIVE_MS ?? 2500)) {
+      await sleep(process.env.FAKE_CLAUDE_TICK_MS ?? 150);
+      emit({ type: "tool_progress", tool_use_id: id, tool_name: "Bash", parent_tool_use_id: null, elapsed_time_seconds: (Date.now() - started) / 1000,
+        heartbeat: true, uuid: crypto.randomUUID() });
+    }
+    emit({ type: "user", parent_tool_use_id: null, message: { content: [{ type: "tool_result", tool_use_id: id, is_error: false, content: "built" }] } });
+    return finish();
+  }
   if (mode === "error") return finish({ isError: true, subtype: "error_max_turns", structured: null, text: "" });
   if (mode === "noschema") return finish({ structured: null });
   if (mode === "die") process.exit(1);
@@ -130,7 +189,11 @@ async function main() {
     const [toolName, input] = process.env.FAKE_CLAUDE_TOOL === "Write" ? ["Write", { file_path: `${process.cwd()}/../outside.txt`, content: "x" }]
       : process.env.FAKE_CLAUDE_TOOL === "BashTimeout" ? ["Bash", { command: "npm test", description: "run tests", timeout: 600000 }]
       : ["Bash", { command: "touch made.txt", description: "make a file" }];
+    // Silence on either side of the wait, as a case sets it: the CLI writes nothing while it decides to ask and
+    // while the answered call runs.
+    await sleep(process.env.FAKE_CLAUDE_QUIET_BEFORE_MS);
     const answer = await ask(toolName, input);
+    await sleep(process.env.FAKE_CLAUDE_QUIET_AFTER_MS);
     if (answer.behavior === "allow") {
       toolCall("toolu_fake", toolName, answer.updatedInput);
       return finish({ structured: five(`allowed ${JSON.stringify(answer.updatedInput)}`) });

@@ -39,9 +39,10 @@ export function readAgentOrders(report, mode, cataloguePath = null) {
       const inputKind = capability.inputKind ?? "object";
       if (!["object", "string"].includes(inputKind) || (inputKind === "string" ? typeof request.input !== "string" : !Object.hasOwn(request, "arguments")))
         throw new Error(`capability ${request.capability}: input kind mismatch (expected ${inputKind})`);
-      if (inputKind === "object" && capability.argumentsSchema) {
-        const subset = checkSchemaSubset(capability.argumentsSchema);
-        const args = subset.ok ? validateOutput(capability.argumentsSchema, request.arguments) : subset;
+      // The host's native tool validates its own arguments. The reader checks them first only against a schema
+      // whose every keyword it enforces, so a runtime schema it cannot read whole refuses nothing here.
+      if (inputKind === "object" && capability.argumentsSchema && checkSchemaSubset(capability.argumentsSchema).ok) {
+        const args = validateOutput(capability.argumentsSchema, request.arguments);
         if (!args.ok) throw new Error(`capability ${request.capability}: ${args.errors.join("; ")}`);
       }
     } else if (request.action === "delegate") {

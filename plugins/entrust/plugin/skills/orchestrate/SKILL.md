@@ -5,7 +5,7 @@ description: >-
   verify independently and synthesise their evidence while keeping the main context small.
 disable-model-invocation: true
 metadata:
-  version: "0.30.1"
+  version: "0.31.0"
 license: MIT
 ---
 
@@ -18,8 +18,8 @@ the server connection, model selection, session continuation and callbacks, and
 [claude](../claude/references/external.md) for an external Claude run, on a host without Claude subagents
 or outside this session. Every external worker is made, run, read and continued the same way, as
 [external.md](references/external.md) says. A proxy relays each `--run` of an external worker ([external.md](references/external.md#3-run-it));
-when the user makes an external model the coordinator, this conversation becomes its proxy
-([main-proxy.md](references/main-proxy.md)) and keeps one attached call to it ([proxy.md](references/proxy.md)). Do not load adapter skill text for capability discovery; use
+when the user switches to an external coordinator with the explicit proxy skill and confirms it, this conversation
+becomes its proxy ([main-proxy.md](references/main-proxy.md)) and keeps one attached call to it ([proxy.md](references/proxy.md)). Do not load adapter skill text for capability discovery; use
 the capability snapshot below, then load only the selected worker's adapter.
 
 ## Your own hands

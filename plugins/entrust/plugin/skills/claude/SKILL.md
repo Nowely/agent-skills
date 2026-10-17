@@ -1,10 +1,10 @@
 ---
 name: claude
 description: >-
-  Run external Claude agents or make Claude/Opus/Sonnet/Fable the main coordinator (“Прокси на Opus”),
-  even before a task is stated. Also use for native Claude delegation and entrust plans selecting Claude.
+  Run external Claude agents, native Claude delegation and entrust plans selecting Claude. A request to make
+  Claude/Opus/Sonnet/Fable the main coordinator (“Прокси на Opus”) is answered with the explicit proxy command.
 metadata:
-  version: "0.30.1"
+  version: "0.31.0"
 license: MIT
 ---
 
@@ -16,7 +16,9 @@ roles, verification and the return; this page owns how Claude Code runs them. Mo
 [incidents.md](references/incidents.md). A Claude agent the host cannot run natively, or one that must run
 outside this session, is an external run: [external.md](references/external.md).
 
-For an affirmative coordinator choice, follow [main proxy mode](../orchestrate/references/main-proxy.md).
+A request to make a model the coordinator starts nothing here: answer it with the explicit proxy skill's command,
+`/entrust:proxy <model>` (`$entrust:proxy <model>` in Codex), whose one final confirmation is the only consent
+([main proxy mode](../orchestrate/references/main-proxy.md)).
 
 ## Agent calls
 

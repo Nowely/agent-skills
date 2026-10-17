@@ -1,14 +1,13 @@
 ---
 name: opencode
 description: >-
-  Runs OpenCode workers and an OpenCode model as the main coordinator: launches, continues and stops
-  workers, answers their permission and question callbacks, and picks a recent model. Use when the user asks
+  Runs OpenCode workers: launches, continues and stops workers, answers their permission and question callbacks, and picks a recent model. Use when the user asks
   for OpenCode or for a model outside native Codex and Claude, to call or pool (“Позови DeepSeek, GLM”, “Use
-  deepseek, glm in pool”, “Задействуй модели OpenCode”) or to make it the coordinator (“Прокси на GLM”), even
-  before the task is stated. Claude-family coordinators use the claude adapter; ordinary native
+  deepseek, glm in pool”, “Задействуй модели OpenCode”), even before the task is stated. A request to make a
+  model the coordinator (“Прокси на GLM”) is answered with the explicit proxy command; ordinary native
   Codex/Claude delegation uses native agents.
 metadata:
-  version: "0.30.1"
+  version: "0.31.0"
 license: MIT
 ---
 
@@ -19,10 +18,10 @@ own session. Continuing a worker reuses that session under a fresh report path.
 
 ## Route named models
 
-An affirmative “Прокси на <model>” for an OpenCode-served model makes it the coordinator and the main conversation
-its proxy: follow orchestrate's [main proxy mode](../orchestrate/references/main-proxy.md), with this
-adapter as the coordinator's transport. Claude/Opus/Sonnet/Fable coordinator choices load
-[claude](../claude/SKILL.md) instead. An ordinary request such as “Позови <model>: проверь diff”
+A request to make a model the coordinator (“Прокси на <model>”) starts nothing here: the explicit proxy skill,
+`/entrust:proxy` (`$entrust:proxy` in Codex), owns that switch and its one confirmation, and it activates Claude
+coordinators only, since no OpenCode coordinator acts only through the host yet
+([main proxy mode](../orchestrate/references/main-proxy.md)). An ordinary request such as “Позови <model>: проверь diff”
 delegates one worker and follows the launch steps below.
 
 When the user asks to call, use or include a named model outside Codex and Claude in an agent pool, route

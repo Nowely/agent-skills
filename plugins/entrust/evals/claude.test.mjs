@@ -4,12 +4,13 @@
 // each prompt becomes, the report, the refusals, a stop, a continuation and the mailbox round trip. One opt-in
 // case, ENTRUST_LIVE_CLAUDE=1, runs the real `claude` on Haiku through the launcher and spends a few cents.
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { spawn, spawnSync } from "node:child_process";
 import { EVALS, ROOT, registry, runCases, skip, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
-import { childEnv, mailboxRules, parsePrompt } from "../plugin/skills/claude/scripts/driver.mjs";
+import { builtinPlugin, childEnv, coordinatorCall, envelope, mailboxRules, parsePrompt } from "../plugin/skills/claude/scripts/driver.mjs";
 import { requestOf } from "../plugin/skills/claude/scripts/approvals.mjs";
 import { shortName, typedRequest } from "../plugin/skills/claude/scripts/launch.mjs";
 
@@ -29,7 +30,8 @@ const PATH_WITH_FAKE = `${bin}${path.delimiter}${process.env.PATH}`;
 function setup() {
   const state = tempDir("entrust-claude-state-"), work = tempDir("entrust-claude-work-");
   const log = path.join(state, "fake.jsonl");
-  return { state, work, log, env: (more = {}) => ({ ENTRUST_STATE_DIR: state, PATH: PATH_WITH_FAKE, FAKE_CLAUDE_LOG: log, ...more }) };
+  // The settings a status probe would read are a synthetic directory's, never this machine's.
+  return { state, work, log, env: (more = {}) => ({ ENTRUST_STATE_DIR: state, PATH: PATH_WITH_FAKE, FAKE_CLAUDE_LOG: log, CLAUDE_CONFIG_DIR: path.join(state, "claude-config"), ...more }) };
 }
 const lastCall = (log) => JSON.parse(fs.readFileSync(log, "utf8").trim().split("\n").at(-1));
 const flagOf = (argv, name) => argv[argv.indexOf(name) + 1];
@@ -266,6 +268,126 @@ test("an init reporting another mode or another set of tools than the rights ask
   assert.equal(echoed.code, 0, echoed.err);
 });
 
+// ------------------------------------------------------------------------------------------- the coordinator
+
+const FIVE = JSON.stringify({ status: "done", result: "ready", evidence: ["host results"], artifacts: [], open: [] });
+test("a coordinator runs with no tool, MCP server, rule text or mailbox of its own, and its report says so", async () => {
+  const s = setup(), box = path.join(s.state, "coordinator-box"); fs.mkdirSync(box);
+  const r = await drive(s, `RIGHTS: read ${s.work}\nPROFILE: coordinator\nMODEL: opus\nTASK: coordinate\n`,
+    { mode: "structured", approvals: box, more: { FAKE_CLAUDE_OUTPUT: FIVE, FAKE_CLAUDE_ASSISTANT_MODEL: "claude-sonnet-5-5" } });
+  assert.equal(r.code, 0, r.err);
+  const argv = lastCall(s.log).argv;
+  assert.equal(flagOf(argv, "--tools"), ""); assert.equal(flagOf(argv, "--permission-mode"), "manual"); assert.equal(flagOf(argv, "--permission-prompts"), "none");
+  for (const f of ["--safe-mode", "--strict-mcp-config"]) assert.ok(argv.includes(f), f);
+  for (const f of ["--mcp-config", "--permission-prompt-tool", "--append-system-prompt", "--disallowedTools", "--dangerously-skip-permissions", "--allow-dangerously-skip-permissions", "--fallback-model"])
+    assert.equal(argv.includes(f), false, f);
+  assert.equal(r.json.profile, "coordinator"); assert.deepEqual(r.json.context.tools, ["StructuredOutput"]); assert.equal(r.json.context.memory, false);
+  assert.deepEqual(r.json.tools.map((t) => t.tool), ["StructuredOutput"]); assert.equal(r.json.receiptOk, true);
+  // The requested selector, the model init names and the model that wrote each message are three facts.
+  assert.equal(r.json.requestedModel, "opus"); assert.equal(r.json.model, "claude-opus-5-5"); assert.deepEqual(r.json.assistantModels, ["claude-sonnet-5-5"]);
+  assert.deepEqual(fs.readdirSync(box), [], "a coordinator has nothing to ask");
+  const worker = await drive(s, `RIGHTS: read ${s.work}\nTASK: look\n`);
+  assert.equal(worker.json.profile, "worker"); assert.equal(flagOf(lastCall(s.log).argv, "--tools"), "Read,Grep,Glob,Bash");
+});
+
+test("a coordinator whose init names a tool beside StructuredOutput, MCP ones included, an MCP server, a plugin, memory or another mode is stopped, exit 4", async () => {
+  const s = setup(), text = `RIGHTS: read ${s.work}\nPROFILE: coordinator\nTASK: coordinate\n`;
+  for (const [init, why] of [
+    [{ tools: ["StructuredOutput", "mcp__user__thing"] }, /tools StructuredOutput, mcp__user__thing, not this coordinator's StructuredOutput alone/],
+    [{ tools: ["StructuredOutput", "Read"] }, /not this coordinator's StructuredOutput alone/],
+    [{ tools: [] }, /reports the tools none/],
+    [{ mcp_servers: [{ name: "user-server", status: "connected" }] }, /MCP servers user-server, not this coordinator's none/],
+    [{ plugins: [{ name: "user-plugin", path: "/x" }] }, /plugins user-plugin, not built-in platform plugins/],
+    [{ memory_paths: { auto: "/m" } }, /memory paths/],
+    [{ permissionMode: "bypassPermissions" }, /permission mode bypassPermissions/],
+  ]) {
+    const r = await drive(s, text, { mode: "structured", more: { FAKE_CLAUDE_INIT: JSON.stringify(init), FAKE_CLAUDE_OUTPUT: FIVE } });
+    assert.equal(r.code, 4, `${JSON.stringify(init)}: ${r.err}`); assert.match(r.json.error, why);
+    assert.equal(r.json.receiptOk, false); assert.equal(r.json.ok, false);
+  }
+});
+
+const B = (name) => ({ name, path: "builtin", source: `${name}@builtin` });
+test("platform built-in plugins, proven by init's provenance, are accepted by a coordinator; installed, custom, same-name or unproven ones are refused", async () => {
+  const s = setup(), text = `RIGHTS: read ${s.work}\nPROFILE: coordinator\nTASK: coordinate\n`;
+  const run = (plugins) => drive(s, text, { mode: "structured", more: { FAKE_CLAUDE_INIT: JSON.stringify({ plugins }), FAKE_CLAUDE_OUTPUT: FIVE } });
+  // The three built-ins CLI 2.1.299 reported under --safe-mode, no tool of the coordinator's own.
+  const ok = await run(["cc-plugin-sec-default", "cc-plugin-agents-md", "cc-plugin-plugin-authoring"].map(B));
+  assert.equal(ok.code, 0, ok.err); assert.equal(ok.json.receiptOk, true); assert.deepEqual(ok.json.context.tools, ["StructuredOutput"]);
+  assert.deepEqual(ok.json.context.installedPlugins, []); assert.equal(ok.json.context.plugins.length, 3);
+  assert.equal(builtinPlugin(B("x")), true);
+  for (const [label, plugins] of [["same name, installed path", [{ name: "cc-plugin-sec-default", path: "/home/u/.claude/plugins/x" }]],
+    ["same name, missing path and source", [{ name: "cc-plugin-sec-default" }]], ["builtin path, source of another plugin", [{ name: "a", path: "builtin", source: "b@builtin" }]],
+    ["builtin path, installed source", [{ name: "a", path: "builtin", source: "a@marketplace" }]], ["bare string", ["cc-plugin-sec-default"]],
+    ["null entry", [null]], ["built-in beside an installed one", [B("cc-plugin-sec-default"), { name: "user-plugin", path: "/x", source: "user-plugin@local" }]]]) {
+    const r = await run(plugins);
+    assert.equal(r.code, 4, `${label}: ${r.err}`); assert.match(r.json.error, /not built-in platform plugins/); assert.equal(r.json.receiptOk, false);
+    assert.equal(plugins.every(builtinPlugin), false, label);
+  }
+});
+test("built-in plugins do not widen anything else: an extra tool, MCP server, memory, own call or another mode still stops the coordinator", async () => {
+  const s = setup(), text = `RIGHTS: read ${s.work}\nPROFILE: coordinator\nTASK: coordinate\n`, plugins = [B("cc-plugin-sec-default")];
+  for (const extra of [{ tools: ["StructuredOutput", "Bash"] }, { mcp_servers: [{ name: "m", status: "connected" }] }, { memory_paths: { auto: "/m" } }, { permissionMode: "bypassPermissions" }]) {
+    const r = await drive(s, text, { mode: "structured", more: { FAKE_CLAUDE_INIT: JSON.stringify({ plugins, ...extra }), FAKE_CLAUDE_OUTPUT: FIVE } });
+    assert.equal(r.code, 4, JSON.stringify(extra)); assert.equal(r.json.receiptOk, false);
+  }
+  const own = await drive(s, text, { mode: "ok", more: { FAKE_CLAUDE_INIT: JSON.stringify({ plugins }) } });
+  assert.equal(own.code, 4); assert.match(own.json.error, /the coordinator called Bash itself/);
+  // A worker's report is unchanged: it carries plugins as names, and nothing of this rule applies to it.
+  const worker = await drive(s, `RIGHTS: read ${s.work}\nTASK: look\n`);
+  assert.equal(worker.code, 0, worker.err); assert.equal(worker.json.profile, "worker");
+});
+
+test("a call the coordinator makes itself after a clean init stops the run before its answer counts", async () => {
+  const s = setup();
+  const r = await drive(s, `RIGHTS: read ${s.work}\nPROFILE: coordinator\nTASK: coordinate\n`, { mode: "ok" });
+  assert.equal(r.code, 4, r.err); assert.match(r.json.error, /the coordinator called Bash itself/);
+  assert.equal(r.json.receiptOk, false); assert.equal(r.json.ok, false);
+  const child = { type: "assistant", parent_tool_use_id: "toolu_parent", message: { content: [{ type: "tool_use", id: "t", name: "Write", input: {} }] } };
+  assert.match(coordinatorCall(child), /called Write itself/);
+  assert.equal(coordinatorCall({ type: "assistant", message: { content: [{ type: "tool_use", id: "s", name: "StructuredOutput", input: {} }] } }), null);
+});
+
+test("attached images go with the task as one stream-json user message, image blocks first; a bad attachment is refused offline", async () => {
+  const s = setup(), png = Buffer.from("89504e470d0a1a0a", "hex").toString("base64"), file = path.join(s.state, "attachments.json");
+  fs.writeFileSync(file, JSON.stringify([{ type: "image", source: { type: "base64", media_type: "image/png", data: png } }]));
+  // The TASK body's own line breaks are the prompt parser's (exact user text travels as a JSON string inside it).
+  const task = "Что на картинке?\nОтветь \"кратко\" \\u2014 USER_MESSAGE:\n\"Привет\\r\\n\"";
+  const r = await drive(s, `RIGHTS: read ${s.work}\nPROFILE: coordinator\nATTACHMENTS: ${file}\nTASK: ${task}\n`, { mode: "structured", more: { FAKE_CLAUDE_OUTPUT: FIVE } });
+  assert.equal(r.code, 0, r.err);
+  const call = lastCall(s.log);
+  assert.equal(flagOf(call.argv, "--input-format"), "stream-json"); assert.equal(call.firstBlock, "image"); assert.equal(call.task, task);
+  assert.deepEqual(call.images, [{ media_type: "image/png", sha256: crypto.createHash("sha256").update(Buffer.from(png, "base64")).digest("hex") }]);
+  await drive(s, `RIGHTS: read ${s.work}\nTASK: look\n`);
+  assert.equal(lastCall(s.log).argv.includes("--input-format"), false, "a task without attachments stays plain text");
+  const bad = (value) => { fs.writeFileSync(file, JSON.stringify(value)); return check(s, `RIGHTS: read ${s.work}\nATTACHMENTS: ${file}\nTASK: x\n`); };
+  for (const value of [[], {}, [{ type: "image", source: { type: "base64", media_type: "image/svg+xml", data: png } }],
+    [{ type: "image", source: { type: "base64", media_type: "image/png", data: "not base64!" } }], [{ type: "text", text: "x" }]]) {
+    const r2 = bad(value); assert.equal(r2.status, 2, JSON.stringify(value)); assert.match(r2.stderr, /is not a JSON array of base64/);
+  }
+  assert.match(check(s, `RIGHTS: read ${s.work}\nATTACHMENTS: relative.json\nTASK: x\n`).stderr, /ATTACHMENTS must be an absolute path/);
+});
+
+test("a continuation keeps its profile: a coordinator resumes as one, and no worker or profile-less report becomes one", async () => {
+  const s = setup();
+  const first = await drive(s, `RIGHTS: read ${s.work}\nPROFILE: coordinator\nTASK: start\n`, { mode: "structured", more: { FAKE_CLAUDE_OUTPUT: FIVE } });
+  assert.equal(first.code, 0, first.err);
+  const kept = await drive(s, `RESUME: ${first.report}\nTASK: go on\n`, { mode: "structured", more: { FAKE_CLAUDE_OUTPUT: FIVE } });
+  assert.equal(kept.code, 0, kept.err); assert.equal(kept.json.profile, "coordinator");
+  assert.equal(flagOf(lastCall(s.log).argv, "--tools"), ""); assert.equal(flagOf(lastCall(s.log).argv, "--resume"), first.json.sessionID);
+  const worker = await drive(s, `RIGHTS: read ${s.work}\nTASK: look\n`);
+  const legacy = { ...worker.json }; delete legacy.profile;
+  const legacyReport = path.join(s.state, "legacy-report.json"); fs.writeFileSync(legacyReport, JSON.stringify(legacy));
+  for (const [text, why] of [
+    [`PROFILE: coordinator\nRESUME: ${worker.report}\nTASK: go on\n`, /keeps its profile, worker/],
+    [`PROFILE: coordinator\nRESUME: ${legacyReport}\nTASK: go on\n`, /keeps its profile, worker/],
+    [`RIGHTS: write ${s.work}\nPROFILE: coordinator\nTASK: x\n`, /RIGHTS read names its working directory, not write/],
+    [`RIGHTS: read ${s.work}\nPROFILE: coordinator\nSAFE_MODE: no\nTASK: x\n`, /always runs in safe mode/],
+    [`RIGHTS: read ${s.work}\nPROFILE: worker\nTASK: x\n`, /PROFILE must be coordinator/],
+  ]) { const r = check(s, text); assert.equal(r.status, 2, text); assert.match(r.stderr, why); }
+  assert.equal(parsePrompt(`RESUME: ${legacyReport}\nTASK: go on\n`, {}, s.work).profile, "worker");
+});
+
 test("an accept the mailbox cannot record is answered deny, never allow", async () => {
   const box = tempDir("entrust-claude-box-");
   const server = spawn(process.execPath, [path.join(ROOT, "skills/claude/scripts/approvals.mjs")], {
@@ -324,9 +446,10 @@ test("the budget: a volume bound of tool calls cuts the turn with exit 3, and th
   const s = setup();
   const many = await drive(s, `RIGHTS: read ${s.work}\nTASK: loop\n`, { mode: "many", more: { FAKE_CLAUDE_TOOLS: "6" }, args: ["--max-tool-calls", "3"] });
   assert.equal(many.code, 3, many.err); assert.match(many.json.error, /volume bound: more than 3 tool calls/);
-  // A request offered at once and accepted after 2.5 s, under a 1 s wall clock: the wait is the coordinator's.
+  // A request offered at once and accepted after 2.5 s, under a 1 s wall clock and a 1 s silence bound: the wait is
+  // the coordinator's, and neither clock runs through it.
   const box = path.join(s.state, `box-${Date.now()}`); fs.mkdirSync(box);
-  const run = drive(s, `RIGHTS: read ${s.work}\nTASK: make\n`, { mode: "ask", approvals: box, args: ["--timeout", "1"] });
+  const run = drive(s, `RIGHTS: read ${s.work}\nTASK: make\n`, { mode: "ask", approvals: box, args: ["--timeout", "1", "--idle-timeout", "1"] });
   let q = null;
   for (let i = 0; i < 100 && !q; i++) {
     await new Promise((r) => setTimeout(r, 50));
@@ -337,7 +460,7 @@ test("the budget: a volume bound of tool calls cuts the turn with exit 3, and th
   await new Promise((r) => setTimeout(r, 2500));
   fs.writeFileSync(path.join(box, `${q.id}.decision.json`), JSON.stringify({ id: q.id, run: q.run, decision: "accept" }));
   const done = await run;
-  assert.equal(done.code, 0, done.err);
+  assert.equal(done.code, 0, done.err); assert.equal(done.json.cancellation, null);
 });
 
 test("a turn that observed nothing exits 5, as in every adapter, unless ALLOW_NO_COMMANDS says so", async () => {
@@ -374,9 +497,108 @@ test("a stop is SIGINT to claude: the turn ends with a result, the report is par
   const r = await p.done;
   const j = JSON.parse(fs.readFileSync(report, "utf8"));
   assert.equal(r.code, 3); assert.equal(j.turnStatus, "aborted"); assert.equal(j.partial, true);
-  assert.deepEqual(j.cancellation, { reason: "stopped by SIGTERM", signal: "SIGINT" }); assert.equal(j.receiptOk, false);
-  const t = await drive(s, `RIGHTS: read ${s.work}\nTASK: wait\n`, { mode: "slow", args: ["--timeout", "1"] });
-  assert.equal(t.code, 3); assert.match(t.json.error, /timed out after 1 s/);
+  assert.deepEqual(j.cancellation, { reason: "stopped by SIGTERM", kind: "signal", signal: "SIGINT" }); assert.equal(j.receiptOk, false);
+  assert.equal(j.answer, "", "the stopped turn's own result is kept, not invented");
+  const t = await drive(s, `RIGHTS: read ${s.work}\nTASK: wait\n`, { mode: "slow", args: ["--timeout", "1", "--idle-timeout", "0"] });
+  assert.equal(t.code, 3); assert.match(t.json.error, /timed out after 1 s/); assert.equal(t.json.cancellation.kind, "wall");
+});
+
+// ------------------------------------------------------------------------------------------- the clocks
+
+test("no wall clock unless declared: talking work outlives a declared clock's span, silence is cut, a declared clock cuts, and a cut run resumes", async () => {
+  const s = setup(), text = `RIGHTS: read ${s.work}\nTASK: work\n`;
+  const plain = await drive(s, text, { mode: "active", more: { FAKE_CLAUDE_ACTIVE_MS: "300" } });
+  assert.equal(plain.code, 0, plain.err); assert.deepEqual(plain.json.limits, { timeoutS: 0, idleTimeoutS: 900, maxToolCalls: 1000 });
+  // 2.5 s of work that writes a line every 100 ms, half of them a subagent's, against a 1 s silence bound.
+  const busy = await drive(s, text, { mode: "active", args: ["--idle-timeout", "1"], more: { FAKE_CLAUDE_ACTIVE_MS: "2500" } });
+  assert.equal(busy.code, 0, busy.err); assert.equal(busy.json.cancellation, null); assert.equal(busy.json.receiptOk, true);
+  assert.ok(Date.parse(busy.json.endedAt) - Date.parse(busy.json.startedAt) >= 2500, "the run outlived the silence bound by working");
+  assert.ok(busy.json.longestSilenceMs < 1000, `longest silence ${busy.json.longestSilenceMs} ms`);
+  const clocked = await drive(s, text, { mode: "active", args: ["--timeout", "1", "--idle-timeout", "0"], more: { FAKE_CLAUDE_ACTIVE_MS: "20000" } });
+  assert.equal(clocked.code, 3, clocked.err); assert.match(clocked.json.error, /timed out after 1 s of work/);
+  assert.equal(clocked.json.cancellation.kind, "wall"); assert.equal(clocked.json.partial, true); assert.equal(clocked.json.receiptOk, false);
+  const silent = await drive(s, text, { mode: "slow", args: ["--idle-timeout", "1"] });
+  assert.equal(silent.code, 3, silent.err); assert.match(silent.json.error, /stalled: claude wrote no event of the run for 1 s/);
+  assert.equal(silent.json.cancellation.kind, "idle"); assert.equal(silent.json.turnStatus, "aborted"); assert.ok(silent.json.longestSilenceMs > 1000);
+  // A cut is a partial report like a stop's, so RESUME continues its session under the same rights.
+  const resumed = await drive(s, `RESUME: ${silent.report}\nTASK: go on\n`);
+  assert.equal(resumed.code, 0, resumed.err); assert.equal(flagOf(lastCall(s.log).argv, "--resume"), silent.json.sessionID);
+  assert.deepEqual(resumed.json.limits, { timeoutS: 0, idleTimeoutS: 900, maxToolCalls: 1000 });
+  for (const [flags, code] of [[["--timeout", "0"], 0], [["--idle-timeout", "0"], 0], [["--timeout", "-1"], 2], [["--idle-timeout", "x"], 2], [["--idle-timeout"], 2],
+    [["--idle-timeout", "9".repeat(400)], 2], [["--timeout", "9".repeat(400)], 2], [["--max-tool-calls", "9".repeat(400)], 2], [["--max-tool-calls", "0"], 2]]) {
+    const r = spawnSync(process.execPath, [DRIVER, "--check-prompt-file", prompt(s.state, text), ...flags], { encoding: "utf8", env: { ...process.env, ...s.env() } });
+    assert.equal(r.status, code, `${flags.join(" ")}: ${r.stderr}`);
+  }
+});
+
+test("an answered request restarts silence in full and keeps the run's work time: accepted, declined or expired", async () => {
+  const s = setup(), text = `RIGHTS: read ${s.work}\nTASK: make\n`;
+  // 1.6 s of silence before the request and 1.2 s after its answer, each inside a 2 s silence bound, together past it.
+  const quiet = { FAKE_CLAUDE_QUIET_BEFORE_MS: "1600", FAKE_CLAUDE_QUIET_AFTER_MS: "1200" };
+  const answered = async (mode, decision, args, more = {}) => {
+    const box = path.join(s.state, `box-${Math.random().toString(16).slice(2)}`); fs.mkdirSync(box);
+    const run = drive(s, text, { mode, approvals: box, args, more: { ...quiet, ...more } });
+    if (decision) {
+      let q = null;
+      for (let i = 0; i < 400 && !q; i++) {
+        await new Promise((r) => setTimeout(r, 25));
+        const name = fs.readdirSync(box).find((n) => n.endsWith(".request.json"));
+        if (name) q = JSON.parse(fs.readFileSync(path.join(box, name), "utf8"));
+      }
+      assert.ok(q, "no request was offered");
+      await new Promise((r) => setTimeout(r, 1400));
+      fs.writeFileSync(path.join(box, `${q.id}.decision.json`), JSON.stringify({ id: q.id, run: q.run, decision }));
+    }
+    return run;
+  };
+  const accepted = await answered("ask", "accept", ["--idle-timeout", "2"]);
+  assert.equal(accepted.code, 0, accepted.err); assert.equal(accepted.json.cancellation, null);
+  const declined = await answered("ask", "decline", ["--idle-timeout", "2"]);
+  assert.equal(declined.code, 6, declined.err); assert.equal(declined.json.cancellation, null);
+  const expired = await answered("ask-cancel", null, ["--idle-timeout", "2"], { FAKE_CLAUDE_CANCEL_MS: "1400" });
+  assert.equal(expired.code, 6, expired.err); assert.equal(expired.json.cancellation, null); assert.equal(expired.json.escalations[0].decision, "expired");
+  // The wait restarts silence, never work: the same 1.6 s and 1.2 s pass a declared 2 s wall clock.
+  const clocked = await answered("ask", "accept", ["--timeout", "2", "--idle-timeout", "0"]);
+  assert.equal(clocked.code, 3, clocked.err); assert.equal(clocked.json.cancellation.kind, "wall");
+});
+
+test("only the run's own events are signs of life: noise is cut, and partial messages keep a writing run alive without counting as calls or evidence", async () => {
+  const s = setup(), text = `RIGHTS: read ${s.work}\nTASK: write\n`;
+  const noise = await drive(s, text, { mode: "noise", args: ["--idle-timeout", "1"], more: { FAKE_CLAUDE_ACTIVE_MS: "2550" } });
+  assert.equal(noise.code, 3, noise.err); assert.equal(noise.json.cancellation.kind, "idle");
+  const writing = await drive(s, text, { mode: "streaming", args: ["--idle-timeout", "1"], more: { FAKE_CLAUDE_ACTIVE_MS: "2500" } });
+  assert.equal(writing.code, 0, writing.err); assert.ok(lastCall(s.log).argv.includes("--include-partial-messages"));
+  assert.deepEqual(writing.json.tools.map((t) => t.tool), ["Read", "StructuredOutput"], "a partial tool_use is no call");
+  assert.deepEqual(writing.json.commands, []); assert.equal(writing.json.receiptOk, true); assert.ok(writing.json.longestSilenceMs < 1000);
+  const coordinator = await drive(s, `RIGHTS: read ${s.work}\nPROFILE: coordinator\nTASK: write\n`, { mode: "streaming", args: ["--idle-timeout", "1"], more: { FAKE_CLAUDE_ACTIVE_MS: "2000" } });
+  assert.equal(coordinator.code, 0, coordinator.err); assert.deepEqual(coordinator.json.tools.map((t) => t.tool), ["StructuredOutput"]);
+  const unfinished = await drive(s, text, { mode: "streaming", more: { FAKE_CLAUDE_ACTIVE_MS: "300", FAKE_CLAUDE_STREAM_ONLY: "1" } });
+  assert.equal(unfinished.code, 4, unfinished.err); assert.equal(unfinished.json.receiptOk, false); assert.equal(unfinished.json.answerJson, null);
+});
+
+test("a running tool's progress heartbeats are signs of life and no call; the reference's other envelopes are life alone", async () => {
+  const s = setup();
+  // 2.5 s of a Bash call whose only lines are SDKToolProgressMessage every 150 ms, under a 1 s silence bound.
+  const r = await drive(s, `RIGHTS: read ${s.work}\nTASK: build\n`, { mode: "progress", args: ["--idle-timeout", "1"], more: { FAKE_CLAUDE_ACTIVE_MS: "2500" } });
+  assert.equal(r.code, 0, r.err); assert.equal(r.json.cancellation, null); assert.ok(r.json.longestSilenceMs < 1000, `${r.json.longestSilenceMs} ms`);
+  assert.deepEqual(r.json.tools.map((t) => t.tool), ["Read", "Bash", "StructuredOutput"], "a heartbeat is no call of its own");
+  assert.deepEqual(r.json.commands, [{ command: "npm run build", isError: false }]);
+  for (const type of ["tool_progress", "tool_use_summary", "auth_status", "stream_event", "rate_limit_event", "system", "assistant", "user", "result"])
+    assert.equal(envelope({ type, session_id: "s" }), true, type);
+  for (const line of [{ type: "not-an-event" }, { type: "tool_progressx" }, [], "tool_progress", null]) assert.equal(envelope(line), false, JSON.stringify(line));
+});
+
+test("a coordinator is bounded by the same clocks, and one whose stream holds no init is never confirmed", async () => {
+  const s = setup(), text = `RIGHTS: read ${s.work}\nPROFILE: coordinator\nTASK: coordinate\n`;
+  const busy = await drive(s, text, { mode: "active", args: ["--idle-timeout", "1"], more: { FAKE_CLAUDE_ACTIVE_MS: "2000" } });
+  assert.equal(busy.code, 0, busy.err); assert.equal(busy.json.profile, "coordinator");
+  const silent = await drive(s, text, { mode: "slow", args: ["--idle-timeout", "1"] });
+  assert.equal(silent.code, 3); assert.equal(silent.json.cancellation.kind, "idle");
+  const blind = await drive(s, text, { mode: "structured", more: { FAKE_CLAUDE_NO_INIT: "1", FAKE_CLAUDE_OUTPUT: JSON.stringify({ status: "done", result: "r", evidence: [], artifacts: [], open: [] }) } });
+  assert.equal(blind.code, 4, blind.err); assert.match(blind.json.error, /reported no init, so this coordinator's profile was never confirmed/);
+  assert.equal(blind.json.receiptOk, false); assert.equal(blind.json.ok, false); assert.equal(blind.json.context, null);
+  const worker = await drive(s, `RIGHTS: read ${s.work}\nTASK: look\n`, { more: { FAKE_CLAUDE_NO_INIT: "1" } });
+  assert.equal(worker.code, 0, "a worker's policy is unchanged");
 });
 
 test("a continuation forks the earlier session into a new id, in the earlier run's directory, and keeps its rights", async () => {
@@ -517,8 +739,38 @@ test("a plan row naming claude is an external run; a five-column opus row stays 
 
 test("status: ready, signed-out, outdated and missing, each one JSON line and exit 0", () => {
   const s = setup();
-  const status = (more) => { const r = spawnSync(process.execPath, [STATUS, "--json"], { encoding: "utf8", env: { ...process.env, ...s.env(more) } }); assert.equal(r.status, 0); return JSON.parse(r.stdout); };
+  const quiet = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^ANTHROPIC_(?:[A-Z]+_)?BASE_URL$/.test(k)));
+  const raw = (more) => { const r = spawnSync(process.execPath, [STATUS, "--json"], { encoding: "utf8", env: { ...quiet, ...s.env(more) } }); assert.equal(r.status, 0); return r.stdout; };
+  const status = (more) => JSON.parse(raw(more));
   assert.equal(status({}).status, "ready");
+  // The route names the provider that receives a run's prompts, from what the CLI reports and this environment sets.
+  assert.deepEqual(status({}).route, { apiProvider: "firstParty", authMethod: "claude.ai", baseUrls: {}, settingsBaseUrls: [], provider: "Anthropic" });
+  assert.equal(status({ FAKE_CLAUDE_API_PROVIDER: "vertex" }).route.provider, "Google Vertex AI");
+  assert.equal(status({ FAKE_CLAUDE_API_PROVIDER: "acme" }).route.provider, "apiProvider acme");
+  const gateway = status({ ANTHROPIC_BASE_URL: "https://user:pw-secret@gw.example:8443/v1?key=q-secret" }).route;
+  assert.deepEqual(gateway.baseUrls, { ANTHROPIC_BASE_URL: "https://gw.example:8443/v1" }); assert.equal(gateway.provider, "Anthropic (ANTHROPIC_BASE_URL=https://gw.example:8443/v1)");
+  // The path is part of the route: a gateway can route by it, so two paths on one origin are two routes.
+  assert.notEqual(status({ ANTHROPIC_BASE_URL: "https://gw.example/a" }).route.provider, status({ ANTHROPIC_BASE_URL: "https://gw.example/b/" }).route.provider);
+  assert.equal(status({ ANTHROPIC_BASE_URL: "https://gw.example/b/" }).route.baseUrls.ANTHROPIC_BASE_URL, "https://gw.example/b");
+  for (const value of ["gw token=sk-secret-1", "https://user:sk-secret-1@[bad"]) {
+    const text = raw({ ANTHROPIC_BASE_URL: value }), route = JSON.parse(text).route;
+    assert.equal(text.includes("sk-secret-1"), false, value); assert.equal(route.provider, null); assert.match(route.problem, /ANTHROPIC_BASE_URL is not a valid URL/);
+  }
+  assert.equal(status({ FAKE_CLAUDE_SIGNED_IN: "0" }).route, undefined);
+  // A base URL only a settings file sets is not observed as effective (safe-mode application and precedence are not
+  // measured): the route is unproven, names no provider and says why; the secret-bearing values never appear.
+  const config = path.join(s.state, "claude-config"); fs.mkdirSync(config, { recursive: true });
+  fs.writeFileSync(path.join(config, "settings.json"), JSON.stringify({ env: { ANTHROPIC_BASE_URL: "https://user:pw-secret@user.example/x" } }));
+  fs.mkdirSync(path.join(s.work, ".claude"));
+  fs.writeFileSync(path.join(s.work, ".claude", "settings.local.json"), JSON.stringify({ env: { ANTHROPIC_VERTEX_BASE_URL: "not a url sk-secret-2" } }));
+  const here = spawnSync(process.execPath, [STATUS, "--json"], { cwd: s.work, encoding: "utf8", env: { ...quiet, ...s.env() } });
+  assert.equal(here.stdout.includes("secret"), false); assert.equal(here.stdout.includes("user.example"), false);
+  const route = JSON.parse(here.stdout).route;
+  assert.equal(route.provider, null); assert.deepEqual(route.settingsBaseUrls, ["ANTHROPIC_BASE_URL (user settings)", "ANTHROPIC_VERTEX_BASE_URL (local settings)"]);
+  assert.match(route.problem, /sets a base URL, and whether this run applies it is not measured/); assert.deepEqual(route.baseUrls, {});
+  // An observed environment route is still named beside a stated settings one only as unproven: nothing is activated on it.
+  fs.rmSync(path.join(s.work, ".claude"), { recursive: true }); fs.rmSync(config, { recursive: true });
+  assert.equal(JSON.parse(spawnSync(process.execPath, [STATUS, "--json"], { cwd: s.work, encoding: "utf8", env: { ...quiet, ...s.env() } }).stdout).route.provider, "Anthropic");
   assert.equal(status({ FAKE_CLAUDE_SIGNED_IN: "0" }).status, "signed-out");
   assert.equal(status({ FAKE_CLAUDE_VERSION: "2.1.258" }).status, "outdated");
   const nodeOnly = tempDir("entrust-claude-nobin-");
