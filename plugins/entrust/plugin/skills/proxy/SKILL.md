@@ -5,7 +5,7 @@ description: >-
   of the session, after one final confirmation.
 disable-model-invocation: true
 metadata:
-  version: "0.30.1"
+  version: "0.31.0"
 license: MIT
 ---
 
