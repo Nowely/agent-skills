@@ -315,6 +315,10 @@ real MDM plist on a clean machine is still unmeasured. The protocol and
 lock suites' own assertions were used as mutation detectors but never questioned. Strike items from this
 list by attacking them, not by shipping features near them.
 
+`opencode.test.mjs` also pins the OpenCode clocks against the fake server: no wall clock by default or at 0, a declared one cutting
+and aborting only this run's session, silence and `--idle-timeout 0`, and a request's wait (permission, question, accept,
+decline, slow lookup) excluded from both clocks while the native reply that follows a decision counts as work.
+
 `main-proxy.test.mjs` runs full offline Claude coordinator rounds from propose and the user's confirmation through
 prepare, the attached launcher, finish, begin, native binding, collect/invoke outcomes and RESUME to final_answer.
 It checks that nothing launches before the confirmation or after an end, a switch or a session or route drift; that
