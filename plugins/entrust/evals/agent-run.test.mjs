@@ -100,7 +100,8 @@ test("--help names every mode a coordinator uses and exits 0, and --help-all add
                      "RUNNING=", "--check-prompt-file", "the role is any non-empty text", "unknown", "<absolute dir>", ...STATUS_LINES,
                      "APPROVALS=", "WAITING=<id>[,<id>]", "waiting —", "ended —", "refused —", "--pending --report-file REPORT",
                      "--decide ID --accept|--decline|--answer [--why TEXT]", "COMMAND<<", "COMMAND>>", "REQUEST_BODY<<", "REQUESTS=", "ORPHANED=",
-                     "DECIDED=", "LATE=", "STALE=", "REFUSED=", "approvals=A/D/E/O", "auto=N", "late=N", "stale=N", "external.md"])
+                     "DECIDED=", "LATE=", "STALE=", "REFUSED=", "approvals=A/D/E/O", "auto=N", "late=N", "stale=N", "external.md",
+                     "--stop [--why TEXT] --report-file REPORT", "stopped=", "--handback --report-file REPORT", "HANDBACK=exact", "CANONICAL<<"])
       if (!out.includes(s)) return `--help does not mention ${s}`;
     for (const s of ["--orphan", "--keeper"]) if (out.includes(s)) return `--help names ${s}, a step of the launcher's own`;
     const all = await spawnNode([LAUNCHER, "--help-all"], { killAfterMs: 10000 }).done;
@@ -1745,6 +1746,393 @@ test("--new whose driver check neither passes nor refuses names a driver fault o
       problems.push(`printed ${JSON.stringify(lines)}`);
     const left = fs.existsSync(dir) ? fs.readdirSync(dir) : [];
     if (left.length) problems.push(`a faulted check left ${left.join(", ")} in the agent's directory`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+// --- the relay's lifecycle: a Stop the host does not signal, an explicit stop, and a hand-back that can be checked ---
+
+// Short fake clocks: the early return and the lease the keeper allows a relay to come back in.
+const leaseEnv = { AGENT_RUN_RETURN_MS: "300", AGENT_RUN_LEASE_MS: "1500" };
+// One agent made under a state root of its own, as --new makes it.
+async function madeAgent(prefix) {
+  const state = tempDir(prefix);
+  const report = path.join(state, "run", "report.json");
+  await newAgent(report, PROMPT, { env: { ENTRUST_STATE_DIR: state } });
+  return { state, report, dir: agentDirOf(report) };
+}
+const markerOf = (dir) => (read(path.join(dir, "exit")) ?? "").trim();
+const untilMarker = async (dir, ms) => { for (const until = Date.now() + ms; Date.now() < until && !markerOf(dir); await sleep(50)) {} return markerOf(dir); };
+
+test("a relay that is interrupted without any signal and never comes back: the keeper cuts the run after the lease, the report is partial, and the receipt says the relay was lost",
+  "measured 2026-10-18: collaboration.interrupt_agent on a native Luna relay left its exec session, and so --run and its driver, running to natural completion with no signal delivered, with or without Entrust; a Stop that only works when the host signals is no Stop",
+  async () => {
+    const { state, report, dir } = await madeAgent("lease-lost.");
+    const first = await runOnce(report, state, "idle-silence", leaseEnv);
+    const pid = pidOf(dir);
+    const problems = [];
+    if (valueOf(first.lines, "DRIVER_EXIT") !== "running") problems.push(`the early return did not leave the run going: ${JSON.stringify(first.lines.slice(0, 2))}`);
+    // The relay never calls again: its card was stopped and the host sent nothing.
+    const marker = await untilMarker(dir, 15000);
+    if (!marker) { stopRun(dir); return `the run was still going 15 s after its relay vanished (lease ${leaseEnv.AGENT_RUN_LEASE_MS} ms)`; }
+    const rep = readJson(report);
+    if (rep?.turnStatus !== "interrupted") problems.push(`turnStatus ${rep?.turnStatus}, not interrupted: the partial report is missing`);
+    const cancel = readJson(path.join(dir, "cancel.json"));
+    if (cancel?.kind !== "relay-lost") problems.push(`cancel.json ${JSON.stringify(cancel)}`);
+    const s = await status(dir, report);
+    if (!valueOf(s.lines, "RECEIPT").includes("stopped=relay-lost")) problems.push(`RECEIPT=${valueOf(s.lines, "RECEIPT")} does not name the lost relay`);
+    await sleep(200);
+    if (pid !== null && alive(pid)) { problems.push(`the driver (pid ${pid}) is still alive`); stopRun(dir); }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("a relay that comes back at each early return keeps the run through several leases, and a request handed back or waiting is never cut",
+  "the 570 s early return is the healthy path and a hand-back is the coordinator's wait: the lease may only end a run whose relay was last seen attached or returning and never came back, never one that waits on a decision or whose coordinator is deciding",
+  async () => {
+    const problems = [];
+    // Attached, returning, attached again: three leases pass.
+    {
+      const { state, report, dir } = await madeAgent("lease-kept.");
+      let last = null;
+      for (const until = Date.now() + 4800; Date.now() < until;) {
+        last = await runOnce(report, state, "idle-silence", leaseEnv);
+        if (valueOf(last.lines, "DRIVER_EXIT") !== "running") break;
+      }
+      const pid = pidOf(dir);
+      if (markerOf(dir) || pid === null || !alive(pid)) problems.push(`a relay that came back each time lost its run: marker ${JSON.stringify(markerOf(dir))}, last ${JSON.stringify(last?.lines.slice(0, 2))}`);
+      if (fs.existsSync(path.join(dir, "cancel.json"))) problems.push("cancel.json exists for a relay that never left");
+      stopRun(dir);
+    }
+    // Handed back: the coordinator is the one waiting; the run outlives two leases, and finishes after the decision with nobody attached.
+    {
+      const { state, report, dir } = await madeAgent("lease-handback.");
+      const first = await runOnce(report, state, "approval-wait", leaseEnv);
+      if (shapeOf(first.lines) !== "waiting") { stopRun(dir); return `no hand-back: ${JSON.stringify(first.lines.slice(0, 2))}`; }
+      const id = valueOf(first.lines, "REQUEST");
+      await sleep(3500);
+      const pid = pidOf(dir);
+      if (markerOf(dir) || pid === null || !alive(pid) || fs.existsSync(path.join(dir, "cancel.json")))
+        problems.push(`a request handed back was cut while it waited: marker ${JSON.stringify(markerOf(dir))}, cancel ${read(path.join(dir, "cancel.json"))}`);
+      const q = readJson(path.join(dir, "approvals", `${id}.request.json`));
+      const decided = await launcherLines(["--decide", id, "--accept", "--why", "plan: the probe", "--report-file", report], { input: `${q?.command}\n` });
+      if (decided.out !== `DECIDED=${id} accept\n`) problems.push(`--decide: ${decided.out}`);
+      await sleep(2500);
+      const marker = await untilMarker(dir, 15000);
+      const rep = readJson(report);
+      if (marker !== "0" || rep?.turnStatus !== "completed" || fs.existsSync(path.join(dir, "cancel.json")))
+        problems.push(`after the decision, with no relay attached: marker ${JSON.stringify(marker)}, turnStatus ${rep?.turnStatus}, cancel ${read(path.join(dir, "cancel.json"))}`);
+      stopRun(dir);
+    }
+    // A watcher that dies while its request waits: the wait is the driver's own clock, not the lease's.
+    {
+      const { state, report, dir } = await madeAgent("lease-watch.");
+      const h = spawnNode([LAUNCHER, "--run", "--watch", "--report-file", report], { env: { ...env(state, "approval-wait"), ...leaseEnv }, killAfterMs: 30000 });
+      for (const until = Date.now() + 15000; Date.now() < until && !/^EVENT>>[0-9a-f]{12}$/m.test(h.stdoutSoFar()); await sleep(50)) {}
+      h.child.kill("SIGKILL");
+      await h.done;
+      await sleep(3500);
+      const pid = pidOf(dir);
+      if (markerOf(dir) || pid === null || !alive(pid) || fs.existsSync(path.join(dir, "cancel.json")))
+        problems.push(`a request waiting on its decision was cut with its watcher gone: marker ${JSON.stringify(markerOf(dir))}`);
+      stopRun(dir);
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("a keeper that was suspended and woke does not read the silence of the sleep as a relay that left",
+  "a laptop that slept 10 minutes stops the keeper's clock and the relay's together; the first tick after the wake sees a stale pulse that the relay has not had the time to renew, and cutting a healthy 30-minute run on it would be a Stop nobody gave",
+  async () => {
+    const { state, report, dir } = await madeAgent("lease-wake.");
+    await runOnce(report, state, "idle-silence", leaseEnv);
+    const pid = pidOf(dir);
+    const [keeper] = inspect("ps", ["-o", "ppid=", "-p", String(pid)]);
+    const problems = [];
+    process.kill(keeper, "SIGSTOP");
+    try { await sleep(2800); } finally { process.kill(keeper, "SIGCONT"); }
+    const woke = Date.now();
+    while (Date.now() - woke < 800 && !fs.existsSync(path.join(dir, "cancel.json")) && !markerOf(dir)) await sleep(25);
+    if (fs.existsSync(path.join(dir, "cancel.json"))) problems.push(`the run was cut ${Date.now() - woke} ms after the wake, on a pulse the sleep made stale`);
+    // The relay is still gone, so the lease runs from the wake and the cut comes.
+    const marker = await untilMarker(dir, 15000);
+    if (!marker || readJson(path.join(dir, "cancel.json"))?.kind !== "relay-lost") problems.push(`a relay that never came back was not cut after the wake: marker ${JSON.stringify(marker)}`);
+    stopRun(dir);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--stop ends the run its pid line and report path name: the partial report, a receipt that names the stop, a second call and a finished run just read, and a pid that is not the driver is refused",
+  "the explicit lifecycle bridge: a coordinator that sees its relay interrupted needs one verified command, not a hand-made kill -TERM on a pid it read out of err.txt, and it must never signal a process the pid line merely once named",
+  async () => {
+    const { state, report, dir } = await madeAgent("stop.");
+    const first = await runOnce(report, state, "idle-silence", { AGENT_RUN_RETURN_MS: "300" });
+    const pid = pidOf(dir);
+    const problems = [];
+    if (valueOf(first.lines, "DRIVER_EXIT") !== "running") problems.push(`the run did not stay going: ${JSON.stringify(first.lines.slice(0, 2))}`);
+    const stopped = await launcherLines(["--stop", "--report-file", report], { env: env(state, "idle-silence") });
+    if (stopped.code !== 0 || shapeOf(stopped.lines) !== "ended" || stopped.lines.length !== STATUS_LINES.length || stopped.lines.at(-1) !== `REPORT=${report}`)
+      problems.push(`--stop did not print the nine lines: exit ${stopped.code}, ${JSON.stringify(stopped.lines)}`);
+    else {
+      if (valueOf(stopped.lines, "DRIVER_EXIT") !== "1") problems.push(`DRIVER_EXIT=${valueOf(stopped.lines, "DRIVER_EXIT")}`);
+      if (!valueOf(stopped.lines, "RECEIPT").includes("stopped=stop")) problems.push(`RECEIPT=${valueOf(stopped.lines, "RECEIPT")}`);
+    }
+    if (readJson(report)?.turnStatus !== "interrupted") problems.push(`turnStatus ${readJson(report)?.turnStatus}`);
+    if (readJson(path.join(dir, "cancel.json"))?.kind !== "stop") problems.push(`cancel.json ${read(path.join(dir, "cancel.json"))}`);
+    await sleep(200);
+    if (pid !== null && alive(pid)) { problems.push(`the driver (pid ${pid}) is still alive`); stopRun(dir); }
+    const again = await launcherLines(["--stop", "--report-file", report], { env: env(state, "idle-silence") });
+    if (again.code !== 0 || again.out !== stopped.out) problems.push(`a second --stop: exit ${again.code}, ${JSON.stringify(again.lines.slice(0, 3))}`);
+    if (stopped.err !== "" || again.err !== "") problems.push(`--stop wrote on stderr after it answered: ${JSON.stringify(stopped.err.slice(0, 160))}`);
+    // The pid line names a live process of ours that is not this run's driver: nothing is signalled, whatever
+    // its arguments say. A prefix of the report path, the words among a foreign program's arguments, and the
+    // driver's own arguments behind a foreign program are each the shape of a victim.
+    const victim = path.join(tempDir("stop-victim."), "victim.mjs");
+    fs.writeFileSync(victim, `import fs from "node:fs";
+process.on("SIGTERM", () => { fs.writeFileSync(process.env.VICTIM_SIGNAL, "SIGTERM"); process.exit(0); });
+setTimeout(() => process.exit(0), 20000);
+`);
+    for (const [name, argv] of [
+      ["a report path that only has the target as its prefix", (r, d) => [victim, "--report-file", `${r}-foreign`]],
+      ["the target among a foreign program's arguments", (r, d) => [victim, "--note", `--report-file ${r}`]],
+      ["the driver's own arguments behind a foreign program", (r, d) => [victim, DRIVER, "--prompt-file", path.join(d, "prompt.txt"), "--report-file", r]],
+      ["a foreign program and an argument that ends like a node path, before the driver's own arguments", (r, d) => [victim, "--fake", "/tmp/node", DRIVER, "--prompt-file", path.join(d, "prompt.txt"), "--report-file", r]],
+    ]) {
+      const foreign = tempDir("stop-foreign.");
+      const fdir = path.join(foreign, "agent"), freport = path.join(foreign, "report.json"), signalled = path.join(foreign, "signal");
+      fs.mkdirSync(fdir, { mode: 0o700 });
+      const victimProc = spawn(process.execPath, argv(freport, fdir), { env: { ...process.env, VICTIM_SIGNAL: signalled }, stdio: "ignore" });
+      try {
+        await sleep(300);
+        fs.writeFileSync(path.join(fdir, "err.txt"), `entrust: pid=${victimProc.pid} identity=x reportPath=${freport}\n`);
+        const refused = await launcherLines(["--stop", "--dir", fdir, "--report-file", freport], { env: env(foreign) });
+        await sleep(400);
+        if (refused.code !== 2 || !/^REFUSED=stop pid \d+ is not this run's driver/m.test(refused.out) || refused.err !== "") problems.push(`${name}: exit ${refused.code}, ${JSON.stringify(refused.out.slice(0, 200))}, stderr ${JSON.stringify(refused.err.slice(0, 100))}`);
+        if (fs.existsSync(signalled) || !alive(victimProc.pid)) problems.push(`${name}: the process the pid line named was signalled`);
+        if (fs.existsSync(path.join(fdir, "cancel.json"))) problems.push(`${name}: a cancel was recorded for a process that is not the driver`);
+      } finally { try { victimProc.kill("SIGKILL"); } catch {} }
+    }
+    // A run an older launcher started has no spawn.json: the command the launcher builds is compared whole.
+    {
+      const old = await madeAgent("stop-old.");
+      await runOnce(old.report, old.state, "idle-silence", { AGENT_RUN_RETURN_MS: "300" });
+      const oldPid = pidOf(old.dir);
+      fs.rmSync(path.join(old.dir, "spawn.json"), { force: true });
+      const r = await launcherLines(["--stop", "--report-file", old.report], { env: env(old.state, "idle-silence") });
+      await sleep(200);
+      if (r.code !== 0 || valueOf(r.lines, "DRIVER_EXIT") !== "1" || (oldPid !== null && alive(oldPid))) { problems.push(`--stop without spawn.json: exit ${r.code}, ${JSON.stringify(r.lines.slice(0, 2))}`); stopRun(old.dir); }
+    }
+    // The directory's run is for another report path.
+    const other = await launcherLines(["--stop", "--report-file", path.join(state, "other", "report.json"), "--dir", dir], { env: env(state) });
+    if (other.code !== 2 || !/^REFUSED=stop /m.test(other.out)) problems.push(`another report path: exit ${other.code}, ${JSON.stringify(other.out.slice(0, 160))}`);
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("a signal that reaches --run is journalled with whether forwarding it was attempted, so a host that signals can be told from one that does not",
+  "whether a native interrupt or a card's Stop sends SIGTERM to the call at all is a fact of the host, recorded by the journal and not assumed by the launcher; the attempt is not the delivery, which the report and the process show",
+  async () => {
+    const { state, report, dir } = await madeAgent("journal.");
+    const rpc = path.join(dir, "rpc.log");
+    const h = spawnNode([LAUNCHER, "--run", "--report-file", report], { env: { ...env(state, "idle-silence"), FAKE_RPC_LOG: rpc }, killAfterMs: 60000 });
+    if (!await turnStarted(rpc)) { h.child.kill("SIGKILL"); stopRun(dir); return "the driver never started its turn"; }
+    h.child.kill("SIGTERM");
+    await h.done;
+    const events = (read(path.join(dir, "lifecycle.jsonl")) ?? "").split("\n").filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } });
+    const sig = events.find((e) => e?.event === "signal");
+    stopRun(dir);
+    return (sig?.signal === "SIGTERM" && sig.forwardAttempted === true && typeof sig.atMs === "number")
+      || `lifecycle.jsonl holds ${JSON.stringify(events)}`;
+  });
+
+test("--handback tells a relay's copy from the launcher's own lines: exact, a dropped trailer, a wrong word and a batch that is no longer waiting are told apart, and the canonical lines come back framed",
+  "three native Luna/Haiku relays dropped the final REPORT= line of a hand-back (2026-10-18); a coordinator cannot tell that from the message alone, and copying more carefully is not a contract",
+  async () => {
+    const problems = [];
+    const check = (report, state, message) => launcherLines(["--handback", "--report-file", report], { input: message, env: env(state) });
+    const frame = (out) => /^CANONICAL<<([0-9a-f]{12})\n([\s\S]*)\nCANONICAL>>\1\n?$/m.exec(out);
+    // An ended run: the nine lines.
+    {
+      const { state, report } = await madeAgent("handback-ended.");
+      const ran = await runOnce(report, state, "happy");
+      const message = `${ran.lines.join("\n")}\n`;
+      const exact = await check(report, state, message);
+      if (exact.code !== 0 || exact.out !== "HANDBACK=exact\n") problems.push(`exact: exit ${exact.code}, ${JSON.stringify(exact.out.slice(0, 120))}`);
+      const cut = await check(report, state, `${ran.lines.slice(0, -1).join("\n")}\n`);
+      const f = frame(cut.out);
+      if (cut.code !== 3 || !cut.out.startsWith("HANDBACK=truncated missing=1 ") || !cut.out.split("\n")[0].includes("REPORT=") || !f || f[2] !== ran.lines.join("\n"))
+        problems.push(`a dropped trailer: exit ${cut.code}, ${JSON.stringify(cut.out.slice(0, 200))}`);
+      const wrong = await check(report, state, message.replace("\nEXIT=0\n", "\nEXIT=1\n"));
+      if (wrong.code !== 3 || !wrong.out.startsWith("HANDBACK=differs line=3\n") || !frame(wrong.out)) problems.push(`a wrong word: exit ${wrong.code}, ${JSON.stringify(wrong.out.slice(0, 120))}`);
+      const empty = await check(report, state, "");
+      if (empty.code !== 3 || !empty.out.startsWith(`HANDBACK=truncated missing=${STATUS_LINES.length} `)) problems.push(`an empty message: exit ${empty.code}, ${JSON.stringify(empty.out.slice(0, 120))}`);
+    }
+    // A request waiting: the token the message used, the body whole, the trailer.
+    {
+      const { state, report, dir } = await madeAgent("handback-waiting.");
+      const first = await runOnce(report, state, "approval-wait");
+      if (shapeOf(first.lines) !== "waiting") { stopRun(dir); return `no hand-back: ${JSON.stringify(first.lines.slice(0, 2))}`; }
+      const message = first.out;
+      const exact = await check(report, state, message);
+      if (exact.code !== 0 || exact.out !== "HANDBACK=exact\n") problems.push(`a waiting batch, exact: exit ${exact.code}, ${JSON.stringify(exact.out.slice(0, 160))}`);
+      const cut = await check(report, state, message.split("\n").filter(Boolean).slice(0, -1).join("\n"));
+      const f = frame(cut.out);
+      if (cut.code !== 3 || !cut.out.startsWith("HANDBACK=truncated missing=1 ") || !f || f[2] !== first.lines.join("\n"))
+        problems.push(`a waiting batch without REPORT=: exit ${cut.code}, ${JSON.stringify(cut.out.slice(0, 200))}`);
+      const body = (read(path.join(dir, "approvals", `${valueOf(first.lines, "REQUEST")}.request.json`)) ?? "");
+      const q = JSON.parse(body || "{}");
+      const altered = await check(report, state, message.replace(q.command, `${q.command} `));
+      if (altered.code !== 3 || !altered.out.startsWith("HANDBACK=differs line=")) problems.push(`an altered command: exit ${altered.code}, ${JSON.stringify(altered.out.slice(0, 120))}`);
+      // Decided and running again: the old batch is no result of the run now.
+      const decided = await launcherLines(["--decide", valueOf(first.lines, "REQUEST"), "--accept", "--why", "plan: the probe", "--report-file", report], { input: `${q.command}\n` });
+      if (decided.code !== 0) problems.push(`--decide: ${decided.out}`);
+      await untilMarker(dir, 15000);
+      const stale = await check(report, state, message);
+      if (stale.code !== 3 || !stale.out.startsWith("HANDBACK=differs ") || !frame(stale.out)) problems.push(`a batch no longer waiting: exit ${stale.code}, ${JSON.stringify(stale.out.slice(0, 160))}`);
+      stopRun(dir);
+    }
+    // A run with no result and nothing waiting has nothing to hand back.
+    {
+      const { state, report, dir } = await madeAgent("handback-running.");
+      await runOnce(report, state, "idle-silence", { AGENT_RUN_RETURN_MS: "300" });
+      const none = await check(report, state, "");
+      if (none.code !== 3 || none.out !== "HANDBACK=running\n") problems.push(`a run still going: exit ${none.code}, ${JSON.stringify(none.out.slice(0, 120))}`);
+      stopRun(dir);
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+// An owned run held before its pid line: the keeper has spawned the driver and written spawn.json, and the driver
+// has not announced itself. Each case that needs the interval makes a run of its own, and checks it is still in
+// it right before the call it measures.
+async function heldRun(prefix) {
+  const made = await madeAgent(prefix);
+  const h = spawnNode([LAUNCHER, "--run", "--report-file", made.report], { env: { ...env(made.state, "idle-silence"), ...preload(HOLD_LONG) }, killAfterMs: 60000 });
+  for (const until = Date.now() + 10000; Date.now() < until && !fs.existsSync(path.join(made.dir, "spawn.json")); await sleep(20)) {}
+  const spawned = readJson(path.join(made.dir, "spawn.json"));
+  return { ...made, h, spawned, held: () => Boolean(spawned?.pid) && pidOf(made.dir) === null };
+}
+const releaseHeld = async (r) => { if (r.h.child.exitCode === null) r.h.child.kill("SIGTERM"); await r.h.done; stopRun(r.dir); };
+
+test("--stop received before the driver has announced itself waits for the announcement and ends its own run in one call; another report path is refused at once and nothing is signalled",
+  "Astra 2026-10-18: the keeper has spawned the owned driver and written spawn.json but the driver has not written its pid line yet, a normal startup state in which the old --stop refused and discarded the cancellation, and the worker then began its turn; the --run signal path keeps a signal in that interval and the explicit bridge has to as well",
+  async () => {
+    const problems = [];
+    // The foreign report path, on a run of its own.
+    const foreignRun = await heldRun("stop-early-foreign.");
+    try {
+      if (!foreignRun.held()) return `the foreign-report case measured nothing: spawn ${JSON.stringify(foreignRun.spawned)}, pid line ${pidOf(foreignRun.dir)}`;
+      const other = await launcherLines(["--stop", "--dir", foreignRun.dir, "--report-file", path.join(foreignRun.state, "other", "report.json")], { env: env(foreignRun.state) });
+      if (other.code !== 2 || !/^REFUSED=stop /m.test(other.out) || !alive(foreignRun.spawned.pid) || fs.existsSync(path.join(foreignRun.dir, "cancel.json")))
+        problems.push(`another report path before the announcement: exit ${other.code}, ${JSON.stringify(other.out.slice(0, 160))}`);
+    } finally { await releaseHeld(foreignRun); }
+    // One call, no retry, on a run of its own: it reaches the announcement, verifies the driver and ends the run.
+    const own = await heldRun("stop-early-own.");
+    try {
+      if (!own.held()) return `the owned-stop case measured nothing: spawn ${JSON.stringify(own.spawned)}, pid line ${pidOf(own.dir)}`;
+      const stopped = await launcherLines(["--stop", "--report-file", own.report], { env: env(own.state, "idle-silence") });
+      if (stopped.code !== 0 || shapeOf(stopped.lines) !== "ended" || stopped.lines.length !== STATUS_LINES.length || stopped.err !== "")
+        problems.push(`--stop before the announcement: exit ${stopped.code}, ${JSON.stringify(stopped.out.slice(0, 200))}, stderr ${JSON.stringify(stopped.err.slice(0, 100))}`);
+      else if (!valueOf(stopped.lines, "RECEIPT").includes("stopped=stop")) problems.push(`RECEIPT=${valueOf(stopped.lines, "RECEIPT")}`);
+      if (readJson(path.join(own.dir, "cancel.json"))?.kind !== "stop") problems.push(`cancel.json ${read(path.join(own.dir, "cancel.json"))}`);
+      if (!markerOf(own.dir)) problems.push("no exit marker after --stop");
+      await sleep(200);
+      if (alive(own.spawned.pid)) problems.push(`the owned driver (pid ${own.spawned.pid}) is still alive after one --stop`);
+      if (pidOf(own.dir) !== own.spawned.pid) problems.push(`the pid line names ${pidOf(own.dir)}, not the spawned ${own.spawned.pid}`);
+    } finally { await releaseHeld(own); }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--handback tells a run that is starting, one that never started, a refusal the call printed and a driver that died without a marker from a run that is going",
+  "Astra 2026-10-18: no exit marker and no waiting request was read as `running`, which replaced a call's own sandbox refusal with a state whose recovery is to repeat the refused call, and could not see a driver that died without a keeper",
+  async () => {
+    const problems = [];
+    const check = (report, state, message, extra = {}) => launcherLines(["--handback", "--report-file", report], { input: message, env: { ...env(state), ...extra } });
+    // A refusal printed by the call itself, which wrote nothing in DIR: nothing was ever launched.
+    {
+      const { state, report, dir } = await madeAgent("handback-unstarted.");
+      const refused = await launcherLines(["--run", "--report-file", report], { env: { ...env(state), CODEX_SANDBOX: "seatbelt" } });
+      if (refused.code !== 0 || valueOf(refused.lines, "PATH") !== "none" || !valueOf(refused.lines, "ERROR").includes("sandbox")) return `the sandboxed --run did not refuse: ${JSON.stringify(refused.lines)}`;
+      if (fs.existsSync(path.join(dir, "err.txt"))) problems.push("the call-local refusal wrote in the agent's directory");
+      const message = refused.out;
+      const unmarked = await check(report, state, message);
+      if (unmarked.code !== 3 || !unmarked.out.startsWith("HANDBACK=unstarted\n") || /running/.test(unmarked.out.split("\n")[0])) problems.push(`a call-local refusal, checked elsewhere: exit ${unmarked.code}, ${JSON.stringify(unmarked.out.slice(0, 240))}`);
+      const sameWorld = await check(report, state, message, { CODEX_SANDBOX: "seatbelt" });
+      if (sameWorld.code !== 0 || sameWorld.out !== "HANDBACK=exact\n") problems.push(`the same refusal, checked where it is reproducible: exit ${sameWorld.code}, ${JSON.stringify(sameWorld.out.slice(0, 160))}`);
+      const dropped = await check(report, state, message.split("\n").filter(Boolean).slice(0, -1).join("\n"), { CODEX_SANDBOX: "seatbelt" });
+      if (dropped.code !== 3 || !dropped.out.startsWith("HANDBACK=truncated missing=1 ")) problems.push(`a refusal without its trailer: exit ${dropped.code}, ${JSON.stringify(dropped.out.slice(0, 160))}`);
+    }
+    // Starting: spawned, not yet announced.
+    {
+      const { state, report, dir } = await madeAgent("handback-starting.");
+      const h = spawnNode([LAUNCHER, "--run", "--report-file", report], { env: { ...env(state, "idle-silence"), ...preload(HOLD_LONG) }, killAfterMs: 60000 });
+      for (const until = Date.now() + 10000; Date.now() < until && !fs.existsSync(path.join(dir, "spawn.json")); await sleep(20)) {}
+      const starting = pidOf(dir) === null ? await check(report, state, "") : null;
+      if (!starting || starting.code !== 3 || starting.out !== "HANDBACK=starting\n") problems.push(`a driver not yet announced: ${JSON.stringify(starting && starting.out.slice(0, 160))}`);
+      h.child.kill("SIGTERM");
+      await h.done;
+      stopRun(dir);
+    }
+    // Dead without a marker: the keeper and the driver both gone, as after a crash or a reboot.
+    {
+      const { state, report, dir } = await madeAgent("handback-dead.");
+      await runOnce(report, state, "idle-silence", { AGENT_RUN_RETURN_MS: "300" });
+      const pid = pidOf(dir);
+      const [keeper] = inspect("ps", ["-o", "ppid=", "-p", String(pid)]);
+      process.kill(keeper, "SIGKILL");
+      process.kill(pid, "SIGKILL");
+      for (const until = Date.now() + 5000; Date.now() < until && alive(pid); await sleep(20)) {}
+      if (markerOf(dir)) problems.push(`the case measured nothing: a marker ${markerOf(dir)} exists`);
+      const ran = await runOnce(report, state, "idle-silence");
+      const exact = await check(report, state, ran.out);
+      if (exact.code !== 0 || exact.out !== "HANDBACK=exact\n") problems.push(`a dead driver without a marker, the call's own lines: exit ${exact.code}, ${JSON.stringify(exact.out.slice(0, 160))}`);
+      const empty = await check(report, state, "");
+      if (empty.code !== 3 || /^HANDBACK=running/.test(empty.out) || !empty.out.startsWith(`HANDBACK=truncated missing=${STATUS_LINES.length} `)) problems.push(`a dead driver without a marker, an empty message: exit ${empty.code}, ${JSON.stringify(empty.out.slice(0, 160))}`);
+    }
+    return problems.length === 0 || problems.join("; ");
+  });
+
+test("--handback does not call a run live on a claim file or a pid it cannot show is the run's driver, and does not take another report's directory for this one",
+  "Astra 2026-10-18: a keeper that died right after claiming err.txt left an empty claim that was read as `starting`, a live pid that was no longer the driver hid the run's terminal report as `running`, and a different report path was answered `starting` for an owned run; liveness is only evidence when the process is owned",
+  async () => {
+    const problems = [];
+    const check = (dir, report, message) => launcherLines(["--handback", "--dir", dir, "--report-file", report], { input: message, env: env(newState) });
+    // The keeper dies right after it claims err.txt, before it spawns: nothing is running and nothing can finish the claim.
+    {
+      const crash = path.join(preloads, "keeper-crash.cjs");
+      fs.writeFileSync(crash, `if (process.argv.includes("--keeper")) { const fs = require("node:fs"); const open = fs.openSync;
+  fs.openSync = function (p, flags, ...rest) { const fd = open.call(this, p, flags, ...rest); if (String(p).endsWith("err.txt") && flags === "wx") process.exit(99); return fd; }; }\n`);
+      const { state, report, dir } = await madeAgent("handback-claim-crash.");
+      const ran = await runOnce(report, state, "idle-silence", preload(crash));
+      if (valueOf(ran.lines, "ERROR") !== "the driver did not start" || fs.existsSync(path.join(dir, "spawn.json")) || markerOf(dir)) return `the crash case measured nothing: ${JSON.stringify(ran.lines)}, spawn ${fs.existsSync(path.join(dir, "spawn.json"))}, marker ${JSON.stringify(markerOf(dir))}`;
+      const out = await check(dir, report, ran.out);
+      if (out.code !== 3 || !out.out.startsWith("HANDBACK=unknown\n") || !out.out.includes("NOTE=")) problems.push(`a claim with no driver: exit ${out.code}, ${JSON.stringify(out.out.slice(0, 240))}`);
+    }
+    // A live process that is not the driver holds the pid the run's records name: the terminal report still shows.
+    {
+      const { state, report, dir } = await madeAgent("handback-reused-pid.");
+      await runOnce(report, state, "idle-silence", { AGENT_RUN_RETURN_MS: "300" });
+      const stopped = await launcherLines(["--stop", "--report-file", report], { env: env(state, "idle-silence") });
+      if (stopped.code !== 0 || !markerOf(dir)) return `the reused-pid case needs a stopped run: ${JSON.stringify(stopped.out.slice(0, 160))}`;
+      const victim = spawn(process.execPath, ["-e", "setTimeout(() => {}, 20000)"], { stdio: "ignore" });
+      try {
+        fs.rmSync(path.join(dir, "exit"));
+        const oldPid = pidOf(dir);
+        fs.writeFileSync(path.join(dir, "err.txt"), (read(path.join(dir, "err.txt")) ?? "").replace(`pid=${oldPid}`, `pid=${victim.pid}`));
+        const sp = readJson(path.join(dir, "spawn.json"));
+        fs.writeFileSync(path.join(dir, "spawn.json"), JSON.stringify({ ...sp, pid: victim.pid }));
+        const out = await check(dir, report, "");
+        if (out.code !== 3 || out.out.startsWith("HANDBACK=running") || !out.out.startsWith(`HANDBACK=truncated missing=${STATUS_LINES.length} `) || !/^EXIT=\d+$/m.test(out.out))
+          problems.push(`a foreign process on the recorded pid: exit ${out.code}, ${JSON.stringify(out.out.slice(0, 240))}`);
+        if (!alive(victim.pid)) problems.push("the foreign process was signalled");
+      } finally { victim.kill("SIGKILL"); }
+    }
+    // Before the announcement, a report path that is not the spawned one is not answered as this run.
+    {
+      const held = await heldRun("handback-held-foreign.");
+      try {
+        if (!held.held()) return `the held-foreign case measured nothing: spawn ${JSON.stringify(held.spawned)}, pid line ${pidOf(held.dir)}`;
+        const foreign = await check(held.dir, path.join(held.state, "other", "report.json"), "");
+        if (foreign.code !== 2 || !/^REFUSED=handback /m.test(foreign.out) || foreign.out.startsWith("HANDBACK=")) problems.push(`another report path before the announcement: exit ${foreign.code}, ${JSON.stringify(foreign.out.slice(0, 200))}`);
+        const own = held.held() ? await check(held.dir, held.report, "") : null;
+        if (own && (own.code !== 3 || own.out !== "HANDBACK=starting\n")) problems.push(`the owned run before the announcement: exit ${own.code}, ${JSON.stringify(own.out.slice(0, 160))}`);
+      } finally { await releaseHeld(held); }
+    }
     return problems.length === 0 || problems.join("; ");
   });
 

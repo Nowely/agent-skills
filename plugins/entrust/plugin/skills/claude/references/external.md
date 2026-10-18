@@ -49,6 +49,9 @@ user's own allow rules cover it.
 Make, run, read, continue and stop it as the [shared call page](../../orchestrate/references/external.md) says;
 without a plan, `--new` takes `--adapter claude`. What Claude adds:
 
+- In Codex the relay is the shared page's native Luna subagent at `medium` effort
+  ([models](../../codex/references/models.md)); in Claude Code, `entrust:relay`. Never run `--run` from the
+  coordinator's own shell or in the background.
 - A request is a command or a whole tool call ([What each adapter adds](../../orchestrate/references/external.md#what-each-adapter-adds)):
   a Bash call with a timeout or in the background is a tool call too, and an accept restates its whole body.
 - A run launched without a mailbox (a swarm) and a `SAFE_MODE` run deny whatever would ask, and exit 7 when they

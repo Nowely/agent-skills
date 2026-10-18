@@ -173,9 +173,10 @@ orchestrate skill installed beside this one. What Codex adds to it:
 - A worktree agent's work comes back as `worktreeDiffPath` and, for untracked files not ignored,
   `worktreeUntrackedPath`. `worktreePreserved` not null: the tree is the artifact, not a harvest
   ([Worktree ledger and destination](references/environment-and-internals.md#worktree-ledger-and-destination)).
-- After a waiting result or a `RUNNING=` hand-back no call holds the driver: Stop on the card reaches nothing, the
-  pid in `<DIR>/err.txt` does
-  ([Bounding or stopping an agent](references/environment-and-internals.md#bounding-or-stopping-an-agent)).
+- After a waiting result no call holds the driver: Stop on the card reaches nothing, `--stop` does
+  ([Stop an agent](../orchestrate/references/external.md#7-stop-an-agent)), and so does the pid in `<DIR>/err.txt`
+  ([Bounding or stopping an agent](references/environment-and-internals.md#bounding-or-stopping-an-agent)). A
+  `RUNNING=` result is the proxy's to call again; when it never does, the keeper cuts the run.
 
 ## What the user reads
 

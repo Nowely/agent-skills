@@ -14,7 +14,8 @@ The rules for delegating to Claude subagents from a Claude Code session. Orchest
 roles, verification and the return; this page owns how Claude Code runs them. Models for each tier:
 [models.md](references/models.md). The measurements behind these rules:
 [incidents.md](references/incidents.md). A Claude agent the host cannot run natively, or one that must run
-outside this session, is an external run: [external.md](references/external.md).
+outside this session, is an external run: [external.md](references/external.md). Under Codex its relay is a native
+Luna subagent at `medium` effort, never a `--run` from the coordinator's own shell.
 
 A request to make a model the coordinator starts nothing here: answer it with the explicit proxy skill's command,
 `/entrust:proxy <model>` (`$entrust:proxy <model>` in Codex), whose one final confirmation is the only consent

@@ -52,6 +52,7 @@ export async function fakeOpenCode(mode = "normal") {
       if (mode === "slow-doc") await new Promise((resolve) => setTimeout(resolve, 10000));
       return json({ paths });
     }
+    if (p === "/provider" && mode === "slow-provider") await new Promise((resolve) => setTimeout(resolve, 1500));
     if (p === "/provider") return json({ connected: ["router"], all: [
       { id: "router", models: { "deepseek/flash": { name: "Flash", variants: { high: {} }, capabilities: { toolcall: true } }, "glm/flash": { name: "GLM", variants: {} } } },
       { id: "not-connected", models: { hidden: { name: "Hidden", variants: {}, capabilities: {} } } },

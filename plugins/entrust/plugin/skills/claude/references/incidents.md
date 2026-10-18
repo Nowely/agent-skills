@@ -1,6 +1,7 @@
 # Incidents behind the rules
 
-The measurements behind this adapter's rules.
+The measurements behind this adapter's rules. The newest, on the relay: [a relay stopped without a signal](#a-relay-stopped-without-a-signal)
+and [a hand-back that lost its last line](#a-hand-back-that-lost-its-last-line).
 
 ## Waiting for background agents
 
@@ -95,3 +96,27 @@ HTTP 400: `input_schema does not support oneOf, allOf, or anyOf at the top level
 enforces requests versus final_answer. The driver now removes only root combinators from the submission
 copy and validates structured_output against the original schema locally; nested combinators stay. Offline
 regressions reproduce the 400 and reject mixed or empty envelopes. A live post-fix call remains a separate check.
+
+## A relay stopped without a signal
+
+2026-10-18, Codex, two external runs (OpenCode GLM Flash, Claude Haiku), each a hash workload planned for 240 s and
+relayed by a native Luna at `medium` effort. `collaboration.interrupt_agent` on each relay (status running before it)
+left it interrupted, and both external programs went on reporting progress (GLM to its fifth checkpoint at 150.7 s,
+Haiku to its fourth at 120.4 s) until their drivers were signalled by hand; neither was observed to finish, and that
+hand cleanup (exit 3, aborted, partial) is no native Stop. A control with no Entrust in it, a native Luna at `medium`
+running one plain 20-second Node command whose handlers logged SIGINT, SIGTERM and SIGHUP, interrupted after 12 s: the
+command ran to its natural end, 20.1 s, and logged no signal. A click on the card's Stop was asked for twice and not
+observed, so it is neither a pass nor a failure. On an earlier build of the fix, the same interrupt on the same two
+routes followed by the launcher's own `--stop` on the report ended both runs exit 3, aborted and partial (61 and 52
+checkpoints, independently replayed), with every known pid gone, the OpenCode endpoint closed and no hand-made
+signal. The keeper's lease fallback is measured offline only.
+
+## A hand-back that lost its last line
+
+2026-10-18, Codex, native Luna relays of Claude Haiku runs: three hand-backs ended one line early, `REPORT=` missing
+from each, though the launcher prints it last. Two were waiting batches that stopped at `WAITING=` with the request
+body whole; one was a terminal hand-back that stopped at `FILE=exists`. Two other terminal hand-backs of the run
+matched the launcher's lines. A later Luna hand-back of a tool call carried its `input` as a string with `timeout` at
+the top level, where the request has an `input` object; the coordinator approved the original, read whole from the
+report. The launcher's `--handback` compares a copy with the run, and on the earlier build it returned the full
+canonical lines for a deliberately truncated partial.

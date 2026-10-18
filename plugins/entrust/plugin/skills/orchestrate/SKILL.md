@@ -174,7 +174,8 @@ Ask task and review agents for these fields, in text or structured output suppor
     artifacts: paths to the full outputs under the agent's permitted roots
     open:      missing coverage, questions and risks
 
-A proxy hands back the launcher's lines unchanged; read an external worker's complete answer in its report,
+A proxy hands back the launcher's lines unchanged; it is a copy, so `--handback` compares it with the run before you act
+on it ([external.md](references/external.md#4-read-the-result)). Read an external worker's complete answer in its report,
 where `answerPath` replaces a clipped display, never the worker's answer with a summary.
 
 A large result goes into an artifact with a summary retaining every material finding. An artifact

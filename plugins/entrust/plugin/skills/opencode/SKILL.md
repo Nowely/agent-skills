@@ -75,10 +75,12 @@ partial answers, native command outcomes and callback decisions remain useful ev
 The report's `model` is observed attribution; `requestedModel` preserves the selection even after Stop.
 Scope declarations do not configure a sandbox.
 
-Stop the proxy, or signal the adapter driver identified by that invocation's pid line.
-The driver aborts its own sessions, records cancellation and stops its server. A waiting hand-back
-leaves no proxy in flight: start one to regain Stop. An interrupted proxy leaves its driver running:
-signal that driver. Verify the external outcome;
+Where the host delivers Stop on the proxy to its command as a signal, the driver aborts its own sessions, records
+cancellation and stops its server. A waiting hand-back leaves no proxy in flight: start one to regain Stop. A proxy
+the host interrupted without a signal (one measured Codex host did not signal its command) leaves its driver to the keeper, which cuts it when the proxy does not
+call again, and to `--stop --report-file <report>`, which you run once the proxy's task ends interrupted; both are in
+the shared page's [Stop an agent](../orchestrate/references/external.md#7-stop-an-agent), and a hand-made signal on
+the driver's pid is the recovery for what neither reaches. Verify the external outcome;
 a missing report or uncertain cancellation is unknown, never success.
 
 Read [parity.md](references/parity.md) before relying on active clarification, schema delivery,

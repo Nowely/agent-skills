@@ -40,7 +40,10 @@ the coordinator reaches the user only for a decision or authority that is missin
    repeat a mutation whose outcome is unknown. Existing decisions are exclusive and request-bound.
 5. On Stop, interrupt the attached command or signal only the driver bound to this report. Wait for
    its report and check the external outcome. Cancellation acceptance is not proof of stopped work.
-   If this native thread was interrupted without cleanup, the coordinator stops that owned driver.
+   If this native thread was interrupted without cleanup, the coordinator stops that owned driver with
+   `--stop --report-file <report>`, which signals only the process its whole command line proves is the driver
+   of this report; the watcher's heartbeat otherwise lets the keeper cut it when it is never called again
+   ([Stop an agent](external.md#7-stop-an-agent)).
 6. Finish this native turn only at terminal status. Read the full report even after an error.
    Continue the same native thread when the coordinator supplies the next invocation command.
 

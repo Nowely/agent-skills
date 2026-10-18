@@ -236,6 +236,20 @@ test("permission handback contains the full immutable native request", async () 
   const m = mailbox(); const r = await invoke([...m.args, "--pending"]);
   assert.equal(r.code, 0); assert.ok(r.out.includes(m.q.presented)); assert.match(r.out, /TYPE=opencode.permission/);
 });
+test("--handback renders a typed request with the message's own token, and tells a dropped trailer and an altered body from the exact copy", async () => {
+  const m = mailbox(); const report = path.join(m.dir, "report.json");
+  const printed = (await invoke([...m.args, "--pending"])).out.trimEnd();
+  const message = `${printed}\nWAITING=${m.id}\nREPORT=${report}`;
+  const check = (text) => invoke([...m.args, "--handback"], text);
+  const exact = await check(`${message}\n`);
+  assert.equal(exact.code, 0, exact.out + exact.err); assert.equal(exact.out, "HANDBACK=exact\n");
+  const cut = await check(message.split("\n").slice(0, -1).join("\n"));
+  assert.equal(cut.code, 3); assert.match(cut.out, /^HANDBACK=truncated missing=1 first=REPORT=/);
+  const frame = /^CANONICAL<<([0-9a-f]{12})\n([^]*)\nCANONICAL>>\1\n$/m.exec(cut.out);
+  assert.equal(frame?.[2], message);
+  const altered = await check(message.replace("node check.mjs", "node other.mjs"));
+  assert.equal(altered.code, 3); assert.match(altered.out, /^HANDBACK=differs line=\d+\n/);
+});
 test("once approval requires exact body and is published only once", async () => {
   const m = mailbox(); const a = [...m.args, "--decide", m.id, "--accept"];
   const commandOnly = await invoke(a, m.q.payload.metadata.command);
@@ -292,7 +306,7 @@ function fakeCli(url, dir) {
   const stopFile = path.join(dir, "opencode-stopped");
   const startFile = path.join(dir, "opencode-started");
   const script = path.join(bin, "opencode");
-  fs.writeFileSync(script, `#!/usr/bin/env node\nconst fs=require("node:fs");\nfs.writeFileSync(process.env.FAKE_OPENCODE_START_FILE,"started");\nconsole.log("server listening on "+process.env.FAKE_OPENCODE_URL);\nprocess.on("SIGTERM",()=>{fs.writeFileSync(process.env.FAKE_OPENCODE_STOP_FILE,"stopped");process.exit(0)});\nsetInterval(()=>{},1000);\n`, { mode: 0o755 });
+  fs.writeFileSync(script, `#!/usr/bin/env node\nconst fs=require("node:fs");\nfs.writeFileSync(process.env.FAKE_OPENCODE_START_FILE,"started");\nsetTimeout(()=>console.log("server listening on "+process.env.FAKE_OPENCODE_URL),Number(process.env.FAKE_OPENCODE_DELAY_MS||0));\nprocess.on("SIGTERM",()=>{fs.writeFileSync(process.env.FAKE_OPENCODE_STOP_FILE,"stopped");process.exit(0)});\nsetInterval(()=>{},1000);\n`, { mode: 0o755 });
   return { stopFile, env: { PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}`,
     FAKE_OPENCODE_URL: url, FAKE_OPENCODE_START_FILE: startFile, FAKE_OPENCODE_STOP_FILE: stopFile }, startFile };
 }
@@ -1053,5 +1067,63 @@ test("native write resources each need an exact target; one outside the roots is
   assert.match(editScope(scope, { action: "write", resources: [path.join(state, "inv", "approvals", "1-aaaaaaaa.decision.json")] }, cwd, guard).decline, /inside the state directory/);
   assert.match(editScope(scope, { action: "edit", metadata: { filePath: path.join(prot, "new", "plugin.js") } }, cwd, guard).decline, /inside OpenCode's configuration/);
   assert.match(editScope({ roots: [] }, { action: "edit", metadata: { filePath: "x" } }, cwd, guard).decline, /no declared writes scope/);
+});
+// The driver's pid line admits a forwarded Stop, so a Stop that comes before the private server is ready, or before
+// the session exists, must end in a terminal aborted report, with nothing submitted and the server closed.
+const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const PINNED = "MODEL: router/deepseek/flash\n";
+test("Stop before the private server is ready ends in a terminal aborted report with nothing submitted and the server closed", async () => {
+  const s = await fakeOpenCode();
+  const state = tempDir("entrust-opencode-early-");
+  try {
+    const started = path.join(state, "opencode-started");
+    const r = await driverRun(s, { state, headers: PINNED, more: { FAKE_OPENCODE_DELAY_MS: "6000" }, cancelOn: () => fs.existsSync(started) });
+    assert.match(r.err, /^entrust: pid=\d+ identity=\S+ reportPath=/m, "the Stop must come after the announcement");
+    assert.equal(r.code, 3, `exit ${r.code} signal ${r.signal}: ${r.err}`);
+    assert.equal(r.report?.exitCode, 3); assert.equal(r.report.turnStatus, "aborted"); assert.equal(r.report.partial, true);
+    assert.equal(r.report.receiptOk, false); assert.equal(r.report.ok, false);
+    assert.equal(r.report.model, null); assert.equal(r.report.sessionID, null);
+    assert.equal(r.report.requestedModel, "router/deepseek/flash");
+    assert.deepEqual(r.report.commands, []);
+    assert.match(r.report.cancellation.reason, /SIGTERM/); assert.equal(r.report.cancellation.signal, "SIGTERM");
+    assert.equal(s.prompts, 0); assert.equal(s.calls.some((c) => c.path.endsWith("/prompt_async")), false);
+    assert.equal(fs.existsSync(r.stopFile), true, "the private server it had spawned was not closed");
+  } finally { await s.close(); }
+});
+test("Stop before the session exists, with the server ready, ends in a terminal aborted report and creates no session", async () => {
+  const s = await fakeOpenCode("slow-provider");
+  const state = tempDir("entrust-opencode-early-");
+  try {
+    const r = await driverRun(s, { state, headers: PINNED, cancelOn: () => s.calls.some((c) => c.path === "/provider") });
+    assert.equal(r.code, 3, `exit ${r.code} signal ${r.signal}: ${r.err}`);
+    assert.equal(r.report.turnStatus, "aborted"); assert.equal(r.report.partial, true); assert.equal(r.report.receiptOk, false);
+    assert.equal(r.report.model, null); assert.equal(r.report.sessionID, null); assert.equal(r.report.requestedModel, "router/deepseek/flash");
+    assert.equal(s.calls.some((c) => c.method === "POST" && c.path === "/session"), false, "a session was created after the Stop");
+    assert.equal(s.prompts, 0); assert.equal(fs.existsSync(r.stopFile), true);
+  } finally { await s.close(); }
+});
+test("one official --stop at the OpenCode startup boundary returns the terminal lines, and --handback recovers them exactly", async () => {
+  const s = await fakeOpenCode();
+  const state = tempDir("entrust-opencode-early-launch-");
+  const report = path.join(state, "run", "report.json"), agent = path.join(state, "run", "agent");
+  const cli = fakeCli(s.url, state);
+  const env = { ENTRUST_STATE_DIR: state, ...cli.env, FAKE_OPENCODE_DELAY_MS: "8000" };
+  let run = null;
+  try {
+    const made = await invoke([ENTRY, "--new", "--report-file", report], prompt(PINNED), env);
+    assert.equal(made.code, 0, made.out + made.err);
+    run = spawnNode([ENTRY, "--run", "--report-file", report], { env, killAfterMs: 60000 });
+    for (const until = Date.now() + 10000; Date.now() < until && !fs.existsSync(cli.startFile); await sleepMs(20)) {}
+    assert.equal(fs.existsSync(cli.startFile), true, "the driver never started its server");
+    assert.match(fs.readFileSync(path.join(agent, "err.txt"), "utf8"), /^entrust: pid=\d+ identity=\S+ reportPath=/m, "not announced");
+    const stopped = await invoke([ENTRY, "--stop", "--report-file", report], "", env);
+    const lines = stopped.out.split("\n").filter(Boolean);
+    assert.equal(stopped.code, 0, stopped.out + stopped.err);
+    assert.equal(lines.length, 9, stopped.out); assert.equal(lines[0], "DRIVER_EXIT=3"); assert.equal(lines[2], "EXIT=3");
+    assert.match(lines[6], /^RECEIPT=turnStatus=aborted receiptOk=false model=none stopped=stop$/);
+    assert.equal(s.prompts, 0); assert.equal(fs.existsSync(cli.stopFile), true);
+    const back = await invoke([ENTRY, "--handback", "--report-file", report], stopped.out, env);
+    assert.equal(back.code, 0, back.out); assert.equal(back.out, "HANDBACK=exact\n");
+  } finally { if (run?.child.exitCode === null) run.child.kill("SIGTERM"); await run?.done; await s.close(); }
 });
 process.exitCode = summarize(await runCases(cases), cases.length);

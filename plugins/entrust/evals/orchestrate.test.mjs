@@ -136,5 +136,20 @@ test("the shipped schema implements the shared return",
       && schema.additionalProperties === false;
   });
 
+test("every entry point that runs an external adapter under Codex names the Luna medium relay, and none offers a hand-made signal as the Stop",
+  "2026-10-18: a coordinator not told where the relay is run the launcher itself, where no card could be stopped; and a Stop that read `signal that driver` was the manual cleanup the user rejected as the main path",
+  () => {
+    const bad = [];
+    for (const rel of ["skills/claude/SKILL.md", "skills/claude/references/external.md", "skills/opencode/SKILL.md"]) {
+      const text = fs.readFileSync(path.join(ROOT, rel), "utf8");
+      if (!/Luna[^.]*`medium`/.test(text)) bad.push(`${rel} does not name the Luna relay at medium effort`);
+      if (/signal that driver/.test(text)) bad.push(`${rel} offers a hand-made signal as the Stop`);
+    }
+    const shared = fs.readFileSync(path.join(dir, "references/external.md"), "utf8");
+    if (!/never run it from your own shell/.test(shared)) bad.push("the shared page does not forbid a root --run");
+    if (!shared.includes("--stop") || !shared.includes("--handback")) bad.push("the shared page lacks --stop or --handback");
+    return bad.length === 0 || bad.join("; ");
+  });
+
 const failed = await runCases(CASES);
 process.exit(summarize(failed, CASES.length));

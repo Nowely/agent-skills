@@ -839,7 +839,7 @@ function buildReport(ctx, base) {
     turnIds: [...(ctx.invocationInputs ?? [])],
     server: { url: ctx.server?.url ?? null, version: ctx.server?.version ?? null },
     model: base.model ?? null,
-    requestedModel: ctx.ref ? modelKey(ctx.ref) : null,
+    requestedModel: ctx.ref ? modelKey(ctx.ref) : (ctx.requestedModel ?? null),
     variant: ctx.variant ?? null,
     turnStatus: base.turnStatus ?? null,
     receiptOk: base.receiptOk ?? false,
@@ -911,6 +911,9 @@ async function execute(opts, parsed) {
     abortRequested: false, admission: "pending", lastProgressMs: now(),
   };
   ctx.stateDir = stateDirOf(ctx);
+  // What the prompt named, kept apart from what was observed: an early cut has no resolved model, and the
+  // selection is still the run's requested model. An inherited one is resolved later, and stays null until then.
+  if (!parsed.model.inherit) ctx.requestedModel = modelKey({ providerID: parsed.model.providerID, modelID: parsed.model.modelID });
 
   // Claim the report path exclusively, before anything can refuse, so no refusal publishes over an earlier
   // report. A refusal of the claim itself publishes nothing. The claim's pid tells a live run from a dead one.
@@ -919,6 +922,32 @@ async function execute(opts, parsed) {
     catch (e) { return e.code === "EEXIST" ? `${ctx.report} already exists, or is a symbolic link` : `could not be published at ${ctx.report}`; }
   })();
   if (claim) { process.stderr.write(`entrust: refused: ${claim}\n`); return EXIT.USAGE; }
+
+  // The Stop latch, installed before the pid line that admits a forwarded Stop. Until the owned resources exist
+  // (`ownedReady`: a client, a session, its descendants enumerated) a Stop only records its reason and aborts
+  // the startup in flight; each startup boundary below then ends the run in a terminal aborted report, with no
+  // prompt ever submitted. Once they exist it stops them as before. Idempotent.
+  ctx.startup = new AbortController();
+  const stop = (reason) => {
+    if (ctx.abortRequested) return ctx.stopping ?? Promise.resolve();
+    ctx.abortRequested = true;
+    ctx.stopDuringAdmission = Boolean(ctx.admissionInFlight);
+    if (ctx.ownedReady) {
+      ctx.cancellation = { reason, signal: ctx.signal ?? null, abort: [], observed: "unknown" };
+      ctx.stopping = stopOwned(ctx);
+    } else {
+      ctx.cancellation = { reason, signal: ctx.signal ?? null, abort: [], observed: "idle", promptSubmitted: false, beforeAdmission: true };
+      ctx.stopping = Promise.resolve();
+      ctx.startup.abort();
+    }
+    return ctx.stopping;
+  };
+  ctx.onSignal = (sig) => { ctx.signal = sig; stop(`signal ${sig}`).catch(() => {}); };
+  for (const s of SIGNALS) process.on(s, ctx.onSignal);
+  ctx.stop = stop;
+  const EARLY = "the run was cancelled before its prompt was admitted";
+  // A refusal after a captured Stop is the Stop: the run ends cancelled, not refused.
+  const bail = (reason, code, extra) => (ctx.abortRequested ? cutExit(ctx, EARLY) : fail(ctx, reason, code, extra));
 
   // The pid line the launcher uses to own this run and to forward a Stop.
   process.stderr.write(`entrust: pid=${process.pid} identity=${ctx.invocationId} reportPath=${ctx.report}\n`);
@@ -935,10 +964,11 @@ async function execute(opts, parsed) {
   ctx.transcriptPath = sidecar(ctx, "transcript.json");
 
   try {
-    ctx.localServer = await startLocalServer({ cwd: process.cwd() });
+    ctx.localServer = await startLocalServer({ cwd: process.cwd(), signal: ctx.startup.signal });
     ctx.config = ctx.localServer.config;
     ctx.client = clientFor(ctx, null); ctx.server = await ctx.client.probe();
-  } catch (e) { return fail(ctx, `the OpenCode server could not be started: ${e.message}`, EXIT.TRANSPORT); }
+  } catch (e) { return bail(`the OpenCode server could not be started: ${e.message}`, EXIT.TRANSPORT); }
+  if (ctx.abortRequested) return cutExit(ctx, EARLY);
   ctx.routes = ROUTES;
   const missing = routeError(ctx);
   if (missing) return fail(ctx, missing, EXIT.USAGE);
@@ -969,6 +999,7 @@ async function execute(opts, parsed) {
 
   // Resume, if asked, before any new session is made.
   const resumed = await resolveResume(ctx);
+  if (ctx.abortRequested) return cutExit(ctx, EARLY);
   if (resumed.busy) return fail(ctx, `session ${resumed.sessionID} is busy; a live invocation is not relaunched`, EXIT.BUSY);
   if (resumed.error) return fail(ctx, resumed.error, EXIT.USAGE);
   // The session keeps the permission rules it was created with, so a continuation keeps its rights: a resume
@@ -983,6 +1014,7 @@ async function execute(opts, parsed) {
 
   // Model: pinned by the plan, inherited by a resume, else the first recent model. No fallback.
   const model = await resolveModel(ctx);
+  if (ctx.abortRequested) return cutExit(ctx, EARLY);
   if (model.error) return fail(ctx, model.error, EXIT.USAGE);
   ctx.ref = model.ref; ctx.variant = model.variant;
 
@@ -992,16 +1024,18 @@ async function execute(opts, parsed) {
     try {
       session = await ctx.client.call("POST", ctx.routes.create,
         { title: `entrust ${ctx.invocationId}`, permission: sessionPermissions(ctx.scope) });
-    } catch (e) { return fail(ctx, `could not create an OpenCode session: ${e.message}`, EXIT.MODEL); }
+    } catch (e) { return bail(`could not create an OpenCode session: ${e.message}`, EXIT.MODEL); }
     if (!session?.id) return fail(ctx, "the server returned no session id", EXIT.MODEL);
     ctx.sessionID = session.id;
     const rules = rulesProblem(session, ctx.scope);
-    if (rules) return fail(ctx, rules, EXIT.TRANSPORT);
+    if (rules) return bail(rules, EXIT.TRANSPORT);
   }
   writeSessionRecord(ctx);
+  if (ctx.abortRequested) return cutExit(ctx, EARLY);
 
   // The descendants that already existed belong to earlier invocations and are never aborted.
   await updateOwned(ctx);
+  if (ctx.abortRequested) return cutExit(ctx, EARLY);
   ctx.preexisting = new Set(ctx.owned);
   ctx.invocationSessions = new Set([ctx.sessionID]);
   if (!ctx.discoveryComplete)
@@ -1014,17 +1048,9 @@ async function execute(opts, parsed) {
     if (sid && ctx.invocationSessions?.has(sid)) ctx.lastProgressMs = now();
   }, ctx.eventsAbort.signal).catch(() => {});
 
-  const stop = (reason) => {
-    if (ctx.abortRequested) return ctx.stopping ?? Promise.resolve();
-    ctx.abortRequested = true;
-    ctx.stopDuringAdmission = Boolean(ctx.admissionInFlight);
-    ctx.cancellation = { reason, signal: ctx.signal ?? null, abort: [], observed: "unknown" };
-    ctx.stopping = stopOwned(ctx);
-    return ctx.stopping;
-  };
-  ctx.onSignal = (sig) => { ctx.signal = sig; stop(`signal ${sig}`).catch(() => {}); };
-  for (const s of SIGNALS) process.on(s, ctx.onSignal);
-  ctx.stop = stop;
+  // From here a Stop stops the owned session and its descendants, and no prompt is sent after one.
+  ctx.ownedReady = true;
+  if (ctx.abortRequested) return cutExit(ctx, EARLY);
 
   ctx.rootInputID = id("msg");
   ctx.invocationInputs.add(ctx.rootInputID);

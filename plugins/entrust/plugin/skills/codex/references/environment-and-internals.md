@@ -261,7 +261,9 @@ does not say:
   handler entirely and leaves the keeper computing 128 plus the signal number for the marker (137 for
   `SIGKILL`), and a request still open at that moment is left `ORPHANED` in the mailbox, which `--pending`
   reports once the marker exists.
-- To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or `kill -TERM` the pid on the
+- To stop an agent, stop its wrapper — Stop on the agent map or `TaskStop` — or `--stop` it through the launcher
+  ([Stop an agent](../../orchestrate/references/external.md#7-stop-an-agent): it checks the process is this run's
+  driver before it signals), or `kill -TERM` the pid on the
   driver's pid line in `DIR/err.txt`, `entrust: pid=<n> identity=… reportPath=…`; the driver then also sweeps
   the codex app-server's own process group and publishes the report as the bullet above says. A command the
   agent was running inside the sandbox ends with it (measured once, 2026-09-29); a command run after an
