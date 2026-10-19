@@ -40,7 +40,7 @@ prints, and reads the line the codex page injects to run it.
 
 `adapter-status.test.mjs` checks raw adapter-report collection, `--skip codex`, and that discovery
 does not accept host JSON or load adapter skill prose. OpenCode status tests assert that preflight
-returns at most two saved recent references, never requests model catalogs, and never starts a local
+returns at most three saved recent references, never requests model catalogs, and never starts a local
 server. Codex JSON status retains account limit windows without requesting `model/list`; its recent
 model source is reported as unsupported.
 

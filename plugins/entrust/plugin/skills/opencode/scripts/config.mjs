@@ -12,7 +12,7 @@ export function splitModel(value) {
 export function modelStateFile(env = process.env) {
   return env.ENTRUST_OPENCODE_MODEL_STATE || path.join(env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state"), "opencode", "model.json");
 }
-export function recentModels({ limit = 2, env = process.env } = {}) {
+export function recentModels({ limit = 3, env = process.env } = {}) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("model limit must be 1..100");
   const file = modelStateFile(env);
   let state;

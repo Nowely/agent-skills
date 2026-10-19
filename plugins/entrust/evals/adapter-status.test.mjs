@@ -48,11 +48,12 @@ add("the CLI applies --skip codex without host JSON or a Codex probe", async () 
   assert.equal(child.killed, false);
 });
 
-add("OpenCode's status carries its two saved recent refs, with no server to probe", async () => {
+add("OpenCode's status carries its three saved recent refs, with no server to probe", async () => {
   const state = tempDir("entrust-adapter-status-recent-");
   const modelState = path.join(state, "model.json");
   fs.writeFileSync(modelState, JSON.stringify({ recent: [
     { providerID: "router", modelID: "first" }, { providerID: "router", modelID: "second" }, { providerID: "router", modelID: "third" },
+    { providerID: "router", modelID: "fourth" },
   ] }));
   const { done } = spawnNode([SCRIPT, "--skip", "codex"], { stdio: ["ignore", "pipe", "pipe"], env: {
     ENTRUST_OPENCODE_MODEL_STATE: modelState,
@@ -62,7 +63,7 @@ add("OpenCode's status carries its two saved recent refs, with no server to prob
   const report = JSON.parse(r.out).adapters.find((adapter) => adapter.id === "opencode").result;
   assert.equal(report.status, "local_unprobed");
   assert.equal(report.recent.status, "available");
-  assert.deepEqual(report.recent.models.map((model) => model.modelID), ["first", "second"]);
+  assert.deepEqual(report.recent.models.map((model) => model.modelID), ["first", "second", "third"]);
 });
 
 add("the status collector has no host-context input or adapter skill loading", () => {

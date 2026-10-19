@@ -34,7 +34,7 @@ rule. A model mentioned only for information or discussion does not request a wo
 
 ## Select and launch
 
-1. Run `node <skill-dir>/scripts/status.mjs`. Status is passive: it reads at most two saved recent
+1. Run `node <skill-dir>/scripts/status.mjs`. Status is passive: it reads at most three saved recent
    model references and reports `local_unprobed`; it never starts a server or requests a model
    catalogue. Model availability remains unknown until the launch path validates the exact selection.
 2. Choose `MODEL: inherit` only when the user did not name a model family: it selects the first recent

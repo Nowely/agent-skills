@@ -3,6 +3,14 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- **OpenCode status lists three saved recent models instead of two.** A model family the user names is found when it
+  is among the three most recent references, so switching between three families no longer reports one as unresolved.
+  `MODEL: inherit` still runs the first recent model.
+
 ## 0.30.1 — 2026-10-15
 
 ### Fixed

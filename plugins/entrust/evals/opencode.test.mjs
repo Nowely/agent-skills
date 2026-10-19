@@ -32,10 +32,12 @@ function recent(state) {
   fs.writeFileSync(file, JSON.stringify(state));
   return { ENTRUST_OPENCODE_MODEL_STATE: file };
 }
-test("recent discovery returns only the first two distinct saved models and preserves router slashes", () => {
+test("recent discovery returns only the first three distinct saved models and preserves router slashes", () => {
   const env = recent({ recent: [{ providerID: "router", modelID: "deepseek/flash" }, { providerID: "router", modelID: "deepseek/flash" },
-    { providerID: "router", modelID: "z-ai/glm" }, { providerID: "router", modelID: "other" }], variant: { "router/deepseek/flash": "high" } });
-  assert.deepEqual(recentModels({ env }), [{ providerID: "router", modelID: "deepseek/flash", variant: "high" }, { providerID: "router", modelID: "z-ai/glm", variant: null }]);
+    { providerID: "router", modelID: "z-ai/glm" }, { providerID: "router", modelID: "other" }, { providerID: "router", modelID: "past-limit" }],
+    variant: { "router/deepseek/flash": "high" } });
+  assert.deepEqual(recentModels({ env }), [{ providerID: "router", modelID: "deepseek/flash", variant: "high" },
+    { providerID: "router", modelID: "z-ai/glm", variant: null }, { providerID: "router", modelID: "other", variant: null }]);
   assert.deepEqual(splitModel(model), { providerID: "router", modelID: "deepseek/deepseek-flash" });
 });
 test("malformed recent refs are skipped and malformed containers refuse", () => {
@@ -886,15 +888,15 @@ test("incomplete initial descendants refuse admission and preserve unknown cance
     assert.equal(r.report.cancellation.observed, "unknown");
   } finally { await s.close(); }
 });
-test("JSON status returns at most two saved recent refs, and reaches no server", async () => {
+test("JSON status returns at most three saved recent refs, and reaches no server", async () => {
   const r = await invoke([STATUS, "--format", "json"], "", {
     ...recent({ recent: [{ providerID: "router", modelID: "deepseek/flash" }, { providerID: "router", modelID: "glm/flash" },
-      { providerID: "router", modelID: "not-in-top-two" }], variant: { "router/deepseek/flash": "high" } }),
+      { providerID: "router", modelID: "kimi/flash" }, { providerID: "router", modelID: "not-in-top-three" }], variant: { "router/deepseek/flash": "high" } }),
   });
   assert.equal(r.code, 0, r.out + r.err);
   const data = JSON.parse(r.out);
   assert.equal(data.adapter, "opencode"); assert.equal(data.configured, true); assert.equal(data.status, "local_unprobed");
-  assert.deepEqual(data.recent.models.map((m) => `${m.providerID}/${m.modelID}`), ["router/deepseek/flash", "router/glm/flash"]);
+  assert.deepEqual(data.recent.models.map((m) => `${m.providerID}/${m.modelID}`), ["router/deepseek/flash", "router/glm/flash", "router/kimi/flash"]);
   assert.equal(data.recent.models[0].variant, "high");
   assert.equal(data.modelAvailability, "unknown"); assert.equal(data.usage.status, "unknown");
 });

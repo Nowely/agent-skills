@@ -1033,7 +1033,7 @@ async function resolveModel(ctx) {
     }
     else {
       let recent = [];
-      try { recent = recentModels({ limit: 2 }); } catch (e) { return { error: e.message }; }
+      try { recent = recentModels({ limit: 1 }); } catch (e) { return { error: e.message }; }
       if (!recent.length) return { error: "no recent model is recorded; set MODEL to provider/model" };
       ref = { providerID: recent[0].providerID, modelID: recent[0].modelID };
       if (!variant && recent[0].variant) variant = recent[0].variant;

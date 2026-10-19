@@ -14,7 +14,7 @@ for (let i = 0; i < args.length; i += 2) {
 
 function recentState() {
   try {
-    const models = recentModels({ limit: 2 });
+    const models = recentModels();
     return { status: models.length ? "available" : "empty", source: "saved_recent", models };
   } catch { return { status: "unavailable", source: "saved_recent", models: [] }; }
 }
