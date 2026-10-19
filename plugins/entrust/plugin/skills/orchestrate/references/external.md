@@ -93,7 +93,11 @@ The agent's directory, `<DIR>`, is `agent/` beside `<REPORT>`.
 
 The run needs a proxy: a small agent of the host that runs one command, `--run`, waits for it, and hands back
 what it printed. The proxy never writes the prompt, never decides a request and never reads the result; that is
-your work. A native proxy task can serve more than one relay turn when the host's follow-up mechanism delivers a
+your work. Every `--run` goes through such a proxy: never run it from your own shell, in the foreground or the
+background, because only the proxy's card can be stopped. Its message is a hand copy of the result; step 4's
+`--handback` against the run, not the copy, is what you act on.
+
+A native proxy task can serve more than one relay turn when the host's follow-up mechanism delivers a
 new instruction. If its shell call returns a session id without an exit code, keep reading that same call; do not
 start another proxy. After hand-back, reuse the native task for a clearly specified next command when the host
 supports a follow-up turn, and verify that turn's command or receipt. Use a fresh task when the host cannot provide
@@ -224,6 +228,28 @@ request and its outcome). The adapter's page lists the rest.
 | 10 | busy: another run holds the directory, or the run to continue has not finished | wait for it, then run again |
 | 13 | the answer does not fit `OUTPUT_SCHEMA:` | continue once asking for the fields |
 
+The proxy's message is a copy a small model made, and it has dropped the last line (`REPORT=`) in three hand-backs
+of one measured run ([measured](../../claude/references/incidents.md#a-hand-back-that-lost-its-last-line)). Before you act on one, have the launcher compare it with the run, in a quoted heredoc on
+a delimiter you make up that is no line of the message:
+
+    node "<orchestrate>/scripts/agent-run.mjs" --handback --report-file "<REPORT>" <<'<DELIMITER>'
+    <the proxy's message, as it came>
+    <DELIMITER>
+
+`HANDBACK=exact` (exit 0): the copy is the launcher's. Anything else (exit 3) prints what it should have been
+between `CANONICAL<<TOKEN` and `CANONICAL>>TOKEN`, after `HANDBACK=truncated missing=<n> first=<line>` (a dropped
+trailer) or `HANDBACK=differs line=<n>`: act on those lines, or on `--status` or `--pending`, which print the same
+lines again, never on the copy. With no lines to compare it prints one word (exit 3): `running`, a process shown to be the
+run's driver, by its whole command line and owner, is alive and has no result or request to hand back, so the proxy
+ended early and you start it again (step 3); `starting`, the same for a driver spawned and not yet announced;
+`unknown`, a claim file with no driver recorded, or a process whose identity cannot be read, with a `NOTE=`: nothing
+confirms a live run, so read `--status`, or run the same `--run` again through the proxy; `unstarted`, nothing was ever launched for this report, so a
+refusal the message shows (the sandbox's, say) was printed by a call that wrote nothing and is not confirmed: put its
+cause right and run that call again through the proxy, never read it as a started run. A driver that is gone, or whose
+pid another program holds now, compares with the lines the run's own call prints, its report included. A request body is restated from the canonical lines; the accept still
+compares it byte for byte. No copy is promised lossless: a small model has dropped a trailer and has rewritten a
+tool call's body.
+
 `FILE=missing` or `PATH=taken`: read `RECEIPT=` first. An `approvals=` whose first number is not 0 means a command
 ran with your rights and no report says how it ended: read `<DIR>/approvals/`, check what the command touched, and
 never relaunch a prompt that would ask for the same thing. `<DIR>/err.txt` holds the reason.
@@ -290,9 +316,32 @@ new external invocation continuing that worker; Claude forks the parent session 
 
 ## 7. Stop an agent
 
-In Claude Code, stop its proxy (Stop on its card). Anywhere, send `kill -TERM` to the pid on the first line of
-`<DIR>/err.txt`, which reads `entrust: pid=<n> identity=… reportPath=…`. The agent's turn is cut and its report
-is still written. Declining a request does not stop the run.
+Stop on the proxy's card. Where the host delivers it as a signal (Claude Code sends SIGTERM to the proxy's
+command), the launcher forwards it to the driver: the turn is cut and the report written, with its partial.
+
+A host may stop the proxy with no signal at all. On the Codex host measured on 2026-10-18, its native interrupt of
+a task left a plain 20-second command running to its end, with no Entrust in it; a click on the card was not
+observed, so the card's own Stop is not established either way
+([measured](../../claude/references/incidents.md#a-relay-stopped-without-a-signal)). When the host's own task state
+says the proxy ended interrupted, cancelled or closed and the run is not over:
+
+- Run `node "<orchestrate>/scripts/agent-run.mjs" --stop [--why "<why>"] --report-file "<REPORT>"`. It is the
+  explicit bridge, and the primary one. It signals the driver once, only after the process's whole command line
+  proves to be the one the keeper spawned for this report, and prints the nine lines with `stopped=stop`. A driver
+  spawned but not yet announced is waited for up to 10 s, so a Stop during startup is not lost; a run that is over
+  is only read.
+- Otherwise the keeper ends it. A run whose proxy was last seen attached or returning with `RUNNING=` and has not
+  called again 180 s later is cut as a Stop would, and `RECEIPT=` reads `stopped=relay-lost`. The interrupted call
+  keeps pulsing until its own 570 s return, so with normal scheduling this takes up to 570 s plus 180 s, 750 s; a
+  machine that slept restarts the lease at the wake. A request waiting on a
+  decision, and a run handed back to you, are never on that clock: they stay yours, as does a run nobody attached.
+
+Read `turnStatus` and `cancellation` in the report: an acceptance is not proof the work stopped, and only the
+report and the process show it. `<DIR>/cancel.json` says who asked for the cut. `<DIR>/lifecycle.jsonl` records
+each call's attach, return and hand-back, and each signal that reached a `--run` with whether it tried to forward
+it; an attempt is not a delivery. `kill -TERM` on the pid on the first line of `<DIR>/err.txt` (`entrust: pid=<n>
+identity=… reportPath=…`) stays the recovery for a run no command can reach; its report shows only the driver's own
+cancellation, and a pid read from a stale file is yours to verify. Declining a request does not stop the run.
 
 ## 8. The budget
 
@@ -300,11 +349,17 @@ Every agent is bounded three ways; none is set in the prompt.
 
 | | Codex | OpenCode | Claude |
 | --- | --- | --- | --- |
-| silence | 15 minutes | 10 minutes; a session its server reports busy is not silent | — |
+| silence | 15 minutes | 10 minutes; a session its server reports busy is not silent | 15 minutes without a recognized event of its stream |
 | volume | 1,000 commands | 1,000 commands | 1,000 tool calls |
-| wall clock | none | 30 minutes | 30 minutes |
+| wall clock | none unless `--timeout` declares one | none unless `--timeout` declares one | none unless `--timeout` declares one |
 
-Silence and the wall clock stand still while a request waits for you. A cut is exit 3.
+A relay the host stopped without a signal is bounded by step 7, about 750 s from the interrupt under normal scheduling, not by these.
+
+Silence stands still while a request waits for you; on every adapter it starts again in full once the last
+request is decided (OpenCode: from the decision the driver observes; a definite native response to it counts as progress). A declared wall clock stands still through the wait on OpenCode and Claude, which count only the run's
+own work (OpenCode ends the wait at the decision, so the native call that follows is work); a declared Codex wall clock keeps running and declines the request still open when it cuts. A cut is
+exit 3. While a tool runs in a Claude run's main conversation, Claude Code writes a progress heartbeat every 30
+seconds; a tool inside a subagent writes none, and how long a healthy run stays quiet is not measured.
 
 ## 9. What still differs by adapter
 

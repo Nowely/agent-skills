@@ -5,7 +5,7 @@ description: >-
   verify independently and synthesise their evidence while keeping the main context small.
 disable-model-invocation: true
 metadata:
-  version: "0.30.1"
+  version: "0.31.0"
 license: MIT
 ---
 
@@ -18,8 +18,8 @@ the server connection, model selection, session continuation and callbacks, and
 [claude](../claude/references/external.md) for an external Claude run, on a host without Claude subagents
 or outside this session. Every external worker is made, run, read and continued the same way, as
 [external.md](references/external.md) says. A proxy relays each `--run` of an external worker ([external.md](references/external.md#3-run-it));
-when the user makes an external model the coordinator, this conversation becomes its proxy
-([main-proxy.md](references/main-proxy.md)) and keeps one attached call to it ([proxy.md](references/proxy.md)). Do not load adapter skill text for capability discovery; use
+when the user switches to an external coordinator with the explicit proxy skill and confirms it, this conversation
+becomes its proxy ([main-proxy.md](references/main-proxy.md)) and keeps one attached call to it ([proxy.md](references/proxy.md)). Do not load adapter skill text for capability discovery; use
 the capability snapshot below, then load only the selected worker's adapter.
 
 ## Your own hands
@@ -174,7 +174,8 @@ Ask task and review agents for these fields, in text or structured output suppor
     artifacts: paths to the full outputs under the agent's permitted roots
     open:      missing coverage, questions and risks
 
-A proxy hands back the launcher's lines unchanged; read an external worker's complete answer in its report,
+A proxy hands back the launcher's lines unchanged; it is a copy, so `--handback` compares it with the run before you act
+on it ([external.md](references/external.md#4-read-the-result)). Read an external worker's complete answer in its report,
 where `answerPath` replaces a clipped display, never the worker's answer with a summary.
 
 A large result goes into an artifact with a summary retaining every material finding. An artifact

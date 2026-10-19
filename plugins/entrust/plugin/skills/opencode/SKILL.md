@@ -1,14 +1,13 @@
 ---
 name: opencode
 description: >-
-  Runs OpenCode workers and an OpenCode model as the main coordinator: launches, continues and stops
-  workers, answers their permission and question callbacks, and picks a recent model. Use when the user asks
+  Runs OpenCode workers: launches, continues and stops workers, answers their permission and question callbacks, and picks a recent model. Use when the user asks
   for OpenCode or for a model outside native Codex and Claude, to call or pool (“Позови DeepSeek, GLM”, “Use
-  deepseek, glm in pool”, “Задействуй модели OpenCode”) or to make it the coordinator (“Прокси на GLM”), even
-  before the task is stated. Claude-family coordinators use the claude adapter; ordinary native
+  deepseek, glm in pool”, “Задействуй модели OpenCode”), even before the task is stated. A request to make a
+  model the coordinator (“Прокси на GLM”) is answered with the explicit proxy command; ordinary native
   Codex/Claude delegation uses native agents.
 metadata:
-  version: "0.30.1"
+  version: "0.31.0"
 license: MIT
 ---
 
@@ -19,10 +18,10 @@ own session. Continuing a worker reuses that session under a fresh report path.
 
 ## Route named models
 
-An affirmative “Прокси на <model>” for an OpenCode-served model makes it the coordinator and the main conversation
-its proxy: follow orchestrate's [main proxy mode](../orchestrate/references/main-proxy.md), with this
-adapter as the coordinator's transport. Claude/Opus/Sonnet/Fable coordinator choices load
-[claude](../claude/SKILL.md) instead. An ordinary request such as “Позови <model>: проверь diff”
+A request to make a model the coordinator (“Прокси на <model>”) starts nothing here: the explicit proxy skill,
+`/entrust:proxy` (`$entrust:proxy` in Codex), owns that switch and its one confirmation, and it activates Claude
+coordinators only, since no OpenCode coordinator acts only through the host yet
+([main proxy mode](../orchestrate/references/main-proxy.md)). An ordinary request such as “Позови <model>: проверь diff”
 delegates one worker and follows the launch steps below.
 
 When the user asks to call, use or include a named model outside Codex and Claude in an agent pool, route
@@ -76,10 +75,12 @@ partial answers, native command outcomes and callback decisions remain useful ev
 The report's `model` is observed attribution; `requestedModel` preserves the selection even after Stop.
 Scope declarations do not configure a sandbox.
 
-Stop the proxy, or signal the adapter driver identified by that invocation's pid line.
-The driver aborts its own sessions, records cancellation and stops its server. A waiting hand-back
-leaves no proxy in flight: start one to regain Stop. An interrupted proxy leaves its driver running:
-signal that driver. Verify the external outcome;
+Where the host delivers Stop on the proxy to its command as a signal, the driver aborts its own sessions, records
+cancellation and stops its server. A waiting hand-back leaves no proxy in flight: start one to regain Stop. A proxy
+the host interrupted without a signal (one measured Codex host did not signal its command) leaves its driver to the keeper, which cuts it when the proxy does not
+call again, and to `--stop --report-file <report>`, which you run once the proxy's task ends interrupted; both are in
+the shared page's [Stop an agent](../orchestrate/references/external.md#7-stop-an-agent), and a hand-made signal on
+the driver's pid is the recovery for what neither reaches. Verify the external outcome;
 a missing report or uncertain cancellation is unknown, never success.
 
 Read [parity.md](references/parity.md) before relying on active clarification, schema delivery,

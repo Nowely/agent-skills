@@ -22,7 +22,10 @@ import {
 } from "./contract.mjs";
 
 const POLL_MS = 900;
-const DEFAULT_TIMEOUT_S = 1800;
+// No wall clock unless the caller declares one, as a Codex and a Claude agent since 184bc339; silence and volume bound
+// a run whose caller sized nothing. 600 s is this adapter's own idle default, kept: OpenCode reports busy sessions, so
+// its silence is measured against the server, not the stream alone.
+const DEFAULT_TIMEOUT_S = 0;
 const DEFAULT_IDLE_S = 600;
 // The volume bound every adapter has, as Codex's 1,000 commands.
 const DEFAULT_MAX_COMMANDS = 1000;
@@ -38,9 +41,12 @@ const USAGE = `driver — run one OpenCode invocation for the shared entrust lau
                   [--timeout seconds] [--idle-timeout seconds] [--max-commands N]
       Start a private local server, run one selected invocation and publish
       the report JSON to stdout and exclusively to the report path. No overwrite.
-      --timeout is the wall clock (default ${DEFAULT_TIMEOUT_S}s), --idle-timeout the no-progress
-      clock (default ${DEFAULT_IDLE_S}s), --max-commands a cap on executed bash commands
-      (default ${DEFAULT_MAX_COMMANDS}, 0 unlimited).
+      --timeout is a wall clock of S seconds of work, declared only by the caller (default ${DEFAULT_TIMEOUT_S}: none);
+      --idle-timeout the no-progress clock (default ${DEFAULT_IDLE_S}s, 0 disables); --max-commands a cap on executed
+      bash commands (default ${DEFAULT_MAX_COMMANDS}, 0 unlimited). Both clocks stand still while a request waits for its
+      decision, as the driver observes it, and silence starts again in full from the decision. A definite native response
+      to the reply, a 4xx included, is liveness, not proof the answer was applied. The two clocks take whole seconds,
+      --max-commands a whole count.
   node driver.mjs --help
 `;
 
@@ -52,6 +58,9 @@ const now = () => Date.now();
 const isRegularFile = (p) => { try { return fs.statSync(p).isFile(); } catch { return false; } };
 
 const fillRoute = (tpl, params) => tpl.replace(/\{([^}]+)\}/g, (_, k) => encodeURIComponent(params[k]));
+
+// A whole number of seconds or commands, 0 meaning none: no fraction, sign, exponent, blank or unsafe-large value.
+const whole = (v) => (/^\d+$/.test(v ?? "") && Number.isSafeInteger(Number(v)) ? Number(v) : null);
 
 function parseArgs(argv) {
   const o = {
@@ -65,13 +74,13 @@ function parseArgs(argv) {
     else if (a === "--prompt-file") o.prompt = argv[++i];
     else if (a === "--report-file") o.report = argv[++i];
     else if (a === "--approval-dir") o.approvalDir = argv[++i];
-    else if (a === "--timeout") o.timeout = Number(argv[++i]);
-    else if (a === "--idle-timeout") o.idle = Number(argv[++i]);
-    else if (a === "--max-commands") o.maxCommands = Number(argv[++i]);
+    else if (a === "--timeout") o.timeout = whole(argv[++i]);
+    else if (a === "--idle-timeout") o.idle = whole(argv[++i]);
+    else if (a === "--max-commands") o.maxCommands = whole(argv[++i]);
     else return { error: `unknown argument: ${a}` };
   }
   for (const [k, v] of [["timeout", o.timeout], ["idle-timeout", o.idle], ["max-commands", o.maxCommands]])
-    if (!Number.isFinite(v) || v < 0) return { error: `--${k} must be a non-negative number` };
+    if (v === null) return { error: `--${k} must be a non-negative whole number` };
   return o;
 }
 
@@ -258,9 +267,22 @@ function editScope(scope, payload, cwd, guard) {
 // Settles q, its record first (orchestrate/scripts/mailbox.mjs). Returns whether the record holds it; with no
 // mailbox there is nothing to record.
 function settleRequestFile(ctx, q, settlement) {
-  if (ctx.box) return ctx.box.settle(q, settlement);
+  if (ctx.box) { const held = ctx.box.settle(q, settlement); noteWait(ctx); return held; }
   q.settled = settlement;
+  noteWait(ctx);
   return true;
+}
+
+// The time a request waits for the coordinator is counted at the transitions themselves, never at a poll. A request waits
+// until its decision is known: the coordinator's answer, its deadline, or the driver's own refusal (decidedAt), whichever
+// way the native reply to it then goes. The first waiting request starts the span; the decision of the last ends it, adds
+// the span to waitedMs (work time excludes it) and starts silence again from that moment. The native call that follows is
+// the driver's and the server's work, and its acknowledgement counts as progress.
+export function noteWait(ctx) {
+  const open = [...ctx.requests.values()].some((q) => !q.settled && q.decidedAt == null), t = now();
+  ctx.waitedMs ??= 0;
+  if (open && ctx.waitingSince == null) ctx.waitingSince = t;
+  else if (!open && ctx.waitingSince != null) { ctx.waitedMs += t - ctx.waitingSince; ctx.waitingSince = null; ctx.lastProgressMs = t; }
 }
 
 async function currentServerRequest(ctx, type, requestID) {
@@ -275,8 +297,10 @@ async function respond(ctx, type, requestID, kind, body, sessionID = ctx.session
   const url = fillRoute(route, { sessionID, requestID });
   try {
     const result = await ctx.client.call("POST", url, body);
+    ctx.lastProgressMs = now();
     return { outcome: result === true ? "applied" : "unknown" };
   } catch (e) {
+    if (e.status != null && e.status < 500) ctx.lastProgressMs = now();
     return { outcome: e.status == null || e.status >= 500 ? "unknown" : "failed", error: e.message, status: e.status ?? null };
   }
 }
@@ -288,7 +312,8 @@ function ownedRequest(ctx, type, payload) {
 }
 
 // processRequests serializes ordinary decisions; Stop drains it before callback cleanup.
-async function rejectTrackedRequest(ctx, q, settlement, counter) {
+export async function rejectTrackedRequest(ctx, q, settlement, counter) {
+  decided(ctx, q);
   const permission = q.type === "opencode.permission";
   const native = await listOrEmpty(ctx.client, permission ? ctx.routes.permissionList : ctx.routes.questionList);
   if (ctx.abortRequested) return false;
@@ -300,6 +325,8 @@ async function rejectTrackedRequest(ctx, q, settlement, counter) {
     ctx.requests.delete(q.id); ctx.unresolved = true;
     return true;
   }
+  // Only a group this run owns whole is rejected together, so only then are its siblings' decisions known.
+  for (const member of group) decided(ctx, member);
   // A reject with a message is OpenCode's CorrectedError: the tool fails with that feedback and the turn goes on,
   // so the agent can record the refusal and finish, as its standing rules say. One without a message is
   // RejectedError, which ends the turn with no answer (1.18.34, `session/processor.ts`); only Stop sends that. A
@@ -332,17 +359,20 @@ async function offerRequest(ctx, type, payload, method, reason, autoReason, caus
     },
   });
   q.invocationId = ctx.invocationId;
+  if (autoReason) q.decidedAt = now(); // nobody is asked: the driver refuses it itself
   ctx.requests.set(q.id, q);
+  noteWait(ctx);
   ctx.escalations.push({ id: q.id, type, requestID: payload.id, method, reason, presented: q.presented });
   q.autoReason = autoReason;
   // A request the driver declines itself is recorded when it settles and never listed as waiting. One the
   // mailbox cannot hold would wait for a decision that cannot come: it expires at once.
   if (ctx.box && !autoReason) {
-    try { ctx.box.offer(q); } catch (e) { q.mailboxFailure = `mailbox write failed: ${e.code ?? e.message}`; }
+    try { ctx.box.offer(q); } catch (e) { q.mailboxFailure = `mailbox write failed: ${e.code ?? e.message}`; decided(ctx, q); }
   }
   return q;
 }
 
+const decided = (ctx, q) => { if (q.decidedAt == null) { q.decidedAt = now(); noteWait(ctx); } };
 const acceptedDecision = (d) => (d === "decline" ? "declined" : "accepted");
 
 async function settleOpenRequest(ctx, q) {
@@ -354,6 +384,7 @@ async function settleOpenRequest(ctx, q) {
     }
     return false;
   }
+  decided(ctx, q);
   // Compare the current server content with the immutable envelope before acting. An absent
   // request is not evidence of acceptance.
   const present = await currentServerRequest(ctx, q.type, q.payload.id);
@@ -513,18 +544,15 @@ function finalReply(ctx, inputID) {
 // ---------------------------------------------------------------------------------------------
 // The turn
 
-// The budget: a wall clock that stands still while a request waits for the coordinator, an idle bound, and a
-// command count. A session the server reports busy is progress: a long quiet command is still work.
-const openRequests = (ctx) => [...ctx.requests.values()].some((q) => !q.settled);
+// The budget: a wall clock declared by the caller only, that stands still while a request waits for the coordinator, an
+// idle bound that stands still then too, and a command count. A session the server reports busy is progress: a long quiet command is still work.
 async function awaitTurn(ctx, inputID) {
-  let stable = 0, lastSig = "", tick = now();
+  let stable = 0, lastSig = "";
   ctx.waitedMs ??= 0;
   while (true) {
     if (ctx.abortRequested) return { aborted: true };
-    const t = now();
-    if (openRequests(ctx)) ctx.waitedMs += t - tick;
-    tick = t;
-    if (t - ctx.startedAtMs - ctx.waitedMs > ctx.timeoutMs) return { timedOut: true };
+    const t = now(), waiting = ctx.waitingSince == null ? 0 : t - ctx.waitingSince;
+    if (ctx.timeoutMs > 0 && t - ctx.startedAtMs - ctx.waitedMs - waiting > ctx.timeoutMs) return { timedOut: true };
     await updateOwned(ctx);
     ctx.processingRequests = processRequests(ctx);
     try { await ctx.processingRequests; } finally { ctx.processingRequests = null; }
@@ -546,7 +574,7 @@ async function awaitTurn(ctx, inputID) {
     } else if (idle && replies.length) {
       if (++stable >= 2) return { reply, completed: false };
     } else stable = 0;
-    if (ctx.requests.size === 0 && now() - ctx.lastProgressMs > ctx.idleMs) return { idleTimedOut: true };
+    if (ctx.idleMs > 0 && ctx.requests.size === 0 && ctx.waitingSince == null && now() - ctx.lastProgressMs > ctx.idleMs) return { idleTimedOut: true };
     await sleep(POLL_MS);
   }
 }
@@ -811,7 +839,7 @@ function buildReport(ctx, base) {
     turnIds: [...(ctx.invocationInputs ?? [])],
     server: { url: ctx.server?.url ?? null, version: ctx.server?.version ?? null },
     model: base.model ?? null,
-    requestedModel: ctx.ref ? modelKey(ctx.ref) : null,
+    requestedModel: ctx.ref ? modelKey(ctx.ref) : (ctx.requestedModel ?? null),
     variant: ctx.variant ?? null,
     turnStatus: base.turnStatus ?? null,
     receiptOk: base.receiptOk ?? false,
@@ -826,6 +854,7 @@ function buildReport(ctx, base) {
     outputSchemaOk: base.outputSchemaOk ?? null,
     schemaErrors: base.schemaErrors ?? [],
     partial: Boolean(base.partial),
+    limits: ctx.opts ? { timeoutS: ctx.opts.timeout, idleTimeoutS: ctx.opts.idle, maxCommands: ctx.opts.maxCommands } : null,
     cancellation: base.cancellation ?? ctx.cancellation ?? null,
     cwd: ctx.cwd ?? null,
     serverMode: "local",
@@ -882,6 +911,9 @@ async function execute(opts, parsed) {
     abortRequested: false, admission: "pending", lastProgressMs: now(),
   };
   ctx.stateDir = stateDirOf(ctx);
+  // What the prompt named, kept apart from what was observed: an early cut has no resolved model, and the
+  // selection is still the run's requested model. An inherited one is resolved later, and stays null until then.
+  if (!parsed.model.inherit) ctx.requestedModel = modelKey({ providerID: parsed.model.providerID, modelID: parsed.model.modelID });
 
   // Claim the report path exclusively, before anything can refuse, so no refusal publishes over an earlier
   // report. A refusal of the claim itself publishes nothing. The claim's pid tells a live run from a dead one.
@@ -890,6 +922,32 @@ async function execute(opts, parsed) {
     catch (e) { return e.code === "EEXIST" ? `${ctx.report} already exists, or is a symbolic link` : `could not be published at ${ctx.report}`; }
   })();
   if (claim) { process.stderr.write(`entrust: refused: ${claim}\n`); return EXIT.USAGE; }
+
+  // The Stop latch, installed before the pid line that admits a forwarded Stop. Until the owned resources exist
+  // (`ownedReady`: a client, a session, its descendants enumerated) a Stop only records its reason and aborts
+  // the startup in flight; each startup boundary below then ends the run in a terminal aborted report, with no
+  // prompt ever submitted. Once they exist it stops them as before. Idempotent.
+  ctx.startup = new AbortController();
+  const stop = (reason) => {
+    if (ctx.abortRequested) return ctx.stopping ?? Promise.resolve();
+    ctx.abortRequested = true;
+    ctx.stopDuringAdmission = Boolean(ctx.admissionInFlight);
+    if (ctx.ownedReady) {
+      ctx.cancellation = { reason, signal: ctx.signal ?? null, abort: [], observed: "unknown" };
+      ctx.stopping = stopOwned(ctx);
+    } else {
+      ctx.cancellation = { reason, signal: ctx.signal ?? null, abort: [], observed: "idle", promptSubmitted: false, beforeAdmission: true };
+      ctx.stopping = Promise.resolve();
+      ctx.startup.abort();
+    }
+    return ctx.stopping;
+  };
+  ctx.onSignal = (sig) => { ctx.signal = sig; stop(`signal ${sig}`).catch(() => {}); };
+  for (const s of SIGNALS) process.on(s, ctx.onSignal);
+  ctx.stop = stop;
+  const EARLY = "the run was cancelled before its prompt was admitted";
+  // A refusal after a captured Stop is the Stop: the run ends cancelled, not refused.
+  const bail = (reason, code, extra) => (ctx.abortRequested ? cutExit(ctx, EARLY) : fail(ctx, reason, code, extra));
 
   // The pid line the launcher uses to own this run and to forward a Stop.
   process.stderr.write(`entrust: pid=${process.pid} identity=${ctx.invocationId} reportPath=${ctx.report}\n`);
@@ -906,10 +964,11 @@ async function execute(opts, parsed) {
   ctx.transcriptPath = sidecar(ctx, "transcript.json");
 
   try {
-    ctx.localServer = await startLocalServer({ cwd: process.cwd() });
+    ctx.localServer = await startLocalServer({ cwd: process.cwd(), signal: ctx.startup.signal });
     ctx.config = ctx.localServer.config;
     ctx.client = clientFor(ctx, null); ctx.server = await ctx.client.probe();
-  } catch (e) { return fail(ctx, `the OpenCode server could not be started: ${e.message}`, EXIT.TRANSPORT); }
+  } catch (e) { return bail(`the OpenCode server could not be started: ${e.message}`, EXIT.TRANSPORT); }
+  if (ctx.abortRequested) return cutExit(ctx, EARLY);
   ctx.routes = ROUTES;
   const missing = routeError(ctx);
   if (missing) return fail(ctx, missing, EXIT.USAGE);
@@ -940,6 +999,7 @@ async function execute(opts, parsed) {
 
   // Resume, if asked, before any new session is made.
   const resumed = await resolveResume(ctx);
+  if (ctx.abortRequested) return cutExit(ctx, EARLY);
   if (resumed.busy) return fail(ctx, `session ${resumed.sessionID} is busy; a live invocation is not relaunched`, EXIT.BUSY);
   if (resumed.error) return fail(ctx, resumed.error, EXIT.USAGE);
   // The session keeps the permission rules it was created with, so a continuation keeps its rights: a resume
@@ -954,6 +1014,7 @@ async function execute(opts, parsed) {
 
   // Model: pinned by the plan, inherited by a resume, else the first recent model. No fallback.
   const model = await resolveModel(ctx);
+  if (ctx.abortRequested) return cutExit(ctx, EARLY);
   if (model.error) return fail(ctx, model.error, EXIT.USAGE);
   ctx.ref = model.ref; ctx.variant = model.variant;
 
@@ -963,16 +1024,18 @@ async function execute(opts, parsed) {
     try {
       session = await ctx.client.call("POST", ctx.routes.create,
         { title: `entrust ${ctx.invocationId}`, permission: sessionPermissions(ctx.scope) });
-    } catch (e) { return fail(ctx, `could not create an OpenCode session: ${e.message}`, EXIT.MODEL); }
+    } catch (e) { return bail(`could not create an OpenCode session: ${e.message}`, EXIT.MODEL); }
     if (!session?.id) return fail(ctx, "the server returned no session id", EXIT.MODEL);
     ctx.sessionID = session.id;
     const rules = rulesProblem(session, ctx.scope);
-    if (rules) return fail(ctx, rules, EXIT.TRANSPORT);
+    if (rules) return bail(rules, EXIT.TRANSPORT);
   }
   writeSessionRecord(ctx);
+  if (ctx.abortRequested) return cutExit(ctx, EARLY);
 
   // The descendants that already existed belong to earlier invocations and are never aborted.
   await updateOwned(ctx);
+  if (ctx.abortRequested) return cutExit(ctx, EARLY);
   ctx.preexisting = new Set(ctx.owned);
   ctx.invocationSessions = new Set([ctx.sessionID]);
   if (!ctx.discoveryComplete)
@@ -985,17 +1048,9 @@ async function execute(opts, parsed) {
     if (sid && ctx.invocationSessions?.has(sid)) ctx.lastProgressMs = now();
   }, ctx.eventsAbort.signal).catch(() => {});
 
-  const stop = (reason) => {
-    if (ctx.abortRequested) return ctx.stopping ?? Promise.resolve();
-    ctx.abortRequested = true;
-    ctx.stopDuringAdmission = Boolean(ctx.admissionInFlight);
-    ctx.cancellation = { reason, signal: ctx.signal ?? null, abort: [], observed: "unknown" };
-    ctx.stopping = stopOwned(ctx);
-    return ctx.stopping;
-  };
-  ctx.onSignal = (sig) => { ctx.signal = sig; stop(`signal ${sig}`).catch(() => {}); };
-  for (const s of SIGNALS) process.on(s, ctx.onSignal);
-  ctx.stop = stop;
+  // From here a Stop stops the owned session and its descendants, and no prompt is sent after one.
+  ctx.ownedReady = true;
+  if (ctx.abortRequested) return cutExit(ctx, EARLY);
 
   ctx.rootInputID = id("msg");
   ctx.invocationInputs.add(ctx.rootInputID);

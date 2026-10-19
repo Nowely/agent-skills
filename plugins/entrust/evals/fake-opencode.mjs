@@ -52,6 +52,7 @@ export async function fakeOpenCode(mode = "normal") {
       if (mode === "slow-doc") await new Promise((resolve) => setTimeout(resolve, 10000));
       return json({ paths });
     }
+    if (p === "/provider" && mode === "slow-provider") await new Promise((resolve) => setTimeout(resolve, 1500));
     if (p === "/provider") return json({ connected: ["router"], all: [
       { id: "router", models: { "deepseek/flash": { name: "Flash", variants: { high: {} }, capabilities: { toolcall: true } }, "glm/flash": { name: "GLM", variants: {} } } },
       { id: "not-connected", models: { hidden: { name: "Hidden", variants: {}, capabilities: {} } } },
@@ -72,6 +73,7 @@ export async function fakeOpenCode(mode = "normal") {
       }
       return json(Object.fromEntries([...sessions.values()].filter((s) => s.busy).map((s) => [s.id, { type: "busy" }])));
     }
+    if ((p === "/permission" || p === "/question") && state.listDelayMs) await new Promise((resolve) => setTimeout(resolve, state.listDelayMs));
     if (p === "/permission") {
       // The second read after the prompt, once the partial reply has been fetched, fails.
       if (mode === "transport-after-partial" && state.prompts > 0 && (state.permissionReads = (state.permissionReads ?? 0) + 1) >= 2)
@@ -98,8 +100,10 @@ export async function fakeOpenCode(mode = "normal") {
       if (s.aborted) {
         for (const m of s.messages) for (const part of m.parts ?? [])
           if (part.type === "tool" && part.state.status === "running") part.state.status = "error";
-      } else complete(s, s.input);
+      } else if (["permission-slow", "question-slow"].includes(mode)) setTimeout(() => complete(s, s.input), state.slowMs ?? 1200);
+      else complete(s, s.input);
       if (mode === "permission-group-lost") { res.destroy(); return; }
+      if (state.replyDelayMs) await new Promise((resolve) => setTimeout(resolve, state.replyDelayMs));
       return json(true);
     }
     const m = /^\/session\/([^/]+)(?:\/(.*))?$/.exec(p);
@@ -132,12 +136,18 @@ export async function fakeOpenCode(mode = "normal") {
     if (mode === "edit-outside") {
       // An edit the session rules ask about: `state.editTarget`, which the case sets, outside the run's roots.
       replies.push({ id: `per_edit_${state.prompts}`, sessionID: s.id, permission: "edit", patterns: [state.editTarget], metadata: { filePath: state.editTarget } });
-    } else if (["permission", "question", "cancel-question", "cancel-foreign-same", "cancel-request-read", "cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) {
-      if (["permission", "cancel-foreign-same", "cancel-request-read", "cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) replies.push({ id: `per_native_${state.prompts}`, sessionID: s.id, permission: "bash", patterns: ["node *"], metadata: { command: "node check.mjs" } });
+    } else if (["permission", "permission-slow", "question", "question-slow", "cancel-question", "cancel-foreign-same", "cancel-request-read", "cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) {
+      if (["permission", "permission-slow", "cancel-foreign-same", "cancel-request-read", "cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) replies.push({ id: `per_native_${state.prompts}`, sessionID: s.id, permission: "bash", patterns: ["node *"], metadata: { command: "node check.mjs" } });
       else questions.push({ id: `que_native_${state.prompts}`, sessionID: s.id, questions: [{ header: "Mode", question: "Choose", options: [{ label: "Read" }], custom: false }] });
       if (["cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) replies.push({ id: "per_second_owned", sessionID: s.id, permission: "bash", patterns: ["node *"], metadata: { command: "node second.mjs" } });
       if (mode === "cancel-question") s.messages.push({ info: { id: "msg_waiting_question", parentID: body.messageID, role: "assistant", sessionID: s.id },
         parts: [{ type: "tool", tool: "question", callID: "call_question", state: { status: "running", input: {} } }] });
+    } else if (mode === "slow") {
+      // Busy work that ends by itself after state.slowMs; the server reports it busy throughout.
+      setTimeout(() => complete(s, body.messageID), state.slowMs ?? 3500);
+    } else if (mode === "silent") {
+      // A session the server reports idle that never answers: nothing to count as progress.
+      s.busy = false;
     } else if (mode === "intermediate") {
       complete(s, body.messageID); s.messages.at(-1).parts[0].text = answer("intermediate"); s.busy = true;
       setTimeout(() => complete(s, body.messageID), 3500);
@@ -153,6 +163,8 @@ export async function fakeOpenCode(mode = "normal") {
       if (mode === "invalid-correction-busy" && state.prompts > 1) s.busy = true;
       if (mode === "partial-after-complete") s.busy = true;
     }
+    // A request is waiting and the server reports the session idle; once it is answered the work takes state.slowMs more.
+    if (["permission-slow", "question-slow"].includes(mode)) s.busy = false;
     if (mode === "lost-response") { req.socket.destroy(); return; }
     res.writeHead(204); res.end();
   });

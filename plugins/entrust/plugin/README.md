@@ -3,7 +3,7 @@
 Subagent orchestration for Claude Code and Codex. `orchestrate` agrees a plan with you, delegates scoped
 tasks to agents, has their work verified by agents that did not write it, and synthesises what they found
 with attribution. Adapters run agents the host does not: external Codex agents with per-call rights,
-worktrees, evidence gates and receipts, and OpenCode workers, including an external model as coordinator.
+worktrees, evidence gates and receipts, and OpenCode workers. `proxy` lets a Claude model coordinate the session.
 
 ## Install
 
@@ -29,14 +29,15 @@ Then invoke `$entrust:orchestrate`; it uses Codex's own subagents.
 
 | Skill | Started by | What it does |
 | --- | --- | --- |
-| [orchestrate](skills/orchestrate/SKILL.md) | you: `/entrust:orchestrate`, `$entrust:orchestrate` | plans, delegates, verifies and synthesises; an external model can coordinate instead (“Прокси на <model>”) |
+| [orchestrate](skills/orchestrate/SKILL.md) | you: `/entrust:orchestrate`, `$entrust:orchestrate` | plans, delegates, verifies and synthesises |
+| [proxy](skills/proxy/SKILL.md) | you: `/entrust:proxy <model>`, `$entrust:proxy <model>` | switches this session to a Claude coordinator after one final confirmation that delegates the session's rights, capabilities and working context |
 | [cleanup](skills/cleanup/SKILL.md) | you: `/entrust:cleanup` | lists what entrust left on this machine and deletes the items you pick by number |
 | [advisor](skills/advisor/SKILL.md) | you: `/entrust:advisor` | a standing top-tier advisor, of the other model family where a route exists, for one run; an experiment |
 | [swarm](skills/swarm/SKILL.md) | you: `/entrust:swarm`, or an approved plan | up to fifty bulk agents over a file of units, reduced to one summary; an experiment |
 | [prepare-feedback](skills/prepare-feedback/SKILL.md) | you: `/entrust:prepare-feedback` | reads your sessions where entrust or terse loaded and returns findings and proposals for the skill |
 | [claude](skills/claude/SKILL.md) | orchestrate | in Claude Code, Claude's model tiers, Agent calls, waiting on agents, Workflow; from any host, external Claude agents through `claude -p` |
 | [codex](skills/codex/SKILL.md) | the assistant, in Claude Code | external Codex agents; why not the official plugin: [why-not-the-plugin.md](skills/codex/references/why-not-the-plugin.md) |
-| [opencode](skills/opencode/SKILL.md) | the assistant | OpenCode workers and an OpenCode model as coordinator |
+| [opencode](skills/opencode/SKILL.md) | the assistant | OpenCode workers |
 
 Every external run goes through a relay agent that decides nothing: `entrust:relay` in Claude Code, a native
 subagent on the host's smallest model elsewhere, a fresh one for each run of the launcher.

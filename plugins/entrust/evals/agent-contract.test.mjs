@@ -123,7 +123,7 @@ test("the ONE call is agent-run.mjs --run with --report-file in one foreground c
       const r = spawnSync("bash", ["-n"], { input: src, encoding: "utf8" });
       if (r.status !== 0) problems.push(`bash -n rejected ${JSON.stringify(src.slice(0, 60))}: ${String(r.stderr).trim()}`);
     }
-    const calls = commands.filter((c) => c.includes("agent-run.mjs") && !c.includes("--decide") && !c.includes("--watch"));
+    const calls = commands.filter((c) => c.includes("agent-run.mjs") && !c.includes("--decide") && !c.includes("--handback") && !c.includes("--watch"));
     if (calls.length !== 1) problems.push(`expected exactly one indented agent-run.mjs run line without --watch on the page, found ${calls.length}`);
     const call = calls[0] ?? "";
     for (const part of ["--run", '--report-file "<REPORT>"'])
@@ -320,6 +320,10 @@ test("the accept the shared call page shows restates the request in a quoted her
       for (const l of text.split("\n").filter((x) => /--decide /.test(x) && !/--decide '(<ID>|ID)'/.test(x))) problems.push(`an unquoted ID: ${l.trim()}`);
     if (/<<'?(COMMAND|EOF|CMD)'?\s*$/m.test(external.split("\n").filter((l) => l.includes("--decide")).join("\n")))
       problems.push("an accept in external.md ends its heredoc on a fixed word");
+    // The handback check reads a message that may hold any line, so it is shown in the same shape.
+    const hat = external.search(/^ {4}node "<orchestrate>\/scripts\/agent-run\.mjs" --handback --report-file "<REPORT>" <<'<DELIMITER>'$/m);
+    if (hat < 0) problems.push("external.md shows no --handback call ending in <<'<DELIMITER>'");
+    else if (external.slice(hat).split("\n")[2] !== "    <DELIMITER>") problems.push("the --handback block does not end on its delimiter");
     return problems.length === 0 || problems.join("; ");
   });
 

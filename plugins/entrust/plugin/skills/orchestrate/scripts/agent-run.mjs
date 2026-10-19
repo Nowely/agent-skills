@@ -147,6 +147,15 @@ export const PROMPT_WAIT_MS = 10000;
 // wrapper's message pins, with 30 s for the launcher's own start after the tool call. The variable is
 // for the suites.
 export const RETURN_MS = Number(process.env.AGENT_RUN_RETURN_MS) || 570000;
+// How long the keeper lets a run go on after its relay was last seen: attached to a call, or returning from
+// one with RUNNING=, which the relay answers at once. A relay the host interrupted without any signal (measured
+// 2026-10-18 on a native Luna: its exec session kept running to the end) never comes back, and this is the
+// only clock that ends the run it left. A hand-back, a request waiting on its decision and a run nobody
+// attached are never on it. The variable is for the suites.
+export const LEASE_MS = Number(process.env.AGENT_RUN_LEASE_MS) || 180000;
+// How long --stop waits for the marker after it signals the driver. The variable is for the suites.
+export const STOP_WAIT_MS = Number(process.env.AGENT_RUN_STOP_WAIT_MS) || 60000;
+const BEAT_MS = Math.max(100, Math.min(2000, LEASE_MS / 4));
 const SIGNALS = ["SIGTERM", "SIGINT", "SIGHUP"];
 export const agentDirOf = (report) => path.join(path.dirname(report), "agent");
 
@@ -183,11 +192,33 @@ orchestrate/references/external.md; this is each mode's contract.
           REQUEST=), then REQUESTS=<n>, WAITING=<id>[,<id>] and REPORT=. Decide each with --decide, then
           run the same --run again.
         running — ${RETURN_MS / 1000} s passed: the nine lines with DRIVER_EXIT=running and RUNNING=pid <pid>, <n> s so
-          far in place of REPORT=; run the same command again. Nothing is lost.
+          far in place of REPORT=; run the same command again at once. Nothing is lost.
       With --watch the call stays attached: each new request is an EVENT=waiting frame between
       EVENT<<TOKEN and EVENT>>TOKEN, and --decide runs beside it. A signal this call receives goes to
-      the driver, which cuts the turn and publishes its report. After a waiting or running result no
-      call holds the driver: stop it with kill -TERM on the pid line in agent/err.txt. Exits 0.
+      the driver, which cuts the turn and publishes its report. After a waiting result no call holds the
+      driver, and the coordinator decides when the next call comes. After a running result the relay
+      must call again within ${LEASE_MS / 1000} s: a relay the host interrupted without a signal never does, and the
+      keeper then cuts the run as a Stop would (partial report, RECEIPT= says stopped=relay-lost). A
+      request waiting on a decision, and a run handed back, are never on that clock. Exits 0.
+  node agent-run.mjs --stop [--why TEXT] --report-file REPORT
+      Stops the run of this report as a Stop would: the driver the pid line names, waited for up to ${PROMPT_WAIT_MS / 1000} s
+      when it was spawned and has not announced itself, is signalled once, after
+      its whole command line is checked to be this adapter's driver for this prompt and report, and the
+      nine lines come back when the report is published, RECEIPT= saying stopped=stop. A run that is over
+      is only read; a process that is not this run's driver, or a directory whose run is for another
+      report, is refused (REFUSED=stop, exit 2) and nothing is signalled. Use it when the proxy's task
+      was interrupted and its run went on.
+  node agent-run.mjs --handback --report-file REPORT < message
+      Compares a proxy's message, which it copied by hand, with the lines this launcher would print for
+      the run now. HANDBACK=exact, exit 0; otherwise HANDBACK=truncated missing=<n> first=<line> (a
+      dropped trailer) or HANDBACK=differs line=<n>, exit 3, with the lines it should have been between
+      CANONICAL<<TOKEN and CANONICAL>>TOKEN; act on those, not on the message. With nothing to compare,
+      exit 3 and one of HANDBACK=running (a process shown to be the driver is alive), starting (the same,
+      spawned and not yet announced), unstarted (nothing was launched for this report: a refusal the
+      message shows was printed by a call that wrote nothing here, so run that call again with its cause
+      put right) or unknown (a claim with no driver, or a process whose identity cannot be read; with a
+      NOTE). A driver that is gone, or whose pid is another program's, compares with the lines the run's
+      own call prints.
   node agent-run.mjs --status --report-file REPORT
       The nine lines: ${STATUS_LINES.join(", ")}. PATH is own when this run's driver
       wrote REPORT, taken when the file there is another run's, none when the launch was refused. ANSWER
@@ -246,7 +277,8 @@ More, for the launcher's own steps and its edge cases:
 `;
 function parse(argv) {
   const o = { run: false, status: false, isNew: false, isPlan: false, amend: false, runDir: null, orphan: false, keeper: false,
-              dir: null, report: null, help: false, pending: false, decide: null, decision: null, why: null, adapter: null, watch: false };
+              dir: null, report: null, help: false, pending: false, decide: null, decision: null, why: null, adapter: null, watch: false,
+              stop: false, handback: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--help" || a === "-h") o.help = true;
@@ -264,6 +296,8 @@ function parse(argv) {
     else if (a === "--report-file") o.report = argv[++i];
     else if (a === "--adapter") o.adapter = argv[++i];
     else if (a === "--pending") o.pending = true;
+    else if (a === "--stop") o.stop = true;
+    else if (a === "--handback") o.handback = true;
     else if (a === "--decide") o.decide = argv[++i] ?? "";
     else if (a === "--accept" || a === "--decline" || a === "--answer") {
       if (o.decision !== null) return { error: "--accept, --decline and --answer: one decision per call" };
@@ -273,7 +307,10 @@ function parse(argv) {
     else return { error: `unknown argument: ${a}` };
   }
   if (o.decide !== null && o.decision === null) return { error: "--decide needs --accept or --decline" };
-  if (o.decide === null && (o.decision !== null || o.why !== null)) return { error: "--accept, --decline and --why belong to --decide" };
+  if (o.decide === null && (o.decision !== null || (o.why !== null && !o.stop))) return { error: "--accept, --decline and --why belong to --decide" };
+  if ((o.stop || o.handback) && (o.stop && o.handback || o.run || o.isNew || o.isPlan || o.status || o.orphan || o.keeper || o.pending || o.decide !== null || o.watch))
+    return { error: "--stop and --handback each take --report-file alone" };
+  if (o.handback && o.why !== null) return { error: "--why belongs to --decide and --stop" };
   if (o.adapter !== null && !HOOKS.has(o.adapter)) return { error: `--adapter must name an installed adapter: ${[...HOOKS.keys()].join(", ")}` };
   if (o.watch && (!o.run || o.isNew || o.isPlan || o.status || o.orphan || o.pending || o.decide !== null))
     return { error: "--watch requires --run alone" };
@@ -324,6 +361,51 @@ const decisionFits = (d, q) => {
 
 // The ids the driver's `pending` file in the mailbox `box` lists.
 const pendingIds = (box) => (read(path.join(box, "pending")) ?? "").split("\n").filter((l) => REQUEST_ID.test(l));
+
+// The run's lifecycle, kept beside its other files and never read by the driver. lifecycle.jsonl is what each
+// call and the keeper saw happen to the run: a signal that reached a --run and whether it tried to forward it, a
+// hand-back, an early return, a lost relay, a stop. attach.json is the relay's last state, which the keeper
+// reads: `attached` (a --run is waiting and beating), `returned` (it printed RUNNING= and its relay must call
+// again) or `handed-back` (a request went to the coordinator, who decides when the next call comes). cancel.json
+// says who asked for the cut, `relay-lost` (the keeper) or `stop` (--stop); a signal sent straight to the driver
+// leaves only the report's own cancellation.
+const journal = (dir, entry) => {
+  try { fs.appendFileSync(path.join(dir, "lifecycle.jsonl"), `${JSON.stringify({ atMs: Date.now(), ...entry })}\n`, { mode: 0o600 }); } catch {}
+};
+function writeAttach(dir, state, pid) {
+  const target = path.join(dir, "attach.json"), tmp = `${target}.${process.pid}.tmp`;
+  try {
+    fs.writeFileSync(tmp, `${JSON.stringify({ state, atMs: Date.now(), pid })}\n`, { mode: 0o600 });
+    fs.renameSync(tmp, target);
+  } catch { try { fs.rmSync(tmp, { force: true }); } catch {} }
+}
+function recordCancel(dir, entry) {
+  try { fs.writeFileSync(path.join(dir, "cancel.json"), `${JSON.stringify({ atMs: Date.now(), ...entry })}\n`, { mode: 0o600, flag: "wx" }); } catch {}
+}
+// The keeper's watch on its relay. It cuts a run only when the last thing seen of the relay was attached or
+// returning, no request waits on a decision, and the lease has passed since: the driver is signalled as a
+// Stop would, so its turn is cut, its report published and its partial kept.
+function watchRelay(dir, child) {
+  const every = Math.max(100, Math.min(1000, LEASE_MS / 4));
+  let seenPending = 0, resumedAt = 0, lastTick = Date.now(), cut = false;
+  const timer = setInterval(() => {
+    if (cut) return;
+    const now = Date.now();
+    // A machine that slept stops the keeper's clock and the relay's alike: a tick this late is a wake, not a
+    // relay that left, and the relay gets its lease from the wake.
+    if (now - lastTick > Math.min(LEASE_MS / 2, 10000) + every) resumedAt = now;
+    lastTick = now;
+    if (pendingIds(path.join(dir, "approvals")).length) seenPending = now;
+    const seen = readJsonFile(path.join(dir, "attach.json"));
+    if (!seen || (seen.state !== "attached" && seen.state !== "returned")) return;
+    if (now - Math.max(seen.atMs, seenPending, resumedAt) <= LEASE_MS) return;
+    cut = true;
+    recordCancel(dir, { kind: "relay-lost", lastSeenAtMs: seen.atMs, lastState: seen.state, leaseMs: LEASE_MS });
+    journal(dir, { event: "relay-lost", lastSeenAtMs: seen.atMs, lastState: seen.state, leaseMs: LEASE_MS });
+    try { child.kill("SIGTERM"); } catch {}
+  }, every);
+  child.on("close", () => clearInterval(timer));
+}
 
 // What DIR/approvals holds, read from the files alone: every request in the order the driver offered them,
 // the ids `pending` lists, and the decisions nobody took. A decision whose identity is not its request's is
@@ -412,9 +494,13 @@ function launch(dir, report, { onExit, onRefuse, mailbox = false }) {
   const outFd = fs.openSync(path.join(dir, "out.json"), "w");
   const approvalArgs = mailbox ? ["--approval-dir", box] : [];
   const DRIVER = backend.driver;
-  const child = spawn(process.execPath, [DRIVER, "--prompt-file", promptPath, "--report-file", report, ...approvalArgs],
+  const driverArgs = [DRIVER, "--prompt-file", promptPath, "--report-file", report, ...approvalArgs];
+  const child = spawn(process.execPath, driverArgs,
     { stdio: ["ignore", outFd, errFd], cwd: at?.cwd, env: { ...backendEnv(backend), ...(at?.stateDir ? { ENTRUST_STATE_DIR: at.stateDir } : {}) } });
+  // The exact command this pid was spawned with, which --stop compares a live process against.
+  if (child.pid) try { fs.writeFileSync(path.join(dir, "spawn.json"), `${JSON.stringify({ pid: child.pid, command: [process.execPath, ...driverArgs].join(" ") })}\n`, { mode: 0o600, flag: "wx" }); } catch {}
   for (const sig of SIGNALS) process.on(sig, () => { try { child.kill(sig); } catch {} });
+  if (mailbox) watchRelay(dir, child);
   child.on("error", (e) => {
     fs.closeSync(outFd); fs.closeSync(errFd);
     fs.appendFileSync(path.join(dir, "err.txt"), `${REFUSED}: the driver could not be spawned: ${e.message}\n`);
@@ -540,12 +626,14 @@ export function statusLines(dir, report) {
   // lost still says whether a command ran with your rights; the driver's own acceptances never touch the
   // mailbox and come from the report.
   const box = mailbox(dir);
+  const cancelled = readJsonFile(path.join(dir, "cancel.json"));
   const count = (d) => box.requests.filter((q) => q.settled?.decision === d).length;
   const approvals = [
     ...(box.requests.length ? [`approvals=${count("accepted")}/${count("declined")}/${count("expired")}/${box.requests.filter((q) => !q.settled).length}`] : []),
     ...(r && r.approvalsAutoAccepted > 0 ? [`auto=${r.approvalsAutoAccepted}`] : []),
     ...(box.late.length ? [`late=${box.late.length}`] : []),
     ...(box.stale.length ? [`stale=${box.stale.length}`] : []),
+    ...(typeof cancelled?.kind === "string" ? [`stopped=${cancelled.kind}`] : []),
   ].join(" ");
   if (r) {
     const a = r.schemaOverflow ? r.answer
@@ -677,21 +765,27 @@ function newAgent(report, dirOverride, requested) {
 // this print and absent from the command, so no command can end its own block or forge a field after it:
 // a script-shaped command read on one clipped line is a command approved unread. A request is waiting when
 // `pending` lists it, the driver's own open set.
-function requestLines(q) {
-  const typed = typedOf(q);
-  if (typed) {
-    let token;
-    do token = crypto.randomBytes(6).toString("hex"); while (typed.presented.includes(token));
-    return typed.lines(field, token);
-  }
-  const command = String(q.command ?? "");
+// `wanted` is a token to print the request with, which --handback passes to render a message's own again.
+const tokenFor = (text, wanted) => {
+  if (wanted && !text.includes(wanted)) return wanted;
   let token;
-  do token = crypto.randomBytes(6).toString("hex"); while (command.includes(token));
+  do token = crypto.randomBytes(6).toString("hex"); while (text.includes(token));
+  return token;
+};
+function requestLines(q, wanted) {
+  const typed = typedOf(q);
+  if (typed) return typed.lines(field, tokenFor(typed.presented, wanted));
+  const command = String(q.command ?? "");
+  const token = tokenFor(command, wanted);
   return [`REQUEST=${q.id}`, `THREAD=${q.subagent ? field(q.agentPath ?? q.run?.threadId ?? "unknown") : "root"}`,
     `METHOD=${field(q.method)}`, `CAUSE=${field(q.cause ?? "unknown")}`, `CWD=${field(q.cwd)}`,
     `REASON=${field(q.reason)}`, `ROOTS=${(q.roots ?? []).map(item).join("; ")}`, `DEADLINE=${field(q.deadlineAt ?? "none")}`,
     `COMMAND<<${token}`, command, `COMMAND>>${token}`];
 }
+
+// The lines --run prints for requests waiting on a decision: each between its markers, then the tail.
+const requestBatch = (waiting, report, tokens = []) => [...waiting.flatMap((q, i) => requestLines(q, tokens[i])), `REQUESTS=${waiting.length}`,
+  `WAITING=${waiting.map((q) => q.id).join(",")}`, `REPORT=${report}`];
 
 function pendingRequests(dir) {
   const box = mailbox(dir);
@@ -803,6 +897,149 @@ function decideRequest(dir, id, decision, why) {
   process.exit(3);
 }
 
+// Whether a pid is this run's driver. A pid is only a number, and one the pid line named may belong to something
+// else by now, so the process must be the current user's and its whole command line must equal, character for
+// character, the one the keeper spawned: the command spawn.json recorded for this pid, else the one the launcher
+// builds (this node, the adapter's driver, --prompt-file with this directory's prompt, --report-file with exactly
+// this report, and for the keeper its mailbox). No part of it is matched as a substring, a prefix or a basename, so
+// a foreign program carrying the same words never passes. The verdict is `owned`, `foreign`, `gone` (no such
+// process) or `unverified` (its command line could not be read), each with the reason in words.
+function driverIdentity(pid, dir, report, driver) {
+  const r = spawnSync("ps", ["-ww", "-o", "uid=,command=", "-p", String(pid)], { encoding: "utf8" });
+  const m = /^\s*(\d+)\s+(\S[\s\S]*?)\s*$/.exec(String(r.stdout ?? ""));
+  if (!r.error && r.status === 1 && !m && !String(r.stderr ?? "").trim()) return { verdict: "gone", why: `pid ${pid} is gone` };
+  if (r.error || r.status !== 0 || !m) return { verdict: "unverified", why: `the command line of pid ${pid} cannot be read, so its identity is unverified` };
+  if (typeof process.getuid === "function" && Number(m[1]) !== process.getuid()) return { verdict: "foreign", why: `pid ${pid} belongs to another user` };
+  const recorded = readJsonFile(path.join(dir, "spawn.json"));
+  const built = [process.execPath, driver, "--prompt-file", path.join(dir, "prompt.txt"), "--report-file", report];
+  const accepted = recorded?.pid === pid && typeof recorded.command === "string"
+    ? [recorded.command] : [built.join(" "), [...built, "--approval-dir", path.join(dir, "approvals")].join(" ")];
+  return accepted.includes(m[2]) ? { verdict: "owned", why: null }
+    : { verdict: "foreign", why: `pid ${pid} is not this run's driver (its command line is not the one spawned for the adapter's driver, this prompt and --report-file ${report})` };
+}
+// Why a live pid is not this run's driver, or null when it is.
+const notDriver = (pid, dir, report, driver) => { const v = driverIdentity(pid, dir, report, driver); return v.verdict === "owned" ? null : v.why; };
+
+// The nine lines of a refusal that read no run, which only the call that made it printed.
+const refusalLines = (why, report) => ["DRIVER_EXIT=unknown", "PATH=none", "EXIT=unknown", "FIRST=", "ANSWER=", `ERROR=${why.slice(0, ERROR_MAX)}`,
+  "RECEIPT=", `FILE=${report && fs.existsSync(report) ? "exists" : "missing"}`, `REPORT=${report ?? ""}`];
+
+// The command spawn.json recorded for the driver of this directory names this report, whole: its tail is the
+// driver, --prompt-file with this directory's prompt, --report-file with exactly this report and, for the keeper,
+// its mailbox. Read before the driver has announced itself, when the pid line cannot say whose run this is.
+function spawnedFor(dir, report) {
+  const recorded = readJsonFile(path.join(dir, "spawn.json"));
+  if (!recorded || !Number.isInteger(recorded.pid) || typeof recorded.command !== "string") return null;
+  const tail = ` --prompt-file ${path.join(dir, "prompt.txt")} --report-file ${report}`;
+  const at = recorded.command.indexOf(tail);
+  const rest = at < 0 ? null : recorded.command.slice(at + tail.length);
+  return rest === "" || rest === ` --approval-dir ${path.join(dir, "approvals")}` ? recorded : null;
+}
+
+// --stop: the explicit bridge from a Stop the host did not deliver. It signals only the driver the pid line
+// of THIS report names, and only a process whose command line is that driver's for this report, as a Stop on
+// the card would; the turn is cut and the report published with its partial. A run that is over is only read.
+// A Stop that comes while the driver has been spawned and has not announced itself yet is not lost: the call
+// waits, as long as the run's own calls do, for the announcement, and then stops that driver.
+function stopRun(dir, report, why) {
+  const refuse = (msg) => { process.stdout.write(`REFUSED=stop ${msg}\n`); process.exit(2); };
+  if (!isDirectory(dir)) refuse(`${JSON.stringify(dir)} is not a directory`);
+  const print = (lines) => { process.stdout.write(`${lines.join("\n")}\n`); process.exit(0); };
+  const startBy = Date.now() + PROMPT_WAIT_MS;
+  const begin = () => {
+    const line = pidLineIn(read(path.join(dir, "err.txt")) ?? "");
+    if (line && line[3] !== report) refuse("this directory's run is for another report path; nothing was signalled");
+    if (markerOf(dir)) return print(statusLines(dir, report));
+    if (line) return signalDriver(Number(line[1]));
+    const claimed = fs.existsSync(path.join(dir, "err.txt")), recorded = readJsonFile(path.join(dir, "spawn.json"));
+    if (!claimed && !recorded) refuse("no launch has started here (no err.txt, no spawn.json); nothing was signalled");
+    if (recorded && !spawnedFor(dir, report)) refuse("this directory's driver was spawned for another report path; nothing was signalled");
+    if (recorded && !alive(recorded.pid)) return print(statusLines(dir, report));
+    if (Date.now() < startBy) return setTimeout(begin, 100);
+    refuse(`the driver has not announced itself in ${PROMPT_WAIT_MS / 1000} s (no pid line in err.txt); nothing was signalled`);
+  };
+  const signalDriver = (pid) => {
+    if (!alive(pid)) return print(statusLines(dir, report));
+    let driver;
+    try { driver = backendOf(dir).driver; } catch (e) { refuse(`${e.message}; nothing was signalled`); }
+    const foreign = notDriver(pid, dir, report, driver);
+    if (foreign) refuse(`${foreign}; nothing was signalled`);
+    recordCancel(dir, { kind: "stop", pid, why: why || null });
+    journal(dir, { event: "stop", pid, why: why || null });
+    try { process.kill(pid, "SIGTERM"); } catch (e) { if (e.code !== "ESRCH") refuse(`pid ${pid} could not be signalled: ${e.message}`); }
+    const until = Date.now() + STOP_WAIT_MS;
+    let gone = 0;
+    const tick = () => {
+      if (markerOf(dir)) return print(statusLines(dir, report));
+      if (!alive(pid) && ++gone > 20) return print(statusLines(dir, report));
+      if (Date.now() < until) return setTimeout(tick, 100);
+      const lines = statusLines(dir, report);
+      lines[0] = "DRIVER_EXIT=running";
+      lines[STATUS_LINES.indexOf("ERROR")] = `ERROR=the driver was signalled and is still ending; read --status again`;
+      print(lines);
+    };
+    tick();
+  };
+  begin();
+}
+
+// --handback: a relay copies the launcher's lines by hand, and has dropped the last one (REPORT=) three times
+// in one measured run. The message comes on stdin; what the launcher would print now comes back in its place:
+// HANDBACK=exact; or truncated (the message is a prefix, with how many lines are missing and the first), or
+// differs (the first line that is not the launcher's), each with the lines framed between CANONICAL markers.
+// A waiting request is rendered with the tokens the message used; a run that ended without a marker, or whose
+// driver died before it announced itself, with the lines the run's own call prints then. With no lines to compare:
+// running (a process shown to be the run's driver is alive), starting (the same, spawned and not yet announced),
+// unstarted (nothing was ever launched for this report, so a refusal the message shows was printed by a call that
+// wrote nothing here and cannot be verified; the one case reproducible is a sandbox refusal, when this call is in
+// the same sandbox) or unknown (a claim file with no driver, or a process whose identity cannot be read).
+function handbackCheck(dir, report) {
+  const refuse = (msg) => { process.stdout.write(`REFUSED=handback ${msg}\n`); process.exit(2); };
+  if (!isDirectory(dir)) refuse(`${JSON.stringify(dir)} is not a directory`);
+  const line = pidLineIn(read(path.join(dir, "err.txt")) ?? "");
+  if (line && line[3] !== report) refuse("this directory's run is for another report path; nothing was compared");
+  let said = "";
+  try { said = fs.readFileSync(0, "utf8"); } catch {}
+  const body = said.trimEnd();
+  const tokens = [...body.matchAll(/^(?:COMMAND|REQUEST_BODY)<<([0-9a-f]{12})$/gm)].map((m) => m[1]);
+  const recorded = readJsonFile(path.join(dir, "spawn.json"));
+  if (!line && recorded && !spawnedFor(dir, report)) refuse("this directory's driver was spawned for another report path; nothing was compared");
+  const state = (word, note) => { process.stdout.write(`HANDBACK=${word}\n${note ? `NOTE=${note}\n` : ""}`); process.exit(word === "exact" ? 0 : 3); };
+  let canonical = null;
+  if (markerOf(dir)) canonical = statusLines(dir, report);
+  else {
+    const waiting = waitingRequests(dir);
+    if (waiting.length) canonical = requestBatch(waiting, report, tokens);
+    else if (line || recorded) {
+      // A process is evidence of a live run only when it is shown to be the run's driver; a pid that is gone, or
+      // is another program's now, leaves the run's own lines (its report, if it wrote one) as the outcome.
+      const pid = line ? Number(line[1]) : recorded.pid;
+      let driver = null;
+      try { driver = backendOf(dir).driver; } catch {}
+      const seen = !alive(pid) ? { verdict: "gone" } : driver === null ? { verdict: "unverified", why: "the directory's adapter cannot be resolved" } : driverIdentity(pid, dir, report, driver);
+      if (seen.verdict === "unverified") state("unknown", `${seen.why}; neither a live driver nor a finished run is confirmed here, so read --status for the report, or run the same --run again through the proxy`);
+      if (seen.verdict === "owned") state(line ? "running" : "starting");
+      canonical = statusLines(dir, report);
+      if (!line) canonical[STATUS_LINES.indexOf("ERROR")] = "ERROR=the driver did not start";
+    } else if (fs.existsSync(path.join(dir, "err.txt"))) {
+      state("unknown", "a launch claimed this directory (err.txt) but no driver was recorded, and no keeper or driver is shown to exist; nothing confirms a run is starting, so run the same --run again through the proxy, which waits out the startup and prints what happened");
+    } else {
+      const boxed = sandboxRefusal();
+      if (!boxed) state("unstarted", "no driver was ever launched for this report, so nothing here confirms a refusal the message shows; a refused call is run again, with the cause it names put right, never taken as a started run");
+      canonical = refusalLines(`${REFUSED}: ${boxed}`, report);
+    }
+  }
+  const want = canonical.join("\n").split("\n"), got = body === "" ? [] : body.split("\n");
+  if (got.length === want.length && got.every((l, i) => l === want[i])) state("exact");
+  let at = 0;
+  while (at < got.length && at < want.length && got[at] === want[at]) at++;
+  const verdict = at === got.length ? `HANDBACK=truncated missing=${want.length - at} first=${field(want[at]).slice(0, 160)}` : `HANDBACK=differs line=${at + 1}`;
+  const text = want.join("\n");
+  const token = tokenFor(text, null);
+  process.stdout.write(`${verdict}\nCANONICAL<<${token}\n${text}\nCANONICAL>>${token}\n`);
+  process.exit(3);
+}
+
 // A prompt a --new in the same turn has not written yet: wait for it, bounded, before deciding.
 function waitForPrompt(dir, cb) {
   const promptPath = path.join(dir, "prompt.txt");
@@ -826,25 +1063,27 @@ function run(dir, report, watch = false) {
   // dropped if the line names another report path; one after RETURN_MS is dropped, because a call past its
   // deadline can only be receiving the teardown the early return is there to keep away from the run.
   for (const sig of SIGNALS) process.on(sig, () => {
-    if (Date.now() - t0 >= RETURN_MS) return;
+    const late = Date.now() - t0 >= RETURN_MS;
+    journal(dir, { event: "signal", signal: sig, callPid: process.pid, forwardAttempted: !late && pid !== null, kept: !late && pid === null, pastDeadline: late });
+    if (late) return;
     if (pid === null) kept = sig;
     else { try { process.kill(pid, sig); } catch {} }
   });
+  // The relay's pulse for the keeper, from the driver's pid line on.
+  let beatAt = 0;
+  const beat = () => { const now = Date.now(); if (now - beatAt >= BEAT_MS) { beatAt = now; writeAttach(dir, "attached", process.pid); } };
   const print = (lines) => { process.stdout.write(`${lines.join("\n")}\n`); process.exit(0); };
   const finish = () => print(statusLines(dir, report));
   // The requests the run waits on, for the coordinator to decide; the run goes on under its keeper.
-  const requestBatch = (waiting) => [...waiting.flatMap(requestLines), `REQUESTS=${waiting.length}`,
-    `WAITING=${waiting.map((q) => q.id).join(",")}`, `REPORT=${report}`];
-  const handBack = (waiting) => print(requestBatch(waiting));
+  const handBack = (waiting) => { writeAttach(dir, "handed-back", process.pid); journal(dir, { event: "handback", requests: waiting.map((q) => q.id) }); print(requestBatch(waiting, report)); };
   const emit = (waiting) => {
-    const body = requestBatch(waiting).join("\n");
+    const body = requestBatch(waiting, report).join("\n");
     let token;
     do token = crypto.randomBytes(6).toString("hex"); while (body.includes(token));
     process.stdout.write(`EVENT=waiting\nEVENT<<${token}\n${body}\nEVENT>>${token}\n`);
   };
   // A refusal that reads no run: this call's own lines, and nothing written to DIR.
-  const refused = (why) => print(["DRIVER_EXIT=unknown", "PATH=none", "EXIT=unknown", "FIRST=", "ANSWER=", `ERROR=${why.slice(0, ERROR_MAX)}`,
-    "RECEIPT=", `FILE=${report && fs.existsSync(report) ? "exists" : "missing"}`, `REPORT=${report ?? ""}`]);
+  const refused = (why) => print(refusalLines(why, report));
   const foreign = () => refused(`${REFUSED}: this directory's run is for another report path; a relaunch gets a fresh one`);
   waitForPrompt(dir, () => {
     if (!isDirectory(dir)) {
@@ -889,7 +1128,9 @@ function run(dir, report, watch = false) {
           return print(lines);
         }
         if (kept) { try { process.kill(pid, kept); } catch {} }
+        journal(dir, { event: "attach", callPid: process.pid, driverPid: pid, watch });
       }
+      beat();
       const waiting = waitingRequests(dir);
       if (waiting.length) {
         if (!watch) return handBack(waiting);
@@ -904,6 +1145,8 @@ function run(dir, report, watch = false) {
         const lines = statusLines(dir, report);
         lines[0] = "DRIVER_EXIT=running";
         lines[STATUS_LINES.indexOf("REPORT")] = `RUNNING=pid ${pid}, ${Math.round((Date.now() - t0) / 1000)} s so far; run the same command again`;
+        writeAttach(dir, "returned", process.pid);
+        journal(dir, { event: "returned", callPid: process.pid, driverPid: pid });
         return print(lines);
       }
       setTimeout(tick, POLL_MS);
@@ -929,6 +1172,8 @@ export function main(argv, { fallback = null } = {}) {
   if (o.adapter) { try { backendOf(dir, o.adapter); } catch (e) { process.stderr.write(`${REFUSED}: ${e.message}\n`); process.exit(2); } }
   if (o.status) { process.stdout.write(`${statusLines(dir, o.report).join("\n")}\n`); process.exit(0); }
   if (o.pending) pendingRequests(dir);
+  if (o.stop) return stopRun(dir, o.report, o.why);
+  if (o.handback) return handbackCheck(dir, o.report);
   if (o.decide !== null) decideRequest(dir, o.decide, o.decision, o.why);
   // The orphaning step: its child's parent is gone as soon as it is started, and --keeper tells that
   // child it is --run's keeper, the one launch-only form that hands the driver the mailbox.

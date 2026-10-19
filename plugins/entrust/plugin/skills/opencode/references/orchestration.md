@@ -8,8 +8,9 @@ session against router limits. Use the smallest approved pool.
 
 Record the proxies' model alongside the external worker's model, session and report.
 The plan's model column names the external worker; it must not be replaced with the proxy's Luna.
-An interrupted proxy is the coordinator's cleanup duty: stop only the driver bound to that report and
-verify its external outcome before another invocation.
+An interrupted proxy is the coordinator's cleanup duty: `--stop` the run bound to that report (the shared page's
+[Stop an agent](../../orchestrate/references/external.md#7-stop-an-agent)) and verify its external outcome before
+another invocation.
 
 The common launcher accepts an extended plan alongside existing five-column Codex/Claude plans:
 

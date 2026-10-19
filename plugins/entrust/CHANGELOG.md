@@ -3,13 +3,104 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.31.0 — 2026-10-17
+
+### Added
+
+- **`entrust:proxy`, an explicit-only skill that switches the session to a Claude coordinator after one final
+  confirmation.** The confirmation names the model and the provider of the route, read from the CLI's route and
+  settings rather than guessed from the model, and delegates every right and capability of the session and the
+  sending of its working context to that provider. Nothing is launched and no context is sent before the user's
+  answer; Cancel leaves the running mode as it was. The consent is saved with its source, session, time, model and
+  provider, holds across resumes, restarts and tasks, and is the justification `begin` prints for a platform check.
+  The helper binds the answer to the pending activation and the host session; it cannot tell who wrote it, and the
+  skill makes the host the judge of an explicit affirmative.
 
 ### Changed
 
 - **OpenCode status lists three saved recent models instead of two.** A model family the user names is found when it
   is among the three most recent references, so switching between three families no longer reports one as unresolved.
   `MODEL: inherit` still runs the first recent model.
+
+- **The main proxy's coordinator acts only through the host.** Claude runs it with no tool, MCP server or
+  installed or custom customization of its own (`--tools ""`, `--safe-mode`, `--strict-mcp-config`); platform built-in
+  plugins and admin policy that safe mode keeps are accepted only by the provenance init reports (`path: builtin`,
+  `source: <name>@builtin`), not by name; an init that names anything else, a
+  call of its own, no init at all or another model than the confirmed one fails the round without dispatch and keeps
+  the coordinator. A round is admitted at prepare and again in the driver right before the coordinator starts, so
+  an end, a switch, another host session or another route sends nothing from a round not yet admitted (admission under the state lock is the round's durable start; one already admitted finishes, keeps its report and publishes no orders of an ended mode). Orders publish unbegun; `begin` claims one
+  right before the host executes it, and an end revokes those not begun. A switch saves the new consent first, ends
+  only this host session's replaced mode, and finishes on a repeated confirm after a crash. Images in native results
+  reach the coordinator as image blocks. A catalogue keeps every runtime capability and its native schema: arguments
+  are checked only against a schema whose every keyword the reader enforces, and enum compares JSON values without
+  regard to member order. A failed round closes, so the next prepare continues the same coordinator, and a large
+  catalogue is sent once and then as changes.
+
+### Fixed
+
+- **A relay the host interrupted without a signal no longer leaves its external run to finish unseen, and a relay's
+  hand-back can be checked.** On the Codex host measured on 2026-10-18, the native interrupt of a Luna relay delivered no
+  signal: a plain 20-second command ran to its end with no Entrust in it, and a click on the card was not observed. When a
+  proxy's task ends interrupted, `--stop --report-file` is the explicit bridge: it signals the driver once, after its whole
+  command line equals the one the keeper spawned (recorded in `spawn.json`), and prints the nine lines with
+  `stopped=stop`. Without it the keeper cuts a run whose proxy was last seen attached or returning with `RUNNING=` and
+  has not called again 180 s later, as a Stop would (partial report, `RECEIPT=` reading `stopped=relay-lost`): up to
+  750 s from the interrupt, since the interrupted call keeps pulsing until its 570 s return. A request waiting on a
+  decision, a run handed back and a run nobody attached stay uncut. `lifecycle.jsonl` journals each attach, return,
+  hand-back, stop and each signal a `--run` received with whether it attempted to forward it (an attempt, not a
+  delivery). `--handback` compares a relay's hand-copied message with the launcher's own lines (three relays dropped
+  the final `REPORT=`): `exact`, `truncated`, `differs` or `running`, with the canonical lines framed; no copy is
+  promised lossless. The claude and opencode entry points name the Luna `medium` relay under Codex, and the shared
+  page forbids a coordinator's own `--run`. A hand-made signal remains the recovery for a run no command reaches. A
+  `--stop` that comes after the driver is spawned and before it announces itself waits up to 10 s for the announcement instead of refusing, and `--handback` tells a driver that is starting, a report
+  nothing was launched for (a call's own sandbox refusal included, reproducible only in the same sandbox) and a driver
+  that died with no exit marker from a run that is going. A live pid counts as the run's driver only when its owner and
+  whole command line are the spawned ones, so a reused pid no longer hides a terminal report as `running`; a claim file
+  with no driver, or a process whose identity cannot be read, is `unknown` with a note, not `starting`; and another
+  report path in a run's directory is refused.
+- **An OpenCode driver stopped before its prompt is admitted ends in a terminal aborted report.** Its Stop handler was
+  installed after the private server started, the model was looked up and the session was made, so a Stop that the
+  launcher forwarded on the pid line, which comes first, killed the driver by default and left only the starting claim
+  (measured 2026-10-18, exit 143, no cancellation). The handler is now installed before the pid line. Until this
+  invocation has submitted its prompt, a Stop records its reason and cancels the server startup in flight, and the next
+  startup boundary ends the run with exit 3, `turnStatus: aborted`, `partial: true`, `receiptOk: false`, nothing
+  submitted and the private server closed. The report keeps what is known: the observed model stays null before any
+  model response, a session ID is kept if one is already known (a resumed or created session) and is null otherwise, and
+  the requested model is kept when the prompt named one and stays null while an inherited selection is unresolved.
+  `cancellation.observed: idle` there means only that this invocation submitted nothing (`promptSubmitted: false`); it
+  does not say a prior session or another invocation's child is idle, and a prior busy child is never aborted.
+
+### Breaking
+
+- `main-proxy.mjs init` is replaced by `propose` and `confirm`; a request outside the proxy skill no longer activates
+  a coordinator, and the claude and opencode pages answer one with the proxy command. OpenCode and Codex coordinators
+  are not offered: no profile of theirs acts only through the host yet. A mode saved by `init` keeps its read-run
+  coordinator and is never given a consent.
+- A confirmed mode's orders start as `published` and need `begin` before `bind` or `record`.
+- The `entrust:proxy` skill is not the agent type of that name that 0.30.0 renamed to `entrust:relay`.
+
+- **An external OpenCode run has no wall clock unless its caller declares one, as Codex and Claude.** The 30-minute default
+  cut healthy runs that were still working (`--timeout 0` was also read as an instant limit). `--timeout` now defaults to 0
+  (none), `--idle-timeout` keeps its 600 s (0 disables) and a session the server reports busy, or an event of this run's
+  own sessions, is still progress. Both clocks stand still while a request waits for its decision, from when the driver observes
+  it open until it observes the decision, the deadline or its own refusal (a group rejection decides its siblings only
+  when this run owns every member), so the native call that follows is work, and silence restarts in full from there. A
+  definite native response to the reply, a 4xx included, counts as progress (liveness, not proof the answer was applied);
+  a 5xx or transport failure does not. The three numbers take whole values only (no fraction, sign, exponent or blank),
+  and a published terminal or cut report carries `limits`. The volume bound, stops, partial results and
+  RESUME are unchanged.
+- **An external Claude run has no wall clock unless its caller declares one, as a Codex agent since `184bc339`.**
+  The 30-minute default cut healthy runs that were still working. `--timeout` now defaults to 0 (none) and takes 0;
+  `--idle-timeout` (default 900 s, 0 disables) cuts a run whose stream writes no event of the run for that long.
+  The run is started with `--include-partial-messages`, so a message being written, a subagent's event or a running
+  tool's progress heartbeat counts as life, while only whole events count as calls or evidence; a line that is no
+  such event does not. Both clocks
+  stand still while a request waits for its decision, and silence starts again in full once the last one is
+  answered; work keeps its time. The volume bound, stops and RESUME of a cut run are unchanged; the report adds
+  `limits`, `cancellation.kind` (signal, wall, idle, volume or rights) and `longestSilenceMs`. Claude Code writes that
+  heartbeat every 30 s for a tool in the main conversation and none for a tool inside a subagent, and how long a
+  healthy run stays quiet is not measured yet, so 900 s is Codex's default rather than a proven one;
+  `longestSilenceMs` is how each run measures it.
 
 ## 0.30.1 — 2026-10-15
 

@@ -62,6 +62,15 @@ const typeMatches = (type, value) => {
   }
 };
 
+// Equality of two JSON values as JSON Schema's enum means it: an object's members in any order.
+export function jsonEqual(a, b) {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) return a.length === b.length && a.every((x, i) => jsonEqual(x, b[i]));
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((k) => Object.hasOwn(b, k) && jsonEqual(a[k], b[k]));
+}
+
 export function validateValue(schema, value, where = "$", errors = []) {
   if (typeof schema !== "object" || schema === null) return errors;
   for (const keyword of ["oneOf", "anyOf", "allOf"]) if (schema[keyword] !== undefined) {
@@ -75,7 +84,7 @@ export function validateValue(schema, value, where = "$", errors = []) {
     errors.push(`${where}: expected ${types.join(" or ")}`);
     return errors;
   }
-  if (schema.enum !== undefined && !schema.enum.some((e) => JSON.stringify(e) === JSON.stringify(value)))
+  if (schema.enum !== undefined && !schema.enum.some((e) => jsonEqual(e, value)))
     errors.push(`${where}: not one of the permitted values`);
   if (typeof value === "string") {
     const n = [...value].length;

@@ -16,9 +16,12 @@ function authorization(config) {
   return `Basic ${Buffer.from(`${config.username}:${config.password}`).toString("base64")}`;
 }
 
-async function waitHealthy(config, child, timeoutMs, gone) {
+const cancelled = () => Object.assign(new Error("OpenCode server startup was cancelled"), { cancelled: true });
+
+async function waitHealthy(config, child, timeoutMs, gone, signal) {
   const end = Date.now() + timeoutMs;
   while (Date.now() < end) {
+    if (signal?.aborted) throw cancelled();
     if (child.exitCode !== null || child.signalCode !== null) throw await gone("before it became healthy");
     try {
       const response = await fetch(`${config.url}/global/health`, {
@@ -34,7 +37,8 @@ async function waitHealthy(config, child, timeoutMs, gone) {
   throw new Error("OpenCode server did not become healthy before the startup timeout");
 }
 
-export async function startLocalServer({ cwd = process.cwd(), env = process.env, timeoutMs = 15000 } = {}) {
+// `signal` ends a startup in flight: the server it had spawned is closed and the startup rejects as cancelled.
+export async function startLocalServer({ cwd = process.cwd(), env = process.env, timeoutMs = 15000, signal } = {}) {
   const config = {
     url: null,
     username: `entrust-${crypto.randomBytes(6).toString("hex")}`,
@@ -86,13 +90,14 @@ export async function startLocalServer({ cwd = process.cwd(), env = process.env,
   try {
     const end = Date.now() + timeoutMs;
     while (!config.url && Date.now() < end) {
+      if (signal?.aborted) throw cancelled();
       if (startError) throw startError;
       if (child.exitCode !== null || child.signalCode !== null)
         throw await gone("before announcing its local URL");
       await Promise.race([sleep(50), exited]);
     }
     if (!config.url) throw new Error("OpenCode server did not announce its local URL before the startup timeout");
-    await waitHealthy(config, child, Math.max(1000, end - Date.now()), gone);
+    await waitHealthy(config, child, Math.max(1000, end - Date.now()), gone, signal);
     return { config, close };
   } catch (error) {
     await close();
