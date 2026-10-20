@@ -17,15 +17,14 @@ pins the model and the writes: a prompt that names neither runs on the row's, on
 
 | Field | Values | Effect |
 | --- | --- | --- |
-| `RIGHTS:` (first) | `read [dir]`, `write <dir>`, `worktree <repo>` | the table below; absent: the plan row's writes, else `read` in the current directory |
+| `RIGHTS:` (first) | `read [dir]`, `write <dir>`, `worktree <repo>`; `full <dir>` for the main proxy only | the table below; absent: the plan row's writes, else `read` in the current directory |
 | `MODEL:` | `opus`, `sonnet`, `haiku`, `fable`, or a full `claude-…` id | absent: the plan row's, else the user's default |
 | `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max` | absent: the user's default |
 | `OUTPUT_SCHEMA:` | an absolute path | absent: the [five-field schema](../../orchestrate/schemas/five-fields.schema.json); the driver validates the answer against the original schema |
 | `RESUME:` | the absolute path of an earlier claude report | continues that run's session, in its directory, with its rights; a `RIGHTS:` line names the same or is left out |
 | `SAFE_MODE: yes` | | no CLAUDE.md, memory, skills, plugins, hooks or MCP servers, and so no approvals |
 | `ALLOW_NO_COMMANDS: yes` | | the agent may answer from what it knows; without it, a turn that ran no command and read no file is exit 5 |
-| `PROFILE: coordinator` | | the main proxy's coordinator: no tool, MCP server or customization of its own, SAFE_MODE and ALLOW_NO_COMMANDS implied, `RIGHTS` read naming its directory; a round of a proxy mode is admitted again under that mode's consent right before it starts |
-| `ATTACHMENTS:` | an absolute path | a JSON array of base64 PNG, JPEG, GIF or WebP image blocks, sent before the task in one stream-json user message |
+| `PROFILE: proxy` | | the [main proxy](../../orchestrate/references/main-proxy.md)'s session: Claude Code with its own tools, configuration and permission policy (bypassPermissions requested), no idle or volume bound, ALLOW_NO_COMMANDS implied, `RIGHTS` full naming its directory; a denied call does not fail the run and stays in `permissionDenials`; RESUME continues the same session id; admitted only as its mode's current round, right before it starts |
 | `TASK:` | the task, then every line after it | name absolute paths: Claude Code's prompt names a scratchpad, and "the current directory" alone can land there |
 
 | `RIGHTS` | Working directory | Without asking | Tools |

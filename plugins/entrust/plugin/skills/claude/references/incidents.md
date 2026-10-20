@@ -91,7 +91,7 @@ nine lines, four of them after reading the session with `write_stdin` one to ele
 
 ## Main proxy root oneOf rejected (2026-10-14)
 
-Measured with Claude CLI 2.1.299: submitting the shipped main-proxy schema as --json-schema failed with
+Measured with Claude CLI 2.1.299: submitting the main-proxy schema then shipped (removed with the host-executed proxy) as --json-schema failed with
 HTTP 400: `input_schema does not support oneOf, allOf, or anyOf at the top level`. The canonical root oneOf
 enforces requests versus final_answer. The driver now removes only root combinators from the submission
 copy and validates structured_output against the original schema locally; nested combinators stay. Offline

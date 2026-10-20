@@ -27,57 +27,29 @@ const SERVER_NAME = "entrust-approvals";
 const FIVE_FIELDS = path.join(HERE, "../../orchestrate/schemas/five-fields.schema.json");
 const MODELS = JSON.parse(fs.readFileSync(path.join(HERE, "../adapter.json"), "utf8")).plan.models;
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
-const HEADERS = new Set(["RIGHTS", "MODEL", "EFFORT", "OUTPUT_SCHEMA", "RESUME", "SAFE_MODE", "ALLOW_NO_COMMANDS", "PROFILE", "ATTACHMENTS"]);
-// The image blocks a prompt may attach, in the shape the CLI takes on stream-json input (measured on 2.1.299, Opus,
-// tool-less safe mode: a PNG block was seen as the image it is).
-const IMAGE_MEDIA = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+const HEADERS = new Set(["RIGHTS", "MODEL", "EFFORT", "OUTPUT_SCHEMA", "RESUME", "SAFE_MODE", "ALLOW_NO_COMMANDS", "PROFILE"]);
 const PROTECTED = [{ dir: path.join(passwdHome(), ".claude"), label: "~/.claude", holds: "the settings, hooks and plugins every Claude Code session loads" }];
 const READ_TOOLS = ["Read", "Grep", "Glob", "Bash"];
 const WRITE_TOOLS = [...READ_TOOLS, "Edit", "Write"];
 // What init must report for the rights asked for, measured on 2.1.295 (research/2026-10-09-step5-measurements):
 // `--permission-mode manual` comes back as `default`, and the tools are exactly the ones `--tools` names, beside
 // StructuredOutput, which `--json-schema` adds; MCP tools are the user's servers' and are named in `context`.
-// A coordinator, measured on 2.1.299 (2026-10-16, Opus, `--tools "" --safe-mode --strict-mcp-config`), reports
-// StructuredOutput alone and no MCP server: it acts only through the orders its host executes.
 const MODES = { read: ["default", "manual"], write: ["acceptEdits"] };
 // The sandbox the agent runs under is the one init reports: another mode, or another set of built-in tools,
-// wider or narrower, stops the run rather than run it under rights nobody reasoned about. A coordinator's whole
-// list counts, MCP tools included, since any tool of its own would act outside the host.
-// The one owner of what counts as a platform built-in plugin: the provenance object Claude Code 2.1.299 reports in init
-// under --safe-mode, which disables installed and custom plugins but keeps built-ins and admin policy
-// (observed: {name, path: "builtin", source: "<name>@builtin"}). A bare string, a missing field, another path or a
-// source that does not name this plugin as a built-in is not proven built-in, whatever its name.
-export const builtinPlugin = (p) => Boolean(p) && typeof p === "object" && !Array.isArray(p) && typeof p.name === "string" && p.name !== ""
-  && p.path === "builtin" && p.source === `${p.name}@builtin`;
+// wider or narrower, stops the run rather than run it under rights nobody reasoned about.
 const pluginName = (p) => (p && typeof p === "object" && typeof p.name === "string" ? p.name : String(p));
 export function initProblem(init, kind, profile = "worker") {
+  // A full session keeps Claude's own policy. Managed settings may replace the requested bypass with auto.
+  if (profile === "proxy") return null;
   const level = kind === "read" ? "read" : "write";
   if (!MODES[level].includes(init.permissionMode))
     return `Claude Code reports permission mode ${init.permissionMode ?? "none"}, not this run's ${MODES[level][0]}`;
-  if (profile === "coordinator") {
-    const tools = init.tools ?? [], servers = (init.mcp_servers ?? []).map((s) => s.name ?? String(s));
-    const plugins = (Array.isArray(init.plugins) ? init.plugins : init.plugins === undefined ? [] : [init.plugins]).filter((p) => !builtinPlugin(p)).map(pluginName);
-    if (tools.length !== 1 || tools[0] !== "StructuredOutput")
-      return `Claude Code reports the tools ${tools.join(", ") || "none"}, not this coordinator's StructuredOutput alone`;
-    if (servers.length) return `Claude Code reports the MCP servers ${servers.join(", ")}, not this coordinator's none`;
-    // Safe mode loads no CLAUDE.md or memory (research/2026-10-08-claude-adapter, P1) and no installed plugin.
-    if (plugins.length) return `Claude Code reports the plugins ${plugins.join(", ")}, not built-in platform plugins (installed, custom or unproven ones are refused; platform built-ins and admin policy stay)`;
-    if (init.memory_paths && Object.keys(init.memory_paths).length) return "Claude Code reports memory paths, which this coordinator's safe mode loads none of";
-    return null;
-  }
   const want = level === "read" ? READ_TOOLS : WRITE_TOOLS;
   const got = (init.tools ?? []).filter((t) => !t.startsWith("mcp__") && t !== "StructuredOutput");
   const extra = got.filter((t) => !want.includes(t)), missing = want.filter((t) => !got.includes(t));
   if (extra.length || missing.length)
     return `Claude Code reports the tools ${got.join(", ") || "none"}, not this run's ${want.join(", ")}`;
   return null;
-}
-// A call a coordinator makes itself, in its own thread or a subagent's: init named no tool for it, and the run stops
-// before its answer reaches the host. StructuredOutput is the answer's own transport.
-export function coordinatorCall(e) {
-  if (e.type !== "assistant" || !Array.isArray(e.message?.content)) return null;
-  const own = e.message.content.find((b) => b.type === "tool_use" && b.name !== "StructuredOutput");
-  return own ? `the coordinator called ${own.name} itself, and its profile has no tool for that` : null;
 }
 // What bounds a run whose caller sized nothing, as a Codex agent's since 184bc339: silence and volume, and no wall
 // clock unless the caller declares one. Silence is the stream's: an event of the run, a subagent's, a partial
@@ -126,11 +98,10 @@ const USAGE = `driver — run one external Claude agent (claude -p) for the shar
     RESUME: <absolute path of an earlier claude report>   continues its session, in its directory
     SAFE_MODE: yes                                        no CLAUDE.md, memory, skills, plugins, hooks
                                                           or MCP servers; and so no approvals
-    PROFILE: coordinator                                  no tools of its own and SAFE_MODE: the run acts
-                                                          only through the structured answer its host
-                                                          executes; RIGHTS read names its directory
-    ATTACHMENTS: <absolute path>                          a JSON array of base64 image blocks sent with the
-                                                          task as one stream-json user message
+    PROFILE: proxy                                        the main proxy's full Claude Code session: native tools
+                                                          and configuration, requests bypassPermissions, no idle
+                                                          or volume bound, RESUME keeps its session id;
+                                                          RIGHTS full names its directory
   Exit codes: 0 done; 1 the run ended in error; 2 usage or refused; 3 timed out or stopped;
   4 claude missing or ended without a result; 6 an approval was declined or expired; 7 a call
   needed approval and the run had no mailbox; 10 the resumed run is still running; 13 no
@@ -168,8 +139,11 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   if (headers.RIGHTS !== undefined && order[0] !== "RIGHTS") return refusal("RIGHTS must be the first header when present");
 
   // A continuation keeps its run's rights, which RESUME below supplies; any other run declares them.
-  let rights = headers.RESUME === undefined || headers.RIGHTS !== undefined || env.ENTRUST_PLAN_WRITES
-    ? resolveRights(headers.RIGHTS, env.ENTRUST_PLAN_WRITES, cwd) : null;
+  const full = /^full (.+)$/.exec(headers.RIGHTS ?? "");
+  if (full && env.ENTRUST_PLAN_WRITES) return refusal("RIGHTS full belongs to the main proxy, not a worker plan");
+  let rights = full ? { kind: "full", path: full[1] }
+    : headers.RESUME === undefined || headers.RIGHTS !== undefined || env.ENTRUST_PLAN_WRITES
+      ? resolveRights(headers.RIGHTS, env.ENTRUST_PLAN_WRITES, cwd) : null;
   if (rights?.error) return refusal(rights.error);
 
   const planModel = env.ENTRUST_PLAN_MODEL || null;
@@ -208,17 +182,9 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   if (safeFlag === null) return refusal("SAFE_MODE takes yes, true or 1, or no, false or 0");
   const allowFlag = headers.ALLOW_NO_COMMANDS === undefined ? false : flagValue(headers.ALLOW_NO_COMMANDS);
   if (allowFlag === null) return refusal("ALLOW_NO_COMMANDS takes yes, true or 1, or no, false or 0");
-  if (headers.PROFILE !== undefined && headers.PROFILE !== "coordinator")
-    return refusal(`PROFILE must be coordinator, not ${JSON.stringify(headers.PROFILE)}`);
+  if (headers.PROFILE !== undefined && headers.PROFILE !== "proxy")
+    return refusal(`PROFILE must be proxy, not ${JSON.stringify(headers.PROFILE)}`);
   let profile = headers.PROFILE ?? null;
-  let attachments = null;
-  if (headers.ATTACHMENTS !== undefined) {
-    if (!path.isAbsolute(headers.ATTACHMENTS)) return refusal("ATTACHMENTS must be an absolute path");
-    attachments = readJson(headers.ATTACHMENTS);
-    const bad = !Array.isArray(attachments) || !attachments.length || attachments.some((b) => b?.type !== "image" || b.source?.type !== "base64"
-      || !IMAGE_MEDIA.has(b.source.media_type) || typeof b.source.data !== "string" || !/^[A-Za-z0-9+/]+=*$/.test(b.source.data));
-    if (bad) return refusal(`ATTACHMENTS ${headers.ATTACHMENTS} is not a JSON array of base64 ${[...IMAGE_MEDIA].join(", ")} image blocks`);
-  }
 
   let resume = null;
   if (headers.RESUME !== undefined) {
@@ -237,27 +203,28 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
     if (rights && !sameRights(rights, kept, cwd))
       return refusal(`RESUME: a continuation keeps its rights, ${kept.kind} ${kept.path}; name the same or leave RIGHTS out`);
     rights = kept;
-    // And its profile: a report from before profiles, or a worker's, never continues as a coordinator.
+    // And its profile: a worker's report, or one from before profiles, never continues as the proxy; the removed
+    // host-only coordinator's continues as nothing.
     const keptProfile = prior.profile ?? "worker";
+    if (!["worker", "proxy"].includes(keptProfile)) return refusal(`RESUME ${at} is a ${keptProfile} run, a profile this driver no longer has; there is nothing to continue`);
     if (profile && profile !== keptProfile)
       return refusal(`RESUME: a continuation keeps its profile, ${keptProfile}; name the same or leave PROFILE out`);
     profile = keptProfile;
     resume = { report: at, prior };
   }
   profile ??= "worker";
-  // A coordinator has no tools to write or observe with, and no customizations that would act beside its host.
-  if (profile === "coordinator" && rights.kind !== "read")
-    return refusal(`PROFILE coordinator acts only through its host: RIGHTS read names its working directory, not ${rights.kind}`);
-  if (profile === "coordinator" && headers.SAFE_MODE !== undefined && !safeFlag)
-    return refusal("PROFILE coordinator always runs in safe mode: leave SAFE_MODE out or set it to yes");
-  const safeMode = profile === "coordinator" || safeFlag, allowNoCommands = profile === "coordinator" || allowFlag;
+  if ((profile === "proxy") !== (rights.kind === "full"))
+    return refusal("PROFILE proxy requires RIGHTS full, which is reserved for the main proxy");
+  if (profile === "proxy" && safeFlag) return refusal("PROFILE proxy loads Claude Code's own configuration; SAFE_MODE is incompatible");
+  const safeMode = safeFlag, allowNoCommands = profile === "proxy" || allowFlag;
 
-  return { task, rights, model, effort, schemaPath, schema, schemaText, outputSchemaSha256, submittedSchemaSha256, schemaTransform, safeMode, allowNoCommands, profile, attachments, resume };
+  return { task, rights, model, effort, schemaPath, schema, schemaText, outputSchemaSha256, submittedSchemaSha256, schemaTransform, safeMode, allowNoCommands, profile, resume };
 }
 
 // The rights a report's run had, as a RIGHTS line would name them; and whether a declared one names the same.
 function keptRights(prior) {
   const kind = prior.rights?.kind;
+  if (kind === "full") return { kind, path: prior.cwd };
   if (kind === "read") return { kind, path: prior.cwd };
   if (kind === "write" && prior.rights.roots?.[0]) return { kind, path: prior.rights.roots[0] };
   if (kind === "worktree" && prior.worktreeRepo) return { kind, path: prior.worktreeRepo };
@@ -275,6 +242,10 @@ export function scopeOf(parsed, stateDir) {
     const { prior } = parsed.resume;
     if (!isDir(prior.cwd)) return { error: `RESUME: the run's directory ${prior.cwd} no longer exists` };
     return { kind: prior.rights.kind, cwd: prior.cwd, roots: prior.rights.roots ?? [], worktree: prior.worktreePath ? prior : null };
+  }
+  if (parsed.rights.kind === "full") {
+    const cwd = canonical(parsed.rights.path);
+    return isDir(cwd) ? { kind: "full", cwd, roots: [] } : { error: `RIGHTS full ${cwd} is not an existing directory` };
   }
   const s = rightsScope(parsed.rights);
   if (s.kind === "write") {
@@ -315,24 +286,25 @@ export function runRules({ kind, cwd, mailbox }) {
   });
 }
 
-// A coordinator gets no tools, no MCP server and no worker rules: its task carries its orders, and its host acts.
+// The proxy is Claude Code as configured: no tool list, deny rule or rule text of the driver's, and its own
+// permission policy. A continuation of it resumes the same session id; a worker's forks a new one.
 export function claudeArgs(parsed, { kind, stateDir, box, sessionId, mcpConfig, cwd = process.cwd() }) {
-  const coordinator = parsed.profile === "coordinator";
-  const deny = coordinator ? [] : mailboxRules(stateDir, box);
+  const proxy = parsed.profile === "proxy";
+  const deny = proxy ? [] : mailboxRules(stateDir, box);
   // Partial messages are the stream's sign of life while a message is being written; only whole events are evidence.
   const args = ["-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--json-schema", parsed.schemaText,
+    ...(proxy ? ["--dangerously-skip-permissions", "--chrome"] : [
     "--permission-mode", kind === "read" ? "manual" : "acceptEdits",
-    "--tools", coordinator ? "" : (kind === "read" ? READ_TOOLS : WRITE_TOOLS).join(","),
+    "--tools", (kind === "read" ? READ_TOOLS : WRITE_TOOLS).join(","),
     ...(deny.length ? ["--disallowedTools", ...deny] : []),
-    ...(coordinator ? ["--strict-mcp-config"] : ["--append-system-prompt", runRules({ kind, cwd, mailbox: Boolean(mcpConfig) })])];
-  if (parsed.attachments) args.push("--input-format", "stream-json");
+    "--append-system-prompt", runRules({ kind, cwd, mailbox: Boolean(mcpConfig) })])];
   if (parsed.model) args.push("--model", parsed.model);
   if (parsed.effort) args.push("--effort", parsed.effort);
-  if (parsed.resume) args.push("--resume", parsed.resume.prior.sessionID, "--fork-session");
-  args.push("--session-id", sessionId);
+  if (parsed.resume) args.push("--resume", parsed.resume.prior.sessionID, ...(proxy ? [] : ["--fork-session"]));
+  if (!proxy || !parsed.resume) args.push("--session-id", sessionId);
   if (parsed.safeMode) args.push("--safe-mode");
   if (mcpConfig) args.push("--mcp-config", mcpConfig, "--permission-prompt-tool", `mcp__${SERVER_NAME}__${TOOL}`);
-  else args.push("--permission-prompts", "none");
+  else if (!proxy) args.push("--permission-prompts", "none");
   return args;
 }
 
@@ -443,8 +415,13 @@ async function run(o, text) {
     const parsed = parsePrompt(text);
     if (parsed.error) return refused(parsed.error, parsed.busy ? EXIT.BUSY : EXIT.USAGE);
     ctx.parsed = parsed;
+    if (parsed.profile === "proxy") {
+      if (parsed.resume) ctx.sessionId = parsed.resume.prior.sessionID;
+      o.idleTimeout = 0; o.maxToolCalls = 0;
+      Object.assign(ctx.limits, { idleTimeoutS: 0, maxToolCalls: null });
+    }
     const stateDir = stateDirectory();
-    const box = o.approvalDir ? path.resolve(o.approvalDir) : null;
+    const box = parsed.profile !== "proxy" && o.approvalDir ? path.resolve(o.approvalDir) : null;
     const misplaced = box && mailboxProblem(box, stateDir);
     if (misplaced) return refused(misplaced);
     ctx.box = box;
@@ -457,10 +434,13 @@ async function run(o, text) {
       Object.assign(scope, { cwd: wt.worktreePath, roots: [wt.worktreePath], worktree: { worktreePath: wt.worktreePath, worktreeRepo: wt.repo, worktreeBase: wt.base } });
     }
     if (ctx.stopped) return publish(verdict({ stopped: ctx.stopped }));
-    // A coordinator round of a proxy mode starts only under that mode's consent as it stands now, and the admission
-    // saves the round's durable claim under the mode's lock: an end before it refuses the round, one after it finds the
-    // round in flight, and no new round starts from another host session, a replaced mode or another route.
-    if (parsed.profile === "coordinator") { const why = admitRound(report); if (why) return refused(why); }
+    // A proxy round starts only under its mode's consent as it stands now, and the admission saves the round's durable
+    // claim under the mode's lock: an end before it refuses the round, and no new round starts from another host
+    // session, a replaced mode or another route.
+    if (parsed.profile === "proxy") {
+      const why = admitRound(report, process.pid);
+      if (why) return refused(why);
+    }
 
     let mcpConfig = null;
     if (box && !parsed.safeMode) {
@@ -502,13 +482,10 @@ async function run(o, text) {
       quiet = 0;
       observe(ctx, e);
       if (e === ctx.init && !ctx.wider && (ctx.wider = initProblem(e, scope.kind, parsed.profile))) stop(ctx.wider, "rights");
-      if (parsed.profile === "coordinator" && !ctx.wider && (ctx.wider = coordinatorCall(e))) stop(ctx.wider, "rights");
-      if (ctx.tools.size > o.maxToolCalls) stop(`cut at its volume bound: more than ${o.maxToolCalls} tool calls`, "volume");
+      if (o.maxToolCalls && ctx.tools.size > o.maxToolCalls) stop(`cut at its volume bound: more than ${o.maxToolCalls} tool calls`, "volume");
     });
     child.stdin.on("error", () => {});
-    child.stdin.end(parsed.attachments
-      ? `${JSON.stringify({ type: "user", message: { role: "user", content: [...parsed.attachments, { type: "text", text: parsed.task }] } })}\n`
-      : parsed.task);
+    child.stdin.end(parsed.task);
 
     const [exitCode, signal, spawnError] = await new Promise((resolve) => {
       let closed = false, exited = null;
@@ -519,9 +496,11 @@ async function run(o, text) {
     });
     clearInterval(timer);
     fs.closeSync(transcript);
-    // A coordinator is admitted on what its init reports; a stream that held none confirmed nothing.
-    if (parsed.profile === "coordinator" && !ctx.init) ctx.unconfirmed = "Claude Code reported no init, so this coordinator's profile was never confirmed";
-    const denials = ctx.result?.permission_denials ?? [];
+    // A proxy session is attributed by its init; a stream that held none confirmed no session.
+    if (parsed.profile === "proxy" && !ctx.init) ctx.unconfirmed = "Claude Code reported no init, so this proxy session was never confirmed";
+    // A worker with no mailbox fails on a denied call. The proxy runs under Claude's own policy: a denied call is
+    // Claude's to handle in its answer, and the report keeps every denial.
+    const denials = parsed.profile === "proxy" ? [] : ctx.result?.permission_denials ?? [];
     return publish(verdict({ result: ctx.result, stopped: ctx.stopped, wider: ctx.wider, spawnError, exitCode, signal, box, denials, hasMailbox: Boolean(mcpConfig),
       observed: observations(ctx.tools), allowNoCommands: parsed.allowNoCommands, unconfirmed: ctx.unconfirmed }));
   } catch (e) {
@@ -593,7 +572,6 @@ function buildReport(ctx, facts) {
     resumedFromSession: parsed?.resume?.prior?.sessionID ?? null,
     resume: Boolean(parsed?.resume), resumedFrom: parsed?.resume?.report ?? null,
     context: init ? { permissionMode: init.permissionMode ?? null, tools: init.tools ?? [], plugins: (init.plugins ?? []).map(pluginName),
-      installedPlugins: (init.plugins ?? []).filter((p) => !builtinPlugin(p)).map(pluginName),
       mcpServers: (init.mcp_servers ?? []).map((s) => ({ name: s.name, status: s.status })), memory: Boolean(init.memory_paths),
       safeMode: parsed?.safeMode ?? null } : null,
     transcriptPath: ctx.transcriptPath,

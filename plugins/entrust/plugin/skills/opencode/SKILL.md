@@ -20,7 +20,7 @@ own session. Continuing a worker reuses that session under a fresh report path.
 
 A request to make a model the coordinator (“Прокси на <model>”) starts nothing here: the explicit proxy skill,
 `/entrust:proxy` (`$entrust:proxy` in Codex), owns that switch and its one confirmation, and it activates Claude
-coordinators only, since no OpenCode coordinator acts only through the host yet
+sessions only, since the direct proxy transport is implemented for Claude
 ([main proxy mode](../orchestrate/references/main-proxy.md)). An ordinary request such as “Позови <model>: проверь diff”
 delegates one worker and follows the launch steps below.
 

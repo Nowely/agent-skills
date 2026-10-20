@@ -319,12 +319,12 @@ list by attacking them, not by shipping features near them.
 and aborting only this run's session, silence and `--idle-timeout 0`, and a request's wait (permission, question, accept,
 decline, slow lookup) excluded from both clocks while the native reply that follows a decision counts as work.
 
-`main-proxy.test.mjs` runs full offline Claude coordinator rounds from propose and the user's confirmation through
-prepare, the attached launcher, finish, begin, native binding, collect/invoke outcomes and RESUME to final_answer.
-It checks that nothing launches before the confirmation or after an end, a switch or a session or route drift; that
-cancel and a crashed switch keep the right modes; that images travel as image blocks; and catalogue refusals,
-explicit model/effort selection, missing reply delivery, unknown-outcome guards and legacy modes.
+`main-proxy.test.mjs` runs the direct proxy offline from propose and the user's confirmation through prepare, the
+attached launcher, the real Claude driver against fake Claude, and finish to a verbatim final_answer, with the next
+message resuming the same session id. It checks that nothing launches before the confirmation or after an end, a
+switch or a session or route drift; that a call Claude's policy denies leaves a valid reply delivered and the denial
+recorded; that finish closes a refused, failed, unconfirmed, lost or never-started round without a replay and says
+which session the next message continues; that end and finish refuse while a round runs; that a reply from another
+model is not delivered; that states of the removed host-executed proxy are refused unchanged; and concurrent finish,
+a lost stdout and stale locks. Whether real Claude Code resumes an interrupted turn is not measured offline.
 The Claude proxy routing case requires claude and forbids opencode; its live trigger run is opt-in.
-
-Main proxy regressions also cover concurrent finish/record, persisted-before-stdout reconciliation, stale locks,
-raw string-input fidelity, terminal collect, and help/catalogue generation from whole runtime metadata files.

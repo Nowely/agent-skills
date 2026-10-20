@@ -28,7 +28,7 @@ A prompt is a few header lines, then `TASK:` and the task. Header lines come fir
 | `RIGHTS:` (first, when present) | `read [<dir>]`: no file-tool writes; optional path selects the working directory, not a read boundary; `write <dir>`: may change files under `<dir>`; `worktree <repo>`: may change files in a fresh copy of `<repo>` | the plan row's writes; without a plan, `read` in the directory you run `--new` in |
 | `MODEL:` | a model name from the adapter's models page | the plan row's model; without a plan, the CLI's default |
 | `EFFORT:` | an effort name from the adapter's page | the CLI's default |
-| `OUTPUT_SCHEMA:` | the absolute path of a JSON Schema; workers use `<orchestrate>/schemas/five-fields.schema.json`; the main-proxy coordinator uses `<orchestrate>/schemas/main-proxy.schema.json` | the adapter's default |
+| `OUTPUT_SCHEMA:` | the absolute path of a JSON Schema; workers use `<orchestrate>/schemas/five-fields.schema.json`; the main proxy uses `<orchestrate>/schemas/proxy-reply.schema.json` | the adapter's default |
 | `RESUME:` | the `REPORT=` path of an earlier run of this agent | a new agent |
 | `ALLOW_NO_COMMANDS:` | `yes` | a turn that ran no command and read no file fails with exit 5 |
 
@@ -284,9 +284,8 @@ on that refusal, run `--pending` and copy from what it prints. When your own hos
 Decline with `--decide '<ID>' --decline --why "<reason>" --report-file "<REPORT>"`. Answer a question with
 `--decide '<ID>' --answer --report-file "<REPORT>"` and `{"answers":[["<choice>"]]}` on stdin, one list per
 question. Then continue the proxy task with a distinct turn when the host supports it, following step 3's same
-command and report path; otherwise use a fresh context. In [main proxy mode](main-proxy.md) the attached call
-goes on instead ([proxy.md](proxy.md)). A request nobody answers is declined after thirty minutes. A decline
-answers that one request; the run goes on.
+command and report path; otherwise use a fresh context. A request nobody answers is declined after thirty minutes.
+A decline answers that one request; the run goes on.
 
 ### What each adapter adds
 

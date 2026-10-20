@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "properties": {
+    "final_answer": { "type": "string", "minLength": 1 }
+  },
+  "required": ["final_answer"],
+  "additionalProperties": false
+}

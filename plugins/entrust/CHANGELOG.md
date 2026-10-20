@@ -3,6 +3,62 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- **The main proxy runs a full Claude Code session.** Claude executes and verifies work with its native tools,
+  configured MCP servers, plugins, skills and memory. The host relays messages and final answers through
+  `prepare`, the attached run and `finish`; tool activity stays in the existing transcript. Chrome integration is
+  enabled and bypassPermissions is requested; Claude's own policy determines the observed permission mode.
+- **A continuation keeps the same Claude session.** Failed, refused, never-started and unconfirmed rounds close
+  with an explicit outcome. Nothing is replayed automatically; the next user message continues an observed
+  session or starts a new one. A live round must finish or be stopped before the mode ends.
+
+### Fixed
+
+- A policy denial of an individual proxy tool no longer suppresses a valid final answer. Denials remain in the
+  report and status; ordinary workers retain their existing approval semantics.
+- A failed proxy round no longer leaves an irreversible `resumeUnavailable` flag. Recovery uses the observed
+  session, and an unknown outcome remains explicitly unknown.
+
+### Breaking
+
+- The host-executed proxy protocol is removed: capability catalogues, agent orders, `catalogue`, `begin`, `bind`,
+  `record`, `results`, the coordinator profile and the `ATTACHMENTS` header. The transport accepts text messages.
+- State from Entrust 0.31 or earlier is refused unchanged. Start a new activation in a new state directory;
+  there is no migration or compatibility runtime.
+
+### Validation
+
+- Direct proxy: 23 offline scenarios; Claude driver: 36; affected OpenCode suite: 94. Four deliberate regressions
+  in denial handling, failed-session recovery, stopping and instruction delivery were detected by the direct suite.
+- Live Haiku: the candidate plugin loaded, Bash wrote a marker, Read verified it, the next message retained
+  context and session ID, an in-flight command was stopped, and a new message resumed without replay.
+  No delayed write appeared over the stopped command's remaining lifetime. This does not establish SIGKILL recovery
+  or browser interaction.
+- Measured with Node 24.15.0, Claude Code 2.1.299 and codex-cli 0.163.0-alpha.10.2. The Codex protocol remains pinned
+  to 0.159.3. The broader live orchestrate, cross-plugin and Codex fidelity release gates have not run for this
+  candidate; they remain publication prerequisites. The full local offline run reproduced one pre-existing
+  `agent-run` D6 failure on both the candidate and unchanged HEAD when the checkout is inside `~/.codex` (E140).
+
+### Known issues
+
+- E67: stopping an approved command outside the Codex sandbox is not established.
+- E110: the live gate does not check worker briefs against split ownership or see shell writes.
+- E90: swarm batches are limited to fifty units and do not aggregate tokens.
+- E96: Claude subagent token figures describe the last call's context.
+- E100: worktree coordinator heredocs naming git can be refused.
+- E102: the Codex page does not offer the existing background Bash delegation path.
+- E103: skill loading in `dontAsk` mode needs an allow rule for the status probe.
+- E104: advisor and refutation effort are stated inconsistently.
+- E111: the blanket exclusion of Luna from judgement is not supported by one measured run.
+- E113: temporary-directory checks do not verify permissions.
+- E114: two lock cases fail inside the Codex sandbox and pass outside it.
+- E117: bulk-unit rules are duplicated.
+- E139: OpenCode and Claude worktrees are absent from the cleanup ledger.
+- E140: `agent-run` D6 uses the checkout as a write target and fails under `~/.codex`.
+
 ## 0.31.0 — 2026-10-17
 
 ### Added

@@ -1,4 +1,4 @@
-// The JSON-Schema subset entrust validates: a coordinator's structured reply, a worker's five fields.
+// The JSON-Schema subset entrust validates: the main proxy's structured reply, a worker's five fields.
 
 // The subset this module validates. Every keyword here is actually enforced; a schema
 // that uses any other keyword is refused rather than reported as validated.
