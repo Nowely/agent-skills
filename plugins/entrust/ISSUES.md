@@ -323,3 +323,18 @@ still named.
 the coordinator does not remove it, and nothing names it afterwards: the Codex driver's ledger and reconciliation
 cover only its own trees, and `/entrust:cleanup` does not list it. The shared worktree code should record its trees
 where cleanup reads, or cleanup should list the trees under `<state>/worktrees/`.
+
+## E140. The agent-run D6 fixture fails when the checkout is inside ~/.codex
+
+**Evidence, level 3.** `evals/agent-run.test.mjs:942-962` registers a worktree writer and prepares it using the
+test process's checkout. `codex/scripts/driver.mjs:602` protects `~/.codex`, which also contains Codex-managed
+worktrees. On 2026-10-20, `node evals/agent-run.test.mjs` failed D6 with
+`refusing to grant write access ... it is inside ~/.codex, which holds the rollout receipts`.
+The same suite from an unchanged `6c27a809` archive under the checkout reproduced the same failure:
+70 cases passed and D6 failed in both runs.
+
+**Check.** Run the suite from a checkout under `~/.codex/worktrees/`. The first worktree-writer preparation in D6
+is refused before the continuation assertions.
+
+**Issue text.** D6 relies on the checkout being an admissible write target, so its result depends on where the
+repository was cloned. Use an isolated admissible fixture repository for this test; keep the production guard.

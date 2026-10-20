@@ -30,7 +30,7 @@ Then invoke `$entrust:orchestrate`; it uses Codex's own subagents.
 | Skill | Started by | What it does |
 | --- | --- | --- |
 | [orchestrate](skills/orchestrate/SKILL.md) | you: `/entrust:orchestrate`, `$entrust:orchestrate` | plans, delegates, verifies and synthesises |
-| [proxy](skills/proxy/SKILL.md) | you: `/entrust:proxy <model>`, `$entrust:proxy <model>` | switches this session to a Claude coordinator after one final confirmation that delegates the session's rights, capabilities and working context |
+| [proxy](skills/proxy/SKILL.md) | you: `/entrust:proxy <model>`, `$entrust:proxy <model>` | starts full Claude Code execution after confirmation; the host relays messages and replies, with tool activity in the existing journal |
 | [cleanup](skills/cleanup/SKILL.md) | you: `/entrust:cleanup` | lists what entrust left on this machine and deletes the items you pick by number |
 | [advisor](skills/advisor/SKILL.md) | you: `/entrust:advisor` | a standing top-tier advisor, of the other model family where a route exists, for one run; an experiment |
 | [swarm](skills/swarm/SKILL.md) | you: `/entrust:swarm`, or an approved plan | up to fifty bulk agents over a file of units, reduced to one summary; an experiment |

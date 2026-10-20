@@ -21,18 +21,13 @@ if (argv[0] === "auth" && argv[1] === "status") {
   process.exit(loggedIn ? 0 : 1);
 }
 
-// The task: stdin's text, or with --input-format stream-json the one user message's text blocks, its image blocks
-// logged by media type and the SHA-256 of their decoded bytes.
-const stdin = fs.readFileSync(0, "utf8");
-const streamed = flag("--input-format") === "stream-json" ? JSON.parse(stdin.trim().split("\n")[0]).message.content : null;
-const task = streamed ? streamed.filter((b) => b.type === "text").map((b) => b.text).join("") : stdin;
-const images = (streamed ?? []).filter((b) => b.type === "image")
-  .map((b) => ({ media_type: b.source.media_type, sha256: crypto.createHash("sha256").update(Buffer.from(b.source.data, "base64")).digest("hex") }));
-const sessionId = flag("--session-id");
+const task = fs.readFileSync(0, "utf8");
+// A continuation without --fork-session keeps the resumed id, as the real CLI does.
+const sessionId = flag("--session-id") ?? flag("--resume");
 const model = { opus: "claude-opus-5-5", sonnet: "claude-sonnet-5-5", haiku: "claude-haiku-5-5", fable: "claude-fable-5-1" }[flag("--model")] ?? flag("--model") ?? "claude-sonnet-5-5";
 if (process.env.FAKE_CLAUDE_LOG) {
   const vars = Object.fromEntries(["CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CLAUDE_EFFORT", "ANTHROPIC_API_KEY"].map((k) => [k, process.env[k] ?? null]));
-  fs.appendFileSync(process.env.FAKE_CLAUDE_LOG, `${JSON.stringify({ argv, cwd: process.cwd(), task, images, firstBlock: streamed?.[0]?.type ?? null, vars })}\n`);
+  fs.appendFileSync(process.env.FAKE_CLAUDE_LOG, `${JSON.stringify({ argv, cwd: process.cwd(), task, vars })}\n`);
 }
 
 const schema = JSON.parse(flag("--json-schema") ?? "{}");
@@ -45,7 +40,8 @@ const five = (result) => ({ status: "done", result, evidence: ["observed"], arti
 // The model each of the session's own assistant messages names, as the real stream does; a case may make it another.
 const answering = process.env.FAKE_CLAUDE_ASSISTANT_MODEL ?? model;
 // What --tools leaves: "" is none, as with the real CLI; --json-schema adds StructuredOutput beside them.
-const granted = [...(flag("--tools") ? flag("--tools").split(",") : []), ...(flag("--json-schema") ? ["StructuredOutput"] : [])];
+const granted = [...(flag("--tools") === null ? ["Bash", "Read", "Write", "Edit", "Agent", "Skill", "WebFetch", "mcp__browser__navigate"]
+  : flag("--tools") ? flag("--tools").split(",") : []), ...(flag("--json-schema") ? ["StructuredOutput"] : [])];
 const finish = ({ structured = five("checked"), isError = false, subtype = "success", denials = [], terminal = "completed", text } = {}) => {
   if (structured && !isError) {
     emit({ type: "assistant", parent_tool_use_id: null, message: { model: answering, content: [{ type: "tool_use", id: "toolu_so", name: "StructuredOutput", input: structured }] } });
@@ -62,7 +58,7 @@ const toolCall = (id, name, input, isError = false) => {
 };
 
 // A stream with no init at all, a transport fault no real CLI has been seen to make, when a case asks for one.
-if (process.env.FAKE_CLAUDE_NO_INIT !== "1") emit({ type: "system", subtype: "init", cwd: process.cwd(), model, permissionMode: flag("--permission-mode"),
+if (process.env.FAKE_CLAUDE_NO_INIT !== "1") emit({ type: "system", subtype: "init", cwd: process.cwd(), model, permissionMode: argv.includes("--dangerously-skip-permissions") ? "bypassPermissions" : flag("--permission-mode"),
   tools: granted, plugins: argv.includes("--safe-mode") ? [] : [{ name: "user-plugin", path: "/x" }],
   mcp_servers: flag("--mcp-config") ? [{ name: "entrust", status: "connected" }] : [], claude_code_version: "2.1.294",
   ...(argv.includes("--safe-mode") ? {} : { memory_paths: { auto: "/m" } }),
@@ -115,6 +111,16 @@ async function main() {
   // observation is "recall".
   if (!["error", "noschema", "die", "slow", "recall"].includes(mode) && granted.includes("Read")) toolCall("toolu_0", "Read", { file_path: process.cwd() });
   if (mode === "structured") return finish({ structured: JSON.parse(process.env.FAKE_CLAUDE_OUTPUT) });
+  // A full session's own calls, then its answer or a provider error; FAKE_CLAUDE_DENIALS is what its policy denied.
+  if (mode === "proxy" || mode === "proxy-error") {
+    toolCall("proxy-write", "Write", { file_path: `${process.cwd()}/out.txt`, content: "x" });
+    toolCall("proxy-browser", "mcp__browser__navigate", { url: "http://localhost:3000" });
+    toolCall("proxy-agent", "Agent", { prompt: "verify" });
+    const denials = JSON.parse(process.env.FAKE_CLAUDE_DENIALS ?? "[]");
+    for (const d of denials) toolCall(d.tool_use_id, d.tool_name, d.tool_input, true);
+    return mode === "proxy-error" ? finish({ isError: true, structured: null, text: "provider failed after executing", denials })
+      : finish({ structured: JSON.parse(process.env.FAKE_CLAUDE_OUTPUT), denials });
+  }
   if (mode === "recall") return finish();
   if (mode === "ok") { toolCall("toolu_1", "Bash", { command: "ls" }); return finish(); }
   if (mode === "write") { toolCall("toolu_1", "Write", { file_path: `${process.cwd()}/out.txt`, content: "x" }); return finish(); }

@@ -7,8 +7,8 @@ agents may return text or write permitted temporary artifacts. Roles divide owne
 the parent orchestrator owns the work-list, changes of authority, synthesis and landing of results.
 A proxy relays one `--run` of an external worker and hands back what it printed; it decides no request
 and reads no result ([external.md](external.md#3-run-it)), so the coordinator owns both. In the [main proxy mode](main-proxy.md),
-an external coordinator owns those orchestration decisions and gives concrete agent orders; the current
-host launches the workers and owns their transport and lifecycle.
+Claude owns those orchestration decisions and executes work with its own tools and agents; the current
+host transports user messages and Claude's replies.
 
 | Role | What it does | May write | Returns | Spawn it when | Tier |
 |---|---|---|---|---|---|
