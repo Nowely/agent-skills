@@ -3,7 +3,12 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.7.0 — 2026-10-21
+
+### Breaking
+
+- `clarity` now requires explicit invocation in Codex and Claude Code. Invoke `$terse:clarity` or
+  `/terse:clarity` when needed; it no longer starts automatically.
 
 ### Changed
 
@@ -44,6 +49,18 @@ forensics remain in the repository references and release notes.
   its sections under a Contents heading after its opening table, so a preview of its first 100 lines shows where
   every brief is; before, such a preview stopped in brief 2, with eleven of its fourteen sections unseen. The
   repository's `evals/skills.test.mjs` found both.
+
+### Validation
+
+- With Node 24.15.0, the page suite passed 12/12 checks and the repository skill suite passed 8/8
+  across 60 pages and 13 skills. The merged manual-invocation PR #86 passed all four CI jobs.
+- Live host invocation, automatic-trigger evals and a fresh cross-plugin session were not run for this
+  release preparation. Host behavior remains unverified beyond the static policy and page checks.
+
+### Known issues
+
+- E141: the plugin and marketplace descriptions still say the assistant may choose `clarity`, although
+  its invocation policy requires the user to invoke it explicitly.
 
 ## 0.6.0 — 2026-09-30
 
