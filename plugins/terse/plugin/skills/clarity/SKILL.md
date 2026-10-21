@@ -17,7 +17,7 @@ when_to_use: >-
   diff, text beside code, and a change note. Read a genre note only when that genre is at hand.
 disable-model-invocation: true
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 license: MIT
 ---
 
