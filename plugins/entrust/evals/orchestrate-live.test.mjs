@@ -8,7 +8,7 @@
 // a rewrite that drops one turns a case red. It cannot tell whether a coordinator that READS the page does
 // any of it, and every claim the mode makes is behavioural: it stops at a plan, it names a Codex agent from
 // the tier table, it tags every Claude agent, it touches nothing before "go", it writes one run directory.
-// Those are the release gate here, and nothing short of a live session measures them.
+// These are development checks; publishing a merged candidate does not repeat them.
 //
 // It spends real model calls, so it is gated exactly like the fidelity suite's live turn: without
 // ENTRUST_LIVE_ORCHESTRATE=1 it says so in one line and exits 0. What it concludes from a session is code in
@@ -112,7 +112,7 @@ import { createTempDir } from "../plugin/skills/orchestrate/scripts/temp-dir.mjs
 
 const { cases: CASES, test } = registry();
 
-// Kept, never swept: RELEASING files these with the release notes, so they must outlive the process. That
+// Kept, never swept: development evidence accompanies the release notes, so it must outlive the process. That
 // is also why harness.tempDir is not used here, which removes its directories on exit. SYSTEM_TMP, not
 // os.tmpdir(): the harness has already pointed $TMPDIR at a swept directory of its own, and a state
 // directory under the $TMPDIR the driver inherits is refused, since the read level grants $TMPDIR.
@@ -711,7 +711,7 @@ test("Astra answers on its own thread when not invited to delegate",
     // No --effort: the page sends no EFFORT: line, so the agent inherits the configured effort and this is
     // the agent the page describes. What the server selected is noted beside the case, never asserted.
     const base = ["--level", "read", "--cwd", scratch, "--model", "astra"];
-    // A release gate leaves no job record on the machine it runs on: --help documents
+    // A development check leaves no job record on the machine it runs on: --help documents
     // ENTRUST_STATE_DIR as where everything the driver owns lives, and it must be absolute.
     const env = { ...process.env, ENTRUST_STATE_DIR: path.join(dir, "state") };
 

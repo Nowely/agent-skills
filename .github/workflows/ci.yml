@@ -41,8 +41,8 @@ jobs:
         run: for f in plugin/skills/*/scripts/*.mjs evals/*.mjs evals/lib/*.mjs; do node --check "$f"; done
       # No install step: the driver, the suites and the fixture import node: builtins only.
       # The suites that need the real `codex` or `claude` are not run here: without the binary or the
-      # opt-in variable each skips, says so, and exits 0. They stay LOCAL pre-release steps (RELEASING.md):
-      # they need an authenticated home and they spend real money.
+      # opt-in variable each skips, says so, and exits 0. They are LOCAL development checks (RELEASING.md):
+      # they need an authenticated home and spend real money; publishing a merged candidate does not repeat them.
       - name: Suites
         # $TMPDIR is the whole grant at --level read, and a stock Linux shell does not set it: without it
         # every read-level case is a usage error before anything is spawned. The runner context is only
