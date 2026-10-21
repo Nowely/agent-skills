@@ -15,7 +15,7 @@ Invoke `$entrust:orchestrate` to coordinate native Codex subagents. The `codex` 
 Claude-to-Codex adapter and is not needed for native Codex delegation. The other external-run
 features still depend on that adapter; installing them does not establish native compatibility.
 Install `terse` with `codex plugin add terse@nowely`; its four skills use native host instructions.
-Invoke `$terse:rethink`, `$terse:rewrite`, or `$terse:audit` explicitly; `$terse:clarity` may also be selected automatically.
+Invoke `$terse:rethink`, `$terse:rewrite`, `$terse:audit`, or `$terse:clarity` explicitly. All four require manual invocation.
 
 The existing `.claude-plugin/marketplace.json` is a
 [Codex-supported catalogue format](https://learn.chatgpt.com/docs/enterprise/plugin-management).

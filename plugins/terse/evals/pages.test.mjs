@@ -80,7 +80,7 @@ function scalar(raw, file, line) {
 function clarityProblems(file) {
   const fm = frontmatterYaml(file);
   const problems = [];
-  if (Object.hasOwn(fm, "disable-model-invocation")) problems.push("disable-model-invocation is present");
+  if (fm["disable-model-invocation"] !== true) problems.push("disable-model-invocation is not true");
   if (fm["user-invocable"] === false || fm["user-invocable"] === "false") problems.push("user-invocable is false");
   if (fm.name !== "clarity") problems.push(`name is ${fm.name}`);
   const manifestVersion = JSON.parse(fs.readFileSync(path.join(ROOT, ".claude-plugin/plugin.json"), "utf8")).version;
@@ -196,7 +196,7 @@ test("the shared run recipe creates distinct absolute temporary and supplied dur
   finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 
-test("deep skills require explicit invocation in both hosts and clarity remains implicit-eligible", () => {
+test("all skills require explicit invocation in both hosts", () => {
   const implicit = (skill) => {
     const file = path.join(ROOT, "skills", skill, "agents/openai.yaml");
     if (!fs.existsSync(file)) return true;
@@ -206,9 +206,9 @@ test("deep skills require explicit invocation in both hosts and clarity remains 
     return value === "true";
   };
   try {
-    const problems = RUN_SKILLS.filter((skill) =>
-      frontmatterYaml(path.join(ROOT, "skills", skill, "SKILL.md"))["disable-model-invocation"] !== true || implicit(skill));
-    if (!implicit("clarity")) problems.push("clarity");
+    const problems = fs.readdirSync(path.join(ROOT, "skills"), { withFileTypes: true })
+      .filter((e) => e.isDirectory()).map((e) => e.name)
+      .filter((skill) => frontmatterYaml(path.join(ROOT, "skills", skill, "SKILL.md"))["disable-model-invocation"] !== true || implicit(skill));
     return problems.length === 0 || `invocation policy mismatch: ${problems.join(", ")}`;
   } catch (e) { return e.message; }
 });
@@ -246,14 +246,14 @@ test("each frozen block hashes to the SHA-256 its page records", () => {
   return problems.length === 0 || problems.join("; ");
 });
 
-test("clarity frontmatter permits model invocation and fits the listing limit", () => {
+test("clarity frontmatter requires explicit invocation and fits the listing limit", () => {
   try {
     const problems = clarityProblems(path.join(ROOT, "skills/clarity/SKILL.md"));
     return problems.length === 0 || problems.join("; ");
   } catch (e) { return e.message; }
 });
 
-test("eight damaged frontmatter copies fail closed", () => {
+test("nine damaged frontmatter copies fail closed", () => {
   const original = fs.readFileSync(path.join(ROOT, "skills/clarity/SKILL.md"), "utf8");
   const version = JSON.parse(fs.readFileSync(path.join(ROOT, ".claude-plugin/plugin.json"), "utf8")).version;
   const versionLine = `version: ${JSON.stringify(version)}`;
@@ -272,7 +272,8 @@ test("eight damaged frontmatter copies fail closed", () => {
     ["nested folded line", original.replace("  Reader-side checks", "    Reader-side checks")],
     ["plain continuation", original.replace("name: clarity", "name: clarity\n  surprise continuation")],
     ["manual invocation disabled", original.replace("license: MIT", "user-invocable: false\nlicense: MIT")],
-    ["model invocation disabled", original.replace("license: MIT", "disable-model-invocation: true\nlicense: MIT")],
+    ["model invocation enabled", original.replace("disable-model-invocation: true", "disable-model-invocation: false")],
+    ["invocation policy missing", original.replace("disable-model-invocation: true\n", "")],
     ["version mismatch", damageVersion("version mismatch", `version: ${JSON.stringify(`${version}.invalid`)}`)],
   ];
   const escaped = [...unchanged];
