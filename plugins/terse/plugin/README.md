@@ -1,6 +1,6 @@
 # terse
 
-terse is a plugin for Codex and Claude Code for assessing and improving any text. Its aim is text in which every word carries weight and meaning, without AI slop. Three deep skills use several AI agents; `clarity` is a page the assistant may choose while writing everyday text.
+terse is a plugin for Codex and Claude Code for assessing and improving any text. Its aim is text in which every word carries weight and meaning, without AI slop. Three deep skills use several AI agents; `clarity` provides checks for everyday text.
 
 ## Quick start
 
@@ -30,8 +30,7 @@ In Claude Code:
 
 In Codex, invoke `$terse:audit`, `$terse:rethink`, `$terse:rewrite`, or `$terse:clarity`.
 The workflow below uses the Claude Code command names; both hosts use their native agents, available
-models and capacity. The deep skills require explicit invocation in both; `clarity` remains eligible
-for automatic selection.
+models and capacity. All four skills require explicit invocation in both.
 
 It asks for the scope — which files to check, every tracked `.md` by default — where your readers start, and whether its report goes into a folder of your repository or stays in its own folder outside it. Before starting agents, `rethink`, `rewrite`, and `audit` say how many and on which model, and wait until you say so. Its report starts with what makes your text hard to read, then lists the questions it answers wrong, why, and where — file and line when a sentence is at fault.
 
@@ -54,8 +53,7 @@ Recommended orders, each command run by you:
 - `/terse:audit` → `/terse:rewrite`, which asks the audit's questions of your text before and after
 - `/terse:rethink` → `/terse:rewrite` → `/terse:audit`
 
-For an answer, plan, report, commit, PR, comment, or message, the assistant may choose `clarity` from
-its description; you can call it yourself too. Automatic choice is not guaranteed. It starts no agents.
+For an answer, plan, report, commit, PR, comment, or message, invoke `clarity` explicitly. It starts no agents.
 In Claude Code, use `/plugin` to disable the plugin.
 
 ### Update
@@ -73,9 +71,9 @@ Restart Claude Code to apply it.
 | `/terse:audit` | You cannot tell whether your document is fine | A summary in the chat and the report as a file, in your repository if you choose: what makes the text hard to read, then which questions it answers wrong, why, and where — file and line when a sentence is at fault; no rewording |
 | `/terse:rethink` | No document yet, or it says the wrong things in the wrong order | A plan: the sections, each with what it gives the reader and its size, to agree to before the text is written |
 | `/terse:rewrite` | You want the text written or rewritten | A new draft of the whole document, and its diff |
-| `/terse:clarity` | The assistant may choose it while writing for a person or agent; you may call it yourself | Reader-side questions and genre notes applied to the text at hand; no run |
+| `/terse:clarity` | You want reader-side checks while writing for a person or agent | Reader-side questions and genre notes applied to the text at hand; no run |
 
-You start `audit`, `rethink`, and `rewrite` yourself. The assistant may choose `clarity` on its own.
+You start `audit`, `rethink`, `rewrite`, and `clarity` yourself.
 
 ## How it works
 
