@@ -6,7 +6,7 @@
 //   node evals/fragments.mjs --list     the fragments and their copies
 //
 // A literal is restored by the page's writer.
-// fragments.test.mjs runs --check, and run-all runs that suite before the release gate.
+// fragments.test.mjs runs --check, and run-all includes that suite in PR CI.
 
 import fs from "node:fs";
 import path from "node:path";

@@ -6,6 +6,19 @@ and do not publish from an unclean tree. The entrust series starts at `entrust@0
 `codex-delegate@*` tags before it are the same plugin under its previous name. Why the order is what it is:
 [the release-pipeline research at `5f2f3ef`](https://github.com/Nowely/agent-skills/blob/5f2f3ef/research/2026-09-26-release-pipeline/03-proposal.md).
 
+## Publishing a merged candidate
+
+When the owner asks to publish an already merged, versioned PR, use its approved head, merge commit and
+changelog section. Confirm required PR CI is green on that head; wait only if it is pending. Missing or
+failed required CI blocks publication. Reuse its test and review results, then start at step 6's tree
+comparison below; do not merge the PR again.
+
+Publication does not start or propose new tests, live gates, trigger evals, cross-plugin probes, reviews,
+protocol migrations or changelog edits. The preparation checks below belong to development on the PR's
+branch; a CLI version mismatch or an unrun live check does not reopen a merged candidate. Report checks
+not run as not run, without making them new publication prerequisites. Do additional work only on a
+separate explicit request. Update local plugins only when requested.
+
 ## The order
 
 A release is made on the PR's branch: the work, its measurements and reviews, the plugin's conditional checks, the
@@ -39,8 +52,8 @@ the GitHub release.
 5. **CI on the PR is the full run.** While preparing the branch, run locally only suites covering changed behavior
    and the plugin's conditional checks. Leave the full matrix to PR CI; do not run the full local suite just to
    duplicate that matrix. After an edit, rerun the affected local suites. Push the branch, open the PR, and wait for
-   `gh pr checks <n> --watch`. Do not repeat local checks once CI is green on the same tree. A red run stops the
-   release.
+   `gh pr checks <n> --watch` if checks are pending. Reuse green CI on that head; do not repeat local checks or
+   rerun CI to publish the same tree. A red run stops the release.
 6. **Merge and compare the plugin's tree.** `gh pr merge <n> --squash --match-head-commit <head>`, `<head>` being
    the commit the word approved. Then `git fetch origin` and, with `<merge>` from `gh pr view <n> --json mergeCommit`,
    confirm that `git diff --stat <head> <merge> -- plugins/<plugin> AGENT.md RELEASING.md .claude-plugin` prints
@@ -48,23 +61,32 @@ the GitHub release.
    the whole tree without touching the release (entrust 0.21.0: a terse commit under #28). A difference inside
    those paths means main moved under the plugin, and the release stops. CI on main after the merge is not waited
    for: it repeats the run the PR already had.
-7. **Tag, check, publish.** `git switch --detach <merge>`, tag it with
-   `git tag -a <plugin>@X.Y.Z -m '<plugin> X.Y.Z' <merge>`, run the plugin's tag check from its section, then
+7. **Tag, verify metadata, publish.** `git switch --detach <merge>`, tag it with
+   `git tag -a <plugin>@X.Y.Z -m '<plugin> X.Y.Z' <merge>`, then check only the new tag and manifest:
+
+   ```bash
+   test "$(git cat-file -t 'refs/tags/<plugin>@X.Y.Z')" = tag &&
+   test "$(git rev-parse '<plugin>@X.Y.Z^{commit}')" = "$(git rev-parse '<merge>')" &&
+   test "$(jq -r .version 'plugins/<plugin>/plugin/.claude-plugin/plugin.json')" = X.Y.Z
+   ```
+
+   Stop if the metadata check fails. Do not rerun `package.test.mjs` or another suite after tagging. Push with
    `git push origin <plugin>@X.Y.Z` and
    `gh release create <plugin>@X.Y.Z --verify-tag --title '<plugin> X.Y.Z' --notes-file <notes>`. Confirm with
    `gh release view <plugin>@X.Y.Z --json isDraft,body,url` that it is published, not a draft, with the notes as
-   its body; a tag alone is not a published release. Return with `git switch main && git pull --ff-only`.
+   its body. `git ls-remote --tags origin 'refs/tags/<plugin>@X.Y.Z*'` must show `<merge>` on the peeled
+   `refs/tags/<plugin>@X.Y.Z^{}` line, not as the tag object's SHA. Leave this worktree on `<merge>`:
+   `main` may belong to another worktree and must not block the requested local update.
 8. **Update this machine** when the word covered it: `claude plugin update <plugin>@nowely`, which refreshes the
    marketplace itself, and confirm the installed version with `claude plugin list`.
 
-## entrust
+## entrust preparation
 
 - **Version**: `plugin/.claude-plugin/plugin.json`, the `metadata.version` line of every `plugin/skills/*/SKILL.md`,
-  and the driver's `VERSION`. `node evals/package.test.mjs` from `plugins/entrust` fails naming the one missed.
-- **Tag check**: `node evals/package.test.mjs` from `plugins/entrust` compares the version against an
-  `entrust@` tag on `HEAD` and announces itself as skipped before one exists.
-- **After a Codex CLI upgrade**, or when `codex --version` differs from the driver's `PINNED_CODEX`, regenerate
-  and diff the protocol schema:
+  and the driver's `VERSION`. During preparation, `node evals/package.test.mjs` from `plugins/entrust` fails
+  naming the one missed; PR CI also runs it. Publication uses step 7's metadata check instead of this suite.
+- **Codex protocol during development**: after a Codex CLI upgrade, or when `codex --version` differs from the
+  driver's `PINNED_CODEX`, regenerate and diff the protocol schema on the PR's branch, before the merge:
 
   ```bash
   codex app-server generate-json-schema --out <tmp-new>/
@@ -80,22 +102,20 @@ the GitHub release.
   `plugin/skills/codex/references/parity.md`, and run the live fidelity gate,
   `ENTRUST_LIVE_TURN=1 node evals/fidelity.test.mjs --require-live`. It spends one real turn; inspect every
   fixture/live difference, keep the fixture emitting what the live server emits, and record its lines in the notes.
-- **Live orchestrate gate**, `ENTRUST_LIVE_ORCHESTRATE=1 node evals/orchestrate-live.test.mjs`, when the release
+- **Live orchestrate gate during development**, `ENTRUST_LIVE_ORCHESTRATE=1 node evals/orchestrate-live.test.mjs`, when the candidate
   changes a skill page, the agent file, the launcher or the driver, a model, effort or cap, a path or a right, or
   follows a Codex CLI or Claude Code upgrade. It spends real sessions and a Codex turn. Add
   `ENTRUST_LIVE_ORCHESTRATE_DELEGATE=1` after a Codex CLI upgrade: it spends a second turn on a probe that invites
   the agent to delegate. Keep the artifact directory its last line prints with the release notes. A failed case
-  blocks the release, and a skipped case is not a pass: the summary names it. Record the codex-cli and Claude Code
-  builds used.
-- **Notes**: add the codex-cli and Node versions the release was measured with, and the open entries of
-  `plugins/entrust/ISSUES.md` as known issues.
+  blocks candidate preparation, and a skipped case is not a pass: the summary names it. Record the codex-cli and
+  Claude Code builds used. These checks do not run again to publish a merged candidate.
+- **Notes**: use the codex-cli and Node versions recorded during development, and the open entries of
+  `plugins/entrust/ISSUES.md` as known issues. Do not start new measurements to fill publication notes.
 
-## terse
+## terse preparation
 
 - **Version**: `plugin/.claude-plugin/plugin.json` and `metadata.version` in all four `plugin/skills/*/SKILL.md`
   files; keep them equal.
-- **Tag check**: `jq -r .version plugins/terse/plugin/.claude-plugin/plugin.json` prints the tag's `X.Y.Z`; terse has no
-  package suite.
 - **Pages**: after any edit to a page, `node plugins/terse/evals/pages.test.mjs` checks relative links and anchors,
   the shared run-directory line, frozen digests, skill frontmatter and versions, README Skills rows, and skill-page
   links to genre notes; CI also runs the rewrite scripts' selftest by path.
@@ -105,5 +125,5 @@ the GitHub release.
   `node plugins/terse/evals/clarity-trigger.official.mjs --run`. The live and official runs spend Claude tokens and
   stay out of CI. Record model, Claude Code version, settings and trigger fractions; the owner sets the release
   threshold after the first run.
-- **Cross-plugin**: terse's briefs launch entrust agents, so an entrust release that changes how an agent is
-  launched runs one terse brief through it before its tag.
+- **Cross-plugin during development**: terse's briefs launch entrust agents, so an entrust change to how an agent
+  is launched runs one terse brief through it on the PR's branch, before the merge.
