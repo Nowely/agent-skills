@@ -3,7 +3,7 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.33.0 — 2026-10-22
 
 ### Breaking
 
@@ -17,6 +17,34 @@ forensics remain in the repository references and release notes.
   user `opencode` and `OPENCODE_SERVER_PASSWORD`. A report an earlier release recorded as V1 is refused on
   continuation. Live probes re-established what the 2026-10-02 pilot could not: create-time permissions are now
   reported back and natively evaluated, and the owner's OpenRouter models run without a transport override.
+
+### Validation
+
+- Affected OpenCode suite: 94; skills pages: 8 of 8; full offline `run-all`: 23 of 25 suites green, with the two
+  live opt-ins (fidelity, orchestrate-live) not run. Live probes against a private `opencode serve` 2.1.2 and the
+  shared 2.1.3 background service: create echoes and natively evaluates the sent ruleset (deny, allow, ask), a
+  live worker on `openrouter/z-ai/glm-5.3-flash` ran a shell command and answered with `receiptOk` true. Not
+  established: `/api/event` payloads (the stream is advisory), the live server's sibling effect of a permission
+  reject, and native enforcement of action names beyond `edit`, `shell` and `*`.
+- Measured with Node 24.15.0 and OpenCode 2.1.2/2.1.3. The live orchestrate release gate has not run for this
+  candidate; it spends real sessions and a Codex turn.
+
+### Known issues
+
+- E67: stopping an approved command outside the Codex sandbox is not established.
+- E110: the live gate does not check worker briefs against split ownership or see shell writes.
+- E90: swarm batches are limited to fifty units and do not aggregate tokens.
+- E96: Claude subagent token figures describe the last call's context.
+- E100: worktree coordinator heredocs naming git can be refused.
+- E102: the Codex page does not offer the existing background Bash delegation path.
+- E103: skill loading in `dontAsk` mode needs an allow rule for the status probe.
+- E104: advisor and refutation effort are stated inconsistently.
+- E111: the blanket exclusion of Luna from judgement is not supported by one measured run.
+- E113: temporary-directory checks do not verify permissions.
+- E114: two lock cases fail inside the Codex sandbox and pass outside it.
+- E117: bulk-unit rules are duplicated.
+- E139: OpenCode and Claude worktrees are absent from the cleanup ledger.
+- E140: `agent-run` D6 uses the checkout as a write target and fails under `~/.codex`.
 
 ## 0.32.0 — 2026-10-20
 

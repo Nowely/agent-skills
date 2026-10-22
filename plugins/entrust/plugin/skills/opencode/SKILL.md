@@ -7,7 +7,7 @@ description: >-
   model the coordinator (“Прокси на GLM”) is answered with the explicit proxy command; ordinary native
   Codex/Claude delegation uses native agents.
 metadata:
-  version: "0.32.0"
+  version: "0.33.0"
 license: MIT
 ---
 
