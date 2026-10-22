@@ -9,15 +9,16 @@ export class Client {
   }
   headers() {
     return { "Content-Type": "application/json", ...(this.config.password ? {
-      Authorization: `Basic ${Buffer.from(`${this.config.username}:${this.config.password}`).toString("base64")}`,
+      Authorization: `Basic ${Buffer.from(`opencode:${this.config.password}`).toString("base64")}`,
     } : {}) };
   }
   url(route) {
     const u = new URL(this.config.url + route);
-    if (this.cwd) u.searchParams.set("directory", this.cwd);
     return u;
   }
-  async call(method, route, body, { timeoutMs = this.timeoutMs, expectedStatus = null } = {}) {
+  // V2 wraps most operation results as { "data": ... }; `unwrap` returns the inner value,
+  // falling back to the whole body for the routes that answer in the clear (/api/info, interrupt).
+  async call(method, route, body, { timeoutMs = this.timeoutMs, expectedStatus = null, unwrap = false } = {}) {
     let r;
     try {
       r = await fetch(this.url(route), { method, headers: this.headers(),
@@ -33,25 +34,31 @@ export class Client {
     if (Buffer.byteLength(raw) > 32 * 1024 * 1024) throw new ApiError(`${route}: response exceeds 32 MiB`);
     if (!r.ok) throw new ApiError(`${method} ${route}: HTTP ${r.status}: ${raw.slice(0, 1000)}`, r.status);
     if (!raw) return null;
-    try { return JSON.parse(raw); } catch { throw new ApiError(`${route}: response is not JSON`, r.status); }
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { throw new ApiError(`${route}: response is not JSON`, r.status); }
+    if (unwrap && parsed && typeof parsed === "object" && "data" in parsed) return parsed.data ?? null;
+    return parsed;
   }
   async probe() {
-    const health = await this.call("GET", "/global/health");
-    if (health?.healthy !== true || typeof health.version !== "string") throw new ApiError("endpoint is not a healthy OpenCode server");
-    const doc = await this.call("GET", "/doc");
+    const info = await this.call("GET", "/api/info");
+    if (typeof info?.version !== "string" || typeof info?.pid !== "number")
+      throw new ApiError("endpoint is not a healthy OpenCode V2 server");
+    const doc = await this.call("GET", "/openapi.json");
     const paths = doc?.paths ?? {};
-    return { url: this.config.url, version: health.version, paths,
-      legacy: Boolean(paths["/session/{sessionID}/prompt_async"]?.post) };
+    return { url: this.config.url, version: info.version, paths };
   }
   async model(ref) {
-    const catalogue = await (this.catalogue ??= this.call("GET", "/provider"));
-    const p = (catalogue?.all ?? []).find((p) => p.id === ref.providerID);
-    const m = p?.models?.[ref.modelID];
-    if (!m || !Array.isArray(catalogue.connected) || !catalogue.connected.includes(ref.providerID))
-      throw new ApiError(`model ${ref.providerID}/${ref.modelID} is unavailable; no substitute selected`);
-    return { ...ref, variants: Object.keys(m.variants ?? {}) };
+    const models = await (this.catalogue ??= this.call("GET", "/api/model", undefined, { unwrap: true })) ?? [];
+    const m = (Array.isArray(models) ? models : []).find((m) =>
+      m?.providerID === ref.providerID && m?.modelID === ref.modelID);
+    if (!m || m.enabled !== true) throw new ApiError(`model ${ref.providerID}/${ref.modelID} is unavailable; no substitute selected`);
+    if (this.providers == null) this.providers = await this.call("GET", "/api/provider", undefined, { unwrap: true });
+    const p = (Array.isArray(this.providers) ? this.providers : []).find((p) => p?.id === ref.providerID);
+    if (!p || p.activation === "disabled")
+      throw new ApiError(`provider ${ref.providerID} is not active; no substitute selected`);
+    return { ...ref, variants: (m.variants ?? []).map((v) => v?.id).filter(Boolean) };
   }
-  async events(onEvent, signal, { route = "/event", mapEvent = (e) => e } = {}) {
+  async events(onEvent, signal, { route = "/api/event", mapEvent = (e) => e } = {}) {
     while (!signal.aborted) {
       try {
         const r = await fetch(this.url(route), { headers: this.headers(), signal, redirect: "error" });
@@ -68,7 +75,14 @@ export class Client {
             while ((i = pending.indexOf("\n\n")) >= 0) {
               const frame = pending.slice(0, i); pending = pending.slice(i + 2);
               const data = frame.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trimStart()).join("\n");
-              if (data) { try { onEvent(mapEvent(JSON.parse(data))); } catch {} }
+              if (data) {
+                try {
+                  // V2's data is a JSON-encoded string; unwrap one level before the event object.
+                  let e = JSON.parse(data);
+                  if (typeof e === "string") { try { e = JSON.parse(e); } catch {} }
+                  onEvent(mapEvent(e));
+                } catch {}
+              }
             }
           }
         } finally { await reader.cancel().catch(() => {}); }

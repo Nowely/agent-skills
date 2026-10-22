@@ -3,6 +3,21 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Breaking
+
+- **The OpenCode adapter speaks OpenCode's V2 API.** V2 servers (measured on 2.1.2/2.1.3) no longer expose the
+  V1 routes at all — they answer with the web app's HTML — so the adapter switched wholesale rather than carrying
+  a second family, as the 2026-10-08 driver audit prescribed. Sessions, permissions, questions, models, busy
+  status, interruption and history all moved: create pins the model, the directory and the permission rules
+  (`{action, resource, effect}`, `bash`→`shell`), the prompt body is `{id, text}` with the input's id echoed as
+  the user message, replies link by order instead of `parentID`, message pages cap at 200, questions are forms
+  (answered by field), acknowledgements are 204-only, and health/auth are `GET /api/info` with the fixed basic
+  user `opencode` and `OPENCODE_SERVER_PASSWORD`. A report an earlier release recorded as V1 is refused on
+  continuation. Live probes re-established what the 2026-10-02 pilot could not: create-time permissions are now
+  reported back and natively evaluated, and the owner's OpenRouter models run without a transport override.
+
 ## 0.32.0 — 2026-10-20
 
 ### Changed

@@ -75,28 +75,26 @@ test("a write root over the state directory is refused offline, before any serve
 });
 test("a write session's rules deny .git and OpenCode's own files after the allows, since the last match wins", () => {
   const rules = sessionPermissions({ kind: "write", roots: [cwd] });
-  const last = (pattern) => rules.findLast((r) => r.permission === "edit" && r.pattern === pattern)?.action;
+  const last = (resource) => rules.findLast((r) => r.action === "edit" && r.resource === resource)?.effect;
   assert.equal(last(`${cwd}/**`), "allow");
-  for (const pattern of [`${cwd}/.git`, `${cwd}/.git/*`, `${cwd}/*/.git/*`, `${cwd}/.opencode/*`, `${cwd}/opencode.json*`])
-    assert.equal(last(pattern), "deny", pattern);
-  assert.ok(rules.findIndex((r) => r.pattern === `${cwd}/.git`) > rules.findIndex((r) => r.pattern === `${cwd}/**`));
+  for (const resource of [`${cwd}/.git`, `${cwd}/.git/*`, `${cwd}/*/.git/*`, `${cwd}/.opencode/*`, `${cwd}/opencode.json*`])
+    assert.equal(last(resource), "deny", resource);
+  assert.ok(rules.findIndex((r) => r.resource === `${cwd}/.git`) > rules.findIndex((r) => r.resource === `${cwd}/**`));
 });
-test("Bash is allowed without prompts for read and write sessions", () => {
+test("Shell is allowed without prompts for read and write sessions", () => {
   for (const scope of [{ kind: "read" }, { kind: "write", roots: [cwd] }]) {
     const rules = sessionPermissions(scope);
-    const catchAll = rules.findLastIndex((r) => r.permission === "*" && r.pattern === "*");
-    const bash = rules.findLastIndex((r) => r.permission === "bash" && r.pattern === "*");
+    const catchAll = rules.findLastIndex((r) => r.action === "*" && r.resource === "*");
+    const shell = rules.findLastIndex((r) => r.action === "shell" && r.resource === "*");
     assert.ok(catchAll >= 0, `${scope.kind}: catch-all ask is present`);
-    assert.equal(rules[catchAll].action, "ask", scope.kind);
-    assert.ok(bash > catchAll, `${scope.kind}: Bash override follows catch-all`);
-    assert.equal(rules[bash].action, "allow", scope.kind);
-    const external = rules.findLastIndex((r) => r.permission === "external_directory" && r.pattern === "*");
+    assert.equal(rules[catchAll].effect, "ask", scope.kind);
+    assert.ok(shell > catchAll, `${scope.kind}: Shell override follows catch-all`);
+    assert.equal(rules[shell].effect, "allow", scope.kind);
+    const external = rules.findLastIndex((r) => r.action === "external_directory" && r.resource === "*");
     assert.ok(external > catchAll, `${scope.kind}: external-directory override follows catch-all`);
-    assert.equal(rules[external].action, "allow", scope.kind);
-    if (scope.kind === "read") {
-      for (const permission of ["edit", "write"])
-        assert.equal(rules.findLast((r) => r.permission === permission && r.pattern === "*")?.action, "deny", permission);
-    }
+    assert.equal(rules[external].effect, "allow", scope.kind);
+    if (scope.kind === "read")
+      assert.equal(rules.findLast((r) => r.action === "edit" && r.resource === "*")?.effect, "deny");
   }
 });
 test("approved write root rejects another root even when rights kind matches", () => {
@@ -165,8 +163,8 @@ function mailbox(type = "opencode.permission") {
   const dir = tempDir("entrust-opencode-mailbox-");
   const box = path.join(dir, "approvals"); fs.mkdirSync(box);
   const id = "1-1234abcd";
-  const payload = type.endsWith("question") ? { id: "que_native", sessionID: "ses_owned", questions: [{ header: "Mode", question: "Choose", options: [{ label: "Read" }], custom: false }] }
-    : { id: "per_native", sessionID: "ses_owned", permission: "bash", patterns: ["node *"], metadata: { command: "node check.mjs" } };
+  const payload = type.endsWith("question") ? { id: "frm_native", sessionID: "ses_owned", title: "Choose", fields: [{ key: "q", type: "string", options: [{ value: "Read", label: "Read" }] }] }
+    : { id: "per_native", sessionID: "ses_owned", action: "bash", resources: ["node *"], metadata: { command: "node check.mjs" } };
   const q = { id, type, payload, presented: JSON.stringify(payload, null, 2), requestHash: digest(payload),
     remote: { serverURL: "http://localhost:4096", sessionID: payload.sessionID, requestID: payload.id, invocationId: "inv_owned" },
     run: { pid: process.pid, startedAtMs: Date.now(), threadId: payload.sessionID, turnId: "msg_owned" }, deadlineAt: new Date(Date.now() + 30000).toISOString(), settled: null };
@@ -331,27 +329,27 @@ test("local continuation can reconnect through a fresh server URL", async () => 
     assert.equal(second.code, 0, second.err); assert.equal(second.report.resume, true);
   } finally { await s.close(); }
 });
-test("driver uses first recent model and stays within one HTTP execution family", async () => {
+test("driver uses first recent model and pins it at session create", async () => {
   const s = await fakeOpenCode();
   try {
     const r = await driverRun(s); assert.equal(r.code, 0, r.err); assert.equal(r.report.receiptOk, true);
     assert.equal(r.report.model, "router/deepseek/flash");
-    const post = s.calls.find((c) => c.path.endsWith("prompt_async"));
-    assert.deepEqual(post.body.model, { providerID: "router", modelID: "deepseek/flash" }); assert.equal(post.body.variant, "high");
-    assert.equal(s.calls.some((c) => c.path.startsWith("/api/")), false);
+    const create = s.calls.find((c) => c.method === "POST" && c.path === "/api/session");
+    assert.deepEqual(create.body.model, { id: "deepseek/flash", providerID: "router", variant: "high" });
+    assert.equal(s.calls.some((c) => !c.path.startsWith("/api/") && c.path !== "/openapi.json" && c.path !== "/api/info"), false);
   } finally { await s.close(); }
 });
-test("missing required V1 route refuses before creating a session or submitting input", async () => {
+test("missing required V2 route refuses before creating a session or submitting input", async () => {
   const s = await fakeOpenCode("missing-route");
   try { const r = await driverRun(s); assert.equal(r.code, 2, r.err); assert.equal(s.prompts, 0);
-    assert.equal(s.calls.some((c) => c.path === "/session" && c.method === "POST"), false); }
+    assert.equal(s.calls.some((c) => c.path === "/api/session" && c.method === "POST"), false); }
   finally { await s.close(); }
 });
 test("native permission reaches mailbox, receives once, and foreign request remains untouched", async () => {
   const s = await fakeOpenCode("permission");
   try {
     const r = await driverRun(s, { approval: "accept" }); assert.equal(r.code, 0, r.err);
-    assert.deepEqual(s.mutations.map((m) => m.body), [{ reply: "once" }]);
+    assert.deepEqual(s.mutations.map((m) => m.body), [{ decision: "once" }]);
     assert.equal(s.replies.some((q) => q.id === "per_foreign"), true);
   } finally { await s.close(); }
 });
@@ -363,15 +361,15 @@ test("an edit outside the roots is offered with its whole request and runs once 
     assert.equal(r.code, 0, r.err);
     const q = JSON.parse(fs.readFileSync(path.join(r.box, fs.readdirSync(r.box).find((n) => n.endsWith(".request.json"))), "utf8"));
     assert.equal(q.cause, "outside"); assert.equal(q.settled.decision, "accepted"); assert.equal(q.settled.by, "coordinator");
-    assert.equal(JSON.parse(q.presented).metadata.filePath, s.editTarget);
-    assert.deepEqual(s.mutations.map((m) => m.body?.reply).filter(Boolean), ["once"]);
+    assert.equal(JSON.parse(q.presented).resources[0], s.editTarget);
+    assert.deepEqual(s.mutations.map((m) => m.body?.decision).filter(Boolean), ["once"]);
   } finally { await s.close(); }
   const g = await fakeOpenCode("edit-outside");
   try {
     const state = tempDir("entrust-opencode-driver-");
     g.editTarget = path.join(state, "invocation", "approvals", "1-00000000.decision.json");
     const r = await driverRun(g, { state, approval: "hold", rights: `write ${cwd}`, timeout: 4 });
-    assert.deepEqual(g.mutations.map((m) => m.body?.reply).filter(Boolean), ["reject"], r.err);
+    assert.deepEqual(g.mutations.map((m) => m.body?.decision).filter(Boolean), ["reject"], r.err);
     const q = JSON.parse(fs.readFileSync(path.join(r.box, fs.readdirSync(r.box).find((n) => n.endsWith(".request.json"))), "utf8"));
     assert.equal(q.settled.by, "driver"); assert.match(q.settled.why, /inside the state directory/);
   } finally { await g.close(); }
@@ -380,14 +378,14 @@ test("a refused permission is rejected with a message, so the turn goes on and a
   const s = await fakeOpenCode("permission");
   try {
     const r = await driverRun(s);
-    const reject = s.mutations.find((m) => m.body?.reply === "reject");
+    const reject = s.mutations.find((m) => m.body?.decision === "reject");
     assert.ok(reject, JSON.stringify(s.mutations));
     assert.match(reject.body.message ?? "", /^no approval directory: unattended run\. Do not try to get around it: record it/, r.err);
   } finally { await s.close(); }
   const c = await fakeOpenCode("permission");
   try {
     await driverRun(c, { cancel: true, cancelWhenPending: true, approval: "hold" });
-    const stopped = c.mutations.filter((m) => m.body?.reply === "reject");
+    const stopped = c.mutations.filter((m) => m.body?.decision === "reject");
     assert.ok(stopped.length >= 1, JSON.stringify(c.mutations));
     assert.equal(stopped.some((m) => "message" in m.body), false, JSON.stringify(stopped));
   } finally { await c.close(); }
@@ -396,8 +394,8 @@ test("an accept the mailbox cannot record is never answered once", async () => {
   const s = await fakeOpenCode("permission");
   try {
     await driverRun(s, { approval: "unrecordable" });
-    assert.equal(s.mutations.some((m) => m.body?.reply === "once"), false, JSON.stringify(s.mutations));
-    assert.equal(s.mutations.some((m) => m.body?.reply === "reject"), true, JSON.stringify(s.mutations));
+    assert.equal(s.mutations.some((m) => m.body?.decision === "once"), false, JSON.stringify(s.mutations));
+    assert.equal(s.mutations.some((m) => m.body?.decision === "reject"), true, JSON.stringify(s.mutations));
   } finally { await s.close(); }
 });
 test("a stale decision file does not hold a request past its deadline", async () => {
@@ -407,7 +405,7 @@ test("a stale decision file does not hold a request past its deadline", async ()
     const name = fs.readdirSync(r.box).find((n) => n.endsWith(".request.json"));
     const q = JSON.parse(fs.readFileSync(path.join(r.box, name), "utf8"));
     assert.equal(q.settled?.decision, "expired", r.err); assert.equal(q.settled.by, "driver");
-    assert.equal(s.mutations.some((m) => m.body?.reply === "once"), false, JSON.stringify(s.mutations));
+    assert.equal(s.mutations.some((m) => m.body?.decision === "once"), false, JSON.stringify(s.mutations));
     assert.equal(fs.existsSync(path.join(r.box, "pending")), false);
   } finally { await s.close(); }
 });
@@ -415,7 +413,7 @@ test("every prompt states the run's rights, Bash's unprompted scope, and not to 
   const s = await fakeOpenCode("normal");
   try {
     const bare = await driverRun(s, { rights: `read ${cwd}` }); assert.equal(bare.code, 0, bare.err);
-    const first = s.calls.filter((c) => c.path.endsWith("prompt_async")).at(-1).body.parts[0].text;
+    const first = s.calls.filter((c) => c.path.endsWith("/prompt")).at(-1).body.text;
     assert.match(first, /^You run for a coordinating agent, unattended/);
     assert.match(first, /RIGHTS does not limit reads\. Your edit and write tools are refused/);
     assert.match(first, /Bash is allowed without approval and bypasses these file and network limits/);
@@ -424,7 +422,7 @@ test("every prompt states the run's rights, Bash's unprompted scope, and not to 
     assert.match(first, /Nothing beyond your rights can be granted in this run/);
     assert.match(first, /do not try to get around it with another tool or command/);
     const boxed = await driverRun(s, { rights: `write ${cwd}`, approval: "hold" }); assert.equal(boxed.code, 0, boxed.err);
-    const second = s.calls.filter((c) => c.path.endsWith("prompt_async")).at(-1).body.parts[0].text;
+    const second = s.calls.filter((c) => c.path.endsWith("/prompt")).at(-1).body.text;
     assert.match(second, /RIGHTS does not limit reads\. Edits inside .* need no approval; edits elsewhere need approval/);
     assert.match(second, /Bash is allowed without approval and bypasses these root, protected path and network limits/);
     assert.match(second, /including \.git and OpenCode configuration paths/);
@@ -450,7 +448,7 @@ test("a resumed session whose rules changed since is refused before any input", 
   const s = await fakeOpenCode("normal");
   try {
     const first = await driverRun(s, { rights: `write ${cwd}` }); assert.equal(first.code, 0, first.err);
-    s.sessions.get(first.report.threadId).permission.push({ permission: "bash", pattern: "*", action: "allow" });
+    s.sessions.get(first.report.threadId).permissions.push({ action: "shell", resource: "*", effect: "allow" });
     const prompts = s.prompts;
     const again = await driverRun(s, { resume: first.path, beside: first.path, rights: `write ${cwd}` });
     assert.equal(again.code, 4, again.err); assert.match(again.report.error, /holds permission rules other than/);
@@ -573,7 +571,7 @@ test("a request waiting longer than the idle bound is not silence: the wait ends
   try {
     const wall = await driverRun(w, { approval: "accept", timeout: 4, idle: 0, approvalDelayMs: 6000 });
     assert.equal(wall.code, 0, `a declared 4 s wall clock stands still through a 6 s wait: ${wall.err}`); assert.equal(wall.report.partial, false);
-    assert.equal(w.mutations.length, 1); assert.equal(w.mutations[0].body.reply, "once");
+    assert.equal(w.mutations.length, 1); assert.equal(w.mutations[0].body.decision, "once");
     assert.ok(wall.ms > 5500, `elapsed ${wall.ms} ms is strictly more than the 4 s budget by the wait`);
   } finally { await w.close(); }
   // And work after the answer is still bounded: the same wait, then a hang longer than the declared budget. The answer is applied
@@ -581,7 +579,7 @@ test("a request waiting longer than the idle bound is not silence: the wait ends
   const h = await fakeOpenCode("permission-slow"); h.slowMs = 8000;
   try {
     const cut = await driverRun(h, { approval: "accept", timeout: 3, idle: 0, approvalDelayMs: 3000 });
-    assert.equal(cut.code, 3, cut.err); assert.match(cut.report.error, /wall timeout/); assert.equal(h.mutations.length, 1); assert.equal(h.mutations[0].body.reply, "once");
+    assert.equal(cut.code, 3, cut.err); assert.match(cut.report.error, /wall timeout/); assert.equal(h.mutations.length, 1); assert.equal(h.mutations[0].body.decision, "once");
     assert.ok(cut.ms >= 5000, `cut after ${cut.ms} ms: the 3 s wait is excluded and the work after it counts`);
   } finally { await h.close(); }
 });
@@ -596,13 +594,13 @@ test("the native reply to a known decision is work for every outcome: accept and
   }
 });
 test("a rejected group decides its siblings only when this run owns every member; a refused group leaves them waiting", async () => {
-  const mk = (id) => { const payload = { id, sessionID: "ses_a", permission: "bash" }; return { id, type: "opencode.permission", payload, requestHash: digest(payload), settled: null, decidedAt: null }; };
+  const mk = (id) => { const payload = { id, sessionID: "ses_a", action: "bash" }; return { id, type: "opencode.permission", payload, requestHash: digest(payload), settled: null, decidedAt: null }; };
   const run = async (extraNative) => {
     const [q1, q2] = [mk("per_1"), mk("per_2")], posts = [];
     const native = [q1.payload, q2.payload, ...extraNative];
     const ctx = { requests: new Map([[q1.id, q1], [q2.id, q2]]), waitedMs: 0, waitingSince: null, lastProgressMs: 1, invocationSessions: new Set(["ses_a"]), box: null,
-      routes: { permissionList: "/permission", questionList: "/question", permissionReply: "/permission/{requestID}/reply" }, declined: 0, expired: 0, autoDeclined: 0,
-      client: { call: async (method, route, body) => { if (method === "GET") return native; posts.push({ route, body }); return true; } } };
+      routes: { permissionList: "/api/session/{sessionID}/permission", formList: "/api/session/{sessionID}/form", permissionReply: "/api/session/{sessionID}/permission/{requestID}/reply" }, declined: 0, expired: 0, autoDeclined: 0,
+      client: { call: async (method, route, body) => { if (method === "GET") return native; posts.push({ route, body }); return null; } } };
     noteWait(ctx);
     await new Promise((resolve) => setTimeout(resolve, 50));
     await rejectTrackedRequest(ctx, q1, { decision: "declined", by: "coordinator", why: null }, "declined");
@@ -651,7 +649,7 @@ test("a wall-clock cut keeps the session for RESUME, and the numbers --timeout, 
 });
 test("native question receives a structured answer through its separate route", async () => {
   const s = await fakeOpenCode("question");
-  try { const r = await driverRun(s, { approval: "answer" }); assert.equal(r.code, 0, r.err); assert.deepEqual(s.mutations[0].body, { answers: [["Read"]] }); }
+  try { const r = await driverRun(s, { approval: "answer" }); assert.equal(r.code, 0, r.err); assert.deepEqual(s.mutations[0].body, { answer: { q: "Read" } }); }
   finally { await s.close(); }
 });
 test("lost prompt response is reconciled by input ID without resending", async () => {
@@ -687,7 +685,7 @@ test("a reply outside a root oneOf is corrected by the driver before reaching th
     assert.equal(r.report.receiptOk, true);
     assert.equal(r.report.outputSchemaOk, true);
     assert.deepEqual(r.report.answerJson, { plan: "", requests: [], final_answer: "Complete coordinator reply" });
-    const submitted = s.calls.filter((c) => c.path.endsWith("prompt_async"));
+    const submitted = s.calls.filter((c) => c.path.endsWith("/prompt"));
     assert.equal(submitted[0].path, submitted[1].path);
     assert.match(JSON.stringify(submitted[1].body), /oneOf/);
   } finally { await s.close(); }
@@ -716,7 +714,7 @@ test("a failed schema correction retains the latest answer and its complete arti
     assert.equal(r.report.outputSchemaOk, false);
     assert.equal(r.report.answerJson.result, "SECOND");
     assert.equal(r.report.answer, "SECOND");
-    const latest = s.sessions.get(r.report.sessionID).messages.at(-1).parts[0].text;
+    const latest = s.sessions.get(r.report.sessionID).messages.at(-1).content[0].text;
     assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), latest);
   } finally { await s.close(); }
 });
@@ -729,7 +727,7 @@ test("a cut correction preserves its latest received answer as partial", async (
     assert.equal(r.report.partial, true);
     assert.equal(r.report.receiptOk, false);
     assert.equal(r.report.answerJson.result, "SECOND");
-    const latest = s.sessions.get(r.report.sessionID).messages.at(-1).parts[0].text;
+    const latest = s.sessions.get(r.report.sessionID).messages.at(-1).content[0].text;
     assert.equal(r.report.answer, latest);
     assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), latest);
   } finally { await s.close(); }
@@ -767,7 +765,7 @@ test("the answer artifact preserves details outside the parsed JSON preview", as
     assert.equal(r.code, 0, r.err);
     assert.equal(s.prompts, 1);
     assert.equal(r.report.answer, "checked");
-    const original = s.sessions.get(r.report.sessionID).messages.at(-1).parts[0].text;
+    const original = s.sessions.get(r.report.sessionID).messages.at(-1).content[0].text;
     assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), original);
     assert.ok(original.startsWith("Detail before the JSON.") && original.endsWith("Detail after the JSON."));
   } finally { await s.close(); }
@@ -779,18 +777,19 @@ test("continuation retains session and model but excludes old command evidence",
     const second = await driverRun(s, { resume: first.path, savedModel: "glm/flash" }); assert.equal(second.code, 0, second.err);
     assert.equal(second.report.sessionID, first.report.sessionID); assert.equal(second.report.model, first.report.model);
     assert.deepEqual(second.report.commands, []); assert.equal(second.report.usage.input, 5);
-    assert.equal(second.report.variant, "high"); assert.equal(s.calls.filter((c) => c.path.endsWith("prompt_async")).at(-1).body.variant, "high");
+    assert.equal(second.report.variant, "high");
+    assert.equal(s.calls.some((c) => c.method === "POST" && c.path.endsWith("/model")), false, "the session kept its model");
   } finally { await s.close(); }
 });
-test("a report an earlier release recorded as V2 is refused on continuation, before any input", async () => {
+test("a report an earlier release recorded as V1 is refused on continuation, before any input", async () => {
   const s = await fakeOpenCode();
   try {
     const first = await driverRun(s); assert.equal(first.code, 0, first.err);
     fs.chmodSync(first.path, 0o600);
-    fs.writeFileSync(first.path, JSON.stringify({ ...first.report, apiFamily: "v2" }));
+    fs.writeFileSync(first.path, JSON.stringify({ ...first.report, apiFamily: "v1" }));
     const before = s.prompts;
     const second = await driverRun(s, { resume: first.path });
-    assert.equal(second.code, 2, second.err); assert.match(second.err, /V2 session, which this adapter no longer runs/);
+    assert.equal(second.code, 2, second.err); assert.match(second.err, /V1 session, and this adapter speaks OpenCode's V2 API only/);
     assert.equal(s.prompts, before);
   } finally { await s.close(); }
 });
@@ -821,7 +820,7 @@ test("a continuation's report beside the first keeps each one's answer and trans
       assert.deepEqual(JSON.parse(fs.readFileSync(r.report.transcriptPath, "utf8")).inputIds, r.report.turnIds);
       assert.equal(fs.existsSync(r.path.replace(/\.json$/, ".runtime.json")), false);
       assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), s.sessions.get(r.report.sessionID).messages
-        .find((m) => m.info.role === "assistant" && m.info.parentID === r.report.turnId).parts[0].text);
+        .find((m) => m.type === "assistant").content[0].text);
     }
   } finally { await s.close(); }
 });
@@ -833,7 +832,7 @@ test("cancelled report retains the selected model for continuation", async () =>
     assert.equal(first.report.variant, "high");
     const second = await driverRun(s, { resume: first.path, savedModel: "glm/flash", cancel: true });
     assert.equal(second.report.sessionID, first.report.sessionID);
-    assert.equal(s.calls.filter((c) => c.path.endsWith("prompt_async")).at(-1).body.model.modelID, "deepseek/flash");
+    assert.equal(second.report.requestedModel, "router/deepseek/flash");
   } finally { await s.close(); }
 });
 test("worktree continuation reuses its checkout and refuses another repository", async () => {
@@ -881,8 +880,8 @@ test("Stop aborts before rejecting its orphan question and observes cleared tool
     const r = await driverRun(s, { cancel: true, cancelWhenPending: true, approval: "hold" });
     assert.equal(r.code, 3, r.err); assert.equal(r.report.cancellation.observed, "idle");
     assert.deepEqual(s.questions, []); assert.equal(r.report.cancellation.callbacks[0].outcome, "applied");
-    const abort = s.calls.findIndex((c) => c.path.endsWith("/abort"));
-    const reject = s.calls.findIndex((c) => c.path.startsWith("/question/") && c.path.endsWith("/reject"));
+    const abort = s.calls.findIndex((c) => c.path.endsWith("/interrupt"));
+    const reject = s.calls.findIndex((c) => c.path.includes("/form/") && c.method === "DELETE");
     assert.ok(abort >= 0 && reject > abort); assert.equal(s.replies.some((p) => p.id === "per_foreign"), true);
   } finally { await s.close(); }
 });
@@ -1037,7 +1036,7 @@ test("Stop before the private server is ready ends in a terminal aborted report 
     assert.equal(r.report.requestedModel, "router/deepseek/flash");
     assert.deepEqual(r.report.commands, []);
     assert.match(r.report.cancellation.reason, /SIGTERM/); assert.equal(r.report.cancellation.signal, "SIGTERM");
-    assert.equal(s.prompts, 0); assert.equal(s.calls.some((c) => c.path.endsWith("/prompt_async")), false);
+    assert.equal(s.prompts, 0); assert.equal(s.calls.some((c) => c.path.endsWith("/prompt")), false);
     assert.equal(fs.existsSync(r.stopFile), true, "the private server it had spawned was not closed");
   } finally { await s.close(); }
 });
@@ -1045,11 +1044,11 @@ test("Stop before the session exists, with the server ready, ends in a terminal 
   const s = await fakeOpenCode("slow-provider");
   const state = tempDir("entrust-opencode-early-");
   try {
-    const r = await driverRun(s, { state, headers: PINNED, cancelOn: () => s.calls.some((c) => c.path === "/provider") });
+    const r = await driverRun(s, { state, headers: PINNED, cancelOn: () => s.calls.some((c) => c.path === "/api/provider") });
     assert.equal(r.code, 3, `exit ${r.code} signal ${r.signal}: ${r.err}`);
     assert.equal(r.report.turnStatus, "aborted"); assert.equal(r.report.partial, true); assert.equal(r.report.receiptOk, false);
     assert.equal(r.report.model, null); assert.equal(r.report.sessionID, null); assert.equal(r.report.requestedModel, "router/deepseek/flash");
-    assert.equal(s.calls.some((c) => c.method === "POST" && c.path === "/session"), false, "a session was created after the Stop");
+    assert.equal(s.calls.some((c) => c.method === "POST" && c.path === "/api/session" && !c.path.includes("ses_")), false, "a session was created after the Stop");
     assert.equal(s.prompts, 0); assert.equal(fs.existsSync(r.stopFile), true);
   } finally { await s.close(); }
 });
@@ -1077,4 +1076,7 @@ test("one official --stop at the OpenCode startup boundary returns the terminal 
     assert.equal(back.code, 0, back.out); assert.equal(back.out, "HANDBACK=exact\n");
   } finally { if (run?.child.exitCode === null) run.child.kill("SIGTERM"); await run?.done; await s.close(); }
 });
-process.exitCode = summarize(await runCases(cases), cases.length);
+// A single case (or a /substring/ pattern) runs alone: `node opencode.test.mjs <name>`.
+const only = process.argv[2];
+const selected = only ? cases.filter((c) => c.name.includes(only)) : cases;
+process.exitCode = summarize(await runCases(selected), selected.length);

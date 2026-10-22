@@ -195,12 +195,12 @@ export function envelope({ type, payload, seq, run, method, cause = "asked", cwd
 // The decisions a request takes: a question is answered or declined, a permission accepted or declined.
 export const decisionsOf = (q) => (q.type === "opencode.question" ? ["answer", "decline"] : ["accept", "decline"]);
 
-// A successful command is a bash tool part whose state completed with an observed exit of 0.
+// A successful command is a shell tool part whose state completed with an observed exit of 0.
 // A completed tool with no exit is not success.
 export function commandEvidence(tools) {
   const commands = [], successful = [];
   for (const t of tools) {
-    if (t?.tool !== "bash") continue;
+    if (t?.tool !== "shell" && t?.tool !== "bash") continue;
     const exitCode = t.exit ?? null;
     const c = { command: t.command ?? null, exitCode, output: t.output ?? null, description: t.description ?? null };
     commands.push(c);

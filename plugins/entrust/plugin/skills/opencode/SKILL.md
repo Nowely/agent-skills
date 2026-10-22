@@ -85,4 +85,5 @@ a missing report or uncertain cancellation is unknown, never success.
 
 Read [parity.md](references/parity.md) before relying on active clarification, schema delivery,
 attachments, tool selection or billing. API presence alone is not evidence of working execution.
-The adapter speaks OpenCode's V1 API only; the V2 pilot and the retired V2 path are in the repository's research.
+The adapter speaks OpenCode's V2 API: the V1 path it ran until 2026-10-21, and the pilot that first
+measured V2, are in the repository's research.
