@@ -19,6 +19,7 @@ import { git, guardedTarget, makeWorktree, passwdHome, rightsScope, scopeWithin,
 import {
   EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionsOf, canonical, within,
   commandEvidence, expectation, READ_TOOLS,
+  formValue,
 } from "./contract.mjs";
 
 const POLL_MS = 900;
@@ -116,17 +117,26 @@ function routeError(ctx) {
     ? "server does not advertise the required V2 interaction routes" : null;
 }
 
-async function listOrEmpty(client, route, { unwrap = true } = {}) {
-  const r = await client.call("GET", route, undefined, { unwrap });
+async function listOrEmpty(client, route) {
+  const r = await client.call("GET", route, undefined, { unwrap: true });
   if (Array.isArray(r)) return r;
-  throw new Error(`${route}: expected a native request or message array`);
+  throw new Error(`${route}: expected a native request array`);
+}
+
+// The permissions and forms pending in each of `sessions`, every list read at once. With `skipRefused`, a
+// session the server refuses to list (a 4xx) contributes nothing; a transport failure or a 5xx always throws.
+async function pendingIn(ctx, sessions, { skipRefused = false } = {}) {
+  const list = (route, sid) => listOrEmpty(ctx.client, fillRoute(route, { sessionID: sid }))
+    .catch((e) => { if (skipRefused && e.status != null && e.status < 500) return []; throw e; });
+  const lists = await Promise.all([...sessions].flatMap((sid) => [list(ctx.routes.permissionList, sid), list(ctx.routes.formList, sid)]));
+  return { permissions: lists.filter((_, i) => i % 2 === 0).flat(), forms: lists.filter((_, i) => i % 2 === 1).flat() };
 }
 
 // /api/session/active lists only the busy sessions: presence of the key means running.
 const isBusy = (active, sid) => Boolean(active && typeof active === "object" && Object.prototype.hasOwnProperty.call(active, sid));
 
-// V2 messages carry `content` (V1 called it `parts`); a tool part is { type, id, name, state, time }.
-const contentOf = (m) => m?.parts ?? m?.content ?? [];
+// A message's parts; a tool part is { type, id, name, state, time }.
+const contentOf = (m) => m?.content ?? [];
 
 function collectTools(messages) {
   const tools = [];
@@ -244,11 +254,9 @@ function rulesProblem(session, scope) {
 // coordinator restates, unless it cannot be placed or aims inside the state directory or a directory OpenCode
 // loads from (`decline`, the reason). A read run's rules deny edits, so none is asked.
 function editScope(scope, payload, cwd, guard) {
-  const kind = String(payload?.action ?? payload?.permission ?? payload?.tool ?? "").toLowerCase();
+  const kind = String(payload?.action ?? "").toLowerCase();
   if (!/edit|write|patch|create|delete|move|rename/.test(kind)) return {};
-  const explicit = payload?.resources ?? payload?.metadata?.resources
-    ?? (payload?.metadata?.filePath ?? payload?.metadata?.path ? [payload.metadata.filePath ?? payload.metadata.path] : null);
-  const targets = explicit ?? [];
+  const targets = payload?.resources ?? [];
   if (!scope.roots.length) return { decline: "the run has no declared writes scope" };
   if (!Array.isArray(targets) || !targets.length) return { decline: "the write request has no verifiable target" };
   let outside = false;
@@ -287,21 +295,23 @@ export function noteWait(ctx) {
   else if (!open && ctx.waitingSince != null) { ctx.waitedMs += t - ctx.waitingSince; ctx.waitingSince = null; ctx.lastProgressMs = t; }
 }
 
-async function currentServerRequest(ctx, type, requestID) {
-  const route = type === "opencode.permission" ? ctx.routes.permissionList : ctx.routes.formList;
-  const list = await listOrEmpty(ctx.client, fillRoute(route, { sessionID: ctx.sessionID }));
-  return list.find((r) => r?.id === requestID) ?? null;
+// V2 lists a request only under its own session, a descendant's included.
+async function currentServerRequest(ctx, q) {
+  const route = q.type === "opencode.permission" ? ctx.routes.permissionList : ctx.routes.formList;
+  const list = await listOrEmpty(ctx.client, fillRoute(route, { sessionID: q.payload.sessionID }));
+  return list.find((r) => r?.id === q.payload.id) ?? null;
 }
 
 // V2 answers a permission reply and a form reply with 204 and no body: the acknowledgement is the
 // status itself. A 4xx is a definite refusal of the reply; anything else is unknown. A form decline
-// is the form's DELETE route (its optional reason is a `message` query parameter).
-async function respond(ctx, type, requestID, kind, body, sessionID = ctx.sessionID) {
+// is the form's DELETE route, its reason (`body.message`) a query parameter.
+async function respond(ctx, type, requestID, kind, body, sessionID) {
   const route = type === "opencode.permission"
     ? ctx.routes.permissionReply
     : kind === "answer" ? ctx.routes.formReply : ctx.routes.formCancel;
-  const url = fillRoute(route, { sessionID, requestID, formID: requestID });
   const decline = kind === "decline" && type !== "opencode.permission";
+  const url = fillRoute(route, { sessionID, requestID, formID: requestID })
+    + (decline && body?.message ? `?message=${encodeURIComponent(body.message)}` : "");
   try {
     const result = await ctx.client.call(decline ? "DELETE" : "POST", url, decline ? undefined : body,
       { expectedStatus: 204 });
@@ -337,12 +347,12 @@ export async function rejectTrackedRequest(ctx, q, settlement, counter) {
   // Only a group this run owns whole is rejected together, so only then are its siblings' decisions known.
   for (const member of group) decided(ctx, member);
   // A reject with a message is OpenCode's corrected error: the tool fails with that feedback and the turn goes
-  // on, so the agent can record the refusal and finish, as its standing rules say. A form cancel carries its
-  // message as a query parameter, and a sibling the server cancels with this one is declined with it too.
+  // on, so the agent can record the refusal and finish, as its standing rules say. A form cancel carries the
+  // same message, and a sibling the server rejects with a permission is declined with it too.
   const told = `${settlement.why ?? "declined"}. Do not try to get around it: record it and what it blocked, finish what you can, and say what remains.`;
   const outcome = permission
     ? await respond(ctx, q.type, q.payload.id, "reject", { decision: "reject", message: told }, q.payload.sessionID)
-    : await respond(ctx, q.type, q.payload.id, "decline", {}, q.payload.sessionID);
+    : await respond(ctx, q.type, q.payload.id, "decline", { message: told }, q.payload.sessionID);
   for (const member of group) {
     const own = member === q;
     settleRequestFile(ctx, member, { ...(own ? settlement : {
@@ -385,16 +395,11 @@ async function offerRequest(ctx, type, payload, method, reason, autoReason, caus
 const decided = (ctx, q) => { if (q.decidedAt == null) { q.decidedAt = now(); noteWait(ctx); } };
 const acceptedDecision = (d) => (d === "decline" ? "declined" : "accepted");
 
-// The coordinator answers a question as one list per question; V2's form reply is keyed by field:
-// question i answers field i, a single choice as a scalar and several as the list.
+// The coordinator answers a question as one list per field, which the launcher checked against the fields'
+// types; V2's form reply is keyed by field, each value of the field's own type.
 function formAnswers(payload, answer) {
-  const lists = Array.isArray(answer?.answers) ? answer.answers : [];
   const out = {};
-  (payload?.fields ?? []).forEach((f, i) => {
-    if (typeof f?.key !== "string") return;
-    const v = lists[i] ?? lists[0] ?? null;
-    out[f.key] = Array.isArray(v) ? (v.length === 1 ? v[0] : v) : v;
-  });
+  (payload?.fields ?? []).forEach((f, i) => { if (typeof f?.key === "string") out[f.key] = formValue(f, answer.answers[i]).value; });
   return out;
 }
 
@@ -410,7 +415,7 @@ async function settleOpenRequest(ctx, q) {
   decided(ctx, q);
   // Compare the current server content with the immutable envelope before acting. An absent
   // request is not evidence of acceptance.
-  const present = await currentServerRequest(ctx, q.type, q.payload.id);
+  const present = await currentServerRequest(ctx, q);
   if (ctx.abortRequested) return false;
   if (!present) {
     settleRequestFile(ctx, q, {
@@ -430,7 +435,6 @@ async function settleOpenRequest(ctx, q) {
     ctx.unresolved = true;
     return true;
   }
-  let outcome;
   if (ctx.abortRequested) return false;
   if (d.decision === "decline")
     return rejectTrackedRequest(ctx, q, { decision: "declined", by: "coordinator", why: d.why ?? null }, "declined");
@@ -445,18 +449,26 @@ async function settleOpenRequest(ctx, q) {
     q.settled = null; // still open, so the rejection finds it among the session's own requests
     return rejectTrackedRequest(ctx, q, { decision: "expired", by: "driver", why: "mailbox write failed: the decision could not be recorded" }, "expired");
   }
-  if (q.type === "opencode.permission") {
-    outcome = await respond(ctx, q.type, q.payload.id, "permission", { decision: d.decision === "accept" ? "once" : "reject" }, q.payload.sessionID);
-  } else if (d.decision === "answer") {
-    outcome = await respond(ctx, q.type, q.payload.id, "answer", { answer: formAnswers(q.payload, d.answer) }, q.payload.sessionID);
-  } else {
-    outcome = await respond(ctx, q.type, q.payload.id, "decline", {}, q.payload.sessionID);
-  }
+  const outcome = q.type === "opencode.permission"
+    ? await respond(ctx, q.type, q.payload.id, "permission", { decision: "once" }, q.payload.sessionID)
+    : await respond(ctx, q.type, q.payload.id, "answer", { answer: formAnswers(q.payload, d.answer) }, q.payload.sessionID);
   settled.outcome = outcome.outcome;
   ctx.box.rewrite(q);
-  if (settled.decision === "declined") ctx.declined += 1;
   if (outcome.outcome === "unknown") ctx.unresolved = true;
   return true;
+}
+
+// A session's children into `kids`, every page: V2 lists fifty to a page, and its cursor stays set until a page
+// comes back empty. A page that fails keeps the children the earlier pages named.
+async function childrenOf(ctx, sid, kids) {
+  let cursor = null;
+  for (;;) {
+    const r = await ctx.client.call("GET", `${fillRoute(ctx.routes.children, { sessionID: sid })}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
+    if (!Array.isArray(r?.data)) throw new Error("session page: expected a data array");
+    kids.push(...r.data.map((k) => k?.id).filter((k) => typeof k === "string"));
+    if (!r.data.length || !r.cursor?.next) return;
+    cursor = r.cursor.next;
+  }
 }
 
 async function gatherOwned(ctx) {
@@ -466,13 +478,10 @@ async function gatherOwned(ctx) {
   const queue = [ctx.sessionID];
   while (queue.length) {
     const sid = queue.shift();
-    let kids = [];
-    try { kids = (await ctx.client.call("GET", fillRoute(ctx.routes.children, { sessionID: sid }), undefined, { unwrap: true })) ?? []; }
+    const kids = [];
+    try { await childrenOf(ctx, sid, kids); }
     catch (e) { errors.push({ sessionID: sid, status: e.status ?? null }); }
-    for (const k of Array.isArray(kids) ? kids : []) {
-      const kid = typeof k === "string" ? k : k?.id;
-      if (kid && !owned.has(kid)) { owned.add(kid); queue.push(kid); }
-    }
+    for (const kid of kids) if (!owned.has(kid)) { owned.add(kid); queue.push(kid); }
   }
   return { sessions: owned, errors };
 }
@@ -493,13 +502,7 @@ async function updateOwned(ctx) {
 async function processRequests(ctx) {
   if (ctx.abortRequested) return;
   const own = ctx.invocationSessions ?? new Set([ctx.sessionID]);
-  const listPerms = async (sid) => listOrEmpty(ctx.client, fillRoute(ctx.routes.permissionList, { sessionID: sid }));
-  const listForms = async (sid) => listOrEmpty(ctx.client, fillRoute(ctx.routes.formList, { sessionID: sid }));
-  const perms = [], forms = [];
-  for (const sid of own) {
-    try { perms.push(...await listPerms(sid)); } catch (e) { if (e.status == null || e.status >= 500) throw e; }
-    try { forms.push(...await listForms(sid)); } catch (e) { if (e.status == null || e.status >= 500) throw e; }
-  }
+  const { permissions: perms, forms } = await pendingIn(ctx, own, { skipRefused: true });
   const fresh = [];
   for (const p of perms) if (own.has(p?.sessionID) && !ctx.seen.has(`p:${p.id}`)) fresh.push(["opencode.permission", p]);
   for (const f of forms) if (own.has(f?.sessionID) && !ctx.seen.has(`q:${f.id}`)) fresh.push(["opencode.question", f]);
@@ -508,9 +511,8 @@ async function processRequests(ctx) {
     if (typeof payload?.id !== "string") continue;
     ctx.seen.add(`${type === "opencode.permission" ? "p" : "q"}:${payload.id}`);
     const edit = type === "opencode.permission" ? editScope(ctx.scope, payload, ctx.cwd, { stateDir: ctx.stateDir, protectedDirs: PROTECTED }) : {};
-    const method = type === "opencode.permission" ? (payload.action ?? payload.permission ?? "permission") : "question";
-    const reason = type === "opencode.permission" ? (payload.metadata?.description ?? payload.reason ?? null)
-      : (payload.title ?? null);
+    const method = type === "opencode.permission" ? (payload.action ?? "permission") : "question";
+    const reason = type === "opencode.permission" ? (payload.metadata?.description ?? null) : (payload.title ?? null);
     const autoReason = edit.decline ? `refused by the driver: ${edit.decline}`
       : !ctx.box ? "no approval directory: unattended run" : null;
     await offerRequest(ctx, type, payload, method, reason, autoReason, edit.outside ? "outside" : "asked");
@@ -530,21 +532,23 @@ async function processRequests(ctx) {
 // ---------------------------------------------------------------------------------------------
 // History: only this invocation's own messages
 
-// V2 caps a message page at 200; a larger limit is a 400. Collect the session's messages page by page.
+// The session's messages since this run started, oldest first. V2 caps a page at 200 (a larger limit is a
+// 400) and pages newest first, its cursor keeping the order, so the walk ends at the first message older than
+// the run: a resumed session's earlier turns are never fetched again on every poll.
 async function sessionMessages(ctx, sid) {
   const out = [];
   let cursor = null;
   for (;;) {
-    const q = cursor ? `?limit=200&cursor=${encodeURIComponent(cursor)}` : "?limit=200";
-    const r = await ctx.client.call("GET", `${fillRoute(ctx.routes.messages, { sessionID: sid })}${q}`, undefined, { unwrap: false });
+    const q = cursor ? `?limit=200&cursor=${encodeURIComponent(cursor)}` : "?limit=200&order=desc";
+    const r = await ctx.client.call("GET", `${fillRoute(ctx.routes.messages, { sessionID: sid })}${q}`);
     if (!Array.isArray(r?.data)) throw new Error("message page: expected a data array");
-    out.push(...r.data);
-    const next = r.cursor?.next;
-    if (!next || r.data.length === 0) break;
-    cursor = next;
-    if (out.length > 5000) throw new Error("message pages exceed a sane history bound");
+    const own = r.data.filter((m) => (m?.time?.created ?? 0) >= ctx.startedAtMs);
+    out.push(...own);
+    if (own.length < r.data.length || !r.data.length || !r.cursor?.next) break;
+    cursor = r.cursor.next;
+    if (out.length > 5000) throw new Error("this run's messages exceed a sane history bound");
   }
-  return out;
+  return out.reverse();
 }
 
 async function refresh(ctx) {
@@ -559,38 +563,33 @@ async function refresh(ctx) {
   catch { ctx.active = null; ctx.statusKnown = false; ctx.statusUnknown = true; }
 }
 
-// Messages that belong to this invocation: the root session's own inputs and the assistant
-// messages that follow them, plus every message of a descendant session created during the
-// invocation. Previous turns of a resumed session are excluded. V1 nested the fields under
-// `info` and linked replies by parentID; V2 carries them flat, so the boundary is the first
-// of this invocation's inputs by creation time.
+// Messages that belong to this invocation: the root session's own inputs and the assistant messages that
+// follow the first of them, plus every message of a descendant session created during the invocation.
 function invocationMessages(ctx) {
   const out = [];
-  const created = (m) => (m?.info?.time ?? m?.time)?.created ?? 0;
-  const own = [...ctx.invocationInputs].map((inputID) =>
-    (ctx.messages ?? []).find((m) => (m?.info?.id ?? m?.id) === inputID && m._sessionID === ctx.sessionID)).filter(Boolean);
+  const created = (m) => m?.time?.created ?? 0;
+  const own = (ctx.messages ?? []).filter((m) => m._sessionID === ctx.sessionID && ctx.invocationInputs.has(m.id));
   const firstAt = own.length ? Math.min(...own.map(created)) : 0;
   for (const m of ctx.messages ?? []) {
-    if (m._sessionID === ctx.sessionID) {
-      const id = m?.info?.id ?? m?.id;
-      if (ctx.invocationInputs.has(id)) { out.push(m); continue; }
-      if (firstAt && created(m) >= firstAt && (m?.info?.role ?? messageRole(m)) === "assistant") { out.push(m); continue; }
-    } else out.push(m);
+    if (m._sessionID !== ctx.sessionID) out.push(m);
+    else if (ctx.invocationInputs.has(m.id) || (firstAt && created(m) >= firstAt && m.type === "assistant")) out.push(m);
   }
   return out;
 }
 
-const messageRole = (m) => m?.info?.role ?? m?.role ?? (m?.type === "assistant" ? "assistant" : m?.type);
-
-const allReplies = (ctx, inputID) =>
-  (ctx.messages ?? []).filter((m) => messageRole(m) === "assistant" && m._sessionID === ctx.sessionID);
+// V2 links no assistant message to its input: the replies to an input are the root session's assistant
+// messages after its user message and before the next one, so an earlier turn's reply is never this one's.
+function repliesTo(ctx, inputID) {
+  const root = (ctx.messages ?? []).filter((m) => m._sessionID === ctx.sessionID);
+  const at = root.findIndex((m) => m.id === inputID);
+  if (at < 0) return [];
+  const next = root.findIndex((m, i) => i > at && m.type === "user");
+  return root.slice(at + 1, next < 0 ? undefined : next).filter((m) => m.type === "assistant");
+}
 
 function finalReply(ctx, inputID) {
-  // V2 does not link an assistant message to the user input by parentID, and pages may arrive
-  // newest-first: the turn's reply is the latest completed assistant message by creation time.
-  const rs = [...allReplies(ctx, inputID)].sort((a, b) =>
-    ((a?.info?.time ?? a?.time)?.created ?? 0) - ((b?.info?.time ?? b?.time)?.created ?? 0));
-  const completed = rs.filter((r) => (r?.info?.time ?? r?.time)?.completed);
+  const rs = repliesTo(ctx, inputID);
+  const completed = rs.filter((r) => r.time?.completed);
   return (completed.length ? completed[completed.length - 1] : rs[rs.length - 1]) ?? null;
 }
 
@@ -612,17 +611,17 @@ async function awaitTurn(ctx, inputID) {
     let refreshFailed = false;
     try { await refresh(ctx); } catch { refreshFailed = true; }
     if (ctx.abortRequested) return { aborted: true };
-    const sig = (ctx.messages ?? []).map((m) => `${m?.info?.id ?? m?.id}:${(m?.parts ?? m?.content ?? []).length}`).join(",");
+    const sig = (ctx.messages ?? []).map((m) => `${m?.id}:${contentOf(m).length}`).join(",");
     if (sig !== lastSig) { lastSig = sig; ctx.lastProgressMs = now(); }
     const toolsNow = collectTools(invocationMessages(ctx));
     ctx.liveCommands = commandEvidence(toolsNow).commands.length;
     if (ctx.maxCommands > 0 && ctx.liveCommands > ctx.maxCommands) return { capped: true };
     const reply = finalReply(ctx, inputID);
-    const replies = allReplies(ctx, inputID);
+    const replies = repliesTo(ctx, inputID);
     const busy = !refreshFailed && ctx.statusKnown && [...ctx.invocationSessions].some((sid) => isBusy(ctx.active, sid));
     if (busy) ctx.lastProgressMs = now();
     const idle = !refreshFailed && ctx.statusKnown && ctx.discoveryComplete && ctx.requests.size === 0 && !busy;
-    if (idle && reply && (reply?.info?.time ?? reply?.time)?.completed) {
+    if (idle && reply?.time?.completed) {
       if (++stable >= 2) return { reply, completed: true };
     } else if (idle && replies.length) {
       if (++stable >= 2) return { reply, completed: false };
@@ -696,9 +695,7 @@ async function admitOnce(ctx, messageID, text) {
         await updateOwned(ctx);
         await refresh(ctx);
         // V2 echoes the prompt's id as the user message's id.
-        if (ctx.messages.some((m) => (m?.id ?? m?.info?.id) === messageID
-          || (m?.info?.id ?? m?.id) === messageID || m?.info?.parentID === messageID))
-          return { admitted: true };
+        if (ctx.messages.some((m) => m?.id === messageID)) return { admitted: true };
       } catch {}
     }
     return { admitted: false, unknown: true };
@@ -711,10 +708,10 @@ async function abortSessions(ctx) {
   const results = [];
   for (const sid of targets) {
     try {
-      // V2's interrupt answers in the clear: { interrupted: true|false }, no .data wrapper.
+      // V2's interrupt answers in the clear: { interrupted: true|false }, no .data wrapper. Either is a
+      // definite answer; false is a session with nothing running, which is stopped already.
       const accepted = await ctx.client.call("POST", fillRoute(ctx.routes.abort, { sessionID: sid }), undefined, { unwrap: false });
-      const interrupted = accepted === true || accepted?.interrupted === true;
-      results.push({ sessionID: sid, ok: interrupted, accepted });
+      results.push({ sessionID: sid, ok: typeof accepted?.interrupted === "boolean", accepted });
     } catch (e) { results.push({ sessionID: sid, ok: false, error: e.message, status: e.status ?? null }); }
   }
   return results;
@@ -728,11 +725,7 @@ async function cancelPendingRequests(ctx) {
     ctx.requests.delete(q.id);
     if (outcome.outcome === "unknown") ctx.unresolved = true;
   };
-  const permissions = [], forms = [];
-  for (const sid of ctx.invocationSessions) {
-    permissions.push(...await listOrEmpty(ctx.client, fillRoute(ctx.routes.permissionList, { sessionID: sid })));
-    forms.push(...await listOrEmpty(ctx.client, fillRoute(ctx.routes.formList, { sessionID: sid })));
-  }
+  const { permissions, forms } = await pendingIn(ctx, ctx.invocationSessions);
   for (const sid of ctx.invocationSessions) {
     const group = permissions.filter((p) => p.sessionID === sid);
     if (!group.length) continue;
@@ -778,11 +771,8 @@ async function observeStop(ctx) {
     try {
       await updateOwned(ctx);
       await refresh(ctx);
-      pending = [];
-      for (const sid of ctx.invocationSessions) {
-        pending.push(...await listOrEmpty(ctx.client, fillRoute(ctx.routes.permissionList, { sessionID: sid })),
-          ...await listOrEmpty(ctx.client, fillRoute(ctx.routes.formList, { sessionID: sid })));
-      }
+      const { permissions, forms } = await pendingIn(ctx, ctx.invocationSessions);
+      pending = [...permissions, ...forms];
     }
     catch { return "unknown"; }
     if (!ctx.statusKnown || !ctx.discoveryComplete || ctx.unresolved) return "unknown";
@@ -816,13 +806,14 @@ function writeSessionRecord(ctx, extra = {}) {
   });
 }
 
-const clientFor = (ctx, cwd) => new Client({ config: ctx.config, cwd });
+const clientFor = (ctx) => new Client({ config: ctx.config });
 
 function applyPrior(ctx, prior) {
-  // An earlier release ran sessions through OpenCode's V1 API, which a V2 server no longer exposes;
-  // a report recorded then names a session this driver cannot reach.
-  if (prior.apiFamily === "v1") return "the record is a V1 session, and this adapter speaks OpenCode's V2 API only";
-  ctx.client = clientFor(ctx, ctx.cwd);
+  // An earlier release ran sessions through OpenCode's V1 API, which a V2 server no longer exposes; a report or
+  // record written then names a session this driver cannot reach, and carries no apiFamily. Every one this
+  // release writes says v2.
+  if (prior.apiFamily !== "v2") return "the record is not a V2 session, and this adapter speaks OpenCode's V2 API only";
+  ctx.client = clientFor(ctx);
   // An earlier release could attach to a remote server; a session there is not in the local server's store.
   if ((prior.serverMode ?? "remote") !== "local") return "the record belongs to a remote server, which this adapter no longer attaches to";
   if (ctx.scope?.kind === "worktree") {
@@ -839,7 +830,6 @@ function applyPrior(ctx, prior) {
       return "the recorded worktree is no longer attached to this repository";
     ctx.worktreePath = root; ctx.worktreeBase = prior.worktreeBase ?? prior.base ?? null;
     ctx.cwd = root; ctx.roots = [root]; ctx.scope = { kind: "worktree", roots: [root] };
-    ctx.client.cwd = root;
   }
   if (prior.cwd && prior.cwd !== ctx.cwd) return "the record belongs to another working directory";
   const retainedModel = prior.requestedModel ?? prior.model;
@@ -942,12 +932,11 @@ function publish(ctx, base) {
   return final;
 }
 
-// Close the SSE stream and listeners, and, when asked, deliver an abort to this invocation's own
-// sessions and wait (bounded) for it before the process exits. Idempotent.
+// Remove the signal listeners and, when asked, deliver an abort to this invocation's own sessions and wait
+// (bounded) for it before the process exits. Idempotent.
 async function cleanup(ctx, abortExecution) {
   if (ctx.cleaned) return;
   ctx.cleaned = true;
-  try { ctx.eventsAbort?.abort(); } catch {}
   if (ctx.onSignal) for (const s of SIGNALS) process.removeListener(s, ctx.onSignal);
   if (ctx.stopping) { try { await Promise.race([ctx.stopping, sleep(8000)]); } catch {} }
   if (abortExecution && ctx.client && ctx.sessionID && !ctx.abortRequested) {
@@ -1032,7 +1021,7 @@ async function execute(opts, parsed) {
   try {
     ctx.localServer = await startLocalServer({ cwd: process.cwd(), signal: ctx.startup.signal });
     ctx.config = ctx.localServer.config;
-    ctx.client = clientFor(ctx, null); ctx.server = await ctx.client.probe();
+    ctx.client = clientFor(ctx); ctx.server = await ctx.client.probe();
   } catch (e) { return bail(`the OpenCode server could not be started: ${e.message}`, EXIT.TRANSPORT); }
   if (ctx.abortRequested) return cutExit(ctx, EARLY);
   ctx.routes = ROUTES;
@@ -1061,7 +1050,6 @@ async function execute(opts, parsed) {
   } else {
     ctx.cwd = scope.readDir; ctx.roots = scope.roots;
   }
-  ctx.client.cwd = ctx.cwd;
 
   // Resume, if asked, before any new session is made.
   const resumed = await resolveResume(ctx);
@@ -1102,10 +1090,8 @@ async function execute(opts, parsed) {
     if (rules) return bail(rules, EXIT.TRANSPORT);
   } else {
     // A resumed session keeps its model unless this run names another; V2 switches it natively.
-    // Model.Ref names the model `id` (V1 called it modelID on the session).
     const current = ctx.resumedSession?.model;
-    const currentID = current?.modelID ?? current?.id ?? null;
-    if (current?.providerID === ctx.ref.providerID && currentID === ctx.ref.modelID) {
+    if (current?.providerID === ctx.ref.providerID && current?.id === ctx.ref.modelID) {
       if (ctx.variant && current.variant !== ctx.variant) {
         try {
           await ctx.client.call("POST", fillRoute(ctx.routes.model, { sessionID: ctx.sessionID }),
@@ -1119,8 +1105,7 @@ async function execute(opts, parsed) {
           { expectedStatus: 204 });
       } catch (e) { return fail(ctx, `the session's model could not switch to ${modelKey(ctx.ref)}: ${e.message}`, EXIT.MODEL); }
       const after = await ctx.client.call("GET", fillRoute(ctx.routes.sessionGet, { sessionID: ctx.sessionID }), undefined, { unwrap: true });
-      const afterID = after?.model?.modelID ?? after?.model?.id ?? null;
-      if (after?.model?.providerID !== ctx.ref.providerID || afterID !== ctx.ref.modelID)
+      if (after?.model?.providerID !== ctx.ref.providerID || after?.model?.id !== ctx.ref.modelID)
         return fail(ctx, "the session's model did not switch; the reply would not be the requested model's", EXIT.MODEL);
     }
   }
@@ -1134,13 +1119,6 @@ async function execute(opts, parsed) {
   ctx.invocationSessions = new Set([ctx.sessionID]);
   if (!ctx.discoveryComplete)
     return fail(ctx, "session descendants could not be enumerated before admission", EXIT.TRANSPORT);
-
-  // SSE is advisory only. Only events for this invocation's own sessions reset the idle clock.
-  ctx.eventsAbort = new AbortController();
-  ctx.client.events((ev) => {
-    const sid = ev?.properties?.sessionID ?? ev?.sessionID ?? null;
-    if (sid && ctx.invocationSessions?.has(sid)) ctx.lastProgressMs = now();
-  }, ctx.eventsAbort.signal).catch(() => {});
 
   // From here a Stop stops the owned session and its descendants, and no prompt is sent after one.
   ctx.ownedReady = true;
@@ -1189,7 +1167,7 @@ async function resolveModel(ctx) {
     }
   } else ref = { providerID: ctx.parsed.model.providerID, modelID: ctx.parsed.model.modelID };
   let info;
-  try { info = await ctx.client.model(ref); } catch (e) { return { error: e.message }; }
+  try { info = await ctx.client.model(ref, ctx.cwd); } catch (e) { return { error: e.message }; }
   if (variant && !info.variants.includes(variant))
     return { error: `variant ${variant} is not advertised for ${modelKey(ref)}; refusing before the model call` };
   return { ref, variant: variant ?? null, info };
@@ -1198,14 +1176,11 @@ async function resolveModel(ctx) {
 async function conclude(ctx, firstReply, parsed) {
   if (ctx.abortRequested) return cutExit(ctx, "the run was cancelled before completion");
   const invCheck = (reply) => {
-    // V2 carries the message fields flat; V1 nested them under `info`.
-    const info = reply?.info ?? reply ?? {};
-    const providerID = info.providerID ?? info.model?.providerID ?? null;
-    const modelID = info.modelID ?? info.model?.modelID ?? info.model?.id ?? null;
+    const info = reply ?? {};
+    const providerID = info.model?.providerID ?? null, modelID = info.model?.id ?? null;
     const actual = providerID && modelID ? `${providerID}/${modelID}` : null;
-    const matches = providerID != null && providerID === ctx.ref.providerID
-      && modelID === ctx.ref.modelID;
-    return { info, actual, matches, completed: Boolean((info.time ?? info.info?.time)?.completed) };
+    const matches = providerID != null && providerID === ctx.ref.providerID && modelID === ctx.ref.modelID;
+    return { info, actual, matches, completed: Boolean(info.time?.completed) };
   };
 
   let reply = firstReply;
@@ -1258,9 +1233,8 @@ async function conclude(ctx, firstReply, parsed) {
   const aggregate = (messages) => {
     let u = null, cost = null;
     for (const m of messages) {
-      const i = m?.info ?? m ?? {};
-      if (i.tokens) { u = u ?? {}; addTokens(u, i.tokens); }
-      if (typeof i.cost === "number") cost = (cost ?? 0) + i.cost;
+      if (m?.tokens) { u = u ?? {}; addTokens(u, m.tokens); }
+      if (typeof m?.cost === "number") cost = (cost ?? 0) + m.cost;
     }
     return { usage: u, cost };
   };
@@ -1346,7 +1320,7 @@ function saveAnswer(ctx, text) {
 // failed after admission reports it as partial instead of dropping it; nothing is guessed or fetched.
 function receivedAnswer(ctx) {
   const reply = [...(ctx.invocationInputs ?? [])].reverse()
-    .map((inputID) => allReplies(ctx, inputID).filter((candidate) => answerText(candidate)).at(-1)).find(Boolean);
+    .map((inputID) => repliesTo(ctx, inputID).filter((candidate) => answerText(candidate)).at(-1)).find(Boolean);
   const answer = answerText(reply) || null;
   return { answer, answerJson: answer ? extractJson(answer) : null, answerPath: saveAnswer(ctx, answer) };
 }
@@ -1377,7 +1351,7 @@ function finishFailure(ctx, exitCode, extra = {}) {
 }
 
 // A refusal before or around the model call: the reason on stderr exactly, a report with the matching
-// exit code, the SSE stream closed and any owned execution aborted and awaited.
+// exit code, and any owned execution aborted and awaited.
 async function fail(ctx, reason, exitCode, extra = {}) {
   ctx.lastRefusal = reason;
   process.stderr.write(`entrust: refused: ${String(reason).replace(/\s*\n\s*/g, " ")}\n`);

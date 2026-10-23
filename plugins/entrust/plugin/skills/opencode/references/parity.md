@@ -21,19 +21,36 @@ Live probes established:
   and `ask` exactly as the ruleset ordered in probes). Grammar: `bash` is now `shell`,
   `write`/`patch` fold into `edit`, `task` is `subagent`.
 - The prompt body is `{ id, text }`: the message id is echoed as the user message's `id`, there is
-  no `parentID` linking an assistant message to its input, and a reply is identified by order.
-  A message page is capped at 200 (`limit=1000` answers 400); a turn's completion timestamp is
-  `time.completed` on the assistant message. `POST …/prompt` answers 409 for a busy session.
+  no `parentID` linking an assistant message to its input, and a reply is identified by order: an
+  input's replies are the assistant messages after it and before the next user message. Pages come
+  newest first unless the first asks for `order=asc`, and their cursor keeps the order; the driver reads
+  back only to the first message older than its run. A message page is capped at 200 (`limit=1000`
+  answers 400); a turn's completion timestamp is `time.completed` on the assistant message.
+  `POST …/prompt` answers 409 for a busy session.
 - The question callback is a form (`GET …/form`, `POST …/form/{id}/reply`, `DELETE …/form/{id}`):
   its text is `title`, its fields are keyed, and a coordinator's per-question answer lists map to
-  fields by position. Replies and acknowledgements answer 204 with no body; only the status
-  acknowledges. `POST …/interrupt` answers `{ interrupted: true|false }` in the clear.
-- Busy is presence in `GET /api/session/active`; descendants come from `GET /api/session?parentID=`
-  (client-side recursion). Models come from `GET /api/model` (`Model.Info`: `modelID`, `providerID`,
-  `enabled`, `variants[]` as an array of `{id}`) with `GET /api/provider` (`activation`), and the
-  local recent-model state file keeps its `{recent, variant}` shape. The router provider's own
-  models run without a transport override (a live `openrouter/z-ai/glm-5.3-flash` worker answered
-  through the plain OpenRouter integration).
+  fields by position. The server refuses a value of another type than its field's (a boolean, a
+  number, a multiselect's list) and an option's label for its value (`FormInvalidAnswerError`, the
+  form left pending), so the launcher checks each answer against its field and the driver converts it.
+  A decline is the `DELETE`, its reason the `message` query parameter. Replies and acknowledgements
+  answer 204 with no body; only the status acknowledges. `POST …/interrupt` answers
+  `{ interrupted: true|false }` in the clear, `false` for a session with nothing running.
+- A permission or form is listed only under its own session, a subagent's included. A permission reject
+  clears the session's whole pending set.
+- The `execute` tool (JavaScript) runs with no permission request under any ruleset, a `*: ask` one
+  included. In probes it had no filesystem access; it is a second ungated path beside the shell, and adds
+  nothing the allowed shell lacks.
+- Busy is presence in `GET /api/session/active`; descendants come from `GET /api/session?parentID=`,
+  fifty to a page, its cursor set until a page comes back empty (client-side recursion). The event
+  stream is not used: a busy session is already progress.
+- Models come from `GET /api/model` read for the run's directory (`location[directory]`): a model a
+  project's own configuration declares is listed only there. `Model.Info` names a model by its catalogue
+  `id`, which an alias (a `-fast` entry) does not share with its `modelID`; `enabled` and `variants[]` (an
+  array of `{id}`) come with it. A provider that is disabled, denied by a `provider.use` policy or not
+  connected is absent from the catalogue, and `GET /api/provider` answers `[]` on a directory's first
+  read, so it is not consulted. The local recent-model state file keeps its `{recent, variant}` shape.
+  The router provider's own models run without a transport override (a live `openrouter/z-ai/glm-5.3-flash`
+  worker answered through the plain OpenRouter integration).
 
 There is no steer: continue an agent with `RESUME:` after its turn. The V1 path this adapter ran
 until 2026-10-21, and the 2026-10-02 pilot that first measured V2 (against OpenCode 1.18.34, whose

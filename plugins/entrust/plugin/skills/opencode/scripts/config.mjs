@@ -3,6 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 
+// V2's basic auth takes this fixed username; OPENCODE_SERVER_USERNAME is ignored.
+export const SERVER_USER = "opencode";
 export const modelKey = (m) => `${m.providerID}/${m.modelID}`;
 export function splitModel(value) {
   const i = value.indexOf("/");

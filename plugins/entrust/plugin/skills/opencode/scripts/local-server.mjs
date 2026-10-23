@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
-import { sleep } from "./config.mjs";
+import { SERVER_USER, sleep } from "./config.mjs";
 
 const LISTENING = /server\s+listening\s+(?:on|at)\s+(https?:\/\/[^\s]+)/i;
 
@@ -13,7 +13,7 @@ function localUrl(raw) {
 }
 
 function authorization(config) {
-  return `Basic ${Buffer.from(`opencode:${config.password}`).toString("base64")}`;
+  return `Basic ${Buffer.from(`${SERVER_USER}:${config.password}`).toString("base64")}`;
 }
 
 const cancelled = () => Object.assign(new Error("OpenCode server startup was cancelled"), { cancelled: true });
@@ -41,8 +41,8 @@ async function waitHealthy(config, child, timeoutMs, gone, signal) {
 export async function startLocalServer({ cwd = process.cwd(), env = process.env, timeoutMs = 15000, signal } = {}) {
   const config = {
     url: null,
-    // V2 authenticates the fixed basic-auth username `opencode`; the username variable is ignored.
-    password: env.OPENCODE_SERVER_PASSWORD || crypto.randomBytes(32).toString("base64url"),
+    // The password is this server's own, never one the caller's environment holds for another.
+    password: crypto.randomBytes(32).toString("base64url"),
   };
   let child;
   try {

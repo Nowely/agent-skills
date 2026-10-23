@@ -1,27 +1,28 @@
-import { sleep } from "./config.mjs";
+import { SERVER_USER } from "./config.mjs";
 
 export class ApiError extends Error {
   constructor(message, status = null) { super(message); this.status = status; }
 }
+
+// A route read against a directory's configuration: the model catalogue, the default and the configuration
+// itself answer for the server's own directory unless asked for another.
+const located = (route, cwd) => (cwd ? `${route}?location[directory]=${encodeURIComponent(cwd)}` : route);
+
 export class Client {
-  constructor({ config, cwd = null, timeoutMs = 20000 }) {
-    this.config = config; this.cwd = cwd; this.timeoutMs = timeoutMs;
+  constructor({ config, timeoutMs = 20000 }) {
+    this.config = config; this.timeoutMs = timeoutMs;
   }
   headers() {
     return { "Content-Type": "application/json", ...(this.config.password ? {
-      Authorization: `Basic ${Buffer.from(`opencode:${this.config.password}`).toString("base64")}`,
+      Authorization: `Basic ${Buffer.from(`${SERVER_USER}:${this.config.password}`).toString("base64")}`,
     } : {}) };
-  }
-  url(route) {
-    const u = new URL(this.config.url + route);
-    return u;
   }
   // V2 wraps most operation results as { "data": ... }; `unwrap` returns the inner value,
   // falling back to the whole body for the routes that answer in the clear (/api/info, interrupt).
   async call(method, route, body, { timeoutMs = this.timeoutMs, expectedStatus = null, unwrap = false } = {}) {
     let r;
     try {
-      r = await fetch(this.url(route), { method, headers: this.headers(),
+      r = await fetch(new URL(this.config.url + route), { method, headers: this.headers(),
         ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(timeoutMs), redirect: "error" });
     } catch (e) { throw new ApiError(`${method} ${route}: transport outcome unknown (${e.name})`); }
     if (r.ok && expectedStatus !== null && r.status !== expectedStatus) {
@@ -47,47 +48,18 @@ export class Client {
     const paths = doc?.paths ?? {};
     return { url: this.config.url, version: info.version, paths };
   }
-  async model(ref) {
-    const models = await (this.catalogue ??= this.call("GET", "/api/model", undefined, { unwrap: true })) ?? [];
-    const m = (Array.isArray(models) ? models : []).find((m) =>
-      m?.providerID === ref.providerID && m?.modelID === ref.modelID);
-    if (!m || m.enabled !== true) throw new ApiError(`model ${ref.providerID}/${ref.modelID} is unavailable; no substitute selected`);
-    if (this.providers == null) this.providers = await this.call("GET", "/api/provider", undefined, { unwrap: true });
-    const p = (Array.isArray(this.providers) ? this.providers : []).find((p) => p?.id === ref.providerID);
-    if (!p || p.activation === "disabled")
-      throw new ApiError(`provider ${ref.providerID} is not active; no substitute selected`);
-    return { ...ref, variants: (m.variants ?? []).map((v) => v?.id).filter(Boolean) };
+  // The models a directory's configuration leaves enabled. A provider that is disabled, denied by a policy or
+  // not connected is not in the catalogue at all.
+  async models(cwd) {
+    const models = await this.call("GET", located("/api/model", cwd), undefined, { unwrap: true });
+    if (!Array.isArray(models)) throw new ApiError("/api/model: expected a model array");
+    return models.filter((m) => m?.enabled === true && typeof m.providerID === "string" && typeof m.id === "string");
   }
-  async events(onEvent, signal, { route = "/api/event", mapEvent = (e) => e } = {}) {
-    while (!signal.aborted) {
-      try {
-        const r = await fetch(this.url(route), { headers: this.headers(), signal, redirect: "error" });
-        if (!r.ok || !r.body) throw new Error(`event HTTP ${r.status}`);
-        const reader = r.body.getReader(), decoder = new TextDecoder();
-        let pending = "";
-        try {
-          while (!signal.aborted) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            pending += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
-            if (pending.length > 1024 * 1024) throw new Error("event frame exceeds 1 MiB");
-            let i;
-            while ((i = pending.indexOf("\n\n")) >= 0) {
-              const frame = pending.slice(0, i); pending = pending.slice(i + 2);
-              const data = frame.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trimStart()).join("\n");
-              if (data) {
-                try {
-                  // V2's data is a JSON-encoded string; unwrap one level before the event object.
-                  let e = JSON.parse(data);
-                  if (typeof e === "string") { try { e = JSON.parse(e); } catch {} }
-                  onEvent(mapEvent(e));
-                } catch {}
-              }
-            }
-          }
-        } finally { await reader.cancel().catch(() => {}); }
-      } catch (e) { if (!signal.aborted) onEvent({ type: "entrust.event.disconnected", properties: { reason: e.name } }); }
-      if (!signal.aborted) await sleep(500);
-    }
+  // A model is named by its catalogue id, which an alias (a `-fast` entry) does not share with its modelID.
+  async model(ref, cwd) {
+    this.catalogue ??= await this.models(cwd);
+    const m = this.catalogue.find((m) => m.providerID === ref.providerID && m.id === ref.modelID);
+    if (!m) throw new ApiError(`model ${ref.providerID}/${ref.modelID} is unavailable; no substitute selected`);
+    return { ...ref, variants: (m.variants ?? []).map((v) => v?.id).filter(Boolean) };
   }
 }

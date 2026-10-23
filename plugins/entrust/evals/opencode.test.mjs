@@ -10,7 +10,8 @@ import { Client } from "../plugin/skills/opencode/scripts/client.mjs";
 import { parsePrompt, FIVE_FIELDS_SCHEMA, checkSchemaSubset, validateOutput, decisionsOf, extractJson, expectation } from "../plugin/skills/opencode/scripts/contract.mjs";
 import { decisionFits } from "../plugin/skills/orchestrate/scripts/mailbox.mjs";
 import { editScope, noteWait, rejectTrackedRequest, sessionPermissions } from "../plugin/skills/opencode/scripts/driver.mjs";
-import { fakeOpenCode } from "./fake-opencode.mjs";
+import { fakeCli, fakeOpenCode } from "./fake-opencode.mjs";
+import { typedRequest } from "../plugin/skills/opencode/scripts/launch.mjs";
 import { startLocalServer } from "../plugin/skills/opencode/scripts/local-server.mjs";
 
 const { cases, test: register } = registry();
@@ -131,8 +132,8 @@ test("wrapped JSON preserves escaped quotes, braces and nested objects", () => {
 });
 test("relative permission targets resolve from the session directory", () => {
   const guard = { stateDir: tempDir("entrust-opencode-guard-") };
-  assert.deepEqual(editScope({ roots: [cwd] }, { permission: "edit", metadata: { filePath: "file.txt" } }, cwd, guard), { outside: false });
-  assert.deepEqual(editScope({ roots: [cwd] }, { permission: "edit", metadata: { filePath: "../outside.txt" } }, cwd, guard), { outside: true });
+  assert.deepEqual(editScope({ roots: [cwd] }, { action: "edit", resources: ["file.txt"] }, cwd, guard), { outside: false });
+  assert.deepEqual(editScope({ roots: [cwd] }, { action: "edit", resources: ["../outside.txt"] }, cwd, guard), { outside: true });
 });
 test("OpenCode entrypoint rejects an appended Codex adapter", async () => {
   const r = await invoke([ENTRY, "--adapter", "codex", "--help"]);
@@ -232,26 +233,20 @@ test("HTTP mutation is never retried after a response is lost", async () => {
     assert.equal(count, 1);
   } finally { await new Promise((resolve) => server.close(resolve)); }
 });
-test("catalogue needs positive connection evidence and never substitutes a model", async () => {
+test("the catalogue names a model by its catalogue id, lists only enabled models, is read for the run's directory once, and never substitutes", async () => {
   const client = new Client({ config: { url: "http://localhost" } });
-  let count = 0;
-  client.call = async () => { count++; return { all: [{ id: "router", models: { "deepseek/deepseek-flash": {} } }] }; };
-  await assert.rejects(client.model(splitModel(model)), /unavailable/);
-  await assert.rejects(client.model(splitModel("router/other")), /no substitute/);
-  assert.equal(count, 1);
+  const routes = [];
+  client.call = async (method, route) => { routes.push(route); return [
+    { id: "deepseek/deepseek-flash", modelID: "deepseek/deepseek-flash", providerID: "router", enabled: false },
+    { id: "glm/flash-fast", modelID: "glm/flash", providerID: "router", enabled: true, variants: [{ id: "high" }] }]; };
+  await assert.rejects(client.model(splitModel(model), "/work"), /unavailable/);
+  await assert.rejects(client.model(splitModel("router/glm/flash"), "/work"), /no substitute/);
+  assert.deepEqual(await client.model(splitModel("router/glm/flash-fast"), "/work"), { providerID: "router", modelID: "glm/flash-fast", variants: ["high"] });
+  assert.deepEqual(routes, ["/api/model?location[directory]=%2Fwork"]);
 });
 const DRIVER = path.join(ROOT, "skills/opencode/scripts/driver.mjs");
-function fakeCli(url, dir) {
-  const bin = path.join(dir, "fake-bin"); fs.mkdirSync(bin, { recursive: true });
-  const stopFile = path.join(dir, "opencode-stopped");
-  const startFile = path.join(dir, "opencode-started");
-  const script = path.join(bin, "opencode");
-  fs.writeFileSync(script, `#!/usr/bin/env node\nconst fs=require("node:fs");\nfs.writeFileSync(process.env.FAKE_OPENCODE_START_FILE,"started");\nsetTimeout(()=>console.log("server listening on "+process.env.FAKE_OPENCODE_URL),Number(process.env.FAKE_OPENCODE_DELAY_MS||0));\nprocess.on("SIGTERM",()=>{fs.writeFileSync(process.env.FAKE_OPENCODE_STOP_FILE,"stopped");process.exit(0)});\nsetInterval(()=>{},1000);\n`, { mode: 0o755 });
-  return { stopFile, env: { PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}`,
-    FAKE_OPENCODE_URL: url, FAKE_OPENCODE_START_FILE: startFile, FAKE_OPENCODE_STOP_FILE: stopFile }, startFile };
-}
 // `beside` is an earlier report: this run writes report-2.json into its directory, under the same state.
-async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4, approvalDelayMs = 0, headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", localUrl = server.url, beside = null, more = {}, state: given = null } = {}) {
+async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4, approvalDelayMs = 0, headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", answer = '{"answers":[["Read"]]}', localUrl = server.url, beside = null, more = {}, state: given = null } = {}) {
   const state = beside ? path.dirname(path.dirname(beside)) : given ?? tempDir("entrust-opencode-driver-");
   const dir = beside ? path.dirname(beside) : path.join(state, "invocation"); if (!beside) fs.mkdirSync(dir);
   const input = path.join(dir, "prompt.txt"), report = path.join(dir, beside ? "report-2.json" : "report.json"), box = path.join(dir, "approvals");
@@ -288,7 +283,7 @@ async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4
               acted = true; continue;
             }
             const r = await invoke([ENTRY, "--dir", dir, "--report-file", report, "--decide", q.id, approval === "answer" ? "--answer" : approval === "decline" ? "--decline" : "--accept"],
-              approval === "answer" ? '{"answers":[["Read"]]}' : approval === "decline" ? "" : q.presented + "\n");
+              approval === "answer" ? answer : approval === "decline" ? "" : q.presented + "\n");
             assert.equal(r.code, 0, r.out + r.err); acted = true;
           }
         }
@@ -313,6 +308,16 @@ test("a server that exits before it serves is reported with its exit code and wh
   await assert.rejects(startLocalServer({ env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}` } }),
     /exited with code 3 before announcing its local URL; it printed: Error: EPERM: operation not permitted/);
 });
+test("the private server's password is its own, never one the caller's environment holds", async () => {
+  const s = await fakeOpenCode(), dir = tempDir("entrust-opencode-password-"), seen = path.join(dir, "password");
+  const bin = path.join(dir, "bin"); fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, "opencode"), `#!/usr/bin/env node\nrequire("node:fs").writeFileSync(${JSON.stringify(seen)}, process.env.OPENCODE_SERVER_PASSWORD);\nconsole.log("server listening on ${s.url}");\nsetInterval(()=>{},1000);\n`, { mode: 0o755 });
+  const server = await startLocalServer({ env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}`, OPENCODE_SERVER_PASSWORD: "shared-secret" } });
+  try {
+    assert.notEqual(server.config.password, "shared-secret");
+    assert.equal(fs.readFileSync(seen, "utf8"), server.config.password);
+  } finally { await server.close(); await s.close(); }
+});
 test("a default run starts and stops its private loopback server", async () => {
   const s = await fakeOpenCode();
   try {
@@ -329,14 +334,24 @@ test("local continuation can reconnect through a fresh server URL", async () => 
     assert.equal(second.code, 0, second.err); assert.equal(second.report.resume, true);
   } finally { await s.close(); }
 });
-test("driver uses first recent model and pins it at session create", async () => {
+test("driver uses first recent model and pins it at session create, checked against the run's directory, with no provider list and no event stream", async () => {
   const s = await fakeOpenCode();
   try {
     const r = await driverRun(s); assert.equal(r.code, 0, r.err); assert.equal(r.report.receiptOk, true);
     assert.equal(r.report.model, "router/deepseek/flash");
     const create = s.calls.find((c) => c.method === "POST" && c.path === "/api/session");
     assert.deepEqual(create.body.model, { id: "deepseek/flash", providerID: "router", variant: "high" });
+    assert.deepEqual(s.calls.filter((c) => c.path === "/api/model").map((c) => c.query), [`?location[directory]=${encodeURIComponent(cwd)}`]);
+    assert.equal(s.calls.some((c) => ["/api/provider", "/api/event"].includes(c.path)), false);
     assert.equal(s.calls.some((c) => !c.path.startsWith("/api/") && c.path !== "/openapi.json" && c.path !== "/api/info"), false);
+  } finally { await s.close(); }
+});
+test("a catalogue alias runs by its own id", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const alias = await driverRun(s, { headers: "MODEL: router/glm/flash-fast\n" });
+    assert.equal(alias.code, 0, alias.err); assert.equal(alias.report.model, "router/glm/flash-fast");
+    assert.deepEqual(s.calls.find((c) => c.method === "POST" && c.path === "/api/session").body.model, { id: "glm/flash-fast", providerID: "router" });
   } finally { await s.close(); }
 });
 test("missing required V2 route refuses before creating a session or submitting input", async () => {
@@ -351,6 +366,20 @@ test("native permission reaches mailbox, receives once, and foreign request rema
     const r = await driverRun(s, { approval: "accept" }); assert.equal(r.code, 0, r.err);
     assert.deepEqual(s.mutations.map((m) => m.body), [{ decision: "once" }]);
     assert.equal(s.replies.some((q) => q.id === "per_foreign"), true);
+  } finally { await s.close(); }
+});
+test("a descendant session's permission, which only its own session lists, is answered there", async () => {
+  const s = await fakeOpenCode("child-permission");
+  try {
+    const r = await driverRun(s, { approval: "accept" }); assert.equal(r.code, 0, r.err);
+    assert.deepEqual(s.mutations, [{ id: "per_child_1", body: { decision: "once" }, sessionID: "ses_child_1" }]);
+  } finally { await s.close(); }
+});
+test("a subagent past the first page of children is found, and its permission answered on its own session", async () => {
+  const s = await fakeOpenCode("many-children");
+  try {
+    const r = await driverRun(s, { approval: "accept" }); assert.equal(r.code, 0, r.err);
+    assert.deepEqual(s.mutations, [{ id: "per_kid_51", body: { decision: "once" }, sessionID: "ses_kid_51" }]);
   } finally { await s.close(); }
 });
 test("an edit outside the roots is offered with its whole request and runs once on an accept; one into the state directory is declined unasked", async () => {
@@ -552,6 +581,16 @@ test("silence is cut when the server reports nothing busy, --idle-timeout 0 disa
     assert.match(dflt.report.error, /wall timeout/); assert.equal(dflt.report.limits.idleTimeoutS, 600);
   } finally { await s.close(); }
 });
+test("a Stop of a session with nothing running is a definite stop: the cut is observed idle and can continue", async () => {
+  const s = await fakeOpenCode("silent");
+  try {
+    const first = await driverRun(s, { timeout: null, idle: 2 });
+    assert.equal(first.code, 3, first.err); assert.equal(first.report.cancellation.observed, "idle");
+    assert.deepEqual(first.report.cancellation.abort.map((a) => a.accepted), [{ interrupted: false }]);
+    const second = await driverRun(s, { resume: first.path, timeout: null, idle: 2 });
+    assert.equal(second.code, 3, second.err); assert.equal(s.prompts, 2);
+  } finally { await s.close(); }
+});
 test("a request waiting longer than the idle bound is not silence: the wait ends at the settlement, silence starts in full from it, and the wall clock counts only the work", async () => {
   // 3 s of waiting against a 2 s idle bound, a slow native lookup while it waits and a slow native acknowledgement after
   // the decision, then 1.2 s of quiet work. Silence counted from the last poll before the answer would cut at once.
@@ -649,8 +688,28 @@ test("a wall-clock cut keeps the session for RESUME, and the numbers --timeout, 
 });
 test("native question receives a structured answer through its separate route", async () => {
   const s = await fakeOpenCode("question");
-  try { const r = await driverRun(s, { approval: "answer" }); assert.equal(r.code, 0, r.err); assert.deepEqual(s.mutations[0].body, { answer: { q: "Read" } }); }
+  try { const r = await driverRun(s, { approval: "answer" }); assert.equal(r.code, 0, r.err); assert.deepEqual(s.mutations[0].body, { answer: { q: "read" } }); }
   finally { await s.close(); }
+});
+test("a question's answers take each field's own type: yes for a boolean, digits for a count, labels for their values; one the field cannot take is refused before publication", async () => {
+  const s = await fakeOpenCode("question-typed");
+  try {
+    const r = await driverRun(s, { approval: "answer", answer: '{"answers":[["yes"],["3"],["Ex","Why"],["Read mode"]]}' });
+    assert.equal(r.code, 0, r.err);
+    assert.deepEqual(s.mutations[0].body, { answer: { on: true, count: 3, tags: ["x", "y"], mode: "read" } });
+  } finally { await s.close(); }
+  const read = (answers) => typedRequest({ type: "opencode.question", payload: { fields: [{ key: "on", type: "boolean" }, { key: "count", type: "integer" }] } })
+    .readAnswer(JSON.stringify({ answers }));
+  assert.deepEqual(read([["no"], ["12"]]), { answer: { answers: [["no"], ["12"]] } });
+  assert.match(read([["maybe"], ["12"]]).error, /do not match/);
+  assert.match(read([["yes"], ["1.5"]]).error, /do not match/);
+});
+test("a declined question is cancelled with the refusal and the standing instruction, as a rejected permission is", async () => {
+  const s = await fakeOpenCode("question");
+  try {
+    const r = await driverRun(s, { approval: "decline" }); assert.equal(r.code, 6, r.err);
+    assert.match(s.mutations[0].message, /^declined\. Do not try to get around it/);
+  } finally { await s.close(); }
 });
 test("lost prompt response is reconciled by input ID without resending", async () => {
   const s = await fakeOpenCode("lost-response");
@@ -781,16 +840,50 @@ test("continuation retains session and model but excludes old command evidence",
     assert.equal(s.calls.some((c) => c.method === "POST" && c.path.endsWith("/model")), false, "the session kept its model");
   } finally { await s.close(); }
 });
-test("a report an earlier release recorded as V1 is refused on continuation, before any input", async () => {
+test("a continuation reads only its own run's messages: a long earlier history is not fetched again on each poll", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const first = await driverRun(s); assert.equal(first.code, 0, first.err);
+    s.sessions.get(first.report.sessionID).messages.unshift(...Array.from({ length: 450 }, (_, i) =>
+      ({ id: `msg_old_${i}`, type: "user", text: "old", time: { created: 1 + i } })));
+    const before = s.calls.length;
+    const second = await driverRun(s, { resume: first.path }); assert.equal(second.code, 0, second.err);
+    const pages = s.calls.slice(before).filter((c) => c.path.endsWith("/message"));
+    assert.ok(pages.length > 0); assert.equal(pages.some((c) => c.query.includes("cursor=")), false, "an earlier page was fetched");
+    assert.deepEqual(JSON.parse(fs.readFileSync(second.report.transcriptPath, "utf8")).messages.map((m) => m.type), ["user", "assistant"]);
+  } finally { await s.close(); }
+});
+test("a report an earlier release recorded as V1, which names no apiFamily, is refused on continuation, before any input", async () => {
   const s = await fakeOpenCode();
   try {
     const first = await driverRun(s); assert.equal(first.code, 0, first.err);
     fs.chmodSync(first.path, 0o600);
-    fs.writeFileSync(first.path, JSON.stringify({ ...first.report, apiFamily: "v1" }));
+    const { apiFamily, ...v1 } = first.report;
+    fs.writeFileSync(first.path, JSON.stringify(v1));
     const before = s.prompts;
     const second = await driverRun(s, { resume: first.path });
-    assert.equal(second.code, 2, second.err); assert.match(second.err, /V1 session, and this adapter speaks OpenCode's V2 API only/);
+    assert.equal(second.code, 2, second.err); assert.match(second.err, /not a V2 session, and this adapter speaks OpenCode's V2 API only/);
     assert.equal(s.prompts, before);
+  } finally { await s.close(); }
+});
+test("a continuation whose turn wrote no reply never reports the earlier turn's answer as its own", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const first = await driverRun(s); assert.equal(first.code, 0, first.err);
+    s.silent = true;
+    const second = await driverRun(s, { resume: first.path, idle: 2 });
+    assert.equal(second.code, 3, second.err); assert.equal(second.report.receiptOk, false);
+    assert.equal(second.report.answer, null);
+  } finally { await s.close(); }
+});
+test("a continuation cut before its turn wrote text reports no answer, not the earlier turn's", async () => {
+  const s = await fakeOpenCode("slow"); s.slowMs = 500;
+  try {
+    const first = await driverRun(s, { timeout: null }); assert.equal(first.code, 0, first.err);
+    s.slowMs = 5000;
+    const second = await driverRun(s, { resume: first.path, timeout: 2 });
+    assert.equal(second.code, 3, second.err); assert.match(second.report.error, /wall timeout/);
+    assert.equal(second.report.answer, null); assert.equal(second.report.answerPath, null);
   } finally { await s.close(); }
 });
 test("a report an earlier release made on a remote server is refused on continuation, before any input", async () => {
@@ -806,7 +899,7 @@ test("a report an earlier release made on a remote server is refused on continua
   } finally { await s.close(); }
 });
 test("a continuation's report beside the first keeps each one's answer and transcript files (E120)", async () => {
-  const s = await fakeOpenCode();
+  const s = await fakeOpenCode(); s.results = ["FIRST_TURN", "SECOND_TURN"];
   try {
     const first = await driverRun(s); assert.equal(first.code, 0, first.err);
     const second = await driverRun(s, { resume: first.path, beside: first.path }); assert.equal(second.code, 0, second.err);
@@ -819,8 +912,11 @@ test("a continuation's report beside the first keeps each one's answer and trans
       }
       assert.deepEqual(JSON.parse(fs.readFileSync(r.report.transcriptPath, "utf8")).inputIds, r.report.turnIds);
       assert.equal(fs.existsSync(r.path.replace(/\.json$/, ".runtime.json")), false);
-      assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), s.sessions.get(r.report.sessionID).messages
-        .find((m) => m.type === "assistant").content[0].text);
+      const messages = s.sessions.get(r.report.sessionID).messages;
+      const reply = messages[messages.findIndex((m) => m.id === r.report.turnId) + 1];
+      assert.equal(reply.type, "assistant");
+      assert.equal(fs.readFileSync(r.report.answerPath, "utf8"), reply.content[0].text);
+      assert.equal(r.report.answer, r === first ? "FIRST_TURN" : "SECOND_TURN");
     }
   } finally { await s.close(); }
 });
@@ -1015,8 +1111,8 @@ test("native write resources each need an exact target; one outside the roots is
   assert.match(editScope(scope, { action: "write", resources: ["**"] }, cwd, guard).decline, /exact/);
   assert.match(editScope(scope, { action: "write", resources: [] }, cwd, guard).decline, /target/);
   assert.match(editScope(scope, { action: "write", resources: [path.join(state, "inv", "approvals", "1-aaaaaaaa.decision.json")] }, cwd, guard).decline, /inside the state directory/);
-  assert.match(editScope(scope, { action: "edit", metadata: { filePath: path.join(prot, "new", "plugin.js") } }, cwd, guard).decline, /inside OpenCode's configuration/);
-  assert.match(editScope({ roots: [] }, { action: "edit", metadata: { filePath: "x" } }, cwd, guard).decline, /no declared writes scope/);
+  assert.match(editScope(scope, { action: "edit", resources: [path.join(prot, "new", "plugin.js")] }, cwd, guard).decline, /inside OpenCode's configuration/);
+  assert.match(editScope({ roots: [] }, { action: "edit", resources: ["x"] }, cwd, guard).decline, /no declared writes scope/);
 });
 // The driver's pid line admits a forwarded Stop, so a Stop that comes before the private server is ready, or before
 // the session exists, must end in a terminal aborted report, with nothing submitted and the server closed.
@@ -1041,10 +1137,10 @@ test("Stop before the private server is ready ends in a terminal aborted report 
   } finally { await s.close(); }
 });
 test("Stop before the session exists, with the server ready, ends in a terminal aborted report and creates no session", async () => {
-  const s = await fakeOpenCode("slow-provider");
+  const s = await fakeOpenCode("slow-catalogue");
   const state = tempDir("entrust-opencode-early-");
   try {
-    const r = await driverRun(s, { state, headers: PINNED, cancelOn: () => s.calls.some((c) => c.path === "/api/provider") });
+    const r = await driverRun(s, { state, headers: PINNED, cancelOn: () => s.calls.some((c) => c.path === "/api/model") });
     assert.equal(r.code, 3, `exit ${r.code} signal ${r.signal}: ${r.err}`);
     assert.equal(r.report.turnStatus, "aborted"); assert.equal(r.report.partial, true); assert.equal(r.report.receiptOk, false);
     assert.equal(r.report.model, null); assert.equal(r.report.sessionID, null); assert.equal(r.report.requestedModel, "router/deepseek/flash");

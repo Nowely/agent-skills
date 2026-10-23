@@ -4,6 +4,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { formValue } from "./contract.mjs";
 
 export const driver = path.join(path.dirname(fileURLToPath(import.meta.url)), "driver.mjs");
 
@@ -37,7 +38,8 @@ export function typedRequest(q) {
       || q.remote?.sessionID !== q.payload?.sessionID)
       ? "typed request content or remote identity does not match its immutable envelope" : null,
     record: { requestHash: q.requestHash, remote: q.remote },
-    // A question's answer, read from stdin: one array of labels per displayed form field.
+    // A question's answer, read from stdin: one array of strings per form field, each of which the field's
+    // type must take (contract.mjs formValue), so a reply the server would refuse is never published.
     ...(question ? {
       acceptRefusal: "a question needs --answer (JSON answers on stdin) or --decline",
       readAnswer: (text) => {
@@ -48,8 +50,7 @@ export function typedRequest(q) {
         if (!answer || Object.keys(answer).some((k) => k !== "answers") || !Array.isArray(answer.answers)
           || answer.answers.length !== fields.length
           || answer.answers.some((a, i) => !Array.isArray(a) || !a.length || a.some((s) => typeof s !== "string" || !s.trim())
-            || (fields[i].type !== "multiselect" && a.length !== 1)
-            || (fields[i].options && a.some((s) => !fields[i].options.some((o) => o.label === s || o.value === s)))))
+            || formValue(fields[i], a).error))
           return { error: "answers do not match the pending questions" };
         return { answer };
       },
