@@ -1,7 +1,7 @@
 ---
 name: opencode
 description: >-
-  Runs OpenCode workers: launches, continues and stops workers, answers their permission and question callbacks, and picks a recent model. Use when the user asks
+  Runs OpenCode workers: launches, continues and stops workers, answers their permission and question callbacks, and picks a model OpenCode offers. Use when the user asks
   for OpenCode or for a model outside native Codex and Claude, to call or pool (“Позови DeepSeek, GLM”, “Use
   deepseek, glm in pool”, “Задействуй модели OpenCode”), even before the task is stated. A request to make a
   model the coordinator (“Прокси на GLM”) is answered with the explicit proxy command; ordinary native
@@ -28,20 +28,22 @@ When the user asks to call, use or include a named model outside Codex and Claud
 that worker through OpenCode even when the user does not say “OpenCode” or has not stated the task yet.
 Choose the route first; when task details are missing, ask for them before checking status or starting a
 worker. “Позови DeepSeek, GLM” and “Use DeepSeek, GLM in pool” request one worker for each named family.
-“Задействуй модели OpenCode” explicitly selects this adapter; choose its model by the ordinary recent-model
-rule. A model mentioned only for information or discussion does not request a worker.
+“Задействуй модели OpenCode” explicitly selects this adapter; choose its model by the ordinary rule
+below. A model mentioned only for information or discussion does not request a worker.
 
 ## Select and launch
 
-1. Run `node <skill-dir>/scripts/status.mjs`. Status is passive: it reads at most three saved recent
-   model references and reports `local_unprobed`; it never starts a server or requests a model
-   catalogue. Model availability remains unknown until the launch path validates the exact selection.
-2. Choose `MODEL: inherit` only when the user did not name a model family: it selects the first recent
-   model. When the user names a family such as DeepSeek or GLM, use a matching recent reference if
-   present; never use `inherit` or a different recent model for that request. If no matching recent
-   reference is listed, report the
-   unresolved family before launching. A continuation retains its previous model and variant. Explicit
-   `MODEL: provider/model` overrides selection; preserve slashes inside the model ID.
+1. Run `node <skill-dir>/scripts/status.mjs`. It starts a private server for the current directory, as a
+   worker's does, and lists `MODEL=` lines: the models OpenCode Desktop shows in its picker that the
+   catalogue still offers (`SOURCE=desktop`), or without Desktop's store the whole catalogue
+   (`SOURCE=catalogue`), each with the variant Desktop keeps for it and the variants it advertises.
+   `DEFAULT=` is the OpenCode configuration's `model`; `OPENCODE=unavailable` says why no server answered.
+2. Choose `MODEL: inherit` only when the user did not name a model family: it selects `DEFAULT` and is
+   refused when that is `none`. When the user names a family such as DeepSeek or GLM, use the first listed
+   model of that family, with its listed variant as `VARIANT:`; never use `inherit` or another family for
+   that request. If no model of the family is listed, report the unresolved family before launching. A
+   continuation retains its previous model and variant. Explicit `MODEL: provider/model` overrides
+   selection; preserve slashes inside the model ID.
    `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant.
 3. For orchestration, read [orchestration.md](references/orchestration.md). Resolve and pin the model
    before registering the approved plan. Use the shared [five-field schema](../orchestrate/schemas/five-fields.schema.json).

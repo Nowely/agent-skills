@@ -48,9 +48,10 @@ Live probes established:
   `id`, which an alias (a `-fast` entry) does not share with its `modelID`; `enabled` and `variants[]` (an
   array of `{id}`) come with it. A provider that is disabled, denied by a `provider.use` policy or not
   connected is absent from the catalogue, and `GET /api/provider` answers `[]` on a directory's first
-  read, so it is not consulted. The local recent-model state file keeps its `{recent, variant}` shape.
-  The router provider's own models run without a transport override (a live `openrouter/z-ai/glm-5.3-flash`
-  worker answered through the plain OpenRouter integration).
+  read, so it is not consulted. The configuration's `model` is `GET /api/model/default`; with none set
+  the server names a default nobody selected. The router provider's own models run without a transport
+  override (a live `openrouter/z-ai/glm-5.3-flash` worker answered through the plain OpenRouter
+  integration).
 
 There is no steer: continue an agent with `RESUME:` after its turn. The V1 path this adapter ran
 until 2026-10-21, and the 2026-10-02 pilot that first measured V2 (against OpenCode 1.18.34, whose
@@ -63,10 +64,13 @@ over examples for other versions: [server docs](https://opencode.ai/v2/docs/api)
 
 ## Model selection and evidence
 
-Discovery reads the local OpenCode `model.json` recent list: two entries by default, saved order,
-duplicates removed. It retains provider and model IDs separately. A router display name is not the
-provider key. An ordinary new invocation selects the first entry; a plan pins its resolved ID.
-Explicit models outside those two are checked by exact ID rather than expanding discovery.
+No server route says which models a user prefers. OpenCode Desktop keeps the ones it shows in its
+picker, and the variant chosen for each, in its own store (on macOS `~/Library/Application
+Support/ai.opencode.desktop/drafts.sqlite`, read only); status lists those the catalogue still offers,
+in Desktop's order, and without that store the whole catalogue, which the configuration can shorten with
+`disabled` models and `provider.use` policies. It retains provider and model IDs separately; a router
+display name is not the provider key. `MODEL: inherit` selects the configuration's `model` and is
+refused when none is set; a plan pins its resolved ID. An explicit model is checked by exact catalogue ID.
 
 Reports attribute only observed invocation messages and commands. Root and child usage are distinct.
 Unknown command exit, usage, delivery or cancellation cannot become a fabricated zero or success.

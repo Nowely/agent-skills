@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "./client.mjs";
-import { recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
+import { splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
 import { startLocalServer } from "./local-server.mjs";
 import { deadlineMs, mailboxProblem, openMailbox } from "../../orchestrate/scripts/mailbox.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
@@ -1066,7 +1066,6 @@ async function execute(opts, parsed) {
   const resumedRules = ctx.resume ? rulesProblem(ctx.resumedSession, ctx.scope) : null;
   if (resumedRules) return fail(ctx, resumedRules, EXIT.TRANSPORT);
 
-  // Model: pinned by the plan, inherited by a resume, else the first recent model. No fallback.
   const model = await resolveModel(ctx);
   if (ctx.abortRequested) return cutExit(ctx, EARLY);
   if (model.error) return fail(ctx, model.error, EXIT.USAGE);
@@ -1151,6 +1150,7 @@ async function execute(opts, parsed) {
   } finally { await ctx.localServer?.close(); }
 }
 
+// Model: pinned by the prompt, kept by a resume, else the OpenCode configuration's own `model`. No fallback.
 async function resolveModel(ctx) {
   let ref, variant = ctx.parsed.variant ?? null;
   if (ctx.parsed.model.inherit) {
@@ -1159,11 +1159,8 @@ async function resolveModel(ctx) {
       ref = ctx.priorModel; variant ??= ctx.priorVariant;
     }
     else {
-      let recent = [];
-      try { recent = recentModels({ limit: 1 }); } catch (e) { return { error: e.message }; }
-      if (!recent.length) return { error: "no recent model is recorded; set MODEL to provider/model" };
-      ref = { providerID: recent[0].providerID, modelID: recent[0].modelID };
-      if (!variant && recent[0].variant) variant = recent[0].variant;
+      try { ref = await ctx.client.defaultModel(ctx.cwd); } catch (e) { return { error: e.message }; }
+      if (!ref) return { error: "MODEL: inherit takes the OpenCode configuration's `model`, and none is set; set MODEL to provider/model" };
     }
   } else ref = { providerID: ctx.parsed.model.providerID, modelID: ctx.parsed.model.modelID };
   let info;

@@ -62,4 +62,13 @@ export class Client {
     if (!m) throw new ApiError(`model ${ref.providerID}/${ref.modelID} is unavailable; no substitute selected`);
     return { ...ref, variants: (m.variants ?? []).map((v) => v?.id).filter(Boolean) };
   }
+  // The configuration's own `model`, or null when no document sets one: the server then names a default
+  // nobody selected.
+  async defaultModel(cwd) {
+    const docs = await this.call("GET", located("/api/config", cwd));
+    if (!Array.isArray(docs)) throw new ApiError("/api/config: expected a configuration array");
+    if (!docs.some((d) => d?.type === "document" && d.info?.model)) return null;
+    const m = await this.call("GET", located("/api/model/default", cwd), undefined, { unwrap: true });
+    return typeof m?.providerID === "string" && typeof m?.id === "string" ? { providerID: m.providerID, modelID: m.id } : null;
+  }
 }

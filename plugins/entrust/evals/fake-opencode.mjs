@@ -7,7 +7,8 @@ const answer = (result = "checked") => JSON.stringify({ status: "done", result, 
 export async function fakeOpenCode(mode = "normal") {
   let seq = 0;
   const sessions = new Map(), calls = [], replies = [], questions = [], mutations = [];
-  const state = { mode, sessions, calls, replies, questions, mutations, prompts: 0, aborts: [], url: null };
+  // `defaultModel` is the configuration's `model`, which MODEL: inherit selects; none is set unless a case sets it.
+  const state = { mode, sessions, calls, replies, questions, mutations, prompts: 0, aborts: [], url: null, defaultModel: null };
   const paths = Object.fromEntries([
     ["/api/session", { get: {}, post: {} }],
     ["/api/session/active", { get: {} }],
@@ -81,6 +82,11 @@ export async function fakeOpenCode(mode = "normal") {
     ];
     if (p === "/api/model" && mode === "slow-catalogue") await new Promise((resolve) => setTimeout(resolve, 1500));
     if (p === "/api/model") return json({ location: { directory: u.searchParams.get("location[directory]") ?? "/fake" }, data: catalogue });
+    if (p === "/api/config") return json([{ type: "document", path: "/fake/opencode.json", info: state.defaultModel ? { model: state.defaultModel } : {} }]);
+    if (p === "/api/model/default") {
+      const [providerID, ...rest] = (state.defaultModel ?? "router/glm/flash").split("/");
+      return json({ location: { directory: "/fake" }, data: catalogue.find((m) => m.providerID === providerID && m.id === rest.join("/")) ?? null });
+    }
     if (p === "/api/session" && req.method === "POST") {
       // `rules-dropped` keeps none of the rules it was sent, `rules-widened` allows every edit, as a server
       // that did not apply them would report; `rules-silent` reports none at all.
@@ -255,4 +261,15 @@ export function fakeCli(url, dir) {
   fs.writeFileSync(script, `#!/usr/bin/env node\nconst fs=require("node:fs");\nfs.writeFileSync(process.env.FAKE_OPENCODE_START_FILE,"started");\nsetTimeout(()=>console.log("server listening on "+process.env.FAKE_OPENCODE_URL),Number(process.env.FAKE_OPENCODE_DELAY_MS||0));\nprocess.on("SIGTERM",()=>{fs.writeFileSync(process.env.FAKE_OPENCODE_STOP_FILE,"stopped");process.exit(0)});\nsetInterval(()=>{},1000);\n`, { mode: 0o755 });
   return { stopFile, env: { PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}`,
     FAKE_OPENCODE_URL: url, FAKE_OPENCODE_START_FILE: startFile, FAKE_OPENCODE_STOP_FILE: stopFile }, startFile };
+}
+
+// An OpenCode Desktop store holding `state` as its model list, as Desktop's own SQLite keeps it.
+export async function desktopStore(dir, state) {
+  const { DatabaseSync } = await import("node:sqlite");
+  const file = path.join(dir, "drafts.sqlite");
+  const db = new DatabaseSync(file);
+  db.exec("create table state (name text not null, key text not null, value text not null, updated_at integer not null, primary key (name, key))");
+  db.prepare("insert into state values (?, ?, ?, ?)").run("opencode.global.dat", "model", JSON.stringify(state), Date.now());
+  db.close();
+  return file;
 }

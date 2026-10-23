@@ -5,12 +5,12 @@ import path from "node:path";
 import http from "node:http";
 import { spawnSync } from "node:child_process";
 import { ROOT, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
-import { recentModels, splitModel, digest } from "../plugin/skills/opencode/scripts/config.mjs";
+import { desktopModels, splitModel, digest } from "../plugin/skills/opencode/scripts/config.mjs";
 import { Client } from "../plugin/skills/opencode/scripts/client.mjs";
 import { parsePrompt, FIVE_FIELDS_SCHEMA, checkSchemaSubset, validateOutput, decisionsOf, extractJson, expectation } from "../plugin/skills/opencode/scripts/contract.mjs";
 import { decisionFits } from "../plugin/skills/orchestrate/scripts/mailbox.mjs";
 import { editScope, noteWait, rejectTrackedRequest, sessionPermissions } from "../plugin/skills/opencode/scripts/driver.mjs";
-import { fakeCli, fakeOpenCode } from "./fake-opencode.mjs";
+import { desktopStore, fakeCli, fakeOpenCode } from "./fake-opencode.mjs";
 import { typedRequest } from "../plugin/skills/opencode/scripts/launch.mjs";
 import { startLocalServer } from "../plugin/skills/opencode/scripts/local-server.mjs";
 
@@ -27,24 +27,16 @@ function invoke(args, input = "", env = {}) {
   p.child.stdin.end(input);
   return p.done;
 }
-function recent(state) {
-  const file = path.join(tempDir("entrust-opencode-models-"), "model.json");
-  fs.writeFileSync(file, JSON.stringify(state));
-  return { ENTRUST_OPENCODE_MODEL_STATE: file };
-}
-test("recent discovery returns only the first three distinct saved models and preserves router slashes", () => {
-  const env = recent({ recent: [{ providerID: "router", modelID: "deepseek/flash" }, { providerID: "router", modelID: "deepseek/flash" },
-    { providerID: "router", modelID: "z-ai/glm" }, { providerID: "router", modelID: "other" }, { providerID: "router", modelID: "past-limit" }],
-    variant: { "router/deepseek/flash": "high" } });
-  assert.deepEqual(recentModels({ env }), [{ providerID: "router", modelID: "deepseek/flash", variant: "high" },
-    { providerID: "router", modelID: "z-ai/glm", variant: null }, { providerID: "router", modelID: "other", variant: null }]);
-  assert.deepEqual(splitModel(model), { providerID: "router", modelID: "deepseek/deepseek-flash" });
-});
-test("malformed recent refs are skipped and malformed containers refuse", () => {
-  const env = recent({ recent: [{ providerID: "bad/provider", modelID: "a" }, { providerID: "", modelID: "b" }, { providerID: "router", modelID: "good" }] });
-  assert.equal(recentModels({ env }).length, 1);
-  assert.throws(() => recentModels({ env: recent({ recent: {} }) }), /array/);
-  assert.throws(() => recentModels({ env, limit: 0 }), /1\.\.100/);
+test("Desktop's shown models are read in its order with its variants, a provider-default variant is none, and a missing or foreign store says so", async () => {
+  const dir = tempDir("entrust-opencode-desktop-");
+  const file = await desktopStore(dir, { user: [{ providerID: "router", modelID: "glm/flash", visibility: "show" },
+    { providerID: "router", modelID: "hidden", visibility: "hide" }, { providerID: "router", modelID: "deepseek/flash", visibility: "show" }],
+    recent: [], variant: { "router/deepseek/flash": "high", "router/glm/flash": "default" } });
+  assert.deepEqual(await desktopModels({ ENTRUST_OPENCODE_DESKTOP_STATE: file }), { models: [
+    { providerID: "router", modelID: "glm/flash", variant: null }, { providerID: "router", modelID: "deepseek/flash", variant: "high" }] });
+  assert.match((await desktopModels({ ENTRUST_OPENCODE_DESKTOP_STATE: path.join(dir, "none.sqlite") })).absent, /no OpenCode Desktop store/);
+  const foreign = path.join(dir, "foreign.sqlite"); fs.writeFileSync(foreign, "not a database");
+  assert.match((await desktopModels({ ENTRUST_OPENCODE_DESKTOP_STATE: foreign })).error, /could not be read/);
 });
 test("default answer schema comes from the existing Codex contract", () => {
   assert.equal(FIVE_FIELDS_SCHEMA, path.join(ROOT, "skills/orchestrate/schemas/five-fields.schema.json"));
@@ -246,15 +238,15 @@ test("the catalogue names a model by its catalogue id, lists only enabled models
 });
 const DRIVER = path.join(ROOT, "skills/opencode/scripts/driver.mjs");
 // `beside` is an earlier report: this run writes report-2.json into its directory, under the same state.
-async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4, approvalDelayMs = 0, headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, savedModel = "deepseek/flash", answer = '{"answers":[["Read"]]}', localUrl = server.url, beside = null, more = {}, state: given = null } = {}) {
+async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4, approvalDelayMs = 0, headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, defaultModel = "router/deepseek/flash", answer = '{"answers":[["Read"]]}', localUrl = server.url, beside = null, more = {}, state: given = null } = {}) {
   const state = beside ? path.dirname(path.dirname(beside)) : given ?? tempDir("entrust-opencode-driver-");
   const dir = beside ? path.dirname(beside) : path.join(state, "invocation"); if (!beside) fs.mkdirSync(dir);
   const input = path.join(dir, "prompt.txt"), report = path.join(dir, beside ? "report-2.json" : "report.json"), box = path.join(dir, "approvals");
   fs.writeFileSync(input, prompt(`${allowNoCommands ? "ALLOW_NO_COMMANDS: yes\n" : ""}${resume ? `RESUME: ${resume}\n` : ""}${headers}`, rights));
   // The driver starts its own server; the fake CLI on PATH announces the fake one.
   const cli = fakeCli(localUrl, state);
-  const env = { ENTRUST_STATE_DIR: state, ...cli.env, ...more,
-    ...recent({ recent: [{ providerID: "router", modelID: savedModel }], variant: { "router/deepseek/flash": "high" } }) };
+  const env = { ENTRUST_STATE_DIR: state, ...cli.env, ...more };
+  server.defaultModel = defaultModel;
   const p = spawnNode([DRIVER, "--prompt-file", input, "--report-file", report, ...(timeout === null ? [] : ["--timeout", String(timeout)]), ...(idle === null ? [] : ["--idle-timeout", String(idle)]),
     ...(approval ? ["--approval-dir", box] : [])], { env, killAfterMs: 20000 });
   const promptsBefore = server.prompts;
@@ -334,21 +326,24 @@ test("local continuation can reconnect through a fresh server URL", async () => 
     assert.equal(second.code, 0, second.err); assert.equal(second.report.resume, true);
   } finally { await s.close(); }
 });
-test("driver uses first recent model and pins it at session create, checked against the run's directory, with no provider list and no event stream", async () => {
+test("MODEL: inherit takes the configuration's `model` and pins it at session create, checked against the run's directory, with no provider list and no event stream", async () => {
   const s = await fakeOpenCode();
   try {
     const r = await driverRun(s); assert.equal(r.code, 0, r.err); assert.equal(r.report.receiptOk, true);
-    assert.equal(r.report.model, "router/deepseek/flash");
+    assert.equal(r.report.model, "router/deepseek/flash"); assert.equal(r.report.variant, null);
     const create = s.calls.find((c) => c.method === "POST" && c.path === "/api/session");
-    assert.deepEqual(create.body.model, { id: "deepseek/flash", providerID: "router", variant: "high" });
+    assert.deepEqual(create.body.model, { id: "deepseek/flash", providerID: "router" });
     assert.deepEqual(s.calls.filter((c) => c.path === "/api/model").map((c) => c.query), [`?location[directory]=${encodeURIComponent(cwd)}`]);
     assert.equal(s.calls.some((c) => ["/api/provider", "/api/event"].includes(c.path)), false);
     assert.equal(s.calls.some((c) => !c.path.startsWith("/api/") && c.path !== "/openapi.json" && c.path !== "/api/info"), false);
   } finally { await s.close(); }
 });
-test("a catalogue alias runs by its own id", async () => {
+test("MODEL: inherit with no `model` in the configuration is refused before any session; a catalogue alias runs by its own id", async () => {
   const s = await fakeOpenCode();
   try {
+    const none = await driverRun(s, { defaultModel: null });
+    assert.equal(none.code, 2, none.err); assert.match(none.err, /MODEL: inherit takes the OpenCode configuration's `model`, and none is set/);
+    assert.equal(s.calls.some((c) => c.method === "POST" && c.path === "/api/session"), false);
     const alias = await driverRun(s, { headers: "MODEL: router/glm/flash-fast\n" });
     assert.equal(alias.code, 0, alias.err); assert.equal(alias.report.model, "router/glm/flash-fast");
     assert.deepEqual(s.calls.find((c) => c.method === "POST" && c.path === "/api/session").body.model, { id: "glm/flash-fast", providerID: "router" });
@@ -832,8 +827,8 @@ test("the answer artifact preserves details outside the parsed JSON preview", as
 test("continuation retains session and model but excludes old command evidence", async () => {
   const s = await fakeOpenCode("old-history");
   try {
-    const first = await driverRun(s); assert.equal(first.code, 0, first.err);
-    const second = await driverRun(s, { resume: first.path, savedModel: "glm/flash" }); assert.equal(second.code, 0, second.err);
+    const first = await driverRun(s, { headers: "VARIANT: high\n" }); assert.equal(first.code, 0, first.err);
+    const second = await driverRun(s, { resume: first.path, defaultModel: "router/glm/flash" }); assert.equal(second.code, 0, second.err);
     assert.equal(second.report.sessionID, first.report.sessionID); assert.equal(second.report.model, first.report.model);
     assert.deepEqual(second.report.commands, []); assert.equal(second.report.usage.input, 5);
     assert.equal(second.report.variant, "high");
@@ -923,10 +918,10 @@ test("a continuation's report beside the first keeps each one's answer and trans
 test("cancelled report retains the selected model for continuation", async () => {
   const s = await fakeOpenCode("cancel");
   try {
-    const first = await driverRun(s, { cancel: true });
+    const first = await driverRun(s, { cancel: true, headers: "VARIANT: high\n" });
     assert.equal(first.report.model, null); assert.equal(first.report.requestedModel, "router/deepseek/flash");
     assert.equal(first.report.variant, "high");
-    const second = await driverRun(s, { resume: first.path, savedModel: "glm/flash", cancel: true });
+    const second = await driverRun(s, { resume: first.path, defaultModel: "router/glm/flash", cancel: true });
     assert.equal(second.report.sessionID, first.report.sessionID);
     assert.equal(second.report.requestedModel, "router/deepseek/flash");
   } finally { await s.close(); }
@@ -1071,37 +1066,43 @@ test("incomplete initial descendants refuse admission and preserve unknown cance
     assert.equal(r.report.cancellation.observed, "unknown");
   } finally { await s.close(); }
 });
-test("JSON status returns at most three saved recent refs, and reaches no server", async () => {
-  const r = await invoke([STATUS, "--format", "json"], "", {
-    ...recent({ recent: [{ providerID: "router", modelID: "deepseek/flash" }, { providerID: "router", modelID: "glm/flash" },
-      { providerID: "router", modelID: "kimi/flash" }, { providerID: "router", modelID: "not-in-top-three" }], variant: { "router/deepseek/flash": "high" } }),
-  });
+// Status asks a private server for the current directory, as a run does; the fake CLI on PATH announces the fake.
+async function statusRun(server, { format = "json", desktop = undefined } = {}) {
+  const state = tempDir("entrust-opencode-status-"), cli = fakeCli(server.url, state);
+  const r = await invoke([STATUS, ...(format === "json" ? ["--format", "json"] : [])], "", {
+    ...cli.env, ENTRUST_OPENCODE_DESKTOP_STATE: desktop ?? path.join(state, "no-desktop.sqlite") });
   assert.equal(r.code, 0, r.out + r.err);
-  const data = JSON.parse(r.out);
-  assert.equal(data.adapter, "opencode"); assert.equal(data.configured, true); assert.equal(data.status, "local_unprobed");
-  assert.deepEqual(data.recent.models.map((m) => `${m.providerID}/${m.modelID}`), ["router/deepseek/flash", "router/glm/flash", "router/kimi/flash"]);
-  assert.equal(data.recent.models[0].variant, "high");
-  assert.equal(data.modelAvailability, "unknown"); assert.equal(data.usage.status, "unknown");
-});
-test("passive status does not start a local server when none is configured", async () => {
-  const s = await fakeOpenCode(), state = tempDir("entrust-opencode-status-local-");
-  const cli = fakeCli(s.url, state);
+  assert.equal(fs.readFileSync(cli.stopFile, "utf8"), "stopped", "status closes the server it started");
+  return { ...r, data: format === "json" ? JSON.parse(r.out) : null };
+}
+test("status lists the models Desktop shows that the catalogue offers, in Desktop's order with its advertised variants, and the configured default", async () => {
+  const s = await fakeOpenCode(); s.defaultModel = "router/glm/flash";
   try {
-    const r = await invoke([STATUS, "--format", "json"], "", { ...recent({ recent: [{ providerID: "router", modelID: "deepseek/flash" }] }), ...cli.env });
-    assert.equal(r.code, 0, r.out + r.err);
-    const data = JSON.parse(r.out);
-    assert.equal(data.status, "local_unprobed"); assert.equal(data.modelAvailability, "unknown");
-    assert.deepEqual(data.recent.models.map((m) => m.modelID), ["deepseek/flash"]);
-    assert.equal(fs.existsSync(cli.startFile), false);
+    const desktop = await desktopStore(tempDir("entrust-opencode-status-desktop-"), { user: [
+      { providerID: "router", modelID: "glm/flash-fast", visibility: "show" }, { providerID: "router", modelID: "retired", visibility: "show" },
+      { providerID: "router", modelID: "deepseek/flash", visibility: "show" }, { providerID: "router", modelID: "glm/flash", visibility: "hide" }],
+      recent: [], variant: { "router/deepseek/flash": "high", "router/glm/flash-fast": "max" } });
+    const { data } = await statusRun(s, { desktop });
+    assert.equal(data.adapter, "opencode"); assert.equal(data.status, "ready"); assert.equal(data.default, "router/glm/flash");
+    assert.deepEqual(data.models, { source: "desktop", note: null, list: [
+      { providerID: "router", modelID: "glm/flash-fast", variant: null, variants: [] },
+      { providerID: "router", modelID: "deepseek/flash", variant: "high", variants: ["high"] }] });
   } finally { await s.close(); }
 });
-test("text status distinguishes a missing recent source from an empty recent list", async () => {
-  const r = await invoke([STATUS], "", {
-    ENTRUST_OPENCODE_MODEL_STATE: undefined, XDG_STATE_HOME: tempDir("entrust-opencode-no-recent-text-"),
-  });
-  assert.equal(r.code, 0, r.out + r.err);
-  assert.match(r.out, /MODEL=unknown \(recent source unavailable\)/);
-  assert.equal(r.out.includes("MODEL=none"), false);
+test("without Desktop's store status lists the whole catalogue and says why; with no default and no server it says none and unavailable", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const { data } = await statusRun(s);
+    assert.equal(data.models.source, "catalogue"); assert.match(data.models.note, /no OpenCode Desktop store/);
+    assert.deepEqual(data.models.list.map((m) => m.modelID), ["deepseek/flash", "glm/flash", "glm/flash-fast"]);
+    assert.equal(data.default, null);
+    const text = await statusRun(s, { format: "text" });
+    assert.match(text.out, /^OPENCODE=ready version=2\.1\.2\nDEFAULT=none\nSOURCE=catalogue \(no OpenCode Desktop store at [^)]+\)\nMODEL=router\/deepseek\/flash variant=none variants=high\n/);
+  } finally { await s.close(); }
+  const bin = path.join(tempDir("entrust-opencode-status-none-"), "bin"); fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, "opencode"), "#!/usr/bin/env node\nprocess.exit(1);\n", { mode: 0o755 });
+  const r = await invoke([STATUS, "--format", "json"], "", { PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}` });
+  assert.equal(r.code, 0, r.out + r.err); assert.equal(JSON.parse(r.out).status, "unavailable");
 });
 test("native write resources each need an exact target; one outside the roots is offered, one in the state or a protected directory declined", () => {
   const scope = { roots: [cwd] }, state = tempDir("entrust-opencode-guard-"), prot = tempDir("entrust-opencode-protected-");

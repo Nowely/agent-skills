@@ -11,30 +11,35 @@ export function splitModel(value) {
   if (i < 1 || i === value.length - 1 || /[\s\x00-\x1f]/.test(value)) throw new Error("MODEL needs provider/model, retaining slashes inside the model ID");
   return { providerID: value.slice(0, i), modelID: value.slice(i + 1) };
 }
-export function modelStateFile(env = process.env) {
-  return env.ENTRUST_OPENCODE_MODEL_STATE || path.join(env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state"), "opencode", "model.json");
+// OpenCode Desktop keeps the models a user shows in its picker, and the variant chosen for each, in its own
+// store, and no server route serves them. ENTRUST_OPENCODE_DESKTOP_STATE names another store: the suites set
+// it to a fixture, since the default is the user's real one, and only the macOS location is known.
+export function desktopStateFile(env = process.env) {
+  return env.ENTRUST_OPENCODE_DESKTOP_STATE
+    || path.join(os.homedir(), "Library", "Application Support", "ai.opencode.desktop", "drafts.sqlite");
 }
-export function recentModels({ limit = 3, env = process.env } = {}) {
-  if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("model limit must be 1..100");
-  const file = modelStateFile(env);
-  let state;
+
+// The models Desktop shows, in its order: { models: [{ providerID, modelID, variant }] }, or { absent } with no
+// store, or { error } for one that cannot be read. A variant `default` is the provider's own, so none.
+export async function desktopModels(env = process.env) {
+  const file = desktopStateFile(env);
+  if (!fs.existsSync(file)) return { absent: `no OpenCode Desktop store at ${file}` };
+  let DatabaseSync;
+  try { ({ DatabaseSync } = await import("node:sqlite")); }
+  catch { return { error: "this Node has no node:sqlite, which reads OpenCode Desktop's store from 22.13 on" }; }
+  let db;
   try {
-    if (fs.statSync(file).size > 1024 * 1024) throw new Error("model state exceeds 1 MiB");
-    state = JSON.parse(fs.readFileSync(file, "utf8"));
-  } catch (e) { throw new Error(`cannot read recent models at ${file}: ${e.message}`); }
-  const result = [], seen = new Set();
-  if (!Array.isArray(state.recent)) throw new Error("model state recent must be an array");
-  for (const m of state.recent) {
-    if (typeof m?.providerID !== "string" || typeof m?.modelID !== "string") continue;
-    if (m.providerID.includes("/")) continue;
-    const key = modelKey(m);
-    try { splitModel(key); } catch { continue; }
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push({ providerID: m.providerID, modelID: m.modelID, variant: state.variant?.[key] ?? null });
-    if (result.length === limit) break;
-  }
-  return result;
+    db = new DatabaseSync(file, { readOnly: true });
+    const row = db.prepare("select value from state where name = ? and key = ?").get("opencode.global.dat", "model");
+    const state = row ? JSON.parse(row.value) : null;
+    if (!Array.isArray(state?.user)) return { error: "OpenCode Desktop's store holds no model list" };
+    return { models: state.user.filter((u) => u?.visibility === "show" && typeof u.providerID === "string" && typeof u.modelID === "string")
+      .map((u) => {
+        const v = state.variant?.[modelKey(u)];
+        return { providerID: u.providerID, modelID: u.modelID, variant: typeof v === "string" && v !== "default" ? v : null };
+      }) };
+  } catch (e) { return { error: `OpenCode Desktop's store could not be read: ${e.message}` }; }
+  finally { try { db?.close(); } catch {} }
 }
 export const digest = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export const id = (prefix) => `${prefix}_${Date.now().toString(16).padStart(12, "0")}${crypto.randomBytes(10).toString("hex")}`;
