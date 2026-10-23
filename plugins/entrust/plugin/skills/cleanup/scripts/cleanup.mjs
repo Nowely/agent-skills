@@ -786,8 +786,16 @@ function listAnswers(roots) {
     { readable: w.complete, cond: w.complete ? "reported" : "unreadable" })], complete: true };
 }
 
+// The repository a tree belongs to, by name, from the `gitdir:` line of its `.git` file; it is only shown.
+function treeRepo(tree) {
+  const m = /^gitdir:\s*(.+?)\/\.git\/worktrees\/[^/\n]+\s*$/m.exec(textAt(path.join(tree, ".git")).value ?? "");
+  return m ? path.basename(m[1]) : null;
+}
+
 // One row per worktree, not one per artifact: a tree and the ledger entry that tracks it are two
-// files describing ONE worktree, and counting rows counted it twice.
+// files describing ONE worktree, and counting rows counted it twice. The trees an OpenCode or Claude
+// worktree run makes (orchestrate/scripts/drivers.mjs makeWorktree) sit beside the ledger entries as
+// directories, recorded nowhere else and removed by nobody, so each is a row of its own kind.
 function listWorktrees(roots) {
   const byName = new Map();
   const ledger = path.join(roots.state, "worktrees");
@@ -816,6 +824,12 @@ function listWorktrees(roots) {
     rows.push(reported("worktree", name, head, w.bytes + entryBytes,
       Math.max(w.mtimeMs, g.entry ? mtimeOf(g.entry) : 0),
       { where: g.where, alsoPaths: [g.tree, g.entry].filter((x) => x && x !== head) }));
+  }
+  for (const n of namesIn(ledger).sort()) {
+    const tree = path.join(ledger, n);
+    if (!statAt(tree).value?.isDirectory()) continue;
+    const w = walk(tree);
+    rows.push(reported("worktree", n, tree, w.bytes, w.mtimeMs, { where: treeRepo(tree), form: "agent" }));
   }
   return rows;
 }
@@ -1122,6 +1136,10 @@ function nameRow(roots, row) {
       return "the answers saved by the driver";
     case "worktree": {
       const where = row.where ? ` in ${row.where}` : "";
+      if (row.form === "agent") {
+        many((n) => `${n} worktrees of OpenCode or Claude agents${where}`);
+        return `the worktree of an OpenCode or Claude agent${where}`;
+      }
       many((n) => `${n} saved worktrees${where}`);
       return `the saved worktree${where}`;
     }
@@ -1225,7 +1243,11 @@ function reasonRow(row, many) {
       return many ? "The tests leave these saved conversations behind."
                   : "The tests leave this saved conversation behind.";
     case "answers": return "The driver prunes these answers itself, so this cleanup never removes them.";
-    case "worktree": return "The driver reconciles and removes these itself on its next worktree run.";
+    case "worktree":
+      if (row.form === "agent") return many
+        ? "Nothing removes these: once each one's work is landed or dropped, remove it with git worktree remove."
+        : "Nothing removes it: once its work is landed or dropped, remove it with git worktree remove.";
+      return "The driver reconciles and removes these itself on its next worktree run.";
     case "lock":
       if (row.form === "held") return many ? "Agents working in those directories hold them; each run releases its own when it ends."
                                            : "An agent working in that directory holds it; its run releases it when it ends.";

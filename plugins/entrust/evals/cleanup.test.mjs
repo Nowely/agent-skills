@@ -2535,6 +2535,29 @@ test("60 · an unpublished or opaque run record keeps a named project out of orp
     return m.done();
   });
 
+test("61 · an OpenCode or Claude agent's worktree is listed by its repository and kept, with the removal that is its owner's",
+  "makeWorktree records its tree nowhere but the directory itself, and a listing of the ledger files alone never named it (E139)",
+  async () => {
+    const w = makeWorld("agent-worktree"), m = misses();
+    const repo = path.join(w.root, "agent-repo"); fs.mkdirSync(repo);
+    const git = (...a) => spawnSync("git", ["-C", repo, ...a], { encoding: "utf8" });
+    git("init", "-q"); git("-c", "user.name=T", "-c", "user.email=t@example.invalid", "commit", "-q", "--allow-empty", "-m", "fixture");
+    const tree = path.join(w.state, "worktrees", "inv_0123456789ab");
+    fs.mkdirSync(path.dirname(tree), { recursive: true });
+    m.eq(git("worktree", "add", "-q", "--detach", tree, "HEAD").status, 0, "git worktree add");
+    const r = await list(w); const bad = need(w, r); if (bad) return bad;
+    const row = rowNear(r.j, tree);
+    m.ok(row, `the agent's worktree has no row: ${shown(r.j)}`);
+    if (row) {
+      m.eq(row.kind, "worktree", "its kind");
+      m.re(row.name, /^the worktree of an OpenCode or Claude agent in agent-repo$/, "its name");
+      m.re(row.reason, /once its work is landed or dropped, remove it with git worktree remove/, "its reason");
+      m.eq(row.selectable, false, "selectable"); m.eq(row.proposed, false, "proposed");
+    }
+    m.ok(fs.existsSync(tree), "the listing touched the tree");
+    return m.done();
+  });
+
 const failed = await runCases(CASES);
 for (const c of kids) { try { c.kill("SIGKILL"); } catch { /* already gone */ } }
 process.exit(summarize(failed, CASES.length));
