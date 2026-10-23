@@ -37,7 +37,8 @@ below. A model mentioned only for information or discussion does not request a w
    worker's does, and lists `MODEL=` lines: the models OpenCode Desktop shows in its picker that the
    catalogue still offers (`SOURCE=desktop`), or without Desktop's store the whole catalogue
    (`SOURCE=catalogue`), each with the variant Desktop keeps for it and the variants it advertises.
-   `DEFAULT=` is the OpenCode configuration's `model`; `OPENCODE=unavailable` says why no server answered.
+   `DEFAULT=` is the OpenCode configuration's `model`; `OPENCODE=missing` is no `opencode` on PATH, and
+   `OPENCODE=unavailable` says why no server answered.
 2. Choose `MODEL: inherit` only when the user did not name a model family: it selects `DEFAULT` and is
    refused when that is `none`. When the user names a family such as DeepSeek or GLM, use the first listed
    model of that family, with its listed variant as `VARIANT:`; never use `inherit` or another family for
@@ -66,7 +67,7 @@ below. A model mentioned only for information or discussion does not request a w
 `RIGHTS: read <cwd>` selects the working directory and grants no file-tool writes; it does not limit which paths
 the worker may read. `write <cwd>` scopes file-tool changes; reads remain unrestricted. `worktree <repo>` gives
 write access to a fresh copy. Entrust allows OpenCode external-directory reads without a path prompt, while
-edit/write rules still govern file-tool changes. Bash remains unbounded by those file rules.
+edit/write rules still govern file-tool changes. The shell tool remains unbounded by those file rules.
 Other permission requests carry the complete native request; grant one action within the approved scope or ask its owner.
 Each concurrent writer gets a distinct worktree. Rights changes need their own authority.
 Read-only agents may share a directory when its tooling permits it.

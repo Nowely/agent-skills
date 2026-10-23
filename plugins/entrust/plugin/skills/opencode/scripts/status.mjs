@@ -15,10 +15,12 @@ for (let i = 0; i < args.length; i += 2) {
   format = args[i + 1];
 }
 
+// `configured` as every adapter's status says it: true once a server answered, false with no `opencode` on PATH,
+// and null when one could not be started or read for another reason.
 async function observe(cwd) {
   let server;
   try { server = await startLocalServer({ cwd }); }
-  catch (e) { return { status: "unavailable", error: e.message }; }
+  catch (e) { return e.code === "ENOENT" ? { status: "missing", configured: false, error: e.message } : { status: "unavailable", configured: null, error: e.message }; }
   try {
     const client = new Client({ config: server.config });
     const { version } = await client.probe();
@@ -34,16 +36,16 @@ async function observe(cwd) {
       ? { source: "desktop", note: null, list: desktop.models.filter(offered).map((m) => entry(offered(m), m.variant)) }
       : { source: "catalogue", note: desktop.absent ?? desktop.error, list: catalogue.map((c) => entry(c)) };
     if (desktop.error) process.stderr.write(`entrust: ${desktop.error}; listing the whole catalogue\n`);
-    return { status: "ready", version, default: preset ? modelKey(preset) : null, models };
-  } catch (e) { return { status: "unavailable", error: e.message }; }
+    return { status: "ready", configured: true, version, default: preset ? modelKey(preset) : null, models };
+  } catch (e) { return { status: "unavailable", configured: null, error: e.message }; }
   finally { await server.close(); }
 }
 
 const seen = await observe(process.cwd());
 if (format === "json") {
-  console.log(JSON.stringify({ schemaVersion: 2, adapter: "opencode", configured: true, connectionMode: "local",
+  console.log(JSON.stringify({ schemaVersion: 2, adapter: "opencode", connectionMode: "local",
     checkedAt: new Date().toISOString(), ...seen, usage: { status: "unknown", scope: "route", source: "opencode-status", windows: [] } }));
-} else if (seen.status !== "ready") console.log(`OPENCODE=unavailable (${seen.error})`);
+} else if (seen.status !== "ready") console.log(`OPENCODE=${seen.status} (${seen.error})`);
 else {
   console.log(`OPENCODE=ready version=${seen.version}`);
   console.log(`DEFAULT=${seen.default ?? "none"}`);

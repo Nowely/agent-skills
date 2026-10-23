@@ -44,7 +44,7 @@ const USAGE = `driver — run one OpenCode invocation for the shared entrust lau
       the report JSON to stdout and exclusively to the report path. No overwrite.
       --timeout is a wall clock of S seconds of work, declared only by the caller (default ${DEFAULT_TIMEOUT_S}: none);
       --idle-timeout the no-progress clock (default ${DEFAULT_IDLE_S}s, 0 disables); --max-commands a cap on executed
-      bash commands (default ${DEFAULT_MAX_COMMANDS}, 0 unlimited). Both clocks stand still while a request waits for its
+      shell commands (default ${DEFAULT_MAX_COMMANDS}, 0 unlimited). Both clocks stand still while a request waits for its
       decision, as the driver observes it, and silence starts again in full from the decision. A definite native response
       to the reply, a 4xx included, is liveness, not proof the answer was applied. The two clocks take whole seconds,
       --max-commands a whole count.
@@ -348,7 +348,7 @@ export async function rejectTrackedRequest(ctx, q, settlement, counter) {
   for (const member of group) decided(ctx, member);
   // A reject with a message is OpenCode's corrected error: the tool fails with that feedback and the turn goes
   // on, so the agent can record the refusal and finish, as its standing rules say. A form cancel carries the
-  // same message, and a sibling the server rejects with a permission is declined with it too.
+  // same message.
   const told = `${settlement.why ?? "declined"}. Do not try to get around it: record it and what it blocked, finish what you can, and say what remains.`;
   const outcome = permission
     ? await respond(ctx, q.type, q.payload.id, "reject", { decision: "reject", message: told }, q.payload.sessionID)
@@ -631,15 +631,15 @@ async function awaitTurn(ctx, inputID) {
   }
 }
 
-// The shared standing rules (orchestrate/scripts/drivers.mjs) in OpenCode's terms. Bash is allowed without
+// The shared standing rules (orchestrate/scripts/drivers.mjs) in OpenCode's terms. The shell tool is allowed without
 // approval and is not constrained by the edit/write tool rules or their roots.
 function runRules(ctx) {
   const roots = ctx.roots ?? [];
   return standingRules({
     rights: ctx.scope?.kind === "read" || !roots.length
-      ? "Read and search any paths the task needs that OpenCode can access; RIGHTS does not limit reads. Your edit and write tools are refused. Bash is allowed without approval and bypasses these file and network limits; it can write any file the process can access and access the network. Keep its use within the task and do not use it to write files or access beyond the task."
-      : `Read and search any paths the task needs that OpenCode can access; RIGHTS does not limit reads. Edits inside ${roots.join(", ")} need no approval; edits elsewhere need approval. Bash is allowed without approval and bypasses these root, protected path and network limits; it can write anywhere the process can, including .git and OpenCode configuration paths, and access the network. Keep its use within the task, write only inside the approved roots, and never write protected paths.`,
-    network: "The native fetch tool needs approval; Bash network commands are not checked.",
+      ? "Read and search any paths the task needs that OpenCode can access; RIGHTS does not limit reads. Your edit and write tools are refused. The shell tool is allowed without approval and bypasses these file and network limits; it can write any file the process can access and access the network. Keep its use within the task and do not use it to write files or access beyond the task."
+      : `Read and search any paths the task needs that OpenCode can access; RIGHTS does not limit reads. Edits inside ${roots.join(", ")} need no approval; edits elsewhere need approval. The shell tool is allowed without approval and bypasses these root, protected path and network limits; it can write anywhere the process can, including .git and OpenCode configuration paths, and access the network. Keep its use within the task, write only inside the approved roots, and never write protected paths.`,
+    network: "The native fetch tool needs approval; shell network commands are not checked.",
     mailbox: Boolean(ctx.box),
     ask: "the call itself waits for that decision.",
   });

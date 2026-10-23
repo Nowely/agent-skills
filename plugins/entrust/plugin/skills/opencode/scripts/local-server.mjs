@@ -102,7 +102,7 @@ export async function startLocalServer({ cwd = process.cwd(), env = process.env,
   } catch (error) {
     await close();
     if (error?.code === "ENOENT")
-      throw new Error("OpenCode CLI is not on PATH; install it and make `opencode` available to this task");
+      throw Object.assign(new Error("OpenCode CLI is not on PATH; install it and make `opencode` available to this task"), { code: "ENOENT" });
     throw error;
   }
 }

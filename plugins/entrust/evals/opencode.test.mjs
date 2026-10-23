@@ -433,22 +433,22 @@ test("a stale decision file does not hold a request past its deadline", async ()
     assert.equal(fs.existsSync(path.join(r.box, "pending")), false);
   } finally { await s.close(); }
 });
-test("every prompt states the run's rights, Bash's unprompted scope, and not to work around a refusal", async () => {
+test("every prompt states the run's rights, the shell's unprompted scope, and not to work around a refusal", async () => {
   const s = await fakeOpenCode("normal");
   try {
     const bare = await driverRun(s, { rights: `read ${cwd}` }); assert.equal(bare.code, 0, bare.err);
     const first = s.calls.filter((c) => c.path.endsWith("/prompt")).at(-1).body.text;
     assert.match(first, /^You run for a coordinating agent, unattended/);
     assert.match(first, /RIGHTS does not limit reads\. Your edit and write tools are refused/);
-    assert.match(first, /Bash is allowed without approval and bypasses these file and network limits/);
+    assert.match(first, /The shell tool is allowed without approval and bypasses these file and network limits/);
     assert.match(first, /it can write any file the process can access and access the network/);
-    assert.match(first, /The native fetch tool needs approval; Bash network commands are not checked/);
+    assert.match(first, /The native fetch tool needs approval; shell network commands are not checked/);
     assert.match(first, /Nothing beyond your rights can be granted in this run/);
     assert.match(first, /do not try to get around it with another tool or command/);
     const boxed = await driverRun(s, { rights: `write ${cwd}`, approval: "hold" }); assert.equal(boxed.code, 0, boxed.err);
     const second = s.calls.filter((c) => c.path.endsWith("/prompt")).at(-1).body.text;
     assert.match(second, /RIGHTS does not limit reads\. Edits inside .* need no approval; edits elsewhere need approval/);
-    assert.match(second, /Bash is allowed without approval and bypasses these root, protected path and network limits/);
+    assert.match(second, /The shell tool is allowed without approval and bypasses these root, protected path and network limits/);
     assert.match(second, /including \.git and OpenCode configuration paths/);
     assert.match(second, /asked of the coordinator, who approves or declines it: the call itself waits for that decision/);
   } finally { await s.close(); }
@@ -1083,13 +1083,13 @@ test("status lists the models Desktop shows that the catalogue offers, in Deskto
       { providerID: "router", modelID: "deepseek/flash", visibility: "show" }, { providerID: "router", modelID: "glm/flash", visibility: "hide" }],
       recent: [], variant: { "router/deepseek/flash": "high", "router/glm/flash-fast": "max" } });
     const { data } = await statusRun(s, { desktop });
-    assert.equal(data.adapter, "opencode"); assert.equal(data.status, "ready"); assert.equal(data.default, "router/glm/flash");
+    assert.equal(data.adapter, "opencode"); assert.equal(data.status, "ready"); assert.equal(data.configured, true); assert.equal(data.default, "router/glm/flash");
     assert.deepEqual(data.models, { source: "desktop", note: null, list: [
       { providerID: "router", modelID: "glm/flash-fast", variant: null, variants: [] },
       { providerID: "router", modelID: "deepseek/flash", variant: "high", variants: ["high"] }] });
   } finally { await s.close(); }
 });
-test("without Desktop's store status lists the whole catalogue and says why; with no default and no server it says none and unavailable", async () => {
+test("without Desktop's store status lists the whole catalogue and says why; with no default it says none, with no CLI missing and unconfigured, and with a CLI that cannot serve unavailable and unknown", async () => {
   const s = await fakeOpenCode();
   try {
     const { data } = await statusRun(s);
@@ -1102,7 +1102,12 @@ test("without Desktop's store status lists the whole catalogue and says why; wit
   const bin = path.join(tempDir("entrust-opencode-status-none-"), "bin"); fs.mkdirSync(bin);
   fs.writeFileSync(path.join(bin, "opencode"), "#!/usr/bin/env node\nprocess.exit(1);\n", { mode: 0o755 });
   const r = await invoke([STATUS, "--format", "json"], "", { PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}` });
-  assert.equal(r.code, 0, r.out + r.err); assert.equal(JSON.parse(r.out).status, "unavailable");
+  assert.equal(r.code, 0, r.out + r.err);
+  assert.deepEqual([JSON.parse(r.out).status, JSON.parse(r.out).configured], ["unavailable", null]);
+  const none = await invoke([STATUS, "--format", "json"], "", { PATH: tempDir("entrust-opencode-status-no-cli-") });
+  assert.equal(none.code, 0, none.out + none.err);
+  assert.deepEqual([JSON.parse(none.out).status, JSON.parse(none.out).configured], ["missing", false]);
+  assert.match((await invoke([STATUS], "", { PATH: tempDir("entrust-opencode-status-no-cli-") })).out, /^OPENCODE=missing \(OpenCode CLI is not on PATH/);
 });
 test("native write resources each need an exact target; one outside the roots is offered, one in the state or a protected directory declined", () => {
   const scope = { roots: [cwd] }, state = tempDir("entrust-opencode-guard-"), prot = tempDir("entrust-opencode-protected-");

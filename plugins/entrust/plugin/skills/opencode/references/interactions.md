@@ -12,8 +12,8 @@ so no shell command reaches this decision flow; the shell is not a filesystem sa
 A question is a V2 form: its text is the form's title, each field is one question, and the answer is one
 list per field, which that field's type must take: yes or no for a boolean, a number's digits, one choice
 for a single field and several for a multiselect, an option by its label or value. An answer grants no
-command or permission. A decline tells the agent the reason and not to work around it, as a permission
-rejection does. An edit with no exact target, or one aimed inside OpenCode's configuration or data directory,
+command or permission. A coordinator's or the driver's decline tells the agent the reason and not to work
+around it, as a permission rejection does; a Stop cancels with no reason. An edit with no exact target, or one aimed inside OpenCode's configuration or data directory,
 is declined at once.
 Publication is exclusive: stale identities, changed request contents, wrong decision types and late answers
 are refused.
