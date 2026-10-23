@@ -78,7 +78,10 @@ the GitHub release.
    `refs/tags/<plugin>@X.Y.Z^{}` line, not as the tag object's SHA. Leave this worktree on `<merge>`:
    `main` may belong to another worktree and must not block the requested local update.
 8. **Update this machine** when the word covered it: `claude plugin update <plugin>@nowely`, which refreshes the
-   marketplace itself, and confirm the installed version with `claude plugin list`.
+   marketplace itself, and confirm the installed version with `claude plugin list`. For Codex,
+   `codex plugin marketplace upgrade nowely` refreshes the marketplace and the installed plugins' cache with it;
+   confirm with `codex plugin list`. Without `codex` on PATH, the desktop app's CLI is
+   `~/.codex/packages/app-server-daemon/releases/<version>/bin/codex`.
 
 ## entrust preparation
 
