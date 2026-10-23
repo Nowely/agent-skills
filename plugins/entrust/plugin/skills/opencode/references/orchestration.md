@@ -16,8 +16,8 @@ The common launcher accepts an extended plan alongside existing five-column Code
 
 ```text
 id | adapter | model | role | writes | tokens
-W1 | opencode | <provider/model from recent status> | implementer | worktree | unknown
-R1 | opencode | <second provider/model from recent status> | verifier | nothing | unknown
+W1 | opencode | <provider/model from status> | implementer | worktree | unknown
+R1 | opencode | <second provider/model from status> | verifier | nothing | unknown
 ```
 
 Register with `node "<orchestrate>/scripts/agent-run.mjs" --plan --run-dir <run>`, `<orchestrate>` the
@@ -25,9 +25,8 @@ orchestrate skill installed beside this one. Every OpenCode row
 uses a concrete model ID, never `inherit` or a display name. Its prompt carries the same `MODEL:` or none,
 which runs on the row's; `inherit` or another model is refused.
 Model selection and launch-time validation follow [Select and launch](../SKILL.md#select-and-launch).
-If a requested family cannot be resolved from recent references, report the gap and ask for an exact
-`provider/model` or an approved wider lookup; do not expand a catalog or substitute another recent
-model silently.
+If a requested family is not among the models status lists, report the gap and ask for an exact
+`provider/model`; do not substitute another listed model silently.
 The saved backend and plan model follow the detached keeper; mutable defaults cannot reroute it.
 Amend the approved plan before adding a worker or changing its model or write scope.
 

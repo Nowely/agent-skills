@@ -4,6 +4,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { formValue } from "./contract.mjs";
 
 export const driver = path.join(path.dirname(fileURLToPath(import.meta.url)), "driver.mjs");
 
@@ -37,19 +38,19 @@ export function typedRequest(q) {
       || q.remote?.sessionID !== q.payload?.sessionID)
       ? "typed request content or remote identity does not match its immutable envelope" : null,
     record: { requestHash: q.requestHash, remote: q.remote },
-    // A question's answer, read from stdin: one array of labels per displayed question.
+    // A question's answer, read from stdin: one array of strings per form field, each of which the field's
+    // type must take (contract.mjs formValue), so a reply the server would refuse is never published.
     ...(question ? {
       acceptRefusal: "a question needs --answer (JSON answers on stdin) or --decline",
       readAnswer: (text) => {
         let answer;
         try { if (typeof text !== "string") throw new Error(); answer = JSON.parse(text); }
         catch { return { error: "--answer expects JSON {answers: string[][]} on stdin" }; }
-        const questions = q.payload?.questions;
+        const fields = Array.isArray(q.payload?.fields) ? q.payload.fields : [];
         if (!answer || Object.keys(answer).some((k) => k !== "answers") || !Array.isArray(answer.answers)
-          || !Array.isArray(questions) || answer.answers.length !== questions.length
+          || answer.answers.length !== fields.length
           || answer.answers.some((a, i) => !Array.isArray(a) || !a.length || a.some((s) => typeof s !== "string" || !s.trim())
-            || (!questions[i].multiple && a.length !== 1)
-            || (questions[i].custom === false && a.some((s) => !(questions[i].options ?? []).some((o) => o.label === s)))))
+            || formValue(fields[i], a).error))
           return { error: "answers do not match the pending questions" };
         return { answer };
       },

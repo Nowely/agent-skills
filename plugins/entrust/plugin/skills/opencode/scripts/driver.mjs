@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "./client.mjs";
-import { recentModels, splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
+import { splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
 import { startLocalServer } from "./local-server.mjs";
 import { deadlineMs, mailboxProblem, openMailbox } from "../../orchestrate/scripts/mailbox.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
@@ -19,6 +19,7 @@ import { git, guardedTarget, makeWorktree, passwdHome, rightsScope, scopeWithin,
 import {
   EXIT, parsePrompt, validateOutput, extractJson, envelope, decisionsOf, canonical, within,
   commandEvidence, expectation, READ_TOOLS,
+  formValue,
 } from "./contract.mjs";
 
 const POLL_MS = 900;
@@ -43,7 +44,7 @@ const USAGE = `driver — run one OpenCode invocation for the shared entrust lau
       the report JSON to stdout and exclusively to the report path. No overwrite.
       --timeout is a wall clock of S seconds of work, declared only by the caller (default ${DEFAULT_TIMEOUT_S}: none);
       --idle-timeout the no-progress clock (default ${DEFAULT_IDLE_S}s, 0 disables); --max-commands a cap on executed
-      bash commands (default ${DEFAULT_MAX_COMMANDS}, 0 unlimited). Both clocks stand still while a request waits for its
+      shell commands (default ${DEFAULT_MAX_COMMANDS}, 0 unlimited). Both clocks stand still while a request waits for its
       decision, as the driver observes it, and silence starts again in full from the decision. A definite native response
       to the reply, a 4xx included, is liveness, not proof the answer was applied. The two clocks take whole seconds,
       --max-commands a whole count.
@@ -89,64 +90,76 @@ function refuse(reason) {
   return EXIT.USAGE;
 }
 
-// The V1 routes this driver uses, and the callback acknowledgement each answers with.
+// The V2 routes this driver uses. Every list result arrives as { data: [...] }; replies that only
+// acknowledge answer 204 with an empty body.
 const ROUTES = Object.freeze({
-    create: "/session",
-    permissionList: "/permission",
-    permissionReply: "/permission/{requestID}/reply",
-    questionList: "/question",
-    questionReply: "/question/{requestID}/reply",
-    questionReject: "/question/{requestID}/reject",
-    children: "/session/{sessionID}/children",
-    abort: "/session/{sessionID}/abort",
-    prompt: "/session/{sessionID}/prompt_async",
-    messages: "/session/{sessionID}/message",
-    status: "/session/status",
-    sessionGet: "/session/{sessionID}",
+    create: "/api/session",
+    permissionList: "/api/session/{sessionID}/permission",
+    permissionReply: "/api/session/{sessionID}/permission/{requestID}/reply",
+    formList: "/api/session/{sessionID}/form",
+    formReply: "/api/session/{sessionID}/form/{formID}/reply",
+    formCancel: "/api/session/{sessionID}/form/{formID}",
+    children: "/api/session?parentID={sessionID}",
+    abort: "/api/session/{sessionID}/interrupt",
+    prompt: "/api/session/{sessionID}/prompt",
+    messages: "/api/session/{sessionID}/message",
+    active: "/api/session/active",
+    sessionGet: "/api/session/{sessionID}",
+    model: "/api/session/{sessionID}/model",
 });
 
 function routeError(ctx) {
   const r = ctx.routes;
   const required = [[r.create, "post"], [r.prompt, "post"], [r.messages, "get"], [r.sessionGet, "get"],
-    [r.status, "get"], [r.abort, "post"], [r.children.split("?")[0], "get"], [r.permissionList, "get"],
-    [r.permissionReply, "post"], [r.questionList, "get"], [r.questionReply, "post"], [r.questionReject, "post"]];
+    [r.active, "get"], [r.abort, "post"], [r.children.split("?")[0], "get"], [r.permissionList, "get"],
+    [r.permissionReply, "post"], [r.formList, "get"], [r.formReply, "post"], [r.formCancel, "delete"]];
   return required.some(([route, method]) => !ctx.server.paths[route]?.[method])
-    ? "server does not advertise the required V1 interaction routes" : null;
+    ? "server does not advertise the required V2 interaction routes" : null;
 }
 
 async function listOrEmpty(client, route) {
-  const r = await client.call("GET", route);
+  const r = await client.call("GET", route, undefined, { unwrap: true });
   if (Array.isArray(r)) return r;
-  throw new Error(`${route}: expected a native request or message array`);
+  throw new Error(`${route}: expected a native request array`);
 }
 
-const isBusy = (status, sid) => {
-  const s = status?.[sid];
-  if (s === undefined || s === null) return false;
-  if (typeof s === "string") return s !== "idle";
-  return s.type ? s.type !== "idle" : true;
-};
+// The permissions and forms pending in each of `sessions`, every list read at once. With `skipRefused`, a
+// session the server refuses to list (a 4xx) contributes nothing; a transport failure or a 5xx always throws.
+async function pendingIn(ctx, sessions, { skipRefused = false } = {}) {
+  const list = (route, sid) => listOrEmpty(ctx.client, fillRoute(route, { sessionID: sid }))
+    .catch((e) => { if (skipRefused && e.status != null && e.status < 500) return []; throw e; });
+  const lists = await Promise.all([...sessions].flatMap((sid) => [list(ctx.routes.permissionList, sid), list(ctx.routes.formList, sid)]));
+  return { permissions: lists.filter((_, i) => i % 2 === 0).flat(), forms: lists.filter((_, i) => i % 2 === 1).flat() };
+}
+
+// /api/session/active lists only the busy sessions: presence of the key means running.
+const isBusy = (active, sid) => Boolean(active && typeof active === "object" && Object.prototype.hasOwnProperty.call(active, sid));
+
+// A message's parts; a tool part is { type, id, name, state, time }.
+const contentOf = (m) => m?.content ?? [];
 
 function collectTools(messages) {
   const tools = [];
-  for (const m of messages ?? []) for (const p of m?.parts ?? []) {
+  for (const m of messages ?? []) for (const p of contentOf(m)) {
     if (p?.type !== "tool") continue;
+    const state = p.state ?? {};
+    const text = (state.content ?? []).filter((c) => c?.type === "text").map((c) => c.text ?? "").join("");
     tools.push({
-      tool: p.tool ?? null,
-      callID: p.callID ?? null,
-      status: p.state?.status ?? null,
-      command: p.state?.input?.command ?? null,
-      description: p.state?.input?.description ?? null,
-      exit: p.state?.metadata?.exit ?? null,
-      output: p.state?.output ?? null,
-      filePath: p.state?.input?.filePath ?? p.state?.input?.path ?? null,
+      tool: p.name ?? null,
+      callID: p.id ?? null,
+      status: state.status ?? null,
+      command: state.input?.command ?? null,
+      description: state.input?.description ?? state.metadata?.description ?? null,
+      exit: state.metadata?.exit ?? null,
+      output: text || null,
+      filePath: state.input?.filePath ?? state.input?.path ?? null,
     });
   }
   return tools;
 }
 
 const answerText = (reply) =>
-  (reply?.parts ?? []).filter((p) => p?.type === "text").map((p) => p.text ?? "").join("");
+  contentOf(reply).filter((p) => p?.type === "text").map((p) => p.text ?? "").join("");
 
 function addTokens(acc, t) {
   if (!t || typeof t !== "object") return acc;
@@ -162,37 +175,35 @@ function addTokens(acc, t) {
 // ---------------------------------------------------------------------------------------------
 // Rights and the worktree
 
-// Legacy session permission rules. External paths do not gate reads. Bash is allowed without prompts;
-// edit/write tools stay scoped separately, but those tool rules do not constrain shell effects.
+// Session permission rules. V2's ordered array: { action, resource, effect }, last match wins.
+// External paths do not gate reads. Shell is allowed without prompts; edit tools stay scoped separately,
+// but those tool rules do not constrain shell effects.
 function sessionPermissions(scope) {
   const rules = [
-    { permission: "*", pattern: "*", action: "ask" },
-    { permission: "read", pattern: "*", action: "allow" },
-    { permission: "list", pattern: "*", action: "allow" },
-    { permission: "glob", pattern: "*", action: "allow" },
-    { permission: "grep", pattern: "*", action: "allow" },
-    { permission: "external_directory", pattern: "*", action: "allow" },
-    { permission: "bash", pattern: "*", action: "allow" },
+    { action: "*", resource: "*", effect: "ask" },
+    { action: "read", resource: "*", effect: "allow" },
+    { action: "list", resource: "*", effect: "allow" },
+    { action: "glob", resource: "*", effect: "allow" },
+    { action: "grep", resource: "*", effect: "allow" },
+    { action: "external_directory", resource: "*", effect: "allow" },
+    { action: "shell", resource: "*", effect: "allow" },
   ];
   if (scope.kind === "read") {
-    rules.push({ permission: "edit", pattern: "*", action: "deny" });
-    rules.push({ permission: "write", pattern: "*", action: "deny" });
+    rules.push({ action: "edit", resource: "*", effect: "deny" });
     return rules;
   }
-  rules.push({ permission: "edit", pattern: "*", action: "ask" });
-  rules.push({ permission: "write", pattern: "*", action: "ask" });
+  rules.push({ action: "edit", resource: "*", effect: "ask" });
   for (const root of scope.roots) {
     const p = root.replace(/\/+$/, "");
-    rules.push({ permission: "edit", pattern: `${p}/**`, action: "allow" });
-    rules.push({ permission: "write", pattern: `${p}/**`, action: "allow" });
+    rules.push({ action: "edit", resource: `${p}/**`, effect: "allow" });
   }
   // After the allows, so they win: what git and OpenCode load from a tree is never the agent's to write. A
   // rewritten .git file points every later git in the tree, the driver's diff included, at a repository the
   // agent made; hooks and config run with the caller's rights. A wildcard matches any character, `/` too.
   for (const root of scope.roots) {
     const p = root.replace(/\/+$/, "");
-    for (const pattern of [`${p}/.git`, `${p}/.git/*`, `${p}/*/.git`, `${p}/*/.git/*`, `${p}/.opencode/*`, `${p}/opencode.json*`])
-      for (const permission of ["edit", "write"]) rules.push({ permission, pattern, action: "deny" });
+    for (const resource of [`${p}/.git`, `${p}/.git/*`, `${p}/*/.git`, `${p}/*/.git/*`, `${p}/.opencode/*`, `${p}/opencode.json*`])
+      rules.push({ action: "edit", resource, effect: "deny" });
   }
   return rules;
 }
@@ -226,15 +237,15 @@ function writeRootError(parsed) {
 }
 
 // The rules the server reports a session holds, against the ones this run's rights need. Those rules are all
-// the enforcement OpenCode has, and a server can drop them silently (the V2 pilot's create did), so a session
-// holding others, wider or narrower, is not run, a resumed one too. One the server reports no rules for is
-// said on stderr: their effect is then unverified.
+// the enforcement OpenCode has, and a server can drop them silently, so a session holding others, wider or
+// narrower, is not run, a resumed one too. One the server reports no rules for is said on stderr: their
+// effect is then unverified.
 function rulesProblem(session, scope) {
-  if (!Array.isArray(session?.permission)) {
+  if (!Array.isArray(session?.permissions)) {
     process.stderr.write(`entrust: the server reported no permission rules for session ${session?.id}; their effect is unverified\n`);
     return null;
   }
-  return JSON.stringify(session.permission) === JSON.stringify(sessionPermissions(scope)) ? null
+  return JSON.stringify(session.permissions) === JSON.stringify(sessionPermissions(scope)) ? null
     : `session ${session.id} holds permission rules other than the ones this run's ${scope.kind} rights need; refusing to run under rules nobody asked for`;
 }
 
@@ -243,10 +254,9 @@ function rulesProblem(session, scope) {
 // coordinator restates, unless it cannot be placed or aims inside the state directory or a directory OpenCode
 // loads from (`decline`, the reason). A read run's rules deny edits, so none is asked.
 function editScope(scope, payload, cwd, guard) {
-  const kind = String(payload?.permission ?? payload?.action ?? payload?.tool ?? "").toLowerCase();
+  const kind = String(payload?.action ?? "").toLowerCase();
   if (!/edit|write|patch|create|delete|move|rename/.test(kind)) return {};
-  const explicit = payload?.metadata?.filePath ?? payload?.metadata?.path;
-  const targets = explicit ? [explicit] : payload?.resources ?? payload?.patterns ?? [];
+  const targets = payload?.resources ?? [];
   if (!scope.roots.length) return { decline: "the run has no declared writes scope" };
   if (!Array.isArray(targets) || !targets.length) return { decline: "the write request has no verifiable target" };
   let outside = false;
@@ -285,20 +295,28 @@ export function noteWait(ctx) {
   else if (!open && ctx.waitingSince != null) { ctx.waitedMs += t - ctx.waitingSince; ctx.waitingSince = null; ctx.lastProgressMs = t; }
 }
 
-async function currentServerRequest(ctx, type, requestID) {
-  const route = type === "opencode.permission" ? ctx.routes.permissionList : ctx.routes.questionList;
-  const list = await listOrEmpty(ctx.client, route);
-  return list.find((r) => r?.id === requestID) ?? null;
+// V2 lists a request only under its own session, a descendant's included.
+async function currentServerRequest(ctx, q) {
+  const route = q.type === "opencode.permission" ? ctx.routes.permissionList : ctx.routes.formList;
+  const list = await listOrEmpty(ctx.client, fillRoute(route, { sessionID: q.payload.sessionID }));
+  return list.find((r) => r?.id === q.payload.id) ?? null;
 }
 
-async function respond(ctx, type, requestID, kind, body, sessionID = ctx.sessionID) {
-  const route = type === "opencode.permission" ? ctx.routes.permissionReply
-    : kind === "answer" ? ctx.routes.questionReply : ctx.routes.questionReject;
-  const url = fillRoute(route, { sessionID, requestID });
+// V2 answers a permission reply and a form reply with 204 and no body: the acknowledgement is the
+// status itself. A 4xx is a definite refusal of the reply; anything else is unknown. A form decline
+// is the form's DELETE route, its reason (`body.message`) a query parameter.
+async function respond(ctx, type, requestID, kind, body, sessionID) {
+  const route = type === "opencode.permission"
+    ? ctx.routes.permissionReply
+    : kind === "answer" ? ctx.routes.formReply : ctx.routes.formCancel;
+  const decline = kind === "decline" && type !== "opencode.permission";
+  const url = fillRoute(route, { sessionID, requestID, formID: requestID })
+    + (decline && body?.message ? `?message=${encodeURIComponent(body.message)}` : "");
   try {
-    const result = await ctx.client.call("POST", url, body);
+    const result = await ctx.client.call(decline ? "DELETE" : "POST", url, decline ? undefined : body,
+      { expectedStatus: 204 });
     ctx.lastProgressMs = now();
-    return { outcome: result === true ? "applied" : "unknown" };
+    return { outcome: result === null ? "applied" : "unknown" };
   } catch (e) {
     if (e.status != null && e.status < 500) ctx.lastProgressMs = now();
     return { outcome: e.status == null || e.status >= 500 ? "unknown" : "failed", error: e.message, status: e.status ?? null };
@@ -315,7 +333,8 @@ function ownedRequest(ctx, type, payload) {
 export async function rejectTrackedRequest(ctx, q, settlement, counter) {
   decided(ctx, q);
   const permission = q.type === "opencode.permission";
-  const native = await listOrEmpty(ctx.client, permission ? ctx.routes.permissionList : ctx.routes.questionList);
+  const listRoute = fillRoute(permission ? ctx.routes.permissionList : ctx.routes.formList, { sessionID: q.payload.sessionID });
+  const native = await listOrEmpty(ctx.client, listRoute);
   if (ctx.abortRequested) return false;
   const affected = native.filter((p) => permission ? p.sessionID === q.payload.sessionID : p.id === q.payload.id);
   const group = affected.map((p) => ownedRequest(ctx, q.type, p));
@@ -327,12 +346,13 @@ export async function rejectTrackedRequest(ctx, q, settlement, counter) {
   }
   // Only a group this run owns whole is rejected together, so only then are its siblings' decisions known.
   for (const member of group) decided(ctx, member);
-  // A reject with a message is OpenCode's CorrectedError: the tool fails with that feedback and the turn goes on,
-  // so the agent can record the refusal and finish, as its standing rules say. One without a message is
-  // RejectedError, which ends the turn with no answer (1.18.34, `session/processor.ts`); only Stop sends that. A
-  // question's reject takes no message, and a sibling the server rejects with this one gets none either.
+  // A reject with a message is OpenCode's corrected error: the tool fails with that feedback and the turn goes
+  // on, so the agent can record the refusal and finish, as its standing rules say. A form cancel carries the
+  // same message.
   const told = `${settlement.why ?? "declined"}. Do not try to get around it: record it and what it blocked, finish what you can, and say what remains.`;
-  const outcome = await respond(ctx, q.type, q.payload.id, permission ? "reject" : "decline", permission ? { reply: "reject", message: told } : {}, q.payload.sessionID);
+  const outcome = permission
+    ? await respond(ctx, q.type, q.payload.id, "reject", { decision: "reject", message: told }, q.payload.sessionID)
+    : await respond(ctx, q.type, q.payload.id, "decline", { message: told }, q.payload.sessionID);
   for (const member of group) {
     const own = member === q;
     settleRequestFile(ctx, member, { ...(own ? settlement : {
@@ -375,6 +395,14 @@ async function offerRequest(ctx, type, payload, method, reason, autoReason, caus
 const decided = (ctx, q) => { if (q.decidedAt == null) { q.decidedAt = now(); noteWait(ctx); } };
 const acceptedDecision = (d) => (d === "decline" ? "declined" : "accepted");
 
+// The coordinator answers a question as one list per field, which the launcher checked against the fields'
+// types; V2's form reply is keyed by field, each value of the field's own type.
+function formAnswers(payload, answer) {
+  const out = {};
+  (payload?.fields ?? []).forEach((f, i) => { if (typeof f?.key === "string") out[f.key] = formValue(f, answer.answers[i]).value; });
+  return out;
+}
+
 async function settleOpenRequest(ctx, q) {
   if (ctx.abortRequested) return false;
   const { state, d } = ctx.box.decision(q, decisionsOf(q));
@@ -387,7 +415,7 @@ async function settleOpenRequest(ctx, q) {
   decided(ctx, q);
   // Compare the current server content with the immutable envelope before acting. An absent
   // request is not evidence of acceptance.
-  const present = await currentServerRequest(ctx, q.type, q.payload.id);
+  const present = await currentServerRequest(ctx, q);
   if (ctx.abortRequested) return false;
   if (!present) {
     settleRequestFile(ctx, q, {
@@ -407,7 +435,6 @@ async function settleOpenRequest(ctx, q) {
     ctx.unresolved = true;
     return true;
   }
-  let outcome;
   if (ctx.abortRequested) return false;
   if (d.decision === "decline")
     return rejectTrackedRequest(ctx, q, { decision: "declined", by: "coordinator", why: d.why ?? null }, "declined");
@@ -422,18 +449,26 @@ async function settleOpenRequest(ctx, q) {
     q.settled = null; // still open, so the rejection finds it among the session's own requests
     return rejectTrackedRequest(ctx, q, { decision: "expired", by: "driver", why: "mailbox write failed: the decision could not be recorded" }, "expired");
   }
-  if (q.type === "opencode.permission") {
-    outcome = await respond(ctx, q.type, q.payload.id, "permission", { reply: d.decision === "accept" ? "once" : "reject" }, q.payload.sessionID);
-  } else if (d.decision === "answer") {
-    outcome = await respond(ctx, q.type, q.payload.id, "answer", { answers: d.answer?.answers ?? [] }, q.payload.sessionID);
-  } else {
-    outcome = await respond(ctx, q.type, q.payload.id, "decline", {}, q.payload.sessionID);
-  }
+  const outcome = q.type === "opencode.permission"
+    ? await respond(ctx, q.type, q.payload.id, "permission", { decision: "once" }, q.payload.sessionID)
+    : await respond(ctx, q.type, q.payload.id, "answer", { answer: formAnswers(q.payload, d.answer) }, q.payload.sessionID);
   settled.outcome = outcome.outcome;
   ctx.box.rewrite(q);
-  if (settled.decision === "declined") ctx.declined += 1;
   if (outcome.outcome === "unknown") ctx.unresolved = true;
   return true;
+}
+
+// A session's children into `kids`, every page: V2 lists fifty to a page, and its cursor stays set until a page
+// comes back empty. A page that fails keeps the children the earlier pages named.
+async function childrenOf(ctx, sid, kids) {
+  let cursor = null;
+  for (;;) {
+    const r = await ctx.client.call("GET", `${fillRoute(ctx.routes.children, { sessionID: sid })}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
+    if (!Array.isArray(r?.data)) throw new Error("session page: expected a data array");
+    kids.push(...r.data.map((k) => k?.id).filter((k) => typeof k === "string"));
+    if (!r.data.length || !r.cursor?.next) return;
+    cursor = r.cursor.next;
+  }
 }
 
 async function gatherOwned(ctx) {
@@ -443,13 +478,10 @@ async function gatherOwned(ctx) {
   const queue = [ctx.sessionID];
   while (queue.length) {
     const sid = queue.shift();
-    let kids = [];
-    try { kids = await listOrEmpty(ctx.client, fillRoute(ctx.routes.children, { sessionID: sid })); }
+    const kids = [];
+    try { await childrenOf(ctx, sid, kids); }
     catch (e) { errors.push({ sessionID: sid, status: e.status ?? null }); }
-    for (const k of kids) {
-      const kid = typeof k === "string" ? k : k?.id;
-      if (kid && !owned.has(kid)) { owned.add(kid); queue.push(kid); }
-    }
+    for (const kid of kids) if (!owned.has(kid)) { owned.add(kid); queue.push(kid); }
   }
   return { sessions: owned, errors };
 }
@@ -469,20 +501,18 @@ async function updateOwned(ctx) {
 // request from a descendant that already existed before this invocation is never acted on.
 async function processRequests(ctx) {
   if (ctx.abortRequested) return;
-  const perms = await listOrEmpty(ctx.client, ctx.routes.permissionList);
-  const questions = await listOrEmpty(ctx.client, ctx.routes.questionList);
   const own = ctx.invocationSessions ?? new Set([ctx.sessionID]);
+  const { permissions: perms, forms } = await pendingIn(ctx, own, { skipRefused: true });
   const fresh = [];
   for (const p of perms) if (own.has(p?.sessionID) && !ctx.seen.has(`p:${p.id}`)) fresh.push(["opencode.permission", p]);
-  for (const q of questions) if (own.has(q?.sessionID) && !ctx.seen.has(`q:${q.id}`)) fresh.push(["opencode.question", q]);
+  for (const f of forms) if (own.has(f?.sessionID) && !ctx.seen.has(`q:${f.id}`)) fresh.push(["opencode.question", f]);
   for (const [type, payload] of fresh) {
     if (ctx.abortRequested) return;
     if (typeof payload?.id !== "string") continue;
     ctx.seen.add(`${type === "opencode.permission" ? "p" : "q"}:${payload.id}`);
     const edit = type === "opencode.permission" ? editScope(ctx.scope, payload, ctx.cwd, { stateDir: ctx.stateDir, protectedDirs: PROTECTED }) : {};
-    const method = type === "opencode.permission" ? (payload.permission ?? payload.tool ?? "permission") : "question";
-    const reason = type === "opencode.permission" ? (payload.metadata?.description ?? payload.reason ?? null)
-      : (payload.questions?.[0]?.question ?? null);
+    const method = type === "opencode.permission" ? (payload.action ?? "permission") : "question";
+    const reason = type === "opencode.permission" ? (payload.metadata?.description ?? null) : (payload.title ?? null);
     const autoReason = edit.decline ? `refused by the driver: ${edit.decline}`
       : !ctx.box ? "no approval directory: unattended run" : null;
     await offerRequest(ctx, type, payload, method, reason, autoReason, edit.outside ? "outside" : "asked");
@@ -502,8 +532,23 @@ async function processRequests(ctx) {
 // ---------------------------------------------------------------------------------------------
 // History: only this invocation's own messages
 
+// The session's messages since this run started, oldest first. V2 caps a page at 200 (a larger limit is a
+// 400) and pages newest first, its cursor keeping the order, so the walk ends at the first message older than
+// the run: a resumed session's earlier turns are never fetched again on every poll.
 async function sessionMessages(ctx, sid) {
-  return listOrEmpty(ctx.client, `${fillRoute(ctx.routes.messages, { sessionID: sid })}?limit=1000`);
+  const out = [];
+  let cursor = null;
+  for (;;) {
+    const q = cursor ? `?limit=200&cursor=${encodeURIComponent(cursor)}` : "?limit=200&order=desc";
+    const r = await ctx.client.call("GET", `${fillRoute(ctx.routes.messages, { sessionID: sid })}${q}`);
+    if (!Array.isArray(r?.data)) throw new Error("message page: expected a data array");
+    const own = r.data.filter((m) => (m?.time?.created ?? 0) >= ctx.startedAtMs);
+    out.push(...own);
+    if (own.length < r.data.length || !r.data.length || !r.cursor?.next) break;
+    cursor = r.cursor.next;
+    if (out.length > 5000) throw new Error("this run's messages exceed a sane history bound");
+  }
+  return out.reverse();
 }
 
 async function refresh(ctx) {
@@ -514,30 +559,37 @@ async function refresh(ctx) {
     for (const m of ms) all.push({ ...m, _sessionID: sid });
   }
   ctx.messages = all;
-  try { ctx.status = await ctx.client.call("GET", ctx.routes.status); ctx.statusKnown = true; }
-  catch { ctx.status = null; ctx.statusKnown = false; ctx.statusUnknown = true; }
+  try { ctx.active = await ctx.client.call("GET", ctx.routes.active, undefined, { unwrap: true }); ctx.statusKnown = true; }
+  catch { ctx.active = null; ctx.statusKnown = false; ctx.statusUnknown = true; }
 }
 
-// Messages that belong to this invocation: the root session's own inputs and their assistant
-// replies, plus every message of a descendant session created during the invocation. Previous
-// turns of a resumed session are excluded.
+// Messages that belong to this invocation: the root session's own inputs and the assistant messages that
+// follow the first of them, plus every message of a descendant session created during the invocation.
 function invocationMessages(ctx) {
   const out = [];
+  const created = (m) => m?.time?.created ?? 0;
+  const own = (ctx.messages ?? []).filter((m) => m._sessionID === ctx.sessionID && ctx.invocationInputs.has(m.id));
+  const firstAt = own.length ? Math.min(...own.map(created)) : 0;
   for (const m of ctx.messages ?? []) {
-    const id = m.info?.id, parent = m.info?.parentID;
-    if (m._sessionID === ctx.sessionID) {
-      if (ctx.invocationInputs.has(id) || ctx.invocationInputs.has(parent)) out.push(m);
-    } else out.push(m);
+    if (m._sessionID !== ctx.sessionID) out.push(m);
+    else if (ctx.invocationInputs.has(m.id) || (firstAt && created(m) >= firstAt && m.type === "assistant")) out.push(m);
   }
   return out;
 }
 
-const allReplies = (ctx, inputID) =>
-  (ctx.messages ?? []).filter((m) => m?.info?.role === "assistant" && m._sessionID === ctx.sessionID && m.info?.parentID === inputID);
+// V2 links no assistant message to its input: the replies to an input are the root session's assistant
+// messages after its user message and before the next one, so an earlier turn's reply is never this one's.
+function repliesTo(ctx, inputID) {
+  const root = (ctx.messages ?? []).filter((m) => m._sessionID === ctx.sessionID);
+  const at = root.findIndex((m) => m.id === inputID);
+  if (at < 0) return [];
+  const next = root.findIndex((m, i) => i > at && m.type === "user");
+  return root.slice(at + 1, next < 0 ? undefined : next).filter((m) => m.type === "assistant");
+}
 
 function finalReply(ctx, inputID) {
-  const rs = allReplies(ctx, inputID);
-  const completed = rs.filter((r) => r.info?.time?.completed);
+  const rs = repliesTo(ctx, inputID);
+  const completed = rs.filter((r) => r.time?.completed);
   return (completed.length ? completed[completed.length - 1] : rs[rs.length - 1]) ?? null;
 }
 
@@ -559,17 +611,17 @@ async function awaitTurn(ctx, inputID) {
     let refreshFailed = false;
     try { await refresh(ctx); } catch { refreshFailed = true; }
     if (ctx.abortRequested) return { aborted: true };
-    const sig = (ctx.messages ?? []).map((m) => `${m.info?.id}:${m.parts?.length ?? 0}`).join(",");
+    const sig = (ctx.messages ?? []).map((m) => `${m?.id}:${contentOf(m).length}`).join(",");
     if (sig !== lastSig) { lastSig = sig; ctx.lastProgressMs = now(); }
     const toolsNow = collectTools(invocationMessages(ctx));
     ctx.liveCommands = commandEvidence(toolsNow).commands.length;
     if (ctx.maxCommands > 0 && ctx.liveCommands > ctx.maxCommands) return { capped: true };
     const reply = finalReply(ctx, inputID);
-    const replies = allReplies(ctx, inputID);
-    const busy = !refreshFailed && ctx.statusKnown && [...ctx.invocationSessions].some((sid) => isBusy(ctx.status, sid));
+    const replies = repliesTo(ctx, inputID);
+    const busy = !refreshFailed && ctx.statusKnown && [...ctx.invocationSessions].some((sid) => isBusy(ctx.active, sid));
     if (busy) ctx.lastProgressMs = now();
     const idle = !refreshFailed && ctx.statusKnown && ctx.discoveryComplete && ctx.requests.size === 0 && !busy;
-    if (idle && reply && reply.info?.time?.completed) {
+    if (idle && reply?.time?.completed) {
       if (++stable >= 2) return { reply, completed: true };
     } else if (idle && replies.length) {
       if (++stable >= 2) return { reply, completed: false };
@@ -579,15 +631,15 @@ async function awaitTurn(ctx, inputID) {
   }
 }
 
-// The shared standing rules (orchestrate/scripts/drivers.mjs) in OpenCode's terms. Bash is allowed without
+// The shared standing rules (orchestrate/scripts/drivers.mjs) in OpenCode's terms. The shell tool is allowed without
 // approval and is not constrained by the edit/write tool rules or their roots.
 function runRules(ctx) {
   const roots = ctx.roots ?? [];
   return standingRules({
     rights: ctx.scope?.kind === "read" || !roots.length
-      ? "Read and search any paths the task needs that OpenCode can access; RIGHTS does not limit reads. Your edit and write tools are refused. Bash is allowed without approval and bypasses these file and network limits; it can write any file the process can access and access the network. Keep its use within the task and do not use it to write files or access beyond the task."
-      : `Read and search any paths the task needs that OpenCode can access; RIGHTS does not limit reads. Edits inside ${roots.join(", ")} need no approval; edits elsewhere need approval. Bash is allowed without approval and bypasses these root, protected path and network limits; it can write anywhere the process can, including .git and OpenCode configuration paths, and access the network. Keep its use within the task, write only inside the approved roots, and never write protected paths.`,
-    network: "The native fetch tool needs approval; Bash network commands are not checked.",
+      ? "Read and search any paths the task needs that OpenCode can access; RIGHTS does not limit reads. Your edit and write tools are refused. The shell tool is allowed without approval and bypasses these file and network limits; it can write any file the process can access and access the network. Keep its use within the task and do not use it to write files or access beyond the task."
+      : `Read and search any paths the task needs that OpenCode can access; RIGHTS does not limit reads. Edits inside ${roots.join(", ")} need no approval; edits elsewhere need approval. The shell tool is allowed without approval and bypasses these root, protected path and network limits; it can write anywhere the process can, including .git and OpenCode configuration paths, and access the network. Keep its use within the task, write only inside the approved roots, and never write protected paths.`,
+    network: "The native fetch tool needs approval; shell network commands are not checked.",
     mailbox: Boolean(ctx.box),
     ask: "the call itself waits for that decision.",
   });
@@ -605,10 +657,10 @@ function promptText(task, schema, brief, rules = null) {
   return `${rules ? `${rules}\n\n` : ""}${task}${instruction}`;
 }
 
+// V2's prompt body: { id, text }; the model was pinned at session create, and a variant change goes
+// through the session's model route, not the prompt.
 async function postPrompt(ctx, messageID, text) {
-  const body = { messageID, model: { providerID: ctx.ref.providerID, modelID: ctx.ref.modelID }, parts: [{ type: "text", text }] };
-  if (ctx.variant) body.variant = ctx.variant;
-  return ctx.client.call("POST", fillRoute(ctx.routes.prompt, { sessionID: ctx.sessionID }), body);
+  return ctx.client.call("POST", fillRoute(ctx.routes.prompt, { sessionID: ctx.sessionID }), { id: messageID, text });
 }
 
 // Post once and admit. An unknown transport outcome is reconciled by the known message id against
@@ -642,8 +694,8 @@ async function admitOnce(ctx, messageID, text) {
       try {
         await updateOwned(ctx);
         await refresh(ctx);
-        if (ctx.messages.some((m) => m.info?.id === messageID || m.info?.parentID === messageID))
-          return { admitted: true };
+        // V2 echoes the prompt's id as the user message's id.
+        if (ctx.messages.some((m) => m?.id === messageID)) return { admitted: true };
       } catch {}
     }
     return { admitted: false, unknown: true };
@@ -656,8 +708,10 @@ async function abortSessions(ctx) {
   const results = [];
   for (const sid of targets) {
     try {
-      const accepted = await ctx.client.call("POST", fillRoute(ctx.routes.abort, { sessionID: sid }), undefined);
-      results.push({ sessionID: sid, ok: accepted === true, accepted });
+      // V2's interrupt answers in the clear: { interrupted: true|false }, no .data wrapper. Either is a
+      // definite answer; false is a session with nothing running, which is stopped already.
+      const accepted = await ctx.client.call("POST", fillRoute(ctx.routes.abort, { sessionID: sid }), undefined, { unwrap: false });
+      results.push({ sessionID: sid, ok: typeof accepted?.interrupted === "boolean", accepted });
     } catch (e) { results.push({ sessionID: sid, ok: false, error: e.message, status: e.status ?? null }); }
   }
   return results;
@@ -665,14 +719,13 @@ async function abortSessions(ctx) {
 
 async function cancelPendingRequests(ctx) {
   const receipts = [];
-  const permissions = await listOrEmpty(ctx.client, ctx.routes.permissionList);
-  const questions = await listOrEmpty(ctx.client, ctx.routes.questionList);
   const settle = (q, outcome) => {
     settleRequestFile(ctx, q, { decision: "declined", cancelled: true, by: "driver", why: "run stopped",
       settledAt: new Date(now()).toISOString(), outcome: outcome.outcome });
     ctx.requests.delete(q.id);
     if (outcome.outcome === "unknown") ctx.unresolved = true;
   };
+  const { permissions, forms } = await pendingIn(ctx, ctx.invocationSessions);
   for (const sid of ctx.invocationSessions) {
     const group = permissions.filter((p) => p.sessionID === sid);
     if (!group.length) continue;
@@ -683,11 +736,11 @@ async function cancelPendingRequests(ctx) {
       ctx.unresolved = true;
       continue;
     }
-    const outcome = await respond(ctx, "opencode.permission", group[0].id, "reject", { reply: "reject" }, group[0].sessionID);
+    const outcome = await respond(ctx, "opencode.permission", group[0].id, "reject", { decision: "reject" }, group[0].sessionID);
     receipts.push({ type: "opencode.permission", sessionID: sid, requestIDs: group.map((p) => p.id), ...outcome });
     for (const q of owned) settle(q, outcome);
   }
-  for (const payload of questions) {
+  for (const payload of forms) {
     const q = ownedRequest(ctx, "opencode.question", payload);
     if (!q) continue;
     const outcome = await respond(ctx, q.type, payload.id, "decline", {}, payload.sessionID);
@@ -718,11 +771,12 @@ async function observeStop(ctx) {
     try {
       await updateOwned(ctx);
       await refresh(ctx);
-      pending = [...await listOrEmpty(ctx.client, ctx.routes.permissionList), ...await listOrEmpty(ctx.client, ctx.routes.questionList)];
+      const { permissions, forms } = await pendingIn(ctx, ctx.invocationSessions);
+      pending = [...permissions, ...forms];
     }
     catch { return "unknown"; }
     if (!ctx.statusKnown || !ctx.discoveryComplete || ctx.unresolved) return "unknown";
-    const idle = [...ctx.invocationSessions].every((sid) => !isBusy(ctx.status, sid));
+    const idle = [...ctx.invocationSessions].every((sid) => !isBusy(ctx.active, sid));
     const hasCallbacks = pending.some((q) => ctx.invocationSessions.has(q.sessionID));
     const hasActiveTools = collectTools(invocationMessages(ctx)).some((t) => !["completed", "error"].includes(t.status));
     if (idle && !hasCallbacks && !hasActiveTools) { if (++stable >= 2) return "idle"; }
@@ -743,7 +797,7 @@ const sessionRecordPath = (ctx, sid) => path.join(ctx.stateDir, "opencode-sessio
 
 function writeSessionRecord(ctx, extra = {}) {
   atomicJson(sessionRecordPath(ctx, ctx.sessionID), {
-    adapter: "opencode", sessionID: ctx.sessionID, serverMode: "local", cwd: ctx.cwd,
+    adapter: "opencode", apiFamily: "v2", sessionID: ctx.sessionID, serverMode: "local", cwd: ctx.cwd,
     model: ctx.ref ? modelKey(ctx.ref) : null, rights: ctx.scope, invocationId: ctx.invocationId,
     variant: ctx.variant ?? null,
     worktreePath: ctx.worktreePath ?? null, worktreeRepo: ctx.worktreeRepo ?? null,
@@ -752,12 +806,14 @@ function writeSessionRecord(ctx, extra = {}) {
   });
 }
 
-const clientFor = (ctx, cwd) => new Client({ config: ctx.config, cwd });
+const clientFor = (ctx) => new Client({ config: ctx.config });
 
 function applyPrior(ctx, prior) {
-  // An earlier release could run a session through the V2 API, which this driver no longer speaks.
-  if ((prior.apiFamily ?? "v1") !== "v1") return "the record is a V2 session, which this adapter no longer runs";
-  ctx.client = clientFor(ctx, ctx.cwd);
+  // An earlier release ran sessions through OpenCode's V1 API, which a V2 server no longer exposes; a report or
+  // record written then names a session this driver cannot reach, and carries no apiFamily. Every one this
+  // release writes says v2.
+  if (prior.apiFamily !== "v2") return "the record is not a V2 session, and this adapter speaks OpenCode's V2 API only";
+  ctx.client = clientFor(ctx);
   // An earlier release could attach to a remote server; a session there is not in the local server's store.
   if ((prior.serverMode ?? "remote") !== "local") return "the record belongs to a remote server, which this adapter no longer attaches to";
   if (ctx.scope?.kind === "worktree") {
@@ -774,7 +830,6 @@ function applyPrior(ctx, prior) {
       return "the recorded worktree is no longer attached to this repository";
     ctx.worktreePath = root; ctx.worktreeBase = prior.worktreeBase ?? prior.base ?? null;
     ctx.cwd = root; ctx.roots = [root]; ctx.scope = { kind: "worktree", roots: [root] };
-    ctx.client.cwd = root;
   }
   if (prior.cwd && prior.cwd !== ctx.cwd) return "the record belongs to another working directory";
   const retainedModel = prior.requestedModel ?? prior.model;
@@ -808,13 +863,13 @@ async function resolveResume(ctx) {
   if (failure) return { error: failure };
   if (!sessionID) return { error: "RESUME produced no session id" };
   let session = null;
-  try { session = await ctx.client.call("GET", fillRoute(ctx.routes.sessionGet, { sessionID })); }
+  try { session = await ctx.client.call("GET", fillRoute(ctx.routes.sessionGet, { sessionID }), undefined, { unwrap: true }); }
   catch (e) { return { error: `RESUME session ${sessionID} is not reachable: ${e.message}` }; }
   if (!session?.id) return { error: `RESUME session ${sessionID} does not exist` };
-  let status;
-  try { status = await ctx.client.call("GET", ctx.routes.status); }
+  let active;
+  try { active = await ctx.client.call("GET", ctx.routes.active, undefined, { unwrap: true }); }
   catch (e) { return { error: `RESUME session ${sessionID}: status is unknown (${e.message}); the session is not safely resumable` }; }
-  if (isBusy(status, sessionID)) return { busy: true, sessionID };
+  if (isBusy(active, sessionID)) return { busy: true, sessionID };
   ctx.resume = true;
   ctx.sessionID = sessionID;
   ctx.resumedSession = session;
@@ -827,6 +882,7 @@ async function resolveResume(ctx) {
 function buildReport(ctx, base) {
   return {
     adapter: "opencode",
+    apiFamily: "v2",
     ok: base.exitCode === EXIT.SUCCESS,
     exitCode: base.exitCode,
     error: base.error ?? null,
@@ -876,12 +932,11 @@ function publish(ctx, base) {
   return final;
 }
 
-// Close the SSE stream and listeners, and, when asked, deliver an abort to this invocation's own
-// sessions and wait (bounded) for it before the process exits. Idempotent.
+// Remove the signal listeners and, when asked, deliver an abort to this invocation's own sessions and wait
+// (bounded) for it before the process exits. Idempotent.
 async function cleanup(ctx, abortExecution) {
   if (ctx.cleaned) return;
   ctx.cleaned = true;
-  try { ctx.eventsAbort?.abort(); } catch {}
   if (ctx.onSignal) for (const s of SIGNALS) process.removeListener(s, ctx.onSignal);
   if (ctx.stopping) { try { await Promise.race([ctx.stopping, sleep(8000)]); } catch {} }
   if (abortExecution && ctx.client && ctx.sessionID && !ctx.abortRequested) {
@@ -966,7 +1021,7 @@ async function execute(opts, parsed) {
   try {
     ctx.localServer = await startLocalServer({ cwd: process.cwd(), signal: ctx.startup.signal });
     ctx.config = ctx.localServer.config;
-    ctx.client = clientFor(ctx, null); ctx.server = await ctx.client.probe();
+    ctx.client = clientFor(ctx); ctx.server = await ctx.client.probe();
   } catch (e) { return bail(`the OpenCode server could not be started: ${e.message}`, EXIT.TRANSPORT); }
   if (ctx.abortRequested) return cutExit(ctx, EARLY);
   ctx.routes = ROUTES;
@@ -995,7 +1050,6 @@ async function execute(opts, parsed) {
   } else {
     ctx.cwd = scope.readDir; ctx.roots = scope.roots;
   }
-  ctx.client.cwd = ctx.cwd;
 
   // Resume, if asked, before any new session is made.
   const resumed = await resolveResume(ctx);
@@ -1012,23 +1066,47 @@ async function execute(opts, parsed) {
   const resumedRules = ctx.resume ? rulesProblem(ctx.resumedSession, ctx.scope) : null;
   if (resumedRules) return fail(ctx, resumedRules, EXIT.TRANSPORT);
 
-  // Model: pinned by the plan, inherited by a resume, else the first recent model. No fallback.
   const model = await resolveModel(ctx);
   if (ctx.abortRequested) return cutExit(ctx, EARLY);
   if (model.error) return fail(ctx, model.error, EXIT.USAGE);
   ctx.ref = model.ref; ctx.variant = model.variant;
 
-  // Create the session (a resume reuses the existing one).
+  // Create the session (a resume reuses the existing one). V2 pins the model, the working directory
+  // and the permission rules here: the prompt body carries none of them.
   if (!ctx.resume) {
     let session;
     try {
-      session = await ctx.client.call("POST", ctx.routes.create,
-        { title: `entrust ${ctx.invocationId}`, permission: sessionPermissions(ctx.scope) });
+      session = await ctx.client.call("POST", ctx.routes.create, {
+        title: `entrust ${ctx.invocationId}`,
+        location: { directory: ctx.cwd },
+        model: { id: ctx.ref.modelID, providerID: ctx.ref.providerID, ...(ctx.variant ? { variant: ctx.variant } : {}) },
+        permissions: sessionPermissions(ctx.scope),
+      }, { unwrap: true });
     } catch (e) { return bail(`could not create an OpenCode session: ${e.message}`, EXIT.MODEL); }
     if (!session?.id) return fail(ctx, "the server returned no session id", EXIT.MODEL);
     ctx.sessionID = session.id;
     const rules = rulesProblem(session, ctx.scope);
     if (rules) return bail(rules, EXIT.TRANSPORT);
+  } else {
+    // A resumed session keeps its model unless this run names another; V2 switches it natively.
+    const current = ctx.resumedSession?.model;
+    if (current?.providerID === ctx.ref.providerID && current?.id === ctx.ref.modelID) {
+      if (ctx.variant && current.variant !== ctx.variant) {
+        try {
+          await ctx.client.call("POST", fillRoute(ctx.routes.model, { sessionID: ctx.sessionID }),
+            { model: { id: ctx.ref.modelID, providerID: ctx.ref.providerID, variant: ctx.variant } }, { expectedStatus: 204 });
+        } catch (e) { return fail(ctx, `the session's variant could not switch to ${ctx.variant}: ${e.message}`, EXIT.MODEL); }
+      }
+    } else {
+      try {
+        await ctx.client.call("POST", fillRoute(ctx.routes.model, { sessionID: ctx.sessionID }),
+          { model: { id: ctx.ref.modelID, providerID: ctx.ref.providerID, ...(ctx.variant ? { variant: ctx.variant } : {}) } },
+          { expectedStatus: 204 });
+      } catch (e) { return fail(ctx, `the session's model could not switch to ${modelKey(ctx.ref)}: ${e.message}`, EXIT.MODEL); }
+      const after = await ctx.client.call("GET", fillRoute(ctx.routes.sessionGet, { sessionID: ctx.sessionID }), undefined, { unwrap: true });
+      if (after?.model?.providerID !== ctx.ref.providerID || after?.model?.id !== ctx.ref.modelID)
+        return fail(ctx, "the session's model did not switch; the reply would not be the requested model's", EXIT.MODEL);
+    }
   }
   writeSessionRecord(ctx);
   if (ctx.abortRequested) return cutExit(ctx, EARLY);
@@ -1040,13 +1118,6 @@ async function execute(opts, parsed) {
   ctx.invocationSessions = new Set([ctx.sessionID]);
   if (!ctx.discoveryComplete)
     return fail(ctx, "session descendants could not be enumerated before admission", EXIT.TRANSPORT);
-
-  // SSE is advisory only. Only events for this invocation's own sessions reset the idle clock.
-  ctx.eventsAbort = new AbortController();
-  ctx.client.events((ev) => {
-    const sid = ev?.properties?.sessionID ?? ev?.sessionID ?? null;
-    if (sid && ctx.invocationSessions?.has(sid)) ctx.lastProgressMs = now();
-  }, ctx.eventsAbort.signal).catch(() => {});
 
   // From here a Stop stops the owned session and its descendants, and no prompt is sent after one.
   ctx.ownedReady = true;
@@ -1079,6 +1150,7 @@ async function execute(opts, parsed) {
   } finally { await ctx.localServer?.close(); }
 }
 
+// Model: pinned by the prompt, kept by a resume, else the OpenCode configuration's own `model`. No fallback.
 async function resolveModel(ctx) {
   let ref, variant = ctx.parsed.variant ?? null;
   if (ctx.parsed.model.inherit) {
@@ -1087,15 +1159,12 @@ async function resolveModel(ctx) {
       ref = ctx.priorModel; variant ??= ctx.priorVariant;
     }
     else {
-      let recent = [];
-      try { recent = recentModels({ limit: 1 }); } catch (e) { return { error: e.message }; }
-      if (!recent.length) return { error: "no recent model is recorded; set MODEL to provider/model" };
-      ref = { providerID: recent[0].providerID, modelID: recent[0].modelID };
-      if (!variant && recent[0].variant) variant = recent[0].variant;
+      try { ref = await ctx.client.defaultModel(ctx.cwd); } catch (e) { return { error: e.message }; }
+      if (!ref) return { error: "MODEL: inherit takes the OpenCode configuration's `model`, and none is set; set MODEL to provider/model" };
     }
   } else ref = { providerID: ctx.parsed.model.providerID, modelID: ctx.parsed.model.modelID };
   let info;
-  try { info = await ctx.client.model(ref); } catch (e) { return { error: e.message }; }
+  try { info = await ctx.client.model(ref, ctx.cwd); } catch (e) { return { error: e.message }; }
   if (variant && !info.variants.includes(variant))
     return { error: `variant ${variant} is not advertised for ${modelKey(ref)}; refusing before the model call` };
   return { ref, variant: variant ?? null, info };
@@ -1104,10 +1173,10 @@ async function resolveModel(ctx) {
 async function conclude(ctx, firstReply, parsed) {
   if (ctx.abortRequested) return cutExit(ctx, "the run was cancelled before completion");
   const invCheck = (reply) => {
-    const info = reply?.info ?? {};
-    const actual = info.providerID && info.modelID ? `${info.providerID}/${info.modelID}` : null;
-    const matches = info.providerID != null && info.providerID === ctx.ref.providerID
-      && info.modelID === ctx.ref.modelID;
+    const info = reply ?? {};
+    const providerID = info.model?.providerID ?? null, modelID = info.model?.id ?? null;
+    const actual = providerID && modelID ? `${providerID}/${modelID}` : null;
+    const matches = providerID != null && providerID === ctx.ref.providerID && modelID === ctx.ref.modelID;
     return { info, actual, matches, completed: Boolean(info.time?.completed) };
   };
 
@@ -1161,9 +1230,8 @@ async function conclude(ctx, firstReply, parsed) {
   const aggregate = (messages) => {
     let u = null, cost = null;
     for (const m of messages) {
-      const i = m.info; if (!i) continue;
-      if (i.tokens) { u = u ?? {}; addTokens(u, i.tokens); }
-      if (typeof i.cost === "number") cost = (cost ?? 0) + i.cost;
+      if (m?.tokens) { u = u ?? {}; addTokens(u, m.tokens); }
+      if (typeof m?.cost === "number") cost = (cost ?? 0) + m.cost;
     }
     return { usage: u, cost };
   };
@@ -1192,7 +1260,7 @@ async function conclude(ctx, firstReply, parsed) {
       : "the session status was unknown; success cannot be claimed";
   }
   else if (info.error) { exitCode = EXIT.MODEL; error = info.error.message ?? info.error.name ?? String(info.error); }
-  else if (!v.matches || info.providerID == null || info.modelID == null) {
+  else if (!v.matches) {
     exitCode = EXIT.MODEL;
     error = "the reply's provider/model is missing or does not match the requested model";
   }
@@ -1249,7 +1317,7 @@ function saveAnswer(ctx, text) {
 // failed after admission reports it as partial instead of dropping it; nothing is guessed or fetched.
 function receivedAnswer(ctx) {
   const reply = [...(ctx.invocationInputs ?? [])].reverse()
-    .map((inputID) => allReplies(ctx, inputID).filter((candidate) => answerText(candidate)).at(-1)).find(Boolean);
+    .map((inputID) => repliesTo(ctx, inputID).filter((candidate) => answerText(candidate)).at(-1)).find(Boolean);
   const answer = answerText(reply) || null;
   return { answer, answerJson: answer ? extractJson(answer) : null, answerPath: saveAnswer(ctx, answer) };
 }
@@ -1280,7 +1348,7 @@ function finishFailure(ctx, exitCode, extra = {}) {
 }
 
 // A refusal before or around the model call: the reason on stderr exactly, a report with the matching
-// exit code, the SSE stream closed and any owned execution aborted and awaited.
+// exit code, and any owned execution aborted and awaited.
 async function fail(ctx, reason, exitCode, extra = {}) {
   ctx.lastRefusal = reason;
   process.stderr.write(`entrust: refused: ${String(reason).replace(/\s*\n\s*/g, " ")}\n`);

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
-import { sleep } from "./config.mjs";
+import { SERVER_USER, sleep } from "./config.mjs";
 
 const LISTENING = /server\s+listening\s+(?:on|at)\s+(https?:\/\/[^\s]+)/i;
 
@@ -13,7 +13,7 @@ function localUrl(raw) {
 }
 
 function authorization(config) {
-  return `Basic ${Buffer.from(`${config.username}:${config.password}`).toString("base64")}`;
+  return `Basic ${Buffer.from(`${SERVER_USER}:${config.password}`).toString("base64")}`;
 }
 
 const cancelled = () => Object.assign(new Error("OpenCode server startup was cancelled"), { cancelled: true });
@@ -24,12 +24,12 @@ async function waitHealthy(config, child, timeoutMs, gone, signal) {
     if (signal?.aborted) throw cancelled();
     if (child.exitCode !== null || child.signalCode !== null) throw await gone("before it became healthy");
     try {
-      const response = await fetch(`${config.url}/global/health`, {
+      const response = await fetch(`${config.url}/api/info`, {
         headers: { Authorization: authorization(config) }, signal: AbortSignal.timeout(750), redirect: "error",
       });
       if (response.ok) {
         const body = await response.json();
-        if (body?.healthy === true && typeof body.version === "string") return;
+        if (typeof body?.version === "string" && typeof body?.pid === "number") return;
       }
     } catch {}
     await sleep(100);
@@ -41,13 +41,13 @@ async function waitHealthy(config, child, timeoutMs, gone, signal) {
 export async function startLocalServer({ cwd = process.cwd(), env = process.env, timeoutMs = 15000, signal } = {}) {
   const config = {
     url: null,
-    username: `entrust-${crypto.randomBytes(6).toString("hex")}`,
+    // The password is this server's own, never one the caller's environment holds for another.
     password: crypto.randomBytes(32).toString("base64url"),
   };
   let child;
   try {
     child = spawn("opencode", ["serve", "--hostname", "127.0.0.1", "--port", "0"], {
-      cwd, env: { ...env, OPENCODE_SERVER_USERNAME: config.username, OPENCODE_SERVER_PASSWORD: config.password },
+      cwd, env: { ...env, OPENCODE_SERVER_PASSWORD: config.password },
       stdio: ["ignore", "pipe", "pipe"],
     });
   } catch {
@@ -102,7 +102,7 @@ export async function startLocalServer({ cwd = process.cwd(), env = process.env,
   } catch (error) {
     await close();
     if (error?.code === "ENOENT")
-      throw new Error("OpenCode CLI is not on PATH; install it and make `opencode` available to this task");
+      throw Object.assign(new Error("OpenCode CLI is not on PATH; install it and make `opencode` available to this task"), { code: "ENOENT" });
     throw error;
   }
 }

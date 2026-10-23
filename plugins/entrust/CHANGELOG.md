@@ -3,6 +3,69 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.33.0 — 2026-10-22
+
+### Breaking
+
+- **The OpenCode adapter speaks OpenCode's V2 API.** V2 servers (measured on 2.1.2/2.1.3) no longer expose the
+  V1 routes at all — they answer with the web app's HTML — so the adapter switched wholesale rather than carrying
+  a second family, as the 2026-10-08 driver audit prescribed. Sessions, permissions, questions, models, busy
+  status, interruption and history all moved: create pins the model, the directory and the permission rules
+  (`{action, resource, effect}`, `bash`→`shell`), the prompt body is `{id, text}` with the input's id echoed as
+  the user message, replies link by order instead of `parentID`, message pages cap at 200, questions are forms
+  (answered by field), acknowledgements are 204-only, and health/auth are `GET /api/info` with the fixed basic
+  user `opencode` and `OPENCODE_SERVER_PASSWORD`. A report an earlier release recorded as V1 is refused on
+  continuation. Live probes re-established what the 2026-10-02 pilot could not: create-time permissions are now
+  reported back and natively evaluated, and the owner's OpenRouter models run without a transport override.
+- **OpenCode's models come from its server, not a saved file.** V2 clients no longer keep the V1 TUI's
+  `model.json`, and no server route says which models a user prefers. `status.mjs` now starts a private server for
+  the current directory and lists the models OpenCode Desktop shows in its picker that the catalogue still offers,
+  with Desktop's variant for each, or the whole catalogue without Desktop's store; `MODEL: inherit` selects the
+  OpenCode configuration's `model` and is refused when none is set. The status JSON is `schemaVersion` 2: `models`
+  and `default` replace `recent`. A model is checked by its catalogue id against the run's own directory, so a
+  `-fast` alias and a model a project's configuration declares are found.
+
+### Fixed
+
+- The OpenCode driver answers a subagent's permission or question on the subagent's session, attributes a turn only
+  the replies that follow its own input, counts an interrupt of an idle session as a stop, refuses a pre-V2 report
+  that names no API family, pages through more than fifty subagents, sends each form answer in its field's type
+  (an option's label as its value), gives a declined question the refusal's reason, and reads only its own run's
+  messages on each poll; its private server's password is always its own. The event stream, which V2 shapes
+  differently and which added nothing to the busy status, is gone.
+- E139: `/entrust:cleanup` lists an OpenCode or Claude agent's worktree, by its repository, with the removal that
+  is its owner's.
+
+### Validation
+
+- Affected suites: OpenCode 102, adapter-status 5, cleanup 64; skills pages: 8 of 8; full offline `run-all`: 23 of
+  25 suites green, with the two live opt-ins (fidelity, orchestrate-live) not run. Live probes against a private
+  `opencode serve` 2.1.2 and the shared 2.1.3 background service: create echoes and natively evaluates the sent
+  ruleset (deny, allow, ask), and a permission reject clears its session's pending set
+  (`research/2026-10-22-opencode-v2-migration/02-review-probes.md`). Live workers on OpenRouter GLM flash models ran
+  shell commands and answered with `receiptOk` true, including a continuation, a subagent's write outside the
+  roots accepted on the subagent's own session, and a question answered by label and one declined. Not
+  established: native enforcement of action names beyond `edit`, `shell` and `*`, and Desktop's store outside
+  macOS.
+- Measured with Node 24.15.0 and OpenCode 2.1.2/2.1.3. The live orchestrate release gate has not run for this
+  candidate; it spends real sessions and a Codex turn.
+
+### Known issues
+
+- E67: stopping an approved command outside the Codex sandbox is not established.
+- E110: the live gate does not check worker briefs against split ownership or see shell writes.
+- E90: swarm batches are limited to fifty units and do not aggregate tokens.
+- E96: Claude subagent token figures describe the last call's context.
+- E100: worktree coordinator heredocs naming git can be refused.
+- E102: the Codex page does not offer the existing background Bash delegation path.
+- E103: skill loading in `dontAsk` mode needs an allow rule for the status probe.
+- E104: advisor and refutation effort are stated inconsistently.
+- E111: the blanket exclusion of Luna from judgement is not supported by one measured run.
+- E113: temporary-directory checks do not verify permissions.
+- E114: two lock cases fail inside the Codex sandbox and pass outside it.
+- E117: bulk-unit rules are duplicated.
+- E140: `agent-run` D6 uses the checkout as a write target and fails under `~/.codex`.
+
 ## 0.32.0 — 2026-10-20
 
 ### Changed

@@ -195,12 +195,38 @@ export function envelope({ type, payload, seq, run, method, cause = "asked", cwd
 // The decisions a request takes: a question is answered or declined, a permission accepted or declined.
 export const decisionsOf = (q) => (q.type === "opencode.question" ? ["answer", "decline"] : ["accept", "decline"]);
 
-// A successful command is a bash tool part whose state completed with an observed exit of 0.
+// A coordinator answers each form field with a list of strings; V2 refuses any value but the field's own type,
+// and an option by anything but its value. So a boolean takes yes/no as every other switch does, a number its
+// digits, a multiselect a list, and an option's label stands for its value. { value } or { error }.
+export function formValue(field, answers) {
+  const options = Array.isArray(field?.options) && field.options.length ? field.options : null;
+  const option = (s) => options?.find((o) => o?.value === s || o?.label === s)?.value ?? (options && !field.custom ? undefined : s);
+  const refused = (why) => ({ error: `form field ${field?.key ?? "?"}: ${why}` });
+  if (field?.type === "multiselect") {
+    const values = answers.map(option);
+    return values.includes(undefined) ? refused("an answer is not one of its options") : { value: values };
+  }
+  if (answers.length !== 1) return refused("it takes exactly one answer");
+  const [s] = answers;
+  if (field?.type === "boolean") {
+    const on = flagValue(s);
+    return on === null ? refused("it takes yes, true or 1, or no, false or 0") : { value: on };
+  }
+  if (field?.type === "number" || field?.type === "integer") {
+    const n = Number(s);
+    return s.trim() && Number.isFinite(n) && (field.type === "number" || Number.isInteger(n)) ? { value: n }
+      : refused(`it takes ${field.type === "integer" ? "a whole number" : "a number"}`);
+  }
+  const v = option(s);
+  return v === undefined ? refused("the answer is not one of its options") : { value: v };
+}
+
+// A successful command is a shell tool part whose state completed with an observed exit of 0.
 // A completed tool with no exit is not success.
 export function commandEvidence(tools) {
   const commands = [], successful = [];
   for (const t of tools) {
-    if (t?.tool !== "bash") continue;
+    if (t?.tool !== "shell") continue;
     const exitCode = t.exit ?? null;
     const c = { command: t.command ?? null, exitCode, output: t.output ?? null, description: t.description ?? null };
     commands.push(c);

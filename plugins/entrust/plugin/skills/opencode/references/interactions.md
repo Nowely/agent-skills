@@ -7,10 +7,14 @@ call page's [Decide a request](../../orchestrate/references/external.md#5-decide
 and an answer do is its [What each adapter adds](../../orchestrate/references/external.md#what-each-adapter-adds).
 This page holds the mechanics behind them. Grant only the displayed action within the approved task and scope.
 Entrust allows external-directory reads without prompts: `RIGHTS` selects the working directory or writable
-roots, not a read boundary. The edit/write rules still govern file-tool changes. Bash is allowed without prompts,
-so no shell command reaches this decision flow; Bash is not a filesystem sandbox.
-A question's choices and multiplicity are validated, and an answer grants no command or permission. An edit
-with no exact target, or one aimed inside OpenCode's configuration or data directory, is declined at once.
+roots, not a read boundary. The edit rules still govern file-tool changes. Shell is allowed without prompts,
+so no shell command reaches this decision flow; the shell is not a filesystem sandbox.
+A question is a V2 form: its text is the form's title, each field is one question, and the answer is one
+list per field, which that field's type must take: yes or no for a boolean, a number's digits, one choice
+for a single field and several for a multiselect, an option by its label or value. An answer grants no
+command or permission. A coordinator's or the driver's decline tells the agent the reason and not to work
+around it, as a permission rejection does; a Stop cancels with no reason. An edit with no exact target, or one aimed inside OpenCode's configuration or data directory,
+is declined at once.
 Publication is exclusive: stale identities, changed request contents, wrong decision types and late answers
 are refused.
 
@@ -19,7 +23,7 @@ decline, automatic denial and expiry. The driver serializes decisions and requir
 match for every affected request. Sibling envelopes record the native rejection and its causing
 request; they are not fabricated as separate coordinator decisions. A changed payload or unmatched
 request leaves the outcome unknown without a rejection. A lost group-rejection response leaves
-every affected outcome unknown and is not resent. Questions are rejected individually.
+every affected outcome unknown and is not resent. Questions are cancelled individually.
 
 Without a mailbox the driver rejects the request and reports it. An accepted decision is permission to
 proceed, not proof that its tool executed or succeeded: read the observed result in the report. A lost
