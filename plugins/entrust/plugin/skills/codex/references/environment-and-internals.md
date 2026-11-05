@@ -168,7 +168,12 @@ Choose the blast radius deliberately.
 Unless `--host-home` is given, a run uses a private `CODEX_HOME` at `<state>/home` — one
 directory shared by every run on the machine, not a fresh one per turn, because the caches and
 databases codex keeps there are what make an isolated run faster than a host-home one. The caller's
-plugins, skills and MCP servers stay out of the turn, and no trust records are written back.
+plugins and MCP servers are not carried over, and no trust records are written back. The driver asks a
+separate caller-home server for `skills/list` at the run's actual cwd, exposes its enabled user and plugin
+skills through process-local extra roots, and preserves disabled entries. It compares
+the resulting enabled catalogue before starting a thread and refuses a mismatch or an unavailable list.
+The separate probe cannot see extra roots attached only to the caller's process. Plugin runtime, MCP tools
+and dependencies are not carried with plugin skill paths. No clean-skills mode is offered by the adapter.
 
 For an isolated run, `auth.json` and `sessions` are symlinked from the `~/.codex` in your home
 directory, whatever `CODEX_HOME` says; the rollout receipt lands there too, at `receiptPath`. Check that

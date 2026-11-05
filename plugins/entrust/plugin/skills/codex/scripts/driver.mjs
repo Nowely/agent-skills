@@ -689,7 +689,7 @@ function stateDir() {
 }
 const lockDir = () => path.join(stateDir(), "locks");
 
-// The private home keeps the caller's plugins, skills, memories and MCP servers out of the turn, and their
+// The private home does not carry the caller's plugins, memories or MCP servers, and keeps their
 // config.toml free of trust records (environment-and-internals.md, the isolated home). auth.json and
 // sessions are linked back, so a token refresh and the rollout receipt land in the real home. The INHERITED
 // keys choose the model and how it is spoken to, and are asked of the server (config/read), never parsed.
@@ -717,6 +717,7 @@ function resolveCodexBin() {
   fail(EXIT.TRANSPORT, `codex not found on PATH or in ${fallbacks.join(", ")}; install it, or set ENTRUST_CODEX to its absolute path`);
 }
 
+let hostSkills = null;
 const INHERITED = ["model", "model_reasoning_effort", "personality", "service_tier", "model_provider"];
 
 // The selected provider's table, so that a provider of the caller's own is the one an isolated agent answers on:
@@ -733,8 +734,21 @@ function providerTable(cfg) {
   return `\n[model_providers.${tomlString(name)}]\n${lines.map(([k, v]) => `${tomlString(k)} = ${v}\n`).join("")}`;
 }
 
+function checkedSkills(reply, forCwd) {
+  const data = reply?.data;
+  if (!Array.isArray(data) || data.length !== 1 || data[0]?.cwd !== forCwd || !Array.isArray(data[0].errors)
+      || data[0].errors.length || !Array.isArray(data[0].skills)) throw new Error("invalid skills catalogue");
+  for (const s of data[0].skills) {
+    if (!s || typeof s.name !== "string" || !s.name || typeof s.enabled !== "boolean"
+        || !["user", "repo", "system", "admin"].includes(s.scope)
+        || typeof s.path !== "string" || !path.isAbsolute(s.path)) throw new Error("invalid skill entry");
+  }
+  return data[0].skills;
+}
+
 // Resolve { entries, failed } so a failed config request cannot be mistaken for an empty config.
 async function inheritedConfig() {
+  hostSkills = null;
   const warn = (why) => process.stderr.write(
     `entrust: could not read the caller's Codex config (${why}); model and effort fall back to the account default\n`);
   let probe;
@@ -768,6 +782,9 @@ async function inheritedConfig() {
     // unhandled rejection after the config had been read perfectly well.
     conn.request("initialize", initializeParams()).catch(() => {});
     conn.notify("initialized");
+    try {
+      hostSkills = checkedSkills(await conn.request("skills/list", { cwds: [cwd], forceReload: true }, { timeoutMs: budget }), cwd);
+    } catch { throw new Error("caller skills catalogue unavailable or invalid"); }
     const res = await conn.request("config/read", {}, { timeoutMs: budget });
     // Report an unusable reply as a failed request, not as an empty config.
     const cfg = res?.config;
@@ -914,6 +931,7 @@ async function isolatedHome() {
       && (!(opts.timeout > 0) || startedAtMs + opts.timeout * 1000 - Date.now() > 6000)) {
     probe = await inheritedConfig();
   }
+  if (!hostSkills && !settled) fail(EXIT.USAGE, "the caller skills catalogue is unavailable or invalid; no thread was started");
   // A run that is already ending writes nothing here. The probe it cancelled has no entries, and the
   // shared config is not this run's to empty on its way out.
   if (settled) { configInherited = { source: "none", keys: [] }; return home; }
@@ -1909,7 +1927,16 @@ async function setup() {
   if (opts.approvalDir !== undefined) box = openMailbox(approvalDir = checkMailbox(opts.approvalDir));
   noteManagedPolicy(opts.webSearch);
 
+  // CLI overrides are process-local, so concurrent agents never change each other's disabled skills.
+  const disabled = hostSkills?.filter((s) => !s.enabled) ?? [];
+  for (const s of disabled.filter((s) => s.scope === "system")) {
+    if (hostSkills.some((other) => other.enabled && other.name === s.name))
+      fail(EXIT.USAGE, `cannot preserve disabled system skill ${JSON.stringify(s.name)} with an enabled namesake`);
+  }
+  const skillConfig = disabled.map((s) => s.scope === "system"
+    ? `{name=${tomlString(s.name)},enabled=false}` : `{path=${tomlString(s.path)},enabled=false}`);
   const config = [
+    ...(skillConfig.length ? [["skills.config", `[${skillConfig.join(",")}]`]] : []),
     ["web_search", opts.webSearch ?? "disabled"],
     // A reader that cannot write $TMPDIR cannot start vitest at all (it mkdirs there before running).
     // Extending ":read-only" opens exactly that and nothing else — /tmp stays excluded.
@@ -3311,6 +3338,7 @@ function writeReport(ev, codeOverride) {
     // Report whether model and effort came from a fresh probe, stale config or account defaults;
     // null under --host-home means the caller's config is used directly.
     configInherited,
+    skillsCatalog: hostSkills ? { source: "caller-probe", callerProcessExtraRoots: "unknown", pluginRuntime: "not-carried" } : null,
     // What was REQUESTED; null means the thread inherited config.toml. reasoningEffort below is what the
     // server actually selected, which is the one worth reading back.
     effort: opts.effort ?? null, reasoningEffort: selectedEffort,
@@ -3690,6 +3718,21 @@ async function main() {
 
   const init = await conn.request("initialize", initializeParams());
   conn.notify("initialized");
+
+  if (hostSkills) {
+    const extraRoots = hostSkills.filter((s) => s.enabled && s.scope === "user").map((s) => path.dirname(s.path));
+    let actual;
+    try {
+      await conn.request("skills/extraRoots/set", { extraRoots });
+      actual = checkedSkills(await conn.request("skills/list", { cwds: [cwd], forceReload: true }), cwd);
+    } catch { fail(EXIT.USAGE, "the isolated skills catalogue is unavailable or invalid; no thread was started"); }
+    const key = (s) => `${s.scope}\0${s.name}\0${s.scope === "system" ? "system" : s.path}`;
+    const enabled = (skills) => skills.filter((s) => s.enabled).map(key).sort();
+    const expected = enabled(hostSkills), got = enabled(actual);
+    if (JSON.stringify(expected) !== JSON.stringify(got))
+      fail(EXIT.USAGE, "the isolated skills catalogue differs from the caller probe; no thread was started");
+    process.stderr.write("entrust: skills match a fresh caller-home probe; caller-process-only extra roots are unknown; plugin runtime/MCP is not carried\n");
+  }
 
   // Measured live: `Claude Code/0.150.1 (Mac OS 26.6.2; arm64) unknown (entrust; 2.0)` — the
   // client's own name, then the SERVER's version. Take the first x.y.z after a slash; a userAgent this

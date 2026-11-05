@@ -137,6 +137,7 @@ if (isMain && process.env.FAKE_RPC_LOG) {
 const CFG = Object.fromEntries(process.argv.slice(2)
   .filter((a, i, all) => all[i - 1] === "-c" && a.includes("="))
   .map((a) => [a.slice(0, a.indexOf("=")), a.slice(a.indexOf("=") + 1)]));
+let extraSkillRoots = [];
 const THREAD = "thr_root";
 const TURN = "turn_root";
 const OTHER_TURN = "turn_stale";
@@ -398,6 +399,22 @@ function onLine(line) {
     return;
   }
   if (m.method === "initialized") return;
+  if (m.method === "skills/list") {
+    const cwd = m.params.cwds[0], fixture = process.env.FAKE_SKILLS_FIXTURE;
+    const target = Object.hasOwn(CFG, "web_search");
+    const repo = `${cwd}/repo/SKILL.md`, user = `${cwd}/plugin/SKILL.md`;
+    const skills = fixture ? [
+      { name: "same", description: "repo", path: repo, scope: "repo", enabled: target ? !String(CFG["skills.config"]).includes(repo) : false },
+      ...(!target || extraSkillRoots.includes(`${cwd}/plugin`) ? [{ name: "same", description: "plugin", path: user, scope: "user", enabled: true }] : []),
+      { name: "same", description: "disabled user", path: `${cwd}/off/SKILL.md`, scope: "user", enabled: target ? !String(CFG["skills.config"]).includes(`${cwd}/off/SKILL.md`) : false },
+      ...(process.env.FAKE_SKILLS_SYSTEM ? [{ name: "system-skill", description: "system", path: `${cwd}/${target ? "private" : "host"}/SKILL.md`, scope: "system", enabled: target ? !String(CFG["skills.config"]).includes("system-skill") : false }] : []),
+      ...(process.env.FAKE_SKILLS_AMBIGUOUS && !target ? [{ name: "same", description: "system", path: `${cwd}/system/SKILL.md`, scope: "system", enabled: false }] : []),
+    ] : [];
+    if (target && process.env.FAKE_SKILLS_MISMATCH && skills.length) skills[0].enabled = true;
+    w(reply(m.id, { data: [{ cwd, skills, errors: process.env.FAKE_SKILLS_ERROR ? [{ path: cwd, message: "synthetic" }] : [] }] }));
+    return;
+  }
+  if (m.method === "skills/extraRoots/set") { extraSkillRoots = m.params.extraRoots; w(reply(m.id, {})); return; }
   if (m.method === "turn/interrupt") {
     interrupted = true;
     w(reply(m.id, {}));

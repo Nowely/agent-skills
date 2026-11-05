@@ -29,7 +29,7 @@ const MODELS = JSON.parse(fs.readFileSync(path.join(HERE, "../adapter.json"), "u
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
 const HEADERS = new Set(["RIGHTS", "MODEL", "EFFORT", "OUTPUT_SCHEMA", "RESUME", "SAFE_MODE", "ALLOW_NO_COMMANDS", "PROFILE"]);
 const PROTECTED = [{ dir: path.join(passwdHome(), ".claude"), label: "~/.claude", holds: "the settings, hooks and plugins every Claude Code session loads" }];
-const READ_TOOLS = ["Read", "Grep", "Glob", "Bash"];
+const READ_TOOLS = ["Read", "Grep", "Glob", "Bash", "Skill"];
 const WRITE_TOOLS = [...READ_TOOLS, "Edit", "Write"];
 // What init must report for the rights asked for, measured on 2.1.295 (research/2026-10-09-step5-measurements):
 // `--permission-mode manual` comes back as `default`, and the tools are exactly the ones `--tools` names, beside
@@ -178,8 +178,8 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   const outputSchemaSha256 = sha256(fs.readFileSync(schemaPath));
   const submittedSchemaSha256 = sha256(schemaText);
 
-  const safeFlag = headers.SAFE_MODE === undefined ? false : flagValue(headers.SAFE_MODE);
-  if (safeFlag === null) return refusal("SAFE_MODE takes yes, true or 1, or no, false or 0");
+  const safeFlag = headers.SAFE_MODE === undefined ? null : flagValue(headers.SAFE_MODE);
+  if (headers.SAFE_MODE !== undefined && safeFlag === null) return refusal("SAFE_MODE takes yes, true or 1, or no, false or 0");
   const allowFlag = headers.ALLOW_NO_COMMANDS === undefined ? false : flagValue(headers.ALLOW_NO_COMMANDS);
   if (allowFlag === null) return refusal("ALLOW_NO_COMMANDS takes yes, true or 1, or no, false or 0");
   if (headers.PROFILE !== undefined && headers.PROFILE !== "proxy")
@@ -215,8 +215,17 @@ export function parsePrompt(text, env = process.env, cwd = process.cwd()) {
   profile ??= "worker";
   if ((profile === "proxy") !== (rights.kind === "full"))
     return refusal("PROFILE proxy requires RIGHTS full, which is reserved for the main proxy");
-  if (profile === "proxy" && safeFlag) return refusal("PROFILE proxy loads Claude Code's own configuration; SAFE_MODE is incompatible");
-  const safeMode = safeFlag, allowNoCommands = profile === "proxy" || allowFlag;
+  const priorSafe = resume?.prior?.safeMode, legacySafe = resume?.prior?.context?.safeMode;
+  if (resume && profile === "worker" && safeFlag === null) {
+    if ((priorSafe != null && typeof priorSafe !== "boolean")
+        || (typeof priorSafe === "boolean" && typeof legacySafe === "boolean" && priorSafe !== legacySafe))
+      return refusal("RESUME: recorded SAFE_MODE is invalid or conflicting; set SAFE_MODE: yes or no explicitly");
+    if (typeof priorSafe !== "boolean" && typeof legacySafe !== "boolean")
+      return refusal("RESUME: previous SAFE_MODE is unknown; set SAFE_MODE: yes or no explicitly");
+  }
+  const safeMode = safeFlag ?? (typeof priorSafe === "boolean" ? priorSafe : legacySafe === true);
+  if (profile === "proxy" && safeMode) return refusal("PROFILE proxy loads Claude Code's own configuration; SAFE_MODE is incompatible");
+  const allowNoCommands = profile === "proxy" || allowFlag;
 
   return { task, rights, model, effort, schemaPath, schema, schemaText, outputSchemaSha256, submittedSchemaSha256, schemaTransform, safeMode, allowNoCommands, profile, resume };
 }
@@ -546,7 +555,7 @@ function buildReport(ctx, facts) {
     threadId: ctx.sessionId, sessionID: ctx.sessionId, turnId: null,
     model: init?.model ?? Object.keys(result?.modelUsage ?? {})[0] ?? null,
     requestedModel: parsed?.model ?? null, effort: parsed?.effort ?? null,
-    assistantModels: [...ctx.models], profile: parsed?.profile ?? null,
+    assistantModels: [...ctx.models], profile: parsed?.profile ?? null, safeMode: parsed?.safeMode ?? null,
     claudeVersion: init?.claude_code_version ?? null,
     turnStatus: facts.turnStatus ?? null,
     receiptOk: result?.subtype === "success" && !result.is_error && answerJson !== null && !ctx.stopped && !ctx.wider && !ctx.unconfirmed,

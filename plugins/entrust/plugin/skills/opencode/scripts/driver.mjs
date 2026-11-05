@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "./client.mjs";
 import { splitModel, modelKey, digest, id, sleep, atomicJson, readJson } from "./config.mjs";
 import { startLocalServer } from "./local-server.mjs";
+import { startObserver, ownMessages } from "./observe.mjs";
 import { deadlineMs, mailboxProblem, openMailbox } from "../../orchestrate/scripts/mailbox.mjs";
 import { stateDirectory } from "../../orchestrate/scripts/temp-dir.mjs";
 import { git, guardedTarget, makeWorktree, passwdHome, rightsScope, scopeWithin, standingRules, worktreeFacts, writeRootProblem } from "../../orchestrate/scripts/drivers.mjs";
@@ -134,6 +135,10 @@ async function pendingIn(ctx, sessions, { skipRefused = false } = {}) {
 
 // /api/session/active lists only the busy sessions: presence of the key means running.
 const isBusy = (active, sid) => Boolean(active && typeof active === "object" && Object.prototype.hasOwnProperty.call(active, sid));
+// V2's SessionActive is { type: "running" }; keys are Session IDs starting with "ses".
+const validActive = (active) => Boolean(active && typeof active === "object" && !Array.isArray(active)
+  && Object.entries(active).every(([sid, state]) => sid.startsWith("ses") && state && typeof state === "object"
+    && !Array.isArray(state) && state.type === "running"));
 
 // A message's parts; a tool part is { type, id, name, state, time }.
 const contentOf = (m) => m?.content ?? [];
@@ -161,6 +166,15 @@ function collectTools(messages) {
 const answerText = (reply) =>
   contentOf(reply).filter((p) => p?.type === "text").map((p) => p.text ?? "").join("");
 
+// Provider error text can contain request bodies or credentials. Preserve only recognized categories
+// and an HTTP status in the diagnostic report; the transcript remains the native evidence.
+function safeProviderError(error) {
+  const names = new Set(["ProviderError", "AuthenticationError", "RateLimitError", "ContextOverflowError", "APICallError", "AbortError", "ModelError"]);
+  const name = names.has(error?.name) ? error.name : "UnknownError";
+  const status = error?.status ?? error?.statusCode;
+  return { name, ...(Number.isInteger(status) && status >= 100 && status <= 599 ? { status } : {}) };
+}
+
 function addTokens(acc, t) {
   if (!t || typeof t !== "object") return acc;
   for (const k of ["input", "output", "reasoning", "total"])
@@ -178,7 +192,7 @@ function addTokens(acc, t) {
 // Session permission rules. V2's ordered array: { action, resource, effect }, last match wins.
 // External paths do not gate reads. Shell is allowed without prompts; edit tools stay scoped separately,
 // but those tool rules do not constrain shell effects.
-function sessionPermissions(scope) {
+function sessionPermissions(scope, { legacy = false } = {}) {
   const rules = [
     { action: "*", resource: "*", effect: "ask" },
     { action: "read", resource: "*", effect: "allow" },
@@ -187,6 +201,7 @@ function sessionPermissions(scope) {
     { action: "grep", resource: "*", effect: "allow" },
     { action: "external_directory", resource: "*", effect: "allow" },
     { action: "shell", resource: "*", effect: "allow" },
+    ...(!legacy ? [{ action: "skill", resource: "*", effect: "allow" }] : []),
   ];
   if (scope.kind === "read") {
     rules.push({ action: "edit", resource: "*", effect: "deny" });
@@ -240,9 +255,13 @@ function writeRootError(parsed) {
 // the enforcement OpenCode has, and a server can drop them silently, so a session holding others, wider or
 // narrower, is not run, a resumed one too. One the server reports no rules for is said on stderr: their
 // effect is then unverified.
-function rulesProblem(session, scope) {
+function rulesProblem(session, scope, { resume = false } = {}) {
   if (!Array.isArray(session?.permissions)) {
     process.stderr.write(`entrust: the server reported no permission rules for session ${session?.id}; their effect is unverified\n`);
+    return null;
+  }
+  if (resume && JSON.stringify(session.permissions) === JSON.stringify(sessionPermissions(scope, { legacy: true }))) {
+    process.stderr.write(`entrust: session ${session.id} retains legacy skill permissions; skill requests may need approval\n`);
     return null;
   }
   return JSON.stringify(session.permissions) === JSON.stringify(sessionPermissions(scope)) ? null
@@ -382,7 +401,7 @@ async function offerRequest(ctx, type, payload, method, reason, autoReason, caus
   if (autoReason) q.decidedAt = now(); // nobody is asked: the driver refuses it itself
   ctx.requests.set(q.id, q);
   noteWait(ctx);
-  ctx.escalations.push({ id: q.id, type, requestID: payload.id, method, reason, presented: q.presented });
+  ctx.escalations.push({ id: q.id, type, requestID: payload.id });
   q.autoReason = autoReason;
   // A request the driver declines itself is recorded when it settles and never listed as waiting. One the
   // mailbox cannot hold would wait for a decision that cannot come: it expires at once.
@@ -559,22 +578,18 @@ async function refresh(ctx) {
     for (const m of ms) all.push({ ...m, _sessionID: sid });
   }
   ctx.messages = all;
-  try { ctx.active = await ctx.client.call("GET", ctx.routes.active, undefined, { unwrap: true }); ctx.statusKnown = true; }
+  try {
+    ctx.active = await ctx.client.call("GET", ctx.routes.active, undefined, { unwrap: true });
+    if (!validActive(ctx.active)) throw new Error("invalid active state");
+    ctx.statusKnown = true;
+  }
   catch { ctx.active = null; ctx.statusKnown = false; ctx.statusUnknown = true; }
 }
 
 // Messages that belong to this invocation: the root session's own inputs and the assistant messages that
 // follow the first of them, plus every message of a descendant session created during the invocation.
 function invocationMessages(ctx) {
-  const out = [];
-  const created = (m) => m?.time?.created ?? 0;
-  const own = (ctx.messages ?? []).filter((m) => m._sessionID === ctx.sessionID && ctx.invocationInputs.has(m.id));
-  const firstAt = own.length ? Math.min(...own.map(created)) : 0;
-  for (const m of ctx.messages ?? []) {
-    if (m._sessionID !== ctx.sessionID) out.push(m);
-    else if (ctx.invocationInputs.has(m.id) || (firstAt && created(m) >= firstAt && m.type === "assistant")) out.push(m);
-  }
-  return out;
+  return ownMessages(ctx.messages, ctx.sessionID, ctx.invocationInputs);
 }
 
 // V2 links no assistant message to its input: the replies to an input are the root session's assistant
@@ -869,6 +884,8 @@ async function resolveResume(ctx) {
   let active;
   try { active = await ctx.client.call("GET", ctx.routes.active, undefined, { unwrap: true }); }
   catch (e) { return { error: `RESUME session ${sessionID}: status is unknown (${e.message}); the session is not safely resumable` }; }
+  if (!validActive(active))
+    return { error: `RESUME session ${sessionID}: status is unknown (invalid response); the session is not safely resumable` };
   if (isBusy(active, sessionID)) return { busy: true, sessionID };
   ctx.resume = true;
   ctx.sessionID = sessionID;
@@ -883,6 +900,7 @@ function buildReport(ctx, base) {
   return {
     adapter: "opencode",
     apiFamily: "v2",
+    invocationId: ctx.invocationId,
     ok: base.exitCode === EXIT.SUCCESS,
     exitCode: base.exitCode,
     error: base.error ?? null,
@@ -897,6 +915,8 @@ function buildReport(ctx, base) {
     model: base.model ?? null,
     requestedModel: ctx.ref ? modelKey(ctx.ref) : (ctx.requestedModel ?? null),
     variant: ctx.variant ?? null,
+    confirmedEffort: null,
+    effortCompliance: ctx.effortCompliance ?? "unknown",
     turnStatus: base.turnStatus ?? null,
     receiptOk: base.receiptOk ?? false,
     commands: base.commands ?? [],
@@ -912,6 +932,7 @@ function buildReport(ctx, base) {
     partial: Boolean(base.partial),
     limits: ctx.opts ? { timeoutS: ctx.opts.timeout, idleTimeoutS: ctx.opts.idle, maxCommands: ctx.opts.maxCommands } : null,
     cancellation: base.cancellation ?? ctx.cancellation ?? null,
+    serverCleanup: ctx.serverCleanup ? { ...ctx.serverCleanup, listener: "unknown" } : null,
     cwd: ctx.cwd ?? null,
     serverMode: "local",
     rights: ctx.scope ? { kind: ctx.scope.kind, roots: ctx.scope.roots ?? [] } : null,
@@ -944,6 +965,10 @@ async function cleanup(ctx, abortExecution) {
     ctx.cancellation = ctx.cancellation ?? { reason: "driver failure", signal: ctx.signal ?? null, abort: [], observed: "unknown" };
     ctx.stopping = stopOwned(ctx);
     try { await Promise.race([ctx.stopping, sleep(8000)]); } catch {}
+  }
+  if (ctx.localServer) {
+    try { ctx.serverCleanup = await ctx.localServer.close(); }
+    catch { ctx.serverCleanup = { process: "unknown", owner: "unknown" }; }
   }
 }
 
@@ -1018,11 +1043,18 @@ async function execute(opts, parsed) {
   try {
   ctx.transcriptPath = sidecar(ctx, "transcript.json");
 
+  // The socket is only a live view; the claim contains its address, never server credentials or message text.
+  try {
+    ctx.observer = await startObserver(ctx, observe);
+    atomicJson(ctx.report, { adapter: "opencode", ok: false, status: "starting", pid: process.pid,
+      invocationId: ctx.invocationId, observer: ctx.observer.address });
+  } catch { await ctx.observer?.close(); ctx.observer = null; }
+
   try {
     ctx.localServer = await startLocalServer({ cwd: process.cwd(), signal: ctx.startup.signal });
     ctx.config = ctx.localServer.config;
     ctx.client = clientFor(ctx); ctx.server = await ctx.client.probe();
-  } catch (e) { return bail(`the OpenCode server could not be started: ${e.message}`, EXIT.TRANSPORT); }
+  } catch (e) { ctx.serverCleanup = e.serverCleanup ?? null; return bail(`the OpenCode server could not be started: ${e.message}`, EXIT.TRANSPORT); }
   if (ctx.abortRequested) return cutExit(ctx, EARLY);
   ctx.routes = ROUTES;
   const missing = routeError(ctx);
@@ -1063,7 +1095,7 @@ async function execute(opts, parsed) {
     if (ctx.priorRights.kind !== ctx.scope.kind || roots(ctx.priorRights) !== roots(ctx.scope))
       return fail(ctx, `a continuation keeps its rights (${ctx.priorRights.kind}${ctx.priorRights.roots?.length ? ` ${ctx.priorRights.roots.join(" ")}` : ""}); name the same or leave RIGHTS out`, EXIT.USAGE);
   }
-  const resumedRules = ctx.resume ? rulesProblem(ctx.resumedSession, ctx.scope) : null;
+  const resumedRules = ctx.resume ? rulesProblem(ctx.resumedSession, ctx.scope, { resume: true }) : null;
   if (resumedRules) return fail(ctx, resumedRules, EXIT.TRANSPORT);
 
   const model = await resolveModel(ctx);
@@ -1147,7 +1179,40 @@ async function execute(opts, parsed) {
   return await conclude(ctx, turn.reply, parsed);
   } catch (e) {
     return await fail(ctx, `invocation failed: ${e.message}`, EXIT.TRANSPORT, { partial: ctx.admission !== "pending" });
-  } finally { await ctx.localServer?.close(); }
+  } finally { await ctx.localServer?.close(); await ctx.observer?.close(); }
+}
+
+// Independent reads let a caller observe the owner even while the native prompt POST is in flight.
+// No read here affects the owner's lease, mailbox or completion logic.
+async function observe(ctx, kind) {
+  const base = { report: ctx.report, invocationId: ctx.invocationId, sessionID: ctx.sessionID ?? null,
+    inputIds: [...ctx.invocationInputs], admission: ctx.admission, observedAt: new Date().toISOString(),
+    nonAtomic: true };
+  if (!ctx.client || !ctx.routes || !ctx.sessionID || !ctx.ownedReady)
+    return { ...base, serverStatus: "unknown", callbacks: "unknown", tools: "unknown", complete: false, messages: [] };
+  const discovered = await gatherOwned(ctx);
+  const sessions = new Set([ctx.sessionID, ...[...discovered.sessions].filter((sid) => !ctx.preexisting.has(sid))]);
+  let active = null, status = "unknown", serverObservedAt = null, callbacks = "unknown", messages = [], messagesKnown = false,
+    complete = discovered.errors.length === 0 && ctx.admission === "admitted";
+  try {
+    active = await ctx.client.call("GET", ctx.routes.active, undefined, { unwrap: true, timeoutMs: 3000 });
+    if (!validActive(active)) throw new Error();
+    serverObservedAt = new Date().toISOString();
+    if (!discovered.errors.length) status = [...sessions].some((sid) => isBusy(active, sid)) ? "busy" : "idle";
+  } catch { complete = false; }
+  try {
+    const p = await pendingIn(ctx, sessions);
+    callbacks = { permissions: p.permissions.filter((q) => sessions.has(q?.sessionID)).length,
+      questions: p.forms.filter((q) => sessions.has(q?.sessionID)).length };
+  } catch { complete = false; }
+  try {
+    const all = [];
+    for (const sid of sessions) for (const m of await sessionMessages(ctx, sid)) all.push({ ...m, _sessionID: sid });
+    messages = invocationMessages({ ...ctx, messages: all });
+    messagesKnown = true;
+  } catch { complete = false; messages = []; }
+  const tools = messagesKnown ? collectTools(messages).map(({ tool, callID, status: state }) => ({ tool, callID, status: state })) : "unknown";
+  return { ...base, serverStatus: status, serverObservedAt, callbacks, tools, complete, ...(kind === "messages" ? { messages } : {}) };
 }
 
 // Model: pinned by the prompt, kept by a resume, else the OpenCode configuration's own `model`. No fallback.
@@ -1163,6 +1228,9 @@ async function resolveModel(ctx) {
       if (!ref) return { error: "MODEL: inherit takes the OpenCode configuration's `model`, and none is set; set MODEL to provider/model" };
     }
   } else ref = { providerID: ctx.parsed.model.providerID, modelID: ctx.parsed.model.modelID };
+  // A plan resolves an omitted MODEL to its pinned explicit value. That is still the same
+  // selection on resume, and must not discard the variant from the earlier invocation.
+  if (ctx.resume && ctx.priorModel && modelKey(ref) === modelKey(ctx.priorModel)) variant ??= ctx.priorVariant;
   let info;
   try { info = await ctx.client.model(ref, ctx.cwd); } catch (e) { return { error: e.message }; }
   if (variant && !info.variants.includes(variant))
@@ -1259,7 +1327,11 @@ async function conclude(ctx, firstReply, parsed) {
       : !ctx.discoveryComplete ? "session descendants were unknown; success cannot be claimed"
       : "the session status was unknown; success cannot be claimed";
   }
-  else if (info.error) { exitCode = EXIT.MODEL; error = info.error.message ?? info.error.name ?? String(info.error); }
+  else if (info.error) {
+    exitCode = EXIT.MODEL;
+    const safe = safeProviderError(info.error);
+    error = `OpenCode reported ${safe.name}${safe.status ? ` (HTTP ${safe.status})` : ""}; details withheld`;
+  }
   else if (!v.matches) {
     exitCode = EXIT.MODEL;
     error = "the reply's provider/model is missing or does not match the requested model";
@@ -1283,7 +1355,7 @@ async function conclude(ctx, firstReply, parsed) {
     usage: usage.usage, cost: usage.cost,
     childUsage,
     outputSchemaOk: check.ok, schemaErrors: check.ok ? [] : check.errors,
-    partial: false, turnError: info.error ?? null,
+    partial: false, turnError: info.error ? safeProviderError(info.error) : null,
     admission: ctx.admission,
     cancellation: ctx.cancellation ?? null,
     correction,
@@ -1394,4 +1466,4 @@ function main() {
 const isMain = (() => { try { return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url)); } catch { return false; } })();
 if (isMain) main();
 
-export { execute, sessionPermissions, editScope, rightsScope, scopeWithin, promptText, buildReport, invocationMessages };
+export { execute, sessionPermissions, editScope, rightsScope, scopeWithin, promptText, buildReport, invocationMessages, resolveModel, observe };

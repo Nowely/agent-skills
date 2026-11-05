@@ -3,16 +3,19 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
+import net from "node:net";
 import { spawnSync } from "node:child_process";
 import { ROOT, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
 import { desktopModels, splitModel, digest } from "../plugin/skills/opencode/scripts/config.mjs";
 import { Client } from "../plugin/skills/opencode/scripts/client.mjs";
 import { parsePrompt, FIVE_FIELDS_SCHEMA, checkSchemaSubset, validateOutput, decisionsOf, extractJson, expectation } from "../plugin/skills/opencode/scripts/contract.mjs";
 import { decisionFits } from "../plugin/skills/orchestrate/scripts/mailbox.mjs";
-import { editScope, noteWait, rejectTrackedRequest, sessionPermissions } from "../plugin/skills/opencode/scripts/driver.mjs";
+import { editScope, noteWait, rejectTrackedRequest, sessionPermissions, resolveModel, observe } from "../plugin/skills/opencode/scripts/driver.mjs";
 import { desktopStore, fakeCli, fakeOpenCode } from "./fake-opencode.mjs";
 import { typedRequest } from "../plugin/skills/opencode/scripts/launch.mjs";
 import { startLocalServer } from "../plugin/skills/opencode/scripts/local-server.mjs";
+import { startObserver, readObservation } from "../plugin/skills/opencode/scripts/observe.mjs";
+import { statusLines } from "../plugin/skills/orchestrate/scripts/agent-run.mjs";
 
 const { cases, test: register } = registry();
 const test = (name, fn) => register(name, name, async () => { await fn(); return true; });
@@ -52,6 +55,15 @@ test("a registered model fills an absent MODEL and refuses inherit or another mo
     assert.equal(`${parsed.model.providerID}/${parsed.model.modelID}`, model);
   }
 });
+test("pinned resume retains only its own model's variant and honours an explicit replacement", async () => {
+  const priorModel = { providerID: "router", modelID: "deepseek/flash" };
+  const client = { model: async (ref) => ({ ...ref, variants: ["high", "low"] }) };
+  const ctx = { client, cwd, resume: true, priorModel, priorVariant: "high",
+    parsed: { model: { inherit: false, ...priorModel } } };
+  assert.equal((await resolveModel(ctx)).variant, "high");
+  assert.equal((await resolveModel({ ...ctx, parsed: { ...ctx.parsed, variant: "low" } })).variant, "low");
+  assert.equal((await resolveModel({ ...ctx, parsed: { model: { inherit: false, providerID: "router", modelID: "other" } } })).variant, null);
+});
 test("unsupported execution controls refuse before any HTTP call", () => {
   for (const header of ["NETWORK: no\n", "WEB_SEARCH: disabled\n", "UNKNOWN: yes\n", "VARIANT: low\nEFFORT: high\n"])
     assert.ok(parsePrompt(prompt(header), {}).error);
@@ -83,6 +95,7 @@ test("Shell is allowed without prompts for read and write sessions", () => {
     assert.equal(rules[catchAll].effect, "ask", scope.kind);
     assert.ok(shell > catchAll, `${scope.kind}: Shell override follows catch-all`);
     assert.equal(rules[shell].effect, "allow", scope.kind);
+    assert.equal(rules.findLast((r) => r.action === "skill" && r.resource === "*")?.effect, "allow", scope.kind);
     const external = rules.findLastIndex((r) => r.action === "external_directory" && r.resource === "*");
     assert.ok(external > catchAll, `${scope.kind}: external-directory override follows catch-all`);
     assert.equal(rules[external].effect, "allow", scope.kind);
@@ -169,6 +182,18 @@ test("permission handback contains the full immutable native request", async () 
   const m = mailbox(); const r = await invoke([...m.args, "--pending"]);
   assert.equal(r.code, 0); assert.ok(r.out.includes(m.q.presented)); assert.match(r.out, /TYPE=opencode.permission/);
 });
+test("large permission bodies survive pending and an exact decision, while truncation is rejected", async () => {
+  const m = mailbox();
+  m.q.payload.metadata.command = "SYNTHETIC_START" + "x".repeat(220000) + "SYNTHETIC_END";
+  m.q.presented = JSON.stringify(m.q.payload, null, 2); m.q.requestHash = digest(m.q.payload);
+  fs.writeFileSync(path.join(m.box, `${m.id}.request.json`), JSON.stringify(m.q));
+  const pending = await invoke([...m.args, "--pending"]);
+  assert.equal(pending.code, 0); assert.ok(pending.out.includes(m.q.presented), `pending output=${Buffer.byteLength(pending.out)} bytes, expected body=${Buffer.byteLength(m.q.presented)} bytes`);
+  const args = [...m.args, "--decide", m.id, "--accept"];
+  assert.equal((await invoke(args, m.q.presented.slice(0, -100))).code, 2);
+  assert.equal(fs.existsSync(path.join(m.box, `${m.id}.decision.json`)), false);
+  assert.equal((await invoke(args, m.q.presented + "\n")).code, 0);
+});
 test("--handback renders a typed request with the message's own token, and tells a dropped trailer and an altered body from the exact copy", async () => {
   const m = mailbox(); const report = path.join(m.dir, "report.json");
   const printed = (await invoke([...m.args, "--pending"])).out.trimEnd();
@@ -236,6 +261,211 @@ test("the catalogue names a model by its catalogue id, lists only enabled models
   assert.deepEqual(await client.model(splitModel("router/glm/flash-fast"), "/work"), { providerID: "router", modelID: "glm/flash-fast", variants: ["high"] });
   assert.deepEqual(routes, ["/api/model?location[directory]=%2Fwork"]);
 });
+test("HTTP error bodies and query strings do not escape into diagnostics", async () => {
+  const server = http.createServer((req, res) => { res.writeHead(503); res.end("SYNTHETIC_SECRET_BODY"); });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const client = new Client({ config: { url: `http://127.0.0.1:${server.address().port}` } });
+    await assert.rejects(client.call("GET", "/bad?secret=SYNTHETIC_QUERY"), (e) =>
+      e.message.includes("HTTP 503") && !e.message.includes("SYNTHETIC"));
+  } finally { await new Promise((resolve) => server.close(resolve)); }
+});
+test("provider error details stay out of the report and launcher diagnostics", async () => {
+  const s = await fakeOpenCode("provider-error-marker");
+  try {
+    const r = await driverRun(s);
+    assert.notEqual(r.code, 0);
+    assert.equal(JSON.stringify(r.report).includes("SYNTHETIC_PROVIDER_SECRET"), false);
+    assert.equal(r.out.includes("SYNTHETIC_PROVIDER_SECRET"), false);
+    assert.equal(r.err.includes("SYNTHETIC_PROVIDER_SECRET"), false);
+    assert.equal(statusLines(path.dirname(r.path), r.path).join("\n").includes("SYNTHETIC_PROVIDER_SECRET"), false);
+    assert.deepEqual(r.report.turnError, { name: "ProviderError", status: 429 });
+    assert.match(r.report.error, /ProviderError.*429/);
+    assert.equal(fs.readFileSync(r.report.transcriptPath, "utf8").includes("SYNTHETIC_PROVIDER_SECRET"), true);
+  } finally { await s.close(); }
+});
+test("the settled mailbox retains its exact synthetic callback while report and status omit it", async () => {
+  const s = await fakeOpenCode("permission"); s.permissionCommand = `SYNTHETIC_CALLBACK_${"x".repeat(10000)}_END`;
+  try {
+    const r = await driverRun(s, { approval: "accept" });
+    assert.equal(r.code, 0, r.err);
+    const name = fs.readdirSync(r.box).find((n) => n.endsWith(".request.json"));
+    const requestPath = path.join(r.box, name), request = JSON.parse(fs.readFileSync(requestPath, "utf8"));
+    assert.equal(request.payload.metadata.command, s.permissionCommand);
+    assert.equal(request.presented, JSON.stringify(request.payload, null, 2));
+    assert.equal(request.settled.outcome, "applied");
+    assert.equal(fs.statSync(requestPath).mode & 0o777, 0o600);
+    assert.equal(fs.existsSync(path.join(r.box, "pending")), false);
+    assert.equal(JSON.stringify(r.report).includes("SYNTHETIC_CALLBACK_"), false);
+    assert.equal(r.out.includes("SYNTHETIC_CALLBACK_"), false);
+    assert.equal(r.err.includes("SYNTHETIC_CALLBACK_"), false);
+    assert.equal(statusLines(path.dirname(r.path), r.path).join("\n").includes("SYNTHETIC_CALLBACK_"), false);
+    for (const p of [r.path, r.report.transcriptPath, r.report.answerPath]) assert.equal(fs.statSync(p).mode & 0o777, 0o600);
+  } finally { await s.close(); }
+});
+test("observer is report-bound, pages current content, and becomes unavailable after its owner closes", async () => {
+  const dir = tempDir("entrust-live-case-"), report = path.join(dir, "report.json");
+  const ctx = { report, invocationId: "inv_test" };
+  let messages = Array.from({ length: 205 }, (_, i) => ({ id: `m${i}`, text: `old ${i}` }));
+  const owner = await startObserver(ctx, async (ownerCtx, kind) => ({ report: ownerCtx.report, invocationId: ownerCtx.invocationId,
+    serverStatus: "busy", nonAtomic: true, complete: true, ...(kind === "messages" ? { messages } : {}) }));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address }));
+  try {
+    assert.equal(fs.statSync(path.dirname(owner.address)).mode & 0o777, 0o700);
+    assert.equal((await readObservation(report)).serverStatus, "busy");
+    let p = await readObservation(report, "messages"), count = p.messages.length;
+    assert.equal(count, 50); const foreign = p.cursor;
+    messages[0] = { id: "m0", text: "updated" };
+    assert.equal((await readObservation(report, "messages")).messages[0].text, "updated");
+    while (p.cursor) { p = await readObservation(report, "messages", p.cursor); count += p.messages.length; }
+    assert.equal(count, 205);
+    const other = path.join(dir, "other.json");
+    fs.writeFileSync(other, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address }));
+    assert.equal((await readObservation(other, "messages", foreign)).state, "unavailable");
+  } finally { await owner.close(); }
+  assert.equal((await readObservation(report)).state, "unavailable");
+});
+test("observer decodes UTF-8 split within a character on both socket directions", async () => {
+  const dir = fs.mkdtempSync("/tmp/entrust-unicode-"), report = path.join(dir, "отчёт.json"), ctx = { report, invocationId: "inv_тест" };
+  const owner = await startObserver(ctx, async () => ({ ...ctx, text: "ответ 🐈" }));
+  try {
+    const request = Buffer.from(JSON.stringify({ ...ctx, kind: "status" }) + "\n");
+    const split = request.indexOf(Buffer.from("о")) + 1;
+    const response = await new Promise((resolve, reject) => {
+      const socket = net.createConnection(owner.address); const chunks = [];
+      socket.on("error", reject); socket.on("data", (chunk) => chunks.push(chunk));
+      socket.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      socket.on("connect", () => { socket.write(request.subarray(0, split)); setTimeout(() => socket.write(request.subarray(split)), 30); });
+    });
+    assert.equal(response.report, report); assert.equal(response.invocationId, ctx.invocationId); assert.equal(response.text, "ответ 🐈");
+  } finally { await owner.close(); }
+  const address = path.join(dir, "split.sock");
+  const server = net.createServer((socket) => socket.once("data", () => {
+    const output = Buffer.from(JSON.stringify({ ...ctx, text: "ответ 🐈" }) + "\n");
+    const split = output.indexOf(Buffer.from("🐈")) + 2;
+    socket.write(output.subarray(0, split)); setTimeout(() => socket.end(output.subarray(split)), 30);
+  }));
+  await new Promise((resolve) => server.listen(address, resolve));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: address }));
+  try { assert.equal((await readObservation(report)).text, "ответ 🐈"); }
+  finally { await new Promise((resolve) => server.close(resolve)); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+test("observer close terminates an accepted socket and is idempotent even with a stalled read", async () => {
+  const ctx = { report: "/tmp/held.json", invocationId: "inv_hold" };
+  let entered;
+  const started = new Promise((resolve) => { entered = resolve; });
+  const owner = await startObserver(ctx, async () => { entered(); return await new Promise(() => {}); });
+  const socket = net.createConnection(owner.address);
+  socket.on("error", () => {});
+  await new Promise((resolve) => socket.once("connect", resolve));
+  const closed = new Promise((resolve) => socket.once("close", resolve));
+  socket.write(JSON.stringify({ ...ctx, kind: "status" }) + "\n");
+  await started;
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("close blocked on socket")), 1000).unref());
+  await Promise.race([Promise.all([owner.close(), owner.close(), closed]), timer]);
+  assert.equal(fs.existsSync(owner.address), false);
+});
+test("observer limits UTF-8 requests and replies by bytes, not characters", async () => {
+  const dir = fs.mkdtempSync("/tmp/entrust-byte-limit-"), report = path.join(dir, "report.json"), ctx = { report, invocationId: "inv" };
+  let observed = 0;
+  const owner = await startObserver(ctx, async () => { observed++; return ctx; });
+  try {
+    const request = JSON.stringify({ ...ctx, kind: "status", padding: "я".repeat(2100) }) + "\n";
+    assert.ok(request.length < 4096 && Buffer.byteLength(request) > 4096);
+    await new Promise((resolve, reject) => {
+      const socket = net.createConnection(owner.address);
+      socket.on("error", () => {}); socket.on("close", resolve);
+      socket.on("connect", () => socket.write(request));
+      setTimeout(() => { socket.destroy(); reject(new Error("over-limit request was not closed")); }, 2000).unref();
+    });
+    assert.equal(observed, 0);
+  } finally { await owner.close(); }
+  const address = path.join(dir, "large.sock");
+  const server = net.createServer((socket) => {
+    socket.on("error", () => {});
+    socket.once("data", () => socket.end(JSON.stringify({ ...ctx, text: "я".repeat(270000) }) + "\n"));
+  });
+  await new Promise((resolve) => server.listen(address, resolve));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: address }));
+  try { assert.equal((await readObservation(report)).state, "unavailable"); }
+  finally { await new Promise((resolve) => server.close(resolve)); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+test("owner observation distinguishes pending admission, callbacks, busy and invalid status without disclosing callback contents", async () => {
+  const routes = { children: "/sessions?parentID={sessionID}", permissionList: "/session/{sessionID}/permission",
+    formList: "/session/{sessionID}/form", messages: "/session/{sessionID}/message", active: "/active" };
+  const startedAtMs = Date.now() - 1000;
+  const rows = [ { id: "old", type: "user", time: { created: startedAtMs + 1 } },
+    { id: "input", type: "user", time: { created: startedAtMs + 2 } },
+    { id: "answer", type: "assistant", time: { created: startedAtMs + 3 }, content: [{ type: "tool", id: "call", name: "shell", state: { status: "running", input: { command: "PRIVATE_COMMAND" } } }] } ];
+  let active = { ses_root: { type: "running" } };
+  const client = { call: async (_method, route) => {
+    if (route.startsWith("/sessions?")) return { data: [] };
+    if (route.endsWith("/permission")) return [{ id: "p", sessionID: "ses_root", secret: "PRIVATE_CALLBACK" }];
+    if (route.endsWith("/form")) return [];
+    if (route.startsWith("/session/ses_root/message")) return { data: [...rows].reverse() };
+    if (route === "/active") return active;
+    throw new Error(route);
+  } };
+  const ctx = { report: "/tmp/report.json", invocationId: "inv", sessionID: "ses_root", invocationInputs: new Set(["input"]),
+    admission: "pending", startedAtMs, preexisting: new Set(), ownedReady: true, routes, client };
+  const status = await observe(ctx, "status");
+  assert.equal(status.admission, "pending"); assert.equal(status.serverStatus, "busy");
+  assert.deepEqual(status.callbacks, { permissions: 1, questions: 0 });
+  assert.equal(JSON.stringify(status).includes("PRIVATE_"), false);
+  assert.deepEqual((await observe(ctx, "messages")).messages.map((m) => m.id), ["input", "answer"]);
+  active = []; const unknown = await observe(ctx, "status");
+  assert.equal(unknown.serverStatus, "unknown"); assert.equal(unknown.complete, false);
+  for (const invalid of [{ error: "invalid active schema" }, { ses_root: {} }, { ses_root: { type: "idle" } }, { wrong: { type: "running" } }]) {
+    active = invalid; const snapshot = await observe(ctx, "status");
+    assert.equal(snapshot.serverStatus, "unknown"); assert.equal(snapshot.complete, false);
+  }
+});
+test("owner reads every message page and marks descendant discovery errors incomplete", async () => {
+  const routes = { children: "/sessions?parentID={sessionID}", permissionList: "/session/{sessionID}/permission",
+    formList: "/session/{sessionID}/form", messages: "/session/{sessionID}/message", active: "/active" };
+  const startedAtMs = Date.now() - 1000;
+  const rows = [{ id: "input", type: "user", time: { created: startedAtMs + 1 } },
+    ...Array.from({ length: 230 }, (_, i) => ({ id: `m${i}`, type: "assistant", time: { created: startedAtMs + 2 + i }, content: [{ type: "text", text: `text ${i}` }] }))];
+  let failChildren = false;
+  const client = { call: async (_method, route) => {
+    if (route.startsWith("/sessions?")) { if (failChildren) throw new Error("failed"); return { data: [] }; }
+    if (route.endsWith("/permission") || route.endsWith("/form")) return [];
+    if (route.startsWith("/session/ses_root/message")) {
+      const reversed = [...rows].reverse();
+      return route.includes("cursor=") ? { data: reversed.slice(200) } : { data: reversed.slice(0, 200), cursor: { next: "next" } };
+    }
+    if (route === "/active") return { ses_root: { type: "running" } };
+    throw new Error(route);
+  } };
+  const ctx = { report: "/tmp/report.json", invocationId: "inv", sessionID: "ses_root", invocationInputs: new Set(["input"]),
+    admission: "admitted", startedAtMs, preexisting: new Set(), ownedReady: true, routes, client };
+  assert.equal((await observe(ctx, "messages")).messages.length, 231);
+  rows[1].content[0].text = "changed";
+  assert.equal((await observe(ctx, "messages")).messages[1].content[0].text, "changed");
+  failChildren = true;
+  const incomplete = await observe(ctx, "messages");
+  assert.equal(incomplete.serverStatus, "unknown"); assert.equal(incomplete.complete, false);
+});
+test("terminal observation uses only the report's matching transcript and reports a missing one", async () => {
+  const dir = tempDir("entrust-live-terminal-"), report = path.join(dir, "report.json"), transcript = path.join(dir, "report.transcript.json");
+  const record = { adapter: "opencode", invocationId: "inv", sessionID: "root", turnIds: ["input"],
+    exitCode: 0, partial: false, transcriptPath: transcript, receiptOk: true };
+  fs.writeFileSync(report, JSON.stringify(record));
+  assert.equal((await readObservation(report, "messages")).source, "unavailable");
+  fs.writeFileSync(transcript, JSON.stringify({ sessionID: "root", inputIds: ["input"], messages: [
+    { id: "old", type: "user", _sessionID: "root", time: { created: 1 } },
+    { id: "old-answer", type: "assistant", _sessionID: "root", time: { created: 2 } },
+    { id: "input", type: "user", _sessionID: "root", time: { created: 2 } },
+    { id: "answer", type: "assistant", _sessionID: "root", time: { created: 3 } },
+    { id: "foreign-input", type: "user", _sessionID: "root", time: { created: 4 } },
+    { id: "foreign-answer", type: "assistant", _sessionID: "root", time: { created: 5 } },
+  ] }));
+  const view = await readObservation(report, "messages");
+  assert.equal(view.source, "transcript"); assert.equal(view.state, "terminal");
+  assert.deepEqual(view.messages.map((m) => m.id), ["input", "answer"]);
+  record.sessionID = "other"; fs.writeFileSync(report, JSON.stringify(record));
+  assert.equal((await readObservation(report, "messages")).source, "unavailable");
+});
 const DRIVER = path.join(ROOT, "skills/opencode/scripts/driver.mjs");
 // `beside` is an earlier report: this run writes report-2.json into its directory, under the same state.
 async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4, approvalDelayMs = 0, headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, defaultModel = "router/deepseek/flash", answer = '{"answers":[["Read"]]}', localUrl = server.url, beside = null, more = {}, state: given = null } = {}) {
@@ -294,11 +524,109 @@ async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4
     return { ...result, report: fs.existsSync(report) ? JSON.parse(fs.readFileSync(report)) : null, path: report, box, stopFile: cli.stopFile };
   } finally { if (p.child.exitCode === null) p.child.kill("SIGKILL"); }
 }
-test("a server that exits before it serves is reported with its exit code and what it printed", async () => {
+test("advertised variants are passed to OpenCode without claiming provider-confirmed effort", async () => {
+  const s = await fakeOpenCode();
+  try {
+    s.extraVariants = ["max", "ultra"];
+    for (const [headers, variant] of [["", null], ["VARIANT: high\n", "high"], ["VARIANT: max\n", "max"], ["VARIANT: ultra\n", "ultra"]]) {
+      const r = await driverRun(s, { headers });
+      assert.equal(r.code, 0, r.err); assert.equal(r.report.variant, variant);
+      assert.equal(r.report.confirmedEffort, null); assert.equal(r.report.effortCompliance, "unknown");
+      assert.equal(s.sessions.get(r.report.sessionID).model.variant ?? null, variant);
+    }
+    assert.equal(s.prompts, 4);
+  } finally { await s.close(); }
+});
+test("live observer reads pending POST and callback from the owner and falls back to its final transcript", async () => {
+  const s = await fakeOpenCode("live-admission"), state = tempDir("entrust-live-admission-"), dir = path.join(state, "invocation");
+  fs.mkdirSync(dir);
+  const input = path.join(dir, "prompt.txt"), report = path.join(dir, "report.json"), box = path.join(dir, "approvals");
+  fs.writeFileSync(input, prompt("ALLOW_NO_COMMANDS: yes\n"));
+  const cli = fakeCli(s.url, state); s.defaultModel = "router/deepseek/flash";
+  const run = spawnNode([DRIVER, "--prompt-file", input, "--report-file", report, "--approval-dir", box, "--idle-timeout", "4"],
+    { env: { ...cli.env, ENTRUST_STATE_DIR: state }, killAfterMs: 15000 });
+  try {
+    const end = Date.now() + 8000;
+    while (!s.releaseAdmission && Date.now() < end && run.child.exitCode === null) await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(typeof s.releaseAdmission, "function", run.stderrSoFar());
+    const status = await readObservation(report);
+    assert.equal(status.state, "live"); assert.equal(status.admission, "pending"); assert.equal(status.serverStatus, "busy");
+    assert.deepEqual(status.callbacks, { permissions: 1, questions: 0 });
+    assert.equal(JSON.stringify(status).includes("node check.mjs"), false);
+    const live = await readObservation(report, "messages");
+    assert.equal(live.sessionID, status.sessionID); assert.deepEqual(live.inputIds, status.inputIds);
+    assert.ok(live.messages.some((m) => m.content?.some((p) => p.text === "Привет во время POST")));
+    s.releaseAdmission();
+    while ((!fs.existsSync(box) || !fs.readdirSync(box).some((name) => name.endsWith(".request.json"))) && Date.now() < end && run.child.exitCode === null)
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    const requestFile = fs.readdirSync(box).find((name) => name.endsWith(".request.json"));
+    const q = JSON.parse(fs.readFileSync(path.join(box, requestFile)));
+    const decision = await invoke([ENTRY, "--dir", dir, "--report-file", report, "--decide", q.id, "--accept"], q.presented + "\n");
+    assert.equal(decision.code, 0, decision.out + decision.err);
+    const result = await run.done; assert.equal(result.code, 0, result.err);
+    const terminal = await readObservation(report, "messages");
+    assert.equal(terminal.state, "terminal"); assert.equal(terminal.source, "transcript");
+    assert.equal(terminal.invocationId, status.invocationId); assert.deepEqual(terminal.inputIds, status.inputIds);
+    assert.ok(terminal.messages.some((m) => m.content?.some((p) => p.text === "Привет во время POST")));
+    assert.equal(s.mutations.filter((m) => m.id === q.payload.id).length, 1);
+  } finally { s.releaseAdmission?.(); if (run.child.exitCode === null) run.child.kill("SIGKILL"); await run.done; await s.close(); }
+});
+test("live RESUME observer names the new input and excludes the earlier turn", async () => {
+  const s = await fakeOpenCode("slow"); s.slowMs = 100;
+  try {
+    const first = await driverRun(s, { headers: "VARIANT: high\n" }); assert.equal(first.code, 0, first.err);
+    s.slowMs = 2400;
+    const state = path.dirname(path.dirname(first.path)), dir = path.dirname(first.path), report = path.join(dir, "live-resume.json");
+    const input = path.join(dir, "resume-input.txt");
+    fs.writeFileSync(input, prompt(`ALLOW_NO_COMMANDS: yes\nRESUME: ${first.path}\n`));
+    const cli = fakeCli(s.url, state);
+    const run = spawnNode([DRIVER, "--prompt-file", input, "--report-file", report, "--idle-timeout", "4"],
+      { env: { ...cli.env, ENTRUST_STATE_DIR: state, ENTRUST_PLAN_MODEL: "router/deepseek/flash" }, killAfterMs: 12000 });
+    try {
+      const end = Date.now() + 7000;
+      while (s.prompts < 2 && Date.now() < end && run.child.exitCode === null) await new Promise((resolve) => setTimeout(resolve, 20));
+      assert.equal(s.prompts, 2, run.stderrSoFar());
+      const live = await readObservation(report, "messages");
+      assert.equal(live.state, "live"); assert.equal(live.sessionID, first.report.sessionID);
+      assert.equal(live.inputIds.length, 1); assert.notEqual(live.inputIds[0], first.report.turnId);
+      assert.equal(live.messages.some((m) => m.id === first.report.turnId || m.id === "msg_answer_1"), false);
+      const result = await run.done; assert.equal(result.code, 0, result.err);
+      const terminal = JSON.parse(fs.readFileSync(report));
+      assert.equal(terminal.variant, "high"); assert.equal(terminal.sessionID, first.report.sessionID);
+    } finally { if (run.child.exitCode === null) run.child.kill("SIGKILL"); await run.done; }
+  } finally { await s.close(); }
+});
+test("repeated live observation does not renew the lost relay lease", async () => {
+  const s = await fakeOpenCode("slow"); s.slowMs = 15000;
+  const state = tempDir("entrust-observer-lease-"), report = path.join(state, "run", "report.json"), dir = path.join(state, "run", "agent");
+  const cli = fakeCli(s.url, state), env = { ...cli.env, ENTRUST_STATE_DIR: state, AGENT_RUN_RETURN_MS: "900", AGENT_RUN_LEASE_MS: "2500" };
+  s.defaultModel = "router/deepseek/flash";
+  try {
+    const made = await invoke([ENTRY, "--new", "--report-file", report], prompt("ALLOW_NO_COMMANDS: yes\n"), env);
+    assert.equal(made.code, 0, made.out + made.err);
+    const run = await invoke([ENTRY, "--run", "--report-file", report], "", env);
+    assert.equal(run.code, 0, run.out + run.err); assert.match(run.out, /^DRIVER_EXIT=running$/m);
+    let observations = 0; const end = Date.now() + 12000;
+    while (!fs.existsSync(path.join(dir, "exit")) && Date.now() < end) {
+      if ((await readObservation(report)).state === "live") observations++;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    assert.ok(observations > 0, "no live owner observation was obtained");
+    assert.equal(fs.existsSync(path.join(dir, "exit")), true, "observer extended the lease or cleanup did not complete");
+    const cancel = JSON.parse(fs.readFileSync(path.join(dir, "cancel.json")));
+    const result = JSON.parse(fs.readFileSync(report));
+    assert.equal(cancel.kind, "relay-lost"); assert.equal(result.turnStatus, "aborted");
+    assert.equal(result.serverCleanup.process, "exited"); assert.equal(fs.existsSync(cli.stopFile), true);
+  } finally {
+    if (!fs.existsSync(path.join(dir, "exit"))) await invoke([ENTRY, "--stop", "--report-file", report], "", env);
+    await s.close();
+  }
+});
+test("a server that exits before it serves reports its exit code without its output", async () => {
   const bin = path.join(tempDir("entrust-opencode-dying-"), "bin"); fs.mkdirSync(bin);
   fs.writeFileSync(path.join(bin, "opencode"), `#!/usr/bin/env node\nconsole.error("Error: EPERM: operation not permitted, open '/home/x/.local/share/opencode/log'");\nprocess.exit(3);\n`, { mode: 0o755 });
   await assert.rejects(startLocalServer({ env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}` } }),
-    /exited with code 3 before announcing its local URL; it printed: Error: EPERM: operation not permitted/);
+    /exited with code 3 before announcing its local URL; its output is withheld/);
 });
 test("the private server's password is its own, never one the caller's environment holds", async () => {
   const s = await fakeOpenCode(), dir = tempDir("entrust-opencode-password-"), seen = path.join(dir, "password");
@@ -315,6 +643,7 @@ test("a default run starts and stops its private loopback server", async () => {
   try {
     const r = await driverRun(s);
     assert.equal(r.code, 0, r.err); assert.equal(r.report.serverMode, "local");
+    assert.deepEqual(r.report.serverCleanup, { process: "exited", owner: "exited", listener: "unknown" });
     assert.equal(fs.readFileSync(r.stopFile, "utf8"), "stopped");
   } finally { await s.close(); }
 });
@@ -477,6 +806,17 @@ test("a resumed session whose rules changed since is refused before any input", 
     const again = await driverRun(s, { resume: first.path, beside: first.path, rights: `write ${cwd}` });
     assert.equal(again.code, 4, again.err); assert.match(again.report.error, /holds permission rules other than/);
     assert.equal(s.prompts, prompts);
+  } finally { await s.close(); }
+});
+test("a legacy continuation retains its original skill permission rules", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const first = await driverRun(s); assert.equal(first.code, 0, first.err);
+    const session = s.sessions.get(first.report.sessionID);
+    session.permissions = session.permissions.filter((rule) => rule.action !== "skill");
+    const again = await driverRun(s, { resume: first.path });
+    assert.equal(again.code, 0, again.err); assert.match(again.err, /retains legacy skill permissions/);
+    assert.equal(session.permissions.some((rule) => rule.action === "skill"), false);
   } finally { await s.close(); }
 });
 test("a continuation keeps its rights: a write session resumed as read is refused, and one naming none stays write", async () => {
@@ -835,6 +1175,15 @@ test("continuation retains session and model but excludes old command evidence",
     assert.equal(s.calls.some((c) => c.method === "POST" && c.path.endsWith("/model")), false, "the session kept its model");
   } finally { await s.close(); }
 });
+test("a pinned MODEL on continuation preserves the previous variant", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const first = await driverRun(s, { headers: "VARIANT: high\n" }); assert.equal(first.code, 0, first.err);
+    const second = await driverRun(s, { resume: first.path, more: { ENTRUST_PLAN_MODEL: "router/deepseek/flash" } });
+    assert.equal(second.code, 0, second.err); assert.equal(second.report.variant, "high");
+    assert.equal(s.sessions.get(first.report.sessionID).model.variant, "high");
+  } finally { await s.close(); }
+});
 test("a continuation reads only its own run's messages: a long earlier history is not fetched again on each poll", async () => {
   const s = await fakeOpenCode();
   try {
@@ -956,6 +1305,22 @@ test("status transport failure cannot be interpreted as idle success", async () 
   const s = await fakeOpenCode("status-error");
   try { const r = await driverRun(s); assert.notEqual(r.code, 0); assert.notEqual(r.report.receiptOk, true); }
   finally { await s.close(); }
+});
+test("malformed active map cannot establish idle or permit RESUME", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const first = await driverRun(s); assert.equal(first.code, 0, first.err);
+    const before = s.prompts;
+    for (const value of [{ error: "invalid active schema" }, { ses_foreign: { type: "idle" } }]) {
+      s.activeOverride = value;
+      const again = await driverRun(s, { resume: first.path });
+      assert.equal(again.code, 2, again.err); assert.match(again.err, /status is unknown/);
+      assert.equal(s.prompts, before);
+    }
+    const fresh = await driverRun(s, { idle: 1 });
+    assert.notEqual(fresh.code, 0); assert.equal(fresh.report.receiptOk, false);
+    assert.equal(fresh.report.cancellation?.observed, "unknown");
+  } finally { await s.close(); }
 });
 test("Stop preserves partial output and stops only this session", async () => {
   const s = await fakeOpenCode("cancel");
@@ -1135,6 +1500,7 @@ test("Stop before the private server is ready ends in a terminal aborted report 
     assert.equal(r.report?.exitCode, 3); assert.equal(r.report.turnStatus, "aborted"); assert.equal(r.report.partial, true);
     assert.equal(r.report.receiptOk, false); assert.equal(r.report.ok, false);
     assert.equal(r.report.model, null); assert.equal(r.report.sessionID, null);
+    assert.deepEqual(r.report.serverCleanup, { process: "exited", owner: "exited", listener: "unknown" });
     assert.equal(r.report.requestedModel, "router/deepseek/flash");
     assert.deepEqual(r.report.commands, []);
     assert.match(r.report.cancellation.reason, /SIGTERM/); assert.equal(r.report.cancellation.signal, "SIGTERM");

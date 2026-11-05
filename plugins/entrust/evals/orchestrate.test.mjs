@@ -7,6 +7,25 @@ import { spawnSync } from "node:child_process";
 import { ROOT, registry, runCases, summarize, tempDir } from "./lib/harness.mjs";
 
 const { cases: CASES, test } = registry();
+
+test("skills requests apply to each invocation with their stated scope",
+  "task-wide requests must reach continuations, while one-off requests must not carry forward",
+  () => {
+    const policy = fs.readFileSync(path.join(ROOT, "skills/orchestrate/SKILL.md"), "utf8");
+    const external = fs.readFileSync(path.join(ROOT, "skills/orchestrate/references/external.md"), "utf8");
+    const claude = fs.readFileSync(path.join(ROOT, "skills/claude/SKILL.md"), "utf8");
+    const codex = fs.readFileSync(path.join(ROOT, "skills/codex/references/models.md"), "utf8");
+    return policy.includes("Do not use skills in this invocation")
+      && policy.includes("every affected launch and continuation without asking")
+      && policy.includes("for a single invocation, do not carry it to another")
+      && policy.includes("not removal from the runtime's catalogue")
+      && policy.includes("thread may still contain skills read earlier")
+      && policy.includes("without inherited history") && policy.includes("omit `RESUME:`")
+      && policy.includes("host's no-history fork") && codex.includes('fork_turns: "none"')
+      && external.includes("#skills-per-invocation") && claude.includes("#skills-per-invocation")
+      || "per-invocation skills policy or its entry points are missing";
+  });
+
 const dir = path.join(ROOT, "skills/orchestrate");
 const page = fs.readFileSync(path.join(dir, "SKILL.md"), "utf8");
 const core = ["SKILL.md", ...fs.readdirSync(path.join(dir, "references"))

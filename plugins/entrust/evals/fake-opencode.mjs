@@ -46,6 +46,7 @@ export async function fakeOpenCode(mode = "normal") {
       time: { created: Date.now(), completed: Date.now() }, finish: "stop",
       tokens: { input: 5, output: 3, reasoning: 1, cache: { read: 0, write: 0 } }, cost: 0.01,
       content: [{ type: "text", text }] };
+    if (mode === "provider-error-marker") m.error = { name: "ProviderError", status: 429, message: "SYNTHETIC_PROVIDER_SECRET", details: "SYNTHETIC_PROVIDER_SECRET" };
     if (mode === "unknown-model") { m.model = {}; }
     s.messages.push(m);
     if (mode === "partial-after-complete") {
@@ -76,7 +77,7 @@ export async function fakeOpenCode(mode = "normal") {
     }
     // The catalogue names a model by `id`; an alias such as `glm/flash-fast` shares its provider's modelID.
     const catalogue = [
-      { id: "deepseek/flash", modelID: "deepseek/flash", providerID: "router", enabled: true, status: "active", name: "Flash", variants: [{ id: "high" }] },
+      { id: "deepseek/flash", modelID: "deepseek/flash", providerID: "router", enabled: true, status: "active", name: "Flash", variants: [{ id: "high" }, ...(state.extraVariants ?? []).map((id) => ({ id }))] },
       { id: "glm/flash", modelID: "glm/flash", providerID: "router", enabled: true, status: "active", name: "GLM", variants: [] },
       { id: "glm/flash-fast", modelID: "glm/flash", providerID: "router", enabled: true, status: "active", name: "GLM fast", variants: [] },
     ];
@@ -108,6 +109,7 @@ export async function fakeOpenCode(mode = "normal") {
     }
     if (p === "/api/session/active") {
       if (mode === "status-error") return json({ error: "status unavailable" }, 503);
+      if (state.activeOverride !== undefined) return json({ data: state.activeOverride });
       if (mode === "cancel-final-snapshot" && state.prompts > 0 && (state.statusReads = (state.statusReads ?? 0) + 1) === 2) {
         state.finalSnapshot = true; await new Promise((resolve) => setTimeout(resolve, 200));
       }
@@ -196,8 +198,8 @@ export async function fakeOpenCode(mode = "normal") {
     if (mode === "edit-outside") {
       // An edit the session rules ask about: `state.editTarget`, which the case sets, outside the run's roots.
       replies.push({ id: `per_edit_${state.prompts}`, sessionID: s.id, action: "edit", resources: [state.editTarget], metadata: { filePath: state.editTarget } });
-    } else if (["permission", "permission-slow", "question", "question-slow", "cancel-question", "cancel-foreign-same", "cancel-request-read", "cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) {
-      if (["permission", "permission-slow", "cancel-foreign-same", "cancel-request-read", "cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) replies.push({ id: `per_native_${state.prompts}`, sessionID: s.id, action: "bash", resources: ["node *"], metadata: { command: "node check.mjs" } });
+    } else if (["live-admission", "permission", "permission-slow", "question", "question-slow", "cancel-question", "cancel-foreign-same", "cancel-request-read", "cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) {
+      if (["live-admission", "permission", "permission-slow", "cancel-foreign-same", "cancel-request-read", "cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) replies.push({ id: `per_native_${state.prompts}`, sessionID: s.id, action: "bash", resources: ["node *"], metadata: { command: state.permissionCommand ?? "node check.mjs" } });
       else questions.push({ id: `que_native_${state.prompts}`, sessionID: s.id, title: "Choose", fields: [{ key: "q", type: "string", options: [{ value: "read", label: "Read" }] }] });
       if (["cancel-permission-group", "permission-group", "permission-group-lost"].includes(mode)) replies.push({ id: "per_second_owned", sessionID: s.id, action: "bash", resources: ["node *"], metadata: { command: "node second.mjs" } });
       if (mode === "cancel-question") s.messages.push({ id: `msg_waiting_question_${state.prompts}`, type: "assistant", agent: "build", model: { ...s.model }, time: { created: Date.now() },
@@ -242,6 +244,11 @@ export async function fakeOpenCode(mode = "normal") {
     }
     // A request is waiting and the server reports the session idle; once it is answered the work takes state.slowMs more.
     if (["permission-slow", "question-slow"].includes(mode)) s.busy = false;
+    if (mode === "live-admission") {
+      s.messages.push({ id: `msg_partial_${state.prompts}`, type: "assistant", model: { ...s.model }, time: { created: Date.now() },
+        content: [{ type: "text", text: "Привет во время POST" }] });
+      await new Promise((resolve) => { state.releaseAdmission = resolve; });
+    }
     if (mode === "lost-response") { req.socket.destroy(); return; }
     return json({ data: { id: body.id, sessionID: s.id, time: { created: Date.now() }, type: "user", payload: { text: body.text }, delivery: "steer" } });
   });

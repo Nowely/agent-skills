@@ -109,7 +109,7 @@ at the first line that is not one; a non-field upper-case `NAME:` above it is ex
 | `EXPECT:` | `<regex>` | the answer is evidence only if a command matching it ran and succeeded; none is exit 5. Do not point it at a check whose failure IS the finding |
 | `OUTPUT_SCHEMA:` | `<path to a strict JSON Schema file>`; the five-field schema for orchestrated agents ships at `${CLAUDE_SKILL_DIR}/../orchestrate/schemas/five-fields.schema.json` | the answer must parse as one JSON object |
 | `MODEL:` | `astra`, `sol`, `terra`, `luna`, the newest listed model of that name, or a full slug | this agent needs a model other than the configured default; in prose the name is capitalised |
-| `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`, and `ultra` where the model lists it; no line inherits `~/.codex/config.toml` | the task is worth more or less thinking than the configured default; `low` for a one-line task |
+| `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max`, and `ultra` where the model lists it; no line inherits `~/.codex/config.toml` | set for each launch and continuation under the orchestration policy; choose for the task under the orchestration policy |
 | `WEB_SEARCH:` | `cached`, `indexed`, `live`: the provider's search tool, not the network | the user asked for the provider's web search; "the network is allowed" is not that ask |
 | `BRIEF:` | `yes` | a short answer is enough; omit it beside an output schema — it clips only the inline `answer` on a valid return and still asks the model for 20 lines |
 | `ALLOW_NO_COMMANDS:` | `yes` | the agent is recall-only and will run nothing |

@@ -17,6 +17,13 @@ test("advisor remains explicit-only and concise",
     && text.replace(/\n+$/, "").split("\n").length <= 30
     || "frontmatter or concise-page bound failed");
 
+test("advisor model selection follows user authority",
+  "a named model wins, and an unavailable choice is not silently replaced",
+  () => text.includes("Use the model the user named")
+    && text.includes("unless they delegated the choice")
+    && text.includes("wait for approval unless an authorized fallback already covers them")
+    || "advisor selection policy is missing");
+
 test("the external adapter owns transport details",
   "the common advisor page should not duplicate a provider's headers and report paths",
   () => !/^ {4}(MODEL|OUTPUT_SCHEMA|TASK):/m.test(text) || "the page carries an adapter's header block");

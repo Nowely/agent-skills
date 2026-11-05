@@ -3,6 +3,22 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Changed
+
+- OpenCode runs expose owner-backed live status and on-demand transcript pages. New sessions allow skills, while
+  resumed sessions retain their existing permission rules.
+- Workers receive available skills by default; an explicit request not to use them is carried in each affected
+  brief. Advisor and effort selection follow the user's choices without automatically selecting maximum effort.
+
+### Fixed
+
+- OpenCode continuations retain the selected model variant, and the server owner stops its child when the driver
+  disconnects. Diagnostic output omits provider error details while transcripts retain the original messages.
+- Large relay output is flushed before exit. Codex workers discover available skills without copying the caller's
+  entire configuration, and Claude continuations preserve a known safe mode.
+
 ## 0.33.0 — 2026-10-22
 
 ### Breaking

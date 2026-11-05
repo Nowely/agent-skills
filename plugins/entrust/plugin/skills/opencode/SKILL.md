@@ -41,11 +41,16 @@ below. A model mentioned only for information or discussion does not request a w
    `OPENCODE=unavailable` says why no server answered.
 2. Choose `MODEL: inherit` only when the user did not name a model family: it selects `DEFAULT` and is
    refused when that is `none`. When the user names a family such as DeepSeek or GLM, use the first listed
-   model of that family, with its listed variant as `VARIANT:`; never use `inherit` or another family for
+   model of that family, with its listed variant as `VARIANT:` when permitted by the effort policy below; never use `inherit` or another family for
    that request. If no model of the family is listed, report the unresolved family before launching. A
    continuation retains its previous model and variant. Explicit `MODEL: provider/model` overrides
    selection; preserve slashes inside the model ID.
-   `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant.
+   `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant. A requested
+   variant is not proof of the provider's effective reasoning effort. The coordinator chooses low, medium, high,
+   or xhigh as appropriate; max and ultra require a separate explicit user request and are never selected
+   automatically. Existing authorization applies to continuations in its scope; a previous report alone is not
+   proof of authorization. The runtime cannot verify authorization and reports the effective effort as unknown
+   when unconfirmed.
 3. For orchestration, read [orchestration.md](references/orchestration.md). Resolve and pin the model
    before registering the approved plan. Use the shared [five-field schema](../orchestrate/schemas/five-fields.schema.json).
 4. Make, run, read, continue and stop the worker as orchestrate's
@@ -72,6 +77,17 @@ Other permission requests carry the complete native request; grant one action wi
 Each concurrent writer gets a distinct worktree. Rights changes need their own authority.
 Read-only agents may share a directory when its tooling permits it.
 
+New sessions allow the `skill` tool; older resumed sessions keep their original permission rules and may
+still ask for skill access. OpenCode can also discover skills from its own configuration and policy.
+
+To observe an active invocation without reading its server credentials, run
+`node <skill-dir>/scripts/observe.mjs --report-file <absolute-report>`; add `--messages` to request content,
+and `--cursor <cursor>` to read the next page. Reads are non-atomic, may be incomplete, and do not renew
+the worker's lease. Status is server activity, not proof of task progress; unknown or unavailable is not idle.
+The live channel uses a private local Unix socket and stores no text. Processes running as the same user can
+still access it. Once the run ends, message reads use the existing transcript if available; a missing transcript
+or owner is unavailable. Do not replace `--pending` or `--handback` with this view for permission decisions.
+
 Read the report even when the exit is nonzero:
 partial answers, native command outcomes and callback decisions remain useful evidence.
 `receiptOk` establishes attribution, while independent gates establish the result.
@@ -85,6 +101,10 @@ call again, and to `--stop --report-file <report>`, which you run once the proxy
 the shared page's [Stop an agent](../orchestrate/references/external.md#7-stop-an-agent), and a hand-made signal on
 the driver's pid is the recovery for what neither reaches. Verify the external outcome;
 a missing report or uncertain cancellation is unknown, never success.
+
+The local server's owner closes its own child when the driver's private channel disconnects. `serverCleanup`
+reports whether the server and owner processes exited; it does not prove the listener closed or detached
+descendants stopped. A crash of the owner itself is outside this guarantee.
 
 Read [parity.md](references/parity.md) before relying on active clarification, schema delivery,
 attachments, tool selection or billing. API presence alone is not evidence of working execution.

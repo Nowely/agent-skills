@@ -294,6 +294,13 @@ test("parseCount tells a suite that ran from one that did not",
       // whole inventory was empty.
       ["\nall 0 passed, 11 skipped: a\n", "0 passed, 11 skipped", false],
       ["\nall 0 passed\n", "0", false],
+      ["# pass 12\n# fail 0\n# skipped 0\n", "12", true],
+      ["# pass 3\n# fail 0\n# skipped 2\n", "3 passed, 2 skipped", true],
+      ["# pass 0\n# fail 0\n# skipped 2\n", "0 passed, 2 skipped", false],
+      ["# pass 3\n# fail 1\n# skipped 0\n", "?", false],
+      ["ℹ pass 17\nℹ fail 0\nℹ skipped 0\n", "17", true],
+      ["ℹ pass 4\nℹ fail 0\nℹ skipped 1\n", "4 passed, 1 skipped", true],
+      ["ℹ pass 2\nℹ fail 1\nℹ skipped 0\n", "?", false],
     ];
     const wrong = forms.filter(([out, want, green]) => parseCount(out) !== want || measured(parseCount(out)) !== green)
       .map(([out, want]) => `${JSON.stringify(out.trim())} -> ${parseCount(out)}, expected ${want}`);

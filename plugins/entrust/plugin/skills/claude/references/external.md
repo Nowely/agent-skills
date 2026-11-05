@@ -22,21 +22,21 @@ pins the model and the writes: a prompt that names neither runs on the row's, on
 | `EFFORT:` | `low`, `medium`, `high`, `xhigh`, `max` | absent: the user's default |
 | `OUTPUT_SCHEMA:` | an absolute path | absent: the [five-field schema](../../orchestrate/schemas/five-fields.schema.json); the driver validates the answer against the original schema |
 | `RESUME:` | the absolute path of an earlier claude report | continues that run's session, in its directory, with its rights; a `RIGHTS:` line names the same or is left out |
-| `SAFE_MODE: yes` | | no CLAUDE.md, memory, skills, plugins, hooks or MCP servers, and so no approvals |
+| `SAFE_MODE: yes` | explicitly requested broader isolation; an omitted field on worker RESUME retains a recorded safe mode; an unknown or conflicting one requires an explicit choice | passes `--safe-mode` to suppress CLAUDE.md, memory, skills, plugins, hooks and MCP servers; no mailbox approvals; this does not prevent file reads through other tools |
 | `ALLOW_NO_COMMANDS: yes` | | the agent may answer from what it knows; without it, a turn that ran no command and read no file is exit 5 |
 | `PROFILE: proxy` | | the [main proxy](../../orchestrate/references/main-proxy.md)'s session: Claude Code with its own tools, configuration and permission policy (bypassPermissions requested), no idle or volume bound, ALLOW_NO_COMMANDS implied, `RIGHTS` full naming its directory; a denied call does not fail the run and stays in `permissionDenials`; RESUME continues the same session id; admitted only as its mode's current round, right before it starts |
 | `TASK:` | the task, then every line after it | name absolute paths: Claude Code's prompt names a scratchpad, and "the current directory" alone can land there |
 
 | `RIGHTS` | Working directory | Without asking | Tools |
 | --- | --- | --- | --- |
-| `read` | `dir`, else the caller's | no file-tool writes; `dir` selects the working directory, not a read boundary; host access rules still apply | Read, Grep, Glob, Bash |
+| `read` | `dir`, else the caller's | no file-tool writes; `dir` selects the working directory, not a read boundary; host access rules still apply | Read, Grep, Glob, Bash, Skill |
 | `write` | `dir` | edits inside `dir` too; reads are not bounded by `dir`, subject to host access rules | and Edit, Write |
 | `worktree` | a fresh detached worktree of `repo` under `<state>/worktrees/` | edits inside it | and Edit, Write |
 
 Every non-read action outside its rights asks: a command outside the read-only set, which is the commands Claude
 Code itself runs unasked (a command holding a variable assignment, a loop or `awk` asked in one measured run),
 and a write outside its directory. The
-agent has no web tools and no Agent tool. It runs with the user's own configuration: their allow rules run
+agent has the Skill tool but no web tools or Agent tool. Skill availability and its downstream permissions depend on Claude Code; the fake test checks only the requested and reported tool list. It runs with the user's own configuration: their allow rules run
 without asking, their hooks and MCP servers are there, and the report's `context` says which. A `write`
 directory may not be your home or above it, nor lie inside or above `<state>` or `~/.claude`. An Edit or Write
 outside the run's directory aimed inside `<state>` or `~/.claude` is declined at once, never offered, and no

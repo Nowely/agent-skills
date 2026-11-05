@@ -604,7 +604,7 @@ function registerPlan(runDir, amend) {
   const serialized = rows.map((r) => (r.extended ? [r.id, r.adapter, r.model, r.role, r.writes, r.tokens] : [r.id, r.model, r.role, r.writes, r.tokens]).join(" | ")).join("\n");
   if (amend) fs.appendFileSync(file, `# amended ${new Date().toISOString()}\n${serialized}\n`);
   else fs.writeFileSync(file, `${PLAN_HEADER}\n${serialized}\n`, { mode: 0o600, flag: "wx" });
-  process.stdout.write(`${amend ? "AMENDED" : "PLAN"}=${file}\n${rows.map((r) => `AGENT=${r.id} ${r.model} ${r.writes}`).join("\n")}\n`);
+  return `${amend ? "AMENDED" : "PLAN"}=${file}\n${rows.map((r) => `AGENT=${r.id} ${r.model} ${r.writes}`).join("\n")}\n`;
 }
 
 // The name a status line gives a model: its adapter's short name, or the model as the report wrote it.
@@ -801,8 +801,7 @@ function pendingRequests(dir) {
   for (const id of box.late) out.push(`LATE=${id}`);
   for (const id of box.stale) out.push(`STALE=${id}`);
   out.push(`REQUESTS=${waiting}`);
-  process.stdout.write(`${out.join("\n")}\n`);
-  process.exit(0);
+  exitAfterOutput(`${out.join("\n")}\n`, 0);
 }
 
 // The requests --run hands back: open, listed in `pending`, and with no decision file yet. One with a
@@ -944,7 +943,7 @@ function spawnedFor(dir, report) {
 function stopRun(dir, report, why) {
   const refuse = (msg) => { process.stdout.write(`REFUSED=stop ${msg}\n`); process.exit(2); };
   if (!isDirectory(dir)) refuse(`${JSON.stringify(dir)} is not a directory`);
-  const print = (lines) => { process.stdout.write(`${lines.join("\n")}\n`); process.exit(0); };
+  const print = (lines) => exitAfterOutput(`${lines.join("\n")}\n`, 0);
   const startBy = Date.now() + PROMPT_WAIT_MS;
   const begin = () => {
     const line = pidLineIn(read(path.join(dir, "err.txt")) ?? "");
@@ -1036,8 +1035,7 @@ function handbackCheck(dir, report) {
   const verdict = at === got.length ? `HANDBACK=truncated missing=${want.length - at} first=${field(want[at]).slice(0, 160)}` : `HANDBACK=differs line=${at + 1}`;
   const text = want.join("\n");
   const token = tokenFor(text, null);
-  process.stdout.write(`${verdict}\nCANONICAL<<${token}\n${text}\nCANONICAL>>${token}\n`);
-  process.exit(3);
+  exitAfterOutput(`${verdict}\nCANONICAL<<${token}\n${text}\nCANONICAL>>${token}\n`, 3);
 }
 
 // A prompt a --new in the same turn has not written yet: wait for it, bounded, before deciding.
@@ -1072,7 +1070,7 @@ function run(dir, report, watch = false) {
   // The relay's pulse for the keeper, from the driver's pid line on.
   let beatAt = 0;
   const beat = () => { const now = Date.now(); if (now - beatAt >= BEAT_MS) { beatAt = now; writeAttach(dir, "attached", process.pid); } };
-  const print = (lines) => { process.stdout.write(`${lines.join("\n")}\n`); process.exit(0); };
+  const print = (lines) => exitAfterOutput(`${lines.join("\n")}\n`, 0);
   const finish = () => print(statusLines(dir, report));
   // The requests the run waits on, for the coordinator to decide; the run goes on under its keeper.
   const handBack = (waiting) => { writeAttach(dir, "handed-back", process.pid); journal(dir, { event: "handback", requests: waiting.map((q) => q.id) }); print(requestBatch(waiting, report)); };
@@ -1155,6 +1153,9 @@ function run(dir, report, watch = false) {
   });
 }
 
+// Wait for stdout to flush before exiting: request bodies and canonical handbacks can exceed a pipe buffer.
+const exitAfterOutput = (output, code) => process.stdout.write(output, () => process.exit(code));
+
 // The command line. An adapter's entry point calls this with its own adapter as the fallback: the one a
 // directory that records no backend belongs to.
 export function main(argv, { fallback = null } = {}) {
@@ -1163,15 +1164,15 @@ export function main(argv, { fallback = null } = {}) {
   const o = parse(argv);
   if (o.error) { process.stderr.write(`agent-run: ${o.error}\n${USAGE}`); process.exit(2); }
   if (o.help) { process.stdout.write(o.helpAll ? USAGE + USAGE_ALL : USAGE); process.exit(0); }
-  if (o.isPlan) { if (o.report || o.dir || o.run || o.status || o.isNew || o.orphan) planError("--plan cannot be combined with agent modes"); registerPlan(o.runDir, o.amend); process.exit(0); }
+  if (o.isPlan) { if (o.report || o.dir || o.run || o.status || o.isNew || o.orphan) planError("--plan cannot be combined with agent modes"); return exitAfterOutput(registerPlan(o.runDir, o.amend), 0); }
   if (o.amend || o.runDir) { process.stderr.write("agent-run: --amend and --run-dir require --plan\n"); process.exit(2); }
   if (!o.report) { process.stderr.write(`agent-run: --report-file is required\n${USAGE}`); process.exit(2); }
   if (o.isNew) newAgent(o.report, o.dir, o.adapter);
   const dir = o.dir ?? (path.isAbsolute(o.report) ? agentDirOf(o.report) : null);
   if (dir === null) { process.stderr.write(`${REFUSED}: --report-file ${JSON.stringify(o.report)} is not an absolute path\n`); process.exit(2); }
   if (o.adapter) { try { backendOf(dir, o.adapter); } catch (e) { process.stderr.write(`${REFUSED}: ${e.message}\n`); process.exit(2); } }
-  if (o.status) { process.stdout.write(`${statusLines(dir, o.report).join("\n")}\n`); process.exit(0); }
-  if (o.pending) pendingRequests(dir);
+  if (o.status) return exitAfterOutput(`${statusLines(dir, o.report).join("\n")}\n`, 0);
+  if (o.pending) return pendingRequests(dir);
   if (o.stop) return stopRun(dir, o.report, o.why);
   if (o.handback) return handbackCheck(dir, o.report);
   if (o.decide !== null) decideRequest(dir, o.decide, o.decision, o.why);

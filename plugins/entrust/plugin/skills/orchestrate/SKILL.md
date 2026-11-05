@@ -100,6 +100,21 @@ inherits yours, so give it its own temporary directory when its checks write.
    (its `--help` describes receipts and request vocabulary), then have a fresh completeness critic
    read the frozen draft and its evidence. Name every dropped task, agent or check.
 
+## Skills per invocation
+
+Workers use the skills their runtime makes available by default, subject to the adapter's documented limits.
+If the user asks for an invocation without skills, put “Do not use skills in this invocation” in that
+worker's brief. For a task-wide request, include it in every affected launch and continuation without asking
+again; for a single invocation, do not carry it to another. An invocation with no such instruction uses the
+ordinary settings. The coordinator carries the user's scope in the conversation; no skills mode is stored.
+
+This is an instruction, not removal from the runtime's catalogue or a file-access restriction. A resumed
+thread may still contain skills read earlier. If the user needs a history without them, start a new context
+without inherited history: omit `RESUME:` for an external worker, and select the host's no-history fork for
+a native worker when available ([Codex](../codex/references/models.md#native-history)). If the host cannot
+provide it, report the limitation. Claude's `SAFE_MODE` also suppresses other configuration and approvals, so choose it only when that broader
+mode is explicitly requested.
+
 ## Capacity and models
 
 Choose the smallest team that meets the work and verification needs. Tiers describe work demands, not
@@ -125,9 +140,11 @@ Default bounds, capped further by the host's capacity and the user's agreed limi
 | top tier | 1 alive at a time per model family; a standing advisor is not counted |
 
 Choose models and effort by required quality, uncertainty, consequences, context and latency. Use cost
-as a selection input when it can change the choice; omit cost estimates from the approval plan. Use the
-host's highest supported effort, or a stronger configured setting, unless the user selects the speed
-profile.
+as a selection input when it can change the choice; omit cost estimates from the approval plan. Choose
+effort for each task. Use `max` or `ultra` only on the user's separate explicit instruction; never select
+either automatically. Existing authorization applies to continuations in its scope. Record the requested
+effort for every launch and continuation. Distinguish it from the provider-confirmed effective effort;
+when the provider does not confirm it, mark the effective effort unknown.
 
 Recommend one of these profiles:
 

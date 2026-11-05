@@ -1364,6 +1364,23 @@ test("a decision naming another run, on disk before the deadline settles its req
       || `${JSON.stringify({ lines: res.lines.slice(0, 2), receipt: valueOf(res.lines, "RECEIPT"), settled })}`;
   });
 
+test("large pending and canonical handback bodies reach a pipe whole",
+  "a successful exit must not discard a request body or its closing frame",
+  async () => {
+    const { dir, report, put, request, pend } = handMailbox();
+    const command = `START${"x".repeat(220000)}END`;
+    put("1-aaaaaaaa.request.json", request("1-aaaaaaaa", { command }));
+    pend("1-aaaaaaaa");
+    const pending = await launcherLines(["--pending", "--dir", dir, "--report-file", report]);
+    const block = /^COMMAND<<([0-9a-f]{12})\n([\s\S]*?)\nCOMMAND>>\1\nREQUESTS=1\n$/m.exec(pending.out);
+    if (pending.code !== 0 || !block || block[2] !== command) return `pending exit ${pending.code}, bytes ${Buffer.byteLength(pending.out)}`;
+    const back = await launcherLines(["--handback", "--dir", dir, "--report-file", report], { input: "" });
+    const canonical = /^HANDBACK=truncated[^\n]*\nCANONICAL<<([0-9a-f]{12})\n([\s\S]*)\nCANONICAL>>\1\n$/.exec(back.out);
+    if (back.code !== 3 || !canonical || !canonical[2].includes(`\n${command}\n`) || !canonical[2].endsWith(`REPORT=${report}`))
+      return `handback exit ${back.code}, bytes ${Buffer.byteLength(back.out)}`;
+    return true;
+  });
+
 test("--pending shows the waiting request whole, --decide publishes it at 0600 with the run's identity and refuses a second, and after the run --decide refuses",
   "this is the caller's reading and answering outside a wrapper — every word read, one decision, the agent seen to finish — through the same launcher the wrapper runs",
   async () => {
