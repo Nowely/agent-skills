@@ -3,7 +3,7 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
-## Unreleased
+## 0.34.0 — 2026-11-05
 
 ### Changed
 
@@ -21,6 +21,26 @@ forensics remain in the repository references and release notes.
   disconnects. Diagnostic output omits provider error details while transcripts retain the original messages.
 - Large relay output is flushed before exit. Codex workers discover available skills without copying the caller's
   entire configuration, and Claude continuations preserve a known safe mode.
+
+### Compatibility
+
+- OpenCode `EXPECT` now exits 5 with an unknown result when no successful command proves a match and any output
+  might be truncated or has an unknown truncation flag. OpenCode's exact `(no output)` is also ambiguous; a
+  match is decisive only if it holds for both an empty string and the literal text.
+
+### Validation
+
+- PR #91 CI passed on Ubuntu and macOS: 24 of 26 suites each, with fidelity and orchestrate-live not run and
+  individual cases skipped. The OpenCode suite passed 135 cases; an independent review found no actionable issues.
+- Live Luna and Kimi probes ran against the preceding snapshot, covering skill use, continuation, large output
+  and driver SIGKILL with temporary output limits. They did not exercise the final `EXPECT` change. Real Codex
+  skills-bridge semantics and Claude Skill in SAFE_MODE were not established.
+
+### Known issues
+
+- Open issues E67, E110, E90, E96, E100, E102, E103, E104, E111, E113, E114, E117 and E140 are described in
+  [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+- Cache usage can report a missing read count as zero; one observed Kimi cache miss has no established cause.
 
 ## 0.33.0 — 2026-10-22
 
