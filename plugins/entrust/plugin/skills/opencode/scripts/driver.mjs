@@ -148,7 +148,8 @@ function collectTools(messages) {
   for (const m of messages ?? []) for (const p of contentOf(m)) {
     if (p?.type !== "tool") continue;
     const state = p.state ?? {};
-    const text = (state.content ?? []).filter((c) => c?.type === "text").map((c) => c.text ?? "").join("");
+    const texts = (state.content ?? []).filter((c) => c?.type === "text");
+    const text = texts.length && texts.every((c) => typeof c.text === "string") ? texts.map((c) => c.text).join("") : null;
     tools.push({
       tool: p.name ?? null,
       callID: p.id ?? null,
@@ -156,7 +157,8 @@ function collectTools(messages) {
       command: state.input?.command ?? null,
       description: state.input?.description ?? state.metadata?.description ?? null,
       exit: state.metadata?.exit ?? null,
-      output: text || null,
+      output: text,
+      outputTruncated: typeof state.metadata?.truncated === "boolean" ? state.metadata.truncated : null,
       filePath: state.input?.filePath ?? state.input?.path ?? null,
     });
   }
@@ -1223,7 +1225,7 @@ async function observe(ctx, kind) {
     messages = messages.filter((message) => message._sessionID === sessionID);
   }
   if (Boolean(ctx.admissionInFlight) || missingInput) complete = false;
-  const tools = messagesKnown ? collectTools(messages).map(({ tool, callID, status: state }) => ({ tool, callID, status: state })) : "unknown";
+  const tools = messagesKnown ? collectTools(messages).map(({ tool, callID, status: state, outputTruncated }) => ({ tool, callID, status: state, outputTruncated })) : "unknown";
   return { ...base, serverStatus: status, serverObservedAt, callbacks, tools, complete, partial: !complete, ...(kind === "messages" ? { messages } : {}) };
 }
 

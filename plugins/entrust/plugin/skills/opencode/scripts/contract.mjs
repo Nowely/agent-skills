@@ -228,7 +228,7 @@ export function commandEvidence(tools) {
   for (const t of tools) {
     if (t?.tool !== "shell") continue;
     const exitCode = t.exit ?? null;
-    const c = { command: t.command ?? null, exitCode, output: t.output ?? null, description: t.description ?? null };
+    const c = { command: t.command ?? null, exitCode, output: t.output ?? null, outputTruncated: t.outputTruncated ?? null, description: t.description ?? null };
     commands.push(c);
     if (exitCode === 0) successful.push(c);
   }
@@ -241,8 +241,15 @@ export function commandEvidence(tools) {
 export const READ_TOOLS = new Set(["read", "list", "glob", "grep"]);
 export function expectation({ expect, successful, observations = successful.length, allowNoCommands }) {
   if (expect) {
-    const hit = successful.find((c) => expect.test(String(c.output ?? "")));
-    return hit ? { ok: true } : { ok: false, why: "no successful command's output matched EXPECT" };
+    let unknown = false;
+    for (const c of successful) {
+      if (c.outputTruncated !== false || typeof c.output !== "string") { unknown = true; continue; }
+      const matches = expect.test(c.output);
+      if (c.output === "(no output)" && expect.test("") !== matches) { unknown = true; continue; }
+      if (matches) return { ok: true };
+    }
+    return unknown ? { ok: false, why: "whether a successful command's output matched EXPECT is unknown" }
+      : { ok: false, why: "no successful command's output matched EXPECT" };
   }
   if (!allowNoCommands && observations === 0) return { ok: false, why: "the agent observed nothing: no command succeeded and no file was read, and ALLOW_NO_COMMANDS is not yes" };
   return { ok: true };

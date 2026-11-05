@@ -15,6 +15,8 @@ forensics remain in the repository references and release notes.
 
 ### Fixed
 
+- OpenCode EXPECT reports an unknown result when command output may be truncated, instead of treating it as
+  complete. Reports and live tool summaries expose the server's truncation flag as true, false or unknown.
 - OpenCode continuations retain the selected model variant, and the server owner stops its child when the driver
   disconnects. Diagnostic output omits provider error details while transcripts retain the original messages.
 - Large relay output is flushed before exit. Codex workers discover available skills without copying the caller's

@@ -49,6 +49,7 @@ export async function fakeOpenCode(mode = "normal") {
     if (mode === "provider-error-marker") m.error = { name: "ProviderError", status: 429, message: "SYNTHETIC_PROVIDER_SECRET", details: "SYNTHETIC_PROVIDER_SECRET" };
     if (mode === "unknown-model") { m.model = {}; }
     s.messages.push(m);
+    if (state.toolParts) m.content.unshift(...structuredClone(state.toolParts));
     if (mode === "partial-after-complete") {
       s.messages.push({ ...m, id: `msg_partial_${state.prompts}`, time: { created: Date.now() + 1 },
         content: [{ type: "text", text: "Latest partial details" }] });

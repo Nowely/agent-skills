@@ -114,6 +114,12 @@ Read the report even when the exit is nonzero:
 partial answers, native command outcomes and callback decisions remain useful evidence.
 `receiptOk` establishes attribution, while independent gates establish the result.
 The report's `model` is observed attribution; `requestedModel` preserves the selection even after Stop.
+`outputTruncated` in report tools, shell commands and live tool summaries is OpenCode's boolean truncation
+metadata, or null when unknown; live running tools show the current snapshot. EXPECT succeeds on a proven
+match from a successful command. Truncated or unknown output cannot prove a match or mismatch; if no command
+proves a match and any is unknown, exit 5 reports unknown. OpenCode's exact `(no output)` may represent empty
+output or that literal text, so EXPECT is decisive only when both candidates give the same result. Other
+untruncated output is checked as OpenCode returned it, not as raw stdout bytes.
 Scope declarations do not configure a sandbox.
 
 Where the host delivers Stop on the proxy to its command as a signal, the driver aborts its own sessions, records

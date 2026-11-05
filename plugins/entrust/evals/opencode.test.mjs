@@ -693,7 +693,7 @@ test("owner observation distinguishes pending admission, callbacks, busy and inv
   const startedAtMs = Date.now() - 1000;
   const rows = [ { id: "old", type: "user", time: { created: startedAtMs + 1 } },
     { id: "input", type: "user", time: { created: startedAtMs + 2 } },
-    { id: "answer", type: "assistant", time: { created: startedAtMs + 3 }, content: [{ type: "tool", id: "call", name: "shell", state: { status: "running", input: { command: "PRIVATE_COMMAND" } } }] } ];
+    { id: "answer", type: "assistant", time: { created: startedAtMs + 3 }, content: [{ type: "tool", id: "call", name: "shell", state: { status: "running", input: { command: "PRIVATE_COMMAND", path: "PRIVATE_PATH" }, content: [{ type: "text", text: "PRIVATE_OUTPUT" }], metadata: { truncated: true, secret: "PRIVATE_SECRET" } } }] } ];
   let active = { ses_root: { type: "running" } };
   const client = { call: async (_method, route) => {
     if (route.startsWith("/sessions?")) return { data: [] };
@@ -708,7 +708,12 @@ test("owner observation distinguishes pending admission, callbacks, busy and inv
   const status = await observe(ctx, "status");
   assert.equal(status.admission, "pending"); assert.equal(status.serverStatus, "busy");
   assert.deepEqual(status.callbacks, { permissions: 1, questions: 0 });
+  assert.deepEqual(status.tools, [{ tool: "shell", callID: "call", status: "running", outputTruncated: true }]);
   assert.equal(JSON.stringify(status).includes("PRIVATE_"), false);
+  rows[2].content[0].state.metadata.truncated = false;
+  assert.equal((await observe(ctx, "status")).tools[0].outputTruncated, false);
+  rows[2].content[0].state.metadata.truncated = "false";
+  assert.equal((await observe(ctx, "status")).tools[0].outputTruncated, null);
   assert.deepEqual((await observe(ctx, "messages")).messages.map((m) => m.id), ["input", "answer"]);
   active = []; const unknown = await observe(ctx, "status");
   assert.equal(unknown.serverStatus, "unknown"); assert.equal(unknown.complete, false);
@@ -1265,6 +1270,67 @@ test("a turn that read a file has observed something, as in every adapter; one t
   assert.equal(expectation({ successful: [], observations: 1 }).ok, true);
   assert.match(expectation({ successful: [], observations: 0 }).why, /observed nothing/);
   assert.equal(expectation({ successful: [], observations: 0, allowNoCommands: true }).ok, true);
+});
+test("EXPECT distinguishes proven matches, mismatches and unknown output", () => {
+  const check = (regex, successful) => expectation({ expect: new RegExp(regex), successful });
+  const cmd = (output, outputTruncated) => ({ output, outputTruncated });
+  for (const flag of [true, null, undefined]) assert.match(check("hit", [cmd("hit", flag)]).why, /unknown/);
+  assert.match(check("full output saved to", [cmd("full output saved to /PRIVATE_PATH", true)]).why, /unknown/);
+  assert.equal(check("hit", [cmd("hit", false)]).ok, true);
+  assert.equal(check("^$", [cmd("", false)]).ok, true);
+  assert.match(check("hit", [cmd("miss", false)]).why, /no successful/);
+  assert.match(check("hit", [cmd(null, false)]).why, /unknown/);
+  assert.match(check("^$", [cmd("(no output)", false)]).why, /unknown/);
+  assert.match(check("no output", [cmd("(no output)", false)]).why, /unknown/);
+  assert.equal(check("^", [cmd("(no output)", false)]).ok, true);
+  assert.match(check("hit", [cmd("(no output)", false)]).why, /no successful/);
+  assert.equal(check("no output", [cmd("(no output)\n", false)]).ok, true);
+  assert.equal(check("hit", [cmd("hit", true), cmd("hit", false)]).ok, true);
+  assert.equal(check("hit", [cmd("hit", false), cmd("hit", true)]).ok, true);
+  assert.match(check("hit", [cmd("miss", false), cmd("hit", null)]).why, /unknown/);
+  assert.match(check("hit", []).why, /no successful/);
+  assert.equal(expectation({ successful: [cmd("hit", null)] }).ok, true);
+});
+test("EXPECT unknown exits 5, reports native truncation and preserves higher priority errors", async () => {
+  const parts = [true, false, "false", null].map((truncated, i) => ({ type: "tool", id: `call_${i}`, name: "shell",
+    state: { status: "completed", input: { command: `cmd ${i}` }, content: [{ type: "text", text: "hit" }], metadata: { exit: 0, truncated } } }));
+  for (const [mode, code] of [["normal", 5], ["provider-error-marker", 1]]) {
+    const s = await fakeOpenCode(mode); s.toolParts = [parts[0], parts[2], parts[3]];
+    try {
+      const r = await driverRun(s, { headers: "EXPECT: hit\n" });
+      assert.equal(r.code, code, r.err);
+      assert.deepEqual(r.report.tools.map((t) => t.outputTruncated), [true, null, null]);
+      assert.deepEqual(r.report.commands.map((c) => c.outputTruncated), [true, null, null]);
+      const transcript = JSON.parse(fs.readFileSync(r.report.transcriptPath, "utf8"));
+      assert.equal(transcript.messages.find((m) => m.type === "assistant").content[1].state.metadata.truncated, "false");
+      if (mode === "normal") assert.match(r.report.error, /unknown/);
+    } finally { await s.close(); }
+  }
+  const s = await fakeOpenCode(); s.toolParts = parts;
+  try { const r = await driverRun(s, { headers: "EXPECT: hit\n" }); assert.equal(r.code, 0, r.err);
+    assert.deepEqual(r.report.commands.map((c) => c.outputTruncated), [true, false, null, null]); }
+  finally { await s.close(); }
+  const mismatch = await fakeOpenCode(); mismatch.toolParts = [parts[1]];
+  try { const r = await driverRun(mismatch, { headers: "EXPECT: absent\n" });
+    assert.equal(r.code, 5, r.err); assert.match(r.report.error, /no successful/); }
+  finally { await mismatch.close(); }
+  const missing = await fakeOpenCode(); missing.toolParts = [
+    { type: "tool", id: "missing_metadata", name: "shell", state: { status: "completed", content: [{ type: "text", text: "hit" }] } },
+    { type: "tool", id: "missing_output", name: "shell", state: { status: "completed", metadata: { exit: 0, truncated: false } } },
+    { type: "tool", id: "invalid_output", name: "shell", state: { status: "completed", content: [{ type: "text", text: null }], metadata: { exit: 0, truncated: false } } },
+    { type: "tool", id: "missing_text", name: "shell", state: { status: "completed", content: [{ type: "text" }], metadata: { exit: 0, truncated: false } } },
+    { type: "tool", id: "failed", name: "shell", state: { status: "completed", content: [{ type: "text", text: "hit" }], metadata: { exit: 1, truncated: false } } },
+  ];
+  try { const r = await driverRun(missing, { headers: "EXPECT: hit\n" });
+    assert.equal(r.code, 5, r.err); assert.match(r.report.error, /unknown/);
+    assert.deepEqual(r.report.commands.map((c) => c.outputTruncated), [null, false, false, false, false]);
+    assert.equal(r.report.commands[1].output, null);
+    assert.equal(r.report.commands[2].output, null);
+    assert.equal(r.report.commands[3].output, null);
+    const invalid = await driverRun(missing, { headers: "EXPECT: ^$\n" });
+    assert.equal(invalid.code, 5, invalid.err); assert.match(invalid.report.error, /unknown/);
+    const noExpect = await driverRun(missing); assert.equal(noExpect.code, 0, noExpect.err);
+  } finally { await missing.close(); }
 });
 test("the page's own template passes on a turn that only read, and fails exit 5 on one that observed nothing", async () => {
   for (const [mode, code] of [["read-only", 0], ["normal", 5]]) {
