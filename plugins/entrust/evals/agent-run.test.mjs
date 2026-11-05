@@ -1364,6 +1364,23 @@ test("a decision naming another run, on disk before the deadline settles its req
       || `${JSON.stringify({ lines: res.lines.slice(0, 2), receipt: valueOf(res.lines, "RECEIPT"), settled })}`;
   });
 
+test("large pending and canonical handback bodies reach a pipe whole",
+  "a successful exit must not discard a request body or its closing frame",
+  async () => {
+    const { dir, report, put, request, pend } = handMailbox();
+    const command = `START${"x".repeat(220000)}END`;
+    put("1-aaaaaaaa.request.json", request("1-aaaaaaaa", { command }));
+    pend("1-aaaaaaaa");
+    const pending = await launcherLines(["--pending", "--dir", dir, "--report-file", report]);
+    const block = /^COMMAND<<([0-9a-f]{12})\n([\s\S]*?)\nCOMMAND>>\1\nREQUESTS=1\n$/m.exec(pending.out);
+    if (pending.code !== 0 || !block || block[2] !== command) return `pending exit ${pending.code}, bytes ${Buffer.byteLength(pending.out)}`;
+    const back = await launcherLines(["--handback", "--dir", dir, "--report-file", report], { input: "" });
+    const canonical = /^HANDBACK=truncated[^\n]*\nCANONICAL<<([0-9a-f]{12})\n([\s\S]*)\nCANONICAL>>\1\n$/.exec(back.out);
+    if (back.code !== 3 || !canonical || !canonical[2].includes(`\n${command}\n`) || !canonical[2].endsWith(`REPORT=${report}`))
+      return `handback exit ${back.code}, bytes ${Buffer.byteLength(back.out)}`;
+    return true;
+  });
+
 test("--pending shows the waiting request whole, --decide publishes it at 0600 with the run's identity and refuses a second, and after the run --decide refuses",
   "this is the caller's reading and answering outside a wrapper — every word read, one decision, the agent seen to finish — through the same launcher the wrapper runs",
   async () => {
@@ -1805,7 +1822,8 @@ test("a relay that comes back at each early return keeps the run through several
     // Handed back: the coordinator is the one waiting; the run outlives two leases, and finishes after the decision with nobody attached.
     {
       const { state, report, dir } = await madeAgent("lease-handback.");
-      const first = await runOnce(report, state, "approval-wait", leaseEnv);
+      // This section starts at hand-back; the short early-return clock is exercised above, not here.
+      const first = await runOnce(report, state, "approval-wait", { ...leaseEnv, AGENT_RUN_RETURN_MS: "15000" });
       if (shapeOf(first.lines) !== "waiting") { stopRun(dir); return `no hand-back: ${JSON.stringify(first.lines.slice(0, 2))}`; }
       const id = valueOf(first.lines, "REQUEST");
       await sleep(3500);
@@ -1858,6 +1876,28 @@ test("a keeper that was suspended and woke does not read the silence of the slee
     return problems.length === 0 || problems.join("; ");
   });
 
+test("--stop before a thread exists reports a transport interruption, not an interrupted turn",
+  "a pid line can precede the thread; a Stop during the config probe has no turn to interrupt",
+  async () => {
+    const { state, report, dir } = await madeAgent("stop-pre-thread.");
+    const rpc = path.join(dir, "probe-rpc.log");
+    try {
+      const first = await runOnce(report, state, "idle-silence", {
+        AGENT_RUN_RETURN_MS: "300", FAKE_CONFIG_HANG: "1", FAKE_RPC_LOG: rpc,
+      });
+      if (valueOf(first.lines, "DRIVER_EXIT") !== "running") return `the held probe did not stay running: ${JSON.stringify(first.lines.slice(0, 2))}`;
+      for (const end = Date.now() + 15000; Date.now() < end && !/^config\/read$/m.test(read(rpc) ?? ""); await sleep(50)) {}
+      const methods = read(rpc) ?? "";
+      if (!/^config\/read$/m.test(methods) || /^thread\/start/m.test(methods)) return `the held pre-thread probe was not observed: ${JSON.stringify(methods)}`;
+      const stopped = await launcherLines(["--stop", "--report-file", report], { env: env(state, "idle-silence") });
+      const result = readJson(report), cancel = readJson(path.join(dir, "cancel.json"));
+      if (stopped.code !== 0 || valueOf(stopped.lines, "DRIVER_EXIT") !== "4" || result?.exitCode !== 4
+          || result?.threadId !== null || result?.turnStatus !== null || cancel?.kind !== "stop")
+        return `pre-thread stop: exit ${stopped.code}, driver ${valueOf(stopped.lines, "DRIVER_EXIT")}, report ${JSON.stringify({ exitCode: result?.exitCode, threadId: result?.threadId, turnStatus: result?.turnStatus, cancel: cancel?.kind })}`;
+      return true;
+    } finally { stopRun(dir); }
+  });
+
 test("--stop ends the run its pid line and report path name: the partial report, a receipt that names the stop, a second call and a finished run just read, and a pid that is not the driver is refused",
   "the explicit lifecycle bridge: a coordinator that sees its relay interrupted needs one verified command, not a hand-made kill -TERM on a pid it read out of err.txt, and it must never signal a process the pid line merely once named",
   async () => {
@@ -1866,6 +1906,10 @@ test("--stop ends the run its pid line and report path name: the partial report,
     const pid = pidOf(dir);
     const problems = [];
     if (valueOf(first.lines, "DRIVER_EXIT") !== "running") problems.push(`the run did not stay going: ${JSON.stringify(first.lines.slice(0, 2))}`);
+    for (const end = Date.now() + 15000; Date.now() < end && !/^entrust: threadId=\S+/m.test(read(path.join(dir, "err.txt")) ?? ""); await sleep(50)) {}
+    if (!/^entrust: threadId=\S+/m.test(read(path.join(dir, "err.txt")) ?? "")) {
+      stopRun(dir); return [...problems, "the run did not announce its thread before Stop"].join("; ");
+    }
     const stopped = await launcherLines(["--stop", "--report-file", report], { env: env(state, "idle-silence") });
     if (stopped.code !== 0 || shapeOf(stopped.lines) !== "ended" || stopped.lines.length !== STATUS_LINES.length || stopped.lines.at(-1) !== `REPORT=${report}`)
       problems.push(`--stop did not print the nine lines: exit ${stopped.code}, ${JSON.stringify(stopped.lines)}`);
@@ -1913,6 +1957,10 @@ setTimeout(() => process.exit(0), 20000);
       const old = await madeAgent("stop-old.");
       await runOnce(old.report, old.state, "idle-silence", { AGENT_RUN_RETURN_MS: "300" });
       const oldPid = pidOf(old.dir);
+      for (const end = Date.now() + 15000; Date.now() < end && !/^entrust: threadId=\S+/m.test(read(path.join(old.dir, "err.txt")) ?? ""); await sleep(50)) {}
+      if (!/^entrust: threadId=\S+/m.test(read(path.join(old.dir, "err.txt")) ?? "")) {
+        stopRun(old.dir); return [...problems, "the legacy run did not announce its thread before Stop"].join("; ");
+      }
       fs.rmSync(path.join(old.dir, "spawn.json"), { force: true });
       const r = await launcherLines(["--stop", "--report-file", old.report], { env: env(old.state, "idle-silence") });
       await sleep(200);

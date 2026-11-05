@@ -23,6 +23,9 @@ A request to make a model the coordinator starts nothing here: answer it with th
 
 ## Agent calls
 
+Apply [skills per invocation](../orchestrate/SKILL.md#skills-per-invocation) to native Claude briefs and
+continuations as well as external agents.
+
 - Tag every Agent call with an explicit `model` from the tier table; untagged, a subagent inherits the
   session's model. Give it a description of the form "<Model> <id>: <task in a few words>", the id the
   card gave it.

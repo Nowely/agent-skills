@@ -184,6 +184,7 @@ const readline = require("node:readline");
 const MARKER = "FIDELITY_DRIVER_CAPTURE ";
 let initializeParams = null;
 let initializedParams = null;
+const skillsRequests = [];
 const send = (o) => process.stdout.write(JSON.stringify(o) + "\n");
 readline.createInterface({ input: process.stdin }).on("line", (line) => {
   let m;
@@ -197,6 +198,21 @@ readline.createInterface({ input: process.stdin }).on("line", (line) => {
     return;
   }
   if (m.method === "initialized") { initializedParams = m.params; return; }
+  if (m.method === "skills/list") {
+    if (!Array.isArray(m.params?.cwds) || m.params.cwds.length !== 1 || m.params.forceReload !== true) {
+      send({ jsonrpc: "2.0", id: m.id, error: { code: -32602, message: "expected one cwd and forceReload" } }); return;
+    }
+    skillsRequests.push({ method: "skills/list", cwd: m.params.cwds[0], forceReload: m.params.forceReload });
+    send({ jsonrpc: "2.0", id: m.id, result: { data: [{ cwd: m.params.cwds[0], skills: [], errors: [] }] } });
+    return;
+  }
+  if (m.method === "skills/extraRoots/set") {
+    if (!Array.isArray(m.params?.extraRoots) || m.params.extraRoots.length !== 0) {
+      send({ jsonrpc: "2.0", id: m.id, error: { code: -32602, message: "expected empty extraRoots" } }); return;
+    }
+    skillsRequests.push({ method: "skills/extraRoots/set", extraRoots: m.params.extraRoots });
+    send({ jsonrpc: "2.0", id: m.id, result: {} }); return;
+  }
   // The driver asks the server what the caller's config resolves to before it starts anything, so the
   // capture has to answer that too or the driver never reaches thread/start and every case fails with
   // "capture timed out". Fixed values, because this suite must not depend on the developer's own config —
@@ -235,7 +251,7 @@ readline.createInterface({ input: process.stdin }).on("line", (line) => {
   if (m.method === "thread/start" || m.method === "thread/resume") {
     const captured = {
       spawnArgs: process.argv.slice(2), spawnCwd: process.cwd(), codexHome: process.env.CODEX_HOME,
-      initializeParams, initializedParams, threadMethod: m.method, threadParams: m.params
+      initializeParams, initializedParams, skillsRequests, threadMethod: m.method, threadParams: m.params
     };
     process.stderr.write(MARKER + JSON.stringify(captured) + "\n", () => process.exit(86));
   }
@@ -338,6 +354,9 @@ function captureDriver(spec) {
       if (expect("initialize capabilities.experimentalApi", captured.initializeParams?.capabilities?.experimentalApi, false)) return;
       // thread/start carries no `ephemeral` field at all: the driver never sends one.
       if (expect("thread ephemeral", captured.threadParams?.ephemeral, undefined)) return;
+      const skillsPreflight = [{ method: "skills/extraRoots/set", extraRoots: [] },
+        { method: "skills/list", cwd: captured.threadParams?.cwd, forceReload: true }];
+      if (expect("skills preflight", JSON.stringify(captured.skillsRequests), JSON.stringify(skillsPreflight))) return;
       let isolated;
       try { isolated = fs.readFileSync(path.join(expectedHome, "config.toml"), "utf8"); }
       catch (e) { finish(reject, new Error(`cannot read driver's isolated config: ${e.message}`)); return; }

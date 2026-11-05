@@ -14,7 +14,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { DRIVER, EXIT, codexShim, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
+import { DRIVER, EXIT, FAKE, codexShim, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
 
 // A private state directory: these cases plant ledger entries by hand and lean on the reconciler's own
 // bound over them, so nothing else may be writing entries into the same root.
@@ -489,9 +489,14 @@ test("a preserved tree says whether the codex is still running or has already ex
     const repo = freshRepo("wt-pre-dead");
     if (!repo) return "git setup failed";
     const bin = freshDir("wt-pre-dead-bin");
-    // An app-server that exits at once: the child object exists and already carries a code by the time
-    // the tree is disposed of. Nothing else in the suite produces a DEAD child before a thread exists.
-    fs.writeFileSync(path.join(bin, "codex"), "#!/bin/sh\nexit 23\n", { mode: 0o755 });
+    // The probe gets the scripted server; only the actual app-server (which carries -c) exits at once.
+    // This leaves a DEAD child before a thread exists while still passing the skills/config preflight.
+    fs.writeFileSync(path.join(bin, "codex"), `#!/usr/bin/env node
+const {spawnSync}=require("node:child_process");
+if (process.argv.includes("-c")) process.exit(23);
+const result=spawnSync(process.execPath,[${JSON.stringify(FAKE)},...process.argv.slice(2)],{stdio:"inherit"});
+process.exit(result.status ?? 1);
+`, { mode: 0o755 });
     const reportFile = path.join(freshDir("wt-pre-dead-rf"), "report.json");
     const { code, err } = await run(null, { args: ["--worktree", repo, "--report-file", reportFile],
       env: { PATH: `${bin}:${process.env.PATH}` } });

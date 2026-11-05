@@ -3,21 +3,26 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
+import net from "node:net";
+import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { ROOT, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
 import { desktopModels, splitModel, digest } from "../plugin/skills/opencode/scripts/config.mjs";
 import { Client } from "../plugin/skills/opencode/scripts/client.mjs";
 import { parsePrompt, FIVE_FIELDS_SCHEMA, checkSchemaSubset, validateOutput, decisionsOf, extractJson, expectation } from "../plugin/skills/opencode/scripts/contract.mjs";
 import { decisionFits } from "../plugin/skills/orchestrate/scripts/mailbox.mjs";
-import { editScope, noteWait, rejectTrackedRequest, sessionPermissions } from "../plugin/skills/opencode/scripts/driver.mjs";
+import { editScope, noteWait, rejectTrackedRequest, sessionPermissions, resolveModel, observe } from "../plugin/skills/opencode/scripts/driver.mjs";
 import { desktopStore, fakeCli, fakeOpenCode } from "./fake-opencode.mjs";
 import { typedRequest } from "../plugin/skills/opencode/scripts/launch.mjs";
 import { startLocalServer } from "../plugin/skills/opencode/scripts/local-server.mjs";
+import { startObserver, readObservation } from "../plugin/skills/opencode/scripts/observe.mjs";
+import { statusLines } from "../plugin/skills/orchestrate/scripts/agent-run.mjs";
 
 const { cases, test: register } = registry();
 const test = (name, fn) => register(name, name, async () => { await fn(); return true; });
 const ENTRY = path.join(ROOT, "skills/opencode/scripts/agent-run.mjs");
 const STATUS = path.join(ROOT, "skills/opencode/scripts/status.mjs");
+const OBSERVE = path.join(ROOT, "skills/opencode/scripts/observe.mjs");
 const SHARED = path.join(ROOT, "skills/codex/scripts/agent-run.mjs");
 const cwd = tempDir("entrust-opencode-cwd-");
 const model = "router/deepseek/deepseek-flash";
@@ -52,6 +57,15 @@ test("a registered model fills an absent MODEL and refuses inherit or another mo
     assert.equal(`${parsed.model.providerID}/${parsed.model.modelID}`, model);
   }
 });
+test("pinned resume retains only its own model's variant and honours an explicit replacement", async () => {
+  const priorModel = { providerID: "router", modelID: "deepseek/flash" };
+  const client = { model: async (ref) => ({ ...ref, variants: ["high", "low"] }) };
+  const ctx = { client, cwd, resume: true, priorModel, priorVariant: "high",
+    parsed: { model: { inherit: false, ...priorModel } } };
+  assert.equal((await resolveModel(ctx)).variant, "high");
+  assert.equal((await resolveModel({ ...ctx, parsed: { ...ctx.parsed, variant: "low" } })).variant, "low");
+  assert.equal((await resolveModel({ ...ctx, parsed: { model: { inherit: false, providerID: "router", modelID: "other" } } })).variant, null);
+});
 test("unsupported execution controls refuse before any HTTP call", () => {
   for (const header of ["NETWORK: no\n", "WEB_SEARCH: disabled\n", "UNKNOWN: yes\n", "VARIANT: low\nEFFORT: high\n"])
     assert.ok(parsePrompt(prompt(header), {}).error);
@@ -83,6 +97,7 @@ test("Shell is allowed without prompts for read and write sessions", () => {
     assert.equal(rules[catchAll].effect, "ask", scope.kind);
     assert.ok(shell > catchAll, `${scope.kind}: Shell override follows catch-all`);
     assert.equal(rules[shell].effect, "allow", scope.kind);
+    assert.equal(rules.findLast((r) => r.action === "skill" && r.resource === "*")?.effect, "allow", scope.kind);
     const external = rules.findLastIndex((r) => r.action === "external_directory" && r.resource === "*");
     assert.ok(external > catchAll, `${scope.kind}: external-directory override follows catch-all`);
     assert.equal(rules[external].effect, "allow", scope.kind);
@@ -169,6 +184,18 @@ test("permission handback contains the full immutable native request", async () 
   const m = mailbox(); const r = await invoke([...m.args, "--pending"]);
   assert.equal(r.code, 0); assert.ok(r.out.includes(m.q.presented)); assert.match(r.out, /TYPE=opencode.permission/);
 });
+test("large permission bodies survive pending and an exact decision, while truncation is rejected", async () => {
+  const m = mailbox();
+  m.q.payload.metadata.command = "SYNTHETIC_START" + "x".repeat(220000) + "SYNTHETIC_END";
+  m.q.presented = JSON.stringify(m.q.payload, null, 2); m.q.requestHash = digest(m.q.payload);
+  fs.writeFileSync(path.join(m.box, `${m.id}.request.json`), JSON.stringify(m.q));
+  const pending = await invoke([...m.args, "--pending"]);
+  assert.equal(pending.code, 0); assert.ok(pending.out.includes(m.q.presented), `pending output=${Buffer.byteLength(pending.out)} bytes, expected body=${Buffer.byteLength(m.q.presented)} bytes`);
+  const args = [...m.args, "--decide", m.id, "--accept"];
+  assert.equal((await invoke(args, m.q.presented.slice(0, -100))).code, 2);
+  assert.equal(fs.existsSync(path.join(m.box, `${m.id}.decision.json`)), false);
+  assert.equal((await invoke(args, m.q.presented + "\n")).code, 0);
+});
 test("--handback renders a typed request with the message's own token, and tells a dropped trailer and an altered body from the exact copy", async () => {
   const m = mailbox(); const report = path.join(m.dir, "report.json");
   const printed = (await invoke([...m.args, "--pending"])).out.trimEnd();
@@ -236,6 +263,630 @@ test("the catalogue names a model by its catalogue id, lists only enabled models
   assert.deepEqual(await client.model(splitModel("router/glm/flash-fast"), "/work"), { providerID: "router", modelID: "glm/flash-fast", variants: ["high"] });
   assert.deepEqual(routes, ["/api/model?location[directory]=%2Fwork"]);
 });
+test("HTTP error bodies and query strings do not escape into diagnostics", async () => {
+  const server = http.createServer((req, res) => { res.writeHead(503); res.end("SYNTHETIC_SECRET_BODY"); });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const client = new Client({ config: { url: `http://127.0.0.1:${server.address().port}` } });
+    await assert.rejects(client.call("GET", "/bad?secret=SYNTHETIC_QUERY"), (e) =>
+      e.message.includes("HTTP 503") && !e.message.includes("SYNTHETIC"));
+  } finally { await new Promise((resolve) => server.close(resolve)); }
+});
+test("provider error details stay out of the report and launcher diagnostics", async () => {
+  const s = await fakeOpenCode("provider-error-marker");
+  try {
+    const r = await driverRun(s);
+    assert.notEqual(r.code, 0);
+    assert.equal(JSON.stringify(r.report).includes("SYNTHETIC_PROVIDER_SECRET"), false);
+    assert.equal(r.out.includes("SYNTHETIC_PROVIDER_SECRET"), false);
+    assert.equal(r.err.includes("SYNTHETIC_PROVIDER_SECRET"), false);
+    assert.equal(statusLines(path.dirname(r.path), r.path).join("\n").includes("SYNTHETIC_PROVIDER_SECRET"), false);
+    assert.deepEqual(r.report.turnError, { name: "ProviderError", status: 429 });
+    assert.match(r.report.error, /ProviderError.*429/);
+    assert.equal(fs.readFileSync(r.report.transcriptPath, "utf8").includes("SYNTHETIC_PROVIDER_SECRET"), true);
+  } finally { await s.close(); }
+});
+test("the settled mailbox retains its exact synthetic callback while report and status omit it", async () => {
+  const s = await fakeOpenCode("permission"); s.permissionCommand = `SYNTHETIC_CALLBACK_${"x".repeat(10000)}_END`;
+  try {
+    const r = await driverRun(s, { approval: "accept" });
+    assert.equal(r.code, 0, r.err);
+    const name = fs.readdirSync(r.box).find((n) => n.endsWith(".request.json"));
+    const requestPath = path.join(r.box, name), request = JSON.parse(fs.readFileSync(requestPath, "utf8"));
+    assert.equal(request.payload.metadata.command, s.permissionCommand);
+    assert.equal(request.presented, JSON.stringify(request.payload, null, 2));
+    assert.equal(request.settled.outcome, "applied");
+    assert.equal(fs.statSync(requestPath).mode & 0o777, 0o600);
+    assert.equal(fs.existsSync(path.join(r.box, "pending")), false);
+    assert.equal(JSON.stringify(r.report).includes("SYNTHETIC_CALLBACK_"), false);
+    assert.equal(r.out.includes("SYNTHETIC_CALLBACK_"), false);
+    assert.equal(r.err.includes("SYNTHETIC_CALLBACK_"), false);
+    assert.equal(statusLines(path.dirname(r.path), r.path).join("\n").includes("SYNTHETIC_CALLBACK_"), false);
+    for (const p of [r.path, r.report.transcriptPath, r.report.answerPath]) assert.equal(fs.statSync(p).mode & 0o777, 0o600);
+  } finally { await s.close(); }
+});
+test("observer is report-bound, pages current content, and becomes unavailable after its owner closes", async () => {
+  const dir = tempDir("entrust-live-case-"), report = path.join(dir, "report.json");
+  const ctx = { report, invocationId: "inv_test" };
+  let messages = Array.from({ length: 205 }, (_, i) => ({ id: `m${i}`, text: `old ${i}` }));
+  const owner = await startObserver(ctx, async (ownerCtx, kind) => ({ report: ownerCtx.report, invocationId: ownerCtx.invocationId,
+    serverStatus: "busy", nonAtomic: true, complete: true, ...(kind === "messages" ? { messages } : {}) }));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address }));
+  try {
+    assert.equal(fs.statSync(path.dirname(owner.address)).mode & 0o777, 0o700);
+    assert.equal((await readObservation(report)).serverStatus, "busy");
+    let p = await readObservation(report, "messages"), count = p.messages.length;
+    assert.equal(count, 50); const foreign = p.cursor;
+    messages[0] = { id: "m0", text: "updated" };
+    assert.equal((await readObservation(report, "messages")).messages[0].text, "updated");
+    while (p.cursor) { p = await readObservation(report, "messages", p.cursor); count += p.messages.length; }
+    assert.equal(count, 205);
+    const other = path.join(dir, "other.json");
+    fs.writeFileSync(other, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address }));
+    assert.equal((await readObservation(other, "messages", foreign)).state, "unavailable");
+  } finally { await owner.close(); }
+  assert.equal((await readObservation(report)).state, "unavailable");
+});
+test("oversized observed messages have independent bounded content and next-page cursors", async () => {
+  const dir = tempDir("entrust-large-observation-"), report = path.join(dir, "report.json");
+  const ctx = { report, invocationId: "inv_large", sessionID: "ses_root" };
+  const text = '🐈\\"\n'.repeat(140000);
+  const messages = [{ id: "input", type: "user", _sessionID: "ses_root", time: { created: 1 }, text },
+    ...Array.from({ length: 110 }, (_, i) => ({ id: `m${i}`, type: "assistant", _sessionID: "ses_root", time: { created: i + 2 },
+      text: i === 55 ? text : `small ${i}` })),
+    { id: "input", type: "assistant", _sessionID: "ses_child", time: { created: 200 }, text: "child" }];
+  const owner = await startObserver(ctx, async (_owner, kind) => ({ ...ctx, inputIds: ["input"], complete: true, partial: false, tools: [],
+    nonAtomic: true, ...(kind === "messages" ? { messages } : {}) }));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address }));
+  const options = { large: true };
+  const readAll = async (expectedState) => {
+    let cursor = null, pages = 0, fragments = 0; const collected = [];
+    do {
+      const p = await readObservation(report, "messages", cursor, options);
+      assert.equal(p.state, expectedState); assert.ok(Buffer.byteLength(JSON.stringify(p)) <= 512 * 1024);
+      collected.push(...p.messages); pages++;
+      if (p.oversized) {
+        const d = p.oversized; assert.equal(d.messageIndex, collected.length);
+        assert.equal(p.complete, false); assert.equal(p.partial, true); assert.equal(p.sourcePartial, false);
+        assert.equal(p.toolsOmitted, expectedState === "live" ? true : undefined);
+        const parts = []; let position = 0, contentCursor = d.contentCursor;
+        while (contentCursor) {
+          const chunk = await readObservation(report, "messages", contentCursor, options);
+          assert.equal(chunk.state, expectedState); assert.ok(Buffer.byteLength(JSON.stringify(chunk)) <= 512 * 1024);
+          assert.equal(chunk.complete, false); assert.equal(chunk.partial, true); assert.equal(chunk.sourcePartial, false);
+          assert.equal(chunk.toolsOmitted, expectedState === "live" ? true : undefined);
+          assert.equal(chunk.fragment.encoding, "base64"); assert.equal(chunk.fragment.byteOffset, position);
+          const bytes = Buffer.from(chunk.fragment.data, "base64"); assert.ok(bytes.length <= 128 * 1024);
+          position += bytes.length; parts.push(bytes); fragments++; contentCursor = chunk.cursor;
+        }
+        const encoded = Buffer.concat(parts);
+        assert.equal(encoded.length, d.totalBytes); assert.equal(crypto.createHash("sha256").update(encoded).digest("hex"), d.sha256);
+        collected.push(JSON.parse(encoded.toString("utf8")));
+      }
+      cursor = p.cursor;
+      assert.ok(pages < 20, "pagination did not advance");
+    } while (cursor);
+    assert.ok(pages >= 3); assert.ok(fragments > 2); assert.deepEqual(collected, messages);
+  };
+  let liveContentCursor;
+  try {
+    const first = await readObservation(report, "messages", null, options);
+    assert.equal(first.state, "live"); assert.equal(first.messages.length, 0); assert.ok(first.oversized?.contentCursor); assert.ok(first.cursor);
+    assert.equal(first.messagesComplete, false);
+    liveContentCursor = first.oversized.contentCursor;
+    assert.deepEqual([first.oversized.sessionID, first.oversized.messageID], ["ses_root", "input"]);
+    const legacy = await readObservation(report, "messages");
+    assert.equal(legacy.state, "unavailable"); assert.equal(legacy.reason, "oversized");
+    const oldCursor = Buffer.from(JSON.stringify({ report, invocationId: ctx.invocationId, offset: 1 })).toString("base64url");
+    assert.equal((await readObservation(report, "messages", oldCursor)).messages[0].id, "m0");
+    const legacyCli = await invoke([OBSERVE, "--report-file", report, "--messages"]);
+    assert.equal(legacyCli.code, 1); assert.equal(JSON.parse(legacyCli.out).reason, "oversized");
+    assert.match(legacyCli.out, /--large/);
+    const cli = await invoke([OBSERVE, "--report-file", report, "--messages", "--large"]);
+    assert.equal(cli.code, 0, cli.err); assert.equal(JSON.parse(cli.out).oversized.messageID, "input");
+    const cliPart = await invoke([OBSERVE, "--report-file", report, "--messages", "--large", "--cursor", liveContentCursor]);
+    assert.equal(cliPart.code, 0, cliPart.err); assert.equal(JSON.parse(cliPart.out).fragment.byteOffset, 0);
+    const same = await readObservation(report, "messages", null, options);
+    assert.equal(same.oversized.sha256, first.oversized.sha256);
+    const mixed = JSON.parse(Buffer.from(first.oversized.contentCursor, "base64url"));
+    mixed.report = report; mixed.reportHash = "0".repeat(64);
+    assert.equal((await readObservation(report, "messages", Buffer.from(JSON.stringify(mixed)).toString("base64url"), options)).state, "unavailable");
+    mixed.reportHash = crypto.createHash("sha256").update(report).digest("hex");
+    assert.equal((await readObservation(report, "messages", Buffer.from(JSON.stringify(mixed)).toString("base64url"), options)).state, "unavailable");
+    messages[0].text += "changed";
+    const after = await readObservation(report, "messages", first.cursor, options);
+    assert.equal(after.state, "live"); assert.equal(after.messages[0].id, "m0");
+    assert.equal((await readObservation(report, "messages", first.oversized.contentCursor, options)).state, "stale");
+    messages[0].text = text;
+    messages.push({ ...messages[0] });
+    assert.equal((await readObservation(report, "messages", first.oversized.contentCursor, options)).state, "stale");
+    messages.pop();
+    const other = path.join(dir, "other.json");
+    fs.writeFileSync(other, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address }));
+    assert.equal((await readObservation(other, "messages", first.oversized.contentCursor, options)).state, "unavailable");
+    const otherCtx = { report: other, invocationId: "inv_other", sessionID: "ses_root" };
+    const otherOwner = await startObserver(otherCtx, async () => ({ ...otherCtx, inputIds: ["input"], messages }));
+    try {
+      fs.writeFileSync(other, JSON.stringify({ adapter: "opencode", invocationId: otherCtx.invocationId, observer: otherOwner.address }));
+      assert.equal((await readObservation(other, "messages", first.oversized.contentCursor, options)).state, "unavailable");
+    } finally { await otherOwner.close(); }
+    const saved = messages.shift();
+    assert.equal((await readObservation(report, "messages", first.cursor, options)).state, "stale");
+    messages.unshift(saved);
+    await readAll("live");
+  } finally { await owner.close(); }
+  const transcript = path.join(dir, "report.transcript.json");
+  fs.writeFileSync(transcript, JSON.stringify({ sessionID: "ses_root", inputIds: ["input"], messages }));
+  const terminalReport = { adapter: "opencode", invocationId: ctx.invocationId, sessionID: "ses_root", turnIds: ["input"],
+    exitCode: 0, partial: false, transcriptPath: transcript };
+  fs.writeFileSync(report, JSON.stringify(terminalReport));
+  const terminalPart = await readObservation(report, "messages", liveContentCursor, options);
+  assert.equal(terminalPart.state, "terminal"); assert.equal(terminalPart.fragment.messageID, "input");
+  const terminalContent = JSON.parse(Buffer.from(liveContentCursor, "base64url"));
+  const terminalCursors = ["garbage", `${liveContentCursor}!`,
+    Buffer.from(JSON.stringify({ ...terminalContent, offset: 1, after: { sessionID: "bogus", messageID: "foreign" } })).toString("base64url"),
+    Buffer.from(JSON.stringify({ ...terminalContent, kind: "page", offset: 1 })).toString("base64url"),
+    Buffer.from(JSON.stringify({ reportHash: terminalContent.reportHash, invocationId: ctx.invocationId, kind: "page", offset: 1 })).toString("base64url")];
+  for (const invalidCursor of terminalCursors) {
+    const invalid = await invoke([OBSERVE, "--report-file", report, "--messages", "--large", "--cursor", invalidCursor]);
+    assert.equal(invalid.code, 1); assert.equal(JSON.parse(invalid.out).state, "unavailable");
+  }
+  messages[0].text += "new revision";
+  fs.writeFileSync(transcript, JSON.stringify({ sessionID: "ses_root", inputIds: ["input"], messages }));
+  assert.equal((await readObservation(report, "messages", liveContentCursor, options)).state, "stale");
+  const staleCli = await invoke([OBSERVE, "--report-file", report, "--messages", "--large", "--cursor", liveContentCursor]);
+  assert.equal(staleCli.code, 1); assert.equal(JSON.parse(staleCli.out).state, "stale");
+  messages[0].text = text;
+  fs.writeFileSync(transcript, JSON.stringify({ sessionID: "ses_root", inputIds: ["input"], messages }));
+  await readAll("terminal");
+  terminalReport.partial = true; fs.writeFileSync(report, JSON.stringify(terminalReport));
+  const partialRun = await readObservation(report, "messages", null, options);
+  assert.equal(partialRun.partial, true); assert.equal(partialRun.sourcePartial, true);
+});
+test("legacy shell pagination stops at an oversized message rather than skipping it", async () => {
+  const dir = tempDir("entrust-legacy-page-"), report = path.join(dir, "report.json");
+  const ctx = { report, invocationId: "inv_shell", sessionID: "ses_root" };
+  const messages = [{ id: "before", _sessionID: "ses_root" }, { id: "large", _sessionID: "ses_root", text: "🐈".repeat(180000) },
+    { id: "after", _sessionID: "ses_root" }];
+  const owner = await startObserver(ctx, async () => ({ ...ctx, messages }));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address }));
+  try {
+    const first = await invoke([OBSERVE, "--report-file", report, "--messages"]);
+    assert.equal(first.code, 0, first.err); const page = JSON.parse(first.out);
+    assert.deepEqual(page.messages.map((m) => m.id), ["before"]); assert.ok(page.cursor);
+    const next = await invoke([OBSERVE, "--report-file", report, "--messages", "--cursor", page.cursor]);
+    assert.equal(next.code, 1); assert.equal(JSON.parse(next.out).reason, "oversized"); assert.match(next.out, /--large/);
+  } finally { await owner.close(); }
+});
+test("current CLI reads status and messages from a pre-capability owner", async () => {
+  const dir = fs.mkdtempSync("/tmp/entrust-old-protocol-"), report = path.join(dir, "report.json"), address = path.join(dir, "socket");
+  const ctx = { report, invocationId: "inv_old" };
+  const server = net.createServer((socket) => {
+    let request = ""; socket.on("error", () => {});
+    socket.on("data", (chunk) => {
+      request += chunk.toString("utf8"); if (!request.includes("\n")) return;
+      const q = JSON.parse(request.slice(0, request.indexOf("\n")));
+      const body = q.report === report && q.invocationId === ctx.invocationId
+        ? { ...ctx, serverStatus: "busy", ...(q.kind === "messages" ? { messages: [{ id: "old-message" }], cursor: null } : {}) }
+        : { ...ctx, error: "unavailable or invalid request" };
+      socket.end(JSON.stringify(body) + "\n");
+    });
+  });
+  await new Promise((resolve) => server.listen(address, resolve));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: address }));
+  try {
+    for (const args of [[], ["--messages"], ["--messages", "--large"]]) {
+      const r = await invoke([OBSERVE, "--report-file", report, ...args]);
+      assert.equal(r.code, 0, r.err); const value = JSON.parse(r.out); assert.equal(value.state, "live");
+      if (args.includes("--messages")) assert.equal(value.messages[0].id, "old-message");
+      else assert.equal(value.serverStatus, "busy");
+    }
+  } finally { await new Promise((resolve) => server.close(resolve)); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+test("oversized fragments do not duplicate a large tool list into every bounded reply", async () => {
+  const dir = tempDir("entrust-large-tools-"), report = path.join(dir, "report.json");
+  const ctx = { report, invocationId: "inv_tools", sessionID: "ses_root" };
+  const tools = Array.from({ length: 7000 }, (_, i) => ({ tool: "shell", callID: `call_${i}`, status: "completed" }));
+  const messages = [{ id: "large", _sessionID: "ses_root", text: "🐈".repeat(180000) }, { id: "after", _sessionID: "ses_root" }];
+  const owner = await startObserver(ctx, async (_owner, kind) => ({ ...ctx, complete: true, tools, ...(kind === "messages" ? { messages } : {}) }));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address }));
+  try {
+    const status = await readObservation(report);
+    assert.equal(status.state, "live"); assert.equal(status.tools.length, tools.length); assert.equal(status.complete, true);
+    const first = await readObservation(report, "messages", null, { large: true });
+    assert.equal(first.state, "live"); assert.equal(first.toolsOmitted, true); assert.equal(first.tools, undefined); assert.equal(first.complete, false);
+    const part = await readObservation(report, "messages", first.oversized.contentCursor, { large: true });
+    assert.equal(part.state, "live"); assert.equal(part.toolsOmitted, true); assert.equal(part.tools, undefined); assert.equal(part.complete, false);
+    assert.ok(Buffer.byteLength(JSON.stringify(part)) < 512 * 1024);
+    const next = await readObservation(report, "messages", first.cursor, { large: true });
+    assert.equal(next.state, "live"); assert.equal(next.messages[0].id, "after"); assert.equal(next.complete, true); assert.equal(next.tools.length, tools.length);
+  } finally { await owner.close(); }
+});
+test("long report paths keep oversized cursors within the IPC request bound", async () => {
+  const ctx = { report: `/tmp/${"deep/".repeat(760)}report.json`, invocationId: "inv_long", sessionID: "ses_root" };
+  const messages = [{ id: "large", _sessionID: "ses_root", text: "🐈".repeat(180000) }, { id: "after", _sessionID: "ses_root" }];
+  const owner = await startObserver(ctx, async () => ({ ...ctx, messages }));
+  const reportHash = crypto.createHash("sha256").update(ctx.report).digest("hex");
+  const request = (cursor, form = "hash") => new Promise((resolve, reject) => {
+    const socket = net.createConnection(owner.address), chunks = [];
+    const address = form === "raw" ? { report: ctx.report } : form === "mixed" ? { report: "/tmp/foreign", reportHash } : { reportHash };
+    const payload = Buffer.from(JSON.stringify({ ...address, invocationId: ctx.invocationId, kind: "messages", largeMessages: 1, cursor }) + "\n");
+    assert.ok(payload.length <= 4096, `request is ${payload.length} bytes`);
+    socket.on("error", reject); socket.on("data", (chunk) => chunks.push(chunk));
+    socket.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+    socket.on("connect", () => socket.write(payload));
+  });
+  try {
+    const first = await request(null);
+    assert.ok(first.oversized?.contentCursor); assert.ok(first.cursor);
+    assert.ok((await request(null, "raw")).oversized?.contentCursor);
+    let contentCursor = first.oversized.contentCursor, offset = 0; const parts = [];
+    while (contentCursor) {
+      const part = await request(contentCursor);
+      assert.equal(part.fragment.byteOffset, offset);
+      const bytes = Buffer.from(part.fragment.data, "base64"); parts.push(bytes); offset += bytes.length;
+      contentCursor = part.cursor;
+    }
+    const bytes = Buffer.concat(parts);
+    assert.equal(crypto.createHash("sha256").update(bytes).digest("hex"), first.oversized.sha256);
+    assert.deepEqual(JSON.parse(bytes.toString("utf8")), messages[0]);
+    assert.equal((await request(first.cursor)).messages[0].id, "after");
+    assert.equal((await request(null, "mixed")).error, "unavailable");
+    const foreign = JSON.parse(Buffer.from(first.oversized.contentCursor, "base64url"));
+    if ("reportHash" in foreign) foreign.reportHash = "0".repeat(64); else foreign.report = "/tmp/foreign.json";
+    assert.equal((await request(Buffer.from(JSON.stringify(foreign)).toString("base64url"))).error, "unavailable");
+    assert.equal((await request("not-valid-json")).error, "unavailable");
+    const originalRead = fs.readFileSync, originalConnect = net.createConnection, sent = [];
+    fs.readFileSync = function (file, ...args) {
+      if (file === ctx.report) return JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address });
+      return originalRead.call(this, file, ...args);
+    };
+    net.createConnection = function (...args) {
+      const socket = originalConnect.apply(this, args), write = socket.write;
+      socket.write = function (chunk, ...rest) { sent.push({ value: JSON.parse(String(chunk)), bytes: Buffer.byteLength(chunk) }); return write.call(this, chunk, ...rest); };
+      return socket;
+    };
+    try {
+      const selected = await readObservation(ctx.report, "messages", null, { large: true });
+      assert.equal(selected.state, "live"); let cursor = selected.oversized.contentCursor, offset = 0;
+      const chunks = [];
+      while (cursor) {
+        const part = await readObservation(ctx.report, "messages", cursor, { large: true });
+        assert.equal(part.state, "live"); assert.equal(part.fragment.byteOffset, offset);
+        const chunk = Buffer.from(part.fragment.data, "base64"); chunks.push(chunk); offset += chunk.length; cursor = part.cursor;
+      }
+      assert.deepEqual(JSON.parse(Buffer.concat(chunks).toString("utf8")), messages[0]);
+      assert.equal((await readObservation(ctx.report, "messages", selected.cursor, { large: true })).messages[0].id, "after");
+      assert.equal(sent[0].value.report, ctx.report);
+      assert.equal(sent[0].value.reportHash, undefined);
+      assert.equal(sent[1].value.report, undefined);
+      assert.equal(sent[1].value.reportHash, reportHash);
+      assert.ok(sent.every((entry) => entry.bytes <= 4096));
+    } finally { fs.readFileSync = originalRead; net.createConnection = originalConnect; }
+  } finally { await owner.close(); }
+});
+test("observer validates report addressing and cursor identity for legacy and capability requests", async () => {
+  const ctx = { report: "/tmp/отчёт.json", invocationId: "inv_matrix", sessionID: "ses_root" };
+  const reportHash = crypto.createHash("sha256").update(ctx.report).digest("hex");
+  const messages = [{ id: "large", _sessionID: "ses_root", text: "🐈\\\"".repeat(150000) }, { id: "after", _sessionID: "ses_root" }];
+  const owner = await startObserver(ctx, async (_owner, kind) => ({ ...ctx, ...(kind === "messages" ? { messages } : {}) }));
+  const request = (fields) => new Promise((resolve, reject) => {
+    const socket = net.createConnection(owner.address), chunks = [];
+    socket.on("error", reject); socket.on("data", (chunk) => chunks.push(chunk));
+    socket.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+    socket.on("connect", () => socket.write(JSON.stringify({ invocationId: ctx.invocationId, kind: "status", ...fields }) + "\n"));
+  });
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  try {
+    assert.equal((await request({ report: ctx.report })).report, ctx.report);
+    assert.equal((await request({ reportHash, largeMessages: 1 })).report, ctx.report);
+    for (const address of [
+      {}, { report: "/tmp/foreign" }, { reportHash }, { reportHash: "0".repeat(64), largeMessages: 1 },
+      { report: ctx.report, reportHash, largeMessages: 1 }, { report: "/tmp/foreign", reportHash, largeMessages: 1 },
+    ]) assert.equal((await request(address)).error, "unavailable");
+    assert.equal((await request({ report: ctx.report, invocationId: "foreign" })).error, "unavailable");
+    const descriptor = await request({ reportHash, largeMessages: 1, kind: "messages" });
+    assert.ok(descriptor.oversized?.contentCursor); assert.ok(descriptor.cursor);
+    assert.equal((await request({ reportHash, largeMessages: 1, kind: "messages", cursor: descriptor.cursor })).messages[0].id, "after");
+    assert.equal((await request({ reportHash, largeMessages: 1, kind: "messages", cursor: descriptor.oversized.contentCursor })).fragment.byteOffset, 0);
+    const legacy = encode({ report: ctx.report, invocationId: ctx.invocationId, offset: 1 });
+    assert.equal((await request({ reportHash, largeMessages: 1, kind: "messages", cursor: legacy })).messages[0].id, "after");
+    const content = JSON.parse(Buffer.from(descriptor.oversized.contentCursor, "base64url"));
+    for (const cursor of [
+      "not-json", encode({ offset: 1 }), encode({ report: "/tmp/foreign", invocationId: ctx.invocationId, offset: 1 }),
+      encode({ report: ctx.report, reportHash, invocationId: ctx.invocationId, offset: 1 }),
+      encode({ reportHash: "0".repeat(64), invocationId: ctx.invocationId, offset: 1 }),
+      encode({ reportHash, invocationId: "foreign", offset: 1 }), encode({ reportHash, invocationId: ctx.invocationId, offset: -1 }),
+      encode({ reportHash, invocationId: ctx.invocationId, kind: "page", offset: 1 }),
+      `${descriptor.oversized.contentCursor}!`, encode({ ...content, offset: 1, after: { sessionID: "bogus", messageID: "foreign" } }),
+      encode({ ...content, kind: "page", offset: 1 }), encode({ report: ctx.report, invocationId: ctx.invocationId, offset: 1, extra: true }),
+    ]) assert.equal((await request({ reportHash, largeMessages: 1, kind: "messages", cursor })).error, "unavailable");
+    messages[0].text += "changed";
+    assert.equal((await request({ reportHash, largeMessages: 1, kind: "messages", cursor: descriptor.oversized.contentCursor })).error, "stale_cursor");
+    assert.equal((await request({ reportHash, largeMessages: 1, kind: "messages", cursor: descriptor.cursor })).messages[0].id, "after");
+  } finally { await owner.close(); }
+});
+test("observer decodes UTF-8 split within a character on both socket directions", async () => {
+  const dir = fs.mkdtempSync("/tmp/entrust-unicode-"), report = path.join(dir, "отчёт.json"), ctx = { report, invocationId: "inv_тест" };
+  const owner = await startObserver(ctx, async () => ({ ...ctx, text: "ответ 🐈" }));
+  try {
+    const request = Buffer.from(JSON.stringify({ ...ctx, kind: "status" }) + "\n");
+    const split = request.indexOf(Buffer.from("о")) + 1;
+    const response = await new Promise((resolve, reject) => {
+      const socket = net.createConnection(owner.address); const chunks = [];
+      socket.on("error", reject); socket.on("data", (chunk) => chunks.push(chunk));
+      socket.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      socket.on("connect", () => { socket.write(request.subarray(0, split)); setTimeout(() => socket.write(request.subarray(split)), 30); });
+    });
+    assert.equal(response.report, report); assert.equal(response.invocationId, ctx.invocationId); assert.equal(response.text, "ответ 🐈");
+  } finally { await owner.close(); }
+  const address = path.join(dir, "split.sock");
+  const server = net.createServer((socket) => socket.once("data", () => {
+    const output = Buffer.from(JSON.stringify({ ...ctx, text: "ответ 🐈" }) + "\n");
+    const split = output.indexOf(Buffer.from("🐈")) + 2;
+    socket.write(output.subarray(0, split)); setTimeout(() => socket.end(output.subarray(split)), 30);
+  }));
+  await new Promise((resolve) => server.listen(address, resolve));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: address }));
+  try { assert.equal((await readObservation(report)).text, "ответ 🐈"); }
+  finally { await new Promise((resolve) => server.close(resolve)); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+test("observer close terminates an accepted socket and is idempotent even with a stalled read", async () => {
+  const ctx = { report: "/tmp/held.json", invocationId: "inv_hold" };
+  let entered;
+  const started = new Promise((resolve) => { entered = resolve; });
+  const owner = await startObserver(ctx, async () => { entered(); return await new Promise(() => {}); });
+  const socket = net.createConnection(owner.address);
+  socket.on("error", () => {});
+  await new Promise((resolve) => socket.once("connect", resolve));
+  const closed = new Promise((resolve) => socket.once("close", resolve));
+  socket.write(JSON.stringify({ ...ctx, kind: "status" }) + "\n");
+  await started;
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("close blocked on socket")), 1000).unref());
+  await Promise.race([Promise.all([owner.close(), owner.close(), closed]), timer]);
+  assert.equal(fs.existsSync(owner.address), false);
+});
+test("observer limits UTF-8 requests and replies by bytes, not characters", async () => {
+  const dir = fs.mkdtempSync("/tmp/entrust-byte-limit-"), report = path.join(dir, "report.json"), ctx = { report, invocationId: "inv" };
+  let observed = 0;
+  const owner = await startObserver(ctx, async () => { observed++; return ctx; });
+  try {
+    const request = JSON.stringify({ ...ctx, kind: "status", padding: "я".repeat(2100) }) + "\n";
+    assert.ok(request.length < 4096 && Buffer.byteLength(request) > 4096);
+    await new Promise((resolve, reject) => {
+      const socket = net.createConnection(owner.address);
+      socket.on("error", () => {}); socket.on("close", resolve);
+      socket.on("connect", () => socket.write(request));
+      setTimeout(() => { socket.destroy(); reject(new Error("over-limit request was not closed")); }, 2000).unref();
+    });
+    assert.equal(observed, 0);
+  } finally { await owner.close(); }
+  const address = path.join(dir, "large.sock");
+  const server = net.createServer((socket) => {
+    socket.on("error", () => {});
+    socket.once("data", () => socket.end(JSON.stringify({ ...ctx, text: "я".repeat(270000) }) + "\n"));
+  });
+  await new Promise((resolve) => server.listen(address, resolve));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: address }));
+  try { assert.equal((await readObservation(report)).state, "unavailable"); }
+  finally { await new Promise((resolve) => server.close(resolve)); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+test("observer counts the final newline when bounding the serialized socket response", async () => {
+  const dir = tempDir("entrust-live-boundary-"), report = path.join(dir, "report.json"), ctx = { report, invocationId: "inv_limit" };
+  const base = { ...ctx, payload: "" };
+  const size = 512 * 1024 - Buffer.byteLength(JSON.stringify(base));
+  const owner = await startObserver(ctx, async () => ({ ...base, payload: "x".repeat(size) }));
+  try {
+    const raw = await new Promise((resolve, reject) => {
+      const socket = net.createConnection(owner.address), chunks = [];
+      socket.on("error", reject); socket.on("data", (chunk) => chunks.push(chunk));
+      socket.on("end", () => resolve(Buffer.concat(chunks)));
+      socket.on("connect", () => socket.write(JSON.stringify({ ...ctx, kind: "status" }) + "\n"));
+    });
+    assert.ok(raw.length <= 512 * 1024); assert.equal(raw.at(-1), 10);
+    assert.equal(JSON.parse(raw.toString("utf8")).error, "response exceeds limit");
+  } finally { await owner.close(); }
+});
+test("owner observation distinguishes pending admission, callbacks, busy and invalid status without disclosing callback contents", async () => {
+  const routes = { children: "/sessions?parentID={sessionID}", permissionList: "/session/{sessionID}/permission",
+    formList: "/session/{sessionID}/form", messages: "/session/{sessionID}/message", active: "/active" };
+  const startedAtMs = Date.now() - 1000;
+  const rows = [ { id: "old", type: "user", time: { created: startedAtMs + 1 } },
+    { id: "input", type: "user", time: { created: startedAtMs + 2 } },
+    { id: "answer", type: "assistant", time: { created: startedAtMs + 3 }, content: [{ type: "tool", id: "call", name: "shell", state: { status: "running", input: { command: "PRIVATE_COMMAND", path: "PRIVATE_PATH" }, content: [{ type: "text", text: "PRIVATE_OUTPUT" }], metadata: { truncated: true, secret: "PRIVATE_SECRET" } } }] } ];
+  let active = { ses_root: { type: "running" } };
+  const client = { call: async (_method, route) => {
+    if (route.startsWith("/sessions?")) return { data: [] };
+    if (route.endsWith("/permission")) return [{ id: "p", sessionID: "ses_root", secret: "PRIVATE_CALLBACK" }];
+    if (route.endsWith("/form")) return [];
+    if (route.startsWith("/session/ses_root/message")) return { data: [...rows].reverse() };
+    if (route === "/active") return active;
+    throw new Error(route);
+  } };
+  const ctx = { report: "/tmp/report.json", invocationId: "inv", sessionID: "ses_root", invocationInputs: new Set(["input"]),
+    admission: "pending", startedAtMs, preexisting: new Set(), ownedReady: true, routes, client };
+  const status = await observe(ctx, "status");
+  assert.equal(status.admission, "pending"); assert.equal(status.serverStatus, "busy");
+  assert.deepEqual(status.callbacks, { permissions: 1, questions: 0 });
+  assert.deepEqual(status.tools, [{ tool: "shell", callID: "call", status: "running", outputTruncated: true }]);
+  assert.equal(JSON.stringify(status).includes("PRIVATE_"), false);
+  rows[2].content[0].state.metadata.truncated = false;
+  assert.equal((await observe(ctx, "status")).tools[0].outputTruncated, false);
+  rows[2].content[0].state.metadata.truncated = "false";
+  assert.equal((await observe(ctx, "status")).tools[0].outputTruncated, null);
+  assert.deepEqual((await observe(ctx, "messages")).messages.map((m) => m.id), ["input", "answer"]);
+  active = []; const unknown = await observe(ctx, "status");
+  assert.equal(unknown.serverStatus, "unknown"); assert.equal(unknown.complete, false);
+  for (const invalid of [{ error: "invalid active schema" }, { ses_root: {} }, { ses_root: { type: "idle" } }, { wrong: { type: "running" } }]) {
+    active = invalid; const snapshot = await observe(ctx, "status");
+    assert.equal(snapshot.serverStatus, "unknown"); assert.equal(snapshot.complete, false);
+  }
+});
+test("owner observation snapshots input identity while a correction starts", async () => {
+  const routes = { children: "/sessions?parentID={sessionID}", permissionList: "/session/{sessionID}/permission",
+    formList: "/session/{sessionID}/form", messages: "/session/{sessionID}/message", active: "/active" };
+  const startedAtMs = Date.now() - 1000;
+  const rows = [{ id: "input", type: "user", time: { created: startedAtMs + 1 } },
+    { id: "first", type: "assistant", time: { created: startedAtMs + 2 } },
+    { id: "correction", type: "user", time: { created: startedAtMs + 3 } },
+    { id: "second", type: "assistant", time: { created: startedAtMs + 4 } }];
+  let release, entered;
+  const blocked = new Promise((resolve) => { release = resolve; });
+  const reached = new Promise((resolve) => { entered = resolve; });
+  let first = true;
+  const client = { call: async (_method, route) => {
+    if (route.startsWith("/sessions?parentID=ses_root")) {
+      if (first) { first = false; entered(); await blocked; }
+      return { data: [{ id: "ses_new_child", parentID: "ses_root" }] };
+    }
+    if (route.startsWith("/sessions?")) return { data: [] };
+    if (route.endsWith("/permission") || route.endsWith("/form")) return [];
+    if (route.startsWith("/session/ses_root/message")) return { data: [...rows].reverse() };
+    if (route.startsWith("/session/ses_new_child/message")) return { data: [{ id: "child-of-correction", type: "assistant",
+      time: { created: startedAtMs + 5 }, content: [{ type: "tool", name: "from-correction", state: { status: "running" } }] }] };
+    if (route === "/active") return { ses_root: { type: "running" } };
+    throw new Error(route);
+  } };
+  const ctx = { report: "/tmp/report.json", invocationId: "inv", sessionID: "ses_root", invocationInputs: new Set(["input"]),
+    admission: "admitted", startedAtMs, preexisting: new Set(), ownedReady: true, routes, client };
+  const pending = observe(ctx, "messages"); await reached;
+  ctx.invocationInputs.add("correction"); release();
+  const snapshot = await pending;
+  assert.deepEqual(snapshot.inputIds, ["input"]);
+  assert.deepEqual(snapshot.messages.map((m) => m.id), ["input", "first"]);
+  assert.equal(snapshot.complete, false); assert.equal(snapshot.partial, true);
+  assert.equal(snapshot.tools.some((t) => t.tool === "from-correction"), false);
+  const next = await observe(ctx, "messages");
+  assert.deepEqual(next.inputIds, ["input", "correction"]);
+  assert.deepEqual(next.messages.map((m) => m.id), ["input", "first", "correction", "second", "child-of-correction"]);
+  assert.equal(next.tools.some((t) => t.tool === "from-correction"), true);
+  assert.equal(next.complete, true);
+});
+test("owner observation reports partial during correction admission and while an input is absent", async () => {
+  const routes = { children: "/sessions?parentID={sessionID}", permissionList: "/session/{sessionID}/permission",
+    formList: "/session/{sessionID}/form", messages: "/session/{sessionID}/message", active: "/active" };
+  const startedAtMs = Date.now() - 1000;
+  const rows = [{ id: "input", type: "user", time: { created: startedAtMs + 1 } }];
+  const client = { call: async (_method, route) => {
+    if (route.startsWith("/sessions?parentID=ses_root")) return { data: [{ id: "ses_new_child", parentID: "ses_root" }] };
+    if (route.startsWith("/sessions?")) return { data: [] };
+    if (route.endsWith("/permission") || route.endsWith("/form")) return [];
+    if (route.startsWith("/session/ses_root/message")) return { data: [...rows].reverse() };
+    if (route.startsWith("/session/ses_new_child/message")) return { data: [{ id: "child-of-correction", type: "assistant",
+      time: { created: startedAtMs + 3 }, content: [{ type: "tool", name: "from-correction", state: { status: "running" } }] }] };
+    if (route === "/active") return { ses_root: { type: "running" } };
+    throw new Error(route);
+  } };
+  const ctx = { report: "/tmp/report.json", invocationId: "inv", sessionID: "ses_root", invocationInputs: new Set(["input", "correction"]),
+    admission: "admitted", admissionInFlight: true, startedAtMs, preexisting: new Set(), ownedReady: true, routes, client };
+  const pending = await observe(ctx, "messages");
+  assert.deepEqual(pending.inputIds, ["input", "correction"]); assert.deepEqual(pending.messages.map((m) => m.id), ["input"]);
+  assert.equal(pending.complete, false); assert.equal(pending.partial, true); assert.equal(pending.tools.length, 0);
+  ctx.admissionInFlight = false;
+  assert.equal((await observe(ctx, "messages")).complete, false, "a missing declared input is incomplete even after admission");
+  rows.push({ id: "correction", type: "user", time: { created: startedAtMs + 2 } });
+  const complete = await observe(ctx, "messages");
+  assert.equal(complete.complete, true); assert.equal(complete.messages.some((message) => message.id === "child-of-correction"), true);
+});
+test("owner observation stays partial when correction admission finishes during a read", async () => {
+  const ctx = { report: "/tmp/view", invocationId: "inv", sessionID: "ses_root", admission: "admitted", admissionInFlight: true,
+    invocationInputs: new Set(["first", "correction"]), preexisting: new Set(["ses_root"]), ownedReady: true, startedAtMs: 1,
+    routes: { children: "/children", permissionList: "/permission", formList: "/form", messages: "/message", active: "/active" } };
+  ctx.client = { call: async (_method, route) => {
+    if (route === "/children") return { data: [] };
+    if (route === "/active") return {};
+    if (route.startsWith("/message")) { ctx.admissionInFlight = false; return { data: [{ id: "first", type: "user", time: { created: 2 } }] }; }
+    return [];
+  } };
+  const snapshot = await observe(ctx, "messages");
+  assert.deepEqual(snapshot.inputIds, ["first", "correction"]); assert.deepEqual(snapshot.messages.map((m) => m.id), ["first"]);
+  assert.equal(snapshot.complete, false); assert.equal(snapshot.partial, true);
+});
+test("owner observation marks a changing admission state incomplete", async () => {
+  const routes = { children: "/sessions?parentID={sessionID}", permissionList: "/session/{sessionID}/permission",
+    formList: "/session/{sessionID}/form", messages: "/session/{sessionID}/message", active: "/active" };
+  let release, entered;
+  const blocked = new Promise((resolve) => { release = resolve; });
+  const reached = new Promise((resolve) => { entered = resolve; });
+  const client = { call: async (_method, route) => {
+    if (route.startsWith("/sessions?")) { entered(); await blocked; return { data: [] }; }
+    if (route.endsWith("/permission") || route.endsWith("/form")) return [];
+    if (route.startsWith("/session/ses_root/message")) return { data: [] };
+    if (route === "/active") return {};
+    throw new Error(route);
+  } };
+  const ctx = { report: "/tmp/report.json", invocationId: "inv", sessionID: "ses_root", invocationInputs: new Set(["input"]),
+    admission: "admitted", startedAtMs: Date.now() - 1000, preexisting: new Set(), ownedReady: true, routes, client };
+  const pending = observe(ctx, "messages"); await reached;
+  ctx.admission = "pending"; release();
+  const snapshot = await pending;
+  assert.equal(snapshot.admission, "admitted"); assert.deepEqual(snapshot.inputIds, ["input"]); assert.equal(snapshot.complete, false);
+});
+test("owner reads every message page and marks descendant discovery errors incomplete", async () => {
+  const routes = { children: "/sessions?parentID={sessionID}", permissionList: "/session/{sessionID}/permission",
+    formList: "/session/{sessionID}/form", messages: "/session/{sessionID}/message", active: "/active" };
+  const startedAtMs = Date.now() - 1000;
+  const rows = [{ id: "input", type: "user", time: { created: startedAtMs + 1 } },
+    ...Array.from({ length: 230 }, (_, i) => ({ id: `m${i}`, type: "assistant", time: { created: startedAtMs + 2 + i }, content: [{ type: "text", text: `text ${i}` }] }))];
+  let failChildren = false;
+  const client = { call: async (_method, route) => {
+    if (route.startsWith("/sessions?")) { if (failChildren) throw new Error("failed"); return { data: [] }; }
+    if (route.endsWith("/permission") || route.endsWith("/form")) return [];
+    if (route.startsWith("/session/ses_root/message")) {
+      const reversed = [...rows].reverse();
+      return route.includes("cursor=") ? { data: reversed.slice(200) } : { data: reversed.slice(0, 200), cursor: { next: "next" } };
+    }
+    if (route === "/active") return { ses_root: { type: "running" } };
+    throw new Error(route);
+  } };
+  const ctx = { report: "/tmp/report.json", invocationId: "inv", sessionID: "ses_root", invocationInputs: new Set(["input"]),
+    admission: "admitted", startedAtMs, preexisting: new Set(), ownedReady: true, routes, client };
+  assert.equal((await observe(ctx, "messages")).messages.length, 231);
+  rows[1].content[0].text = "changed";
+  assert.equal((await observe(ctx, "messages")).messages[1].content[0].text, "changed");
+  failChildren = true;
+  const incomplete = await observe(ctx, "messages");
+  assert.equal(incomplete.serverStatus, "unknown"); assert.equal(incomplete.complete, false);
+});
+test("terminal observation uses only the report's matching transcript and reports a missing one", async () => {
+  const dir = tempDir("entrust-live-terminal-"), report = path.join(dir, "report.json"), transcript = path.join(dir, "report.transcript.json");
+  const record = { adapter: "opencode", invocationId: "inv", sessionID: "root", turnIds: ["input"],
+    exitCode: 0, partial: false, transcriptPath: transcript, receiptOk: true };
+  fs.writeFileSync(report, JSON.stringify(record));
+  assert.equal((await readObservation(report, "messages")).source, "unavailable");
+  const missing = await invoke([OBSERVE, "--report-file", report, "--messages"]);
+  assert.equal(missing.code, 1); assert.equal(JSON.parse(missing.out).source, "unavailable");
+  fs.writeFileSync(transcript, JSON.stringify({ sessionID: "root", inputIds: ["input"], messages: [
+    { id: "old", type: "user", _sessionID: "root", time: { created: 1 } },
+    { id: "old-answer", type: "assistant", _sessionID: "root", time: { created: 2 } },
+    { id: "input", type: "user", _sessionID: "root", time: { created: 2 } },
+    { id: "answer", type: "assistant", _sessionID: "root", time: { created: 3 } },
+    { id: "foreign-input", type: "user", _sessionID: "root", time: { created: 4 } },
+    { id: "foreign-answer", type: "assistant", _sessionID: "root", time: { created: 5 } },
+  ] }));
+  const view = await readObservation(report, "messages");
+  assert.equal(view.source, "transcript"); assert.equal(view.state, "terminal");
+  assert.deepEqual(view.messages.map((m) => m.id), ["input", "answer"]);
+  const invalid = await invoke([OBSERVE, "--report-file", report, "--messages", "--cursor", "garbage"]);
+  assert.equal(invalid.code, 1); assert.equal(JSON.parse(invalid.out).state, "unavailable");
+  record.sessionID = "other"; fs.writeFileSync(report, JSON.stringify(record));
+  assert.equal((await readObservation(report, "messages")).source, "unavailable");
+});
+test("terminal duplicate message identity is unavailable and exits nonzero without content", async () => {
+  const dir = tempDir("entrust-terminal-duplicate-"), report = path.join(dir, "report.json"), transcript = path.join(dir, "report.transcript.json");
+  const sessionID = "ses_root", invocationId = "inv_duplicate";
+  const large = { id: "big", type: "assistant", _sessionID: sessionID, text: `SYNTHETIC_PRIVATE_${"🐈".repeat(180000)}` };
+  const messages = [{ id: "input", type: "user", _sessionID: sessionID }, large,
+    { id: "after", type: "assistant", _sessionID: sessionID }, { ...large }];
+  fs.writeFileSync(transcript, JSON.stringify({ sessionID, inputIds: ["input"], messages }));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", sessionID, turnIds: ["input"], invocationId, exitCode: 0, partial: false, transcriptPath: transcript }));
+  const initial = await invoke([OBSERVE, "--report-file", report, "--messages", "--large"]);
+  assert.equal(initial.code, 0, initial.err); assert.equal(JSON.parse(initial.out).source, "transcript");
+  const cursor = Buffer.from(JSON.stringify({ report, invocationId, offset: 1 })).toString("base64url");
+  const invalid = await invoke([OBSERVE, "--report-file", report, "--messages", "--large", "--cursor", cursor]);
+  assert.equal(invalid.code, 1); assert.equal(JSON.parse(invalid.out).source, "unavailable");
+  assert.equal(invalid.out.includes("SYNTHETIC_PRIVATE_"), false);
+});
 const DRIVER = path.join(ROOT, "skills/opencode/scripts/driver.mjs");
 // `beside` is an earlier report: this run writes report-2.json into its directory, under the same state.
 async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4, approvalDelayMs = 0, headers = "", approval = null, resume = null, cancel = false, cancelWhenPending = false, pendingCount = 1, cancelOn = null, rights = `read ${cwd}`, defaultModel = "router/deepseek/flash", answer = '{"answers":[["Read"]]}', localUrl = server.url, beside = null, more = {}, state: given = null } = {}) {
@@ -294,11 +945,109 @@ async function driverRun(server, { allowNoCommands = true, timeout = 9, idle = 4
     return { ...result, report: fs.existsSync(report) ? JSON.parse(fs.readFileSync(report)) : null, path: report, box, stopFile: cli.stopFile };
   } finally { if (p.child.exitCode === null) p.child.kill("SIGKILL"); }
 }
-test("a server that exits before it serves is reported with its exit code and what it printed", async () => {
+test("advertised variants are passed to OpenCode without claiming provider-confirmed effort", async () => {
+  const s = await fakeOpenCode();
+  try {
+    s.extraVariants = ["max", "ultra"];
+    for (const [headers, variant] of [["", null], ["VARIANT: high\n", "high"], ["VARIANT: max\n", "max"], ["VARIANT: ultra\n", "ultra"]]) {
+      const r = await driverRun(s, { headers });
+      assert.equal(r.code, 0, r.err); assert.equal(r.report.variant, variant);
+      assert.equal(r.report.confirmedEffort, null); assert.equal(r.report.effortCompliance, "unknown");
+      assert.equal(s.sessions.get(r.report.sessionID).model.variant ?? null, variant);
+    }
+    assert.equal(s.prompts, 4);
+  } finally { await s.close(); }
+});
+test("live observer reads pending POST and callback from the owner and falls back to its final transcript", async () => {
+  const s = await fakeOpenCode("live-admission"), state = tempDir("entrust-live-admission-"), dir = path.join(state, "invocation");
+  fs.mkdirSync(dir);
+  const input = path.join(dir, "prompt.txt"), report = path.join(dir, "report.json"), box = path.join(dir, "approvals");
+  fs.writeFileSync(input, prompt("ALLOW_NO_COMMANDS: yes\n"));
+  const cli = fakeCli(s.url, state); s.defaultModel = "router/deepseek/flash";
+  const run = spawnNode([DRIVER, "--prompt-file", input, "--report-file", report, "--approval-dir", box, "--idle-timeout", "4"],
+    { env: { ...cli.env, ENTRUST_STATE_DIR: state }, killAfterMs: 15000 });
+  try {
+    const end = Date.now() + 8000;
+    while (!s.releaseAdmission && Date.now() < end && run.child.exitCode === null) await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(typeof s.releaseAdmission, "function", run.stderrSoFar());
+    const status = await readObservation(report);
+    assert.equal(status.state, "live"); assert.equal(status.admission, "pending"); assert.equal(status.serverStatus, "busy");
+    assert.deepEqual(status.callbacks, { permissions: 1, questions: 0 });
+    assert.equal(JSON.stringify(status).includes("node check.mjs"), false);
+    const live = await readObservation(report, "messages");
+    assert.equal(live.sessionID, status.sessionID); assert.deepEqual(live.inputIds, status.inputIds);
+    assert.ok(live.messages.some((m) => m.content?.some((p) => p.text === "Привет во время POST")));
+    s.releaseAdmission();
+    while ((!fs.existsSync(box) || !fs.readdirSync(box).some((name) => name.endsWith(".request.json"))) && Date.now() < end && run.child.exitCode === null)
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    const requestFile = fs.readdirSync(box).find((name) => name.endsWith(".request.json"));
+    const q = JSON.parse(fs.readFileSync(path.join(box, requestFile)));
+    const decision = await invoke([ENTRY, "--dir", dir, "--report-file", report, "--decide", q.id, "--accept"], q.presented + "\n");
+    assert.equal(decision.code, 0, decision.out + decision.err);
+    const result = await run.done; assert.equal(result.code, 0, result.err);
+    const terminal = await readObservation(report, "messages");
+    assert.equal(terminal.state, "terminal"); assert.equal(terminal.source, "transcript");
+    assert.equal(terminal.invocationId, status.invocationId); assert.deepEqual(terminal.inputIds, status.inputIds);
+    assert.ok(terminal.messages.some((m) => m.content?.some((p) => p.text === "Привет во время POST")));
+    assert.equal(s.mutations.filter((m) => m.id === q.payload.id).length, 1);
+  } finally { s.releaseAdmission?.(); if (run.child.exitCode === null) run.child.kill("SIGKILL"); await run.done; await s.close(); }
+});
+test("live RESUME observer names the new input and excludes the earlier turn", async () => {
+  const s = await fakeOpenCode("slow"); s.slowMs = 100;
+  try {
+    const first = await driverRun(s, { headers: "VARIANT: high\n" }); assert.equal(first.code, 0, first.err);
+    s.slowMs = 2400;
+    const state = path.dirname(path.dirname(first.path)), dir = path.dirname(first.path), report = path.join(dir, "live-resume.json");
+    const input = path.join(dir, "resume-input.txt");
+    fs.writeFileSync(input, prompt(`ALLOW_NO_COMMANDS: yes\nRESUME: ${first.path}\n`));
+    const cli = fakeCli(s.url, state);
+    const run = spawnNode([DRIVER, "--prompt-file", input, "--report-file", report, "--idle-timeout", "4"],
+      { env: { ...cli.env, ENTRUST_STATE_DIR: state, ENTRUST_PLAN_MODEL: "router/deepseek/flash" }, killAfterMs: 12000 });
+    try {
+      const end = Date.now() + 7000;
+      while (s.prompts < 2 && Date.now() < end && run.child.exitCode === null) await new Promise((resolve) => setTimeout(resolve, 20));
+      assert.equal(s.prompts, 2, run.stderrSoFar());
+      const live = await readObservation(report, "messages");
+      assert.equal(live.state, "live"); assert.equal(live.sessionID, first.report.sessionID);
+      assert.equal(live.inputIds.length, 1); assert.notEqual(live.inputIds[0], first.report.turnId);
+      assert.equal(live.messages.some((m) => m.id === first.report.turnId || m.id === "msg_answer_1"), false);
+      const result = await run.done; assert.equal(result.code, 0, result.err);
+      const terminal = JSON.parse(fs.readFileSync(report));
+      assert.equal(terminal.variant, "high"); assert.equal(terminal.sessionID, first.report.sessionID);
+    } finally { if (run.child.exitCode === null) run.child.kill("SIGKILL"); await run.done; }
+  } finally { await s.close(); }
+});
+test("repeated live observation does not renew the lost relay lease", async () => {
+  const s = await fakeOpenCode("slow"); s.slowMs = 15000;
+  const state = tempDir("entrust-observer-lease-"), report = path.join(state, "run", "report.json"), dir = path.join(state, "run", "agent");
+  const cli = fakeCli(s.url, state), env = { ...cli.env, ENTRUST_STATE_DIR: state, AGENT_RUN_RETURN_MS: "900", AGENT_RUN_LEASE_MS: "2500" };
+  s.defaultModel = "router/deepseek/flash";
+  try {
+    const made = await invoke([ENTRY, "--new", "--report-file", report], prompt("ALLOW_NO_COMMANDS: yes\n"), env);
+    assert.equal(made.code, 0, made.out + made.err);
+    const run = await invoke([ENTRY, "--run", "--report-file", report], "", env);
+    assert.equal(run.code, 0, run.out + run.err); assert.match(run.out, /^DRIVER_EXIT=running$/m);
+    let observations = 0; const end = Date.now() + 12000;
+    while (!fs.existsSync(path.join(dir, "exit")) && Date.now() < end) {
+      if ((await readObservation(report)).state === "live") observations++;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    assert.ok(observations > 0, "no live owner observation was obtained");
+    assert.equal(fs.existsSync(path.join(dir, "exit")), true, "observer extended the lease or cleanup did not complete");
+    const cancel = JSON.parse(fs.readFileSync(path.join(dir, "cancel.json")));
+    const result = JSON.parse(fs.readFileSync(report));
+    assert.equal(cancel.kind, "relay-lost"); assert.equal(result.turnStatus, "aborted");
+    assert.equal(result.serverCleanup.process, "exited"); assert.equal(fs.existsSync(cli.stopFile), true);
+  } finally {
+    if (!fs.existsSync(path.join(dir, "exit"))) await invoke([ENTRY, "--stop", "--report-file", report], "", env);
+    await s.close();
+  }
+});
+test("a server that exits before it serves reports its exit code without its output", async () => {
   const bin = path.join(tempDir("entrust-opencode-dying-"), "bin"); fs.mkdirSync(bin);
   fs.writeFileSync(path.join(bin, "opencode"), `#!/usr/bin/env node\nconsole.error("Error: EPERM: operation not permitted, open '/home/x/.local/share/opencode/log'");\nprocess.exit(3);\n`, { mode: 0o755 });
   await assert.rejects(startLocalServer({ env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}` } }),
-    /exited with code 3 before announcing its local URL; it printed: Error: EPERM: operation not permitted/);
+    /exited with code 3 before announcing its local URL; its output is withheld/);
 });
 test("the private server's password is its own, never one the caller's environment holds", async () => {
   const s = await fakeOpenCode(), dir = tempDir("entrust-opencode-password-"), seen = path.join(dir, "password");
@@ -315,6 +1064,7 @@ test("a default run starts and stops its private loopback server", async () => {
   try {
     const r = await driverRun(s);
     assert.equal(r.code, 0, r.err); assert.equal(r.report.serverMode, "local");
+    assert.deepEqual(r.report.serverCleanup, { process: "exited", owner: "exited", listener: "unknown" });
     assert.equal(fs.readFileSync(r.stopFile, "utf8"), "stopped");
   } finally { await s.close(); }
 });
@@ -479,6 +1229,17 @@ test("a resumed session whose rules changed since is refused before any input", 
     assert.equal(s.prompts, prompts);
   } finally { await s.close(); }
 });
+test("a legacy continuation retains its original skill permission rules", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const first = await driverRun(s); assert.equal(first.code, 0, first.err);
+    const session = s.sessions.get(first.report.sessionID);
+    session.permissions = session.permissions.filter((rule) => rule.action !== "skill");
+    const again = await driverRun(s, { resume: first.path });
+    assert.equal(again.code, 0, again.err); assert.match(again.err, /retains legacy skill permissions/);
+    assert.equal(session.permissions.some((rule) => rule.action === "skill"), false);
+  } finally { await s.close(); }
+});
 test("a continuation keeps its rights: a write session resumed as read is refused, and one naming none stays write", async () => {
   const s = await fakeOpenCode("normal");
   try {
@@ -509,6 +1270,67 @@ test("a turn that read a file has observed something, as in every adapter; one t
   assert.equal(expectation({ successful: [], observations: 1 }).ok, true);
   assert.match(expectation({ successful: [], observations: 0 }).why, /observed nothing/);
   assert.equal(expectation({ successful: [], observations: 0, allowNoCommands: true }).ok, true);
+});
+test("EXPECT distinguishes proven matches, mismatches and unknown output", () => {
+  const check = (regex, successful) => expectation({ expect: new RegExp(regex), successful });
+  const cmd = (output, outputTruncated) => ({ output, outputTruncated });
+  for (const flag of [true, null, undefined]) assert.match(check("hit", [cmd("hit", flag)]).why, /unknown/);
+  assert.match(check("full output saved to", [cmd("full output saved to /PRIVATE_PATH", true)]).why, /unknown/);
+  assert.equal(check("hit", [cmd("hit", false)]).ok, true);
+  assert.equal(check("^$", [cmd("", false)]).ok, true);
+  assert.match(check("hit", [cmd("miss", false)]).why, /no successful/);
+  assert.match(check("hit", [cmd(null, false)]).why, /unknown/);
+  assert.match(check("^$", [cmd("(no output)", false)]).why, /unknown/);
+  assert.match(check("no output", [cmd("(no output)", false)]).why, /unknown/);
+  assert.equal(check("^", [cmd("(no output)", false)]).ok, true);
+  assert.match(check("hit", [cmd("(no output)", false)]).why, /no successful/);
+  assert.equal(check("no output", [cmd("(no output)\n", false)]).ok, true);
+  assert.equal(check("hit", [cmd("hit", true), cmd("hit", false)]).ok, true);
+  assert.equal(check("hit", [cmd("hit", false), cmd("hit", true)]).ok, true);
+  assert.match(check("hit", [cmd("miss", false), cmd("hit", null)]).why, /unknown/);
+  assert.match(check("hit", []).why, /no successful/);
+  assert.equal(expectation({ successful: [cmd("hit", null)] }).ok, true);
+});
+test("EXPECT unknown exits 5, reports native truncation and preserves higher priority errors", async () => {
+  const parts = [true, false, "false", null].map((truncated, i) => ({ type: "tool", id: `call_${i}`, name: "shell",
+    state: { status: "completed", input: { command: `cmd ${i}` }, content: [{ type: "text", text: "hit" }], metadata: { exit: 0, truncated } } }));
+  for (const [mode, code] of [["normal", 5], ["provider-error-marker", 1]]) {
+    const s = await fakeOpenCode(mode); s.toolParts = [parts[0], parts[2], parts[3]];
+    try {
+      const r = await driverRun(s, { headers: "EXPECT: hit\n" });
+      assert.equal(r.code, code, r.err);
+      assert.deepEqual(r.report.tools.map((t) => t.outputTruncated), [true, null, null]);
+      assert.deepEqual(r.report.commands.map((c) => c.outputTruncated), [true, null, null]);
+      const transcript = JSON.parse(fs.readFileSync(r.report.transcriptPath, "utf8"));
+      assert.equal(transcript.messages.find((m) => m.type === "assistant").content[1].state.metadata.truncated, "false");
+      if (mode === "normal") assert.match(r.report.error, /unknown/);
+    } finally { await s.close(); }
+  }
+  const s = await fakeOpenCode(); s.toolParts = parts;
+  try { const r = await driverRun(s, { headers: "EXPECT: hit\n" }); assert.equal(r.code, 0, r.err);
+    assert.deepEqual(r.report.commands.map((c) => c.outputTruncated), [true, false, null, null]); }
+  finally { await s.close(); }
+  const mismatch = await fakeOpenCode(); mismatch.toolParts = [parts[1]];
+  try { const r = await driverRun(mismatch, { headers: "EXPECT: absent\n" });
+    assert.equal(r.code, 5, r.err); assert.match(r.report.error, /no successful/); }
+  finally { await mismatch.close(); }
+  const missing = await fakeOpenCode(); missing.toolParts = [
+    { type: "tool", id: "missing_metadata", name: "shell", state: { status: "completed", content: [{ type: "text", text: "hit" }] } },
+    { type: "tool", id: "missing_output", name: "shell", state: { status: "completed", metadata: { exit: 0, truncated: false } } },
+    { type: "tool", id: "invalid_output", name: "shell", state: { status: "completed", content: [{ type: "text", text: null }], metadata: { exit: 0, truncated: false } } },
+    { type: "tool", id: "missing_text", name: "shell", state: { status: "completed", content: [{ type: "text" }], metadata: { exit: 0, truncated: false } } },
+    { type: "tool", id: "failed", name: "shell", state: { status: "completed", content: [{ type: "text", text: "hit" }], metadata: { exit: 1, truncated: false } } },
+  ];
+  try { const r = await driverRun(missing, { headers: "EXPECT: hit\n" });
+    assert.equal(r.code, 5, r.err); assert.match(r.report.error, /unknown/);
+    assert.deepEqual(r.report.commands.map((c) => c.outputTruncated), [null, false, false, false, false]);
+    assert.equal(r.report.commands[1].output, null);
+    assert.equal(r.report.commands[2].output, null);
+    assert.equal(r.report.commands[3].output, null);
+    const invalid = await driverRun(missing, { headers: "EXPECT: ^$\n" });
+    assert.equal(invalid.code, 5, invalid.err); assert.match(invalid.report.error, /unknown/);
+    const noExpect = await driverRun(missing); assert.equal(noExpect.code, 0, noExpect.err);
+  } finally { await missing.close(); }
 });
 test("the page's own template passes on a turn that only read, and fails exit 5 on one that observed nothing", async () => {
   for (const [mode, code] of [["read-only", 0], ["normal", 5]]) {
@@ -835,6 +1657,15 @@ test("continuation retains session and model but excludes old command evidence",
     assert.equal(s.calls.some((c) => c.method === "POST" && c.path.endsWith("/model")), false, "the session kept its model");
   } finally { await s.close(); }
 });
+test("a pinned MODEL on continuation preserves the previous variant", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const first = await driverRun(s, { headers: "VARIANT: high\n" }); assert.equal(first.code, 0, first.err);
+    const second = await driverRun(s, { resume: first.path, more: { ENTRUST_PLAN_MODEL: "router/deepseek/flash" } });
+    assert.equal(second.code, 0, second.err); assert.equal(second.report.variant, "high");
+    assert.equal(s.sessions.get(first.report.sessionID).model.variant, "high");
+  } finally { await s.close(); }
+});
 test("a continuation reads only its own run's messages: a long earlier history is not fetched again on each poll", async () => {
   const s = await fakeOpenCode();
   try {
@@ -956,6 +1787,22 @@ test("status transport failure cannot be interpreted as idle success", async () 
   const s = await fakeOpenCode("status-error");
   try { const r = await driverRun(s); assert.notEqual(r.code, 0); assert.notEqual(r.report.receiptOk, true); }
   finally { await s.close(); }
+});
+test("malformed active map cannot establish idle or permit RESUME", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const first = await driverRun(s); assert.equal(first.code, 0, first.err);
+    const before = s.prompts;
+    for (const value of [{ error: "invalid active schema" }, { ses_foreign: { type: "idle" } }]) {
+      s.activeOverride = value;
+      const again = await driverRun(s, { resume: first.path });
+      assert.equal(again.code, 2, again.err); assert.match(again.err, /status is unknown/);
+      assert.equal(s.prompts, before);
+    }
+    const fresh = await driverRun(s, { idle: 1 });
+    assert.notEqual(fresh.code, 0); assert.equal(fresh.report.receiptOk, false);
+    assert.equal(fresh.report.cancellation?.observed, "unknown");
+  } finally { await s.close(); }
 });
 test("Stop preserves partial output and stops only this session", async () => {
   const s = await fakeOpenCode("cancel");
@@ -1135,6 +1982,7 @@ test("Stop before the private server is ready ends in a terminal aborted report 
     assert.equal(r.report?.exitCode, 3); assert.equal(r.report.turnStatus, "aborted"); assert.equal(r.report.partial, true);
     assert.equal(r.report.receiptOk, false); assert.equal(r.report.ok, false);
     assert.equal(r.report.model, null); assert.equal(r.report.sessionID, null);
+    assert.deepEqual(r.report.serverCleanup, { process: "exited", owner: "exited", listener: "unknown" });
     assert.equal(r.report.requestedModel, "router/deepseek/flash");
     assert.deepEqual(r.report.commands, []);
     assert.match(r.report.cancellation.reason, /SIGTERM/); assert.equal(r.report.cancellation.signal, "SIGTERM");

@@ -41,11 +41,16 @@ below. A model mentioned only for information or discussion does not request a w
    `OPENCODE=unavailable` says why no server answered.
 2. Choose `MODEL: inherit` only when the user did not name a model family: it selects `DEFAULT` and is
    refused when that is `none`. When the user names a family such as DeepSeek or GLM, use the first listed
-   model of that family, with its listed variant as `VARIANT:`; never use `inherit` or another family for
+   model of that family, with its listed variant as `VARIANT:` when permitted by the effort policy below; never use `inherit` or another family for
    that request. If no model of the family is listed, report the unresolved family before launching. A
    continuation retains its previous model and variant. Explicit `MODEL: provider/model` overrides
    selection; preserve slashes inside the model ID.
-   `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant.
+   `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant. A requested
+   variant is not proof of the provider's effective reasoning effort. The coordinator chooses low, medium, high,
+   or xhigh as appropriate; max and ultra require a separate explicit user request and are never selected
+   automatically. Existing authorization applies to continuations in its scope; a previous report alone is not
+   proof of authorization. The runtime cannot verify authorization and reports the effective effort as unknown
+   when unconfirmed.
 3. For orchestration, read [orchestration.md](references/orchestration.md). Resolve and pin the model
    before registering the approved plan. Use the shared [five-field schema](../orchestrate/schemas/five-fields.schema.json).
 4. Make, run, read, continue and stop the worker as orchestrate's
@@ -72,10 +77,49 @@ Other permission requests carry the complete native request; grant one action wi
 Each concurrent writer gets a distinct worktree. Rights changes need their own authority.
 Read-only agents may share a directory when its tooling permits it.
 
+New sessions allow the `skill` tool; older resumed sessions keep their original permission rules and may
+still ask for skill access. OpenCode can also discover skills from its own configuration and policy.
+
+To observe an active invocation without reading its server credentials, run
+`node <skill-dir>/scripts/observe.mjs --report-file <absolute-report>`; add `--messages` to request content,
+and `--cursor <cursor>` to read the next page. If an oversized message is reached, the ordinary command
+returns an error instead of skipping it. Repeat that page with `--messages --large`, and keep `--large` on
+its continuation requests. A large message is returned as `oversized`, not inside `messages`: its
+`contentCursor` reads the first part using `--messages --large --cursor <contentCursor>`, while
+the page's separate `cursor` continues after the message without waiting for its content. Each content reply
+has a `fragment` with a base64 `data` field, `byteOffset`, `totalBytes` and `sha256`; its `cursor` reads the
+next part. Concatenate decoded bytes by offset, verify the total and SHA-256, then decode UTF-8 and parse JSON.
+Those bytes encode `JSON.stringify` of the observed message object, not the server's original wire bytes.
+Descriptor and fragment replies mark `partial: true` and `complete: false` because the returned page does
+not contain the whole message. For live reads, `sourcePartial` is the observation's original `partial`, or null
+if absent. For terminal reads, it is the run's `partial`, conservatively true if absent. These replies omit a
+present tool list and mark `toolsOmitted: true`; read status or an ordinary page for that list when available.
+`state: stale` means the message or page anchor changed: discard incomplete parts and read a fresh descriptor.
+Programmatic `readObservation` callers pass `{large: true}` as the fourth argument to opt into descriptors.
+A legacy caller instead gets `unavailable` at an oversized message, not a silently incomplete page.
+Cursors identify content; they are not authorization. A live owner from an earlier version remains readable
+with its original report address when the request fits 4096 bytes; an old owner cannot handle the hash-only
+address needed for a longer request. An earlier live owner cannot split an oversized message, even when this
+CLI is called with `--large`; after it finishes, read its existing terminal transcript if available. A legacy
+offset cursor embeds the full report path: if its request exceeds the IPC bound, start again with `--large` on
+the current owner or the terminal transcript to obtain a compact cursor.
+Reads are non-atomic, may be incomplete, and do not renew
+the worker's lease. Status is server activity, not proof of task progress; unknown or unavailable is not idle.
+The live channel uses a private local Unix socket and stores no text. Processes running as the same user can
+still access it. Once the run ends, message reads use the existing transcript if available; a missing transcript
+or owner is unavailable. Terminal transcript reads are limited to 32 MiB; live reads still collect the observed
+history in memory. Do not replace `--pending` or `--handback` with this view for permission decisions.
+
 Read the report even when the exit is nonzero:
 partial answers, native command outcomes and callback decisions remain useful evidence.
 `receiptOk` establishes attribution, while independent gates establish the result.
 The report's `model` is observed attribution; `requestedModel` preserves the selection even after Stop.
+`outputTruncated` in report tools, shell commands and live tool summaries is OpenCode's boolean truncation
+metadata, or null when unknown; live running tools show the current snapshot. EXPECT succeeds on a proven
+match from a successful command. Truncated or unknown output cannot prove a match or mismatch; if no command
+proves a match and any is unknown, exit 5 reports unknown. OpenCode's exact `(no output)` may represent empty
+output or that literal text, so EXPECT is decisive only when both candidates give the same result. Other
+untruncated output is checked as OpenCode returned it, not as raw stdout bytes.
 Scope declarations do not configure a sandbox.
 
 Where the host delivers Stop on the proxy to its command as a signal, the driver aborts its own sessions, records
@@ -85,6 +129,10 @@ call again, and to `--stop --report-file <report>`, which you run once the proxy
 the shared page's [Stop an agent](../orchestrate/references/external.md#7-stop-an-agent), and a hand-made signal on
 the driver's pid is the recovery for what neither reaches. Verify the external outcome;
 a missing report or uncertain cancellation is unknown, never success.
+
+The local server's owner closes its own child when the driver's private channel disconnects. `serverCleanup`
+reports whether the server and owner processes exited; it does not prove the listener closed or detached
+descendants stopped. A crash of the owner itself is outside this guarantee.
 
 Read [parity.md](references/parity.md) before relying on active clarification, schema delivery,
 attachments, tool selection or billing. API presence alone is not evidence of working execution.

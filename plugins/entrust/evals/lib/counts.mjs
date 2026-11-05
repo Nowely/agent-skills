@@ -7,9 +7,13 @@ export function parseCount(out) {
   const all = out.match(/^all (\d+)\b/m);
   const partial = out.match(/^all (\d+) passed, (\d+) skipped/m);
   const absent = out.match(/^(\d+) skipped \(codex binary absent\)/m);
+  const nodePass = out.match(/^(?:#|ℹ) pass (\d+)$/m), nodeFail = out.match(/^(?:#|ℹ) fail (\d+)$/m);
+  const nodeSkipped = out.match(/^(?:#|ℹ) skipped (\d+)$/m);
   if (absent && !/\ball \d+ cases that ran agree/.test(out)) return `${absent[1]} skipped`;
   if (!all && /NOT RUN/.test(out)) return "not run";
   if (partial) return `${partial[1]} passed, ${partial[2]} skipped`;
+  if (!all && nodePass && nodeFail?.[1] === "0")
+    return Number(nodeSkipped?.[1]) ? `${nodePass[1]} passed, ${nodeSkipped[1]} skipped` : nodePass[1];
   return all ? all[1] : "?";
 }
 

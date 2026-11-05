@@ -57,6 +57,23 @@ const cfgKeys = (log) => (fs.existsSync(log) ? fs.readFileSync(log, "utf8") : ""
   .split("\n").filter((l) => l.startsWith("cfg:")).map((l) => l.slice("cfg:".length));
 const TMP_KEYS = ["sandbox_workspace_write.exclude_slash_tmp", "sandbox_workspace_write.exclude_tmpdir_env_var"];
 const CASES = [
+  { scenario: "happy", expect: EXIT.SUCCESS, env: { FAKE_SKILLS_FIXTURE: "1" },
+    why: "disabled project and HOME user skills and an enabled plugin namesake retain their distinct paths",
+    assert: (r) => r.skillsCatalog?.source === "caller-probe" || "skills catalogue source missing",
+    assertStderr: (e) => /caller-process-only extra roots are unknown; plugin runtime\/MCP is not carried/.test(e) || "catalogue boundary was not reported" },
+  { scenario: "happy", expect: EXIT.SUCCESS, args: ["--resume", "thr_root"], env: { FAKE_SKILLS_FIXTURE: "1", FAKE_SKILLS_SYSTEM: "1" },
+    why: "a resumed thread repeats the bridge and keeps a disabled system skill across private-home paths",
+    assert: (r) => r.resumedFrom === "thr_root" && r.skillsCatalog?.source === "caller-probe" || "resume lost catalogue or thread" },
+  { scenario: "happy", expect: EXIT.USAGE, env: { FAKE_SKILLS_FIXTURE: "1", FAKE_SKILLS_MISMATCH: "1" },
+    why: "a disabled skill that comes back enabled must stop before the thread",
+    assertStderr: (e) => /isolated skills catalogue differs/.test(e) || "mismatched catalogue was not refused" },
+  { scenario: "happy", expect: EXIT.USAGE, env: { FAKE_SKILLS_ERROR: "1" },
+    why: "a source catalogue error must not become an empty skills list",
+    assertStderr: (e) => /caller skills catalogue is unavailable or invalid/.test(e) || "bad source catalogue was not refused" },
+  { scenario: "happy", expect: EXIT.USAGE, env: { FAKE_SKILLS_FIXTURE: "1", FAKE_SKILLS_AMBIGUOUS: "1" },
+    why: "an ambiguous disabled system name must not disable its enabled namesake",
+    assertStderr: (e) => /cannot preserve disabled system skill/.test(e) || "ambiguous system name was not refused" },
+
   { scenario: "happy",            expect: EXIT.SUCCESS,                  why: "a real command succeeded and a final answer arrived" },
   { scenario: "happy",            expect: EXIT.USAGE, args: ["--model", "missing-model"],
     env: { FAKE_RPC_LOG: unknownModelLog },

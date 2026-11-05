@@ -27,7 +27,7 @@ A prompt is a few header lines, then `TASK:` and the task. Header lines come fir
 | --- | --- | --- |
 | `RIGHTS:` (first, when present) | `read [<dir>]`: no file-tool writes; optional path selects the working directory, not a read boundary; `write <dir>`: may change files under `<dir>`; `worktree <repo>`: may change files in a fresh copy of `<repo>` | the plan row's writes; without a plan, `read` in the directory you run `--new` in |
 | `MODEL:` | a model name from the adapter's models page | the plan row's model; without a plan, the CLI's default |
-| `EFFORT:` | an effort name from the adapter's page | the CLI's default |
+| `EFFORT:` | an effort name from the adapter's page | chosen for this task under the orchestration policy; set it on every launch and continuation |
 | `OUTPUT_SCHEMA:` | the absolute path of a JSON Schema; workers use `<orchestrate>/schemas/five-fields.schema.json`; the main proxy uses `<orchestrate>/schemas/proxy-reply.schema.json` | the adapter's default |
 | `RESUME:` | the `REPORT=` path of an earlier run of this agent | a new agent |
 | `ALLOW_NO_COMMANDS:` | `yes` | a turn that ran no command and read no file fails with exit 5 |
@@ -38,6 +38,7 @@ A yes-or-no line takes `yes`, `true` or `1`, or `no`, `false` or `0`. After the 
     CHECK: how the agent can tell it is right
     RETURN: exactly what to hand back
 
+Apply [skills per invocation](../SKILL.md#skills-per-invocation) to this prompt, including each `RESUME:`.
 Write one deliverable per agent. Write the task in the user's language. Choose the smallest `RIGHTS` that lets
 the agent finish and check the work, and agree any write right with the user before launching.
 
@@ -309,7 +310,7 @@ A decline answers that one request; the run goes on.
 
 Write a new prompt with `RESUME: <its REPORT= path>` and run `--new` under a fresh report path: under a plan
 `<run>/<id>-2/report.json`, then `-3`, and so on; without a plan, a new name. The continuation runs in the
-earlier run's directory with its rights: leave `RIGHTS:` out or name the same rights. Then run it as in step 3,
+earlier run's directory with its rights: leave `RIGHTS:` out or name the same rights. Set the approved model and requested effort again; do not assume the adapter preserves them. Then run it as in step 3,
 using a distinct follow-up turn on the existing native task when supported, otherwise a fresh context. This is a
 new external invocation continuing that worker; Claude forks the parent session and records its report link.
 

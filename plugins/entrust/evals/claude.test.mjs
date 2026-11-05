@@ -173,7 +173,7 @@ test("a read run: manual mode, read tools, the mailbox denied rules, no approval
   assert.match(r.err, /^entrust: pid=\d+ identity=inv_[0-9a-f]+ reportPath=/m);
   const call = lastCall(s.log), argv = call.argv;
   assert.equal(call.cwd, fs.realpathSync(s.work)); assert.equal(call.task, "look around");
-  assert.equal(flagOf(argv, "--permission-mode"), "manual"); assert.equal(flagOf(argv, "--tools"), "Read,Grep,Glob,Bash");
+  assert.equal(flagOf(argv, "--permission-mode"), "manual"); assert.equal(flagOf(argv, "--tools"), "Read,Grep,Glob,Bash,Skill");
   assert.equal(flagOf(argv, "--model"), "haiku"); assert.equal(flagOf(argv, "--effort"), "low");
   assert.equal(flagOf(argv, "--permission-prompts"), "none"); assert.equal(argv.includes("--mcp-config"), false);
   assert.ok(argv.includes(`Edit(/${fs.realpathSync(s.state)}/${path.basename(path.dirname(r.report))}/**/approvals/**)`), argv.join(" "));
@@ -212,7 +212,7 @@ test("write and worktree runs: acceptEdits, edit tools, the right working direct
   const w = await drive(s, `RIGHTS: write ${s.work}\nTASK: write\n`, { mode: "write" });
   assert.equal(w.code, 0, w.err);
   let argv = lastCall(s.log).argv;
-  assert.equal(flagOf(argv, "--permission-mode"), "acceptEdits"); assert.equal(flagOf(argv, "--tools"), "Read,Grep,Glob,Bash,Edit,Write");
+  assert.equal(flagOf(argv, "--permission-mode"), "acceptEdits"); assert.equal(flagOf(argv, "--tools"), "Read,Grep,Glob,Bash,Skill,Edit,Write");
   assert.deepEqual(w.json.rights, { kind: "write", roots: [fs.realpathSync(s.work)] });
   assert.equal(w.json.fileChanges[0].tool, "Write");
   const repo = tempDir("entrust-claude-repo-");
@@ -266,7 +266,7 @@ test("an init reporting another mode or another set of tools than the rights ask
   const narrower = await drive(s, `RIGHTS: write ${s.work}\nTASK: make\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ tools: ["Bash", "Glob", "Grep", "Read"] }) } });
   assert.equal(narrower.code, 4, narrower.err);
   // As 2.1.295 reports a read run: manual comes back as default, StructuredOutput and the user's MCP tools beside the granted ones.
-  const echoed = await drive(s, `RIGHTS: read ${s.work}\nTASK: judge\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ permissionMode: "default", tools: ["Bash", "Glob", "Grep", "Read", "StructuredOutput", "mcp__user__thing"] }) } });
+  const echoed = await drive(s, `RIGHTS: read ${s.work}\nTASK: judge\n`, { more: { FAKE_CLAUDE_INIT: JSON.stringify({ permissionMode: "default", tools: ["Bash", "Glob", "Grep", "Read", "Skill", "StructuredOutput", "mcp__user__thing"] }) } });
   assert.equal(echoed.code, 0, echoed.err);
 });
 
@@ -543,9 +543,53 @@ test("SAFE_MODE runs with --safe-mode and no mailbox, even when one is given", a
   assert.equal(r.code, 0, r.err);
   const argv = lastCall(s.log).argv;
   assert.ok(argv.includes("--safe-mode")); assert.equal(argv.includes("--mcp-config"), false); assert.equal(flagOf(argv, "--permission-prompts"), "none");
-  assert.equal(r.json.context.safeMode, true); assert.equal(r.json.context.memory, false);
+  assert.equal(r.json.safeMode, true); assert.equal(r.json.context.safeMode, true); assert.equal(r.json.context.memory, false);
+  const resumed = await drive(s, `RESUME: ${r.report}\nTASK: continue\n`, { approvals: box });
+  assert.equal(resumed.code, 0, resumed.err);
+  assert.ok(lastCall(s.log).argv.includes("--safe-mode"));
+  assert.equal(resumed.json.context.safeMode, true);
+  const withoutInit = path.join(s.state, "safe-without-init.json");
+  fs.writeFileSync(withoutInit, JSON.stringify({ ...r.json, context: null }));
+  assert.equal(parsePrompt(`RESUME: ${withoutInit}\nTASK: continue\n`, {}, s.work).safeMode, true);
+  const legacy = path.join(s.state, "legacy-safe.json");
+  const legacyReport = { ...r.json }; delete legacyReport.safeMode;
+  fs.writeFileSync(legacy, JSON.stringify(legacyReport));
+  assert.equal(parsePrompt(`RESUME: ${legacy}\nTASK: continue\n`, {}, s.work).safeMode, true);
+  const switched = await drive(s, `RESUME: ${r.report}\nSAFE_MODE: no\nTASK: continue\n`, { approvals: box });
+  assert.equal(switched.code, 0, switched.err);
+  assert.equal(lastCall(s.log).argv.includes("--safe-mode"), false);
   const asked = await drive(s, `RIGHTS: read ${s.work}\nSAFE_MODE: yes\nTASK: judge\n`, { mode: "ask", approvals: box });
   assert.equal(asked.code, 7); assert.equal(asked.json.permissionDenials.length, 1);
+});
+
+test("an unknown or malformed prior SAFE_MODE requires an explicit decision before a worker resumes", async () => {
+  const s = setup();
+  const first = await drive(s, `RIGHTS: read ${s.work}\nSAFE_MODE: yes\nTASK: start\n`);
+  assert.equal(first.code, 0, first.err);
+  const report = path.join(s.state, "uncertain.json");
+  for (const [top, context] of [[undefined, null], [null, null], ["yes", null], ["yes", { safeMode: true }], [false, { safeMode: true }]]) {
+    const prior = { ...first.json, context };
+    if (top === undefined) delete prior.safeMode; else prior.safeMode = top;
+    fs.writeFileSync(report, JSON.stringify(prior));
+    const calls = fs.readFileSync(s.log, "utf8");
+    const refused = await drive(s, `RESUME: ${report}\nTASK: continue\n`);
+    assert.equal(refused.code, 2);
+    assert.match(refused.json.error, /SAFE_MODE.*(?:unknown|invalid|conflicting).*SAFE_MODE: yes or no/);
+    assert.equal(fs.readFileSync(s.log, "utf8"), calls, "no Claude process started");
+    for (const [value, expected] of [["yes", true], ["no", false]]) {
+      const decided = await drive(s, `RESUME: ${report}\nSAFE_MODE: ${value}\nTASK: continue\n`);
+      assert.equal(decided.code, 0, decided.err);
+      assert.equal(lastCall(s.log).argv.includes("--safe-mode"), expected);
+      assert.equal(decided.json.safeMode, expected);
+    }
+  }
+  const legacy = { ...first.json, context: { safeMode: true } }; delete legacy.safeMode;
+  fs.writeFileSync(report, JSON.stringify(legacy));
+  const resumed = await drive(s, `RESUME: ${report}\nTASK: continue\n`);
+  assert.equal(resumed.code, 0, resumed.err);
+  assert.equal(lastCall(s.log).argv.includes("--safe-mode"), true);
+  const fresh = await drive(s, `RIGHTS: read ${s.work}\nTASK: fresh\n`);
+  assert.equal(fresh.code, 0, fresh.err); assert.equal(fresh.json.safeMode, false);
 });
 
 // ------------------------------------------------------------------------------------------- approvals
