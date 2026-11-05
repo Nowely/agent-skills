@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import net from "node:net";
+import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { ROOT, registry, runCases, spawnNode, summarize, tempDir } from "./lib/harness.mjs";
 import { desktopModels, splitModel, digest } from "../plugin/skills/opencode/scripts/config.mjs";
@@ -21,6 +22,7 @@ const { cases, test: register } = registry();
 const test = (name, fn) => register(name, name, async () => { await fn(); return true; });
 const ENTRY = path.join(ROOT, "skills/opencode/scripts/agent-run.mjs");
 const STATUS = path.join(ROOT, "skills/opencode/scripts/status.mjs");
+const OBSERVE = path.join(ROOT, "skills/opencode/scripts/observe.mjs");
 const SHARED = path.join(ROOT, "skills/codex/scripts/agent-run.mjs");
 const cwd = tempDir("entrust-opencode-cwd-");
 const model = "router/deepseek/deepseek-flash";
@@ -325,6 +327,285 @@ test("observer is report-bound, pages current content, and becomes unavailable a
   } finally { await owner.close(); }
   assert.equal((await readObservation(report)).state, "unavailable");
 });
+test("oversized observed messages have independent bounded content and next-page cursors", async () => {
+  const dir = tempDir("entrust-large-observation-"), report = path.join(dir, "report.json");
+  const ctx = { report, invocationId: "inv_large", sessionID: "ses_root" };
+  const text = '🐈\\"\n'.repeat(140000);
+  const messages = [{ id: "input", type: "user", _sessionID: "ses_root", time: { created: 1 }, text },
+    ...Array.from({ length: 110 }, (_, i) => ({ id: `m${i}`, type: "assistant", _sessionID: "ses_root", time: { created: i + 2 },
+      text: i === 55 ? text : `small ${i}` })),
+    { id: "input", type: "assistant", _sessionID: "ses_child", time: { created: 200 }, text: "child" }];
+  const owner = await startObserver(ctx, async (_owner, kind) => ({ ...ctx, inputIds: ["input"], complete: true, partial: false, tools: [],
+    nonAtomic: true, ...(kind === "messages" ? { messages } : {}) }));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address }));
+  const options = { large: true };
+  const readAll = async (expectedState) => {
+    let cursor = null, pages = 0, fragments = 0; const collected = [];
+    do {
+      const p = await readObservation(report, "messages", cursor, options);
+      assert.equal(p.state, expectedState); assert.ok(Buffer.byteLength(JSON.stringify(p)) <= 512 * 1024);
+      collected.push(...p.messages); pages++;
+      if (p.oversized) {
+        const d = p.oversized; assert.equal(d.messageIndex, collected.length);
+        assert.equal(p.complete, false); assert.equal(p.partial, true); assert.equal(p.sourcePartial, false);
+        assert.equal(p.toolsOmitted, expectedState === "live" ? true : undefined);
+        const parts = []; let position = 0, contentCursor = d.contentCursor;
+        while (contentCursor) {
+          const chunk = await readObservation(report, "messages", contentCursor, options);
+          assert.equal(chunk.state, expectedState); assert.ok(Buffer.byteLength(JSON.stringify(chunk)) <= 512 * 1024);
+          assert.equal(chunk.complete, false); assert.equal(chunk.partial, true); assert.equal(chunk.sourcePartial, false);
+          assert.equal(chunk.toolsOmitted, expectedState === "live" ? true : undefined);
+          assert.equal(chunk.fragment.encoding, "base64"); assert.equal(chunk.fragment.byteOffset, position);
+          const bytes = Buffer.from(chunk.fragment.data, "base64"); assert.ok(bytes.length <= 128 * 1024);
+          position += bytes.length; parts.push(bytes); fragments++; contentCursor = chunk.cursor;
+        }
+        const encoded = Buffer.concat(parts);
+        assert.equal(encoded.length, d.totalBytes); assert.equal(crypto.createHash("sha256").update(encoded).digest("hex"), d.sha256);
+        collected.push(JSON.parse(encoded.toString("utf8")));
+      }
+      cursor = p.cursor;
+      assert.ok(pages < 20, "pagination did not advance");
+    } while (cursor);
+    assert.ok(pages >= 3); assert.ok(fragments > 2); assert.deepEqual(collected, messages);
+  };
+  let liveContentCursor;
+  try {
+    const first = await readObservation(report, "messages", null, options);
+    assert.equal(first.state, "live"); assert.equal(first.messages.length, 0); assert.ok(first.oversized?.contentCursor); assert.ok(first.cursor);
+    assert.equal(first.messagesComplete, false);
+    liveContentCursor = first.oversized.contentCursor;
+    assert.deepEqual([first.oversized.sessionID, first.oversized.messageID], ["ses_root", "input"]);
+    const legacy = await readObservation(report, "messages");
+    assert.equal(legacy.state, "unavailable"); assert.equal(legacy.reason, "oversized");
+    const oldCursor = Buffer.from(JSON.stringify({ report, invocationId: ctx.invocationId, offset: 1 })).toString("base64url");
+    assert.equal((await readObservation(report, "messages", oldCursor)).messages[0].id, "m0");
+    const legacyCli = await invoke([OBSERVE, "--report-file", report, "--messages"]);
+    assert.equal(legacyCli.code, 1); assert.equal(JSON.parse(legacyCli.out).reason, "oversized");
+    assert.match(legacyCli.out, /--large/);
+    const cli = await invoke([OBSERVE, "--report-file", report, "--messages", "--large"]);
+    assert.equal(cli.code, 0, cli.err); assert.equal(JSON.parse(cli.out).oversized.messageID, "input");
+    const cliPart = await invoke([OBSERVE, "--report-file", report, "--messages", "--large", "--cursor", liveContentCursor]);
+    assert.equal(cliPart.code, 0, cliPart.err); assert.equal(JSON.parse(cliPart.out).fragment.byteOffset, 0);
+    const same = await readObservation(report, "messages", null, options);
+    assert.equal(same.oversized.sha256, first.oversized.sha256);
+    const mixed = JSON.parse(Buffer.from(first.oversized.contentCursor, "base64url"));
+    mixed.report = report; mixed.reportHash = "0".repeat(64);
+    assert.equal((await readObservation(report, "messages", Buffer.from(JSON.stringify(mixed)).toString("base64url"), options)).state, "unavailable");
+    mixed.reportHash = crypto.createHash("sha256").update(report).digest("hex");
+    assert.equal((await readObservation(report, "messages", Buffer.from(JSON.stringify(mixed)).toString("base64url"), options)).state, "unavailable");
+    messages[0].text += "changed";
+    const after = await readObservation(report, "messages", first.cursor, options);
+    assert.equal(after.state, "live"); assert.equal(after.messages[0].id, "m0");
+    assert.equal((await readObservation(report, "messages", first.oversized.contentCursor, options)).state, "stale");
+    messages[0].text = text;
+    messages.push({ ...messages[0] });
+    assert.equal((await readObservation(report, "messages", first.oversized.contentCursor, options)).state, "stale");
+    messages.pop();
+    const other = path.join(dir, "other.json");
+    fs.writeFileSync(other, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address }));
+    assert.equal((await readObservation(other, "messages", first.oversized.contentCursor, options)).state, "unavailable");
+    const otherCtx = { report: other, invocationId: "inv_other", sessionID: "ses_root" };
+    const otherOwner = await startObserver(otherCtx, async () => ({ ...otherCtx, inputIds: ["input"], messages }));
+    try {
+      fs.writeFileSync(other, JSON.stringify({ adapter: "opencode", invocationId: otherCtx.invocationId, observer: otherOwner.address }));
+      assert.equal((await readObservation(other, "messages", first.oversized.contentCursor, options)).state, "unavailable");
+    } finally { await otherOwner.close(); }
+    const saved = messages.shift();
+    assert.equal((await readObservation(report, "messages", first.cursor, options)).state, "stale");
+    messages.unshift(saved);
+    await readAll("live");
+  } finally { await owner.close(); }
+  const transcript = path.join(dir, "report.transcript.json");
+  fs.writeFileSync(transcript, JSON.stringify({ sessionID: "ses_root", inputIds: ["input"], messages }));
+  const terminalReport = { adapter: "opencode", invocationId: ctx.invocationId, sessionID: "ses_root", turnIds: ["input"],
+    exitCode: 0, partial: false, transcriptPath: transcript };
+  fs.writeFileSync(report, JSON.stringify(terminalReport));
+  const terminalPart = await readObservation(report, "messages", liveContentCursor, options);
+  assert.equal(terminalPart.state, "terminal"); assert.equal(terminalPart.fragment.messageID, "input");
+  const terminalContent = JSON.parse(Buffer.from(liveContentCursor, "base64url"));
+  const terminalCursors = ["garbage", `${liveContentCursor}!`,
+    Buffer.from(JSON.stringify({ ...terminalContent, offset: 1, after: { sessionID: "bogus", messageID: "foreign" } })).toString("base64url"),
+    Buffer.from(JSON.stringify({ ...terminalContent, kind: "page", offset: 1 })).toString("base64url"),
+    Buffer.from(JSON.stringify({ reportHash: terminalContent.reportHash, invocationId: ctx.invocationId, kind: "page", offset: 1 })).toString("base64url")];
+  for (const invalidCursor of terminalCursors) {
+    const invalid = await invoke([OBSERVE, "--report-file", report, "--messages", "--large", "--cursor", invalidCursor]);
+    assert.equal(invalid.code, 1); assert.equal(JSON.parse(invalid.out).state, "unavailable");
+  }
+  messages[0].text += "new revision";
+  fs.writeFileSync(transcript, JSON.stringify({ sessionID: "ses_root", inputIds: ["input"], messages }));
+  assert.equal((await readObservation(report, "messages", liveContentCursor, options)).state, "stale");
+  const staleCli = await invoke([OBSERVE, "--report-file", report, "--messages", "--large", "--cursor", liveContentCursor]);
+  assert.equal(staleCli.code, 1); assert.equal(JSON.parse(staleCli.out).state, "stale");
+  messages[0].text = text;
+  fs.writeFileSync(transcript, JSON.stringify({ sessionID: "ses_root", inputIds: ["input"], messages }));
+  await readAll("terminal");
+  terminalReport.partial = true; fs.writeFileSync(report, JSON.stringify(terminalReport));
+  const partialRun = await readObservation(report, "messages", null, options);
+  assert.equal(partialRun.partial, true); assert.equal(partialRun.sourcePartial, true);
+});
+test("legacy shell pagination stops at an oversized message rather than skipping it", async () => {
+  const dir = tempDir("entrust-legacy-page-"), report = path.join(dir, "report.json");
+  const ctx = { report, invocationId: "inv_shell", sessionID: "ses_root" };
+  const messages = [{ id: "before", _sessionID: "ses_root" }, { id: "large", _sessionID: "ses_root", text: "🐈".repeat(180000) },
+    { id: "after", _sessionID: "ses_root" }];
+  const owner = await startObserver(ctx, async () => ({ ...ctx, messages }));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address }));
+  try {
+    const first = await invoke([OBSERVE, "--report-file", report, "--messages"]);
+    assert.equal(first.code, 0, first.err); const page = JSON.parse(first.out);
+    assert.deepEqual(page.messages.map((m) => m.id), ["before"]); assert.ok(page.cursor);
+    const next = await invoke([OBSERVE, "--report-file", report, "--messages", "--cursor", page.cursor]);
+    assert.equal(next.code, 1); assert.equal(JSON.parse(next.out).reason, "oversized"); assert.match(next.out, /--large/);
+  } finally { await owner.close(); }
+});
+test("current CLI reads status and messages from a pre-capability owner", async () => {
+  const dir = fs.mkdtempSync("/tmp/entrust-old-protocol-"), report = path.join(dir, "report.json"), address = path.join(dir, "socket");
+  const ctx = { report, invocationId: "inv_old" };
+  const server = net.createServer((socket) => {
+    let request = ""; socket.on("error", () => {});
+    socket.on("data", (chunk) => {
+      request += chunk.toString("utf8"); if (!request.includes("\n")) return;
+      const q = JSON.parse(request.slice(0, request.indexOf("\n")));
+      const body = q.report === report && q.invocationId === ctx.invocationId
+        ? { ...ctx, serverStatus: "busy", ...(q.kind === "messages" ? { messages: [{ id: "old-message" }], cursor: null } : {}) }
+        : { ...ctx, error: "unavailable or invalid request" };
+      socket.end(JSON.stringify(body) + "\n");
+    });
+  });
+  await new Promise((resolve) => server.listen(address, resolve));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: address }));
+  try {
+    for (const args of [[], ["--messages"], ["--messages", "--large"]]) {
+      const r = await invoke([OBSERVE, "--report-file", report, ...args]);
+      assert.equal(r.code, 0, r.err); const value = JSON.parse(r.out); assert.equal(value.state, "live");
+      if (args.includes("--messages")) assert.equal(value.messages[0].id, "old-message");
+      else assert.equal(value.serverStatus, "busy");
+    }
+  } finally { await new Promise((resolve) => server.close(resolve)); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+test("oversized fragments do not duplicate a large tool list into every bounded reply", async () => {
+  const dir = tempDir("entrust-large-tools-"), report = path.join(dir, "report.json");
+  const ctx = { report, invocationId: "inv_tools", sessionID: "ses_root" };
+  const tools = Array.from({ length: 7000 }, (_, i) => ({ tool: "shell", callID: `call_${i}`, status: "completed" }));
+  const messages = [{ id: "large", _sessionID: "ses_root", text: "🐈".repeat(180000) }, { id: "after", _sessionID: "ses_root" }];
+  const owner = await startObserver(ctx, async (_owner, kind) => ({ ...ctx, complete: true, tools, ...(kind === "messages" ? { messages } : {}) }));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address }));
+  try {
+    const status = await readObservation(report);
+    assert.equal(status.state, "live"); assert.equal(status.tools.length, tools.length); assert.equal(status.complete, true);
+    const first = await readObservation(report, "messages", null, { large: true });
+    assert.equal(first.state, "live"); assert.equal(first.toolsOmitted, true); assert.equal(first.tools, undefined); assert.equal(first.complete, false);
+    const part = await readObservation(report, "messages", first.oversized.contentCursor, { large: true });
+    assert.equal(part.state, "live"); assert.equal(part.toolsOmitted, true); assert.equal(part.tools, undefined); assert.equal(part.complete, false);
+    assert.ok(Buffer.byteLength(JSON.stringify(part)) < 512 * 1024);
+    const next = await readObservation(report, "messages", first.cursor, { large: true });
+    assert.equal(next.state, "live"); assert.equal(next.messages[0].id, "after"); assert.equal(next.complete, true); assert.equal(next.tools.length, tools.length);
+  } finally { await owner.close(); }
+});
+test("long report paths keep oversized cursors within the IPC request bound", async () => {
+  const ctx = { report: `/tmp/${"deep/".repeat(760)}report.json`, invocationId: "inv_long", sessionID: "ses_root" };
+  const messages = [{ id: "large", _sessionID: "ses_root", text: "🐈".repeat(180000) }, { id: "after", _sessionID: "ses_root" }];
+  const owner = await startObserver(ctx, async () => ({ ...ctx, messages }));
+  const reportHash = crypto.createHash("sha256").update(ctx.report).digest("hex");
+  const request = (cursor, form = "hash") => new Promise((resolve, reject) => {
+    const socket = net.createConnection(owner.address), chunks = [];
+    const address = form === "raw" ? { report: ctx.report } : form === "mixed" ? { report: "/tmp/foreign", reportHash } : { reportHash };
+    const payload = Buffer.from(JSON.stringify({ ...address, invocationId: ctx.invocationId, kind: "messages", largeMessages: 1, cursor }) + "\n");
+    assert.ok(payload.length <= 4096, `request is ${payload.length} bytes`);
+    socket.on("error", reject); socket.on("data", (chunk) => chunks.push(chunk));
+    socket.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+    socket.on("connect", () => socket.write(payload));
+  });
+  try {
+    const first = await request(null);
+    assert.ok(first.oversized?.contentCursor); assert.ok(first.cursor);
+    assert.ok((await request(null, "raw")).oversized?.contentCursor);
+    let contentCursor = first.oversized.contentCursor, offset = 0; const parts = [];
+    while (contentCursor) {
+      const part = await request(contentCursor);
+      assert.equal(part.fragment.byteOffset, offset);
+      const bytes = Buffer.from(part.fragment.data, "base64"); parts.push(bytes); offset += bytes.length;
+      contentCursor = part.cursor;
+    }
+    const bytes = Buffer.concat(parts);
+    assert.equal(crypto.createHash("sha256").update(bytes).digest("hex"), first.oversized.sha256);
+    assert.deepEqual(JSON.parse(bytes.toString("utf8")), messages[0]);
+    assert.equal((await request(first.cursor)).messages[0].id, "after");
+    assert.equal((await request(null, "mixed")).error, "unavailable");
+    const foreign = JSON.parse(Buffer.from(first.oversized.contentCursor, "base64url"));
+    if ("reportHash" in foreign) foreign.reportHash = "0".repeat(64); else foreign.report = "/tmp/foreign.json";
+    assert.equal((await request(Buffer.from(JSON.stringify(foreign)).toString("base64url"))).error, "unavailable");
+    assert.equal((await request("not-valid-json")).error, "unavailable");
+    const originalRead = fs.readFileSync, originalConnect = net.createConnection, sent = [];
+    fs.readFileSync = function (file, ...args) {
+      if (file === ctx.report) return JSON.stringify({ adapter: "opencode", invocationId: ctx.invocationId, observer: owner.address });
+      return originalRead.call(this, file, ...args);
+    };
+    net.createConnection = function (...args) {
+      const socket = originalConnect.apply(this, args), write = socket.write;
+      socket.write = function (chunk, ...rest) { sent.push({ value: JSON.parse(String(chunk)), bytes: Buffer.byteLength(chunk) }); return write.call(this, chunk, ...rest); };
+      return socket;
+    };
+    try {
+      const selected = await readObservation(ctx.report, "messages", null, { large: true });
+      assert.equal(selected.state, "live"); let cursor = selected.oversized.contentCursor, offset = 0;
+      const chunks = [];
+      while (cursor) {
+        const part = await readObservation(ctx.report, "messages", cursor, { large: true });
+        assert.equal(part.state, "live"); assert.equal(part.fragment.byteOffset, offset);
+        const chunk = Buffer.from(part.fragment.data, "base64"); chunks.push(chunk); offset += chunk.length; cursor = part.cursor;
+      }
+      assert.deepEqual(JSON.parse(Buffer.concat(chunks).toString("utf8")), messages[0]);
+      assert.equal((await readObservation(ctx.report, "messages", selected.cursor, { large: true })).messages[0].id, "after");
+      assert.equal(sent[0].value.report, ctx.report);
+      assert.equal(sent[0].value.reportHash, undefined);
+      assert.equal(sent[1].value.report, undefined);
+      assert.equal(sent[1].value.reportHash, reportHash);
+      assert.ok(sent.every((entry) => entry.bytes <= 4096));
+    } finally { fs.readFileSync = originalRead; net.createConnection = originalConnect; }
+  } finally { await owner.close(); }
+});
+test("observer validates report addressing and cursor identity for legacy and capability requests", async () => {
+  const ctx = { report: "/tmp/отчёт.json", invocationId: "inv_matrix", sessionID: "ses_root" };
+  const reportHash = crypto.createHash("sha256").update(ctx.report).digest("hex");
+  const messages = [{ id: "large", _sessionID: "ses_root", text: "🐈\\\"".repeat(150000) }, { id: "after", _sessionID: "ses_root" }];
+  const owner = await startObserver(ctx, async (_owner, kind) => ({ ...ctx, ...(kind === "messages" ? { messages } : {}) }));
+  const request = (fields) => new Promise((resolve, reject) => {
+    const socket = net.createConnection(owner.address), chunks = [];
+    socket.on("error", reject); socket.on("data", (chunk) => chunks.push(chunk));
+    socket.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+    socket.on("connect", () => socket.write(JSON.stringify({ invocationId: ctx.invocationId, kind: "status", ...fields }) + "\n"));
+  });
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  try {
+    assert.equal((await request({ report: ctx.report })).report, ctx.report);
+    assert.equal((await request({ reportHash, largeMessages: 1 })).report, ctx.report);
+    for (const address of [
+      {}, { report: "/tmp/foreign" }, { reportHash }, { reportHash: "0".repeat(64), largeMessages: 1 },
+      { report: ctx.report, reportHash, largeMessages: 1 }, { report: "/tmp/foreign", reportHash, largeMessages: 1 },
+    ]) assert.equal((await request(address)).error, "unavailable");
+    assert.equal((await request({ report: ctx.report, invocationId: "foreign" })).error, "unavailable");
+    const descriptor = await request({ reportHash, largeMessages: 1, kind: "messages" });
+    assert.ok(descriptor.oversized?.contentCursor); assert.ok(descriptor.cursor);
+    assert.equal((await request({ reportHash, largeMessages: 1, kind: "messages", cursor: descriptor.cursor })).messages[0].id, "after");
+    assert.equal((await request({ reportHash, largeMessages: 1, kind: "messages", cursor: descriptor.oversized.contentCursor })).fragment.byteOffset, 0);
+    const legacy = encode({ report: ctx.report, invocationId: ctx.invocationId, offset: 1 });
+    assert.equal((await request({ reportHash, largeMessages: 1, kind: "messages", cursor: legacy })).messages[0].id, "after");
+    const content = JSON.parse(Buffer.from(descriptor.oversized.contentCursor, "base64url"));
+    for (const cursor of [
+      "not-json", encode({ offset: 1 }), encode({ report: "/tmp/foreign", invocationId: ctx.invocationId, offset: 1 }),
+      encode({ report: ctx.report, reportHash, invocationId: ctx.invocationId, offset: 1 }),
+      encode({ reportHash: "0".repeat(64), invocationId: ctx.invocationId, offset: 1 }),
+      encode({ reportHash, invocationId: "foreign", offset: 1 }), encode({ reportHash, invocationId: ctx.invocationId, offset: -1 }),
+      encode({ reportHash, invocationId: ctx.invocationId, kind: "page", offset: 1 }),
+      `${descriptor.oversized.contentCursor}!`, encode({ ...content, offset: 1, after: { sessionID: "bogus", messageID: "foreign" } }),
+      encode({ ...content, kind: "page", offset: 1 }), encode({ report: ctx.report, invocationId: ctx.invocationId, offset: 1, extra: true }),
+    ]) assert.equal((await request({ reportHash, largeMessages: 1, kind: "messages", cursor })).error, "unavailable");
+    messages[0].text += "changed";
+    assert.equal((await request({ reportHash, largeMessages: 1, kind: "messages", cursor: descriptor.oversized.contentCursor })).error, "stale_cursor");
+    assert.equal((await request({ reportHash, largeMessages: 1, kind: "messages", cursor: descriptor.cursor })).messages[0].id, "after");
+  } finally { await owner.close(); }
+});
 test("observer decodes UTF-8 split within a character on both socket directions", async () => {
   const dir = fs.mkdtempSync("/tmp/entrust-unicode-"), report = path.join(dir, "отчёт.json"), ctx = { report, invocationId: "inv_тест" };
   const owner = await startObserver(ctx, async () => ({ ...ctx, text: "ответ 🐈" }));
@@ -390,6 +671,22 @@ test("observer limits UTF-8 requests and replies by bytes, not characters", asyn
   try { assert.equal((await readObservation(report)).state, "unavailable"); }
   finally { await new Promise((resolve) => server.close(resolve)); fs.rmSync(dir, { recursive: true, force: true }); }
 });
+test("observer counts the final newline when bounding the serialized socket response", async () => {
+  const dir = tempDir("entrust-live-boundary-"), report = path.join(dir, "report.json"), ctx = { report, invocationId: "inv_limit" };
+  const base = { ...ctx, payload: "" };
+  const size = 512 * 1024 - Buffer.byteLength(JSON.stringify(base));
+  const owner = await startObserver(ctx, async () => ({ ...base, payload: "x".repeat(size) }));
+  try {
+    const raw = await new Promise((resolve, reject) => {
+      const socket = net.createConnection(owner.address), chunks = [];
+      socket.on("error", reject); socket.on("data", (chunk) => chunks.push(chunk));
+      socket.on("end", () => resolve(Buffer.concat(chunks)));
+      socket.on("connect", () => socket.write(JSON.stringify({ ...ctx, kind: "status" }) + "\n"));
+    });
+    assert.ok(raw.length <= 512 * 1024); assert.equal(raw.at(-1), 10);
+    assert.equal(JSON.parse(raw.toString("utf8")).error, "response exceeds limit");
+  } finally { await owner.close(); }
+});
 test("owner observation distinguishes pending admission, callbacks, busy and invalid status without disclosing callback contents", async () => {
   const routes = { children: "/sessions?parentID={sessionID}", permissionList: "/session/{sessionID}/permission",
     formList: "/session/{sessionID}/form", messages: "/session/{sessionID}/message", active: "/active" };
@@ -419,6 +716,106 @@ test("owner observation distinguishes pending admission, callbacks, busy and inv
     active = invalid; const snapshot = await observe(ctx, "status");
     assert.equal(snapshot.serverStatus, "unknown"); assert.equal(snapshot.complete, false);
   }
+});
+test("owner observation snapshots input identity while a correction starts", async () => {
+  const routes = { children: "/sessions?parentID={sessionID}", permissionList: "/session/{sessionID}/permission",
+    formList: "/session/{sessionID}/form", messages: "/session/{sessionID}/message", active: "/active" };
+  const startedAtMs = Date.now() - 1000;
+  const rows = [{ id: "input", type: "user", time: { created: startedAtMs + 1 } },
+    { id: "first", type: "assistant", time: { created: startedAtMs + 2 } },
+    { id: "correction", type: "user", time: { created: startedAtMs + 3 } },
+    { id: "second", type: "assistant", time: { created: startedAtMs + 4 } }];
+  let release, entered;
+  const blocked = new Promise((resolve) => { release = resolve; });
+  const reached = new Promise((resolve) => { entered = resolve; });
+  let first = true;
+  const client = { call: async (_method, route) => {
+    if (route.startsWith("/sessions?parentID=ses_root")) {
+      if (first) { first = false; entered(); await blocked; }
+      return { data: [{ id: "ses_new_child", parentID: "ses_root" }] };
+    }
+    if (route.startsWith("/sessions?")) return { data: [] };
+    if (route.endsWith("/permission") || route.endsWith("/form")) return [];
+    if (route.startsWith("/session/ses_root/message")) return { data: [...rows].reverse() };
+    if (route.startsWith("/session/ses_new_child/message")) return { data: [{ id: "child-of-correction", type: "assistant",
+      time: { created: startedAtMs + 5 }, content: [{ type: "tool", name: "from-correction", state: { status: "running" } }] }] };
+    if (route === "/active") return { ses_root: { type: "running" } };
+    throw new Error(route);
+  } };
+  const ctx = { report: "/tmp/report.json", invocationId: "inv", sessionID: "ses_root", invocationInputs: new Set(["input"]),
+    admission: "admitted", startedAtMs, preexisting: new Set(), ownedReady: true, routes, client };
+  const pending = observe(ctx, "messages"); await reached;
+  ctx.invocationInputs.add("correction"); release();
+  const snapshot = await pending;
+  assert.deepEqual(snapshot.inputIds, ["input"]);
+  assert.deepEqual(snapshot.messages.map((m) => m.id), ["input", "first"]);
+  assert.equal(snapshot.complete, false); assert.equal(snapshot.partial, true);
+  assert.equal(snapshot.tools.some((t) => t.tool === "from-correction"), false);
+  const next = await observe(ctx, "messages");
+  assert.deepEqual(next.inputIds, ["input", "correction"]);
+  assert.deepEqual(next.messages.map((m) => m.id), ["input", "first", "correction", "second", "child-of-correction"]);
+  assert.equal(next.tools.some((t) => t.tool === "from-correction"), true);
+  assert.equal(next.complete, true);
+});
+test("owner observation reports partial during correction admission and while an input is absent", async () => {
+  const routes = { children: "/sessions?parentID={sessionID}", permissionList: "/session/{sessionID}/permission",
+    formList: "/session/{sessionID}/form", messages: "/session/{sessionID}/message", active: "/active" };
+  const startedAtMs = Date.now() - 1000;
+  const rows = [{ id: "input", type: "user", time: { created: startedAtMs + 1 } }];
+  const client = { call: async (_method, route) => {
+    if (route.startsWith("/sessions?parentID=ses_root")) return { data: [{ id: "ses_new_child", parentID: "ses_root" }] };
+    if (route.startsWith("/sessions?")) return { data: [] };
+    if (route.endsWith("/permission") || route.endsWith("/form")) return [];
+    if (route.startsWith("/session/ses_root/message")) return { data: [...rows].reverse() };
+    if (route.startsWith("/session/ses_new_child/message")) return { data: [{ id: "child-of-correction", type: "assistant",
+      time: { created: startedAtMs + 3 }, content: [{ type: "tool", name: "from-correction", state: { status: "running" } }] }] };
+    if (route === "/active") return { ses_root: { type: "running" } };
+    throw new Error(route);
+  } };
+  const ctx = { report: "/tmp/report.json", invocationId: "inv", sessionID: "ses_root", invocationInputs: new Set(["input", "correction"]),
+    admission: "admitted", admissionInFlight: true, startedAtMs, preexisting: new Set(), ownedReady: true, routes, client };
+  const pending = await observe(ctx, "messages");
+  assert.deepEqual(pending.inputIds, ["input", "correction"]); assert.deepEqual(pending.messages.map((m) => m.id), ["input"]);
+  assert.equal(pending.complete, false); assert.equal(pending.partial, true); assert.equal(pending.tools.length, 0);
+  ctx.admissionInFlight = false;
+  assert.equal((await observe(ctx, "messages")).complete, false, "a missing declared input is incomplete even after admission");
+  rows.push({ id: "correction", type: "user", time: { created: startedAtMs + 2 } });
+  const complete = await observe(ctx, "messages");
+  assert.equal(complete.complete, true); assert.equal(complete.messages.some((message) => message.id === "child-of-correction"), true);
+});
+test("owner observation stays partial when correction admission finishes during a read", async () => {
+  const ctx = { report: "/tmp/view", invocationId: "inv", sessionID: "ses_root", admission: "admitted", admissionInFlight: true,
+    invocationInputs: new Set(["first", "correction"]), preexisting: new Set(["ses_root"]), ownedReady: true, startedAtMs: 1,
+    routes: { children: "/children", permissionList: "/permission", formList: "/form", messages: "/message", active: "/active" } };
+  ctx.client = { call: async (_method, route) => {
+    if (route === "/children") return { data: [] };
+    if (route === "/active") return {};
+    if (route.startsWith("/message")) { ctx.admissionInFlight = false; return { data: [{ id: "first", type: "user", time: { created: 2 } }] }; }
+    return [];
+  } };
+  const snapshot = await observe(ctx, "messages");
+  assert.deepEqual(snapshot.inputIds, ["first", "correction"]); assert.deepEqual(snapshot.messages.map((m) => m.id), ["first"]);
+  assert.equal(snapshot.complete, false); assert.equal(snapshot.partial, true);
+});
+test("owner observation marks a changing admission state incomplete", async () => {
+  const routes = { children: "/sessions?parentID={sessionID}", permissionList: "/session/{sessionID}/permission",
+    formList: "/session/{sessionID}/form", messages: "/session/{sessionID}/message", active: "/active" };
+  let release, entered;
+  const blocked = new Promise((resolve) => { release = resolve; });
+  const reached = new Promise((resolve) => { entered = resolve; });
+  const client = { call: async (_method, route) => {
+    if (route.startsWith("/sessions?")) { entered(); await blocked; return { data: [] }; }
+    if (route.endsWith("/permission") || route.endsWith("/form")) return [];
+    if (route.startsWith("/session/ses_root/message")) return { data: [] };
+    if (route === "/active") return {};
+    throw new Error(route);
+  } };
+  const ctx = { report: "/tmp/report.json", invocationId: "inv", sessionID: "ses_root", invocationInputs: new Set(["input"]),
+    admission: "admitted", startedAtMs: Date.now() - 1000, preexisting: new Set(), ownedReady: true, routes, client };
+  const pending = observe(ctx, "messages"); await reached;
+  ctx.admission = "pending"; release();
+  const snapshot = await pending;
+  assert.equal(snapshot.admission, "admitted"); assert.deepEqual(snapshot.inputIds, ["input"]); assert.equal(snapshot.complete, false);
 });
 test("owner reads every message page and marks descendant discovery errors incomplete", async () => {
   const routes = { children: "/sessions?parentID={sessionID}", permissionList: "/session/{sessionID}/permission",
@@ -452,6 +849,8 @@ test("terminal observation uses only the report's matching transcript and report
     exitCode: 0, partial: false, transcriptPath: transcript, receiptOk: true };
   fs.writeFileSync(report, JSON.stringify(record));
   assert.equal((await readObservation(report, "messages")).source, "unavailable");
+  const missing = await invoke([OBSERVE, "--report-file", report, "--messages"]);
+  assert.equal(missing.code, 1); assert.equal(JSON.parse(missing.out).source, "unavailable");
   fs.writeFileSync(transcript, JSON.stringify({ sessionID: "root", inputIds: ["input"], messages: [
     { id: "old", type: "user", _sessionID: "root", time: { created: 1 } },
     { id: "old-answer", type: "assistant", _sessionID: "root", time: { created: 2 } },
@@ -463,8 +862,25 @@ test("terminal observation uses only the report's matching transcript and report
   const view = await readObservation(report, "messages");
   assert.equal(view.source, "transcript"); assert.equal(view.state, "terminal");
   assert.deepEqual(view.messages.map((m) => m.id), ["input", "answer"]);
+  const invalid = await invoke([OBSERVE, "--report-file", report, "--messages", "--cursor", "garbage"]);
+  assert.equal(invalid.code, 1); assert.equal(JSON.parse(invalid.out).state, "unavailable");
   record.sessionID = "other"; fs.writeFileSync(report, JSON.stringify(record));
   assert.equal((await readObservation(report, "messages")).source, "unavailable");
+});
+test("terminal duplicate message identity is unavailable and exits nonzero without content", async () => {
+  const dir = tempDir("entrust-terminal-duplicate-"), report = path.join(dir, "report.json"), transcript = path.join(dir, "report.transcript.json");
+  const sessionID = "ses_root", invocationId = "inv_duplicate";
+  const large = { id: "big", type: "assistant", _sessionID: sessionID, text: `SYNTHETIC_PRIVATE_${"🐈".repeat(180000)}` };
+  const messages = [{ id: "input", type: "user", _sessionID: sessionID }, large,
+    { id: "after", type: "assistant", _sessionID: sessionID }, { ...large }];
+  fs.writeFileSync(transcript, JSON.stringify({ sessionID, inputIds: ["input"], messages }));
+  fs.writeFileSync(report, JSON.stringify({ adapter: "opencode", sessionID, turnIds: ["input"], invocationId, exitCode: 0, partial: false, transcriptPath: transcript }));
+  const initial = await invoke([OBSERVE, "--report-file", report, "--messages", "--large"]);
+  assert.equal(initial.code, 0, initial.err); assert.equal(JSON.parse(initial.out).source, "transcript");
+  const cursor = Buffer.from(JSON.stringify({ report, invocationId, offset: 1 })).toString("base64url");
+  const invalid = await invoke([OBSERVE, "--report-file", report, "--messages", "--large", "--cursor", cursor]);
+  assert.equal(invalid.code, 1); assert.equal(JSON.parse(invalid.out).source, "unavailable");
+  assert.equal(invalid.out.includes("SYNTHETIC_PRIVATE_"), false);
 });
 const DRIVER = path.join(ROOT, "skills/opencode/scripts/driver.mjs");
 // `beside` is an earlier report: this run writes report-2.json into its directory, under the same state.

@@ -8,7 +8,8 @@ forensics remain in the repository references and release notes.
 ### Changed
 
 - OpenCode runs expose owner-backed live status and on-demand transcript pages. New sessions allow skills, while
-  resumed sessions retain their existing permission rules.
+  resumed sessions retain their existing permission rules. Oversized messages can be read in bounded fragments,
+  and observation marks a snapshot incomplete when its input identity changes during the read.
 - Workers receive available skills by default; an explicit request not to use them is carried in each affected
   brief. Advisor and effort selection follow the user's choices without automatically selecting maximum effort.
 

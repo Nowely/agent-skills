@@ -1822,7 +1822,8 @@ test("a relay that comes back at each early return keeps the run through several
     // Handed back: the coordinator is the one waiting; the run outlives two leases, and finishes after the decision with nobody attached.
     {
       const { state, report, dir } = await madeAgent("lease-handback.");
-      const first = await runOnce(report, state, "approval-wait", leaseEnv);
+      // This section starts at hand-back; the short early-return clock is exercised above, not here.
+      const first = await runOnce(report, state, "approval-wait", { ...leaseEnv, AGENT_RUN_RETURN_MS: "15000" });
       if (shapeOf(first.lines) !== "waiting") { stopRun(dir); return `no hand-back: ${JSON.stringify(first.lines.slice(0, 2))}`; }
       const id = valueOf(first.lines, "REQUEST");
       await sleep(3500);

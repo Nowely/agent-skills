@@ -1185,34 +1185,46 @@ async function execute(opts, parsed) {
 // Independent reads let a caller observe the owner even while the native prompt POST is in flight.
 // No read here affects the owner's lease, mailbox or completion logic.
 async function observe(ctx, kind) {
-  const base = { report: ctx.report, invocationId: ctx.invocationId, sessionID: ctx.sessionID ?? null,
-    inputIds: [...ctx.invocationInputs], admission: ctx.admission, observedAt: new Date().toISOString(),
+  const sessionID = ctx.sessionID ?? null, inputIds = [...ctx.invocationInputs], admission = ctx.admission,
+    admissionInFlight = Boolean(ctx.admissionInFlight);
+  const base = { report: ctx.report, invocationId: ctx.invocationId, sessionID,
+    inputIds, admission, admissionInFlight, observedAt: new Date().toISOString(),
     nonAtomic: true };
   if (!ctx.client || !ctx.routes || !ctx.sessionID || !ctx.ownedReady)
-    return { ...base, serverStatus: "unknown", callbacks: "unknown", tools: "unknown", complete: false, messages: [] };
-  const discovered = await gatherOwned(ctx);
-  const sessions = new Set([ctx.sessionID, ...[...discovered.sessions].filter((sid) => !ctx.preexisting.has(sid))]);
+    return { ...base, serverStatus: "unknown", callbacks: "unknown", tools: "unknown", complete: false, partial: true, messages: [] };
+  const snapshot = { ...ctx, sessionID, invocationInputs: new Set(inputIds), preexisting: new Set(ctx.preexisting) };
+  const discovered = await gatherOwned(snapshot);
+  const sessions = new Set([sessionID, ...[...discovered.sessions].filter((sid) => !snapshot.preexisting.has(sid))]);
   let active = null, status = "unknown", serverObservedAt = null, callbacks = "unknown", messages = [], messagesKnown = false,
-    complete = discovered.errors.length === 0 && ctx.admission === "admitted";
+    complete = discovered.errors.length === 0 && admission === "admitted" && !admissionInFlight;
   try {
-    active = await ctx.client.call("GET", ctx.routes.active, undefined, { unwrap: true, timeoutMs: 3000 });
+    active = await snapshot.client.call("GET", snapshot.routes.active, undefined, { unwrap: true, timeoutMs: 3000 });
     if (!validActive(active)) throw new Error();
     serverObservedAt = new Date().toISOString();
     if (!discovered.errors.length) status = [...sessions].some((sid) => isBusy(active, sid)) ? "busy" : "idle";
   } catch { complete = false; }
   try {
-    const p = await pendingIn(ctx, sessions);
+    const p = await pendingIn(snapshot, sessions);
     callbacks = { permissions: p.permissions.filter((q) => sessions.has(q?.sessionID)).length,
       questions: p.forms.filter((q) => sessions.has(q?.sessionID)).length };
   } catch { complete = false; }
   try {
     const all = [];
-    for (const sid of sessions) for (const m of await sessionMessages(ctx, sid)) all.push({ ...m, _sessionID: sid });
-    messages = invocationMessages({ ...ctx, messages: all });
+    for (const sid of sessions) for (const m of await sessionMessages(snapshot, sid)) all.push({ ...m, _sessionID: sid });
+    messages = invocationMessages({ ...snapshot, messages: all });
     messagesKnown = true;
   } catch { complete = false; messages = []; }
+  const drift = ctx.sessionID !== sessionID || ctx.admission !== admission || Boolean(ctx.admissionInFlight) !== admissionInFlight
+    || JSON.stringify([...ctx.invocationInputs]) !== JSON.stringify(inputIds);
+  const missingInput = !messagesKnown || inputIds.some((id) =>
+    !messages.some((message) => message._sessionID === sessionID && message.type === "user" && message.id === id));
+  if (drift || (inputIds.length > 1 && (admissionInFlight || Boolean(ctx.admissionInFlight) || missingInput))) {
+    complete = false; status = "unknown"; callbacks = "unknown";
+    messages = messages.filter((message) => message._sessionID === sessionID);
+  }
+  if (Boolean(ctx.admissionInFlight) || missingInput) complete = false;
   const tools = messagesKnown ? collectTools(messages).map(({ tool, callID, status: state }) => ({ tool, callID, status: state })) : "unknown";
-  return { ...base, serverStatus: status, serverObservedAt, callbacks, tools, complete, ...(kind === "messages" ? { messages } : {}) };
+  return { ...base, serverStatus: status, serverObservedAt, callbacks, tools, complete, partial: !complete, ...(kind === "messages" ? { messages } : {}) };
 }
 
 // Model: pinned by the prompt, kept by a resume, else the OpenCode configuration's own `model`. No fallback.

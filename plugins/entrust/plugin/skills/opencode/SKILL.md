@@ -82,11 +82,33 @@ still ask for skill access. OpenCode can also discover skills from its own confi
 
 To observe an active invocation without reading its server credentials, run
 `node <skill-dir>/scripts/observe.mjs --report-file <absolute-report>`; add `--messages` to request content,
-and `--cursor <cursor>` to read the next page. Reads are non-atomic, may be incomplete, and do not renew
+and `--cursor <cursor>` to read the next page. If an oversized message is reached, the ordinary command
+returns an error instead of skipping it. Repeat that page with `--messages --large`, and keep `--large` on
+its continuation requests. A large message is returned as `oversized`, not inside `messages`: its
+`contentCursor` reads the first part using `--messages --large --cursor <contentCursor>`, while
+the page's separate `cursor` continues after the message without waiting for its content. Each content reply
+has a `fragment` with a base64 `data` field, `byteOffset`, `totalBytes` and `sha256`; its `cursor` reads the
+next part. Concatenate decoded bytes by offset, verify the total and SHA-256, then decode UTF-8 and parse JSON.
+Those bytes encode `JSON.stringify` of the observed message object, not the server's original wire bytes.
+Descriptor and fragment replies mark `partial: true` and `complete: false` because the returned page does
+not contain the whole message. For live reads, `sourcePartial` is the observation's original `partial`, or null
+if absent. For terminal reads, it is the run's `partial`, conservatively true if absent. These replies omit a
+present tool list and mark `toolsOmitted: true`; read status or an ordinary page for that list when available.
+`state: stale` means the message or page anchor changed: discard incomplete parts and read a fresh descriptor.
+Programmatic `readObservation` callers pass `{large: true}` as the fourth argument to opt into descriptors.
+A legacy caller instead gets `unavailable` at an oversized message, not a silently incomplete page.
+Cursors identify content; they are not authorization. A live owner from an earlier version remains readable
+with its original report address when the request fits 4096 bytes; an old owner cannot handle the hash-only
+address needed for a longer request. An earlier live owner cannot split an oversized message, even when this
+CLI is called with `--large`; after it finishes, read its existing terminal transcript if available. A legacy
+offset cursor embeds the full report path: if its request exceeds the IPC bound, start again with `--large` on
+the current owner or the terminal transcript to obtain a compact cursor.
+Reads are non-atomic, may be incomplete, and do not renew
 the worker's lease. Status is server activity, not proof of task progress; unknown or unavailable is not idle.
 The live channel uses a private local Unix socket and stores no text. Processes running as the same user can
 still access it. Once the run ends, message reads use the existing transcript if available; a missing transcript
-or owner is unavailable. Do not replace `--pending` or `--handback` with this view for permission decisions.
+or owner is unavailable. Terminal transcript reads are limited to 32 MiB; live reads still collect the observed
+history in memory. Do not replace `--pending` or `--handback` with this view for permission decisions.
 
 Read the report even when the exit is nonzero:
 partial answers, native command outcomes and callback decisions remain useful evidence.
