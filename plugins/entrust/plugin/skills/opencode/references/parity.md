@@ -68,7 +68,8 @@ No server route says which models a user prefers. OpenCode Desktop keeps the one
 picker, and the variant chosen for each, in its own store (on macOS `~/Library/Application
 Support/ai.opencode.desktop/drafts.sqlite`, read only); status lists those the catalogue still offers,
 in Desktop's order, and without that store the whole catalogue, which the configuration can shorten with
-`disabled` models and `provider.use` policies. It retains provider and model IDs separately; a router
+`disabled` models and `provider.use` policies. `status.mjs --catalogue` lists the full enabled catalogue
+even when the Desktop store exists. It retains provider and model IDs separately; a router
 display name is not the provider key. `MODEL: inherit` selects the configuration's `model` and is
 refused when none is set; a plan pins its resolved ID. An explicit model is checked by exact catalogue ID.
 

@@ -4,7 +4,7 @@ description: >-
   Run external Claude agents, native Claude delegation and entrust plans selecting Claude. A request to make
   Claude/Opus/Sonnet/Fable the main coordinator (“Прокси на Opus”) is answered with the explicit proxy command.
 metadata:
-  version: "0.34.0"
+  version: "0.35.0"
 license: MIT
 ---
 
@@ -20,6 +20,10 @@ Luna subagent at `medium` effort, never a `--run` from the coordinator's own she
 A request to make a model the coordinator starts nothing here: answer it with the explicit proxy skill's command,
 `/entrust:proxy <model>` (`$entrust:proxy <model>` in Codex), whose one final confirmation is the only consent
 ([main proxy mode](../orchestrate/references/main-proxy.md)).
+
+For a request naming a Claude model but no route, if native Claude and Claude CLI are unavailable, check
+[OpenCode](../opencode/SKILL.md) for the requested model before reporting failure. A request naming Claude Code,
+its CLI, or a specific provider keeps that route; do not silently switch providers or model versions.
 
 ## Agent calls
 

@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 // OpenCode status: the models to choose from and the configured default, as a private local server answers for
 // the current directory's configuration, the way each run's server does. The list is the models OpenCode Desktop
-// shows in its picker that the catalogue still offers; without Desktop's store, the whole catalogue.
+// shows in its picker that the catalogue still offers; --catalogue or a missing store selects the whole catalogue.
 import { Client } from "./client.mjs";
 import { desktopModels, modelKey } from "./config.mjs";
 import { startLocalServer } from "./local-server.mjs";
 
 const args = process.argv.slice(2);
 let format = "text";
-for (let i = 0; i < args.length; i += 2) {
-  if (args[i] !== "--format" || !["text", "json"].includes(args[i + 1]) || args.length > 2) {
-    console.error("usage: status.mjs [--format text|json]"); process.exit(2);
-  }
-  format = args[i + 1];
+let fullCatalogue = false;
+let formatSet = false;
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === "--catalogue" && !fullCatalogue) fullCatalogue = true;
+  else if (args[i] === "--format" && ["text", "json"].includes(args[i + 1]) && !formatSet) { format = args[++i]; formatSet = true; }
+  else { console.error("usage: status.mjs [--format text|json] [--catalogue]"); process.exit(2); }
 }
 
 // `configured` as every adapter's status says it: true once a server answered, false with no `opencode` on PATH,
@@ -26,7 +27,7 @@ async function observe(cwd) {
     const { version } = await client.probe();
     const catalogue = await client.models(cwd);
     const preset = await client.defaultModel(cwd);
-    const desktop = await desktopModels();
+    const desktop = fullCatalogue ? {} : await desktopModels();
     const offered = (m) => catalogue.find((c) => c.providerID === m.providerID && c.id === m.modelID);
     const entry = (c, variant = null) => {
       const variants = (c.variants ?? []).map((v) => v?.id).filter(Boolean);
@@ -34,7 +35,7 @@ async function observe(cwd) {
     };
     const models = desktop.models
       ? { source: "desktop", note: null, list: desktop.models.filter(offered).map((m) => entry(offered(m), m.variant)) }
-      : { source: "catalogue", note: desktop.absent ?? desktop.error, list: catalogue.map((c) => entry(c)) };
+      : { source: "catalogue", note: fullCatalogue ? null : desktop.absent ?? desktop.error, list: catalogue.map((c) => entry(c)) };
     if (desktop.error) process.stderr.write(`entrust: ${desktop.error}; listing the whole catalogue\n`);
     return { status: "ready", configured: true, version, default: preset ? modelKey(preset) : null, models };
   } catch (e) { return { status: "unavailable", configured: null, error: e.message }; }

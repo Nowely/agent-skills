@@ -1914,9 +1914,9 @@ test("incomplete initial descendants refuse admission and preserve unknown cance
   } finally { await s.close(); }
 });
 // Status asks a private server for the current directory, as a run does; the fake CLI on PATH announces the fake.
-async function statusRun(server, { format = "json", desktop = undefined } = {}) {
+async function statusRun(server, { format = "json", desktop = undefined, catalogue = false } = {}) {
   const state = tempDir("entrust-opencode-status-"), cli = fakeCli(server.url, state);
-  const r = await invoke([STATUS, ...(format === "json" ? ["--format", "json"] : [])], "", {
+  const r = await invoke([STATUS, ...(format === "json" ? ["--format", "json"] : []), ...(catalogue ? ["--catalogue"] : [])], "", {
     ...cli.env, ENTRUST_OPENCODE_DESKTOP_STATE: desktop ?? path.join(state, "no-desktop.sqlite") });
   assert.equal(r.code, 0, r.out + r.err);
   assert.equal(fs.readFileSync(cli.stopFile, "utf8"), "stopped", "status closes the server it started");
@@ -1935,6 +1935,29 @@ test("status lists the models Desktop shows that the catalogue offers, in Deskto
       { providerID: "router", modelID: "glm/flash-fast", variant: null, variants: [] },
       { providerID: "router", modelID: "deepseek/flash", variant: "high", variants: ["high"] }] });
   } finally { await s.close(); }
+});
+test("catalogue mode includes enabled models hidden or absent in Desktop without changing the default list", async () => {
+  const s = await fakeOpenCode();
+  try {
+    const desktop = await desktopStore(tempDir("entrust-opencode-status-catalogue-"), { user: [
+      { providerID: "router", modelID: "deepseek/flash", visibility: "show" },
+      { providerID: "router", modelID: "glm/flash", visibility: "hide" }], recent: [], variant: {} });
+    const normal = await statusRun(s, { desktop });
+    assert.deepEqual(normal.data.models.list.map((m) => m.modelID), ["deepseek/flash"]);
+    const full = await statusRun(s, { desktop, catalogue: true });
+    assert.equal(full.data.models.source, "catalogue"); assert.equal(full.data.models.note, null);
+    assert.deepEqual(full.data.models.list.map((m) => m.modelID), ["deepseek/flash", "glm/flash", "glm/flash-fast"]);
+    assert.deepEqual(full.data.models.list[0].variants, ["high"]);
+    const text = await statusRun(s, { format: "text", desktop, catalogue: true });
+    assert.match(text.out, /SOURCE=catalogue\n/);
+    assert.match(text.out, /MODEL=router\/glm\/flash variant=none/);
+  } finally { await s.close(); }
+});
+test("status rejects duplicate and incomplete options before starting a server", async () => {
+  for (const args of [["--catalogue", "--catalogue"], ["--format"], ["--format", "text", "--format", "json"]]) {
+    const result = await invoke([STATUS, ...args]);
+    assert.equal(result.code, 2); assert.match(result.err, /usage: status.mjs/);
+  }
 });
 test("without Desktop's store status lists the whole catalogue and says why; with no default it says none, with no CLI missing and unconfigured, and with a CLI that cannot serve unavailable and unknown", async () => {
   const s = await fakeOpenCode();

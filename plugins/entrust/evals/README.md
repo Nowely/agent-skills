@@ -145,22 +145,33 @@ every transcript as part of the available-skills listing in the system prompt, a
 repository's own prose, so a skill that never fired still matches.
 
 The OpenCode cases use the current `claude plugin eval` format. The repository keeps working eval data
-beside the installed plugin, so stage a temporary plugin copy and run the routing cases with Skill as the
-only permitted tool; the one-turn cap records routing before worker launch, without spending provider
-tokens:
+beside the installed plugin, so stage a temporary plugin copy. Trigger cases permit only Skill and cap the
+turn at one, recording routing before worker launch. The missing-version case also permits only Skill but
+uses more turns and an LLM grader to check the coordinator's answer against the supplied catalogue; it does
+not establish live model availability. The Claude availability in the trigger prompts is a supplied scenario,
+not a probe of the eval host's actual routes:
 
 ```bash
 tmp=$(mktemp -d)
 cp -R plugins/entrust/plugin "$tmp/plugin"
 mkdir -p "$tmp/plugin/evals/opencode-routing"
 cp -R plugins/entrust/evals/opencode-routing/. "$tmp/plugin/evals/opencode-routing/"
-claude plugin eval "$tmp/plugin" --eval-dir evals/opencode-routing --ablation none \
+claude plugin eval "$tmp/plugin" --eval-dir evals/opencode-routing --case claude-fallback-ru --ablation none \
   --model haiku --max-cost-usd 1 --no-publish --trust-plugin
 ```
 
-The positive cases grade an actual `Skill` call naming `entrust:opencode`; the negative cases grade
-that no such call occurred. Worker model selection remains covered by the offline adapter evals and
-real-model checks.
+`--case` filters by case name or glob; choose the affected case, or omit it to run the whole suite.
+The positive trigger cases grade an actual `Skill` call naming `entrust:opencode`; the negative trigger cases
+grade that no such call occurred. The missing-version case grades the answer separately. Launch-time model
+selection remains covered by the offline adapter evals and real-model checks.
+
+Without Claude CLI, an independent subagent can exercise a case against the working skill: give it the case
+prompt and, if needed, the skill's path, then check its actions and answer against the case's criteria. A live
+call of the selected model is a separate check; verify the actual model and result in its report. These checks
+do not run the Claude plugin-eval graders. If the subagent was told to read the skill, its response shows how
+it follows the instructions, not whether it would discover the skill itself. To check automatic activation,
+make the intended skill version discoverable in a fresh session without explicitly directing the agent to it,
+then inspect the runtime's actual skill/tool or file-read trace; a self-report alone is not proof.
 
 Ask the agent to self-report as well, but treat that as a cross-check only. An agent's account of which
 tools it used is exactly the kind of claim this skill exists to distrust.

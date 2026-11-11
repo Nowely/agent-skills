@@ -3,6 +3,33 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.35.0 — 2026-11-11
+
+### Changed
+
+- For a requested Claude model without a named route, check OpenCode before reporting a gap when native Claude
+  and Claude CLI are unavailable. Preserve an explicitly named route and model version.
+- OpenCode status accepts `--catalogue` to list the full enabled model catalogue when a requested model is
+  absent from the Desktop picker list. The default status output and JSON schema are unchanged.
+
+### Validation
+
+- Four focused OpenCode status cases, five adapter-status cases and thirteen orchestration cases passed.
+  Package checks passed 13 cases and skipped the tag-on-HEAD check because the candidate is not tagged.
+- A live Haiku call through OpenCode succeeded after the model was found in the catalogue but not the Desktop
+  list. Terra checked three other routing decisions against supplied scenarios with the skill loaded explicitly;
+  those checks do not establish automatic skill activation.
+- Kimi and GLM Flash reviewed the change before the subsequent routing-description and eval updates. Kimi's
+  invocation completed with a receipt but exited 6 after two additional-agent requests were declined.
+- The Claude plugin routing eval did not run: Claude CLI was signed out. The release's live orchestrate gate
+  and the Codex protocol upgrade/check were skipped at the owner's direction. The local Codex CLI was
+  0.167.0-alpha.3.2; the driver remains pinned to 0.159.3. Node was 24.15.0 and Claude CLI was 2.1.299.
+
+### Known issues
+
+- Open issues E67, E110, E90, E96, E100, E102, E103, E104, E111, E113, E114, E117 and E140 are described in
+  [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
 ## 0.34.0 — 2026-11-05
 
 ### Changed
