@@ -15,8 +15,17 @@ The table of rounds 1 to 10 cannot say which wording helped. Drafts 06 and 07 ar
 - [The instrument](../../evals/review/README.md) lives with the plugin's other evals: three fictional repositories in two states, rubrics with traps, a proof that makes each fact a rubric relies on happen, a script that prepares a blind run and one that scores a judge's verdicts. `evals/review-eval.test.mjs` checks it without a model.
 - [drafts/11-procedure.md](drafts/11-procedure.md) is the page as committed: the same four directions as a numbered procedure that collects candidates in separate passes, refutes each one, and reports in a fixed shape with a place for what stayed unexplained. It is invoked by the user only, and orchestrate's cross-reviewer follows it. The draft's author also wrote the cases, the same day.
 
-A pilot on Sonnet ran two reviews of one case, drafts 10 and 11, and both found every rubric item ([rounds.md](rounds.md#round-11-sonnet-pilot)). It shows the instrument works end to end and that this case does not separate the two drafts on Sonnet. Whether draft 11 is better than draft 10, or either than no instructions, is not measured.
+A pilot on Sonnet and a round on Terra followed ([rounds.md](rounds.md#round-11-terra-round)). On Terra, either draft found what no instructions missed, an unreachable catch, an unused option and a rule implemented twice; drafts 10 and 11 differed by one item in thirty-two while draft 11's reviews were 1.8 times as long; no review stepped into a trap. On the private change, draft 11 established no dependency contract and proposed no decomposition, as draft 10 had not.
 
-## What a next round needs
+## Round 12: a target, and cases that have one
 
-Repetitions, the control arm, the two cases the pilot did not run, and the target model: [a round](../../evals/review/README.md#a-round) says how. A case that every arm solves measures nothing; cases with a contract in an installed dependency, more than one producer of a value, or a change too large to read at once are the ones the first experiment's drafts were written for and the instrument does not have yet.
+The round's three cases were solved by every arm, so they are retired, and the instrument now holds cases written for what the skill is for: a change that works badly because it is built badly. Each has the change as it was first written and as it should be, and both are reviewed ([the instrument](../../evals/review/README.md)): one function doing five jobs against a plan in three short ones, a framework of nine files against one step function, guards read off a stale contract against one conversion at the source. The checks that state each brief pass on the clean form and fail on the other where its rubric says.
+
+[drafts/12-target.md](drafts/12-target.md), the page as committed, changes draft 11 in four places, each a hypothesis the next round tests:
+
+- a step that sketches the smallest clean solution before findings are filtered, and a line for it in the verdict, so that findings add up to a direction;
+- a design pass that judges structure in both directions, too little and too much, names the crutch as its own kind, and leaves one line per changed unit in the report, so that the examination can be seen;
+- draft 10's rule for a dependency, its version from the lockfile and the installed package rather than a document or another copy, and its counterpart for stored data, every writer;
+- a report of half the fields: a finding is its place, what happens and the fix.
+
+Nothing about draft 12 is measured. The round to run: `control`, draft 11 and draft 12 over the three cases in both forms, and one review of the private change with draft 12.

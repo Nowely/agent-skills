@@ -8,8 +8,9 @@ forensics remain in the repository references and release notes.
 ### Added
 
 - Add `review`, a code review you invoke: a fixed procedure over a change's behavior, necessity, design and
-  tests that reports every problem with the line that shows it and what it could not explain as questions,
-  with one reviewer or independent reviewers by direction. Orchestrate's cross-reviewer follows the same page.
+  tests that reports every problem with the line that shows it, what it could not explain as questions, and
+  the smallest clean solution the change should become, with one reviewer or independent reviewers by
+  direction. Orchestrate's cross-reviewer follows the same page.
 
 ## 0.36.0 — 2026-11-11
 
