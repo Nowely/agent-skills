@@ -14,6 +14,7 @@ One private target, one fresh reviewer per round. The review instructions change
 | 8 | unresolved | boundaries examined; no split recommended |
 | 9 | conditional | boundaries examined; no split recommended |
 | 10 | conditional | boundaries examined; no split recommended |
+| 11 | conditional | no structural recommendation; the report does not show the rules being examined |
 
 These observations are not a controlled comparison. The final outcome is not a mandatory template for reviewers. The private source material is not published; findings above should not be treated as a benchmark for another codebase.
 
@@ -35,4 +36,20 @@ Draft 11 against draft 10 on the instrument's `delayed-label` case, one review e
 Both reviews found all six items and stepped into neither trap; each said the null check on the promised date is required. Draft 10's one unsupported claim is a remark on style. Regressions against draft 10: none observed, in one run.
 
 What this is not. Two runs of one case measure no difference between the drafts, and with every item found there was none to measure: the case is too easy for Sonnet under either draft. No control arm ran, so nothing here says the instructions were needed. Seven more runs were prepared and never started: the other two cases and the control arm on all three. The reviewer model's exact version and effort are whatever the subagent route resolved; the route does not report them.
+
+## Round 11: Terra round
+
+Eighteen reviews of the instrument's three cases as they stood at `3de6352`: no instructions, draft 10 and draft 11, two fresh `gpt-6.1-terra` reviewers at requested effort `xhigh` per case and arm, each given the unchanged prompt of `evals/review/prepare.mjs`; no code was run, and the read-only limit was the prompt's, not a sandbox. A fresh `kimi-k3.1-pro` judge at `high` graded each review by `evals/review/judge.md` without the arm. The run was made by the agent that wrote drafts 00 to 10 and posted as [a comment on the pull request](https://github.com/Nowely/agent-skills/pull/95#issuecomment-6803987634) with a bundle whose SHA-256 is `7ee24688fe94ebca5c50e7fb34e08d87bf48b764d0a1260ee3c9bbd41729bff7`; [terra-round-1](terra-round-1/) is that bundle unpacked, with reviewer paths already shortened to `case/head/` by its author. The table is `score.mjs` at `3de6352` over that directory.
+
+| Arm | Runs | Hit / partial / miss | Recall | Traps violated | Other valid | Unsupported | Words per review |
+|---|---|---|---|---|---|---|---|
+| control | 6 | 26 / 0 / 6 | 0.81 | 0 | 5 | 2 | 192 |
+| draft-10 | 6 | 31 / 0 / 1 | 0.97 | 0 | 6 | 2 | 391 |
+| draft-11 | 6 | 32 / 0 / 0 | 1.00 | 0 | 7 | 2 | 696 |
+
+What it shows. Without instructions both repetitions missed the same items: the catch that cannot fire in `delayed-label`, and in `loyalty-discount` the option and field nothing uses and the rule implemented along two paths. Every arm found every behavior item. Draft 10 missed one item once; one item in thirty-two across two repetitions does not separate drafts 10 and 11, and draft 11's reviews are 1.8 times as long. No review stepped into a trap, so the traps separate nothing on this model. Regressions of draft 11 against draft 10 on these cases: none observed.
+
+Two defects of the instrument. All six `webhook-retry` reviews said that acknowledgements and the attempt count live in process memory while the brief asks them to survive the worker death that causes a redelivery. The rubric did not list it; the judge ruled the acknowledgement half unsupported and the attempt half valid, and a second reader the run's author asked, `glm`, held the first to be a missing requirement. The six `Unsupported` are that one class, and the case's author agrees with the reviewers. And a rubric whose every item every arm finds measures nothing: the three cases are retired after this round, so the table is reproduced by checking out `3de6352`.
+
+The private change, one Terra review with draft 11, reported by class only: the behavior failure was traced and a mechanism suspected unnecessary, conditional on a dependency contract that was available locally and not established; a test gap in the user interface was reported; no decomposition of the interleaved rules was proposed, and one compatibility question stayed open. Draft 11 keeps the examination of each unit's rules as working notes, so the report cannot show whether it was done; draft 10's explicit step for resolving a dependency's pinned version was not carried into draft 11. One review does not say either change caused the outcome: round 10, with both, was also conditional.
 
