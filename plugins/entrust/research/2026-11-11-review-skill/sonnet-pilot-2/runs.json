@@ -1,0 +1,4 @@
+[
+  { "run": "s1", "case": "contact-import", "variant": "head", "arm": "draft-13", "instructions": "6a86e934e9d59a249212228d114aabdd70b5e4f062287d6d877cdc682c6c1e47", "review": "returns/s1.md", "model": "claude-sonnet (Claude Code subagent, default effort)" },
+  { "run": "s2", "case": "currency-contract", "variant": "clean", "arm": "draft-13", "instructions": "6a86e934e9d59a249212228d114aabdd70b5e4f062287d6d877cdc682c6c1e47", "review": "returns/s2.md", "model": "claude-sonnet (Claude Code subagent, default effort)" }
+]

@@ -28,4 +28,6 @@ The round's three cases were solved by every arm, so they are retired, and the i
 - draft 10's rule for a dependency, its version from the lockfile and the installed package rather than a document or another copy, and its counterpart for stored data, every writer;
 - a report of half the fields: a finding is its place, what happens and the fix.
 
-Nothing about draft 12 is measured. The round to run: `control`, draft 11 and draft 12 over the three cases in both forms, and one review of the private change with draft 12.
+[drafts/13-blocks.md](drafts/13-blocks.md) adds one step to draft 12 before any review was run with it, and is the page as committed: the reviewer first splits the diff into blocks, the smallest groups of lines that make one decision, says of each what it does and which requirement it serves, and reports that map, one line per block. Necessity then is asked of every line, not only of the mechanisms a reviewer happens to notice.
+
+The round to run: `control`, draft 11 and draft 13 over the three cases in both forms, and one review of the private change with draft 13.

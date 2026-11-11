@@ -53,3 +53,16 @@ Two defects of the instrument. All six `webhook-retry` reviews said that acknowl
 
 The private change, one Terra review with draft 11, reported by class only: the behavior failure was traced and a mechanism suspected unnecessary, conditional on a dependency contract that was available locally and not established; a test gap in the user interface was reported; no decomposition of the interleaved rules was proposed, and one compatibility question stayed open. Draft 11 keeps the examination of each unit's rules as working notes, so the report cannot show whether it was done; draft 10's explicit step for resolving a dependency's pinned version was not carried into draft 11. One review does not say either change caused the outcome: round 10, with both, was also conditional.
 
+## Round 13: Sonnet pilot on the new cases
+
+Draft 13 alone, on two of the six targets: the first-written form of `contact-import` and the clean form of `currency-contract`, one review each by a Claude Code subagent on Sonnet at its default effort, from the unchanged prompt of `evals/review/prepare.mjs`; no code was run. One judge on Opus, the same family at a higher tier, graded both by `evals/review/judge.md`. Reviews, manifest and verdicts are in [sonnet-pilot-2](sonnet-pilot-2/); the table is `score.mjs` over it.
+
+| Arm | Target | Runs | Hit / partial / miss | Recall | Traps violated | Other valid | Unsupported | Words per review |
+|---|---|---|---|---|---|---|---|---|
+| draft-13 | contact-import/head | 1 | 8 / 0 / 0 | 1.00 | 0 | 2 | 3 | 1330 |
+| draft-13 | currency-contract/clean | 1 | – | – | 0 | 0 | 0 | 480 |
+
+On the first-written form the review found all eight items, design included: its target is the clean form's shape, the existing parser, validation into a map keyed by the normalized email, then the writes, and its change map marks each block of the function as kept, fixed or removed. Its three unsupported claims are one wrong statement about line numbers and two matters of style that the page says to drop. On the clean form it reported no finding, said the change already is the target, read the contract from the installed 2.3.0 and named the stale page and the nested 1.4.0 copy as such, and declined to add a guard.
+
+What this is not. One run per target and no other arm: nothing here compares draft 13 with draft 11 or with no instructions, and Sonnet may find the same without the page. The page's author wrote the cases. The reviews are long, 1330 words for a hundred-line change, of which the change map is about a fifth. Four targets did not run.
+

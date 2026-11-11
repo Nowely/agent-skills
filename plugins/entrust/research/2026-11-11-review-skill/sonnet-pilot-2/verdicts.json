@@ -1,0 +1,14 @@
+[
+  {
+    "run": "s1",
+    "items": { "F1": "hit", "F2": "hit", "F3": "hit", "F4": "hit", "F5": "hit", "F6": "hit", "F7": "hit", "F8": "hit", "X1": "clean", "X2": "clean", "X3": "clean" },
+    "extra": [
+      { "claim": "Splitting the text on newlines before handling quotes breaks a quoted field that holds a line break, cutting the row in half.", "verdict": "valid", "why": "head/src/contacts/import.js:13 splits on \"\\n\" before the quote-aware cell loop at 29-44, so a multi-line quoted name is split into two records; accept.mjs 'a quoted name may hold a comma and a line break' fails on head." },
+      { "claim": "Line numbers go wrong after any multi-line field because i + 1 is used instead of the record's start line.", "verdict": "unsupported", "why": "head/src/contacts/import.js:13,62 numbers physical lines from split(\"\\n\"), so records after a multi-line field still get their correct physical start line; only the split record itself is wrong, which is the previous claim." },
+      { "claim": "The header columns are re-searched on every row.", "verdict": "unsupported", "why": "head/src/contacts/import.js:52-53 does call indexOf per row, but that changes no behavior; it is a matter of style/efficiency on a tiny header." },
+      { "claim": "result.rows is unrequested and carries the raw, unnormalized email, so it should be removed.", "verdict": "valid", "why": "head/src/contacts/import.js:7,98 adds a rows field the brief's return value (created, updated, rejected) does not include, and pushes the raw email rather than the stored normalized one." },
+      { "claim": "The nested else after continue pushes the happy path three levels deep and should be flattened.", "verdict": "unsupported", "why": "head/src/contacts/import.js:58-100 nests else blocks after branches that continue; this is a matter of style with no behavioral consequence." }
+    ]
+  },
+  { "run": "s2", "items": { "X1": "clean", "X2": "clean", "X3": "clean", "X4": "clean" }, "extra": [] }
+]

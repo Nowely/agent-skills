@@ -16,14 +16,15 @@ Give the author a review they can act on without repeating your work: everything
 
 ## Procedure
 
-Do the steps in order. Steps 1 to 4 collect and do not filter; step 5 filters. Finish all four passes of step 3 before going on, even after a serious find.
+Do the steps in order. Steps 1 to 5 collect and do not filter; step 6 filters. Finish all four passes of step 4 before going on, even after a serious find.
 
 1. **Scope.** Identify the exact change (the diff against its base), the task behind it and the project instructions that apply. Write the task as a numbered list of requirements; where none is stated, take it from the PR or commit text and say so. A change too large to read whole is reviewed unit by unit in order of risk, and the report lists what was not reached.
 2. **Read around the change.** Read each changed file whole, and the base version of what was rewritten. For each changed function, open its callers, the source of each input and the consumers of its output. Find how the project already does this kind of thing: its parser, its validator, the neighbouring step of the same job. Search for code elsewhere that shows or computes the same thing and was not changed.
-3. **Four passes.** Go through the change once for each [direction](#directions) and note every candidate: a problem, or something that only looks odd.
-4. **Target.** Sketch the smallest solution that meets the requirements in this codebase: its units, what each owns, what it reuses. What the change has beyond it is a candidate to delete; what it lacks, a candidate to add. If the change already is that solution, say so: a good change gets a short review.
-5. **Refute.** Try to prove each candidate wrong, as [Refuting a candidate](#refuting-a-candidate) says. What survives is a finding; what you can neither prove nor refute is a question.
-6. **Report** in [the report's shape](#the-report).
+3. **Map the change.** Split the diff into blocks: the smallest groups of lines that make one decision and could be kept, changed or removed on their own, such as a function, a branch, a guard, a parameter, a constant, a test. Every changed line belongs to one block. For each block note what it does and what it serves: the requirement it implements, or the integration or check that requirement cannot do without. Ask of each: if it were removed, which requirement would fail? A block that serves nothing is a candidate to delete; a requirement no block serves is a candidate to add.
+4. **Four passes.** Go through the blocks once for each [direction](#directions) and note every candidate: a problem, or something that only looks odd.
+5. **Target.** Sketch the smallest solution that meets the requirements in this codebase: its units, what each owns, what it reuses, and which blocks of the map it keeps. What the change has beyond it is a candidate to delete; what it lacks, a candidate to add. If the change already is that solution, say so: a good change gets a short review.
+6. **Refute.** Try to prove each candidate wrong, as [Refuting a candidate](#refuting-a-candidate) says. What survives is a finding; what you can neither prove nor refute is a question.
+7. **Report** in [the report's shape](#the-report).
 
 ## Directions
 
@@ -39,7 +40,7 @@ In every pass, also note what you cannot explain: a parameter nothing reads, a b
 
 ### Necessity
 
-- List each mechanism the change adds: a guard or null check, a fallback or default, a try/catch, a retry, a cache, a conversion, an option or mode, a wrapper, a registry, a configuration, a new piece of state.
+- Take each block of the map that is a mechanism: a guard or null check, a fallback or default, a try/catch, a retry, a cache, a conversion, an option or mode, a wrapper, a registry, a configuration, a new piece of state.
 - For each, write the assumption that makes it necessary ("the currency can be missing"), then check it at its source: the code that produces the value, the schema or type, every caller. It ends as `needed` (cite the source), `contradicted` (a finding: say what to delete and what still works) or `unknown` (a question: say what would settle it).
 - The source is the one the code runs with. For a dependency, take its version from the lockfile and read that installed package's types or code, not a document, a comment or another copy of the package. For stored data, find every writer: the current code, older code, imports, migrations.
 - Judge each mechanism on its own evidence. One unnecessary guard says nothing about the next one.
@@ -47,9 +48,9 @@ In every pass, also note what you cannot explain: a parameter nothing reads, a b
 
 ### Design
 
-Judge the structure against the target of step 4, in both directions.
+Judge how the blocks are grouped into units, against the target of step 5, in both directions.
 
-- **Too little structure.** A function that does several jobs, such as reading input, validating, deciding, writing and formatting, or that decides and writes in the same loop. List the jobs of each changed unit with real logic. Where one job cannot be tested, changed or reused without the others, propose the split: blocks named by what they do, deciding kept apart from doing, and a main function that reads as the list of its steps.
+- **Too little structure.** A function that does several jobs, such as reading input, validating, deciding, writing and formatting, or that decides and writes in the same loop. The blocks of a unit show its jobs. Where one job cannot be tested, changed or reused without the others, propose the split: blocks named by what they do, deciding kept apart from doing, and a main function that reads as the list of its steps.
 - **Too much structure.** An abstraction with one implementation, a layer that only forwards, a registry, an event or a configuration for a fixed set of one, a generic engine where one function would do. Propose the direct form, and name the project's own precedent for it.
 - **A crutch.** A special case, retry, delay, de-duplication or fallback in a consumer that makes up for a wrong value coming from somewhere else. Find the unit that produces the wrong value and propose the fix there: one fix at the source replaces a patch in every consumer.
 - **Ownership.** One fact or rule defined in two places; logic in a unit that does not own it, so that other consumers cannot use it; a function that changes its arguments; a parameter that switches between behaviors; a caller that must know its callee's internals; a name that says something other than what the code does.
@@ -87,12 +88,16 @@ A requirement the change leaves to old code that does not meet it is the change'
     that shows it; or which job or change the structure makes harder.
     Fix: the smallest change.
 
+    ## Change map
+    One line per block, in the order of the diff: `path:lines`, what it does, what it serves (a requirement
+    by its number, or "nothing"), then keep, fix or remove, with the number of its finding.
+    Then each requirement no block serves, and each changed unit with real logic as: the unit, its jobs,
+    then keep, split or remove.
+
     ## Questions and oddities
     One line each: where, what is unexplained, what would settle it.
 
     ## Coverage
-    Requirements: each as done, partial or missing, with its place.
-    Structure: each changed unit with real logic, one line: the unit, its jobs, then keep, split or remove.
     What you read beyond the diff, and what you could not check.
 
 Paths are relative to the repository. `ran` means you executed it and saw the result, `traced` that you followed the code path you cite, and `judgment` a maintenance opinion with its cost named. An empty section says "none". Write each finding once, as briefly as its evidence allows.
@@ -101,4 +106,4 @@ Paths are relative to the repository. `ran` means you executed it and saw the re
 
 One reviewer doing all of the above is the default.
 
-When the user asks for independent reviewers, start one per direction, four for a full review. Give each the same change, task, project instructions and limits, this page to read whole by its path, and its direction: it does steps 1, 2 and 4 in full, step 3 for its direction while noting whatever else it meets, then steps 5 and 6. Give none of them a suspected finding or another reviewer's result. When they return, reopen the lines each finding cites, since two reviewers agreeing is not evidence; merge duplicates, settle contradictions by reading the code, and write one report with one target. If you cannot start reviewers, say so; do not fall back to one reviewer silently. In an [orchestrate](../orchestrate/SKILL.md) run these reviewers are its [cross-reviewers](../orchestrate/references/roles.md).
+When the user asks for independent reviewers, start one per direction, four for a full review. Give each the same change, task, project instructions and limits, this page to read whole by its path, and its direction: it does steps 1 to 3 and 5 in full, step 4 for its direction while noting whatever else it meets, then steps 6 and 7. Give none of them a suspected finding or another reviewer's result. When they return, reopen the lines each finding cites, since two reviewers agreeing is not evidence; merge duplicates, settle contradictions by reading the code, and write one report with one target. If you cannot start reviewers, say so; do not fall back to one reviewer silently. In an [orchestrate](../orchestrate/SKILL.md) run these reviewers are its [cross-reviewers](../orchestrate/references/roles.md).
