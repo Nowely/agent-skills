@@ -13,6 +13,8 @@ forensics remain in the repository references and release notes.
 
 - Conformance generates protocol schemas from the locally installed Codex CLI for each run. CI skips this
   check explicitly; generated schemas and a pinned CLI version are no longer kept in the repository.
+- A direct OpenCode delegation covers task-needed data, and the Codex relay carries the user's request,
+  selected route and approved scope in its authorization context.
 
 ### Fixed
 

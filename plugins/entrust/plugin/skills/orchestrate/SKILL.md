@@ -83,13 +83,15 @@ inherits yours, so give it its own temporary directory when its checks write.
    [Capacity and models](#capacity-and-models). Wait for approval unless the user already authorised
    that concrete scope and allocation. A model or route outside the approved policy needs approval
    before launch. Scope or rights changes need a new decision; commits and publication need their own
-   authority. An approved plan, or a request that names the adapter or the model, is the user's permission to
-   send that agent's provider what its rights let it read: ask for no other. In Codex, run the launcher's
-   `--plan`, `--new` and `--decide` without escalation, since they need nothing outside the sandbox. Escalated, a
+   authority. An approved plan, or an explicit request to use an adapter or model for a task, authorizes sending
+   its selected provider the prompt and task-needed data, including a diff and related files, within that scope
+   and its rights. Ask for no second consent to that same transfer. A model mentioned only for information is
+   not a request, and this does not authorize unrelated data, a different route, writes or publication. In Codex,
+   run the launcher's `--plan`, `--new` and `--decide` without escalation, since they need nothing outside the sandbox. Escalated, a
    `--new` goes to the reviewer of escalated commands (auto-review), which refused one on an approval inside a
    brief the user pasted and passed it on the user's own chat words naming the provider
-   ([measured](../claude/references/incidents.md#an-approval-in-a-pasted-brief)): when it refuses, tell the user
-   that the host wants those words.
+   ([measured](../claude/references/incidents.md#an-approval-in-a-pasted-brief)). If the host refuses, report the
+   action and its stated reason; do not infer a universal wording that will make it pass.
 4. Launch within the approved ownership and the runtime's limits. Read [approvals.md](references/approvals.md)
    when an agent needs a decision, and [results.md](references/results.md) when work fails, a worktree
    needs landing or writers collide. Continue a worker to correct its own work; give verification
