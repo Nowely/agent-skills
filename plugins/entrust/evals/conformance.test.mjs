@@ -3,50 +3,42 @@
 //
 //   node evals/conformance.test.mjs
 //
-// This suite drives every fixture scenario and validates each emitted line against the pinned schemas.
+// This suite drives every fixture scenario and validates each emitted line against the local Codex schemas.
 // The validator is deliberately small and local (no dependency): local $ref and the structural keywords
 // in KNOWN; other keywords are REPORTED as unchecked so conformance cannot mean nothing was checked.
-// looked at".
 
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { SCENARIOS } from "./fake-app-server.mjs";
-import { DRIVER, EVALS, PINNED_CODEX, codexShim, spawnNode, tempDir } from "./lib/harness.mjs";
+import { DRIVER, codexShim, resolveCodexBin, spawnNode, tempDir } from "./lib/harness.mjs";
 
-// The schemas sit beside the installed plugin, with the suites: the driver reads none of them at run time.
-const HOME = path.dirname(EVALS);
+if (process.argv.includes("--skip-conformance")) {
+  console.log("conformance: NOT RUN (--skip-conformance)");
+  process.exit(0);
+}
 
-// The upgrade recipe in RELEASING.md generates a SECOND schema-<version>/ beside the old one, and
-// readdirSync order is not sorted — so "the first one that matches" could validate the fixture against
-// the version being replaced and say nothing. Pick the newest by version and name it in the output.
-// ENTRUST_SCHEMA_DIR overrides that choice with a directory name, which is how the upgrade
-// recipe validates the newly generated tree before PINNED_CODEX moves to it.
-const schemaDirs = fs.readdirSync(HOME).filter((n) => /^schema-\d/.test(n))
-  .sort((a, b) => {
-    const part = (n) => n.slice("schema-".length).split(".").map((x) => Number.parseInt(x, 10) || 0);
-    const [pa, pb] = [part(a), part(b)];
-    for (let i = 0; i < Math.max(pa.length, pb.length); i++) if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pb[i] ?? 0) - (pa[i] ?? 0);
-    return a < b ? 1 : -1;
-  });
-const override = process.env.ENTRUST_SCHEMA_DIR ?? null;
-const schemaDir = override ?? schemaDirs[0];
-if (!schemaDir) { console.log(`FAIL  no schema-<version>/ directory in ${HOME}`); process.exit(1); }
-if (!fs.existsSync(path.join(HOME, schemaDir))) {
-  console.log(`FAIL  ENTRUST_SCHEMA_DIR names ${schemaDir}, which is not a directory in ${HOME}`);
-  process.exit(1);
+let codex;
+try { codex = resolveCodexBin(); }
+catch { console.log("FAIL  cannot find a usable Codex CLI for conformance"); process.exit(1); }
+function runCodex(args, action) {
+  const result = spawnSync(codex, args, { encoding: "utf8", timeout: 60_000 });
+  if (result.error || result.status !== 0) {
+    const detail = [result.stdout, result.stderr].filter(Boolean).join("\n");
+    console.log(`FAIL  ${action}: ${result.error?.message ?? `exit ${result.status}${result.signal ? ` (${result.signal})` : ""}`}\n${detail}`);
+    process.exit(1);
+  }
+  return result.stdout.trim();
 }
-// The pin is what every report calls codexVersionPinned. A regeneration into a newer directory that
-// nobody pinned would otherwise validate green while each run still claimed the old version.
-if (!override && schemaDir !== `schema-${PINNED_CODEX}`) {
-  console.log(`FAIL  the newest schema directory is ${schemaDir} and the driver pins ${PINNED_CODEX}; move PINNED_CODEX, or set ENTRUST_SCHEMA_DIR to validate against one directory while the pin names another`);
-  process.exit(1);
-}
-if (schemaDirs.length > 1)
-  console.log(`note  ${schemaDirs.length} schema directories present; validating against ${schemaDir} (also: ${schemaDirs.filter((d) => d !== schemaDir).join(", ")})`);
-const SCHEMAS = path.join(HOME, schemaDir);
-// Recorded as they are loaded, so the check below reads the same list the cases do rather than a copy.
-const loaded = new Set();
-const load = (rel) => { loaded.add(rel); return JSON.parse(fs.readFileSync(path.join(SCHEMAS, rel), "utf8")); };
+const codexVersion = runCodex(["--version"], "cannot read Codex version");
+if (!codexVersion) { console.log("FAIL  Codex returned an empty version"); process.exit(1); }
+const SCHEMAS = tempDir("codex-conformance-schemas-");
+console.log(`conformance: generating schemas with ${codexVersion}`);
+runCodex(["app-server", "generate-json-schema", "--out", SCHEMAS], "schema generation failed");
+const load = (rel) => {
+  try { return JSON.parse(fs.readFileSync(path.join(SCHEMAS, rel), "utf8")); }
+  catch (e) { console.log(`FAIL  cannot read generated schema ${rel}: ${e.message}`); process.exit(1); }
+};
 
 const SERVER_NOTIFICATION = load("ServerNotification.json");
 const SERVER_REQUEST = load("ServerRequest.json");
@@ -65,17 +57,6 @@ const RESPONSE_SCHEMAS = {
 // An error reply matches none of the three shapes above, and used to fall through every branch while
 // still counting itself validated. It has a schema of its own.
 const JSONRPC_ERROR = load("JSONRPCError.json");
-
-// The pinned directory tracks only what this suite loads. An explicit upgrade override may point at
-// the full generated bundle; the ordinary run still enforces pruning after the pin moves.
-const unloaded = fs.readdirSync(SCHEMAS, { recursive: true })
-  .map((p) => String(p).split(path.sep).join("/"))
-  .filter((p) => p.endsWith(".json") && !loaded.has(p));
-if (unloaded.length && !override) {
-  console.log(`FAIL  ${schemaDir} tracks ${unloaded.length} schema(s) this suite never loads: ${unloaded.join(", ")}`);
-  process.exit(1);
-}
-if (unloaded.length) console.log(`note  upgrade override has ${unloaded.length} generated schema(s) this suite does not load; the pinned tree is still required to be pruned`);
 
 const unchecked = new Set();
 const KNOWN = new Set(["$ref", "oneOf", "anyOf", "allOf", "type", "enum", "const", "required", "properties",
@@ -175,11 +156,12 @@ async function runScenario(scenario) {
   await spawnNode([DRIVER, "--level", "read", "--cwd", shimDir, ...argsFor(scenario)], {
     env: { PATH: `${shimDir}:${process.env.PATH}`, FAKE_SCENARIO: scenario,
            FAKE_EMIT_LOG: emit, ENTRUST_STATE_DIR: path.join(shimDir, "state") },
+    unsetEnv: ["ENTRUST_CODEX"],
     stdio: ["ignore", "ignore", "ignore"], killAfterMs: 30000 }).done;
   try { return fs.readFileSync(emit, "utf8").split("\n").filter((l) => l.trim()); } catch { return []; }
 }
 
-let failed = 0, validated = 0, notifications = 0, requests = 0, responses = 0, errors = 0;
+let failed = 0, validated = 0, notifications = 0, requests = 0, responses = 0, errors = 0, unvalidatedResponses = 0;
 const unvalidatedMethods = new Set();
 const deliberate = [];
 
@@ -206,13 +188,13 @@ for (const scenario of scenarios) {
       requests++;
       problems.push(...check(msg, SERVER_REQUEST, SERVER_REQUEST).map((e) => `request ${msg.method}: ${e}`));
     } else if (msg.result !== undefined) {
-      responses++;
       // The fixture answers in order, so a response's method is the request it replies to; the driver's
       // own sequence is fixed and short, and the fixture records which method produced each reply.
       const method = msg.__method ?? null;
-      if (!method) { unvalidatedMethods.add("(response: method not recorded)"); continue; }
+      if (!method) { unvalidatedResponses++; unvalidatedMethods.add("(response: method not recorded)"); continue; }
       const schema = RESPONSE_SCHEMAS[method];
-      if (!schema) { unvalidatedMethods.add(method); continue; }
+      if (!schema) { unvalidatedResponses++; unvalidatedMethods.add(method); continue; }
+      responses++;
       problems.push(...check(msg.result, schema, schema).map((e) => `response ${method}: ${e}`));
     } else if (msg.error !== undefined) {
       errors++;
@@ -221,6 +203,7 @@ for (const scenario of scenarios) {
       // Not a notification, a request, a result or an error: no JSON-RPC message has that shape, and
       // counting it validated is how the tally came to exceed the four categories it is made of.
       problems.push(`neither a notification, a request nor a response: ${line.slice(0, 80)}`);
+      continue;
     }
     validated++;
   }
@@ -233,10 +216,10 @@ for (const scenario of scenarios) {
   }
 }
 
-console.log(`\n${validated} message(s) validated: ${notifications} notification(s), ${requests} server request(s), ${responses} response(s), ${errors} error response(s)`);
+console.log(`\n${validated} message(s) checked: ${notifications} notification(s), ${requests} server request(s), ${responses} response(s), ${errors} error response(s)`);
 if (unchecked.size) console.log(`keywords the validator does not check: ${[...unchecked].sort().join(", ")}`);
-if (unvalidatedMethods.size) console.log(`responses not validated (no schema mapped): ${[...unvalidatedMethods].join(", ")}`);
+if (unvalidatedResponses) console.log(`${unvalidatedResponses} response(s) not checked (no schema mapped): ${[...unvalidatedMethods].join(", ")}`);
 for (const d of deliberate) console.log(`excluded, deliberately malformed — ${d}`);
 for (const s of leftOut) console.log(`not run here — ${s}: the fixture's inventory marks it as having no message of its own to validate`);
-console.log(failed ? `\n${failed}/${scenarios.length} scenario(s) failed` : `\nall ${scenarios.length} scenarios conform to ${schemaDir}`);
+console.log(failed ? `\n${failed}/${scenarios.length} scenario(s) failed` : `\nall ${scenarios.length} scenarios passed the checked schema constraints from ${codexVersion}`);
 process.exit(failed ? 1 : 0);

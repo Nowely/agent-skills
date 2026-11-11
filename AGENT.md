@@ -2,7 +2,7 @@
 
 Claude Code plugin marketplace `nowely`. One plugin per `plugins/<name>/`: its installed part is
 `plugins/<name>/plugin/` (manifest, skills, README, LICENSE, package.json), and its working part sits beside
-it — `CHANGELOG.md`, `evals/`, `ISSUES.md`, `research/`, and entrust's `schema-<version>/`. Release tags
+it — `CHANGELOG.md`, `evals/`, `ISSUES.md`, and `research/`. Release tags
 are `<name>@X.Y.Z`.
 
 ## Rules for this repository

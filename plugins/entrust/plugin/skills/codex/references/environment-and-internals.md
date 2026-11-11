@@ -185,7 +185,7 @@ Configuration is separate: it comes from `config.toml` in the home `CODEX_HOME` 
 `config/read` rather than parsing TOML. A failed probe warns, retries once, and keeps the last known
 good config. A probe cancelled by a signal also fails, and an ending run writes nothing there.
 `configInherited` reports `probe`, `last-known-good`, or `none`, with carried keys; the report also
-carries `codexVersion` beside `codexVersionPinned`. No MCP server of the caller's is carried into it: an
+carries the observed server version as `codexVersion`. No MCP server of the caller's is carried into it: an
 agent that needs them runs `--host-home` and accepts the rest of the host configuration with them.
 
 Because that file is shared, isolate test harness state with `ENTRUST_STATE_DIR`; concurrent

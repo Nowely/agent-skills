@@ -46,8 +46,8 @@ subagent on the host's smallest model elsewhere, a fresh one for each run of the
 
 - Node at or above the `engines` floor in `package.json`. The scripts have no dependencies.
 - For Codex agents: the `codex` CLI on `PATH`, signed in through `~/.codex`
-  (`CODEX_HOME=~/.codex codex login status`), at the build the driver pins; each report names it as
-  `codexVersionPinned`. Your `~/.codex/config.toml` sets the model and effort a call does not.
+  (`CODEX_HOME=~/.codex codex login status`). Each report records the observed server build as
+  `codexVersion`. Your `~/.codex/config.toml` sets the model and effort a call does not.
 - For OpenCode workers: the `opencode` CLI with its own configuration and credentials.
 - For external Claude agents: the `claude` CLI at 2.1.259 or later, signed in.
 - macOS or Linux.

@@ -157,8 +157,15 @@ agent's result. A background call also sends a task notification after it; give 
 
 Start one native subagent, an agent the host itself starts, on the host's smallest model at the effort of the
 relay row of its models page ([Codex](../../codex/references/models.md)); on another host, its smallest model.
-Give it the logical name above and the block above, copied whole with the same three replacements, as its whole
-brief: no task, no rights and no other page, since it decides nothing. In Codex, pass the semantic slug as
+Give it the logical name above and the block above, copied whole with the same three replacements. On OpenCode,
+that is the whole brief: no task, rights or other page. In Codex, add only a short authorization context for its
+justification: quote the user's direct request and any separate approval or applicable standing authorization,
+if present; identify the selected adapter, provider and model as resolved (not necessarily named by the user;
+mark unknown if unconfirmed), and state the task, needed data and approved scope. Include relevant user
+restrictions; do not invent consent or expose the worker's
+full prompt or file contents to the relay. Replace `<AUTHORIZATION_CONTEXT>` in the Codex step 1 with that context
+before dispatch. The relay still only runs the command and hands back its result; it does not interpret the task,
+select rights or read another page. In Codex, pass the semantic slug as
 `task_name`; the UI's rendered title is host-controlled. If the host offers a follow-up turn, reuse that native
 task for a clearly specified next command and report path; verify that the new turn actually ran. A repeated
 identical block may need a fresh context on hosts with a measured stale-hand-back issue (see step 3). Wait for the
@@ -176,7 +183,7 @@ nothing, or step 4's line, while their agent went on working
 the block's steps 1 and 2 with these two and leave out step 4, since the proxy's final message is its hand-back,
 `<DESCRIPTION>` replaced as before:
 
-    1. Run this command with your shell tool, with the longest wait it allows, outside the sandbox: ask for escalated permissions with the justification "<DESCRIPTION>: an external agent the user approved". Write no text before it.
+    1. Run this command with your shell tool, with the longest wait it allows, outside the sandbox: ask for escalated permissions with the justification "<DESCRIPTION>: <AUTHORIZATION_CONTEXT>". Copy that context exactly from the brief. Write no text before it.
 
     2. While the tool's result carries a session id and no exit code, the command is still running: read that session again with no input (write_stdin), with the longest wait it allows, each time it comes back so, and write nothing in between. The command's result is everything it printed across those reads. If that result ends with RUNNING=, run the very same command again and read it the same way; each run is safe. Any other result, an empty one with an exit code included, goes to step 3 as it is.
 

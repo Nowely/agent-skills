@@ -228,7 +228,7 @@ readline.createInterface({ input: process.stdin }).on("line", (line) => {
     return;
   }
   // Also before any thread exists: the driver reads the account snapshot once and refuses to start when
-  // the primary window is at 100%. Answered with the MINIMAL shape the pinned schema's
+  // the primary window is at 100%. Answered with the MINIMAL shape the protocol schema's
   // GetAccountRateLimitsResponse accepts — only rateLimits is required, and
   // RateLimitSnapshot requires nothing — so this reply can never gate the capture, and the field the
   // driver actually reads is compared against the live server in the differential below, not here.

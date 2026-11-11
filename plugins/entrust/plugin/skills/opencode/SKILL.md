@@ -8,7 +8,7 @@ description: >-
   model the coordinator (“Прокси на GLM”) is answered with the explicit proxy command; ordinary native
   Codex/Claude delegation uses native agents.
 metadata:
-  version: "0.35.0"
+  version: "0.36.0"
 license: MIT
 ---
 
@@ -33,6 +33,9 @@ Choose the route first; when task details are missing, ask for them before check
 worker. “Позови DeepSeek, GLM” and “Use DeepSeek, GLM in pool” request one worker for each named family.
 “Задействуй модели OpenCode” explicitly selects this adapter; choose its model by the ordinary rule
 below. A model mentioned only for information or discussion does not request a worker.
+An explicit request for an OpenCode worker authorizes sending the selected provider the prompt and task-needed
+data within the requested scope; do not ask for the same consent again. Follow the shared call page's
+[relay context](../orchestrate/references/external.md#in-codex-or-opencode) even without an orchestration plan.
 
 ## Select and launch
 

@@ -12,9 +12,10 @@
 // A red suite does not stop the run. Run one at a time, stopping saved minutes. Run side by side, the
 // long suites are already running by then, so stopping saves little and hides every later result.
 //
-// Exit 0 only if every suite exited 0. A suite that needs a live binary or an opt-in variable exits 0
-// without it and says so in its own last line; the summary repeats that as skipped or not run rather than
-// counting it green. --require-live (or REQUIRE_LIVE_CODEX=1) turns fidelity's skip into a failure.
+// Exit 0 only if every suite exited 0. Optional live suites report when they do not run; the summary does
+// not count them as green. --require-live (or REQUIRE_LIVE_CODEX=1) turns fidelity's skip into a failure.
+// Conformance needs a Codex CLI unless skipped explicitly. CI sets --skip-conformance because it has no CLI;
+// an implicit skip would hide a missing local check.
 
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -38,11 +39,13 @@ if (unlisted.length || missing.length) {
   process.exit(2);
 }
 const requireLive = process.argv.includes("--require-live") || process.env.REQUIRE_LIVE_CODEX === "1";
+const skipConformance = process.argv.includes("--skip-conformance");
 const JOBS = os.availableParallelism();
 
 function runSuite(name) {
   return new Promise((resolve) => {
-    const args = [path.join(HERE, `${name}.test.mjs`), ...(name === "fidelity" && requireLive ? ["--require-live"] : [])];
+    const args = [path.join(HERE, `${name}.test.mjs`), ...(name === "fidelity" && requireLive ? ["--require-live"] : []),
+      ...(name === "conformance" && skipConformance ? ["--skip-conformance"] : [])];
     const p = spawn(process.execPath, args, { stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
     const started = Date.now();

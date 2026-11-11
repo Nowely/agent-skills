@@ -3,6 +3,40 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## 0.36.0 — 2026-11-11
+
+### Breaking
+
+- Codex reports no longer include `codexVersionPinned`; `codexVersion` still identifies the observed server.
+
+### Changed
+
+- Conformance generates protocol schemas from the locally installed Codex CLI for each run. CI skips this
+  check explicitly; generated schemas and a pinned CLI version are no longer kept in the repository.
+- A direct OpenCode delegation covers task-needed data, and the Codex relay carries the user's request,
+  selected route and approved scope in its authorization context.
+
+### Fixed
+
+- Conformance counts only schema-checked messages in its category totals and reports unchecked responses separately.
+
+### Validation
+
+- CLI tests passed 126 cases; relay contract 16, orchestration 13 and skill-page checks 8. Package checks passed
+  21 cases and skipped the tag-on-HEAD check because the candidate is not tagged.
+- Local conformance passed 108 scenarios with codex-cli 0.167.0-alpha.3.2. The schema check reports unchecked
+  keywords and unmapped responses; it does not establish full live-server compatibility.
+- GLM Flash reviewed the schema and counter changes before the relay changes. Its local full-suite run hit the
+  existing E140 checkout-location failure. A later focused Terra/GLM experiment ran with the working skill and
+  a single diff; its first relay command had a wrong path, and no separate auto-review verdict was observed.
+- The release live orchestrate gate was skipped at the owner's direction. Claude CLI was signed out; the plugin
+  routing eval was not run. Node was 24.15.0 and Claude CLI was 2.1.299.
+
+### Known issues
+
+- Open issues E67, E110, E90, E96, E100, E102, E103, E104, E111, E113, E114, E117 and E140 are described in
+  [ISSUES.md](https://github.com/Nowely/agent-skills/blob/main/plugins/entrust/ISSUES.md).
+
 ## 0.35.0 — 2026-11-11
 
 ### Changed

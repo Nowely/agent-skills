@@ -174,10 +174,6 @@ test("every file the plugin needs to run is in the payload",
     const problems = [];
     if (missing.length) problems.push(`not tracked, so not shipped: ${missing.join(", ")}`);
     if (dangling.length) problems.push(`SKILL.md links to files the payload does not carry: ${dangling.join(", ")}`);
-    // The conformance suite validates the fixture against these, and the upgrade recipe regenerates them;
-    // they sit beside ROOT with the suites, since the driver reads none of them at run time.
-    const beside = spawnSync("git", ["-C", path.dirname(EVALS), "ls-files", "-z"], { encoding: "utf8" }).stdout.split("\0");
-    if (!beside.some((f) => /^schema-\d[^/]*\/.+\.json$/.test(f))) problems.push("no schema-<version>/ directory is tracked beside the plugin");
     return problems.length === 0 || problems.join("; ");
   });
 
@@ -229,6 +225,116 @@ test("nothing in the payload is ignored by .gitignore",
 
 // Here rather than in a suite of their own because their subject is this repository's own machinery —
 // what an install carries, and how run-all counts what it ran — not the driver's behaviour.
+
+const CONFORMANCE = path.join(EVALS, "conformance.test.mjs");
+const runConformance = (args, env) => spawnNode([CONFORMANCE, ...args], { env, killAfterMs: 15000 }).done;
+function schemaGenerator(body) {
+  const d = tempDir("conformance-generator-"), bin = path.join(d, "codex"), marker = path.join(d, "schema-dir");
+  fs.writeFileSync(bin, `#!/bin/sh\nif [ "$1" = "--version" ]; then echo codex-cli-test; exit 0; fi\nprintf '%s' "$4" > "$SCHEMA_MARKER"\n${body}\n`, { mode: 0o755 });
+  return { bin, marker };
+}
+const removedSchemaDir = (marker) => fs.existsSync(marker) && !fs.existsSync(fs.readFileSync(marker, "utf8"));
+
+test("conformance requires an observed Codex version before generating schemas",
+  "the result must name the version actually checked rather than inventing one",
+  async () => {
+    const d = tempDir("conformance-version-"), bin = path.join(d, "codex"), marker = path.join(d, "generated");
+    fs.writeFileSync(bin, `#!/bin/sh\nif [ "$1" = "--version" ]; then exit 8; fi\nprintf ran > "$SCHEMA_MARKER"\n`, { mode: 0o755 });
+    const r = await runConformance([], { ENTRUST_CODEX: bin, SCHEMA_MARKER: marker });
+    return r.code !== 0 && /cannot read Codex version: exit 8/.test(r.out) && !fs.existsSync(marker)
+      || `exit ${r.code}: ${r.out} ${r.err}`;
+  });
+
+test("an explicit conformance skip never resolves Codex",
+  "CI must skip deliberately without a locally installed CLI",
+  async () => {
+    const r = await runConformance(["--skip-conformance"], { ENTRUST_CODEX: path.join(tempDir("conformance-skip-"), "missing") });
+    return r.code === 0 && /conformance: NOT RUN/.test(r.out) || `exit ${r.code}: ${r.out} ${r.err}`;
+  });
+
+test("conformance fails when the requested Codex CLI is absent",
+  "a direct check must not pass or fall back when its explicit CLI is missing",
+  async () => {
+    const d = tempDir("conformance-missing-"), marker = path.join(d, "fallback-ran");
+    fs.writeFileSync(path.join(d, "codex"), `#!/bin/sh\nprintf ran > "$FALLBACK_MARKER"\n`, { mode: 0o755 });
+    const r = await runConformance([], { ENTRUST_CODEX: path.join(d, "missing"), PATH: d, FALLBACK_MARKER: marker });
+    return r.code !== 0 && /FAIL.*usable Codex CLI/.test(r.out) && /ENTRUST_CODEX must be an absolute path/.test(r.err)
+      && !fs.existsSync(marker) || `exit ${r.code}: ${r.out} ${r.err}`;
+  });
+
+test("a failed schema generator reports the cause and removes its temporary directory",
+  "a failed generation must not pass or leave the generated bundle behind",
+  async () => {
+    const { bin, marker } = schemaGenerator("echo synthetic-error >&2; exit 17");
+    const r = await runConformance([], { ENTRUST_CODEX: bin, SCHEMA_MARKER: marker });
+    return r.code !== 0 && /schema generation failed: exit 17/.test(r.out) && /synthetic-error/.test(r.out)
+      && removedSchemaDir(marker) || `exit ${r.code}: ${r.out} ${r.err}`;
+  });
+
+test("an incomplete generated schema bundle fails and is removed",
+  "a successful generator exit must not hide missing protocol schemas",
+  async () => {
+    const { bin, marker } = schemaGenerator("exit 0");
+    const r = await runConformance([], { ENTRUST_CODEX: bin, SCHEMA_MARKER: marker });
+    return r.code !== 0 && /cannot read generated schema ServerNotification\.json/.test(r.out) && removedSchemaDir(marker)
+      || `exit ${r.code}: ${r.out} ${r.err}`;
+  });
+
+function counterFixture(lines) {
+  const d = tempDir("conformance-counts-");
+  fs.mkdirSync(path.join(d, "lib"));
+  fs.copyFileSync(CONFORMANCE, path.join(d, "conformance.test.mjs"));
+  fs.writeFileSync(path.join(d, "fake-app-server.mjs"), 'export const SCENARIOS = { counter: {} };\n');
+  const harness = [
+    'import fs from "node:fs";',
+    'import path from "node:path";',
+    'export const DRIVER = "unused";',
+    'export const resolveCodexBin = () => process.env.ENTRUST_CODEX;',
+    'export const tempDir = (prefix) => fs.mkdtempSync(path.join(process.env.COUNTER_SCRATCH, prefix));',
+    'export const codexShim = () => {};',
+    'export function spawnNode(args, opts) { fs.writeFileSync(opts.env.FAKE_EMIT_LOG, process.env.COUNTER_MESSAGES); return { done: Promise.resolve({ code: 0 }) }; }',
+  ].join("\n");
+  fs.writeFileSync(path.join(d, "lib", "harness.mjs"), harness);
+  const names = ["ServerNotification.json", "ServerRequest.json", "JSONRPCError.json", "v1/InitializeResponse.json",
+    "v2/ThreadStartResponse.json", "v2/ThreadResumeResponse.json", "v2/TurnStartResponse.json", "v2/ConfigReadResponse.json",
+    "v2/TurnInterruptResponse.json", "v2/ModelListResponse.json", "v2/GetAccountRateLimitsResponse.json"];
+  const { bin, marker } = schemaGenerator(`mkdir -p "$4/v1" "$4/v2"\nfor name in ${names.join(" ")}; do printf '{"type":"object"}' > "$4/$name"; done`);
+  return spawnNode([path.join(d, "conformance.test.mjs")], { env: {
+    ENTRUST_CODEX: bin, SCHEMA_MARKER: marker, COUNTER_SCRATCH: d, COUNTER_MESSAGES: lines.join("\n") + "\n",
+  }, killAfterMs: 15000 }).done;
+}
+
+const counterMessages = () => [
+  { jsonrpc: "2.0", method: "notice", params: {} },
+  { jsonrpc: "2.0", id: 1, method: "request", params: {} },
+  { jsonrpc: "2.0", id: 2, result: {}, __method: "initialize" },
+  { jsonrpc: "2.0", id: 3, error: {} },
+  { jsonrpc: "2.0", id: 4, result: {}, __method: "skills/list" },
+  { jsonrpc: "2.0", id: 5, result: {}, __method: "skills/list" },
+  { jsonrpc: "2.0", id: 6, result: {} },
+].map((m) => JSON.stringify(m));
+
+test("conformance counts checked and repeated unchecked responses separately",
+  "each response without a mapped schema must be counted, even when method names repeat or are missing",
+  async () => {
+    const r = await counterFixture(counterMessages());
+    return r.code === 0
+      && r.out.includes("4 message(s) checked: 1 notification(s), 1 server request(s), 1 response(s), 1 error response(s)")
+      && r.out.includes("3 response(s) not checked (no schema mapped): skills/list, (response: method not recorded)")
+      || `exit ${r.code}: ${r.out} ${r.err}`;
+  });
+
+test("conformance excludes unclassified and unparsable messages but counts failed checks",
+  "unclassified or unparsable messages fail the case; a rejected schema check is still a check",
+  async () => {
+    const bad = JSON.stringify({ jsonrpc: "2.0", id: 7, result: "wrong", __method: "initialize" });
+    const r = await counterFixture([...counterMessages(), bad, '{}', '{invalid']);
+    return r.code !== 0 && r.out.includes("5 message(s) checked: 1 notification(s), 1 server request(s), 2 response(s), 1 error response(s)")
+      && r.out.includes("3 response(s) not checked (no schema mapped)")
+      && r.out.includes("response initialize: $: expected object, got string")
+      && r.out.includes("neither a notification, a request nor a response: {}") && r.out.includes("unparsable line: {invalid")
+      || `exit ${r.code}: ${r.out} ${r.err}`;
+  });
 
 // The two cases that re-run this suite inside a copy set this, or the copy would copy itself.
 const NESTED = process.env.ENTRUST_EVAL_NESTED === "1";
@@ -305,6 +411,26 @@ test("parseCount tells a suite that ran from one that did not",
     const wrong = forms.filter(([out, want, green]) => parseCount(out) !== want || measured(parseCount(out)) !== green)
       .map(([out, want]) => `${JSON.stringify(out.trim())} -> ${parseCount(out)}, expected ${want}`);
     return wrong.length === 0 || wrong.join("; ");
+  });
+
+test("run-all skips only conformance when explicitly requested",
+  "CI must report conformance as not run without skipping the other suites or starting Codex",
+  async () => {
+    const d = tempDir("codex-runall-skip-");
+    fs.mkdirSync(path.join(d, "lib"));
+    fs.copyFileSync(path.join(EVALS, "run-all.mjs"), path.join(d, "run-all.mjs"));
+    fs.writeFileSync(path.join(d, "lib", "counts.mjs"),
+      `export * from ${JSON.stringify(pathToFileURL(path.join(EVALS, "lib", "counts.mjs")).href)};\n`);
+    const files = fs.readdirSync(EVALS).filter((n) => n.endsWith(".test.mjs"));
+    for (const f of files) {
+      const script = f === "conformance.test.mjs"
+        ? `if (!process.argv.includes("--skip-conformance")) process.exit(9); console.log("conformance: NOT RUN");\n`
+        : `if (process.argv.includes("--skip-conformance")) process.exit(9); console.log("all 1 passed");\n`;
+      fs.writeFileSync(path.join(d, f), script);
+    }
+    const { code, out } = await spawnNode([path.join(d, "run-all.mjs"), "--skip-conformance"], { killAfterMs: 60000 }).done;
+    return code === 0 && out.includes(`run-all: ${files.length - 1}/${files.length} suites green, 1 not run`)
+      && /conformance not run/.test(out) || `exit ${code}: ${out.trim().split("\n").at(-1)}`;
   });
 
 test("run-all fails on a suite a signal killed",

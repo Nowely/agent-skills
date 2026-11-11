@@ -166,6 +166,20 @@ test("in Codex the proxy runs the command outside the sandbox, reads a still-run
     return problems.length === 0 || problems.join("; ");
   });
 
+test("the Codex relay carries the user's authorization context without deciding the task",
+  "a generic claim of approval omits the request, destination and data the approval reviewer needs to assess",
+  () => {
+    const codex = externalFlat.slice(externalFlat.indexOf("### In Codex or OpenCode"), externalFlat.indexOf("## 4. Read the result"));
+    const requirements = [
+      "quote the user's direct request and any separate approval or applicable standing authorization", "selected adapter, provider and model as resolved",
+      "needed data and approved scope", "relevant user restrictions", "not necessarily named by the user", "mark unknown if unconfirmed",
+      "Replace `<AUTHORIZATION_CONTEXT>` in the Codex step 1", "does not interpret the task, select rights or read another page", "<DESCRIPTION>: <AUTHORIZATION_CONTEXT>",
+      "Copy that context exactly from the brief",
+    ];
+    const missing = requirements.filter((part) => !codex.includes(part));
+    return missing.length === 0 || `Codex relay authorization context missing: ${missing.join("; ")}`;
+  });
+
 test("the prompt goes in through --new on stdin, into a directory beside the report, and no path on the page is a $TMPDIR one",
   "a coordinator cannot expand $TMPDIR and cannot Write under the data directory, so the launcher, a subprocess handed the report path, is what makes the agent's directory; a quoted heredoc is what keeps the prompt from passing through the shell's expansion; and --report-file refuses a relative path outright",
   () => {

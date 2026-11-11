@@ -28,7 +28,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { EXIT, PINNED_CODEX, ROOT, SCRIPTS, registry, runCases, skip, spawnNode, summarize,
+import { EXIT, ROOT, SCRIPTS, registry, runCases, skip, spawnNode, summarize,
          tempDir } from "./lib/harness.mjs";
 // A NAMESPACE import, not named bindings: the liveness helpers are the driver's, and a named import of
 // one it stops exporting would fail at load and report nothing at all rather than failing case by case.
@@ -203,7 +203,7 @@ function misses() {
 
 // Fixtures.
 const report = (cwd) => ({ ok: true, exitCode: 0, threadId: "th-1", turnStatus: "completed",
-                           answer: "done", cwd, driverVersion: "0.11.1", codexVersionPinned: PINNED_CODEX });
+                           answer: "done", cwd, driverVersion: "0.11.1" });
 function plantRun(w, slug, run, agents) {
   const d = path.join(w.state, "orchestrate", slug, run);
   fs.mkdirSync(d, { recursive: true });

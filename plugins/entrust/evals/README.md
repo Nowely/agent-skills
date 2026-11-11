@@ -1,6 +1,7 @@
 # Evals for entrust
 
-Two kinds of check live here. The suites run offline against a fixture and are meant to stay green.
+Two kinds of check live here. The suites run offline against a fixture and are meant to stay green; local
+conformance also needs the installed Codex CLI to generate the schemas it checks.
 `evals.json` holds the legacy Codex trigger cases for manual transcript checks. `opencode-routing/` is a
 Claude Code plugin-eval suite for OpenCode's real skill trigger: it checks prompts that must fire and
 prompts that must stay silent.
@@ -38,6 +39,7 @@ reading of a session, `lib/gate-checks.mjs`, against fixture streams, so what th
 checked on every run. `status.test.mjs` drives `scripts/status.mjs` against the fake server in each state it
 prints, and reads the line the codex page injects to run it.
 
+`package.test.mjs` checks the local schema generator's failure paths and explicit skip without a real CLI.
 `adapter-status.test.mjs` checks raw adapter-report collection, `--skip codex`, and that discovery
 does not accept host JSON or load adapter skill prose. OpenCode status tests assert that preflight
 returns at most three saved recent references, never requests model catalogs, and never starts a local
@@ -53,16 +55,17 @@ is the one result that reads as evidence and is not.
 
 `evals/lib/harness.mjs` holds what every suite needs a copy of otherwise — the temp directories, the
 `codex` shim, one spawn helper, the case registrar, the pass/fail loop and that sentinel — and
-re-exports the driver's own constants — exit codes, the agent-field table, the exit ladder, the pinned
-codex version, the lock key — rather than letting a suite restate them. `evals/lib/scenarios.mjs` holds
+re-exports the driver's own constants — exit codes, the agent-field table, the exit ladder, the
+plugin version, the lock key — rather than letting a suite restate them. `evals/lib/scenarios.mjs` holds
 what `cli.test.mjs` and `protocol.test.mjs` share: the shim, every file a case points the driver at, and
 the runner that gives each case its own state root. `evals/lib/lock-window.mjs` instruments a temporary
 copy of the driver with a pause before the lock's one rename or unlink, for the two cases of
 `lock.test.mjs` that land a peer's lock in that gap (E44). `driver.mjs` runs `main()` only when it IS the entry
 point, which is what makes importing it safe.
 
-`.github/workflows/ci.yml` runs `node evals/run-all.mjs` on Linux and macOS; the suites
-that need a real `codex` or `claude` skip there. It installs nothing and calls no model.
+`.github/workflows/ci.yml` runs `node evals/run-all.mjs --skip-conformance` on Linux and macOS.
+Conformance is explicitly skipped; the other suites that need a real `codex` or `claude` skip there.
+CI installs nothing and calls no model.
 
 `fidelity.test.mjs` runs LOCALLY during development: it needs the real `codex` and an
 authenticated home, and its opt-in live-turn case spends a real turn. Absent the binary it exits 0,
@@ -237,13 +240,13 @@ probabilistic end-to-end case shows the bug is real, a deterministic one keeps i
 Every protocol case is an ordering that once produced a false success, or that a review demonstrated
 could; the header of `protocol.test.mjs` names the shapes, and each case's `why` string names its own.
 
-The fixture must match `schema-<version>/` exactly. An early version invented a top-level `turnId` on
+The fixture must match the local Codex CLI's protocol schema. An early version invented a top-level `turnId` on
 `TurnCompletedNotification`, which the real server does not send: the suite passed and the live driver
 rejected every real completion. A fixture that diverges from the schema is worse than no test, because it
-manufactures confidence. `conformance.test.mjs` validates every line the fixture emits against the
-pinned schemas, and refuses to run against a schema directory the driver does not pin
-(`ENTRUST_SCHEMA_DIR` is the upgrade override), so a regeneration that changes a shape goes red
-there.
+manufactures confidence. `conformance.test.mjs` generates schemas in a temporary directory and validates
+the fixture's emitted messages against them. It reports unchecked keywords and counts and names unmapped
+responses. Run it locally with the Codex CLI; the ordinary CI run uses `--skip-conformance` and reports it as
+not run. A direct run without a usable CLI fails. A passing schema check does not establish live-server compatibility.
 
 ## The mutation ledger
 

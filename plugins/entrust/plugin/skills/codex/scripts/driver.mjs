@@ -2,8 +2,7 @@
 // Runs one Codex turn through `codex app-server` (JSON-RPC over stdio) at a declared rights level.
 //
 // app-server, not `codex exec`: exec forces approval_policy=Never, which a managed profile clamps to
-// untrusted, rejecting every action while exiting 0 (references/why-not-the-plugin.md). The protocol is
-// pinned in plugins/entrust/schema-<version>/, never installed and never read at run time. Its invariants:
+// untrusted, rejecting every action while exiting 0 (references/why-not-the-plugin.md). Protocol invariants:
 //   * There is no `turn/failed` method. Failure arrives as turn/completed with params.turn.status in
 //     {completed, interrupted, failed, inProgress}. Arrival is not success.
 //   * Codex spawns its own subagents on other threads. Every event must be filtered by the root
@@ -30,10 +29,8 @@ import { shortName } from "./launch.mjs";
 
 const LEVELS = new Set(["read", "write"]);
 const READ_PROFILE = "entrust_read";
-// The codex-cli release the protocol facts were measured against, matching schema-<version>/.
-const PINNED_CODEX = "0.159.3";
 // This plugin's version; evals/package.test.mjs keeps it in step with the manifest.
-const VERSION = "0.35.0";
+const VERSION = "0.36.0";
 let codexVersion = null;   // what the server reported this run, parsed out of InitializeResponse.userAgent
 // The union of the model catalogue's reasoning levels and the server's accepted efforts; preflightModel()
 // checks a requested one against the selected model before the turn.
@@ -110,7 +107,7 @@ const initializeParams = () => ({
   clientInfo: { name: "Claude Code", title: "entrust", version: VERSION },
   capabilities: {
     experimentalApi: false, requestAttestation: false,
-    // Streams nobody reads, from the pinned ServerNotification. item/agentMessage/delta is not here: an
+    // Streams nobody reads. item/agentMessage/delta is not here: an
     // interrupted turn's in-flight message is discarded server-side, so the deltas are a cut run's only copy.
     optOutNotificationMethods: [
       "item/reasoning/summaryTextDelta", "item/reasoning/summaryPartAdded", "item/reasoning/textDelta",
@@ -2497,7 +2494,7 @@ function handleServerRequest(msg) {
   const owner = msg.params?.threadId ?? msg.params?.conversationId ?? null;
   const foreign = rootThreadId !== null && owner != null && owner !== rootThreadId;
 
-  // Refusal shapes differ per method; the enums are pinned in schema-<version>/ServerRequest.json
+  // Refusal shapes differ per method; the enums are described in ServerRequest.json
   // (CommandExecutionApprovalDecision and its siblings). `decline` is only valid for the two item/*
   // approvals — the legacy pair accepts abort|allow|approved, and the permissions request answers with a
   // granted profile rather than a decision at all. The server's own availableDecisions never lists
@@ -2610,8 +2607,7 @@ function handleResponse(msg) {
     // the single most likely failure — and as a raw JSON blob under a generic transport error it reads
     // as a crash rather than as protocol drift. Name it and say what to do.
     const e = new Error(msg.error.code === -32601
-      ? `the server does not support ${p.method} (JSON-RPC -32601): your codex and this plugin have ` +
-        `drifted apart. Update the plugin, or pin codex to ${PINNED_CODEX}, the version it was measured against.`
+      ? `the server does not support ${p.method} (JSON-RPC -32601): your codex and this plugin may be incompatible.`
       : `${p.method}: ${JSON.stringify(msg.error)}`);
     e.rpcCode = msg.error.code;
     p.reject(e);
@@ -2910,7 +2906,7 @@ function answerSchemaErrors(text) {
   return schemaErrors(parsed.answerJson, opts.outputSchema);
 }
 
-// The backoff per transient cause, from CodexErrorInfo in the pinned schema (errKind() flattens the object
+// The backoff per transient cause, from CodexErrorInfo in the protocol schema (errKind() flattens the object
 // variants). Absent on purpose: the quota limits, which no ten seconds clears, and
 // responseTooManyFailedAttempts, which codex has already retried.
 const RETRYABLE = {
@@ -3334,7 +3330,7 @@ function writeReport(ev, codeOverride) {
     // Report which thread was continued after resolving "last", so the caller can identify the conversation.
     resumedFrom: opts.resume ?? null,
     // Report the server version parsed from initialize.userAgent; null means the version could not be read.
-    driverVersion: VERSION, codexHome, codexVersion, codexVersionPinned: PINNED_CODEX,
+    driverVersion: VERSION, codexHome, codexVersion,
     // Report whether model and effort came from a fresh probe, stale config or account defaults;
     // null under --host-home means the caller's config is used directly.
     configInherited,
@@ -3738,8 +3734,6 @@ async function main() {
   // client's own name, then the SERVER's version. Take the first x.y.z after a slash; a userAgent this
   // cannot read leaves codexVersion null rather than inventing one.
   codexVersion = /\/(\d+\.\d+\.\d+[^\s)]*)/.exec(String(init?.userAgent ?? ""))?.[1] ?? null;
-  if (codexVersion && codexVersion !== PINNED_CODEX)
-    process.stderr.write(`entrust: this codex is ${codexVersion}; the plugin's protocol facts and pinned schemas were measured against ${PINNED_CODEX}. Behaviour that contradicts the docs starts here.\n`);
 
   // An older server, or a managed device, answers this method with a JSON-RPC error. That is a missing
   // snapshot, not a reason to abort a run that has not started its thread yet: the report then carries
@@ -3778,7 +3772,7 @@ async function main() {
     : ["thread/start", { ...threadBase, serviceName: "claude-code-entrust" }];
   const thread = await conn.request(threadReq[0], threadReq[1]);
   // Asked for above, asserted here, at BOTH levels — write level's writable-root boundary is escapable the
-  // same way. The field is `required` on the response in the pinned schema, so a server that stops sending
+  // same way. The field is required on the response, so a server that stops sending
   // it yields undefined and refuses: fail-closed by construction rather than by convention.
   // The approval POLICY is asserted for the same reason as the reviewer, and it is the reason this driver
   // uses app-server at all: where an MDM profile restricts the allowed policies, a policy it does not
@@ -3869,7 +3863,7 @@ const RUN_AS_MAIN = (() => {
 })();
 // What a suite imports and what cleanup.mjs asks rather than reimplementing; RUN_AS_MAIN keeps an import
 // from starting anything.
-export { CODEX_FALLBACK_DIRS, EXIT, FIELDS, LADDER, PINNED_CODEX, PROMPT_FIELDS, RECLAIM_BACKSTOP_MS, VERSION, canonPath,
+export { CODEX_FALLBACK_DIRS, EXIT, FIELDS, LADDER, PROMPT_FIELDS, RECLAIM_BACKSTOP_MS, VERSION, canonPath, resolveCodexBin,
          dropReclaimMarker, holderAlive, holdsReclaimMarker, lockKey, newestNamed, processIdentity,
          reclaimMarkerAbandoned, reclaimable, takeReclaimMarker };
 
