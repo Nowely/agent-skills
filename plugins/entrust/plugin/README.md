@@ -31,7 +31,7 @@ Then invoke `$entrust:orchestrate`; it uses Codex's own subagents.
 | --- | --- | --- |
 | [orchestrate](skills/orchestrate/SKILL.md) | you: `/entrust:orchestrate`, `$entrust:orchestrate` | plans, delegates, verifies and synthesises |
 | [proxy](skills/proxy/SKILL.md) | you: `/entrust:proxy <model>`, `$entrust:proxy <model>` | starts full Claude Code execution after confirmation; the host relays messages and replies, with tool activity in the existing journal |
-| [review](skills/review/SKILL.md) | you or the assistant | reviews behavior, simplicity, design and tests with evidence |
+| [review](skills/review/SKILL.md) | you: `/entrust:review`, `$entrust:review` | reviews a change's behavior, necessity, design and tests: every problem with the line that shows it, and what could not be explained as questions; one reviewer, or independent reviewers by direction |
 | [cleanup](skills/cleanup/SKILL.md) | you: `/entrust:cleanup` | lists what entrust left on this machine and deletes the items you pick by number |
 | [advisor](skills/advisor/SKILL.md) | you: `/entrust:advisor` | a standing top-tier advisor, of the other model family where a route exists, for one run; an experiment |
 | [swarm](skills/swarm/SKILL.md) | you: `/entrust:swarm`, or an approved plan | up to fifty bulk agents over a file of units, reduced to one summary; an experiment |

@@ -1,68 +1,98 @@
 ---
 name: review
-description: Review code changes for correctness, unnecessary complexity, architecture, readability, and meaningful test gaps. Use for change, branch, or PR reviews; supports one reviewer or independent reviewers by direction.
+description: >-
+  User-invoked code review of a change, branch or PR: reports every grounded problem in its behavior,
+  necessity, design and tests, and what could not be explained, with one reviewer or with independent
+  reviewers by direction.
+disable-model-invocation: true
 metadata:
   version: "0.36.0"
 license: MIT
 ---
 
-# Evidence-based code review
+# Review
 
-Review the quality of the whole solution: it should satisfy the task, be as simple as the supported behavior permits, and be understandable to maintainers. Do not modify code or publish comments unless explicitly asked. Respect the user's scope and verification constraints.
+Give the author a review they can act on without repeating your work: everything in the change that is wrong, unnecessary, hard to change or untested, each with the line that shows it, and everything you could not explain, as a question. Review only: change no code and post no comments unless asked. Keep to the scope and limits the user set; where you may not run code, say what a run would settle.
 
-## Choose a mode
+## Procedure
 
-- **Single reviewer (default):** one reviewer covers all four directions and consolidates the findings, unless the user requests a narrower scope.
-- **By direction:** when the user requests delegation, assign one independent reviewer to each requested direction; use all four for a full review. Give each the same task, exact change, project instructions, available evidence, and verification constraints, plus their focus. Each reviewer must read this skill, including validation and reporting. Do not provide suspected findings or prior conclusions. Each reviewer may inspect connected code from other directions and report validated findings outside their assigned direction.
+Do the steps in order. Steps 1 to 3 collect and do not filter; step 4 filters. Finish all four passes of step 3 before reporting, even after a serious find.
 
-Each reviewer validates their candidates. The coordinator checks cited evidence and resolves duplicates or conflicting interpretations; agreement is not proof. If the requested mode is unavailable, explain the limitation instead of silently substituting another mode.
+1. **Scope.** Identify the exact change (the diff against its base), the task behind it and the project instructions that apply. Write the task as a numbered list of requirements; where none is stated, take it from the PR or commit text and say so. A change too large to read whole is reviewed unit by unit in order of risk, and the report lists what was not reached.
+2. **Read around the change.** Read each changed file whole, and the base version of what was rewritten. For each changed function, open its callers, the source of each input (the producing code, the schema, the type, the stored data) and the consumers of its output. Search for code elsewhere that does the same job as the changed code, with the same label, rule, constant or call, and was not changed.
+3. **Four passes.** Go through the change once for each [direction](#directions) and note every candidate: a problem, or something that only looks odd.
+4. **Refute.** Try to prove each candidate wrong, as [Refuting a candidate](#refuting-a-candidate) says. What survives is a finding; what you can neither prove nor refute is a question.
+5. **Report** in [the report's shape](#the-report).
 
-## Establish context
+## Directions
 
-Identify the exact change and read its complete diff, requirements, and applicable project instructions. Trace affected data sources, outputs, callers, and supported user flows. Distinguish task requirements, existing behavior, and implementation choices. If a requirement or contract is unavailable, note the limitation.
+In every pass, also note what you cannot explain: a parameter nothing reads, a branch nothing reaches, a constant with no source, a condition that reads inverted, a change the task did not ask for, a comment the code contradicts, two siblings handled differently.
 
-## Review directions
+### Behavior
 
-### Behavior and scope
+- For each requirement, find the lines that implement it. A requirement with no lines, or implemented in only some of the places that need it, is a finding.
+- Compare with the base: what works differently now that no requirement asked to change?
+- Run concrete values through each changed branch by hand: each side of every comparison and the value on its boundary; the first, the last and the only element; a value the contract allows to be absent; a second call with the same arguments; the same object used again by the caller.
+- Follow each error to where it is handled and to what the user sees.
+- Check security, data integrity, concurrency and performance where the change touches them, under the callers and load the project supports.
 
-- Compare the implementation with each requirement, affected contracts, and project rules. Trace the relevant flows through callers and integration points; identify missing behavior and changes outside the task.
-- Trace error paths to their actual handling and user impact. A catch or fallback alone is not a defect. Check security, data integrity, concurrency, and performance where affected, using supported scenarios and expected load.
+### Necessity
 
-### Necessity and simplicity
+- List each mechanism the change adds: a guard or null check, a fallback or default, a try/catch, a retry, a cache, a conversion, an option or parameter, a wrapper or layer, a new piece of state.
+- For each, write the assumption that makes it necessary ("status can be missing"), then check that assumption at its source: the code that produces the value, the schema or type at the version the project uses, every caller. It ends as `needed` (cite the source), `contradicted` (a finding: say what to delete and what still works) or `unknown` (a question: say what would settle it).
+- Judge each mechanism on its own evidence. One unnecessary guard says nothing about the next one.
+- Check whether existing code already does this: a utility, a check upstream, the callee itself.
+- Ask whether the requirements can be met with fewer concepts, parameters or states. Fewer lines is not the goal.
 
-- For each significant new mechanism, identify the required behavior and the assumption that makes the mechanism necessary. Check that assumption against data producers, types, schemas, API contracts, and existing utilities or execution paths. If the premise concerns data provenance, identify supported producers and relevant persisted states, then check the applicable contract; do not generalize from one caller or UI flow.
-- Record the behavior, premise, source checked, and result for each significant mechanism. A contradicted premise can indicate a removal candidate; an unresolved premise is a question, not a finding.
-- Examine changed functions as a whole, including their conditions, parameters, conversions, and checks. Identify dead code, redundant checks, repeated work, unnecessary options or abstractions, and behavior added without a requirement. Consider what would happen if each substantial part were removed.
-- Compare with a simpler path using existing information or capabilities. Check affected supported behavior and explain any change in behavior. Code, tests, and author explanations are evidence to examine, not independent proof that a mechanism is needed. Fewer lines alone do not make a better solution.
+### Design
 
-### Design and readability
-
-- Identify the rules, responsibilities, and side effects in the changed code. Check whether the main flow and decision order are clear and whether a reader can understand or change one rule without tracing unrelated logic.
-- Before finalizing findings, make a separate structure pass over changed units with nontrivial logic, even when no functional defect is found. Name the individual rules and where each is implemented; record side effects, decision order, and the boundary conclusion. A high-level responsibility label alone does not complete the pass. Before accepting the current grouping, trace a realistic change to each independently changeable rule and record any unrelated logic or control flow that must be understood; routine surrounding context alone is not a finding. Multiple rules or responsibilities alone are not a finding.
-- Examine responsibility boundaries, interfaces, dependencies, names, nesting, and duplication. Consider whether related logic belongs together, independent rules need clearer boundaries, or an existing abstraction obscures more than it helps.
-- For each structural concern, identify a concrete reading, modification, or verification task made harder and suggest the smallest clearer structure. When independently changeable rules are interleaved, compare the current grouping with named rule boundaries and an explicit main flow. Recommend a boundary only for that task benefit; cohesive rules may remain inline. Split by responsibility, not by line count; do not add abstractions or indirection merely to make functions shorter. Prefer readable, explicit code over compactness.
+- For each changed unit with real logic, list the rules it implements and its side effects. These are working notes, not report text.
+- For each rule, pick a likely next change, such as a new threshold or one more case, and count the unrelated code its author must read or could break. Much: a finding, with the smallest structure that separates the rule. Little: leave it.
+- Look for one fact or rule defined in two places; logic in a unit that does not own it, so that other consumers cannot use it; a function that decides and also performs effects, or changes its arguments; a parameter that switches between behaviors; a caller that must know its callee's internals; an abstraction with one user; a name that says something other than what the code does; a second way of doing what the project already does elsewhere.
+- Cohesive code stays together. Propose no split, pattern or layer unless you can name the change it makes easier.
 
 ### Tests
 
-- Check whether existing tests cover affected behavior and integration points. For each meaningful gap, identify the regression it could catch and whether existing tests already cover it.
-- Assess assertions and mocks against the actual contracts: could a material regression pass, or could a test merely repeat an implementation assumption? A missing or weak test does not by itself prove a production defect.
+- For each requirement and each risky branch from the behavior pass, name the test that fails when it breaks. Where there is none, that is a gap: say which regression gets through.
+- For each test in the change, break the code in your head, by flipping a comparison or deleting a branch, and ask whether the test fails. A test whose expected value was copied from the output, a mock that restates the implementation, and a test that pins behavior the contract excludes all pass for the wrong reason.
+- Ask for no test of a state that cannot occur.
 
-## Validate candidates
+## Refuting a candidate
 
-Before reporting, look for counterevidence in the relevant callers, guards, handlers, contracts, existing tests, and base revision. Confirm the relationship to the change.
+Reopen the cited code and look for what makes you wrong: a check upstream, a contract, callers that never pass the value, an existing test, the same behavior in the base.
 
-- When a conclusion depends on a versioned schema, generated type, or package contract, resolve the version used by the reviewed revision from available manifest and lockfile metadata. Before concluding its source is unavailable, check standard local resolution locations such as the installed dependency tree and package-manager store, without an exhaustive search. If a matching contract source is available, inspect it and check its applicability to the execution path. A version difference is not itself a finding; if applicability is material and unresolved, keep dependent conclusions conditional and identify the missing evidence.
-- For a defect, establish supported triggering conditions, the causal path, and a material consequence. A static trace can support a finding; distinguish it from a reproduced failure.
-- For a simplification, verify that the alternative satisfies the required behavior and constraints, and identify what would change. If a significant premise remains unresolved, say why it matters and what evidence would resolve it; uncertainty alone is not proof of a defect or unnecessary code.
-- Apply the same necessity test to your own suggestions: investigate the premise before proposing another guard, fallback, retry, configuration option, or layer. Before adding handling around a mechanism, check whether it is needed; if the premise remains unresolved, report the missing evidence rather than presenting the addition as established.
-- For a structural concern, verify the cited code, identify a concrete reading, modification, or verification task made harder, and suggest the smallest clearer boundary. A code-supported maintenance judgment does not require a historically demonstrated failure. Check whether the proposed structure preserves supported behavior; if it removes a responsibility or side effect, identify its independent justification and behavioral tradeoff. Treat judgment as judgment, not a functional failure.
-- Keep pre-existing issues separate unless the change makes them reachable or materially worse, or the user requested broader review.
+- **A defect** needs a trigger a supported caller can produce, the path from it, and the wrong result. Without a trigger it is at most a question.
+- **A removal or simplification** needs the required behavior to survive it. Say what would change.
+- **A design finding** needs the named change or reading task it makes harder. It is a judgment; label it one.
+- **A test gap** needs the regression that passes today.
+- **Your own fix** passes the necessity test too: propose no guard, fallback, retry, option or layer for an input you have not shown can occur.
 
-## Report
+Drop style and taste, advice without a scenario, and duplicates. A problem the base already had and the change does not worsen goes in one separate line. Do not drop a candidate for being small or because you are unsure: unsure is a question.
 
-Lead with actionable findings, ordered by impact. For each, give the location, relevant evidence, consequence, and a corrective direction. State the basis for expected behavior or the claimed simplification; distinguish proven facts from assumptions.
+## The report
 
-Keep defects, unnecessary complexity, structural concerns, material unresolved questions, and test suggestions distinguishable. Omit empty finding groups. For each requested direction, briefly state what was examined and concluded, even when it produced no findings. For design and readability, give a concise inventory of individual rules in each nontrivial changed unit and the reason for the boundary conclusion, including when no change is warranted; reporting only top-level responsibilities is insufficient. If no actionable findings survive validation, say so. State the reviewed scope, checks performed, and material limitations.
+    ## Verdict
+    Two or three sentences: whether the change does its task, and the problems that matter most.
 
+    ## Findings
+    Ordered by impact, each as:
+    ### <n>. <what is wrong> (<behavior | necessity | design | tests>; <ran | traced | judgment>)
+    - Where: path:line, with the line quoted
+    - What happens: the trigger and the result; or what is unnecessary; or which change gets harder
+    - Evidence: what you read or ran that establishes it, as path:line
+    - Fix: the smallest change
 
-For maintainers comparing prior wording, see [references/earlier-draft.md](references/earlier-draft.md). It is not an additional review instruction.
+    ## Questions and oddities
+    For each: where, what is unexplained, what would settle it.
+
+    ## Coverage
+    Each requirement as done, partial or missing, with its location. What you read beyond the diff.
+    What you could not check, and why.
+
+`ran` means you executed it and saw the result, `traced` that you followed the code path you cite, and `judgment` a maintenance opinion with its cost named. An empty section says "none".
+
+## Modes
+
+One reviewer doing all of the above is the default.
+
+When the user asks for independent reviewers, start one per direction, four for a full review. Give each the same change, task, project instructions and limits, this page to read whole by its path, and its direction: it does steps 1 and 2 in full, step 3 for its direction while noting whatever else it meets, then steps 4 and 5. Give none of them a suspected finding or another reviewer's result. When they return, reopen the lines each finding cites, since two reviewers agreeing is not evidence; merge duplicates, settle contradictions by reading the code, and write one report. If you cannot start reviewers, say so; do not fall back to one reviewer silently. In an [orchestrate](../orchestrate/SKILL.md) run these reviewers are its [cross-reviewers](../orchestrate/references/roles.md).
