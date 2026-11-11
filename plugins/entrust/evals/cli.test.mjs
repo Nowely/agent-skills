@@ -108,7 +108,9 @@ const CASES = [
   { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_RATELIMITS_ERROR: "1" },
     why: "a server that rejects account/rateLimits/read costs the report its snapshot, not the whole run",
     assert: (r) => r.rateLimits === null
-      || `a rejected snapshot did not leave rateLimits null: ${JSON.stringify(r.rateLimits)}` },
+      || `a rejected snapshot did not leave rateLimits null: ${JSON.stringify(r.rateLimits)}`,
+    assertStderr: (e) => /account\/rateLimits\/read \(JSON-RPC -32601\).*may be incompatible/.test(e)
+      && !/pin codex/i.test(e) || `the missing-method diagnostic is wrong: ${e}` },
   { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "the server echoes the caller's prompt as a userMessage at the start of a turn; that echo must not count as activity or disarm the no-work retry guard",
     assert: (r) => (r.otherItemCounts === null || r.otherItemCounts.userMessage === undefined)
@@ -362,10 +364,10 @@ const CASES = [
   // --- what the report says about the run's own footing ---
   { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "the initialize response carries the server version in userAgent; the report must preserve it so protocol drift is diagnosable",
-    assert: (r) => (r.codexVersion === "0.159.3" && r.codexVersionPinned === "0.159.3")
-      || `codexVersion was not read out of the userAgent: ${JSON.stringify({ v: r.codexVersion, pinned: r.codexVersionPinned })}` },
+    assert: (r) => (r.codexVersion === "1.2.3" && !("codexVersionPinned" in r))
+      || `codexVersion was not read or the removed pin remains: ${JSON.stringify(r)}` },
   { scenario: "happy",            expect: EXIT.SUCCESS, env: { FAKE_CODEX_VERSION: "9.9.9" },
-    why: "a codex that is not the one the protocol facts were measured against is the first thing to know when behaviour contradicts the docs; it must be said on stderr and in the report, not inferred from a later failure",
+    why: "the report identifies the actual server version even when it differs from the fixture's default",
     assert: (r) => r.codexVersion === "9.9.9" || `drift was not reported: ${JSON.stringify(r.codexVersion)}` },
   { scenario: "happy",            expect: EXIT.SUCCESS,
     why: "the report must distinguish config inherited from a fresh probe, a last-known-good snapshot and account defaults",

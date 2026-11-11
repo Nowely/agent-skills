@@ -15,7 +15,7 @@ import { createTempContext, createTempDir } from "../../plugin/skills/orchestrat
 // Straight out of the driver, never restated: a suite holding its own copy of EXIT, of the prompt-file
 // vocabulary or of the lock's key has a copy that can disagree with the thing it is testing. Importing
 // is safe because driver.mjs runs main() only as an entry point.
-export { EXIT, FIELDS, LADDER, PINNED_CODEX, PROMPT_FIELDS, VERSION, lockKey }
+export { EXIT, FIELDS, LADDER, PROMPT_FIELDS, VERSION, lockKey, resolveCodexBin }
   from "../../plugin/skills/codex/scripts/driver.mjs";
 
 export const EVALS = path.dirname(path.dirname(fileURLToPath(import.meta.url)));

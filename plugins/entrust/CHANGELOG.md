@@ -3,6 +3,21 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Breaking
+
+- Codex reports no longer include `codexVersionPinned`; `codexVersion` still identifies the observed server.
+
+### Changed
+
+- Conformance generates protocol schemas from the locally installed Codex CLI for each run. CI skips this
+  check explicitly; generated schemas and a pinned CLI version are no longer kept in the repository.
+
+### Fixed
+
+- Conformance counts only schema-checked messages in its category totals and reports unchecked responses separately.
+
 ## 0.35.0 — 2026-11-11
 
 ### Changed

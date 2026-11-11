@@ -88,23 +88,11 @@ the GitHub release.
 - **Version**: `plugin/.claude-plugin/plugin.json`, the `metadata.version` line of every `plugin/skills/*/SKILL.md`,
   and the driver's `VERSION`. During preparation, `node evals/package.test.mjs` from `plugins/entrust` fails
   naming the one missed; PR CI also runs it. Publication uses step 7's metadata check instead of this suite.
-- **Codex protocol during development**: after a Codex CLI upgrade, or when `codex --version` differs from the
-  driver's `PINNED_CODEX`, regenerate and diff the protocol schema on the PR's branch, before the merge:
-
-  ```bash
-  codex app-server generate-json-schema --out <tmp-new>/
-  git archive 1674a5f plugins/entrust/schema-0.159.3 | tar -x --strip-components=2 -C <tmp-old>/
-  diff -r <tmp-old>/schema-<old-version>/ <tmp-new>/
-  ```
-
-  Read the diff for anything structural. Commit `<tmp-new>/` as `plugins/entrust/schema-<new-version>/` in a commit
-  of its own: that commit holds the full tree the next upgrade diffs against, so point the archive command above at
-  it then. `ENTRUST_SCHEMA_DIR=schema-<new-version> node plugins/entrust/evals/conformance.test.mjs` validates it
-  while the old one is still pinned; once that is green, move `PINNED_CODEX`, prune the new directory to the files
-  the conformance suite loads in a second commit, and delete the old one. Then run `evals/run-all.mjs`, re-check
-  `plugin/skills/codex/references/parity.md`, and run the live fidelity gate,
-  `ENTRUST_LIVE_TURN=1 node evals/fidelity.test.mjs --require-live`. It spends one real turn; inspect every
-  fixture/live difference, keep the fixture emitting what the live server emits, and record its lines in the notes.
+- **Codex protocol during development**: run `node evals/conformance.test.mjs` locally when the driver,
+  protocol fixture or conformance suite changes. It generates schemas from the local Codex CLI in a temporary
+  directory and reports that CLI's version; no schema snapshot or CLI version is pinned. CI skips this check
+  explicitly and reports it as not run. Run the separate fidelity check when its real-server evidence is needed;
+  its opt-in live turn spends a model call and needs the owner's approval.
 - **Live orchestrate gate during development**, `ENTRUST_LIVE_ORCHESTRATE=1 node evals/orchestrate-live.test.mjs`, when the candidate
   changes a skill page, the agent file, the launcher or the driver, a model, effort or cap, a path or a right, or
   follows a Codex CLI or Claude Code upgrade. It spends real sessions and a Codex turn. Add
