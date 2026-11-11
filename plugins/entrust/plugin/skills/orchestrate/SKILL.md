@@ -60,8 +60,11 @@ inherits yours, so give it its own temporary directory when its checks write.
    adapter reports without host JSON, loading adapter skill pages, normalizing a plan or launching a
    worker. Use only recent model references with an adapter-sourced recent state; absent or unsupported
    sources remain `unknown`/`unsupported`. A recent reference is not proof it is currently runnable; the
-   chosen adapter validates the exact model and variant before execution. If an explicit model family
-   has no recent candidate, report that gap.
+   chosen adapter validates the exact model and variant before execution. For a named Claude model with no
+   specified route and unavailable native and Claude CLI routes, check OpenCode as its adapter page says
+   before reporting a gap. For any named OpenCode model absent from Desktop's list, check its full catalogue.
+   If no candidate remains, report the gap. Preserve explicitly named routes and model versions; ask before
+   a different version or an ambiguous route.
 
    Keep native host facts, adapter status and the plan's allowed-route policy separate. Preserve each
    usage window's account/route/model scope, source and observation time; do not sum overlapping

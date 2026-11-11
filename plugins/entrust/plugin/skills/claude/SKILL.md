@@ -21,6 +21,10 @@ A request to make a model the coordinator starts nothing here: answer it with th
 `/entrust:proxy <model>` (`$entrust:proxy <model>` in Codex), whose one final confirmation is the only consent
 ([main proxy mode](../orchestrate/references/main-proxy.md)).
 
+For a request naming a Claude model but no route, if native Claude and Claude CLI are unavailable, check
+[OpenCode](../opencode/SKILL.md) for the requested model before reporting failure. A request naming Claude Code,
+its CLI, or a specific provider keeps that route; do not silently switch providers or model versions.
+
 ## Agent calls
 
 Apply [skills per invocation](../orchestrate/SKILL.md#skills-per-invocation) to native Claude briefs and

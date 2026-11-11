@@ -25,7 +25,8 @@ orchestrate skill installed beside this one. Every OpenCode row
 uses a concrete model ID, never `inherit` or a display name. Its prompt carries the same `MODEL:` or none,
 which runs on the row's; `inherit` or another model is refused.
 Model selection and launch-time validation follow [Select and launch](../SKILL.md#select-and-launch).
-If a requested family is not among the models status lists, report the gap and ask for an exact
+If a requested family is absent from the Desktop list, search the full catalogue as the adapter page says.
+If it is absent there too, report the gap and ask for an exact
 `provider/model`; do not substitute another listed model silently.
 The saved backend and plan model follow the detached keeper; mutable defaults cannot reroute it.
 Amend the approved plan before adding a worker or changing its model or write scope.

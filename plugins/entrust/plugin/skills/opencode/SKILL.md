@@ -2,7 +2,8 @@
 name: opencode
 description: >-
   Runs OpenCode workers: launches, continues and stops workers, answers their permission and question callbacks, and picks a model OpenCode offers. Use when the user asks
-  for OpenCode or for a model outside native Codex and Claude, to call or pool (“Позови DeepSeek, GLM”, “Use
+  for OpenCode, for a model outside native Codex and Claude, or for a named Claude model without a specified
+  route when both native Claude and Claude CLI are unavailable and OpenCode may offer it. This includes calls or pools (“Позови DeepSeek, GLM”, “Use
   deepseek, glm in pool”, “Задействуй модели OpenCode”), even before the task is stated. A request to make a
   model the coordinator (“Прокси на GLM”) is answered with the explicit proxy command; ordinary native
   Codex/Claude delegation uses native agents.
@@ -26,6 +27,8 @@ delegates one worker and follows the launch steps below.
 
 When the user asks to call, use or include a named model outside Codex and Claude in an agent pool, route
 that worker through OpenCode even when the user does not say “OpenCode” or has not stated the task yet.
+For a named Claude model with no specified route, also check OpenCode when the native and Claude CLI routes
+are unavailable. A named CLI or provider confines the search to that route; do not switch it silently.
 Choose the route first; when task details are missing, ask for them before checking status or starting a
 worker. “Позови DeepSeek, GLM” and “Use DeepSeek, GLM in pool” request one worker for each named family.
 “Задействуй модели OpenCode” explicitly selects this adapter; choose its model by the ordinary rule
@@ -37,12 +40,18 @@ below. A model mentioned only for information or discussion does not request a w
    worker's does, and lists `MODEL=` lines: the models OpenCode Desktop shows in its picker that the
    catalogue still offers (`SOURCE=desktop`), or without Desktop's store the whole catalogue
    (`SOURCE=catalogue`), each with the variant Desktop keeps for it and the variants it advertises.
+   If a named model is absent from the Desktop list, run the same command with `--catalogue` and search
+   that list before reporting it unavailable. This mode lists enabled catalogue entries and advertised
+   variants, without Desktop's selected variant; it does not prove a model call will succeed.
    `DEFAULT=` is the OpenCode configuration's `model`; `OPENCODE=missing` is no `opencode` on PATH, and
    `OPENCODE=unavailable` says why no server answered.
 2. Choose `MODEL: inherit` only when the user did not name a model family: it selects `DEFAULT` and is
    refused when that is `none`. When the user names a family such as DeepSeek or GLM, use the first listed
-   model of that family, with its listed variant as `VARIANT:` when permitted by the effort policy below; never use `inherit` or another family for
-   that request. If no model of the family is listed, report the unresolved family before launching. A
+   model of that family when the route is unambiguous, with its listed variant as `VARIANT:` when permitted by
+   the effort policy below; never use `inherit` or another family for that request. Preserve an explicitly
+   requested version or exact ID; if only a different version is offered, or several routes are ambiguous,
+   show the alternatives and ask for a choice. If no model of the family is
+   listed after the catalogue check, report the unresolved family before launching. A
    continuation retains its previous model and variant. Explicit `MODEL: provider/model` overrides
    selection; preserve slashes inside the model ID.
    `VARIANT:` must be advertised by that model; `EFFORT:` is an alias for an explicit variant. A requested
