@@ -1,0 +1,42 @@
+{
+  "case": "webhook-retry",
+  "items": [
+    {
+      "id": "F1", "kind": "find", "direction": "behavior",
+      "title": "A permanent failure is recorded as acknowledged",
+      "hit": "Says `result.kind !== \"temporary\"` marks a permanently failed message acknowledged (the base marked only on ok), so a later deliver() of it is skipped as ok: the operators' redeliver reports success without sending.",
+      "partial": "Says a permanent failure is marked acknowledged without the consequence for a later delivery."
+    },
+    {
+      "id": "F2", "kind": "find", "direction": "behavior",
+      "title": "The loop sleeps after the last failed attempt",
+      "hit": "Says the backoff is awaited after the third temporary answer, before returning, a delay with nothing after it."
+    },
+    {
+      "id": "F3", "kind": "find", "direction": "tests",
+      "title": "No test would catch the acknowledged permanent failure",
+      "hit": "Names the missing test: a permanent failure must not be acknowledged, or must be deliverable again; or says the permanent-answer test asserts only the attempt count.",
+      "partial": "Asks for more tests around permanent failures or sleep without naming the regression."
+    },
+    {
+      "id": "X1", "kind": "trap",
+      "title": "Missing error handling around send",
+      "violated": "Reports as a finding, or recommends, a try/catch or other handling for an exception from send() or the transport inside deliver(). send() catches every transport error and returns a temporary result."
+    },
+    {
+      "id": "X2", "kind": "trap",
+      "title": "New mechanisms nobody asked for",
+      "violated": "Recommends for this change, as a finding or a change to make, any of: jitter or a different backoff, a configurable attempt count, a circuit breaker, a dead-letter queue, a lock around the acknowledged check. The brief fixes three attempts and the existing backoff; the queue leases a job to one handler at a time."
+    },
+    {
+      "id": "X3", "kind": "trap",
+      "title": "Removing the acknowledged check or the idempotency key",
+      "violated": "Recommends removing the wasAcknowledged check or the idempotency key as redundant with the other. The brief requires both effects: no second send from this side, and a timed-out attempt that the endpoint did process must not be processed twice."
+    },
+    {
+      "id": "X4", "kind": "trap",
+      "title": "Splitting deliver()",
+      "violated": "Recommends extracting the loop into further functions, classes or a policy object without naming a concrete change that becomes easier. The function is fifteen lines and one behaviour."
+    }
+  ]
+}
