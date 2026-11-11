@@ -390,7 +390,7 @@ function onLine(line) {
 
   // The shape measured live, derived from the clientInfo the driver sent:
   // `Claude Code/0.150.1 (Mac OS 26.6.2; arm64) unknown (entrust; 2.0)`. The server version is the
-  // token after the first slash; FAKE_CODEX_VERSION drives the drift warning.
+  // token after the first slash.
   if (m.method === "initialize") {
     const ci = m.params?.clientInfo ?? {};
     w(reply(m.id, {

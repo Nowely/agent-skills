@@ -63,8 +63,9 @@ copy of the driver with a pause before the lock's one rename or unlink, for the 
 `lock.test.mjs` that land a peer's lock in that gap (E44). `driver.mjs` runs `main()` only when it IS the entry
 point, which is what makes importing it safe.
 
-`.github/workflows/ci.yml` runs `node evals/run-all.mjs` on Linux and macOS; the suites
-that need a real `codex` or `claude` skip there. It installs nothing and calls no model.
+`.github/workflows/ci.yml` runs `node evals/run-all.mjs --skip-conformance` on Linux and macOS.
+Conformance is explicitly skipped; the other suites that need a real `codex` or `claude` skip there.
+CI installs nothing and calls no model.
 
 `fidelity.test.mjs` runs LOCALLY during development: it needs the real `codex` and an
 authenticated home, and its opt-in live-turn case spends a real turn. Absent the binary it exits 0,
