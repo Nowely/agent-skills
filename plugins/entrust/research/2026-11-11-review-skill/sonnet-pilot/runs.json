@@ -1,0 +1,18 @@
+[
+  {
+    "run": "r01",
+    "case": "delayed-label",
+    "arm": "draft-11",
+    "review": "returns/r01.md",
+    "model": "claude-sonnet (Claude Code subagent, default effort)",
+    "instructions": "e57c461d5ee905648ca222787b57bd7db8df59874ea043b3fac7f995bd957c64"
+  },
+  {
+    "run": "r06",
+    "case": "delayed-label",
+    "arm": "draft-10",
+    "review": "returns/r06.md",
+    "model": "claude-sonnet (Claude Code subagent, default effort)",
+    "instructions": "2b05e6512becb7854dbb17975820db8a02d51baeef83d4c4b2bd9aca15d371c2"
+  }
+]
