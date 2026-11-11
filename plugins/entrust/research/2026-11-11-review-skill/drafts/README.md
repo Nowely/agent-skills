@@ -1,0 +1,3 @@
+# Frozen instruction drafts
+
+`00-baseline.md` preceded the ten-round series. Each `NN-reviewed.md` is the exact instruction file used for that numbered round. The round 10 file records the exact instruction used for that review. These files are historical research data, not review instructions.

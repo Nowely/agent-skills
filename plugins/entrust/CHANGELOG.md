@@ -3,6 +3,12 @@
 Hand-written per release from the tagged git log. Dates are the tagged commit dates; detailed
 forensics remain in the repository references and release notes.
 
+## Unreleased
+
+### Added
+
+- Add an evidence-based review skill for correctness, simplicity, structure and meaningful tests.
+
 ## 0.36.0 — 2026-11-11
 
 ### Breaking
