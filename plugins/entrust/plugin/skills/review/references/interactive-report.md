@@ -1,6 +1,6 @@
 # The interactive report
 
-The report of [the review page](../SKILL.md#the-report), written as data. A script checks it against the diff and draws it as one HTML file: what the change is, the verdict, the structure as written and as it should be, and the diff cut into the blocks of the map, each with its verdict and its findings. The user marks there what to apply and hands the decisions back as text. `<skill-dir>` below is the review skill's installed directory.
+The report of [the review page](../SKILL.md#the-report), written as data. A script checks it against the diff and draws it as one HTML file: what the change is, the verdict, the structure as written and as it should be, and the diff cut into the blocks of the map, each with its verdict and its findings. The recommendation stands out under the verdict, and the ideas have a section of their own. The user marks there what to apply and hands the decisions back as text. `<skill-dir>` below is the review skill's installed directory.
 
 ## Steps
 
@@ -25,9 +25,11 @@ The report of [the review page](../SKILL.md#the-report), written as data. A scri
                   "parts": ["what it adds or alters, one line each"], "sources": ["the task text", "the commits"] },
       "verdict": "...",
       "target": "...",
+      "recommendation": "what you would do next, and which findings first",
       "requirements": [{ "id": 1, "text": "..." }],
       "findings": [{ "id": 1, "title": "what is wrong", "direction": "behavior", "evidence": "traced",
                      "at": "path:line", "what": "...", "fix": "...", "breaks": [1] }],
+      "ideas": [{ "title": "the idea", "at": "path:line", "text": "what it gains and what it costs" }],
       "units": [{ "name": "importContacts", "jobs": ["parses", "validates", "writes"], "uses": ["ContactStore"],
                   "verdict": "split", "findings": [1] },
                 { "name": "ContactStore", "existing": true, "jobs": ["keeps the contacts"] }],
@@ -44,6 +46,7 @@ The report of [the review page](../SKILL.md#the-report), written as data. A scri
 Each field holds what the same part of the report holds, and these rules are checked:
 
 - **Findings.** `direction` is one of `behavior`, `necessity`, `design`, `tests`; `evidence` one of `ran`, `traced`, `judgment`. `breaks` lists the requirements the finding shows unmet; leave it out when it breaks none.
+- **Ideas.** `title` and `text`; `at` when the idea has a place. Leave the list out when there are none.
 - **Blocks.** `added` and `removed` list the block's lines in one file as numbers and ranges; a decision that spans files is one block per file. Every changed line that is not blank belongs to exactly one block. `"all"` names every such line of the file, and only a block to remove may use it: code that stays is listed by its lines. `serves` lists requirement ids and is empty for a block that serves nothing. `verdict` is `keep`, `fix` or `remove`, and a block to fix or remove names its findings. `unit` names the unit the block is part of; leave it out for a test or for a line outside any unit.
 - **Units.** The units as written: each has `jobs`, the units it `uses`, and a `verdict` of `keep`, `split`, `merge` or `remove`, with its findings unless it is kept. A unit of the change has at least one block. `"existing": true` marks code the change did not touch, listed because the change calls it or is called by it.
 - **Target units.** The same for the target, when it differs. A name that is also a unit of the change is carried over; a name that is neither that nor existing is to be written.

@@ -12,7 +12,7 @@ license: MIT
 
 # Review
 
-Give the author a review they can act on without repeating your work: everything in the change that is wrong, unnecessary, badly structured or untested, each with the line that shows it; what you could not explain, as questions; and the shape of the smallest clean solution, so that the findings add up to a direction. Review only: change no code and post no comments unless asked. Keep to the scope and limits the user set; where you may not run code, say what a run would settle.
+Give the author a review they can act on without repeating your work: everything in the change that is wrong, unnecessary, badly structured or untested, each with the line that shows it; what you could not explain, as questions; what would make it better without being a problem, as ideas; and the shape of the smallest clean solution, so that the findings add up to a direction. Review only: change no code and post no comments unless asked. Keep to the scope and limits the user set; where you may not run code, say what a run would settle.
 
 ## Procedure
 
@@ -23,7 +23,7 @@ Do the steps in order. Steps 1 to 5 collect and do not filter; step 6 filters. F
 3. **Map the change.** Split the diff into blocks: the smallest groups of lines that make one decision and could be kept, changed or removed on their own, such as a function, a branch, a guard, a parameter, a constant, a test. Every changed line belongs to one block. For each block note what it does and what it serves: the requirement it implements, or the integration or check that requirement cannot do without. Ask of each: if it were removed, which requirement would fail? A block that serves nothing is a candidate to delete; a requirement no block serves is a candidate to add. Then list the units: each function, class or module with real logic that the change adds or alters, with its jobs, read off its blocks, and the units it uses; and the existing units that call it or that it calls.
 4. **Four passes.** Go through the blocks once for each [direction](#directions) and note every candidate: a problem, or something that only looks odd.
 5. **Target.** Sketch the smallest solution that meets the requirements in this codebase: its units, what each owns and which units it uses, what it reuses, and which blocks of the map it keeps. What the change has beyond it is a candidate to delete; what it lacks, a candidate to add. If the change already is that solution, say so: a good change gets a short review.
-6. **Refute.** Try to prove each candidate wrong, as [Refuting a candidate](#refuting-a-candidate) says. What survives is a finding; what you can neither prove nor refute is a question.
+6. **Refute.** Try to prove each candidate wrong, as [Refuting a candidate](#refuting-a-candidate) says. What survives is a finding; what you can neither prove nor refute is a question; what is no problem of the change and would still make it better is an idea.
 7. **Report** in [the report's shape](#the-report).
 
 ## Directions
@@ -73,7 +73,7 @@ Reopen the cited code and look for what makes you wrong: a check upstream, a con
 - **A test gap** needs the regression that passes today.
 - **Your own fix** passes the necessity test too: propose no guard, fallback, retry, option, layer or pattern for an input or a future you have not shown.
 
-A requirement the change leaves to old code that does not meet it is the change's finding. Drop style and taste, advice without a scenario, and duplicates. A problem the base already had, which the change neither worsens nor relies on, goes in one separate line. Do not drop a candidate for being small or because you are unsure: unsure is a question.
+A requirement the change leaves to old code that does not meet it is the change's finding. Drop style and taste, advice without a scenario, and duplicates. An improvement the change does not need, with a gain you can name in code removed or a change made easier, is an idea, not a finding; so is a problem the base already had, which the change neither worsens nor relies on. Do not drop a candidate for being small or because you are unsure: unsure is a question.
 
 ## The report
 
@@ -85,6 +85,8 @@ A requirement the change leaves to old code that does not meet it is the change'
     Two or three sentences: whether the change does its task, and what matters most.
     Target: the smallest clean solution in two to four lines (its units, what each owns, what it reuses)
     and what of the change survives in it; "the change is already this" when it is.
+    Recommendation: what you would do next: accept, fix in place or rewrite as the target, and which
+    findings first.
 
     ## Findings
     Ordered by impact, each as:
@@ -92,6 +94,10 @@ A requirement the change leaves to old code that does not meet it is the change'
     `path:line`: what happens, with the trigger and the result; or what is unnecessary, with the source
     that shows it; or which job or change the structure makes harder. Name the requirement it breaks.
     Fix: the smallest change.
+
+    ## Ideas
+    Not needed for the change to be accepted. One line each: where, the idea, what it gains and what
+    it costs.
 
     ## Structure
     One line per unit of step 3, the existing ones included: `unit -> the units it uses`, its jobs, then

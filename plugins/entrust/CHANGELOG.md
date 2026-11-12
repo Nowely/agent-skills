@@ -11,8 +11,9 @@ forensics remain in the repository references and release notes.
   tests that reports every problem with the line that shows it, what it could not explain as questions, and
   the smallest clean solution the change should become, with one reviewer or independent reviewers by
   direction. Orchestrate's cross-reviewer follows the same page.
-- `review` opens its report with what the change is for and where that was taken from, and reports the change's
-  structure: its units, what each uses, and the same for the target. On request it writes the report as data: a
+- `review` opens its report with what the change is for and where that was taken from, says what it would do next,
+  keeps ideas apart from findings, and reports the change's structure: its units, what each uses, and the same
+  for the target. On request it writes the report as data: a
   script checks that every changed line belongs to one block, and draws a page with the diff cut into those
   blocks, the structure as two diagrams, and each finding to apply or skip.
 

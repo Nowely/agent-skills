@@ -82,6 +82,9 @@ textarea { width: 100%; min-height: 14rem; font: .85rem/1.45 var(--mono); color:
 .js input.act { display: block }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth } }
 .lead { font-size: 1.08rem; font-weight: 600 }
+.accent { --v: var(--accent); --v-bg: color-mix(in srgb, var(--accent) 12%, transparent) }
+.callout { border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); padding: .75rem 1rem }
+.idea { border-color: var(--accent) }
 .plain { margin: 0; padding-left: 1.2rem; max-width: 72ch }
 .t-c { color: var(--muted); font-style: italic } .t-s { color: var(--string) } .t-n { color: var(--number) } .t-k { color: var(--accent) }
 .l.ctx [class^="t-"] { color: inherit }
@@ -115,8 +118,9 @@ const SCRIPT = `
     const of = (value) => data.findings.filter((f) => state.findings[f.id] === value).map((f) => "- " + f.id + ". " + f.title + note("f" + f.id));
     const open = data.findings.filter((f) => !state.findings[f.id]).map((f) => f.id);
     const blocks = data.blocks.filter((b) => state.notes["b" + b.id]).map((b) => "- " + b.path + " " + b.where + ": " + state.notes["b" + b.id]);
+    const taken = data.ideas.filter((i) => state.findings[i.id] === "apply").map((i) => "- " + i.title + note(i.id));
     const part = (title, lines) => lines.length ? ["", title, ...lines] : [];
-    return ["Decisions on the review of \\"" + data.title + "\\" (" + data.range + ")", ...part("Apply:", of("apply")), ...part("Do not apply:", of("skip")),
+    return ["Decisions on the review of \\"" + data.title + "\\" (" + data.range + ")", ...part("Apply:", of("apply")), ...part("Do not apply:", of("skip")), ...part("Ideas to take:", taken),
       ...(open.length ? ["", "Not decided: " + open.join(", ")] : []), ...part("Notes on blocks:", blocks)].join("\\n");
   }
 
@@ -186,6 +190,7 @@ function summary(review, { blocks, requirements }) {
     <ul class="plain">${change.parts.map((part) => `<li>${prose(part)}</li>`).join("")}</ul>
     <p class="sub">Sources: ${change.sources.map(prose).join("; ")}</p></div>
   <div class="stack"><span class="label">Verdict</span><p>${prose(review.verdict)}</p></div>
+  <div class="callout stack"><span class="label">Recommendation</span><p>${prose(review.recommendation)}</p></div>
   <div class="stack"><span class="label">Target: the smallest clean solution</span><div class="target">${prose(review.target)}</div></div>
   <div class="stack"><span class="label">What the reviewer would do with the ${lines(sizeOf(blocks))} of the change</span>
     <div class="share" role="img" aria-label="Share of changed lines by verdict">${VERDICTS.map((v) => `<span class="v-${v}" style="width:${(100 * sizeOf(of(blocks, v)) / total).toFixed(2)}%"></span>`).join("")}</div>
@@ -268,7 +273,18 @@ export function page(review, files, model) {
     ${decide(f.id)}
     <input class="act" type="text" id="note-f${esc(f.id)}" data-note="f${esc(f.id)}" placeholder="Your note on this finding" aria-label="Your note on finding ${esc(f.id)}">
   </article>`).join("");
+  // An idea is decided like a finding, under an id of its own, and reported apart from them.
+  const ideas = (review.ideas ?? []).map((idea, index) => ({ ...idea, id: `i${index + 1}` }));
+  const offered = ideas.map((idea) => `
+  <article class="finding idea" id="${idea.id}">
+    <h3><span class="tag accent">idea</span> ${esc(idea.title)}</h3>
+    ${idea.at ? `<div class="group sub"><code>${esc(idea.at)}</code></div>` : ""}
+    <p>${prose(idea.text)}</p>
+    ${decide(idea.id)}
+    <input class="act" type="text" id="note-${idea.id}" data-note="${idea.id}" placeholder="Your note on this idea" aria-label="Your note on this idea">
+  </article>`).join("");
   const data = { title: review.title, range: review.range, findings: review.findings.map(({ id, title }) => ({ id, title })),
+    ideas: ideas.map(({ id, title }) => ({ id, title })),
     blocks: model.blocks.map(({ id, path, where, findings: cited }) => ({ id, path, where, findings: cited })) };
   const drawn = structure(model);
   return `<!doctype html>
@@ -282,7 +298,7 @@ ${summary(review, model)}
 ${drawn}
 <section class="stack">
   <div class="bar">
-    <nav><a href="#summary">Summary</a>${drawn ? '<a href="#structure">Structure</a>' : ""}<a href="#map">Change map</a><a href="#findings">Findings</a><a href="#decisions">Decisions</a></nav>
+    <nav><a href="#summary">Summary</a>${drawn ? '<a href="#structure">Structure</a>' : ""}<a href="#map">Change map</a><a href="#findings">Findings</a>${offered ? '<a href="#ideas">Ideas</a>' : ""}<a href="#decisions">Decisions</a></nav>
     <span class="group act"><span class="sub">Show</span>${["all", ...VERDICTS].map((v) => `<button type="button" data-show="${v}" aria-pressed="${v === "all"}">${v}</button>`).join("")}</span>
     <span class="sub act" id="progress"></span>
   </div>
@@ -292,6 +308,7 @@ ${drawn}
   </div>
 </section>
 <section id="findings" class="stack"><h2>Findings</h2>${findings || "<p>none</p>"}</section>
+${offered ? `<section id="ideas" class="stack"><h2>Ideas</h2><p class="sub">Not needed for the change to be accepted.</p>${offered}</section>` : ""}
 <section class="stack"><h2>Questions and oddities</h2>${review.questions?.length ? `<ul class="plain">${review.questions.map((q) => `<li><code>${esc(q.at)}</code> ${prose(q.text)}</li>`).join("")}</ul>` : "<p>none</p>"}
   <h2>Coverage</h2><p>${prose(review.coverage || "none")}</p></section>
 <section id="decisions" class="stack act"><h2>Decisions</h2>

@@ -25,9 +25,10 @@ function markdown(review, { blocks, requirements, units, target }) {
   return [
     "## Change", [review.change.goal, review.change.why].filter(Boolean).join(" "), ...review.change.parts.map((part) => `- ${part}`),
     `Sources: ${review.change.sources.join("; ")}`, "",
-    "## Verdict", review.verdict, `Target: ${review.target}`, "",
+    "## Verdict", review.verdict, `Target: ${review.target}`, `Recommendation: ${review.recommendation}`, "",
     "## Findings", ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${f.direction}; ${f.evidence})\n\`${f.at}\`: ${f.what}`
       + `${f.breaks?.length ? ` Breaks requirement ${f.breaks.join(", ")}.` : ""}\nFix: ${f.fix}\n`), "",
+    "## Ideas", ...list(review.ideas, (idea) => `- ${idea.at ? `\`${idea.at}\`: ` : ""}${idea.title}: ${idea.text}`), "",
     "## Structure", ...list(units, (u) => unit(u, u.existing ? "Existing" : `${capital(u.verdict)}${cited(u.findings)}`)),
     ...(target.length ? ["Target:", ...target.map((u) => unit(u, u.existing ? "Existing" : written.has(u.name) ? "From the change" : "To write"))] : []), "",
     "## Change map",

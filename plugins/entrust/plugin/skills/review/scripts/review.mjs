@@ -32,7 +32,7 @@ function compact(list) {
 export function check(review, files) {
   const errors = [], owner = new Map();
   const text = (v) => typeof v === "string" && v.trim() !== "", filled = (v) => Array.isArray(v) && v.length > 0;
-  for (const field of ["title", "range", "verdict", "target"]) if (!text(review[field])) errors.push(`"${field}" is missing`);
+  for (const field of ["title", "range", "verdict", "target", "recommendation"]) if (!text(review[field])) errors.push(`"${field}" is missing`);
   if (!text(review.change?.goal)) errors.push('"change.goal" is missing');
   for (const field of ["parts", "sources"]) if (!filled(review.change?.[field])) errors.push(`"change.${field}" lists nothing`);
   for (const field of ["requirements", "findings", "blocks"]) if (!Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
@@ -52,6 +52,8 @@ export function check(review, files) {
     if (!EVIDENCE.includes(f.evidence)) errors.push(`finding ${f.id}: evidence is one of ${EVIDENCE.join(", ")}`);
     refs(`finding ${f.id}`, f.breaks, requirements, "requirement");
   }
+  for (const [index, idea] of (review.ideas ?? []).entries())
+    for (const field of ["title", "text"]) if (!text(idea[field])) errors.push(`idea ${index + 1} has no "${field}"`);
 
   const units = review.units ?? [], changed = new Set(units.filter((u) => !u.existing).map((u) => u.name));
   for (const [where, list] of [["units", units], ["target_units", review.target_units ?? []]]) {

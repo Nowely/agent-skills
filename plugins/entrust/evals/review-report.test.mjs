@@ -20,9 +20,10 @@ const data = path.join(run, "review.json"), html = path.join(run, "review.html")
 const REVIEW = {
   title: "Upper-case <currency> codes", range: "HEAD~1..HEAD",
   change: { goal: "Show currency codes in upper case.", parts: ["The archive reader converts the code."], sources: ["brief.md"] },
-  verdict: "The change does its task.", target: "The change is already this.",
+  verdict: "The change does its task.", target: "The change is already this.", recommendation: "Accept it.",
   requirements: [{ id: 1, text: "Upper case wherever a price is shown." }, { id: 2, text: "A requirement nothing serves." }],
   findings: [{ id: 1, title: "A finding", direction: "tests", evidence: "traced", at: "test/archive.test.js:5", what: "What happens.", fix: "The fix.", breaks: [2] }],
+  ideas: [{ title: "An idea", at: "src/invoices/archive.js:2", text: "What it gains." }],
   units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["rows"], verdict: "keep" }, { name: "rows", existing: true, jobs: ["holds the rows"] }],
   target_units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["upper"] }, { name: "upper", jobs: ["a unit to write"] }],
   blocks: [
@@ -60,7 +61,8 @@ test("a complete review becomes one page that loads nothing from elsewhere and t
     if (outside) return `the page reaches outside itself: ${outside[0]}`;
     if (page.includes("<currency>") || !page.includes("&lt;currency&gt;")) return "the title reached the page unescaped";
     return (page.match(/<svg /g) ?? []).length === 2 && page.includes('class="t-k"') && page.includes('id="b1"') && page.includes(">fails<")
-      || "the page lacks a diagram per structure, highlighted code, a block anchor or the failed requirement";
+      && page.includes(">Recommendation<") && page.includes('id="i1"')
+      || "the page lacks a diagram per structure, highlighted code, a block anchor, the failed requirement, the recommendation or the idea";
   });
 
 test("the printout has the sections SKILL.md gives the report, in its order",
@@ -86,6 +88,8 @@ test("a review that does not match the diff is refused, every fault is listed, a
       [(r) => { r.findings[0].breaks = [5]; }, "finding 1 names requirement 5, which is not listed"],
       [(r) => { r.blocks[0].added = "all"; }, 'block 1: "all" is for a block to remove'],
       [(r) => { delete r.change; }, '"change.goal" is missing'],
+      [(r) => { delete r.recommendation; }, '"recommendation" is missing'],
+      [(r) => { r.ideas[0].text = ""; }, 'idea 1 has no "text"'],
     ];
     for (const [change, fault] of faults) {
       const { status, stderr } = render(change);
