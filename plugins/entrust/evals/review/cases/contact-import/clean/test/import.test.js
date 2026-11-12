@@ -22,9 +22,11 @@ test("a plan renames a known email and takes the last row for a repeated one", (
 
 test("an import writes its plan and counts it", () => {
   const store = new ContactStore();
-  assert.deepEqual(importContacts("name,email\nAnn,ann@site.test\n,x@site.test\n", store),
-    { created: 1, updated: 0, rejected: [{ line: 3, reason: "name is empty" }] });
+  store.insert({ name: "Old", email: "bo@site.test" });
+  assert.deepEqual(importContacts("name,email\nAnn,ann@site.test\n,x@site.test\nBo,BO@site.test\n", store),
+    { created: 1, updated: 1, rejected: [{ line: 3, reason: "name is empty" }] });
   assert.equal(store.findByEmail("ann@site.test").name, "Ann");
+  assert.equal(store.findByEmail("bo@site.test").name, "Bo");
 });
 
 test("a file that cannot be parsed writes nothing", () => {

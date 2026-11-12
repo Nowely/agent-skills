@@ -17,7 +17,7 @@ const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "sc
 const { run } = prepare("currency-contract", "clean"), repo = path.join(run, "repo");
 const data = path.join(run, "review.json"), html = path.join(run, "review.html");
 
-// A review of that case's diff: three changed lines in one file, eight in a new test file.
+// A review of that case's diff: three changed lines in one file, and two new test files.
 const REVIEW = {
   title: "Upper-case <currency> codes", range: "HEAD~1..HEAD",
   change: { goal: "Show currency codes in upper case.", parts: ["The archive reader converts the code."], sources: ["brief.md"] },
@@ -37,6 +37,7 @@ const REVIEW = {
   blocks: [
     { path: "src/invoices/archive.js", added: "2, 4", removed: "3", unit: "readArchive", does: "Converts the code.", serves: [1], verdict: "keep" },
     { path: "test/archive.test.js", added: "1-8", does: "Tests it.", serves: [1], verdict: "fix", findings: [1] },
+    { path: "test/outputs.test.js", added: "1-13", does: "Tests the three outputs.", serves: [1], verdict: "keep" },
   ],
   questions: [{ at: "docs/billing.md", text: "A question." }], coverage: "What was read.",
 };
@@ -133,7 +134,7 @@ test("a review that does not match the diff is refused, every fault is listed, a
   () => {
     const faults = [
       [(r) => { r.blocks[1].added = "1-7"; }, "test/archive.test.js: no block covers added 8"],
-      [(r) => { r.blocks.push({ ...r.blocks[0], added: "2", removed: "" }); }, "src/invoices/archive.js +2 is in block 1 and in block 3"],
+      [(r) => { r.blocks.push({ ...r.blocks[0], added: "2", removed: "" }); }, "src/invoices/archive.js +2 is in block 1 and in block 4"],
       [(r) => { r.blocks[1].findings = [9]; }, "block 2 names finding 9, which is not listed"],
       [(r) => { r.blocks[0].serves = [7]; }, "block 1 names requirement 7, which is not listed"],
       [(r) => { r.blocks[1].findings = []; }, "block 2 is to fix and names no finding"],

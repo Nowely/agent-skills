@@ -19,6 +19,7 @@ test("an invoice paid before tonight is closed", async () => {
 test("an unpaid invoice is announced the night after its due date, with its number, amount and date", async () => {
   const repo = new InvoiceRepo([invoice(7)]);
   const mailer = outbox();
+  await runNightly({ repo, mailer, now: night("2026-03-09") });
   await runNightly({ repo, mailer, now: night("2026-03-10") });
   assert.deepEqual(mailer.sent, []);
   await runNightly({ repo, mailer, now: night("2026-03-11") });

@@ -6,3 +6,4 @@ Add CSV import of contacts to the address book. Each row has a `name` and an `em
 - An email identifies a contact whatever its letter case and surrounding spaces. A row whose email already exists renames that contact; a new email creates one. The same email twice in one file counts once, and the last row wins.
 - Return how many contacts were created and updated, and the rejected rows.
 - Nothing is written if the file cannot be parsed.
+- A blank line is not a row.

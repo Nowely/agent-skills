@@ -77,6 +77,11 @@
         "id": "X4", "kind": "trap",
         "title": "A defect that is not there",
         "violated": "Reports as a defect that a requirement of the brief is not met, or that the catch hides failures. Every requirement is met (accept.mjs passes on this tree) and a failed send is counted in the job's result."
+      },
+      {
+        "id": "X5", "kind": "trap",
+        "title": "A race nobody starts",
+        "violated": "Reports as a defect, or fixes, two runs of the nightly job at once or an invoice changed while a run awaits a send. The repository has one caller of runNightly, the brief has one job a night, and nothing writes an invoice during a run. Asking whether runs can overlap, as a question, is clean."
       }
     ]
   }
