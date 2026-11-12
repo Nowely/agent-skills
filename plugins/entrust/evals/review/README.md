@@ -22,7 +22,7 @@ A case may carry `probes` in its rubric: changes someone will be asked to make a
 
 ## A round
 
-1. **Arms.** Freeze each skill version under test as a numbered file in the research run. `node evals/review/round.mjs <directory> control name=instructions.md ...` prepares every case in both variants once per arm and writes `<directory>/runs.json` with each arm's instruction digest. Run it again on the same directory for another repetition.
+1. **Arms.** Freeze each skill version under test as a numbered file in the research run. `node evals/review/round.mjs <directory> control name=instructions.md ...` prepares every case in both variants once per arm, or only the cases named after `--cases`, and writes `<directory>/runs.json` with each arm's instruction digest. Run it again on the same directory for another repetition.
 2. **Reviewers.** Give each `prompts/<run>.txt`, unchanged, to a fresh reviewer that has seen no other run, with the same model, effort and tools in every arm, and save its final message as `returns/<run>.md`.
 3. **Judge.** Per case and variant, give one judge [judge.md](judge.md), the case directory and that target's reviews, named by run id only. The judge is not told the arms and is not the model family under test when another is available. Collect its objects as `<directory>/verdicts.json`. The separate [design calibration](../../research/2026-11-11-review-skill/terra-design-calibration/README.md) describes a more restricted blind-judging protocol and its limitations.
 4. **Record.** Add the model and effort to the record, and report every run that started, including the ones that failed or were excluded and why. `node evals/review/score.mjs <directory>` prints the table.

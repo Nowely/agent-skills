@@ -102,7 +102,8 @@ test("a round prepares every case, variant and arm once per repetition and recor
     const twice = [...new Set(cells)].every((cell) => cells.filter((c) => c === cell).length === 2);
     return runs.length === names.length * VARIANTS.length * 2 * 2 && twice && new Set(runs.map((r) => r.run)).size === runs.length
       && runs.every((r) => fs.existsSync(path.join(dir, "prompts", `${r.run}.txt`)) && (r.arm === "control") === (r.instructions === null))
-      && fs.existsSync(path.join(dir, "returns")) || `unexpected manifest: ${JSON.stringify(runs.slice(0, 3))}`;
+      && fs.existsSync(path.join(dir, "returns")) && round(tempDir("review-round-"), ["control"], [names[0]]).runs.every((r) => r.case === names[0])
+      || `unexpected manifest: ${JSON.stringify(runs.slice(0, 3))}`;
   });
 
 const all = (name, variant, find, trap) => Object.fromEntries(rubricOf(name)[variant].items.map((i) => [i.id, i.kind === "find" ? find : trap]));

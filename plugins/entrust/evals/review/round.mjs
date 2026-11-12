@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Prepare every run of one repetition of a round, and the manifest that says which run was which.
 //
-//   node evals/review/round.mjs <directory> <arm>...
+//   node evals/review/round.mjs <directory> [--cases a,b] <arm>...
 //
-// An arm is `control`, for no instructions, or `name=instructions.md`. Every case, in both variants, is
-// prepared once per arm, in a shuffled order, so a run's id says nothing about its arm, case or variant.
+// An arm is `control`, for no instructions, or `name=instructions.md`. Every case, or each one named after
+// --cases, is prepared in both variants once per arm, in a shuffled order, so a run's id says nothing about its arm, case or variant.
 // The directory gets runs.json, the manifest score.mjs reads, with each arm's instruction digest;
 // prompts/<run>.txt, the prompt to hand a fresh reviewer unchanged; and an empty returns/, where the operator
 // saves that reviewer's final message as <run>.md. Running it again on the same directory adds a repetition.
@@ -14,7 +14,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { CASES, VARIANTS, isMain, prepare } from "./prepare.mjs";
 
-export function round(directory, arms) {
+export function round(directory, arms, only) {
+  const names = fs.readdirSync(CASES).sort(), unknown = (only ?? []).filter((name) => !names.includes(name));
+  if (unknown.length) throw new Error(`no case named ${unknown.join(", ")}`);
   const parsed = arms.map((arm) => {
     const [name, file] = arm.split("=");
     if (!name || (name === "control") !== (file === undefined)) throw new Error(`an arm is control or name=instructions.md, not ${arm}`);
@@ -23,7 +25,7 @@ export function round(directory, arms) {
   const manifest = path.join(directory, "runs.json");
   const runs = fs.existsSync(manifest) ? JSON.parse(fs.readFileSync(manifest, "utf8")) : [];
   for (const sub of ["prompts", "returns"]) fs.mkdirSync(path.join(directory, sub), { recursive: true });
-  const cells = fs.readdirSync(CASES).sort().flatMap((name) => VARIANTS.flatMap((variant) => parsed.map((arm) => ({ name, variant, arm }))));
+  const cells = (only ?? names).flatMap((name) => VARIANTS.flatMap((variant) => parsed.map((arm) => ({ name, variant, arm }))));
   const shuffled = cells.map((cell) => [crypto.randomInt(2 ** 32), cell]).sort(([a], [b]) => a - b).map(([, cell]) => cell);
   for (const { name, variant, arm } of shuffled) {
     const run = `r${String(runs.length + 1).padStart(2, "0")}`;
@@ -35,8 +37,9 @@ export function round(directory, arms) {
 }
 
 if (isMain(import.meta)) {
-  const [directory, ...arms] = process.argv.slice(2);
-  if (!directory || !arms.length) { console.error("usage: round.mjs <directory> <control | name=instructions.md>..."); process.exit(2); }
-  const { runs, added } = round(directory, arms);
+  const [directory, ...rest] = process.argv.slice(2);
+  const only = rest[0] === "--cases" ? rest.splice(0, 2)[1]?.split(",") : undefined;
+  if (!directory || !rest.length) { console.error("usage: round.mjs <directory> [--cases a,b] <control | name=instructions.md>..."); process.exit(2); }
+  const { runs, added } = round(directory, rest, only);
   console.log(`${added} runs prepared, ${runs.length} in ${path.join(directory, "runs.json")}; hand each prompts/<run>.txt to a fresh reviewer and save its answer as returns/<run>.md`);
 }
