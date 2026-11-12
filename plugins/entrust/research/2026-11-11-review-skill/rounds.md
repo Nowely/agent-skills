@@ -66,3 +66,41 @@ On the first-written form the review found all eight items, design included: its
 
 What this is not. One run per target and no other arm: nothing here compares draft 13 with draft 11 or with no instructions, and Sonnet may find the same without the page. The page's author wrote the cases. The reviews are long, 1330 words for a hundred-line change, of which the change map is about a fifth. Four targets did not run.
 
+
+## Round 17: Terra round 2
+
+Eighteen reviews of the instrument's three cases as they stood at `63663f6`, each case in its first-written and its clean form: no instructions, draft 13 and draft 17, one fresh `gpt-6.1-terra` reviewer at requested effort `xhigh` per cell, each given the unchanged prompt of `evals/review/prepare.mjs`; no code was run, and the read-only limit was the prompt's, not a sandbox. Six `kimi-k3.1-pro` calls at `high` graded three reviews each by `evals/review/judge.md` without the arm, though the shape of a report can give its arm away. The run was made by the agent that wrote drafts 00 to 10 and posted as [a comment on the pull request](https://github.com/Nowely/agent-skills/pull/95#issuecomment-6824389752) with a bundle whose SHA-256 is `3dabbd8b536e11e949a7abd91c1c5167be11318722c59624817ed2882c8cb075`; [terra-round-2](terra-round-2/) is that bundle unpacked, with reviewer paths already shortened to `case/<variant>/` by its author. The table is `score.mjs` at `63663f6` over that directory.
+
+| Arm | Form | Runs | Hit / partial / miss | Recall | Traps violated | Other valid | Unsupported | Words per review |
+|---|---|---|---|---|---|---|---|---|
+| control | first-written | 3 | 14 / 1 / 5 | 0.72 | 1 | 2 | 1 | 209 |
+| draft-13 | first-written | 3 | 19 / 0 / 1 | 0.95 | 0 | 6 | 0 | 805 |
+| draft-17 | first-written | 3 | 19 / 1 / 0 | 0.97 | 0 | 4 | 1 | 980 |
+| control | clean | 3 | – | – | 0 | 7 | 0 | 129 |
+| draft-13 | clean | 3 | – | – | 1 | 9 | 0 | 485 |
+| draft-17 | clean | 3 | – | – | 1 | 8 | 0 | 617 |
+
+What the first-written forms show. Without instructions the reviewer found the behavior items and missed design and necessity: in `currency-contract` the fallback the contracts exclude, the fix that belongs in the archive reader and the screens that stopped using `formatPrice`; in `contact-import` the function with five jobs, and it asked to keep the retry and the modes and improve them, which is a trap. Either draft found all of these. Drafts 13 and 17 differ by one ruling on one item, a failure swallowed inside a service that both reviews remove whole, a miss for one and a partial for the other: that is no difference. Draft 17's reviews are a fifth longer. Its section for ideas said "none" in all six reviews, so it drew no unsupported claim, and no idea either.
+
+What the clean forms show, and it is the round's main result. In `overdue-notice` all three arms reported two races: two runs of the nightly job at once, and an invoice paid while the job awaits a send. The brief has one job a night, and the repository has no second caller of it and no writer during a run. The control reviewer reported them and asked for a check before sending. Both drafts labelled them `traced`, made them findings and wrote "serialize notification runs" or "coordinate attempts" into the target, a mechanism nobody asked for, which is the trap. The same draft, on the first-written form of the same case, put the overlap under questions. So the page's rule that a defect needs a trigger a supported caller can produce did not hold where the change left nothing else to report: the reviewer took "the function can be called twice" for a trigger.
+
+Three defects of the instrument, all in the clean forms.
+
+- `contact-import` is not clean. All three arms said a record whose cells are all empty is dropped by the parser, so a row with an empty name is not reported; the brief asks for it. The parser is base code the clean form relies on, and the reviewers are right. They are also right that it accepts text after a closing quote, lets a column named `line` overwrite the line number, and does not count a carriage return inside quotes.
+- Each clean form has a real gap in its tests, which every arm with instructions found: no future due date, no renamed contact with its count, no price followed through the three outputs.
+- The rubric of `overdue-notice` names the lock as a trap and says nothing of the race it is proposed for, so the judge ruled the mechanism a trap and the observation valid. A second reader the run's author asked, `glm`, found the paths possible in isolation and no supported scenario that reaches them.
+
+And the first-written forms no longer separate the drafts: nineteen of twenty for both.
+
+The private change, one Terra review with draft 17, reported by class only: the behavior failure was traced and extra handling proposed, without establishing the contract of the installed dependency, which was available locally; the target did not separate the interleaved validation rules into named responsibilities; a test gap in the user interface was noted as unverified and compatibility questions stayed open; no false statement of fact was established. These are the same two gaps as in round 11.
+
+The interactive report, four reviews with draft 17: one per case on the first-written form and a repeat of `contact-import`; data, printouts and render attempts are in [terra-round-2/interactive](terra-round-2/interactive/).
+
+- Every review rendered. One first attempt was refused, for a unit verdict outside keep, split, merge and remove; the second passed. Rendering the same data twice gave the same bytes.
+- The repeat covered the same nine topics in other words and another order, with nineteen blocks against twenty.
+- In both `contact-import` reviews the function with five jobs has the verdict keep, no finding is a design finding, and the target is one function. The prose review of the same form with the same draft said to split it, and its target is one function too.
+- Three faults of the page. A finding about tests that names every requirement turns every requirement to "fails". A screen for which no picture was given is shown with "No difference from the mockup". Decisions are stored under the title and the range, which two reviews of one change share while their finding 7 differs.
+
+The run's author showed one report, translated, to the user. What the user asked for: the range out of the header; the task's goal, the review's conclusion, the recommended actions and the target told apart by label and weight; recommendations as short ordered lists, with no point repeated across sections; the language of the user's session for content and labels; for each requirement where it came from, the task, a decision in discussion, an open question or an assumption, with agreement and doubt shown apart from the source; text that stays inside the diagram's boxes; a compact tree of the files the blocks are in; a denser page; and the three faults above fixed before any polish.
+
+What this is not. One review per cell: nothing here is evidence that a result repeats. The cases and both drafts have one author, and the cases are small enough to read whole. The clean rows count valid claims against fixtures that were meant to have none, so they are a record and not a rate of false findings.

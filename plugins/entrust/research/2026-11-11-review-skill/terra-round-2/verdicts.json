@@ -1,0 +1,438 @@
+[
+  {
+    "run": "r08",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "F7": "hit",
+      "F8": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Разбиение по физическим строкам ломает CSV-поля с переводами строк и привязывает отклонения к фрагментам записи.",
+        "verdict": "valid",
+        "why": "head/src/contacts/import.js:13-45 разбивает ввод до учёта кавычек; head/src/lib/csv.js:17-34 сохраняет многострочные поля и начальную строку записи."
+      },
+      {
+        "claim": "Во втором фрагменте примера с многострочным именем создаётся контакт с именем Lee.",
+        "verdict": "unsupported",
+        "why": "head/src/contacts/import.js:29-45 открывает кавычку во втором фрагменте, поэтому запятая не разделяет ячейки; строки 52-70 получают пустой email и отклоняют оба фрагмента, ничего не создавая."
+      },
+      {
+        "claim": "Strict-режим выбрасывает исключение на ошибочной строке вместо её отклонения и продолжения импорта.",
+        "verdict": "valid",
+        "why": "head/src/contacts/import.js:58-70 выбрасывает исключения для пустого имени и невалидного email, противореча brief.md:5."
+      },
+      {
+        "claim": "Дополнительный результат rows не требуется и может быть удалён.",
+        "verdict": "valid",
+        "why": "head/src/contacts/import.js:7,98-103 возвращает принятые строки, тогда как brief.md:7 требует только created, updated и rejected."
+      }
+    ]
+  },
+  {
+    "run": "r09",
+    "items": {
+      "F1": "miss",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "partial",
+      "F7": "hit",
+      "F8": "hit",
+      "X1": "clean",
+      "X2": "violated",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Разбиение записей на каждом переводе строки теряет корректные многострочные контакты и искажает номера строк отклонений.",
+        "verdict": "valid",
+        "why": "head/src/contacts/import.js:13-45 обрабатывает физические строки независимо; head/src/lib/csv.js:17-34 поддерживает многострочные записи и их начальные номера."
+      },
+      {
+        "claim": "Strict-режим нарушает продолжение импорта после отклонённой строки.",
+        "verdict": "valid",
+        "why": "head/src/contacts/import.js:58-70 выбрасывает исключение вместо добавления rejected, что противоречит brief.md:5."
+      },
+      {
+        "claim": "Отсутствие теста на сбой store является проблемой покрытия.",
+        "verdict": "unsupported",
+        "why": "brief.md:3-8 не требует обработки сбоев store; head/src/contacts/store.js:12-17 выбрасывает только при дубликате, который предварительная проверка head/src/contacts/import.js:76-87 исключает для штатного синхронного вызова."
+      }
+    ]
+  },
+  {
+    "run": "r11",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "F7": "hit",
+      "F8": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Разбиение по переводам строк ломает корректные quoted multiline fields.",
+        "verdict": "valid",
+        "why": "head/src/contacts/import.js:13-45 не объединяет физические строки внутри кавычек; head/src/lib/csv.js:17-34 делает это и возвращает начальную строку записи."
+      },
+      {
+        "claim": "Strict-режим выбрасывает исключение вместо отклонения строки и продолжения импорта.",
+        "verdict": "valid",
+        "why": "head/src/contacts/import.js:58-70 прерывает импорт для пустого имени или невалидного email, противореча brief.md:5."
+      },
+      {
+        "claim": "Возвращаемые подробности rows не служат требованию и должны быть удалены.",
+        "verdict": "valid",
+        "why": "head/src/contacts/import.js:7,98-103 формирует дополнительный список; brief.md:7 задаёт только created, updated и rejected, а остальные исходники не используют rows."
+      }
+    ]
+  },
+  {
+    "run": "r04",
+    "items": {
+      "X1": "clean",
+      "X2": "violated",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Overlapping runNightly calls sharing a repository can both send the same invoice before either records the notification.",
+        "verdict": "valid",
+        "why": "clean/src/invoices/overdue.js:8-18 checks overdueNotifiedAt before awaiting mailer.send and writes the marker only afterward, so two supported concurrent calls can both pass the check."
+      },
+      {
+        "claim": "An invoice paid via repo.update while an earlier send is pending remains in the selected list and is emailed because paidAt is not rechecked.",
+        "verdict": "valid",
+        "why": "clean/src/invoices/repo.js:13-18 supports updating payment state, while clean/src/invoices/overdue.js:8-13 iterates the previously selected array and checks only notification state and due date before sending."
+      },
+      {
+        "claim": "The tests omit a future due date, allowing a dueDate === today regression to pass while future invoices are notified.",
+        "verdict": "valid",
+        "why": "clean/test/nightly.test.js:19-27 runs only on the due date and the following day; it never exercises the future-date branch of clean/src/invoices/overdue.js:9."
+      }
+    ]
+  },
+  {
+    "run": "r05",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Overlapping runNightly calls sharing a repository can both send the same invoice before either records the notification.",
+        "verdict": "valid",
+        "why": "clean/src/invoices/overdue.js:8-18 checks overdueNotifiedAt before awaiting mailer.send and writes the marker only afterward, so two supported concurrent calls can both pass the check."
+      },
+      {
+        "claim": "An invoice paid via repo.update while an earlier send is pending remains in the selected list and is emailed because paidAt is not rechecked.",
+        "verdict": "valid",
+        "why": "clean/src/invoices/repo.js:13-18 supports updating payment state, while clean/src/invoices/overdue.js:8-13 iterates the previously selected array and checks only notification state and due date before sending."
+      }
+    ]
+  },
+  {
+    "run": "r07",
+    "items": {
+      "X1": "clean",
+      "X2": "violated",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Overlapping runNightly calls sharing a repository can both send the same invoice before either records the notification.",
+        "verdict": "valid",
+        "why": "clean/src/invoices/overdue.js:8-18 checks overdueNotifiedAt before awaiting mailer.send and writes the marker only afterward, so two supported concurrent calls can both pass the check."
+      },
+      {
+        "claim": "An invoice paid via repo.update while an earlier send is pending remains in the selected list and is emailed because paidAt is not rechecked.",
+        "verdict": "valid",
+        "why": "clean/src/invoices/repo.js:13-18 supports updating payment state, while clean/src/invoices/overdue.js:8-13 iterates the previously selected array and checks only notification state and due date before sending."
+      },
+      {
+        "claim": "The tests omit a future due date, allowing a dueDate === today regression to pass while future invoices are notified.",
+        "verdict": "valid",
+        "why": "clean/test/nightly.test.js:19-27 runs only on the due date and the following day; it never exercises the future-date branch of clean/src/invoices/overdue.js:9."
+      }
+    ]
+  },
+  {
+    "run": "r01",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The new archive-only test leaves the list, invoice page, and CSV output paths unverified; add tests that load service and archive invoices and assert uppercase currency in all three outputs.",
+        "verdict": "valid",
+        "why": "clean/test/archive.test.js:5-8 tests only readArchive, and clean/test/price.test.js:5-7 tests only formatPrice; neither loads invoices or exercises renderList, renderPage, or toCsv."
+      }
+    ]
+  },
+  {
+    "run": "r06",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The new archive-only test leaves archived invoices unverified through the list, invoice page, and CSV export, so add end-to-end uppercase-currency tests for those outputs.",
+        "verdict": "valid",
+        "why": "clean/test/archive.test.js:5-8 checks only the object returned by readArchive, while clean/test/price.test.js:5-7 checks only formatPrice; no project test passes an archive row through loading and all three outputs."
+      }
+    ]
+  },
+  {
+    "run": "r16",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The new archive-normalization test does not exercise the list, invoice page, or CSV export end to end.",
+        "verdict": "valid",
+        "why": "clean/test/archive.test.js:5-8 calls only readArchive, and clean/test/price.test.js:5-7 calls only formatPrice; neither test invokes loadInvoices, renderList, renderPage, or toCsv."
+      }
+    ]
+  },
+  {
+    "run": "r03",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The invoice page catches formatting errors and replaces them with a fabricated USD 0.00 price instead of exposing the failure.",
+        "verdict": "valid",
+        "why": "src/screens/page.js:5-8 catches errors from price construction and assigns USD 0.00; supported inputs have string currencies and integer amounts (node_modules/@acme/billing-client/index.js:11-14; data/archive.schema.json:9-10), so the added catch is unnecessary and can hide an unexpected error."
+      }
+    ]
+  },
+  {
+    "run": "r10",
+    "items": {
+      "F1": "miss",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "miss",
+      "F5": "miss",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r13",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The invoice page catches formatting errors and replaces them with a fabricated USD 0.00 price instead of exposing the failure.",
+        "verdict": "valid",
+        "why": "src/screens/page.js:5-8 catches errors from price construction and assigns USD 0.00; supported inputs have string currencies and integer amounts (node_modules/@acme/billing-client/index.js:11-14; data/archive.schema.json:9-10), so the added catch is unnecessary and can hide an unexpected error."
+      }
+    ]
+  },
+  {
+    "run": "r02",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Запись с двумя пустыми ячейками отбрасывается, поэтому пустое имя не попадает в rejected.",
+        "verdict": "valid",
+        "why": "clean/src/lib/csv.js:8-13 отбрасывает такие записи до planImport; отклонение в import.js:14-17 не создаётся."
+      },
+      {
+        "claim": "Парсер принимает кавычки внутри некавыченного поля и символы после закрывающей кавычки, поэтому некорректный CSV может быть импортирован.",
+        "verdict": "valid",
+        "why": "clean/src/lib/csv.js:17-27 переключает quoted в любом месте и дописывает символы после закрытия; import.js:31-33 затем выполняет запись."
+      },
+      {
+        "claim": "Пользовательская колонка line перезаписывает фактический номер строки в rejected.",
+        "verdict": "valid",
+        "why": "clean/src/lib/csv.js:34 распространяет поля после служебного line; clean/src/contacts/import.js:16 возвращает подменённое значение."
+      },
+      {
+        "claim": "CR внутри кавычек не увеличивает счётчик строк, поэтому номера последующих отклонений занижаются.",
+        "verdict": "valid",
+        "why": "clean/src/lib/csv.js:20 учитывает только LF внутри кавычек, тогда как строки 23-26 обрабатывают CR как разделитель записей."
+      }
+    ]
+  },
+  {
+    "run": "r12",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Парсер принимает кавычки внутри некавыченного поля и символы после закрывающей кавычки, поэтому некорректный CSV может быть импортирован.",
+        "verdict": "valid",
+        "why": "clean/src/lib/csv.js:17-27 переключает quoted в любом месте и дописывает символы после закрытия; import.js:31-33 затем выполняет запись."
+      },
+      {
+        "claim": "Запись с двумя пустыми ячейками отбрасывается, поэтому пустое имя не попадает в rejected.",
+        "verdict": "valid",
+        "why": "clean/src/lib/csv.js:8-13 отбрасывает такие записи до planImport; отклонение в import.js:14-17 не создаётся."
+      },
+      {
+        "claim": "Пользовательская колонка line перезаписывает фактический номер строки в rejected.",
+        "verdict": "valid",
+        "why": "clean/src/lib/csv.js:34 распространяет поля после служебного line; clean/src/contacts/import.js:16 возвращает подменённое значение."
+      },
+      {
+        "claim": "Тесты не проверяют фактическое переименование существующего контакта и счётчик updated полного импорта.",
+        "verdict": "valid",
+        "why": "clean/test/import.test.js:15-21 проверяет только план, а строки 23-28 — только создание; удаление rename в import.js:33 эти проверки не обнаружит."
+      }
+    ]
+  },
+  {
+    "run": "r17",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "Парсер принимает символы после закрывающей кавычки, поэтому некорректный CSV может быть импортирован.",
+        "verdict": "valid",
+        "why": "clean/src/lib/csv.js:17-27 дописывает такие символы в поле без ошибки; import.js:31-33 затем выполняет запись."
+      },
+      {
+        "claim": "Запись с двумя пустыми ячейками отбрасывается, поэтому пустое имя не попадает в rejected.",
+        "verdict": "valid",
+        "why": "clean/src/lib/csv.js:8-13 отбрасывает такие записи до planImport; отклонение в import.js:14-17 не создаётся."
+      },
+      {
+        "claim": "Пользовательская колонка line перезаписывает фактический номер строки в rejected.",
+        "verdict": "valid",
+        "why": "clean/src/lib/csv.js:34 распространяет поля после служебного line; clean/src/contacts/import.js:16 возвращает подменённое значение."
+      },
+      {
+        "claim": "CR внутри кавычек не увеличивает счётчик строк, поэтому номера последующих отклонений занижаются.",
+        "verdict": "valid",
+        "why": "clean/src/lib/csv.js:20 учитывает только LF внутри кавычек, тогда как строки 23-26 обрабатывают CR как разделитель записей."
+      },
+      {
+        "claim": "Тесты не проверяют фактическое переименование существующего контакта и счётчик updated полного импорта.",
+        "verdict": "valid",
+        "why": "clean/test/import.test.js:15-21 проверяет только план, а строки 23-28 — только создание; регрессии import.js:33-34 останутся незамеченными."
+      }
+    ]
+  },
+  {
+    "run": "r14",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "miss",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The new event configuration can suppress a required notification when the event is disabled or its channel list is empty.",
+        "verdict": "valid",
+        "why": "head/src/jobs/nightly.js:11,17 passes configuration overrides into the service; head/src/notifications/NotificationService.js:17-20 returns for a disabled event and lines 23-34 send only through listed channels."
+      },
+      {
+        "claim": "Configuring duplicate email channels sends the same invoice twice in one run.",
+        "verdict": "valid",
+        "why": "head/src/notifications/NotificationService.js:23-30 performs one send per channels entry, so [\"email\",\"email\"] causes two sends."
+      }
+    ]
+  },
+  {
+    "run": "r15",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "miss",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r18",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "partial",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": []
+  }
+]
