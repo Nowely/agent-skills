@@ -1,0 +1,7 @@
+{
+  "name": "courier-desk",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test" },
+  "dependencies": { "@acme/forms": "2.3.0", "@acme/orders-client": "4.0.0" }
+}

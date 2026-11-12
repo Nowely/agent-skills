@@ -5,7 +5,7 @@ conformance also needs the installed Codex CLI to generate the schemas it checks
 `evals.json` holds the legacy Codex trigger cases for manual transcript checks. `opencode-routing/` is a
 Claude Code plugin-eval suite for OpenCode's real skill trigger: it checks prompts that must fire and
 prompts that must stay silent. `review/` is the instrument a version of the review skill is measured with:
-cases in a first-written and a clean form with hidden rubrics, the scripts that prepare a blind run or a whole round and the one that scores a judge's verdicts
+cases in a first-written and a clean form with hidden rubrics, the scripts that prepare a blind run or a whole round, the one that scores a judge's verdicts, and the two that hand each review to an implementer and measure the code that is left
 ([its page](review/README.md)); `review-eval.test.mjs` checks that instrument and calls no model. `review-report.test.mjs` checks the skill's own report script: that it holds a review written as data to its diff, and what it draws.
 
 ## Running the suites

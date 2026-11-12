@@ -1,4 +1,9 @@
 {
+  "probes": [
+    { "id": "P1", "change": "A phone becomes optional when a profile is edited, and stays required when one is created." },
+    { "id": "P2", "change": "Phones are stored in the national format of their country instead of E.164; two spellings of one number still count as the same phone." },
+    { "id": "P3", "change": "Profiles can also be imported from a file, a new entry point, and each imported phone is checked by the same rules." }
+  ],
   "head": {
     "fails": [
       "a phone is stored in E.164 form however it was typed",

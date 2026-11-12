@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Is the review skill's measuring instrument sound? Reads evals/review/: the cases, prepare.mjs, round.mjs and
-// score.mjs. It calls no model and judges no review; it checks that each case's clean solution meets the brief
-// and its first-written one fails exactly what the rubric says, that a prepared run hands the reviewer the
-// change and nothing of the answer, and that the score table counts what the verdicts say. Run it after an
+// Is the review skill's measuring instrument sound? Reads evals/review/: the cases, prepare.mjs, round.mjs,
+// score.mjs, implement.mjs and outcome.mjs. It calls no model and judges no review; it checks that each case's
+// clean solution meets the brief and its first-written one fails exactly what the rubric says, that a prepared
+// run hands the reviewer the change and nothing of the answer, that the score table counts what the verdicts
+// say, and that the outcome of acting on a review is measured on the code that is left. Run it after an
 // edit to anything under evals/review/.
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -12,6 +13,8 @@ import { EVALS, registry, runCases, summarize, tempDir } from "./lib/harness.mjs
 import { CASES, VARIANTS, prepare } from "./review/prepare.mjs";
 import { round } from "./review/round.mjs";
 import { rubricOf, score, table } from "./review/score.mjs";
+import { TASK_ONLY, implement } from "./review/implement.mjs";
+import { outcome, table as outcomeTable } from "./review/outcome.mjs";
 
 const { cases: TESTS, test } = registry();
 const names = fs.readdirSync(CASES).sort();
@@ -39,6 +42,8 @@ test("every case has a brief, three trees, checks and a rubric a judge can rule 
       const known = (await checksOf(name)).map((c) => c.name);
       const stray = rubric.head.fails.filter((f) => !known.includes(f));
       if (stray.length) return `${name}: rubric names a check accept.mjs lacks: ${stray[0]}`;
+      const probes = rubric.probes ?? [];
+      if (probes.some((p) => !p.id || !p.change) || new Set(probes.map((p) => p.id)).size !== probes.length) return `${name}: a probe lacks its id or its change, or an id repeats`;
     }
     return names.length > 0 || "no cases";
   });
@@ -128,6 +133,61 @@ test("a verdict that skips a rubric item, invents one or rules in other words st
       && refuses([{ run: "a", items: { ...whole, [first]: "found" } }]) && refuses([])
       && refuses([{ run: "a", items: all(name, "clean", "hit", "clean") }])
       && refuses([{ run: "a", items: whole }, { run: "ghost", items: whole }]) || "an incomplete verdict was scored";
+  });
+
+// A round of one case with probes, two arms, every review saved: what implement.mjs and outcome.mjs start from.
+const probed = names.find((name) => rubricOf(name).probes?.length);
+function reviewedRound() {
+  const dir = tempDir("review-outcome-");
+  const runs = VARIANTS.flatMap((variant) => ["control", "draft"].map((arm) => ({ case: probed, variant, arm })))
+    .map((cell, index) => ({ run: `r0${index + 1}`, ...cell, review: `returns/r0${index + 1}.md` }));
+  fs.mkdirSync(path.join(dir, "returns"));
+  fs.writeFileSync(path.join(dir, "runs.json"), JSON.stringify(runs));
+  for (const run of runs) fs.writeFileSync(path.join(dir, run.review), `The review of ${run.run}.`);
+  return dir;
+}
+
+test("every review gets an implementer, every target one that saw no review, and a case with probes its two anchors",
+  "without the unaided implementer nobody knows what the review added; without the anchors nobody knows whether the judge of the outcome can see the difference it is asked about",
+  () => {
+    const dir = reviewedRound(), manifest = implement(dir), of = (filter) => manifest.filter(filter);
+    if (manifest.length !== 8 || of((m) => m.review).length !== 4 || of((m) => m.arm === TASK_ONLY).length !== 2 || of((m) => m.anchor).map((m) => m.variant).sort().join() !== "clean,head")
+      return `unexpected manifest: ${JSON.stringify(manifest)}`;
+    const prompt = (m) => fs.readFileSync(path.join(dir, "implement", `${m.id}.txt`), "utf8").replaceAll(path.join(dir, "work", m.id), "RUN").split("\n");
+    const [reviewed] = of((m) => m.review), [alone] = of((m) => m.arm === TASK_ONLY);
+    const extra = prompt(reviewed).filter((line) => !prompt(alone).includes(line));
+    if (extra.length !== 1 || !extra[0].includes("review.md")) return "the prompts with and without a review differ by more than the review's line";
+    if (of((m) => m.anchor).some((m) => fs.existsSync(path.join(dir, "implement", `${m.id}.txt`)))) return "an anchor was given a prompt";
+    const beside = (m) => fs.readdirSync(path.join(dir, "work", m.id)).sort().join(" ");
+    return beside(reviewed) === "brief.md repo review.md" && beside(alone) === "brief.md repo"
+      && fs.readFileSync(path.join(dir, "work", reviewed.id, "review.md"), "utf8").startsWith("The review of") || "a work directory holds something other than the repository, the task and the review";
+  });
+
+test("the outcome is read off the code that is left: the checks it passes, what was changed, and the probes a judge ruled on",
+  "a review is for the code that comes after it; a table of what reviews said cannot show whether acting on one gives a simpler correct solution",
+  () => {
+    const dir = reviewedRound(), manifest = implement(dir), rubric = rubricOf(probed), ids = rubric.probes.map((p) => p.id);
+    // One implementer turns the first-written form into the clean one; the others change nothing.
+    const [fixed] = manifest.filter((m) => m.variant === "head" && m.review), repo = path.join(dir, "work", fixed.id, "repo");
+    for (const entry of fs.readdirSync(repo)) if (entry !== ".git") fs.rmSync(path.join(repo, entry), { recursive: true });
+    fs.cpSync(path.join(CASES, probed, "clean"), repo, { recursive: true });
+    const ruled = (m, ruling) => ({ id: m.id, probes: Object.fromEntries(ids.map((id) => [id, ruling])) });
+    const verdicts = (anchorHead) => manifest.filter((m) => m.variant === "head" || m.anchor)
+      .map((m) => ruled(m, m === fixed || (m.anchor && m.variant === "clean") ? "local" : m.anchor ? anchorHead : "tangled"));
+    fs.writeFileSync(path.join(dir, "outcome-verdicts.json"), JSON.stringify(verdicts("tangled")));
+    const { results, blind } = outcome(dir), by = (id) => results.find((r) => r.id === id);
+    const [left] = manifest.filter((m) => m.variant === "head" && m.review && m !== fixed), [kept] = manifest.filter((m) => m.variant === "clean" && m.review);
+    if (blind.length || results.length !== 6) return `unexpected results: ${results.length}, blind ${blind}`;
+    if (!by(fixed.id).done || by(fixed.id).failed.length || by(fixed.id).changed === 0 || by(fixed.id).size !== by(fixed.id).reference) return "the implementation that became the clean form is not recovered at the clean form's size";
+    if (by(left.id).done || by(left.id).failed.sort().join() !== [...rubric.head.fails].sort().join() || by(left.id).changed !== 0) return "the untouched first-written form is not shown failing what its rubric lists";
+    if (!by(kept.id).done || by(kept.id).changed !== 0 || by(kept.id).probes !== null) return "the untouched clean form is not shown as kept";
+    if (!fs.readFileSync(path.join(dir, "patches", `${fixed.id}.patch`), "utf8").includes("+++ b/")) return "what the implementer changed was not saved";
+    const text = outcomeTable(results);
+    if (!text.includes(`| ${fixed.arm} | ${probed}/head | 1 | 1 | ${by(fixed.id).checks} / ${by(fixed.id).checks} | ${ids.length} / ${ids.length} | 1.00 |`)) return `unexpected table:\n${text}`;
+    // A judge who rules the first-written form as local as the clean one has not seen the difference: nothing of that case is counted.
+    fs.writeFileSync(path.join(dir, "outcome-verdicts.json"), JSON.stringify(verdicts("local")));
+    const again = outcome(dir);
+    return again.blind.join() === probed && again.results.every((r) => r.probes === null) || "a judge who could not tell the anchors apart was counted";
   });
 
 test("the page that tells an operator how to run a round names every case",
