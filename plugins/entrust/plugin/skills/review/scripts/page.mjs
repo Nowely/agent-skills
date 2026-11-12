@@ -94,9 +94,10 @@ figure { margin: 0; min-width: 0; max-width: 100%; display: flex; flex-direction
 .unit.new .box { stroke: var(--accent) }
 .unit text { fill: var(--fg); font: 600 12px var(--mono) }
 .unit .jobs, .unit .meta { fill: var(--muted); font: 11.5px var(--text) }
-.unit .share { fill: var(--v) }
+.unit .part { fill: var(--v) }
 .edge { fill: none; stroke: var(--muted); stroke-width: 1.2 }
 .head { fill: var(--muted) }
+@media (max-width: 40rem) { .bar { position: static } }
 `;
 
 const SCRIPT = `
@@ -162,6 +163,8 @@ const SCRIPT = `
 })();
 `;
 
+// A reviewer's sentence: escaped, with its `code` spans set as code.
+const prose = (value) => esc(value).replace(/`([^`]+)`/g, "<code>$1</code>");
 const some = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const lines = (n) => some(n, "line");
 const sizeOf = (blocks) => blocks.reduce((sum, b) => sum + b.size, 0);
@@ -179,17 +182,17 @@ function summary(review, { blocks, requirements }) {
   const idle = blocks.filter((b) => !b.serves.length);
   return `
 <section id="summary" class="stack">
-  <div class="stack"><span class="label">The change</span><p class="lead">${esc(change.goal)}</p>${change.why ? `<p>${esc(change.why)}</p>` : ""}
-    <ul class="plain">${change.parts.map((part) => `<li>${esc(part)}</li>`).join("")}</ul>
-    <p class="sub">Sources: ${change.sources.map(esc).join("; ")}</p></div>
-  <div class="stack"><span class="label">Verdict</span><p>${esc(review.verdict)}</p></div>
-  <div class="stack"><span class="label">Target: the smallest clean solution</span><div class="target">${esc(review.target)}</div></div>
+  <div class="stack"><span class="label">The change</span><p class="lead">${prose(change.goal)}</p>${change.why ? `<p>${prose(change.why)}</p>` : ""}
+    <ul class="plain">${change.parts.map((part) => `<li>${prose(part)}</li>`).join("")}</ul>
+    <p class="sub">Sources: ${change.sources.map(prose).join("; ")}</p></div>
+  <div class="stack"><span class="label">Verdict</span><p>${prose(review.verdict)}</p></div>
+  <div class="stack"><span class="label">Target: the smallest clean solution</span><div class="target">${prose(review.target)}</div></div>
   <div class="stack"><span class="label">What the reviewer would do with the ${lines(sizeOf(blocks))} of the change</span>
     <div class="share" role="img" aria-label="Share of changed lines by verdict">${VERDICTS.map((v) => `<span class="v-${v}" style="width:${(100 * sizeOf(of(blocks, v)) / total).toFixed(2)}%"></span>`).join("")}</div>
     <div class="legend">${VERDICTS.map((v) => `<span><span class="tag v-${v}">${v}</span> ${lines(sizeOf(of(blocks, v)))} in ${some(of(blocks, v).length, "block")}</span>`).join("")}</div></div>
   <div class="stack"><span class="label">What each requirement gets</span>
   ${table(["#", "Requirement", "Status", "Blocks that serve it", "Lines"], [
-    ...requirements.map((r) => `<tr><td class="n">${esc(r.id)}</td><td>${esc(r.text)}</td><td>${status(r)}</td><td>${r.blocks.map(chip).join("") || "none"}</td><td class="n">${sizeOf(r.blocks)}</td></tr>`),
+    ...requirements.map((r) => `<tr><td class="n">${esc(r.id)}</td><td>${prose(r.text)}</td><td>${status(r)}</td><td>${r.blocks.map(chip).join("") || "none"}</td><td class="n">${sizeOf(r.blocks)}</td></tr>`),
     `<tr><td></td><td><strong>Nothing</strong>: no requirement would fail without these</td><td></td><td>${idle.map(chip).join("") || "none"}</td><td class="n">${sizeOf(idle)}</td></tr>`])}</div>
 </section>`;
 }
@@ -219,7 +222,7 @@ function map(review, files, { blocks, owner }) {
   const head = (b) => {
     if (shown.has(b.id)) return `<header><div class="row"><span class="tag">${b.verdict}</span><a href="#b${b.id}">B${b.id}</a><span class="sub">continued</span></div></header>`;
     shown.add(b.id);
-    return `<header><div class="row"><span class="tag">${b.verdict}</span><strong>B${b.id}</strong><span>${esc(b.does)}</span></div>`
+    return `<header><div class="row"><span class="tag">${b.verdict}</span><strong>B${b.id}</strong><span>${prose(b.does)}</span></div>`
       + `<div class="row sub"><span>${b.serves.length ? `Serves requirement${b.serves.length > 1 ? "s" : ""} ${b.serves.map(esc).join(", ")}` : "Serves nothing"}</span>`
       + `${b.unit ? `<span>in <span class="mono">${esc(b.unit)}</span></span>` : ""}<span class="mono">${esc(b.where)}</span></div>`
       + (b.findings.length ? `<ul>${b.findings.map((id) => `<li><a href="#f${esc(id)}">${esc(id)}. ${esc(finding(id).title)}</a>${decide(id)}</li>`).join("")}</ul>` : "")
@@ -260,8 +263,8 @@ export function page(review, files, model) {
   <article class="finding" id="f${esc(f.id)}">
     <h3>${esc(f.id)}. ${esc(f.title)}</h3>
     <div class="group sub"><span>${esc(f.direction)}</span><span>${esc(f.evidence)}</span><code>${esc(f.at)}</code>${model.blocks.filter((b) => b.findings.includes(f.id)).map(chip).join("")}</div>
-    <p>${esc(f.what)}${f.breaks?.length ? ` <strong>Breaks requirement ${f.breaks.map(esc).join(", ")}.</strong>` : ""}</p>
-    <p><strong>Fix:</strong> ${esc(f.fix)}</p>
+    <p>${prose(f.what)}${f.breaks?.length ? ` <strong>Breaks requirement ${f.breaks.map(esc).join(", ")}.</strong>` : ""}</p>
+    <p><strong>Fix:</strong> ${prose(f.fix)}</p>
     ${decide(f.id)}
     <input class="act" type="text" id="note-f${esc(f.id)}" data-note="f${esc(f.id)}" placeholder="Your note on this finding" aria-label="Your note on finding ${esc(f.id)}">
   </article>`).join("");
@@ -289,8 +292,8 @@ ${drawn}
   </div>
 </section>
 <section id="findings" class="stack"><h2>Findings</h2>${findings || "<p>none</p>"}</section>
-<section class="stack"><h2>Questions and oddities</h2>${review.questions?.length ? `<ul class="plain">${review.questions.map((q) => `<li><code>${esc(q.at)}</code> ${esc(q.text)}</li>`).join("")}</ul>` : "<p>none</p>"}
-  <h2>Coverage</h2><p>${esc(review.coverage || "none")}</p></section>
+<section class="stack"><h2>Questions and oddities</h2>${review.questions?.length ? `<ul class="plain">${review.questions.map((q) => `<li><code>${esc(q.at)}</code> ${prose(q.text)}</li>`).join("")}</ul>` : "<p>none</p>"}
+  <h2>Coverage</h2><p>${prose(review.coverage || "none")}</p></section>
 <section id="decisions" class="stack act"><h2>Decisions</h2>
   <p class="sub">Mark each finding Apply or Skip, add notes where you disagree, then hand this text back to whoever makes the change.</p>
   <div class="group"><button type="button" id="copy">Copy</button><button type="button" id="apply-all">Apply all</button><button type="button" id="clear">Clear</button></div>

@@ -31,3 +31,25 @@ Each directory holds its run's `review.json`, `review.html` and the printout as 
 ## What it did not show
 
 One run on one case, by the same author as the case, with no comparison arm and no judge. Nothing was run on the target model. Whether writing data instead of prose changes what a reviewer finds is not measured. The page was looked at in a headless browser at desktop and phone width in both themes; no person has decided a real review with it.
+
+## Second pass: draft 15, the script in the skill
+
+After the trial the script moved into the skill, `plugin/skills/review/scripts/`, with a suite, `evals/review-report.test.mjs`. [`../drafts/15-structure.md`](../drafts/15-structure.md) is the page it ran with. What changed:
+
+- **Data.** `change` (goal, why, parts, sources); `units` and `target_units`, each unit with its jobs and the units it uses; `unit` on a block; `breaks` on a finding, the requirements it shows unmet. `"all"` is refused on a block to keep or fix. A unit of the change with no block, and a name nothing lists, are faults.
+- **Page.** The change's summary first. A status for each requirement: met, fails with its findings, or no block serves it, which closes the gap the first pass found. Two diagrams of who uses whom, as written and for the target, each unit with the share of its lines to keep, fix and remove. Code with comments, strings, numbers and keywords marked.
+
+| Target | Who wrote the data | Tool calls | Render attempts | Blocks | Lines: keep / fix / remove | Units: written / target | Words |
+|---|---|---|---|---|---|---|---|
+| `overdue-notice/head` | Sonnet, a fresh review with draft 15 and the skill as installed | 8 | 1 | 14 | 0 / 20 / 316 | 10 / 2 | 1364 |
+| `contact-import/head` | Haiku, adding the new fields to the first pass's data | 14 | 1 | 14 | 15 / 47 / 68 | 1 / 1 | 1507 |
+
+`draft-15/` holds both runs' data, pages and printouts. The Sonnet reviewer got the first pass's prompt with the skill directory in place of the single instructions file. No judge graded it; by its author's reading it again names all six find items of the rubric and violates no trap.
+
+- The larger format did not cost the Sonnet reviewer an attempt: valid on the first render, in about eighty seconds.
+- With `"all"` refused for code that stays, it split `nightly.js` into four blocks where the first pass had one; the files that go entirely are still one block each.
+- Its structure is ten units as written against two in the target, with four existing units both use. `breaks` put a finding on every requirement: 1 on the email's text, 2 on repeats and retries, 3 on the due date.
+- The printout of the same case grew from 910 words to 1364. The two new sections, the change and the structure, are most of that.
+- The converted review shows a fault the check does not catch: its one unit is to split, and its target has one unit. The prose review named no function to split it into, and the converter invented none.
+
+One run per case again, same author, no judge, nothing on the target model. Whether stating the structure changes what a reviewer finds, or only adds words, needs the judged round.
