@@ -84,3 +84,15 @@ The second Terra round ([rounds.md](../rounds.md#round-17-terra-round-2)) render
 - **A word the reviewer reached for.** One Terra render was refused for a unit verdict outside keep, split, merge and remove. A unit that stays one unit and changes inside had no word; it is now `fix`. A unit to split must have what it splits into in the target.
 
 [`after-round-2/contact-import-head`](after-round-2/contact-import-head/) is Terra's first review of that round, `terra-round-2/interactive/i01`, carried into this format by the page's author: the same findings, blocks and units, in Russian, each requirement given the source "task", the tests finding's requirements moved to `untested`, and the one-paragraph recommendation cut into five steps. It is there so that the user can read the same review on the new page; it measures nothing.
+
+## Fifth pass: after the user read a report on a real change
+
+The user read a report on a real change, rendered from a draft 18 review, and the run's author recorded what they asked for ([the PR comment](https://github.com/Nowely/agent-skills/pull/95#issuecomment-6828268049)). What changed in the page and its data:
+
+- **Summary.** Five parts in the order the user decides by: the task, the verdict, how the change works now, the target solution, the recommendations. The verdict, `now` and the target are texts of a few lines, and a line that starts with `- ` is an item of a list.
+- **Requirements.** In that report a requirement's own text said its display was not checked, and the requirement was shown as met. What was not checked now has a field of its own, `not_checked`, shown beside the state. `traced` is `read`, and the page says "read in the code, not run".
+- **Check by hand.** `checks` holds scenarios for a person: where to start, the steps, what to expect and the requirement shown. The page says the review did not run them.
+- **Notes.** A note is exported whatever was decided: on a finding left open and on an idea not taken too.
+- **Comments on passages.** Selecting any text of the page shows a button; the comment is kept with the quotation and where it stands, the line of the diff or the part of the report, listed with the decisions and written into the text handed back.
+
+Checked in a browser on the suite's fixture: three selections, in the diff, in the summary and in a finding, each exported with its place; notes on an undecided finding and on an idea not taken exported; all of it kept across a reload. What the script still does not check is unchanged: that a block is one decision, that the requirements are all there, that the evidence supports a finding, that the target keeps the behavior.

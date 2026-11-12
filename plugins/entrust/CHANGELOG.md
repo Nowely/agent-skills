@@ -16,11 +16,12 @@ forensics remain in the repository references and release notes.
   for the target. On request it writes the report as data: a
   script checks that every changed line belongs to one block, and draws a page with the diff cut into those
   blocks, the structure as two diagrams, and each finding to apply or skip. The page sets the task, the
-  conclusion, what to do and the target under a label each; says of every requirement where it comes from and
-  whether it is met, fails, lacks a test or was not checked; and takes its own words in the reader's language
-  from the review.
+  verdict, how the change works now, the target and the recommendations under a label each; says of every
+  requirement where it comes from, whether it is met, fails, lacks a test or was not checked, and what of it
+  was not checked; lists scenarios to check by hand; keeps every note and a comment on any passage the reader
+  selects in the text handed back; and takes its own words in the reader's language from the review.
   A defect's trigger must be one of the entries the review listed, every finding says what it is shown by, and
-  structure is judged by taking each requirement as the one that changes.
+  structure is judged by writing out the rules of a unit that decides and taking each as the one that changes.
 
 ## 0.36.0 — 2026-11-11
 

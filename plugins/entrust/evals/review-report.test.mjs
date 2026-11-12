@@ -21,13 +21,14 @@ const data = path.join(run, "review.json"), html = path.join(run, "review.html")
 const REVIEW = {
   title: "Upper-case <currency> codes", range: "HEAD~1..HEAD",
   change: { goal: "Show currency codes in upper case.", parts: ["The archive reader converts the code."], sources: ["brief.md"] },
-  verdict: "The change does its task.", target: "The change is already this.", recommendation: "Accept it.",
+  verdict: "The change does its task.\n- One test is missing.", now: "The archive reader converts the code.", target: "The change is already this.", recommendation: "Accept it.",
   steps: [{ text: "Add the test.", findings: [1] }],
-  requirements: [{ id: 1, text: "Upper case wherever a price is shown.", source: "task", met: "traced" },
+  requirements: [{ id: 1, text: "Upper case wherever a price is shown.", source: "task", met: "read", not_checked: "How the list draws it." },
     { id: 2, text: "A requirement nothing serves.", source: "discussion", doubt: "The contract says otherwise." },
     { id: 3, text: "A requirement that fails.", source: "assumption" }],
-  findings: [{ id: 1, title: "A finding", direction: "tests", evidence: "traced", at: "test/archive.test.js:5", what: "What happens.", shown_by: "The regression that passes.", fix: "The fix.", untested: [1] },
-    { id: 2, title: "A defect", direction: "behavior", evidence: "traced", at: "src/invoices/archive.js:2", what: "What breaks.", shown_by: "The caller at `src/main.js:4`.", fix: "The fix.", breaks: [3] }],
+  findings: [{ id: 1, title: "A finding", direction: "tests", evidence: "read", at: "test/archive.test.js:5", what: "What happens.", shown_by: "The regression that passes.", fix: "The fix.", untested: [1] },
+    { id: 2, title: "A defect", direction: "behavior", evidence: "read", at: "src/invoices/archive.js:2", what: "What breaks.", shown_by: "The caller at `src/main.js:4`.", fix: "The fix.", breaks: [3] }],
+  checks: [{ from: "An invoice in the archive.", do: ["Open the list.", "Find the invoice."], expect: "Its currency is in upper case.", requirements: [1] }],
   ideas: [{ title: "An idea", at: "src/invoices/archive.js:2", text: "What it gains." }],
   screens: [{ name: "The list", mockup: "https://design.example/list", before: "before.png", after: "after.png",
     differences: [{ what: "A difference.", why: "The task says so." }, { what: "Another.", finding: 1 }], missing: "The empty state." },
@@ -76,20 +77,21 @@ test("a complete review becomes one page that loads nothing from elsewhere and t
     if (page.includes("<currency>") || !page.includes("&lt;currency&gt;")) return "the title reached the page unescaped";
     if (page.includes("HEAD~1..HEAD</span></header>")) return "the range is in the page's header";
     return (page.match(/<svg /g) ?? []).length === 2 && page.includes('class="t-k"') && page.includes('id="b1"') && page.includes('id="i1"')
-      && [">What to do<", ">Review conclusion<", ">Target solution<", ">Task<", 'id="files"', "<ol"].every((part) => page.includes(part))
-      || "the page lacks a diagram per structure, highlighted code, a block anchor, the idea, one of the four parts of the summary, the steps or the file tree";
+      && [">Task<", ">Verdict<", ">How it works now<", ">Target solution<", ">Recommendations<", "<li>One test is missing.</li>", 'id="files"', '<ol class="steps">', 'id="comment"'].every((part) => page.includes(part))
+      || "the page lacks a diagram per structure, highlighted code, a block anchor, the idea, a part of the summary, the verdict's list, the steps, the file tree or the button that comments on a selection";
   });
 
 test("a requirement is met only on the reviewer's word, a missing test is not a failure, and a screen nobody compared says so",
   "a page that reads \"met\" off a block, turns a test gap into a failure or shows an uncompared screen as matching misleads whoever decides by it",
   () => {
     if (render().status !== 0) return "render failed";
-    const page = fs.readFileSync(html, "utf8"), rows = page.split('id="requirements"')[1].split("</table>")[0].split("<tr>").slice(2);
+    const page = fs.readFileSync(html, "utf8"), rows = page.split('id="requirements"')[1].split("</table>")[0].split("<tr").slice(2);
     const has = (row, ...words) => words.every((word) => row.includes(`>${word}<`));
-    if (!has(rows[0], "met", "no test", "task") || has(rows[0], "fails")) return "requirement 1, traced and untested, is not shown as met with no test";
+    if (!has(rows[0], "met", "no test", "task", "not checked", "How the list draws it.") || has(rows[0], "fails") || rows[0].split("How the list")[0].includes("Upper case wherever a price is shown. "))
+      return "requirement 1, read and untested with a part not checked, is not shown as met with no test and that part apart from its text";
     if (!has(rows[1], "not checked", "discussion") || !rows[1].includes("To reconsider") || has(rows[1], "met")) return "requirement 2, unchecked and doubted, is not shown so";
     if (!has(rows[2], "fails", "assumption") || has(rows[2], "met")) return "requirement 3, broken by a finding, is not shown as failing";
-    const [, list, alone] = page.split('<article class="finding">');
+    const [, list, alone] = page.split('id="screens"')[1].split('<article class="finding"');
     if (!alone.includes(">Not compared<") || alone.includes("Matches the mockup") || list.includes("Matches the mockup")) return "a screen with no match claimed is not shown as not compared";
     const matched = render((r) => { r.screens[0] = { name: "The list", mockup: "https://design.example/list", after: "after.png", match: true }; });
     return matched.status === 0 && fs.readFileSync(html, "utf8").includes("Matches the mockup") || "a screen said to match is not shown as matching";
@@ -108,7 +110,7 @@ test("two reviews of one change keep their decisions apart, and one review rende
 test("a review carries the report's words in its reader's language, and a word the report does not have is refused",
   "the reader of a report is the user, in the user's language; a mistyped label must not pass as a translation",
   () => {
-    const translated = render((r) => { r.labels = { "actions": "Что делать", "met": "выполнено", "findings": "Находки", "decided": "Решено: {n}" }; });
+    const translated = render((r) => { r.labels = { "recommendation": "Что делать", "met": "выполнено", "findings": "Находки", "decided": "Решено: {n}" }; });
     if (translated.status !== 0) return `refused: ${translated.stderr}`;
     const page = fs.readFileSync(html, "utf8");
     if (![">Что делать<", ">выполнено<", "Решено: {n}"].every((word) => page.includes(word)) || !translated.stdout.includes("## Находки")) return "the review's own words are not on the page and in the printout";
@@ -144,8 +146,13 @@ test("a review that does not match the diff is refused, every fault is listed, a
       [(r) => { r.findings[1].breaks = [5]; }, "finding 2 names requirement 5, which is not listed"],
       [(r) => { r.findings[0].breaks = [1]; }, 'finding 1 is about tests: it lists requirements under "untested", not "breaks"'],
       [(r) => { r.findings[1].untested = [1]; }, 'finding 2 is not about tests: it lists requirements under "breaks", not "untested"'],
-      [(r) => { r.requirements[2].met = "traced"; }, "requirement 3 is marked met, and finding 2 breaks it"],
-      [(r) => { r.requirements[0].met = "judgment"; }, "requirement 1: met is one of ran, traced"],
+      [(r) => { r.requirements[2].met = "read"; }, "requirement 3 is marked met, and finding 2 breaks it"],
+      [(r) => { r.requirements[0].met = "judgment"; }, "requirement 1: met is one of ran, read"],
+      [(r) => { r.requirements[0].not_checked = " "; }, 'requirement 1: "not_checked" says what of it you did not check'],
+      [(r) => { r.checks[0].do = []; }, 'check 1 has no "do"'],
+      [(r) => { delete r.checks[0].expect; }, 'check 1 has no "expect"'],
+      [(r) => { r.checks[0].requirements = [6]; }, "check 1 names requirement 6, which is not listed"],
+      [(r) => { delete r.now; }, '"now" is missing'],
       [(r) => { delete r.requirements[0].source; }, "requirement 1: source is one of task, discussion, question, assumption"],
       [(r) => { r.steps[0].findings = [8]; }, "step 1 names finding 8, which is not listed"],
       [(r) => { delete r.findings[1].shown_by; }, 'finding 2 has no "shown_by"'],

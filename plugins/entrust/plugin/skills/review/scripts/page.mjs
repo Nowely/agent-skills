@@ -8,7 +8,7 @@ import { VERDICTS } from "./review.mjs";
 import { esc } from "./text.mjs";
 
 const STYLE = `
-/* One column: the task, the conclusion, what to do and the target, each under its own label; the requirements; the structure as two diagrams and a tree of files; the diff cut into blocks with a stripe for each verdict; the findings; the author's decisions. */
+/* One column: the task, the verdict, how the change works now, the target and the recommendations, each under its own label; the requirements; the structure as two diagrams and a tree of files; the diff cut into blocks with a stripe for each verdict; the findings; the author's decisions. */
 :root { --bg: #f5f6f9; --surface: #ffffff; --fg: #1b2230; --muted: #5d6879; --line: #d8dde6; --accent: #3450c0; --code: #fafbfd; --string: #0c6b78; --number: #7b3fae;
   --keep: #1c7449; --keep-bg: #e4f3ea; --fix: #8f5b00; --fix-bg: #faefd3; --remove: #b02e28; --remove-bg: #fae5e2;
   --text: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
@@ -32,7 +32,7 @@ code, pre, .mono { font-family: var(--mono); font-size: .92em }
 .sub { color: var(--muted); font-size: .92rem }
 .stack { display: flex; flex-direction: column; gap: .6rem }
 .label { font-size: .85rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 650 }
-/* The four parts of the summary: a label on the left says which is which, and the weight of the text says which to read first. */
+/* The parts of the summary: a label on the left says which is which, and the weight of the text says which to read first. */
 .roles { background: var(--surface); border: 1px solid var(--line) }
 .role { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: .25rem 1.25rem; padding: .9rem 1.1rem; border-left: 4px solid transparent }
 .role + .role { border-top: 1px solid var(--line) }
@@ -53,7 +53,9 @@ table { border-collapse: collapse; width: 100% }
 th, td { text-align: left; vertical-align: top; padding: .4rem .7rem; border-bottom: 1px solid var(--line) }
 tr:last-child td { border-bottom: 0 }
 th { font-size: .85rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted) }
-td.n, td.state { font-variant-numeric: tabular-nums; white-space: nowrap }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap }
+td.state { min-width: 13rem }
+td ol { margin: 0; padding-left: 1.2rem }
 .chip { display: inline-block; margin: 0 .25rem .2rem 0; padding: 0 .4rem; border: 1px solid var(--v); border-radius: 3px; color: var(--v); font-size: .85rem; text-decoration: none; font-weight: 600 }
 .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding-block: .5rem;
   display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: center }
@@ -90,6 +92,12 @@ pre code { display: inline-block; min-width: 100% }
 .finding p { overflow-wrap: anywhere }
 input[type="text"] { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: .2rem .5rem; width: 100%; max-width: 40rem }
 textarea { width: 100%; min-height: 14rem; font: .92rem/1.45 var(--mono); color: var(--fg); background: var(--surface); border: 1px solid var(--line); padding: .6rem .8rem }
+/* A comment on any passage: a button beside the selection, and the comments listed with the decisions. */
+.floating { position: absolute; z-index: 6; display: none; background: var(--accent); color: var(--bg); border-color: var(--accent); box-shadow: 0 2px 8px rgb(0 0 0 / .25) }
+.floating.on { display: block }
+.passage { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .3rem .6rem; align-items: center; padding: .5rem .8rem; background: var(--surface); border: 1px solid var(--line) }
+.passage blockquote, .passage .sub { grid-column: 1 / -1; margin: 0 }
+.passage blockquote { padding-left: .7rem; border-left: 3px solid var(--accent); overflow-wrap: anywhere }
 .act { display: none }
 .js .act { display: flex }
 .js input.act { display: block }
@@ -137,20 +145,51 @@ const SCRIPT = `
   const data = JSON.parse(document.getElementById("data").textContent), key = "review-report:" + data.key, t = data.labels;
   const all = (selector) => [...document.querySelectorAll(selector)];
   const map = document.getElementById("map"), out = document.getElementById("out"), progress = document.getElementById("progress");
-  let state = { findings: {}, notes: {} };
+  const comment = document.getElementById("comment"), passages = document.getElementById("passages");
+  let state = { findings: {}, notes: {}, passages: [] }, picked = null;
   try { state = { ...state, ...JSON.parse(localStorage.getItem(key) || "{}") }; } catch {}
   const save = () => { try { localStorage.setItem(key, JSON.stringify(state)); } catch {} };
   document.documentElement.classList.add("js");
 
   function decisions() {
     const note = (id) => state.notes[id] ? " — " + state.notes[id] : "";
-    const of = (value) => data.findings.filter((f) => state.findings[f.id] === value).map((f) => "- " + f.id + ". " + f.title + note("f" + f.id));
-    const open = data.findings.filter((f) => !state.findings[f.id]).map((f) => f.id);
+    // A note is kept whatever was decided: on a finding left open and on an idea not taken too.
+    const line = (f) => "- " + f.id + ". " + f.title + note("f" + f.id);
+    const of = (value) => data.findings.filter((f) => state.findings[f.id] === value).map(line);
+    const open = data.findings.filter((f) => !state.findings[f.id]);
     const blocks = data.blocks.filter((b) => state.notes["b" + b.id]).map((b) => "- " + b.path + " " + b.where + ": " + state.notes["b" + b.id]);
-    const taken = data.ideas.filter((i) => state.findings[i.id] === "apply").map((i) => "- " + i.title + note(i.id));
+    const idea = (i) => "- " + i.title + note(i.id), taken = (i) => state.findings[i.id] === "apply";
+    const marked = state.passages.map((p) => "- " + p.where + ": \\"" + p.quote + "\\"" + (p.note ? " — " + p.note : ""));
     const part = (title, lines) => lines.length ? ["", title, ...lines] : [];
-    return [t.title + " \\"" + data.title + "\\" (" + data.range + ", " + data.key + ")", ...part(t.apply, of("apply")), ...part(t.skip, of("skip")), ...part(t.ideas, taken),
-      ...(open.length ? ["", t.open + " " + open.join(", ")] : []), ...part(t.blocks, blocks)].join("\\n");
+    return [t.title + " \\"" + data.title + "\\" (" + data.range + ", " + data.key + ")", ...part(t.apply, of("apply")), ...part(t.skip, of("skip")),
+      ...(open.length ? ["", t.open + " " + open.map((f) => f.id).join(", "), ...open.filter((f) => state.notes["f" + f.id]).map(line)] : []),
+      ...part(t.ideas, data.ideas.filter(taken).map(idea)), ...part(t.ideaNotes, data.ideas.filter((i) => !taken(i) && state.notes[i.id]).map(idea)),
+      ...part(t.blocks, blocks), ...part(t.passages, marked)].join("\\n");
+  }
+
+  // Where a selection starts, in the reader's words: the line of the diff, or the part of the report it is in.
+  function placeOf(node) {
+    const at = node.nodeType === 1 ? node : node.parentElement, file = at.closest(".file"), line = at.closest(".l"), block = at.closest("[data-block]");
+    if (file && line) return file.querySelector("header strong").textContent + ":" + line.querySelector("i").textContent.replace("−", "-").trim() + line.querySelector("b").textContent
+      + (block ? " (B" + block.dataset.block + ")" : "");
+    const named = at.closest("[data-where]"), section = at.closest("section");
+    return named ? named.dataset.where : (section && section.querySelector("h2") || document.querySelector("h1")).textContent;
+  }
+
+  // The comments on passages, each with its own field. Drawn when one is added or removed, not while the reader types in one.
+  function list() {
+    passages.textContent = "";
+    if (state.passages.length) passages.append(Object.assign(document.createElement("span"), { className: "label", textContent: t.passagesTitle }));
+    state.passages.forEach((p, index) => {
+      const row = Object.assign(document.createElement("div"), { className: "passage" });
+      const input = Object.assign(document.createElement("input"), { type: "text", value: p.note, placeholder: t.notePassage });
+      input.dataset.passage = index; input.setAttribute("aria-label", t.notePassage);
+      const remove = Object.assign(document.createElement("button"), { type: "button", textContent: t.remove });
+      remove.dataset.remove = index;
+      row.append(Object.assign(document.createElement("span"), { className: "sub", textContent: p.where }),
+        Object.assign(document.createElement("blockquote"), { textContent: p.quote }), input, remove);
+      passages.append(row);
+    });
   }
 
   function paint() {
@@ -179,8 +218,16 @@ const SCRIPT = `
     } else if (button.dataset.overlay !== undefined) {
       button.setAttribute("aria-pressed", String(button.closest("article").querySelector(".shots").classList.toggle("overlaid")));
       return;
-    } else if (button.id === "apply-all") for (const f of data.findings) state.findings[f.id] = "apply";
-    else if (button.id === "clear") state = { findings: {}, notes: {} };
+    } else if (button === comment) {
+      if (!picked) return;
+      state.passages.push({ ...picked, note: "" });
+      getSelection().removeAllRanges(); comment.classList.remove("on");
+      save(); list(); paint();
+      passages.querySelector("[data-passage='" + (state.passages.length - 1) + "']").focus();
+      return;
+    } else if (button.dataset.remove !== undefined) { state.passages.splice(+button.dataset.remove, 1); list(); }
+    else if (button.id === "apply-all") for (const f of data.findings) state.findings[f.id] = "apply";
+    else if (button.id === "clear") { state = { findings: {}, notes: {}, passages: [] }; list(); }
     else if (button.id === "copy") {
       const done = () => { button.textContent = t.copied; setTimeout(() => { button.textContent = t.copy; }, 1500); };
       const select = () => { out.focus(); out.select(); };
@@ -191,17 +238,39 @@ const SCRIPT = `
   });
   document.addEventListener("input", (event) => {
     if (event.target.dataset.blend !== undefined) event.target.closest("article").querySelector(".shots").style.setProperty("--blend", event.target.value / 100);
+    if (event.target.dataset.passage !== undefined) { state.passages[+event.target.dataset.passage].note = event.target.value.trim(); save(); out.value = decisions(); return; }
     const id = event.target.dataset.note;
     if (!id) return;
     if (event.target.value.trim()) state.notes[id] = event.target.value.trim(); else delete state.notes[id];
     save(); paint();
   });
-  paint();
+  // The button follows the selection; pressing it must not clear what was selected.
+  document.addEventListener("selectionchange", () => {
+    const chosen = getSelection(), text = chosen.toString().replace(/\\s+/g, " ").trim();
+    const from = text && chosen.rangeCount ? chosen.getRangeAt(0) : null, start = from && (from.startContainer.nodeType === 1 ? from.startContainer : from.startContainer.parentElement);
+    if (!start || !start.closest(".wrap") || start.closest("#decisions, input, textarea, button")) { comment.classList.remove("on"); return; }
+    const box = from.getBoundingClientRect();
+    picked = { quote: text.length > 400 ? text.slice(0, 400) + "…" : text, where: placeOf(from.startContainer) };
+    comment.style.top = (scrollY + box.bottom + 6) + "px";
+    comment.style.left = Math.max(8, Math.min(scrollX + box.left, scrollX + innerWidth - comment.offsetWidth - 24)) + "px";
+    comment.classList.add("on");
+  });
+  comment.addEventListener("mousedown", (event) => event.preventDefault());
+  list(); paint();
 })();
 `;
 
 // A reviewer's sentence: escaped, with its `code` spans set as code.
 const prose = (value) => esc(value).replace(/`([^`]+)`/g, "<code>$1</code>");
+// A text of a few lines: a line that starts with "- " is an item of a list, any other a paragraph.
+function lines(value, lead = "") {
+  const out = [], items = [];
+  const flush = () => { if (items.length) out.push(`<ul class="plain">${items.splice(0).map((item) => `<li>${prose(item)}</li>`).join("")}</ul>`); };
+  for (const line of String(value).split("\n").map((l) => l.trim()).filter(Boolean))
+    if (line.startsWith("- ")) items.push(line.slice(2)); else { flush(); out.push(`<p${out.length ? "" : lead}>${prose(line)}</p>`); }
+  flush();
+  return out.join("");
+}
 const sizeOf = (blocks) => blocks.reduce((sum, b) => sum + b.size, 0);
 const of = (blocks, verdict) => blocks.filter((b) => b.verdict === verdict);
 const chip = (b) => `<a class="chip v-${b.verdict}" href="#b${b.id}">B${b.id}</a>`;
@@ -209,21 +278,22 @@ const cite = (ids) => ids.map((id) => `<a href="#f${esc(id)}">${esc(id)}</a>`).j
 const table = (head, rows) => `<div class="table"><table><tr>${head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr>${rows.join("")}</table></div>`;
 const TONE = { keep: "v-keep", fix: "v-fix", split: "v-fix", merge: "v-fix", remove: "v-remove" };
 
-// The task, the reviewer's conclusion, what to do next and the target: four things, each under its own label.
+// The task, the verdict, how the change works now, the target and what to do: each under its own label, in the order a reader decides by.
 function summary(review, { blocks }, t) {
   const total = sizeOf(blocks) || 1, { change } = review;
-  const role = (label, content, tone = "") => `<div class="role ${tone}"><span class="label">${esc(t(label))}</span><div class="stack">${content}</div></div>`;
+  const role = (label, content, tone = "") => `<div class="role ${tone}" data-where="${esc(t(label))}"><span class="label">${esc(t(label))}</span><div class="stack">${content}</div></div>`;
   return `
 <section id="summary" class="roles">
   ${role("task", `<p>${prose(change.goal)}${change.why ? ` ${prose(change.why)}` : ""}</p>
     <ul class="plain">${change.parts.map((part) => `<li>${prose(part)}</li>`).join("")}</ul>
     <p class="sub">${esc(t("sources"))}: ${change.sources.map(prose).join("; ")}</p>`)}
-  ${role("conclusion", `<p class="lead">${prose(review.verdict)}</p>
+  ${role("verdict", lines(review.verdict, ' class="lead"'), "conclusion")}
+  ${role("now", `${lines(review.now)}
     <div class="share" role="img" aria-label="${esc(t("share"))}">${VERDICTS.map((v) => `<span class="v-${v}" style="width:${(100 * sizeOf(of(blocks, v)) / total).toFixed(2)}%"></span>`).join("")}</div>
-    <div class="legend sub"><span>${esc(t("share"))}:</span>${VERDICTS.map((v) => `<span><span class="tag v-${v}">${esc(t(`verdict.${v}`))}</span> ${sizeOf(of(blocks, v))}</span>`).join("")}</div>`, "conclusion")}
-  ${role("actions", `<p><strong>${prose(review.recommendation)}</strong></p>${review.steps?.length ? `<ol class="steps">${review.steps.map((step) =>
+    <div class="legend sub"><span>${esc(t("share"))}:</span>${VERDICTS.map((v) => `<span><span class="tag v-${v}">${esc(t(`verdict.${v}`))}</span> ${sizeOf(of(blocks, v))}</span>`).join("")}</div>`)}
+  ${role("target", lines(review.target))}
+  ${role("recommendation", `<p><strong>${prose(review.recommendation)}</strong></p>${review.steps?.length ? `<ol class="steps">${review.steps.map((step) =>
     `<li>${prose(step.text)}${step.findings?.length ? ` <span class="sub">(${cite(step.findings)})</span>` : ""}</li>`).join("")}</ol>` : ""}`, "actions")}
-  ${role("target-solution", `<p>${prose(review.target)}</p>`)}
 </section>`;
 }
 
@@ -231,15 +301,27 @@ function summary(review, { blocks }, t) {
 function requirements({ blocks, requirements: listed }, t) {
   const status = (r) => [
     r.broken.length ? `<span class="tag v-remove">${esc(t("fails"))}</span> ${cite(r.broken)}`
-      : r.met ? `<span class="tag v-keep">${esc(t("met"))}</span> <span class="sub">${esc(t(`evidence.${r.met}`))}</span>` : `<span class="tag v-open">${esc(t("not-checked"))}</span>`,
+      : r.met ? `<span class="tag v-keep">${esc(t("met"))}</span> <span class="sub">${esc(t(`evidence.${r.met}`))}</span>` : r.not_checked ? "" : `<span class="tag v-open">${esc(t("not-checked"))}</span>`,
+    // What the reviewer did not check stands beside what they did, never inside the requirement's own text.
+    r.not_checked ? `<span class="tag v-open">${esc(t("not-checked"))}</span> <span class="sub">${prose(r.not_checked)}</span>` : "",
     r.untested.length ? `<span class="tag v-fix">${esc(t("no-test"))}</span> ${cite(r.untested)}` : ""].filter(Boolean).join("<br>");
   const idle = blocks.filter((b) => !b.serves.length);
   return `
 <section id="requirements" class="stack"><h2>${esc(t("requirements"))}</h2>
   ${table(["#", t("requirement"), t("source"), t("status"), t("blocks"), t("lines")], [
-    ...listed.map((r) => `<tr><td class="n">${esc(r.id)}</td><td>${prose(r.text)}${r.doubt ? `<div class="doubt"><strong>${esc(t("reconsider"))}:</strong> ${prose(r.doubt)}</div>` : ""}</td>`
+    ...listed.map((r) => `<tr data-where="${esc(`${t("requirement")} ${r.id}`)}"><td class="n">${esc(r.id)}</td><td>${prose(r.text)}${r.doubt ? `<div class="doubt"><strong>${esc(t("reconsider"))}:</strong> ${prose(r.doubt)}</div>` : ""}</td>`
       + `<td><span class="tag v-open">${esc(t(`source.${r.source}`))}</span></td><td class="state">${status(r)}</td><td>${r.blocks.map(chip).join("") || `<span class="sub">${esc(t("no-block"))}</span>`}</td><td class="n">${sizeOf(r.blocks)}</td></tr>`),
     ...(idle.length ? [`<tr><td></td><td colspan="3"><strong>${esc(t("idle"))}</strong></td><td>${idle.map(chip).join("")}</td><td class="n">${sizeOf(idle)}</td></tr>`] : [])])}
+</section>`;
+}
+
+// Scenarios a person can run to see the change work: where to start, what to do and what to expect.
+function checks(review, t) {
+  if (!review.checks?.length) return "";
+  return `
+<section id="checks" class="stack"><h2>${esc(t("checks"))}</h2><p class="sub">${esc(t("checks-note"))}</p>
+  ${table(["#", t("from"), t("do"), t("expect"), t("requirement")], review.checks.map((c, index) => `<tr data-where="${esc(`${t("checks")} ${index + 1}`)}"><td class="n">${index + 1}</td><td>${prose(c.from ?? "")}</td>`
+    + `<td><ol>${c.do.map((step) => `<li>${prose(step)}</li>`).join("")}</ol></td><td>${prose(c.expect)}</td><td class="n">${(c.requirements ?? []).map(esc).join(", ")}</td></tr>`))}
 </section>`;
 }
 
@@ -250,7 +332,7 @@ function screens({ screens: shown }, t) {
     + `${picture.link ? `<a href="${esc(picture.link)}" target="_blank" rel="noopener">${esc(picture.link)}</a>` : `<img src="${picture.data}" alt="${esc(t(name))}">`}</figure>`;
   return `
 <section id="screens" class="stack"><h2>${esc(t("screens"))}</h2>${shown.map((s, index) => `
-  <article class="finding">
+  <article class="finding" data-where="${esc(`${t("screens")}: ${s.name}`)}">
     <h3>${esc(s.name)}</h3>
     <div class="pair shots">${shot("mockup", s.mockup)}${shot("before", s.before)}${shot("after", s.after)}</div>
     ${s.mockup?.data && s.after?.data ? `<div class="group act"><button type="button" data-overlay aria-pressed="false">${esc(t("overlay"))}</button>`
@@ -352,7 +434,7 @@ export function page(review, files, model) {
   const t = labelsOf(review), decide = decider(t);
   const names = (label, ids) => ids?.length ? ` <strong>${esc(t(label))} ${ids.map(esc).join(", ")}.</strong>` : "";
   const findings = review.findings.map((f) => `
-  <article class="finding" id="f${esc(f.id)}">
+  <article class="finding" id="f${esc(f.id)}" data-where="${esc(`${t("finding")} ${f.id}`)}">
     <h3>${esc(f.id)}. ${esc(f.title)}</h3>
     <div class="group sub"><span>${esc(t(`direction.${f.direction}`))}</span><span>${esc(t(`evidence.${f.evidence}`))}</span><code>${esc(f.at)}</code>${model.blocks.filter((b) => b.findings.includes(f.id)).map(chip).join("")}</div>
     <p>${prose(f.what)}${names("breaks", f.breaks)}${names("untested", f.untested)}</p>
@@ -364,7 +446,7 @@ export function page(review, files, model) {
   // An idea is decided like a finding, under an id of its own, and reported apart from them.
   const ideas = (review.ideas ?? []).map((idea, index) => ({ ...idea, id: `i${index + 1}` }));
   const offered = ideas.map((idea) => `
-  <article class="finding idea" id="${idea.id}">
+  <article class="finding idea" id="${idea.id}" data-where="${esc(`${t("idea")}: ${idea.title}`)}">
     <h3><span class="tag accent">${esc(t("idea"))}</span> ${esc(idea.title)}</h3>
     ${idea.at ? `<div class="group sub"><code>${esc(idea.at)}</code></div>` : ""}
     <p>${prose(idea.text)}</p>
@@ -375,8 +457,8 @@ export function page(review, files, model) {
   const data = { title: review.title, range: review.range, key: model.key, findings: review.findings.map(({ id, title }) => ({ id, title })),
     ideas: ideas.map(({ id, title }) => ({ id, title })),
     blocks: model.blocks.map(({ id, path, where, findings: cited }) => ({ id, path, where, findings: cited })),
-    labels: { title: t("out.title"), apply: t("out.apply"), skip: t("out.skip"), ideas: t("out.ideas"), open: t("out.open"), blocks: t("out.blocks"),
-      decided: t("decided", "{n}"), copy: t("copy"), copied: t("copied") } };
+    labels: { title: t("out.title"), apply: t("out.apply"), skip: t("out.skip"), ideas: t("out.ideas"), ideaNotes: t("out.idea-notes"), open: t("out.open"), blocks: t("out.blocks"),
+      passages: t("out.passages"), passagesTitle: t("passages"), notePassage: t("note-passage"), remove: t("remove"), decided: t("decided", "{n}"), copy: t("copy"), copied: t("copied") } };
   const drawn = structure(model, t), link = (id, label) => `<a href="#${id}">${esc(t(label))}</a>`;
   return `<!doctype html>
 <meta charset="utf-8">
@@ -387,12 +469,13 @@ export function page(review, files, model) {
 <header class="stack"><span class="label">${esc(t("kind"))}</span><h1>${esc(review.title)}</h1></header>
 ${summary(review, model, t)}
 ${requirements(model, t)}
+${checks(review, t)}
 ${screens(model, t)}
 ${drawn}
 ${tree(files, model, t)}
 <section class="stack">
   <div class="bar">
-    <nav>${link("summary", "summary")}${link("requirements", "requirements")}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${link("files", "files")}${link("map", "map")}${link("findings", "findings")}${offered ? link("ideas", "ideas") : ""}${link("decisions", "decisions")}</nav>
+    <nav>${link("summary", "summary")}${link("requirements", "requirements")}${review.checks?.length ? link("checks", "checks") : ""}${model.screens.length ? link("screens", "screens") : ""}${drawn ? link("structure", "structure") : ""}${link("files", "files")}${link("map", "map")}${link("findings", "findings")}${offered ? link("ideas", "ideas") : ""}${link("decisions", "decisions")}</nav>
     <span class="group act"><span class="sub">${esc(t("show"))}</span><button type="button" data-show="all" aria-pressed="true">${esc(t("all"))}</button>${VERDICTS.map((v) => `<button type="button" data-show="${v}" aria-pressed="false">${esc(t(`verdict.${v}`))}</button>`).join("")}</span>
     <span class="sub act" id="progress"></span>
   </div>
@@ -408,7 +491,9 @@ ${offered ? `<section id="ideas" class="stack"><h2>${esc(t("ideas"))}</h2><p cla
 <section id="decisions" class="stack act"><h2>${esc(t("decisions"))}</h2>
   <p class="sub">${esc(t("decisions-note"))}</p>
   <div class="group"><button type="button" id="copy">${esc(t("copy"))}</button><button type="button" id="apply-all">${esc(t("apply-all"))}</button><button type="button" id="clear">${esc(t("clear"))}</button></div>
+  <div id="passages" class="stack"></div>
   <textarea id="out" readonly aria-label="${esc(t("decisions-text"))}"></textarea></section>
+<button type="button" id="comment" class="floating">${esc(t("comment"))}</button>
 <footer class="sub mono">${esc(review.range)} · ${model.key}</footer>
 </div>
 <script id="data" type="application/json">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>

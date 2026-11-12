@@ -22,9 +22,9 @@ Do the steps in order. Steps 1 to 5 collect and do not filter; step 6 filters. F
 2. **Read around the change.** Read each changed file whole, and the base version of what was rewritten. For each changed function, open its callers, the source of each input and the consumers of its output. Find how the project already does this kind of thing: its parser, its validator, the neighbouring step of the same job. Search for code elsewhere that shows or computes the same thing and was not changed. Write two lists the later steps cite:
    - **Entries.** What starts the changed code: each caller in the repository, each input the task names, each schedule or event. A trigger is one of these.
    - **Contracts.** For each boundary the change crosses, a function it calls, a dependency, stored data, the caller it serves: which side guarantees what, and the line that says so in the code that runs. For a dependency, take its version from the lockfile and read that installed package's types or code, not a document, a comment or another copy of the package. For stored data, find every writer: the current code, older code, imports, migrations.
-3. **Map the change.** Split the diff into blocks: the smallest groups of lines that make one decision and could be kept, changed or removed on their own, such as a function, a branch, a guard, a parameter, a constant, a test. Every changed line belongs to one block. For each block note what it does and what it serves: the requirement it implements, or the integration or check that requirement cannot do without. Ask of each: if it were removed, which requirement would fail? A block that serves nothing is a candidate to delete; a requirement no block serves is a candidate to add. Then list the units: each function, class or module with real logic that the change adds or alters, with its jobs, read off its blocks, and the units it uses; and the existing units that call it or that it calls.
+3. **Map the change.** Split the diff into blocks: the smallest groups of lines that make one decision and could be kept, changed or removed on their own, such as a function, a branch, a guard, a parameter, a constant, a test. Every changed line belongs to one block. For each block note what it does and what it serves: the requirement it implements, or the integration or check that requirement cannot do without. Ask of each: if it were removed, which requirement would fail? A block that serves nothing is a candidate to delete; a requirement no block serves is a candidate to add. Then list the units: each function, class or module with real logic that the change adds or alters, with its jobs, read off its blocks, and the units it uses; and the existing units that call it or that it calls. For a unit that decides, such as a validator, a planner or a function that picks one outcome among several, write its rules from the code: for each, what it reads, when it applies, what comes out, and which wins where two apply. Hold the list against the requirements: a rule nothing asks for, a requirement with no rule and an order the task does not give are candidates.
 4. **Four passes.** Go through the blocks once for each [direction](#directions) and note every candidate: a problem, or something that only looks odd.
-5. **Target.** Sketch the smallest solution that meets the requirements in this codebase: its units, what each owns and which units it uses, what it reuses, and which blocks of the map it keeps. What the change has beyond it is a candidate to delete; what it lacks, a candidate to add. If the change already is that solution, say so: a good change gets a short review.
+5. **Target.** Sketch the smallest solution that meets the requirements in this codebase: its units, what each owns and which units it uses, what it reuses, and which blocks of the map it keeps. What the change has beyond it is a candidate to delete; what it lacks, a candidate to add. Then walk each requirement and each rule of step 3 through the target and name the unit that carries it; a target that loses one is not the target yet. If the change already is that solution, say so: a good change gets a short review.
 6. **Refute.** Try to prove each candidate wrong, as [Refuting a candidate](#refuting-a-candidate) says. What survives is a finding; what you can neither prove nor refute is a question; what is no problem of the change and would still make it better is an idea.
 7. **Report** in [the report's shape](#the-report).
 
@@ -46,24 +46,24 @@ In every pass, also note what you cannot explain: a parameter nothing reads, a b
 - Take each block of the map that is a mechanism: a guard or null check, a fallback or default, a try/catch, a retry, a cache, a conversion, an option or mode, a wrapper, a registry, a configuration, a new piece of state.
 - For each, write the assumption that makes it necessary ("the currency can be missing"), then check it against the contracts of step 2: the code that produces the value, the schema or type, every caller. It ends as `needed` (cite the source), `contradicted` (a finding: say what to delete and what still works) or `unknown` (a question: say what would settle it).
 - Judge each mechanism on its own evidence. One unnecessary guard says nothing about the next one.
-- Check whether the project already has this: a utility, a check upstream, the callee itself. Code that re-implements it is a finding, and so is each place where the copy behaves differently.
+- Check whether the project already has this: a utility, a check upstream, the callee itself, or a value already in hand, an input or a field of an object the code was passed, that carries what the change fetches or computes again. Code that re-implements it is a finding, and so is each place where the copy behaves differently.
+- A mechanism that goes takes with it what existed only for it: the request for its data, the state that held it, its loading and error handling, its timer, its tests. Name them in the fix.
 
 ### Design
 
-Judge how the blocks are grouped into units and how the units depend on each other, against the target of step 5. Do it with a test: take each requirement in turn as the one that changes, and note the units and blocks that change would touch.
+Judge how the blocks are grouped into units and how the units depend on each other. Do it with a test: take each rule of step 3 and each requirement in turn as the one that changes, and note the lines you must read to change it safely and the units you would edit.
 
-- **Interleaved.** Two requirements that can change apart, whose blocks alternate inside one unit: to change one you read the other. Propose the split along them, blocks named by what they do, deciding kept apart from doing, and a main function that reads as the list of its steps.
-- **Scattered.** One requirement whose change touches several units that nothing else changes. Propose bringing it together.
-
+- **Tangled.** Rules that can change apart and cannot be read apart: one reassigns a variable another reads, an early return of one decides whether the next runs, a flag one sets another tests, their inputs are fetched together, or their blocks alternate. Rules that only follow one another in one function can be tangled this way. Propose the smallest separation that lets each rule be read alone: a named piece that takes what the rule reads and returns its outcome, deciding kept apart from doing, and an entry point that reads as the list of rules in the order they win. Show that entry point.
+- **Scattered.** One rule or requirement whose change touches several units that nothing else changes. Propose bringing it together.
 - **Too much structure.** An abstraction with one implementation, a layer that only forwards, a registry, an event or a configuration for a fixed set of one, a generic engine where one function would do. Propose the direct form, and name the project's own precedent for it.
 - **A crutch.** A special case, retry, delay, de-duplication or fallback in a consumer that makes up for a wrong value coming from somewhere else. Find the unit that produces the wrong value and propose the fix there: one fix at the source replaces a patch in every consumer. Where the source is a library the project cannot change, the patch stays, and the fix in the library is an idea, with the condition under which the patch goes.
 - **Ownership.** One fact or rule defined in two places; logic in a unit that does not own it, so that other consumers cannot use it; a function that changes its arguments; a parameter that switches between behaviors; a caller that must know its callee's internals; a name that says something other than what the code does.
 - **Dependencies.** Follow who uses whom from the entry point to the effect. A requirement whose path runs through more units than the project's own steps of this kind take; a cycle; a low-level unit that knows the one built on it; two units that every such requirement changes together; a unit placed outside the directory or layer where the project keeps its kind; an export nothing uses.
-- **Measure.** Size is no reason to split, and neither is a count of jobs: requirements that only change together stay together. Propose no function that only hides two lines, no class where a function serves, and no pattern, unless you can name the requirement whose change it makes easier.
+- **Measure.** Size is no reason to split, and neither is a count of jobs or of functions: rules written in the order they win, each reading only its own inputs, are already apart, in one function or in five, and rules that only change together stay together. Propose no function that only hides two lines, no class where a function serves, and no pattern, unless you can name the change it makes easier.
 
 ### Tests
 
-- For each requirement and each risky branch from the behavior pass, name the test that fails when it breaks. Where there is none, that is a gap: say which regression gets through.
+- For each requirement and each risky branch from the behavior pass, name the test that fails when it breaks. Where there is none, that is a gap: say which regression gets through, and ask for the smallest test that catches it at a level the project already tests.
 - For each test in the change, break the code in your head and ask whether the test fails. A test whose expected value was copied from the output, a mock that restates the implementation, a test of the scaffolding instead of the requirement, and a test that pins behavior the contract excludes all pass for the wrong reason.
 - Ask for no test of a state that cannot occur.
 
@@ -72,8 +72,8 @@ Judge how the blocks are grouped into units and how the units depend on each oth
 Reopen the cited code and look for what makes you wrong: a check upstream, a contract, callers that never pass the value, an existing test, the same behavior in the base.
 
 - **A defect** needs a trigger that is one of the entries of step 2, the path from it, and the wrong result. A trigger nothing in the repository or the task produces makes it a question: say who would know.
-- **A removal or simplification** needs the required behavior to survive it. Say what would change.
-- **A design finding** needs the requirement whose change the structure makes harder, what that change touches today, and the structure you propose instead. It is a judgment; label it one.
+- **A removal or simplification** needs the required behavior to survive it. Say what an observer would see change, also with no further input: after time passes, on a retry, on a reload. Where it rests on what a dependency does, it needs the line of the installed version; with a neighbouring function, a document or another package's type instead, it is a question that names the file to read.
+- **A design finding** needs the rule or requirement whose change the structure makes harder, the lines that change makes you read or edit today, and the same count in the structure you propose. It is a judgment; label it one. A structure that only reads better to you, with no such change to name, is an idea.
 - **A test gap** needs the regression that passes today.
 - **Your own fix** passes the same tests: it names the contract or the entry that makes it necessary, and adds no guard, fallback, retry, option, layer or pattern for an input or a future you have not shown.
 
@@ -85,29 +85,38 @@ A requirement the change leaves to old code that does not meet it is the change'
     What the change is for, in a sentence, and why, when a source says. Its parts, one line each.
     Sources: where you took the task from.
     Requirements: numbered, each with its source (task, discussion, question or assumption) and how it
-    stands: met (ran or traced), fails (its finding), or not checked; then what contradicts it, if
-    something does.
+    stands: met (ran or read), fails (its finding), or not checked. A part of it you did not check, such
+    as how it looks on screen, is named there and not in the requirement's text. Then what contradicts
+    it, if something does.
 
     ## Verdict
-    Two or three sentences: whether the change does its task, and what matters most.
-    Target: the smallest clean solution in two to four lines (its units, what each owns, what it reuses)
-    and what of the change survives in it; "the change is already this" when it is.
-    Recommendation: accept, fix in place or rewrite as the target, in a sentence; then, when there is
+    One sentence: whether the change does its task. Then what decides that, a short line each, naming
+    findings by number. Give no count of findings: it says nothing of what was not found.
+    How it works now: the solution as written, in one to three lines: its units and what each owns.
+    Target solution: the smallest clean solution the same way, what it reuses, and what of the change
+    survives in it; "the change is already this" when it is.
+    Recommendations: accept, fix in place or rewrite as the target, in a sentence; then, when there is
     more than one thing to do, the steps in order, each naming its findings by number.
 
     ## Findings
     Ordered by impact, each as:
-    ### <n>. <what is wrong> (<behavior | necessity | design | tests>; <ran | traced | judgment>)
+    ### <n>. <what is wrong> (<behavior | necessity | design | tests>; <ran | read | judgment>)
     `path:line`: what happens and the result; or what is unnecessary; or which change the structure
     makes harder. Name the requirement it breaks.
     Shown by: for a defect, the entry that triggers it, as the caller's `path:line` or the task's
     sentence; for something unnecessary, the line of the contract that excludes it; for structure, the
-    requirement and what its change touches; for a test gap, the regression that passes.
+    rule or requirement and the lines its change makes you read; for a test gap, the regression that
+    passes.
     Fix: the smallest change.
 
     ## Ideas
     Not needed for the change to be accepted. One line each: where, the idea, what it gains and what
     it costs.
+
+    ## Check by hand
+    Only when the change alters what a user sees or does and you read how that is reached. One line per
+    scenario worth a person's minute: the state to start from, the steps, what to expect, and the
+    requirement it shows. You did not run them: say so, and leave out a step you would have to guess.
 
     ## Screens
     Only when the change alters what the user sees. One line per screen or state: the pictures you had
@@ -115,16 +124,17 @@ A requirement the change leaves to old code that does not meet it is the change'
     number of its finding, or "not compared" and the picture that would settle it.
 
     ## Structure
-    One line per unit of step 3, the existing ones included: `unit -> the units it uses`, its jobs, the
-    requirements whose change touches it, then keep, fix, split, merge or remove with the number of its
-    finding, or "existing".
+    One line per unit of step 3, the existing ones included: `unit -> the units it uses`, its jobs (for
+    a unit that decides, its rules in the order they win), then keep, fix, split, merge or remove with
+    the number of its finding, or "existing".
     Target: the same lines for the target's units when it differs, each "from the change", "to write"
     or "existing".
 
     ## Change map
-    One line per block, in the order of the diff: `path:lines`, what it does, what it serves (a requirement
-    by its number, or "nothing"), then keep, fix or remove, with the number of its finding.
-    Then each requirement no block serves.
+    One line per block to fix or remove, in the order of the diff: `path:lines`, what it does, what it
+    serves (a requirement by its number, or "nothing"), and the number of its finding. Then the blocks
+    to keep, as `path:lines` with the requirement each serves, several to a line. Then each requirement
+    no block serves.
 
     ## Questions and oddities
     One line each: where, what is unexplained, what would settle it.
@@ -134,7 +144,7 @@ A requirement the change leaves to old code that does not meet it is the change'
     Contracts: for each one a finding or a fix rests on, the `path:line` you read it at, with the
     dependency's version; "not read" where you did not, and what that leaves open.
 
-Paths are relative to the repository. `ran` means you executed it and saw the result, `traced` that you followed the code path you cite, and `judgment` a maintenance opinion with its cost named. An empty section says "none". Write each finding once, as briefly as its evidence allows; where another section needs it, name it by its number. A finding with nothing to put under "Shown by" is a question. Write the report in the language the user writes to you in, section names included; paths, identifiers and quoted code stay as they are.
+Paths are relative to the repository. `ran` means you executed it and saw the result, `read` that you followed the code path you cite and did not run it, and `judgment` a maintenance opinion with its cost named. An empty section says "none". Write each finding once, as briefly as its evidence allows; where another section needs it, name it by its number, and say nothing in two sections. A finding with nothing to put under "Shown by" is a question. Write the report in the language the user writes to you in, section names included; paths, identifiers and quoted code stay as they are.
 
 When the user asks for the interactive report, write the same report as data and render it, as [the interactive report](references/interactive-report.md) says: a script checks the change map against the diff and draws a page on which the user marks what to apply.
 

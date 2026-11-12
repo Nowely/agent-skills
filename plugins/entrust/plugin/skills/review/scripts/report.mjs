@@ -23,8 +23,8 @@ const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
 function markdown(review, { blocks, requirements, units, target }, t) {
   const list = (items, line) => items?.length ? items.map(line) : [t("none")];
   const word = (kind, value) => t(`${kind}.${value}`), capital = (text) => text[0].toUpperCase() + text.slice(1);
-  const state = (r) => [r.broken.length ? `${t("fails")}: ${r.broken.join(", ")}` : r.met ? `${t("met")}, ${word("evidence", r.met)}` : t("not-checked"),
-    r.untested.length && `${t("no-test")}: ${r.untested.join(", ")}`].filter(Boolean).join("; ");
+  const state = (r) => [r.broken.length ? `${t("fails")}: ${r.broken.join(", ")}` : r.met ? `${t("met")}, ${word("evidence", r.met)}` : !r.not_checked && t("not-checked"),
+    r.not_checked && `${t("not-checked")}: ${r.not_checked}`, r.untested.length && `${t("no-test")}: ${r.untested.join(", ")}`].filter(Boolean).join("; ");
   const unit = (u, status) => `- \`${u.name}${u.uses.length ? ` -> ${u.uses.join(", ")}` : ""}\`: ${u.jobs.join(", ")}. ${capital(status)}.`;
   const written = new Set(units.filter((u) => !u.existing).map((u) => u.name));
   const names = (label, ids) => ids?.length ? ` ${t(label)} ${ids.join(", ")}.` : "";
@@ -32,11 +32,13 @@ function markdown(review, { blocks, requirements, units, target }, t) {
     `## ${t("change")}`, [review.change.goal, review.change.why].filter(Boolean).join(" "), ...review.change.parts.map((part) => `- ${part}`),
     `${t("sources")}: ${review.change.sources.join("; ")}`,
     `${t("requirements")}:`, ...requirements.map((r) => `${r.id}. ${r.text} (${word("source", r.source)}; ${state(r)})${r.doubt ? ` ${t("reconsider")}: ${r.doubt}` : ""}`), "",
-    `## ${t("verdict")}`, review.verdict, `${t("target")}: ${review.target}`, `${t("recommendation")}: ${review.recommendation}`,
+    `## ${t("verdict")}`, review.verdict, `${t("now")}: ${review.now}`, `${t("target")}: ${review.target}`, `${t("recommendation")}: ${review.recommendation}`,
     ...(review.steps ?? []).map((step, index) => `${index + 1}. ${step.text}${cited(step.findings)}`), "",
     `## ${t("findings")}`, ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${word("direction", f.direction)}; ${word("evidence", f.evidence)})\n\`${f.at}\`: ${f.what}`
       + `${names("breaks", f.breaks)}${names("untested", f.untested)}\n${t("shown-by")}: ${f.shown_by}\n${t("fix")}: ${f.fix}\n`), "",
     `## ${t("ideas")}`, ...list(review.ideas, (idea) => `- ${idea.at ? `\`${idea.at}\`: ` : ""}${idea.title}: ${idea.text}`), "",
+    ...(review.checks?.length ? [`## ${t("checks")}`, t("checks-note"), ...review.checks.map((c, index) =>
+      `${index + 1}. ${c.from ? `${t("from")}: ${c.from} ` : ""}${t("do")}: ${c.do.join("; ")} ${t("expect")}: ${c.expect}${c.requirements?.length ? ` (${t("requirement").toLowerCase()} ${c.requirements.join(", ")})` : ""}`), ""] : []),
     ...(review.screens?.length ? [`## ${t("screens")}`, ...review.screens.flatMap((s) => [
       `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}`,
       ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),

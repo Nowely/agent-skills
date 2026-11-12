@@ -9,7 +9,7 @@ import { labelFaults } from "./labels.mjs";
 export const VERDICTS = ["keep", "fix", "remove"];
 export const UNIT_VERDICTS = ["keep", "fix", "split", "merge", "remove"];
 export const DIRECTIONS = ["behavior", "necessity", "design", "tests"];
-export const EVIDENCE = ["ran", "traced", "judgment"];
+export const EVIDENCE = ["ran", "read", "judgment"];
 // Where a requirement comes from, and how the reviewer knows it is met: "judgment" is no way to know that.
 export const SOURCES = ["task", "discussion", "question", "assumption"];
 export const MET = EVIDENCE.filter((word) => word !== "judgment");
@@ -49,7 +49,7 @@ function compact(list) {
 export function check(review, files, directory) {
   const errors = [], owner = new Map();
   const text = (v) => typeof v === "string" && v.trim() !== "", filled = (v) => Array.isArray(v) && v.length > 0;
-  for (const field of ["title", "range", "verdict", "target", "recommendation"]) if (!text(review[field])) errors.push(`"${field}" is missing`);
+  for (const field of ["title", "range", "verdict", "now", "target", "recommendation"]) if (!text(review[field])) errors.push(`"${field}" is missing`);
   if (!text(review.change?.goal)) errors.push('"change.goal" is missing');
   for (const field of ["parts", "sources"]) if (!filled(review.change?.[field])) errors.push(`"change.${field}" lists nothing`);
   for (const field of ["requirements", "findings", "blocks"]) if (!Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
@@ -79,10 +79,17 @@ export function check(review, files, directory) {
     if (r.met !== undefined && !MET.includes(r.met)) errors.push(`requirement ${r.id}: met is one of ${MET.join(", ")}, or left out when you did not check it`);
     const breaking = review.findings.filter((f) => f.breaks?.includes(r.id)).map((f) => f.id);
     if (r.met !== undefined && breaking.length) errors.push(`requirement ${r.id} is marked met, and finding ${breaking.join(", ")} breaks it`);
+    if (r.not_checked !== undefined && !text(r.not_checked)) errors.push(`requirement ${r.id}: "not_checked" says what of it you did not check, or is left out`);
   }
   (review.steps ?? []).forEach((step, index) => {
     if (!text(step.text)) errors.push(`step ${index + 1} has no "text"`);
     refs(`step ${index + 1}`, step.findings, findings, "finding");
+  });
+  (review.checks ?? []).forEach((scenario, index) => {
+    const name = `check ${index + 1}`;
+    if (!filled(scenario.do) || !scenario.do.every(text)) errors.push(`${name} has no "do": the steps a person takes`);
+    if (!text(scenario.expect)) errors.push(`${name} has no "expect"`);
+    refs(name, scenario.requirements, requirements, "requirement");
   });
   for (const [index, idea] of (review.ideas ?? []).entries())
     for (const field of ["title", "text"]) if (!text(idea[field])) errors.push(`idea ${index + 1} has no "${field}"`);
