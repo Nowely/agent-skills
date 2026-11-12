@@ -1,0 +1,146 @@
+[
+  {
+    "run": "r01",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r02",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r03",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r04",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r05",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r06",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r07",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r08",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r09",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r10",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r11",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r12",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r13",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r14",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r15",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  },
+  {
+    "run": "r16",
+    "tree_exact": true,
+    "base_exact": true,
+    "clean_status": true,
+    "brief_exact": true,
+    "instruction_digest_matches": true,
+    "return_exists": true
+  }
+]

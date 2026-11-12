@@ -1,0 +1,50 @@
+[
+  {
+    "case": "contact-import-v2",
+    "group": "case01",
+    "label": "A",
+    "id": "i03"
+  },
+  {
+    "case": "contact-import-v2",
+    "group": "case01",
+    "label": "B",
+    "id": "i01"
+  },
+  {
+    "case": "contact-import-v2",
+    "group": "case01",
+    "label": "C",
+    "id": "i02"
+  },
+  {
+    "case": "contact-import-v2",
+    "group": "case01",
+    "label": "D",
+    "id": "original"
+  },
+  {
+    "case": "booking-edit",
+    "group": "case02",
+    "label": "A",
+    "id": "original"
+  },
+  {
+    "case": "booking-edit",
+    "group": "case02",
+    "label": "B",
+    "id": "i04"
+  },
+  {
+    "case": "booking-edit",
+    "group": "case02",
+    "label": "C",
+    "id": "i06"
+  },
+  {
+    "case": "booking-edit",
+    "group": "case02",
+    "label": "D",
+    "id": "i05"
+  }
+]

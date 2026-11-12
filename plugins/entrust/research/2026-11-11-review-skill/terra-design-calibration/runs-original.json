@@ -1,0 +1,130 @@
+[
+  {
+    "run": "r01",
+    "case": "contact-import",
+    "variant": "head",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r01.md"
+  },
+  {
+    "run": "r02",
+    "case": "contact-import",
+    "variant": "clean",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r02.md"
+  },
+  {
+    "run": "r03",
+    "case": "contact-import",
+    "variant": "head",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r03.md"
+  },
+  {
+    "run": "r04",
+    "case": "contact-import",
+    "variant": "clean",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r04.md"
+  },
+  {
+    "run": "r05",
+    "case": "booking-edit",
+    "variant": "clean",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r05.md"
+  },
+  {
+    "run": "r06",
+    "case": "booking-edit",
+    "variant": "head",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r06.md"
+  },
+  {
+    "run": "r07",
+    "case": "booking-edit",
+    "variant": "clean",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r07.md"
+  },
+  {
+    "run": "r08",
+    "case": "booking-edit",
+    "variant": "head",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r08.md"
+  },
+  {
+    "run": "r09",
+    "case": "contact-import",
+    "variant": "head",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r09.md"
+  },
+  {
+    "run": "r10",
+    "case": "contact-import",
+    "variant": "clean",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r10.md"
+  },
+  {
+    "run": "r11",
+    "case": "booking-edit",
+    "variant": "clean",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r11.md"
+  },
+  {
+    "run": "r12",
+    "case": "booking-edit",
+    "variant": "head",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r12.md"
+  },
+  {
+    "run": "r13",
+    "case": "contact-import",
+    "variant": "clean",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r13.md"
+  },
+  {
+    "run": "r14",
+    "case": "booking-edit",
+    "variant": "clean",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r14.md"
+  },
+  {
+    "run": "r15",
+    "case": "contact-import",
+    "variant": "head",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r15.md"
+  },
+  {
+    "run": "r16",
+    "case": "booking-edit",
+    "variant": "head",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r16.md"
+  }
+]

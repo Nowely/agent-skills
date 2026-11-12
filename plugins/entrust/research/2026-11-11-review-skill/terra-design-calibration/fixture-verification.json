@@ -1,0 +1,326 @@
+{
+  "booking": {
+    "node": "v24.15.0",
+    "passed": true,
+    "summary": {
+      "fixtureChecks": 5,
+      "scenariosPerVariant": 33,
+      "callsPerScenario": 2,
+      "candidateCalls": 132,
+      "checksPassed": 71,
+      "checksFailed": 0
+    },
+    "results": [
+      {
+        "name": "source trees contain only the intended files and the base remains byte-identical",
+        "passed": true
+      },
+      {
+        "name": "all fixture JavaScript has valid syntax",
+        "passed": true
+      },
+      {
+        "name": "rubric uses the fields and ruling kinds expected by score.mjs",
+        "passed": true
+      },
+      {
+        "name": "the same independent acceptance suite has all 33 unique scenario names",
+        "passed": true
+      },
+      {
+        "name": "existing base quote and creation use the stated price and guards",
+        "passed": true
+      },
+      {
+        "name": "head: P1 headcount at capacity",
+        "passed": true
+      },
+      {
+        "name": "head: P2 cheaper room",
+        "passed": true
+      },
+      {
+        "name": "head: P3 five slots start a third hour",
+        "passed": true
+      },
+      {
+        "name": "head: P4 three slots still cost two hours",
+        "passed": true
+      },
+      {
+        "name": "head: P5 zero price",
+        "passed": true
+      },
+      {
+        "name": "head: P6 first half-hour of the day",
+        "passed": true
+      },
+      {
+        "name": "head: N1 unchanged",
+        "passed": true
+      },
+      {
+        "name": "head: N2 access denied",
+        "passed": true
+      },
+      {
+        "name": "head: N3 cancelled",
+        "passed": true
+      },
+      {
+        "name": "head: N4 equal endpoints",
+        "passed": true
+      },
+      {
+        "name": "head: N5 reversed endpoints",
+        "passed": true
+      },
+      {
+        "name": "head: N6 missing selected room",
+        "passed": true
+      },
+      {
+        "name": "head: N7 capacity exceeded",
+        "passed": true
+      },
+      {
+        "name": "head: Q1 access beats cancellation, invalid interval and missing room",
+        "passed": true
+      },
+      {
+        "name": "head: Q2 cancellation beats unchanged",
+        "passed": true
+      },
+      {
+        "name": "head: Q3 unchanged beats a removed room",
+        "passed": true
+      },
+      {
+        "name": "head: Q4 unchanged beats reduced capacity",
+        "passed": true
+      },
+      {
+        "name": "head: Q5 interval beats missing room",
+        "passed": true
+      },
+      {
+        "name": "head: Q6 interval beats capacity",
+        "passed": true
+      },
+      {
+        "name": "head: Q7 access beats unchanged and removed room",
+        "passed": true
+      },
+      {
+        "name": "head: Q8 cancellation beats invalid interval and missing room",
+        "passed": true
+      },
+      {
+        "name": "head: Q9 access beats capacity",
+        "passed": true
+      },
+      {
+        "name": "head: Q10 cancellation beats capacity",
+        "passed": true
+      },
+      {
+        "name": "head: A1 maximum amounts, duration and original revision",
+        "passed": true
+      },
+      {
+        "name": "head: A2 final half-hour of the day",
+        "passed": true
+      },
+      {
+        "name": "head: A3 zero price equal to zero paid",
+        "passed": true
+      },
+      {
+        "name": "head: A4 setup-only charge equal to amount paid",
+        "passed": true
+      },
+      {
+        "name": "head: A5 every command field comes from its specified source",
+        "passed": true
+      },
+      {
+        "name": "head: A6 minimum people and revision",
+        "passed": true
+      },
+      {
+        "name": "head: A7 changed booking with an empty current catalog",
+        "passed": true
+      },
+      {
+        "name": "head: A8 changed booking after capacity reduction",
+        "passed": true
+      },
+      {
+        "name": "head: A9 minimum capacity",
+        "passed": true
+      },
+      {
+        "name": "head: A10 updated current rate",
+        "passed": true
+      },
+      {
+        "name": "clean: P1 headcount at capacity",
+        "passed": true
+      },
+      {
+        "name": "clean: P2 cheaper room",
+        "passed": true
+      },
+      {
+        "name": "clean: P3 five slots start a third hour",
+        "passed": true
+      },
+      {
+        "name": "clean: P4 three slots still cost two hours",
+        "passed": true
+      },
+      {
+        "name": "clean: P5 zero price",
+        "passed": true
+      },
+      {
+        "name": "clean: P6 first half-hour of the day",
+        "passed": true
+      },
+      {
+        "name": "clean: N1 unchanged",
+        "passed": true
+      },
+      {
+        "name": "clean: N2 access denied",
+        "passed": true
+      },
+      {
+        "name": "clean: N3 cancelled",
+        "passed": true
+      },
+      {
+        "name": "clean: N4 equal endpoints",
+        "passed": true
+      },
+      {
+        "name": "clean: N5 reversed endpoints",
+        "passed": true
+      },
+      {
+        "name": "clean: N6 missing selected room",
+        "passed": true
+      },
+      {
+        "name": "clean: N7 capacity exceeded",
+        "passed": true
+      },
+      {
+        "name": "clean: Q1 access beats cancellation, invalid interval and missing room",
+        "passed": true
+      },
+      {
+        "name": "clean: Q2 cancellation beats unchanged",
+        "passed": true
+      },
+      {
+        "name": "clean: Q3 unchanged beats a removed room",
+        "passed": true
+      },
+      {
+        "name": "clean: Q4 unchanged beats reduced capacity",
+        "passed": true
+      },
+      {
+        "name": "clean: Q5 interval beats missing room",
+        "passed": true
+      },
+      {
+        "name": "clean: Q6 interval beats capacity",
+        "passed": true
+      },
+      {
+        "name": "clean: Q7 access beats unchanged and removed room",
+        "passed": true
+      },
+      {
+        "name": "clean: Q8 cancellation beats invalid interval and missing room",
+        "passed": true
+      },
+      {
+        "name": "clean: Q9 access beats capacity",
+        "passed": true
+      },
+      {
+        "name": "clean: Q10 cancellation beats capacity",
+        "passed": true
+      },
+      {
+        "name": "clean: A1 maximum amounts, duration and original revision",
+        "passed": true
+      },
+      {
+        "name": "clean: A2 final half-hour of the day",
+        "passed": true
+      },
+      {
+        "name": "clean: A3 zero price equal to zero paid",
+        "passed": true
+      },
+      {
+        "name": "clean: A4 setup-only charge equal to amount paid",
+        "passed": true
+      },
+      {
+        "name": "clean: A5 every command field comes from its specified source",
+        "passed": true
+      },
+      {
+        "name": "clean: A6 minimum people and revision",
+        "passed": true
+      },
+      {
+        "name": "clean: A7 changed booking with an empty current catalog",
+        "passed": true
+      },
+      {
+        "name": "clean: A8 changed booking after capacity reduction",
+        "passed": true
+      },
+      {
+        "name": "clean: A9 minimum capacity",
+        "passed": true
+      },
+      {
+        "name": "clean: A10 updated current rate",
+        "passed": true
+      }
+    ],
+    "sha256": {
+      "accept.mjs": "889e119d943bc5a004d3834a7eeb28aa5c2e48a273959619c80446aa1c854262",
+      "base/README.md": "c3b1a34efb3ed768c224c66900389fbe2a634b01a40b897c92b7b0c027d86efe",
+      "base/package.json": "e1c1808d23407a42c168085f1ae5745c9e08e9451297e89135fe5b5ea61a2103",
+      "base/src/bookings/create.js": "ac5db822faa81a111ac96f88e4aafe490ef1a017cc4c662659d641dfc9614662",
+      "base/src/bookings/quote.js": "b9387318acfd2ff27c88e32488ce94f059483cd84c4702b2eaef52a2bed16ba6",
+      "brief.md": "7026aab5cd4d525174c64ebc2023bbc4859b5a5b1a54edaf4376ccbb29dc6c93",
+      "clean/README.md": "c3b1a34efb3ed768c224c66900389fbe2a634b01a40b897c92b7b0c027d86efe",
+      "clean/package.json": "e1c1808d23407a42c168085f1ae5745c9e08e9451297e89135fe5b5ea61a2103",
+      "clean/src/bookings/create.js": "ac5db822faa81a111ac96f88e4aafe490ef1a017cc4c662659d641dfc9614662",
+      "clean/src/bookings/edit.js": "0ca89055e420a09749d60f87b09cafade6c2fbdec7aa4350ddf61af75f038da8",
+      "clean/src/bookings/quote.js": "b9387318acfd2ff27c88e32488ce94f059483cd84c4702b2eaef52a2bed16ba6",
+      "head/README.md": "c3b1a34efb3ed768c224c66900389fbe2a634b01a40b897c92b7b0c027d86efe",
+      "head/package.json": "e1c1808d23407a42c168085f1ae5745c9e08e9451297e89135fe5b5ea61a2103",
+      "head/src/bookings/create.js": "ac5db822faa81a111ac96f88e4aafe490ef1a017cc4c662659d641dfc9614662",
+      "head/src/bookings/edit.js": "203796a169c5e3a394ec4f086d1e21fb08dabe891e836b16f8872ef88f35fce7",
+      "head/src/bookings/quote.js": "b9387318acfd2ff27c88e32488ce94f059483cd84c4702b2eaef52a2bed16ba6",
+      "rubric-design.md": "fd8adb752c097e98f36ebb68bb65aee30075d303ecab24817d5b774e870fded0",
+      "rubric.json": "80e93cff1e6c2624dc733b369e5d3fb8036d2729a68383704901adb8f9b88626",
+      "run-checks.mjs": "954ab9c270533b801884577619d6744a21ec798e425793d14e9e6d2374baafdb"
+    }
+  },
+  "contact": {
+    "cleanAcceptance": "13/13",
+    "headAcceptance": "6/13; the seven expected failures match the frozen rubric",
+    "parserAndCaseTests": "32 passed across all three trees"
+  }
+}

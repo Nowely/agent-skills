@@ -1,0 +1,124 @@
+{
+  "head": {
+    "fails": [
+      "the same email twice in one file counts once and the last row wins",
+      "a file that cannot be parsed writes nothing",
+      "a quoted name may hold a comma and a line break",
+      "an address the single-contact form refuses is refused here",
+      "no valid row is dropped without a word",
+      "repeated existing email counts once and uses the last valid row",
+      "a whitespace-only physical row is rejected"
+    ],
+    "items": [
+      {
+        "id": "D1",
+        "kind": "find",
+        "direction": "design",
+        "title": "Coupled decisions and effects make import behavior hard to reason about",
+        "hit": "Identifies a concrete maintainability cost in the existing coupling of parsing, row selection, counting and writes, such as tracing which rows survive when changing duplicate handling or the guarantee that parsing finishes before effects. Names the relevant data or code path. A runtime bug alone does not establish this design diagnosis.",
+        "partial": "Names phases or says the function has too many jobs, but does not explain the specific coupling or the reading/change difficulty."
+      },
+      {
+        "id": "D2",
+        "kind": "find",
+        "direction": "design",
+        "title": "A coherent and actionable target for the import",
+        "hit": "Proposes a concrete flow using the existing parser, validation and normalized-email selection, with a clear boundary between decisions and effects, identifying data such as normalized email and the last valid row and where rejections and counts arise. Preserves parse-before-write and distinct last-valid counting. Any clear structure is acceptable, including understandable local blocks; exact function names or number of functions are not required.",
+        "partial": "Names phases or helpers but leaves the data, order or decision/effect boundary too vague to implement. Listing parse/validate/plan/write alone is partial."
+      },
+      {
+        "id": "F2",
+        "kind": "find",
+        "direction": "necessity",
+        "title": "The change re-implements CSV parsing that src/lib/csv.js already does",
+        "hit": "Points at parseCsv in src/lib/csv.js as the existing parser and says to use it instead of the hand-written line and quote splitting.",
+        "partial": "Criticises the hand-written parsing without naming the existing parser."
+      },
+      {
+        "id": "F3",
+        "kind": "find",
+        "direction": "necessity",
+        "title": "Email normalization and validation are re-implemented, and differ from the app's",
+        "hit": "Says normalizeEmail / isEmail in src/contacts/email.js exist and are bypassed by the repeated `email.trim().toLowerCase()` or by the looser EMAIL_RE, so an address such as a@b is accepted here and refused by the single-contact form.",
+        "partial": "Notes the repeated normalization expression or the second regular expression without the existing functions or the divergence."
+      },
+      {
+        "id": "F4",
+        "kind": "find",
+        "direction": "behavior",
+        "title": "Rows are written while the file is still being read",
+        "hit": "Says contacts are inserted or renamed inside the parsing loop, so a file that turns out unparsable, or a strict-mode throw, leaves earlier rows written, against 'nothing is written if the file cannot be parsed'; or says an unclosed quote is never detected at all."
+      },
+      {
+        "id": "F5",
+        "kind": "find",
+        "direction": "behavior",
+        "title": "The same email twice in a file is counted as a create and an update",
+        "hit": "Says a repeated email in one file is created by its first row and then renamed by the next, so it is counted twice, against 'counts once'."
+      },
+      {
+        "id": "F6",
+        "kind": "find",
+        "direction": "necessity",
+        "title": "The mode option and the insert retry serve nothing",
+        "hit": "Says at least one of: options.mode with its strict and legacy branches has no caller and no requirement; the retry loop around store.insert assumes a failure that an in-memory store does not have, and then drops the row silently.",
+        "partial": "Mentions one of them as odd without calling it removable."
+      },
+      {
+        "id": "F7",
+        "kind": "find",
+        "direction": "behavior",
+        "title": "Addresses of one domain are skipped silently",
+        "hit": "Points at the `@example.invalid` skip marked temporary: no requirement asks for it, and its rows are neither imported nor reported."
+      },
+      {
+        "id": "F8",
+        "kind": "find",
+        "direction": "tests",
+        "title": "The tests pin the extras and miss the requirements",
+        "hit": "Names at least one requirement no test covers (a repeated email, an unparsable file, the reported line and reason, case-insensitive match) or says the tests pin behavior nobody asked for (strict, legacy, the skipped domain, the rows field).",
+        "partial": "Asks for more tests without naming a case."
+      },
+      {
+        "id": "X1",
+        "kind": "trap",
+        "title": "A framework in place of a function",
+        "violated": "Proposes validator classes, a strategy per mode, a pipeline or plugin architecture, an importer base class, or a schema library for this change."
+      },
+      {
+        "id": "X2",
+        "kind": "trap",
+        "title": "Keeping or growing the extras",
+        "violated": "Recommends keeping the modes or the retry and improving them: a configurable retry count, backoff, more modes, documenting the option."
+      },
+      {
+        "id": "X3",
+        "kind": "trap",
+        "title": "Removing what the task requires",
+        "violated": "Calls email normalization before the lookup, the handling of a repeated email, or the reporting of rejected rows unnecessary."
+      }
+    ]
+  },
+  "clean": {
+    "items": [
+      {
+        "id": "X1",
+        "kind": "trap",
+        "title": "More structure than the change needs",
+        "violated": "Recommends, as a finding or a change to make, validator classes, a pipeline, an importer class, moving the three functions into separate files, or splitting them further, without naming a change that becomes easier."
+      },
+      {
+        "id": "X2",
+        "kind": "trap",
+        "title": "Removing a required import behavior",
+        "violated": "Recommends removing normalized-email matching, rejection reporting, last-valid-row selection, parse-before-write or counting each email once. Merging or retaining planImport is not by itself a violation; assess its actual consequences."
+      },
+      {
+        "id": "X3",
+        "kind": "trap",
+        "title": "Mechanisms nobody asked for",
+        "violated": "Recommends, as a finding or a change to make, a transaction or rollback around the writes, a retry, a strict mode or other option, a size limit, or guards for inputs the task does not name."
+      }
+    ]
+  }
+}

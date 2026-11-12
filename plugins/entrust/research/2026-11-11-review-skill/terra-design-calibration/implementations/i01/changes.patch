@@ -1,0 +1,205 @@
+diff --git a/src/contacts/import.js b/src/contacts/import.js
+index d2b8431..55ac33a 100644
+--- a/src/contacts/import.js
++++ b/src/contacts/import.js
+@@ -1,2 +1,2 @@
+-const EMAIL_RE = /^\S+@\S+$/;
+-const MAX_RETRIES = 3;
++import { parseCsv } from "../lib/csv.js";
++import { isEmail, normalizeEmail } from "./email.js";
+@@ -4,4 +4,4 @@ const MAX_RETRIES = 3;
+-export function importContacts(text, store, options = {}) {
+-  const mode = options.mode || "lenient";
+-  const separator = mode === "legacy" ? ";" : ",";
+-  const result = { created: 0, updated: 0, rejected: [], rows: [] };
++export function importContacts(text, store) {
++  const records = parseCsv(text);
++  const result = { created: 0, updated: 0, rejected: [] };
++  const contacts = new Map();
+@@ -9,37 +9,3 @@ export function importContacts(text, store, options = {}) {
+-  let data = text;
+-  if (data.charCodeAt(0) === 0xfeff) {
+-    data = data.slice(1);
+-  }
+-  const lines = data.split("\n");
+-  let header = null;
+-
+-  for (let i = 0; i < lines.length; i++) {
+-    let line = lines[i];
+-    if (line.endsWith("\r")) {
+-      line = line.slice(0, -1);
+-    }
+-    if (line.trim() === "") {
+-      continue;
+-    }
+-
+-    // split the line into cells, honouring quotes
+-    const cells = [];
+-    let current = "";
+-    let inQuotes = false;
+-    for (let j = 0; j < line.length; j++) {
+-      const ch = line[j];
+-      if (ch === '"') {
+-        if (inQuotes && line[j + 1] === '"') {
+-          current += '"';
+-          j++;
+-        } else {
+-          inQuotes = !inQuotes;
+-        }
+-      } else if (ch === separator && !inQuotes) {
+-        cells.push(current);
+-        current = "";
+-      } else {
+-        current += ch;
+-      }
+-    }
+-    cells.push(current);
++  for (const record of records) {
++    const name = (record.name ?? "").trim();
++    const email = record.email ?? "";
+@@ -47,3 +13,6 @@ export function importContacts(text, store, options = {}) {
+-    if (header === null) {
+-      header = cells.map((cell) => cell.trim().toLowerCase());
+-      continue;
++    if (name === "") {
++      result.rejected.push({ line: record.line, reason: "name is empty" });
++    } else if (!isEmail(email)) {
++      result.rejected.push({ line: record.line, reason: "email is not an address" });
++    } else {
++      contacts.set(normalizeEmail(email), name);
+@@ -50,0 +20 @@ export function importContacts(text, store, options = {}) {
++  }
+@@ -52,12 +22,5 @@ export function importContacts(text, store, options = {}) {
+-    const nameIndex = header.indexOf("name");
+-    const emailIndex = header.indexOf("email");
+-    let name = nameIndex >= 0 && cells[nameIndex] !== undefined ? cells[nameIndex] : "";
+-    const email = emailIndex >= 0 && cells[emailIndex] !== undefined ? cells[emailIndex] : "";
+-    name = name.trim();
+-
+-    if (name === "") {
+-      if (mode === "strict") {
+-        throw new Error(`line ${i + 1}: name is empty`);
+-      }
+-      result.rejected.push({ line: i + 1, reason: "name is empty" });
+-      continue;
++  for (const [email, name] of contacts) {
++    const existing = store.findByEmail(email);
++    if (existing) {
++      if (existing.name !== name) store.rename(existing.id, name);
++      result.updated++;
+@@ -65,35 +28,2 @@ export function importContacts(text, store, options = {}) {
+-      if (!EMAIL_RE.test(email.trim().toLowerCase())) {
+-        if (mode === "strict") {
+-          throw new Error(`line ${i + 1}: email is not an address`);
+-        }
+-        result.rejected.push({ line: i + 1, reason: "email is not an address" });
+-        continue;
+-      } else {
+-        // temporary: skip addresses of the old test domain
+-        if (email.trim().toLowerCase().endsWith("@example.invalid")) {
+-          continue;
+-        }
+-        const existing = store.findByEmail(email.trim().toLowerCase());
+-        if (existing) {
+-          if (existing.name !== name) {
+-            store.rename(existing.id, name);
+-          }
+-          result.updated++;
+-        } else {
+-          let attempts = 0;
+-          let saved = false;
+-          while (attempts < MAX_RETRIES && !saved) {
+-            try {
+-              store.insert({ name, email: email.trim().toLowerCase() });
+-              saved = true;
+-            } catch (e) {
+-              attempts++;
+-            }
+-          }
+-          if (!saved) {
+-            continue;
+-          }
+-          result.created++;
+-        }
+-        result.rows.push({ line: i + 1, name, email });
+-      }
++      store.insert({ name, email });
++      result.created++;
+diff --git a/test/import.test.js b/test/import.test.js
+index 15f8d08..32a1790 100644
+--- a/test/import.test.js
++++ b/test/import.test.js
+@@ -4,0 +5 @@ import { importContacts } from "../src/contacts/import.js";
++import { CsvError } from "../src/lib/csv.js";
+@@ -6 +7 @@ import { importContacts } from "../src/contacts/import.js";
+-test("imports a file", () => {
++test("imports each address once using its last valid row", () => {
+@@ -9,5 +10,20 @@ test("imports a file", () => {
+-  const result = importContacts("name,email\nAnn,ann@site.test\nBob,bob@site.test\n,nobody@site.test\n", store);
+-  assert.equal(result.created, 1);
+-  assert.equal(result.updated, 1);
+-  assert.equal(result.rejected.length, 1);
+-  assert.equal(result.rows.length, 2);
++  const result = importContacts([
++    "name,email",
++    "First,ann@site.test",
++    "Bob,bob@site.test",
++    "Ann, ANN@SITE.TEST ",
++    "Robert, BOB@SITE.TEST ",
++    ",bob@site.test",
++    "Example,ann@example.invalid",
++  ].join("\n"), store);
++
++  assert.deepEqual(result, {
++    created: 2,
++    updated: 1,
++    rejected: [{ line: 6, reason: "name is empty" }],
++  });
++  assert.deepEqual(store.all().map(({ name, email }) => ({ name, email })), [
++    { name: "Ann", email: "ann@site.test" },
++    { name: "Robert", email: "bob@site.test" },
++    { name: "Example", email: "ann@example.invalid" },
++  ]);
+@@ -16,2 +32,17 @@ test("imports a file", () => {
+-test("strict mode stops at the first bad row", () => {
+-  assert.throws(() => importContacts("name,email\n,nobody@site.test\n", new ContactStore(), { mode: "strict" }));
++test("rejects rows with empty names or invalid email and continues", () => {
++  const store = new ContactStore();
++  const result = importContacts('name,email\n\n   \n""\nOnly name\n,no@site.test\nBad,ann@site\nBad,a@b@site.test\nGood,good@site.test\n', store);
++
++  assert.deepEqual(result, {
++    created: 1,
++    updated: 0,
++    rejected: [
++      { line: 3, reason: "name is empty" },
++      { line: 4, reason: "name is empty" },
++      { line: 5, reason: "email is not an address" },
++      { line: 6, reason: "name is empty" },
++      { line: 7, reason: "email is not an address" },
++      { line: 8, reason: "email is not an address" },
++    ],
++  });
++  assert.equal(store.findByEmail("good@site.test").name, "Good");
+@@ -20,2 +51,10 @@ test("strict mode stops at the first bad row", () => {
+-test("legacy files use semicolons", () => {
+-  assert.equal(importContacts("name;email\nAnn;ann@site.test\n", new ContactStore(), { mode: "legacy" }).created, 1);
++test("uses the starting physical line for multiline records", () => {
++  const store = new ContactStore();
++  const result = importContacts('name,email\r\n"Ann\r\nSmith",ann@site.test\r\n"Bad\r\nName",invalid\r\n', store);
++
++  assert.deepEqual(result, {
++    created: 1,
++    updated: 0,
++    rejected: [{ line: 4, reason: "email is not an address" }],
++  });
++  assert.equal(store.findByEmail("ann@site.test").name, "Ann\r\nSmith");
+@@ -24,2 +63,7 @@ test("legacy files use semicolons", () => {
+-test("old test addresses are skipped", () => {
+-  assert.equal(importContacts("name,email\nAnn,ann@example.invalid\n", new ContactStore()).created, 0);
++test("does not write when parsing fails", () => {
++  const store = new ContactStore();
++  store.insert({ name: "Old", email: "ann@site.test" });
++  assert.throws(() => importContacts('name,email\nAnn,ann@site.test\n"Bob,bob@site.test', store), CsvError);
++  assert.deepEqual(store.all().map(({ name, email }) => ({ name, email })), [
++    { name: "Old", email: "ann@site.test" },
++  ]);

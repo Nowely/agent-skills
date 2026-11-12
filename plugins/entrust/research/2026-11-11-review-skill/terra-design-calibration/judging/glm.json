@@ -1,0 +1,116 @@
+[
+  {
+    "run": "r01",
+    "correctness": "2",
+    "diagnosis": "2",
+    "target": "2",
+    "reuse": "2",
+    "calibration": "2",
+    "evidence": "All nine findings verified against the code. (1) import.js:13 splits at raw newlines, the field loop (import.js:25-45) never checks unclosed or misplaced quotes, and writes happen inside the row loop (import.js:76-98): for input where row 2 is valid and row 3 opens an unclosed quote, Ann is still inserted and no parse error is reported, and a quoted name containing a newline becomes two separate records; existing parseCsv (csv.js:21-31) handles both. (2) Local pattern ^\\S+@\\S+$ (import.js:1) accepts ann@site and a@b@site.test, both rejected by the existing isEmail (email.js:1-8; create.test.js:11-12). (3) Per-row immediate write+count: a new email twice yields created=1, updated=1, an existing email twice yields updated=2 (import.js:76-97 with store.js:8-16), while the brief says an email counts once. (4) line.trim()===\"\" (import.js:21) skips a spaces-only row the brief defines as a row. (5) @example.invalid rows are silently skipped (import.js:72-75), unrequested, and the added test locks it in (import.test.js:24-26). (6) strict stops the import and legacy changes the delimiter (import.js:5-6); tests 16-22 protect both. (7) The 3-attempt insert loop silently discards all failures (import.js:83-95); ContactStore.insert throws only for a duplicate already excluded by the immediately preceding findByEmail with identical normalization (store.js:13-14). (8) rows output is unrequested (import.js:7, :98). (9) Tests assert only counts and rejected.length (import.test.js:10-13); a no-op rename or wrong line/reason would pass. All cited refs (create.test.js:11-12, csv.js:21-31, store.js:8-16) check out.",
+    "missed": [],
+    "unsupported": [
+      "Finding 2's closing clause that a locally-valid duplicate 'can let an invalid duplicate replace a valid row': keys accepted by ^\\S+@\\S+$ but rejected by isEmail cannot equal any key of an isEmail-validated contact (the only creation path in the repo), so replacing a valid row is unreachable; the demonstrable harm is only that such rows are wrongly saved as new contacts."
+    ],
+    "uncertain": []
+  },
+  {
+    "run": "r02",
+    "correctness": "2",
+    "diagnosis": "2",
+    "target": "2",
+    "reuse": "n/a",
+    "calibration": "2",
+    "evidence": "The no-findings verdict on behavior is justified by tracing all six brief bullets: parseCsv runs to completion before any store mutation (import.js:31), so nothing is written on parse failure; rejected rows carry row.line (physical start line from csv.js) and a reason and continue (import.js:14-18); the names Map keyed by normalizeEmail (import.js:17) gives count-once and last-valid-wins, and rejected rows never enter the map; counts and rejections returned (import.js:34). Its four coverage claims verified: no import-level test has a rejected duplicate after a valid row (import.test.js:15-21 exercises two valid rows through planImport), no spaces-only line, no fewer-cells row, and no line number after a multiline field (import.test.js:9-36); the parser tests do cover some of these in isolation (csv.test.js).",
+    "missed": [],
+    "unsupported": [],
+    "uncertain": [
+      "'Строки с ... недостающими полями' holds exactly only for rows with fewer cells than the header or a missing email cell: import.test.js:26 does exercise a comma-separated empty name through importContacts, so the gap as literally worded is partly covered."
+    ]
+  },
+  {
+    "run": "r03",
+    "correctness": "1",
+    "diagnosis": "2",
+    "target": "2",
+    "reuse": "2",
+    "calibration": "2",
+    "evidence": "Every reported finding verifies true with accurate refs: writes occur before parsing completes and the local field loop never reports bad quotes (import.js:25-45, writes at :76-98); split(\"\\n\") (:13) loses quote state across physical lines and shifts later rejection line numbers; duplicate emails double-count (:76-97: new email twice → created=1, updated=1; existing twice → updated=2); the local ^\\S+@\\S+$ (:1) accepts ann@site and a@b@c that isEmail rejects (email.js:1-8); @example.invalid rows are silently skipped (:72-75) with a test locking it (:24-26); spaces-only lines are skipped by trim (:21); insert failures are swallowed after 3 attempts (:83-95) though the store documents no transient errors (store.js:12-18); strict mode throws instead of rejecting (:58-70) with a test locking it (:16-18). Its claim that parseCsv supports multiline fields and start lines matches csv.js:3-6, 21-31. But the review is materially incomplete: it misses the unrequested legacy ';' mode and its test (import.js:5-6, test:20-22) and the unrequested rows output field (import.js:7, :98).",
+    "missed": [
+      "Unrequested legacy mode (import.js:5-6) with its own test (import.test.js:20-22): a semicolon delimiter no brief bullet asks for.",
+      "Unrequested rows per-row log in the returned result (import.js:7, :98) consumed only by the added assertion (import.test.js:13).",
+      "Import tests never assert stored names, emails, exact rejection lines or reasons (import.test.js:10-13), so a no-op rename or a wrong line/reason would pass."
+    ],
+    "unsupported": [
+      "Claim that wrongly accepted addresses 'могут заменить предыдущий валидный дубликат': a key accepted by ^\\S+@\\S+$ but rejected by isEmail cannot match any contact created through the validating form, so replacement is unreachable; the demonstrable harm is creating invalid contacts as new rows."
+    ],
+    "uncertain": []
+  },
+  {
+    "run": "r04",
+    "correctness": "2",
+    "diagnosis": "1",
+    "target": "2",
+    "reuse": "1",
+    "calibration": "1",
+    "evidence": "All factual assertions verified: parseCsv finishes or throws before any write (csv.js:27, :31 vs import.js:31-32); planImport's only non-test caller is importContacts (import.js:31); the plan-level duplicate test checks only arrays (import.test.js:15-21) and the import-level count test contains no duplicate (:23-29); no import-level test covers spaces-only lines, fewer-cells rows, a quoted empty field or the line number after a multiline record, while parser tests cover these in isolation (csv.test.js:5-27); package.json declares no dependencies. All seven 'met by tracing' requirement claims check out against the implementation.",
+    "missed": [],
+    "unsupported": [
+      "Finding 1 'Remove the separate operation plan (necessity)': the traced facts show only that requirement 5 does not demand a second pass, not that the plan costs anything concrete; it is a small, cohesive decision/write seam that two of the four added tests exercise directly, so its removal as a mandatory 'fix in place' change is unsupported."
+    ],
+    "uncertain": [
+      "Finding 3's 'missing name or email cells': the import test does exercise a comma-separated empty name (import.test.js:26-27), so the stated gap holds exactly only for rows with fewer cells than the header or an absent email cell — likely intended, but not stated."
+    ]
+  },
+  {
+    "run": "r05",
+    "correctness": "2",
+    "diagnosis": "2",
+    "target": "2",
+    "reuse": "2",
+    "calibration": "2",
+    "evidence": "Traced: the decision order matches brief decisions 1-6 (edit.js:4-17; unchanged at :7-12 precedes the room lookup :15 and the window/capacity checks :14, :17); confirmation is strict (totalCents > paidCents, :23) matching 'strictly greater'; the ready command fields are exact (:20-32); no mutation and no I/O; quoteRoom is reused (:1, :19) and its math matches README line 3. README citations (:3, :7-24, :17, :21, :22, :30) all point at the stated content; 'no test files exist' matches the repository (none present; package.json has no scripts); both regression examples are real (reordering would turn unchanged-with-vanished-room into room-unavailable; >= would demand confirmation at price equality).",
+    "missed": [],
+    "unsupported": [],
+    "uncertain": [
+      "Sources cite 'the last commit's diff'; the provided case directory contains no commit history, so that coverage claim is unverifiable here (every substantive finding verifies against the files)."
+    ]
+  },
+  {
+    "run": "r06",
+    "correctness": "2",
+    "diagnosis": "2",
+    "target": "2",
+    "reuse": "2",
+    "calibration": "2",
+    "evidence": "Traced the reverse-overwrite scheme: later ifs override earlier ones and reproduce exactly the brief's precedence — forbidden last (:51), cancelled (:46) above unchanged (:41-45), which resets blocked to beat capacity (:29) and room-unavailable (:33); invalid-window (:37) above room-unavailable and capacity, matching 4>5>6; the ready path guarantees room and a positive interval so the quote is always computed (:17-27), confirmation is strict (:26), the command exact (:63-70), and inputs are untouched. 'No explicit errors on valid inputs' is correct. The P2 is factual: the repository has no test files and package.json defines no test command. The P3s verify: the per-call Map (:15) gets one key, one lookup and one insertion, so it can never hit, and the formula (:22) duplicates quote.js:2.",
+    "missed": [],
+    "unsupported": [],
+    "uncertain": []
+  },
+  {
+    "run": "r07",
+    "correctness": "2",
+    "diagnosis": "2",
+    "target": "2",
+    "reuse": "2",
+    "calibration": "2",
+    "evidence": "Both positive claims verify: edit.js:4-17 implements decisions 1-6 in the brief's order with unchanged (:7-12) before catalog/window/capacity checks, and pricing via the existing quoteRoom (:1, :19) with strict confirmation (:23). Its test-gap list (competing blocked conditions for precedence, unchanged with a vanished room, started-hour rounding, equal vs higher price) targets genuinely untested behavior; the repository indeed contains no tests. No unsupported assertion found.",
+    "missed": [],
+    "unsupported": [],
+    "uncertain": []
+  },
+  {
+    "run": "r08",
+    "correctness": "2",
+    "diagnosis": "2",
+    "target": "2",
+    "reuse": "2",
+    "calibration": "2",
+    "evidence": "All eight 'met by tracing' claims verify, including unchanged beating capacity and room-unavailable via the :41-45 resets, strict confirmation (:26), the exact ready command (:63-70) and input immutability. Findings verify: edit.js:22 repeats quote.js:2; README line 30 documents the existing-room and positive-interval prerequisites, both satisfied on the ready path; create.js:7 already uses quoteRoom; the :15 Map is fresh per call with a single has/set/get (:17-25) and no loop, so it can never hit; no test files exist and package.json defines no test command; change-map line refs all match the file. Finding 3 is honestly labeled 'design; judgment' and argued via concrete reading cost (later overwrites, blocked/unchanged interaction) rather than asserted as fact.",
+    "missed": [],
+    "unsupported": [],
+    "uncertain": [
+      "Coverage mentions reading 'commit metadata'; the provided case directory contains no history, so that claim is unverifiable here (all cited artifacts themselves verify)."
+    ]
+  }
+]

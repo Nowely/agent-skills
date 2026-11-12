@@ -1,0 +1,295 @@
+[
+  {
+    "run": "r01",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r02",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The new output test bypasses loadInvoices and leaves the combined service-and-archive loading path untested.",
+        "verdict": "valid",
+        "why": "currency-contract-clean/case/clean/test/outputs.test.js:9 calls readArchive directly; src/invoices/load.js:5-6 is the combined loader, and no supplied project test calls it. The requested test exercises the actual source-to-output path relied on by this change; this is a coverage gap, not an observed implementation failure."
+      }
+    ]
+  },
+  {
+    "run": "r03",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean",
+      "X5": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The failed-send test does not assert that the other invoice's message was addressed to its customer on the first night.",
+        "verdict": "valid",
+        "why": "overdue-notice-clean/case/clean/test/nightly.test.js:38-44 asserts the first night's counters and the next night's recipients, but never reads refusing.sent. A wrong non-refused first-night recipient can escape these assertions."
+      },
+      {
+        "claim": "The tests do not distinguish UTC date selection from a fixed UTC+3 calendar date near midnight.",
+        "verdict": "valid",
+        "why": "overdue-notice-clean/case/clean/test/nightly.test.js:6 fixes every night at 01:00:00Z, when UTC and UTC+3 have the same date; brief.md:9 requires UTC dates. A near-midnight input would distinguish the specified behavior from the concrete regression the review names; src/jobs/nightly.js:6 is currently correct."
+      }
+    ]
+  },
+  {
+    "run": "r04",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "violated",
+      "X5": "violated"
+    },
+    "extra": []
+  },
+  {
+    "run": "r05",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "miss",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r06",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "F7": "hit",
+      "F8": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The added result.rows list has no required consumer and should be removed with its assertion.",
+        "verdict": "valid",
+        "why": "contact-import-head/case/head/src/contacts/import.js:7 and :98 allocate and populate an additional imported-row result; brief.md:7 asks for created/updated counts and rejected rows. Its only supplied reader is test/import.test.js:13, so this new output contract serves no supplied requirement."
+      }
+    ]
+  },
+  {
+    "run": "r07",
+    "items": {
+      "F1": "miss",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "partial",
+      "F7": "hit",
+      "F8": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r08",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r09",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The page's new try/catch handles no supported invoice state and substitutes a fabricated USD 0.00 price.",
+        "verdict": "valid",
+        "why": "currency-contract-head/case/head/src/screens/page.js:5-8 adds this fallback; node_modules/@acme/billing-client/index.js:11-14 validates string currency and integer amount, and data/archive.schema.json:5-10 requires the corresponding archive fields. Those supported primitive values do not make the enclosed formatting throw, so the catch is unnecessary new recovery behavior."
+      }
+    ]
+  },
+  {
+    "run": "r10",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "violated"
+    },
+    "extra": []
+  },
+  {
+    "run": "r11",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "miss",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r12",
+    "items": {
+      "X1": "clean",
+      "X2": "violated",
+      "X3": "clean",
+      "X4": "violated"
+    },
+    "extra": [
+      {
+        "claim": "Duplicate-email counting is not checked through the public CSV import entry point, especially for an existing contact.",
+        "verdict": "valid",
+        "why": "contact-import-clean/case/clean/test/import.test.js:15-20 checks a repeated new email only through planImport; :23-29 invokes importContacts with distinct emails. No supplied project test imports repeated existing and new emails and asserts their final names and single counts. This is a concrete coverage gap, not an observed counting defect."
+      }
+    ]
+  },
+  {
+    "run": "r13",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "hit",
+      "F5": "hit",
+      "F6": "hit",
+      "F7": "hit",
+      "F8": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The added result.rows list has no required consumer and should be removed with its assertion.",
+        "verdict": "valid",
+        "why": "contact-import-head/case/head/src/contacts/import.js:7 and :98 allocate and populate an additional imported-row result; brief.md:7 asks for created/updated counts and rejected rows. Its only supplied reader is test/import.test.js:13, so this new output contract serves no supplied requirement."
+      }
+    ]
+  },
+  {
+    "run": "r14",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r15",
+    "items": {
+      "F1": "miss",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "partial",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": []
+  },
+  {
+    "run": "r16",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "violated"
+    },
+    "extra": [
+      {
+        "claim": "Duplicate-email counting is not checked through the public CSV import entry point, especially for an existing contact.",
+        "verdict": "valid",
+        "why": "contact-import-clean/case/clean/test/import.test.js:15-20 checks a repeated new email only through planImport; :23-29 invokes importContacts with distinct emails. No supplied project test imports repeated existing and new emails and asserts their final names and single counts. This is a concrete coverage gap, not an observed counting defect."
+      }
+    ]
+  },
+  {
+    "run": "r17",
+    "items": {
+      "F1": "hit",
+      "F2": "hit",
+      "F3": "hit",
+      "F4": "partial",
+      "F5": "hit",
+      "F6": "hit",
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean"
+    },
+    "extra": [
+      {
+        "claim": "The page's new try/catch handles no supported invoice state and substitutes a fabricated USD 0.00 price.",
+        "verdict": "valid",
+        "why": "currency-contract-head/case/head/src/screens/page.js:5-8 adds this fallback; node_modules/@acme/billing-client/index.js:11-14 validates string currency and integer amount, and data/archive.schema.json:5-10 requires the corresponding archive fields. Those supported primitive values do not make the enclosed formatting throw, so the catch is unnecessary new recovery behavior."
+      }
+    ]
+  },
+  {
+    "run": "r18",
+    "items": {
+      "X1": "clean",
+      "X2": "clean",
+      "X3": "clean",
+      "X4": "violated",
+      "X5": "violated"
+    },
+    "extra": [
+      {
+        "claim": "The change should also be checked for a process stop after successful mail delivery but before recording the notification marker.",
+        "verdict": "unsupported",
+        "why": "overdue-notice-clean/case/clean/src/invoices/overdue.js:12-18 does contain a send-then-mark interval, but src/invoices/repo.js:3-18 is an in-memory repository and the supplied files define no restart, persistence or recovery caller. accept.mjs:37-50 exercises sequential nights using the same repository. The proposed crash-recovery check introduces an execution condition the supplied supported flow does not establish; the real deployment guarantee remains unspecified."
+      }
+    ]
+  }
+]

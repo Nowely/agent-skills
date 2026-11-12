@@ -1,0 +1,78 @@
+diff --git a/src/bookings/edit.js b/src/bookings/edit.js
+index ebc1a1b..45464e9 100644
+--- a/src/bookings/edit.js
++++ b/src/bookings/edit.js
+@@ -0,0 +1,2 @@
++import { quoteRoom } from "./quote.js";
++
+@@ -2,3 +4,4 @@ export function previewEdit(booking, draft, context) {
+-  const room = context.rooms.find((item) => item.id === draft.roomId);
+-  const rangeOk = draft.end > draft.start;
+-  const same =
++  if (!context.mayEdit) return { kind: "blocked", reason: "forbidden" };
++  if (booking.state === "cancelled") return { kind: "blocked", reason: "closed" };
++
++  if (
+@@ -8,19 +11,3 @@ export function previewEdit(booking, draft, context) {
+-    booking.people === draft.people;
+-
+-  let blocked = false;
+-  let unchanged = false;
+-  let reason = null;
+-  let totalCents = 0;
+-  let requiresPriceConfirmation = false;
+-  const quoteCache = new Map();
+-
+-  if (room && rangeOk) {
+-    const key = `${room.id}:${draft.start}:${draft.end}`;
+-    if (!quoteCache.has(key)) {
+-      quoteCache.set(
+-        key,
+-        room.setupCents + Math.ceil((draft.end - draft.start) / 2) * room.hourCents,
+-      );
+-    }
+-    totalCents = quoteCache.get(key);
+-    requiresPriceConfirmation = totalCents > booking.paidCents;
++    booking.people === draft.people
++  ) {
++    return { kind: "unchanged" };
+@@ -29,27 +16,5 @@ export function previewEdit(booking, draft, context) {
+-  if (room && draft.people > room.capacity) {
+-    blocked = true;
+-    reason = "capacity";
+-  }
+-  if (!room) {
+-    blocked = true;
+-    reason = "room-unavailable";
+-  }
+-  if (!rangeOk) {
+-    blocked = true;
+-    reason = "invalid-window";
+-  }
+-  if (same) {
+-    blocked = false;
+-    reason = null;
+-    unchanged = true;
+-  }
+-  if (booking.state === "cancelled") {
+-    blocked = true;
+-    reason = "closed";
+-    unchanged = false;
+-  }
+-  if (!context.mayEdit) {
+-    blocked = true;
+-    reason = "forbidden";
+-    unchanged = false;
+-  }
++  if (draft.end <= draft.start) return { kind: "blocked", reason: "invalid-window" };
++
++  const room = context.rooms.find((item) => item.id === draft.roomId);
++  if (!room) return { kind: "blocked", reason: "room-unavailable" };
++  if (draft.people > room.capacity) return { kind: "blocked", reason: "capacity" };
+@@ -57,2 +22 @@ export function previewEdit(booking, draft, context) {
+-  if (blocked) return { kind: "blocked", reason };
+-  if (unchanged) return { kind: "unchanged" };
++  const totalCents = quoteRoom(room, draft.start, draft.end);
+@@ -62 +26 @@ export function previewEdit(booking, draft, context) {
+-    requiresPriceConfirmation,
++    requiresPriceConfirmation: totalCents > booking.paidCents,

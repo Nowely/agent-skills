@@ -1,0 +1,278 @@
+[
+  {
+    "id": "r01",
+    "case": "case03",
+    "diagnosis": 1,
+    "target": 2,
+    "reuse": 2,
+    "calibration": 1,
+    "explanations": {
+      "diagnosis": "Реальные ошибки CSV, counts, пробельных строк, доменного skip и strict mode найдены; test-gap указан отдельно. Но r01.md:38 неверно утверждает возможность замены валидного дубликата невалидным email.",
+      "target": "r01.md:18–24,112–116 задают полный parse → validate/deduplicate only valid rows → one write/count per normalized email; определена судьба modes/retry/rows и связанных тестов.",
+      "reuse": "parseCsv/isEmail/normalizeEmail действительно уже выражают нужные правила. Удаление неподдержанных modes, retry и rows подтверждено кодом и отсутствием нужных им потребителей; retry трактуется как ненужный механизм, не доказанная потеря данных.",
+      "calibration": "Статический анализ и test gaps оговорены. Ложное следствие расхождения валидаторов на r01.md:38 названо traced без неопределённости."
+    },
+    "maintainability": "Замена самописного parser/validator уменьшает независимые источники CSV/email-правил; удаление rows устраняет удержание каждого принятого raw-row. Число функций само по себе не оценивается.",
+    "evidence": [
+      "case03/target/src/contacts/import.js:13–45,58–98",
+      "case03/target/src/contacts/email.js:3–8",
+      "case03/target/src/contacts/store.js:8–16",
+      "case03/target/test/import.test.js:6–26",
+      "case03/r01.md:38,68–98"
+    ],
+    "violations": [
+      {
+        "claim": "Невалидный email может заменить предыдущий валидный дубликат из-за более слабой регулярки.",
+        "status": "unsupported_false_consequence",
+        "reason": "Официальная валидность и идентичность обе зависят от normalizeEmail; один ключ имеет один результат isEmail. Пустое имя пропускается до записи.",
+        "impact": "Ложный сценарий для диагностики/проверки; замена regex на isEmail всё равно нужна по независимым достижимым примерам."
+      }
+    ],
+    "missed": [
+      "Инвариант одинаковой официальной валидности для одинакового нормализованного ключа."
+    ],
+    "alternatives": [
+      "Один importer или отдельный non-mutating plan оба допустимы.",
+      "Противоречащий domain-skip test полезно заменить положительным тестом импорта этого адреса."
+    ],
+    "limits": [
+      "Только статическое чтение; код и тесты не запускались."
+    ]
+  },
+  {
+    "id": "r02",
+    "case": "case02",
+    "diagnosis": 2,
+    "target": 2,
+    "reuse": null,
+    "calibration": 2,
+    "explanations": {
+      "diagnosis": "No-correctness-findings подтверждается import.js:14–34. Названные сквозные тесты позднего rejected duplicate и CSV-границ действительно отсутствуют.",
+      "target": "Сохранение реализации и добавление ограниченных тестов через importContacts — согласованный и исполнимый результат.",
+      "reuse": "N/A: показанная реализация уже использует parser/email helpers; необходимости удаления не установлено, отзыв обоснованно молчит об этой оси.",
+      "calibration": "Отдельное parser-покрытие признано, текущая ошибка из недостатка тестов не выведена, запуск не заявлен."
+    },
+    "maintainability": "Отсутствие структурной претензии допустимо: planImport не изменяет store, явно описывает операции и проверяется отдельно; лишний уровень дефектом не доказан.",
+    "evidence": [
+      "case02/target/src/contacts/import.js:4–34",
+      "case02/target/src/lib/csv.js:8–37",
+      "case02/target/test/import.test.js:9–36",
+      "case02/r02.md:1–5"
+    ],
+    "violations": [],
+    "missed": [],
+    "alternatives": [
+      "Явно проверить counts повторяющихся новых и существующих email.",
+      "Сохранить тесты плана и добавить несколько сквозных случаев; слияние плана обсуждать только как необязательный рефакторинг."
+    ],
+    "limits": [
+      "Только статическое чтение; код и тесты не запускались."
+    ]
+  },
+  {
+    "id": "r03",
+    "case": "case03",
+    "diagnosis": 1,
+    "target": 1,
+    "reuse": 1,
+    "calibration": 1,
+    "explanations": {
+      "diagnosis": "Большинство достижимых дефектов найдены, но ложное следствие валидатора повторено; P2 потери при insert не снабжён достижимым примером для существующего store. Не указаны отсутствующие assertions сохранённых имён и точных отказов.",
+      "target": "Основной правильный алгоритм восстанавливается из пунктов, но состояние options/legacy/rows и адаптация связанных тестов не доведены до полного результата.",
+      "reuse": "Reuse parseCsv/isEmail и удаление retry полезны; не оценены оставшиеся ненужные legacy/rows и их конкретные издержки.",
+      "calibration": "Статический характер оговорен, но невозможный validator-duplicate сценарий выдан за факт, а условная ветка catch — за достижимую потерю данных без входа для ContactStore."
+    },
+    "maintainability": "Убираются самостоятельные грамматика и email-политика, но options API и удерживаемый rows-журнал остаются вне оценки.",
+    "evidence": [
+      "case03/r03.md:1–17",
+      "case03/target/src/contacts/import.js:4–7,58–98",
+      "case03/target/src/contacts/email.js:3–8",
+      "case03/target/src/contacts/store.js:8–16",
+      "case03/target/test/import.test.js:6–26"
+    ],
+    "violations": [
+      {
+        "claim": "Из-за слабого regex невалидный email может заменить валидный дубликат.",
+        "status": "unsupported_false_consequence",
+        "reason": "Официальная валидность и identity используют один normalizeEmail; пустое имя отклоняется до записи.",
+        "impact": "Ложное расширение последствий реального validator-defect."
+      },
+      {
+        "claim": "P2: вызывающая сторона получает успешный неполный импорт после подавления insert-ошибок.",
+        "status": "unproven_reachability",
+        "reason": "Catch действительно поглощает ошибки, но duplicate-ошибка существующего синхронного store не достигается после отрицательного findByEmail; иных ошибок контракт не показывает.",
+        "impact": "Уровень уверенности в пользовательском дефекте завышен; удаление неподдержанных retries остаётся разумным."
+      }
+    ],
+    "missed": [
+      "Необходимость разобрать legacy/rows и соответствующие новые тесты.",
+      "Basic test не проверяет итоговые имена/email и точные rejection line/reason.",
+      "Разница между условным swallowing exception и достижимой ошибкой имеющегося store."
+    ],
+    "alternatives": [
+      "Один importer с полным parse, validate/deduplicate, apply достаточен; отдельный план не обязателен.",
+      "Проверять реальный rejected duplicate с пустым именем при валидном email, отдельно — отклонение неверных email."
+    ],
+    "limits": [
+      "Только статическое чтение; код и тесты не запускались."
+    ]
+  },
+  {
+    "id": "r04",
+    "case": "case02",
+    "diagnosis": 1,
+    "target": 2,
+    "reuse": 1,
+    "calibration": 1,
+    "explanations": {
+      "diagnosis": "Поведенческая корректность и test gaps диагностированы верно. Finding 1 превращает допустимую альтернативу в обязательный structural fix без показанного дефекта.",
+      "target": "Предлагаемый parse → validate/deduplicate → direct apply/count согласован с контрактом; перенос тестов и сохранение parse-error coverage описаны. Это технически полный target, даже если переход необязателен.",
+      "reuse": "Удаление planImport/arrays сохраняет требуемое поведение и уменьшает промежуточное представление, но не оценена польза отдельного не изменяющего store плана и простых счётчиков из массива.",
+      "calibration": "Из факта, что parse atomicity не требует operation plan, ошибочно следует обязательность его удаления. Альтернатива помечена necessity/traced, Ideas None."
+    },
+    "maintainability": "Есть один дополнительный проход и два массива, но они явно разделяют решения/запись и прямо тестируются. Риск сложности или существенная стоимость не продемонстрированы; это обмен свойствами, не дефект сам по себе.",
+    "evidence": [
+      "case02/r04.md:19–33,51–53,65–81",
+      "case02/target/src/contacts/import.js:11–34",
+      "case02/target/test/import.test.js:9–21"
+    ],
+    "violations": [
+      {
+        "claim": "Нужно удалить отдельный operation plan как обязательное исправление.",
+        "status": "unsupported_mandatory_refactor",
+        "reason": "Текущий код связный и корректный; отсутствие прямого требования к промежуточному представлению не доказывает его вред. Не сопоставлены стоимость массивов и польза non-mutating planning.",
+        "impact": "Лишняя производственная переделка и перенос уже работающих тестов без доказанной необходимости; регрессия предлагаемого алгоритма не установлена."
+      }
+    ],
+    "missed": [
+      "Конкретная польза существующего отдельного планирования и необходимость обозначить слияние как необязательный выбор."
+    ],
+    "alternatives": [
+      "Сохранить production code, добавить findings 2–3.",
+      "Предлагать слияние отдельно при конкретной цели уменьшить публичный API или промежуточные данные."
+    ],
+    "limits": [
+      "Только статическое чтение; код и тесты не запускались."
+    ]
+  },
+  {
+    "id": "r05",
+    "case": "case01",
+    "diagnosis": 2,
+    "target": 2,
+    "reuse": 2,
+    "calibration": 2,
+    "explanations": {
+      "diagnosis": "Все поведенческие требования правильно признаны выполненными; отсутствие regression tests подтверждено деревом и отделено от текущей ошибки.",
+      "target": "Сохранить корректный previewEdit/quoteRoom и добавить тесты precedence, boundaries, exact ready shape и immutability — полный согласованный результат.",
+      "reuse": "Обоснованно сохраняются shared quoteRoom и все проверки; ненужной абстракции или удаления нет.",
+      "calibration": "Met by tracing и отсутствие запуска оговорены; README boundary соблюдён. Тестовый пробел не назван существующим неправильным результатом."
+    },
+    "maintainability": "Функция связна, guards выражают порядок brief; необходимость split или другой структуры отсутствует.",
+    "evidence": [
+      "case01/target/src/bookings/edit.js:4–31",
+      "case01/target/README.md:16–30",
+      "case01/r05.md:21–35,43–56"
+    ],
+    "violations": [],
+    "missed": [],
+    "alternatives": [
+      "При добавлении тестов явно включить zero price и unchanged при уменьшившейся capacity.",
+      "Выбор runner и формы тестов не требует изменения production design."
+    ],
+    "limits": [
+      "Только статическое чтение; код и тесты не запускались.",
+      "Brief не устанавливает формальный запрет принимать изменение без тестов; тесты оцениваются как рекомендация качества."
+    ]
+  },
+  {
+    "id": "r06",
+    "case": "case04",
+    "diagnosis": 2,
+    "target": 2,
+    "reuse": 2,
+    "calibration": 2,
+    "explanations": {
+      "diagnosis": "Корректность результатов признана верно; найдены реальные издержки Map, дублирования цены, обратных assignments и отсутствие тестов.",
+      "target": "Совместно пункты задают early returns по brief, один quoteRoom на ready-пути и contract tests; краткость не делает target неполным.",
+      "reuse": "Local Map не экономит вычислений; quoteRoom совпадает с формулой и безопасен после проверок. Удаление сохраняет поведение.",
+      "calibration": "Структура отнесена к P3 и не выдана за текущую ошибку приоритетов; отсутствие запуска явно указано."
+    },
+    "maintainability": "Конкретно объяснено удержание blocked/unchanged/reason и восстановление итогов снизу вверх; early returns убирают зависимость между ветками.",
+    "evidence": [
+      "case04/r06.md:1–9",
+      "case04/target/src/bookings/edit.js:15–58",
+      "case04/target/src/bookings/quote.js:1–3",
+      "case04/target/README.md:16–30"
+    ],
+    "violations": [],
+    "missed": [],
+    "alternatives": [
+      "Можно сначала удалить только cache/duplicate formula, затем отдельно менять overwrite logic.",
+      "Добавить явные immutability/capacity boundary tests."
+    ],
+    "limits": [
+      "Только статическое чтение; код и тесты не запускались.",
+      "Нет cache hit означает отсутствие повторного использования уже вычисленной цены, а не отсутствие get после set."
+    ]
+  },
+  {
+    "id": "r07",
+    "case": "case01",
+    "diagnosis": 2,
+    "target": 2,
+    "reuse": 2,
+    "calibration": 2,
+    "explanations": {
+      "diagnosis": "No-findings подтверждается кодом и ограничениями README; полезный test gap указан отдельно.",
+      "target": "Сохранить production code и добавить перечисленные regression cases — достаточный исполнимый target для корректной цели.",
+      "reuse": "Явно подтверждён существующий shared pricing, не предложено ненужного удаления или абстракции.",
+      "calibration": "Useful coverage отделено от нарушения brief, static review оговорено; входы за пределами контракта не выдуманы."
+    },
+    "maintainability": "Отсутствие структурной претензии обосновано прямой последовательностью guards. Нет основания штрафовать за отсутствие диаграммы/полной карты строк.",
+    "evidence": [
+      "case01/r07.md:1–5",
+      "case01/target/src/bookings/edit.js:4–31",
+      "case01/target/README.md:16–30"
+    ],
+    "violations": [],
+    "missed": [],
+    "alternatives": [
+      "Полезно дополнить tests точной командой/expectedRevision, immutability, zero price и capacity equality.",
+      "Табличная организация tests — необязательный выбор."
+    ],
+    "limits": [
+      "Только статическое чтение; код и тесты не запускались."
+    ]
+  },
+  {
+    "id": "r08",
+    "case": "case04",
+    "diagnosis": 2,
+    "target": 2,
+    "reuse": 2,
+    "calibration": 2,
+    "explanations": {
+      "diagnosis": "Правильно признано соблюдение всех решений; findings о duplicated formula, cache, overwrite readability и тестах соответствуют коду.",
+      "target": "Сохранены comparisons/command, задан brief order и единственный quoteRoom после guards, определены удаляемые blocks и contract tests.",
+      "reuse": "Map не используется для повторного вычисления; quoteRoom безопасен на ready-пути. Удаление mutable defaults — следствие прямых возвратов, не отдельная косметика.",
+      "calibration": "Design/judgment отделён от traced behavior, runtime validation не заявлена; future pricing divergence указан как риск, не текущая ошибка."
+    },
+    "maintainability": "Стоимость связана с распределёнными resets и необходимостью рассматривать flags совместно, а не с количеством строк/функций.",
+    "evidence": [
+      "case04/r08.md:11–26,30–60,72–91",
+      "case04/target/src/bookings/edit.js:15–58",
+      "case04/target/src/bookings/create.js:4–7",
+      "case04/target/src/bookings/quote.js:1–3"
+    ],
+    "violations": [],
+    "missed": [],
+    "alternatives": [
+      "Оставить overwrite-логику и убрать только cache/formula duplicate можно без нарушения контракта; early returns всё же дают конкретную пользу чтению."
+    ],
+    "limits": [
+      "Только статическое чтение; код и тесты не запускались.",
+      "Фраза no second lookup неточна буквально: has и get присутствуют; существенный верный факт — нет повторного использования цены для следующего вычисления."
+    ]
+  }
+]

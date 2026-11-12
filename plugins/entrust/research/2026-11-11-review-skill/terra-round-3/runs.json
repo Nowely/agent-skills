@@ -1,0 +1,146 @@
+[
+  {
+    "run": "r01",
+    "case": "overdue-notice",
+    "variant": "head",
+    "arm": "draft-17",
+    "instructions": "9a3bd7bb564ce95b446f79bdc16e5805f900a54fa0c8b7074b11a3c3ebd18873",
+    "review": "returns/r01.md"
+  },
+  {
+    "run": "r02",
+    "case": "currency-contract",
+    "variant": "clean",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r02.md"
+  },
+  {
+    "run": "r03",
+    "case": "overdue-notice",
+    "variant": "clean",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r03.md"
+  },
+  {
+    "run": "r04",
+    "case": "overdue-notice",
+    "variant": "clean",
+    "arm": "draft-17",
+    "instructions": "9a3bd7bb564ce95b446f79bdc16e5805f900a54fa0c8b7074b11a3c3ebd18873",
+    "review": "returns/r04.md"
+  },
+  {
+    "run": "r05",
+    "case": "overdue-notice",
+    "variant": "head",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r05.md"
+  },
+  {
+    "run": "r06",
+    "case": "contact-import",
+    "variant": "head",
+    "arm": "draft-17",
+    "instructions": "9a3bd7bb564ce95b446f79bdc16e5805f900a54fa0c8b7074b11a3c3ebd18873",
+    "review": "returns/r06.md"
+  },
+  {
+    "run": "r07",
+    "case": "contact-import",
+    "variant": "head",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r07.md"
+  },
+  {
+    "run": "r08",
+    "case": "currency-contract",
+    "variant": "clean",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r08.md"
+  },
+  {
+    "run": "r09",
+    "case": "currency-contract",
+    "variant": "head",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r09.md"
+  },
+  {
+    "run": "r10",
+    "case": "contact-import",
+    "variant": "clean",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r10.md"
+  },
+  {
+    "run": "r11",
+    "case": "overdue-notice",
+    "variant": "head",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r11.md"
+  },
+  {
+    "run": "r12",
+    "case": "contact-import",
+    "variant": "clean",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r12.md"
+  },
+  {
+    "run": "r13",
+    "case": "contact-import",
+    "variant": "head",
+    "arm": "draft-18",
+    "instructions": "8a7162d0bdd20dabb794cfc6fc66e1e4b15f49de40176ea918131b37f060fa24",
+    "review": "returns/r13.md"
+  },
+  {
+    "run": "r14",
+    "case": "currency-contract",
+    "variant": "clean",
+    "arm": "draft-17",
+    "instructions": "9a3bd7bb564ce95b446f79bdc16e5805f900a54fa0c8b7074b11a3c3ebd18873",
+    "review": "returns/r14.md"
+  },
+  {
+    "run": "r15",
+    "case": "currency-contract",
+    "variant": "head",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r15.md"
+  },
+  {
+    "run": "r16",
+    "case": "contact-import",
+    "variant": "clean",
+    "arm": "draft-17",
+    "instructions": "9a3bd7bb564ce95b446f79bdc16e5805f900a54fa0c8b7074b11a3c3ebd18873",
+    "review": "returns/r16.md"
+  },
+  {
+    "run": "r17",
+    "case": "currency-contract",
+    "variant": "head",
+    "arm": "draft-17",
+    "instructions": "9a3bd7bb564ce95b446f79bdc16e5805f900a54fa0c8b7074b11a3c3ebd18873",
+    "review": "returns/r17.md"
+  },
+  {
+    "run": "r18",
+    "case": "overdue-notice",
+    "variant": "clean",
+    "arm": "control",
+    "instructions": null,
+    "review": "returns/r18.md"
+  }
+]
