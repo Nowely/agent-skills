@@ -1,0 +1,115 @@
+{
+  "head": {
+    "fails": [
+      "a phone is stored in E.164 form however it was typed",
+      "a profile without a phone is refused with a reason",
+      "a text that is not a phone number is refused with a reason",
+      "the same number typed another way is refused",
+      "an edit checks a phone as a creation does"
+    ],
+    "items": [
+      {
+        "id": "F1", "kind": "find", "direction": "behavior",
+        "title": "A missing or invalid phone crashes instead of being refused",
+        "hit": "Says that when the phone is missing, or when parsePhone returns null for a text that is no number, `parsed.country` throws a TypeError, so the caller gets an exception and no reason. Either trigger is enough.",
+        "partial": "Says invalid phones are not handled without the path: that parsePhone returns null and the next line dereferences it."
+      },
+      {
+        "id": "F2", "kind": "find", "direction": "necessity",
+        "title": "The try/catch guards a throw the installed library does not make",
+        "hit": "Calls the try/catch around parsePhone dead AND establishes it from the installed version: package-lock.json or node_modules/@acme/phone/package.json give 3.1.0, whose index.js, index.d.ts or CHANGELOG say it returns null and never throws; docs/phone.md describes 2.4. Naming the installed version or its files is what makes it a hit.",
+        "partial": "Calls the catch unnecessary or suspicious without establishing which version applies, or leaves it conditional on the library's behavior."
+      },
+      {
+        "id": "F3", "kind": "find", "direction": "necessity",
+        "title": "The separators are stripped for a library that ignores them: the decision rests on a false claim",
+        "hit": "Says the `replace` before parsePhone is unnecessary because the installed parsePhone ignores spaces, dashes and brackets itself, AND says the decision recorded in the brief rests on a claim the installed version contradicts, to be taken back to whoever decided it.",
+        "partial": "Calls the stripping redundant without addressing the decision in the brief, or questions the decision without reading the installed library."
+      },
+      {
+        "id": "F4", "kind": "find", "direction": "behavior",
+        "title": "An edit takes any phone, or none of the rules",
+        "hit": "Says updateProfile was not changed, so a profile's phone cannot be edited under the rules the brief asks for 'when one is edited': an edit ignores or does not check it.",
+        "partial": "Notes that only creation is covered by tests or code without saying the edit requirement is unmet."
+      },
+      {
+        "id": "F5", "kind": "find", "direction": "design",
+        "title": "The phone rules live inside createProfile, where an edit cannot use them",
+        "hit": "Says the phone's rules are written into createProfile, between reading the name and the write, so the edit path would have to copy them, AND proposes one phone check that both createProfile and updateProfile call, taking the profile's own id for the uniqueness rule or an equivalent.",
+        "partial": "Says createProfile does too much or should be split, without tying it to the edit or without the shared check."
+      },
+      {
+        "id": "F6", "kind": "find", "direction": "behavior",
+        "title": "Uniqueness compares the text as typed",
+        "hit": "Says the loop compares `other.phone === input.phone`, the typed text, so the same number typed with other separators is stored twice; the comparison belongs on the E.164 form."
+      },
+      {
+        "id": "F7", "kind": "find", "direction": "design",
+        "title": "One fact in three stored fields",
+        "hit": "Says the profile stores the phone as typed, `phoneE164` and `phoneValid` where the brief asks for the E.164 form: `phone` is not E.164, and `phoneValid` is set before the result is known or carries nothing a stored profile could lack. Proposes storing the E.164 number alone.",
+        "partial": "Flags `phoneValid` as always true or `phone` as not E.164 without the single stored field."
+      },
+      {
+        "id": "F8", "kind": "find", "direction": "necessity",
+        "title": "The strict option serves nothing",
+        "hit": "Says `options.strict` has no caller outside the new test and no requirement, and lets a profile be created with a country the brief says to refuse; remove it and its test."
+      },
+      {
+        "id": "F9", "kind": "find", "direction": "tests",
+        "title": "The tests cover the happy path and pin the extras",
+        "hit": "Says no test gives a missing phone, a text that is no number, a formatted number or an edit, so the failures above pass, or that the tests assert `phoneValid` and the strict option, which the task does not ask for.",
+        "partial": "Says coverage is thin without naming a regression that passes."
+      },
+      {
+        "id": "F10", "kind": "find", "direction": "necessity",
+        "title": "The upper-casing is a patch for the library and says nothing of it",
+        "hit": "Says `toUpperCase()` on the country is needed because the installed 3.1 returns the code in lower case (index.js or index.d.ts) while ALLOWED holds upper case, AND that it is a patch for the library: mark it as such, with the condition under which it goes or the fix asked of the library.",
+        "partial": "Establishes that the upper-casing is needed, from the installed version, without treating it as a patch to mark or to take upstream."
+      },
+      {
+        "id": "X1", "kind": "trap",
+        "title": "Removing the patch the library forces",
+        "violated": "Calls the `toUpperCase()` on the country unnecessary or asks to remove it. The installed 3.1.0 returns \"us\"; without it every country is refused."
+      },
+      {
+        "id": "X2", "kind": "trap",
+        "title": "Keeping or growing the handling",
+        "violated": "Recommends keeping the try/catch, catching a specific PhoneError, keeping the strict option as documented, or stripping more separators, as the fix."
+      },
+      {
+        "id": "X3", "kind": "trap",
+        "title": "A validation framework for four rules",
+        "violated": "Recommends a schema or validation library, a rule registry, a class per rule or a pipeline of validators."
+      }
+    ]
+  },
+  "clean": {
+    "items": [
+      {
+        "id": "X1", "kind": "trap",
+        "title": "The decision that was not implemented, reported as a defect",
+        "violated": "Reports as a finding that separators are not stripped before parsePhone, as the brief's decision asks, without the installed contract: parsePhone 3.1.0 ignores them itself. Saying the decision's premise is false, or asking to confirm it with whoever decided, is clean."
+      },
+      {
+        "id": "X2", "kind": "trap",
+        "title": "Handling for a throw that cannot happen",
+        "violated": "Recommends a try/catch around parsePhone, a type check of its argument beyond what checkPhone does, or handling of PhoneError. The installed version returns null and never throws."
+      },
+      {
+        "id": "X3", "kind": "trap",
+        "title": "Removing the patch the library forces",
+        "violated": "Calls the `toUpperCase()` on the country unnecessary or asks to remove it, or asks to lower-case ALLOWED instead, which other code reads as ISO upper case. Proposing the fix upstream as an idea is clean."
+      },
+      {
+        "id": "X4", "kind": "trap",
+        "title": "Splitting or wrapping a ten-line check",
+        "violated": "Recommends splitting checkPhone into a function or class per rule, a schema or validation library, or a result type, without naming a requirement whose change becomes easier."
+      },
+      {
+        "id": "X5", "kind": "trap",
+        "title": "A defect that is not there",
+        "violated": "Reports as a defect that a requirement of the brief is not met. Every requirement is met (accept.mjs passes on this tree): the phone is required on creation, checked on edit only when the edit gives one, stored as E.164 and unique."
+      }
+    ]
+  }
+}
