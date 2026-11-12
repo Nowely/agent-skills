@@ -9,7 +9,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
-import { DIRECTIONS, EVIDENCE, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
+import { LABELS } from "../plugin/skills/review/scripts/labels.mjs";
+import { DIRECTIONS, EVIDENCE, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -21,11 +22,16 @@ const REVIEW = {
   title: "Upper-case <currency> codes", range: "HEAD~1..HEAD",
   change: { goal: "Show currency codes in upper case.", parts: ["The archive reader converts the code."], sources: ["brief.md"] },
   verdict: "The change does its task.", target: "The change is already this.", recommendation: "Accept it.",
-  requirements: [{ id: 1, text: "Upper case wherever a price is shown." }, { id: 2, text: "A requirement nothing serves." }],
-  findings: [{ id: 1, title: "A finding", direction: "tests", evidence: "traced", at: "test/archive.test.js:5", what: "What happens.", fix: "The fix.", breaks: [2] }],
+  steps: [{ text: "Add the test.", findings: [1] }],
+  requirements: [{ id: 1, text: "Upper case wherever a price is shown.", source: "task", met: "traced" },
+    { id: 2, text: "A requirement nothing serves.", source: "discussion", doubt: "The contract says otherwise." },
+    { id: 3, text: "A requirement that fails.", source: "assumption" }],
+  findings: [{ id: 1, title: "A finding", direction: "tests", evidence: "traced", at: "test/archive.test.js:5", what: "What happens.", fix: "The fix.", untested: [1] },
+    { id: 2, title: "A defect", direction: "behavior", evidence: "traced", at: "src/invoices/archive.js:2", what: "What breaks.", fix: "The fix.", breaks: [3] }],
   ideas: [{ title: "An idea", at: "src/invoices/archive.js:2", text: "What it gains." }],
   screens: [{ name: "The list", mockup: "https://design.example/list", before: "before.png", after: "after.png",
-    differences: [{ what: "A difference.", why: "The task says so." }, { what: "Another.", finding: 1 }], missing: "The empty state." }],
+    differences: [{ what: "A difference.", why: "The task says so." }, { what: "Another.", finding: 1 }], missing: "The empty state." },
+    { name: "The page", missing: "No picture was given." }],
   units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["rows"], verdict: "keep" }, { name: "rows", existing: true, jobs: ["holds the rows"] }],
   target_units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["upper"] }, { name: "upper", jobs: ["a unit to write"] }],
   blocks: [
@@ -67,9 +73,51 @@ test("a complete review becomes one page that loads nothing from elsewhere and t
     if (outside) return `the page reaches outside itself: ${outside[0]}`;
     if ((page.match(/src="data:image\/png;base64,/g) ?? []).length !== 2) return "the two pictures given as files are not in the page";
     if (page.includes("<currency>") || !page.includes("&lt;currency&gt;")) return "the title reached the page unescaped";
-    return (page.match(/<svg /g) ?? []).length === 2 && page.includes('class="t-k"') && page.includes('id="b1"') && page.includes(">fails<")
-      && page.includes(">Recommendation<") && page.includes('id="i1"')
-      || "the page lacks a diagram per structure, highlighted code, a block anchor, the failed requirement, the recommendation or the idea";
+    if (page.includes("HEAD~1..HEAD</span></header>")) return "the range is in the page's header";
+    return (page.match(/<svg /g) ?? []).length === 2 && page.includes('class="t-k"') && page.includes('id="b1"') && page.includes('id="i1"')
+      && [">What to do<", ">Review conclusion<", ">Target solution<", ">Task<", 'id="files"', "<ol"].every((part) => page.includes(part))
+      || "the page lacks a diagram per structure, highlighted code, a block anchor, the idea, one of the four parts of the summary, the steps or the file tree";
+  });
+
+test("a requirement is met only on the reviewer's word, a missing test is not a failure, and a screen nobody compared says so",
+  "a page that reads \"met\" off a block, turns a test gap into a failure or shows an uncompared screen as matching misleads whoever decides by it",
+  () => {
+    if (render().status !== 0) return "render failed";
+    const page = fs.readFileSync(html, "utf8"), rows = page.split('id="requirements"')[1].split("</table>")[0].split("<tr>").slice(2);
+    const has = (row, ...words) => words.every((word) => row.includes(`>${word}<`));
+    if (!has(rows[0], "met", "no test", "task") || has(rows[0], "fails")) return "requirement 1, traced and untested, is not shown as met with no test";
+    if (!has(rows[1], "not checked", "discussion") || !rows[1].includes("To reconsider") || has(rows[1], "met")) return "requirement 2, unchecked and doubted, is not shown so";
+    if (!has(rows[2], "fails", "assumption") || has(rows[2], "met")) return "requirement 3, broken by a finding, is not shown as failing";
+    const [, list, alone] = page.split('<article class="finding">');
+    if (!alone.includes(">Not compared<") || alone.includes("Matches the mockup") || list.includes("Matches the mockup")) return "a screen with no match claimed is not shown as not compared";
+    const matched = render((r) => { r.screens[0] = { name: "The list", mockup: "https://design.example/list", after: "after.png", match: true }; });
+    return matched.status === 0 && fs.readFileSync(html, "utf8").includes("Matches the mockup") || "a screen said to match is not shown as matching";
+  });
+
+test("two reviews of one change keep their decisions apart, and one review rendered twice keeps them together",
+  "decisions stored under the title and the range of one review were applied to another review of the same change",
+  () => {
+    const key = () => JSON.parse(/<script id="data" type="application\/json">(.*?)<\/script>/s.exec(fs.readFileSync(html, "utf8"))[1]).key;
+    render(); const first = key();
+    render(); const again = key();
+    render((r) => { r.findings[1].title = "Another defect"; });
+    return first === again && first !== key() || "the page's name for its decisions does not follow the review's content";
+  });
+
+test("a review carries the report's words in its reader's language, and a word the report does not have is refused",
+  "the reader of a report is the user, in the user's language; a mistyped label must not pass as a translation",
+  () => {
+    const translated = render((r) => { r.labels = { "actions": "Что делать", "met": "выполнено", "findings": "Находки", "decided": "Решено: {n}" }; });
+    if (translated.status !== 0) return `refused: ${translated.stderr}`;
+    const page = fs.readFileSync(html, "utf8");
+    if (![">Что делать<", ">выполнено<", "Решено: {n}"].every((word) => page.includes(word)) || !translated.stdout.includes("## Находки")) return "the review's own words are not on the page and in the printout";
+    const { status, stdout } = report("labels");
+    if (status !== 0 || Object.keys(JSON.parse(stdout)).join() !== Object.keys(LABELS).join()) return "labels does not print the report's words";
+    for (const [labels, fault] of [[{ "no-such": "x" }, 'which is no label of the report'], [{ decided: "Решено" }, 'label "decided" has lost its {n}'], [{ met: "" }, 'label "met" has no wording']]) {
+      const { status: refused, stderr } = render((r) => { r.labels = labels; });
+      if (refused !== 1 || !stderr.includes(fault)) return `expected "${fault}", got status ${refused}: ${stderr}`;
+    }
+    return true;
   });
 
 test("the printout has the sections SKILL.md gives the report, in its order",
@@ -92,7 +140,18 @@ test("a review that does not match the diff is refused, every fault is listed, a
       [(r) => { r.blocks[0].unit = "rows"; }, 'block 1: "rows" is not a unit of the change'],
       [(r) => { delete r.blocks[0].unit; }, "unit readArchive has no block"],
       [(r) => { r.units[0].uses = ["nobody"]; }, "units: readArchive names unit nobody, which is not listed"],
-      [(r) => { r.findings[0].breaks = [5]; }, "finding 1 names requirement 5, which is not listed"],
+      [(r) => { r.findings[1].breaks = [5]; }, "finding 2 names requirement 5, which is not listed"],
+      [(r) => { r.findings[0].breaks = [1]; }, 'finding 1 is about tests: it lists requirements under "untested", not "breaks"'],
+      [(r) => { r.findings[1].untested = [1]; }, 'finding 2 is not about tests: it lists requirements under "breaks", not "untested"'],
+      [(r) => { r.requirements[2].met = "traced"; }, "requirement 3 is marked met, and finding 2 breaks it"],
+      [(r) => { r.requirements[0].met = "judgment"; }, "requirement 1: met is one of ran, traced"],
+      [(r) => { delete r.requirements[0].source; }, "requirement 1: source is one of task, discussion, question, assumption"],
+      [(r) => { r.steps[0].findings = [8]; }, "step 1 names finding 8, which is not listed"],
+      [(r) => { r.units[0].verdict = "improve"; }, "unit readArchive: verdict is one of keep, fix, split, merge, remove"],
+      [(r) => { Object.assign(r.units[0], { verdict: "split", findings: [1] }); r.target_units.pop(); r.target_units[0].uses = []; }, "unit readArchive is to split, and the target has no new unit"],
+      [(r) => { r.screens[1].match = true; }, "screen 2 is said to match, and has no mockup picture"],
+      [(r) => { r.screens[0].match = true; }, "screen 1 is said to match, and lists differences"],
+      [(r) => { delete r.screens[1].missing; }, 'screen 2 has no difference and no "match"'],
       [(r) => { r.blocks[0].added = "all"; }, 'block 1: "all" is for a block to remove'],
       [(r) => { delete r.change; }, '"change.goal" is missing'],
       [(r) => { delete r.recommendation; }, '"recommendation" is missing'],
@@ -120,10 +179,10 @@ test("the page that tells a reviewer what to write names every word the check ac
   "the vocabulary lives in the check; a page that teaches another word sends the reviewer into a refusal",
   () => {
     const page = fs.readFileSync(path.join(SKILL, "references", "interactive-report.md"), "utf8");
-    const absent = [...VERDICTS, ...UNIT_VERDICTS, ...DIRECTIONS, ...EVIDENCE].filter((word) => !page.includes(`\`${word}\``));
+    const absent = [...VERDICTS, ...UNIT_VERDICTS, ...DIRECTIONS, ...EVIDENCE, ...SOURCES].filter((word) => !page.includes(`\`${word}\``));
     if (absent.length) return `interactive-report.md does not name ${absent.join(", ")}`;
     const example = /\n {4}\{\n[\s\S]*?\n {4}\}\n/.exec(page);
-    try { return Object.keys(JSON.parse(example[0])).join(" ") === Object.keys(REVIEW).join(" ") || "the example's fields differ from the fields this suite renders"; }
+    try { return Object.keys(JSON.parse(example[0])).join(" ") === [...Object.keys(REVIEW), "labels"].join(" ") || "the example's fields differ from the fields this suite renders"; }
     catch (error) { return `the example is not JSON: ${error.message}`; }
   });
 

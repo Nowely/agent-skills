@@ -3,6 +3,7 @@
 //
 //   node report.mjs lines <range>          print every changed line of `git diff <range>` with its address
 //   node report.mjs render <review.json>   check the review; write <review>.html beside it and print the report
+//   node report.mjs labels                 print the report's own words, for a review to carry in its reader's language
 //
 // Run it in the repository under review; references/interactive-report.md tells the reviewer what to write.
 // `render` refuses a review whose change map leaves a changed line out, puts one in two blocks, or names an id
@@ -12,35 +13,41 @@
 import fs from "node:fs";
 import path from "node:path";
 import { address, changedLines, diffOf } from "./diff.mjs";
+import { LABELS, labelsOf } from "./labels.mjs";
 import { page } from "./page.mjs";
 import { check, modelOf } from "./review.mjs";
 
-const capital = (word) => word[0].toUpperCase() + word.slice(1);
-const cited = (ids) => ids.length ? ` (${ids.join(", ")})` : "";
+const cited = (ids) => ids?.length ? ` (${ids.join(", ")})` : "";
 
 // The review in the shape SKILL.md gives the report.
-function markdown(review, { blocks, requirements, units, target }) {
-  const list = (items, line) => items?.length ? items.map(line) : ["none"];
-  const unit = (u, state) => `- \`${u.name}${u.uses.length ? ` -> ${u.uses.join(", ")}` : ""}\`: ${u.jobs.join(", ")}. ${state}.`;
+function markdown(review, { blocks, requirements, units, target }, t) {
+  const list = (items, line) => items?.length ? items.map(line) : [t("none")];
+  const word = (kind, value) => t(`${kind}.${value}`), capital = (text) => text[0].toUpperCase() + text.slice(1);
+  const state = (r) => [r.broken.length ? `${t("fails")}: ${r.broken.join(", ")}` : r.met ? `${t("met")}, ${word("evidence", r.met)}` : t("not-checked"),
+    r.untested.length && `${t("no-test")}: ${r.untested.join(", ")}`].filter(Boolean).join("; ");
+  const unit = (u, status) => `- \`${u.name}${u.uses.length ? ` -> ${u.uses.join(", ")}` : ""}\`: ${u.jobs.join(", ")}. ${capital(status)}.`;
   const written = new Set(units.filter((u) => !u.existing).map((u) => u.name));
+  const names = (label, ids) => ids?.length ? ` ${t(label)} ${ids.join(", ")}.` : "";
   return [
-    "## Change", [review.change.goal, review.change.why].filter(Boolean).join(" "), ...review.change.parts.map((part) => `- ${part}`),
-    `Sources: ${review.change.sources.join("; ")}`, "",
-    "## Verdict", review.verdict, `Target: ${review.target}`, `Recommendation: ${review.recommendation}`, "",
-    "## Findings", ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${f.direction}; ${f.evidence})\n\`${f.at}\`: ${f.what}`
-      + `${f.breaks?.length ? ` Breaks requirement ${f.breaks.join(", ")}.` : ""}\nFix: ${f.fix}\n`), "",
-    "## Ideas", ...list(review.ideas, (idea) => `- ${idea.at ? `\`${idea.at}\`: ` : ""}${idea.title}: ${idea.text}`), "",
-    ...(review.screens?.length ? ["## Screens", ...review.screens.flatMap((s) => [
-      `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).join(", ") || "no pictures"}.`,
-      ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` Reason: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
-      ...(s.missing ? [`  - Not compared: ${s.missing}`] : [])]), ""] : []),
-    "## Structure", ...list(units, (u) => unit(u, u.existing ? "Existing" : `${capital(u.verdict)}${cited(u.findings)}`)),
-    ...(target.length ? ["Target:", ...target.map((u) => unit(u, u.existing ? "Existing" : written.has(u.name) ? "From the change" : "To write"))] : []), "",
-    "## Change map",
-    ...blocks.map((b) => `- \`${b.path}:${b.where}\`: ${b.does} Serves ${b.serves.join(", ") || "nothing"}. ${capital(b.verdict)}${cited(b.findings)}.`),
-    ...requirements.filter((r) => !r.blocks.length).map((r) => `- No block serves requirement ${r.id}${r.broken.length ? ` (${r.broken.join(", ")})` : ", and no finding says it fails"}: ${r.text}`), "",
-    "## Questions and oddities", ...list(review.questions, (q) => `- \`${q.at}\`: ${q.text}`), "",
-    "## Coverage", review.coverage || "none",
+    `## ${t("change")}`, [review.change.goal, review.change.why].filter(Boolean).join(" "), ...review.change.parts.map((part) => `- ${part}`),
+    `${t("sources")}: ${review.change.sources.join("; ")}`,
+    `${t("requirements")}:`, ...requirements.map((r) => `${r.id}. ${r.text} (${word("source", r.source)}; ${state(r)})${r.doubt ? ` ${t("reconsider")}: ${r.doubt}` : ""}`), "",
+    `## ${t("verdict")}`, review.verdict, `${t("target")}: ${review.target}`, `${t("recommendation")}: ${review.recommendation}`,
+    ...(review.steps ?? []).map((step, index) => `${index + 1}. ${step.text}${cited(step.findings)}`), "",
+    `## ${t("findings")}`, ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${word("direction", f.direction)}; ${word("evidence", f.evidence)})\n\`${f.at}\`: ${f.what}`
+      + `${names("breaks", f.breaks)}${names("untested", f.untested)}\n${t("fix")}: ${f.fix}\n`), "",
+    `## ${t("ideas")}`, ...list(review.ideas, (idea) => `- ${idea.at ? `\`${idea.at}\`: ` : ""}${idea.title}: ${idea.text}`), "",
+    ...(review.screens?.length ? [`## ${t("screens")}`, ...review.screens.flatMap((s) => [
+      `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).map((shot) => t(shot).toLowerCase()).join(", ") || t("no-pictures")}.${s.match ? ` ${t("matches")}` : ""}`,
+      ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` ${t("reason")}: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
+      ...(s.missing ? [`  - ${t("not-compared")}: ${s.missing}`] : [])]), ""] : []),
+    `## ${t("structure")}`, ...list(units, (u) => unit(u, u.existing ? t("existing") : `${word("verdict", u.verdict)}${cited(u.findings)}`)),
+    ...(target.length ? [`${t("target")}:`, ...target.map((u) => unit(u, t(u.existing ? "existing" : written.has(u.name) ? "from-change" : "to-write")))] : []), "",
+    `## ${t("map")}`,
+    ...blocks.map((b) => `- \`${b.path}:${b.where}\`: ${b.does} ${b.serves.length ? `${t("serves")} ${b.serves.join(", ")}` : t("serves-nothing")}. ${capital(word("verdict", b.verdict))}${cited(b.findings)}.`),
+    ...requirements.filter((r) => !r.blocks.length).map((r) => `- ${t("requirement")} ${r.id}: ${t("no-block")}.`), "",
+    `## ${t("questions")}`, ...list(review.questions, (q) => `- \`${q.at}\`: ${q.text}`), "",
+    `## ${t("coverage")}`, review.coverage || t("none"),
   ].join("\n");
 }
 
@@ -57,9 +64,11 @@ try {
     }
     const model = modelOf(review, files, owner, directory), target = argument.replace(/(\.json)?$/, ".html");
     fs.writeFileSync(target, page(review, files, model));
-    console.log(`${markdown(review, model)}\n\nInteractive report: ${target}`);
+    console.log(`${markdown(review, model, labelsOf(review))}\n\n${labelsOf(review)("page")}: ${target}`);
+  } else if (command === "labels") {
+    console.log(JSON.stringify(LABELS, null, 2));
   } else {
-    console.error("usage: report.mjs lines <range> | report.mjs render <review.json>");
+    console.error("usage: report.mjs lines <range> | report.mjs render <review.json> | report.mjs labels");
     process.exit(2);
   }
 } catch (error) {

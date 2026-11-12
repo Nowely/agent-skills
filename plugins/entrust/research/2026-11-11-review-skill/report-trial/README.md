@@ -70,3 +70,17 @@ One run per case again, same author, no judge, nothing on the target model. Whet
 
 No judge, one run per target, nothing on the target model. Draft 17, the comparison of screens with a mockup, came after these runs and has not been run: no case has pictures.
 
+## Fourth pass: the page after the user read one
+
+The second Terra round ([rounds.md](../rounds.md#round-17-terra-round-2)) rendered four reviews written with draft 17, and the user read one of them. Three states of the page misled, and the user asked for a clearer order of things. The script changed; the skill's page did not, so the reference page for the data is for now ahead of the report shape in `SKILL.md`.
+
+- **A requirement is met only on the reviewer's word.** The page used to read "met" off a block that names the requirement. A requirement now carries `met`, as `ran` or `traced`, and without it reads "not checked". A finding about tests lists requirements under `untested` and no longer turns them to "fails"; a requirement both marked met and broken by a finding is refused.
+- **A screen nobody compared says so.** "No difference from the mockup" was printed for an empty list. A match is now a claim, `"match": true`, which needs the mockup and the result; a screen with neither a difference nor a match is shown as not compared.
+- **Decisions belong to one review.** They were stored under the title and the range, which two reviews of one change share. The page's name for them is now a digest of the review's content.
+- **Where a requirement comes from.** `source` is the task, a decision in discussion, an open question or an assumption; `doubt` holds what contradicts a requirement the reviewer would not take as given.
+- **Four parts, four labels.** The task, the review's conclusion, what to do and the target solution each stand under a label of their own; the recommendation is one sentence and an ordered list of steps that name findings by number; the range moved from the header to the foot.
+- **The reader's language.** A review carries the report's own words under `labels`, and `report.mjs labels` prints them to translate.
+- **Layout.** The diagram's boxes are markup, so their text wraps and is cut by the browser in any language; a tree shows the changed files with the units and blocks in each; the type is 13px against 15.
+- **A word the reviewer reached for.** One Terra render was refused for a unit verdict outside keep, split, merge and remove. A unit that stays one unit and changes inside had no word; it is now `fix`. A unit to split must have what it splits into in the target.
+
+[`after-round-2/contact-import-head`](after-round-2/contact-import-head/) is Terra's first review of that round, `terra-round-2/interactive/i01`, carried into this format by the page's author: the same findings, blocks and units, in Russian, each requirement given the source "task", the tests finding's requirements moved to `untested`, and the one-paragraph recommendation cut into five steps. It is there so that the user can read the same review on the new page; it measures nothing.

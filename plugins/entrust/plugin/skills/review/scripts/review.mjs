@@ -1,13 +1,18 @@
 // A review as data: its vocabulary, its faults against the diff, and the model both renderings read.
 // references/interactive-report.md defines the data for the reviewer; this file is what holds a review to it.
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { address, blank, changedLines, numberOf } from "./diff.mjs";
+import { labelFaults } from "./labels.mjs";
 
 export const VERDICTS = ["keep", "fix", "remove"];
-export const UNIT_VERDICTS = ["keep", "split", "merge", "remove"];
+export const UNIT_VERDICTS = ["keep", "fix", "split", "merge", "remove"];
 export const DIRECTIONS = ["behavior", "necessity", "design", "tests"];
 export const EVIDENCE = ["ran", "traced", "judgment"];
+// Where a requirement comes from, and how the reviewer knows it is met: "judgment" is no way to know that.
+export const SOURCES = ["task", "discussion", "question", "assumption"];
+export const MET = EVIDENCE.filter((word) => word !== "judgment");
 
 const PICTURE_TYPES = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif" };
 const SHOTS = ["mockup", "before", "after"];
@@ -48,6 +53,7 @@ export function check(review, files, directory) {
   if (!text(review.change?.goal)) errors.push('"change.goal" is missing');
   for (const field of ["parts", "sources"]) if (!filled(review.change?.[field])) errors.push(`"change.${field}" lists nothing`);
   for (const field of ["requirements", "findings", "blocks"]) if (!Array.isArray(review[field])) errors.push(`"${field}" is not a list`);
+  errors.push(...labelFaults(review));
   if (errors.length) return { errors, owner };
 
   const known = (items, what, key) => {
@@ -57,13 +63,27 @@ export function check(review, files, directory) {
   };
   const refs = (who, ids, listed, what) => { for (const id of ids ?? []) if (!listed.has(id)) errors.push(`${who} names ${what} ${id}, which is not listed`); };
   const requirements = known(review.requirements, "requirement", "id"), findings = known(review.findings, "finding", "id");
-  for (const r of review.requirements) if (!text(r.text)) errors.push(`requirement ${r.id} has no text`);
   for (const f of review.findings) {
     for (const field of ["title", "at", "what", "fix"]) if (!text(f[field])) errors.push(`finding ${f.id} has no "${field}"`);
     if (!DIRECTIONS.includes(f.direction)) errors.push(`finding ${f.id}: direction is one of ${DIRECTIONS.join(", ")}`);
     if (!EVIDENCE.includes(f.evidence)) errors.push(`finding ${f.id}: evidence is one of ${EVIDENCE.join(", ")}`);
     refs(`finding ${f.id}`, f.breaks, requirements, "requirement");
+    refs(`finding ${f.id}`, f.untested, requirements, "requirement");
+    // A missing test breaks no requirement, and only a finding about tests says one is missing.
+    if (f.direction === "tests" && f.breaks?.length) errors.push(`finding ${f.id} is about tests: it lists requirements under "untested", not "breaks"`);
+    if (f.direction !== "tests" && f.untested?.length) errors.push(`finding ${f.id} is not about tests: it lists requirements under "breaks", not "untested"`);
   }
+  for (const r of review.requirements) {
+    if (!text(r.text)) errors.push(`requirement ${r.id} has no text`);
+    if (!SOURCES.includes(r.source)) errors.push(`requirement ${r.id}: source is one of ${SOURCES.join(", ")}`);
+    if (r.met !== undefined && !MET.includes(r.met)) errors.push(`requirement ${r.id}: met is one of ${MET.join(", ")}, or left out when you did not check it`);
+    const breaking = review.findings.filter((f) => f.breaks?.includes(r.id)).map((f) => f.id);
+    if (r.met !== undefined && breaking.length) errors.push(`requirement ${r.id} is marked met, and finding ${breaking.join(", ")} breaks it`);
+  }
+  (review.steps ?? []).forEach((step, index) => {
+    if (!text(step.text)) errors.push(`step ${index + 1} has no "text"`);
+    refs(`step ${index + 1}`, step.findings, findings, "finding");
+  });
   for (const [index, idea] of (review.ideas ?? []).entries())
     for (const field of ["title", "text"]) if (!text(idea[field])) errors.push(`idea ${index + 1} has no "${field}"`);
 
@@ -72,7 +92,10 @@ export function check(review, files, directory) {
     if (!text(screen.name)) errors.push(`${name} has no "name"`);
     for (const shot of SHOTS) if (screen[shot] !== undefined && !pictureOf(screen[shot], directory))
       errors.push(`${name}: ${shot} "${screen[shot]}" is neither a picture file there (${Object.keys(PICTURE_TYPES).join(", ")}) nor an https link`);
-    if (!SHOTS.some((shot) => screen[shot] !== undefined) && !text(screen.missing)) errors.push(`${name} has no picture and no "missing"`);
+    // A match is a claim about two pictures; with nothing found and nothing claimed, the screen was not compared.
+    if (screen.match && (screen.mockup === undefined || screen.after === undefined)) errors.push(`${name} is said to match, and has no ${screen.mockup === undefined ? "mockup" : "after"} picture`);
+    if (screen.match && screen.differences?.length) errors.push(`${name} is said to match, and lists differences`);
+    if (!screen.match && !screen.differences?.length && !text(screen.missing)) errors.push(`${name} has no difference and no "match": say in "missing" what you could not compare`);
     for (const difference of screen.differences ?? []) {
       if (!text(difference.what)) errors.push(`${name}: a difference has no "what"`);
       if (!text(difference.why) && difference.finding === undefined) errors.push(`${name}: a difference has neither "why" nor "finding"`);
@@ -94,6 +117,9 @@ export function check(review, files, directory) {
     if (u.verdict !== "keep" && !u.findings?.length) errors.push(`unit ${u.name} is to ${u.verdict} and names no finding`);
     if (!review.blocks.some((b) => b.unit === u.name)) errors.push(`unit ${u.name} has no block: give its blocks "unit": "${u.name}", or mark it "existing"`);
   }
+
+  const written = (review.target_units ?? []).some((u) => !u.existing && !changed.has(u.name));
+  for (const u of units.filter((u) => u.verdict === "split")) if (!written) errors.push(`unit ${u.name} is to split, and the target has no new unit: name what it splits into in "target_units"`);
 
   review.blocks.forEach((block, index) => {
     const name = `block ${index + 1}`, file = files.find((f) => f.path === block.path);
@@ -131,8 +157,8 @@ export function check(review, files, directory) {
 }
 
 // What the renderings read: blocks with their number, lines and size; requirements with the blocks that serve
-// them and the findings that break them; units with their blocks; screens with their pictures read. Nothing here is
-// written by the reviewer twice.
+// them, the findings that break them and the ones that leave them untested; units with their blocks; screens with
+// their pictures read; and a name for this review that no other review has. Nothing here is written by the reviewer twice.
 export function modelOf(review, files, owner, directory) {
   const blocks = review.blocks.map((block, index) => ({ ...block, id: index + 1, serves: block.serves ?? [], findings: block.findings ?? [], added: [], removed: [] }));
   for (const file of files) for (const line of changedLines(file)) {
@@ -143,10 +169,13 @@ export function modelOf(review, files, owner, directory) {
     block.size = block.added.length + block.removed.length;
     block.where = [block.added.length && `+${compact(block.added)}`, block.removed.length && `-${compact(block.removed)}`].filter(Boolean).join(" ");
   }
+  const naming = (field, id) => review.findings.filter((f) => f[field]?.includes(id)).map((f) => f.id);
   const requirements = review.requirements.map((r) => ({ ...r, blocks: blocks.filter((b) => b.serves.includes(r.id)),
-    broken: review.findings.filter((f) => f.breaks?.includes(r.id)).map((f) => f.id) }));
+    broken: naming("breaks", r.id), untested: naming("untested", r.id) }));
   const unit = (u) => ({ ...u, uses: u.uses ?? [], findings: u.findings ?? [], blocks: blocks.filter((b) => b.unit === u.name) });
   const screens = (review.screens ?? []).map((screen) => ({ ...screen, differences: screen.differences ?? [],
     ...Object.fromEntries(SHOTS.filter((shot) => screen[shot] !== undefined).map((shot) => [shot, pictureOf(screen[shot], directory)])) }));
-  return { blocks, requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner };
+  const { labels, ...content } = review;
+  return { blocks, requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner,
+    key: createHash("sha256").update(JSON.stringify(content)).digest("hex").slice(0, 10) };
 }

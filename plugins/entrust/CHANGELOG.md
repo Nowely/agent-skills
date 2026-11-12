@@ -15,7 +15,10 @@ forensics remain in the repository references and release notes.
   keeps ideas apart from findings, compares what the user sees with the mockup from the pictures it was given, and reports the change's structure: its units, what each uses, and the same
   for the target. On request it writes the report as data: a
   script checks that every changed line belongs to one block, and draws a page with the diff cut into those
-  blocks, the structure as two diagrams, and each finding to apply or skip.
+  blocks, the structure as two diagrams, and each finding to apply or skip. The page sets the task, the
+  conclusion, what to do and the target under a label each; says of every requirement where it comes from and
+  whether it is met, fails, lacks a test or was not checked; and takes its own words in the reader's language
+  from the review.
 
 ## 0.36.0 — 2026-11-11
 
