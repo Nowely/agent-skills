@@ -24,7 +24,7 @@ Each directory holds its run's `review.json`, `review.html` and the printout as 
 
 - A Sonnet reviewer wrote valid data on the first attempt, in about a minute, using the `lines` listing as its reading of the diff.
 - Nine of its twelve blocks are a whole file each, written as `"all"`. For a framework that goes entirely that is one decision per file, but it also means the check passed without the reviewer looking inside those files line by line. `"all"` makes the rule easy to satisfy; whether to keep it, or allow it only for a block to remove, is open.
-- Converting the prose review exposed what prose lets through. Its line numbers were off in two places (a test at line 65 cited as 69, a skip at 72-75 cited as 75-79); the listing gives a block its lines exactly. Two of its findings had no fix and one no place; the format asks for both. Its map left about a fifth of the changed lines out; the check does not.
+- Converting the prose review exposed what prose lets through. Its line numbers were off in two places (a test at line 65 cited as 69, a skip at 72-75 cited as 75-79); the listing gives a block its lines exactly. Two of its findings had no fix and one no place; the format asks for both. Its map left 12 of the 118 non-blank changed lines in no block; the check lets none out.
 - The format has one gap. The prose review called requirements 2 and 4 unserved while blocks "serve them badly". Data derives "unserved" from `serves`, so the table shows both as served, by blocks to fix or remove. A requirement that has code and still fails is said only in a finding; the table cannot show it.
 - The rendering changed after the reviewer got its copy of the script: unchanged lines inside a block stay in it, long blocks fold. The check did not change.
 
