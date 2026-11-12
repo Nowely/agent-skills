@@ -1,11 +1,23 @@
 // A review as data: its vocabulary, its faults against the diff, and the model both renderings read.
 // references/interactive-report.md defines the data for the reviewer; this file is what holds a review to it.
+import fs from "node:fs";
+import path from "node:path";
 import { address, blank, changedLines, numberOf } from "./diff.mjs";
 
 export const VERDICTS = ["keep", "fix", "remove"];
 export const UNIT_VERDICTS = ["keep", "split", "merge", "remove"];
 export const DIRECTIONS = ["behavior", "necessity", "design", "tests"];
 export const EVIDENCE = ["ran", "traced", "judgment"];
+
+const PICTURE_TYPES = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif" };
+const SHOTS = ["mockup", "before", "after"];
+
+// A picture the reviewer was given: an https link stays a link, a file is taken in whole so the page needs nothing beside it.
+function pictureOf(source, directory) {
+  if (/^https:\/\//.test(source)) return { link: source };
+  const file = path.resolve(directory, String(source)), type = PICTURE_TYPES[path.extname(file).toLowerCase()];
+  return type && fs.existsSync(file) ? { data: `data:${type};base64,${fs.readFileSync(file).toString("base64")}` } : null;
+}
 
 // "3, 10-16" as [3, 10, 11, ... 16]; "all" as every line there is.
 function numbers(spec, all) {
@@ -29,7 +41,7 @@ function compact(list) {
 }
 
 // Every fault of the review, and which block owns each changed line ("path\n+12" -> block index).
-export function check(review, files) {
+export function check(review, files, directory) {
   const errors = [], owner = new Map();
   const text = (v) => typeof v === "string" && v.trim() !== "", filled = (v) => Array.isArray(v) && v.length > 0;
   for (const field of ["title", "range", "verdict", "target", "recommendation"]) if (!text(review[field])) errors.push(`"${field}" is missing`);
@@ -54,6 +66,19 @@ export function check(review, files) {
   }
   for (const [index, idea] of (review.ideas ?? []).entries())
     for (const field of ["title", "text"]) if (!text(idea[field])) errors.push(`idea ${index + 1} has no "${field}"`);
+
+  (review.screens ?? []).forEach((screen, index) => {
+    const name = `screen ${index + 1}`;
+    if (!text(screen.name)) errors.push(`${name} has no "name"`);
+    for (const shot of SHOTS) if (screen[shot] !== undefined && !pictureOf(screen[shot], directory))
+      errors.push(`${name}: ${shot} "${screen[shot]}" is neither a picture file there (${Object.keys(PICTURE_TYPES).join(", ")}) nor an https link`);
+    if (!SHOTS.some((shot) => screen[shot] !== undefined) && !text(screen.missing)) errors.push(`${name} has no picture and no "missing"`);
+    for (const difference of screen.differences ?? []) {
+      if (!text(difference.what)) errors.push(`${name}: a difference has no "what"`);
+      if (!text(difference.why) && difference.finding === undefined) errors.push(`${name}: a difference has neither "why" nor "finding"`);
+      if (difference.finding !== undefined) refs(name, [difference.finding], findings, "finding");
+    }
+  });
 
   const units = review.units ?? [], changed = new Set(units.filter((u) => !u.existing).map((u) => u.name));
   for (const [where, list] of [["units", units], ["target_units", review.target_units ?? []]]) {
@@ -106,8 +131,9 @@ export function check(review, files) {
 }
 
 // What the renderings read: blocks with their number, lines and size; requirements with the blocks that serve
-// them and the findings that break them; units with their blocks. Nothing here is written by the reviewer twice.
-export function modelOf(review, files, owner) {
+// them and the findings that break them; units with their blocks; screens with their pictures read. Nothing here is
+// written by the reviewer twice.
+export function modelOf(review, files, owner, directory) {
   const blocks = review.blocks.map((block, index) => ({ ...block, id: index + 1, serves: block.serves ?? [], findings: block.findings ?? [], added: [], removed: [] }));
   for (const file of files) for (const line of changedLines(file)) {
     const index = owner.get(`${file.path}\n${address(line)}`);
@@ -120,5 +146,7 @@ export function modelOf(review, files, owner) {
   const requirements = review.requirements.map((r) => ({ ...r, blocks: blocks.filter((b) => b.serves.includes(r.id)),
     broken: review.findings.filter((f) => f.breaks?.includes(r.id)).map((f) => f.id) }));
   const unit = (u) => ({ ...u, uses: u.uses ?? [], findings: u.findings ?? [], blocks: blocks.filter((b) => b.unit === u.name) });
-  return { blocks, requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), owner };
+  const screens = (review.screens ?? []).map((screen) => ({ ...screen, differences: screen.differences ?? [],
+    ...Object.fromEntries(SHOTS.filter((shot) => screen[shot] !== undefined).map((shot) => [shot, pictureOf(screen[shot], directory)])) }));
+  return { blocks, requirements, units: (review.units ?? []).map(unit), target: (review.target_units ?? []).map(unit), screens, owner };
 }

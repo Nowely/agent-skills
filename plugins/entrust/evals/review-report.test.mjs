@@ -24,6 +24,8 @@ const REVIEW = {
   requirements: [{ id: 1, text: "Upper case wherever a price is shown." }, { id: 2, text: "A requirement nothing serves." }],
   findings: [{ id: 1, title: "A finding", direction: "tests", evidence: "traced", at: "test/archive.test.js:5", what: "What happens.", fix: "The fix.", breaks: [2] }],
   ideas: [{ title: "An idea", at: "src/invoices/archive.js:2", text: "What it gains." }],
+  screens: [{ name: "The list", mockup: "https://design.example/list", before: "before.png", after: "after.png",
+    differences: [{ what: "A difference.", why: "The task says so." }, { what: "Another.", finding: 1 }], missing: "The empty state." }],
   units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["rows"], verdict: "keep" }, { name: "rows", existing: true, jobs: ["holds the rows"] }],
   target_units: [{ name: "readArchive", jobs: ["reads the archive"], uses: ["upper"] }, { name: "upper", jobs: ["a unit to write"] }],
   blocks: [
@@ -32,6 +34,9 @@ const REVIEW = {
   ],
   questions: [{ at: "docs/billing.md", text: "A question." }], coverage: "What was read.",
 };
+// The two pictures that review names, beside its data: one pixel each.
+for (const name of ["before.png", "after.png"])
+  fs.writeFileSync(path.join(run, name), Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64"));
 const report = (...args) => spawnSync(process.execPath, [SCRIPT, ...args], { cwd: repo, encoding: "utf8" });
 // The review with one part replaced, rendered: `change` gets a copy to alter.
 const render = (change = () => {}) => {
@@ -57,8 +62,10 @@ test("a complete review becomes one page that loads nothing from elsewhere and t
     const { status, stderr } = render();
     if (status !== 0) return `render failed: ${stderr}`;
     const page = fs.readFileSync(html, "utf8");
-    const outside = page.match(/\b(?:src|href)="(?!#)[^"]*"|@import|url\(/);
+    // A link the reader may follow is not a load: the only address on the page is the mockup's.
+    const outside = page.match(/\bsrc="(?!data:)[^"]*"|<link\b|@import|url\(/) ?? page.match(/href="(?!#|https:\/\/design\.example\/list")[^"]*"/);
     if (outside) return `the page reaches outside itself: ${outside[0]}`;
+    if ((page.match(/src="data:image\/png;base64,/g) ?? []).length !== 2) return "the two pictures given as files are not in the page";
     if (page.includes("<currency>") || !page.includes("&lt;currency&gt;")) return "the title reached the page unescaped";
     return (page.match(/<svg /g) ?? []).length === 2 && page.includes('class="t-k"') && page.includes('id="b1"') && page.includes(">fails<")
       && page.includes(">Recommendation<") && page.includes('id="i1"')
@@ -90,6 +97,8 @@ test("a review that does not match the diff is refused, every fault is listed, a
       [(r) => { delete r.change; }, '"change.goal" is missing'],
       [(r) => { delete r.recommendation; }, '"recommendation" is missing'],
       [(r) => { r.ideas[0].text = ""; }, 'idea 1 has no "text"'],
+      [(r) => { r.screens[0].before = "absent.png"; }, 'screen 1: before "absent.png" is neither a picture file there'],
+      [(r) => { delete r.screens[0].differences[0].why; }, 'screen 1: a difference has neither "why" nor "finding"'],
     ];
     for (const [change, fault] of faults) {
       const { status, stderr } = render(change);

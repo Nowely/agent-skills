@@ -12,7 +12,7 @@ forensics remain in the repository references and release notes.
   the smallest clean solution the change should become, with one reviewer or independent reviewers by
   direction. Orchestrate's cross-reviewer follows the same page.
 - `review` opens its report with what the change is for and where that was taken from, says what it would do next,
-  keeps ideas apart from findings, and reports the change's structure: its units, what each uses, and the same
+  keeps ideas apart from findings, compares what the user sees with the mockup from the pictures it was given, and reports the change's structure: its units, what each uses, and the same
   for the target. On request it writes the report as data: a
   script checks that every changed line belongs to one block, and draws a page with the diff cut into those
   blocks, the structure as two diagrams, and each finding to apply or skip.

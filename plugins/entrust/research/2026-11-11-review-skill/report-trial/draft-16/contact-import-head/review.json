@@ -1,0 +1,69 @@
+{
+  "title": "CSV import of contacts",
+  "range": "HEAD~1...HEAD",
+  "change": {
+    "goal": "Import contacts from CSV text into the address book, creating or renaming by email and reporting rejected rows.",
+    "why": "The brief asks for a bulk import with per-row rejection, email-keyed upsert, de-duplication inside a file, and no writes when the file cannot be parsed.",
+    "parts": ["src/contacts/import.js: importContacts with its own CSV splitter, validation, upsert, retry loop, strict and legacy modes, and a skip of a test domain", "test/import.test.js: four tests, one of them for each extra"],
+    "sources": ["/tmp/review-run-k6dXb5/brief.md", "the diff HEAD~1..HEAD"]
+  },
+  "verdict": "The happy path works, but the change misses two requirements: a repeated email in one file is counted as created plus updated, and an unparseable file is not detected, so earlier rows are already written. It also adds a second CSV parser and email check beside the project's own, plus several unrequested mechanisms (modes, retry, domain skip, rows) that silently drop rows or write partially.",
+  "target": "importContacts(text, store): parseCsv(text) (throws CsvError before any write), then validate each row with isEmail/normalizeEmail into a Map keyed by normalized email (last row wins), collecting rejected {line, reason}; then apply the map with store.findByEmail/insert/rename and count created/updated. Keeps only the validation reasons and upsert idea of the change.",
+  "recommendation": "Rewrite as the target, about 30 lines. Fix findings 1 and 2 first (they break stated requirements), then delete 4, 5 and 6, reuse isEmail (3), and add the tests of 7.",
+  "requirements": [
+    {"id": 1, "text": "Reject a row with an empty name or a non-address email; report its line number and reason; do not stop the import."},
+    {"id": 2, "text": "Email identifies a contact regardless of case and surrounding spaces; an existing email renames, a new one creates; the same email twice in a file counts once, last row wins."},
+    {"id": 3, "text": "Return the created and updated counts and the rejected rows."},
+    {"id": 4, "text": "Write nothing if the file cannot be parsed."}
+  ],
+  "findings": [
+    {"id": 1, "title": "Own CSV splitter instead of parseCsv: unclosed quotes undetected, multi-line fields break, writes happen while parsing", "direction": "behavior", "evidence": "traced", "at": "src/contacts/import.js:13", "what": "The text is split on \\n and each line parsed alone, while src/lib/csv.js parseCsv already handles BOM, CRLF, quoted line breaks and throws CsvError for an unclosed quote. With 'name,email\\nAnn,ann@site.test\\n\"Bob,bob@site.test\\n' Ann is inserted, then the unclosed quote just ends the line: no error, so nothing tells the caller the file is bad (requirement 4). A quoted name containing a newline is cut in two lines, giving wrong rejections and, after it, wrong line numbers (i+1 counts physical lines). A lone \\r line ending is not split. Parsing, validating and writing are done in one loop, so no write can be held back until the parse succeeds.", "fix": "Call parseCsv(text) first (its rows carry line and the header-keyed cells), let CsvError propagate, and only then touch the store.", "breaks": [4, 1]},
+    {"id": 2, "title": "A repeated email in one file is counted as created and updated", "direction": "behavior", "evidence": "traced", "at": "src/contacts/import.js:76", "what": "Rows are written as they are read. For 'Ann,a@x.test' then 'Anne,a@x.test' the first row inserts (created 1), the second finds it with findByEmail and counts updated 1. The brief says the same email twice counts once, last row wins: expected created 1, updated 0 with name Anne. The test suite has no such case.", "fix": "Collect the valid rows into a Map keyed by normalizeEmail(email) (later rows overwrite), then upsert once per key.", "breaks": [2]},
+    {"id": 3, "title": "Private email regex differs from isEmail", "direction": "necessity", "evidence": "traced", "at": "src/contacts/import.js:1", "what": "EMAIL_RE = /^\\S+@\\S+$/ accepts 'a@b' and 'a@@b', which src/contacts/email.js isEmail (and so createContact) rejects, since it requires a dot in the domain and one @. The same address is valid through the import and rejected by the form. The email is also normalized by hand five times instead of normalizeEmail.", "fix": "Import isEmail and normalizeEmail from ./email.js and delete EMAIL_RE.", "breaks": [1]},
+    {"id": 4, "title": "Rows of @example.invalid are silently dropped", "direction": "behavior", "evidence": "traced", "at": "src/contacts/import.js:72", "what": "A comment calls it temporary; no requirement asks for it. A valid row of that domain is neither created, updated nor rejected, so the user is not told, and it contradicts 'rows are rejected only when name or email is invalid'. Its test pins the behavior.", "fix": "Delete the branch and its test.", "breaks": [1]},
+    {"id": 5, "title": "Retry loop around insert is unnecessary and swallows errors", "direction": "necessity", "evidence": "traced", "at": "src/contacts/import.js:83", "what": "ContactStore.insert throws only when the email already exists; this was just checked with findByEmail, so a retry cannot succeed and the same error repeats three times. When it fails the row is dropped with continue: not created, not rejected, no reason. MAX_RETRIES has no source.", "fix": "Call store.insert once; let an unexpected error propagate.", "breaks": []},
+    {"id": 6, "title": "Unrequested modes and result.rows", "direction": "necessity", "evidence": "traced", "at": "src/contacts/import.js:5", "what": "mode 'strict' throws on the first bad row after earlier rows were written, so it leaves a partial import, and the brief says bad rows do not stop the import. mode 'legacy' changes the separator to ';' that nothing requires, and options.mode is read by no caller. result.rows is not in the return contract and holds the raw, unnormalized email. Each adds branches and a test.", "fix": "Remove options, mode, separator and result.rows; return {created, updated, rejected}.", "breaks": []},
+    {"id": 7, "title": "Tests miss the requirements and pin the extras", "direction": "tests", "evidence": "judgment", "at": "test/import.test.js:6", "what": "No test for a duplicate email in a file (finding 2 passes), for case or space differences in the email (an uppercase 'ANN@Site.test' row), for the rejection line number and reason (only the length is checked), for a rename actually changing the name, or for an unclosed quote writing nothing (finding 1 passes). Three of four tests cover extras (strict, legacy, example.invalid).", "fix": "Add those tests; drop the three that pin removed behavior.", "breaks": [2, 4]}
+  ],
+  "ideas": [
+    {"title": "Skip the rename call when the name is unchanged", "at": "src/contacts/import.js:78", "text": "Already done, but ContactStore.rename scans the whole map; a rename by id or the contact object would avoid it. Gains O(1) updates, costs a store change."}
+  ],
+  "units": [
+    {"name": "importContacts", "jobs": ["splits CSV text", "validates rows", "upserts into the store", "retries inserts", "switches modes"], "uses": ["ContactStore"], "verdict": "split", "findings": [1, 2, 3, 4, 5, 6]},
+    {"name": "ContactStore", "existing": true, "jobs": ["keeps the contacts by normalized email"]},
+    {"name": "parseCsv", "existing": true, "jobs": ["parses CSV text into rows with line numbers, throws CsvError"]},
+    {"name": "isEmail", "existing": true, "jobs": ["checks and normalizes an address"]}
+  ],
+  "target_units": [
+    {"name": "importContacts", "jobs": ["validates parsed rows", "keeps the last row per email", "applies it to the store"], "uses": ["parseCsv", "isEmail", "ContactStore"]},
+    {"name": "parseCsv", "existing": true, "jobs": ["parses CSV text into rows with line numbers, throws CsvError"]},
+    {"name": "isEmail", "existing": true, "jobs": ["checks and normalizes an address"]},
+    {"name": "ContactStore", "existing": true, "jobs": ["keeps the contacts by normalized email"]}
+  ],
+  "blocks": [
+    {"path": "src/contacts/import.js", "added": "1", "unit": "importContacts", "does": "private email regex", "serves": [1], "verdict": "remove", "findings": [3]},
+    {"path": "src/contacts/import.js", "added": "2", "unit": "importContacts", "does": "retry limit constant", "serves": [], "verdict": "remove", "findings": [5]},
+    {"path": "src/contacts/import.js", "added": "4, 7", "unit": "importContacts", "does": "function head with options, and the result with the extra rows list", "serves": [3], "verdict": "fix", "findings": [6]},
+    {"path": "src/contacts/import.js", "added": "5-6", "unit": "importContacts", "does": "mode and separator selection", "serves": [], "verdict": "remove", "findings": [6]},
+    {"path": "src/contacts/import.js", "added": "9-14, 17-23, 25-50", "unit": "importContacts", "does": "BOM, line splitting, blank lines and hand-written quote-aware cell splitting, header capture", "serves": [], "verdict": "remove", "findings": [1]},
+    {"path": "src/contacts/import.js", "added": "16, 99-101, 103-104", "unit": "importContacts", "does": "row loop, closers and return", "serves": [3], "verdict": "fix", "findings": [1, 2]},
+    {"path": "src/contacts/import.js", "added": "52-56", "unit": "importContacts", "does": "reads name and email cells by header", "serves": [1], "verdict": "fix", "findings": [1]},
+    {"path": "src/contacts/import.js", "added": "58-63", "unit": "importContacts", "does": "rejects an empty name, or throws in strict mode", "serves": [1], "verdict": "fix", "findings": [6, 1]},
+    {"path": "src/contacts/import.js", "added": "64-71", "unit": "importContacts", "does": "rejects a non-address email, or throws in strict mode", "serves": [1], "verdict": "fix", "findings": [3, 6]},
+    {"path": "src/contacts/import.js", "added": "72-75", "unit": "importContacts", "does": "silently skips the old test domain", "serves": [], "verdict": "remove", "findings": [4]},
+    {"path": "src/contacts/import.js", "added": "76-81", "unit": "importContacts", "does": "finds the contact by email and renames it, counting updated", "serves": [2, 3], "verdict": "fix", "findings": [2]},
+    {"path": "src/contacts/import.js", "added": "82, 96-97", "unit": "importContacts", "does": "new-email branch and created count", "serves": [2, 3], "verdict": "fix", "findings": [2]},
+    {"path": "src/contacts/import.js", "added": "83-95", "unit": "importContacts", "does": "insert retried three times, failures dropped", "serves": [], "verdict": "remove", "findings": [5]},
+    {"path": "src/contacts/import.js", "added": "98", "unit": "importContacts", "does": "records an accepted row in result.rows", "serves": [], "verdict": "remove", "findings": [6]},
+    {"path": "test/import.test.js", "added": "1-4", "does": "test imports", "serves": [], "verdict": "keep"},
+    {"path": "test/import.test.js", "added": "6-14", "does": "mixed file: one created, one updated, one rejected", "serves": [1, 2, 3], "verdict": "fix", "findings": [7]},
+    {"path": "test/import.test.js", "added": "16-18", "does": "strict mode throws", "serves": [], "verdict": "remove", "findings": [6]},
+    {"path": "test/import.test.js", "added": "20-22", "does": "legacy semicolon file", "serves": [], "verdict": "remove", "findings": [6]},
+    {"path": "test/import.test.js", "added": "24-26", "does": "old test domain skipped", "serves": [], "verdict": "remove", "findings": [4]}
+  ],
+  "questions": [
+    {"at": "src/contacts/import.js:52", "text": "A file with no name or email column rejects every row as 'name is empty'; should a missing column be an error instead? The brief does not say."},
+    {"at": "src/contacts/import.js:81", "text": "A row that renames to the same name counts as updated; the brief says an existing email 'renames', so this is probably intended, to be confirmed."}
+  ],
+  "coverage": "Read the whole diff, src/contacts/store.js, email.js, create.js, src/lib/csv.js and test/csv.test.js. Nothing was run (static review); a run of the duplicate-email and unclosed-quote inputs would confirm findings 1 and 2."
+}

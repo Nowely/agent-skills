@@ -30,6 +30,10 @@ The report of [the review page](../SKILL.md#the-report), written as data. A scri
       "findings": [{ "id": 1, "title": "what is wrong", "direction": "behavior", "evidence": "traced",
                      "at": "path:line", "what": "...", "fix": "...", "breaks": [1] }],
       "ideas": [{ "title": "the idea", "at": "path:line", "text": "what it gains and what it costs" }],
+      "screens": [{ "name": "the screen and its state", "mockup": "https://...", "before": "before.png", "after": "after.png",
+                    "differences": [{ "what": "how the result differs from the mockup", "why": "the reason given" },
+                                    { "what": "a difference nothing explains", "finding": 1 }],
+                    "missing": "what you could not compare, and the picture that would settle it" }],
       "units": [{ "name": "importContacts", "jobs": ["parses", "validates", "writes"], "uses": ["ContactStore"],
                   "verdict": "split", "findings": [1] },
                 { "name": "ContactStore", "existing": true, "jobs": ["keeps the contacts"] }],
@@ -47,6 +51,7 @@ Each field holds what the same part of the report holds, and these rules are che
 
 - **Findings.** `direction` is one of `behavior`, `necessity`, `design`, `tests`; `evidence` one of `ran`, `traced`, `judgment`. `breaks` lists the requirements the finding shows unmet; leave it out when it breaks none.
 - **Ideas.** `title` and `text`; `at` when the idea has a place. Leave the list out when there are none.
+- **Screens.** Only when the change alters what the user sees. `mockup`, `before` and `after` are each a picture you were given: a file, by its path from the data's directory, which the page takes in whole, or an `https` link, which stays a link. A difference has `what`, and `why` or the `finding` it is. A screen with no picture says in `missing` what would settle it. Leave the list out for a change nobody sees.
 - **Blocks.** `added` and `removed` list the block's lines in one file as numbers and ranges; a decision that spans files is one block per file. Every changed line that is not blank belongs to exactly one block. `"all"` names every such line of the file, and only a block to remove may use it: code that stays is listed by its lines. `serves` lists requirement ids and is empty for a block that serves nothing. `verdict` is `keep`, `fix` or `remove`, and a block to fix or remove names its findings. `unit` names the unit the block is part of; leave it out for a test or for a line outside any unit.
 - **Units.** The units as written: each has `jobs`, the units it `uses`, and a `verdict` of `keep`, `split`, `merge` or `remove`, with its findings unless it is kept. A unit of the change has at least one block. `"existing": true` marks code the change did not touch, listed because the change calls it or is called by it.
 - **Target units.** The same for the target, when it differs. A name that is also a unit of the change is carried over; a name that is neither that nor existing is to be written.

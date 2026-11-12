@@ -37,6 +37,7 @@ In every pass, also note what you cannot explain: a parameter nothing reads, a b
 - Run concrete values through each changed branch by hand: both sides of every comparison and the value on its boundary; the first, the last and the only element; a value the contract allows to be absent; the same input twice; a failure halfway through.
 - Follow each error to where it is handled and to what the user or the caller learns. An error that is caught and only logged, or a lookup that falls back silently, hides the failure from whoever must act on it.
 - Check security, data integrity, concurrency and performance where the change touches them, under the callers and load the project supports.
+- When the change alters what the user sees, work from the pictures you were given: the mockup, the screen before and the screen after. Compare them screen by screen and state by state. A difference from the mockup that has a reason, in the task or in a limit of the design system, is noted with that reason; one without is a finding, and so is a difference from before that no requirement asks for. A state the mockup does not show, such as empty, loading, error, long text or a narrow screen, is a question. Do not start the application to take pictures unless the user said to: say which screens you could not compare and which picture would settle each.
 
 ### Necessity
 
@@ -98,6 +99,11 @@ A requirement the change leaves to old code that does not meet it is the change'
     ## Ideas
     Not needed for the change to be accepted. One line each: where, the idea, what it gains and what
     it costs.
+
+    ## Screens
+    Only when the change alters what the user sees. One line per screen or state: the pictures you had
+    (mockup, before, after), then each difference from the mockup with its reason or the number of its
+    finding, then what you could not compare and the picture that would settle it.
 
     ## Structure
     One line per unit of step 3, the existing ones included: `unit -> the units it uses`, its jobs, then

@@ -53,3 +53,20 @@ After the trial the script moved into the skill, `plugin/skills/review/scripts/`
 - The converted review shows a fault the check does not catch: its one unit is to split, and its target has one unit. The prose review named no function to split it into, and the converter invented none.
 
 One run per case again, same author, no judge, nothing on the target model. Whether stating the structure changes what a reviewer finds, or only adds words, needs the judged round.
+
+## Third pass: draft 16, the recommendation and the ideas
+
+[`../drafts/16-ideas.md`](../drafts/16-ideas.md) adds a recommendation under the verdict and a section of ideas kept apart from the findings; the page sets the recommendation off and gives each idea the same Apply and Skip as a finding. Two fresh Sonnet reviews, each with the skill as installed and the interactive report asked for; `draft-16/` holds their data, pages and printouts.
+
+| Target | Tool calls | Render attempts | Blocks | Lines: keep / fix / remove | Findings | Ideas | Words |
+|---|---|---|---|---|---|---|---|
+| `contact-import/head` | 9 | 2 | 19 | 4 / 45 / 70 | 7 | 1 | 1368 |
+| `currency-contract/clean` | 8 | 1 | 2 | 11 / 0 / 0 | 0 | 2 | 383 |
+
+- On `contact-import/head` the check did its work for the first time: the first render was refused with "no block covers added 71", and the second passed.
+- On the clean change the review found nothing, recommended accepting it as is, and by its author's reading violated no trap. It offered two ideas, an end-to-end test and a refresh of the stale document. Its printout is shorter than the prose review of the same target in the second pilot, 383 words against 480.
+- The idea on the bloated change is a faster rename in the store, outside the change and with no load named. Whether a judge counts such ideas as unsupported claims is what the judged round has to show.
+- The clean run exposed a fault of the page, fixed since: a requirement that needs no change, with no block and no finding against it, was shown as a failure.
+
+No judge, one run per target, nothing on the target model. Draft 17, the comparison of screens with a mockup, came after these runs and has not been run: no case has pictures.
+

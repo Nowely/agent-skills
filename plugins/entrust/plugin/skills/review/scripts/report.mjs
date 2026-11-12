@@ -10,6 +10,7 @@
 // not taken on trust.
 
 import fs from "node:fs";
+import path from "node:path";
 import { address, changedLines, diffOf } from "./diff.mjs";
 import { page } from "./page.mjs";
 import { check, modelOf } from "./review.mjs";
@@ -29,6 +30,10 @@ function markdown(review, { blocks, requirements, units, target }) {
     "## Findings", ...list(review.findings, (f) => `### ${f.id}. ${f.title} (${f.direction}; ${f.evidence})\n\`${f.at}\`: ${f.what}`
       + `${f.breaks?.length ? ` Breaks requirement ${f.breaks.join(", ")}.` : ""}\nFix: ${f.fix}\n`), "",
     "## Ideas", ...list(review.ideas, (idea) => `- ${idea.at ? `\`${idea.at}\`: ` : ""}${idea.title}: ${idea.text}`), "",
+    ...(review.screens?.length ? ["## Screens", ...review.screens.flatMap((s) => [
+      `- ${s.name}: ${["mockup", "before", "after"].filter((shot) => s[shot]).join(", ") || "no pictures"}.`,
+      ...(s.differences ?? []).map((d) => `  - ${d.what}${d.why ? ` Reason: ${d.why}` : ""}${d.finding === undefined ? "" : ` (${d.finding})`}`),
+      ...(s.missing ? [`  - Not compared: ${s.missing}`] : [])]), ""] : []),
     "## Structure", ...list(units, (u) => unit(u, u.existing ? "Existing" : `${capital(u.verdict)}${cited(u.findings)}`)),
     ...(target.length ? ["Target:", ...target.map((u) => unit(u, u.existing ? "Existing" : written.has(u.name) ? "From the change" : "To write"))] : []), "",
     "## Change map",
@@ -45,12 +50,12 @@ try {
     for (const file of diffOf(argument)) console.log([file.path, ...changedLines(file).map((l) => `  ${address(l).padEnd(6)} ${l.text}`)].join("\n"));
   } else if (command === "render" && argument) {
     const review = JSON.parse(fs.readFileSync(argument, "utf8")), files = diffOf(review.range ?? "");
-    const { errors, owner } = check(review, files);
+    const directory = path.dirname(path.resolve(argument)), { errors, owner } = check(review, files, directory);
     if (errors.length) {
       console.error(`The review does not match the diff; fix these ${errors.length} and render again:\n${errors.map((e) => `- ${e}`).join("\n")}`);
       process.exit(1);
     }
-    const model = modelOf(review, files, owner), target = argument.replace(/(\.json)?$/, ".html");
+    const model = modelOf(review, files, owner, directory), target = argument.replace(/(\.json)?$/, ".html");
     fs.writeFileSync(target, page(review, files, model));
     console.log(`${markdown(review, model)}\n\nInteractive report: ${target}`);
   } else {

@@ -85,6 +85,13 @@ textarea { width: 100%; min-height: 14rem; font: .85rem/1.45 var(--mono); color:
 .accent { --v: var(--accent); --v-bg: color-mix(in srgb, var(--accent) 12%, transparent) }
 .callout { border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); padding: .75rem 1rem }
 .idea { border-color: var(--accent) }
+.shots figure { flex: 1 1 15rem; max-width: 34rem }
+.shots img { display: block; width: 100%; height: auto; border: 1px solid var(--line) }
+.shots a { overflow-wrap: anywhere }
+.shots.overlaid { display: block; position: relative; max-width: 34rem }
+.shots.overlaid .before { display: none }
+.shots.overlaid .after { position: absolute; top: 0; left: 0; width: 100%; opacity: var(--blend, .5) }
+.shots.overlaid .after figcaption { visibility: hidden }
 .plain { margin: 0; padding-left: 1.2rem; max-width: 72ch }
 .t-c { color: var(--muted); font-style: italic } .t-s { color: var(--string) } .t-n { color: var(--number) } .t-k { color: var(--accent) }
 .l.ctx [class^="t-"] { color: inherit }
@@ -147,6 +154,9 @@ const SCRIPT = `
       map.dataset.show = button.dataset.show;
       for (const other of all("[data-show]")) if (other !== map) other.setAttribute("aria-pressed", String(other === button));
       return;
+    } else if (button.dataset.overlay !== undefined) {
+      button.setAttribute("aria-pressed", String(button.closest("article").querySelector(".shots").classList.toggle("overlaid")));
+      return;
     } else if (button.id === "apply-all") for (const f of data.findings) state.findings[f.id] = "apply";
     else if (button.id === "clear") state = { findings: {}, notes: {} };
     else if (button.id === "copy") {
@@ -158,6 +168,7 @@ const SCRIPT = `
     save(); paint();
   });
   document.addEventListener("input", (event) => {
+    if (event.target.dataset.blend !== undefined) event.target.closest("article").querySelector(".shots").style.setProperty("--blend", event.target.value / 100);
     const id = event.target.dataset.note;
     if (!id) return;
     if (event.target.value.trim()) state.notes[id] = event.target.value.trim(); else delete state.notes[id];
@@ -200,6 +211,25 @@ function summary(review, { blocks, requirements }) {
   ${table(["#", "Requirement", "Status", "Blocks that serve it", "Lines"], [
     ...requirements.map((r) => `<tr><td class="n">${esc(r.id)}</td><td>${prose(r.text)}</td><td>${status(r)}</td><td>${r.blocks.map(chip).join("") || "none"}</td><td class="n">${sizeOf(r.blocks)}</td></tr>`),
     `<tr><td></td><td><strong>Nothing</strong>: no requirement would fail without these</td><td></td><td>${idle.map(chip).join("") || "none"}</td><td class="n">${sizeOf(idle)}</td></tr>`])}</div>
+</section>`;
+}
+
+// What the user sees: the pictures the reviewer was given, side by side or the result laid over the mockup, and each difference.
+function screens({ screens: shown }) {
+  if (!shown.length) return "";
+  const shot = (label, picture) => !picture ? "" : `<figure class="${label.toLowerCase()}"><figcaption class="label">${label}</figcaption>`
+    + `${picture.link ? `<a href="${esc(picture.link)}" target="_blank" rel="noopener">${esc(picture.link)}</a>` : `<img src="${picture.data}" alt="${label}">`}</figure>`;
+  return `
+<section id="screens" class="stack"><h2>Screens</h2>${shown.map((s, index) => `
+  <article class="finding">
+    <h3>${esc(s.name)}</h3>
+    <div class="pair shots">${shot("Mockup", s.mockup)}${shot("Before", s.before)}${shot("After", s.after)}</div>
+    ${s.mockup?.data && s.after?.data ? `<div class="group act"><button type="button" data-overlay aria-pressed="false">Lay the result over the mockup</button>`
+      + `<label class="group sub" for="blend-${index + 1}">Result <input type="range" id="blend-${index + 1}" data-blend min="0" max="100" value="50"></label></div>` : ""}
+    ${s.differences.length ? `<ul class="plain">${s.differences.map((d) => `<li>${prose(d.what)}${d.why ? ` <span class="sub">Reason: ${prose(d.why)}</span>` : ""}`
+      + `${d.finding === undefined ? "" : ` <span class="tag v-remove">finding</span> ${cite([d.finding])}`}</li>`).join("")}</ul>` : '<p class="sub">No difference from the mockup.</p>'}
+    ${s.missing ? `<p><strong>Not compared:</strong> ${prose(s.missing)}</p>` : ""}
+  </article>`).join("")}
 </section>`;
 }
 
@@ -296,10 +326,11 @@ export function page(review, files, model) {
 <div class="wrap">
 <header class="stack"><h1>Review of ${esc(review.title)}</h1><span class="sub mono">${esc(review.range)}</span></header>
 ${summary(review, model)}
+${screens(model)}
 ${drawn}
 <section class="stack">
   <div class="bar">
-    <nav><a href="#summary">Summary</a>${drawn ? '<a href="#structure">Structure</a>' : ""}<a href="#map">Change map</a><a href="#findings">Findings</a>${offered ? '<a href="#ideas">Ideas</a>' : ""}<a href="#decisions">Decisions</a></nav>
+    <nav><a href="#summary">Summary</a>${model.screens.length ? '<a href="#screens">Screens</a>' : ""}${drawn ? '<a href="#structure">Structure</a>' : ""}<a href="#map">Change map</a><a href="#findings">Findings</a>${offered ? '<a href="#ideas">Ideas</a>' : ""}<a href="#decisions">Decisions</a></nav>
     <span class="group act"><span class="sub">Show</span>${["all", ...VERDICTS].map((v) => `<button type="button" data-show="${v}" aria-pressed="${v === "all"}">${v}</button>`).join("")}</span>
     <span class="sub act" id="progress"></span>
   </div>
