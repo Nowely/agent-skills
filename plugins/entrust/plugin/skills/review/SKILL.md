@@ -51,7 +51,7 @@ In every pass, also note what you cannot explain: a parameter nothing reads, a b
 
 ### Design
 
-Judge how the blocks are grouped into units and how the units depend on each other. Do it with a test: take each rule of step 3 and each requirement in turn as the one that changes, and note the lines you must read to change it safely and the units you would edit.
+Judge how the blocks are grouped into units and how the units depend on each other. Do it with a test: take each rule of step 3 and each requirement in turn as the one that changes, and note what you must read to change it safely and the units you would edit.
 
 - **Tangled.** Rules that can change apart and cannot be read apart: one reassigns a variable another reads, an early return of one decides whether the next runs, a flag one sets another tests, their inputs are fetched together, or their blocks alternate. Rules that only follow one another in one function can be tangled this way. Propose the smallest separation that lets each rule be read alone: a named piece that takes what the rule reads and returns its outcome, deciding kept apart from doing, and an entry point that reads as the list of rules in the order they win. Show that entry point.
 - **Scattered.** One rule or requirement whose change touches several units that nothing else changes. Propose bringing it together.
@@ -73,7 +73,7 @@ Reopen the cited code and look for what makes you wrong: a check upstream, a con
 
 - **A defect** needs a trigger that is one of the entries of step 2, the path from it, and the wrong result. A trigger nothing in the repository or the task produces makes it a question: say who would know.
 - **A removal or simplification** needs the required behavior to survive it. Say what an observer would see change, also with no further input: after time passes, on a retry, on a reload. Where it rests on what a dependency does, it needs the line of the installed version; with a neighbouring function, a document or another package's type instead, it is a question that names the file to read.
-- **A design finding** needs the rule or requirement whose change the structure makes harder, the lines that change makes you read or edit today, and the same count in the structure you propose. It is a judgment; label it one. A structure that only reads better to you, with no such change to name, is an idea.
+- **A design finding** needs the rule or requirement whose change the structure makes harder, what you must hold in mind together to make that change today, the other rules, the shared variables and flags, the fetched inputs, and what of that is left in the structure you propose. It is a judgment; label it one. A structure that only reads better to you, with no such change to name, is an idea.
 - **A test gap** needs the regression that passes today.
 - **Your own fix** passes the same tests: it names the contract or the entry that makes it necessary, and adds no guard, fallback, retry, option, layer or pattern for an input or a future you have not shown.
 
@@ -105,8 +105,8 @@ A requirement the change leaves to old code that does not meet it is the change'
     makes harder. Name the requirement it breaks.
     Shown by: for a defect, the entry that triggers it, as the caller's `path:line` or the task's
     sentence; for something unnecessary, the line of the contract that excludes it; for structure, the
-    rule or requirement and the lines its change makes you read; for a test gap, the regression that
-    passes.
+    rule or requirement and what its change makes you read together; for a test gap, the regression
+    that passes.
     Fix: the smallest change.
 
     ## Ideas

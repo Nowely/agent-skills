@@ -164,7 +164,7 @@ test("every review gets an implementer, every target one that saw no review, and
       && fs.readFileSync(path.join(dir, "work", reviewed.id, "review.md"), "utf8").startsWith("The review of") || "a work directory holds something other than the repository, the task and the review";
   });
 
-test("the outcome is read off the code that is left: the checks it passes, what was changed, and the probes a judge ruled on",
+test("the outcome is read off the code that is left: the checks it passes, what was changed, its own tests, and the probes a judge ruled on",
   "a review is for the code that comes after it; a table of what reviews said cannot show whether acting on one gives a simpler correct solution",
   () => {
     const dir = reviewedRound(), manifest = implement(dir), rubric = rubricOf(probed), ids = rubric.probes.map((p) => p.id);
@@ -176,19 +176,57 @@ test("the outcome is read off the code that is left: the checks it passes, what 
     const verdicts = (anchorHead) => manifest.filter((m) => m.variant === "head" || m.anchor)
       .map((m) => ruled(m, m === fixed || (m.anchor && m.variant === "clean") ? "local" : m.anchor ? anchorHead : "tangled"));
     fs.writeFileSync(path.join(dir, "outcome-verdicts.json"), JSON.stringify(verdicts("tangled")));
-    const { results, blind } = outcome(dir), by = (id) => results.find((r) => r.id === id);
+    const { results, disputed } = outcome(dir), by = (id) => results.find((r) => r.id === id);
     const [left] = manifest.filter((m) => m.variant === "head" && m.review && m !== fixed), [kept] = manifest.filter((m) => m.variant === "clean" && m.review);
-    if (blind.length || results.length !== 6) return `unexpected results: ${results.length}, blind ${blind}`;
-    if (!by(fixed.id).done || by(fixed.id).failed.length || by(fixed.id).changed === 0 || by(fixed.id).size !== by(fixed.id).reference) return "the implementation that became the clean form is not recovered at the clean form's size";
-    if (by(left.id).done || by(left.id).failed.sort().join() !== [...rubric.head.fails].sort().join() || by(left.id).changed !== 0) return "the untouched first-written form is not shown failing what its rubric lists";
-    if (!by(kept.id).done || by(kept.id).changed !== 0 || by(kept.id).probes !== null) return "the untouched clean form is not shown as kept";
+    if (disputed.length || results.length !== 6) return `unexpected results: ${results.length}, disputed ${disputed}`;
+    if (by(fixed.id).state !== "recovered" || by(fixed.id).changed.code === 0 || by(fixed.id).changed.tests === 0 || by(fixed.id).size !== by(fixed.id).reference || by(fixed.id).tests.status !== "passed")
+      return "the implementation that became the clean form is not recovered at the clean form's size, with code and tests changed and its tests passing";
+    if (by(left.id).state !== "not recovered" || by(left.id).failed.sort().join() !== [...rubric.head.fails].sort().join() || by(left.id).changed.code !== 0) return "the untouched first-written form is not shown failing what its rubric lists";
+    if (by(kept.id).state !== "kept" || by(kept.id).changed.code !== 0 || by(kept.id).probes !== null) return "the untouched clean form is not shown as kept";
     if (!fs.readFileSync(path.join(dir, "patches", `${fixed.id}.patch`), "utf8").includes("+++ b/")) return "what the implementer changed was not saved";
     const text = outcomeTable(results);
-    if (!text.includes(`| ${fixed.arm} | ${probed}/head | 1 | 1 | ${by(fixed.id).checks} / ${by(fixed.id).checks} | ${ids.length} / ${ids.length} | 1.00 |`)) return `unexpected table:\n${text}`;
-    // A judge who rules the first-written form as local as the clean one has not seen the difference: nothing of that case is counted.
-    fs.writeFileSync(path.join(dir, "outcome-verdicts.json"), JSON.stringify(verdicts("local")));
-    const again = outcome(dir);
-    return again.blind.join() === probed && again.results.every((r) => r.probes === null) || "a judge who could not tell the anchors apart was counted";
+    return text.includes(`| ${fixed.arm} | ${probed}/head | 1 | 1 recovered | ${by(fixed.id).checks} / ${by(fixed.id).checks} | ${ids.length} / ${ids.length} | 1 passed | 1.00 |`) || `unexpected table:\n${text}`;
+  });
+
+test("a result whose probes nobody ruled on, or whose judge is disputed, is not counted as recovered",
+  "a missing verdict file once made every implementation that passed the checks a recovery: the design half of the result was assumed",
+  () => {
+    const dir = reviewedRound(), manifest = implement(dir), ids = rubricOf(probed).probes.map((p) => p.id);
+    const [fixed] = manifest.filter((m) => m.variant === "head" && m.review), repo = path.join(dir, "work", fixed.id, "repo");
+    for (const entry of fs.readdirSync(repo)) if (entry !== ".git") fs.rmSync(path.join(repo, entry), { recursive: true });
+    fs.cpSync(path.join(CASES, probed, "clean"), repo, { recursive: true });
+    const state = () => outcome(dir).results.find((r) => r.id === fixed.id);
+    const unruled = state();
+    if (unruled.state !== "not assessed" || unruled.failed.length || unruled.probes !== null) return `with no verdicts the passing result is "${unruled.state}"`;
+    // A judge who rules the first-written form as local as the clean one: the case is disputed, and its rulings stay in the record.
+    fs.writeFileSync(path.join(dir, "outcome-verdicts.json"), JSON.stringify(manifest.filter((m) => m.variant === "head" || m.anchor)
+      .map((m) => ({ id: m.id, probes: Object.fromEntries(ids.map((id) => [id, "local"])) }))));
+    const again = outcome(dir), disputedOne = again.results.find((r) => r.id === fixed.id);
+    if (again.disputed.join() !== probed || disputedOne.state !== "disputed" || disputedOne.probes?.local !== ids.length) return `with the anchors not told apart the result is "${disputedOne.state}"`;
+    const text = outcomeTable(again.results);
+    if (!text.includes(`| ${fixed.arm} | ${probed}/head | 1 | 1 disputed | `) || text.includes("recovered |") && !text.includes("not recovered")) return `the table counts a disputed result:\n${text}`;
+    // A case without probes can pass its checks and nothing more is known of it.
+    const bare = names.find((name) => !rubricOf(name).probes?.length), other = tempDir("review-outcome-");
+    fs.mkdirSync(path.join(other, "returns"));
+    fs.writeFileSync(path.join(other, "runs.json"), JSON.stringify([{ run: "r01", case: bare, variant: "clean", arm: "control", review: "returns/r01.md" }, { run: "r02", case: bare, variant: "head", arm: "control", review: "returns/r02.md" }]));
+    for (const run of ["r01", "r02"]) fs.writeFileSync(path.join(other, "returns", `${run}.md`), "A review.");
+    const [onHead] = implement(other).filter((m) => m.variant === "head" && m.review), tree = path.join(other, "work", onHead.id, "repo");
+    for (const entry of fs.readdirSync(tree)) if (entry !== ".git") fs.rmSync(path.join(tree, entry), { recursive: true });
+    fs.cpSync(path.join(CASES, bare, "clean"), tree, { recursive: true });
+    return outcome(other).results.find((r) => r.id === onHead.id).state === "checks only" || "a case with no probes was counted as recovered on its checks alone";
+  });
+
+test("the repository's own tests end as passed, failed, unfinished or none, and none is not a pass",
+  "pass and fail counts with the exit status dropped made a run that crashed, and one with no tests, look like a clean one",
+  () => {
+    const dir = reviewedRound(), manifest = implement(dir), heads = manifest.filter((m) => m.variant === "head" && !m.anchor);
+    const repo = (m) => path.join(dir, "work", m.id, "repo"), testsIn = (m) => path.join(repo(m), "test");
+    fs.writeFileSync(path.join(testsIn(heads[0]), "broken.test.js"), 'import test from "node:test";\ntest("fails", () => { throw new Error("no"); });\n');
+    fs.rmSync(testsIn(heads[1]), { recursive: true });
+    const status = Object.fromEntries(outcome(dir).results.map((r) => [r.id, r.tests]));
+    if (status[heads[0].id].status !== "failed" || status[heads[0].id].exit === 0) return `a failing test is "${status[heads[0].id].status}"`;
+    if (status[heads[1].id].status !== "none") return `a repository with no tests is "${status[heads[1].id].status}"`;
+    return status[heads[2].id].status === "passed" || `untouched tests are "${status[heads[2].id].status}"`;
   });
 
 test("the page that tells an operator how to run a round names every case",
