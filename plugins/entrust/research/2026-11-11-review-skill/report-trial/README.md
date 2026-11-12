@@ -1,0 +1,30 @@
+# Interactive report trial
+
+Can a review be written as data, checked against the diff, and drawn as a page on which the author decides what to apply? A trial, not part of the installed skill.
+
+## What was tried
+
+- [`report.mjs`](report.mjs) runs in the repository under review. `lines <range>` prints every changed line with its address. `render <review.json>` checks the review against the diff, refuses it with the list of faults, and otherwise writes `review.html` beside the data and prints the review as markdown in the skill's report shape.
+- [`../drafts/14-report.md`](../drafts/14-report.md) is draft 13 with one added section, "Interactive report": the data format and the three steps.
+
+The check makes one rule of draft 13 mechanical: every changed line, added or removed, belongs to exactly one block. It also refuses an unknown requirement or finding id, and a block to fix or remove that names no finding. Blank lines need no block. The requirements no block serves are worked out from the blocks, so the reviewer does not write them twice.
+
+The page is one file with no dependencies. It reads without scripts. With them, each finding takes Apply or Skip, each finding and block takes a note, a block whose findings are all skipped shows as kept, and the decisions come out as text to hand back to whoever makes the change. Its parts: the verdict and target; the share of changed lines the reviewer would keep, fix and remove; a table of what each requirement gets and which blocks serve nothing; the diff cut into blocks, each with its verdict, what it does, what it serves and its findings; the findings; the decisions.
+
+## Runs
+
+| Target | Who wrote the data | Tool calls | Render attempts | Blocks | Lines: keep / fix / remove | Words |
+|---|---|---|---|---|---|---|
+| `overdue-notice/head` | Sonnet, a fresh review with draft 14 | 7 | 1 | 12 | 0 / 35 / 303 | 910 |
+
+`overdue-notice-head/` holds that run's `review.json`, `review.html` and the printout as `review.md`. The reviewer was a Claude Code subagent on Sonnet at default effort, given the prompt of `evals/review/prepare.mjs` with two changes: it was told the user asked for the interactive report, and it was allowed to write the data file and run the script. No judge graded the review. By its author's reading it names all six find items of the case's rubric and violates no trap.
+
+## What it showed
+
+- A Sonnet reviewer wrote valid data on the first attempt, in about a minute, using the `lines` listing as its reading of the diff.
+- Nine of its twelve blocks are a whole file each, written as `"all"`. For a framework that goes entirely that is one decision per file, but it also means the check passed without the reviewer looking inside those files line by line. `"all"` makes the rule easy to satisfy; whether to keep it, or allow it only for a block to remove, is open.
+- The rendering changed after the reviewer got its copy of the script: unchanged lines inside a block stay in it, long blocks fold. The check did not change.
+
+## What it did not show
+
+One run on one case, by the same author as the case, with no comparison arm and no judge. Nothing was run on the target model. Whether writing data instead of prose changes what a reviewer finds is not measured. The page was looked at in a headless browser at desktop and phone width in both themes; no person has decided a real review with it.
