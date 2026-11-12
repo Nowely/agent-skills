@@ -16,13 +16,16 @@ The page is one file with no dependencies. It reads without scripts. With them, 
 | Target | Who wrote the data | Tool calls | Render attempts | Blocks | Lines: keep / fix / remove | Words |
 |---|---|---|---|---|---|---|
 | `overdue-notice/head` | Sonnet, a fresh review with draft 14 | 7 | 1 | 12 | 0 / 35 / 303 | 910 |
+| `contact-import/head` | Haiku, converting the Sonnet review of [the second pilot](../sonnet-pilot-2/returns/s1.md) | 12 | 1 | 14 | 15 / 47 / 68 | 1374 |
 
-`overdue-notice-head/` holds that run's `review.json`, `review.html` and the printout as `review.md`. The reviewer was a Claude Code subagent on Sonnet at default effort, given the prompt of `evals/review/prepare.mjs` with two changes: it was told the user asked for the interactive report, and it was allowed to write the data file and run the script. No judge graded the review. By its author's reading it names all six find items of the case's rubric and violates no trap.
+Each directory holds its run's `review.json`, `review.html` and the printout as `review.md`. The first reviewer was a Claude Code subagent on Sonnet at default effort, given the prompt of `evals/review/prepare.mjs` with two changes: it was told the user asked for the interactive report, and it was allowed to write the data file and run the script. No judge graded the review. By its author's reading it names all six find items of the case's rubric and violates no trap. The second run reviewed nothing: a Haiku subagent carried a finished prose review into the format, told to keep its content, to split the test file by test and to put a function's framing lines in a block of their own.
 
 ## What it showed
 
 - A Sonnet reviewer wrote valid data on the first attempt, in about a minute, using the `lines` listing as its reading of the diff.
 - Nine of its twelve blocks are a whole file each, written as `"all"`. For a framework that goes entirely that is one decision per file, but it also means the check passed without the reviewer looking inside those files line by line. `"all"` makes the rule easy to satisfy; whether to keep it, or allow it only for a block to remove, is open.
+- Converting the prose review exposed what prose lets through. Its line numbers were off in two places (a test at line 65 cited as 69, a skip at 72-75 cited as 75-79); the listing gives a block its lines exactly. Two of its findings had no fix and one no place; the format asks for both. Its map left about a fifth of the changed lines out; the check does not.
+- The format has one gap. The prose review called requirements 2 and 4 unserved while blocks "serve them badly". Data derives "unserved" from `serves`, so the table shows both as served, by blocks to fix or remove. A requirement that has code and still fails is said only in a finding; the table cannot show it.
 - The rendering changed after the reviewer got its copy of the script: unchanged lines inside a block stay in it, long blocks fold. The check did not change.
 
 ## What it did not show

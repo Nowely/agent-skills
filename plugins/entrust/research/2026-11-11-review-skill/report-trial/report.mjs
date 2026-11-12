@@ -327,7 +327,7 @@ function page(review, files, owner, { blocks, unserved }) {
     shown.add(b.id);
     if (!first) return `<header><div class="row"><span class="tag">${b.verdict}</span><a href="#b${b.id}">B${b.id}</a><span class="sub">continued</span></div></header>`;
     return `<header><div class="row"><span class="tag">${b.verdict}</span><strong>B${b.id}</strong><span>${esc(b.does)}</span></div>`
-      + (`<div class="row sub"><span>${b.serves.length ? `Serves ${b.serves.map((id) => `requirement ${esc(id)}`).join(", ")}` : "Serves nothing"}</span><span class="mono">${esc(b.where)}</span></div>`
+      + (`<div class="row sub"><span>${b.serves.length ? `Serves requirement${b.serves.length > 1 ? "s" : ""} ${b.serves.map(esc).join(", ")}` : "Serves nothing"}</span><span class="mono">${esc(b.where)}</span></div>`
         + (b.findings.length ? `<ul>${b.findings.map((id) => `<li><a href="#f${id}">${esc(id)}. ${esc(findingOf(id).title)}</a>${decide(id)}</li>`).join("")}</ul>` : "")
         + `<input class="act" type="text" id="note-b${b.id}" data-note="b${b.id}" placeholder="Your note on this block" aria-label="Your note on block ${b.id}">`)
       + "</header>";
