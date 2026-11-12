@@ -356,6 +356,7 @@ export function page(review, files, model) {
     <h3>${esc(f.id)}. ${esc(f.title)}</h3>
     <div class="group sub"><span>${esc(t(`direction.${f.direction}`))}</span><span>${esc(t(`evidence.${f.evidence}`))}</span><code>${esc(f.at)}</code>${model.blocks.filter((b) => b.findings.includes(f.id)).map(chip).join("")}</div>
     <p>${prose(f.what)}${names("breaks", f.breaks)}${names("untested", f.untested)}</p>
+    <p><strong>${esc(t("shown-by"))}:</strong> ${prose(f.shown_by)}</p>
     <p><strong>${esc(t("fix"))}:</strong> ${prose(f.fix)}</p>
     ${decide(f.id)}
     <input class="act" type="text" id="note-f${esc(f.id)}" data-note="f${esc(f.id)}" placeholder="${esc(t("note-finding"))}" aria-label="${esc(t("note-finding"))}: ${esc(f.id)}">

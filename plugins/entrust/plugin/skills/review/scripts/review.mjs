@@ -64,7 +64,7 @@ export function check(review, files, directory) {
   const refs = (who, ids, listed, what) => { for (const id of ids ?? []) if (!listed.has(id)) errors.push(`${who} names ${what} ${id}, which is not listed`); };
   const requirements = known(review.requirements, "requirement", "id"), findings = known(review.findings, "finding", "id");
   for (const f of review.findings) {
-    for (const field of ["title", "at", "what", "fix"]) if (!text(f[field])) errors.push(`finding ${f.id} has no "${field}"`);
+    for (const field of ["title", "at", "what", "shown_by", "fix"]) if (!text(f[field])) errors.push(`finding ${f.id} has no "${field}"`);
     if (!DIRECTIONS.includes(f.direction)) errors.push(`finding ${f.id}: direction is one of ${DIRECTIONS.join(", ")}`);
     if (!EVIDENCE.includes(f.evidence)) errors.push(`finding ${f.id}: evidence is one of ${EVIDENCE.join(", ")}`);
     refs(`finding ${f.id}`, f.breaks, requirements, "requirement");

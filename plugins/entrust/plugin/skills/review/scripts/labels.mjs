@@ -8,7 +8,7 @@ export const LABELS = {
   "findings": "Findings", "ideas": "Ideas", "ideas-note": "Not needed for the change to be accepted.",
   "screens": "Screens", "structure": "Structure", "map": "Change map", "questions": "Questions and oddities",
   "coverage": "Coverage", "decisions": "Decisions", "summary": "Summary", "files": "Files",
-  "none": "none", "nothing": "nothing", "fix": "Fix", "idea": "idea", "finding": "finding", "reason": "Reason",
+  "none": "none", "nothing": "nothing", "shown-by": "Shown by", "fix": "Fix", "idea": "idea", "finding": "finding", "reason": "Reason",
   "requirement": "Requirement", "source": "Source", "status": "Status", "blocks": "Blocks", "lines": "Lines",
   "unit": "Unit", "jobs": "Jobs", "uses": "Uses", "in-unit": "in",
   "verdict.keep": "keep", "verdict.fix": "fix", "verdict.remove": "remove", "verdict.split": "split", "verdict.merge": "merge",

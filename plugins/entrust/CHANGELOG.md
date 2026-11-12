@@ -19,6 +19,8 @@ forensics remain in the repository references and release notes.
   conclusion, what to do and the target under a label each; says of every requirement where it comes from and
   whether it is met, fails, lacks a test or was not checked; and takes its own words in the reader's language
   from the review.
+  A defect's trigger must be one of the entries the review listed, every finding says what it is shown by, and
+  structure is judged by taking each requirement as the one that changes.
 
 ## 0.36.0 — 2026-11-11
 
