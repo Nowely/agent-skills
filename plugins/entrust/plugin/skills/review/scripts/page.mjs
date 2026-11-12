@@ -181,8 +181,9 @@ const table = (head, rows) => `<div class="table"><table><tr>${head.map((h) => `
 // What the change is and what the reviewer makes of it.
 function summary(review, { blocks, requirements }) {
   const total = sizeOf(blocks) || 1, { change } = review;
+  // A requirement fails when a finding says so. One with no block and no such finding is left to code the change did not touch.
   const status = (r) => r.broken.length ? `<span class="tag v-remove">fails</span> ${cite(r.broken)}`
-    : r.blocks.length ? '<span class="tag v-keep">met</span>' : '<span class="tag v-remove">no block serves it</span>';
+    : r.blocks.length ? '<span class="tag v-keep">met</span>' : '<span class="sub">no block, and no finding says it fails</span>';
   const idle = blocks.filter((b) => !b.serves.length);
   return `
 <section id="summary" class="stack">

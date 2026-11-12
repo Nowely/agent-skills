@@ -33,7 +33,7 @@ function markdown(review, { blocks, requirements, units, target }) {
     ...(target.length ? ["Target:", ...target.map((u) => unit(u, u.existing ? "Existing" : written.has(u.name) ? "From the change" : "To write"))] : []), "",
     "## Change map",
     ...blocks.map((b) => `- \`${b.path}:${b.where}\`: ${b.does} Serves ${b.serves.join(", ") || "nothing"}. ${capital(b.verdict)}${cited(b.findings)}.`),
-    ...requirements.filter((r) => !r.blocks.length).map((r) => `- No block serves requirement ${r.id}: ${r.text}`), "",
+    ...requirements.filter((r) => !r.blocks.length).map((r) => `- No block serves requirement ${r.id}${r.broken.length ? ` (${r.broken.join(", ")})` : ", and no finding says it fails"}: ${r.text}`), "",
     "## Questions and oddities", ...list(review.questions, (q) => `- \`${q.at}\`: ${q.text}`), "",
     "## Coverage", review.coverage || "none",
   ].join("\n");
