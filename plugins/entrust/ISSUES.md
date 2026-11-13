@@ -18,6 +18,11 @@ for `review-outcome-NKZPTH/work/i01/repo/.git/objects` in the outcome case at `e
 The case prepares its temporary round and implementation at `:171-175`. The cause and reproducibility have not
 been established; this observation alone does not show a product regression.
 
+A failure at the same place was seen once on #95. A possible cause, not confirmed: `prepare.mjs` commits and the
+run is then copied whole, `.git` included, while housekeeping that the commit started in the background repacks
+`.git/objects`. The instrument's commits now run with `gc.auto=0` and `maintenance.auto=false`. If the failure
+recurs with that in place, the cause is elsewhere.
+
 ## E67. A command run after an approval, outside the sandbox, is not established to end when its agent is stopped
 
 **Evidence, level 3 for the sandboxed case (measured), level 1 for the escaped case (unmeasured).**
