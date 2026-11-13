@@ -30,3 +30,8 @@ nonblank lines for code, tests and other material. Shared blocks are displayed s
 are not charged to every mechanism's exclusive contribution. Unmapped legacy mechanisms remain unassessed.
 The renderer does not invent frequency, omitted behavior or tradeoff conclusions. See the data contract for
 attribution: this footprint is neither a complexity score nor an estimate of deletable code.
+
+The weight overview leads with all attributed lines within each mechanism, including shared lines, using
+localized added/removed wording and no zero operations. Shared lines are explicitly a subset, not an amount
+to add again; cards must not be summed. Exclusive contribution and per-block attribution stay in the expanded
+counted-lines view. Code, tests and other material remain separate; unknown and verified-zero states differ.

@@ -15,6 +15,22 @@ export function weightCountsText(counts, t) {
     .map(kind => `${t(`weight.${kind}`)} +${counts[kind].added} / −${counts[kind].removed}`).join(" · ") || t("weight.zero");
 }
 
+// The overview counts each attributed block once within a mechanism, including its shared subset.
+export function weightOverview(weight, t, language) {
+  if (!weight) return [];
+  let plurals;
+  try { plurals = new Intl.PluralRules(language); } catch { plurals = new Intl.PluralRules("en"); }
+  const delta = counts => ["added", "removed"].filter(side => counts[side])
+    .map(side => t(`weight.${side}.${plurals.select(counts[side])}`, counts[side])).join(", ");
+  return BLOCK_KINDS.flatMap(kind => {
+    const own = weight.exclusive[kind], shared = weight.sharedCounts[kind];
+    const total = { added: own.added + shared.added, removed: own.removed + shared.removed };
+    if (!total.added && !total.removed) return [];
+    return [{ kind, text: delta(total), shared: shared.added || shared.removed
+      ? !own.added && !own.removed ? t("weight.all-shared") : t("weight.shared-subset", delta(shared)) : "" }];
+  });
+}
+
 function weighMechanisms(mechanisms, blocks) {
   const users = new Map(blocks.map(b => [b.id, mechanisms.filter(m => m.blocks?.includes(b.id)).map(m => m.name)]));
   return mechanisms.map(m => {

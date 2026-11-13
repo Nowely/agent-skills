@@ -10,8 +10,8 @@ import vm from "node:vm";
 import path from "node:path";
 import { ROOT, registry, runCases, summarize } from "./lib/harness.mjs";
 import { prepare } from "./review/prepare.mjs";
-import { CATALOGS, LABELS } from "../plugin/skills/review/scripts/labels.mjs";
-import { check, modelOf, DIRECTIONS, EVIDENCE, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
+import { CATALOGS, LABELS, labelsOf } from "../plugin/skills/review/scripts/labels.mjs";
+import { check, modelOf, weightOverview, DIRECTIONS, EVIDENCE, SOURCES, UNIT_VERDICTS, VERDICTS } from "../plugin/skills/review/scripts/review.mjs";
 
 const { cases: TESTS, test } = registry();
 const SKILL = path.join(ROOT, "skills", "review"), SCRIPT = path.join(SKILL, "scripts", "report.mjs");
@@ -242,6 +242,34 @@ test("mechanism weights count nonblank +/- lines, separate shared blocks and ret
     return true;
   });
 
+test("weight overview leads with the full footprint, not exclusive lines or net change",
+  "44 attributed lines must not be presented as 10, and +50/-12 must not become 38",
+  () => {
+    const counts = (added = 0, removed = 0) => ({ added, removed });
+    const weight = { exclusive: { code: counts(10), test: counts(), other: counts() }, sharedCounts: { code: counts(34), test: counts(), other: counts() } };
+    const ru = labelsOf({ language: "ru" }), en = labelsOf({ language: "en" });
+    let rows = weightOverview(weight, ru, "ru");
+    if (rows[0].text !== "добавлено 44 строки" || !rows[0].shared.includes("34 строки")) return "shared subset missing or double-counted";
+    weight.exclusive.code = counts(20, 8); weight.sharedCounts.code = counts(30, 4);
+    if (weightOverview(weight, ru, "ru")[0].text !== "добавлено 50 строк, удалено 12 строк") return "mixed delta conflated";
+    weight.exclusive.code = counts(0, 30); weight.sharedCounts.code = counts();
+    if (weightOverview(weight, ru, "ru")[0].text !== "удалено 30 строк") return "zero addition exposed";
+    weight.exclusive.code = counts(); weight.sharedCounts.code = counts(34);
+    if (!weightOverview(weight, ru, "ru")[0].shared.startsWith("Все эти строки")) return "fully shared case misrepresented";
+    weight.sharedCounts.code = counts();
+    if (weightOverview(weight, ru, "ru").length || weightOverview(null, ru, "ru").length) return "empty overview invented counts";
+    for (const [n, expected] of [[1,"добавлена 1 строка"],[2,"добавлено 2 строки"],[5,"добавлено 5 строк"],[21,"добавлена 21 строка"]]) {
+      weight.exclusive.code = counts(n);
+      if (weightOverview(weight, ru, "ru")[0].text !== expected) return `bad Russian count ${n}`;
+    }
+    weight.exclusive.code = counts(1);
+    if (weightOverview(weight, en, "en")[0].text !== "1 line added") return "bad English singular";
+    weight.exclusive.code = counts(2);
+    if (weightOverview(weight, en, "ar")[0].text !== "2 lines added") return "missing CLDR two form";
+    weight.exclusive.code = counts(44);
+    return weightOverview(weight, en, "en")[0].text === "44 lines added" || "bad English plural";
+  });
+
 test("weight is rendered in HTML and text without changing the review record",
   "legacy unknowns and shared block evidence must be visible in both outputs",
   () => {
@@ -251,7 +279,7 @@ test("weight is rendered in HTML and text without changing the review record",
     });
     if (result.status !== 0) return result.stderr;
     const page = fs.readFileSync(html, "utf8"), raw = JSON.parse(fs.readFileSync(data, "utf8"));
-    return ["Shared with", "not assessed", "Weight in this diff"].every(text => page.includes(text) && result.stdout.includes(text))
+    return ["Shared with", "Not assessed", "Touched in this change"].every(text => page.includes(text) && result.stdout.includes(text))
       && page.includes('href="#b1"') && raw.mechanisms.every(m => m.weight === undefined) || "weight evidence missing or derived totals persisted";
   });
 

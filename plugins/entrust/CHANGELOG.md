@@ -12,6 +12,10 @@ forensics remain in the repository references and release notes.
 
 ### Changed
 
+- Mechanism weight leads with its full attributed diff footprint in plain language, with shared lines as
+  a subset. Exclusive counts and block details are expandable; zero operations are hidden and Russian/English
+  line counts use plural forms. Unknown attribution remains distinct from verified zero.
+
 - Mechanisms can reference typed change-map blocks to show attributed nonblank added/removed code,
   test and other lines. Shared blocks are separate; old or partially mapped reports show unassessed weight.
   Review guidance connects scenario/frequency, omitted behavior, qualitative cost and the final tradeoff.
