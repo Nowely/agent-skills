@@ -1,0 +1,27 @@
+{
+  "sourceAndPackageBytesUnchanged": true,
+  "finalArtifactChecksPassed": 4,
+  "sameReviewArtifactRepairs": [
+    {
+      "run": "r02",
+      "issue": "One removed test line had no block ownership; reviewer repaired the line allocation and rechecked successfully."
+    }
+  ],
+  "projectExecution": false,
+  "scopeAudit": "Visible reviewer commands read files/Git, write report artifacts and execute only the supplied report-data checker; raw native logs retained locally. This is not proof of an OS-enforced sandbox.",
+  "packetDirectoryCue": "The shared temporary root contains consistency. It does not reveal the exact failure or remedy, but may prime that topic in both arms; this is a blinding limitation.",
+  "publicReviewCopies": "Original substantive text preserved; local run/source/artifact paths relocated. Raw originals retained locally.",
+  "externalApprovalEvents": [
+    {
+      "judge": "glm",
+      "event": "Initial launch rejected before execution. Coordinator verified all fixture files/brief/rubric against the public Git commit and checked new review provenance; the same launch then proceeded without changing model, permissions or payload."
+    }
+  ],
+  "judgePacketUnchanged": true,
+  "judgeFileChanges": [],
+  "judgeCommandAudit": "Carbon shell: git log. GLM shell: find, git log/branch/show and display separators. Other tools read packet files. No code/test/build execution observed.",
+  "judgeOutputFormatCorrections": {
+    "carbon": 0,
+    "glm": 0
+  }
+}

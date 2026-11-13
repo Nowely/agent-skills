@@ -107,3 +107,11 @@ added to the frozen draft27 pilot. The shipping skill and earlier drafts remain 
 assessment. All six found the same redundant mechanism and proposed the same target. Removing mandatory
 line allocation did not produce additional decomposition or a reliable smaller/faster report. Keep the full
 working method; the shipping skill and frozen earlier rounds are unchanged.
+
+## Round 8: related-value consistency
+
+[Round 8](round-8/README.md) is complete: two Terra reviews each with full draft25 and draft28, independently
+judged by Carbon and GLM on locale-options/head. Both variants detect the consistency defect and test gap in
+both runs, without the tested harmful recommendations. Decomposition is explicitly not applicable; this is
+not an architecture result. No incremental detection benefit from draft28 was observed on this formative
+case. [Existing decomposition cases](round-8/decomposition-readiness.md) were inspected, not run or changed.

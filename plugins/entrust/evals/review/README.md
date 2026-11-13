@@ -72,7 +72,10 @@ brief defines data-read behavior, not UI reactivity. The reference uses getters,
 public functions and also pass on an alternative with no getters. Two acceptance failures in `head` represent
 one root consistency defect; the rubric does not reward duplicate findings for each entry or consumer.
 
-The case has been checked mechanically, not admitted through model runs. Its `clean` tree is a deterministic
+The case has been checked mechanically and run in the [round-8 diagnostic](../../research/2026-11-13-review-instead/round-8/README.md):
+two Terra reviews each for full draft25 and draft28, independently judged by Carbon and GLM. Both variants
+found the root consistency issue and test gap in both runs; neither triggered the tested traps. It remains
+unadmitted as a discriminating benchmark and showed no incremental detection benefit in that pilot. Its `clean` tree is a deterministic
 reference required by this instrument, not a request to schedule clean-target reviews. It is not added to the
 frozen current pilot automatically and is formative rather than held-out evidence for draft28, which was
 designed alongside it. No architecture probes are supplied: a future passing outcome is `checks only`, not

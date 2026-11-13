@@ -1,0 +1,497 @@
+{
+  "runs": [
+    {
+      "id": "u01",
+      "F1": {
+        "rating": "hit",
+        "reason": "Traces the exact lifecycle: legacy entries evaluated at module load under the import-time 'en' locale versus new read-time getters, producing mixed languages after setLocale('ru') for both public reads and for saveSelection snapshots. Notes pre-existence but keeps it in scope because the brief preserves the contract, and proposes the bounded remedy: extend existing t-based read-time evaluation to all six entries, keeping IDs/order and the snapshot copy. Matches the rubric hit, including not double-counting consumer symptoms.",
+        "reviewEvidence": [
+          "findings[1] (at src/category-labels.js:4): after import and setLocale('ru') the four legacy categories return English while the new ones return Russian; saveSelection('notes') would snapshot 'Notes' under ru",
+          "verdict: pre-existing divergence with README, but brief.md explicitly requires the shared contract for legacy categories — pre-existence noted, not dismissed",
+          "mechanisms[0] decision: keep existing t and read-time evaluation, extend it to legacy categories; units trace categories.js:4-7 and saved-selection.js:3-4 as consumers",
+          "blocks: category-labels.js verdict 'fix' with finding 1; IDS and messages 'keep'"
+        ],
+        "sourceEvidence": [
+          "src/category-labels.js:4-7 legacy entries call t() at module load; 8-9 new entries are getters",
+          "src/locale.js:19-22 locale starts 'en'; setLocale mutates it; t reads current locale",
+          "README.md:3-7 host imports before selecting locale; every fresh call uses the current locale",
+          "src/saved-selection.js:3-4 copies the label string at call time"
+        ]
+      },
+      "F2": {
+        "rating": "hit",
+        "reason": "Identifies that ru is asserted only for the two new IDs via labelForCategory while legacy labels are never read after a locale switch, so the mixed-locale defect passes the suite. Proposes both locales, both public reads, and snapshot checks for old and new categories — the rubric's post-import-switch, old-plus-new remedy, without syntax assertions.",
+        "reviewEvidence": [
+          "findings[2] (at test/categories.test.js:14): ru checked only for new IDs; no Russian legacy checks, no English new checks, no localized labels from listCategoryOptions; the legacy notes snapshot test was replaced",
+          "steps[1]: cover both locales, both read methods, and historical-text retention for legacy and new categories"
+        ],
+        "sourceEvidence": [
+          "test/categories.test.js:14-18 switches locale only to assert videos/drawings",
+          "test/categories.test.js:19-23 replaces the base notes snapshot scenario with a drawings one",
+          "base test (git ce5e7d3) asserted saveSelection('notes') retention, removed at head"
+        ]
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Recommends the opposite of eager translation: make legacy entries lazy like the new ones; the new getters are kept as the correct mechanism.",
+          "reviewEvidence": [
+            "findings[1].fix: make legacy translation lookups lazy at read time, as with the new entries, or call existing t on every public read",
+            "target_units.CATEGORY_LABELS: every ID resolved via t at read"
+          ],
+          "sourceEvidence": [
+            "src/category-labels.js:8-9 getters already implement the documented current-locale read"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Explicitly preserves the creation-time snapshot: saveSelection keeps storing the string it read at call time, not a live reference; no demand that saved records change language.",
+          "reviewEvidence": [
+            "target: 'saveSelection continues to store the string from the moment of the call'",
+            "units.saveSelection: reads the label once and returns an object with a string, not a getter reference"
+          ],
+          "sourceEvidence": [
+            "README.md:9-10 saved label remains the creation-time text"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "No rerender, browser, screenshot, or subscription claims; coverage states visual behavior is out of scope and nothing was executed.",
+          "reviewEvidence": [
+            "coverage: 'code, tests, build and network were not run per task constraint; visual behavior out of scope'",
+            "requirements[5] tracks brief.md:8-9 no UI reactivity"
+          ],
+          "sourceEvidence": [
+            "README.md:6-7 no cached UI or rerender contract",
+            "brief.md:8-9 data-only concern"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Full chain traced: README import-order contract, locale module variable, eager vs getter entries, both readers, and the snapshot copy in saveSelection.",
+          "reviewEvidence": [
+            "mechanisms[0].instead: locale.js already provides current locale via t; category-labels.js:4-7 computes legacy values only at import",
+            "shown_by chain in findings[1]"
+          ],
+          "sourceEvidence": [
+            "src/locale.js:19-22",
+            "src/category-labels.js:3-10",
+            "src/saved-selection.js:3-4"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Makes an explicit decision reusing the existing t and read-time mechanism rather than introducing anything new; costs are noted but a decision follows, and the snapshot mechanism is kept.",
+          "reviewEvidence": [
+            "mechanisms[0].decision: keep existing t and read-time evaluation, extend to legacy categories",
+            "mechanisms[1].decision: keep the snapshot; fix the label source"
+          ],
+          "sourceEvidence": [
+            "src/locale.js:21-22 existing t/setLocale suffice for the fix"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "not_applicable",
+          "reason": "The fixture demonstrates no structural problem or decomposition opportunity beyond the in-object eager/lazy split; u01's keep statements (simple dictionary, single t, snapshot in saveSelection, no extra layers) are bounded and consistent but the dimension is not exercised.",
+          "reviewEvidence": [
+            "coverage: keep the simple dictionary, single t, and string snapshot; extra layers do not reduce demonstrated burden"
+          ],
+          "sourceEvidence": [
+            "All changed logic fits the existing three modules; no new interface is required"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "The remedy keeps the ordered IDS list, adds no API or reactivity, and preserves the historical snapshot contract; English and Russian label sets are retained.",
+          "reviewEvidence": [
+            "target_units: IDS keeps six ordered IDs; saveSelection still copies at call time",
+            "requirements[5]: no UI reactivity, new localization framework, or public API"
+          ],
+          "sourceEvidence": [
+            "src/categories.js:3-6 order unchanged",
+            "README.md:9-11 snapshot contract"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Observes the diff replaced the legacy saved-selection test (notes in en, checked after switch to ru) with a drawings scenario, narrowing historical coverage of a legacy ID — supported by the test diff against base."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Clean pass on the designed defect: u01 traces module-load vs read-time evaluation to the mixed-locale symptom across both public reads and saveSelection, keeps a pre-existing defect in scope per the brief, and proposes the bounded remedy (extend existing t-based lazy reads to all six, preserve IDs/order and the snapshot copy). F2 matches the rubric's test-gap diagnosis with an old-plus-new, post-switch, both-readers remedy. No trap is approached; the keep/no-new-layer stance is bounded. Static reading only, as declared."
+    },
+    {
+      "id": "u02",
+      "F1": {
+        "rating": "hit",
+        "reason": "Same complete trace: legacy labels computed at import contradict the contract the task builds on; after choosing ru they stay English, and saving a legacy category under ru records the wrong creation-time text. Pre-existence is stated but not used to dismiss. Remedy is bounded: evaluate legacy labels at read the same way as the new getters, keeping the snapshot copy.",
+        "reviewEvidence": [
+          "findings[1] (at src/category-labels.js:4): pre-existing import-time computation of four labels; after ru they remain English; saveSelection of a legacy category in ru writes the wrong text",
+          "verdict: fix in place; problem pre-existing but the task requires the contract",
+          "mechanisms[0].decision: keep the getters and apply the same mechanism to legacy categories"
+        ],
+        "sourceEvidence": [
+          "README.md:3-6 import precedes locale selection",
+          "src/locale.js:19-22 starts at en; setLocale only mutates the variable",
+          "src/category-labels.js:4-7 eager entries vs 8-9 getters",
+          "src/categories.js:4-7 and src/saved-selection.js:3-4 consume the values"
+        ]
+      },
+      "F2": {
+        "rating": "hit",
+        "reason": "Identifies that the legacy test asserts only initial English, the new test only Russian via labelForCategory, the order test checks IDs without labels, and the replaced snapshot test dropped legacy historical coverage — so finding 1's defect passes. Remedy: all IDs and labels in en and ru through both public reads after switches, plus snapshot checks for old and new categories.",
+        "reviewEvidence": [
+          "findings[2] (at test/categories.test.js:11): current error from finding 1 is not detected; English videos/drawings labels and listCategoryOptions labels unasserted",
+          "steps[1]: add both locales, both read methods, and snapshot checks after switches"
+        ],
+        "sourceEvidence": [
+          "test/categories.test.js:8-23 covers IDs, initial English notes, Russian new labels, drawings snapshot only"
+        ]
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Extends the read-time getter mechanism to legacy entries; the new getters are judged correct and kept.",
+          "reviewEvidence": [
+            "blocks: category-labels.js added getters verdict 'keep'",
+            "mechanisms[0].decision: apply the same mechanism to legacy categories"
+          ],
+          "sourceEvidence": [
+            "src/category-labels.js:8-9 match README.md:3-7"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "The snapshot mechanism is explicitly kept unchanged after fixing the label source; records hold a copied string independent of later locale changes.",
+          "reviewEvidence": [
+            "mechanisms[1]: snapshot text does not depend on future locale changes; decision 'keep without change after fixing the label source'"
+          ],
+          "sourceEvidence": [
+            "README.md:9-10 creation-time text",
+            "src/saved-selection.js:3-4 copies the string"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "No rerender or browser claims; coverage states visual comparison is not required and nothing was executed.",
+          "reviewEvidence": [
+            "coverage: tests and app not run per constraint; visual comparison not required per brief.md:8-9",
+            "requirements[5]: no UI reactivity or new framework"
+          ],
+          "sourceEvidence": [
+            "README.md:6-7 no rerender contract",
+            "brief.md:8-9 data-only"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Traces the same chain plus setLocale as a unit and notes the dictionary has no conflicting precedence; consumers and the snapshot path are mapped.",
+          "reviewEvidence": [
+            "units for setLocale and t; listCategoryOptions described as building fresh objects per call",
+            "mechanisms[0].instead cites locale.js:19-22 and eager entries"
+          ],
+          "sourceEvidence": [
+            "src/locale.js:19-22",
+            "src/categories.js:4-6"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Decision reuses the existing getter mechanism and t; no new state or subscription; costs recorded but the decision is explicit.",
+          "reviewEvidence": [
+            "mechanisms[0].benefit/decision: fresh reads without added state or subscription; extend mechanism to legacy IDs"
+          ],
+          "sourceEvidence": [
+            "src/locale.js:21-22 existing capability suffices"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "not_applicable",
+          "reason": "No demonstrated structural problem in the fixture; u02's decomposition statement (translation display belongs to the existing dictionary and t, snapshot to saveSelection; no separate layer or state) is bounded and consistent but the dimension is not exercised.",
+          "reviewEvidence": [
+            "coverage: translation display in existing dictionary and t, snapshot in saveSelection; separate layer or state unnecessary"
+          ],
+          "sourceEvidence": [
+            "Existing module layout already separates these concerns"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Keeps the ID array and dictionaries, keeps record copying, and tracks the no-new-API/no-reactivity constraint; historical contract explicitly preserved.",
+          "reviewEvidence": [
+            "target: keep ID array and dictionaries; saving continues to copy the read string",
+            "requirements[4] and [5] encode snapshot and no-new-API constraints"
+          ],
+          "sourceEvidence": [
+            "src/categories.js:3 order stable",
+            "README.md:9-11"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Notes the order test asserts IDs without localized labels, and the replaced snapshot test removed legacy-category historical coverage — both supported by the test diff."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Substantively identical to u01: same lifecycle trace, same pre-existence-but-in-scope stance, same bounded fix extending read-time evaluation via existing t/getters, same test-gap diagnosis and remedy. Block-verdict granularity differs (marks the new-getter test lines 'keep' while finding 2 still flags test insufficiency) — cosmetic, not a disagreement. All three traps avoided; snapshot and ID/order contracts preserved; no new mechanisms proposed."
+    },
+    {
+      "id": "u03",
+      "F1": {
+        "rating": "hit",
+        "reason": "Complete trace plus the most concrete reachable scenario: a checks block specifying import, setLocale('ru'), listCategoryOptions and labelForCategory('notes'), saving notes and drawings, switching to en, and re-reading — with expected outcomes (all six ru labels; saved strings stay ru; fresh list en). Remedy: evaluate all six labels at read via existing t or equivalent getters, keeping the snapshot copy. Pre-existence noted, in scope.",
+        "reviewEvidence": [
+          "findings[1] (at src/category-labels.js:4): first four labels computed at import and stay English; new getters fix only videos/drawings; saveSelection would store the wrong text",
+          "checks[0]: from/to/expect scenario covering requirements 1-4",
+          "verdict: defect existed in base but the task explicitly requires the contract"
+        ],
+        "sourceEvidence": [
+          "README.md:3-6 import before locale selection; 9-11 snapshot contract",
+          "src/category-labels.js:4-7 eager vs 8-9 getters",
+          "src/categories.js:4-7 and src/saved-selection.js:3-4 consumers",
+          "src/locale.js:19-22 initial en, mutable locale"
+        ]
+      },
+      "F2": {
+        "rating": "hit",
+        "reason": "Identifies that the legacy category is checked only for initial English, new ones only for Russian, the list test checks only IDs, and the snapshot test swapped the legacy ID — so wrong legacy labels after a switch or missing English new labels pass. Remedy includes listCategoryOptions label checks in both locales after a post-import switch.",
+        "reviewEvidence": [
+          "findings[2] (at test/categories.test.js:11): finding 1's scenario remains undetected; no listCategoryOptions label assertions after locale change, no ru read of a legacy ID, no English new labels",
+          "steps[1] and findings[2].fix: all labels via the public list in en and ru with post-import switch; snapshots for legacy and new IDs"
+        ],
+        "sourceEvidence": [
+          "test/categories.test.js:8-23",
+          "base test asserted the legacy notes snapshot, removed at head"
+        ]
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Unifies evaluation at read time for all six; the new getters are the pattern to extend, not undo.",
+          "reviewEvidence": [
+            "findings[1].fix: compute all six labels at access, e.g. t(id) in the existing public functions or analogous getters",
+            "blocks: category-labels.js verdict 'fix' because the mechanism was not applied to all IDs"
+          ],
+          "sourceEvidence": [
+            "src/category-labels.js:8-9 implement the documented current-locale read"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "saveSelection is kept as a one-time copy; the check scenario explicitly expects saved strings to remain Russian after switching to en, and the target states no later recomputation.",
+          "reviewEvidence": [
+            "checks[0].expect: saved strings remain Russian while the fresh list shows English",
+            "target_units.saveSelection: copies the current string, does not recompute later"
+          ],
+          "sourceEvidence": [
+            "README.md:9-10 historical record semantics"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "No rerender/browser claims; coverage states screenshots are not required and the scenario is proposed, not executed.",
+          "reviewEvidence": [
+            "coverage: screenshots not provided and not required; app and tests not run per constraint",
+            "requirements[5]: data-only, no UI reactivity"
+          ],
+          "sourceEvidence": [
+            "README.md:6-7 no cached UI",
+            "brief.md:8-9"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Traces README contract, initial en, eager vs getter evaluation, both readers, and the snapshot copy; the checks block demonstrates the chain end-to-end with expected data.",
+          "reviewEvidence": [
+            "mechanisms[0] spans CATEGORY_LABELS, t, setLocale, both readers, and saveSelection",
+            "units map each unit's read-time job"
+          ],
+          "sourceEvidence": [
+            "src/locale.js:19-22",
+            "src/saved-selection.js:3-4"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Decision reuses existing t at every read and keeps the snapshot in saveSelection; explicitly declines extra layers; unmeasured cost acknowledged but a decision is made.",
+          "reviewEvidence": [
+            "mechanisms[0].decision: apply existing t at every read for all IDs; keep snapshot in saveSelection",
+            "coverage: additional separation or layers not justified"
+          ],
+          "sourceEvidence": [
+            "src/locale.js:21-22 existing capability"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "not_applicable",
+          "reason": "No demonstrated structural problem in the fixture; u03's decomposition statement (ordered IDs, read-time translation, snapshot each as clear existing responsibilities; no extra layer justified) is bounded and consistent but the dimension is not exercised.",
+          "reviewEvidence": [
+            "coverage: reading chain easy to trace; additional splitting not justified"
+          ],
+          "sourceEvidence": [
+            "Repair is within existing units; no new interfaces"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Keeps IDS order and messages, no new API, and preserves the snapshot with an explicit expected outcome distinguishing fresh reads from saved records.",
+          "reviewEvidence": [
+            "target: saveSelection still stores the read string without later recomputation; IDs and dictionary kept",
+            "checks[0].expect separates fresh-list locale from saved-record locale"
+          ],
+          "sourceEvidence": [
+            "src/categories.js:3-6",
+            "README.md:9-11"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Notes the snapshot test replaced the legacy ID (notes) with drawings, removing legacy historical coverage — supported by the test diff.",
+        "Notes English labels of the new entries are never asserted — supported by test/categories.test.js:14-18 asserting only ru."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Strongest concrete scenario of the four: an explicit checks block with expected outcomes that exercises the mixed-locale defect, both readers, and snapshot-vs-fresh distinction. Same lifecycle trace, same bounded remedy via existing t/getters, same test-gap diagnosis and old-plus-new remedy. All traps avoided; the snapshot expectation in checks[0] directly demonstrates X2 avoidance. Static reading only, as declared."
+    },
+    {
+      "id": "u04",
+      "F1": {
+        "rating": "hit",
+        "reason": "Complete trace: legacy labels computed at import do not respond to later setLocale; after ru both public methods return English for the four legacy IDs and saveSelection records English text. Pre-existence acknowledged but tied to the contract the task explicitly preserves. Remedy: evaluate legacy labels at each read via the same existing t, or translate IDs centrally at call time, storing a string (not a live reference) in records.",
+        "reviewEvidence": [
+          "findings[1] (at src/category-labels.js:4): four legacy labels computed at import; after ru both public methods return English; saveSelection records English for them",
+          "verdict: pre-existing but contradicts the README contract the task preserves",
+          "mechanisms[0].decision: keep read-time translation, extend to all categories; keep the saving mechanism"
+        ],
+        "sourceEvidence": [
+          "README.md:3-6 import order; 9-10 snapshot contract",
+          "src/locale.js:19-22 initial en, current-locale t",
+          "src/category-labels.js:4-7 eager vs 8-9 getters",
+          "src/categories.js:4-7, src/saved-selection.js:3-4 consumers"
+        ]
+      },
+      "F2": {
+        "rating": "hit",
+        "reason": "Identifies that the ru check covers only the new getters via labelForCategory, the snapshot test was replaced with drawings, and listCategoryOptions is never checked for localized labels — so wrong caching of legacy values passes the whole suite. Remedy: both public reads of all categories across en→ru→en switches plus snapshot checks for legacy and new IDs.",
+        "reviewEvidence": [
+          "findings[2] (at test/categories.test.js:14): no read of a legacy category after setLocale(ru) and no list label checks; the current defect passes the suite",
+          "steps[1]: both public methods and saved records across locale changes"
+        ],
+        "sourceEvidence": [
+          "test/categories.test.js:8-23",
+          "base test asserted the legacy notes snapshot, removed at head"
+        ]
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "Recommends extending read-time evaluation, the opposite of eagerly translating the new entries; the new getter block is kept.",
+          "reviewEvidence": [
+            "findings[1].fix: compute legacy labels at each read with the same existing t as the new ones, or centrally translate the ID at call time",
+            "blocks: category-labels.js added getters verdict 'keep'"
+          ],
+          "sourceEvidence": [
+            "src/category-labels.js:8-9 match README.md:3-7"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Explicitly guards the lifetime distinction: store the string, not a live reference; no demand that saved records follow later locale changes.",
+          "reviewEvidence": [
+            "findings[1].fix: 'keep storing the string in the record, not a live reference'",
+            "units.saveSelection: copied string is unchanged by later locale changes"
+          ],
+          "sourceEvidence": [
+            "README.md:9-10 creation-time text"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "No rerender, browser, or subscription claims; coverage states visual checking is not required and nothing was executed.",
+          "reviewEvidence": [
+            "coverage: app and tests not run per constraint; visual check not required per brief.md",
+            "requirements[4]: no UI reactivity, new framework, or public API"
+          ],
+          "sourceEvidence": [
+            "README.md:6-7 no rerender contract",
+            "brief.md:8-9"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Traces the chain through t/setLocale, eager vs getter entries, both readers, and the copy-on-save behavior including its lifetime consequence.",
+          "reviewEvidence": [
+            "mechanisms[0].instead: category-labels.js:4-7 stores import-time results and does not provide current values after switching",
+            "units.saveSelection job describes the copy semantics"
+          ],
+          "sourceEvidence": [
+            "src/locale.js:19-22",
+            "src/saved-selection.js:3-4"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Decision reuses the existing t and read-time mechanism and keeps the interface and saving mechanism; cost is noted but the decision is explicit, with no new mechanism.",
+          "reviewEvidence": [
+            "mechanisms[0].decision: keep read-time translation, extend to all categories; keep interface and saving mechanism"
+          ],
+          "sourceEvidence": [
+            "src/locale.js:21-22 existing capability suffices"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "not_applicable",
+          "reason": "No demonstrated structural problem in the fixture; u04's grouping statement (shared dictionary for the two readers, snapshot isolated in saveSelection, no new interfaces or rule splitting) is bounded and consistent but the dimension is not exercised.",
+          "reviewEvidence": [
+            "coverage: grouping of current short functions justified; new interfaces or rule separation unnecessary"
+          ],
+          "sourceEvidence": [
+            "Repair stays within existing units"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "Keeps the fixed ID list and order, adds no API, and preserves the snapshot lifetime with the string-vs-live-reference distinction made explicit.",
+          "reviewEvidence": [
+            "steps[0]: keep current IDs and order while extending read-time evaluation",
+            "requirements[3]: record keeps save-time label, unchanged by later locale switches"
+          ],
+          "sourceEvidence": [
+            "src/categories.js:3",
+            "README.md:9-11"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Notes the snapshot test replacement dropped legacy-category historical coverage — supported by the test diff against base."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "Same correct diagnosis and bounded remedy as u01–u03, with the most explicit X2 guard ('store the string, not a live reference'). The fix offers two behavior-equivalent shapes (getters or central t at call time) without prescribing syntax, matching the rubric's equivalence allowance. F2 matches the rubric's test-gap diagnosis with old-plus-new post-switch checks through both public reads. All traps avoided; static reading only, as declared."
+    }
+  ],
+  "equivalentGroups": [
+    {
+      "ids": [
+        "u01",
+        "u02",
+        "u03",
+        "u04"
+      ],
+      "reason": "All four identify the same single root defect (legacy entries evaluated at module load vs new read-time getters), trace the same lifecycle chain (README import-before-locale, locale module state, both public readers, saveSelection copy), note base pre-existence without dismissing it, and propose the same bounded remedy family: extend current-locale read-time evaluation to all six entries via the existing t/getters while preserving IDs/order and the snapshot copy. All four give the same F2 diagnosis (locale switched only for the new entries; add a post-import switch checking old and new labels through both public reads) and note the replaced legacy snapshot test. All avoid X1–X3, make an explicit reuse-based decision under necessityAndCost, and preserve all contracts under behaviorPreservation. Differences are presentational: u03 adds a concrete checks block with expected outcomes; u02/u04 differ in keep-vs-fix verdict granularity on the new getter lines; u04 phrases the snapshot guard as string-not-live-reference. No substantive disagreements to arbitrate."
+    }
+  ],
+  "limitations": [
+    "Static judging only: neither the reviews nor this judge executed code, tests, or builds; ratings rest on code reading, which the rubric treats as static support, not executed verification.",
+    "Reviews are in Russian; evidence strings are concise English paraphrases preserving meaning, not verbatim quotes.",
+    "All four reports address the head (dirty) state, so the rubric's 'clean' section (including trap X4, unbounded uniformity) was not applicable and was not scored.",
+    "Line references in reports occasionally differ by a line or two from the packet files; substantively accurate.",
+    "Zero unsupported recommendations were found; absence of additional findings is not proof of completeness.",
+    "Formative single-case comparison with a rubric designed alongside the case; no claim about general reviewer reliability, and no second judge's assessment was available."
+  ],
+  "summary": "All four reviews converge on the designed defect and its bounded remedy: legacy labels are computed at module load under the import-time 'en' locale while the two new entries use read-time getters, so after setLocale('ru') the six-option group returns mixed languages through listCategoryOptions and labelForCategory, and saveSelection snapshots the wrong creation-time text for legacy IDs. Each review notes base pre-existence but keeps the defect in scope because the brief preserves the README contract, and each proposes completing current-locale behavior for the shared group (getters, factory, or t at call time) without breaking IDs/order or the historical snapshot — matching the rubric's F1 hit. Each also matches the F2 hit: the suite switches locale only for the new entries, so stale legacy labels pass; the proposed remedy is a post-import locale switch checking old and new labels through both public reads. No review triggers X1 (all extend lazy reads rather than undoing them), X2 (all keep the copy-on-save lifetime, u04 most explicitly), or X3 (all treat the contract as data-only and static). Mechanism identification and behavior preservation are supported for all; necessityAndCost is supported for all because each makes an explicit reuse-based decision rather than merely listing costs; responsibilityBoundaries is not_applicable for all, since the fixture demonstrates no structural problem and the reviews' keep statements are bounded. The four reports form one equivalence group; the case's discriminating power here lay in trap avoidance and dimension discipline, where all four also align."
+}

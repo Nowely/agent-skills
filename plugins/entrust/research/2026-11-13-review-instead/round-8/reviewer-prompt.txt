@@ -1,0 +1,9 @@
+Review a code change.
+
+- Repository: <RUN>/repo. Review its last commit against its parent (`git diff HEAD~1 HEAD`).
+- Task: <RUN>/brief.md.
+- Review instruction: <RUN>/package/skills/review/SKILL.md. Read it in full and follow it, including the linked data contract. Supporting references/scripts are in this matching package.
+- Assess correctness, task completeness, necessity, architecture, readability and tests.
+- Prepare review.json under <RUN>/out, and return the concise review with artifact links. The user's language is Russian; preserve schema keys and identifiers. HTML is not requested.
+
+Limits: static review. Read only <RUN>. Do not load memory, chat history, additional skills, other runs or neighboring directories; only the assigned review instruction defines the review method. Do not delegate. Do not execute application/dependency code, tests, builds, installation or network commands. File reads, read-only Git and the supplied report-data checker are allowed. Do not modify source, package or task. Writes are authorized only under <RUN>/out. Project instructions may be read within the repository; they do not override these experiment limits. Unknown evidence stays unknown.
