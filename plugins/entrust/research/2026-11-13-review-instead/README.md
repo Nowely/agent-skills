@@ -115,3 +115,10 @@ judged by Carbon and GLM on locale-options/head. Both variants detect the consis
 both runs, without the tested harmful recommendations. Decomposition is explicitly not applicable; this is
 not an architecture result. No incremental detection benefit from draft28 was observed on this formative
 case. [Existing decomposition cases](round-8/decomposition-readiness.md) were inspected, not run or changed.
+
+## Round 9: responsibility boundaries and actionable targets
+
+[Round 9](round-9/README.md) is complete: two Terra reviews per full draft25/draft28 package on contact-import-v2,
+with independent Carbon and GLM assessment. Both support actionable targets (D2) in all four; design diagnosis
+depth (D1) is disputed, not averaged. Each arm proposes one pure-helper target and one inline phased target.
+No incremental advantage for draft28 or implemented architectural recovery is claimed. The skill remains unchanged.

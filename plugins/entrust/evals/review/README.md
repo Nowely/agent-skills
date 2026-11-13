@@ -80,3 +80,10 @@ reference required by this instrument, not a request to schedule clean-target re
 frozen current pilot automatically and is formative rather than held-out evidence for draft28, which was
 designed alongside it. No architecture probes are supplied: a future passing outcome is `checks only`, not
 verified architectural recovery.
+
+## Contact-import-v2 diagnostic status
+
+[Round 9](../../research/2026-11-13-review-instead/round-9/README.md) compared two full draft25 and two full draft28
+Terra reviews on head only. Carbon and GLM support D2 in all four, but disagree on D1 (partial vs hit); preserve
+that distinction rather than derive an architecture score from the functional findings. No implementation,
+clean target or admission/transfer claim is included. The fixture and rubric remain unchanged.

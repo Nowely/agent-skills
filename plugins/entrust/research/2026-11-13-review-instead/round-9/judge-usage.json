@@ -1,0 +1,45 @@
+{
+  "note": "Raw adapter counters including any format corrections; accounting differs from native reviewer usage. Do not add fields to native totals or infer invoice cost. Effective provider effort unconfirmed. Coordinator/relay usage excluded.",
+  "judges": [
+    {
+      "judge": "carbon",
+      "model": "openrouter/google/gemini-4-carbon",
+      "requestedEffort": "high",
+      "effectiveEffort": null,
+      "durationSeconds": 720.548,
+      "adapterReportedUsage": {
+        "input": 78823,
+        "output": 11466,
+        "reasoning": 38323,
+        "cache": {
+          "read": 347515,
+          "write": 0
+        }
+      },
+      "adapterReportedCost": 0.6902874999999999,
+      "formatCorrections": 0,
+      "toolCalls": 24,
+      "shellCommands": 3
+    },
+    {
+      "judge": "glm",
+      "model": "openrouter/~z-ai/glm-flash-latest",
+      "requestedEffort": "high",
+      "effectiveEffort": null,
+      "durationSeconds": 806.524,
+      "adapterReportedUsage": {
+        "input": 122539,
+        "output": 10935,
+        "reasoning": 59227,
+        "cache": {
+          "read": 678094,
+          "write": 0
+        }
+      },
+      "adapterReportedCost": 0.030732826900000003,
+      "formatCorrections": 0,
+      "toolCalls": 26,
+      "shellCommands": 2
+    }
+  ]
+}

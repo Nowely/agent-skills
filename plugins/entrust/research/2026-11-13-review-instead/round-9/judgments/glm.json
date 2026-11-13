@@ -1,0 +1,866 @@
+{
+  "runs": [
+    {
+      "id": "u01",
+      "items": {
+        "D1": {
+          "rating": "hit",
+          "reason": "Traces the coupled flow in importContacts: hand line-splitting, per-row validation and immediate store writes with shared mutable state (header, result, store) inside one loop; counters reflect rows not unique addresses; coverage justifies the split because writes must wait for the full parse and duplicate consolidation.",
+          "reviewEvidence": [
+            "units.importContacts: 'Состояние header и результат живут в цикле; запись происходит до завершения проверки синтаксиса'; 'счётчики увеличиваются на каждой успешной строке'",
+            "coverage: 'отдельное планирование оправдано тем, что запись должна ждать полного разбора и сведения дубликатов'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,21,76-98",
+            "src/lib/csv.js:6-37"
+          ]
+        },
+        "D2": {
+          "rating": "hit",
+          "reason": "Target: parseCsv for the whole text, isEmail validation, last valid row keyed by normalizeEmail, apply once with counts; rejections keep original line; parse error before any write; store and parser keep their jobs. planImport is named as the decision phase without touching store.",
+          "reviewEvidence": [
+            "target: 'Сначала целиком разобрать файл существующим parseCsv, затем проверить строки через isEmail, собрать последние валидные строки по normalizeEmail и один раз применить их к хранилищу с подсчётом созданных и обновлённых контактов'",
+            "target_units: 'planImport ... Проверяет имя и isEmail; фиксирует отказы и последнюю валидную запись на email без изменения store'"
+          ],
+          "sourceEvidence": [
+            "src/lib/csv.js:6-37",
+            "src/contacts/email.js:1-8",
+            "src/contacts/store.js:8-21",
+            "brief.md:6-9"
+          ]
+        },
+        "F2": {
+          "rating": "hit",
+          "reason": "Points at parseCsv in src/lib/csv.js as the existing parser and says to use it instead of hand-written splitting; the fix calls it for the whole text before store operations.",
+          "reviewEvidence": [
+            "finding 1 fix: 'Вызвать parseCsv для всего текста до любых операций store'",
+            "units.parseCsv: 'src/lib/csv.js:6-38: разбирает полный CSV, сообщает строку начала записи и выбрасывает CsvError при неверных кавычках'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,25-45",
+            "src/lib/csv.js:6-37"
+          ]
+        },
+        "F3": {
+          "rating": "hit",
+          "reason": "Names the local EMAIL_RE as looser than isEmail and shows a@b accepted here but refused by the single-contact form; units list normalizeEmail and isEmail as existing.",
+          "reviewEvidence": [
+            "finding 3: 'Локальное выражение принимает адреса, которые существующий валидатор отклоняет'",
+            "finding 3 shown_by: 'ann@site проходит /^\\S+@\\S+$/, но isEmail требует точку в домене: src/contacts/email.js:1-8; этот случай закреплён test/create.test.js:11-13'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,65",
+            "src/contacts/email.js:1-8",
+            "src/contacts/create.js:6",
+            "test/create.test.js:11-13"
+          ]
+        },
+        "F4": {
+          "rating": "hit",
+          "reason": "Contacts are inserted/renamed inside the parsing loop; the unclosed quote is never detected, so the file is never declared unparsable and earlier rows are already written; parseCsv detects the error before returning.",
+          "reviewEvidence": [
+            "finding 1: 'Запись происходит во время разбора, поэтому некорректный файл может изменить хранилище'",
+            "finding 1 shown_by: 'незакрытая кавычка на следующей строке не вызывает ошибку'; 'parseCsv в src/lib/csv.js:17-32 распознаёт многострочные поля и ошибки до возврата'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,76-98",
+            "src/lib/csv.js:6-37"
+          ]
+        },
+        "F5": {
+          "rating": "hit",
+          "reason": "Two valid rows with one new email yield created=1 and updated=1; an existing contact gets updated=2, against 'counts once'.",
+          "reviewEvidence": [
+            "finding 4: 'Каждая валидная строка отдельно записывается и увеличивает счётчик, включая уже обработанный в файле email'",
+            "finding 4 shown_by: 'Для пустого store две строки Ann,a@site.test и Bob,A@site.test дают created=1 и updated=1 вместо одного созданного контакта'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:76-98"
+          ]
+        },
+        "F6": {
+          "rating": "hit",
+          "reason": "Modes are not required by the brief; the retry loop assumes a failure the synchronous ContactStore does not have, and after three attempts the error and the row are silently lost.",
+          "reviewEvidence": [
+            "finding 6: 'Ни один режим не требуется brief.md:1-9'",
+            "finding 7: 'Повторы и подавление исключений не имеют подтверждённого сценария для штатного синхронного ContactStore'; mechanisms: 'cost: Три попытки и потеря ошибки и записи'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,59-60,66-67,83-95",
+            "src/contacts/store.js:12-17",
+            "brief.md:1-9"
+          ]
+        },
+        "F7": {
+          "rating": "hit",
+          "reason": "The example.invalid skip is not required by the brief; valid rows are neither imported nor reported; the pinned test enforces the skip.",
+          "reviewEvidence": [
+            "finding 5: 'Адреса @example.invalid пропускаются без записи и без отклонения'",
+            "finding 5 shown_by: 'isEmail по src/contacts/email.js:1-8, но continue предотвращает запись и счётчик; тест test/import.test.js:24-26 закрепляет пропуск'; mechanisms: 'brief.md:1-9 не предусматривает режимов или исключения'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:72-75",
+            "src/contacts/email.js:1-8",
+            "test/import.test.js:24-26"
+          ]
+        },
+        "F8": {
+          "rating": "hit",
+          "reason": "The only happy-path test asserts counts and lengths only; no test covers repeated email, unparsable CSV, whitespace rows, or the shared validator; strict, legacy and domain tests pin behavior nobody asked for.",
+          "reviewEvidence": [
+            "finding 8: 'отсутствуют проверки итоговых контактов, одинакового email, ошибок CSV, строк из пробелов и общего валидатора'",
+            "finding 8: 'нет теста с двумя вариантами одного email или испорченной кавычкой после валидной строки'; blocks: remove strict/legacy/domain tests"
+          ],
+          "sourceEvidence": [
+            "test/import.test.js:6-26",
+            "src/contacts/import.js:5-6,72-75"
+          ]
+        }
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "No validator classes, strategy per mode, pipeline or importer base class; the only proposed structure is a planImport helper inside importContacts.",
+          "reviewEvidence": [
+            "target_units: 'planImport ... Проверяет имя и isEmail; фиксирует отказы и последнюю валидную запись на email без изменения store'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Modes and retry are removed, not improved.",
+          "reviewEvidence": [
+            "finding 6 fix: 'Убрать неподтверждённые режимы и их тесты'",
+            "finding 7 fix: 'Удалить повторы и дать ошибке записи распространиться'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,83-95"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Normalization, dedup and rejection reporting are all required by the target; none is called unnecessary.",
+          "reviewEvidence": [
+            "target: 'собрать последние валидные строки по normalizeEmail'",
+            "finding 4 fix: 'отклонённые строки не менять в этой карте'"
+          ],
+          "sourceEvidence": [
+            "brief.md:6-9",
+            "src/contacts/import.js:76-98"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Mechanisms trace the hand-written parser, local validation, per-row write and counting, retry, modes and domain skip, each with 'instead' pointing to the existing parseCsv/isEmail/normalizeEmail/store contracts and code paths.",
+          "reviewEvidence": [
+            "mechanisms: four entries with basis/instead/decision tied to src/contacts/import.js:1,5-6,13,72-75,83-95 and src/lib/csv.js:6-37"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,5-6,13,72-75,83-95",
+            "src/lib/csv.js:6-37",
+            "src/contacts/email.js:1-8",
+            "src/contacts/store.js:12-17"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Each removal is justified by a missing requirement or caller; reuse is justified by the existing contracts; store-error atomicity after a successful parse is explicitly left undefined by the task.",
+          "reviewEvidence": [
+            "finding 6: 'Ни один режим не требуется brief.md:1-9'",
+            "finding 7: 'не имеют подтверждённого сценария'",
+            "coverage: 'Ошибки хранилища и транзакционность после успешного разбора задачей не определены'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,83-95",
+            "brief.md:1-9"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "supported",
+          "reason": "The planImport/apply split is justified by the demonstrated coupling: writes must wait for the full parse and duplicate consolidation, not by function length.",
+          "reviewEvidence": [
+            "coverage: 'отдельное планирование оправдано тем, что запись должна ждать полного разбора и сведения дубликатов'",
+            "units.importContacts: 'Состояние header и результат живут в цикле'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,76-98"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "The target preserves parse-before-write, last-valid normalized-email selection with rejected rows not replacing valid ones, distinct counting, and rejection reporting with original line numbers.",
+          "reviewEvidence": [
+            "target: 'собрать последние валидные строки по normalizeEmail и один раз применить их к хранилищу с подсчётом созданных и обновлённых контактов. Отказы строк сохраняют исходный номер; ошибка разбора возникает до записи'",
+            "finding 4 fix: 'отклонённые строки не менять в этой карте'"
+          ],
+          "sourceEvidence": [
+            "brief.md:6-9",
+            "src/contacts/import.js:76-98"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Whitespace-only physical rows are skipped by the trim-empty skip, so they are never rejected as rows with empty names (finding 2).",
+        "A quoted name holding a comma and a line break is not supported by the hand parser; the head fails the quoted-name requirement (finding 1)."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "All rubric items hit; same diagnosis, findings and target as u02 with a planImport helper. Does not flag the extra rows field as an unrequired contract (u01 mentions rows only descriptively)."
+    },
+    {
+      "id": "u02",
+      "items": {
+        "D1": {
+          "rating": "hit",
+          "reason": "Traces the coupled flow in importContacts: one function parses physical lines, validates with a local expression and immediately mutates store; shared mutable state (header, result, store) inside the loop; counters reflect rows not unique addresses; coverage justifies separating preparation from application.",
+          "reviewEvidence": [
+            "units.importContacts: 'Общее изменяемое состояние: header, result и store; счётчики отражают строки, не уникальные адреса'",
+            "coverage: 'разбор файла должен предшествовать эффектам; проверка и дедупликация связаны последним валидным значением и отказами, поэтому подготовка отделена от записи'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,21,76-98",
+            "src/lib/csv.js:6-37"
+          ]
+        },
+        "D2": {
+          "rating": "hit",
+          "reason": "Target: parseCsv the whole file before writes, isEmail and name checks with rejections keeping original line numbers, last valid row keyed by normalizeEmail, each unique address applied once with counts; name check before email error; store errors not suppressed.",
+          "reviewEvidence": [
+            "target: 'Сначала parseCsv разбирает весь файл до записи. Затем проверка isEmail и имени накапливает отказы с исходными номерами и последние валидные строки по normalizeEmail. После успешного разбора каждый уникальный адрес один раз ищется и создаётся или переименовывается'",
+            "target_units: 'prepareRows ... По порядку проверяет имя, затем isEmail; отклонения сохраняют номер; последние валидные строки группируются по normalizeEmail'"
+          ],
+          "sourceEvidence": [
+            "src/lib/csv.js:6-37",
+            "src/contacts/email.js:1-8",
+            "src/contacts/store.js:8-21",
+            "brief.md:6-9"
+          ]
+        },
+        "F2": {
+          "rating": "hit",
+          "reason": "Points at parseCsv from src/lib/csv.js as the existing parser and says to use it instead of hand-written splitting; the fix calls it for the whole text before any store change.",
+          "reviewEvidence": [
+            "finding 1 fix: 'Сначала целиком вызвать parseCsv, затем только при успешном разборе выполнять импорт'",
+            "units.parseCsv: 'src/lib/csv.js:6-37: целиком разбирает CSV, сохраняет физическую строку начала, бросает CsvError при неправильных кавычках'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,25-45",
+            "src/lib/csv.js:6-37"
+          ]
+        },
+        "F3": {
+          "rating": "hit",
+          "reason": "Names the local EMAIL_RE as looser than isEmail and shows a@b accepted here but refused by the single-contact form; mechanisms also point to normalizeEmail and isEmail as existing.",
+          "reviewEvidence": [
+            "finding 3: 'Локальное регулярное выражение принимает адреса без точки в домене и с несколькими @, которые существующая проверка запрещает'",
+            "finding 3 shown_by: 'Ann,ann@site принимается здесь, но isEmail отклоняет его: src/contacts/email.js:1-8 и test/create.test.js:11-13'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,65",
+            "src/contacts/email.js:1-8",
+            "src/contacts/create.js:6",
+            "test/create.test.js:11-13"
+          ]
+        },
+        "F4": {
+          "rating": "hit",
+          "reason": "Writes happen inside the parse loop; the unclosed quote is never detected and a strict-mode throw leaves earlier rows written; parseCsv detects the error before returning.",
+          "reviewEvidence": [
+            "finding 1: 'записывает данные до конца файла. Некорректный файл может частично или полностью изменить адресную книгу'",
+            "finding 6: 'При options.mode=\"strict\" ошибка валидации выбрасывается вместо добавления в rejected и продолжения; предыдущие записи могут уже быть изменены'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,59-60,66-67,76-98",
+            "src/lib/csv.js:6-37"
+          ]
+        },
+        "F5": {
+          "rating": "hit",
+          "reason": "Two valid rows with one new email yield created=1 and updated=1; an existing contact gets updated=2, against 'counts once'.",
+          "reviewEvidence": [
+            "finding 4: 'Операции и счётчики выполняются для каждой валидной строки, а не для каждого нормализованного адреса'",
+            "finding 4 shown_by: 'Две валидные строки с одним новым адресом дают created=1 и updated=1; для существующего updated=2'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:76-98"
+          ]
+        },
+        "F6": {
+          "rating": "hit",
+          "reason": "Modes are not required by the brief and have no caller outside the added tests; the retry loop assumes a failure the synchronous store does not have and silently drops the valid row.",
+          "reviewEvidence": [
+            "finding 8: 'Вариант legacy вводит отдельный формат и ответвление разбора без требования или вызывающего кода, кроме специально добавленного теста'",
+            "finding 7: 'Цикл ловит все ошибки insert три раза и затем молча теряет валидную запись'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,59-60,66-67,83-95",
+            "src/contacts/store.js:12-17"
+          ]
+        },
+        "F7": {
+          "rating": "hit",
+          "reason": "The example.invalid skip is not required by the brief; valid rows are neither imported nor reported; the pinned test enforces the skip.",
+          "reviewEvidence": [
+            "finding 5: 'Строки @example.invalid не создают и не обновляют контакт и не сообщаются как отклонённые'",
+            "finding 5 shown_by: 'isEmail принимает ann@example.invalid: src/contacts/email.js:1-8; test/import.test.js:24-25 закрепляет пропуск'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:72-75",
+            "src/contacts/email.js:1-8",
+            "test/import.test.js:24-26"
+          ]
+        },
+        "F8": {
+          "rating": "hit",
+          "reason": "The only happy-path test asserts counts and lengths only; no test covers repeated email, unparsable CSV, reported line and reason, or the shared validator; strict, legacy and domain tests pin behavior nobody asked for.",
+          "reviewEvidence": [
+            "finding 9: 'не проверяет состояние контактов, номера и причины ошибок, атомарность при ошибке разбора, дубликаты или согласованность валидации'",
+            "finding 9: 'Изменение имени или неверный номер отказа не изменит утверждения строк 10–13'; blocks: remove strict/legacy/domain tests"
+          ],
+          "sourceEvidence": [
+            "test/import.test.js:6-26",
+            "src/contacts/import.js:5-6,72-75"
+          ]
+        }
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "No validator classes, strategy per mode, pipeline or importer base class; the only proposed structure is a prepareRows helper inside importContacts.",
+          "reviewEvidence": [
+            "target_units: 'prepareRows ... По порядку проверяет имя, затем isEmail; отклонения сохраняют номер; последние валидные строки группируются по normalizeEmail'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Modes and retry are removed, not improved.",
+          "reviewEvidence": [
+            "finding 6 fix: 'Убрать строгий режим и обе ветки throw'",
+            "finding 7 fix: 'Удалить retry и пустой catch; дать ошибке записи распространиться'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,83-95"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Normalization, dedup and rejection reporting are all required by the target; none is called unnecessary.",
+          "reviewEvidence": [
+            "target: 'последние валидные строки по normalizeEmail'",
+            "finding 4 fix: 'собрать последние валидные значения по normalizeEmail'"
+          ],
+          "sourceEvidence": [
+            "brief.md:6-9",
+            "src/contacts/import.js:76-98"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Mechanisms trace the hand-written parser, local validation, per-row write and counting, retry, modes and domain skip, each with 'instead' pointing to the existing parseCsv/isEmail/normalizeEmail/store contracts and code paths.",
+          "reviewEvidence": [
+            "mechanisms: six entries with basis/instead/decision tied to src/contacts/import.js:1,5-6,13,72-75,83-95 and src/lib/csv.js:6-37"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,5-6,13,72-75,83-95",
+            "src/lib/csv.js:6-37",
+            "src/contacts/email.js:1-8",
+            "src/contacts/store.js:12-17"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Each removal is justified by a missing requirement or caller; reuse is justified by the existing contracts; store-error atomicity is explicitly left undefined by the task.",
+          "reviewEvidence": [
+            "finding 8: 'без требования или вызывающего кода, кроме специально добавленного теста'",
+            "finding 7: 'Атомарность ошибок записи задачей отдельно не определена'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,83-95",
+            "brief.md:1-9"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "supported",
+          "reason": "The prepareRows/apply split is justified by the demonstrated coupling: writes must wait for the full parse and duplicate consolidation, not by function length.",
+          "reviewEvidence": [
+            "coverage: 'разбор файла должен предшествовать эффектам; проверка и дедупликация связаны последним валидным значением и отказами, поэтому подготовка отделена от записи'",
+            "units.importContacts: 'Общее изменяемое состояние: header, result и store'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,76-98"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "The target preserves parse-before-write, last-valid normalized-email selection with rejected rows not replacing valid ones, distinct counting, and rejection reporting with original line numbers; store errors not suppressed.",
+          "reviewEvidence": [
+            "target: 'накапливает отказы с исходными номерами и последние валидные строки по normalizeEmail. После успешного разбора каждый уникальный адрес один раз ищется и создаётся или переименовывается'",
+            "finding 4 fix: 'собрать последние валидные значения по normalizeEmail'"
+          ],
+          "sourceEvidence": [
+            "brief.md:6-9",
+            "src/contacts/import.js:76-98"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Whitespace-only physical rows are skipped by the trim-empty skip, so they are never rejected as rows with empty names (finding 2).",
+        "A quoted name holding a comma and a line break is not supported by the hand parser; the head fails the quoted-name requirement (finding 1)."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "All rubric items hit; same diagnosis, findings and target as u01 with a prepareRows helper. u02's target adds name-check-before-email-error ordering and a proposed unparsable-file check; u02 names the legacy mode as having no caller. Does not flag the extra rows field as an unrequired contract."
+    },
+    {
+      "id": "u03",
+      "items": {
+        "D1": {
+          "rating": "hit",
+          "reason": "Traces the coupled flow in importContacts: parse, validate and write inside one loop; counts increase per row; coverage explicitly notes the boundary is not about function length but about parse-before-write and unique-key counting.",
+          "reviewEvidence": [
+            "units.importContacts: 'Изменяет store в цикле; strict выбрасывает ошибку до дальнейших строк, rejected не меняет store'",
+            "coverage: 'необходимость границы между полным разбором, группировкой и записью следует из атомарности разбора и подсчёта уникальных ключей, а не длины функции'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,21,76-98",
+            "src/lib/csv.js:6-37"
+          ]
+        },
+        "D2": {
+          "rating": "hit",
+          "reason": "Target: parseCsv fully before writes, isEmail validation, rejections and last valid row keyed by normalizeEmail, then one apply per key with counts, returning created, updated and rejected; store errors not hidden.",
+          "reviewEvidence": [
+            "target: 'Сначала полностью разобрать CSV существующим parseCsv: ошибка разбора происходит до записи. Проверить все строки через существующий isEmail, сохранить отклонения и последние валидные строки по normalizeEmail. Затем один раз на каждый ключ найти исходный контакт и создать либо обновить его, посчитав каждый ключ один раз'",
+            "finding 4 fix: 'отказы не должны менять эту карту'"
+          ],
+          "sourceEvidence": [
+            "src/lib/csv.js:6-37",
+            "src/contacts/email.js:1-8",
+            "src/contacts/store.js:8-21",
+            "brief.md:6-9"
+          ]
+        },
+        "F2": {
+          "rating": "hit",
+          "reason": "Points at parseCsv in src/lib/csv.js as the existing parser and says to use it instead of hand-written splitting; the fix calls it for the whole text before store operations.",
+          "reviewEvidence": [
+            "finding 1 fix: 'Вызвать parseCsv целиком до любых операций с store'",
+            "units.parseCsv: 'Разбирает CSV целиком, сообщает ошибки кавычек, пропускает физически пустые записи и возвращает номер начала записи и поля; src/lib/csv.js:6-37'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,25-45",
+            "src/lib/csv.js:6-37"
+          ]
+        },
+        "F3": {
+          "rating": "hit",
+          "reason": "Names the local EMAIL_RE as looser than isEmail and shows a@b accepted here but refused by the single-contact form; units list normalizeEmail and isEmail as existing.",
+          "reviewEvidence": [
+            "finding 3: 'Локальный шаблон допускает адреса, которые отклоняет адресная книга, например без точки в домене или с дополнительным @'",
+            "finding 3 shown_by: 'ann@site проходит /^\\S+@\\S+$/, но isEmail в src/contacts/email.js:1-8 отклоняет его; src/contacts/create.js:6 использует isEmail'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,65",
+            "src/contacts/email.js:1-8",
+            "src/contacts/create.js:6",
+            "test/create.test.js:11-13"
+          ]
+        },
+        "F4": {
+          "rating": "hit",
+          "reason": "Writes happen inside the parse loop; the unclosed quote is never detected and a strict-mode throw leaves earlier rows written; parseCsv detects the error before returning.",
+          "reviewEvidence": [
+            "finding 1: 'Парсер сбрасывает состояние кавычек на каждой строке и не проверяет незакрытые или неправильно расположенные кавычки; запись происходит в том же цикле'",
+            "finding 6: 'Публичный параметр strict превращает оба вида отказа в исключение вместо продолжения импорта; предыдущие строки уже могли быть записаны'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,59-60,66-67,76-98",
+            "src/lib/csv.js:6-37"
+          ]
+        },
+        "F5": {
+          "rating": "hit",
+          "reason": "Two valid rows with one new email yield created=1 and updated=1; an existing contact gets updated=2, against 'counts once'.",
+          "reviewEvidence": [
+            "finding 4: 'Каждая валидная строка немедленно меняет store и увеличивает счётчик'",
+            "finding 4 shown_by: 'Один новый email из двух строк даёт created=1 и updated=1; существующий даёт updated=2'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:76-98"
+          ]
+        },
+        "F6": {
+          "rating": "hit",
+          "reason": "Modes are not required by the brief and have no caller outside the added tests; the retry loop assumes a failure the synchronous store does not have and silently drops the valid row.",
+          "reviewEvidence": [
+            "finding 8: 'Разделитель и дополнительный список успешных строк не нужны для заданного CSV и возвращаемых количеств; режим препятствует прямому переиспользованию общего CSV-парсера, а rows хранит ещё одну копию результата'",
+            "finding 7: 'Любое исключение insert трижды проглатывается, затем строка исчезает из результата'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,59-60,66-67,83-95",
+            "src/contacts/store.js:12-17"
+          ]
+        },
+        "F7": {
+          "rating": "hit",
+          "reason": "The example.invalid skip is not required by the brief; valid rows are neither imported nor reported; the pinned test enforces the skip.",
+          "reviewEvidence": [
+            "finding 5: 'Валидная строка не создаёт и не обновляет контакт и не попадает в отказы'",
+            "finding 5 shown_by: 'isEmail принимает ann@example.invalid (src/contacts/email.js:1-8), но ветка заканчивает обработку continue; тест test/import.test.js:24-25 закрепляет пропуск'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:72-75",
+            "src/contacts/email.js:1-8",
+            "test/import.test.js:24-26"
+          ]
+        },
+        "F8": {
+          "rating": "hit",
+          "reason": "The only happy-path test asserts counts and lengths only; no test covers repeated email, unparsable CSV, reported line and reason, or the shared validator; strict, legacy and domain tests pin behavior nobody asked for; the rows field is an extra contract not asked for.",
+          "reviewEvidence": [
+            "finding 9: 'Единственный обычный тест проверяет только количества и длину отказов, а остальные закрепляют дополнительные режимы и исключение домена'",
+            "finding 9: 'Ошибки номера и причины, содержимого store, дубликатов, парсинга и определения адреса останутся незамеченными'; finding 8: 'Убрать legacy, options и rows вместе с тестами'"
+          ],
+          "sourceEvidence": [
+            "test/import.test.js:6-26",
+            "src/contacts/import.js:5-6,72-75,98"
+          ]
+        }
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "No validator classes, strategy per mode, pipeline or importer base class; the only proposed structure is a coordinator inside importContacts without a separate helper.",
+          "reviewEvidence": [
+            "target_units: 'importContacts ... Полностью вызывает parseCsv до записи; проверяет и группирует строки, затем однократно применяет каждую валидную группу'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Modes and retry are removed, not improved.",
+          "reviewEvidence": [
+            "finding 6 fix: 'Убрать режим и всегда добавлять отказ в результат'",
+            "finding 7 fix: 'Удалить локальные повторы и не скрывать ошибку записи'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,83-95"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Normalization, dedup and rejection reporting are all required by the target; none is called unnecessary.",
+          "reviewEvidence": [
+            "target: 'сохранить отклонения и последние валидные строки по normalizeEmail'",
+            "finding 4 fix: 'отказы не должны менять эту карту'"
+          ],
+          "sourceEvidence": [
+            "brief.md:6-9",
+            "src/contacts/import.js:76-98"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Mechanisms trace the hand-written parser, local validation, per-row write and counting, retry, modes and domain skip, each with 'instead' pointing to the existing parseCsv/isEmail/normalizeEmail/store contracts and code paths.",
+          "reviewEvidence": [
+            "mechanisms: six entries with basis/instead/decision tied to src/contacts/import.js:1,5-6,13,72-75,83-95 and src/lib/csv.js:6-37"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,5-6,13,72-75,83-95",
+            "src/lib/csv.js:6-37",
+            "src/contacts/email.js:1-8",
+            "src/contacts/store.js:12-17"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Each removal is justified by a missing requirement or caller; reuse is justified by the existing contracts; store-error atomicity is explicitly left undefined by the task.",
+          "reviewEvidence": [
+            "finding 8: 'единственные вызовы нового API находятся в test/import.test.js:9-25'",
+            "finding 7: 'Для штатного ContactStore достижимость ошибки вставки в этом пути не установлена'",
+            "coverage: 'атомарность ошибок записи не задана'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,83-95",
+            "brief.md:1-9"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "supported",
+          "reason": "The boundary is justified by the demonstrated coupling: writes must wait for the full parse and duplicate consolidation, not by function length.",
+          "reviewEvidence": [
+            "coverage: 'необходимость границы между полным разбором, группировкой и записью следует из атомарности разбора и подсчёта уникальных ключей, а не длины функции'",
+            "units.importContacts: 'Изменяет store в цикле'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,76-98"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "The target preserves parse-before-write, last-valid normalized-email selection with rejected rows not replacing valid ones, distinct counting, and rejection reporting with original line numbers; store errors not hidden.",
+          "reviewEvidence": [
+            "target: 'сохранить отклонения и последние валидные строки по normalizeEmail. Затем один раз на каждый ключ найти исходный контакт и создать либо обновить его, посчитав каждый ключ один раз'",
+            "finding 4 fix: 'отказы не должны менять эту карту'"
+          ],
+          "sourceEvidence": [
+            "brief.md:6-9",
+            "src/contacts/import.js:76-98"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Whitespace-only physical rows are skipped by the trim-empty skip, so they are never rejected as rows with empty names (finding 2).",
+        "A quoted name holding a comma and a line break is not supported by the hand parser; the head fails the quoted-name requirement (finding 1).",
+        "The rows field is an extra result field not asked for by the task; the head code pins it, and u03 recommends removing it with its test (finding 8)."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "All rubric items hit; same diagnosis, findings and target as u01/u02 but the coordinator stays in importContacts without a new helper, and u03 flags the extra rows field as an unrequired contract."
+    },
+    {
+      "id": "u04",
+      "items": {
+        "D1": {
+          "rating": "hit",
+          "reason": "Traces the coupled flow in importContacts: hand line-splitting, per-row validation and immediate store writes inside one loop; counts increase per row; coverage notes that the existing parser and validator own their contracts and only reordering is needed, not separate infrastructure.",
+          "reviewEvidence": [
+            "mechanisms: 'Немедленная запись каждой валидной строки' cost: 'Счётчик повторяет один адрес и запись происходит до конца разбора'",
+            "coverage: 'достаточно переупорядочить importContacts и переиспользовать их, отдельная инфраструктура не нужна'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,21,76-98",
+            "src/lib/csv.js:6-37"
+          ]
+        },
+        "D2": {
+          "rating": "hit",
+          "reason": "Target: parseCsv fully before writes, isEmail validation, last valid row keyed by normalizeEmail, apply once per address relative to the original store, return created, updated and rejected; parse error before write; rejected rows do not stop the import.",
+          "reviewEvidence": [
+            "target: 'Сначала целиком разобрать CSV существующим parseCsv, затем проверить строки через isEmail и собрать последние валидные строки по normalizeEmail. После успешного разбора применить по одному действию на адрес относительно исходного store и вернуть созданные, обновлённые и отклонённые строки'",
+            "target_units: 'importContacts ... Вызвать parseCsv до изменения store; валидировать строки и собрать последние валидные по normalizeEmail'"
+          ],
+          "sourceEvidence": [
+            "src/lib/csv.js:6-37",
+            "src/contacts/email.js:1-8",
+            "src/contacts/store.js:8-21",
+            "brief.md:6-9"
+          ]
+        },
+        "F2": {
+          "rating": "hit",
+          "reason": "Points at parseCsv in src/lib/csv.js as the existing parser and says to use it instead of hand-written splitting; the fix calls it for the whole text before processing and writing rows.",
+          "reviewEvidence": [
+            "finding 1 fix: 'Сначала вызвать parseCsv для всего текста; только после успешного возврата обрабатывать и записывать строки'",
+            "units.parseCsv: 'Полностью разбирает CSV до возврата, отслеживает начальную физическую строку, поддерживает кавычки и выбрасывает CsvError при их неправильном использовании'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,25-45",
+            "src/lib/csv.js:6-37"
+          ]
+        },
+        "F3": {
+          "rating": "hit",
+          "reason": "Names the local EMAIL_RE as looser than isEmail and shows a@b accepted here but refused by the single-contact form; units list normalizeEmail and isEmail as existing.",
+          "reviewEvidence": [
+            "finding 3: 'Локальное выражение принимает адреса, которые адресная книга отвергает, включая отсутствие суффикса домена и дополнительный @'",
+            "finding 3 shown_by: 'Ann,ann@site принимается выражением import.js:1, но isEmail в src/contacts/email.js:1-8 возвращает false; тест test/create.test.js:11-13 фиксирует такое правило'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,65",
+            "src/contacts/email.js:1-8",
+            "src/contacts/create.js:6",
+            "test/create.test.js:11-13"
+          ]
+        },
+        "F4": {
+          "rating": "hit",
+          "reason": "Writes happen inside the parse loop; the unclosed quote is never detected and a strict-mode throw leaves earlier rows written; parseCsv detects the error before returning.",
+          "reviewEvidence": [
+            "finding 1: 'Разбор ограничен одной физической строкой, не проверяет незакрытые и некорректно расположенные кавычки и пишет до проверки остатка файла'",
+            "finding 6: 'Публичная опция strict выбрасывает ошибку на неверной строке и не продолжает импорт'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,59-60,66-67,76-98",
+            "src/lib/csv.js:6-37"
+          ]
+        },
+        "F5": {
+          "rating": "hit",
+          "reason": "Two valid rows with one new email yield created=1 and updated=1; an existing contact gets updated=2, against 'counts once'.",
+          "reviewEvidence": [
+            "finding 4: 'Каждая валидная строка сразу меняет store и увеличивает счётчик, хотя один адрес в файле должен учитываться один раз'",
+            "finding 4 shown_by: 'Для пустого store строки A,a@site.test и B, A@SITE.TEST дают created=1 и updated=1 вместо одного созданного контакта с именем B'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:76-98"
+          ]
+        },
+        "F6": {
+          "rating": "hit",
+          "reason": "Modes are not required by the brief; the retry loop assumes a failure the synchronous store does not have and silently drops the valid row.",
+          "reviewEvidence": [
+            "finding 6: 'Публичная опция strict выбрасывает ошибку на неверной строке и не продолжает импорт; режим legacy меняет разделитель, хотя задача задаёт CSV без таких режимов'",
+            "finding 7: 'Любая ошибка insert ловится трижды, затем строка исчезает без ошибки или записи в rejected'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,59-60,66-67,83-95",
+            "src/contacts/store.js:12-17",
+            "brief.md:1-9"
+          ]
+        },
+        "F7": {
+          "rating": "hit",
+          "reason": "The example.invalid skip is not required by the brief; valid rows are neither imported nor reported; the pinned test enforces the skip.",
+          "reviewEvidence": [
+            "finding 5: 'Адреса example.invalid не создаются и не обновляются, не попадая и в отклонённые. Существующий валидатор принимает этот домен'",
+            "finding 5 shown_by: 'Ann,ann@example.invalid удовлетворяет src/contacts/email.js:1-8, но условие import.js:73 пропускает строку. test/import.test.js:24-25 закрепляет это исключение'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:72-75",
+            "src/contacts/email.js:1-8",
+            "test/import.test.js:24-26"
+          ]
+        },
+        "F8": {
+          "rating": "hit",
+          "reason": "The only happy-path test asserts counts and lengths only; no test covers repeated email, unparsable CSV, reported line and reason, or the shared validator; strict, legacy and domain tests pin behavior nobody asked for; the rows field is an extra contract not asked for.",
+          "reviewEvidence": [
+            "finding 8: 'Единственный основной тест проверяет только количества и длины, не проверяя содержимое store, номера и причины отклонений, атомарность разбора и повторные адреса'",
+            "finding 8: 'Неправильный последний winner, пропущенная строка из пробелов, принятый ann@site и запись до ошибки CSV не обнаруживаются тестами'; finding 6: 'Дополнительный rows также не требуется отчёту'"
+          ],
+          "sourceEvidence": [
+            "test/import.test.js:6-26",
+            "src/contacts/import.js:5-6,72-75,98"
+          ]
+        }
+      },
+      "traps": {
+        "X1": {
+          "rating": "not_triggered",
+          "reason": "No validator classes, strategy per mode, pipeline or importer base class; the only proposed structure is a coordinator inside importContacts without a separate helper.",
+          "reviewEvidence": [
+            "target_units: 'importContacts ... Вызвать parseCsv до изменения store; валидировать строки и собрать последние валидные по normalizeEmail; один раз применить каждый адрес и вернуть счётчики и отклонения'",
+            "coverage: 'отдельная инфраструктура не нужна'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:4-104"
+          ]
+        },
+        "X2": {
+          "rating": "not_triggered",
+          "reason": "Modes and retry are removed, not improved.",
+          "reviewEvidence": [
+            "finding 6 fix: 'Убрать варианты режима и rows, сохранив единое заданное поведение и отчёт'",
+            "finding 7 fix: 'Удалить повторы и catch, дать ошибке записи распространиться'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,83-95"
+          ]
+        },
+        "X3": {
+          "rating": "not_triggered",
+          "reason": "Normalization, dedup and rejection reporting are all required by the target; none is called unnecessary.",
+          "reviewEvidence": [
+            "target: 'собрать последние валидные строки по normalizeEmail'",
+            "finding 4 fix: 'После проверки собрать последние валидные строки по normalizeEmail и применить каждую один раз'"
+          ],
+          "sourceEvidence": [
+            "brief.md:6-9",
+            "src/contacts/import.js:76-98"
+          ]
+        }
+      },
+      "dimensions": {
+        "mechanismIdentification": {
+          "rating": "supported",
+          "reason": "Mechanisms trace the hand-written parser, local validation, per-row write and counting, retry, modes and domain skip, each with 'instead' pointing to the existing parseCsv/isEmail/normalizeEmail/store contracts and code paths.",
+          "reviewEvidence": [
+            "mechanisms: five entries with basis/instead/decision tied to src/contacts/import.js:1,5-6,13,72-75,83-95 and src/lib/csv.js:6-37"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:1,5-6,13,72-75,83-95",
+            "src/lib/csv.js:6-37",
+            "src/contacts/email.js:1-8",
+            "src/contacts/store.js:12-17"
+          ]
+        },
+        "necessityAndCost": {
+          "rating": "supported",
+          "reason": "Each removal is justified by a missing requirement or caller; reuse is justified by the existing contracts; store-error atomicity is explicitly left undefined by the task.",
+          "reviewEvidence": [
+            "finding 6: 'Дополнительный rows также не требуется отчёту'",
+            "finding 7: 'Задача не требует повтора, а доступный синхронный ContactStore не имеет контракта временных ошибок'",
+            "coverage: 'Частота и характер ошибок сторонних реализаций store неизвестны'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:5-6,83-95",
+            "brief.md:1-9"
+          ]
+        },
+        "responsibilityBoundaries": {
+          "rating": "supported",
+          "reason": "The boundary is justified by the demonstrated coupling: writes must wait for the full parse and duplicate consolidation; coverage notes that only reordering is needed, not separate infrastructure.",
+          "reviewEvidence": [
+            "coverage: 'Разбиение: парсинг и правила импорта связаны одной задачей, но имеющийся общий парсер и валидатор владеют своими контрактами; достаточно переупорядочить importContacts и переиспользовать их, отдельная инфраструктура не нужна'",
+            "mechanisms: 'Немедленная запись каждой валидной строки' cost: 'Счётчик повторяет один адрес и запись происходит до конца разбора'"
+          ],
+          "sourceEvidence": [
+            "src/contacts/import.js:13,76-98"
+          ]
+        },
+        "behaviorPreservation": {
+          "rating": "supported",
+          "reason": "The target preserves parse-before-write, last-valid normalized-email selection with rejected rows not replacing valid ones, distinct counting, and rejection reporting with original line numbers; store errors not suppressed.",
+          "reviewEvidence": [
+            "target: 'вернуть созданные, обновлённые и отклонённые строки. Ошибку разбора передать вызывающему коду до записи; отклонённые строки не прерывают импорт'",
+            "finding 4 fix: 'После проверки собрать последние валидные строки по normalizeEmail и применить каждую один раз'"
+          ],
+          "sourceEvidence": [
+            "brief.md:6-9",
+            "src/contacts/import.js:76-98"
+          ]
+        }
+      },
+      "additionalSupportedFindings": [
+        "Whitespace-only physical rows are skipped by the trim-empty skip, so they are never rejected as rows with empty names (finding 2).",
+        "A quoted name holding a comma and a line break is not supported by the hand parser; the head fails the quoted-name requirement (finding 1).",
+        "The rows field is an extra result field not asked for by the task; the head code pins it, and u04 recommends removing it with its test (finding 6)."
+      ],
+      "unsupportedRecommendations": [],
+      "summary": "All rubric items hit; same diagnosis, findings and target as u01/u02/u03 but the coordinator stays in importContacts without a new helper, and u04 flags the extra rows field as an unrequired contract."
+    }
+  ],
+  "equivalentGroups": [
+    {
+      "ids": [
+        "u01",
+        "u02"
+      ],
+      "reason": "Nearly identical diagnosis, findings and target (parseCsv, isEmail, last-valid-row by normalizeEmail, apply once with counts, rejections keep line); both name a decision-phase helper (planImport/prepareRows). Differences: u02's target adds name-check-before-email-error ordering and a proposed unparsable-file check; u02 names the legacy mode as having no caller; neither flags the extra rows field as an unrequired contract."
+    },
+    {
+      "ids": [
+        "u03",
+        "u04"
+      ],
+      "reason": "Same diagnosis, findings and target, but both keep the coordinator in importContacts without a new helper (u04's coverage explicitly says separate infrastructure is not needed); both flag the extra rows field as an unrequired contract that u01/u02 do not call out."
+    }
+  ],
+  "limitations": [
+    "No implementation exists to grade; the reviews are static proposals, so D1/D2 and behavior preservation are judged on the stated target, not on applied code.",
+    "The reviewers did not see the rubric; the rubric's head fails list (whitespace-only row rejected, quoted name with comma and line break, valid row dropped without a word) maps to the same findings they made independently.",
+    "Whitespace-row handling, quoted names with commas and line breaks, and the rows field are covered by different reviewers; u01/u02 do not flag the rows field as an unrequired contract."
+  ],
+  "summary": "All four reviews are substantively equivalent: they trace the same coupling (parse, validate and write inside one loop), propose the same target (parseCsv for the whole text, isEmail, last-valid-row by normalizeEmail, apply once with counts, rejections keep original line), and hit every rubric item including the same example of a@b accepted here and refused by the single-contact form. The only substantive difference is that u01/u02 name a decision-phase helper (planImport/prepareRows) while u03/u04 keep the coordinator in importContacts and flag the extra rows field as an unrequired contract."
+}
