@@ -10,8 +10,12 @@ A slot is refused with one message. Where several apply, the one that comes firs
 4. "This slot is outside delivery hours." The slot does not lie wholly within the zone's delivery hours.
 5. "Orders over 30 kg are delivered before noon." The order weighs more than 30 kg and the slot starts at 12:00 or later.
 
-While the form is open, a chosen slot that becomes too soon as time passes shows its message within a minute, without the customer touching the form, and cannot be submitted.
+`openSlotEditor` resolves when the editor is ready. From then on every rule applies, whatever else is slow or failing.
+
+The slot picker gives whole minutes. While the form is open, a chosen slot that becomes too soon as time passes shows its message within a minute, without the customer touching the form, and cannot be submitted once the message shows. The service refuses a late slot itself, so the minute in between is accepted.
 
 Closing the form stops everything it started.
 
-Decided when the task was discussed: load the zone's hours with `client.getZone`, as `docs/slots.md` says, and keep them for five minutes so that reopening the editor does not load them again.
+The code runs in Node, as the rest of this service does.
+
+From the author's description of the change, which nobody has reviewed: the zone's hours are loaded with `client.getZone`, as `docs/slots.md` says, and kept for five minutes so that reopening the editor does not load them again.

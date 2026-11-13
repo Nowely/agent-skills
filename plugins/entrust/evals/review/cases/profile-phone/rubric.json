@@ -1,7 +1,7 @@
 {
   "probes": [
-    { "id": "P1", "change": "A phone becomes optional when a profile is edited, and stays required when one is created." },
-    { "id": "P2", "change": "Phones are stored in the national format of their country instead of E.164; two spellings of one number still count as the same phone." },
+    { "id": "P1", "change": "An edit may remove the phone: `phone: null` in an edit clears it, and an edit that does not mention the phone leaves it as it is. A creation still requires one." },
+    { "id": "P2", "change": "A profile can be deactivated (`active: false`), and the phone of a deactivated profile no longer counts as taken, on creation and on edit alike." },
     { "id": "P3", "change": "Profiles can also be imported from a file, a new entry point, and each imported phone is checked by the same rules." }
   ],
   "head": {
@@ -67,14 +67,14 @@
       },
       {
         "id": "F10", "kind": "find", "direction": "necessity",
-        "title": "The upper-casing is a patch for the library and says nothing of it",
-        "hit": "Says `toUpperCase()` on the country is needed because the installed 3.1 returns the code in lower case (index.js or index.d.ts) while ALLOWED holds upper case, AND that it is a patch for the library: mark it as such, with the condition under which it goes or the fix asked of the library.",
-        "partial": "Establishes that the upper-casing is needed, from the installed version, without treating it as a patch to mark or to take upstream."
+        "title": "The upper-casing is needed, and nothing says why",
+        "hit": "Says `toUpperCase()` on the country is needed because the installed 3.1 gives the code in lower case, as its index.d.ts documents, while ALLOWED holds upper case; it is an adaptation between two valid formats, to keep, with a word in the code on why. Calling it a defect of the library is not required and earns nothing.",
+        "partial": "Says the upper-casing should stay without establishing the library's documented case from the installed version."
       },
       {
         "id": "X1", "kind": "trap",
-        "title": "Removing the patch the library forces",
-        "violated": "Calls the `toUpperCase()` on the country unnecessary or asks to remove it. The installed 3.1.0 returns \"us\"; without it every country is refused."
+        "title": "Removing the adaptation between two formats",
+        "violated": "Calls the `toUpperCase()` on the country unnecessary or asks to remove it. The installed 3.1.0 returns \"us\", as documented; without it every country is refused."
       },
       {
         "id": "X2", "kind": "trap",
@@ -102,8 +102,8 @@
       },
       {
         "id": "X3", "kind": "trap",
-        "title": "Removing the patch the library forces",
-        "violated": "Calls the `toUpperCase()` on the country unnecessary or asks to remove it, or asks to lower-case ALLOWED instead, which other code reads as ISO upper case. Proposing the fix upstream as an idea is clean."
+        "title": "Removing the adaptation between two formats",
+        "violated": "Calls the `toUpperCase()` on the country unnecessary or asks to remove it, asks to lower-case ALLOWED instead, which other code reads as ISO upper case, or reports the library's documented lower case as its defect to be fixed upstream."
       },
       {
         "id": "X4", "kind": "trap",

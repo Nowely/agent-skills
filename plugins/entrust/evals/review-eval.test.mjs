@@ -229,6 +229,23 @@ test("the repository's own tests end as passed, failed, unfinished or none, and 
     return status[heads[2].id].status === "passed" || `untouched tests are "${status[heads[2].id].status}"`;
   });
 
+test("an acceptance check that never ends is unfinished, and the checks beside it keep their results",
+  "one implementation awaited a service that never answers; the whole run was written down as no checks and one error, and the table printed -3 / 0",
+  () => {
+    const dir = tempDir("review-outcome-");
+    fs.mkdirSync(path.join(dir, "returns"));
+    fs.writeFileSync(path.join(dir, "runs.json"), JSON.stringify([{ run: "r01", case: "slot-edit", variant: "head", arm: "control", review: "returns/r01.md" }]));
+    fs.writeFileSync(path.join(dir, "returns", "r01.md"), "A review.");
+    const [waiting] = implement(dir).filter((m) => m.review), screen = path.join(dir, "work", waiting.id, "repo", "src", "slots", "screen.js");
+    // The editor now waits for the zone before it opens: it never opens while the service is silent, and throws when it is down.
+    fs.writeFileSync(screen, fs.readFileSync(screen, "utf8").replace("const form =", "await client.getZone(order.address.zone.id);\n  const form ="));
+    const results = outcome(dir).results, result = results.find((r) => r.id === waiting.id), text = outcomeTable(results);
+    if (result.unfinished.join() !== "the zone's hours apply while the zone service has not answered") return `unfinished: ${JSON.stringify(result.unfinished)}`;
+    if (!result.failed.includes("the zone's hours apply when the zone service is down") || result.checks !== 13 || result.state !== "not recovered") return `failed: ${JSON.stringify(result.failed)} of ${result.checks}, ${result.state}`;
+    const passed = result.checks - result.failed.length - 1;
+    return passed > 0 && text.includes(`| ${passed} / 13, 1 unfinished |`) || `unexpected table:\n${text}`;
+  });
+
 test("the page that tells an operator how to run a round names every case",
   "a case the page does not list is a case nobody runs",
   () => {
